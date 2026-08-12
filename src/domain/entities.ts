@@ -21,6 +21,7 @@ export type EntityType =
   | "user"
   | "client"
   | "contact"
+  | "prospect"
   | "project"
   | "website"
   | "conversation"
@@ -67,6 +68,20 @@ export interface Contact extends BaseEntity {
   email?: string;
   phone?: string;
   title?: string;
+}
+
+/**
+ * A company Trust Tai is considering, before it becomes a client.
+ * Deliberately minimal — fit evidence lives in the Scout module.
+ */
+export type ProspectStatus = "new" | "qualified" | "passed";
+
+export interface Prospect extends BaseEntity {
+  name: string;
+  domain: string;
+  status: ProspectStatus;
+  /** Who carries this prospect once it is qualified. */
+  stewardUserId?: ID;
 }
 
 export interface Project extends BaseEntity {
