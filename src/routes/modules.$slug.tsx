@@ -1,11 +1,11 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 
+import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { LockedWorkspace } from "@/components/tt/locked-workspace";
 import {
   EmptyState,
   MetaPill,
-  PageHeader,
   SectionHeading,
   TTButton,
 } from "@/components/tt/primitives";
@@ -57,7 +57,8 @@ function ModuleRoute() {
   return (
     <AppShell>
       <div className="space-y-12">
-        <PageHeader
+        <AppHero
+          appId={app.id}
           eyebrow={`Trust Tai OS / ${app.name}`}
           title={app.description}
           supporting={

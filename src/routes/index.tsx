@@ -3,14 +3,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLink } from "@/components/tt/app-link";
 import { useQuery } from "@tanstack/react-query";
 
+import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
+import { IntelligenceConsole } from "@/components/tt/intelligence-console";
 import { ContextPanel } from "@/components/tt/context-panel";
 import { DecisionCard } from "@/components/tt/decision-card";
 import { LockedWorkspace } from "@/components/tt/locked-workspace";
 import {
   EmptyState,
   MetaPill,
-  PageHeader,
   SectionHeading,
   StatusPill,
   TTButton,
@@ -54,21 +55,21 @@ function HomeRoute() {
   }
   return (
     <AppShell>
-      <Home organizationId={access.organizationId} />
+      <Home organizationId={access.organizationId} userId={access.userId} />
     </AppShell>
   );
 }
 
-function Home({ organizationId }: { organizationId: string }) {
+function Home({ organizationId, userId }: { organizationId: string; userId: string }) {
   const { data } = useQuery({
-    queryKey: ["home", organizationId],
+    queryKey: ["home", organizationId, userId],
     queryFn: async () => {
       const [decisions, projects, users, activity, context] = await Promise.all([
         memorySource.decisions.list(organizationId),
         memorySource.projects.list(organizationId),
         memorySource.users.list(organizationId),
         memorySource.activity.list({ organizationId, limit: 4 }),
-        memorySource.intelligence.retrieve({ organizationId, userId: "usr_tai" }),
+        memorySource.intelligence.retrieve({ organizationId, userId }),
       ]);
       return { decisions, projects, users, activity, context };
     },
@@ -76,14 +77,20 @@ function Home({ organizationId }: { organizationId: string }) {
 
   const openDecisions = data?.decisions.filter((d) => d.status === "open") ?? [];
   const userById = (id?: string) => data?.users.find((u) => u.id === id);
+  const currentUser = userById(userId);
+  const firstName = currentUser?.name?.trim().split(/\s+/)[0];
 
   return (
     <div className="space-y-14">
-      <PageHeader
+      <AppHero
+        appId="home"
         eyebrow="Trust Tai OS"
+        greeting={firstName ? `Welcome, ${firstName}` : undefined}
         title="One operating system for how Trust Tai works."
         supporting="A shared foundation for clients, projects, communication, operations, and intelligence."
       />
+
+      <IntelligenceConsole organizationId={organizationId} userId={userId} />
 
       {/* Needs your decision — always first */}
       <section aria-labelledby="decisions-heading">
