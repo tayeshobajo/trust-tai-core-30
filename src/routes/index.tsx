@@ -99,7 +99,7 @@ function Home({ organizationId, userId }: { organizationId: string; userId: stri
   const leadDecision = openDecisions[0];
   const attention =
     openDecisions.length > 0
-      ? `${openDecisions.length} decision${openDecisions.length === 1 ? "" : "s"} is waiting on your judgement.`
+      ? `${openDecisions.length} decision${openDecisions.length === 1 ? " is" : "s are"} waiting on your judgement.`
       : "Nothing is waiting on your judgement today.";
   const nextMove =
     leadDecision?.title ??
