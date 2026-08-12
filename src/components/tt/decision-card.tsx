@@ -15,10 +15,13 @@ export function DecisionCard({
   decision,
   owner,
   onResolve,
+  unlocks,
 }: {
   decision: Decision;
   owner?: User | undefined;
   onResolve?: ((id: string, status: Decision["status"]) => void) | undefined;
+  /** What this decision releases once it is made. */
+  unlocks?: string | undefined;
 }) {
   const [status, setStatus] = useState<Decision["status"]>(decision.status);
 
