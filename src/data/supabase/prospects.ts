@@ -13,6 +13,7 @@
 
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ID, Prospect, ProspectStatus } from "@/domain/entities";
+import { normalizeWebsiteUrl } from "@/lib/website-url";
 
 import { PROSPECT_STATUSES, type ProspectRow, type Row } from "./schema";
 
@@ -133,27 +134,6 @@ export async function updateProspectStatus(id: ID, status: ProspectStatus): Prom
 /** Provenance marker written on every live public-website research prospect. */
 export const SCOUT_LIVE_SOURCE = "scout_live_website";
 
-/**
- * Normalize a pasted website/domain into the canonical `https://hostname` form
- * used for storage and duplicate detection. Returns null when the input is not
- * a usable web address.
- */
-export function normalizeWebsiteUrl(input: string): string | null {
-  const raw = input.trim();
-  if (!raw || /\s/.test(raw)) return null;
-  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-  let url: URL;
-  try {
-    url = new URL(withScheme);
-  } catch {
-    return null;
-  }
-  const host = url.hostname.toLowerCase().replace(/^www\./, "");
-  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host)) return null;
-  if (host.split(".").pop()!.length < 2) return null;
-  return `https://${host}`;
-}
-
 /** Every stored row for an organization, newest first. */
 export async function listProspectRows(organizationId: ID): Promise<ProspectRow[]> {
   const { data, error } = await supabase
@@ -223,3 +203,5 @@ export async function saveResearchProspect(input: ResearchProspectInput): Promis
   if (!data) throw new Error("The researched prospect could not be saved to your workspace.");
   return data as unknown as ProspectRow;
 }
+
+export { normalizeWebsiteUrl };
