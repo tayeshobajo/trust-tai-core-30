@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { AppMotifArt } from "@/components/tt/app-motif";
 import { getAppImage } from "@/domain/app-imagery";
@@ -31,6 +31,16 @@ export function AppArtwork({
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  // The file may already be cached and complete before hydration, in which case
+  // onLoad never fires — check the element directly when it mounts.
+  const attach = useCallback((el: HTMLImageElement | null) => {
+    if (!el) return;
+    if (el.complete) {
+      if (el.naturalWidth > 0) setLoaded(true);
+      else setFailed(true);
+    }
+  }, []);
+
   return (
     <div className={cn("relative h-full w-full overflow-hidden", className)}>
       <div
@@ -47,6 +57,7 @@ export function AppArtwork({
           src={image.src}
           alt={image.alt}
           aria-hidden={image.alt === "" ? true : undefined}
+          ref={attach}
           loading="lazy"
           decoding="async"
           onLoad={() => setLoaded(true)}
