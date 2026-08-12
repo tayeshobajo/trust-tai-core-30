@@ -8,11 +8,12 @@
 
 import type { ActivityStream } from "@/domain/activity";
 import type { ID, Prospect } from "@/domain/entities";
-import type {
-  ProspectCandidate,
-  ScoutProvider,
-  ScoutSearchRequest,
-  ScoutSearchResult,
+import {
+  PREVIEW_SOURCE,
+  type ProspectCandidate,
+  type ScoutProvider,
+  type ScoutSearchRequest,
+  type ScoutSearchResult,
 } from "@/domain/scout";
 
 const ORG_ID = "org_trusttai";
@@ -24,7 +25,7 @@ function prospect(id: string, name: string, domain: string): Prospect {
   return { ...base, id, name, domain, websiteUrl: `https://${domain}`, status: "discovered" };
 }
 
-export const PREVIEW_CANDIDATES: ProspectCandidate[] = [
+const PREVIEW_ENTRIES: Omit<ProspectCandidate, "source">[] = [
   {
     prospect: prospect("pro_meridian", "Meridian Law Partners", "meridianlaw.co.uk"),
     signals: [
@@ -158,6 +159,12 @@ export const PREVIEW_CANDIDATES: ProspectCandidate[] = [
 ];
 
 /** Plain-language matching over the demo set. No search is performed. */
+/** The fixed preview pool, each entry explicitly labelled as demo evidence. */
+export const PREVIEW_CANDIDATES: ProspectCandidate[] = PREVIEW_ENTRIES.map((entry) => ({
+  ...entry,
+  source: PREVIEW_SOURCE,
+}));
+
 export function rankPreviewCandidates(query: string): ProspectCandidate[] {
   const q = query.toLowerCase();
   const score = (c: ProspectCandidate) => {
