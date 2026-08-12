@@ -129,3 +129,97 @@ export async function updateProspectStatus(id: ID, status: ProspectStatus): Prom
   if (!data) throw new Error("Prospect was not returned after the status change.");
   return toProspect(data as unknown as ProspectRow);
 }
+
+/** Provenance marker written on every live public-website research prospect. */
+export const SCOUT_LIVE_SOURCE = "scout_live_website";
+
+/**
+ * Normalize a pasted website/domain into the canonical `https://hostname` form
+ * used for storage and duplicate detection. Returns null when the input is not
+ * a usable web address.
+ */
+export function normalizeWebsiteUrl(input: string): string | null {
+  const raw = input.trim();
+  if (!raw || /\s/.test(raw)) return null;
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  let url: URL;
+  try {
+    url = new URL(withScheme);
+  } catch {
+    return null;
+  }
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host)) return null;
+  if (host.split(".").pop()!.length < 2) return null;
+  return `https://${host}`;
+}
+
+/** Every stored row for an organization, newest first. */
+export async function listProspectRows(organizationId: ID): Promise<ProspectRow[]> {
+  const { data, error } = await supabase
+    .from("prospects")
+    .select(SELECT_COLUMNS)
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as ProspectRow[];
+}
+
+/** Find an existing row for this organization by normalized website address. */
+export async function findProspectRowByWebsite(
+  organizationId: ID,
+  normalizedUrl: string,
+): Promise<ProspectRow | null> {
+  const rows = await listProspectRows(organizationId);
+  const host = toDisplayDomain(normalizedUrl).toLowerCase();
+  return rows.find((row) => toDisplayDomain(row.website_url).toLowerCase() === host) ?? null;
+}
+
+export interface ResearchProspectInput {
+  organizationId: ID;
+  userId: ID;
+  companyName: string;
+  websiteUrl: string;
+  observed: unknown;
+  inferred: unknown;
+  suggested: unknown;
+  provenance: Row;
+  existing?: ProspectRow | null;
+}
+
+/**
+ * Save live website research. An existing prospect for the same website has its
+ * research fields refreshed in place rather than being duplicated.
+ */
+export async function saveResearchProspect(input: ResearchProspectInput): Promise<ProspectRow> {
+  const research = {
+    company_name: input.companyName,
+    website_url: input.websiteUrl,
+    source: SCOUT_LIVE_SOURCE,
+    observed: input.observed ?? [],
+    inferred: input.inferred ?? {},
+    suggested: input.suggested ?? {},
+    provenance: input.provenance,
+  };
+
+  if (input.existing) {
+    const { data, error } = await supabase
+      .from("prospects")
+      .update(research)
+      .eq("id", input.existing.id)
+      .select(SELECT_COLUMNS)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error("The researched prospect could not be updated in your workspace.");
+    return data as unknown as ProspectRow;
+  }
+
+  const { data, error } = await supabase
+    .from("prospects")
+    .insert({ ...research, organization_id: input.organizationId, status: "discovered", created_by: input.userId })
+    .select(SELECT_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("The researched prospect could not be saved to your workspace.");
+  return data as unknown as ProspectRow;
+}
