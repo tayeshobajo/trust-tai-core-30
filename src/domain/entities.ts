@@ -151,6 +151,7 @@ export type CoreEntity =
   | User
   | Client
   | Contact
+  | Prospect
   | Project
   | Website
   | Conversation
