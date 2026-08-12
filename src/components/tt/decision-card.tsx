@@ -73,9 +73,16 @@ export function DecisionCard({
           </TTButton>
         </div>
       ) : (
-        <p className="mt-5 font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
-          {status === "approved" ? "Approved by you" : "Deferred by you"}
-        </p>
+        <div className="tt-rise mt-5 rounded-lg border border-border bg-secondary/50 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            {status === "approved" ? "Approved by you" : "Deferred by you"}
+          </p>
+          <p className="mt-2 text-sm text-foreground">
+            {status === "approved"
+              ? (unlocks ?? "This moves on without you now.")
+              : "This stays on your list. Nothing downstream moves until you decide."}
+          </p>
+        </div>
       )}
     </article>
   );
