@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
+import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const ModulesSlugRoute = ModulesSlugRouteImport.update({
   path: '/modules/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ModulesScoutRoute = ModulesScoutRouteImport.update({
+  id: '/modules/scout',
+  path: '/modules/scout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/modules/$slug': typeof ModulesSlugRoute
+  '/modules/scout': typeof ModulesScoutRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/modules/$slug': typeof ModulesSlugRoute
+  '/modules/scout': typeof ModulesScoutRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/modules/$slug': typeof ModulesSlugRoute
+  '/modules/scout': typeof ModulesScoutRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/modules/$slug'
+  fullPaths: '/' | '/modules/$slug' | '/modules/scout'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/modules/$slug'
-  id: '__root__' | '/' | '/modules/$slug'
+  to: '/' | '/modules/$slug' | '/modules/scout'
+  id: '__root__' | '/' | '/modules/$slug' | '/modules/scout'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
+  ModulesScoutRoute: typeof ModulesScoutRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/modules/scout': {
+      id: '/modules/scout'
+      path: '/modules/scout'
+      fullPath: '/modules/scout'
+      preLoaderRoute: typeof ModulesScoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ModulesSlugRoute: ModulesSlugRoute,
+  ModulesScoutRoute: ModulesScoutRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

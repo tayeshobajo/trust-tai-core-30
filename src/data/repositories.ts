@@ -14,11 +14,13 @@ import type {
   ID,
   Organization,
   Project,
+  Prospect,
   Task,
   User,
   Website,
 } from "@/domain/entities";
 import type { IntelligenceProvider } from "@/domain/intelligence";
+import type { ScoutProvider } from "@/domain/scout";
 
 export interface ReadRepository<T> {
   list(organizationId: ID): Promise<T[]>;
@@ -30,6 +32,7 @@ export interface TrustTaiDataSource {
   users: ReadRepository<User>;
   clients: ReadRepository<Client>;
   contacts: ReadRepository<Contact>;
+  prospects: ReadRepository<Prospect>;
   projects: ReadRepository<Project>;
   websites: ReadRepository<Website>;
   conversations: ReadRepository<Conversation>;
@@ -39,4 +42,6 @@ export interface TrustTaiDataSource {
   };
   activity: ActivityStream;
   intelligence: IntelligenceProvider;
+  /** Scout's own read/write surface. Fit evidence stays in the Scout module. */
+  scout: ScoutProvider;
 }

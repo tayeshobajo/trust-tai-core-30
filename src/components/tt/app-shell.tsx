@@ -33,6 +33,7 @@ const ICONS: Record<string, LucideIcon> = {
 function statusNote(app: AppRegistration) {
   if (app.status === "live") return null;
   if (app.status === "external") return "Existing product";
+  if (app.status === "in_build") return "In build";
   return "Upcoming";
 }
 
