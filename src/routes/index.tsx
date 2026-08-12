@@ -4,6 +4,8 @@ import { AppLink } from "@/components/tt/app-link";
 import { useQuery } from "@tanstack/react-query";
 
 import { AppHero } from "@/components/tt/app-hero";
+import { AppMotifArt } from "@/components/tt/app-motif";
+import { getAppTheme } from "@/domain/app-theme";
 import { AppShell } from "@/components/tt/app-shell";
 import { IntelligenceConsole } from "@/components/tt/intelligence-console";
 import { ContextPanel } from "@/components/tt/context-panel";
@@ -180,8 +182,21 @@ function Home({ organizationId, userId }: { organizationId: string; userId: stri
             <li key={app.id}>
               <AppLink
                 app={app}
-                className="block h-full rounded-xl border border-border bg-card p-5 transition-transform duration-200 hover:-translate-y-0.5"
+                className="block h-full overflow-hidden rounded-xl border border-border bg-card transition-transform duration-200 hover:-translate-y-0.5"
               >
+                <div
+                  className="h-16 border-b border-border"
+                  style={{
+                    backgroundColor: `color-mix(in oklab, ${getAppTheme(app.id).tint} 5%, var(--card))`,
+                  }}
+                >
+                  <AppMotifArt
+                    motif={getAppTheme(app.id).motif}
+                    tint={getAppTheme(app.id).tint}
+                    className="opacity-60"
+                  />
+                </div>
+                <div className="p-5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-foreground">{app.name}</span>
                   <StatusPill
@@ -197,6 +212,7 @@ function Home({ organizationId, userId }: { organizationId: string; userId: stri
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">{app.description}</p>
+                </div>
               </AppLink>
             </li>
           ))}
