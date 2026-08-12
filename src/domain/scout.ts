@@ -15,6 +15,8 @@ export interface ScoutSignal {
   id: ID;
   statement: string;
   provenance: Provenance;
+  /** Page the fact was read from, when the evidence is a real public URL. */
+  sourceUrl?: string;
 }
 
 /** Scout's read of a company, always separated from what it actually observed. */
@@ -25,11 +27,33 @@ export interface ScoutFit {
   recommendation: string;
 }
 
+/**
+ * Where a candidate's evidence came from. Preview discovery is a fixed demo
+ * pool; live website research is real public-page reading by the backend.
+ */
+export type CandidateSourceKind = "preview_demo" | "live_website";
+
+export interface CandidateSource {
+  kind: CandidateSourceKind;
+  label: string;
+  /** e.g. "Public website only · 4 pages checked". */
+  note?: string;
+  pagesResearched?: string[];
+  researchedAt?: string;
+}
+
+export const PREVIEW_SOURCE: CandidateSource = {
+  kind: "preview_demo",
+  label: "Preview demo source",
+  note: "A fixed in-memory set. No external service was searched and no AI scoring was applied.",
+};
+
 /** A prospect plus the Scout-specific evidence behind it. */
 export interface ProspectCandidate {
   prospect: Prospect;
   signals: ScoutSignal[];
   fit: ScoutFit;
+  source: CandidateSource;
 }
 
 export interface ScoutSearchRequest {
@@ -42,8 +66,22 @@ export interface ScoutSearchRequest {
 export interface ScoutSearchResult {
   request: ScoutSearchRequest;
   candidates: ProspectCandidate[];
-  /** Where these candidates came from. Currently always the demo set. */
-  source: { kind: "preview_demo"; label: string; note: string };
+  /** Where these candidates came from. */
+  source: CandidateSource;
+  generatedAt: string;
+}
+
+export interface ScoutResearchRequest {
+  organizationId: ID;
+  userId: ID;
+  /** Raw pasted website or domain. Normalized before the backend call. */
+  websiteUrl: string;
+}
+
+export interface ScoutResearchResult {
+  request: ScoutResearchRequest;
+  candidate: ProspectCandidate;
+  source: CandidateSource;
   generatedAt: string;
 }
 
@@ -55,6 +93,7 @@ export interface ScoutProvider {
     context: { organizationId: ID; userId: ID },
   ): Promise<Prospect | null>;
   list(organizationId: ID): Promise<ProspectCandidate[]>;
+  research(request: ScoutResearchRequest): Promise<ScoutResearchResult>;
 }
 
 export const SCOUT_STARTER_PROMPTS = [
