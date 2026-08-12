@@ -51,7 +51,7 @@ export const APP_REGISTRY: AppRegistration[] = [
     name: "Scout",
     slug: "scout",
     description: "Find and qualify the right clients before outreach begins.",
-    status: "mapped",
+    status: "in_build",
     route: "/modules/scout",
     icon: "Search",
     capabilities: ["clients", "contacts", "intelligence"],
