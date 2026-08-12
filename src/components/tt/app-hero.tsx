@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { AppMotifArt } from "@/components/tt/app-motif";
+import { AppArtwork } from "@/components/tt/app-artwork";
 import { getAppTheme } from "@/domain/app-theme";
 import { cn } from "@/lib/utils";
 
@@ -60,14 +60,12 @@ export function AppHero({
         </div>
 
         <div
-          className="relative min-h-40 border-t border-border lg:min-h-full lg:border-l lg:border-t-0"
+          className="relative min-h-44 border-t border-border sm:min-h-56 lg:min-h-full lg:border-l lg:border-t-0"
           style={{
             backgroundColor: `color-mix(in oklab, ${theme.tint} 5%, var(--card))`,
           }}
         >
-          <div className="absolute inset-0 opacity-70">
-            <AppMotifArt motif={theme.motif} tint={theme.tint} />
-          </div>
+          <AppArtwork appId={appId} className="absolute inset-0" />
         </div>
       </div>
     </header>

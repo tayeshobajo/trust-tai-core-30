@@ -15,10 +15,13 @@ export function DecisionCard({
   decision,
   owner,
   onResolve,
+  unlocks,
 }: {
   decision: Decision;
   owner?: User | undefined;
   onResolve?: ((id: string, status: Decision["status"]) => void) | undefined;
+  /** What this decision releases once it is made. */
+  unlocks?: string | undefined;
 }) {
   const [status, setStatus] = useState<Decision["status"]>(decision.status);
 
@@ -28,9 +31,9 @@ export function DecisionCard({
   }
 
   return (
-    <article className="tt-surface p-6">
+    <article className="tt-surface p-6 transition-colors duration-300">
       <div className="flex flex-wrap items-center gap-2">
-        <StatusPill status="needs_decision" />
+        <StatusPill status={status === "open" ? "needs_decision" : "live"} />
         <MetaPill>Due {formatDue(decision.dueAt)}</MetaPill>
         <MetaPill>Carried by {owner?.name ?? "Unassigned"}</MetaPill>
       </div>
@@ -70,9 +73,16 @@ export function DecisionCard({
           </TTButton>
         </div>
       ) : (
-        <p className="mt-5 font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
-          {status === "approved" ? "Approved by you" : "Deferred by you"}
-        </p>
+        <div className="tt-rise mt-5 rounded-lg border border-border bg-secondary/50 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            {status === "approved" ? "Approved by you" : "Deferred by you"}
+          </p>
+          <p className="mt-2 text-sm text-foreground">
+            {status === "approved"
+              ? (unlocks ?? "This moves on without you now.")
+              : "This stays on your list. Nothing downstream moves until you decide."}
+          </p>
+        </div>
       )}
     </article>
   );

@@ -1,16 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-
-import { AppLink } from "@/components/tt/app-link";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { AppArtwork } from "@/components/tt/app-artwork";
 import { AppHero } from "@/components/tt/app-hero";
-import { AppMotifArt } from "@/components/tt/app-motif";
-import { getAppTheme } from "@/domain/app-theme";
+import { AppLink } from "@/components/tt/app-link";
 import { AppShell } from "@/components/tt/app-shell";
-import { IntelligenceConsole } from "@/components/tt/intelligence-console";
 import { ContextPanel } from "@/components/tt/context-panel";
 import { DecisionCard } from "@/components/tt/decision-card";
+import { IntelligenceConsole } from "@/components/tt/intelligence-console";
+import { JourneySpine, type SpineStage } from "@/components/tt/journey-spine";
 import { LockedWorkspace } from "@/components/tt/locked-workspace";
+import { TodayPanel } from "@/components/tt/today-panel";
 import {
   EmptyState,
   MetaPill,
@@ -20,7 +21,9 @@ import {
   TTCard,
 } from "@/components/tt/primitives";
 import { memorySource } from "@/data/memory-source";
+import { getAppTheme } from "@/domain/app-theme";
 import { APP_REGISTRY } from "@/domain/registry";
+import { useLastVisit } from "@/hooks/use-last-visit";
 import { resolveAccess } from "@/lib/auth-boundary";
 
 const TITLE = "Trust Tai OS — one operating system for how Trust Tai works";
@@ -70,17 +73,64 @@ function Home({ organizationId, userId }: { organizationId: string; userId: stri
         memorySource.decisions.list(organizationId),
         memorySource.projects.list(organizationId),
         memorySource.users.list(organizationId),
-        memorySource.activity.list({ organizationId, limit: 4 }),
+        memorySource.activity.list({ organizationId, limit: 6 }),
         memorySource.intelligence.retrieve({ organizationId, userId }),
       ]);
       return { decisions, projects, users, activity, context };
     },
   });
 
-  const openDecisions = data?.decisions.filter((d) => d.status === "open") ?? [];
+  const { lastVisit, ready } = useLastVisit();
+  const [resolvedCount, setResolvedCount] = useState(0);
+
+  const decisions = data?.decisions ?? [];
+  const openDecisions = decisions.filter((d) => d.status === "open");
   const userById = (id?: string) => data?.users.find((u) => u.id === id);
   const currentUser = userById(userId);
   const firstName = currentUser?.name?.trim().split(/\s+/)[0];
+
+  const newSignals = useMemo(() => {
+    const events = data?.activity ?? [];
+    if (!ready) return [];
+    if (!lastVisit) return events.slice(0, 3);
+    return events.filter((event) => event.occurredAt > lastVisit);
+  }, [data?.activity, lastVisit, ready]);
+
+  const leadDecision = openDecisions[0];
+  const attention =
+    openDecisions.length > 0
+      ? `${openDecisions.length} decision${openDecisions.length === 1 ? " is" : "s are"} waiting on your judgement.`
+      : "Nothing is waiting on your judgement today.";
+  const nextMove =
+    leadDecision?.title ??
+    data?.projects.find((p) => p.nextMove)?.nextMove ??
+    "Keep going — the work is moving without you.";
+
+  const stages: SpineStage[] = [
+    {
+      label: "Signal",
+      detail: "Ops and Projects are writing into one shared activity stream.",
+      state: "done",
+    },
+    {
+      label: "Decision",
+      detail:
+        openDecisions.length > 0
+          ? `${openDecisions.length} open, carried by you.`
+          : "All caught up.",
+      state: openDecisions.length > 0 ? "current" : "done",
+    },
+    {
+      label: "Action",
+      detail: "Approved decisions release the next build order.",
+      state: openDecisions.length > 0 ? "ahead" : "current",
+    },
+    {
+      label: "Outcome",
+      detail: "Northbank launch, tracked enquiries, a steward on every client.",
+      state: "ahead",
+    },
+  ];
 
   return (
     <div className="space-y-14">
@@ -90,6 +140,21 @@ function Home({ organizationId, userId }: { organizationId: string; userId: stri
         greeting={firstName ? `Welcome, ${firstName}` : undefined}
         title="One operating system for how Trust Tai works."
         supporting="A shared foundation for clients, projects, communication, operations, and intelligence."
+      />
+
+      <TodayPanel
+        changedCount={newSignals.length}
+        attention={attention}
+        nextMove={nextMove}
+        nextMoveInferred={Boolean(leadDecision)}
+        newSignals={newSignals}
+        action={
+          leadDecision ? (
+            <TTButton asChild variant="signal">
+              <a href="#decisions-heading">Make the decision that is waiting</a>
+            </TTButton>
+          ) : undefined
+        }
       />
 
       <IntelligenceConsole organizationId={organizationId} userId={userId} />
@@ -102,13 +167,21 @@ function Home({ organizationId, userId }: { organizationId: string; userId: stri
           description="Everything below this section is information. This section is judgement only you can give."
         />
         <div id="decisions-heading" className="grid gap-4 lg:grid-cols-2">
-          {openDecisions.length > 0 ? (
-            openDecisions.map((decision) => (
+          {decisions.length > 0 ? (
+            decisions.map((decision) => (
               <DecisionCard
                 key={decision.id}
                 decision={decision}
                 owner={userById(decision.ownerUserId)}
-                onResolve={(id, status) => memorySource.decisions.setStatus(id, status)}
+                unlocks={
+                  decision.projectId
+                    ? "This releases the next build order for that project."
+                    : "This gives the work a named owner, so signals stop sitting unread."
+                }
+                onResolve={(id, status) => {
+                  memorySource.decisions.setStatus(id, status);
+                  setResolvedCount((n) => n + 1);
+                }}
               />
             ))
           ) : (
@@ -118,6 +191,23 @@ function Home({ organizationId, userId }: { organizationId: string; userId: stri
               whyItMatters="When this is empty, work is moving without needing you."
             />
           )}
+        </div>
+        {resolvedCount > 0 ? (
+          <p className="tt-rise mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            {resolvedCount} decision{resolvedCount === 1 ? "" : "s"} handled this visit
+          </p>
+        ) : null}
+      </section>
+
+      {/* Progression spine */}
+      <section aria-labelledby="spine-heading">
+        <SectionHeading
+          eyebrow="Where this is going"
+          title="Signal → Decision → Action → Outcome"
+          description="One spine across the suite, so you always know whether you are looking at history, current work, or something still ahead."
+        />
+        <div id="spine-heading">
+          <JourneySpine stages={stages} />
         </div>
       </section>
 
@@ -152,7 +242,7 @@ function Home({ organizationId, userId }: { organizationId: string; userId: stri
           <div className="mt-6 border-t border-border pt-5">
             <p className="tt-eyebrow mb-3">Recent signals</p>
             <ul className="space-y-2">
-              {(data?.activity ?? []).map((event) => (
+              {(data?.activity ?? []).slice(0, 4).map((event) => (
                 <li key={event.id} className="flex flex-wrap items-baseline gap-x-3 text-sm">
                   <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     {event.name}
@@ -170,48 +260,51 @@ function Home({ organizationId, userId }: { organizationId: string; userId: stri
         {data?.context ? <ContextPanel result={data.context} /> : null}
       </section>
 
-      {/* The Trust Tai suite */}
+      {/* The Trust Tai suite — rooms in one world */}
       <section aria-labelledby="suite-heading">
         <SectionHeading
-          eyebrow="Where we are going"
-          title="The Trust Tai suite"
-          description="One identity, one organisation, shared entities. Each app reads the same core data rather than keeping its own copy."
+          eyebrow="The world"
+          title="Rooms in one Trust Tai world"
+          description="Each app is a room with its own character, reading the same core data. Step into one to see what it holds."
         />
         <ul id="suite-heading" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {APP_REGISTRY.map((app) => (
             <li key={app.id}>
               <AppLink
                 app={app}
-                className="block h-full overflow-hidden rounded-xl border border-border bg-card transition-transform duration-200 hover:-translate-y-0.5"
+                className="group block h-full overflow-hidden rounded-xl border border-border bg-card transition-transform duration-200 hover:-translate-y-1"
               >
                 <div
-                  className="h-16 border-b border-border"
+                  className="relative h-24 border-b border-border sm:h-28"
                   style={{
                     backgroundColor: `color-mix(in oklab, ${getAppTheme(app.id).tint} 5%, var(--card))`,
                   }}
                 >
-                  <AppMotifArt
-                    motif={getAppTheme(app.id).motif}
-                    tint={getAppTheme(app.id).tint}
-                    className="opacity-60"
+                  <AppArtwork
+                    appId={app.id}
+                    className="absolute inset-0"
+                    motifClassName="opacity-60"
                   />
                 </div>
                 <div className="p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-foreground">{app.name}</span>
-                  <StatusPill
-                    status={
-                      app.status === "live"
-                        ? "live"
-                        : app.status === "in_build"
-                          ? "in_build"
-                          : app.status === "external"
-                            ? "live"
-                            : "mapped"
-                    }
-                  />
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">{app.description}</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-foreground">{app.name}</span>
+                    <StatusPill
+                      status={
+                        app.status === "live"
+                          ? "live"
+                          : app.status === "in_build"
+                            ? "in_build"
+                            : app.status === "external"
+                              ? "live"
+                              : "mapped"
+                      }
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">{app.description}</p>
+                  <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground transition-colors group-hover:text-royal">
+                    Enter {app.name} →
+                  </p>
                 </div>
               </AppLink>
             </li>
