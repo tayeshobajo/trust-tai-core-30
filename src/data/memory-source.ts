@@ -175,15 +175,40 @@ function readOnly<T extends { id: ID }>(rows: T[]): ReadRepository<T> {
   };
 }
 
+const activityStream: ActivityStream = {
+  async record(event) {
+    const stored: ActivityEvent = { ...event, id: `act_${activity.length + 1}` };
+    activity.unshift(stored);
+    return stored;
+  },
+  async list(query: ActivityQuery) {
+    return activity
+      .filter((event) => event.organizationId === query.organizationId)
+      .slice(0, query.limit ?? 20);
+  },
+};
+
+const scout = createScoutSource(activityStream);
+
 export const memorySource: TrustTaiDataSource = {
   organizations: { async get(id) { return id === ORG_ID ? organization : null; } },
   users: readOnly(users),
   clients: readOnly(clients),
   contacts: readOnly([]),
+  prospects: {
+    async list() {
+      return (await scout.list(ORG_ID)).map((candidate) => candidate.prospect);
+    },
+    async get(id) {
+      const rows = await scout.list(ORG_ID);
+      return rows.find((row) => row.prospect.id === id)?.prospect ?? null;
+    },
+  },
   projects: readOnly(projects),
   websites: readOnly([]),
   conversations: readOnly([]),
   tasks: readOnly(tasks),
+  scout,
   decisions: {
     ...readOnly(decisions),
     async setStatus(id, status) {
