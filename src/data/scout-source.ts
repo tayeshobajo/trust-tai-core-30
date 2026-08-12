@@ -21,7 +21,7 @@ const NOW = "2026-08-12T09:00:00.000Z";
 const base = { organizationId: ORG_ID, createdAt: NOW, updatedAt: NOW };
 
 function prospect(id: string, name: string, domain: string): Prospect {
-  return { ...base, id, name, domain, status: "new" };
+  return { ...base, id, name, domain, websiteUrl: `https://${domain}`, status: "discovered" };
 }
 
 export const PREVIEW_CANDIDATES: ProspectCandidate[] = [
