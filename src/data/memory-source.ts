@@ -219,18 +219,7 @@ export const memorySource: TrustTaiDataSource = {
       return decision;
     },
   },
-  activity: {
-    async record(event) {
-      const stored: ActivityEvent = { ...event, id: `act_${activity.length + 1}` };
-      activity.unshift(stored);
-      return stored;
-    },
-    async list(query: ActivityQuery) {
-      return activity
-        .filter((event) => event.organizationId === query.organizationId)
-        .slice(0, query.limit ?? 20);
-    },
-  },
+  activity: activityStream,
   intelligence: {
     async retrieve(request: ContextRequest): Promise<ContextResult> {
       return {
