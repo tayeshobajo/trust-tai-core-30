@@ -19,9 +19,9 @@ export function AppHero({
 }: {
   appId: string;
   eyebrow: string;
-  greeting?: string;
+  greeting?: string | undefined;
   title: string;
-  supporting?: string;
+  supporting?: string | undefined;
   action?: ReactNode;
   className?: string;
 }) {
