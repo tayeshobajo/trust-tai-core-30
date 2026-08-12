@@ -35,6 +35,7 @@ import {
   normalizeWebsiteUrl,
   saveResearchProspect,
   toProspect,
+  updateProspectStatus,
 } from "./prospects";
 import {
   candidateFromResearchRow,
@@ -170,7 +171,7 @@ export const scoutService = {
 
     await supabaseActivity.record({
       organizationId: request.organizationId,
-      name: "prospect.researched" as never,
+      name: "prospect.researched",
       subject: { type: "prospect", id: row.id, label: candidate.prospect.name },
       summary: `${candidate.prospect.name} was researched from its public website.`,
       payload: {
@@ -202,7 +203,6 @@ export const scoutService = {
     status: ProspectStatus,
     context: ScoutContext,
   ): Promise<Prospect | null> {
-    const { updateProspectStatus } = await import("./prospects");
     const prospect = await updateProspectStatus(id, status);
 
     const occurredAt = new Date().toISOString();

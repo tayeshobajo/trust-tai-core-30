@@ -15,6 +15,7 @@ export type ActivityAction =
   | "commented"
   | "completed"
   | "decided"
+  | "researched"
   | "flagged";
 
 /** Event name is always `entity.action`, e.g. "project.status_changed". */
