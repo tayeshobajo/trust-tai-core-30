@@ -1,4 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+
+import { AppLink } from "@/components/tt/app-link";
 import {
   Activity,
   Compass,
@@ -44,9 +46,9 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
         const active = pathname === app.route;
         const note = statusNote(app);
         return (
-          <Link
+          <AppLink
             key={app.id}
-            to={app.route}
+            app={app}
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
@@ -65,7 +67,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             ) : (
               <span className="size-1.5 rounded-full bg-royal" aria-hidden />
             )}
-          </Link>
+          </AppLink>
         );
       })}
     </nav>

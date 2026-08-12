@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+
+import { AppLink } from "@/components/tt/app-link";
 import { useQuery } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/tt/app-shell";
@@ -169,8 +171,8 @@ function Home({ organizationId }: { organizationId: string }) {
         <ul id="suite-heading" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {APP_REGISTRY.map((app) => (
             <li key={app.id}>
-              <Link
-                to={app.route}
+              <AppLink
+                app={app}
                 className="block h-full rounded-xl border border-border bg-card p-5 transition-transform duration-200 hover:-translate-y-0.5"
               >
                 <div className="flex items-center justify-between gap-3">
@@ -188,7 +190,7 @@ function Home({ organizationId }: { organizationId: string }) {
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">{app.description}</p>
-              </Link>
+              </AppLink>
             </li>
           ))}
         </ul>
@@ -203,7 +205,7 @@ function Home({ organizationId }: { organizationId: string }) {
             real. Build Scout first — everything downstream depends on qualified clients.
           </p>
           <TTButton asChild variant="signal">
-            <Link to="/modules/scout">Open Scout outline</Link>
+            <Link to="/modules/$slug" params={{ slug: "scout" }}>Open Scout outline</Link>
           </TTButton>
         </TTCard>
       </section>

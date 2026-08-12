@@ -17,8 +17,8 @@ export function DecisionCard({
   onResolve,
 }: {
   decision: Decision;
-  owner?: User;
-  onResolve?: (id: string, status: Decision["status"]) => void;
+  owner?: User | undefined;
+  onResolve?: ((id: string, status: Decision["status"]) => void) | undefined;
 }) {
   const [status, setStatus] = useState<Decision["status"]>(decision.status);
 
