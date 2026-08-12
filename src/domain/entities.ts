@@ -74,14 +74,23 @@ export interface Contact extends BaseEntity {
  * A company Trust Tai is considering, before it becomes a client.
  * Deliberately minimal — fit evidence lives in the Scout module.
  */
-export type ProspectStatus = "new" | "qualified" | "ready_for_comms" | "passed";
+export type ProspectStatus =
+  | "discovered"
+  | "reviewing"
+  | "qualified"
+  | "passed"
+  | "ready_for_comms"
+  | "converted"
+  | "archived";
 
 export interface Prospect extends BaseEntity {
+  /** Persisted as `company_name`. */
   name: string;
+  /** Display shape of the persisted `website_url`. */
   domain: string;
+  /** Full persisted `website_url`, exactly as stored. */
+  websiteUrl: string;
   status: ProspectStatus;
-  /** Who carries this prospect once it is qualified. */
-  stewardUserId?: ID;
 }
 
 export interface Project extends BaseEntity {

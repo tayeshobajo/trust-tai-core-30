@@ -55,7 +55,7 @@ export function ProspectCard({
         </div>
       </div>
 
-      {status === "new" ? (
+      {status === "discovered" || status === "reviewing" ? (
         <div className="mt-5 flex flex-wrap gap-2">
           <TTButton size="sm" onClick={() => onQualify(prospect.id)}>
             Qualify {prospect.name}
@@ -67,12 +67,12 @@ export function ProspectCard({
       ) : (
         <div className="tt-rise mt-5 rounded-lg border border-border bg-secondary/50 p-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            {status === "qualified" ? "Qualified by you" : "Passed by you"}
+            {status === "passed" || status === "archived" ? "Passed by you" : "Qualified by you"}
           </p>
           <p className="mt-2 text-sm text-foreground">
-            {status === "qualified"
-              ? "Ready for Comms. The first conversation will open against this same prospect."
-              : "Set aside. Nothing is sent, and it stays here if the picture changes."}
+            {status === "passed" || status === "archived"
+              ? "Set aside. Nothing is sent, and it stays here if the picture changes."
+              : "Ready for Comms. The first conversation will open against this same prospect."}
           </p>
         </div>
       )}

@@ -21,7 +21,7 @@ const NOW = "2026-08-12T09:00:00.000Z";
 const base = { organizationId: ORG_ID, createdAt: NOW, updatedAt: NOW };
 
 function prospect(id: string, name: string, domain: string): Prospect {
-  return { ...base, id, name, domain, status: "new" };
+  return { ...base, id, name, domain, websiteUrl: `https://${domain}`, status: "discovered" };
 }
 
 export const PREVIEW_CANDIDATES: ProspectCandidate[] = [
@@ -192,8 +192,7 @@ export function createScoutSource(activity: ActivityStream): ScoutProvider {
       if (!entry) return null;
       entry.prospect.status = status;
       entry.prospect.updatedAt = new Date().toISOString();
-      if (status === "qualified") {
-        entry.prospect.stewardUserId = context.userId;
+      if (status === "qualified" || status === "ready_for_comms") {
         await activity.record({
           organizationId: context.organizationId,
           name: "prospect.status_changed",

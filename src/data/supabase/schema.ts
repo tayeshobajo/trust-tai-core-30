@@ -35,19 +35,38 @@ export interface MembershipRow {
   status?: string | null;
 }
 
+/**
+ * Exact shape of `public.prospects`. The schema is known, so nothing here is
+ * inferred and no column is optional-by-tolerance: a mismatch must fail loudly.
+ */
 export interface ProspectRow {
   id: string;
   organization_id: string;
-  name: string;
-  domain: string | null;
+  company_name: string;
+  website_url: string | null;
   status: string;
-  source?: string | null;
-  provenance?: Row | null;
-  notes?: string | null;
-  steward_user_id?: string | null;
-  created_at?: string;
-  updated_at?: string;
+  source: string | null;
+  fit_score: number | null;
+  observed: Row | unknown[] | null;
+  inferred: Row | unknown[] | null;
+  suggested: Row | unknown[] | null;
+  provenance: Row | null;
+  metadata: Row | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
+
+/** The exact status vocabulary allowed by the database. */
+export const PROSPECT_STATUSES = [
+  "discovered",
+  "reviewing",
+  "qualified",
+  "passed",
+  "ready_for_comms",
+  "converted",
+  "archived",
+] as const;
 
 export interface IcpProfileRow {
   id: string;
