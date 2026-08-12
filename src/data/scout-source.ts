@@ -185,14 +185,17 @@ export function createScoutSource(activity: ActivityStream): ScoutProvider {
       return {
         request,
         candidates: rankPreviewCandidates(request.query),
-        source: {
-          kind: "preview_demo",
-          label: "Preview demo source",
-          note: "A fixed in-memory set. No external service was searched.",
-        },
+        source: PREVIEW_SOURCE,
         generatedAt: new Date().toISOString(),
       };
     },
+
+    async research(): Promise<never> {
+      throw new Error(
+        "Live website research runs against the connected workspace backend and is not available in the preview source.",
+      );
+    },
+
 
     async setStatus(id, status, context) {
       const entry = PREVIEW_CANDIDATES.find((c) => c.prospect.id === id);
