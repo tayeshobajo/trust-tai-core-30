@@ -6,7 +6,8 @@
  * implementation of the same `TrustTaiDataSource` interface.
  */
 
-import type { ActivityEvent, ActivityQuery } from "@/domain/activity";
+import type { ActivityEvent, ActivityQuery, ActivityStream } from "@/domain/activity";
+import { createScoutSource } from "./scout-source";
 import type {
   Client,
   Decision,
