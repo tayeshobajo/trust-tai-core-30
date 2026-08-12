@@ -64,3 +64,25 @@ record is duplicated.
 
 No filters, no CRM dashboard, no settings, no scores, no enrichment, no
 outreach. Ops, Comms, Roadmap, Projects, Studio, and Pulse are untouched.
+
+## Update — Supabase-backed Scout
+
+Scout no longer keeps state in memory.
+
+- **Access.** Real Supabase Auth (email one-time link at `/auth`). `WorkspaceGate`
+  renders nothing of the workspace until an active `organization_memberships`
+  row is read back through RLS. Authenticated-but-unprovisioned accounts see a
+  calm "Access not provisioned" state; membership is never created here.
+- **Prospects.** Preview candidates are written to `prospects` with
+  `source = scout_preview_demo` and provenance recording the active ICP version.
+  Qualify moves the row to `ready_for_comms`, Pass to `passed`. Both append an
+  `activities` row (`app_key: scout`, `prospect.status_changed`). State survives
+  reloads.
+- **ICP.** `icp_profiles` holds one organization-level row. Scout reads it as its
+  targeting source of truth and shows `Using ICP v{n}`. `/modules/scout/settings`
+  previews the saved Markdown, and owner/admin members can edit or stage a
+  `.md`/`.txt` upload before an explicit save (which increments `version` and
+  sets `updated_by`).
+- **Still mocked.** Sourcing and scoring. No internet, LinkedIn, Apollo, Clay, or
+  AI is contacted; the domain layer is shaped so a real sourcer can consume the
+  same ICP without a redesign.
