@@ -119,16 +119,58 @@ export function liveSource(pages: number, pagesResearched: string[], researchedA
   };
 }
 
+function formatObservationValue(value: unknown): string {
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return value.trim();
+  if (value === null || value === undefined) return "—";
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((v) => (typeof v === "string" ? v.trim() : formatObservationValue(v)))
+      .filter(Boolean);
+    return parts.length > 0 ? parts.join(", ") : "—";
+  }
+  // Object fallback for nested or loosely-typed values.
+  const obj = value as Record<string, unknown>;
+  const nested = text(obj["value"]) || text(obj["text"]) || text(obj["label"]);
+  if (nested) return nested;
+  return "—";
+}
+
+function renderObservationStatement(entry: Row, item: unknown): string {
+  // v2 observation shape: { key, label, value, evidence?, source_url, observed_at }
+  const label = text(entry["label"]) || text(entry["key"]);
+  if (label) {
+    const valueText = formatObservationValue(entry["value"]);
+    const evidence = text(entry["evidence"]);
+    return evidence ? `${label}: ${valueText} — ${evidence}` : `${label}: ${valueText}`;
+  }
+
+  // Legacy / fallback shapes.
+  const legacy =
+    text(entry["statement"]) || text(entry["fact"]) || text(entry["text"]);
+  if (legacy) return legacy;
+  if (typeof item === "string") return item;
+
+  return "";
+}
+
 function toSignals(observed: unknown[], observedAtFallback: string): ScoutSignal[] {
   return observed.map((item, index) => {
     const entry = (item ?? {}) as Row;
-    const statement =
-      text(entry["statement"]) || text(entry["fact"]) || text(entry["text"]) || String(item ?? "");
     const sourceUrl = text(entry["source_url"]);
     const observedAt = text(entry["observed_at"]) || observedAtFallback;
+    const statement = renderObservationStatement(entry, item);
+
+    // Safety net: never render "[object Object]" or an empty string.
+    const safeStatement =
+      statement && statement !== "[object Object]"
+        ? statement
+        : "Observation recorded";
+
     return {
-      id: text(entry["id"]) || `obs_${index}`,
-      statement,
+      id: text(entry["id"]) || text(entry["key"]) || `obs_${index}`,
+      statement: safeStatement,
       ...(sourceUrl ? { sourceUrl } : {}),
       provenance: {
         appId: "scout",
@@ -139,6 +181,26 @@ function toSignals(observed: unknown[], observedAtFallback: string): ScoutSignal
       },
     };
   });
+}
+
+function inferWhyItFits(inferred: Row): string {
+  const why = text(inferred["why_it_fits"]);
+  if (why) return why;
+
+  const notes = inferred["notes"];
+  if (Array.isArray(notes) && notes.length > 0) {
+    const paragraph = notes
+      .map((n) => (typeof n === "string" ? n.trim() : ""))
+      .filter(Boolean)
+      .join(". ");
+    if (!paragraph) return "No inference was recorded for this website.";
+    return paragraph.endsWith(".") ? paragraph : `${paragraph}.`;
+  }
+
+  const summary = text(inferred["summary"]);
+  if (summary) return summary;
+
+  return "No inference was recorded for this website.";
 }
 
 /**
@@ -158,11 +220,7 @@ export function candidateFromResearchRow(row: ProspectRow): ProspectCandidate {
     prospect: toProspect(row),
     signals: toSignals(observed, researchedAt),
     fit: {
-      whyItFits:
-        text(inferred["why_it_fits"]) ||
-        text(inferred["summary"]) ||
-        text(inferred["notes"]) ||
-        "No inference was recorded for this website.",
+      whyItFits: inferWhyItFits(inferred),
       recommendation:
         text(suggested["recommendation"]) ||
         text(suggested["next_move"]) ||
