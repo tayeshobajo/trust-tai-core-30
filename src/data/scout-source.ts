@@ -192,8 +192,7 @@ export function createScoutSource(activity: ActivityStream): ScoutProvider {
       if (!entry) return null;
       entry.prospect.status = status;
       entry.prospect.updatedAt = new Date().toISOString();
-      if (status === "qualified") {
-        entry.prospect.stewardUserId = context.userId;
+      if (status === "qualified" || status === "ready_for_comms") {
         await activity.record({
           organizationId: context.organizationId,
           name: "prospect.status_changed",

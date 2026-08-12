@@ -75,7 +75,14 @@ export const scoutService = {
         organizationId: request.organizationId,
         userId: request.userId,
         name: candidate.prospect.name,
-        domain: candidate.prospect.domain,
+        websiteUrl: candidate.prospect.websiteUrl || `https://${candidate.prospect.domain}`,
+        observed: candidate.signals.map((signal) => ({
+          id: signal.id,
+          statement: signal.statement,
+          provenance: signal.provenance,
+        })),
+        inferred: { why_it_fits: candidate.fit.whyItFits, confidence: "inferred" },
+        suggested: { recommendation: candidate.fit.recommendation },
         ...(icp ? { icpVersion: icp.version } : {}),
       });
       saved.push(created);
@@ -99,11 +106,7 @@ export const scoutService = {
     status: ProspectStatus,
     context: ScoutContext,
   ): Promise<Prospect | null> {
-    const prospect = await updateProspectStatus(
-      id,
-      status,
-      status === "passed" ? undefined : context.userId,
-    );
+    const prospect = await updateProspectStatus(id, status);
 
     const occurredAt = new Date().toISOString();
     await supabaseActivity.record({
