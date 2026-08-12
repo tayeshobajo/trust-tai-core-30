@@ -1,4 +1,5 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { AppLink } from "@/components/tt/app-link";
 import {
@@ -18,6 +19,7 @@ import { useState, type ReactNode } from "react";
 
 import { APP_REGISTRY, type AppRegistration } from "@/domain/registry";
 import { cn } from "@/lib/utils";
+import { signOut, type WorkspaceIdentity } from "@/lib/workspace";
 
 const ICONS: Record<string, LucideIcon> = {
   Compass,
@@ -75,8 +77,21 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  identity,
+}: {
+  children: ReactNode;
+  identity?: WorkspaceIdentity;
+}) {
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    await signOut(queryClient);
+    void navigate({ to: "/auth", replace: true });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,14 +117,26 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <div className="ml-auto flex items-center gap-3">
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:inline">
-            Trust Tai
+            {identity?.organizationName ?? "Trust Tai"}
           </span>
-          <span
-            className="flex size-9 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
-            aria-label="Signed in as Tai"
-          >
-            T
-          </span>
+          {identity ? (
+            <>
+              <span
+                className="flex size-9 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
+                aria-label={`Signed in as ${identity.name}`}
+                title={identity.email}
+              >
+                {identity.firstName.charAt(0).toUpperCase()}
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleSignOut()}
+                className="rounded-full px-3 py-2 text-[13px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Sign out
+              </button>
+            </>
+          ) : null}
         </div>
       </header>
 

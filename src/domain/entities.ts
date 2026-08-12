@@ -74,7 +74,7 @@ export interface Contact extends BaseEntity {
  * A company Trust Tai is considering, before it becomes a client.
  * Deliberately minimal — fit evidence lives in the Scout module.
  */
-export type ProspectStatus = "new" | "qualified" | "passed";
+export type ProspectStatus = "new" | "qualified" | "ready_for_comms" | "passed";
 
 export interface Prospect extends BaseEntity {
   name: string;

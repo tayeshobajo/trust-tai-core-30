@@ -2,7 +2,6 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
-import { LockedWorkspace } from "@/components/tt/locked-workspace";
 import {
   EmptyState,
   MetaPill,
@@ -10,7 +9,7 @@ import {
   TTButton,
 } from "@/components/tt/primitives";
 import { getApp } from "@/domain/registry";
-import { resolveAccess } from "@/lib/auth-boundary";
+import { WorkspaceGate } from "@/components/tt/workspace-gate";
 
 export const Route = createFileRoute("/modules/$slug")({
   loader: ({ params }) => {
@@ -40,22 +39,12 @@ export const Route = createFileRoute("/modules/$slug")({
 
 function ModuleRoute() {
   const { app } = Route.useLoaderData();
-  const access = resolveAccess();
-
-  if (access.state !== "authenticated") {
-    return (
-      <LockedWorkspace
-        reason={
-          access.state === "unconfigured" ? access.reason : "You are signed out of Trust Tai."
-        }
-      />
-    );
-  }
-
   const external = app.status === "external";
 
   return (
-    <AppShell>
+    <WorkspaceGate>
+      {(identity) => (
+    <AppShell identity={identity}>
       <div className="space-y-12">
         <AppHero
           appId={app.id}
@@ -101,5 +90,7 @@ function ModuleRoute() {
         </section>
       </div>
     </AppShell>
+      )}
+    </WorkspaceGate>
   );
 }
