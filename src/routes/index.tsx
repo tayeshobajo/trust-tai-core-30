@@ -10,7 +10,6 @@ import { ContextPanel } from "@/components/tt/context-panel";
 import { DecisionCard } from "@/components/tt/decision-card";
 import { IntelligenceConsole } from "@/components/tt/intelligence-console";
 import { JourneySpine, type SpineStage } from "@/components/tt/journey-spine";
-import { LockedWorkspace } from "@/components/tt/locked-workspace";
 import { TodayPanel } from "@/components/tt/today-panel";
 import {
   EmptyState,
@@ -24,7 +23,8 @@ import { memorySource } from "@/data/memory-source";
 import { getAppTheme } from "@/domain/app-theme";
 import { APP_REGISTRY } from "@/domain/registry";
 import { useLastVisit } from "@/hooks/use-last-visit";
-import { resolveAccess } from "@/lib/auth-boundary";
+import { WorkspaceGate } from "@/components/tt/workspace-gate";
+import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Trust Tai OS — one operating system for how Trust Tai works";
 const DESCRIPTION =
@@ -46,26 +46,19 @@ export const Route = createFileRoute("/")({
 });
 
 function HomeRoute() {
-  const access = resolveAccess();
-  if (access.state !== "authenticated") {
-    return (
-      <LockedWorkspace
-        reason={
-          access.state === "unconfigured"
-            ? access.reason
-            : "You are signed out of Trust Tai."
-        }
-      />
-    );
-  }
   return (
-    <AppShell>
-      <Home organizationId={access.organizationId} userId={access.userId} />
-    </AppShell>
+    <WorkspaceGate>
+      {(identity) => (
+        <AppShell identity={identity}>
+          <Home identity={identity} />
+        </AppShell>
+      )}
+    </WorkspaceGate>
   );
 }
 
-function Home({ organizationId, userId }: { organizationId: string; userId: string }) {
+function Home({ identity }: { identity: WorkspaceIdentity }) {
+  const { organizationId, userId } = identity;
   const { data } = useQuery({
     queryKey: ["home", organizationId, userId],
     queryFn: async () => {
@@ -86,8 +79,7 @@ function Home({ organizationId, userId }: { organizationId: string; userId: stri
   const decisions = data?.decisions ?? [];
   const openDecisions = decisions.filter((d) => d.status === "open");
   const userById = (id?: string) => data?.users.find((u) => u.id === id);
-  const currentUser = userById(userId);
-  const firstName = currentUser?.name?.trim().split(/\s+/)[0];
+  const firstName = identity.firstName;
 
   const newSignals = useMemo(() => {
     const events = data?.activity ?? [];

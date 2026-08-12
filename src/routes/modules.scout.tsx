@@ -1,14 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Settings2 } from "lucide-react";
 import { useState } from "react";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
-import { LockedWorkspace } from "@/components/tt/locked-workspace";
 import { ProspectCard } from "@/components/tt/prospect-card";
 import { MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
-import { memorySource } from "@/data/memory-source";
+import { WorkspaceGate } from "@/components/tt/workspace-gate";
+import { scoutService } from "@/data/supabase/scout-service";
 import { SCOUT_STARTER_PROMPTS, type ScoutSearchResult } from "@/domain/scout";
-import { resolveAccess } from "@/lib/auth-boundary";
+import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Scout — Trust Tai OS";
 const DESCRIPTION =
@@ -30,56 +32,82 @@ export const Route = createFileRoute("/modules/scout")({
 });
 
 function ScoutRoute() {
-  const access = resolveAccess();
-  if (access.state !== "authenticated") {
-    return (
-      <LockedWorkspace
-        reason={
-          access.state === "unconfigured"
-            ? access.reason
-            : "You are signed out of Trust Tai."
-        }
-      />
-    );
-  }
   return (
-    <AppShell>
-      <Scout organizationId={access.organizationId} userId={access.userId} />
-    </AppShell>
+    <WorkspaceGate>
+      {(identity) => (
+        <AppShell identity={identity}>
+          <Scout identity={identity} />
+        </AppShell>
+      )}
+    </WorkspaceGate>
   );
 }
 
-function Scout({ organizationId, userId }: { organizationId: string; userId: string }) {
+function Scout({ identity }: { identity: WorkspaceIdentity }) {
+  const { organizationId, userId } = identity;
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<ScoutSearchResult | null>(null);
-  const [searching, setSearching] = useState(false);
-  const [version, setVersion] = useState(0);
 
-  async function run(next: string) {
+  const icp = useQuery({
+    queryKey: ["scout", "icp", organizationId],
+    queryFn: () => scoutService.icp(organizationId),
+  });
+
+  const saved = useQuery({
+    queryKey: ["scout", "prospects", organizationId],
+    queryFn: () => scoutService.list(organizationId),
+  });
+
+  const search = useMutation({
+    mutationFn: (text: string) => scoutService.search({ organizationId, userId, query: text }),
+    onSuccess: async (found) => {
+      setResult(found);
+      await queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
+    },
+  });
+
+  const setStatus = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "ready_for_comms" | "passed" }) =>
+      scoutService.setStatus(id, status, { organizationId, userId }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
+    },
+  });
+
+  function run(next: string) {
     const text = next.trim();
     if (!text) return;
     setQuery(text);
-    setSearching(true);
-    const found = await memorySource.scout.search({ organizationId, userId, query: text });
-    setResult(found);
-    setSearching(false);
+    search.mutate(text);
   }
 
-  async function setStatus(id: string, status: "qualified" | "passed") {
-    await memorySource.scout.setStatus(id, status, { organizationId, userId });
-    setVersion((v) => v + 1);
-  }
+  const persisted = saved.data ?? [];
+  const byId = new Map(persisted.map((c) => [c.prospect.id, c]));
+  const candidates = result
+    ? result.candidates.map((c) => byId.get(c.prospect.id) ?? c)
+    : persisted;
+  const qualified = candidates.filter(
+    (c) => c.prospect.status === "ready_for_comms" || c.prospect.status === "qualified",
+  ).length;
 
-  const candidates = result?.candidates ?? [];
-  const qualified = candidates.filter((c) => c.prospect.status === "qualified").length;
+  const error = (search.error ?? setStatus.error ?? saved.error) as Error | null;
 
   return (
-    <div className="space-y-12" key={version}>
+    <div className="space-y-12">
       <AppHero
         appId="scout"
         eyebrow="Trust Tai OS / Scout"
         title="Find the companies that look like our best clients."
         supporting="Describe who we are looking for in plain English. Scout returns a small set of candidates, each with what it observed, what it inferred, and one clear move."
+        action={
+          <TTButton asChild variant="secondary" size="sm">
+            <Link to="/modules/scout/settings">
+              <Settings2 aria-hidden />
+              ICP settings
+            </Link>
+          </TTButton>
+        }
       />
 
       <section>
@@ -87,12 +115,19 @@ function Scout({ organizationId, userId }: { organizationId: string; userId: str
           eyebrow="Small input"
           title="Who are we looking for?"
           description="One sentence is enough. No filters, no forms."
+          action={
+            icp.data ? (
+              <MetaPill>Using ICP v{icp.data.version}</MetaPill>
+            ) : icp.isPending ? null : (
+              <MetaPill>No ICP saved</MetaPill>
+            )
+          }
         />
         <form
           className="tt-surface p-6"
           onSubmit={(event) => {
             event.preventDefault();
-            void run(query);
+            run(query);
           }}
         >
           <label htmlFor="scout-query" className="sr-only">
@@ -107,11 +142,11 @@ function Scout({ organizationId, userId }: { organizationId: string; userId: str
             className="w-full resize-none rounded-lg border border-input bg-card p-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <TTButton type="submit" disabled={searching || !query.trim()}>
-              {searching ? "Looking…" : "Find candidates"}
+            <TTButton type="submit" disabled={search.isPending || !query.trim()}>
+              {search.isPending ? "Looking…" : "Find candidates"}
             </TTButton>
             <p className="text-xs text-muted-foreground">
-              Preview demo source. No external service is searched.
+              Preview demo source. No external service is searched and no AI scoring is applied.
             </p>
           </div>
 
@@ -122,8 +157,8 @@ function Scout({ organizationId, userId }: { organizationId: string; userId: str
                 <button
                   key={prompt}
                   type="button"
-                  onClick={() => void run(prompt)}
-                  className="rounded-full border border-border bg-card px-4 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  onClick={() => run(prompt)}
+                  className="rounded-full border border-border bg-card px-4 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {prompt}
                 </button>
@@ -131,17 +166,27 @@ function Scout({ organizationId, userId }: { organizationId: string; userId: str
             </div>
           </div>
         </form>
+
+        {error ? (
+          <p role="alert" className="mt-4 text-sm text-destructive">
+            {error.message}
+          </p>
+        ) : null}
       </section>
 
-      {result ? (
+      {candidates.length > 0 ? (
         <section>
           <SectionHeading
             eyebrow="Clear output"
-            title={`${candidates.length} candidates worth a look`}
-            description={`For “${result.request.query}”. ${result.source.note}`}
+            title={`${candidates.length} candidate${candidates.length === 1 ? "" : "s"} worth a look`}
+            description={
+              result
+                ? `For “${result.request.query}”. ${result.source.note}`
+                : "Saved in your workspace from earlier preview runs. Sourcing is still preview only."
+            }
             action={
               <div className="flex flex-wrap gap-2">
-                <MetaPill>{result.source.label}</MetaPill>
+                <MetaPill>Preview demo source</MetaPill>
                 {qualified > 0 ? <MetaPill>{qualified} ready for Comms</MetaPill> : null}
               </div>
             }
@@ -151,8 +196,8 @@ function Scout({ organizationId, userId }: { organizationId: string; userId: str
               <ProspectCard
                 key={candidate.prospect.id}
                 candidate={candidate}
-                onQualify={(id) => void setStatus(id, "qualified")}
-                onPass={(id) => void setStatus(id, "passed")}
+                onQualify={(id) => setStatus.mutate({ id, status: "ready_for_comms" })}
+                onPass={(id) => setStatus.mutate({ id, status: "passed" })}
               />
             ))}
           </div>

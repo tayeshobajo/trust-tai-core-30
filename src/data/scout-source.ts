@@ -24,7 +24,7 @@ function prospect(id: string, name: string, domain: string): Prospect {
   return { ...base, id, name, domain, status: "new" };
 }
 
-const candidates: ProspectCandidate[] = [
+export const PREVIEW_CANDIDATES: ProspectCandidate[] = [
   {
     prospect: prospect("pro_meridian", "Meridian Law Partners", "meridianlaw.co.uk"),
     signals: [
@@ -158,7 +158,7 @@ const candidates: ProspectCandidate[] = [
 ];
 
 /** Plain-language matching over the demo set. No search is performed. */
-function rank(query: string): ProspectCandidate[] {
+export function rankPreviewCandidates(query: string): ProspectCandidate[] {
   const q = query.toLowerCase();
   const score = (c: ProspectCandidate) => {
     const hay = `${c.prospect.name} ${c.fit.whyItFits} ${c.signals
@@ -169,7 +169,7 @@ function rank(query: string): ProspectCandidate[] {
       .filter((word) => word.length > 3)
       .reduce((total, word) => (hay.includes(word) ? total + 1 : total), 0);
   };
-  return [...candidates].sort((a, b) => score(b) - score(a));
+  return [...PREVIEW_CANDIDATES].sort((a, b) => score(b) - score(a));
 }
 
 export function createScoutSource(activity: ActivityStream): ScoutProvider {
@@ -177,7 +177,7 @@ export function createScoutSource(activity: ActivityStream): ScoutProvider {
     async search(request: ScoutSearchRequest): Promise<ScoutSearchResult> {
       return {
         request,
-        candidates: rank(request.query),
+        candidates: rankPreviewCandidates(request.query),
         source: {
           kind: "preview_demo",
           label: "Preview demo source",
@@ -188,7 +188,7 @@ export function createScoutSource(activity: ActivityStream): ScoutProvider {
     },
 
     async setStatus(id, status, context) {
-      const entry = candidates.find((c) => c.prospect.id === id);
+      const entry = PREVIEW_CANDIDATES.find((c) => c.prospect.id === id);
       if (!entry) return null;
       entry.prospect.status = status;
       entry.prospect.updatedAt = new Date().toISOString();
@@ -212,7 +212,7 @@ export function createScoutSource(activity: ActivityStream): ScoutProvider {
     },
 
     async list(organizationId: ID) {
-      return candidates.filter((c) => c.prospect.organizationId === organizationId);
+      return PREVIEW_CANDIDATES.filter((c) => c.prospect.organizationId === organizationId);
     },
   };
 }
