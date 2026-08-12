@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { AppMotifArt } from "@/components/tt/app-motif";
+import { AppArtwork } from "@/components/tt/app-artwork";
 import { getAppTheme } from "@/domain/app-theme";
 import { cn } from "@/lib/utils";
 
