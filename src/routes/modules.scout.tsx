@@ -201,6 +201,17 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
           </div>
         </form>
 
+        {research.isPending ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="tt-surface mt-4 flex items-center gap-3 p-5 text-sm text-muted-foreground"
+          >
+            <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-royal" />
+            Reading the public pages on {query.trim()}. This takes a few moments.
+          </div>
+        ) : null}
+
         {error ? (
           <p role="alert" className="mt-4 text-sm text-destructive">
             {error.message}
