@@ -8,11 +8,12 @@
 
 import type { ActivityStream } from "@/domain/activity";
 import type { ID, Prospect } from "@/domain/entities";
-import type {
-  ProspectCandidate,
-  ScoutProvider,
-  ScoutSearchRequest,
-  ScoutSearchResult,
+import {
+  PREVIEW_SOURCE,
+  type ProspectCandidate,
+  type ScoutProvider,
+  type ScoutSearchRequest,
+  type ScoutSearchResult,
 } from "@/domain/scout";
 
 const ORG_ID = "org_trusttai";
@@ -24,7 +25,7 @@ function prospect(id: string, name: string, domain: string): Prospect {
   return { ...base, id, name, domain, websiteUrl: `https://${domain}`, status: "discovered" };
 }
 
-export const PREVIEW_CANDIDATES: ProspectCandidate[] = [
+const PREVIEW_ENTRIES: Omit<ProspectCandidate, "source">[] = [
   {
     prospect: prospect("pro_meridian", "Meridian Law Partners", "meridianlaw.co.uk"),
     signals: [
@@ -158,6 +159,12 @@ export const PREVIEW_CANDIDATES: ProspectCandidate[] = [
 ];
 
 /** Plain-language matching over the demo set. No search is performed. */
+/** The fixed preview pool, each entry explicitly labelled as demo evidence. */
+export const PREVIEW_CANDIDATES: ProspectCandidate[] = PREVIEW_ENTRIES.map((entry) => ({
+  ...entry,
+  source: PREVIEW_SOURCE,
+}));
+
 export function rankPreviewCandidates(query: string): ProspectCandidate[] {
   const q = query.toLowerCase();
   const score = (c: ProspectCandidate) => {
@@ -178,14 +185,17 @@ export function createScoutSource(activity: ActivityStream): ScoutProvider {
       return {
         request,
         candidates: rankPreviewCandidates(request.query),
-        source: {
-          kind: "preview_demo",
-          label: "Preview demo source",
-          note: "A fixed in-memory set. No external service was searched.",
-        },
+        source: PREVIEW_SOURCE,
         generatedAt: new Date().toISOString(),
       };
     },
+
+    async research(): Promise<never> {
+      throw new Error(
+        "Live website research runs against the connected workspace backend and is not available in the preview source.",
+      );
+    },
+
 
     async setStatus(id, status, context) {
       const entry = PREVIEW_CANDIDATES.find((c) => c.prospect.id === id);

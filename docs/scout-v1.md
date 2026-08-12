@@ -86,3 +86,25 @@ Scout no longer keeps state in memory.
 - **Still mocked.** Sourcing and scoring. No internet, LinkedIn, Apollo, Clay, or
   AI is contacted; the domain layer is shaped so a real sourcer can consume the
   same ICP without a redesign.
+
+## Live website research (transitional v1)
+
+Scout's single input now routes automatically:
+
+- **Plain-English sentence** → preview discovery against the fixed in-memory
+  candidate pool, still labelled `Preview discovery. No external company search yet.`
+- **URL / domain** → real research via the managed `scout-research` Edge Function,
+  labelled `Live public website research.`
+
+Live research reads **public website pages only**. There is no search-engine
+discovery, no LinkedIn/Apollo/Clay, and no private data. Inference is
+deterministic heuristic analysis, not AI scoring.
+
+Persistence (`prospects`): `source = scout_live_website`, first save
+`status = discovered`, `observed` / `inferred` / `suggested` / `provenance`
+taken from the function response, provenance extended with the active ICP
+version and the researching user, `created_by` = signed-in user. An existing
+prospect for the same normalized website is refreshed in place, never duplicated.
+
+Each successful run appends a `prospect.researched` activity (`app_key = scout`)
+with source, page count, website, and ICP version.

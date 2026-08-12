@@ -9,7 +9,12 @@ import { ProspectCard } from "@/components/tt/prospect-card";
 import { MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { scoutService } from "@/data/supabase/scout-service";
-import { SCOUT_STARTER_PROMPTS, type ScoutSearchResult } from "@/domain/scout";
+import {
+  SCOUT_STARTER_PROMPTS,
+  type ProspectCandidate,
+  type ScoutSearchResult,
+} from "@/domain/scout";
+import { looksLikeWebsite } from "@/lib/website-url";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Scout — Trust Tai OS";
@@ -48,6 +53,8 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<ScoutSearchResult | null>(null);
+  const [researched, setResearched] = useState<ProspectCandidate | null>(null);
+  const isWebsite = looksLikeWebsite(query);
 
   const icp = useQuery({
     queryKey: ["scout", "icp", organizationId],
@@ -67,6 +74,16 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
+  const research = useMutation({
+    mutationFn: (websiteUrl: string) =>
+      scoutService.research({ organizationId, userId, websiteUrl }),
+    onSuccess: async (found) => {
+      setResult(null);
+      setResearched(found.candidate);
+      await queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
+    },
+  });
+
   const setStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: "ready_for_comms" | "passed" }) =>
       scoutService.setStatus(id, status, { organizationId, userId }),
@@ -79,19 +96,28 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
     const text = next.trim();
     if (!text) return;
     setQuery(text);
+    if (looksLikeWebsite(text)) {
+      setResult(null);
+      research.mutate(text);
+      return;
+    }
+    setResearched(null);
     search.mutate(text);
   }
 
   const persisted = saved.data ?? [];
   const byId = new Map(persisted.map((c) => [c.prospect.id, c]));
-  const candidates = result
-    ? result.candidates.map((c) => byId.get(c.prospect.id) ?? c)
-    : persisted;
+  const candidates = researched
+    ? [byId.get(researched.prospect.id) ?? researched]
+    : result
+      ? result.candidates.map((c) => byId.get(c.prospect.id) ?? c)
+      : persisted;
   const qualified = candidates.filter(
     (c) => c.prospect.status === "ready_for_comms" || c.prospect.status === "qualified",
   ).length;
 
-  const error = (search.error ?? setStatus.error ?? saved.error) as Error | null;
+  const error = (search.error ?? research.error ?? setStatus.error ?? saved.error) as Error | null;
+  const busy = search.isPending || research.isPending;
 
   return (
     <div className="space-y-12">
@@ -114,7 +140,7 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
         <SectionHeading
           eyebrow="Small input"
           title="Who are we looking for?"
-          description="One sentence is enough. No filters, no forms."
+          description="Describe a company type, or paste a company website to research it live."
           action={
             icp.data ? (
               <MetaPill>Using ICP v{icp.data.version}</MetaPill>
@@ -138,15 +164,23 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             rows={3}
-            placeholder="US professional-services firms with dated WordPress websites"
+            placeholder="US professional-services firms with dated WordPress websites — or paste example.com"
             className="w-full resize-none rounded-lg border border-input bg-card p-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <TTButton type="submit" disabled={search.isPending || !query.trim()}>
-              {search.isPending ? "Looking…" : "Find candidates"}
+            <TTButton type="submit" disabled={busy || !query.trim()}>
+              {research.isPending
+                ? "Researching the website…"
+                : search.isPending
+                  ? "Looking…"
+                  : isWebsite
+                    ? "Research website"
+                    : "Find candidates"}
             </TTButton>
             <p className="text-xs text-muted-foreground">
-              Preview demo source. No external service is searched and no AI scoring is applied.
+              {isWebsite
+                ? "Live public website research. Public pages only — no search engines or private data."
+                : "Preview discovery. No external company search yet."}
             </p>
           </div>
 
@@ -167,6 +201,17 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
           </div>
         </form>
 
+        {research.isPending ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="tt-surface mt-4 flex items-center gap-3 p-5 text-sm text-muted-foreground"
+          >
+            <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-royal" />
+            Reading the public pages on {query.trim()}. This takes a few moments.
+          </div>
+        ) : null}
+
         {error ? (
           <p role="alert" className="mt-4 text-sm text-destructive">
             {error.message}
@@ -180,13 +225,17 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
             eyebrow="Clear output"
             title={`${candidates.length} candidate${candidates.length === 1 ? "" : "s"} worth a look`}
             description={
-              result
-                ? `For “${result.request.query}”. ${result.source.note}`
-                : "Saved in your workspace from earlier preview runs. Sourcing is still preview only."
+              researched
+                ? `Read from ${researched.prospect.domain}. ${researched.source.note ?? ""} Inference is deterministic heuristic analysis, not AI scoring.`
+                : result
+                  ? `For “${result.request.query}”. ${result.source.note}`
+                  : "Saved in your workspace from earlier runs."
             }
             action={
               <div className="flex flex-wrap gap-2">
-                <MetaPill>Preview demo source</MetaPill>
+                <MetaPill>
+                  {researched ? "Live website research" : "Preview demo source"}
+                </MetaPill>
                 {qualified > 0 ? <MetaPill>{qualified} ready for Comms</MetaPill> : null}
               </div>
             }
