@@ -12,8 +12,8 @@ export function AppLink({
   ...rest
 }: {
   app: Pick<AppRegistration, "slug">;
-  className?: string;
-  onClick?: () => void;
+  className?: string | undefined;
+  onClick?: (() => void) | undefined;
   children: ReactNode;
   "aria-current"?: "page" | undefined;
 }) {
