@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type React from "react";
 
 import type { AppMotif } from "@/domain/app-theme";
 import { cn } from "@/lib/utils";
@@ -205,7 +206,7 @@ function Rhythm() {
         />
       ))}
       <path
-        d={`M56 ${226 - bars[0]} ${bars.map((h, i) => `L${56 + i * 26} ${226 - h}`).join(" ")}`}
+        d={`M56 ${226 - bars[0]!} ${bars.map((h, i) => `L${56 + i * 26} ${226 - h}`).join(" ")}`}
         fill="none"
         stroke="currentColor"
         strokeWidth="0.9"
@@ -215,7 +216,7 @@ function Rhythm() {
   );
 }
 
-const MOTIFS: Record<AppMotif, () => JSX.Element> = {
+const MOTIFS: Record<AppMotif, () => React.ReactElement> = {
   horizon: Horizon,
   terrain: Terrain,
   correspondence: Correspondence,
