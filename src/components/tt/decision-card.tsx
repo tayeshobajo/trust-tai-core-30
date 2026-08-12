@@ -31,9 +31,9 @@ export function DecisionCard({
   }
 
   return (
-    <article className="tt-surface p-6">
+    <article className="tt-surface p-6 transition-colors duration-300">
       <div className="flex flex-wrap items-center gap-2">
-        <StatusPill status="needs_decision" />
+        <StatusPill status={status === "open" ? "needs_decision" : "live"} />
         <MetaPill>Due {formatDue(decision.dueAt)}</MetaPill>
         <MetaPill>Carried by {owner?.name ?? "Unassigned"}</MetaPill>
       </div>
