@@ -485,7 +485,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
           created_by: user.id,
           metadata: {
             scout_discovery: discoveryMeta,
-            scout_fit: { score, light: fit.light ?? "yellow", confidence: fit.confidence ?? "unknown" },
+            scout_fit: evaluation,
           },
         })
         .select("id")
