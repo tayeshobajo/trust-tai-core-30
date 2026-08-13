@@ -244,7 +244,7 @@ export function normalizeStrategy(raw: unknown, provenance: ResearchProvenance):
 
   const bands: HorizonBand[] = Array.isArray(row["horizon"])
     ? (row["horizon"] as Raw[])
-        .map((entry) => {
+        .map((entry): HorizonBand | null => {
           const years = Number(entry["years"]);
           const statement = str(entry["statement"]);
           if (!statement) return null;
@@ -252,7 +252,7 @@ export function normalizeStrategy(raw: unknown, provenance: ResearchProvenance):
           return {
             years: (years === 10 ? 10 : years === 5 ? 5 : 2) as 2 | 5 | 10,
             statement,
-            tier: sources.length > 0 ? ("observed" as const) : ("inferred" as const),
+            tier: sources.length > 0 ? "observed" : "inferred",
             confidence: confidence(entry["confidence"], sources),
             sources,
           };
