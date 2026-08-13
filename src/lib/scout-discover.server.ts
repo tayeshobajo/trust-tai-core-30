@@ -345,9 +345,14 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
   // Streamed so a multi-minute research run never dies on a request timeout.
   let raw = "";
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const response = await gateway.fetch("https://ai.gateway.lovable.dev/v1/responses", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: {
+        "Content-Type": "application/json",
+        "Lovable-API-Key": lovableApiKey,
+        "X-Lovable-AIG-SDK": "fetch",
+        ...(input.initialRunId ? { [LOVABLE_AIG_RUN_ID_HEADER]: input.initialRunId } : {}),
+      },
       body: JSON.stringify({
         model,
         stream: true,
@@ -359,6 +364,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
         },
       }),
     });
+
 
     if (!response.ok || !response.body) {
       const detail = await response.text();
