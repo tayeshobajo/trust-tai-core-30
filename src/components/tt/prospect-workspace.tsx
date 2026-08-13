@@ -145,6 +145,10 @@ export function ProspectWorkspace({
   const [showOverride, setShowOverride] = useState(false);
   const { prospect, evaluation, signals, fit, source } = candidate;
   const themeColor = normalizeThemeColor(candidate.identity?.themeColor);
+  const identityKnown = Boolean(themeColor || candidate.identity?.logoUrl);
+  const identityNote = candidate.identity?.logoSource
+    ? `Company identity read from public website · ${candidate.identity.logoSource.replace(/_/g, " ")}`
+    : "Company identity read from public website";
 
   const staleScore =
     evaluation.scoreable &&
@@ -204,6 +208,11 @@ export function ProspectWorkspace({
                   </span>
                 </span>
                 <StageTag status={prospect.status} />
+                {identityKnown ? (
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                    {identityNote}
+                  </span>
+                ) : null}
                 {source.kind === "preview_demo" ? (
                   <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     Preview demo

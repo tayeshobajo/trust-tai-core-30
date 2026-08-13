@@ -11,8 +11,12 @@
 export interface CompanyIdentity {
   /** Optional real brand colour, already validated. Decorative use only. */
   themeColor?: string;
-  /** Optional logo URL recorded by research. Must be same-site or absolute https. */
+  /** Optional logo URL recorded by research. Must be absolute https. */
   logoUrl?: string;
+  /** How the logo was found: `json_ld` or `link_icon`. */
+  logoSource?: string;
+  /** When the identity was read from the public website. */
+  fetchedAt?: string;
 }
 
 /** Bare hostname (no scheme, no `www.`), or null when the URL is unusable. */
@@ -157,6 +161,16 @@ export function readCompanyIdentity(sources: {
     }
   }
 
+  function firstString(source: unknown, keys: string[]): string | null {
+    if (!source || typeof source !== "object") return null;
+    const row = source as Record<string, unknown>;
+    for (const key of keys) {
+      const value = row[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+    }
+    return null;
+  }
+
   const identity: CompanyIdentity = {};
   for (const block of blocks) {
     if (!identity.themeColor) {
@@ -165,7 +179,15 @@ export function readCompanyIdentity(sources: {
     }
     if (!identity.logoUrl) {
       const logo = firstLogo(block);
-      if (logo) identity.logoUrl = logo;
+      if (logo) {
+        identity.logoUrl = logo;
+        const source = firstString(block, ["logo_source", "logoSource"]);
+        if (source) identity.logoSource = source;
+      }
+    }
+    if (!identity.fetchedAt) {
+      const fetchedAt = firstString(block, ["identity_fetched_at"]);
+      if (fetchedAt) identity.fetchedAt = fetchedAt;
     }
   }
   return identity;
