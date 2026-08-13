@@ -8,19 +8,21 @@
  *      the client),
  *   3. loads the organization's active ICP as the governing rubric,
  *   4. loads a small set of recent human decisions as calibration examples,
- *   5. asks the OpenAI Responses API — with the hosted `web_search` tool and a
- *      strict JSON schema — for real, currently evidenced companies,
+ *   5. asks the Lovable AI Gateway OpenAI Responses API — with the hosted
+ *      `web_search` tool and a strict JSON schema — for real, currently
+ *      evidenced companies,
  *   6. validates and de-duplicates by normalized root domain,
  *   7. upserts `prospects` (source `scout_ai_discovery`), writes one
  *      `prospect_evaluations` row per company, finalizes the
  *      `scout_discovery_runs` row, and records activity events.
  *
- * Fail closed: with no `OPENAI_API_KEY` nothing is discovered and the caller is
+ * Fail closed: with no `LOVABLE_API_KEY` nothing is discovered and the caller is
  * told plainly. There is no fallback to demo data, ever.
  *
  * Every database write is made with the CALLER'S token, so Supabase RLS and the
  * organization boundary still apply. No service-role key is used here.
  */
+
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
