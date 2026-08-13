@@ -161,9 +161,20 @@ function Scout({
         : all.filter((c) => c.prospect.status !== "passed" && c.prospect.status !== "archived");
     const filtered =
       filter === "all" ? active : active.filter((c) => c.evaluation.light === filter);
+    // Fit still leads the board, but within a colour the priority score decides
+    // the order: the opportunity, the evidence and the timing behind a company.
+    // Unresearched rows can never be ranked, so they always fall to the bottom.
+    const priorityOf = (candidate: (typeof filtered)[number]) =>
+      computeDecisionMetrics({
+        candidate,
+        intel: candidate.intel ?? EMPTY_INTEL,
+        people: [],
+      }).priority;
     return [...filtered].sort((a, b) => {
       const light = LIGHT_RANK[b.evaluation.light] - LIGHT_RANK[a.evaluation.light];
       if (light !== 0) return light;
+      const priority = byPriority({ priority: priorityOf(a) }, { priority: priorityOf(b) });
+      if (priority !== 0) return priority;
       const score = b.evaluation.score - a.evaluation.score;
       if (score !== 0) return score;
       return b.lastCheckedAt.localeCompare(a.lastCheckedAt);
