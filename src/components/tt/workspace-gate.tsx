@@ -19,7 +19,7 @@ function Boundary({
 }) {
   return (
     <div className="mx-auto flex min-h-screen max-w-reading flex-col justify-center px-6 py-16">
-      <PageHeader eyebrow="Trust Tai OS" title={title} supporting={supporting} />
+      <PageHeader appId="home" eyebrow="Trust Tai OS" title={title} supporting={supporting} />
       <div className="mt-8 flex flex-wrap items-center gap-2">
         {pills.map((pill) => (
           <MetaPill key={pill}>{pill}</MetaPill>

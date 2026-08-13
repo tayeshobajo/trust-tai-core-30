@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { AmbientRule, AmbientSurface } from "@/components/tt/ambient";
 import { AppArtwork } from "@/components/tt/app-artwork";
 import { getAppTheme } from "@/domain/app-theme";
 import { cn } from "@/lib/utils";
@@ -34,8 +35,9 @@ export function AppHero({
         className,
       )}
     >
+      <AmbientRule appId={appId} />
       <div className="grid gap-0 lg:grid-cols-[1.35fr_1fr]">
-        <div className="p-6 sm:p-10 lg:p-12">
+        <AmbientSurface appId={appId} depth="deep" className="p-6 sm:p-10 lg:p-12">
           <p className="tt-eyebrow">{eyebrow}</p>
           {greeting ? (
             <p className="mt-5 font-display text-2xl text-muted-foreground sm:text-3xl">
@@ -57,7 +59,7 @@ export function AppHero({
             {theme.character}
           </p>
           {action ? <div className="mt-7">{action}</div> : null}
-        </div>
+        </AmbientSurface>
 
         <div
           className="relative min-h-44 border-t border-border sm:min-h-56 lg:min-h-full lg:border-l lg:border-t-0"

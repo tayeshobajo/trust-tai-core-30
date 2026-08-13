@@ -110,6 +110,19 @@
   --shadow-tt-md:
     0 1px 0 oklch(1 0 0 / 0.65) inset, 0 18px 50px -26px oklch(0.17 0.055 268 / 0.22);
 
+  /*
+   * Per-app ambient accents. Atmosphere only — never status, never a control
+   * colour. Documented and mapped in src/domain/ambient-theme.ts.
+   */
+  --tt-app-home: #1d54c1; /* Trust Tai Royal */
+  --tt-app-scout: #2aafc8; /* Alpine Cyan */
+  --tt-app-comms: #b96d52; /* Warm Terracotta */
+  --tt-app-roadmap: #7667c9; /* Iris */
+  --tt-app-projects: #52789c; /* Slate Blue */
+  --tt-app-ops: #5f8f72; /* Steward Green */
+  --tt-app-studio: #c77a6b; /* Soft Coral */
+  --tt-app-pulse: #8a5c92; /* Mulberry */
+
   --duration-fast: 180ms;
   --duration-base: 280ms;
   --ease-tt: cubic-bezier(0.22, 1, 0.36, 1);
@@ -143,6 +156,34 @@
       scroll-behavior: auto !important;
     }
   }
+}
+
+/*
+ * Ambient Identity Wash.
+ *
+ * `tt-ambient` paints the approved gradient from whichever accent the surface
+ * declares through --tt-ambient-accent. Strength and depth stay inside the
+ * approved 4-8% / 140-220px range. It is atmosphere: no motion, no shadow, no
+ * effect on text or control colour.
+ */
+@utility tt-ambient {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--tt-ambient-accent, var(--royal)) var(--tt-ambient-strength, 6%), transparent)
+      0%,
+    transparent var(--tt-ambient-depth, 180px)
+  );
+}
+
+@utility tt-ambient-rule {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background-image: linear-gradient(
+    90deg,
+    var(--tt-ambient-accent, var(--royal)) 0%,
+    color-mix(in oklab, var(--tt-ambient-accent, var(--royal)) 18%, transparent) 100%
+  );
 }
 
 @utility tt-eyebrow {

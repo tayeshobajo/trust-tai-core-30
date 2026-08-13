@@ -7,7 +7,9 @@
  * supplies. Comms, Roadmap, Projects, Ops and Pulse can reuse both as-is.
  *
  * A company's real theme colour, when research has recorded one, is used only
- * decoratively: a thin accent rule, a small identity dot and a faint wash.
+ * decoratively — through the shared Ambient Identity Wash primitives in
+ * `components/tt/ambient.tsx`: a thin accent rule, a small identity dot and a
+ * faint wash.
  * Fit lights, status pills, controls, body text and the OS chrome never change.
  */
 
@@ -103,27 +105,6 @@ export function CompanyAccentDot({ themeColor }: { themeColor?: string | null })
       className="inline-block size-1.5 rounded-full"
       style={{ backgroundColor: accent }}
       title="Company colour"
-    />
-  );
-}
-
-/** 2px identity rule drawn from the company's own colour. Decorative only. */
-export function CompanyAccentRule({
-  themeColor,
-  className,
-}: {
-  themeColor?: string | null;
-  className?: string;
-}) {
-  const accent = normalizeThemeColor(themeColor);
-  if (!accent) return null;
-  return (
-    <span
-      aria-hidden
-      className={cn("block h-0.5 w-full rounded-full", className)}
-      style={{
-        background: `linear-gradient(90deg, ${accent} 0%, color-mix(in oklab, ${accent} 20%, transparent) 100%)`,
-      }}
     />
   );
 }
