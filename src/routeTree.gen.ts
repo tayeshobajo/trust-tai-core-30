@@ -18,6 +18,7 @@ import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
 import { Route as ModulesRoadmapIndexRouteImport } from './routes/modules.roadmap.index'
+import { Route as ModulesRoadmapRoadmapIdRouteImport } from './routes/modules.roadmap.$roadmapId'
 import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.index'
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
@@ -69,6 +70,11 @@ const ModulesRoadmapIndexRoute = ModulesRoadmapIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ModulesRoadmapRoute,
 } as any)
+const ModulesRoadmapRoadmapIdRoute = ModulesRoadmapRoadmapIdRouteImport.update({
+  id: '/$roadmapId',
+  path: '/$roadmapId',
+  getParentRoute: () => ModulesRoadmapRoute,
+} as any)
 const ModulesScoutIndexRoute = ModulesScoutIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
+  '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
+  '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
   '/modules/roadmap': typeof ModulesRoadmapIndexRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
+  '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/comms/voice'
+    | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
     | '/modules/comms/'
     | '/modules/roadmap/'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/modules/$slug'
     | '/modules/comms/voice'
+    | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
     | '/modules/comms'
     | '/modules/roadmap'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/comms/voice'
+    | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
     | '/modules/comms/'
     | '/modules/roadmap/'
@@ -266,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesRoadmapIndexRouteImport
       parentRoute: typeof ModulesRoadmapRoute
     }
+    '/modules/roadmap/$roadmapId': {
+      id: '/modules/roadmap/$roadmapId'
+      path: '/$roadmapId'
+      fullPath: '/modules/roadmap/$roadmapId'
+      preLoaderRoute: typeof ModulesRoadmapRoadmapIdRouteImport
+      parentRoute: typeof ModulesRoadmapRoute
+    }
     '/modules/scout/': {
       id: '/modules/scout/'
       path: '/'
@@ -319,10 +338,12 @@ const ModulesCommsRouteWithChildren = ModulesCommsRoute._addFileChildren(
 )
 
 interface ModulesRoadmapRouteChildren {
+  ModulesRoadmapRoadmapIdRoute: typeof ModulesRoadmapRoadmapIdRoute
   ModulesRoadmapIndexRoute: typeof ModulesRoadmapIndexRoute
 }
 
 const ModulesRoadmapRouteChildren: ModulesRoadmapRouteChildren = {
+  ModulesRoadmapRoadmapIdRoute: ModulesRoadmapRoadmapIdRoute,
   ModulesRoadmapIndexRoute: ModulesRoadmapIndexRoute,
 }
 
