@@ -33,12 +33,19 @@ export const Route = createFileRoute("/api/public/scout/discover")({
   server: {
     handlers: {
       // Configuration probe. Reveals only whether intelligence is connected.
-      GET: async () =>
+      GET: async ({ request }) =>
         Response.json({
           configured: discoveryConfigured(),
-          provider: "openai",
+          provider: "lovable",
           model: discoveryConfigured() ? discoveryModel() : null,
+        }, {
+          headers: getLovableAiGatewayResponseHeaders(undefined, {
+            ...(getLovableAiGatewayRunId(request)
+              ? { [LOVABLE_AIG_RUN_ID_HEADER]: getLovableAiGatewayRunId(request)! }
+              : {}),
+          }),
         }),
+
 
       POST: async ({ request }) => {
         const token = bearer(request);
