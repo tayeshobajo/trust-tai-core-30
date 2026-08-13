@@ -456,6 +456,84 @@ function nextMoveBase(
   };
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Emphasis — which surface the page leans on, decided by rule
+ * ------------------------------------------------------------------ */
+
+const FOCUS_BY_ACTION: Record<NextMove["action"], ProspectModule["id"]> = {
+  research: "coverage",
+  qualify: "fit_read",
+  people: "people",
+  handoff: "handoff",
+  review: "fit_read",
+};
+
+const EMPHASIS_LIFT: Record<ModuleEmphasis, number> = {
+  primary: 25,
+  supporting: 0,
+  quiet: -30,
+};
+
+interface EmphasisInput {
+  focus: ProspectModule["id"];
+  status: string;
+  light: ScoutFitEvaluation["light"];
+  coverage: ResearchCoverage;
+  needsRescore: boolean;
+}
+
+/**
+ * Deterministic emphasis. Same stage + same fit + same coverage always
+ * produces the same layout, so the page changes only when the evidence does.
+ */
+export function emphasisFor(
+  id: ProspectModule["id"],
+  input: EmphasisInput,
+): { emphasis: ModuleEmphasis; reason: string } {
+  if (id === "identity" || id === "next_move") {
+    return { emphasis: "primary", reason: "The page always states who this is and the move." };
+  }
+
+  if (id === input.focus) {
+    return { emphasis: "primary", reason: "This is what the next move depends on." };
+  }
+
+  // Evidence is not trustworthy enough to lead with a judgement yet.
+  if (input.needsRescore || input.coverage.thin) {
+    if (id === "coverage") {
+      return { emphasis: "primary", reason: "Coverage decides how far the rest can be trusted." };
+    }
+    if (id === "fit_read" || id === "opportunity") {
+      return { emphasis: "quiet", reason: "Held back until the evidence behind it is current." };
+    }
+  }
+
+  if (id === "handoff") {
+    return ["qualified", "ready_for_comms", "converted"].includes(input.status)
+      ? { emphasis: "supporting", reason: "The company is past qualification." }
+      : { emphasis: "quiet", reason: "Not relevant before this company is qualified." };
+  }
+
+  if (id === "people") {
+    return ["qualified", "ready_for_comms"].includes(input.status)
+      ? { emphasis: "supporting", reason: "Reachability is what stands between here and Comms." }
+      : { emphasis: "quiet", reason: "People matter once the company is qualified." };
+  }
+
+  if (id === "opportunity") {
+    return input.light === "red"
+      ? { emphasis: "quiet", reason: "The fit read is weak, so the opportunity is secondary." }
+      : { emphasis: "supporting", reason: "Shapes the first conversation once fit holds." };
+  }
+
+  if (id === "observed" || id === "timeline") {
+    return { emphasis: "quiet", reason: "Background record, not a decision." };
+  }
+
+  return { emphasis: "supporting", reason: "Context for the current decision." };
+}
+
 /* ------------------------------------------------------------------ *
  * Composition
  * ------------------------------------------------------------------ */
@@ -473,14 +551,36 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
     evaluation.icpVersion !== null &&
     evaluation.icpVersion !== activeIcpVersion;
 
-  const modules: ProspectModule[] = [
-    { id: "identity", zone: "decision", weight: 100 },
-    { id: "next_move", zone: "decision", weight: 90 },
-  ];
+  const nextMove = computeNextMove(input, coverage, needsRescore, staleDays);
+  const focus = FOCUS_BY_ACTION[nextMove.action];
+  const push = (
+    id: ProspectModule["id"],
+    zone: ProspectModule["zone"],
+    weight: number,
+  ) => {
+    const { emphasis, reason } = emphasisFor(id, {
+      focus,
+      status: prospect.status,
+      light: evaluation.light,
+      coverage,
+      needsRescore,
+    });
+    modules.push({
+      id,
+      zone,
+      weight: weight + EMPHASIS_LIFT[emphasis],
+      emphasis,
+      reason,
+    });
+  };
+
+  const modules: ProspectModule[] = [];
+  push("identity", "decision", 100);
+  push("next_move", "decision", 90);
   const unknown: UnknownNote[] = [];
 
   if (evaluation.scoreable) {
-    modules.push({ id: "fit_read", zone: "decision", weight: 80 });
+    push("fit_read", "decision", 80);
   } else {
     unknown.push({
       id: "fit_read",
@@ -493,7 +593,7 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
     ["limiting_system", "first_milestone", "roadmap_depth"].includes(c.key),
   );
   if (opportunity.some((c) => c.state === "met" || c.state === "partial")) {
-    modules.push({ id: "opportunity", zone: "decision", weight: 70 });
+    push("opportunity", "decision", 70);
   } else {
     unknown.push({
       id: "opportunity",
@@ -507,7 +607,7 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
     (c) => c.key === "decision_maker" && c.state === "met",
   );
   if (contacts > 0 || decisionMakerMet) {
-    modules.push({ id: "people", zone: "decision", weight: 60 });
+    push("people", "decision", 60);
   } else {
     unknown.push({
       id: "people",
@@ -517,25 +617,26 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
   }
 
   if (["qualified", "ready_for_comms", "converted"].includes(prospect.status)) {
-    modules.push({ id: "handoff", zone: "decision", weight: 50 });
+    push("handoff", "decision", 50);
   }
 
   if (candidate.signals.length > 0) {
-    modules.push({ id: "observed", zone: "decision", weight: 40 });
+    push("observed", "decision", 40);
   }
 
-  if (pulse) modules.push({ id: "pulse", zone: "rail", weight: 90 });
+  if (pulse) push("pulse", "rail", 90);
   if (candidate.source.kind === "live_website") {
-    modules.push({ id: "coverage", zone: "rail", weight: 80 });
+    push("coverage", "rail", 80);
   }
   if ((input.activityCount ?? 0) > 0) {
-    modules.push({ id: "timeline", zone: "rail", weight: 60 });
+    push("timeline", "rail", 60);
   }
 
   return {
     modules: modules.sort((a, b) => b.weight - a.weight),
+    focus,
     unknown,
-    nextMove: computeNextMove(input, coverage, needsRescore, staleDays),
+    nextMove,
     coverage,
     pulse,
     history,
