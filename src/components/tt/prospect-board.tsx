@@ -52,13 +52,12 @@ export function FitFilters({
 /** Compact, scannable board. Colour marks ICP fit only, never stage. */
 export function ProspectBoard({
   candidates,
-  selectedId,
-  onSelect,
+  linkSearch,
   emphasizeNextMove = false,
 }: {
   candidates: ProspectCandidate[];
-  selectedId?: string | null;
-  onSelect: (candidate: ProspectCandidate) => void;
+  /** Board state carried into the prospect route so Back returns here. */
+  linkSearch: { section: "scout" | "qualified" | "research"; fit: FitFilter };
   emphasizeNextMove?: boolean;
 }) {
   return (
@@ -79,15 +78,16 @@ export function ProspectBoard({
           const line = emphasizeNextMove ? candidate.fit.recommendation : evaluation.strongestSignal;
           return (
             <li key={prospect.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(candidate)}
+              <Link
+                to="/modules/scout/prospects/$prospectId"
+                params={{ prospectId: prospect.id }}
+                search={linkSearch}
                 aria-label={`Open ${prospect.name}`}
                 className={cn(
                   "grid w-full grid-cols-[auto_1fr_auto] items-start gap-x-4 gap-y-2 border-b border-border px-5 py-4 text-left transition-colors last:border-b-0 hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:grid-cols-[auto_1.1fr_auto_1.4fr_auto_auto_auto] lg:items-center",
-                  selectedId === prospect.id && "bg-secondary/60",
                 )}
               >
+
                 <FitIndicator
                   light={evaluation.light}
                   score={evaluation.score}
