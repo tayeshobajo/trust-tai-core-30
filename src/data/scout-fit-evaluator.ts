@@ -576,11 +576,8 @@ const SPECS: CriterionSpec[] = [
             "Only the generic fallback was returned, so no sellable first milestone is identifiable yet.",
         };
       }
-      const supported =
-        (s.count("contact_routes") ?? null) === 0 ||
-        s.flag("booking_signal") === false ||
-        (s.count("proof_signals") ?? null) === 0 ||
-        Boolean(s.evidence("milestone_opportunities"));
+      // v4: a milestone is only sellable when an observed constraint backs it.
+      const supported = qualifiedGaps(s).confident.length > 0;
       const detail = s.evidence("milestone_opportunities");
       const sourceUrls = s.sources(["milestone_opportunities"]);
       if (supported) {
