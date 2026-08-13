@@ -372,6 +372,17 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     // the board exactly like a researched one.
     const evaluation = discoveryEvaluation(candidate, { icpVersion, at: finishedAt });
     const discoveryMeta = { run_id: runId, query, at: finishedAt, model, citations: candidate.source_urls ?? [] };
+    // Buying signals, digital opportunities and named people, kept apart from
+    // the fit read: they inform timing, work and reachability, never the score.
+    const intelMeta = {
+      buying_signals: asArray(candidate["buying_signals"]),
+      opportunities: asArray(candidate["digital_opportunities"]),
+      people: asArray(candidate["people"]),
+      unknowns: candidate.unknowns ?? [],
+      citations: candidate.source_urls ?? [],
+      collected_at: finishedAt,
+      run_id: runId,
+    };
 
     const existing = byDomain.get(domain);
     let prospectId: string | undefined;
@@ -380,6 +391,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
         ...((existing["metadata"] ?? {}) as Record<string, unknown>),
         scout_discovery: discoveryMeta,
         scout_fit: evaluation,
+        scout_intel: intelMeta,
       };
       const { data } = await supabase
         .from("prospects")
@@ -399,12 +411,14 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
           metadata: {
             scout_discovery: discoveryMeta,
             scout_fit: evaluation,
+            scout_intel: intelMeta,
           },
         })
         .select("id")
         .maybeSingle();
       prospectId = data?.["id"] as string | undefined;
     }
+
 
     if (!prospectId) continue;
     savedCount += 1;
