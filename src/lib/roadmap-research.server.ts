@@ -281,7 +281,7 @@ export async function* runRoadmapResearch(
   let provider = "";
   let model = "";
   try {
-    const result = await callProvider(
+    const result = await callRoadmapProvider(
       researchInstructions(),
       researchInput({
         label: input.subjectLabel,
@@ -375,7 +375,7 @@ export async function askRoadmap(input: AskInput): Promise<AskResult> {
     VOICE,
   ].join(" ");
 
-  const { raw, provider, model } = await callProvider(
+  const { raw, provider, model } = await callRoadmapProvider(
     instructions,
     JSON.stringify({
       question: input.question,
