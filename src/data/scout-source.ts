@@ -15,6 +15,7 @@ import {
   type ScoutSearchRequest,
   type ScoutSearchResult,
 } from "@/domain/scout";
+import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 
 const ORG_ID = "org_trusttai";
 const NOW = "2026-08-12T09:00:00.000Z";
