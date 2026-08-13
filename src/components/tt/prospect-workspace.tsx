@@ -15,6 +15,8 @@ import { useMemo } from "react";
 import { TTButton } from "@/components/tt/primitives";
 import { composeProspectPage, hasModule } from "@/data/prospect-modules";
 import type { ActivityEvent } from "@/domain/activity";
+import type { PeopleProviderInfo, Person } from "@/domain/people";
+
 import type { ProspectCandidate } from "@/domain/scout";
 import type { FitLight } from "@/domain/scout-fit";
 
