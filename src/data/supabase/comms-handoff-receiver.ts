@@ -15,7 +15,7 @@ import type { MemoryItem, Relationship } from "@/domain/comms";
 import type { ID } from "@/domain/entities";
 
 import { commsService, type CommsContext } from "./comms-service";
-import { isNotProvisioned, RELATIONSHIP_COLUMNS, toRelationship, type RelationshipRow } from "./comms-schema";
+import { RELATIONSHIP_COLUMNS, toRelationship, type RelationshipRow } from "./comms-schema";
 
 function memoryFromBrief(draft: HandoffDraft): {
   observed: MemoryItem[];
@@ -63,10 +63,7 @@ async function existing(prospectId: ID, organizationId: ID): Promise<Relationshi
   return data ? toRelationship(data as unknown as RelationshipRow) : null;
 }
 
-/**
- * Open the relationship in Comms. Returns the relationship, or null when Comms
- * is not provisioned in this backend.
- */
+/** Open the relationship in Comms, or return the one already carried across. */
 export async function receiveScoutHandoff(
   draft: HandoffDraft,
   context: CommsContext,
@@ -74,7 +71,7 @@ export async function receiveScoutHandoff(
   const primary = draft.targets.find((target) => target.rank === "primary") ?? null;
   const contact = primary ?? draft.contact;
 
-  try {
+  {
     const already = await existing(draft.prospectId, context.organizationId);
     if (already) return already;
 
@@ -104,8 +101,5 @@ export async function receiveScoutHandoff(
       },
       context,
     );
-  } catch (error) {
-    if (isNotProvisioned(error)) return null;
-    throw error;
   }
 }
