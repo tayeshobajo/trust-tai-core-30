@@ -373,8 +373,10 @@ export interface AskResult {
 }
 
 /**
- * Ask Roadmap. Grounded in stored evidence only: no web search, no new facts.
- * Anything the stored evidence does not support comes back as an unknown.
+ * Ask Roadmap. Grounded in stored evidence by default: no web search, no new
+ * facts, and anything the stored evidence does not support comes back as an
+ * unknown. A person can opt one question into fresh research, and when they do
+ * the new claims still have to carry real source urls.
  */
 export async function askRoadmap(input: AskInput): Promise<AskResult> {
   const supabase = clientFor(input.token);
@@ -382,9 +384,13 @@ export async function askRoadmap(input: AskInput): Promise<AskResult> {
     throw new Error("You do not have access to this workspace.");
   }
 
+  const fresh = input.research === true;
   const instructions = [
-    "You answer questions about one business using only the stored evidence provided, and you return json.",
-    "Facts must quote or paraphrase a stored statement and repeat its sources.",
+    "You answer questions about one business and you return json.",
+    fresh
+      ? "Start from the stored evidence, then use web search to answer what the stored evidence cannot. Every new fact needs a real https source url."
+      : "Use only the stored evidence provided. Do not search the web.",
+    "Facts must quote or paraphrase a sourced statement and repeat its sources.",
     "Anything you reason on top of those facts goes in inferences, clearly separate from facts.",
     "Anything the evidence does not answer goes in unknowns. Never fill a gap with a guess.",
     VOICE,
@@ -396,6 +402,7 @@ export async function askRoadmap(input: AskInput): Promise<AskResult> {
       question: input.question,
       company: input.subjectLabel,
       stored_evidence: input.context,
+      fresh_research_allowed: fresh,
       json_shape: {
         answer: "",
         facts: [{ statement: "", sources: [{ label: "", url: "", checked_at: "" }] }],
@@ -403,8 +410,9 @@ export async function askRoadmap(input: AskInput): Promise<AskResult> {
         unknowns: [""],
       },
     }),
-    { webSearch: false, gateway: input.gateway, initialRunId: input.initialRunId },
+    { webSearch: fresh, gateway: input.gateway, initialRunId: input.initialRunId },
   );
+
 
   let parsed: Record<string, unknown>;
   try {
