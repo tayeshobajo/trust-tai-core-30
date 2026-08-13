@@ -15,6 +15,7 @@ import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.index'
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
+import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 
@@ -48,6 +49,11 @@ const ModulesScoutSettingsRoute = ModulesScoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => ModulesScoutRoute,
 } as any)
+const ApiPublicCommsDraftRoute = ApiPublicCommsDraftRouteImport.update({
+  id: '/api/public/comms/draft',
+  path: '/api/public/comms/draft',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicScoutDiscoverRoute = ApiPublicScoutDiscoverRouteImport.update({
   id: '/api/public/scout/discover',
   path: '/api/public/scout/discover',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
+  '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/scout': typeof ModulesScoutIndexRoute
+  '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
+  '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/modules/scout'
     | '/modules/scout/settings'
     | '/modules/scout/'
+    | '/api/public/comms/draft'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
   fileRoutesByTo: FileRoutesByTo
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/modules/$slug'
     | '/modules/scout/settings'
     | '/modules/scout'
+    | '/api/public/comms/draft'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
   id:
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/modules/scout'
     | '/modules/scout/settings'
     | '/modules/scout/'
+    | '/api/public/comms/draft'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
   fileRoutesById: FileRoutesById
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
+  ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
 }
 
@@ -174,6 +187,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesScoutSettingsRouteImport
       parentRoute: typeof ModulesScoutRoute
     }
+    '/api/public/comms/draft': {
+      id: '/api/public/comms/draft'
+      path: '/api/public/comms/draft'
+      fullPath: '/api/public/comms/draft'
+      preLoaderRoute: typeof ApiPublicCommsDraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/scout/discover': {
       id: '/api/public/scout/discover'
       path: '/api/public/scout/discover'
@@ -212,6 +232,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
+  ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
 }
 export const routeTree = rootRouteImport
