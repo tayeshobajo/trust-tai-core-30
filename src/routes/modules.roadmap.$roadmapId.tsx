@@ -216,6 +216,251 @@ function RoadmapWorkspace({
     onError: fail,
   });
 
+
+  /* ------------------------------------------------- roadmap intelligence */
+
+  const intelContext: IntelContext = {
+    organizationId: identity.organizationId,
+    userId: identity.userId,
+    userLabel: identity.name,
+  };
+
+  const [researchStage, setResearchStage] = useState<string | null>(null);
+  const [researchError, setResearchError] = useState<string | null>(null);
+  const [askError, setAskError] = useState<string | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  const intelQuery = useQuery({
+    queryKey: ["roadmap", "intel", roadmapId],
+    queryFn: () => roadmapIntel.load(roadmapId),
+    retry: false,
+  });
+
+  async function accessToken(): Promise<string> {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Your session expired. Sign in again to research.");
+    return token;
+  }
+
+  /**
+   * One research pass: research the business, propose a strategy, and generate
+   * milestone candidates. Everything lands Inferred and Proposed. Nothing here
+   * can approve itself.
+   */
+  const research = useMutation({
+    mutationFn: async () => {
+      const detail = detailQuery.data;
+      if (!detail) throw new Error("This roadmap could not be read.");
+      setResearchError(null);
+      setResearchStage("Starting");
+
+      const response = await fetch("/api/public/roadmap/research", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await accessToken()}`,
+        },
+        body: JSON.stringify({
+          organization_id: identity.organizationId,
+          subject_label: detail.roadmap.subjectLabel,
+          objective: detail.roadmap.objective,
+          known: detail.roadmap.pointA.map((entry) => `${entry.label}: ${entry.value}`),
+        }),
+      });
+
+      if (!response.ok || !response.body) {
+        const detailText = await response.text();
+        throw new Error(detailText.slice(0, 300) || "The research run could not start.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let payload: Record<string, unknown> | null = null;
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const stage = JSON.parse(line) as { stage: string; message: string; data?: unknown };
+          setResearchStage(stage.message);
+          if (stage.stage === "error") throw new Error(stage.message);
+          if (stage.stage === "complete") payload = stage.data as Record<string, unknown>;
+        }
+      }
+
+      if (!payload) throw new Error("The research run returned nothing. Nothing was changed.");
+
+      const provenance = {
+        provider: String(payload["provider"] ?? "unknown"),
+        model: String(payload["model"] ?? "unknown"),
+        checkedAt: String(payload["checkedAt"] ?? new Date().toISOString()),
+      };
+      const label = detail.roadmap.subjectLabel;
+
+      await roadmapIntel.saveResearch(
+        intelContext,
+        roadmapId,
+        label,
+        normalizeResearch(payload["research"], provenance),
+        provenance,
+      );
+
+      const strategy = normalizeStrategy(payload["strategy"], provenance);
+      await roadmapIntel.saveStrategy(intelContext, roadmapId, label, {
+        ...strategy,
+        provider: provenance.provider,
+        model: provenance.model,
+        generatedAt: provenance.checkedAt,
+      });
+
+      const candidates = normalizeMilestones(payload["milestones"], provenance);
+      if (candidates.length > 0) {
+        await roadmapIntel.replaceCandidates(intelContext, roadmapId, label, candidates);
+      }
+    },
+    onSettled: () => setResearchStage(null),
+    onSuccess: refresh,
+    onError: (error) =>
+      setResearchError(error instanceof Error ? error.message : "The research run failed."),
+  });
+
+  const approval = useMutation({
+    mutationFn: async ({ key, state }: { key: string; state: ApprovalState }) => {
+      const strategy = intelQuery.data?.strategy;
+      if (!strategy) throw new Error("There is no strategy to decide on.");
+      setBusyKey(key);
+      return roadmapIntel.setStrategyApproval(
+        intelContext,
+        strategy,
+        key,
+        state,
+        detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
+      );
+    },
+    onSettled: () => setBusyKey(null),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  const milestoneStatus = useMutation({
+    mutationFn: async ({
+      milestone,
+      status,
+      note,
+    }: {
+      milestone: RoadmapMilestone;
+      status: MilestoneStatus;
+      note: string;
+    }) => {
+      setBusyId(milestone.id);
+      return roadmapIntel.setMilestoneStatus(
+        intelContext,
+        milestone,
+        status,
+        detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
+        note || undefined,
+      );
+    },
+    onSettled: () => setBusyId(null),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  const compose = useMutation({
+    mutationFn: async (kind: "preview" | "full") => {
+      const detail = detailQuery.data;
+      const intel = intelQuery.data;
+      if (!detail || !intel) throw new Error("There is nothing to compose yet.");
+      const input = {
+        subjectLabel: detail.roadmap.subjectLabel,
+        strategy: intel.strategy,
+        milestones: intel.milestones,
+      };
+      const sections = kind === "preview" ? composePreview(input) : composeFull(input);
+      return roadmapIntel.saveArtifact(
+        intelContext,
+        roadmapId,
+        kind,
+        `${detail.roadmap.subjectLabel} roadmap`,
+        sections,
+      );
+    },
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  const walkthrough = useMutation({
+    mutationFn: async (
+      action:
+        | { type: "start" }
+        | { type: "capture"; kind: WalkthroughEntryKind; body: string }
+        | { type: "end" },
+    ) => {
+      const intel = intelQuery.data;
+      const label = detailQuery.data?.roadmap.subjectLabel ?? "This roadmap";
+      const open = intel?.sessions.find((entry) => !entry.endedAt) ?? null;
+      if (action.type === "start") {
+        return roadmapIntel.startSession(intelContext, roadmapId, label);
+      }
+      if (!open) throw new Error("No walkthrough is running.");
+      if (action.type === "end") return roadmapIntel.endSession(intelContext, open);
+      return roadmapIntel.appendEntry(intelContext, open, {
+        kind: action.kind,
+        body: action.body,
+      });
+    },
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  const ask = useMutation({
+    mutationFn: async (question: string) => {
+      const detail = detailQuery.data;
+      const intel = intelQuery.data;
+      if (!detail) throw new Error("This roadmap could not be read.");
+      setAskError(null);
+      const response = await fetch("/api/public/roadmap/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await accessToken()}`,
+        },
+        body: JSON.stringify({
+          organization_id: identity.organizationId,
+          subject_label: detail.roadmap.subjectLabel,
+          question,
+          context: {
+            point_a: detail.roadmap.pointA,
+            objective: detail.roadmap.objective,
+            research: intel?.research ?? null,
+            strategy: intel?.strategy ?? null,
+            milestones: intel?.milestones ?? [],
+          },
+        }),
+      });
+      const body = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) throw new Error(String(body["error"] ?? "Roadmap could not answer."));
+      return roadmapIntel.saveAnswer(intelContext, roadmapId, {
+        question,
+        answer: String(body["answer"] ?? ""),
+        facts: (body["facts"] ?? []) as { statement: string; sources: never[] }[],
+        inferences: (body["inferences"] ?? []) as string[],
+        unknowns: (body["unknowns"] ?? []) as string[],
+        provider: String(body["provider"] ?? ""),
+        model: String(body["model"] ?? ""),
+      });
+    },
+    onSuccess: refresh,
+    onError: (error) =>
+      setAskError(error instanceof Error ? error.message : "Roadmap could not answer."),
+  });
+
   if (detailQuery.isLoading) {
     return (
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
