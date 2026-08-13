@@ -210,7 +210,9 @@ export interface DiscoverInput {
   limit?: number;
   organizationId?: string;
   initialRunId?: string;
+  gateway?: ReturnType<typeof createLovableAiGatewayRunIdFetch>;
 }
+
 
 
 /**
