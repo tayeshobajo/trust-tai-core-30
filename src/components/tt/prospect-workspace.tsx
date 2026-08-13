@@ -117,11 +117,18 @@ export function ProspectWorkspace({
             />
           ) : null}
 
-          {hasModule(composition, "people") ? (
-            <PeoplePanel
-              criteria={evaluation.criteria.filter((c) => c.key === "decision_maker")}
-            />
-          ) : null}
+          <PeoplePanel
+            criteria={evaluation.criteria.filter((c) => c.key === "decision_maker")}
+            people={people}
+            providers={providers}
+            availableProviders={availableProviders}
+            onIngest={onIngest}
+            onAddManual={onAddManual}
+            onConfirmEmail={onConfirmEmail}
+            busy={busy}
+            note={peopleNote}
+          />
+
 
           {hasModule(composition, "handoff") ? (
             <HandoffPanel
