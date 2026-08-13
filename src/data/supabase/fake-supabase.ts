@@ -67,7 +67,33 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
   }
 
   private run(): { data: unknown; error: null } {
+    if (this.mode === "upsert") {
+      const bodies = Array.isArray(this.body) ? this.body : [this.body ?? {}];
+      const written = bodies.map((body) => {
+        const existing =
+          this.conflict.length > 0
+            ? this.rows.find((row) => this.conflict.every((column) => row[column] === body[column]))
+            : undefined;
+        if (existing) {
+          Object.assign(existing, body, { updated_at: new Date().toISOString() });
+          this.onWrite?.(existing);
+          return existing;
+        }
+        const row: FakeRow = {
+          id: crypto.randomUUID(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          ...body,
+        };
+        this.rows.push(row);
+        this.onWrite?.(row);
+        return row;
+      });
+      return { data: written.length === 1 ? written[0]! : written, error: null };
+    }
+
     if (this.mode === "insert") {
+
       const bodies = Array.isArray(this.body) ? this.body : [this.body ?? {}];
       const written = bodies.map((body) => {
         const row: FakeRow = {
