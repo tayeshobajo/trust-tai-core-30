@@ -25,7 +25,7 @@ function prospect(id: string, name: string, domain: string): Prospect {
   return { ...base, id, name, domain, websiteUrl: `https://${domain}`, status: "discovered" };
 }
 
-const PREVIEW_ENTRIES: Omit<ProspectCandidate, "source">[] = [
+const PREVIEW_ENTRIES: Omit<ProspectCandidate, "source" | "evaluation" | "lastCheckedAt">[] = [
   {
     prospect: prospect("pro_meridian", "Meridian Law Partners", "meridianlaw.co.uk"),
     signals: [
