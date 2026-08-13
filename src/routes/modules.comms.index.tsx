@@ -280,7 +280,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             <div className="p-8">
               <EmptyState
                 title="No relationships yet."
-                description="Comms holds the people behind the work. Add the last person you met, with where you met and one thing worth remembering, and the room fills from there."
+                belongsHere="The people behind the work: clients, prospects, and everyone you meet at an event."
+                whyItMatters="Add the last person you met, with where you met and one thing worth remembering. Comms carries it from there."
                 action={
                   <TTButton onClick={() => setCapturing(true)}>Add someone you met</TTButton>
                 }

@@ -175,7 +175,7 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
             <ul className="mt-3 space-y-2.5">
               {Object.values(VOICE_RULES).map((rule) => (
                 <li key={rule.id}>
-                  <p className="text-[13px] text-foreground">{rule.label}</p>
+                  <p className="text-[13px] text-foreground">{rule.because}</p>
                   <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     {rule.severity === "block" ? "Blocks approval" : "Flags for review"}
                   </p>
@@ -208,7 +208,7 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
                           : "text-[13px] text-warning"
                       }
                     >
-                      {violation.message}
+                      {violation.because}
                     </li>
                   ))}
                 </ul>

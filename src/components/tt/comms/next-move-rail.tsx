@@ -19,7 +19,7 @@ export interface DraftPreview {
   body: string;
   register: VoiceRegister;
   reviewState: "draft" | "needs_human_review";
-  violations: { ruleId: string; severity: "block" | "flag"; message: string }[];
+  violations: { ruleId: string; severity: "block" | "flag"; excerpt: string; because: string }[];
   usedEvidence: { label: string; value: string; tier: string }[];
 }
 
@@ -145,7 +145,10 @@ export function NextMoveRail({
                       violation.severity === "block" ? "text-destructive" : "text-warning",
                     )}
                   >
-                    {violation.message}
+                    {violation.because}
+                    {violation.excerpt ? (
+                      <span className="ml-1 text-muted-foreground">“{violation.excerpt}”</span>
+                    ) : null}
                   </li>
                 ))}
               </ul>
