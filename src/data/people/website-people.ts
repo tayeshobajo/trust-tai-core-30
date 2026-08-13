@@ -160,12 +160,15 @@ export const websitePeopleProvider: PeopleProvider = {
         byName.set(key, draft);
         continue;
       }
+      const roleTitle = current.roleTitle ?? draft.roleTitle;
+      const email = current.email ?? draft.email;
       byName.set(key, {
         ...current,
         ...draft,
-        roleTitle: current.roleTitle ?? draft.roleTitle,
-        email: current.email ?? draft.email,
+        ...(roleTitle ? { roleTitle } : {}),
+        ...(email ? { email } : {}),
       });
+
     }
 
     return [...byName.values()];
