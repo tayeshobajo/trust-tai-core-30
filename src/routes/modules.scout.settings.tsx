@@ -137,7 +137,7 @@ function IcpSettings({ identity }: { identity: WorkspaceIdentity }) {
         supporting="Scout uses this profile to decide who deserves deeper research."
         action={
           <TTButton asChild variant="quiet" size="sm">
-            <Link to="/modules/scout" search={{ section: "scout" }}>
+            <Link to="/modules/scout" search={{ section: "scout" as const, fit: "all" as const }}>
               <ArrowLeft aria-hidden />
               Back to Scout
             </Link>

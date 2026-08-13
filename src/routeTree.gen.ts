@@ -15,6 +15,7 @@ import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.index'
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
+import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,12 @@ const ModulesScoutSettingsRoute = ModulesScoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => ModulesScoutRoute,
 } as any)
+const ModulesScoutProspectsProspectIdRoute =
+  ModulesScoutProspectsProspectIdRouteImport.update({
+    id: '/prospects/$prospectId',
+    path: '/prospects/$prospectId',
+    getParentRoute: () => ModulesScoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByFullPath {
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
+  '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,6 +69,7 @@ export interface FileRoutesByTo {
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/scout': typeof ModulesScoutIndexRoute
+  '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,6 +79,7 @@ export interface FileRoutesById {
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
+  '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -80,6 +90,7 @@ export interface FileRouteTypes {
     | '/modules/scout'
     | '/modules/scout/settings'
     | '/modules/scout/'
+    | '/modules/scout/prospects/$prospectId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -87,6 +98,7 @@ export interface FileRouteTypes {
     | '/modules/$slug'
     | '/modules/scout/settings'
     | '/modules/scout'
+    | '/modules/scout/prospects/$prospectId'
   id:
     | '__root__'
     | '/'
@@ -95,6 +107,7 @@ export interface FileRouteTypes {
     | '/modules/scout'
     | '/modules/scout/settings'
     | '/modules/scout/'
+    | '/modules/scout/prospects/$prospectId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -148,17 +161,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesScoutSettingsRouteImport
       parentRoute: typeof ModulesScoutRoute
     }
+    '/modules/scout/prospects/$prospectId': {
+      id: '/modules/scout/prospects/$prospectId'
+      path: '/prospects/$prospectId'
+      fullPath: '/modules/scout/prospects/$prospectId'
+      preLoaderRoute: typeof ModulesScoutProspectsProspectIdRouteImport
+      parentRoute: typeof ModulesScoutRoute
+    }
   }
 }
 
 interface ModulesScoutRouteChildren {
   ModulesScoutSettingsRoute: typeof ModulesScoutSettingsRoute
   ModulesScoutIndexRoute: typeof ModulesScoutIndexRoute
+  ModulesScoutProspectsProspectIdRoute: typeof ModulesScoutProspectsProspectIdRoute
 }
 
 const ModulesScoutRouteChildren: ModulesScoutRouteChildren = {
   ModulesScoutSettingsRoute: ModulesScoutSettingsRoute,
   ModulesScoutIndexRoute: ModulesScoutIndexRoute,
+  ModulesScoutProspectsProspectIdRoute: ModulesScoutProspectsProspectIdRoute,
 }
 
 const ModulesScoutRouteWithChildren = ModulesScoutRoute._addFileChildren(
