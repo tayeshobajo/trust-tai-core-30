@@ -471,7 +471,7 @@ function RoadmapWorkspace({
   });
 
   const ask = useMutation({
-    mutationFn: async (question: string) => {
+    mutationFn: async ({ question, research }: { question: string; research: boolean }) => {
       const detail = detailQuery.data;
       const intel = intelQuery.data;
       if (!detail) throw new Error("This roadmap could not be read.");
@@ -486,6 +486,7 @@ function RoadmapWorkspace({
           organization_id: identity.organizationId,
           subject_label: detail.roadmap.subjectLabel,
           question,
+          research,
           context: {
             point_a: detail.roadmap.pointA,
             objective: detail.roadmap.objective,
@@ -608,7 +609,7 @@ function RoadmapWorkspace({
         answers={intel?.questions ?? []}
         pending={ask.isPending}
         error={askError}
-        onAsk={(question) => ask.mutate(question)}
+        onAsk={(question, research) => ask.mutate({ question, research })}
       />
 
       {view === "research" ? (
