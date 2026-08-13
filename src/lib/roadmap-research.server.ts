@@ -273,8 +273,10 @@ export async function* runRoadmapResearch(
     return;
   }
 
-  yield { stage: "reading", message: `Reading what we already hold on ${input.subjectLabel}` };
-  yield { stage: "searching", message: "Researching the public web" };
+  yield { stage: "reading", message: `Reading what we already know about ${input.subjectLabel}` };
+  yield { stage: "searching", message: `Researching ${input.subjectLabel}` };
+  yield { stage: "searching", message: "Studying the market and competitors" };
+
 
   const checkedAt = new Date().toISOString();
   let raw = "";
