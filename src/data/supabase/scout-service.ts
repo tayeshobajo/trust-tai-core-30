@@ -82,6 +82,7 @@ function previewEvaluation(icpVersion: number | null, at: string) {
 
 /** Stored row → candidate, using the row's own source to pick the evidence. */
 function toCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandidate {
+  if (row.source === SCOUT_DISCOVERY_SOURCE) return candidateFromDiscoveryRow(row, icpVersion);
   if (row.source === SCOUT_LIVE_SOURCE) return candidateFromResearchRow(row, icpVersion);
   const prospect = toProspect(row);
   const lastCheckedAt = row.updated_at ?? row.created_at;
