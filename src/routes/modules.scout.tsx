@@ -1,25 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Settings2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
-import { ProspectCard } from "@/components/tt/prospect-card";
-import { MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
+import { FitFilters, ProspectBoard, type FitFilter } from "@/components/tt/prospect-board";
+import { ProspectDrawer } from "@/components/tt/prospect-drawer";
+import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { scoutService } from "@/data/supabase/scout-service";
-import {
-  SCOUT_STARTER_PROMPTS,
-  type ProspectCandidate,
-  type ScoutSearchResult,
-} from "@/domain/scout";
+import { SCOUT_STARTER_PROMPTS, type ProspectCandidate } from "@/domain/scout";
+import type { FitLight } from "@/domain/scout-fit";
 import { looksLikeWebsite } from "@/lib/website-url";
+import { cn } from "@/lib/utils";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+import { formatChecked } from "@/components/tt/fit-light";
 
 const TITLE = "Scout — Trust Tai OS";
 const DESCRIPTION =
-  "Describe the kind of company we are looking for and Scout returns a small set of candidates with the evidence behind each one.";
+  "A scouting board of companies with conservative ICP fit scoring, the evidence behind each read, and one clear next move.";
 
 export const Route = createFileRoute("/modules/scout")({
   head: () => ({
@@ -48,12 +48,24 @@ function ScoutRoute() {
   );
 }
 
+type Tab = "scout" | "qualified" | "research";
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: "scout", label: "Scout" },
+  { key: "qualified", label: "Qualified" },
+  { key: "research", label: "Research" },
+];
+
+const LIGHT_RANK: Record<FitLight, number> = { green: 3, yellow: 2, neutral: 1, red: 0 };
+
 function Scout({ identity }: { identity: WorkspaceIdentity }) {
   const { organizationId, userId } = identity;
   const queryClient = useQueryClient();
+
+  const [tab, setTab] = useState<Tab>("scout");
+  const [filter, setFilter] = useState<FitFilter>("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [result, setResult] = useState<ScoutSearchResult | null>(null);
-  const [researched, setResearched] = useState<ProspectCandidate | null>(null);
   const isWebsite = looksLikeWebsite(query);
 
   const icp = useQuery({
@@ -66,66 +78,99 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => scoutService.list(organizationId),
   });
 
+  const refresh = () =>
+    queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
+
   const search = useMutation({
     mutationFn: (text: string) => scoutService.search({ organizationId, userId, query: text }),
-    onSuccess: async (found) => {
-      setResult(found);
-      await queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
-    },
+    onSuccess: refresh,
   });
 
   const research = useMutation({
     mutationFn: (websiteUrl: string) =>
       scoutService.research({ organizationId, userId, websiteUrl }),
     onSuccess: async (found) => {
-      setResult(null);
-      setResearched(found.candidate);
-      await queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
+      setSelectedId(found.candidate.prospect.id);
+      await refresh();
     },
   });
 
   const setStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: "ready_for_comms" | "passed" }) =>
+    mutationFn: ({ id, status }: { id: string; status: "qualified" | "passed" }) =>
       scoutService.setStatus(id, status, { organizationId, userId }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
-    },
+    onSuccess: refresh,
   });
+
+  const override = useMutation({
+    mutationFn: ({ id, light }: { id: string; light: FitLight | null }) =>
+      scoutService.overrideFit(id, light, { organizationId, userId }),
+    onSuccess: refresh,
+  });
+
+  const all = useMemo(() => saved.data ?? [], [saved.data]);
+
+  const board = useMemo(() => {
+    const active =
+      tab === "qualified"
+        ? all.filter(
+            (c) => c.prospect.status === "qualified" || c.prospect.status === "ready_for_comms",
+          )
+        : all.filter((c) => c.prospect.status !== "passed" && c.prospect.status !== "archived");
+    const filtered =
+      filter === "all" ? active : active.filter((c) => c.evaluation.light === filter);
+    return [...filtered].sort((a, b) => {
+      const light = LIGHT_RANK[b.evaluation.light] - LIGHT_RANK[a.evaluation.light];
+      if (light !== 0) return light;
+      const score = b.evaluation.score - a.evaluation.score;
+      if (score !== 0) return score;
+      return b.lastCheckedAt.localeCompare(a.lastCheckedAt);
+    });
+  }, [all, tab, filter]);
+
+  const counts = useMemo(() => {
+    const pool =
+      tab === "qualified"
+        ? all.filter(
+            (c) => c.prospect.status === "qualified" || c.prospect.status === "ready_for_comms",
+          )
+        : all.filter((c) => c.prospect.status !== "passed" && c.prospect.status !== "archived");
+    return {
+      all: pool.length,
+      green: pool.filter((c) => c.evaluation.light === "green").length,
+      yellow: pool.filter((c) => c.evaluation.light === "yellow").length,
+      red: pool.filter((c) => c.evaluation.light === "red").length,
+      neutral: pool.filter((c) => c.evaluation.light === "neutral").length,
+    } as Record<FitFilter, number>;
+  }, [all, tab]);
+
+  const selected: ProspectCandidate | null =
+    all.find((c) => c.prospect.id === selectedId) ?? null;
 
   function run(next: string) {
     const text = next.trim();
     if (!text) return;
     setQuery(text);
     if (looksLikeWebsite(text)) {
-      setResult(null);
       research.mutate(text);
       return;
     }
-    setResearched(null);
     search.mutate(text);
   }
 
-  const persisted = saved.data ?? [];
-  const byId = new Map(persisted.map((c) => [c.prospect.id, c]));
-  const candidates = researched
-    ? [byId.get(researched.prospect.id) ?? researched]
-    : result
-      ? result.candidates.map((c) => byId.get(c.prospect.id) ?? c)
-      : persisted;
-  const qualified = candidates.filter(
-    (c) => c.prospect.status === "ready_for_comms" || c.prospect.status === "qualified",
-  ).length;
-
-  const error = (search.error ?? research.error ?? setStatus.error ?? saved.error) as Error | null;
-  const busy = search.isPending || research.isPending;
+  const error = (search.error ??
+    research.error ??
+    setStatus.error ??
+    override.error ??
+    saved.error) as Error | null;
+  const busy = search.isPending || research.isPending || setStatus.isPending;
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <AppHero
         appId="scout"
         eyebrow="Trust Tai OS / Scout"
-        title="Find the companies that look like our best clients."
-        supporting="Describe who we are looking for in plain English. Scout returns a small set of candidates, each with what it observed, what it inferred, and one clear move."
+        title="Who deserves our attention next?"
+        supporting="One board of companies, scored conservatively against the active ICP. Colour reads fit only — the workflow stage stays separate."
         action={
           <TTButton asChild variant="secondary" size="sm">
             <Link to="/modules/scout/settings">
@@ -136,76 +181,98 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
         }
       />
 
+      {/* Local nav */}
+      <nav
+        aria-label="Scout sections"
+        className="flex flex-wrap items-center gap-1 border-b border-border pb-px"
+      >
+        {TABS.map((entry) => (
+          <button
+            key={entry.key}
+            type="button"
+            aria-current={tab === entry.key ? "page" : undefined}
+            onClick={() => setTab(entry.key)}
+            className={cn(
+              "-mb-px border-b-2 px-4 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              tab === entry.key
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {entry.label}
+          </button>
+        ))}
+        <Link
+          to="/modules/scout/settings"
+          className="-mb-px border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          ICP Settings
+        </Link>
+      </nav>
+
+      {/* Input */}
       <section>
-        <SectionHeading
-          eyebrow="Small input"
-          title="Who are we looking for?"
-          description="Describe a company type, or paste a company website to research it live."
-          action={
-            icp.data ? (
-              <MetaPill>Using ICP v{icp.data.version}</MetaPill>
-            ) : icp.isPending ? null : (
-              <MetaPill>No ICP saved</MetaPill>
-            )
-          }
-        />
         <form
-          className="tt-surface p-6"
+          className="tt-surface p-5"
           onSubmit={(event) => {
             event.preventDefault();
             run(query);
           }}
         >
           <label htmlFor="scout-query" className="sr-only">
-            Describe the kind of company we are looking for
+            Describe the kind of company we are looking for, or paste a website
           </label>
-          <textarea
-            id="scout-query"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            rows={3}
-            placeholder="US professional-services firms with dated WordPress websites — or paste example.com"
-            className="w-full resize-none rounded-lg border border-input bg-card p-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <TTButton type="submit" disabled={busy || !query.trim()}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <input
+              id="scout-query"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Paste a company website — or describe who we are looking for"
+              className="h-12 w-full rounded-lg border border-input bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <TTButton type="submit" disabled={busy || !query.trim()} className="shrink-0">
               {research.isPending
-                ? "Researching the website…"
+                ? "Researching…"
                 : search.isPending
                   ? "Looking…"
                   : isWebsite
                     ? "Research website"
                     : "Find candidates"}
             </TTButton>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             <p className="text-xs text-muted-foreground">
               {isWebsite
                 ? "Live public website research. Public pages only — no search engines or private data."
                 : "Preview discovery. No external company search yet."}
             </p>
+            {icp.data ? (
+              <MetaPill>Using ICP v{icp.data.version}</MetaPill>
+            ) : icp.isPending ? null : (
+              <MetaPill>No ICP saved</MetaPill>
+            )}
           </div>
-
-          <div className="mt-6 border-t border-border pt-5">
-            <p className="tt-eyebrow">Start from</p>
-            <div className="mt-3 flex flex-wrap gap-2">
+          {tab === "scout" ? (
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
               {SCOUT_STARTER_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
                   onClick={() => run(prompt)}
-                  className="rounded-full border border-border bg-card px-4 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="rounded-full border border-border bg-card px-3.5 py-1.5 text-left text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {prompt}
                 </button>
               ))}
             </div>
-          </div>
+          ) : null}
         </form>
 
         {research.isPending ? (
           <div
             role="status"
             aria-live="polite"
-            className="tt-surface mt-4 flex items-center gap-3 p-5 text-sm text-muted-foreground"
+            className="tt-surface mt-3 flex items-center gap-3 p-4 text-sm text-muted-foreground"
           >
             <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-royal" />
             Reading the public pages on {query.trim()}. This takes a few moments.
@@ -213,45 +280,119 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
         ) : null}
 
         {error ? (
-          <p role="alert" className="mt-4 text-sm text-destructive">
+          <p role="alert" className="mt-3 text-sm text-destructive">
             {error.message}
           </p>
         ) : null}
       </section>
 
-      {candidates.length > 0 ? (
+      {tab === "research" ? (
+        <ResearchHistory candidates={all} onSelect={(c) => setSelectedId(c.prospect.id)} />
+      ) : (
         <section>
           <SectionHeading
-            eyebrow="Clear output"
-            title={`${candidates.length} candidate${candidates.length === 1 ? "" : "s"} worth a look`}
+            eyebrow={tab === "qualified" ? "Carried forward" : "Clear output"}
+            title={
+              tab === "qualified"
+                ? `${board.length} qualified compan${board.length === 1 ? "y" : "ies"}`
+                : `${board.length} compan${board.length === 1 ? "y" : "ies"} on the board`
+            }
             description={
-              researched
-                ? `Read from ${researched.prospect.domain}. ${researched.source.note ?? ""} Inference is deterministic heuristic analysis, not AI scoring.`
-                : result
-                  ? `For “${result.request.query}”. ${result.source.note}`
-                  : "Saved in your workspace from earlier runs."
+              tab === "qualified"
+                ? "Qualified in Scout. Nothing has been sent — each one is waiting on its next move."
+                : "Sorted by strongest ICP fit, then by most recently checked. Colour is fit, not stage."
             }
             action={
-              <div className="flex flex-wrap gap-2">
-                <MetaPill>
-                  {researched ? "Live website research" : "Preview demo source"}
-                </MetaPill>
-                {qualified > 0 ? <MetaPill>{qualified} ready for Comms</MetaPill> : null}
-              </div>
+              <FitFilters value={filter} counts={counts} onChange={setFilter} />
             }
           />
-          <div className="grid gap-5 lg:grid-cols-2">
-            {candidates.map((candidate) => (
-              <ProspectCard
-                key={candidate.prospect.id}
-                candidate={candidate}
-                onQualify={(id) => setStatus.mutate({ id, status: "ready_for_comms" })}
-                onPass={(id) => setStatus.mutate({ id, status: "passed" })}
-              />
-            ))}
-          </div>
+
+          {board.length === 0 ? (
+            <EmptyState
+              title={tab === "qualified" ? "Nothing qualified yet" : "The board is empty"}
+              belongsHere={
+                tab === "qualified"
+                  ? "Companies you qualify in Scout appear here with their next move."
+                  : "Companies Scout has read appear here with an ICP fit light and the evidence behind it."
+              }
+              whyItMatters="Fit is judged conservatively: three clear evidence points are required before anything reads green."
+            />
+          ) : (
+            <ProspectBoard
+              candidates={board}
+              selectedId={selectedId}
+              onSelect={(candidate) => setSelectedId(candidate.prospect.id)}
+              emphasizeNextMove={tab === "qualified"}
+            />
+          )}
         </section>
-      ) : null}
+      )}
+
+      <ProspectDrawer
+        candidate={selected}
+        activeIcpVersion={icp.data?.version ?? null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}
+        onQualify={(id) => setStatus.mutate({ id, status: "qualified" })}
+        onPass={(id) => setStatus.mutate({ id, status: "passed" })}
+        onResearch={(websiteUrl) => research.mutate(websiteUrl)}
+        onOverride={(id, light) => override.mutate({ id, light })}
+        busy={busy || override.isPending}
+      />
     </div>
+  );
+}
+
+function ResearchHistory({
+  candidates,
+  onSelect,
+}: {
+  candidates: ProspectCandidate[];
+  onSelect: (candidate: ProspectCandidate) => void;
+}) {
+  const history = [...candidates].sort((a, b) => b.lastCheckedAt.localeCompare(a.lastCheckedAt));
+
+  return (
+    <section>
+      <SectionHeading
+        eyebrow="Provenance"
+        title="Research history"
+        description="What Scout has read, when it read it, and which source it came from."
+      />
+      {history.length === 0 ? (
+        <EmptyState
+          title="No research yet"
+          belongsHere="Every company Scout reads is recorded here with its source."
+          whyItMatters="Knowing when something was last checked keeps decisions honest."
+        />
+      ) : (
+        <ul className="overflow-hidden rounded-xl border border-border bg-card">
+          {history.map((candidate) => (
+            <li key={candidate.prospect.id}>
+              <button
+                type="button"
+                onClick={() => onSelect(candidate)}
+                className="flex w-full flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5 text-left transition-colors last:border-b-0 hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-foreground">
+                    {candidate.prospect.name}
+                  </span>
+                  <span className="block truncate font-mono text-[11px] text-muted-foreground">
+                    {candidate.source.kind === "live_website"
+                      ? candidate.source.note ?? "Live website research"
+                      : "Preview demo source"}
+                  </span>
+                </span>
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  {formatChecked(candidate.lastCheckedAt)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
