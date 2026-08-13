@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Settings2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -7,7 +7,6 @@ import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { FitFilters, ProspectBoard, type FitFilter } from "@/components/tt/prospect-board";
 import { ScoutTabs } from "@/components/tt/scout-tabs";
-import { ProspectDrawer } from "@/components/tt/prospect-drawer";
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { scoutService } from "@/data/supabase/scout-service";
@@ -28,9 +27,16 @@ function parseSection(value: unknown): Tab {
   return value === "qualified" || value === "research" ? value : "scout";
 }
 
+function parseFit(value: unknown): FitFilter {
+  return value === "green" || value === "yellow" || value === "red" || value === "neutral"
+    ? value
+    : "all";
+}
+
 export const Route = createFileRoute("/modules/scout/")({
   validateSearch: (search: Record<string, unknown>) => ({
     section: parseSection(search["section"]),
+    fit: parseFit(search["fit"]),
   }),
   head: () => ({
     meta: [
@@ -47,12 +53,12 @@ export const Route = createFileRoute("/modules/scout/")({
 });
 
 function ScoutRoute() {
-  const { section } = Route.useSearch();
+  const { section, fit } = Route.useSearch();
   return (
     <WorkspaceGate>
       {(identity) => (
         <AppShell identity={identity}>
-          <Scout identity={identity} tab={section} />
+          <Scout identity={identity} tab={section} filter={fit} />
         </AppShell>
       )}
     </WorkspaceGate>
@@ -61,12 +67,22 @@ function ScoutRoute() {
 
 const LIGHT_RANK: Record<FitLight, number> = { green: 3, yellow: 2, neutral: 1, red: 0 };
 
-function Scout({ identity, tab }: { identity: WorkspaceIdentity; tab: Tab }) {
+function Scout({
+  identity,
+  tab,
+  filter,
+}: {
+  identity: WorkspaceIdentity;
+  tab: Tab;
+  /** Board filter lives in the URL so returning from a prospect restores it. */
+  filter: FitFilter;
+}) {
   const { organizationId, userId } = identity;
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<FitFilter>("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const setFilter = (next: FitFilter) =>
+    navigate({ to: "/modules/scout", search: { section: tab, fit: next } });
   const isWebsite = looksLikeWebsite(query);
 
   const icp = useQuery({
@@ -91,8 +107,12 @@ function Scout({ identity, tab }: { identity: WorkspaceIdentity; tab: Tab }) {
     mutationFn: (websiteUrl: string) =>
       scoutService.research({ organizationId, userId, websiteUrl }),
     onSuccess: async (found) => {
-      setSelectedId(found.candidate.prospect.id);
       await refresh();
+      await navigate({
+        to: "/modules/scout/prospects/$prospectId",
+        params: { prospectId: found.candidate.prospect.id },
+        search: { section: tab, fit: filter },
+      });
     },
   });
 
@@ -143,9 +163,6 @@ function Scout({ identity, tab }: { identity: WorkspaceIdentity; tab: Tab }) {
       neutral: pool.filter((c) => c.evaluation.light === "neutral").length,
     } as Record<FitFilter, number>;
   }, [all, tab]);
-
-  const selected: ProspectCandidate | null =
-    all.find((c) => c.prospect.id === selectedId) ?? null;
 
   function run(next: string) {
     const text = next.trim();
@@ -261,7 +278,7 @@ function Scout({ identity, tab }: { identity: WorkspaceIdentity; tab: Tab }) {
       </section>
 
       {tab === "research" ? (
-        <ResearchHistory candidates={all} onSelect={(c) => setSelectedId(c.prospect.id)} />
+        <ResearchHistory candidates={all} linkSearch={{ section: tab, fit: filter }} />
       ) : (
         <section>
           <SectionHeading
@@ -294,36 +311,23 @@ function Scout({ identity, tab }: { identity: WorkspaceIdentity; tab: Tab }) {
           ) : (
             <ProspectBoard
               candidates={board}
-              selectedId={selectedId}
-              onSelect={(candidate) => setSelectedId(candidate.prospect.id)}
+              linkSearch={{ section: tab, fit: filter }}
               emphasizeNextMove={tab === "qualified"}
             />
           )}
         </section>
       )}
 
-      <ProspectDrawer
-        candidate={selected}
-        activeIcpVersion={icp.data?.version ?? null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedId(null);
-        }}
-        onQualify={(id) => setStatus.mutate({ id, status: "qualified" })}
-        onPass={(id) => setStatus.mutate({ id, status: "passed" })}
-        onResearch={(websiteUrl) => research.mutate(websiteUrl)}
-        onOverride={(id, light) => override.mutate({ id, light })}
-        busy={busy || override.isPending}
-      />
     </div>
   );
 }
 
 function ResearchHistory({
   candidates,
-  onSelect,
+  linkSearch,
 }: {
   candidates: ProspectCandidate[];
-  onSelect: (candidate: ProspectCandidate) => void;
+  linkSearch: { section: Tab; fit: FitFilter };
 }) {
   const history = [...candidates].sort((a, b) => b.lastCheckedAt.localeCompare(a.lastCheckedAt));
 
@@ -344,9 +348,10 @@ function ResearchHistory({
         <ul className="overflow-hidden rounded-xl border border-border bg-card">
           {history.map((candidate) => (
             <li key={candidate.prospect.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(candidate)}
+              <Link
+                to="/modules/scout/prospects/$prospectId"
+                params={{ prospectId: candidate.prospect.id }}
+                search={linkSearch}
                 className="flex w-full flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5 text-left transition-colors last:border-b-0 hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
                 <span className="min-w-0">
@@ -362,7 +367,7 @@ function ResearchHistory({
                 <span className="font-mono text-[11px] text-muted-foreground">
                   {formatChecked(candidate.lastCheckedAt)}
                 </span>
-              </button>
+              </Link>
             </li>
           ))}
         </ul>
