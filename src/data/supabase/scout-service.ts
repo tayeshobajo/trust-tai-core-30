@@ -36,6 +36,7 @@ import {
   normalizeWebsiteUrl,
   saveResearchProspect,
   toProspect,
+  setProspectFitOverride,
   updateProspectStatus,
 } from "./prospects";
 import {
@@ -237,6 +238,15 @@ export const scoutService = {
       source: candidate.source,
       generatedAt: occurredAt,
     };
+  },
+
+  /** Manual ICP fit override. Always available, never automatic. */
+  async overrideFit(
+    id: ID,
+    light: "green" | "yellow" | "red" | "neutral" | null,
+    context: ScoutContext,
+  ): Promise<void> {
+    await setProspectFitOverride(id, light, context.userId);
   },
 
   /** Qualify / Pass. Writes the row, then appends the activity record. */

@@ -227,7 +227,7 @@ export async function setProspectFitOverride(
     .maybeSingle();
   if (readError) throw new Error(readError.message);
 
-  const metadata = { ...(((current?.metadata ?? {}) as Row) ?? {}) };
+  const metadata: Row = { ...((current?.metadata ?? {}) as Row) };
   if (light) {
     metadata["scout_fit_override"] = { light, by: userId, at: new Date().toISOString() };
   } else {
