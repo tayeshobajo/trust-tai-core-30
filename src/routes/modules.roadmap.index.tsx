@@ -9,7 +9,7 @@
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
@@ -227,7 +227,7 @@ function RoadmapHero({
   action,
 }: {
   identity: WorkspaceIdentity;
-  action?: React.ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <AppHero

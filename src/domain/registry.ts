@@ -71,7 +71,7 @@ export const APP_REGISTRY: AppRegistration[] = [
     name: "Roadmap",
     slug: "roadmap",
     description: "Point A to Point B, sequenced into a build order.",
-    status: "mapped",
+    status: "in_build",
     route: "/modules/roadmap",
     icon: "Route",
     capabilities: ["projects", "decisions"],
