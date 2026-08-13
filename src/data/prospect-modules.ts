@@ -6,7 +6,9 @@
  * next move. No rendering, no Supabase, no side effects.
  */
 
+import type { ConfidenceRead, EvidenceRef } from "@/domain/confidence";
 import type {
+  ModuleEmphasis,
   NextMove,
   ProspectComposition,
   ProspectModule,
@@ -16,7 +18,7 @@ import type {
   UnknownNote,
 } from "@/domain/prospect-modules";
 import type { ProspectCandidate } from "@/domain/scout";
-import type { ScoutFitEvaluation } from "@/domain/scout-fit";
+import type { FitCriterion, ScoutFitEvaluation } from "@/domain/scout-fit";
 
 /** Page kinds the v4 research function reports on. */
 const PAGE_KINDS: { key: string; label: string }[] = [
@@ -169,6 +171,139 @@ function daysSince(value: string): number | null {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000));
+}
+
+
+/* ------------------------------------------------------------------ *
+ * Confidence — how sure we are, and what that rests on
+ * ------------------------------------------------------------------ */
+
+/** Evidence for one ICP criterion: the pages the claim was actually read from. */
+export function criterionEvidence(criterion: FitCriterion): EvidenceRef[] {
+  const pages = (criterion.sourceUrls ?? []).map((url) => ({
+    label: pageLabel(url),
+    url,
+    kind: "page" as const,
+  }));
+  if (pages.length > 0) return pages;
+  return [{ label: "Evaluator read of stored evidence", kind: "computed" as const }];
+}
+
+function pageLabel(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname.replace(/\/$/, "");
+    return path && path !== "" ? `${parsed.hostname}${path}` : parsed.hostname;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Confidence in one criterion. Evidence quantity sets the ceiling; thin
+ * coverage lowers it. A criterion nobody has evidence for is never "low" —
+ * it is simply not established.
+ */
+export function criterionConfidence(
+  criterion: FitCriterion,
+  coverage: ResearchCoverage,
+): ConfidenceRead {
+  const evidence = criterionEvidence(criterion);
+  const sourced = (criterion.sourceUrls ?? []).length;
+
+  if (criterion.state === "missing") {
+    return {
+      level: "unknown",
+      because:
+        sourced > 0
+          ? "Pages were read but said nothing either way about this."
+          : "No page carrying this has been read yet, so absence proves nothing.",
+      evidence,
+    };
+  }
+
+  const base: ConfidenceRead =
+    criterion.state === "met" && sourced > 0
+      ? {
+          level: "high",
+          because: `Stated directly on ${sourced} public ${sourced === 1 ? "page" : "pages"}.`,
+          evidence,
+        }
+      : criterion.state === "mismatch"
+        ? {
+            level: sourced > 0 ? "high" : "moderate",
+            because: "The evidence read contradicts the ICP on this point.",
+            evidence,
+          }
+        : {
+            level: sourced > 0 ? "moderate" : "low",
+            because:
+              sourced > 0
+                ? "Partly supported: the pages hint at this without stating it."
+                : "Derived from stored evidence with no page to point at.",
+            evidence,
+          };
+
+  return coverage.thin
+    ? {
+        ...base,
+        level: base.level === "high" ? "moderate" : base.level,
+        because: `${base.because} Coverage is still thin, so this is held one step lower.`,
+      }
+    : base;
+}
+
+/** Confidence in the overall fit read that the page's move depends on. */
+function fitConfidence(
+  candidate: ProspectCandidate,
+  coverage: ResearchCoverage,
+  needsRescore: boolean,
+  staleDays: number | null,
+): ConfidenceRead {
+  const { evaluation } = candidate;
+  const evidence: EvidenceRef[] = [
+    {
+      label: `${evaluation.evidenceCount} observed ${evaluation.evidenceCount === 1 ? "fact" : "facts"}`,
+      kind: "computed",
+    },
+    ...(candidate.prospect.websiteUrl
+      ? [{ label: pageLabel(candidate.prospect.websiteUrl), url: candidate.prospect.websiteUrl, kind: "page" as const }]
+      : []),
+  ];
+
+  if (!evaluation.scoreable) {
+    return {
+      level: "unknown",
+      because: "This record has never been scored against live website evidence.",
+      evidence,
+    };
+  }
+  if (needsRescore) {
+    return {
+      level: "low",
+      because: "The ICP changed after this company was scored, so the read is out of date.",
+      evidence,
+    };
+  }
+  if (staleDays !== null && staleDays >= STALE_AFTER_DAYS) {
+    return {
+      level: "low",
+      because: `The evidence behind this read is ${staleDays} days old.`,
+      evidence,
+    };
+  }
+  if (coverage.thin) {
+    return {
+      level: "moderate",
+      because: coverage.note,
+      evidence,
+    };
+  }
+  return {
+    level: evaluation.evidenceCount >= 4 ? "high" : "moderate",
+    because: `Scored ${evaluation.score}% from ${evaluation.evidenceCount} facts read across ${coverage.pages} public ${coverage.pages === 1 ? "page" : "pages"}.`,
+    evidence,
+  };
 }
 
 /* ------------------------------------------------------------------ *
