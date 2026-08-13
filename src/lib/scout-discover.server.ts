@@ -38,8 +38,9 @@ import {
   createLovableAiGatewayRunIdFetch,
   LOVABLE_AIG_RUN_ID_HEADER,
 } from "@/lib/ai-gateway.server";
+import { buildDiscoveryRequestBody } from "@/lib/scout-discovery-request";
+import { selectScoutProvider } from "@/lib/scout-provider.server";
 
-const DEFAULT_MODEL = "openai/gpt-5-mini";
 const DEFAULT_LIMIT = 25;
 
 const MAX_LIMIT = 50;
@@ -52,16 +53,15 @@ export interface DiscoverStage {
   data?: Record<string, unknown>;
 }
 
-export function discoveryModel(): string {
-  const configured = process.env["SCOUT_DISCOVERY_MODEL"] || process.env["SCOUT_OPENAI_MODEL"];
-  if (!configured) return DEFAULT_MODEL;
-  // Gateway model ids must carry the vendor/ prefix.
-  return configured.includes("/") ? configured : `openai/${configured}`;
+/** The model of the provider Scout would actually use right now. */
+export function discoveryModel(): string | null {
+  return selectScoutProvider()?.model ?? null;
 }
 
 export function discoveryConfigured(): boolean {
-  return Boolean(process.env["LOVABLE_API_KEY"]);
+  return Boolean(selectScoutProvider());
 }
+
 
 
 function supabaseUrl(): string {
@@ -90,120 +90,6 @@ function clientFor(token: string): SupabaseClient {
   });
 }
 
-const CANDIDATE_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["candidates"],
-  properties: {
-    candidates: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: [
-          "company_name",
-          "website",
-          "location",
-          "industry",
-          "summary",
-          "discovery_reason",
-          "observed_evidence",
-          "source_urls",
-          "unknowns",
-          "icp_fit",
-        ],
-        properties: {
-          company_name: { type: "string" },
-          website: { type: "string" },
-          location: { type: ["string", "null"] },
-          industry: { type: ["string", "null"] },
-          summary: { type: "string" },
-          discovery_reason: { type: "string" },
-          observed_evidence: {
-            type: "array",
-            items: {
-              type: "object",
-              additionalProperties: false,
-              required: ["statement", "source_url"],
-              properties: {
-                statement: { type: "string" },
-                source_url: { type: ["string", "null"] },
-              },
-            },
-          },
-          source_urls: { type: "array", items: { type: "string" } },
-          unknowns: { type: "array", items: { type: "string" } },
-          icp_fit: {
-            type: "object",
-            additionalProperties: false,
-            required: ["light", "score", "confidence", "reasoning", "criteria"],
-            properties: {
-              light: { type: "string", enum: ["green", "yellow", "red"] },
-              score: { type: "integer" },
-              confidence: { type: "string", enum: ["high", "moderate", "low", "unknown"] },
-              reasoning: { type: "string" },
-              criteria: {
-                type: "array",
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  required: [
-                    "name",
-                    "weight",
-                    "status",
-                    "score_contribution",
-                    "evidence",
-                    "source_urls",
-                    "confidence",
-                  ],
-                  properties: {
-                    name: { type: "string" },
-                    weight: { type: "number" },
-                    status: {
-                      type: "string",
-                      enum: ["met", "partial", "unknown", "missed", "disqualifier"],
-                    },
-                    score_contribution: { type: "number" },
-                    evidence: { type: "string" },
-                    source_urls: { type: "array", items: { type: "string" } },
-                    confidence: { type: "string", enum: ["high", "moderate", "low", "unknown"] },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-} as const;
-
-function instructions(icp: string, calibration: string, limit: number): string {
-  return [
-    "You are Trust Tai Scout, a conservative B2B sourcing analyst.",
-    "",
-    "GOVERNING RUBRIC — the Ideal Client Profile below is the source of truth.",
-    "Judge every company against it. Never substitute your own idea of a good client.",
-    "",
-    "=== ACTIVE ICP ===",
-    icp || "No ICP has been saved. Score every company yellow with low confidence.",
-    "=== END ICP ===",
-    "",
-    calibration,
-    "",
-    "RULES",
-    `1. Use web_search. Return only REAL companies with current public web evidence. Aim for ${limit}.`,
-    "2. Never fabricate a company, person, email, LinkedIn profile, revenue, headcount, budget or technology stack.",
-    "3. Every company needs a real website URL you saw plus at least one source URL.",
-    "4. Anything you could not establish goes in `unknowns`. Unknown is NOT negative — never score it as a mismatch.",
-    "5. Traffic lights describe ICP FIT only: green = strong fit with sufficient evidence; yellow = plausible, mixed or thin evidence needing human review; red = material mismatch with the ICP.",
-    "6. A hard disqualifier stated in the ICP sets that criterion to `disqualifier` and forces red.",
-    "7. Thin public evidence lowers confidence and can never be green.",
-    "8. Give a concise reasoning summary of the conclusion and its evidence. Do not output step-by-step deliberation.",
-    "9. Do not judge how reachable a decision maker is; reachability is assessed separately from fit.",
-  ].join("\n");
-}
-
 export interface DiscoverInput {
   token: string;
   query: string;
@@ -213,26 +99,26 @@ export interface DiscoverInput {
   gateway?: ReturnType<typeof createLovableAiGatewayRunIdFetch>;
 }
 
-
-
 /**
  * Run a discovery pass, yielding progress stages as they happen so the board can
  * show what Scout is actually doing rather than a spinner.
  */
 export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<DiscoverStage> {
-  const lovableApiKey = process.env["LOVABLE_API_KEY"];
-  if (!lovableApiKey) {
+  const selected = selectScoutProvider();
+  if (!selected) {
     yield {
       stage: "error",
       message:
-        "Scout intelligence is not connected. Add LOVABLE_API_KEY in project secrets to enable live market discovery.",
+        "Scout intelligence is not connected. Add OPENAI_API_KEY (or LOVABLE_API_KEY) in project secrets to enable live market discovery.",
       data: { configured: false },
     };
     return;
   }
 
-  const model = discoveryModel();
+  const providerName = selected.provider;
+  const model = selected.model;
   const gateway = input.gateway ?? createLovableAiGatewayRunIdFetch(input.initialRunId);
+
 
   const supabase = clientFor(input.token);
 
@@ -324,7 +210,8 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
       organization_id: orgId,
       query,
       status: "running",
-      provider: "lovable",
+      provider: providerName,
+
       model,
       icp_version: icpVersion,
       requested_count: limit,
@@ -348,25 +235,26 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
   // Streamed so a multi-minute research run never dies on a request timeout.
   let raw = "";
   try {
-    const response = await gateway.fetch("https://ai.gateway.lovable.dev/v1/responses", {
+    const doFetch = providerName === "lovable" ? gateway.fetch : fetch;
+    const response = await doFetch(selected.endpoint, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": lovableApiKey,
-        "X-Lovable-AIG-SDK": "fetch",
-        ...(input.initialRunId ? { [LOVABLE_AIG_RUN_ID_HEADER]: input.initialRunId } : {}),
+        ...selected.headers,
+        ...(providerName === "lovable" && input.initialRunId
+          ? { [LOVABLE_AIG_RUN_ID_HEADER]: input.initialRunId }
+          : {}),
       },
-      body: JSON.stringify({
-        model,
-        stream: true,
-        instructions: instructions(String(icp?.["content_markdown"] ?? ""), calibration, limit),
-        input: `Find up to ${limit} real companies matching: ${query}`,
-        tools: [{ type: "web_search" }],
-        text: {
-          format: { type: "json_schema", name: "scout_candidates", strict: true, schema: CANDIDATE_SCHEMA },
-        },
-      }),
+      body: JSON.stringify(
+        buildDiscoveryRequestBody({
+          model,
+          query,
+          limit,
+          icp: String(icp?.["content_markdown"] ?? ""),
+          calibration,
+        }),
+      ),
     });
+
 
 
     if (!response.ok || !response.body) {
@@ -451,7 +339,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     const provenance = {
       app_id: "scout",
       source: DISCOVERY_SOURCE,
-      provider: "lovable",
+      provider: providerName,
       model,
       evaluator_version: SCOUT_DISCOVERY_EVALUATOR_VERSION,
       icp_version: icpVersion,
@@ -527,7 +415,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
       discovery_run_id: runId,
       evaluator: "scout-discover",
       evaluator_version: SCOUT_DISCOVERY_EVALUATOR_VERSION,
-      provider: "lovable",
+      provider: providerName,
       model,
       icp_version: icpVersion,
       score,
@@ -575,7 +463,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
         result_count: savedCount,
         finished_at: finishedAt,
         response_meta: {
-          provider: "lovable",
+          provider: providerName,
           model,
           returned: candidates.length,
           accepted: accepted.length,

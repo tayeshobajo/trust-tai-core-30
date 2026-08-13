@@ -12,11 +12,8 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import {
-  discoveryConfigured,
-  discoveryModel,
-  runDiscovery,
-} from "@/lib/scout-discover.server";
+import { runDiscovery } from "@/lib/scout-discover.server";
+import { scoutProviderStatus } from "@/lib/scout-provider.server";
 import {
   createLovableAiGatewayRunIdFetch,
   getLovableAiGatewayResponseHeaders,
@@ -35,19 +32,17 @@ function bearer(request: Request): string | null {
 export const Route = createFileRoute("/api/public/scout/discover")({
   server: {
     handlers: {
-      // Configuration probe. Reveals only whether intelligence is connected.
+      // Configuration probe. Reveals which provider is selected and what it can
+      // do — never a key, never any part of one.
       GET: async ({ request }) =>
-        Response.json({
-          configured: discoveryConfigured(),
-          provider: "lovable",
-          model: discoveryConfigured() ? discoveryModel() : null,
-        }, {
+        Response.json(scoutProviderStatus(), {
           headers: getLovableAiGatewayResponseHeaders(undefined, {
             ...(getLovableAiGatewayRunId(request)
               ? { [LOVABLE_AIG_RUN_ID_HEADER]: getLovableAiGatewayRunId(request)! }
               : {}),
           }),
         }),
+
 
 
       POST: async ({ request }) => {

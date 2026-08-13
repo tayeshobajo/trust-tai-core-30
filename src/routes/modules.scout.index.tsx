@@ -297,11 +297,14 @@ function Scout({
           >
             <p className="text-foreground">Market sourcing is not connected yet.</p>
             <p className="mt-1">
-              Scout intelligence is connected through the Lovable AI Gateway. If market sourcing is
-              unavailable, make sure <span className="font-mono text-[12px]">LOVABLE_API_KEY</span> is
-              set in project secrets. Pasting a single company website still works, and nothing here
-              is ever filled with demo data.
+              Scout uses OpenAI directly when{" "}
+              <span className="font-mono text-[12px]">OPENAI_API_KEY</span> is set, and falls back to
+              the Lovable AI Gateway when only{" "}
+              <span className="font-mono text-[12px]">LOVABLE_API_KEY</span> is present. Add one in
+              project secrets to enable live market sourcing. Pasting a single company website still
+              works, and nothing here is ever filled with demo data.
             </p>
+
 
           </div>
         ) : null}
