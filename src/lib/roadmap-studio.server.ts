@@ -32,7 +32,11 @@ import type {
   SourceRef,
 } from "@/domain/roadmap-intel";
 import type { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
-import { callRoadmapProvider, requireRoadmapAccess } from "./roadmap-research.server";
+import {
+  callRoadmapProvider,
+  extractJsonObject,
+  requireRoadmapAccess,
+} from "./roadmap-research.server";
 
 export interface StudioStage {
   stage: "packet" | "writing" | "validating" | "complete" | "error";
@@ -226,6 +230,18 @@ export async function* runStudioComposition(
     yield { stage: "error", message: "You do not have access to this workspace." };
     return;
   }
+  yield* composeStudioDocument(input);
+}
+
+/**
+ * The composition itself, with authorization already cleared. Exported so an
+ * offline acceptance harness runs the same packet, prompt and validation.
+ */
+export async function* composeStudioDocument(
+  input: Omit<StudioComposeInput, "token" | "organizationId"> &
+    Partial<Pick<StudioComposeInput, "token" | "organizationId">>,
+): AsyncGenerator<StudioStage> {
+
 
   yield {
     stage: "packet",
@@ -273,7 +289,7 @@ export async function* runStudioComposition(
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
+    parsed = extractJsonObject(raw);
   } catch {
     yield {
       stage: "error",

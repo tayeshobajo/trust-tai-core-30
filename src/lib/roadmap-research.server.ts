@@ -108,9 +108,14 @@ export async function callRoadmapProvider(
       stream: true,
       store: false,
       reasoning: { effort: "medium", summary: "auto" },
-      ...(options.webSearch ? { tools: [{ type: "web_search" }] } : {}),
-      text: { format: { type: "json_object" } },
+      // Web search and json response format are mutually exclusive upstream, so
+      // a research pass asks for json in the prompt and the reply is unwrapped
+      // by extractJsonObject. Searchless calls keep the hard json guarantee.
+      ...(options.webSearch
+        ? { tools: [{ type: "web_search" }] }
+        : { text: { format: { type: "json_object" } } }),
     }),
+
   });
 
   if (!response.ok || !response.body) {
@@ -153,7 +158,47 @@ export async function callRoadmapProvider(
 
 /* --------------------------------------------------------------- prompts */
 
+/**
+ * The json object in a model reply.
+ *
+ * A web search run cannot be pinned to json response format, so the text can
+ * arrive wrapped in a code fence or trailed by a citation line. This reads the
+ * outermost balanced object rather than trusting the whole string.
+ */
+export function extractJsonObject(raw: string): Record<string, unknown> {
+  const text = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    // fall through to a balanced scan
+  }
+  const start = text.indexOf("{");
+  if (start < 0) throw new Error("The provider returned no json object.");
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i += 1) {
+    const char = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === "{") depth += 1;
+    else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return JSON.parse(text.slice(start, i + 1)) as Record<string, unknown>;
+      }
+    }
+  }
+  throw new Error("The provider returned no complete json object.");
+}
+
 const VOICE = [
+
   "Write in company-native language. No generic agency or consulting copy.",
   "Never use em dashes.",
   "Never invent figures, timelines, budgets, internal access, client preferences, or promised outcomes.",
@@ -224,8 +269,10 @@ function researchInput(subject: {
       ],
       rules: {
         anchor_proof: "one to three items only",
-        horizon: "exactly three bands: 2, 5 and 10 years",
+        horizon:
+          "exactly three bands: 2, 5 and 10 years. Each band describes where this company's industry and buyers are heading, backed by a source. Never describe what Trust Tai would build, and never write generic futurism.",
       },
+
     },
   });
 }
@@ -272,8 +319,20 @@ export async function* runRoadmapResearch(
     yield { stage: "error", message: "You do not have access to this workspace." };
     return;
   }
+  yield* researchSubject(input);
+}
 
+/**
+ * The research pass itself, with the authorization gate already cleared.
+ * Exported so an offline acceptance harness can exercise the exact prompting,
+ * parsing and evidence rules the live route uses, without a database.
+ */
+export async function* researchSubject(
+  input: Omit<ResearchInput, "token" | "organizationId"> &
+    Partial<Pick<ResearchInput, "token" | "organizationId">>,
+): AsyncGenerator<ResearchStage> {
   yield { stage: "reading", message: `Reading what we already know about ${input.subjectLabel}` };
+
   yield { stage: "searching", message: `Researching ${input.subjectLabel}` };
   yield { stage: "searching", message: "Studying the market and competitors" };
 
@@ -307,7 +366,7 @@ export async function* runRoadmapResearch(
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
+    parsed = extractJsonObject(raw);
   } catch {
     yield {
       stage: "error",
@@ -383,8 +442,16 @@ export async function askRoadmap(input: AskInput): Promise<AskResult> {
   if (!(await requireMembership(supabase, input.organizationId))) {
     throw new Error("You do not have access to this workspace.");
   }
+  return answerRoadmapQuestion(input);
+}
 
+/** The answering itself, once authorization has been cleared. */
+export async function answerRoadmapQuestion(
+  input: Omit<AskInput, "token" | "organizationId"> &
+    Partial<Pick<AskInput, "token" | "organizationId">>,
+): Promise<AskResult> {
   const fresh = input.research === true;
+
   const instructions = [
     "You answer questions about one business and you return json.",
     fresh
@@ -416,7 +483,7 @@ export async function askRoadmap(input: AskInput): Promise<AskResult> {
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
+    parsed = extractJsonObject(raw);
   } catch {
     throw new Error("Roadmap could not read the answer. Nothing was stored.");
   }

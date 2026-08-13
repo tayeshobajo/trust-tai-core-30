@@ -252,10 +252,14 @@ export function normalizeStrategy(raw: unknown, provenance: ResearchProvenance):
           return {
             years: (years === 10 ? 10 : years === 5 ? 5 : 2) as 2 | 5 | 10,
             statement,
-            tier: sources.length > 0 ? "observed" : "inferred",
+            // A horizon band is a statement about the future, so it can never
+            // be Observed however well sourced it is. The sources back the
+            // direction; they do not make it already true.
+            tier: "inferred",
             confidence: confidence(entry["confidence"], sources),
             sources,
           };
+
         })
         .filter((band): band is HorizonBand => band !== null)
         .sort((a, b) => a.years - b.years)
