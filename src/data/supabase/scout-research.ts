@@ -17,6 +17,8 @@ import { evaluateScoutFit, storedEvaluation, withOverride } from "@/data/scout-f
 import type { ProspectRow, Row } from "./schema";
 import { toProspect } from "./prospects";
 import { readCompanyIdentity } from "@/lib/company-identity";
+import { readResearchHistory } from "@/data/prospect-modules";
+
 
 /** Raw payload returned by the Edge Function. */
 export interface ScoutResearchPayload {
