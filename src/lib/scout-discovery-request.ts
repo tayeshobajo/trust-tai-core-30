@@ -202,6 +202,10 @@ export function discoveryInstructions(icp: string, calibration: string, limit: n
     "7. Thin public evidence lowers confidence and can never be green.",
     "8. Give a concise reasoning summary of the conclusion and its evidence. Do not output step-by-step deliberation.",
     "9. Do not judge how reachable a decision maker is; reachability is assessed separately from fit.",
+    "10. BUYING SIGNALS: record public, dated reasons this company might be buying now (hiring, funding, expansion, leadership change, rebrand, launch, press). Each needs a source URL, and a date when the page states one. Return an empty array rather than guessing.",
+    "11. DIGITAL OPPORTUNITIES: state problems Trust Tai could fix that you actually observed on their public site — dated design, weak conversion path, broken functionality, thin or stale content, obviously old technology, missing accessibility basics. `evidence` must describe what you saw, not what you assume. Never claim a performance or security audit you did not run.",
+    "12. PEOPLE: only name people who appear on public pages (team, about, leadership, press). Include their role and the page you read them from, and set `decision_maker_likelihood` from the role's relationship to a website or technology decision. NEVER guess or pattern-build an email address; leave email null unless the address is published.",
+    "13. Every one of these arrays may be empty. An empty array means 'not established', which is materially more useful than an invented entry.",
   ].join("\n");
 }
 
