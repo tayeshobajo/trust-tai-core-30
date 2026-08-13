@@ -4,6 +4,10 @@
  * A persistent question box over one business. Answers are grounded in stored
  * evidence: facts repeat their sources, reasoning is labelled as reasoning, and
  * anything the evidence does not cover comes back as an unknown.
+ *
+ * Fresh web research is a separate, deliberate action. Asking a question never
+ * quietly triggers a search, because a stored answer and a newly researched one
+ * are not the same kind of claim.
  */
 
 import { useState } from "react";
@@ -23,7 +27,7 @@ export function AskPanel({
   answers: AskAnswer[];
   pending: boolean;
   error: string | null;
-  onAsk: (question: string) => void;
+  onAsk: (question: string, research: boolean) => void;
 }) {
   const [question, setQuestion] = useState("");
 
@@ -35,7 +39,7 @@ export function AskPanel({
         onSubmit={(event) => {
           event.preventDefault();
           if (!question.trim()) return;
-          onAsk(question.trim());
+          onAsk(question.trim(), false);
           setQuestion("");
         }}
       >
@@ -48,7 +52,24 @@ export function AskPanel({
         <TTButton type="submit" disabled={pending || question.trim().length === 0}>
           {pending ? "Thinking…" : "Ask"}
         </TTButton>
+        <TTButton
+          type="button"
+          variant="secondary"
+          disabled={pending || question.trim().length === 0}
+          onClick={() => {
+            if (!question.trim()) return;
+            onAsk(question.trim(), true);
+            setQuestion("");
+          }}
+        >
+          Research this question
+        </TTButton>
       </form>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Answers come from what we already hold. Research this question when you want Roadmap to go
+        back to the web for it.
+      </p>
+
 
       {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
 
