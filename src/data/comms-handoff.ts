@@ -12,8 +12,15 @@ import type {
   HandoffContextItem,
   HandoffDraft,
   HandoffIntent,
+  HandoffTarget,
 } from "@/domain/comms-handoff";
-import { isCommsReady, isDecisionMaker, type Person } from "@/domain/people";
+import {
+  EMAIL_STATUS_LABEL,
+  SENIORITY_LABEL,
+  isCommsReady,
+  isDecisionMaker,
+  type Person,
+} from "@/domain/people";
 import type { ResearchCoverage } from "@/domain/prospect-modules";
 import type { ProspectCandidate } from "@/domain/scout";
 
@@ -42,6 +49,43 @@ function toHandoffContact(person: Person): HandoffContact {
     ...(person.emailCheckedAt ? { emailCheckedAt: person.emailCheckedAt } : {}),
     reachable: person.emailStatus === "verified",
   };
+}
+
+/**
+ * Who Comms could actually open with.
+ *
+ * Only decision-makers and founders are offered, ranked by whether the address
+ * has been verified. Anyone unreachable still appears, but carries the reason
+ * they cannot be written to yet — Scout never quietly drops a person.
+ */
+export function selectTargets(people: Person[]): HandoffTarget[] {
+  const deciders = people.filter(isDecisionMaker);
+  const ranked = [...deciders].sort((a, b) => weight(b) - weight(a));
+
+  return ranked.map((person, index) => {
+    const role = person.roleTitle ?? SENIORITY_LABEL[person.seniority];
+    const blocker = !person.email
+      ? "No business email is on record."
+      : person.emailStatus !== "verified"
+        ? `${EMAIL_STATUS_LABEL[person.emailStatus]} — nobody has confirmed this address.`
+        : undefined;
+
+    return {
+      ...toHandoffContact(person),
+      rank: index === 0 && isCommsReady(person) ? "primary" : "alternate",
+      why: `${role}${person.confidence === "human_confirmed" ? ", confirmed by a Trust Tai member" : `, read from ${person.sourceId.replace(/-/g, " ")}`}.`,
+      ...(blocker ? { blocker } : {}),
+    };
+  });
+}
+
+function weight(person: Person): number {
+  return (
+    (isCommsReady(person) ? 8 : 0) +
+    (person.emailStatus === "verified" ? 4 : person.email ? 2 : 0) +
+    (person.seniority === "founder" || person.seniority === "owner" ? 2 : 0) +
+    (person.confidence === "human_confirmed" ? 1 : 0)
+  );
 }
 
 /** Intent follows the evidence, not enthusiasm. */
@@ -102,6 +146,7 @@ export interface HandoffInput {
 export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
   const { candidate, people, coverage, fitConfidence } = input;
   const { prospect, evaluation } = candidate;
+  const targets = selectTargets(people);
   const person = chooseContact(people);
   const { intent, because } = chooseIntent(candidate, coverage);
 
@@ -150,6 +195,13 @@ export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
   }
 
   const blockers: string[] = [];
+  if (targets.length === 0) {
+    blockers.push(
+      people.length > 0
+        ? "Nobody on record is a founder or decision maker."
+        : "No named person is on record to address.",
+    );
+  }
   if (!person) blockers.push("No named person is on record to address.");
   if (person && !person.roleTitle) blockers.push(`No role is recorded for ${person.fullName}.`);
   if (person && !person.email) blockers.push(`No business email is on record for ${person.fullName}.`);
@@ -186,6 +238,7 @@ export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
     companyName: prospect.name,
     ...(prospect.websiteUrl ? { websiteUrl: prospect.websiteUrl } : {}),
     contact: person ? toHandoffContact(person) : null,
+    targets,
     intent,
     intentBecause: because,
     requiredContext,
