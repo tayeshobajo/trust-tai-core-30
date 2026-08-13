@@ -163,6 +163,16 @@ const PREVIEW_ENTRIES: Omit<ProspectCandidate, "source" | "evaluation" | "lastCh
 export const PREVIEW_CANDIDATES: ProspectCandidate[] = PREVIEW_ENTRIES.map((entry) => ({
   ...entry,
   source: PREVIEW_SOURCE,
+  // Preview rows are never scored against the live evidence model.
+  evaluation: evaluateScoutFit({
+    observed: [],
+    inferred: {},
+    suggested: {},
+    scoreable: false,
+    icpVersion: null,
+    at: entry.prospect.updatedAt ?? entry.prospect.createdAt,
+  }),
+  lastCheckedAt: entry.prospect.updatedAt ?? entry.prospect.createdAt,
 }));
 
 export function rankPreviewCandidates(query: string): ProspectCandidate[] {
