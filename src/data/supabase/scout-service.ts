@@ -27,6 +27,7 @@ import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 
 import { supabaseActivity } from "./activities";
+import { fetchCompanyIdentity } from "./company-identity";
 import { getCurrentIcp, type IcpProfile } from "./icp";
 import {
   SCOUT_LIVE_SOURCE,
@@ -181,6 +182,10 @@ export const scoutService = {
     const icp = await getCurrentIcp(request.organizationId);
     const payload = await researchWebsite(websiteUrl);
 
+    // Identity enrichment is non-blocking: a failure never stops the save, and
+    // nothing is written unless the company's own site really declared it.
+    const identity = await fetchCompanyIdentity(payload.website_url || websiteUrl);
+
     const existing = await findProspectRowByWebsite(request.organizationId, websiteUrl);
     const evaluation = evaluateScoutFit({
       observed: payload.observed ?? [],
@@ -205,7 +210,7 @@ export const scoutService = {
         icpVersion: icp?.version ?? null,
       }),
       fitScore: evaluation.score,
-      metadata: { scout_fit: evaluation },
+      metadata: { scout_fit: evaluation, ...(identity ? { identity } : {}) },
       existing,
     });
 
