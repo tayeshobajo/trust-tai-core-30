@@ -276,7 +276,7 @@ describe("email status and human confirmation", () => {
 
   it("records a provider verdict against the provider, not the person", async () => {
     const provider = stubProvider("test-source", []);
-    provider.verifyEmail = async () => ({ status: "bounced" as const });
+    provider.verifyEmail = async (email: string) => ({ email, status: "bounced" as const });
 
     const person = await peopleService.addManual(
       { prospectId: PROSPECT_ID, fullName: "Ada Rowe", email: "ada@northbeam.example" },
