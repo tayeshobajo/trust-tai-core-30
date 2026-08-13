@@ -129,8 +129,28 @@ describe("buildHandoffDraft", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 
+  const coverage = {
+    pages: 6,
+    checked: [
+      { key: "team", label: "Team page", reached: true },
+      { key: "contact", label: "Contact page", reached: true },
+    ],
+    percent: 80,
+    note: "Team and contact pages were reached.",
+    thin: false,
+  };
+
+  const fitConfidence = {
+    level: "high" as const,
+    because: "Scored against live evidence from six pages.",
+    evidence: [],
+  };
+
+  const draftFor = (people: Person[]) =>
+    buildHandoffDraft({ candidate, people, coverage, fitConfidence });
+
   it("is ready when a verified decision maker exists", () => {
-    const draft = buildHandoffDraft(candidate, [FOUNDER_VERIFIED]);
+    const draft = draftFor([FOUNDER_VERIFIED]);
 
     expect(draft.contact?.fullName).toBe("Ada Rowe");
     expect(draft.targets[0]?.rank).toBe("primary");
@@ -138,23 +158,23 @@ describe("buildHandoffDraft", () => {
   });
 
   it("blocks the handoff when nobody on record can decide", () => {
-    const draft = buildHandoffDraft(candidate, [MARKETING]);
+    const draft = draftFor([MARKETING]);
 
     expect(draft.targets).toHaveLength(0);
     expect(draft.blockers.join(" ")).toMatch(/founder or decision maker/i);
   });
 
   it("blocks the handoff when no people have been found yet", () => {
-    const draft = buildHandoffDraft(candidate, []);
+    const draft = draftFor([]);
 
     expect(draft.contact).toBeNull();
     expect(draft.blockers.length).toBeGreaterThan(0);
   });
 
   it("carries the reasoning Comms needs, not just a name", () => {
-    const draft = buildHandoffDraft(candidate, [FOUNDER_VERIFIED]);
+    const draft = draftFor([FOUNDER_VERIFIED]);
 
     expect(draft.intentBecause).toBeTruthy();
-    expect(draft.context.length).toBeGreaterThan(0);
+    expect(draft.requiredContext.length).toBeGreaterThan(0);
   });
 });
