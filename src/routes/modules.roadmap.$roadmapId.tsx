@@ -372,28 +372,74 @@ function RoadmapWorkspace({
     onError: fail,
   });
 
+  /**
+   * Studio composition. The server builds an approved evidence packet, asks the
+   * model to express only that packet, then validates the result back against
+   * it. Nothing here can add a fact, and a hand edited document is only
+   * replaced when someone explicitly says so.
+   */
   const compose = useMutation({
-    mutationFn: async (kind: "preview" | "full") => {
+    mutationFn: async ({ kind, replace }: { kind: "preview" | "full"; replace?: boolean }) => {
       const detail = detailQuery.data;
       const intel = intelQuery.data;
       if (!detail || !intel) throw new Error("There is nothing to compose yet.");
-      const input = {
-        subjectLabel: detail.roadmap.subjectLabel,
-        strategy: intel.strategy,
-        milestones: intel.milestones,
-      };
-      const sections = kind === "preview" ? composePreview(input) : composeFull(input);
+      setStudioStage("Starting");
+
+      const response = await fetch("/api/public/roadmap/studio", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await accessToken()}`,
+        },
+        body: JSON.stringify({
+          organization_id: identity.organizationId,
+          subject_label: detail.roadmap.subjectLabel,
+          kind,
+          strategy: intel.strategy,
+          milestones: intel.milestones,
+        }),
+      });
+
+      const payload = await readNdjsonStream(response, (stage) => setStudioStage(stage.message));
+      if (!payload) throw new Error("Studio returned nothing. Nothing was saved.");
+
+      const sections = (payload["sections"] ?? []) as ArtifactSection[];
       return roadmapIntel.saveArtifact(
         intelContext,
         roadmapId,
         kind,
         `${detail.roadmap.subjectLabel} roadmap`,
         sections,
+        {
+          provider: String(payload["provider"] ?? "unknown"),
+          model: String(payload["model"] ?? "unknown"),
+          rejected: (payload["rejected"] ?? []) as {
+            section: string;
+            line: string;
+            reason: string;
+          }[],
+          replaceHumanEdits: replace === true,
+        },
       );
     },
+    onSettled: () => setStudioStage(null),
     onSuccess: refresh,
     onError: fail,
   });
+
+  /** A human edit to the composed document. Decided truth, so it is protected. */
+  const editArtifact = useMutation({
+    mutationFn: async ({
+      artifact,
+      sections,
+    }: {
+      artifact: RoadmapArtifact;
+      sections: ArtifactSection[];
+    }) => roadmapIntel.editArtifact(intelContext, artifact, sections),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
 
   const walkthrough = useMutation({
     mutationFn: async (
