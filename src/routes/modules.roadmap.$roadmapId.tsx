@@ -249,12 +249,12 @@ function RoadmapWorkspace({
                 >
                   Delete permanently
                 </TTButton>
-                <TTButton variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                <TTButton variant="quiet" onClick={() => setConfirmingDelete(false)}>
                   Keep it
                 </TTButton>
               </>
             ) : (
-              <TTButton variant="ghost" onClick={() => setConfirmingDelete(true)}>
+              <TTButton variant="quiet" onClick={() => setConfirmingDelete(true)}>
                 Delete
               </TTButton>
             )}
