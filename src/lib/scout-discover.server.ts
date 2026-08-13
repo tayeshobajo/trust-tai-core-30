@@ -333,6 +333,25 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
   const finishedAt = new Date().toISOString();
   let savedCount = 0;
 
+  // `prospectId|name` keys already on record, so re-running a query never
+  // duplicates a person who was already saved.
+  const existingContacts = new Set<string>();
+  {
+    const { data: contactRows } = await supabase
+      .from("contacts")
+      .select("full_name, metadata")
+      .eq("organization_id", orgId);
+    for (const row of contactRows ?? []) {
+      const meta = ((row["metadata"] ?? {}) as Record<string, unknown>)["people"] as
+        | Record<string, unknown>
+        | undefined;
+      const pid = meta?.["prospect_id"];
+      const name = String(row["full_name"] ?? "").trim().toLowerCase();
+      if (typeof pid === "string" && name) existingContacts.add(`${pid}|${name}`);
+    }
+  }
+
+
   for (const { domain, candidate } of accepted) {
     const fit = candidate.icp_fit ?? {};
     const score = Math.max(0, Math.min(100, Number(fit.score ?? 0)));
