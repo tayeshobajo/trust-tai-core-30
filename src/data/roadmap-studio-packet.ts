@@ -106,35 +106,33 @@ function observedFacts(research: RoadmapResearch | null | undefined): PacketFact
   if (!research || research.status !== "complete") return [];
 
   const groups: [string, ResearchClaim[]][] = [
-    ["company", research.companyModel],
+    ["company model", research.companyModel],
     ["buyers", research.buyers],
-    ["strength", research.strengths],
-    ["presence", research.digitalPresence],
-    ["market", research.marketDirection],
+    ["strengths", research.strengths],
+    ["digital presence", research.digitalPresence],
+    ["market direction", research.marketDirection],
   ];
 
   const facts: PacketFact[] = [];
+  const add = (statement: string, because: string, sources: SourceRef[]) => {
+    facts.push({ key: `research:fact:${facts.length + 1}`, statement, because, sources });
+  };
+
   for (const [group, claims] of groups) {
-    claims.forEach((claim, index) => {
-      if (claim.tier !== "observed" || claim.sources.length === 0) return;
-      facts.push({
-        key: `observed:${group}:${index + 1}`,
-        statement: claim.statement,
-        because: `Observed in research, ${claim.confidence} confidence.`,
-        sources: claim.sources,
-      });
-    });
+    for (const claim of claims) {
+      if (claim.tier !== "observed" || claim.sources.length === 0) continue;
+      add(claim.statement, `Observed research, ${group}, ${claim.confidence} confidence.`, claim.sources);
+    }
   }
 
-  research.competitors.forEach((competitor, index) => {
-    if (competitor.tier !== "observed" || competitor.sources.length === 0) return;
-    facts.push({
-      key: `observed:competitor:${index + 1}`,
-      statement: `${competitor.name}: ${competitor.positioning}`,
-      because: "Observed in competitor research.",
-      sources: competitor.sources,
-    });
-  });
+  for (const competitor of research.competitors) {
+    if (competitor.tier !== "observed" || competitor.sources.length === 0) continue;
+    add(
+      `${competitor.name}: ${competitor.positioning}`,
+      "Observed research, competitors.",
+      competitor.sources,
+    );
+  }
 
   return facts;
 }
@@ -143,21 +141,26 @@ function isApprovedItem(item: StrategyItem | null | undefined): boolean {
   return Boolean(item && item.approval === "approved" && item.tier === "decided");
 }
 
-function toFact(item: StrategyItem): PacketFact {
+/**
+ * Support keys are namespaced so a client sentence can be walked back to the
+ * exact kind of truth behind it: approved strategy, observed research, or an
+ * approved milestone. A bare item key would be ambiguous across roadmaps.
+ */
+function toFact(item: StrategyItem, group: string): PacketFact {
   return {
-    key: item.key,
+    key: `strategy:${group}:${item.key}`,
     statement: item.statement,
     because: item.because,
     sources: item.sources,
   };
 }
 
-function approvedFacts(items: StrategyItem[]): PacketFact[] {
-  return items.filter(isApprovedItem).map(toFact);
+function approvedFacts(items: StrategyItem[], group: string): PacketFact[] {
+  return items.filter(isApprovedItem).map((item) => toFact(item, group));
 }
 
-function approvedFact(item: StrategyItem | null | undefined): PacketFact | null {
-  return isApprovedItem(item) ? toFact(item as StrategyItem) : null;
+function approvedFact(item: StrategyItem | null | undefined, group: string): PacketFact | null {
+  return isApprovedItem(item) ? toFact(item as StrategyItem, group) : null;
 }
 
 /**
@@ -167,13 +170,13 @@ function approvedFact(item: StrategyItem | null | undefined): PacketFact | null 
 export function buildEvidencePacket(input: PacketInput): EvidencePacket {
   const strategy = input.strategy;
   const observed = observedFacts(input.research);
-  const pointA = approvedFacts(strategy?.pointA ?? []);
-  const anchorProof = approvedFacts(strategy?.anchorProof ?? []);
-  const gaps = approvedFacts(strategy?.gaps ?? []);
-  const centralTruth = approvedFact(strategy?.centralTruth);
-  const leveragePoint = approvedFact(strategy?.leveragePoint);
-  const pointB = approvedFact(strategy?.pointB);
-  const pointC = approvedFact(strategy?.pointC);
+  const pointA = approvedFacts(strategy?.pointA ?? [], "point_a");
+  const anchorProof = approvedFacts(strategy?.anchorProof ?? [], "anchor");
+  const gaps = approvedFacts(strategy?.gaps ?? [], "gap");
+  const centralTruth = approvedFact(strategy?.centralTruth, "central_truth");
+  const leveragePoint = approvedFact(strategy?.leveragePoint, "leverage");
+  const pointB = approvedFact(strategy?.pointB, "point_b");
+  const pointC = approvedFact(strategy?.pointC, "point_c");
 
   const milestones: PacketMilestone[] =
     input.kind === "full"
@@ -223,7 +226,7 @@ export function buildEvidencePacket(input: PacketInput): EvidencePacket {
       ...(pointC ? [pointC] : []),
       ...observed,
     ].map((fact) => fact.key),
-    ...milestones.map((milestone) => milestone.id),
+    ...milestones.map((milestone) => `milestone:${milestone.id}`),
   ];
 
   const missing: string[] = [];
@@ -427,6 +430,36 @@ export function packetSummary(packet: EvidencePacket): PacketSummary {
   };
 }
 
+/**
+ * Every packet fact and milestone, indexed by the support key that names it.
+ * Studio's evidence disclosure reads this so a reader can see the fact behind
+ * a page rather than only the count of them.
+ */
+export function packetFactIndex(packet: EvidencePacket): Map<string, PacketFact> {
+  const index = new Map<string, PacketFact>();
+  for (const fact of [
+    ...packet.pointA,
+    ...packet.anchorProof,
+    ...packet.gaps,
+    ...packet.observed,
+    ...(packet.centralTruth ? [packet.centralTruth] : []),
+    ...(packet.leveragePoint ? [packet.leveragePoint] : []),
+    ...(packet.pointB ? [packet.pointB] : []),
+    ...(packet.pointC ? [packet.pointC] : []),
+  ]) {
+    index.set(fact.key, fact);
+  }
+  for (const milestone of packet.milestones) {
+    index.set(`milestone:${milestone.id}`, {
+      key: `milestone:${milestone.id}`,
+      statement: `${milestone.sequence}. ${milestone.name}`,
+      because: milestone.whatWeBuild,
+      sources: milestone.sources,
+    });
+  }
+  return index;
+}
+
 export const NOT_READY_LINE =
   "Not ready. The approved evidence does not support this page yet.";
 
@@ -516,7 +549,28 @@ export function validateSections(
       }
     }
 
-    const unlocks = (section.unlocks ?? []).map(normalizeVoice).filter(Boolean);
+    /**
+     * "What it unlocks" is a client facing claim like any other, so it obeys
+     * the same rule: name the evidence or do not ship the line.
+     */
+    const unlocks: string[] = [];
+    for (const raw of section.unlocks ?? []) {
+      const line = normalizeVoice(raw);
+      if (!line) continue;
+      const keys = (stated.get(line) ?? []).filter((key) => known.has(key));
+      if (keys.length === 0) {
+        rejected.push({
+          section: section.key,
+          line,
+          reason: "No approved or observed evidence was cited for this claim.",
+          severity: "unsupported",
+        });
+        continue;
+      }
+      unlocks.push(line);
+      support.push({ line, keys: [...new Set(keys)] });
+    }
+
     const empty = body.length === 0;
     const supportKeys = [...new Set(support.flatMap((entry) => entry.keys))];
 

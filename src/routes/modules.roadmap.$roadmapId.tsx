@@ -36,6 +36,7 @@ import {
 } from "@/components/tt/roadmap/roadmap-tabs";
 import { StrategyView } from "@/components/tt/roadmap/strategy-view";
 import { StudioView } from "@/components/tt/roadmap/studio-view";
+import { readRoadmapBrand } from "@/data/supabase/roadmap-brand";
 import { TierChip } from "@/components/tt/roadmap/tier";
 import { WalkthroughView } from "@/components/tt/roadmap/walkthrough-view";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -410,6 +411,8 @@ function RoadmapWorkspace({
       if (!payload) throw new Error("Studio returned nothing. Nothing was saved.");
 
       const sections = (payload["sections"] ?? []) as ArtifactSection[];
+      // Only a validated logo or brand colour travels into the document.
+      const brand = await readRoadmapBrand(detail.roadmap);
       return roadmapIntel.saveArtifact(
         intelContext,
         roadmapId,
@@ -424,6 +427,7 @@ function RoadmapWorkspace({
             line: string;
             reason: string;
           }[],
+          ...(brand ? { brand } : {}),
           replaceHumanEdits: replace === true,
         },
       );
