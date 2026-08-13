@@ -330,7 +330,50 @@ describe("studio", () => {
     await roadmapIntel.saveArtifact(CONTEXT, ROADMAP, "full", "Full", sections);
     expect(db.tables["roadmap_artifacts"]).toHaveLength(2);
   });
+
+  it("keeps the provider and model that wrote the document", async () => {
+    const artifact = await roadmapIntel.saveArtifact(CONTEXT, ROADMAP, "preview", "P", sections, {
+      provider: "openai",
+      model: "gpt-5-mini",
+      rejected: [{ section: "title", line: "42% growth", reason: "Not in the packet." }],
+    });
+    expect(artifact.provider).toBe("openai");
+    expect(artifact.rejected).toHaveLength(1);
+    expect(artifact.humanEdited).toBe(false);
+  });
+
+  it("a hand edit sticks and blocks a silent regeneration", async () => {
+    const artifact = await roadmapIntel.saveArtifact(CONTEXT, ROADMAP, "preview", "P", sections);
+    const edited = await roadmapIntel.editArtifact(CONTEXT, artifact, [
+      { ...sections[0]!, body: ["Written by a person."] },
+    ]);
+    expect(edited.humanEdited).toBe(true);
+    expect(edited.editedAt).toBeTruthy();
+
+    await expect(
+      roadmapIntel.saveArtifact(CONTEXT, ROADMAP, "preview", "P", sections),
+    ).rejects.toThrow(/edited by hand/i);
+  });
+
+  it("an explicit replace overrides the hand edited document", async () => {
+    const artifact = await roadmapIntel.saveArtifact(CONTEXT, ROADMAP, "preview", "P", sections);
+    await roadmapIntel.editArtifact(CONTEXT, artifact, [
+      { ...sections[0]!, body: ["Written by a person."] },
+    ]);
+    const replaced = await roadmapIntel.saveArtifact(
+      CONTEXT,
+      ROADMAP,
+      "preview",
+      "Replaced",
+      sections,
+      { replaceHumanEdits: true },
+    );
+    expect(replaced.title).toBe("Replaced");
+    expect(replaced.humanEdited).toBe(false);
+    expect(db.tables["roadmap_artifacts"]).toHaveLength(1);
+  });
 });
+
 
 describe("walkthrough", () => {
   it("captures entries in the room, attributed and timestamped", async () => {
