@@ -339,7 +339,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     const provenance = {
       app_id: "scout",
       source: DISCOVERY_SOURCE,
-      provider: "lovable",
+      provider: providerName,
       model,
       evaluator_version: SCOUT_DISCOVERY_EVALUATOR_VERSION,
       icp_version: icpVersion,
@@ -415,7 +415,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
       discovery_run_id: runId,
       evaluator: "scout-discover",
       evaluator_version: SCOUT_DISCOVERY_EVALUATOR_VERSION,
-      provider: "lovable",
+      provider: providerName,
       model,
       icp_version: icpVersion,
       score,
@@ -463,7 +463,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
         result_count: savedCount,
         finished_at: finishedAt,
         response_meta: {
-          provider: "lovable",
+          provider: providerName,
           model,
           returned: candidates.length,
           accepted: accepted.length,
