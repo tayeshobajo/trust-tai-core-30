@@ -80,7 +80,9 @@ function instructions(): string {
     "You may not introduce a new fact, figure, timeline, budget, commitment, market claim, or promised outcome.",
     "If the packet does not support a page, write that it is not ready rather than inventing it.",
     "Cite only source urls that appear in the packet.",
-    "Every paragraph must name the packet keys it rests on in support_keys. Use approved fact keys, observed fact keys, or approved milestone ids.",
+    "Every paragraph must name the packet keys it rests on in support_keys, copied exactly from support_keys_available.",
+    "Keys look like strategy:point_a:<key>, strategy:anchor:<key>, strategy:gap:<key>, research:fact:<n> or milestone:<id>.",
+    "Each entry in unlocks is also an object with text and support_keys. Captions and visual directions must carry no factual claim.",
     "A paragraph with no real support key is dropped, so ground every claim rather than writing an unsourced flourish.",
     "Observed research is factual background only. It may support a sentence. It is never presented as decided direction.",
     VOICE,
@@ -120,7 +122,9 @@ function payload(packet: EvidencePacket): string {
           sources: [{ label: "", url: "", checked_at: "" }],
           visual_direction: "how this page should look, in one or two sentences",
           caption: "optional short caption",
-          unlocks: ["milestone pages only: what it unlocks now", "and what it compounds into"],
+          unlocks: [
+            { text: "milestone pages only: what it unlocks now", support_keys: ["milestone:<id>"] },
+          ],
         },
       ],
     },
@@ -178,6 +182,24 @@ function sectionsFrom(value: unknown): ArtifactSection[] {
         : [];
       if (line) support.push({ line, keys });
     }
+    /** Unlocks arrive the same way paragraphs do: text plus its support keys. */
+    const unlocks: string[] = [];
+    for (const value of Array.isArray(row["unlocks"]) ? row["unlocks"] : []) {
+      if (typeof value === "string") {
+        if (value.trim()) unlocks.push(value.trim());
+        continue;
+      }
+      if (!value || typeof value !== "object") continue;
+      const entry = value as Record<string, unknown>;
+      const text = String(entry["text"] ?? "").trim();
+      if (!text) continue;
+      unlocks.push(text);
+      const keys = Array.isArray(entry["support_keys"])
+        ? entry["support_keys"].map(String).filter(Boolean)
+        : [];
+      if (keys.length > 0) support.push({ line: text, keys });
+    }
+
     const visual = row["visual_direction"] ?? row["visualDirection"];
     return {
       key: String(row["key"] ?? row["title"] ?? "section"),
@@ -190,7 +212,7 @@ function sectionsFrom(value: unknown): ArtifactSection[] {
       ...(typeof row["caption"] === "string" && row["caption"].trim()
         ? { caption: row["caption"].trim() }
         : {}),
-      ...(Array.isArray(row["unlocks"]) ? { unlocks: row["unlocks"].map(String) } : {}),
+      ...(unlocks.length > 0 ? { unlocks } : {}),
     };
   });
 }
