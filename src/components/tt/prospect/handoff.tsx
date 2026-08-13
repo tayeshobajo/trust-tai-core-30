@@ -1,97 +1,160 @@
 /**
- * Handoff readiness — the checklist that gates Comms.
+ * Handoff to Comms.
  *
- * Every line is derived from stored evidence, never asserted. Nothing here
- * sends anything.
+ * A brief, not a message: who to contact, what the conversation is for, and
+ * the context Comms cannot work without. Every line is derived from stored
+ * evidence and carries its tier. Nothing here sends anything.
  */
 
+import { useMemo, useState } from "react";
+
+import { buildHandoffDraft } from "@/data/comms-handoff";
+import type { ConfidenceRead } from "@/domain/confidence";
+import { HANDOFF_INTENT_LABEL, type HandoffDraft } from "@/domain/comms-handoff";
+import { EMAIL_STATUS_LABEL, type Person } from "@/domain/people";
+import type { ModuleEmphasis, ResearchCoverage } from "@/domain/prospect-modules";
 import type { ProspectCandidate } from "@/domain/scout";
-import type { ResearchCoverage } from "@/domain/prospect-modules";
+import { TTButton } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
 
-import { Panel, TierTag } from "./panel";
+import { ConfidenceChip, EvidenceLinks, Panel, TierTag } from "./panel";
 
-interface Check {
-  label: string;
-  ready: boolean;
-  note: string;
-}
+const TIER_LABEL = { fact: "Read", inference: "Inferred", decision: "Decided" } as const;
 
 export function HandoffPanel({
   candidate,
   coverage,
-  contactCount,
+  people,
+  fitConfidence,
+  onRoute,
+  routed,
+  busy,
+  emphasis,
 }: {
   candidate: ProspectCandidate;
   coverage: ResearchCoverage;
-  contactCount: number;
+  people: Person[];
+  fitConfidence: ConfidenceRead;
+  onRoute: (draft: HandoffDraft) => void;
+  /** True once this company has already been carried across to Comms. */
+  routed: boolean;
+  busy?: boolean | undefined;
+  emphasis?: ModuleEmphasis | undefined;
 }) {
-  const { evaluation, prospect } = candidate;
-  const decisionMaker =
-    contactCount > 0 ||
-    evaluation.criteria.some((c) => c.key === "decision_maker" && c.state === "met");
-
-  const checks: Check[] = [
-    {
-      label: "ICP fit is understood",
-      ready: evaluation.scoreable && evaluation.light !== "neutral",
-      note: evaluation.scoreable
-        ? `Scored ${evaluation.score}% against ICP v${evaluation.icpVersion ?? "—"}.`
-        : "This record has never been scored against live evidence.",
-    },
-    {
-      label: "Research is deep enough",
-      ready: !coverage.thin,
-      note: coverage.note,
-    },
-    {
-      label: "A decision maker is named",
-      ready: decisionMaker,
-      note: decisionMaker
-        ? "A named person with a role is on record."
-        : "No named person with a role has been read yet.",
-    },
-    {
-      label: "A verified business email exists",
-      ready: false,
-      note: "Contact verification is not wired yet, so no email can be called reachable.",
-    },
-  ];
-
-  const ready = checks.filter((check) => check.ready).length;
+  const [open, setOpen] = useState(false);
+  const draft = useMemo(
+    () => buildHandoffDraft({ candidate, people, coverage, fitConfidence }),
+    [candidate, people, coverage, fitConfidence],
+  );
 
   return (
     <Panel
       eyebrow="Handoff"
-      title="Readiness for Comms"
-      description={`${ready} of ${checks.length} conditions met. ${prospect.name} moves only when a person can be carried across.`}
-      aside={<TierTag tier="decision" />}
+      title={routed ? "Already carried to Comms" : "Prepare the Comms brief"}
+      description={
+        routed
+          ? `${draft.companyName} has been handed over. Comms holds the context; a person still writes the message.`
+          : draft.ready
+            ? `${draft.companyName} can be carried across with its context intact.`
+            : `${draft.blockers.length} thing${draft.blockers.length === 1 ? "" : "s"} still stand${draft.blockers.length === 1 ? "s" : ""} in the way.`
+      }
+      aside={
+        <div className="flex items-center gap-2">
+          <ConfidenceChip level={draft.confidence.level} />
+          <TierTag tier="decision" />
+        </div>
+      }
+      {...(emphasis ? { emphasis } : {})}
     >
-      <ul className="space-y-3">
-        {checks.map((check) => (
-          <li key={check.label} className="flex gap-3 border-b border-border pb-3 last:border-b-0 last:pb-0">
-            <span
-              aria-hidden
-              className={cn(
-                "mt-1.5 size-1.5 shrink-0 rounded-full",
-                check.ready ? "bg-success" : "bg-border",
-              )}
-            />
-            <div className="min-w-0">
-              <p className="text-[13px] text-foreground">
-                {check.label}
-                <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  {check.ready ? "Ready" : "Not yet"}
-                </span>
+      <div className="space-y-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-lg border border-border bg-background p-4">
+            <p className="tt-eyebrow">Who to contact</p>
+            {draft.contact ? (
+              <>
+                <p className="mt-1.5 text-sm text-foreground">
+                  {draft.contact.fullName}
+                  {draft.contact.roleTitle ? (
+                    <span className="text-muted-foreground"> · {draft.contact.roleTitle}</span>
+                  ) : null}
+                </p>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  {draft.contact.email ?? "No email on record"}
+                  <span
+                    className={cn(
+                      "ml-2 font-mono text-[10px] uppercase tracking-[0.14em]",
+                      draft.contact.reachable ? "text-success" : "text-muted-foreground",
+                    )}
+                  >
+                    {EMAIL_STATUS_LABEL[draft.contact.emailStatus]}
+                  </span>
+                </p>
+              </>
+            ) : (
+              <p className="mt-1.5 text-[13px] text-muted-foreground">
+                Nobody is named yet. Comms cannot open without a person.
               </p>
-              <p className="mt-0.5 text-[13px] text-muted-foreground">{check.note}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-        Nothing is sent automatically.
-      </p>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-border bg-background p-4">
+            <p className="tt-eyebrow">Message intent</p>
+            <p className="mt-1.5 text-sm text-foreground">
+              {HANDOFF_INTENT_LABEL[draft.intent]}
+            </p>
+            <p className="mt-1 text-[13px] text-muted-foreground">{draft.intentBecause}</p>
+          </div>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            className="tt-eyebrow underline decoration-border underline-offset-4 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Required context · {draft.requiredContext.length} items
+          </button>
+          {open ? (
+            <ul className="mt-3 space-y-3">
+              {draft.requiredContext.map((item, index) => (
+                <li
+                  key={`${item.label}-${index}`}
+                  className="border-b border-border pb-3 last:border-b-0 last:pb-0"
+                >
+                  <p className="text-[13px] text-foreground">
+                    {item.label}
+                    <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                      {TIER_LABEL[item.tier]}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-[13px] text-muted-foreground">{item.value}</p>
+                  <EvidenceLinks evidence={item.evidence} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+
+        {draft.blockers.length > 0 ? (
+          <div className="rounded-lg border border-border bg-secondary/40 p-4">
+            <p className="tt-eyebrow">Still in the way</p>
+            <ul className="mt-2 space-y-1.5 text-[13px] text-muted-foreground">
+              {draft.blockers.map((blocker) => (
+                <li key={blocker}>{blocker}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+          <TTButton disabled={!draft.ready || busy || routed} onClick={() => onRoute(draft)}>
+            {routed ? "Carried to Comms" : "Carry to Comms"}
+          </TTButton>
+          <p className="text-[13px] text-muted-foreground">
+            The brief travels with its provenance. Nothing is sent automatically.
+          </p>
+        </div>
+      </div>
     </Panel>
   );
 }
