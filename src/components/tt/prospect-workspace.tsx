@@ -297,7 +297,9 @@ export function ProspectWorkspace({
             </div>
           </div>
         ) : null}
+        </div>
       </header>
+
 
       {/* B. Two-column intelligence summary */}
       <div className="grid gap-6 lg:grid-cols-2">
