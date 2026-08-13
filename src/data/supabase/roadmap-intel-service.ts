@@ -55,6 +55,46 @@ export interface IntelContext {
   userLabel?: string | undefined;
 }
 
+/** One earlier version of a composed document. */
+export interface ArtifactVersion {
+  id: ID;
+  artifactId: ID;
+  kind: "preview" | "full";
+  version: number;
+  title: string;
+  provider?: string | undefined;
+  model?: string | undefined;
+  humanEdited: boolean;
+  replacedAt: string;
+}
+
+/**
+ * Keep the version that is about to be replaced.
+ *
+ * A composed document is client facing work, and a hand edit is Decided truth,
+ * so neither is allowed to disappear because someone pressed compose again.
+ * The live row stays one per kind; history lives in its own table.
+ */
+async function snapshot(context: IntelContext, artifact: RoadmapArtifact): Promise<void> {
+  const { error } = await supabase.from("roadmap_artifact_versions").insert({
+    organization_id: context.organizationId,
+    roadmap_id: artifact.roadmapId,
+    artifact_id: artifact.id,
+    kind: artifact.kind,
+    version: artifact.version,
+    title: artifact.title,
+    sections: artifact.sections,
+    provider: artifact.provider ?? null,
+    model: artifact.model ?? null,
+    rejected: artifact.rejected,
+    human_edited: artifact.humanEdited,
+    replaced_at: new Date().toISOString(),
+    replaced_by: context.userId,
+  });
+  assertOk(error);
+}
+
+
 async function record(
   context: IntelContext,
   name: ActivityName,
