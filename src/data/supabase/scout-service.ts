@@ -24,6 +24,7 @@ import {
   type ScoutSearchResult,
 } from "@/domain/scout";
 import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
+import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 
 import { supabaseActivity } from "./activities";
 import { getCurrentIcp, type IcpProfile } from "./icp";
@@ -35,6 +36,7 @@ import {
   normalizeWebsiteUrl,
   saveResearchProspect,
   toProspect,
+  setProspectFitOverride,
   updateProspectStatus,
 } from "./prospects";
 import {
@@ -59,15 +61,41 @@ function previewEvidence(domain: string): Pick<ProspectCandidate, "signals" | "f
   };
 }
 
-/** Stored row → candidate, using the row's own source to pick the evidence. */
-function toCandidate(row: ProspectRow): ProspectCandidate {
-  if (row.source === SCOUT_LIVE_SOURCE) return candidateFromResearchRow(row);
-  const prospect = toProspect(row);
-  return { prospect, ...previewEvidence(prospect.domain), source: PREVIEW_SOURCE };
+/** Preview rows cannot honestly be scored against the live evidence model. */
+function previewEvaluation(icpVersion: number | null, at: string) {
+  return evaluateScoutFit({
+    observed: [],
+    inferred: {},
+    suggested: {},
+    scoreable: false,
+    icpVersion,
+    at,
+  });
 }
 
-function mergePreview(prospect: Prospect): ProspectCandidate {
-  return { prospect, ...previewEvidence(prospect.domain), source: PREVIEW_SOURCE };
+/** Stored row → candidate, using the row's own source to pick the evidence. */
+function toCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandidate {
+  if (row.source === SCOUT_LIVE_SOURCE) return candidateFromResearchRow(row, icpVersion);
+  const prospect = toProspect(row);
+  const lastCheckedAt = row.updated_at ?? row.created_at;
+  return {
+    prospect,
+    ...previewEvidence(prospect.domain),
+    source: PREVIEW_SOURCE,
+    evaluation: previewEvaluation(icpVersion, lastCheckedAt),
+    lastCheckedAt,
+  };
+}
+
+function mergePreview(prospect: Prospect, icpVersion: number | null): ProspectCandidate {
+  const lastCheckedAt = prospect.updatedAt ?? prospect.createdAt;
+  return {
+    prospect,
+    ...previewEvidence(prospect.domain),
+    source: PREVIEW_SOURCE,
+    evaluation: previewEvaluation(icpVersion, lastCheckedAt),
+    lastCheckedAt,
+  };
 }
 
 export interface ScoutContext {
@@ -83,8 +111,11 @@ export const scoutService = {
 
   /** Everything already saved for this organization. Survives reloads. */
   async list(organizationId: ID): Promise<ProspectCandidate[]> {
-    const rows = await listProspectRows(organizationId);
-    return rows.map(toCandidate);
+    const [rows, icp] = await Promise.all([
+      listProspectRows(organizationId),
+      getCurrentIcp(organizationId),
+    ]);
+    return rows.map((row) => toCandidate(row, icp?.version ?? null));
   },
 
   /**
@@ -125,7 +156,7 @@ export const scoutService = {
 
     return {
       request,
-      candidates: saved.map(mergePreview),
+      candidates: saved.map((prospect) => mergePreview(prospect, icp?.version ?? null)),
       source: {
         ...PREVIEW_SOURCE,
         note: "A fixed in-memory set, saved to your workspace. No external service was searched and no AI scoring was applied.",
@@ -150,6 +181,13 @@ export const scoutService = {
     const payload = await researchWebsite(websiteUrl);
 
     const existing = await findProspectRowByWebsite(request.organizationId, websiteUrl);
+    const evaluation = evaluateScoutFit({
+      observed: payload.observed ?? [],
+      inferred: payload.inferred ?? {},
+      suggested: payload.suggested ?? {},
+      scoreable: true,
+      icpVersion: icp?.version ?? null,
+    });
     const row = await saveResearchProspect({
       organizationId: request.organizationId,
       userId: request.userId,
@@ -163,10 +201,12 @@ export const scoutService = {
         userId: request.userId,
         icpVersion: icp?.version ?? null,
       }),
+      fitScore: evaluation.score,
+      metadata: { scout_fit: evaluation },
       existing,
     });
 
-    const candidate = candidateFromResearchRow(row);
+    const candidate = candidateFromResearchRow(row, icp?.version ?? null);
     const occurredAt = new Date().toISOString();
 
     await supabaseActivity.record({
@@ -179,6 +219,9 @@ export const scoutService = {
         page_count: pageCount(payload),
         website_url: candidate.prospect.websiteUrl,
         icp_version: icp?.version ?? null,
+        fit_score: evaluation.score,
+        fit_light: evaluation.light,
+        evidence_count: evaluation.evidenceCount,
       },
       provenance: {
         appId: "scout",
@@ -197,6 +240,15 @@ export const scoutService = {
     };
   },
 
+  /** Manual ICP fit override. Always available, never automatic. */
+  async overrideFit(
+    id: ID,
+    light: "green" | "yellow" | "red" | "neutral" | null,
+    context: ScoutContext,
+  ): Promise<void> {
+    await setProspectFitOverride(id, light, context.userId);
+  },
+
   /** Qualify / Pass. Writes the row, then appends the activity record. */
   async setStatus(
     id: ID,
@@ -213,7 +265,9 @@ export const scoutService = {
       summary:
         prospect.status === "passed"
           ? `${prospect.name} was passed by Scout.`
-          : `${prospect.name} is qualified and ready for Comms.`,
+          : prospect.status === "qualified"
+            ? `${prospect.name} was qualified in Scout. No contact has been made.`
+            : `${prospect.name} moved to ${prospect.status.replace(/_/g, " ")}.`,
       payload: { status: prospect.status, domain: prospect.domain },
       provenance: {
         appId: "scout",

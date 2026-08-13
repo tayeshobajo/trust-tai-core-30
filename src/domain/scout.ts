@@ -9,6 +9,7 @@
 
 import type { Provenance } from "./activity";
 import type { ID, Prospect } from "./entities";
+import type { ScoutFitEvaluation } from "./scout-fit";
 
 /** A single piece of evidence Scout observed about a company. */
 export interface ScoutSignal {
@@ -54,6 +55,10 @@ export interface ProspectCandidate {
   signals: ScoutSignal[];
   fit: ScoutFit;
   source: CandidateSource;
+  /** Deterministic ICP fit evaluation. Traffic-light colour comes from here. */
+  evaluation: ScoutFitEvaluation;
+  /** When the evidence behind this candidate was last read. */
+  lastCheckedAt: string;
 }
 
 export interface ScoutSearchRequest {

@@ -13,6 +13,7 @@
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ID } from "@/domain/entities";
 import type { CandidateSource, ProspectCandidate, ScoutSignal } from "@/domain/scout";
+import { evaluateScoutFit, storedEvaluation, withOverride } from "@/data/scout-fit-evaluator";
 import type { ProspectRow, Row } from "./schema";
 import { toProspect } from "./prospects";
 
@@ -207,7 +208,10 @@ function inferWhyItFits(inferred: Row): string {
  * Build a candidate from a stored live-research row. The stored payloads are the
  * source of truth so a reload shows exactly what was researched.
  */
-export function candidateFromResearchRow(row: ProspectRow): ProspectCandidate {
+export function candidateFromResearchRow(
+  row: ProspectRow,
+  activeIcpVersion: number | null = null,
+): ProspectCandidate {
   const provenance = (row.provenance ?? {}) as Row;
   const observed = Array.isArray(row.observed) ? row.observed : [];
   const inferred = (row.inferred ?? {}) as Row;
@@ -228,5 +232,22 @@ export function candidateFromResearchRow(row: ProspectRow): ProspectCandidate {
         "Review the observed pages and decide whether to qualify.",
     },
     source: liveSource(pages.length, pages, researchedAt),
+    evaluation: withOverride(
+      storedEvaluation(row.metadata) ??
+      evaluateScoutFit({
+        observed,
+        inferred,
+        suggested,
+        scoreable: true,
+        icpVersion:
+          activeIcpVersion ??
+          (typeof provenance["icp_version"] === "number"
+            ? (provenance["icp_version"] as number)
+            : null),
+        at: researchedAt,
+      }),
+      row.metadata,
+    ),
+    lastCheckedAt: researchedAt,
   };
 }

@@ -1,0 +1,432 @@
+/**
+ * Scout — conservative ICP fit evaluator (trust-tai-icp-v1).
+ *
+ * Deterministic and explainable. It reads only what is already stored on the
+ * prospect (`observed`, `inferred`, `suggested`, `provenance`) and maps it onto
+ * the active Trust Tai ICP. No AI call, no invented facts.
+ *
+ * Conservatism rules, in order:
+ *  - Unknown is never a mismatch. Missing evidence lowers confidence, not trust.
+ *  - Fewer than three meaningful evidence points can never be green.
+ *  - Red requires positive evidence of a disqualifier, or a low score that is
+ *    itself backed by enough evidence.
+ *  - Preview/demo rows are neutral: they cannot honestly be scored.
+ */
+
+import {
+  SCOUT_EVALUATOR_VERSION,
+  type FitCriterion,
+  type FitCriterionState,
+  type FitLight,
+  type ScoutFitEvaluation,
+} from "@/domain/scout-fit";
+
+type Row = Record<string, unknown>;
+
+interface Observation {
+  key: string;
+  label: string;
+  text: string;
+  value: unknown;
+  evidence: string;
+  sourceUrl?: string;
+  /** true / false / unknown for the underlying value. */
+  truth: boolean | null;
+}
+
+function str(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function truthOf(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  const text = str(value).toLowerCase();
+  if (!text) return null;
+  if (["yes", "true", "present", "found", "detected"].includes(text)) return true;
+  if (["no", "false", "none", "absent", "not found", "unknown", "n/a", "—"].includes(text)) {
+    return text === "unknown" || text === "n/a" || text === "—" ? null : false;
+  }
+  return true;
+}
+
+function valueText(value: unknown): string {
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  if (typeof value === "number") return String(value);
+  if (Array.isArray(value)) return value.map((v) => valueText(v)).filter(Boolean).join(", ");
+  if (value && typeof value === "object") {
+    const obj = value as Row;
+    return str(obj["value"]) || str(obj["text"]) || str(obj["label"]);
+  }
+  return str(value);
+}
+
+function normalizeObservations(observed: unknown): Observation[] {
+  if (!Array.isArray(observed)) return [];
+  return observed.map((item, index) => {
+    if (typeof item === "string") {
+      return {
+        key: `obs_${index}`,
+        label: "",
+        text: item.toLowerCase(),
+        value: item,
+        evidence: item,
+        truth: true,
+      };
+    }
+    const entry = (item ?? {}) as Row;
+    const key = str(entry["key"]) || str(entry["id"]) || `obs_${index}`;
+    const label = str(entry["label"]);
+    const evidence = str(entry["evidence"]) || str(entry["statement"]) || str(entry["fact"]);
+    const value = entry["value"];
+    const sourceUrl = str(entry["source_url"]) || str(entry["sourceUrl"]);
+    const text = [key, label, evidence, valueText(value)].join(" ").toLowerCase();
+    return {
+      key,
+      label,
+      text,
+      value,
+      evidence,
+      ...(sourceUrl ? { sourceUrl } : {}),
+      truth: truthOf(value),
+    };
+  });
+}
+
+/** Free text Scout already inferred, used only as weak supporting context. */
+function inferredText(inferred: unknown, suggested: unknown): string {
+  const parts: string[] = [];
+  const walk = (value: unknown, depth = 0) => {
+    if (depth > 3) return;
+    if (typeof value === "string") parts.push(value);
+    else if (Array.isArray(value)) value.forEach((v) => walk(v, depth + 1));
+    else if (value && typeof value === "object") {
+      Object.values(value as Row).forEach((v) => walk(v, depth + 1));
+    }
+  };
+  walk(inferred);
+  walk(suggested);
+  return parts.join(" \n ").toLowerCase();
+}
+
+function matches(observation: Observation, patterns: RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(observation.text));
+}
+
+interface CriterionSpec {
+  key: string;
+  label: string;
+  maxScore: number;
+  patterns: RegExp[];
+  /** Context words that count as weak (partial) support from inference text. */
+  contextPatterns?: RegExp[];
+  metReason: string;
+  partialReason: string;
+  missingReason: string;
+  /** When true, a confirmed-false observation is a mismatch, not just missing. */
+  falseIsMismatch?: boolean;
+  mismatchReason?: string;
+  /** When true, a confirmed-false observation supports the criterion instead
+   *  (e.g. "mobile friendly: no" is evidence the current site is limiting). */
+  invert?: boolean;
+}
+
+const SPECS: CriterionSpec[] = [
+  {
+    key: "active_operating",
+    label: "Active and already serving people",
+    maxScore: 16,
+    patterns: [
+      /\b(service|services|clients?|customers?|booking|appointment|hours|open|shop|store|programs?)\b/,
+      /\b(active|operating|trading)\b/,
+    ],
+    contextPatterns: [/\b(currently serving|working with clients|existing clients)\b/],
+    metReason: "The public site shows work being delivered to people today.",
+    partialReason: "There are hints of activity, but nothing that clearly confirms live delivery.",
+    missingReason: "Nothing on the public pages confirms the business is actively serving people.",
+    falseIsMismatch: true,
+    mismatchReason: "The site reads as idea-stage or not yet trading.",
+  },
+  {
+    key: "proven",
+    label: "Proven rather than idea-stage",
+    maxScore: 14,
+    patterns: [
+      /\b(testimonial|review|case stud|results|portfolio|clients? logo|press|award|years? in business|since \d{4})\b/,
+    ],
+    metReason: "Proof of past work is published — testimonials, results, or case studies.",
+    partialReason: "Some proof language appears, but it is thin or unattributed.",
+    missingReason: "No published proof of delivered work was found. Treated as unknown, not negative.",
+  },
+  {
+    key: "decision_maker",
+    label: "Founder / owner reachable",
+    maxScore: 12,
+    patterns: [/\b(founder|owner|ceo|director|principal|about (us|the)|our team|leadership)\b/],
+    contextPatterns: [/\b(founder|owner|named contact)\b/],
+    metReason: "A named owner, founder, or leader is visible with a way to reach them.",
+    partialReason: "There is a contact route, but no named decision maker.",
+    missingReason: "No named decision maker was found on the public site.",
+  },
+  {
+    key: "clear_offer",
+    label: "Clear offer, service, or process",
+    maxScore: 14,
+    patterns: [/\b(offer|services?|programs?|packages?|pricing|process|how it works|what we do)\b/],
+    metReason: "The offer and how it is delivered are stated plainly.",
+    partialReason: "The offer is implied but not clearly described.",
+    missingReason: "No clear offer or service description was found.",
+  },
+  {
+    key: "limiting_system",
+    label: "Current site or system limiting growth",
+    maxScore: 18,
+    patterns: [
+      /\b(outdated|dated|legacy|slow|load time|no https|insecure|not mobile|mobile friendly|responsive|broken|missing|no analytics|no booking|no cms|wordpress|page speed|accessib)\b/,
+    ],
+    invert: true,
+    metReason: "The current presentation or tooling is visibly holding the business back.",
+    partialReason: "There are minor weaknesses, but nothing clearly limiting.",
+    missingReason: "No clear constraint was observed in the current site or tooling.",
+  },
+  {
+    key: "first_milestone",
+    label: "One first milestone worth selling",
+    maxScore: 12,
+    patterns: [/\b(gap|opportunity|recommend|next move|milestone|quick win|fix|improve|rebuild)\b/],
+    contextPatterns: [/\b(recommend|first milestone|start with|next move)\b/],
+    metReason: "A specific first piece of work is identifiable from the evidence.",
+    partialReason: "A direction is visible, but not yet a sellable first milestone.",
+    missingReason: "No first milestone is identifiable from what was read.",
+  },
+  {
+    key: "roadmap_depth",
+    label: "At least two roadmap possibilities",
+    maxScore: 8,
+    patterns: [/\b(gap|opportunity|roadmap|phase|later|future|then)\b/],
+    metReason: "More than one future improvement is visible beyond the first milestone.",
+    partialReason: "Only one future possibility is visible.",
+    missingReason: "No second roadmap possibility is visible yet.",
+  },
+  {
+    key: "funding_capacity",
+    label: "Appears able to fund meaningful work",
+    maxScore: 6,
+    patterns: [/\b(pricing|from \$|per month|packages?|retainer|team of|staff|locations?|enterprise)\b/],
+    metReason: "Published pricing, team size, or scale suggests capacity to fund work.",
+    partialReason: "There are weak signs of scale, not enough to judge capacity.",
+    missingReason:
+      "Public pages do not show revenue, budget, or scale. Left unknown rather than assumed.",
+  },
+];
+
+/** Positive disqualifiers. Only a confirmed reading, never an absence. */
+const DISQUALIFIERS: { patterns: RegExp[]; reason: string }[] = [
+  {
+    patterns: [/\b(coming soon|under construction|parked domain|domain for sale|site not found)\b/],
+    reason: "The site is a placeholder rather than a working business presence.",
+  },
+  {
+    patterns: [/\b(pre-?launch|idea stage|concept only|waitlist only)\b/],
+    reason: "The business reads as idea-stage rather than already serving people.",
+  },
+];
+
+function stateScore(state: FitCriterionState, maxScore: number): number {
+  if (state === "met") return maxScore;
+  if (state === "partial") return Math.round(maxScore * 0.5);
+  return 0;
+}
+
+interface EvaluateInput {
+  observed: unknown;
+  inferred: unknown;
+  suggested: unknown;
+  /** Preview/demo rows are neutral by contract. */
+  scoreable: boolean;
+  icpVersion: number | null;
+  /** Timestamp used for `evaluatedAt`. Defaults to now. */
+  at?: string;
+}
+
+export function evaluateScoutFit(input: EvaluateInput): ScoutFitEvaluation {
+  const evaluatedAt = input.at ?? new Date().toISOString();
+  const observations = normalizeObservations(input.observed);
+  const context = inferredText(input.inferred, input.suggested);
+
+  if (!input.scoreable || observations.length === 0) {
+    return {
+      score: 0,
+      light: "neutral",
+      evidenceCount: observations.length,
+      strongestSignal: input.scoreable
+        ? "No evidence has been read for this company yet."
+        : "Preview demo candidate — not scored against live evidence.",
+      criteria: [],
+      icpVersion: input.icpVersion,
+      evaluatorVersion: SCOUT_EVALUATOR_VERSION,
+      evaluatedAt,
+      explanation: input.scoreable
+        ? "Nothing has been observed yet, so no honest fit can be stated. Research the website to score it."
+        : "This is a preview demo row. It is deliberately not scored against the live evidence model.",
+      scoreable: false,
+    };
+  }
+
+  const criteria: FitCriterion[] = [];
+  let evidenceCount = 0;
+  let strongest: { criterion: FitCriterion; weight: number } | null = null;
+
+  for (const spec of SPECS) {
+    const hits = observations.filter((o) => matches(o, spec.patterns));
+    const positive = hits.filter((o) => (spec.invert ? o.truth === false : o.truth !== false));
+    const negative = hits.filter((o) => (spec.invert ? o.truth === true : o.truth === false));
+    const withEvidence = positive.filter((o) => o.evidence || o.sourceUrl);
+    const contextHit = spec.contextPatterns?.some((p) => p.test(context)) ?? false;
+
+    let state: FitCriterionState;
+    let reason: string;
+
+    if (withEvidence.length >= 2 || (withEvidence.length === 1 && positive.length >= 2)) {
+      state = "met";
+      reason = spec.metReason;
+    } else if (positive.length >= 1 || contextHit) {
+      state = "partial";
+      reason = spec.partialReason;
+    } else if (spec.falseIsMismatch && negative.length >= 2) {
+      state = "mismatch";
+      reason = spec.mismatchReason ?? spec.missingReason;
+    } else {
+      state = "missing";
+      reason = spec.missingReason;
+    }
+
+    const detail = positive.find((o) => o.evidence)?.evidence;
+    const sourceUrls = Array.from(
+      new Set(positive.map((o) => o.sourceUrl).filter((u): u is string => Boolean(u))),
+    );
+
+    const criterion: FitCriterion = {
+      key: spec.key,
+      label: spec.label,
+      score: stateScore(state, spec.maxScore),
+      maxScore: spec.maxScore,
+      state,
+      reason: detail && state !== "missing" ? `${reason} ${detail}` : reason,
+      ...(sourceUrls.length > 0 ? { sourceUrls } : {}),
+    };
+    criteria.push(criterion);
+
+    if (state === "met") {
+      evidenceCount += 1;
+      if (!strongest || spec.maxScore > strongest.weight) {
+        strongest = { criterion, weight: spec.maxScore };
+      }
+    }
+  }
+
+  const disqualifier = DISQUALIFIERS.find((d) =>
+    observations.some((o) => d.patterns.some((p) => p.test(o.text))),
+  );
+  if (disqualifier) {
+    criteria.push({
+      key: "disqualifier",
+      label: "Material mismatch",
+      score: 0,
+      maxScore: 0,
+      state: "mismatch",
+      reason: disqualifier.reason,
+    });
+  }
+
+  const maxTotal = SPECS.reduce((sum, spec) => sum + spec.maxScore, 0);
+  const raw = criteria.reduce((sum, c) => sum + c.score, 0);
+  const score = Math.round((raw / maxTotal) * 100);
+
+  const partials = criteria.filter((c) => c.state === "partial").length;
+  const hasSufficientEvidence = evidenceCount >= 3;
+
+  let light: FitLight;
+  let explanation: string;
+
+  if (disqualifier) {
+    light = "red";
+    explanation = disqualifier.reason;
+  } else if (score >= 75 && hasSufficientEvidence) {
+    light = "green";
+    explanation = `${evidenceCount} criteria are clearly met with supporting evidence and no disqualifier was found.`;
+  } else if (score < 35 && evidenceCount + partials >= 4) {
+    light = "red";
+    explanation =
+      "Enough of the site was read to judge, and the evidence points away from the current ICP.";
+  } else if (!hasSufficientEvidence) {
+    light = "yellow";
+    explanation = `Only ${evidenceCount} criteria are clearly evidenced. Three are required before a company can read green.`;
+  } else {
+    light = "yellow";
+    explanation = "The picture is mixed: real signals are present, but the fit is not yet convincing.";
+  }
+
+  const strongestSignal =
+    strongest?.criterion.reason ??
+    criteria.find((c) => c.state === "partial")?.reason ??
+    "No strong signal was observed on the public site.";
+
+  return {
+    score,
+    light,
+    evidenceCount,
+    strongestSignal,
+    criteria,
+    icpVersion: input.icpVersion,
+    evaluatorVersion: SCOUT_EVALUATOR_VERSION,
+    evaluatedAt,
+    explanation,
+    scoreable: true,
+  };
+}
+
+/** Read a previously persisted evaluation from `metadata.scout_fit`. */
+export function storedEvaluation(metadata: unknown): ScoutFitEvaluation | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const stored = (metadata as Row)["scout_fit"];
+  if (!stored || typeof stored !== "object") return null;
+  const candidate = stored as Partial<ScoutFitEvaluation>;
+  if (typeof candidate.score !== "number" || !Array.isArray(candidate.criteria)) return null;
+  return candidate as ScoutFitEvaluation;
+}
+
+export interface FitOverride {
+  light: FitLight;
+  by: string | null;
+  at: string;
+}
+
+/** A manual fit override always wins over the evaluator. */
+export function fitOverride(metadata: unknown): FitOverride | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const stored = (metadata as Row)["scout_fit_override"];
+  if (!stored || typeof stored !== "object") return null;
+  const light = str((stored as Row)["light"]) as FitLight;
+  if (!["green", "yellow", "red", "neutral"].includes(light)) return null;
+  return {
+    light,
+    by: str((stored as Row)["by"]) || null,
+    at: str((stored as Row)["at"]) || "",
+  };
+}
+
+/** Apply a stored manual override to an evaluation, keeping the score honest. */
+export function withOverride(
+  evaluation: ScoutFitEvaluation,
+  metadata: unknown,
+): ScoutFitEvaluation {
+  const override = fitOverride(metadata);
+  if (!override || override.light === evaluation.light) return evaluation;
+  return {
+    ...evaluation,
+    light: override.light,
+    explanation: `Fit set manually by a Trust Tai member. The evaluator read this as ${evaluation.light}: ${evaluation.explanation}`,
+  };
+}

@@ -108,3 +108,38 @@ prospect for the same normalized website is refreshed in place, never duplicated
 
 Each successful run appends a `prospect.researched` activity (`app_key = scout`)
 with source, page count, website, and ICP version.
+
+## Scouting board (v1.1)
+
+Scout is now a board, not a feed.
+
+- **Local nav:** Scout (working board) · Qualified · Research (history) · ICP Settings.
+- **Default view:** a compact list — fit light, company, ICP match %, strongest
+  signal, workflow stage, last checked. Sorted by fit light, then score, then
+  recency. Filters: All / Green / Yellow / Red.
+- **Detail drawer:** opens on row click with the fit read, score breakdown by
+  criterion, observed evidence with source links, inferred interpretation,
+  suggested next move, provenance, and the actions.
+
+### Conservative ICP scoring v1 (`trust-tai-icp-v1`)
+
+Deterministic and explainable — no AI scoring. Each criterion is scored from
+observed evidence only; unknown never counts as positive.
+
+- Green: score ≥ 75 **and** at least 3 independent evidence points.
+- Yellow: score 45–74, or a high score with thin evidence.
+- Red: clear mismatch against the ICP.
+- Neutral: not enough evidence to judge (all preview-demo candidates).
+
+Fit is **never** stage. Colour reads ICP fit only; `discovered`, `qualified`,
+`ready_for_comms`, `passed` are shown as neutral stage tags.
+
+### Qualify and override
+
+Qualify sets `status = qualified` and shows what happens next (decision maker,
+handoff prep, Comms) — nothing is sent automatically. A member can override the
+fit light manually; the override is stored in `metadata.scout_fit_override` and
+the evaluator's original read is kept and displayed alongside it.
+
+When a prospect was scored against an older ICP version, the drawer shows a
+calm "Needs rescore" note rather than silently re-scoring.

@@ -164,6 +164,10 @@ export interface ResearchProspectInput {
   inferred: unknown;
   suggested: unknown;
   provenance: Row;
+  /** 0–100 deterministic ICP fit score. */
+  fitScore?: number | null;
+  /** Merged into the row's existing `metadata` (e.g. `{ scout_fit }`). */
+  metadata?: Row;
   existing?: ProspectRow | null;
 }
 
@@ -180,6 +184,10 @@ export async function saveResearchProspect(input: ResearchProspectInput): Promis
     inferred: input.inferred ?? {},
     suggested: input.suggested ?? {},
     provenance: input.provenance,
+    ...(input.fitScore === undefined ? {} : { fit_score: input.fitScore }),
+    ...(input.metadata
+      ? { metadata: { ...((input.existing?.metadata ?? {}) as Row), ...input.metadata } }
+      : {}),
   };
 
   if (input.existing) {
@@ -205,3 +213,34 @@ export async function saveResearchProspect(input: ResearchProspectInput): Promis
 }
 
 export { normalizeWebsiteUrl };
+
+/** Manually set the ICP fit light for a prospect. `null` clears the override. */
+export async function setProspectFitOverride(
+  id: ID,
+  light: "green" | "yellow" | "red" | "neutral" | null,
+  userId: ID,
+): Promise<ProspectRow> {
+  const { data: current, error: readError } = await supabase
+    .from("prospects")
+    .select("metadata")
+    .eq("id", id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+
+  const metadata: Row = { ...((current?.metadata ?? {}) as Row) };
+  if (light) {
+    metadata["scout_fit_override"] = { light, by: userId, at: new Date().toISOString() };
+  } else {
+    delete metadata["scout_fit_override"];
+  }
+
+  const { data, error } = await supabase
+    .from("prospects")
+    .update({ metadata })
+    .eq("id", id)
+    .select(SELECT_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("The fit override could not be saved.");
+  return data as unknown as ProspectRow;
+}

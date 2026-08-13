@@ -15,6 +15,7 @@ import {
   type ScoutSearchRequest,
   type ScoutSearchResult,
 } from "@/domain/scout";
+import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 
 const ORG_ID = "org_trusttai";
 const NOW = "2026-08-12T09:00:00.000Z";
@@ -25,7 +26,7 @@ function prospect(id: string, name: string, domain: string): Prospect {
   return { ...base, id, name, domain, websiteUrl: `https://${domain}`, status: "discovered" };
 }
 
-const PREVIEW_ENTRIES: Omit<ProspectCandidate, "source">[] = [
+const PREVIEW_ENTRIES: Omit<ProspectCandidate, "source" | "evaluation" | "lastCheckedAt">[] = [
   {
     prospect: prospect("pro_meridian", "Meridian Law Partners", "meridianlaw.co.uk"),
     signals: [
@@ -163,6 +164,16 @@ const PREVIEW_ENTRIES: Omit<ProspectCandidate, "source">[] = [
 export const PREVIEW_CANDIDATES: ProspectCandidate[] = PREVIEW_ENTRIES.map((entry) => ({
   ...entry,
   source: PREVIEW_SOURCE,
+  // Preview rows are never scored against the live evidence model.
+  evaluation: evaluateScoutFit({
+    observed: [],
+    inferred: {},
+    suggested: {},
+    scoreable: false,
+    icpVersion: null,
+    at: entry.prospect.updatedAt ?? entry.prospect.createdAt,
+  }),
+  lastCheckedAt: entry.prospect.updatedAt ?? entry.prospect.createdAt,
 }));
 
 export function rankPreviewCandidates(query: string): ProspectCandidate[] {
