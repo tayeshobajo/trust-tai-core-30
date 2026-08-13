@@ -13,9 +13,11 @@
 
 import type { ConfidenceLevel } from "@/domain/confidence";
 import type {
+  HorizonBand,
   ResearchClaim,
   ResearchCompetitor,
   SourceRef,
+  StrategyItem,
 } from "@/domain/roadmap-intel";
 
 type Raw = Record<string, unknown>;
@@ -180,4 +182,145 @@ export function normalizeResearch(raw: unknown, provenance: ResearchProvenance):
   }
 
   return result;
+}
+
+/* ---------------------------------------------------------------- strategy */
+
+/**
+ * A proposed strategy. Every item lands as Inferred and Proposed, whatever the
+ * model claims: only a person in Trust Tai OS can make something Decided.
+ */
+export interface NormalizedStrategy {
+  pointA: StrategyItem[];
+  anchorProof: StrategyItem[];
+  horizon: HorizonBand[];
+  pointB: StrategyItem | null;
+  pointC: StrategyItem | null;
+  centralTruth: StrategyItem | null;
+  gaps: StrategyItem[];
+  leveragePoint: StrategyItem | null;
+}
+
+function slug(value: string, index: number, prefix: string): string {
+  const base = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  return `${prefix}-${index}-${base || "item"}`;
+}
+
+function item(
+  value: unknown,
+  provenance: ResearchProvenance,
+  prefix: string,
+  index = 0,
+): StrategyItem | null {
+  if (!value) return null;
+  const row = (typeof value === "string" ? { statement: value } : value) as Raw;
+  const statement = str(row["statement"]);
+  if (!statement) return null;
+  const sources = normalizeSources(row["sources"], provenance);
+  return {
+    key: slug(statement, index, prefix),
+    statement,
+    because: str(row["because"]) || "Proposed from the research pass.",
+    tier: "inferred",
+    confidence: confidence(row["confidence"], sources),
+    sources,
+    approval: "proposed",
+  };
+}
+
+function items(value: unknown, provenance: ResearchProvenance, prefix: string): StrategyItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry, index) => item(entry, provenance, prefix, index))
+    .filter((entry): entry is StrategyItem => entry !== null);
+}
+
+export function normalizeStrategy(raw: unknown, provenance: ResearchProvenance): NormalizedStrategy {
+  const row = (raw && typeof raw === "object" ? raw : {}) as Raw;
+
+  const bands: HorizonBand[] = Array.isArray(row["horizon"])
+    ? (row["horizon"] as Raw[])
+        .map((entry) => {
+          const years = Number(entry["years"]);
+          const statement = str(entry["statement"]);
+          if (!statement) return null;
+          const sources = normalizeSources(entry["sources"], provenance);
+          return {
+            years: (years === 10 ? 10 : years === 5 ? 5 : 2) as 2 | 5 | 10,
+            statement,
+            tier: sources.length > 0 ? ("observed" as const) : ("inferred" as const),
+            confidence: confidence(entry["confidence"], sources),
+            sources,
+          };
+        })
+        .filter((band): band is HorizonBand => band !== null)
+        .sort((a, b) => a.years - b.years)
+    : [];
+
+  return {
+    pointA: items(row["point_a"] ?? row["pointA"], provenance, "point-a"),
+    // Anchor proof is one to three things, never a list of everything good.
+    anchorProof: items(row["anchor_proof"] ?? row["anchorProof"], provenance, "anchor").slice(0, 3),
+    horizon: bands,
+    pointB: item(row["point_b"] ?? row["pointB"], provenance, "point-b"),
+    pointC: item(row["point_c"] ?? row["pointC"], provenance, "point-c"),
+    centralTruth: item(row["central_truth"] ?? row["centralTruth"], provenance, "central-truth"),
+    gaps: items(row["gaps"], provenance, "gap"),
+    leveragePoint: item(row["leverage_point"] ?? row["leveragePoint"], provenance, "leverage"),
+  };
+}
+
+/* -------------------------------------------------------------- milestones */
+
+export interface NormalizedMilestone {
+  name: string;
+  whatWeBuild: string;
+  intendedUser: string;
+  supportingMarketDirection: string;
+  clientAdvantage: string;
+  currentGap: string;
+  evidence: SourceRef[];
+  immediateValue: string;
+  longTermValue: string;
+  dependencies: string[];
+  executionBoundary: string;
+  confidence: ConfidenceLevel;
+}
+
+export function normalizeMilestones(
+  raw: unknown,
+  provenance: ResearchProvenance,
+): NormalizedMilestone[] {
+  if (!Array.isArray(raw)) return [];
+  const out: NormalizedMilestone[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const row = entry as Raw;
+    const name = str(row["name"]);
+    if (!name) continue;
+    const evidence = normalizeSources(row["evidence"] ?? row["sources"], provenance);
+    out.push({
+      name,
+      whatWeBuild: str(row["what_we_build"] ?? row["whatWeBuild"]),
+      intendedUser: str(row["intended_user"] ?? row["intendedUser"]),
+      supportingMarketDirection: str(
+        row["supporting_market_direction"] ?? row["supportingMarketDirection"],
+      ),
+      clientAdvantage: str(row["client_advantage"] ?? row["clientAdvantage"]),
+      currentGap: str(row["current_gap"] ?? row["currentGap"]),
+      evidence,
+      immediateValue: str(row["immediate_value"] ?? row["immediateValue"]),
+      longTermValue: str(row["long_term_value"] ?? row["longTermValue"]),
+      dependencies: Array.isArray(row["dependencies"])
+        ? row["dependencies"].map((dep) => str(dep)).filter((dep) => dep.length > 0)
+        : [],
+      executionBoundary: str(row["execution_boundary"] ?? row["executionBoundary"]),
+      confidence: confidence(row["confidence"], evidence),
+    });
+  }
+  return out;
 }
