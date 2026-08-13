@@ -53,12 +53,16 @@ export interface DiscoverStage {
 }
 
 export function discoveryModel(): string {
-  return process.env["SCOUT_OPENAI_MODEL"] || DEFAULT_MODEL;
+  const configured = process.env["SCOUT_DISCOVERY_MODEL"] || process.env["SCOUT_OPENAI_MODEL"];
+  if (!configured) return DEFAULT_MODEL;
+  // Gateway model ids must carry the vendor/ prefix.
+  return configured.includes("/") ? configured : `openai/${configured}`;
 }
 
 export function discoveryConfigured(): boolean {
-  return Boolean(process.env["OPENAI_API_KEY"]);
+  return Boolean(process.env["LOVABLE_API_KEY"]);
 }
+
 
 function supabaseUrl(): string {
   return (
