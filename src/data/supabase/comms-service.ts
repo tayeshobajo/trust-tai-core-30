@@ -26,6 +26,7 @@ import type { EvidenceRef } from "@/domain/confidence";
 import type { VoiceRegister } from "@/domain/voice";
 
 import { supabaseActivity } from "./activities";
+import { findOrCreateContact } from "./contacts";
 import {
   assertOk,
   DRAFT_COLUMNS,
@@ -133,6 +134,23 @@ export const commsService = {
       });
     }
 
+    // People live once, in the shared `contacts` table. A capture matches the
+    // person already on record before it ever writes a new one.
+    let contactId = input.contactId ?? null;
+    let contactCreated = false;
+    if (!contactId) {
+      const { person, created } = await findOrCreateContact({
+        organizationId: context.organizationId,
+        userId: context.userId,
+        fullName,
+        email: input.email,
+        note: input.note,
+        metWhere: input.metWhere,
+      });
+      contactId = person.id;
+      contactCreated = created;
+    }
+
     const payload: Row = {
       organization_id: context.organizationId,
       full_name: fullName,
@@ -144,7 +162,7 @@ export const commsService = {
       met_at: input.metAt ?? (input.source === "in_person" ? at : null),
       met_where: input.metWhere?.trim() || null,
       next_action: input.nextAction?.trim() || null,
-      contact_id: input.contactId ?? null,
+      contact_id: contactId,
       prospect_id: input.prospectId ?? null,
       observed: memoryPayload(input.observed ?? []),
       inferred: memoryPayload(input.inferred ?? []),
@@ -167,7 +185,12 @@ export const commsService = {
       "conversation.created",
       { id: relationship.id, label: relationship.fullName },
       `${relationship.fullName}${relationship.companyName ? ` (${relationship.companyName})` : ""} was added to Comms${relationship.metWhere ? `, met at ${relationship.metWhere}` : ""}.`,
-      { source: relationship.source },
+      {
+        source: relationship.source,
+        contact_id: contactId,
+        contact_created: contactCreated,
+        met_where: relationship.metWhere ?? null,
+      },
     );
     return relationship;
   },
