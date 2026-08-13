@@ -20,6 +20,7 @@ import { useState, type ReactNode } from "react";
 import { APP_REGISTRY, type AppRegistration } from "@/domain/registry";
 import { cn } from "@/lib/utils";
 import { signOut, type WorkspaceIdentity } from "@/lib/workspace";
+import { AmbientDot } from "@/components/tt/ambient";
 
 const ICONS: Record<string, LucideIcon> = {
   Compass,
@@ -68,7 +69,8 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                 {note}
               </span>
             ) : (
-              <span className="size-1.5 rounded-full bg-royal" aria-hidden />
+              /* The room's own ambient accent — place recognition, not status. */
+              <AmbientDot appId={app.id} />
             )}
           </AppLink>
         );
