@@ -143,3 +143,33 @@ the evaluator's original read is kept and displayed alongside it.
 
 When a prospect was scored against an older ICP version, the drawer shows a
 calm "Needs rescore" note rather than silently re-scoring.
+
+## ICP evaluator v2 (`trust-tai-icp-v2`)
+
+Scout's evaluator now reads the structured observations returned by
+`scout-research` v3 with explicit, key-aware rules. v1/v2 rows without those
+keys fall back to the original keyword rules unchanged.
+
+| Criterion | v3 rule |
+| --- | --- |
+| Active and already serving people | `active_business_signals >= 3` met · 1–2 partial · 0/absent unknown. Revenue is never inferred. |
+| Proven rather than idea-stage | `proof_signals >= 2` met · 1 partial. `testimonial_signals` / `case_study_signals` are supporting evidence. Absence is unknown. |
+| Founder / owner reachable | `decision_maker_signals >= 1` is partial by default; met only when a `contact_routes` entry also exists. Reachability still requires human confirmation. |
+| Clear offer | `clear_offer_signals = true` is met. `pricing_signal` supports, never replaces. |
+| System / presentation gap | WordPress alone is never a gap. Requires real constraints: no lead capture, no booking despite services, no proof despite established activity, stale visible year, or a concrete `milestone_opportunities` entry. Two constraints met, one partial. |
+| First milestone | Concrete `milestone_opportunities` only; the generic "deeper human review" fallback is ignored. Met when observed evidence backs the opportunity, otherwise partial. |
+| Roadmap depth | Two or more concrete opportunities met, one partial. |
+| Funding capacity | `pricing_signal = true` is weak/partial evidence only. Never inferred from schema markup, platform, or generic services. |
+
+Thresholds are unchanged: green requires score >= 75 **and** at least three
+clearly met ICP criteria. Evidence count counts met criteria, not raw
+observations.
+
+`pages_researched` is confidence context only. The drawer shows
+`N public pages checked`, or `Research depth is thin` under three pages — fit is
+never penalised for depth.
+
+Existing rows keep their stored `metadata.scout_fit` until someone clicks
+**Re-research website**, which rescores under v2 with `research_version: 3`
+provenance. Qualify still sets `qualified` only; nothing becomes
+`ready_for_comms` automatically.
