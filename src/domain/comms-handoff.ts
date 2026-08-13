@@ -33,6 +33,16 @@ export interface HandoffContact {
   reachable: boolean;
 }
 
+/** A person Comms could open with, and why they are on the list. */
+export interface HandoffTarget extends HandoffContact {
+  /** The one Comms should open with, or a named fallback. */
+  rank: "primary" | "alternate";
+  /** Why this person, in plain language. */
+  why: string;
+  /** What would have to be true for them to be contactable, if anything. */
+  blocker?: string;
+}
+
 /** One thing Comms must know before writing a word. */
 export interface HandoffContextItem {
   label: string;
@@ -47,6 +57,8 @@ export interface HandoffDraft {
   companyName: string;
   websiteUrl?: string;
   contact: HandoffContact | null;
+  /** Ranked outreach targets: verified decision-makers and founders first. */
+  targets: HandoffTarget[];
   intent: HandoffIntent;
   /** Why this intent and not another. */
   intentBecause: string;

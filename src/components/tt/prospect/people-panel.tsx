@@ -23,6 +23,7 @@ import type { FitCriterion } from "@/domain/scout-fit";
 import { cn } from "@/lib/utils";
 
 import { CriterionRow, Disclosure, Panel, TierTag } from "./panel";
+import { PersonProvenance } from "./person-provenance";
 
 export interface ManualPersonForm {
   fullName: string;
@@ -143,6 +144,7 @@ function PersonRow({
             profile link
           </a>
         ) : null}
+        <PersonProvenance person={person} />
       </div>
 
       {person.email && person.emailStatus !== "verified" ? (
