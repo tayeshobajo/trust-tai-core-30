@@ -27,7 +27,7 @@ import { IdentityBand } from "./prospect/identity-band";
 import { NextMovePanel } from "./prospect/next-move";
 import { ObservedPanel } from "./prospect/observed";
 import { OpportunityMap } from "./prospect/opportunity-map";
-import { PeoplePanel } from "./prospect/people-panel";
+import { PeoplePanel, type ManualPersonForm } from "./prospect/people-panel";
 import { SignalPulseCard } from "./prospect/signal-pulse";
 import { TimelineCard } from "./prospect/timeline";
 import { UnknownStrip } from "./prospect/unknown-strip";
