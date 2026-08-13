@@ -34,7 +34,7 @@ export function ScoutTabs({ active }: { active: ScoutSection }) {
         <Link
           key={entry.key}
           to="/modules/scout"
-          search={{ section: entry.key }}
+          search={{ section: entry.key, fit: "all" as const }}
           aria-current={active === entry.key ? "page" : undefined}
           className={tabClass(active === entry.key)}
         >
