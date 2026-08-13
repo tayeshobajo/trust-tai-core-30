@@ -15,7 +15,6 @@ import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { Markdown } from "@/components/tt/markdown";
 import { MetaPill, PageHeader, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { isNotProvisioned } from "@/data/supabase/comms-schema";
 import { getVoiceProfile, saveVoiceProfile, type VoiceProfile } from "@/data/supabase/comms-voice";
 import { checkVoice } from "@/data/voice-policy";
 import { DEFAULT_VOICE_DOCUMENT, VOICE_RULES } from "@/domain/voice";
@@ -77,14 +76,14 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
-  if (voiceQuery.isError && isNotProvisioned(voiceQuery.error)) {
+  if (voiceQuery.isError) {
     return (
       <div className="mx-auto max-w-reading px-6 py-10">
         <PageHeader
           appId="comms"
           eyebrow="Comms"
-          title="Voice DNA is not provisioned yet."
-          supporting="Apply docs/comms-v1-schema.sql in Supabase and this page opens with your organization's own voice."
+          title="The Voice DNA could not be read."
+          supporting={(voiceQuery.error as Error).message}
         />
       </div>
     );
