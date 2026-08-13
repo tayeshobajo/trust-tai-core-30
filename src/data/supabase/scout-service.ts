@@ -44,6 +44,7 @@ import {
   companyNameFromResearch,
   pageCount,
   researchProvenance,
+  researchVersion,
   researchWebsite,
 } from "./scout-research";
 import type { ProspectRow } from "./schema";
@@ -187,6 +188,8 @@ export const scoutService = {
       suggested: payload.suggested ?? {},
       scoreable: true,
       icpVersion: icp?.version ?? null,
+      pagesResearched: pageCount(payload),
+      researchVersion: researchVersion(payload),
     });
     const row = await saveResearchProspect({
       organizationId: request.organizationId,
@@ -221,6 +224,7 @@ export const scoutService = {
         icp_version: icp?.version ?? null,
         fit_score: evaluation.score,
         fit_light: evaluation.light,
+        research_version: researchVersion(payload),
         evidence_count: evaluation.evidenceCount,
       },
       provenance: {

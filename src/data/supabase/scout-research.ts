@@ -98,6 +98,12 @@ export function researchProvenance(
   };
 }
 
+/** `provenance.research_version` reported by the Edge Function, when present. */
+export function researchVersion(payload: ScoutResearchPayload): number | null {
+  const version = payload.provenance?.["research_version"];
+  return typeof version === "number" ? version : null;
+}
+
 export function pageCount(payload: ScoutResearchPayload): number {
   const pages = payload.pages_researched ?? (payload.provenance?.["pages"] as unknown[] | undefined);
   return Array.isArray(pages) ? pages.length : 0;
@@ -245,6 +251,11 @@ export function candidateFromResearchRow(
             ? (provenance["icp_version"] as number)
             : null),
         at: researchedAt,
+        pagesResearched: pages.length,
+        researchVersion:
+          typeof provenance["research_version"] === "number"
+            ? (provenance["research_version"] as number)
+            : null,
       }),
       row.metadata,
     ),
