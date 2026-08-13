@@ -6,6 +6,10 @@ import { ScoutTabs } from "@/components/tt/scout-tabs";
 import { ProspectWorkspace } from "@/components/tt/prospect-workspace";
 import { EmptyState, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
+import { peopleService } from "@/data/supabase/people-service";
+import { availablePeopleProviders, peopleProviderInfo } from "@/data/people/registry";
+import type { Person } from "@/domain/people";
+import type { ManualPersonForm } from "@/components/tt/prospect/people-panel";
 import { scoutService } from "@/data/supabase/scout-service";
 import type { FitLight } from "@/domain/scout-fit";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -91,10 +95,22 @@ function ProspectDetail({
   });
 
 
+  const people = useQuery({
+    queryKey: ["scout", "people", organizationId, prospectId],
+    queryFn: () => peopleService.list(organizationId, prospectId),
+  });
+
+  const providers = useQuery({
+    queryKey: ["scout", "people-providers"],
+    queryFn: async () => await availablePeopleProviders(),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const refresh = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] }),
       queryClient.invalidateQueries({ queryKey: ["scout", "activity", organizationId, prospectId] }),
+      queryClient.invalidateQueries({ queryKey: ["scout", "people", organizationId, prospectId] }),
     ]);
 
   const research = useMutation({
@@ -115,9 +131,51 @@ function ProspectDetail({
     onSuccess: refresh,
   });
 
+  const ingest = useMutation({
+    mutationFn: (providerId: string) => {
+      if (!candidate) throw new Error("That prospect is no longer on your board.");
+      return peopleService.ingest(providerId, candidate, { organizationId, userId });
+    },
+    onSuccess: refresh,
+  });
+
+  const addPerson = useMutation({
+    mutationFn: (form: ManualPersonForm) =>
+      peopleService.addManual(
+        {
+          prospectId,
+          fullName: form.fullName,
+          roleTitle: form.roleTitle || undefined,
+          seniority: form.seniority,
+          email: form.email || undefined,
+          linkedinUrl: form.linkedinUrl || undefined,
+        },
+        { organizationId, userId },
+      ),
+    onSuccess: refresh,
+  });
+
+  const confirmEmail = useMutation({
+    mutationFn: (person: Person) =>
+      peopleService.confirmEmail(person, { organizationId, userId }),
+    onSuccess: refresh,
+  });
+
   const candidate = (saved.data ?? []).find((c) => c.prospect.id === prospectId) ?? null;
-  const error = (research.error ?? setStatus.error ?? override.error ?? saved.error) as Error | null;
-  const busy = research.isPending || setStatus.isPending || override.isPending;
+  const error = (research.error ??
+    setStatus.error ??
+    override.error ??
+    ingest.error ??
+    addPerson.error ??
+    confirmEmail.error ??
+    saved.error) as Error | null;
+  const busy =
+    research.isPending ||
+    setStatus.isPending ||
+    override.isPending ||
+    ingest.isPending ||
+    addPerson.isPending ||
+    confirmEmail.isPending;
 
   if (saved.isPending) {
     return (
@@ -168,6 +226,13 @@ function ProspectDetail({
         activeIcpVersion={icp.data?.version ?? null}
         backSearch={backSearch}
         events={events.data ?? []}
+        people={people.data ?? []}
+        providers={peopleProviderInfo()}
+        availableProviders={providers.data ?? []}
+        peopleNote={ingest.data?.note}
+        onIngest={(providerId) => ingest.mutate(providerId)}
+        onAddManual={(form) => addPerson.mutate(form)}
+        onConfirmEmail={(person) => confirmEmail.mutate(person)}
         onQualify={(id) => setStatus.mutate({ id, status: "qualified" })}
         onPass={(id) => setStatus.mutate({ id, status: "passed" })}
         onResearch={(websiteUrl) => research.mutate(websiteUrl)}
