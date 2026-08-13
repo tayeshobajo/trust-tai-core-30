@@ -87,3 +87,33 @@ state with the exact backend message. No fixtures, no demo data.
 handling, destination inference vs decision, recommendation gating, method
 stage composition, determinism, and the assertion that no stage ever mentions a
 timeline or budget.
+
+## Studio v2.1: model backed, evidence bound
+
+Studio no longer composes from a template. Composition runs server side in two
+deliberate steps.
+
+1. **Approved evidence packet.** `src/data/roadmap-studio-packet.ts` collects
+   only Decided strategy items and approved milestones, each with its own
+   sources. If Point A, anchor proof, a market gap or Point B has not been
+   approved, the run stops and says what is missing. Nothing is written to fill
+   the page.
+2. **Expression, then validation.** `/api/public/roadmap/studio` asks the model
+   to express only that packet, then validates what comes back against it.
+   A line carrying a figure the packet does not contain is refused. So is
+   interchangeable consulting language. A source the packet never cited is
+   dropped rather than shown as proof. A page left with nothing standing reads
+   "Not ready" and stays Inferred.
+
+The refused lines are saved with the artifact and shown under the document, so
+a thin page reads as missing evidence rather than as a confident sentence.
+
+A person can edit the composed document. That edit is Decided truth: it sets
+`human_edited`, and a later composition refuses to overwrite it unless someone
+explicitly chooses Replace.
+
+Ask Roadmap still answers from stored evidence by default. "Research this
+question" is a separate action, because a stored answer and a freshly searched
+one are not the same kind of claim.
+
+Requires `docs/roadmap-intelligence-v2-1-schema.sql`.
