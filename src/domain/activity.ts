@@ -16,6 +16,8 @@ export type ActivityAction =
   | "completed"
   | "decided"
   | "researched"
+  /** Passed from one app to another with its context intact, e.g. Scout → Comms. */
+  | "handed_over"
   | "flagged";
 
 /** Event name is always `entity.action`, e.g. "project.status_changed". */

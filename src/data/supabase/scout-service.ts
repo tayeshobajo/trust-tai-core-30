@@ -295,7 +295,7 @@ export const scoutService = {
 
     await supabaseActivity.record({
       organizationId: context.organizationId,
-      name: "prospect.handed_to_comms",
+      name: "prospect.handed_over",
       subject: { type: "prospect", id: draft.prospectId, label: draft.companyName },
       summary: `${draft.companyName} was handed to Comms with ${draft.contact?.fullName ?? "no named contact"} as the contact. Nothing was sent.`,
       payload: {
