@@ -53,6 +53,19 @@ import {
   researchVersion,
   researchWebsite,
 } from "./scout-research";
+import {
+  SCOUT_DISCOVERY_SOURCE,
+  candidateFromDiscoveryRow,
+} from "./scout-discovery-map";
+import {
+  discover as runDiscover,
+  discoveryStatus,
+  listDiscoveryRuns,
+  listProspectEvaluations,
+  recordScoutFeedback,
+  type DiscoverInput,
+  type FeedbackInput,
+} from "./scout-discovery";
 import type { ProspectRow } from "./schema";
 
 function previewEvidence(domain: string): Pick<ProspectCandidate, "signals" | "fit"> {
