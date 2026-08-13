@@ -231,6 +231,8 @@ function RoadmapWorkspace({
   const [researchStage, setResearchStage] = useState<string | null>(null);
   const [researchError, setResearchError] = useState<string | null>(null);
   const [askError, setAskError] = useState<string | null>(null);
+  const [studioStage, setStudioStage] = useState<string | null>(null);
+
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const intelQuery = useQuery({
