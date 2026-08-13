@@ -38,8 +38,9 @@ import {
   createLovableAiGatewayRunIdFetch,
   LOVABLE_AIG_RUN_ID_HEADER,
 } from "@/lib/ai-gateway.server";
+import { buildDiscoveryRequestBody } from "@/lib/scout-discovery-request";
+import { selectScoutProvider } from "@/lib/scout-provider.server";
 
-const DEFAULT_MODEL = "openai/gpt-5-mini";
 const DEFAULT_LIMIT = 25;
 
 const MAX_LIMIT = 50;
@@ -52,16 +53,15 @@ export interface DiscoverStage {
   data?: Record<string, unknown>;
 }
 
-export function discoveryModel(): string {
-  const configured = process.env["SCOUT_DISCOVERY_MODEL"] || process.env["SCOUT_OPENAI_MODEL"];
-  if (!configured) return DEFAULT_MODEL;
-  // Gateway model ids must carry the vendor/ prefix.
-  return configured.includes("/") ? configured : `openai/${configured}`;
+/** The model of the provider Scout would actually use right now. */
+export function discoveryModel(): string | null {
+  return selectScoutProvider()?.model ?? null;
 }
 
 export function discoveryConfigured(): boolean {
-  return Boolean(process.env["LOVABLE_API_KEY"]);
+  return Boolean(selectScoutProvider());
 }
+
 
 
 function supabaseUrl(): string {
