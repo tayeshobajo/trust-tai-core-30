@@ -367,6 +367,15 @@ export const scoutService = {
     context: ScoutContext,
   ): Promise<void> {
     await setProspectFitOverride(id, light, context.userId);
+    // A human disagreeing with the machine is the most valuable calibration
+    // signal there is. It sharpens interpretation; it never rewrites the ICP.
+    await recordScoutFeedback({
+      organizationId: context.organizationId,
+      userId: context.userId,
+      prospectId: id,
+      decision: "fit_override",
+      humanFit: light,
+    });
   },
 
   /** Qualify / Pass. Writes the row, then appends the activity record. */
@@ -397,6 +406,17 @@ export const scoutService = {
       },
       occurredAt,
     });
+
+    if (prospect.status === "qualified" || prospect.status === "passed") {
+      await recordScoutFeedback({
+        organizationId: context.organizationId,
+        userId: context.userId,
+        prospectId: id,
+        decision: prospect.status,
+        companyName: prospect.name,
+        domain: prospect.domain,
+      });
+    }
 
     return prospect;
   },
