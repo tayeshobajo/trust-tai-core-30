@@ -217,9 +217,14 @@ describe("touch logging", () => {
     );
   });
 
-  it("an inbound touch opens a response clock and puts the person in the reply bucket", async () => {
-    const relationship = await commsService.create(
+  it("an inbound touch opens a response clock and moves the person into the waiting bucket", async () => {
+    const created = await commsService.create(
       { fullName: "Ada Rowe", source: "in_person" },
+      CONTEXT,
+    );
+    const relationship = await commsService.update(
+      created.id,
+      { stage: "in_conversation" },
       CONTEXT,
     );
     await commsService.logTouch(
@@ -228,21 +233,22 @@ describe("touch logging", () => {
     );
     const [updated] = await commsService.list("org-1");
     expect(updated?.responseDueAt).toBeTruthy();
-    expect(bucketFor(updated!)).toBe("waiting_on_you");
+    expect(bucketFor(updated!)).toBe("waiting_on_them");
   });
 
-  it("a logged touch takes the person out of the uncontacted bucket", async () => {
+  it("a person met in person sits in the met bucket until their stage moves", async () => {
     const relationship = await commsService.create(
       { fullName: "Ada Rowe", source: "in_person" },
       CONTEXT,
     );
-    expect(bucketFor(relationship)).toBe("no_contact_yet");
+    expect(bucketFor(relationship)).toBe("met_in_person");
     await commsService.logTouch(
       { relationship, channel: "call", direction: "outbound", summary: "Called her." },
       CONTEXT,
     );
-    const [updated] = await commsService.list("org-1");
-    expect(bucketFor(updated!)).not.toBe("no_contact_yet");
+    const moved = await commsService.update(relationship.id, { stage: "in_conversation" }, CONTEXT);
+    expect(moved.lastTouchAt).toBeTruthy();
+    expect(bucketFor(moved)).toBe("warm");
   });
 
   it("a stage change is recorded as a human decision", async () => {
