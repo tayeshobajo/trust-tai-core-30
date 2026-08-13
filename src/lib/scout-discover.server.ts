@@ -34,9 +34,14 @@ import {
   rootDomain,
   type RawDiscoveryCandidate,
 } from "@/data/scout-candidate-validation";
+import {
+  createLovableAiGatewayRunIdFetch,
+  LOVABLE_AIG_RUN_ID_HEADER,
+} from "@/lib/ai-gateway.server";
 
-const DEFAULT_MODEL = "gpt-5-mini";
+const DEFAULT_MODEL = "openai/gpt-5-mini";
 const DEFAULT_LIMIT = 25;
+
 const MAX_LIMIT = 50;
 /** Seconds an organization must wait between discovery runs. */
 export const RUN_COOLDOWN_SECONDS = 45;
