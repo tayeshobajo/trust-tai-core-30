@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AmbientQaRouteImport } from './routes/ambient-qa'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
@@ -20,6 +21,11 @@ import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/mo
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AmbientQaRoute = AmbientQaRouteImport.update({
+  id: '/ambient-qa',
+  path: '/ambient-qa',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -56,6 +62,7 @@ const ModulesScoutProspectsProspectIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ambient-qa': typeof AmbientQaRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/scout': typeof ModulesScoutRouteWithChildren
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ambient-qa': typeof AmbientQaRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ambient-qa': typeof AmbientQaRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/scout': typeof ModulesScoutRouteWithChildren
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/ambient-qa'
     | '/auth'
     | '/modules/$slug'
     | '/modules/scout'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/ambient-qa'
     | '/auth'
     | '/modules/$slug'
     | '/modules/scout/settings'
@@ -102,6 +113,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/ambient-qa'
     | '/auth'
     | '/modules/$slug'
     | '/modules/scout'
@@ -112,6 +124,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AmbientQaRoute: typeof AmbientQaRoute
   AuthRoute: typeof AuthRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
@@ -124,6 +137,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ambient-qa': {
+      id: '/ambient-qa'
+      path: '/ambient-qa'
+      fullPath: '/ambient-qa'
+      preLoaderRoute: typeof AmbientQaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -189,6 +209,7 @@ const ModulesScoutRouteWithChildren = ModulesScoutRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AmbientQaRoute: AmbientQaRoute,
   AuthRoute: AuthRoute,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
