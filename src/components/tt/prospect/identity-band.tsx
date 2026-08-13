@@ -13,7 +13,8 @@ import type { ProspectCandidate } from "@/domain/scout";
 import type { FitLight } from "@/domain/scout-fit";
 import { normalizeThemeColor } from "@/lib/company-identity";
 
-import { CompanyAccentRule, CompanyIdentityHeader } from "../company-identity";
+import { AmbientRule, AmbientSurface } from "../ambient";
+import { CompanyIdentityHeader } from "../company-identity";
 import { FIT_LIGHT_LABEL, FitDot, StageTag, formatChecked } from "../fit-light";
 import { Meta } from "./panel";
 
@@ -57,17 +58,9 @@ export function IdentityBand({
 
   return (
     <header className="tt-rise overflow-hidden rounded-xl border border-border bg-card">
-      <CompanyAccentRule themeColor={themeColor} />
-      <div
-        className="p-6 lg:p-8"
-        style={
-          themeColor
-            ? {
-                background: `linear-gradient(180deg, color-mix(in oklab, ${themeColor} 6%, transparent) 0%, transparent 180px)`,
-              }
-            : undefined
-        }
-      >
+      {/* The company's own colour when research recorded one, Scout's otherwise. */}
+      <AmbientRule appId="scout" contextAccent={themeColor} />
+      <AmbientSurface appId="scout" contextAccent={themeColor} depth="deep" className="p-6 lg:p-8">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <CompanyIdentityHeader
             name={prospect.name}
@@ -180,7 +173,7 @@ export function IdentityBand({
             </div>
           </div>
         ) : null}
-      </div>
+      </AmbientSurface>
     </header>
   );
 }
