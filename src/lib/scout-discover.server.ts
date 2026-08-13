@@ -218,18 +218,20 @@ export interface DiscoverInput {
  * show what Scout is actually doing rather than a spinner.
  */
 export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<DiscoverStage> {
-  const apiKey = process.env["OPENAI_API_KEY"];
-  if (!apiKey) {
+  const lovableApiKey = process.env["LOVABLE_API_KEY"];
+  if (!lovableApiKey) {
     yield {
       stage: "error",
       message:
-        "Scout intelligence is not connected. Add OPENAI_API_KEY in project secrets to enable live market discovery.",
+        "Scout intelligence is not connected. Add LOVABLE_API_KEY in project secrets to enable live market discovery.",
       data: { configured: false },
     };
     return;
   }
 
   const model = discoveryModel();
+  const gateway = createLovableAiGatewayRunIdFetch(input.initialRunId);
+
   const supabase = clientFor(input.token);
 
   const { data: userData, error: userError } = await supabase.auth.getUser(input.token);
