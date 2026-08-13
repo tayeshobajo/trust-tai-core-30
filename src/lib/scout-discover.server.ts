@@ -28,6 +28,7 @@ import {
   DISCOVERY_SOURCE,
   SCOUT_DISCOVERY_EVALUATOR_VERSION,
   acceptCandidates,
+  discoveryEvaluation,
   rootDomain,
   type RawDiscoveryCandidate,
 } from "@/data/scout-candidate-validation";
