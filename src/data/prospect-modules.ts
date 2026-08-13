@@ -647,6 +647,14 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
 }
 
 /** Convenience for renderers: is this surface part of the composition? */
+/** The layout weight the composer chose for a module, if it is present. */
+export function emphasisOf(
+  composition: ProspectComposition,
+  id: ProspectModule["id"],
+): ModuleEmphasis | undefined {
+  return composition.modules.find((module) => module.id === id)?.emphasis;
+}
+
 export function hasModule(composition: ProspectComposition, id: ProspectModule["id"]): boolean {
   return composition.modules.some((module) => module.id === id);
 }
