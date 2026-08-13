@@ -276,3 +276,91 @@ export async function updateContact(
   if (error || !data) throw new Error(error?.message ?? "That change could not be saved.");
   return toPerson(data);
 }
+
+/**
+ * Find the person already on record, or write them once.
+ *
+ * People live in the shared `contacts` table, so Comms never keeps a second
+ * copy of a human being. A match is an email match first (the only identifier
+ * that is actually unique) and an exact name match second. Provenance records
+ * which app first met them and that a person, not a provider, entered it.
+ */
+export async function findOrCreateContact(input: {
+  organizationId: ID;
+  userId: ID;
+  fullName: string;
+  email?: string | undefined;
+  roleTitle?: string | undefined;
+  note?: string | undefined;
+  metWhere?: string | undefined;
+}): Promise<{ person: Person; created: boolean }> {
+  const fullName = input.fullName.trim();
+  const email = input.email?.trim().toLowerCase() || undefined;
+
+  const { data, error } = await supabase
+    .from("contacts")
+    .select(SELECT_COLUMNS)
+    .eq("organization_id", input.organizationId);
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as unknown as ContactRow[];
+  const match =
+    (email ? rows.find((row) => (row.email ?? "").toLowerCase() === email) : undefined) ??
+    rows.find((row) => row.full_name.trim().toLowerCase() === fullName.toLowerCase());
+
+  if (match) {
+    // An existing person is never overwritten by a capture. Only a missing
+    // email is filled in, because that is new information, not a correction.
+    if (email && !match.email) {
+      const updated = await updateContact(
+        match.id,
+        { email, emailStatus: "found", confidence: "human_confirmed" },
+        input.userId,
+      );
+      return { person: updated, created: false };
+    }
+    return { person: toPerson(match), created: false };
+  }
+
+  const at = new Date().toISOString();
+  const metadata: Row = {
+    seniority: guessSeniority(input.roleTitle),
+    email_status: email ? "found" : "unknown",
+    confidence: "human_confirmed",
+    source_id: "comms_capture",
+    ...(input.note ? { note: input.note } : {}),
+    ...(input.metWhere ? { met_where: input.metWhere } : {}),
+    provenance: {
+      appId: "comms",
+      actor: { type: "user", id: input.userId },
+      observedAt: at,
+      confidence: "observed",
+      ...(input.metWhere ? { externalRef: input.metWhere } : {}),
+    },
+  };
+
+  const { data: created, error: insertError } = await writeTolerant<ContactRow>(
+    {
+      organization_id: input.organizationId,
+      full_name: fullName,
+      title: input.roleTitle ?? null,
+      email: email ?? null,
+      created_by: input.userId,
+      metadata,
+    },
+    ["organization_id", "full_name", "metadata"],
+    async (body) => {
+      const result = await supabase
+        .from("contacts")
+        .insert(body)
+        .select(SELECT_COLUMNS)
+        .single();
+      return { data: result.data as unknown as ContactRow | null, error: result.error };
+    },
+  );
+
+  if (insertError || !created) {
+    throw new Error(insertError?.message ?? "That person could not be saved.");
+  }
+  return { person: toPerson(created), created: true };
+}

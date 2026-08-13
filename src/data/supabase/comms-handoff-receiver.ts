@@ -15,7 +15,7 @@ import type { MemoryItem, Relationship } from "@/domain/comms";
 import type { ID } from "@/domain/entities";
 
 import { commsService, type CommsContext } from "./comms-service";
-import { isNotProvisioned, RELATIONSHIP_COLUMNS, toRelationship, type RelationshipRow } from "./comms-schema";
+import { RELATIONSHIP_COLUMNS, toRelationship, type RelationshipRow } from "./comms-schema";
 
 function memoryFromBrief(draft: HandoffDraft): {
   observed: MemoryItem[];
@@ -63,49 +63,41 @@ async function existing(prospectId: ID, organizationId: ID): Promise<Relationshi
   return data ? toRelationship(data as unknown as RelationshipRow) : null;
 }
 
-/**
- * Open the relationship in Comms. Returns the relationship, or null when Comms
- * is not provisioned in this backend.
- */
+/** Open the relationship in Comms, or return the one already carried across. */
 export async function receiveScoutHandoff(
   draft: HandoffDraft,
   context: CommsContext,
-): Promise<Relationship | null> {
+): Promise<Relationship> {
   const primary = draft.targets.find((target) => target.rank === "primary") ?? null;
   const contact = primary ?? draft.contact;
 
-  try {
-    const already = await existing(draft.prospectId, context.organizationId);
-    if (already) return already;
+  const already = await existing(draft.prospectId, context.organizationId);
+  if (already) return already;
 
-    const memory = memoryFromBrief(draft);
-    return await commsService.create(
-      {
-        fullName: contact?.fullName ?? draft.companyName,
-        companyName: draft.companyName,
-        email: contact?.email,
-        source: "scout_handoff",
-        stage: "ready_to_reach",
-        prospectId: draft.prospectId,
-        ...(primary?.personId ? { contactId: primary.personId } : {}),
-        nextAction: `${HANDOFF_INTENT_LABEL[draft.intent]} with ${contact?.fullName ?? "a named contact"}.`,
-        observed: memory.observed,
-        inferred: memory.inferred,
-        decided: memory.decided,
-        metadata: {
-          scout_handoff: {
-            prospect_id: draft.prospectId,
-            website_url: draft.websiteUrl ?? null,
-            intent: draft.intent,
-            confidence: draft.confidence.level,
-            generated_at: draft.generatedAt,
-          },
+  const memory = memoryFromBrief(draft);
+  return commsService.create(
+    {
+      fullName: contact?.fullName ?? draft.companyName,
+      companyName: draft.companyName,
+      email: contact?.email,
+      source: "scout_handoff",
+      stage: "ready_to_reach",
+      prospectId: draft.prospectId,
+      ...(primary?.personId ? { contactId: primary.personId } : {}),
+      nextAction: `${HANDOFF_INTENT_LABEL[draft.intent]} with ${contact?.fullName ?? "a named contact"}.`,
+      observed: memory.observed,
+      inferred: memory.inferred,
+      decided: memory.decided,
+      metadata: {
+        scout_handoff: {
+          prospect_id: draft.prospectId,
+          website_url: draft.websiteUrl ?? null,
+          intent: draft.intent,
+          confidence: draft.confidence.level,
+          generated_at: draft.generatedAt,
         },
       },
-      context,
-    );
-  } catch (error) {
-    if (isNotProvisioned(error)) return null;
-    throw error;
-  }
+    },
+    context,
+  );
 }

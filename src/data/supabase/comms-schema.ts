@@ -1,9 +1,9 @@
 /**
  * Comms row shapes and mapping.
  *
- * The Trust Tai Supabase schema is managed outside this project, so Comms
- * fails honestly: if the `comms_*` tables have not been applied yet, the room
- * says so rather than pretending to be empty.
+ * The Comms tables are live in the Trust Tai Supabase project, so a failed read
+ * is a real failure: a permission problem, a network problem, or a bug. It is
+ * reported as itself rather than dressed up as a missing feature.
  */
 
 import type { PostgrestError } from "@supabase/supabase-js";
@@ -24,29 +24,12 @@ import type { EvidenceRef } from "@/domain/confidence";
 
 export type Row = Record<string, unknown>;
 
-/** PostgREST's "table is not in the schema cache" code. */
-export const MISSING_TABLE_CODE = "PGRST205";
-
-export class CommsNotProvisionedError extends Error {
-  constructor() {
-    super(
-      "The Comms tables have not been applied to the Trust Tai database yet. Run docs/comms-v1-schema.sql in the Supabase SQL editor.",
-    );
-    this.name = "CommsNotProvisionedError";
-  }
-}
-
-export function assertProvisioned(error: PostgrestError | null): void {
+/** Any Postgrest error is surfaced with its own message, never swallowed. */
+export function assertOk(error: PostgrestError | null): void {
   if (!error) return;
-  if (error.code === MISSING_TABLE_CODE || /comms_/.test(error.message ?? "")) {
-    if (error.code === MISSING_TABLE_CODE) throw new CommsNotProvisionedError();
-  }
   throw new Error(error.message);
 }
 
-export function isNotProvisioned(error: unknown): boolean {
-  return error instanceof CommsNotProvisionedError;
-}
 
 /* ------------------------------------------------------------------ helpers */
 

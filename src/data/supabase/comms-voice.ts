@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ID } from "@/domain/entities";
 import { DEFAULT_VOICE_DOCUMENT } from "@/domain/voice";
 
-import { assertProvisioned, type Row } from "./comms-schema";
+import { assertOk, type Row } from "./comms-schema";
 
 export interface VoiceProfile {
   id: ID;
@@ -52,7 +52,7 @@ export async function getVoiceProfile(organizationId: ID): Promise<VoiceProfile 
     .select("*")
     .eq("organization_id", organizationId)
     .maybeSingle();
-  assertProvisioned(error);
+  assertOk(error);
   return data ? toProfile(data as unknown as VoiceRow) : null;
 }
 
@@ -78,7 +78,7 @@ export async function saveVoiceProfile(input: {
       .insert(payload)
       .select("*")
       .single();
-    assertProvisioned(error);
+    assertOk(error);
     if (!data) throw new Error("The Voice DNA could not be saved. You may not have permission.");
     return toProfile(data as unknown as VoiceRow);
   }
@@ -94,7 +94,7 @@ export async function saveVoiceProfile(input: {
     .eq("id", input.current.id)
     .select("*")
     .maybeSingle();
-  assertProvisioned(error);
+  assertOk(error);
   if (!data) throw new Error("The Voice DNA could not be saved. You may not have permission.");
   return toProfile(data as unknown as VoiceRow);
 }

@@ -1,8 +1,9 @@
 -- Trust Tai OS — Comms v1 schema
 --
--- Apply this in the externally managed Trust Tai Supabase project
--- (ref okydosoacqdnursmmenf) via the SQL editor. This project does not own
--- that schema, so nothing here runs automatically.
+-- APPLIED. These six tables are live in the externally managed Trust Tai
+-- Supabase project (ref okydosoacqdnursmmenf) with RLS enabled. This file is
+-- kept as the record of what was applied; this project does not own that
+-- schema, so nothing here runs automatically.
 --
 -- Comms adds relationship state only. People stay in `contacts`, companies
 -- stay in `clients` / `prospects`, history stays in `activities`. Nothing here
@@ -11,23 +12,9 @@
 -- Order per table: CREATE TABLE, GRANT, ENABLE RLS, POLICY.
 -- Access is organization-scoped through `organization_memberships`.
 
-create or replace function public.is_org_member(_organization_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1
-    from public.organization_memberships m
-    where m.organization_id = _organization_id
-      and m.user_id = auth.uid()
-      and coalesce(m.status, 'active') = 'active'
-  )
-$$;
-
-grant execute on function public.is_org_member(uuid) to authenticated;
+-- Membership is checked with the existing hardened helper
+-- `private.is_org_member(uuid)`, which already exists in this project. Comms
+-- does NOT create a public SECURITY DEFINER helper of its own.
 
 -- ---------------------------------------------------------------- relationships
 
@@ -71,17 +58,17 @@ alter table public.comms_relationships enable row level security;
 
 create policy "Members read relationships"
   on public.comms_relationships for select to authenticated
-  using (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id));
 create policy "Members write relationships"
   on public.comms_relationships for insert to authenticated
-  with check (public.is_org_member(organization_id));
+  with check (private.is_org_member(organization_id));
 create policy "Members update relationships"
   on public.comms_relationships for update to authenticated
-  using (public.is_org_member(organization_id))
-  with check (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id))
+  with check (private.is_org_member(organization_id));
 create policy "Members delete relationships"
   on public.comms_relationships for delete to authenticated
-  using (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id));
 
 -- --------------------------------------------------------------------- threads
 
@@ -109,17 +96,17 @@ alter table public.comms_threads enable row level security;
 
 create policy "Members read threads"
   on public.comms_threads for select to authenticated
-  using (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id));
 create policy "Members write threads"
   on public.comms_threads for insert to authenticated
-  with check (public.is_org_member(organization_id));
+  with check (private.is_org_member(organization_id));
 create policy "Members update threads"
   on public.comms_threads for update to authenticated
-  using (public.is_org_member(organization_id))
-  with check (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id))
+  with check (private.is_org_member(organization_id));
 create policy "Members delete threads"
   on public.comms_threads for delete to authenticated
-  using (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id));
 
 -- --------------------------------------------------------------------- touches
 
@@ -148,17 +135,17 @@ alter table public.comms_touches enable row level security;
 
 create policy "Members read touches"
   on public.comms_touches for select to authenticated
-  using (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id));
 create policy "Members write touches"
   on public.comms_touches for insert to authenticated
-  with check (public.is_org_member(organization_id));
+  with check (private.is_org_member(organization_id));
 create policy "Members update touches"
   on public.comms_touches for update to authenticated
-  using (public.is_org_member(organization_id))
-  with check (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id))
+  with check (private.is_org_member(organization_id));
 create policy "Members delete touches"
   on public.comms_touches for delete to authenticated
-  using (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id));
 
 -- ---------------------------------------------------------------------- drafts
 
@@ -190,17 +177,17 @@ alter table public.comms_drafts enable row level security;
 
 create policy "Members read drafts"
   on public.comms_drafts for select to authenticated
-  using (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id));
 create policy "Members write drafts"
   on public.comms_drafts for insert to authenticated
-  with check (public.is_org_member(organization_id));
+  with check (private.is_org_member(organization_id));
 create policy "Members update drafts"
   on public.comms_drafts for update to authenticated
-  using (public.is_org_member(organization_id))
-  with check (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id))
+  with check (private.is_org_member(organization_id));
 create policy "Members delete drafts"
   on public.comms_drafts for delete to authenticated
-  using (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id));
 
 -- ------------------------------------------------------------------- reminders
 
@@ -228,17 +215,17 @@ alter table public.comms_reminders enable row level security;
 
 create policy "Members read reminders"
   on public.comms_reminders for select to authenticated
-  using (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id));
 create policy "Members write reminders"
   on public.comms_reminders for insert to authenticated
-  with check (public.is_org_member(organization_id));
+  with check (private.is_org_member(organization_id));
 create policy "Members update reminders"
   on public.comms_reminders for update to authenticated
-  using (public.is_org_member(organization_id))
-  with check (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id))
+  with check (private.is_org_member(organization_id));
 create policy "Members delete reminders"
   on public.comms_reminders for delete to authenticated
-  using (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id));
 
 -- -------------------------------------------------------------- voice profiles
 
@@ -264,7 +251,7 @@ alter table public.comms_voice_profiles enable row level security;
 
 create policy "Members read voice profile"
   on public.comms_voice_profiles for select to authenticated
-  using (public.is_org_member(organization_id));
+  using (private.is_org_member(organization_id));
 
 create policy "Admins write voice profile"
   on public.comms_voice_profiles for insert to authenticated

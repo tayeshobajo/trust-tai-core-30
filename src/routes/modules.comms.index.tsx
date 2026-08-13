@@ -22,7 +22,6 @@ import { RelationshipWorkspace } from "@/components/tt/comms/relationship-worksp
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
-import { isNotProvisioned } from "@/data/supabase/comms-schema";
 import type { CommsDraft, MemoryItem, Relationship } from "@/domain/comms";
 import type { VoiceRegister } from "@/domain/voice";
 import { supabase } from "@/integrations/trust-tai/supabase";
@@ -196,14 +195,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     }
   }
 
-  if (relationshipsQuery.isError && isNotProvisioned(relationshipsQuery.error)) {
+  if (relationshipsQuery.isError) {
     return (
       <div className="mx-auto max-w-reading px-6 py-10">
         <PageHeader
           appId="comms"
           eyebrow="Comms"
-          title="Comms is not provisioned yet."
-          supporting="The relationship tables do not exist in this Trust Tai backend. Apply docs/comms-v1-schema.sql in Supabase and this room opens with your own data."
+          title="Comms could not be read."
+          supporting={(relationshipsQuery.error as Error).message}
         />
       </div>
     );
