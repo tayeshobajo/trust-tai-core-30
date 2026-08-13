@@ -28,6 +28,7 @@ export type EntityType =
   | "activity"
   | "task"
   | "decision"
+  | "roadmap"
   | "app";
 
 /** Canonical Trust Tai lifecycle states. Never communicated by color alone. */
