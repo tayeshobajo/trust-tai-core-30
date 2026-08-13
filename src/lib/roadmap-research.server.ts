@@ -62,9 +62,20 @@ async function requireMembership(
   return !error && (data ?? []).length > 0;
 }
 
+/**
+ * Fail closed for any Roadmap run: a valid Trust Tai token and an active
+ * membership in this organization, both checked against the real backend.
+ */
+export async function requireRoadmapAccess(
+  token: string,
+  organizationId: string,
+): Promise<boolean> {
+  return requireMembership(clientFor(token), organizationId);
+}
+
 /* --------------------------------------------------------------- provider */
 
-async function callProvider(
+export async function callRoadmapProvider(
   instructions: string,
   input: string,
   options: {
@@ -73,6 +84,7 @@ async function callProvider(
     initialRunId?: string | undefined;
   },
 ): Promise<{ raw: string; provider: string; model: string }> {
+
   const selected = selectScoutProvider();
   if (!selected) {
     throw new Error(
