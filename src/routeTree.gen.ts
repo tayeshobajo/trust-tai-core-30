@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
+import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
@@ -40,6 +41,11 @@ const ModulesSlugRoute = ModulesSlugRouteImport.update({
 const ModulesCommsRoute = ModulesCommsRouteImport.update({
   id: '/modules/comms',
   path: '/modules/comms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesRoadmapRoute = ModulesRoadmapRouteImport.update({
+  id: '/modules/roadmap',
+  path: '/modules/roadmap',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesScoutRoute = ModulesScoutRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
+  '/modules/roadmap': typeof ModulesRoadmapRoute
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
+  '/modules/roadmap': typeof ModulesRoadmapRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
+  '/modules/roadmap': typeof ModulesRoadmapRoute
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/modules/$slug'
     | '/modules/comms'
+    | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/comms/voice'
     | '/modules/scout/settings'
@@ -145,6 +155,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/modules/$slug'
+    | '/modules/roadmap'
     | '/modules/comms/voice'
     | '/modules/scout/settings'
     | '/modules/comms'
@@ -158,6 +169,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/modules/$slug'
     | '/modules/comms'
+    | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/comms/voice'
     | '/modules/scout/settings'
@@ -173,6 +185,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
+  ModulesRoadmapRoute: typeof ModulesRoadmapRoute
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
@@ -206,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/comms'
       fullPath: '/modules/comms'
       preLoaderRoute: typeof ModulesCommsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/roadmap': {
+      id: '/modules/roadmap'
+      path: '/modules/roadmap'
+      fullPath: '/modules/roadmap'
+      preLoaderRoute: typeof ModulesRoadmapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/scout': {
@@ -302,6 +322,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesCommsRoute: ModulesCommsRouteWithChildren,
+  ModulesRoadmapRoute: ModulesRoadmapRoute,
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
