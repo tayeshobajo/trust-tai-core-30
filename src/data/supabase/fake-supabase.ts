@@ -106,7 +106,9 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
         this.onWrite?.(row);
         return row;
       });
-      return { data: written.length === 1 ? written[0]! : written, error: null };
+      // PostgREST returns a list for a list body, exactly as the real client does.
+      return { data: Array.isArray(this.body) ? written : (written[0] ?? null), error: null };
+
     }
 
     if (this.mode === "delete") {
