@@ -60,6 +60,7 @@ function AuthRoute() {
   return (
     <div className="mx-auto flex min-h-screen max-w-reading flex-col justify-center px-6 py-16">
       <PageHeader
+        appId="home"
         eyebrow="Trust Tai OS"
         title="Sign in to your workspace."
         supporting="We send a one-time link to your inbox. Use your Trust Tai email address — access itself is granted by your organization membership, not by the address you type."

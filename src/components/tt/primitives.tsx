@@ -2,6 +2,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps, ReactNode } from "react";
 
+import { AmbientDot, AmbientRule, AmbientSurface } from "@/components/tt/ambient";
 import { cn } from "@/lib/utils";
 import type { LifecycleStatus } from "@/domain/entities";
 
@@ -157,17 +158,54 @@ export function SectionHeading({
 
 /* --------------------------------- Page header ------------------------------ */
 
+/**
+ * Page header. Pass `appId` to give the page its room's Ambient Identity Wash;
+ * pass `contextAccent` when the page is about a subject with a real colour of
+ * its own. Without either, the header stays the plain Trust Tai rule.
+ */
 export function PageHeader({
   eyebrow,
   title,
   supporting,
   action,
+  appId,
+  contextAccent,
 }: {
   eyebrow: string;
   title: string;
   supporting?: string;
   action?: ReactNode;
+  appId?: string;
+  contextAccent?: string | null | undefined;
 }) {
+  if (appId) {
+    return (
+      <header className="tt-rise overflow-hidden rounded-2xl border border-border bg-card">
+        <AmbientRule appId={appId} contextAccent={contextAccent} />
+        <AmbientSurface
+          appId={appId}
+          contextAccent={contextAccent}
+          depth="deep"
+          className="p-6 sm:p-10"
+        >
+          <p className="tt-eyebrow flex items-center gap-2">
+            {eyebrow}
+            <AmbientDot appId={appId} contextAccent={contextAccent} />
+          </p>
+          <div className="mt-4 flex flex-wrap items-end justify-between gap-6">
+            <h1 className="tt-display max-w-[16ch] text-4xl text-foreground sm:text-5xl">
+              {title}
+            </h1>
+            {action}
+          </div>
+          {supporting ? (
+            <p className="mt-5 max-w-reading text-base text-muted-foreground">{supporting}</p>
+          ) : null}
+        </AmbientSurface>
+      </header>
+    );
+  }
+
   return (
     <header className="tt-rise border-b border-border pb-8">
       <p className="tt-eyebrow">{eyebrow}</p>

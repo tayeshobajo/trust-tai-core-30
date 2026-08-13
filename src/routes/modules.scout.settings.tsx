@@ -132,6 +132,7 @@ function IcpSettings({ identity }: { identity: WorkspaceIdentity }) {
   return (
     <div className="space-y-10">
       <PageHeader
+        appId="scout"
         eyebrow="Trust Tai OS / Scout"
         title="Ideal Client Profile"
         supporting="Scout uses this profile to decide who deserves deeper research."
