@@ -16,6 +16,7 @@ import type { CandidateSource, ProspectCandidate, ScoutSignal } from "@/domain/s
 import { evaluateScoutFit, storedEvaluation, withOverride } from "@/data/scout-fit-evaluator";
 import type { ProspectRow, Row } from "./schema";
 import { toProspect } from "./prospects";
+import { readCompanyIdentity } from "@/lib/company-identity";
 
 /** Raw payload returned by the Edge Function. */
 export interface ScoutResearchPayload {
@@ -260,5 +261,11 @@ export function candidateFromResearchRow(
       row.metadata,
     ),
     lastCheckedAt: researchedAt,
+    identity: readCompanyIdentity({
+      metadata: row.metadata,
+      provenance,
+      inferred,
+      observed,
+    }),
   };
 }
