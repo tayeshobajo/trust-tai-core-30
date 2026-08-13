@@ -53,6 +53,19 @@ import {
   researchVersion,
   researchWebsite,
 } from "./scout-research";
+import {
+  SCOUT_DISCOVERY_SOURCE,
+  candidateFromDiscoveryRow,
+} from "./scout-discovery-map";
+import {
+  discover as runDiscover,
+  discoveryStatus,
+  listDiscoveryRuns,
+  listProspectEvaluations,
+  recordScoutFeedback,
+  type DiscoverInput,
+  type FeedbackInput,
+} from "./scout-discovery";
 import type { ProspectRow } from "./schema";
 
 function previewEvidence(domain: string): Pick<ProspectCandidate, "signals" | "fit"> {
@@ -82,6 +95,7 @@ function previewEvaluation(icpVersion: number | null, at: string) {
 
 /** Stored row → candidate, using the row's own source to pick the evidence. */
 function toCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandidate {
+  if (row.source === SCOUT_DISCOVERY_SOURCE) return candidateFromDiscoveryRow(row, icpVersion);
   if (row.source === SCOUT_LIVE_SOURCE) return candidateFromResearchRow(row, icpVersion);
   const prospect = toProspect(row);
   const lastCheckedAt = row.updated_at ?? row.created_at;
@@ -135,6 +149,34 @@ export const scoutService = {
     });
   },
 
+  /** Is live market discovery connected? */
+  async discoveryStatus() {
+    return discoveryStatus();
+  },
+
+  /**
+   * Real AI market sourcing. Finds companies on the open web for a
+   * plain-English target, evaluates each against the active ICP, and saves what
+   * it can verify. Never falls back to demo data.
+   */
+  async discover(input: DiscoverInput) {
+    return runDiscover(input);
+  },
+
+  /** Every sourcing pass this organization has run. */
+  async runs(organizationId: ID) {
+    return listDiscoveryRuns(organizationId);
+  },
+
+  /** Evaluation history for one company, newest first. */
+  async evaluations(prospectId: ID) {
+    return listProspectEvaluations(prospectId);
+  },
+
+  /** Record a human decision as calibration for later runs. */
+  async feedback(input: FeedbackInput) {
+    return recordScoutFeedback(input);
+  },
 
 
   /**
@@ -325,6 +367,15 @@ export const scoutService = {
     context: ScoutContext,
   ): Promise<void> {
     await setProspectFitOverride(id, light, context.userId);
+    // A human disagreeing with the machine is the most valuable calibration
+    // signal there is. It sharpens interpretation; it never rewrites the ICP.
+    await recordScoutFeedback({
+      organizationId: context.organizationId,
+      userId: context.userId,
+      prospectId: id,
+      decision: "fit_override",
+      humanFit: light,
+    });
   },
 
   /** Qualify / Pass. Writes the row, then appends the activity record. */
@@ -355,6 +406,17 @@ export const scoutService = {
       },
       occurredAt,
     });
+
+    if (prospect.status === "qualified" || prospect.status === "passed") {
+      await recordScoutFeedback({
+        organizationId: context.organizationId,
+        userId: context.userId,
+        prospectId: id,
+        decision: prospect.status,
+        companyName: prospect.name,
+        domain: prospect.domain,
+      });
+    }
 
     return prospect;
   },
