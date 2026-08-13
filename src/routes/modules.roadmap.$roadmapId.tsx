@@ -27,7 +27,7 @@ import {
 } from "@/components/tt/roadmap/roadmap-spine";
 import { TierChip } from "@/components/tt/roadmap/tier";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { isNotReady, roadmapService, type RoadmapContext } from "@/data/supabase/roadmap-service";
+import { roadmapService, type RoadmapContext } from "@/data/supabase/roadmap-service";
 import type {
   DecisionState,
   RoadmapDecision,
@@ -166,7 +166,7 @@ function RoadmapWorkspace({
     const error = detailQuery.error;
     return (
       <EmptyState
-        title={isNotReady(error) ? "Roadmap is not set up in this workspace yet." : "This roadmap could not be read."}
+        title="This roadmap could not be read."
         belongsHere="Roadmaps live in the shared Trust Tai backend and are read under your own access."
         whyItMatters={error instanceof Error ? error.message : "An unexpected error stopped the read."}
         action={<BackLink />}

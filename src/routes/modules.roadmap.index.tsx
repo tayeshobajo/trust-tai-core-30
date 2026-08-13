@@ -2,9 +2,8 @@
  * Roadmap — the sequencing room.
  *
  * Two things lead: what needs a decision, and what is actually moving.
- * Everything is read from Supabase under the caller's own access. If the
- * Roadmap tables are not set up yet, the room says so plainly rather than
- * pretending with fixtures.
+ * Everything is read from the live Trust Tai backend under the caller's own
+ * access. A failure is reported as itself; there are no fixtures.
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -18,11 +17,7 @@ import { StartRoadmapForm, type StartRoadmapValues } from "@/components/tt/roadm
 import { TierChip } from "@/components/tt/roadmap/tier";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { listSubjects } from "@/data/supabase/roadmap-subjects";
-import {
-  isNotReady,
-  roadmapService,
-  type RoadmapContext,
-} from "@/data/supabase/roadmap-service";
+import { roadmapService, type RoadmapContext } from "@/data/supabase/roadmap-service";
 import type { Roadmap, RoadmapDecision } from "@/domain/roadmap";
 import { isActiveRoadmap, ROADMAP_STATUS_LABEL } from "@/domain/roadmap";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -113,12 +108,8 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
       <div className="space-y-8">
         <RoadmapHero identity={identity} />
         <EmptyState
-          title={isNotReady(error) ? "Roadmap is not set up in this workspace yet." : "Roadmap could not be read."}
-          belongsHere={
-            isNotReady(error)
-              ? "Roadmaps, their stages, and their decisions live in the shared Trust Tai backend."
-              : "This room only shows what the backend actually returned."
-          }
+          title="Roadmap could not be read."
+          belongsHere="Roadmaps, their stages, and their decisions live in the shared Trust Tai backend, read under your own access."
           whyItMatters={
             error instanceof Error ? error.message : "An unexpected error stopped the read."
           }
