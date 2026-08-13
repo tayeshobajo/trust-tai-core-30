@@ -17,6 +17,7 @@
 
 import {
   buildEvidencePacket,
+  hasFabrication,
   packetOutline,
   validateSections,
   type EvidencePacket,
@@ -223,6 +224,26 @@ export async function* runStudioComposition(
   }
 
   const validated = validateSections(composed, packet);
+
+  /**
+   * A voice problem can be edited out. An invented figure or an uncited source
+   * cannot: it means this run asserted something nobody approved, so the whole
+   * composition is refused and nothing is saved.
+   */
+  if (hasFabrication(validated.rejected)) {
+    const fabrications = validated.rejected.filter((entry) => entry.severity === "fabrication");
+    yield {
+      stage: "error",
+      message: `This composition claimed ${fabrications.length === 1 ? "something" : `${fabrications.length} things`} the approved evidence does not support, so nothing was saved. ${fabrications[0]?.reason ?? ""}`.trim(),
+      data: { rejected: fabrications },
+    };
+    return;
+  }
+
+  if (validated.sections.length === 0) {
+    yield { stage: "error", message: "Nothing survived validation. Nothing was saved." };
+    return;
+  }
 
   const result: StudioComposeResult = {
     sections: validated.sections,

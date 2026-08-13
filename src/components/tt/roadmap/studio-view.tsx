@@ -15,7 +15,79 @@ import { useEffect, useState } from "react";
 
 import { EvidenceList, TierChip } from "@/components/tt/roadmap/tier";
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
-import type { ArtifactSection, RoadmapArtifact } from "@/domain/roadmap-intel";
+import { buildEvidencePacket, packetSummary } from "@/data/roadmap-studio-packet";
+import type {
+  ArtifactSection,
+  RoadmapArtifact,
+  RoadmapMilestone,
+  RoadmapStrategy,
+} from "@/domain/roadmap-intel";
+
+function when(value: string | undefined): string {
+  if (!value) return "Never";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Never"
+    : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
+/**
+ * What the room is allowed to compose from, before anyone presses compose.
+ *
+ * Readiness is shown rather than discovered on failure, because a thin packet
+ * is a decision people still have to make, not an error.
+ */
+function PacketPanel({
+  kind,
+  subjectLabel,
+  strategy,
+  milestones,
+  artifact,
+}: {
+  kind: "preview" | "full";
+  subjectLabel: string;
+  strategy: RoadmapStrategy | null;
+  milestones: RoadmapMilestone[];
+  artifact: RoadmapArtifact | null;
+}) {
+  const summary = packetSummary(
+    buildEvidencePacket({ subjectLabel, kind, strategy, milestones }),
+  );
+
+  return (
+    <div className="tt-surface p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="tt-eyebrow">Approved evidence packet</p>
+        <MetaPill>{summary.ready ? "Ready to compose" : "Not ready"}</MetaPill>
+        <MetaPill>{summary.approvedStrategyCount} approved strategy</MetaPill>
+        <MetaPill>{summary.approvedMilestoneCount} approved milestones</MetaPill>
+        <MetaPill>
+          {summary.sourceCount} {summary.sourceCount === 1 ? "source" : "sources"}
+        </MetaPill>
+      </div>
+
+      {summary.missing.length > 0 ? (
+        <ul className="mt-3 space-y-1">
+          {summary.missing.map((line) => (
+            <li key={line} className="text-sm text-muted-foreground">
+              {line}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Only approved strategy and approved milestones reach the page. Everything else stays out.
+        </p>
+      )}
+
+      <p className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+        {artifact
+          ? `Version ${artifact.version}, written by ${artifact.provider ?? "unknown"} ${artifact.model ?? ""} on ${when(artifact.generatedAt)}.`
+          : "Nothing composed yet."}
+      </p>
+    </div>
+  );
+}
 
 function SectionCard({
   section,
@@ -114,6 +186,7 @@ function Document({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <p className="tt-eyebrow">{label}</p>
+          <MetaPill>Version {artifact.version}</MetaPill>
           {artifact.humanEdited ? <MetaPill>Edited by hand</MetaPill> : null}
           {artifact.model ? <MetaPill>{artifact.model}</MetaPill> : null}
         </div>
@@ -178,6 +251,9 @@ function Document({
 }
 
 export function StudioView({
+  subjectLabel,
+  strategy,
+  milestones,
   preview,
   full,
   busy,
@@ -185,6 +261,9 @@ export function StudioView({
   onCompose,
   onEdit,
 }: {
+  subjectLabel: string;
+  strategy: RoadmapStrategy | null;
+  milestones: RoadmapMilestone[];
   preview: RoadmapArtifact | null;
   full: RoadmapArtifact | null;
   busy: boolean;
@@ -192,35 +271,56 @@ export function StudioView({
   onCompose: (kind: "preview" | "full", replace?: boolean) => void;
   onEdit: (artifact: RoadmapArtifact, sections: ArtifactSection[]) => void;
 }) {
-  function composeLabel(artifact: RoadmapArtifact | null, name: string) {
+  const [tab, setTab] = useState<"preview" | "full">("preview");
+  const artifact = tab === "preview" ? preview : full;
+  const name = tab === "preview" ? "preview" : "full roadmap";
+
+  function composeLabel() {
     if (!artifact) return `Compose ${name}`;
     return artifact.humanEdited ? `Replace ${name}` : `Recompose ${name}`;
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <SectionHeading
         eyebrow="Studio"
         title="The client roadmap"
         description="Title page, Point A, the market gap, and a note from Tai. The full roadmap adds one page per approved milestone. Approved evidence only."
         action={
-          <div className="flex flex-wrap gap-2">
-            <TTButton
-              variant="secondary"
-              disabled={busy}
-              onClick={() => onCompose("preview", preview?.humanEdited === true)}
-            >
-              {composeLabel(preview, "preview")}
-            </TTButton>
-            <TTButton
-              variant="secondary"
-              disabled={busy}
-              onClick={() => onCompose("full", full?.humanEdited === true)}
-            >
-              {composeLabel(full, "full roadmap")}
-            </TTButton>
-          </div>
+          <TTButton
+            disabled={busy}
+            onClick={() => onCompose(tab, artifact?.humanEdited === true)}
+          >
+            {composeLabel()}
+          </TTButton>
         }
+      />
+
+      <div role="tablist" aria-label="Roadmap documents" className="flex gap-2">
+        {(["preview", "full"] as const).map((entry) => (
+          <button
+            key={entry}
+            type="button"
+            role="tab"
+            aria-selected={tab === entry}
+            onClick={() => setTab(entry)}
+            className={
+              tab === entry
+                ? "tt-ambient rounded-full border border-border px-4 py-1.5 text-sm text-foreground"
+                : "rounded-full border border-border/60 px-4 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+            }
+          >
+            {entry === "preview" ? "Preview" : "Full roadmap"}
+          </button>
+        ))}
+      </div>
+
+      <PacketPanel
+        kind={tab}
+        subjectLabel={subjectLabel}
+        strategy={strategy}
+        milestones={milestones}
+        artifact={artifact}
       />
 
       {busy && stage ? (
@@ -229,20 +329,20 @@ export function StudioView({
         </p>
       ) : null}
 
-      {!preview && !full ? (
+      {artifact ? (
+        <Document
+          artifact={artifact}
+          label={tab === "preview" ? "Roadmap preview" : "Full roadmap"}
+          busy={busy}
+          onEdit={onEdit}
+        />
+      ) : (
         <EmptyState
-          title="Nothing has been composed yet."
+          title={`No ${name} has been composed yet.`}
           belongsHere="Studio turns approved strategy and approved milestones into language a client can read."
           whyItMatters="Anything not approved stays out of the document rather than becoming a confident sentence."
         />
-      ) : null}
-
-      {preview ? (
-        <Document artifact={preview} label="Roadmap preview" busy={busy} onEdit={onEdit} />
-      ) : null}
-      {full ? (
-        <Document artifact={full} label="Full roadmap" busy={busy} onEdit={onEdit} />
-      ) : null}
+      )}
     </div>
   );
 }

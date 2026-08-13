@@ -55,6 +55,46 @@ export interface IntelContext {
   userLabel?: string | undefined;
 }
 
+/** One earlier version of a composed document. */
+export interface ArtifactVersion {
+  id: ID;
+  artifactId: ID;
+  kind: "preview" | "full";
+  version: number;
+  title: string;
+  provider?: string | undefined;
+  model?: string | undefined;
+  humanEdited: boolean;
+  replacedAt: string;
+}
+
+/**
+ * Keep the version that is about to be replaced.
+ *
+ * A composed document is client facing work, and a hand edit is Decided truth,
+ * so neither is allowed to disappear because someone pressed compose again.
+ * The live row stays one per kind; history lives in its own table.
+ */
+async function snapshot(context: IntelContext, artifact: RoadmapArtifact): Promise<void> {
+  const { error } = await supabase.from("roadmap_artifact_versions").insert({
+    organization_id: context.organizationId,
+    roadmap_id: artifact.roadmapId,
+    artifact_id: artifact.id,
+    kind: artifact.kind,
+    version: artifact.version,
+    title: artifact.title,
+    sections: artifact.sections,
+    provider: artifact.provider ?? null,
+    model: artifact.model ?? null,
+    rejected: artifact.rejected,
+    human_edited: artifact.humanEdited,
+    replaced_at: new Date().toISOString(),
+    replaced_by: context.userId,
+  });
+  assertOk(error);
+}
+
+
 async function record(
   context: IntelContext,
   name: ActivityName,
@@ -480,6 +520,9 @@ export const roadmapIntel = {
       );
     }
 
+    // Snapshot what is about to be replaced before the live row changes.
+    if (current) await snapshot(context, current);
+
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("roadmap_artifacts")
@@ -496,6 +539,7 @@ export const roadmapIntel = {
           model: options?.model ?? null,
           rejected: options?.rejected ?? [],
           human_edited: false,
+          version: (current?.version ?? 0) + 1,
           edited_at: null,
           edited_by: null,
           generated_at: now,
@@ -525,6 +569,7 @@ export const roadmapIntel = {
     sections: ArtifactSection[],
     title?: string,
   ): Promise<RoadmapArtifact> {
+    await snapshot(context, artifact);
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("roadmap_artifacts")
@@ -532,6 +577,7 @@ export const roadmapIntel = {
         sections,
         ...(title ? { title } : {}),
         human_edited: true,
+        version: artifact.version + 1,
         edited_at: now,
         edited_by: context.userId,
         updated_at: now,
@@ -551,6 +597,26 @@ export const roadmapIntel = {
     return toArtifact(data as Row);
   },
 
+  /** Every version this document has had, newest first. */
+  async listArtifactVersions(artifactId: ID): Promise<ArtifactVersion[]> {
+    const { data, error } = await supabase
+      .from("roadmap_artifact_versions")
+      .select("id, artifact_id, kind, version, title, provider, model, human_edited, replaced_at")
+      .eq("artifact_id", artifactId)
+      .order("version", { ascending: false });
+    assertOk(error);
+    return ((data ?? []) as Row[]).map((row) => ({
+      id: String(row["id"]),
+      artifactId: String(row["artifact_id"]),
+      kind: row["kind"] === "full" ? "full" : "preview",
+      version: typeof row["version"] === "number" ? row["version"] : 1,
+      title: String(row["title"] ?? ""),
+      provider: row["provider"] ? String(row["provider"]) : undefined,
+      model: row["model"] ? String(row["model"]) : undefined,
+      humanEdited: row["human_edited"] === true,
+      replacedAt: String(row["replaced_at"] ?? new Date().toISOString()),
+    }));
+  },
 
   /* ------------------------------------------------------ walkthrough */
 

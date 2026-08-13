@@ -647,6 +647,9 @@ function RoadmapWorkspace({
 
       {view === "studio" ? (
         <StudioView
+          subjectLabel={detail?.roadmap.subjectLabel ?? ""}
+          strategy={intel?.strategy ?? null}
+          milestones={intel?.milestones ?? []}
           preview={intel?.artifacts.find((entry) => entry.kind === "preview") ?? null}
           full={intel?.artifacts.find((entry) => entry.kind === "full") ?? null}
           busy={compose.isPending || editArtifact.isPending}
