@@ -245,9 +245,11 @@ export interface RoadmapArtifact {
   provider?: string;
   model?: string;
   /** Lines the validator refused because approved evidence did not back them. */
-  rejected: { section: string; line: string; reason: string }[];
+  rejected: { section: string; line: string; reason: string; severity?: string }[];
   /** True once a person has edited the composed document by hand. */
   humanEdited: boolean;
+  /** Increments on every composition and every hand edit. History is a table. */
+  version: number;
   editedAt?: ISODateTime;
   editedBy?: ID;
   generatedAt: ISODateTime;

@@ -41,7 +41,7 @@ export const MILESTONE_COLUMNS =
   "id, organization_id, roadmap_id, name, what_we_build, intended_user, supporting_market_direction, client_advantage, current_gap, evidence, immediate_value, long_term_value, dependencies, execution_boundary, confidence, priority_score, priority_rationale, recommended_sequence, status, tier, owner_user_id, owner_label, decision_note, decided_by, decided_at, created_at, updated_at";
 
 export const ARTIFACT_COLUMNS =
-  "id, organization_id, roadmap_id, kind, title, sections, accent, logo_url, provider, model, rejected, human_edited, edited_at, edited_by, generated_at, created_at, updated_at";
+  "id, organization_id, roadmap_id, kind, title, sections, accent, logo_url, provider, model, rejected, human_edited, version, edited_at, edited_by, generated_at, created_at, updated_at";
 
 
 export const SESSION_COLUMNS =
@@ -278,8 +278,10 @@ export function toArtifact(row: Row): RoadmapArtifact {
       section: str(entry["section"], "section"),
       line: str(entry["line"]),
       reason: str(entry["reason"]),
+      ...(text(entry["severity"]) ? { severity: text(entry["severity"])! } : {}),
     })),
     humanEdited: row["human_edited"] === true,
+    version: typeof row["version"] === "number" ? row["version"] : 1,
     ...(text(row["edited_at"]) ? { editedAt: text(row["edited_at"])! } : {}),
     ...(text(row["edited_by"]) ? { editedBy: text(row["edited_by"])! } : {}),
     generatedAt: str(row["generated_at"], new Date().toISOString()),
