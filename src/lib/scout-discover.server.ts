@@ -8,19 +8,21 @@
  *      the client),
  *   3. loads the organization's active ICP as the governing rubric,
  *   4. loads a small set of recent human decisions as calibration examples,
- *   5. asks the OpenAI Responses API — with the hosted `web_search` tool and a
- *      strict JSON schema — for real, currently evidenced companies,
+ *   5. asks the Lovable AI Gateway OpenAI Responses API — with the hosted
+ *      `web_search` tool and a strict JSON schema — for real, currently
+ *      evidenced companies,
  *   6. validates and de-duplicates by normalized root domain,
  *   7. upserts `prospects` (source `scout_ai_discovery`), writes one
  *      `prospect_evaluations` row per company, finalizes the
  *      `scout_discovery_runs` row, and records activity events.
  *
- * Fail closed: with no `OPENAI_API_KEY` nothing is discovered and the caller is
+ * Fail closed: with no `LOVABLE_API_KEY` nothing is discovered and the caller is
  * told plainly. There is no fallback to demo data, ever.
  *
  * Every database write is made with the CALLER'S token, so Supabase RLS and the
  * organization boundary still apply. No service-role key is used here.
  */
+
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
@@ -32,9 +34,14 @@ import {
   rootDomain,
   type RawDiscoveryCandidate,
 } from "@/data/scout-candidate-validation";
+import {
+  createLovableAiGatewayRunIdFetch,
+  LOVABLE_AIG_RUN_ID_HEADER,
+} from "@/lib/ai-gateway.server";
 
-const DEFAULT_MODEL = "gpt-5-mini";
+const DEFAULT_MODEL = "openai/gpt-5-mini";
 const DEFAULT_LIMIT = 25;
+
 const MAX_LIMIT = 50;
 /** Seconds an organization must wait between discovery runs. */
 export const RUN_COOLDOWN_SECONDS = 45;
@@ -46,12 +53,16 @@ export interface DiscoverStage {
 }
 
 export function discoveryModel(): string {
-  return process.env["SCOUT_OPENAI_MODEL"] || DEFAULT_MODEL;
+  const configured = process.env["SCOUT_DISCOVERY_MODEL"] || process.env["SCOUT_OPENAI_MODEL"];
+  if (!configured) return DEFAULT_MODEL;
+  // Gateway model ids must carry the vendor/ prefix.
+  return configured.includes("/") ? configured : `openai/${configured}`;
 }
 
 export function discoveryConfigured(): boolean {
-  return Boolean(process.env["OPENAI_API_KEY"]);
+  return Boolean(process.env["LOVABLE_API_KEY"]);
 }
+
 
 function supabaseUrl(): string {
   return (
@@ -198,26 +209,33 @@ export interface DiscoverInput {
   query: string;
   limit?: number;
   organizationId?: string;
+  initialRunId?: string;
+  gateway?: ReturnType<typeof createLovableAiGatewayRunIdFetch>;
 }
+
+
 
 /**
  * Run a discovery pass, yielding progress stages as they happen so the board can
  * show what Scout is actually doing rather than a spinner.
  */
 export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<DiscoverStage> {
-  const apiKey = process.env["OPENAI_API_KEY"];
-  if (!apiKey) {
+  const lovableApiKey = process.env["LOVABLE_API_KEY"];
+  if (!lovableApiKey) {
     yield {
       stage: "error",
       message:
-        "Scout intelligence is not connected. Add OPENAI_API_KEY in project secrets to enable live market discovery.",
+        "Scout intelligence is not connected. Add LOVABLE_API_KEY in project secrets to enable live market discovery.",
       data: { configured: false },
     };
     return;
   }
 
   const model = discoveryModel();
+  const gateway = input.gateway ?? createLovableAiGatewayRunIdFetch(input.initialRunId);
+
   const supabase = clientFor(input.token);
+
 
   const { data: userData, error: userError } = await supabase.auth.getUser(input.token);
   const user = userData?.user;
@@ -306,7 +324,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
       organization_id: orgId,
       query,
       status: "running",
-      provider: "openai",
+      provider: "lovable",
       model,
       icp_version: icpVersion,
       requested_count: limit,
@@ -330,9 +348,14 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
   // Streamed so a multi-minute research run never dies on a request timeout.
   let raw = "";
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const response = await gateway.fetch("https://ai.gateway.lovable.dev/v1/responses", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: {
+        "Content-Type": "application/json",
+        "Lovable-API-Key": lovableApiKey,
+        "X-Lovable-AIG-SDK": "fetch",
+        ...(input.initialRunId ? { [LOVABLE_AIG_RUN_ID_HEADER]: input.initialRunId } : {}),
+      },
       body: JSON.stringify({
         model,
         stream: true,
@@ -344,6 +367,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
         },
       }),
     });
+
 
     if (!response.ok || !response.body) {
       const detail = await response.text();
@@ -427,7 +451,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     const provenance = {
       app_id: "scout",
       source: DISCOVERY_SOURCE,
-      provider: "openai",
+      provider: "lovable",
       model,
       evaluator_version: SCOUT_DISCOVERY_EVALUATOR_VERSION,
       icp_version: icpVersion,
@@ -503,7 +527,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
       discovery_run_id: runId,
       evaluator: "scout-discover",
       evaluator_version: SCOUT_DISCOVERY_EVALUATOR_VERSION,
-      provider: "openai",
+      provider: "lovable",
       model,
       icp_version: icpVersion,
       score,
@@ -551,7 +575,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
         result_count: savedCount,
         finished_at: finishedAt,
         response_meta: {
-          provider: "openai",
+          provider: "lovable",
           model,
           returned: candidates.length,
           accepted: accepted.length,

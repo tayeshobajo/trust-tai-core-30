@@ -12,7 +12,20 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { discoveryConfigured, discoveryModel, runDiscovery } from "@/lib/scout-discover.server";
+import {
+  discoveryConfigured,
+  discoveryModel,
+  runDiscovery,
+} from "@/lib/scout-discover.server";
+import {
+  createLovableAiGatewayRunIdFetch,
+  getLovableAiGatewayResponseHeaders,
+  getLovableAiGatewayRunId,
+  LOVABLE_AIG_RUN_ID_HEADER,
+  withLovableAiGatewayRunIdHeader,
+} from "@/lib/ai-gateway.server";
+
+
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
@@ -23,12 +36,19 @@ export const Route = createFileRoute("/api/public/scout/discover")({
   server: {
     handlers: {
       // Configuration probe. Reveals only whether intelligence is connected.
-      GET: async () =>
+      GET: async ({ request }) =>
         Response.json({
           configured: discoveryConfigured(),
-          provider: "openai",
+          provider: "lovable",
           model: discoveryConfigured() ? discoveryModel() : null,
+        }, {
+          headers: getLovableAiGatewayResponseHeaders(undefined, {
+            ...(getLovableAiGatewayRunId(request)
+              ? { [LOVABLE_AIG_RUN_ID_HEADER]: getLovableAiGatewayRunId(request)! }
+              : {}),
+          }),
         }),
+
 
       POST: async ({ request }) => {
         const token = bearer(request);
@@ -48,6 +68,8 @@ export const Route = createFileRoute("/api/public/scout/discover")({
           typeof body["organization_id"] === "string" ? body["organization_id"] : undefined;
         const limit = typeof body["limit"] === "number" ? body["limit"] : undefined;
 
+        const gateway = createLovableAiGatewayRunIdFetch(getLovableAiGatewayRunId(request));
+
         const encoder = new TextEncoder();
         const stream = new ReadableStream({
           async start(controller) {
@@ -55,6 +77,7 @@ export const Route = createFileRoute("/api/public/scout/discover")({
               for await (const stage of runDiscovery({
                 token,
                 query,
+                gateway,
                 ...(organizationId ? { organizationId } : {}),
                 ...(limit ? { limit } : {}),
               })) {
@@ -78,13 +101,16 @@ export const Route = createFileRoute("/api/public/scout/discover")({
           },
         });
 
-        return new Response(stream, {
+        const response = new Response(stream, {
           headers: {
             "Content-Type": "application/x-ndjson; charset=utf-8",
             "Cache-Control": "no-store",
           },
         });
+
+        return withLovableAiGatewayRunIdHeader(response, gateway);
       },
+
     },
   },
 });
