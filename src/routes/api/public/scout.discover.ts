@@ -12,7 +12,17 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { discoveryConfigured, discoveryModel, runDiscovery } from "@/lib/scout-discover.server";
+import {
+  discoveryConfigured,
+  discoveryModel,
+  runDiscovery,
+} from "@/lib/scout-discover.server";
+import {
+  getLovableAiGatewayResponseHeaders,
+  getLovableAiGatewayRunId,
+  LOVABLE_AIG_RUN_ID_HEADER,
+} from "@/lib/ai-gateway.server";
+
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
