@@ -21,6 +21,7 @@ import {
   NOT_READY_LINE,
   packetOutline,
   validateSections,
+  packetFactIndex,
 } from "./roadmap-studio-packet";
 
 const CHECKED = "2026-01-05T00:00:00.000Z";
@@ -205,7 +206,7 @@ describe("validateSections", () => {
       title: "Point A",
       tier: "inferred",
       sources: [source],
-      support: body.map((line) => ({ line, keys: ["a"] })),
+      support: body.map((line) => ({ line, keys: ["strategy:point_a:a"] })),
       ...overrides,
       body,
     };
@@ -282,8 +283,8 @@ describe("validateSections", () => {
 
   it("keeps the support keys on the page it saved", () => {
     const result = validateSections([section()], packet);
-    expect(result.sections[0]?.supportKeys).toEqual(["a"]);
-    expect(result.sections[0]?.support?.[0]?.keys).toEqual(["a"]);
+    expect(result.sections[0]?.supportKeys).toEqual(["strategy:point_a:a"]);
+    expect(result.sections[0]?.support?.[0]?.keys).toEqual(["strategy:point_a:a"]);
   });
 
   it("lets a paragraph stand on observed research", () => {
@@ -396,5 +397,87 @@ describe("packetSummary", () => {
     );
     expect(summary.ready).toBe(false);
     expect(summary.missing.join(" ")).toContain("No milestone has been approved");
+  });
+});
+
+describe("support key namespacing and unlocks", () => {
+  const packet = buildEvidencePacket({
+    subjectLabel: "Acme",
+    kind: "full",
+    strategy: strategy(),
+    milestones: [milestone()],
+    research: research(),
+  });
+
+  it("names each fact by the kind of truth behind it", () => {
+    expect(packet.supportKeys).toContain("strategy:point_a:a");
+    expect(packet.supportKeys).toContain("strategy:gap:gap");
+    expect(packet.supportKeys).toContain("research:fact:1");
+    expect(packet.supportKeys.some((key) => key.startsWith("milestone:"))).toBe(true);
+  });
+
+  it("refuses an unlocks claim that cites nothing", () => {
+    const line = "This unlocks a booking desk that never sleeps.";
+    const result = validateSections(
+      [
+        {
+          key: "milestone-1",
+          title: "Intake",
+          tier: "inferred",
+          sources: [source],
+          body: ["They already publish crew availability by phone."],
+          support: [
+            {
+              line: "They already publish crew availability by phone.",
+              keys: ["strategy:point_a:a"],
+            },
+          ],
+          unlocks: [line],
+        },
+      ],
+      packet,
+    );
+    expect(result.sections[0]?.unlocks ?? []).toHaveLength(0);
+    expect(result.rejected.some((entry) => entry.line === line)).toBe(true);
+  });
+
+  it("keeps an unlocks claim that names its milestone", () => {
+    const line = "This unlocks a booking desk that never sleeps.";
+    const key = `milestone:${milestone().id}`;
+    const result = validateSections(
+      [
+        {
+          key: "milestone-1",
+          title: "Intake",
+          tier: "inferred",
+          sources: [source],
+          body: ["They already publish crew availability by phone."],
+          support: [
+            { line: "They already publish crew availability by phone.", keys: ["strategy:point_a:a"] },
+            { line, keys: [key] },
+          ],
+          unlocks: [line],
+        },
+      ],
+      packet,
+    );
+    expect(result.sections[0]?.unlocks).toEqual([line]);
+    expect(result.sections[0]?.supportKeys).toContain(key);
+  });
+});
+
+describe("packetFactIndex", () => {
+  it("resolves a support key back to the fact it names", () => {
+    const packet = buildEvidencePacket({
+      subjectLabel: "Acme",
+      kind: "full",
+      strategy: strategy(),
+      milestones: [milestone()],
+      research: research(),
+    });
+    const index = packetFactIndex(packet);
+    expect(index.get("strategy:point_a:a")?.statement).toBeTruthy();
+    expect(index.get("research:fact:1")?.statement).toBeTruthy();
+    expect(index.get(`milestone:${milestone().id}`)?.statement).toContain(milestone().name);
   });
 });
