@@ -606,17 +606,18 @@ const SPECS: CriterionSpec[] = [
     structuredKeys: ["milestone_opportunities"],
     structured: (s, milestones) => {
       if (!s.has("milestone_opportunities") && milestones.length === 0) return null;
-      if (milestones.length >= 2) {
+      const supported = qualifiedGaps(s).confident.length > 0;
+      if (milestones.length >= 2 && supported) {
         return {
           state: "met",
-          reason: `More than one concrete opportunity is visible: ${milestones.slice(0, 3).join("; ")}.`,
+          reason: `More than one concrete, evidence-backed opportunity is visible: ${milestones.slice(0, 3).join("; ")}.`,
           sourceUrls: s.sources(["milestone_opportunities"]),
         };
       }
-      if (milestones.length === 1) {
+      if (milestones.length >= 1) {
         return {
           state: "partial",
-          reason: `Only one concrete opportunity is visible: ${milestones[0]}.`,
+          reason: `Concrete opportunities are visible (${milestones.slice(0, 2).join("; ")}) but not yet supported by two observed constraints.`,
         };
       }
       return {
