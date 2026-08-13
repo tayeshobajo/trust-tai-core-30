@@ -1,7 +1,10 @@
+import { Link } from "@tanstack/react-router";
+
 import type { ProspectCandidate } from "@/domain/scout";
 import type { FitLight } from "@/domain/scout-fit";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
+
 
 import { FitIndicator, StageTag, formatChecked } from "./fit-light";
 
