@@ -15,6 +15,7 @@ import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
+import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
 import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.index'
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
@@ -51,6 +52,11 @@ const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
+const ModulesCommsVoiceRoute = ModulesCommsVoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => ModulesCommsRoute,
+} as any)
 const ModulesScoutIndexRoute = ModulesScoutIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
+  '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
+  '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
   '/modules/scout': typeof ModulesScoutIndexRoute
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
+  '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/modules/$slug'
     | '/modules/comms'
     | '/modules/scout'
+    | '/modules/comms/voice'
     | '/modules/scout/settings'
     | '/modules/comms/'
     | '/modules/scout/'
@@ -135,6 +145,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/modules/$slug'
+    | '/modules/comms/voice'
     | '/modules/scout/settings'
     | '/modules/comms'
     | '/modules/scout'
@@ -148,6 +159,7 @@ export interface FileRouteTypes {
     | '/modules/$slug'
     | '/modules/comms'
     | '/modules/scout'
+    | '/modules/comms/voice'
     | '/modules/scout/settings'
     | '/modules/comms/'
     | '/modules/scout/'
@@ -210,6 +222,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesCommsIndexRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
+    '/modules/comms/voice': {
+      id: '/modules/comms/voice'
+      path: '/voice'
+      fullPath: '/modules/comms/voice'
+      preLoaderRoute: typeof ModulesCommsVoiceRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
     '/modules/scout/': {
       id: '/modules/scout/'
       path: '/'
@@ -249,10 +268,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface ModulesCommsRouteChildren {
+  ModulesCommsVoiceRoute: typeof ModulesCommsVoiceRoute
   ModulesCommsIndexRoute: typeof ModulesCommsIndexRoute
 }
 
 const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
+  ModulesCommsVoiceRoute: ModulesCommsVoiceRoute,
   ModulesCommsIndexRoute: ModulesCommsIndexRoute,
 }
 
