@@ -7,7 +7,7 @@
 import type { NextMove } from "@/domain/prospect-modules";
 import { TTButton } from "@/components/tt/primitives";
 
-import { Panel, TierTag } from "./panel";
+import { Panel, TierTag, WhyWeThink } from "./panel";
 
 export function NextMovePanel({
   move,
@@ -25,12 +25,18 @@ export function NextMovePanel({
   canResearch: boolean;
 }) {
   return (
-    <Panel eyebrow="Next move" title={move.headline} aside={<TierTag tier="decision" />}>
+    <Panel
+      eyebrow="Next move"
+      title={move.headline}
+      aside={<TierTag tier="decision" />}
+      emphasis="primary"
+    >
       <div className="space-y-4">
         <p className="max-w-reading text-sm text-foreground">{move.detail}</p>
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           Why now — {move.because}
         </p>
+        <WhyWeThink confidence={move.confidence} />
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
           {move.action === "qualify" ? (

@@ -11,6 +11,7 @@ import {
   type ConfidenceRead,
   type EvidenceRef,
 } from "@/domain/confidence";
+import type { ModuleEmphasis } from "@/domain/prospect-modules";
 import type { FitCriterion, FitCriterionState } from "@/domain/scout-fit";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +36,7 @@ export function Panel({
   aside,
   children,
   className,
+  emphasis = "supporting",
 }: {
   eyebrow?: string;
   title: string;
@@ -42,9 +44,21 @@ export function Panel({
   aside?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** Set by the composer, never by the panel itself. */
+  emphasis?: ModuleEmphasis;
 }) {
   return (
-    <section className={cn("tt-rise rounded-xl border border-border bg-card p-6", className)}>
+    <section
+      className={cn(
+        "tt-rise rounded-xl border bg-card",
+        emphasis === "primary"
+          ? "border-royal/30 p-6 shadow-[0_1px_0_0_hsl(var(--royal)/0.08)]"
+          : emphasis === "quiet"
+            ? "border-dashed border-border/70 p-5 opacity-80 transition-opacity hover:opacity-100"
+            : "border-border p-6",
+        className,
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           {eyebrow ? <p className="tt-eyebrow">{eyebrow}</p> : null}

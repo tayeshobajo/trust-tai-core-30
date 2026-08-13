@@ -3,15 +3,37 @@
  * expandable rather than a wall of criteria.
  */
 
+import { criterionConfidence } from "@/data/prospect-modules";
+import type { ConfidenceRead } from "@/domain/confidence";
+import type { ResearchCoverage } from "@/domain/prospect-modules";
 import type { ScoutFitEvaluation } from "@/domain/scout-fit";
 import { cn } from "@/lib/utils";
 
-import { CriterionRow, Disclosure, Panel, STATE_LABEL, STATE_TONE, TierTag } from "./panel";
+import {
+  ConfidenceChip,
+  CriterionRow,
+  Disclosure,
+  Panel,
+  STATE_LABEL,
+  STATE_TONE,
+  TierTag,
+  WhyWeThink,
+} from "./panel";
 
 const OPPORTUNITY_KEYS = new Set(["limiting_system", "first_milestone", "roadmap_depth"]);
 const DECISION_KEYS = new Set(["decision_maker"]);
 
-export function FitReadPanel({ evaluation }: { evaluation: ScoutFitEvaluation }) {
+export function FitReadPanel({
+  evaluation,
+  coverage,
+  confidence,
+  emphasis,
+}: {
+  evaluation: ScoutFitEvaluation;
+  coverage: ResearchCoverage;
+  confidence: ConfidenceRead;
+  emphasis?: "primary" | "supporting" | "quiet" | undefined;
+}) {
   const criteria = evaluation.criteria.filter(
     (c) => !OPPORTUNITY_KEYS.has(c.key) && !DECISION_KEYS.has(c.key),
   );
@@ -22,9 +44,16 @@ export function FitReadPanel({ evaluation }: { evaluation: ScoutFitEvaluation })
       eyebrow="Current truth"
       title="Why Scout reads it this way"
       description={evaluation.explanation}
-      aside={<TierTag tier="fact" />}
+      aside={
+        <div className="flex items-center gap-2">
+          <ConfidenceChip level={confidence.level} />
+          <TierTag tier="fact" />
+        </div>
+      }
+      {...(emphasis ? { emphasis } : {})}
     >
       <div className="space-y-5">
+        <WhyWeThink confidence={confidence} />
         <div className="rounded-lg border border-royal/20 bg-royal/5 p-4">
           <p className="tt-eyebrow text-royal">Strongest signal</p>
           <p className="mt-1.5 text-sm text-foreground">{evaluation.strongestSignal}</p>
@@ -55,7 +84,11 @@ export function FitReadPanel({ evaluation }: { evaluation: ScoutFitEvaluation })
             <Disclosure summary={`Full reasoning · ${criteria.length} criteria`}>
               <ul className="space-y-4">
                 {criteria.map((criterion) => (
-                  <CriterionRow key={criterion.key} criterion={criterion} />
+                  <CriterionRow
+                    key={criterion.key}
+                    criterion={criterion}
+                    confidence={criterionConfidence(criterion, coverage)}
+                  />
                 ))}
               </ul>
             </Disclosure>
