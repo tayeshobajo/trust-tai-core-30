@@ -402,6 +402,7 @@ function RoadmapWorkspace({
           kind,
           strategy: intel.strategy,
           milestones: intel.milestones,
+          research: intel.research,
         }),
       });
 

@@ -27,6 +27,7 @@ import type {
   ArtifactKind,
   ArtifactSection,
   RoadmapMilestone,
+  RoadmapResearch,
   RoadmapStrategy,
   SourceRef,
 } from "@/domain/roadmap-intel";
@@ -46,6 +47,7 @@ export interface StudioComposeInput {
   subjectLabel: string;
   strategy: RoadmapStrategy | null;
   milestones: RoadmapMilestone[];
+  research?: RoadmapResearch | null;
   gateway?: ReturnType<typeof createLovableAiGatewayRunIdFetch> | undefined;
   initialRunId?: string | undefined;
 }
@@ -78,6 +80,9 @@ function instructions(): string {
     "You may not introduce a new fact, figure, timeline, budget, commitment, market claim, or promised outcome.",
     "If the packet does not support a page, write that it is not ready rather than inventing it.",
     "Cite only source urls that appear in the packet.",
+    "Every paragraph must name the packet keys it rests on in support_keys. Use approved fact keys, observed fact keys, or approved milestone ids.",
+    "A paragraph with no real support key is dropped, so ground every claim rather than writing an unsourced flourish.",
+    "Observed research is factual background only. It may support a sentence. It is never presented as decided direction.",
     VOICE,
   ].join(" ");
 }
@@ -88,6 +93,7 @@ function payload(packet: EvidencePacket): string {
     company: packet.subjectLabel,
     document: packet.kind === "full" ? "Full Roadmap" : "Roadmap Preview",
     pages: packetOutline(packet),
+    observed_research: packet.observed,
     approved_evidence: {
       central_truth: packet.centralTruth,
       point_a: packet.pointA,
@@ -99,12 +105,18 @@ function payload(packet: EvidencePacket): string {
       milestones: packet.milestones,
     },
     citable_urls: packet.allowedUrls,
+    support_keys_available: packet.supportKeys,
     json_shape: {
       sections: [
         {
           key: "matches a page key above",
           title: "",
-          body: ["one paragraph per entry"],
+          body: [
+            {
+              text: "one paragraph",
+              support_keys: ["a packet key this paragraph rests on"],
+            },
+          ],
           sources: [{ label: "", url: "", checked_at: "" }],
           visual_direction: "how this page should look, in one or two sentences",
           caption: "optional short caption",
@@ -135,9 +147,37 @@ function sectionsFrom(value: unknown): ArtifactSection[] {
   if (!Array.isArray(value)) return [];
   return value.map((entry) => {
     const row = (entry ?? {}) as Record<string, unknown>;
-    const body = Array.isArray(row["body"])
-      ? row["body"].map(String).filter(Boolean)
-      : [String(row["body"] ?? "")].filter(Boolean);
+    /**
+     * A paragraph may arrive as plain text or as text plus its support keys.
+     * Both are read, because traceability is enforced by the validator rather
+     * than assumed here.
+     */
+    const entries = Array.isArray(row["body"]) ? row["body"] : [row["body"]];
+    const body: string[] = [];
+    const support: { line: string; keys: string[] }[] = [];
+    for (const value of entries) {
+      if (typeof value === "string") {
+        if (value.trim()) body.push(value.trim());
+        continue;
+      }
+      if (!value || typeof value !== "object") continue;
+      const paragraph = (value ?? {}) as Record<string, unknown>;
+      const text = String(paragraph["text"] ?? paragraph["body"] ?? "").trim();
+      if (!text) continue;
+      const keys = Array.isArray(paragraph["support_keys"] ?? paragraph["supportKeys"])
+        ? ((paragraph["support_keys"] ?? paragraph["supportKeys"]) as unknown[]).map(String)
+        : [];
+      body.push(text);
+      support.push({ line: text, keys });
+    }
+    for (const entry of Array.isArray(row["support"]) ? row["support"] : []) {
+      const item = (entry ?? {}) as Record<string, unknown>;
+      const line = String(item["line"] ?? item["text"] ?? "").trim();
+      const keys = Array.isArray(item["support_keys"] ?? item["keys"])
+        ? ((item["support_keys"] ?? item["keys"]) as unknown[]).map(String)
+        : [];
+      if (line) support.push({ line, keys });
+    }
     const visual = row["visual_direction"] ?? row["visualDirection"];
     return {
       key: String(row["key"] ?? row["title"] ?? "section"),
@@ -145,6 +185,7 @@ function sectionsFrom(value: unknown): ArtifactSection[] {
       body,
       tier: "inferred" as const,
       sources: sourcesFrom(row["sources"]),
+      ...(support.length > 0 ? { support } : {}),
       ...(typeof visual === "string" && visual.trim() ? { visualDirection: visual.trim() } : {}),
       ...(typeof row["caption"] === "string" && row["caption"].trim()
         ? { caption: row["caption"].trim() }
@@ -164,13 +205,17 @@ export async function* runStudioComposition(
     return;
   }
 
-  yield { stage: "packet", message: "Gathering approved strategy and approved milestones" };
+  yield {
+    stage: "packet",
+    message: "Gathering approved strategy, approved milestones and observed research",
+  };
 
   const packet = buildEvidencePacket({
     subjectLabel: input.subjectLabel,
     kind: input.kind,
     strategy: input.strategy,
     milestones: input.milestones,
+    research: input.research ?? null,
   });
 
   if (!packet.ready) {
