@@ -210,7 +210,8 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
       organization_id: orgId,
       query,
       status: "running",
-      provider: "lovable",
+      provider: providerName,
+
       model,
       icp_version: icpVersion,
       requested_count: limit,
