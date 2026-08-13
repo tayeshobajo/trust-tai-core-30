@@ -29,6 +29,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   DISCOVERY_SOURCE,
   SCOUT_DISCOVERY_EVALUATOR_VERSION,
+  asArray,
   acceptCandidates,
   discoveryEvaluation,
   rootDomain,
@@ -332,6 +333,25 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
   const finishedAt = new Date().toISOString();
   let savedCount = 0;
 
+  // `prospectId|name` keys already on record, so re-running a query never
+  // duplicates a person who was already saved.
+  const existingContacts = new Set<string>();
+  {
+    const { data: contactRows } = await supabase
+      .from("contacts")
+      .select("full_name, metadata")
+      .eq("organization_id", orgId);
+    for (const row of contactRows ?? []) {
+      const meta = ((row["metadata"] ?? {}) as Record<string, unknown>)["people"] as
+        | Record<string, unknown>
+        | undefined;
+      const pid = meta?.["prospect_id"];
+      const name = String(row["full_name"] ?? "").trim().toLowerCase();
+      if (typeof pid === "string" && name) existingContacts.add(`${pid}|${name}`);
+    }
+  }
+
+
   for (const { domain, candidate } of accepted) {
     const fit = candidate.icp_fit ?? {};
     const score = Math.max(0, Math.min(100, Number(fit.score ?? 0)));
@@ -372,6 +392,17 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     // the board exactly like a researched one.
     const evaluation = discoveryEvaluation(candidate, { icpVersion, at: finishedAt });
     const discoveryMeta = { run_id: runId, query, at: finishedAt, model, citations: candidate.source_urls ?? [] };
+    // Buying signals, digital opportunities and named people, kept apart from
+    // the fit read: they inform timing, work and reachability, never the score.
+    const intelMeta = {
+      buying_signals: asArray(candidate.buying_signals),
+      opportunities: asArray(candidate.digital_opportunities),
+      people: asArray(candidate.people),
+      unknowns: candidate.unknowns ?? [],
+      citations: candidate.source_urls ?? [],
+      collected_at: finishedAt,
+      run_id: runId,
+    };
 
     const existing = byDomain.get(domain);
     let prospectId: string | undefined;
@@ -380,6 +411,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
         ...((existing["metadata"] ?? {}) as Record<string, unknown>),
         scout_discovery: discoveryMeta,
         scout_fit: evaluation,
+        scout_intel: intelMeta,
       };
       const { data } = await supabase
         .from("prospects")
@@ -399,6 +431,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
           metadata: {
             scout_discovery: discoveryMeta,
             scout_fit: evaluation,
+            scout_intel: intelMeta,
           },
         })
         .select("id")
@@ -408,6 +441,44 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
 
     if (!prospectId) continue;
     savedCount += 1;
+
+    // People read from public pages become real contacts, carrying the page
+    // they were read from. An email is only stored when it was published:
+    // nothing is ever pattern-built, and nothing is marked verified here.
+    for (const person of intelMeta.people) {
+      const fullName = String(person["full_name"] ?? "").trim();
+      if (!fullName) continue;
+      const key = `${prospectId}|${fullName.toLowerCase()}`;
+      if (existingContacts.has(key)) continue;
+      existingContacts.add(key);
+      const email = String(person["email"] ?? "").trim();
+      await supabase.from("contacts").insert({
+        organization_id: orgId,
+        full_name: fullName,
+        title: String(person["role_title"] ?? "").trim() || null,
+        email: email || null,
+        created_by: user.id,
+        metadata: {
+          people: {
+            prospect_id: prospectId,
+            source_id: "scout_discovery",
+            source_url: String(person["source_url"] ?? "").trim() || null,
+            linkedin_url: String(person["linkedin_url"] ?? "").trim() || null,
+            email_status: email ? "found" : "unknown",
+            confidence: "observed",
+            decision_maker_likelihood: String(person["decision_maker_likelihood"] ?? "unknown"),
+            note: "Read from a public page during market sourcing. The role has not been confirmed by a person.",
+            provenance: {
+              appId: "scout",
+              actor: { type: "intelligence", id: "scout-discover" },
+              observedAt: finishedAt,
+              sourceKind: "public_website",
+            },
+          },
+        },
+      });
+    }
+
 
     await supabase.from("prospect_evaluations").insert({
       organization_id: orgId,

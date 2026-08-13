@@ -14,6 +14,11 @@ import { useMemo } from "react";
 
 import { TTButton } from "@/components/tt/primitives";
 import { composeProspectPage, emphasisOf, hasModule } from "@/data/prospect-modules";
+import { buildAccountBrief } from "@/data/account-brief";
+import { buildGapPlan } from "@/data/scout-gaps";
+import { buildPersonPlan } from "@/data/person-priority";
+import { computeDecisionMetrics, readScoutIntel } from "@/data/scout-intel";
+import { EMPTY_INTEL } from "@/domain/scout-intel";
 import type { HandoffDraft } from "@/domain/comms-handoff";
 import type { ActivityEvent } from "@/domain/activity";
 import type { PeopleProviderInfo, Person } from "@/domain/people";
@@ -21,7 +26,10 @@ import type { PeopleProviderInfo, Person } from "@/domain/people";
 import type { ProspectCandidate } from "@/domain/scout";
 import type { FitLight } from "@/domain/scout-fit";
 
+import { AccountBriefPanel } from "./prospect/account-brief";
 import { CoverageCard } from "./prospect/coverage";
+import { DecisionMetricsPanel } from "./prospect/decision-metrics";
+import { BuyingSignalsPanel, GapsCard, OpportunitiesPanel } from "./prospect/intel-panels";
 import { FitReadPanel } from "./prospect/fit-read";
 import { HandoffPanel } from "./prospect/handoff";
 import { IdentityBand } from "./prospect/identity-band";
@@ -90,6 +98,19 @@ export function ProspectWorkspace({
     [candidate, activeIcpVersion, events.length, contactCount],
   );
 
+  // Intelligence derived from what is stored: signals, work, people, metrics.
+  const intel = candidate.intel ?? readScoutIntel(undefined) ?? EMPTY_INTEL;
+  const plan = useMemo(() => buildPersonPlan(people), [people]);
+  const metrics = useMemo(
+    () => computeDecisionMetrics({ candidate, intel, people, coverage: composition.coverage }),
+    [candidate, intel, people, composition.coverage],
+  );
+  const brief = useMemo(() => buildAccountBrief({ candidate, intel, plan }), [candidate, intel, plan]);
+  const gapPlan = useMemo(
+    () => buildGapPlan({ candidate, intel, plan, coverage: composition.coverage }),
+    [candidate, intel, plan, composition.coverage],
+  );
+
   const research = () => {
     if (prospect.websiteUrl) onResearch(prospect.websiteUrl);
   };
@@ -135,6 +156,12 @@ export function ProspectWorkspace({
             />
           ) : null}
 
+          <DecisionMetricsPanel metrics={metrics} />
+
+          {intel.opportunities.length > 0 ? <OpportunitiesPanel intel={intel} /> : null}
+
+          {intel.buyingSignals.length > 0 ? <BuyingSignalsPanel intel={intel} /> : null}
+
           {hasModule(composition, "opportunity") ? (
             <OpportunityMap
               criteria={evaluation.criteria.filter((c) => OPPORTUNITY_KEYS.includes(c.key))}
@@ -152,7 +179,10 @@ export function ProspectWorkspace({
             onConfirmEmail={onConfirmEmail}
             busy={busy}
             note={peopleNote}
+            plan={plan}
           />
+
+          <AccountBriefPanel brief={brief} />
 
 
           {hasModule(composition, "handoff") ? (
@@ -176,6 +206,12 @@ export function ProspectWorkspace({
         </div>
 
         <aside className="space-y-6">
+          <GapsCard
+            plan={gapPlan}
+            onResearch={research}
+            canResearch={Boolean(prospect.websiteUrl)}
+            busy={busy}
+          />
           {composition.pulse ? (
             <SignalPulseCard pulse={composition.pulse} history={composition.history} />
           ) : null}

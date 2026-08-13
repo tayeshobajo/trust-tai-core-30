@@ -52,6 +52,7 @@ import {
   researchProvenance,
   researchVersion,
   researchWebsite,
+  intelFromResearch,
 } from "./scout-research";
 import {
   SCOUT_DISCOVERY_SOURCE,
@@ -62,6 +63,7 @@ import {
   discoveryStatus,
   listDiscoveryRuns,
   listProspectEvaluations,
+  recordProspectEvaluation,
   recordScoutFeedback,
   type DiscoverInput,
   type FeedbackInput,
@@ -272,6 +274,7 @@ export const scoutService = {
       metadata: {
         scout_fit: evaluation,
         ...(identity ? { identity } : {}),
+        ...(intelFromResearch(payload) ? { scout_intel: intelFromResearch(payload) } : {}),
         research_history: appendResearchRun(
           existing?.metadata,
           runFromEvaluation(evaluation, evaluation.evaluatedAt),
@@ -283,6 +286,19 @@ export const scoutService = {
 
     const candidate = candidateFromResearchRow(row, icp?.version ?? null);
     const occurredAt = new Date().toISOString();
+
+    // Every scored pass is recorded, so fit over time is auditable rather than
+    // only visible as the latest number on the row.
+    await recordProspectEvaluation({
+      organizationId: request.organizationId,
+      prospectId: row.id,
+      userId: request.userId,
+      evaluation,
+      citations: candidate.source.pagesResearched ?? [],
+      observed: payload.observed ?? [],
+      inferred: payload.inferred ?? {},
+      suggested: payload.suggested ?? {},
+    });
 
     await supabaseActivity.record({
       organizationId: request.organizationId,

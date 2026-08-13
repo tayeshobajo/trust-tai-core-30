@@ -20,6 +20,7 @@ import {
   type Seniority,
 } from "@/domain/people";
 import type { FitCriterion } from "@/domain/scout-fit";
+import type { PersonPlan } from "@/domain/scout-intel";
 import { cn } from "@/lib/utils";
 
 import { CriterionRow, Disclosure, Panel, TierTag } from "./panel";
@@ -172,6 +173,7 @@ export function PeoplePanel({
   onConfirmEmail,
   busy,
   note,
+  plan,
 }: {
   criteria: FitCriterion[];
   people: Person[];
@@ -182,6 +184,8 @@ export function PeoplePanel({
   onConfirmEmail: (person: Person) => void;
   busy?: boolean | undefined;
   note?: string | undefined;
+  /** Who to approach first, and why. Computed, never provider-ordered. */
+  plan?: PersonPlan | undefined;
 }) {
   const [form, setForm] = useState<ManualPersonForm>(EMPTY_FORM);
   const reachable = people.some((person) => isCommsReady(person));
@@ -201,6 +205,23 @@ export function PeoplePanel({
       aside={<TierTag tier={reachable ? "decision" : "fact"} />}
     >
       <div className="space-y-6">
+        {plan?.primary ? (
+          <div className="rounded-lg border border-royal/30 bg-background px-4 py-3">
+            <p className="tt-eyebrow">Approach first</p>
+            <p className="mt-1 text-[13px] font-medium text-foreground">
+              {plan.primary.fullName}
+              {plan.primary.roleTitle ? `, ${plan.primary.roleTitle}` : ""}
+            </p>
+            <p className="mt-1 text-[13px] text-muted-foreground">{plan.primary.why}</p>
+            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              {plan.primary.routeNote}
+            </p>
+            {plan.gap ? (
+              <p className="mt-2 text-[13px] text-muted-foreground">{plan.gap}</p>
+            ) : null}
+          </div>
+        ) : null}
+
         {people.length > 0 ? (
           <ul className="space-y-4">
             {people.map((person) => (

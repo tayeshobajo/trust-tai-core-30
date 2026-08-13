@@ -20,6 +20,12 @@ export interface RawDiscoveryCandidate {
   summary?: string;
   discovery_reason?: string;
   observed_evidence?: unknown;
+  /** Public, dated reasons the company might be buying now. */
+  buying_signals?: unknown;
+  /** Observed digital problems Trust Tai could fix. */
+  digital_opportunities?: unknown;
+  /** Named people read from public pages. Never invented. */
+  people?: unknown;
   source_urls?: string[];
   unknowns?: string[];
   icp_fit?: {
@@ -34,6 +40,13 @@ export interface RawDiscoveryCandidate {
 export interface AcceptedCandidate {
   domain: string;
   candidate: RawDiscoveryCandidate & { company_name: string };
+}
+
+/** Keep only object entries from a model-returned array. */
+export function asArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === "object")
+    : [];
 }
 
 /** The one identity key for a company: its normalized root domain. */

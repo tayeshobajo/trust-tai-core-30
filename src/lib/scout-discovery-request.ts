@@ -24,6 +24,9 @@ export const CANDIDATE_SCHEMA = {
           "summary",
           "discovery_reason",
           "observed_evidence",
+          "buying_signals",
+          "digital_opportunities",
+          "people",
           "source_urls",
           "unknowns",
           "icp_fit",
@@ -44,6 +47,88 @@ export const CANDIDATE_SCHEMA = {
               properties: {
                 statement: { type: "string" },
                 source_url: { type: ["string", "null"] },
+              },
+            },
+          },
+          // Public, dated reasons this company might be buying now.
+          buying_signals: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["type", "statement", "source_url", "observed_at"],
+              properties: {
+                type: {
+                  type: "string",
+                  enum: [
+                    "hiring",
+                    "funding",
+                    "expansion",
+                    "leadership_change",
+                    "rebrand",
+                    "product_launch",
+                    "award_or_press",
+                    "other",
+                  ],
+                },
+                statement: { type: "string" },
+                source_url: { type: ["string", "null"] },
+                observed_at: { type: ["string", "null"] },
+              },
+            },
+          },
+          // Evidence-backed digital problems Trust Tai could realistically fix.
+          digital_opportunities: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["area", "statement", "evidence", "source_url"],
+              properties: {
+                area: {
+                  type: "string",
+                  enum: [
+                    "ux",
+                    "accessibility",
+                    "performance",
+                    "broken_functionality",
+                    "conversion",
+                    "technology_age",
+                    "security",
+                    "content_freshness",
+                    "operational_friction",
+                  ],
+                },
+                statement: { type: "string" },
+                evidence: { type: "string" },
+                source_url: { type: ["string", "null"] },
+              },
+            },
+          },
+          // Named people found on PUBLIC pages only. Never guessed.
+          people: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: [
+                "full_name",
+                "role_title",
+                "linkedin_url",
+                "email",
+                "source_url",
+                "decision_maker_likelihood",
+              ],
+              properties: {
+                full_name: { type: "string" },
+                role_title: { type: ["string", "null"] },
+                linkedin_url: { type: ["string", "null"] },
+                email: { type: ["string", "null"] },
+                source_url: { type: ["string", "null"] },
+                decision_maker_likelihood: {
+                  type: "string",
+                  enum: ["high", "moderate", "low", "unknown"],
+                },
               },
             },
           },
@@ -117,6 +202,10 @@ export function discoveryInstructions(icp: string, calibration: string, limit: n
     "7. Thin public evidence lowers confidence and can never be green.",
     "8. Give a concise reasoning summary of the conclusion and its evidence. Do not output step-by-step deliberation.",
     "9. Do not judge how reachable a decision maker is; reachability is assessed separately from fit.",
+    "10. BUYING SIGNALS: record public, dated reasons this company might be buying now (hiring, funding, expansion, leadership change, rebrand, launch, press). Each needs a source URL, and a date when the page states one. Return an empty array rather than guessing.",
+    "11. DIGITAL OPPORTUNITIES: state problems Trust Tai could fix that you actually observed on their public site — dated design, weak conversion path, broken functionality, thin or stale content, obviously old technology, missing accessibility basics. `evidence` must describe what you saw, not what you assume. Never claim a performance or security audit you did not run.",
+    "12. PEOPLE: only name people who appear on public pages (team, about, leadership, press). Include their role and the page you read them from, and set `decision_maker_likelihood` from the role's relationship to a website or technology decision. NEVER guess or pattern-build an email address; leave email null unless the address is published.",
+    "13. Every one of these arrays may be empty. An empty array means 'not established', which is materially more useful than an invented entry.",
   ].join("\n");
 }
 
