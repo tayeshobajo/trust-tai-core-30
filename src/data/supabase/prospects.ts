@@ -172,6 +172,16 @@ export interface ResearchProspectInput {
 }
 
 /**
+ * Shallow-merge new metadata over what is already stored so unrelated keys —
+ * `scout_fit`, `scout_fit_override`, `identity` — are never dropped. Only the
+ * keys explicitly supplied are replaced.
+ */
+export function mergeProspectMetadata(existing: unknown, incoming?: Row): Row {
+  const base = (existing && typeof existing === "object" ? existing : {}) as Row;
+  return { ...base, ...(incoming ?? {}) };
+}
+
+/**
  * Save live website research. An existing prospect for the same website has its
  * research fields refreshed in place rather than being duplicated.
  */
@@ -186,7 +196,7 @@ export async function saveResearchProspect(input: ResearchProspectInput): Promis
     provenance: input.provenance,
     ...(input.fitScore === undefined ? {} : { fit_score: input.fitScore }),
     ...(input.metadata
-      ? { metadata: { ...((input.existing?.metadata ?? {}) as Row), ...input.metadata } }
+      ? { metadata: mergeProspectMetadata(input.existing?.metadata, input.metadata) }
       : {}),
   };
 
