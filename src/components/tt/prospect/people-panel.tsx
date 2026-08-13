@@ -20,6 +20,7 @@ import {
   type Seniority,
 } from "@/domain/people";
 import type { FitCriterion } from "@/domain/scout-fit";
+import type { PersonPlan } from "@/domain/scout-intel";
 import { cn } from "@/lib/utils";
 
 import { CriterionRow, Disclosure, Panel, TierTag } from "./panel";
