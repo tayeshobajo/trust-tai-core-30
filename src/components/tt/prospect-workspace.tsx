@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 import { TTButton } from "@/components/tt/primitives";
@@ -8,6 +8,8 @@ import type { FitCriterion, FitCriterionState, FitLight } from "@/domain/scout-f
 import { cn } from "@/lib/utils";
 
 import { FIT_LIGHT_LABEL, FitDot, StageTag, formatChecked } from "./fit-light";
+import { CompanyAccentRule, CompanyIdentityHeader } from "./company-identity";
+import { normalizeThemeColor } from "@/lib/company-identity";
 
 const STATE_LABEL: Record<FitCriterionState, string> = {
   met: "Met",
@@ -142,6 +144,7 @@ export function ProspectWorkspace({
 }) {
   const [showOverride, setShowOverride] = useState(false);
   const { prospect, evaluation, signals, fit, source } = candidate;
+  const themeColor = normalizeThemeColor(candidate.identity?.themeColor);
 
   const staleScore =
     evaluation.scoreable &&
@@ -172,46 +175,43 @@ export function ProspectWorkspace({
       </Link>
 
       {/* A. Company header */}
-      <header className="tt-rise rounded-xl border border-border bg-card p-6 lg:p-8">
+      <header className="tt-rise overflow-hidden rounded-xl border border-border bg-card">
+        <CompanyAccentRule themeColor={themeColor} />
+        <div
+          className="p-6 lg:p-8"
+          style={
+            themeColor
+              ? { background: `linear-gradient(180deg, color-mix(in oklab, ${themeColor} 5%, transparent) 0%, transparent 140px)` }
+              : undefined
+          }
+        >
         <div className="flex flex-wrap items-start justify-between gap-6">
-          <div className="min-w-0">
-            <p className="tt-eyebrow">Trust Tai OS / Scout / Prospect</p>
-            <h1 className="tt-display mt-2 text-3xl text-foreground lg:text-4xl">
-              {prospect.name}
-            </h1>
-            <p className="mt-2 font-mono text-[12px] text-muted-foreground">
-              {prospect.websiteUrl ? (
-                <a
-                  href={prospect.websiteUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="inline-flex items-center gap-1.5 underline decoration-border underline-offset-4 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {prospect.domain}
-                  <ExternalLink aria-hidden className="size-3" />
-                </a>
-              ) : (
-                "No website recorded"
-              )}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5">
-                <FitDot light={evaluation.light} />
-                <span className="text-[13px] text-foreground">
-                  {FIT_LIGHT_LABEL[evaluation.light]}
+          <CompanyIdentityHeader
+            name={prospect.name}
+            websiteUrl={prospect.websiteUrl}
+            themeColor={themeColor}
+            logoUrl={candidate.identity?.logoUrl ?? null}
+            eyebrow="Trust Tai OS / Scout / Prospect"
+            status={
+              <>
+                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5">
+                  <FitDot light={evaluation.light} />
+                  <span className="text-[13px] text-foreground">
+                    {FIT_LIGHT_LABEL[evaluation.light]}
+                  </span>
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {evaluation.scoreable ? `${evaluation.score}%` : "—"}
+                  </span>
                 </span>
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  {evaluation.scoreable ? `${evaluation.score}%` : "—"}
-                </span>
-              </span>
-              <StageTag status={prospect.status} />
-              {source.kind === "preview_demo" ? (
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  Preview demo
-                </span>
-              ) : null}
-            </div>
-          </div>
+                <StageTag status={prospect.status} />
+                {source.kind === "preview_demo" ? (
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                    Preview demo
+                  </span>
+                ) : null}
+              </>
+            }
+          />
 
           {/* One primary action, sized for touch. */}
           <div className="flex flex-wrap items-center gap-2">
