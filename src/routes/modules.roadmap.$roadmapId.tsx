@@ -402,6 +402,7 @@ function RoadmapWorkspace({
           kind,
           strategy: intel.strategy,
           milestones: intel.milestones,
+          research: intel.research,
         }),
       });
 
@@ -650,6 +651,7 @@ function RoadmapWorkspace({
           subjectLabel={detail?.roadmap.subjectLabel ?? ""}
           strategy={intel?.strategy ?? null}
           milestones={intel?.milestones ?? []}
+          research={intel?.research ?? null}
           preview={intel?.artifacts.find((entry) => entry.kind === "preview") ?? null}
           full={intel?.artifacts.find((entry) => entry.kind === "full") ?? null}
           busy={compose.isPending || editArtifact.isPending}

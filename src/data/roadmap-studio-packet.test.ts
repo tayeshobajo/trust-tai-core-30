@@ -11,11 +11,13 @@ import { describe, expect, it } from "vitest";
 import type {
   ArtifactSection,
   RoadmapMilestone,
+  RoadmapResearch,
   RoadmapStrategy,
   StrategyItem,
 } from "@/domain/roadmap-intel";
 import {
   buildEvidencePacket,
+  packetSummary,
   NOT_READY_LINE,
   packetOutline,
   validateSections,
@@ -78,6 +80,34 @@ function milestone(overrides: Partial<RoadmapMilestone> = {}): RoadmapMilestone 
     recommendedSequence: 1,
     status: "approved",
     tier: "decided",
+    createdAt: CHECKED,
+    updatedAt: CHECKED,
+    ...overrides,
+  };
+}
+
+function research(overrides: Partial<RoadmapResearch> = {}): RoadmapResearch {
+  return {
+    id: "res1",
+    organizationId: "org",
+    roadmapId: "r1",
+    status: "complete",
+    companyModel: [
+      {
+        statement: "Their crews are booked through a phone line, not a form.",
+        tier: "observed",
+        confidence: "high",
+        sources: [{ label: "Services", url: "https://acme.com/services", checkedAt: CHECKED }],
+      },
+    ],
+    buyers: [],
+    strengths: [],
+    digitalPresence: [],
+    competitors: [],
+    marketDirection: [],
+    sources: [],
+    unknowns: [],
+    checkedAt: CHECKED,
     createdAt: CHECKED,
     updatedAt: CHECKED,
     ...overrides,
@@ -161,14 +191,23 @@ describe("validateSections", () => {
     milestones: [],
   });
 
+  /**
+   * Every paragraph names the packet key it rests on, the way a real
+   * composition must. Tests that omit support are testing the untraceable
+   * case on purpose.
+   */
   function section(overrides: Partial<ArtifactSection> = {}): ArtifactSection {
+    const body = overrides.body ?? [
+      "They serve regional operators, and that trust is already earned.",
+    ];
     return {
       key: "point-a",
       title: "Point A",
-      body: ["They serve regional operators, and that trust is already earned."],
       tier: "inferred",
       sources: [source],
+      support: body.map((line) => ({ line, keys: ["a"] })),
       ...overrides,
+      body,
     };
   }
 
@@ -216,5 +255,146 @@ describe("validateSections", () => {
   it("says a page is not ready instead of writing around the gap", () => {
     const result = validateSections([section({ body: [] })], packet);
     expect(result.sections[0]?.body).toEqual([NOT_READY_LINE]);
+  });
+
+  it("refuses a factual line that cites no support key", () => {
+    const result = validateSections(
+      [section({ body: ["They already run their own dispatch desk."], support: [] })],
+      packet,
+    );
+    expect(result.rejected[0]?.severity).toBe("unsupported");
+    expect(result.sections[0]?.body).toEqual([NOT_READY_LINE]);
+    expect(result.sections[0]?.tier).toBe("inferred");
+  });
+
+  it("refuses a support key the packet never contained", () => {
+    const result = validateSections(
+      [
+        section({
+          body: ["They already run their own dispatch desk."],
+          support: [{ line: "They already run their own dispatch desk.", keys: ["invented:1"] }],
+        }),
+      ],
+      packet,
+    );
+    expect(result.rejected[0]?.severity).toBe("unsupported");
+  });
+
+  it("keeps the support keys on the page it saved", () => {
+    const result = validateSections([section()], packet);
+    expect(result.sections[0]?.supportKeys).toEqual(["a"]);
+    expect(result.sections[0]?.support?.[0]?.keys).toEqual(["a"]);
+  });
+
+  it("lets a paragraph stand on observed research", () => {
+    const withResearch = buildEvidencePacket({
+      subjectLabel: "Acme",
+      kind: "preview",
+      strategy: strategy(),
+      milestones: [],
+      research: research(),
+    });
+    const result = validateSections(
+      [
+        section({
+          body: ["Their crews are booked through a phone line, not a form."],
+          support: [
+            {
+              line: "Their crews are booked through a phone line, not a form.",
+              keys: ["observed:company:1"],
+            },
+          ],
+        }),
+      ],
+      withResearch,
+    );
+    expect(result.rejected).toHaveLength(0);
+    expect(result.sections[0]?.supportKeys).toEqual(["observed:company:1"]);
+  });
+});
+
+describe("observed research in the packet", () => {
+  it("carries sourced observed facts as a factual layer", () => {
+    const packet = buildEvidencePacket({
+      subjectLabel: "Acme",
+      kind: "preview",
+      strategy: strategy(),
+      milestones: [],
+      research: research(),
+    });
+    expect(packet.observed.map((fact) => fact.key)).toEqual(["observed:company:1"]);
+    expect(packet.allowedUrls).toContain("https://acme.com/services");
+    expect(packet.supportKeys).toContain("observed:company:1");
+  });
+
+  it("never lets observed research satisfy an approval", () => {
+    const packet = buildEvidencePacket({
+      subjectLabel: "Acme",
+      kind: "preview",
+      strategy: null,
+      milestones: [],
+      research: research(),
+    });
+    expect(packet.observed.length).toBeGreaterThan(0);
+    expect(packet.ready).toBe(false);
+    expect(packet.missing.join(" ")).toContain("Point A");
+  });
+
+  it("ignores an unsourced or unfinished research pass", () => {
+    const unsourced = buildEvidencePacket({
+      subjectLabel: "Acme",
+      kind: "preview",
+      strategy: strategy(),
+      milestones: [],
+      research: research({
+        companyModel: [
+          { statement: "They might expand", tier: "inferred", confidence: "low", sources: [] },
+        ],
+      }),
+    });
+    expect(unsourced.observed).toHaveLength(0);
+
+    const running = buildEvidencePacket({
+      subjectLabel: "Acme",
+      kind: "preview",
+      strategy: strategy(),
+      milestones: [],
+      research: research({ status: "running" }),
+    });
+    expect(running.observed).toHaveLength(0);
+  });
+});
+
+describe("packetSummary", () => {
+  it("counts what the room has approved and observed", () => {
+    const summary = packetSummary(
+      buildEvidencePacket({
+        subjectLabel: "Acme",
+        kind: "full",
+        strategy: strategy(),
+        milestones: [milestone(), milestone({ id: "m2", status: "candidate", tier: "inferred" })],
+        research: research(),
+      }),
+    );
+    expect(summary.ready).toBe(true);
+    expect(summary.approvedMilestoneCount).toBe(1);
+    expect(summary.observedFactCount).toBe(1);
+    expect(summary.approvedStrategyCount).toBe(7);
+    expect(summary.sourceCount).toBeGreaterThan(0);
+    expect(summary.checkedAt).toBe(CHECKED);
+  });
+
+  it("names the missing approval when it is not ready", () => {
+    const summary = packetSummary(
+      buildEvidencePacket({
+        subjectLabel: "Acme",
+        kind: "full",
+        strategy: strategy(),
+        milestones: [],
+        research: research(),
+      }),
+    );
+    expect(summary.ready).toBe(false);
+    expect(summary.missing.join(" ")).toContain("No milestone has been approved");
   });
 });

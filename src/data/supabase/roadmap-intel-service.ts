@@ -91,7 +91,15 @@ async function snapshot(context: IntelContext, artifact: RoadmapArtifact): Promi
     replaced_at: new Date().toISOString(),
     replaced_by: context.userId,
   });
-  assertOk(error);
+
+  /**
+   * History is additive. Where the versions table has not been created yet the
+   * live document still saves, because losing a snapshot is not a reason to
+   * block a person from composing. Every other failure is real and surfaces.
+   */
+  if (error && !/does not exist|schema cache|42P01|PGRST205/i.test(`${error.code} ${error.message}`)) {
+    assertOk(error);
+  }
 }
 
 
@@ -539,7 +547,6 @@ export const roadmapIntel = {
           model: options?.model ?? null,
           rejected: options?.rejected ?? [],
           human_edited: false,
-          version: (current?.version ?? 0) + 1,
           edited_at: null,
           edited_by: null,
           generated_at: now,
@@ -577,7 +584,6 @@ export const roadmapIntel = {
         sections,
         ...(title ? { title } : {}),
         human_edited: true,
-        version: artifact.version + 1,
         edited_at: now,
         edited_by: context.userId,
         updated_at: now,

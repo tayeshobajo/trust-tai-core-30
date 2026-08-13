@@ -20,7 +20,9 @@
 import type {
   ArtifactKind,
   ArtifactSection,
+  ResearchClaim,
   RoadmapMilestone,
+  RoadmapResearch,
   RoadmapStrategy,
   SourceRef,
   StrategyItem,
@@ -54,6 +56,14 @@ export interface PacketMilestone {
 export interface EvidencePacket {
   subjectLabel: string;
   kind: ArtifactKind;
+  /**
+   * Sourced Observed research. A factual layer copy may lean on, never
+   * direction. Nothing here is Decided, and nothing here can become Decided
+   * by being written well.
+   */
+  observed: PacketFact[];
+  /** When the public web was last read for this subject. */
+  checkedAt?: string;
   centralTruth: PacketFact | null;
   pointA: PacketFact[];
   anchorProof: PacketFact[];
@@ -64,6 +74,12 @@ export interface EvidencePacket {
   milestones: PacketMilestone[];
   /** Every URL a composed section is allowed to cite. */
   allowedUrls: string[];
+  /**
+   * Every support key a composed paragraph may claim: approved fact keys,
+   * observed fact keys and approved milestone ids. A client-facing paragraph
+   * that cannot name one of these is not traceable, so it does not ship.
+   */
+  supportKeys: string[];
   /** Whether there is enough approved truth to argue from at all. */
   ready: boolean;
   /** What is missing, in plain language, when it is not ready. */
@@ -75,6 +91,52 @@ export interface PacketInput {
   kind: ArtifactKind;
   strategy: RoadmapStrategy | null;
   milestones: RoadmapMilestone[];
+  /** The latest completed research pass, when there is one. */
+  research?: RoadmapResearch | null;
+}
+
+/**
+ * Observed research, flattened into facts the model can cite by key.
+ *
+ * Only claims that carry a real source survive: an Observed tier without a
+ * receipt is a deduction wearing a fact's clothes, and Studio does not let
+ * that reach a client page.
+ */
+function observedFacts(research: RoadmapResearch | null | undefined): PacketFact[] {
+  if (!research || research.status !== "complete") return [];
+
+  const groups: [string, ResearchClaim[]][] = [
+    ["company", research.companyModel],
+    ["buyers", research.buyers],
+    ["strength", research.strengths],
+    ["presence", research.digitalPresence],
+    ["market", research.marketDirection],
+  ];
+
+  const facts: PacketFact[] = [];
+  for (const [group, claims] of groups) {
+    claims.forEach((claim, index) => {
+      if (claim.tier !== "observed" || claim.sources.length === 0) return;
+      facts.push({
+        key: `observed:${group}:${index + 1}`,
+        statement: claim.statement,
+        because: `Observed in research, ${claim.confidence} confidence.`,
+        sources: claim.sources,
+      });
+    });
+  }
+
+  research.competitors.forEach((competitor, index) => {
+    if (competitor.tier !== "observed" || competitor.sources.length === 0) return;
+    facts.push({
+      key: `observed:competitor:${index + 1}`,
+      statement: `${competitor.name}: ${competitor.positioning}`,
+      because: "Observed in competitor research.",
+      sources: competitor.sources,
+    });
+  });
+
+  return facts;
 }
 
 function isApprovedItem(item: StrategyItem | null | undefined): boolean {
@@ -104,6 +166,7 @@ function approvedFact(item: StrategyItem | null | undefined): PacketFact | null 
  */
 export function buildEvidencePacket(input: PacketInput): EvidencePacket {
   const strategy = input.strategy;
+  const observed = observedFacts(input.research);
   const pointA = approvedFacts(strategy?.pointA ?? []);
   const anchorProof = approvedFacts(strategy?.anchorProof ?? []);
   const gaps = approvedFacts(strategy?.gaps ?? []);
@@ -145,6 +208,23 @@ export function buildEvidencePacket(input: PacketInput): EvidencePacket {
   for (const milestone of milestones) {
     for (const ref of milestone.sources) allowed.add(ref.url);
   }
+  for (const fact of observed) {
+    for (const ref of fact.sources) allowed.add(ref.url);
+  }
+
+  const supportKeys = [
+    ...[
+      ...pointA,
+      ...anchorProof,
+      ...gaps,
+      ...(centralTruth ? [centralTruth] : []),
+      ...(leveragePoint ? [leveragePoint] : []),
+      ...(pointB ? [pointB] : []),
+      ...(pointC ? [pointC] : []),
+      ...observed,
+    ].map((fact) => fact.key),
+    ...milestones.map((milestone) => milestone.id),
+  ];
 
   const missing: string[] = [];
   if (pointA.length === 0) missing.push("Point A has not been approved.");
@@ -158,6 +238,8 @@ export function buildEvidencePacket(input: PacketInput): EvidencePacket {
   return {
     subjectLabel: input.subjectLabel,
     kind: input.kind,
+    observed,
+    ...(input.research?.checkedAt ? { checkedAt: input.research.checkedAt } : {}),
     centralTruth,
     pointA,
     anchorProof,
@@ -167,6 +249,7 @@ export function buildEvidencePacket(input: PacketInput): EvidencePacket {
     pointC,
     milestones,
     allowedUrls: [...allowed],
+    supportKeys,
     ready: missing.length === 0,
     missing,
   };
@@ -262,6 +345,7 @@ function packetCorpus(packet: EvidencePacket): string {
     ...(packet.leveragePoint ? [packet.leveragePoint] : []),
     ...(packet.pointB ? [packet.pointB] : []),
     ...(packet.pointC ? [packet.pointC] : []),
+    ...packet.observed,
   ]) {
     parts.push(fact.statement, fact.because);
   }
@@ -291,7 +375,7 @@ function packetCorpus(packet: EvidencePacket): string {
  * the caller refuses the whole run rather than saving a corrected version of
  * a document that invented something.
  */
-export type RejectionSeverity = "voice" | "fabrication";
+export type RejectionSeverity = "voice" | "fabrication" | "unsupported";
 
 export interface RejectedLine {
   section: string;
@@ -317,7 +401,9 @@ export interface PacketSummary {
   missing: string[];
   approvedStrategyCount: number;
   approvedMilestoneCount: number;
+  observedFactCount: number;
   sourceCount: number;
+  checkedAt?: string;
 }
 
 export function packetSummary(packet: EvidencePacket): PacketSummary {
@@ -335,7 +421,9 @@ export function packetSummary(packet: EvidencePacket): PacketSummary {
     missing: packet.missing,
     approvedStrategyCount: strategy,
     approvedMilestoneCount: packet.milestones.length,
+    observedFactCount: packet.observed.length,
     sourceCount: packet.allowedUrls.length,
+    ...(packet.checkedAt ? { checkedAt: packet.checkedAt } : {}),
   };
 }
 
@@ -356,10 +444,18 @@ export function validateSections(
 ): ValidationResult {
   const corpus = packetCorpus(packet);
   const allowed = new Set(packet.allowedUrls);
+  const known = new Set(packet.supportKeys);
   const rejected: ValidationResult["rejected"] = [];
 
   const clean = sections.map((section) => {
+    const stated = new Map<string, string[]>();
+    for (const entry of section.support ?? []) {
+      stated.set(normalizeVoice(entry.line), entry.keys);
+    }
+
     const body: string[] = [];
+    const support: { line: string; keys: string[] }[] = [];
+
     for (const raw of section.body) {
       const line = normalizeVoice(raw);
       if (!line) continue;
@@ -387,7 +483,25 @@ export function validateSections(
         continue;
       }
 
+      /**
+       * Traceability, not semantic guessing. A paragraph survives only when it
+       * names at least one real key from this packet. A claim nobody can walk
+       * back to approved or observed evidence is not a claim we put in front of
+       * a client, however well it reads.
+       */
+      const keys = (stated.get(line) ?? []).filter((key) => known.has(key));
+      if (keys.length === 0) {
+        rejected.push({
+          section: section.key,
+          line,
+          reason: "No approved or observed evidence was cited for this claim.",
+          severity: "unsupported",
+        });
+        continue;
+      }
+
       body.push(line);
+      support.push({ line, keys: [...new Set(keys)] });
     }
 
     const sources = section.sources.filter((ref) => allowed.has(ref.url));
@@ -404,6 +518,7 @@ export function validateSections(
 
     const unlocks = (section.unlocks ?? []).map(normalizeVoice).filter(Boolean);
     const empty = body.length === 0;
+    const supportKeys = [...new Set(support.flatMap((entry) => entry.keys))];
 
     return {
       key: section.key,
@@ -416,6 +531,7 @@ export function validateSections(
         : {}),
       ...(section.caption ? { caption: normalizeVoice(section.caption) } : {}),
       ...(unlocks.length > 0 ? { unlocks } : {}),
+      ...(support.length > 0 ? { support, supportKeys } : {}),
     } satisfies ArtifactSection;
   });
 

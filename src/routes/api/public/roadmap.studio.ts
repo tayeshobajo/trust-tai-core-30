@@ -19,7 +19,11 @@ import {
   withLovableAiGatewayRunIdHeader,
 } from "@/lib/ai-gateway.server";
 import { runStudioComposition } from "@/lib/roadmap-studio.server";
-import type { RoadmapMilestone, RoadmapStrategy } from "@/domain/roadmap-intel";
+import type {
+  RoadmapMilestone,
+  RoadmapResearch,
+  RoadmapStrategy,
+} from "@/domain/roadmap-intel";
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
@@ -66,6 +70,7 @@ export const Route = createFileRoute("/api/public/roadmap/studio")({
                 milestones: Array.isArray(body["milestones"])
                   ? (body["milestones"] as RoadmapMilestone[])
                   : [],
+                research: (body["research"] ?? null) as RoadmapResearch | null,
                 gateway,
               })) {
                 controller.enqueue(encoder.encode(`${JSON.stringify(stage)}\n`));

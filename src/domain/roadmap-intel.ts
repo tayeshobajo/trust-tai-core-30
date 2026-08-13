@@ -229,6 +229,14 @@ export interface ArtifactSection {
   caption?: string;
   /** Milestone pages carry "What It Unlocks". */
   unlocks?: string[];
+  /**
+   * Traceability. Each surviving paragraph names the approved fact keys,
+   * observed fact keys or approved milestone ids it rests on, so a client
+   * facing sentence can always be walked back to the evidence behind it.
+   */
+  support?: { line: string; keys: string[] }[];
+  /** Every support key used on this page, for quick reading. */
+  supportKeys?: string[];
 }
 
 export interface RoadmapArtifact {

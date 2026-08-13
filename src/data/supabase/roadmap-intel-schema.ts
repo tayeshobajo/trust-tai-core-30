@@ -41,7 +41,7 @@ export const MILESTONE_COLUMNS =
   "id, organization_id, roadmap_id, name, what_we_build, intended_user, supporting_market_direction, client_advantage, current_gap, evidence, immediate_value, long_term_value, dependencies, execution_boundary, confidence, priority_score, priority_rationale, recommended_sequence, status, tier, owner_user_id, owner_label, decision_note, decided_by, decided_at, created_at, updated_at";
 
 export const ARTIFACT_COLUMNS =
-  "id, organization_id, roadmap_id, kind, title, sections, accent, logo_url, provider, model, rejected, human_edited, version, edited_at, edited_by, generated_at, created_at, updated_at";
+  "id, organization_id, roadmap_id, kind, title, sections, accent, logo_url, provider, model, rejected, human_edited, edited_at, edited_by, generated_at, created_at, updated_at";
 
 
 export const SESSION_COLUMNS =
@@ -258,6 +258,15 @@ export function sectionList(value: unknown): ArtifactSection[] {
       ...(text(row["visualDirection"]) ? { visualDirection: text(row["visualDirection"])! } : {}),
       ...(text(row["caption"]) ? { caption: text(row["caption"])! } : {}),
       ...(Array.isArray(row["unlocks"]) ? { unlocks: strings(row["unlocks"]) } : {}),
+      ...(Array.isArray(row["support"])
+        ? {
+            support: rows(row["support"]).map((entry) => ({
+              line: str(entry["line"]),
+              keys: strings(entry["keys"]),
+            })),
+          }
+        : {}),
+      ...(Array.isArray(row["supportKeys"]) ? { supportKeys: strings(row["supportKeys"]) } : {}),
     }))
     .filter((section) => section.title.length > 0);
 }
