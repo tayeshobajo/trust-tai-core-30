@@ -157,8 +157,8 @@ export function ProspectWorkspace({
 
           {hasModule(composition, "observed") ? <ObservedPanel candidate={candidate} /> : null}
 
-          {composition.unknown.length > 0 ? (
-            <UnknownStrip notes={composition.unknown} />
+          {composition.unknown.some((n) => n.id !== "people") ? (
+            <UnknownStrip notes={composition.unknown.filter((n) => n.id !== "people")} />
           ) : null}
         </div>
 
