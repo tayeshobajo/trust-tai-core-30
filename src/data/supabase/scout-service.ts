@@ -210,7 +210,15 @@ export const scoutService = {
         icpVersion: icp?.version ?? null,
       }),
       fitScore: evaluation.score,
-      metadata: { scout_fit: evaluation, ...(identity ? { identity } : {}) },
+      metadata: {
+        scout_fit: evaluation,
+        ...(identity ? { identity } : {}),
+        research_history: appendResearchRun(
+          existing?.metadata,
+          runFromEvaluation(evaluation, evaluation.evaluatedAt),
+        ),
+      },
+
       existing,
     });
 
