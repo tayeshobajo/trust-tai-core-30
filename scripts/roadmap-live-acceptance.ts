@@ -36,7 +36,7 @@ function log(label: string, value?: unknown) {
 /* ------------------------------------------------------------ real session */
 
 const accessToken = process.env["TT_ACCESS_TOKEN"];
-const refreshToken = process.env["TT_REFRESH_TOKEN"] ?? "";
+const refreshToken = process.env["TT_REFRESH_TOKEN"] ?? "qa-no-refresh";
 if (!accessToken) throw new Error("TT_ACCESS_TOKEN is required (real signed-in session).");
 
 const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
