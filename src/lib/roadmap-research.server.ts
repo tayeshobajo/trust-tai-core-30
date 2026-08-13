@@ -316,7 +316,7 @@ export async function* runRoadmapResearch(
     return;
   }
 
-  yield { stage: "composing", message: "Separating what is observed from what is inferred" };
+  yield { stage: "composing", message: "Synthesising a strategy from what was found" };
 
   const provenance = { provider, model, checkedAt };
   const research = normalizeResearch(parsed["research"] ?? parsed, provenance);
@@ -324,6 +324,11 @@ export async function* runRoadmapResearch(
   const milestones = Array.isArray(parsed["milestones"])
     ? (parsed["milestones"] as Record<string, unknown>[])
     : [];
+
+  yield {
+    stage: "composing",
+    message: `Generating candidate milestones (${milestones.length} considered)`,
+  };
 
   const result: RoadmapResearchResult = {
     research,
@@ -334,7 +339,12 @@ export async function* runRoadmapResearch(
     checkedAt,
   };
 
-  yield { stage: "complete", message: `Researched ${input.subjectLabel}`, data: result };
+  yield {
+    stage: "complete",
+    message: `Complete. ${research.sources.length} sources, ${research.unknowns.length} unknowns.`,
+    data: result,
+  };
+
 }
 
 /* -------------------------------------------------------------------- ask */
