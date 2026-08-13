@@ -149,6 +149,34 @@ export const scoutService = {
     });
   },
 
+  /** Is live market discovery connected? */
+  async discoveryStatus() {
+    return discoveryStatus();
+  },
+
+  /**
+   * Real AI market sourcing. Finds companies on the open web for a
+   * plain-English target, evaluates each against the active ICP, and saves what
+   * it can verify. Never falls back to demo data.
+   */
+  async discover(input: DiscoverInput) {
+    return runDiscover(input);
+  },
+
+  /** Every sourcing pass this organization has run. */
+  async runs(organizationId: ID) {
+    return listDiscoveryRuns(organizationId);
+  },
+
+  /** Evaluation history for one company, newest first. */
+  async evaluations(prospectId: ID) {
+    return listProspectEvaluations(prospectId);
+  },
+
+  /** Record a human decision as calibration for later runs. */
+  async feedback(input: FeedbackInput) {
+    return recordScoutFeedback(input);
+  },
 
 
   /**
