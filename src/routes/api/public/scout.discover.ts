@@ -18,10 +18,13 @@ import {
   runDiscovery,
 } from "@/lib/scout-discover.server";
 import {
+  createLovableAiGatewayRunIdFetch,
   getLovableAiGatewayResponseHeaders,
   getLovableAiGatewayRunId,
   LOVABLE_AIG_RUN_ID_HEADER,
+  withLovableAiGatewayRunIdHeader,
 } from "@/lib/ai-gateway.server";
+
 
 
 function bearer(request: Request): string | null {
