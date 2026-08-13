@@ -232,9 +232,10 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
   }
 
   const model = discoveryModel();
-  const gateway = createLovableAiGatewayRunIdFetch(input.initialRunId);
+  const gateway = input.gateway ?? createLovableAiGatewayRunIdFetch(input.initialRunId);
 
   const supabase = clientFor(input.token);
+
 
   const { data: userData, error: userError } = await supabase.auth.getUser(input.token);
   const user = userData?.user;
