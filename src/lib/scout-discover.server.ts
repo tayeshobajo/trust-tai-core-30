@@ -235,25 +235,26 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
   // Streamed so a multi-minute research run never dies on a request timeout.
   let raw = "";
   try {
-    const response = await gateway.fetch("https://ai.gateway.lovable.dev/v1/responses", {
+    const doFetch = providerName === "lovable" ? gateway.fetch : fetch;
+    const response = await doFetch(selected.endpoint, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": lovableApiKey,
-        "X-Lovable-AIG-SDK": "fetch",
-        ...(input.initialRunId ? { [LOVABLE_AIG_RUN_ID_HEADER]: input.initialRunId } : {}),
+        ...selected.headers,
+        ...(providerName === "lovable" && input.initialRunId
+          ? { [LOVABLE_AIG_RUN_ID_HEADER]: input.initialRunId }
+          : {}),
       },
-      body: JSON.stringify({
-        model,
-        stream: true,
-        instructions: instructions(String(icp?.["content_markdown"] ?? ""), calibration, limit),
-        input: `Find up to ${limit} real companies matching: ${query}`,
-        tools: [{ type: "web_search" }],
-        text: {
-          format: { type: "json_schema", name: "scout_candidates", strict: true, schema: CANDIDATE_SCHEMA },
-        },
-      }),
+      body: JSON.stringify(
+        buildDiscoveryRequestBody({
+          model,
+          query,
+          limit,
+          icp: String(icp?.["content_markdown"] ?? ""),
+          calibration,
+        }),
+      ),
     });
+
 
 
     if (!response.ok || !response.body) {
