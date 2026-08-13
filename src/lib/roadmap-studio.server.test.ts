@@ -11,12 +11,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RoadmapMilestone, RoadmapStrategy, StrategyItem } from "@/domain/roadmap-intel";
 
-const access = vi.fn(async () => true);
-const provider = vi.fn(async () => ({ raw: "{}", provider: "openai", model: "gpt-5-mini" }));
+const access = vi.fn(async (..._args: unknown[]) => true);
+const provider = vi.fn(async (..._args: unknown[]) => ({
+  raw: "{}",
+  provider: "openai",
+  model: "gpt-5-mini",
+}));
 
 vi.mock("./roadmap-research.server", () => ({
-  requireRoadmapAccess: (...args: unknown[]) => access(...(args as [])),
-  callRoadmapProvider: (...args: unknown[]) => provider(...(args as [])),
+  requireRoadmapAccess: (...args: unknown[]) => access(...args),
+  callRoadmapProvider: (...args: unknown[]) => provider(...args),
 }));
 
 const { runStudioComposition } = await import("./roadmap-studio.server");
@@ -182,7 +186,7 @@ describe("runStudioComposition", () => {
 
   it("keeps the run server side and web search off", async () => {
     await run();
-    const options = provider.mock.calls[0]?.[2] as { webSearch: boolean };
-    expect(options.webSearch).toBe(false);
+    const options = provider.mock.calls[0]?.[2] as { webSearch: boolean } | undefined;
+    expect(options?.webSearch).toBe(false);
   });
 });
