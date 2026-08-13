@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Settings2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { FitFilters, ProspectBoard, type FitFilter } from "@/components/tt/prospect-board";
+import { ScoutTabs } from "@/components/tt/scout-tabs";
 import { ProspectDrawer } from "@/components/tt/prospect-drawer";
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -21,7 +22,7 @@ const TITLE = "Scout — Trust Tai OS";
 const DESCRIPTION =
   "A scouting board of companies with conservative ICP fit scoring, the evidence behind each read, and one clear next move.";
 
-export const Route = createFileRoute("/modules/scout")({
+export const Route = createFileRoute("/modules/scout/")({
   head: () => ({
     meta: [
       { title: TITLE },
@@ -37,32 +38,24 @@ export const Route = createFileRoute("/modules/scout")({
 });
 
 function ScoutRoute() {
+  const { section } = Route.useSearch();
   return (
     <WorkspaceGate>
       {(identity) => (
         <AppShell identity={identity}>
-          <Scout identity={identity} />
+          <Scout identity={identity} tab={section} />
         </AppShell>
       )}
     </WorkspaceGate>
   );
 }
 
-type Tab = "scout" | "qualified" | "research";
-
-const TABS: { key: Tab; label: string }[] = [
-  { key: "scout", label: "Scout" },
-  { key: "qualified", label: "Qualified" },
-  { key: "research", label: "Research" },
-];
-
 const LIGHT_RANK: Record<FitLight, number> = { green: 3, yellow: 2, neutral: 1, red: 0 };
 
-function Scout({ identity }: { identity: WorkspaceIdentity }) {
+function Scout({ identity, tab }: { identity: WorkspaceIdentity; tab: Tab }) {
   const { organizationId, userId } = identity;
   const queryClient = useQueryClient();
-
-  const [tab, setTab] = useState<Tab>("scout");
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<FitFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -181,34 +174,7 @@ function Scout({ identity }: { identity: WorkspaceIdentity }) {
         }
       />
 
-      {/* Local nav */}
-      <nav
-        aria-label="Scout sections"
-        className="flex flex-wrap items-center gap-1 border-b border-border pb-px"
-      >
-        {TABS.map((entry) => (
-          <button
-            key={entry.key}
-            type="button"
-            aria-current={tab === entry.key ? "page" : undefined}
-            onClick={() => setTab(entry.key)}
-            className={cn(
-              "-mb-px border-b-2 px-4 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              tab === entry.key
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {entry.label}
-          </button>
-        ))}
-        <Link
-          to="/modules/scout/settings"
-          className="-mb-px border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          ICP Settings
-        </Link>
-      </nav>
+      <ScoutTabs active={tab} />
 
       {/* Input */}
       <section>

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
+import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.index'
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +36,11 @@ const ModulesScoutRoute = ModulesScoutRouteImport.update({
   path: '/modules/scout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ModulesScoutIndexRoute = ModulesScoutIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ModulesScoutRoute,
+} as any)
 const ModulesScoutSettingsRoute = ModulesScoutSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -47,13 +53,14 @@ export interface FileRoutesByFullPath {
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/scout/': typeof ModulesScoutIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
-  '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/scout': typeof ModulesScoutIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,6 +69,7 @@ export interface FileRoutesById {
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/scout/': typeof ModulesScoutIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -71,13 +79,14 @@ export interface FileRouteTypes {
     | '/modules/$slug'
     | '/modules/scout'
     | '/modules/scout/settings'
+    | '/modules/scout/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/modules/$slug'
-    | '/modules/scout'
     | '/modules/scout/settings'
+    | '/modules/scout'
   id:
     | '__root__'
     | '/'
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
     | '/modules/$slug'
     | '/modules/scout'
     | '/modules/scout/settings'
+    | '/modules/scout/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -124,6 +134,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesScoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/modules/scout/': {
+      id: '/modules/scout/'
+      path: '/'
+      fullPath: '/modules/scout/'
+      preLoaderRoute: typeof ModulesScoutIndexRouteImport
+      parentRoute: typeof ModulesScoutRoute
+    }
     '/modules/scout/settings': {
       id: '/modules/scout/settings'
       path: '/settings'
@@ -136,10 +153,12 @@ declare module '@tanstack/react-router' {
 
 interface ModulesScoutRouteChildren {
   ModulesScoutSettingsRoute: typeof ModulesScoutSettingsRoute
+  ModulesScoutIndexRoute: typeof ModulesScoutIndexRoute
 }
 
 const ModulesScoutRouteChildren: ModulesScoutRouteChildren = {
   ModulesScoutSettingsRoute: ModulesScoutSettingsRoute,
+  ModulesScoutIndexRoute: ModulesScoutIndexRoute,
 }
 
 const ModulesScoutRouteWithChildren = ModulesScoutRoute._addFileChildren(
