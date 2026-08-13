@@ -106,35 +106,33 @@ function observedFacts(research: RoadmapResearch | null | undefined): PacketFact
   if (!research || research.status !== "complete") return [];
 
   const groups: [string, ResearchClaim[]][] = [
-    ["company", research.companyModel],
+    ["company model", research.companyModel],
     ["buyers", research.buyers],
-    ["strength", research.strengths],
-    ["presence", research.digitalPresence],
-    ["market", research.marketDirection],
+    ["strengths", research.strengths],
+    ["digital presence", research.digitalPresence],
+    ["market direction", research.marketDirection],
   ];
 
   const facts: PacketFact[] = [];
+  const add = (statement: string, because: string, sources: SourceRef[]) => {
+    facts.push({ key: `research:fact:${facts.length + 1}`, statement, because, sources });
+  };
+
   for (const [group, claims] of groups) {
-    claims.forEach((claim, index) => {
-      if (claim.tier !== "observed" || claim.sources.length === 0) return;
-      facts.push({
-        key: `observed:${group}:${index + 1}`,
-        statement: claim.statement,
-        because: `Observed in research, ${claim.confidence} confidence.`,
-        sources: claim.sources,
-      });
-    });
+    for (const claim of claims) {
+      if (claim.tier !== "observed" || claim.sources.length === 0) continue;
+      add(claim.statement, `Observed research, ${group}, ${claim.confidence} confidence.`, claim.sources);
+    }
   }
 
-  research.competitors.forEach((competitor, index) => {
-    if (competitor.tier !== "observed" || competitor.sources.length === 0) return;
-    facts.push({
-      key: `observed:competitor:${index + 1}`,
-      statement: `${competitor.name}: ${competitor.positioning}`,
-      because: "Observed in competitor research.",
-      sources: competitor.sources,
-    });
-  });
+  for (const competitor of research.competitors) {
+    if (competitor.tier !== "observed" || competitor.sources.length === 0) continue;
+    add(
+      `${competitor.name}: ${competitor.positioning}`,
+      "Observed research, competitors.",
+      competitor.sources,
+    );
+  }
 
   return facts;
 }
@@ -143,21 +141,26 @@ function isApprovedItem(item: StrategyItem | null | undefined): boolean {
   return Boolean(item && item.approval === "approved" && item.tier === "decided");
 }
 
-function toFact(item: StrategyItem): PacketFact {
+/**
+ * Support keys are namespaced so a client sentence can be walked back to the
+ * exact kind of truth behind it: approved strategy, observed research, or an
+ * approved milestone. A bare item key would be ambiguous across roadmaps.
+ */
+function toFact(item: StrategyItem, group: string): PacketFact {
   return {
-    key: item.key,
+    key: `strategy:${group}:${item.key}`,
     statement: item.statement,
     because: item.because,
     sources: item.sources,
   };
 }
 
-function approvedFacts(items: StrategyItem[]): PacketFact[] {
-  return items.filter(isApprovedItem).map(toFact);
+function approvedFacts(items: StrategyItem[], group: string): PacketFact[] {
+  return items.filter(isApprovedItem).map((item) => toFact(item, group));
 }
 
-function approvedFact(item: StrategyItem | null | undefined): PacketFact | null {
-  return isApprovedItem(item) ? toFact(item as StrategyItem) : null;
+function approvedFact(item: StrategyItem | null | undefined, group: string): PacketFact | null {
+  return isApprovedItem(item) ? toFact(item as StrategyItem, group) : null;
 }
 
 /**
@@ -167,13 +170,13 @@ function approvedFact(item: StrategyItem | null | undefined): PacketFact | null 
 export function buildEvidencePacket(input: PacketInput): EvidencePacket {
   const strategy = input.strategy;
   const observed = observedFacts(input.research);
-  const pointA = approvedFacts(strategy?.pointA ?? []);
-  const anchorProof = approvedFacts(strategy?.anchorProof ?? []);
-  const gaps = approvedFacts(strategy?.gaps ?? []);
-  const centralTruth = approvedFact(strategy?.centralTruth);
-  const leveragePoint = approvedFact(strategy?.leveragePoint);
-  const pointB = approvedFact(strategy?.pointB);
-  const pointC = approvedFact(strategy?.pointC);
+  const pointA = approvedFacts(strategy?.pointA ?? [], "point_a");
+  const anchorProof = approvedFacts(strategy?.anchorProof ?? [], "anchor");
+  const gaps = approvedFacts(strategy?.gaps ?? [], "gap");
+  const centralTruth = approvedFact(strategy?.centralTruth, "central_truth");
+  const leveragePoint = approvedFact(strategy?.leveragePoint, "leverage");
+  const pointB = approvedFact(strategy?.pointB, "point_b");
+  const pointC = approvedFact(strategy?.pointC, "point_c");
 
   const milestones: PacketMilestone[] =
     input.kind === "full"
@@ -223,7 +226,7 @@ export function buildEvidencePacket(input: PacketInput): EvidencePacket {
       ...(pointC ? [pointC] : []),
       ...observed,
     ].map((fact) => fact.key),
-    ...milestones.map((milestone) => milestone.id),
+    ...milestones.map((milestone) => `milestone:${milestone.id}`),
   ];
 
   const missing: string[] = [];
