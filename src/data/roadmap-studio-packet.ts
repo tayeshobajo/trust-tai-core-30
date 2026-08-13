@@ -444,10 +444,18 @@ export function validateSections(
 ): ValidationResult {
   const corpus = packetCorpus(packet);
   const allowed = new Set(packet.allowedUrls);
+  const known = new Set(packet.supportKeys);
   const rejected: ValidationResult["rejected"] = [];
 
   const clean = sections.map((section) => {
+    const stated = new Map<string, string[]>();
+    for (const entry of section.support ?? []) {
+      stated.set(normalizeVoice(entry.line), entry.keys);
+    }
+
     const body: string[] = [];
+    const support: { line: string; keys: string[] }[] = [];
+
     for (const raw of section.body) {
       const line = normalizeVoice(raw);
       if (!line) continue;
@@ -475,7 +483,25 @@ export function validateSections(
         continue;
       }
 
+      /**
+       * Traceability, not semantic guessing. A paragraph survives only when it
+       * names at least one real key from this packet. A claim nobody can walk
+       * back to approved or observed evidence is not a claim we put in front of
+       * a client, however well it reads.
+       */
+      const keys = (stated.get(line) ?? []).filter((key) => known.has(key));
+      if (keys.length === 0) {
+        rejected.push({
+          section: section.key,
+          line,
+          reason: "No approved or observed evidence was cited for this claim.",
+          severity: "unsupported",
+        });
+        continue;
+      }
+
       body.push(line);
+      support.push({ line, keys: [...new Set(keys)] });
     }
 
     const sources = section.sources.filter((ref) => allowed.has(ref.url));
@@ -492,6 +518,7 @@ export function validateSections(
 
     const unlocks = (section.unlocks ?? []).map(normalizeVoice).filter(Boolean);
     const empty = body.length === 0;
+    const supportKeys = [...new Set(support.flatMap((entry) => entry.keys))];
 
     return {
       key: section.key,
@@ -504,6 +531,7 @@ export function validateSections(
         : {}),
       ...(section.caption ? { caption: normalizeVoice(section.caption) } : {}),
       ...(unlocks.length > 0 ? { unlocks } : {}),
+      ...(support.length > 0 ? { support, supportKeys } : {}),
     } satisfies ArtifactSection;
   });
 
