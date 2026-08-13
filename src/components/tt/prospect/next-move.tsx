@@ -21,7 +21,7 @@ export function NextMovePanel({
   onQualify: () => void;
   onPass: () => void;
   onResearch: () => void;
-  busy?: boolean;
+  busy?: boolean | undefined;
   canResearch: boolean;
 }) {
   return (

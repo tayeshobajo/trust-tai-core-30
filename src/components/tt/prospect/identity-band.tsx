@@ -42,7 +42,7 @@ export function IdentityBand({
   onPass: () => void;
   onResearch: () => void;
   onOverride: (light: FitLight | null) => void;
-  busy?: boolean;
+  busy?: boolean | undefined;
 }) {
   const [showOverride, setShowOverride] = useState(false);
   const { prospect, evaluation, source } = candidate;

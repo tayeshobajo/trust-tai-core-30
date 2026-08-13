@@ -46,7 +46,7 @@ export function ProspectWorkspace({
 }: {
   candidate: ProspectCandidate;
   activeIcpVersion: number | null;
-  backSearch: Record<string, string>;
+  backSearch: { section: "scout" | "qualified" | "research"; fit: "all" | FitLight };
   /** Recorded events for this prospect, newest first. */
   events?: ActivityEvent[];
   /** Known people on record for this company. */
@@ -55,7 +55,7 @@ export function ProspectWorkspace({
   onPass: (id: string) => void;
   onResearch: (websiteUrl: string) => void;
   onOverride: (id: string, light: FitLight | null) => void;
-  busy?: boolean;
+  busy?: boolean | undefined;
 }) {
   const { prospect, evaluation } = candidate;
 
