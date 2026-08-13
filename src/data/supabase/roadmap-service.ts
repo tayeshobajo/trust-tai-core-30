@@ -37,18 +37,14 @@ import { supabaseActivity } from "./activities";
 import {
   assertOk,
   DECISION_COLUMNS,
-  isNotReady,
   notePayload,
   ROADMAP_COLUMNS,
-  RoadmapNotReadyError,
   STAGE_COLUMNS,
   toDecision,
   toRoadmap,
   toStage,
   type Row,
 } from "./roadmap-schema";
-
-export { RoadmapNotReadyError, isNotReady };
 
 export interface RoadmapContext {
   organizationId: ID;
@@ -533,6 +529,27 @@ export const roadmapService = {
       { stage_id: stage.id },
     );
     return toStage(data as Row);
+  },
+
+  /**
+   * Delete a roadmap. Stages and decisions cascade with it in the schema.
+   * Archiving is the usual move; deleting is for a roadmap that should never
+   * have existed.
+   */
+  async remove(id: ID, label: string, context: RoadmapContext): Promise<void> {
+    const { error } = await supabase
+      .from("roadmaps")
+      .delete()
+      .eq("id", id)
+      .eq("organization_id", context.organizationId);
+    assertOk(error);
+    await record(
+      context,
+      "roadmap.status_changed",
+      { id, label },
+      `${label}'s roadmap was deleted.`,
+      { status: "deleted" },
+    );
   },
 
   async addDecision(

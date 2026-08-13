@@ -1,10 +1,9 @@
 /**
  * Roadmap row shapes and mapping.
  *
- * The Roadmap tables are not part of the schema this project owns. Until
- * `docs/roadmap-v1-schema.sql` is applied, PostgREST answers "relation does
- * not exist" — that case is detected and reported as itself, so the room can
- * say truthfully that it is not ready instead of inventing fixtures.
+ * The Roadmap tables are live in the shared Trust Tai backend. Any Postgrest
+ * error is surfaced as itself: no fixtures, no silent fallback, no invented
+ * "not set up" story on top of a real failure.
  */
 
 import type { PostgrestError } from "@supabase/supabase-js";
@@ -35,30 +34,9 @@ export const STAGE_COLUMNS =
 export const DECISION_COLUMNS =
   "id, organization_id, roadmap_id, stage_id, question, why_it_matters, options, recommendation, recommendation_because, evidence, owner_user_id, status, resolution_note, resolved_by, resolved_at, created_at, updated_at";
 
-/** The schema has not been applied to this backend yet. */
-export class RoadmapNotReadyError extends Error {
-  constructor() {
-    super(
-      "Roadmap storage is not set up in this workspace yet. Apply docs/roadmap-v1-schema.sql to the Trust Tai Supabase project.",
-    );
-    this.name = "RoadmapNotReadyError";
-  }
-}
-
-const MISSING_TABLE = /relation .* does not exist|could not find the table|schema cache/i;
-
-export function isNotReady(error: unknown): boolean {
-  if (error instanceof RoadmapNotReadyError) return true;
-  const candidate = error as { code?: string; message?: string } | null;
-  if (!candidate) return false;
-  if (candidate.code === "42P01" || candidate.code === "PGRST205") return true;
-  return typeof candidate.message === "string" && MISSING_TABLE.test(candidate.message);
-}
-
-/** Any Postgrest error is surfaced as itself, except a missing schema. */
+/** Any Postgrest error is surfaced as itself. */
 export function assertOk(error: PostgrestError | null): void {
   if (!error) return;
-  if (isNotReady(error)) throw new RoadmapNotReadyError();
   throw new Error(error.message);
 }
 
