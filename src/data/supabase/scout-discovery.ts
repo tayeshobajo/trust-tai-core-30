@@ -12,7 +12,7 @@
 
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ID } from "@/domain/entities";
-import type { FitLight } from "@/domain/scout-fit";
+import type { FitLight, ScoutFitEvaluation } from "@/domain/scout-fit";
 
 const ENDPOINT = "/api/public/scout/discover";
 
