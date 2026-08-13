@@ -420,9 +420,46 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
       prospectId = data?.["id"] as string | undefined;
     }
 
-
     if (!prospectId) continue;
     savedCount += 1;
+
+    // People read from public pages become real contacts, carrying the page
+    // they were read from. An email is only stored when it was published:
+    // nothing is ever pattern-built, and nothing is marked verified here.
+    for (const person of intelMeta.people) {
+      const fullName = String(person["full_name"] ?? "").trim();
+      if (!fullName) continue;
+      const key = `${prospectId}|${fullName.toLowerCase()}`;
+      if (existingContacts.has(key)) continue;
+      existingContacts.add(key);
+      const email = String(person["email"] ?? "").trim();
+      await supabase.from("contacts").insert({
+        organization_id: orgId,
+        full_name: fullName,
+        title: String(person["role_title"] ?? "").trim() || null,
+        email: email || null,
+        created_by: user.id,
+        metadata: {
+          people: {
+            prospect_id: prospectId,
+            source_id: "scout_discovery",
+            source_url: String(person["source_url"] ?? "").trim() || null,
+            linkedin_url: String(person["linkedin_url"] ?? "").trim() || null,
+            email_status: email ? "found" : "unknown",
+            confidence: "observed",
+            decision_maker_likelihood: String(person["decision_maker_likelihood"] ?? "unknown"),
+            note: "Read from a public page during market sourcing. The role has not been confirmed by a person.",
+            provenance: {
+              appId: "scout",
+              actor: { type: "intelligence", id: "scout-discover" },
+              observedAt: finishedAt,
+              sourceKind: "public_website",
+            },
+          },
+        },
+      });
+    }
+
 
     await supabase.from("prospect_evaluations").insert({
       organization_id: orgId,
