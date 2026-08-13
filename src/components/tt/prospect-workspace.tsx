@@ -15,6 +15,8 @@ import { useMemo } from "react";
 import { TTButton } from "@/components/tt/primitives";
 import { composeProspectPage, hasModule } from "@/data/prospect-modules";
 import type { ActivityEvent } from "@/domain/activity";
+import type { PeopleProviderInfo, Person } from "@/domain/people";
+
 import type { ProspectCandidate } from "@/domain/scout";
 import type { FitLight } from "@/domain/scout-fit";
 
@@ -25,7 +27,7 @@ import { IdentityBand } from "./prospect/identity-band";
 import { NextMovePanel } from "./prospect/next-move";
 import { ObservedPanel } from "./prospect/observed";
 import { OpportunityMap } from "./prospect/opportunity-map";
-import { PeoplePanel } from "./prospect/people-panel";
+import { PeoplePanel, type ManualPersonForm } from "./prospect/people-panel";
 import { SignalPulseCard } from "./prospect/signal-pulse";
 import { TimelineCard } from "./prospect/timeline";
 import { UnknownStrip } from "./prospect/unknown-strip";
@@ -37,7 +39,13 @@ export function ProspectWorkspace({
   activeIcpVersion,
   backSearch,
   events = [],
-  contactCount = 0,
+  people = [],
+  providers = [],
+  availableProviders = [],
+  peopleNote,
+  onIngest,
+  onAddManual,
+  onConfirmEmail,
   onQualify,
   onPass,
   onResearch,
@@ -49,8 +57,15 @@ export function ProspectWorkspace({
   backSearch: { section: "scout" | "qualified" | "research"; fit: "all" | FitLight };
   /** Recorded events for this prospect, newest first. */
   events?: ActivityEvent[];
-  /** Known people on record for this company. */
-  contactCount?: number;
+  /** People on record for this company. */
+  people?: Person[];
+  /** Approved people sources, and which of them can run right now. */
+  providers?: PeopleProviderInfo[];
+  availableProviders?: string[];
+  peopleNote?: string | undefined;
+  onIngest: (providerId: string) => void;
+  onAddManual: (form: ManualPersonForm) => void;
+  onConfirmEmail: (person: Person) => void;
   onQualify: (id: string) => void;
   onPass: (id: string) => void;
   onResearch: (websiteUrl: string) => void;
@@ -58,6 +73,8 @@ export function ProspectWorkspace({
   busy?: boolean | undefined;
 }) {
   const { prospect, evaluation } = candidate;
+  const contactCount = people.length;
+
 
   const composition = useMemo(
     () =>
@@ -117,11 +134,18 @@ export function ProspectWorkspace({
             />
           ) : null}
 
-          {hasModule(composition, "people") ? (
-            <PeoplePanel
-              criteria={evaluation.criteria.filter((c) => c.key === "decision_maker")}
-            />
-          ) : null}
+          <PeoplePanel
+            criteria={evaluation.criteria.filter((c) => c.key === "decision_maker")}
+            people={people}
+            providers={providers}
+            availableProviders={availableProviders}
+            onIngest={onIngest}
+            onAddManual={onAddManual}
+            onConfirmEmail={onConfirmEmail}
+            busy={busy}
+            note={peopleNote}
+          />
+
 
           {hasModule(composition, "handoff") ? (
             <HandoffPanel
@@ -133,8 +157,8 @@ export function ProspectWorkspace({
 
           {hasModule(composition, "observed") ? <ObservedPanel candidate={candidate} /> : null}
 
-          {composition.unknown.length > 0 ? (
-            <UnknownStrip notes={composition.unknown} />
+          {composition.unknown.some((n) => n.id !== "people") ? (
+            <UnknownStrip notes={composition.unknown.filter((n) => n.id !== "people")} />
           ) : null}
         </div>
 
