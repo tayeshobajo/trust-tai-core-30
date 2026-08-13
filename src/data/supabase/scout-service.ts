@@ -25,6 +25,8 @@ import {
 } from "@/domain/scout";
 import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
+import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
+
 
 import { supabaseActivity } from "./activities";
 import { fetchCompanyIdentity } from "./company-identity";
