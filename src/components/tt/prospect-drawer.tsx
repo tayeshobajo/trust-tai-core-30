@@ -131,6 +131,12 @@ export function ProspectDrawer({
               {evaluation.icpVersion ? `ICP v${evaluation.icpVersion}` : "No ICP version recorded"} ·{" "}
               {evaluation.evaluatorVersion}
             </p>
+            {evaluation.researchDepthNote ? (
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                {evaluation.researchDepthNote}
+                {evaluation.researchVersion ? ` · research v${evaluation.researchVersion}` : ""}
+              </p>
+            ) : null}
             {staleScore ? (
               <p className="mt-3 rounded-md border border-warning/30 bg-warning/8 px-3 py-2 text-[13px] text-warning">
                 Needs rescore — this was evaluated against ICP v{evaluation.icpVersion}, and the

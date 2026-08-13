@@ -40,6 +40,12 @@ export interface ScoutFitEvaluation {
   explanation: string;
   /** True when the row cannot honestly be scored against live evidence. */
   scoreable: boolean;
+  /** Public pages read. Confidence context only — never ICP fit points. */
+  pagesResearched?: number;
+  /** e.g. "5 public pages checked" or "Research depth is thin". */
+  researchDepthNote?: string;
+  /** `provenance.research_version` reported by the backend, when present. */
+  researchVersion?: number;
 }
 
-export const SCOUT_EVALUATOR_VERSION = "trust-tai-icp-v1";
+export const SCOUT_EVALUATOR_VERSION = "trust-tai-icp-v2";
