@@ -65,6 +65,8 @@ export const Route = createFileRoute("/api/public/scout/discover")({
           typeof body["organization_id"] === "string" ? body["organization_id"] : undefined;
         const limit = typeof body["limit"] === "number" ? body["limit"] : undefined;
 
+        const gateway = createLovableAiGatewayRunIdFetch(getLovableAiGatewayRunId(request));
+
         const encoder = new TextEncoder();
         const stream = new ReadableStream({
           async start(controller) {
@@ -72,6 +74,7 @@ export const Route = createFileRoute("/api/public/scout/discover")({
               for await (const stage of runDiscovery({
                 token,
                 query,
+                gateway,
                 ...(organizationId ? { organizationId } : {}),
                 ...(limit ? { limit } : {}),
               })) {
@@ -95,13 +98,16 @@ export const Route = createFileRoute("/api/public/scout/discover")({
           },
         });
 
-        return new Response(stream, {
+        const response = new Response(stream, {
           headers: {
             "Content-Type": "application/x-ndjson; charset=utf-8",
             "Cache-Control": "no-store",
           },
         });
+
+        return withLovableAiGatewayRunIdHeader(response, gateway);
       },
+
     },
   },
 });
