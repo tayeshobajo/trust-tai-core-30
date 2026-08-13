@@ -85,6 +85,12 @@ function ProspectDetail({
     queryFn: () => scoutService.list(organizationId),
   });
 
+  const events = useQuery({
+    queryKey: ["scout", "activity", organizationId, prospectId],
+    queryFn: () => scoutService.activity(organizationId, prospectId),
+  });
+
+
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
 
