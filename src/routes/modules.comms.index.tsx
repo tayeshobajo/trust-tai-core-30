@@ -19,6 +19,7 @@ import {
 } from "@/components/tt/comms/relationship-queue";
 import { NextMoveRail, type DraftPreview } from "@/components/tt/comms/next-move-rail";
 import { RelationshipWorkspace } from "@/components/tt/comms/relationship-workspace";
+import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
@@ -216,9 +217,26 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         title="Relationships, kept warm."
         supporting="Who is waiting on you, who has gone quiet, and a truthful reason to reach out. Nothing is sent from here."
         action={
-          <TTButton onClick={() => setCapturing((value) => !value)}>
-            {capturing ? "Close" : "Add someone you met"}
-          </TTButton>
+          <div className="flex flex-wrap items-center gap-2">
+            {selected ? (
+              <SequenceInRoadmap
+                subject={{
+                  kind: "relationship",
+                  id: selected.id,
+                  label: selected.companyName || selected.fullName,
+                }}
+                objective={`Turn the relationship with ${selected.companyName || selected.fullName} into a sequenced path both sides have agreed.`}
+                context={{
+                  organizationId: identity.organizationId,
+                  userId: identity.userId,
+                  userLabel: identity.name,
+                }}
+              />
+            ) : null}
+            <TTButton onClick={() => setCapturing((value) => !value)}>
+              {capturing ? "Close" : "Add someone you met"}
+            </TTButton>
+          </div>
         }
       />
 

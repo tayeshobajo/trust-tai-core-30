@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/tt/app-shell";
 import { ScoutTabs } from "@/components/tt/scout-tabs";
 import { ProspectWorkspace } from "@/components/tt/prospect-workspace";
+import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { EmptyState, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { peopleService } from "@/data/supabase/people-service";
@@ -229,6 +230,14 @@ function ProspectDetail({
           {error.message}
         </p>
       ) : null}
+
+      <div className="flex justify-end">
+        <SequenceInRoadmap
+          subject={{ kind: "prospect", id: candidate.prospect.id, label: candidate.prospect.name }}
+          objective={`Move ${candidate.prospect.name} from where they stand today to a working Trust Tai engagement.`}
+          context={{ organizationId, userId, userLabel: identity.name }}
+        />
+      </div>
 
       <ProspectWorkspace
         candidate={candidate}
