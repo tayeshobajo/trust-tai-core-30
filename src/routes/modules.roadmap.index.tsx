@@ -243,6 +243,7 @@ function DecisionSummary({
   return (
     <Link
       to="/modules/roadmap/$roadmapId"
+          search={{ view: "overview" as const }}
       params={{ roadmapId: decision.roadmapId }}
       className="tt-surface block border-royal/20 p-5 transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
@@ -258,6 +259,7 @@ function RoadmapCard({ roadmap }: { roadmap: Roadmap }) {
   return (
     <Link
       to="/modules/roadmap/$roadmapId"
+          search={{ view: "overview" as const }}
       params={{ roadmapId: roadmap.id }}
       className="tt-surface block p-6 transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
