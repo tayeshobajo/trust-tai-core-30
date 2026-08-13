@@ -18,6 +18,13 @@ export type ActivityAction =
   | "researched"
   /** Passed from one app to another with its context intact, e.g. Scout → Comms. */
   | "handed_over"
+  /** Roadmap: a draft was synthesised from existing shared evidence. */
+  | "generated"
+  | "approved"
+  | "stage_changed"
+  | "decision_requested"
+  | "decision_resolved"
+  | "next_move_changed"
   | "flagged";
 
 /** Event name is always `entity.action`, e.g. "project.status_changed". */
