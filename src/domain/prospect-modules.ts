@@ -106,6 +106,8 @@ export interface ProspectComposition {
   modules: ProspectModule[];
   /** The one surface the page is leaning on right now. */
   focus: ProspectModuleId;
+  /** How sure Scout is about the fit read the whole page rests on. */
+  confidence: ConfidenceRead;
   unknown: UnknownNote[];
   nextMove: NextMove;
   coverage: ResearchCoverage;

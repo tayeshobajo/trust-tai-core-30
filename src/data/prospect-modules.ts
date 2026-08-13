@@ -254,7 +254,7 @@ export function criterionConfidence(
 }
 
 /** Confidence in the overall fit read that the page's move depends on. */
-function fitConfidence(
+export function fitConfidence(
   candidate: ProspectCandidate,
   coverage: ResearchCoverage,
   needsRescore: boolean,
@@ -635,6 +635,7 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
   return {
     modules: modules.sort((a, b) => b.weight - a.weight),
     focus,
+    confidence: fitConfidence(candidate, coverage, needsRescore, staleDays),
     unknown,
     nextMove,
     coverage,

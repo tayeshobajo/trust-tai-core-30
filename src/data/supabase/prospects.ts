@@ -222,6 +222,27 @@ export async function saveResearchProspect(input: ResearchProspectInput): Promis
   return data as unknown as ProspectRow;
 }
 
+/** Store the Comms handoff brief on the prospect, preserving provenance. */
+export async function saveHandoffRecord(id: ID, record: Row): Promise<ProspectRow> {
+  const { data: current, error: readError } = await supabase
+    .from("prospects")
+    .select("metadata")
+    .eq("id", id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+
+  const metadata = mergeProspectMetadata(current?.metadata, { comms_handoff: record });
+  const { data, error } = await supabase
+    .from("prospects")
+    .update({ metadata, status: "ready_for_comms" })
+    .eq("id", id)
+    .select(SELECT_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("The handoff could not be saved to this prospect.");
+  return data as unknown as ProspectRow;
+}
+
 export { normalizeWebsiteUrl };
 
 /** Manually set the ICP fit light for a prospect. `null` clears the override. */
