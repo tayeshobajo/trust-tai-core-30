@@ -6,20 +6,21 @@ import { useMemo, useState } from "react";
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { FitFilters, ProspectBoard, type FitFilter } from "@/components/tt/prospect-board";
+import { DiscoveryProgress, DiscoveryRuns } from "@/components/tt/discovery";
 import { ScoutTabs } from "@/components/tt/scout-tabs";
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { scoutService } from "@/data/supabase/scout-service";
+import type { DiscoveryStage } from "@/data/supabase/scout-discovery";
 import { SCOUT_STARTER_PROMPTS, type ProspectCandidate } from "@/domain/scout";
 import type { FitLight } from "@/domain/scout-fit";
 import { looksLikeWebsite } from "@/lib/website-url";
-import { cn } from "@/lib/utils";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import { formatChecked } from "@/components/tt/fit-light";
 
 const TITLE = "Scout — Trust Tai OS";
 const DESCRIPTION =
-  "A scouting board of companies with conservative ICP fit scoring, the evidence behind each read, and one clear next move.";
+  "Source real companies from a plain-English target, rank them against the active ICP, and see the evidence behind every read.";
 
 type Tab = "scout" | "qualified" | "research";
 
@@ -81,6 +82,7 @@ function Scout({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [stages, setStages] = useState<DiscoveryStage[]>([]);
   const setFilter = (next: FitFilter) =>
     navigate({ to: "/modules/scout", search: { section: tab, fit: next } });
   const isWebsite = looksLikeWebsite(query);
@@ -90,16 +92,36 @@ function Scout({
     queryFn: () => scoutService.icp(organizationId),
   });
 
+  const status = useQuery({
+    queryKey: ["scout", "discovery-status"],
+    queryFn: () => scoutService.discoveryStatus(),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const saved = useQuery({
     queryKey: ["scout", "prospects", organizationId],
     queryFn: () => scoutService.list(organizationId),
   });
 
-  const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
+  const runs = useQuery({
+    queryKey: ["scout", "runs", organizationId],
+    queryFn: () => scoutService.runs(organizationId),
+  });
 
-  const search = useMutation({
-    mutationFn: (text: string) => scoutService.search({ organizationId, userId, query: text }),
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
+    await queryClient.invalidateQueries({ queryKey: ["scout", "runs", organizationId] });
+  };
+
+  const discover = useMutation({
+    mutationFn: (text: string) => {
+      setStages([]);
+      return scoutService.discover({
+        organizationId,
+        query: text,
+        onStage: (stage) => setStages((current) => [...current, stage]),
+      });
+    },
     onSuccess: refresh,
   });
 
@@ -117,8 +139,8 @@ function Scout({
   });
 
   const setStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: "qualified" | "passed" }) =>
-      scoutService.setStatus(id, status, { organizationId, userId }),
+    mutationFn: ({ id, status: next }: { id: string; status: "qualified" | "passed" }) =>
+      scoutService.setStatus(id, next, { organizationId, userId }),
     onSuccess: refresh,
   });
 
@@ -164,6 +186,8 @@ function Scout({
     } as Record<FitFilter, number>;
   }, [all, tab]);
 
+  const configured = status.data?.configured ?? true;
+
   function run(next: string) {
     const text = next.trim();
     if (!text) return;
@@ -172,15 +196,17 @@ function Scout({
       research.mutate(text);
       return;
     }
-    search.mutate(text);
+    if (!configured) return;
+    discover.mutate(text);
   }
 
-  const error = (search.error ??
+  const error = (discover.error ??
     research.error ??
     setStatus.error ??
     override.error ??
     saved.error) as Error | null;
-  const busy = search.isPending || research.isPending || setStatus.isPending;
+  const busy = discover.isPending || research.isPending || setStatus.isPending;
+  const blocked = !configured && !isWebsite;
 
   return (
     <div className="space-y-8">
@@ -188,7 +214,7 @@ function Scout({
         appId="scout"
         eyebrow="Trust Tai OS / Scout"
         title="Who deserves our attention next?"
-        supporting="One board of companies, scored conservatively against the active ICP. Colour reads fit only — the workflow stage stays separate."
+        supporting="Describe the market and Scout sources real companies from the open web, ranks them against the active ICP, and shows the evidence behind every read."
         action={
           <TTButton asChild variant="secondary" size="sm">
             <Link to="/modules/scout/settings">
@@ -211,37 +237,42 @@ function Scout({
           }}
         >
           <label htmlFor="scout-query" className="sr-only">
-            Describe the kind of company we are looking for, or paste a website
+            Describe the market to source, or paste one company website
           </label>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               id="scout-query"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Paste a company website — or describe who we are looking for"
+              placeholder="e.g. IT companies in Nashville — or paste one company website"
               className="h-12 w-full rounded-lg border border-input bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <TTButton type="submit" disabled={busy || !query.trim()} className="shrink-0">
+            <TTButton
+              type="submit"
+              disabled={busy || blocked || !query.trim()}
+              className="shrink-0"
+            >
               {research.isPending
                 ? "Researching…"
-                : search.isPending
-                  ? "Looking…"
+                : discover.isPending
+                  ? "Sourcing…"
                   : isWebsite
                     ? "Research website"
-                    : "Find candidates"}
+                    : "Source companies"}
             </TTButton>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <p className="text-xs text-muted-foreground">
               {isWebsite
-                ? "Live public website research. Public pages only — no search engines or private data."
-                : "Preview discovery. No external company search yet."}
+                ? "Live public website research. Public pages only — no private data."
+                : "Live market sourcing from the public web. Every company is saved with its sources."}
             </p>
             {icp.data ? (
               <MetaPill>Using ICP v{icp.data.version}</MetaPill>
             ) : icp.isPending ? null : (
               <MetaPill>No ICP saved</MetaPill>
             )}
+            {status.data?.model ? <MetaPill>{status.data.model}</MetaPill> : null}
           </div>
           {tab === "scout" ? (
             <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
@@ -258,6 +289,24 @@ function Scout({
             </div>
           ) : null}
         </form>
+
+        {!configured ? (
+          <div
+            role="status"
+            className="tt-surface mt-3 p-4 text-sm text-muted-foreground"
+          >
+            <p className="text-foreground">Market sourcing is not connected yet.</p>
+            <p className="mt-1">
+              Add an <span className="font-mono text-[12px]">OPENAI_API_KEY</span> secret to this
+              project to let Scout source companies from the open web. Pasting a single company
+              website still works, and nothing here is ever filled with demo data.
+            </p>
+          </div>
+        ) : null}
+
+        {discover.isPending || stages.length > 0 ? (
+          <DiscoveryProgress stages={stages} running={discover.isPending} query={query.trim()} />
+        ) : null}
 
         {research.isPending ? (
           <div
@@ -278,7 +327,10 @@ function Scout({
       </section>
 
       {tab === "research" ? (
-        <ResearchHistory candidates={all} linkSearch={{ section: tab, fit: filter }} />
+        <>
+          <DiscoveryRuns runs={runs.data ?? []} />
+          <ResearchHistory candidates={all} linkSearch={{ section: tab, fit: filter }} />
+        </>
       ) : (
         <section>
           <SectionHeading
@@ -293,9 +345,7 @@ function Scout({
                 ? "Qualified in Scout. Nothing has been sent — each one is waiting on its next move."
                 : "Sorted by strongest ICP fit, then by most recently checked. Colour is fit, not stage."
             }
-            action={
-              <FitFilters value={filter} counts={counts} onChange={setFilter} />
-            }
+            action={<FitFilters value={filter} counts={counts} onChange={setFilter} />}
           />
 
           {board.length === 0 ? (
@@ -304,9 +354,9 @@ function Scout({
               belongsHere={
                 tab === "qualified"
                   ? "Companies you qualify in Scout appear here with their next move."
-                  : "Companies Scout has read appear here with an ICP fit light and the evidence behind it."
+                  : "Describe a market above and Scout sources real companies, each with the sources it read."
               }
-              whyItMatters="Fit is judged conservatively: three clear evidence points are required before anything reads green."
+              whyItMatters="Fit is judged conservatively: thin evidence never reads green, and unknown is never treated as a mismatch."
             />
           ) : (
             <ProspectBoard
@@ -317,7 +367,6 @@ function Scout({
           )}
         </section>
       )}
-
     </div>
   );
 }
@@ -359,9 +408,7 @@ function ResearchHistory({
                     {candidate.prospect.name}
                   </span>
                   <span className="block truncate font-mono text-[11px] text-muted-foreground">
-                    {candidate.source.kind === "live_website"
-                      ? candidate.source.note ?? "Live website research"
-                      : "Preview demo source"}
+                    {candidate.source.note ?? candidate.source.label}
                   </span>
                 </span>
                 <span className="font-mono text-[11px] text-muted-foreground">
