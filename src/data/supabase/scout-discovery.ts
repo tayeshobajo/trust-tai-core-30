@@ -216,6 +216,47 @@ export async function listProspectEvaluations(prospectId: ID): Promise<ProspectE
   }));
 }
 
+export interface RecordEvaluationInput {
+  organizationId: ID;
+  prospectId: ID;
+  userId: ID;
+  evaluation: ScoutFitEvaluation;
+  citations?: string[];
+  observed?: unknown;
+  inferred?: unknown;
+  suggested?: unknown;
+}
+
+/**
+ * Record one deterministic evaluation pass. Written for website research as
+ * well as discovery, so a company's fit history is complete rather than only
+ * covering the runs that came from market sourcing.
+ */
+export async function recordProspectEvaluation(input: RecordEvaluationInput): Promise<void> {
+  const { evaluation } = input;
+  const { error } = await supabase.from("prospect_evaluations").insert({
+    organization_id: input.organizationId,
+    prospect_id: input.prospectId,
+    evaluator: "scout-research",
+    evaluator_version: evaluation.evaluatorVersion,
+    provider: "trust-tai",
+    model: null,
+    icp_version: evaluation.icpVersion,
+    score: evaluation.score,
+    fit_light: evaluation.light,
+    confidence: evaluation.evidenceCount >= 3 ? "moderate" : "low",
+    criteria: evaluation.criteria,
+    observed: input.observed ?? [],
+    inferred: input.inferred ?? {},
+    suggested: input.suggested ?? {},
+    citations: input.citations ?? [],
+    reasoning_summary: evaluation.explanation,
+    created_by: input.userId,
+  });
+  // A failed history write must never lose the research itself.
+  if (error) console.warn("Scout could not record the evaluation history:", error.message);
+}
+
 export interface FeedbackInput {
   organizationId: ID;
   userId: ID;
