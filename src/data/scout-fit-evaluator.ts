@@ -151,11 +151,24 @@ export function renderValue(value: unknown): string {
 class Structured {
   private readonly map = new Map<string, Observation>();
 
+  /** Public pages read. Confidence context for absence claims only. */
+  pages: number | null = null;
+
   constructor(observations: Observation[]) {
     for (const observation of observations) {
       if (!this.map.has(observation.key)) this.map.set(observation.key, observation);
     }
   }
+
+  /** v4 page-coverage flag: did the crawl actually reach that kind of page? */
+  checked(key: string): boolean {
+    return this.flag(key) === true;
+  }
+
+  depthAtLeast(pages: number): boolean {
+    return this.pages !== null && this.pages >= pages;
+  }
+
 
   has(key: string): boolean {
     const observation = this.map.get(key);
