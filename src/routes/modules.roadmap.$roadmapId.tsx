@@ -648,9 +648,12 @@ function RoadmapWorkspace({
         <StudioView
           preview={intel?.artifacts.find((entry) => entry.kind === "preview") ?? null}
           full={intel?.artifacts.find((entry) => entry.kind === "full") ?? null}
-          busy={compose.isPending}
-          onCompose={(kind) => compose.mutate(kind)}
+          busy={compose.isPending || editArtifact.isPending}
+          stage={studioStage}
+          onCompose={(kind, replace) => compose.mutate({ kind, ...(replace ? { replace } : {}) })}
+          onEdit={(artifact, sections) => editArtifact.mutate({ artifact, sections })}
         />
+
       ) : null}
 
       {view === "walkthrough" ? (
