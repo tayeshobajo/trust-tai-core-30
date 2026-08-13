@@ -11,6 +11,7 @@ import type { Provenance } from "./activity";
 import type { ID, Prospect } from "./entities";
 import type { ScoutFitEvaluation } from "./scout-fit";
 import type { ResearchRun } from "./prospect-modules";
+import type { ScoutIntel } from "./scout-intel";
 
 import type { CompanyIdentity } from "@/lib/company-identity";
 
@@ -68,6 +69,8 @@ export interface ProspectCandidate {
   facts?: Record<string, unknown>;
   /** Append-only log of completed research passes, oldest first. */
   history?: ResearchRun[];
+  /** Buying signals, digital opportunities and people, kept apart from fit. */
+  intel?: ScoutIntel;
 }
 
 
