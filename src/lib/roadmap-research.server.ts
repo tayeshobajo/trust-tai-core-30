@@ -269,8 +269,10 @@ function researchInput(subject: {
       ],
       rules: {
         anchor_proof: "one to three items only",
-        horizon: "exactly three bands: 2, 5 and 10 years",
+        horizon:
+          "exactly three bands: 2, 5 and 10 years. Each band describes where this company's industry and buyers are heading, backed by a source. Never describe what Trust Tai would build, and never write generic futurism.",
       },
+
     },
   });
 }
