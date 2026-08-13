@@ -13,6 +13,7 @@ import {
   TTButton,
   TTInput,
 } from "@/components/tt/primitives";
+import { ScoutTabs } from "@/components/tt/scout-tabs";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { getCurrentIcp, saveIcp, type IcpProfile } from "@/data/supabase/icp";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -143,6 +144,8 @@ function IcpSettings({ identity }: { identity: WorkspaceIdentity }) {
           </TTButton>
         }
       />
+
+      <ScoutTabs active="settings" />
 
       {icpQuery.isPending ? (
         <p className="text-sm text-muted-foreground" role="status">

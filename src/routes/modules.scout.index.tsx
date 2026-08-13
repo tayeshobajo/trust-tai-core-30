@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Settings2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -55,7 +55,6 @@ const LIGHT_RANK: Record<FitLight, number> = { green: 3, yellow: 2, neutral: 1, 
 function Scout({ identity, tab }: { identity: WorkspaceIdentity; tab: Tab }) {
   const { organizationId, userId } = identity;
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [filter, setFilter] = useState<FitFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
