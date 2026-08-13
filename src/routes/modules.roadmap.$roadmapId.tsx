@@ -494,6 +494,7 @@ function RoadmapWorkspace({
   }
 
   const { roadmap, stages, decisions } = detail;
+  const intel = intelQuery.data;
   const unknowns = Array.isArray(roadmap.metadata["unknowns"])
     ? (roadmap.metadata["unknowns"] as string[])
     : [];
@@ -541,6 +542,81 @@ function RoadmapWorkspace({
 
       {actionError ? <p className="text-sm text-danger">{actionError}</p> : null}
 
+      <RoadmapTabs roadmapId={roadmapId} view={view} />
+
+      {intelQuery.isError ? (
+        <p className="text-sm text-destructive">
+          {intelQuery.error instanceof Error
+            ? intelQuery.error.message
+            : "The intelligence layer could not be read."}
+        </p>
+      ) : null}
+
+      <AskPanel
+        subjectLabel={roadmap.subjectLabel}
+        answers={intel?.questions ?? []}
+        pending={ask.isPending}
+        error={askError}
+        onAsk={(question) => ask.mutate(question)}
+      />
+
+      {view === "research" ? (
+        <ResearchView
+          research={intel?.research ?? null}
+          history={intel?.researchHistory ?? []}
+          running={research.isPending}
+          stage={researchStage}
+          error={researchError}
+          onRun={() => research.mutate()}
+        />
+      ) : null}
+
+      {view === "strategy" ? (
+        <StrategyView
+          strategy={intel?.strategy ?? null}
+          busyKey={busyKey}
+          generating={research.isPending}
+          onGenerate={() => research.mutate()}
+          onApproval={(key, state) => approval.mutate({ key, state })}
+        />
+      ) : null}
+
+      {view === "milestones" ? (
+        <MilestonesView
+          milestones={intel?.milestones ?? []}
+          busyId={busyId}
+          generating={research.isPending}
+          onGenerate={() => research.mutate()}
+          onStatus={(milestone, status, note) =>
+            milestoneStatus.mutate({ milestone, status, note })
+          }
+        />
+      ) : null}
+
+      {view === "studio" ? (
+        <StudioView
+          preview={intel?.artifacts.find((entry) => entry.kind === "preview") ?? null}
+          full={intel?.artifacts.find((entry) => entry.kind === "full") ?? null}
+          busy={compose.isPending}
+          onCompose={(kind) => compose.mutate(kind)}
+        />
+      ) : null}
+
+      {view === "walkthrough" ? (
+        <WalkthroughView
+          session={intel?.sessions.find((entry) => !entry.endedAt) ?? null}
+          history={intel?.sessions ?? []}
+          busy={walkthrough.isPending}
+          onStart={() => walkthrough.mutate({ type: "start" })}
+          onCapture={(kind, body) => walkthrough.mutate({ type: "capture", kind, body })}
+          onEnd={() => walkthrough.mutate({ type: "end" })}
+        />
+      ) : null}
+
+      {view === "build" ? <BuildOrderView milestones={intel?.milestones ?? []} /> : null}
+
+      {view !== "overview" ? null : (
+      <>
       <div className="grid gap-6 lg:grid-cols-2">
         <PointAPanel notes={roadmap.pointA} />
         <PointBPanel
@@ -597,6 +673,8 @@ function RoadmapWorkspace({
           </p>
         </section>
       ) : null}
+      </>
+      )}
     </div>
   );
 }
