@@ -319,12 +319,58 @@ export interface CompositionInput {
   activityCount?: number;
 }
 
+type NextMoveBase = Omit<NextMove, "confidence">;
+
+/**
+ * The deterministic decision rules. Read top to bottom: the first rule that
+ * matches wins, so the same evidence always produces the same move.
+ */
 export function computeNextMove(
   input: CompositionInput,
   coverage: ResearchCoverage,
   needsRescore: boolean,
   staleDays: number | null,
 ): NextMove {
+  const base = nextMoveBase(input, coverage, needsRescore, staleDays);
+  const contacts = input.contactCount ?? 0;
+
+  if (base.action === "people") {
+    return {
+      ...base,
+      confidence: {
+        level: "unknown",
+        because: "Nobody with a role is on record, so reachability cannot be judged yet.",
+        evidence: [{ label: `${contacts} people on record`, kind: "computed" }],
+      },
+    };
+  }
+
+  if (base.action === "handoff") {
+    return {
+      ...base,
+      confidence: {
+        level: coverage.thin ? "moderate" : "high",
+        because: `Fit, evidence, and ${contacts} named ${contacts === 1 ? "person" : "people"} are on record.`,
+        evidence: [
+          { label: `${contacts} people on record`, kind: "computed" },
+          ...fitConfidence(input.candidate, coverage, needsRescore, staleDays).evidence,
+        ],
+      },
+    };
+  }
+
+  return {
+    ...base,
+    confidence: fitConfidence(input.candidate, coverage, needsRescore, staleDays),
+  };
+}
+
+function nextMoveBase(
+  input: CompositionInput,
+  coverage: ResearchCoverage,
+  needsRescore: boolean,
+  staleDays: number | null,
+): NextMoveBase {
   const { candidate } = input;
   const { prospect, evaluation } = candidate;
   const contacts = input.contactCount ?? 0;
