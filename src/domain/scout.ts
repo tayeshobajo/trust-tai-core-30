@@ -10,6 +10,7 @@
 import type { Provenance } from "./activity";
 import type { ID, Prospect } from "./entities";
 import type { ScoutFitEvaluation } from "./scout-fit";
+import type { CompanyIdentity } from "@/lib/company-identity";
 
 /** A single piece of evidence Scout observed about a company. */
 export interface ScoutSignal {
@@ -59,6 +60,8 @@ export interface ProspectCandidate {
   evaluation: ScoutFitEvaluation;
   /** When the evidence behind this candidate was last read. */
   lastCheckedAt: string;
+  /** Company-owned identity (real theme colour / logo URL) when recorded. */
+  identity?: CompanyIdentity;
 }
 
 export interface ScoutSearchRequest {
