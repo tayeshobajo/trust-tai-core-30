@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
+import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.index'
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
@@ -44,6 +45,11 @@ const ModulesScoutRoute = ModulesScoutRouteImport.update({
   id: '/modules/scout',
   path: '/modules/scout',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ModulesCommsRoute,
 } as any)
 const ModulesScoutIndexRoute = ModulesScoutIndexRouteImport.update({
   id: '/',
@@ -76,9 +82,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
-  '/modules/comms': typeof ModulesCommsRoute
+  '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
@@ -88,8 +95,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
-  '/modules/comms': typeof ModulesCommsRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/comms': typeof ModulesCommsIndexRoute
   '/modules/scout': typeof ModulesScoutIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
@@ -100,9 +107,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
-  '/modules/comms': typeof ModulesCommsRoute
+  '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
@@ -117,6 +125,7 @@ export interface FileRouteTypes {
     | '/modules/comms'
     | '/modules/scout'
     | '/modules/scout/settings'
+    | '/modules/comms/'
     | '/modules/scout/'
     | '/api/public/comms/draft'
     | '/api/public/scout/discover'
@@ -126,8 +135,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/modules/$slug'
-    | '/modules/comms'
     | '/modules/scout/settings'
+    | '/modules/comms'
     | '/modules/scout'
     | '/api/public/comms/draft'
     | '/api/public/scout/discover'
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/modules/comms'
     | '/modules/scout'
     | '/modules/scout/settings'
+    | '/modules/comms/'
     | '/modules/scout/'
     | '/api/public/comms/draft'
     | '/api/public/scout/discover'
@@ -150,7 +160,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
-  ModulesCommsRoute: typeof ModulesCommsRoute
+  ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
@@ -193,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesScoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/modules/comms/': {
+      id: '/modules/comms/'
+      path: '/'
+      fullPath: '/modules/comms/'
+      preLoaderRoute: typeof ModulesCommsIndexRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
     '/modules/scout/': {
       id: '/modules/scout/'
       path: '/'
@@ -231,6 +248,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ModulesCommsRouteChildren {
+  ModulesCommsIndexRoute: typeof ModulesCommsIndexRoute
+}
+
+const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
+  ModulesCommsIndexRoute: ModulesCommsIndexRoute,
+}
+
+const ModulesCommsRouteWithChildren = ModulesCommsRoute._addFileChildren(
+  ModulesCommsRouteChildren,
+)
+
 interface ModulesScoutRouteChildren {
   ModulesScoutSettingsRoute: typeof ModulesScoutSettingsRoute
   ModulesScoutIndexRoute: typeof ModulesScoutIndexRoute
@@ -251,7 +280,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   ModulesSlugRoute: ModulesSlugRoute,
-  ModulesCommsRoute: ModulesCommsRoute,
+  ModulesCommsRoute: ModulesCommsRouteWithChildren,
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
