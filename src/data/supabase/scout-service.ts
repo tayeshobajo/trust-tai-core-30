@@ -122,6 +122,18 @@ export const scoutService = {
     return rows.map((row) => toCandidate(row, icp?.version ?? null));
   },
 
+  /** Recorded history for one company: research, decisions, overrides. */
+  async activity(organizationId: ID, prospectId: ID) {
+    return supabaseActivity.list({
+      organizationId,
+      subjectType: "prospect",
+      subjectId: prospectId,
+      limit: 12,
+    });
+  },
+
+
+
   /**
    * Preview discovery. Ranks the demo catalogue against the plain-English
    * description and persists any candidate not already saved.
