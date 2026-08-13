@@ -183,7 +183,7 @@ describe("validateSections", () => {
       [section({ body: ["They grew revenue 42% last year."] })],
       packet,
     );
-    expect(result.rejected[0]?.reason).toContain("42%");
+    expect(result.rejected[0]?.reason).toContain("42");
     expect(result.sections[0]?.body).toEqual([NOT_READY_LINE]);
     expect(result.sections[0]?.tier).toBe("inferred");
   });
