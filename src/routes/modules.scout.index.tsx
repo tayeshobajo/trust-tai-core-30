@@ -22,7 +22,16 @@ const TITLE = "Scout — Trust Tai OS";
 const DESCRIPTION =
   "A scouting board of companies with conservative ICP fit scoring, the evidence behind each read, and one clear next move.";
 
+type Tab = "scout" | "qualified" | "research";
+
+function parseSection(value: unknown): Tab {
+  return value === "qualified" || value === "research" ? value : "scout";
+}
+
 export const Route = createFileRoute("/modules/scout/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    section: parseSection(search["section"]),
+  }),
   head: () => ({
     meta: [
       { title: TITLE },
