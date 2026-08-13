@@ -301,7 +301,7 @@ describe("validateSections", () => {
           support: [
             {
               line: "Their crews are booked through a phone line, not a form.",
-              keys: ["observed:company:1"],
+              keys: ["research:fact:1"],
             },
           ],
         }),
@@ -309,7 +309,7 @@ describe("validateSections", () => {
       withResearch,
     );
     expect(result.rejected).toHaveLength(0);
-    expect(result.sections[0]?.supportKeys).toEqual(["observed:company:1"]);
+    expect(result.sections[0]?.supportKeys).toEqual(["research:fact:1"]);
   });
 });
 
@@ -322,9 +322,9 @@ describe("observed research in the packet", () => {
       milestones: [],
       research: research(),
     });
-    expect(packet.observed.map((fact) => fact.key)).toEqual(["observed:company:1"]);
+    expect(packet.observed.map((fact) => fact.key)).toEqual(["research:fact:1"]);
     expect(packet.allowedUrls).toContain("https://acme.com/services");
-    expect(packet.supportKeys).toContain("observed:company:1");
+    expect(packet.supportKeys).toContain("research:fact:1");
   });
 
   it("never lets observed research satisfy an approval", () => {
