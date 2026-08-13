@@ -26,6 +26,8 @@ import {
 import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
+import type { HandoffDraft, HandoffRecord } from "@/domain/comms-handoff";
+import { HANDOFF_INTENT_LABEL } from "@/domain/comms-handoff";
 
 
 import { supabaseActivity } from "./activities";
@@ -37,6 +39,7 @@ import {
   insertPreviewProspect,
   listProspectRows,
   normalizeWebsiteUrl,
+  saveHandoffRecord,
   saveResearchProspect,
   toProspect,
   setProspectFitOverride,
@@ -269,6 +272,50 @@ export const scoutService = {
       source: candidate.source,
       generatedAt: occurredAt,
     };
+  },
+
+  /**
+   * Route a prepared brief to Comms. The brief is stored on the prospect with
+   * full provenance and the company moves to `ready_for_comms`. Nothing is
+   * sent: Comms opens the conversation, a person still writes it.
+   */
+  async routeToComms(
+    draft: HandoffDraft,
+    context: ScoutContext,
+  ): Promise<HandoffRecord> {
+    if (!draft.ready) {
+      throw new Error(
+        "This brief is not ready for Comms yet. Clear what is missing first.",
+      );
+    }
+
+    const routedAt = new Date().toISOString();
+    const record: HandoffRecord = { draft, routedAt, routedBy: context.userId };
+    await saveHandoffRecord(draft.prospectId, record as unknown as Record<string, unknown>);
+
+    await supabaseActivity.record({
+      organizationId: context.organizationId,
+      name: "prospect.handed_over",
+      subject: { type: "prospect", id: draft.prospectId, label: draft.companyName },
+      summary: `${draft.companyName} was handed to Comms with ${draft.contact?.fullName ?? "no named contact"} as the contact. Nothing was sent.`,
+      payload: {
+        intent: draft.intent,
+        intent_label: HANDOFF_INTENT_LABEL[draft.intent],
+        contact_name: draft.contact?.fullName ?? null,
+        contact_email_status: draft.contact?.emailStatus ?? null,
+        confidence: draft.confidence.level,
+        context_items: draft.requiredContext.length,
+      },
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: context.userId },
+        observedAt: routedAt,
+        confidence: "observed",
+      },
+      occurredAt: routedAt,
+    });
+
+    return record;
   },
 
   /** Manual ICP fit override. Always available, never automatic. */

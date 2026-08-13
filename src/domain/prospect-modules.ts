@@ -13,6 +13,7 @@
  *   decision   — what a Trust Tai member actually decided
  */
 
+import type { ConfidenceRead } from "./confidence";
 import type { FitLight } from "./scout-fit";
 
 /** One completed research pass, recorded so change over time is visible. */
@@ -60,6 +61,8 @@ export interface NextMove {
   detail: string;
   /** Why this is the move, in the system's own words. */
   because: string;
+  /** How sure Scout is about the read behind this move, and what it rests on. */
+  confidence: ConfidenceRead;
 }
 
 export type ProspectModuleId =
@@ -74,12 +77,21 @@ export type ProspectModuleId =
   | "observed"
   | "timeline";
 
+/**
+ * How loudly a surface speaks right now. Chosen deterministically from
+ * lifecycle stage, ICP match, and evidence coverage — never by the renderer.
+ */
+export type ModuleEmphasis = "primary" | "supporting" | "quiet";
+
 export interface ProspectModule {
   id: ProspectModuleId;
   /** Which zone the surface belongs to. */
   zone: "decision" | "rail";
   /** Higher sorts first within its zone. */
   weight: number;
+  emphasis: ModuleEmphasis;
+  /** Plain-language reason this surface is emphasised or muted. */
+  reason: string;
 }
 
 /** A surface that has nothing honest to say yet, collapsed to one line. */
@@ -92,6 +104,10 @@ export interface UnknownNote {
 
 export interface ProspectComposition {
   modules: ProspectModule[];
+  /** The one surface the page is leaning on right now. */
+  focus: ProspectModuleId;
+  /** How sure Scout is about the fit read the whole page rests on. */
+  confidence: ConfidenceRead;
   unknown: UnknownNote[];
   nextMove: NextMove;
   coverage: ResearchCoverage;

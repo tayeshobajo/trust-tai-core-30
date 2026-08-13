@@ -5,6 +5,13 @@
  * composition's job — so these stay purely presentational.
  */
 
+import {
+  CONFIDENCE_LEVEL_LABEL,
+  type ConfidenceLevel,
+  type ConfidenceRead,
+  type EvidenceRef,
+} from "@/domain/confidence";
+import type { ModuleEmphasis } from "@/domain/prospect-modules";
 import type { FitCriterion, FitCriterionState } from "@/domain/scout-fit";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +36,7 @@ export function Panel({
   aside,
   children,
   className,
+  emphasis = "supporting",
 }: {
   eyebrow?: string;
   title: string;
@@ -36,9 +44,21 @@ export function Panel({
   aside?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** Set by the composer, never by the panel itself. */
+  emphasis?: ModuleEmphasis;
 }) {
   return (
-    <section className={cn("tt-rise rounded-xl border border-border bg-card p-6", className)}>
+    <section
+      className={cn(
+        "tt-rise rounded-xl border bg-card",
+        emphasis === "primary"
+          ? "border-royal/30 p-6 shadow-[0_1px_0_0_hsl(var(--royal)/0.08)]"
+          : emphasis === "quiet"
+            ? "border-dashed border-border/70 p-5 opacity-80 transition-opacity hover:opacity-100"
+            : "border-border p-6",
+        className,
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           {eyebrow ? <p className="tt-eyebrow">{eyebrow}</p> : null}
@@ -94,7 +114,77 @@ export function SourceLink({ url }: { url: string }) {
   );
 }
 
-export function CriterionRow({ criterion }: { criterion: FitCriterion }) {
+const LEVEL_TONE: Record<ConfidenceLevel, string> = {
+  high: "border-success/30 text-success",
+  moderate: "border-warning/30 text-warning",
+  low: "border-destructive/30 text-destructive",
+  unknown: "border-border text-muted-foreground",
+};
+
+/** How sure the system is. Always paired with the reason, never on its own. */
+export function ConfidenceChip({ level }: { level: ConfidenceLevel }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em]",
+        LEVEL_TONE[level],
+      )}
+    >
+      {CONFIDENCE_LEVEL_LABEL[level]}
+    </span>
+  );
+}
+
+/** What a claim rests on. Pages link out; computed and human reads do not. */
+export function EvidenceLinks({ evidence }: { evidence: EvidenceRef[] }) {
+  if (evidence.length === 0) return null;
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+      {evidence.map((item, index) =>
+        item.url ? (
+          <a
+            key={`${item.label}-${index}`}
+            href={item.url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground underline decoration-border underline-offset-4 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {item.label}
+          </a>
+        ) : (
+          <span
+            key={`${item.label}-${index}`}
+            className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground"
+          >
+            {item.label}
+          </span>
+        ),
+      )}
+    </div>
+  );
+}
+
+/** The full "why we think this" line: confidence, reason, and evidence. */
+export function WhyWeThink({ confidence }: { confidence: ConfidenceRead }) {
+  return (
+    <div className="rounded-lg border border-border bg-background px-4 py-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="tt-eyebrow">Why we think this</p>
+        <ConfidenceChip level={confidence.level} />
+      </div>
+      <p className="mt-1.5 text-[13px] text-muted-foreground">{confidence.because}</p>
+      <EvidenceLinks evidence={confidence.evidence} />
+    </div>
+  );
+}
+
+export function CriterionRow({
+  criterion,
+  confidence,
+}: {
+  criterion: FitCriterion;
+  confidence?: ConfidenceRead | undefined;
+}) {
   return (
     <li className="border-b border-border pb-4 last:border-b-0 last:pb-0">
       <div className="flex items-baseline justify-between gap-4">
@@ -110,7 +200,15 @@ export function CriterionRow({ criterion }: { criterion: FitCriterion }) {
         </p>
       </div>
       <p className="mt-1 text-[13px] text-muted-foreground">{criterion.reason}</p>
-      {criterion.sourceUrls?.length ? (
+      {confidence ? (
+        <>
+          <div className="mt-1.5 flex flex-wrap items-baseline gap-2">
+            <ConfidenceChip level={confidence.level} />
+            <span className="text-[13px] text-muted-foreground">{confidence.because}</span>
+          </div>
+          <EvidenceLinks evidence={confidence.evidence} />
+        </>
+      ) : criterion.sourceUrls?.length ? (
         <div className="mt-1.5 flex flex-wrap gap-3">
           {criterion.sourceUrls.map((url) => (
             <SourceLink key={url} url={url} />

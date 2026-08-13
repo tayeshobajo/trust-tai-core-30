@@ -6,7 +6,9 @@
  * next move. No rendering, no Supabase, no side effects.
  */
 
+import type { ConfidenceRead, EvidenceRef } from "@/domain/confidence";
 import type {
+  ModuleEmphasis,
   NextMove,
   ProspectComposition,
   ProspectModule,
@@ -16,7 +18,7 @@ import type {
   UnknownNote,
 } from "@/domain/prospect-modules";
 import type { ProspectCandidate } from "@/domain/scout";
-import type { ScoutFitEvaluation } from "@/domain/scout-fit";
+import type { FitCriterion, ScoutFitEvaluation } from "@/domain/scout-fit";
 
 /** Page kinds the v4 research function reports on. */
 const PAGE_KINDS: { key: string; label: string }[] = [
@@ -171,6 +173,139 @@ function daysSince(value: string): number | null {
   return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000));
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Confidence — how sure we are, and what that rests on
+ * ------------------------------------------------------------------ */
+
+/** Evidence for one ICP criterion: the pages the claim was actually read from. */
+export function criterionEvidence(criterion: FitCriterion): EvidenceRef[] {
+  const pages = (criterion.sourceUrls ?? []).map((url) => ({
+    label: pageLabel(url),
+    url,
+    kind: "page" as const,
+  }));
+  if (pages.length > 0) return pages;
+  return [{ label: "Evaluator read of stored evidence", kind: "computed" as const }];
+}
+
+function pageLabel(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname.replace(/\/$/, "");
+    return path && path !== "" ? `${parsed.hostname}${path}` : parsed.hostname;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Confidence in one criterion. Evidence quantity sets the ceiling; thin
+ * coverage lowers it. A criterion nobody has evidence for is never "low" —
+ * it is simply not established.
+ */
+export function criterionConfidence(
+  criterion: FitCriterion,
+  coverage: ResearchCoverage,
+): ConfidenceRead {
+  const evidence = criterionEvidence(criterion);
+  const sourced = (criterion.sourceUrls ?? []).length;
+
+  if (criterion.state === "missing") {
+    return {
+      level: "unknown",
+      because:
+        sourced > 0
+          ? "Pages were read but said nothing either way about this."
+          : "No page carrying this has been read yet, so absence proves nothing.",
+      evidence,
+    };
+  }
+
+  const base: ConfidenceRead =
+    criterion.state === "met" && sourced > 0
+      ? {
+          level: "high",
+          because: `Stated directly on ${sourced} public ${sourced === 1 ? "page" : "pages"}.`,
+          evidence,
+        }
+      : criterion.state === "mismatch"
+        ? {
+            level: sourced > 0 ? "high" : "moderate",
+            because: "The evidence read contradicts the ICP on this point.",
+            evidence,
+          }
+        : {
+            level: sourced > 0 ? "moderate" : "low",
+            because:
+              sourced > 0
+                ? "Partly supported: the pages hint at this without stating it."
+                : "Derived from stored evidence with no page to point at.",
+            evidence,
+          };
+
+  return coverage.thin
+    ? {
+        ...base,
+        level: base.level === "high" ? "moderate" : base.level,
+        because: `${base.because} Coverage is still thin, so this is held one step lower.`,
+      }
+    : base;
+}
+
+/** Confidence in the overall fit read that the page's move depends on. */
+export function fitConfidence(
+  candidate: ProspectCandidate,
+  coverage: ResearchCoverage,
+  needsRescore: boolean,
+  staleDays: number | null,
+): ConfidenceRead {
+  const { evaluation } = candidate;
+  const evidence: EvidenceRef[] = [
+    {
+      label: `${evaluation.evidenceCount} observed ${evaluation.evidenceCount === 1 ? "fact" : "facts"}`,
+      kind: "computed",
+    },
+    ...(candidate.prospect.websiteUrl
+      ? [{ label: pageLabel(candidate.prospect.websiteUrl), url: candidate.prospect.websiteUrl, kind: "page" as const }]
+      : []),
+  ];
+
+  if (!evaluation.scoreable) {
+    return {
+      level: "unknown",
+      because: "This record has never been scored against live website evidence.",
+      evidence,
+    };
+  }
+  if (needsRescore) {
+    return {
+      level: "low",
+      because: "The ICP changed after this company was scored, so the read is out of date.",
+      evidence,
+    };
+  }
+  if (staleDays !== null && staleDays >= STALE_AFTER_DAYS) {
+    return {
+      level: "low",
+      because: `The evidence behind this read is ${staleDays} days old.`,
+      evidence,
+    };
+  }
+  if (coverage.thin) {
+    return {
+      level: "moderate",
+      because: coverage.note,
+      evidence,
+    };
+  }
+  return {
+    level: evaluation.evidenceCount >= 4 ? "high" : "moderate",
+    because: `Scored ${evaluation.score}% from ${evaluation.evidenceCount} facts read across ${coverage.pages} public ${coverage.pages === 1 ? "page" : "pages"}.`,
+    evidence,
+  };
+}
+
 /* ------------------------------------------------------------------ *
  * Next move
  * ------------------------------------------------------------------ */
@@ -184,12 +319,58 @@ export interface CompositionInput {
   activityCount?: number;
 }
 
+type NextMoveBase = Omit<NextMove, "confidence">;
+
+/**
+ * The deterministic decision rules. Read top to bottom: the first rule that
+ * matches wins, so the same evidence always produces the same move.
+ */
 export function computeNextMove(
   input: CompositionInput,
   coverage: ResearchCoverage,
   needsRescore: boolean,
   staleDays: number | null,
 ): NextMove {
+  const base = nextMoveBase(input, coverage, needsRescore, staleDays);
+  const contacts = input.contactCount ?? 0;
+
+  if (base.action === "people") {
+    return {
+      ...base,
+      confidence: {
+        level: "unknown",
+        because: "Nobody with a role is on record, so reachability cannot be judged yet.",
+        evidence: [{ label: `${contacts} people on record`, kind: "computed" }],
+      },
+    };
+  }
+
+  if (base.action === "handoff") {
+    return {
+      ...base,
+      confidence: {
+        level: coverage.thin ? "moderate" : "high",
+        because: `Fit, evidence, and ${contacts} named ${contacts === 1 ? "person" : "people"} are on record.`,
+        evidence: [
+          { label: `${contacts} people on record`, kind: "computed" },
+          ...fitConfidence(input.candidate, coverage, needsRescore, staleDays).evidence,
+        ],
+      },
+    };
+  }
+
+  return {
+    ...base,
+    confidence: fitConfidence(input.candidate, coverage, needsRescore, staleDays),
+  };
+}
+
+function nextMoveBase(
+  input: CompositionInput,
+  coverage: ResearchCoverage,
+  needsRescore: boolean,
+  staleDays: number | null,
+): NextMoveBase {
   const { candidate } = input;
   const { prospect, evaluation } = candidate;
   const contacts = input.contactCount ?? 0;
@@ -275,6 +456,84 @@ export function computeNextMove(
   };
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Emphasis — which surface the page leans on, decided by rule
+ * ------------------------------------------------------------------ */
+
+const FOCUS_BY_ACTION: Record<NextMove["action"], ProspectModule["id"]> = {
+  research: "coverage",
+  qualify: "fit_read",
+  people: "people",
+  handoff: "handoff",
+  review: "fit_read",
+};
+
+const EMPHASIS_LIFT: Record<ModuleEmphasis, number> = {
+  primary: 25,
+  supporting: 0,
+  quiet: -30,
+};
+
+interface EmphasisInput {
+  focus: ProspectModule["id"];
+  status: string;
+  light: ScoutFitEvaluation["light"];
+  coverage: ResearchCoverage;
+  needsRescore: boolean;
+}
+
+/**
+ * Deterministic emphasis. Same stage + same fit + same coverage always
+ * produces the same layout, so the page changes only when the evidence does.
+ */
+export function emphasisFor(
+  id: ProspectModule["id"],
+  input: EmphasisInput,
+): { emphasis: ModuleEmphasis; reason: string } {
+  if (id === "identity" || id === "next_move") {
+    return { emphasis: "primary", reason: "The page always states who this is and the move." };
+  }
+
+  if (id === input.focus) {
+    return { emphasis: "primary", reason: "This is what the next move depends on." };
+  }
+
+  // Evidence is not trustworthy enough to lead with a judgement yet.
+  if (input.needsRescore || input.coverage.thin) {
+    if (id === "coverage") {
+      return { emphasis: "primary", reason: "Coverage decides how far the rest can be trusted." };
+    }
+    if (id === "fit_read" || id === "opportunity") {
+      return { emphasis: "quiet", reason: "Held back until the evidence behind it is current." };
+    }
+  }
+
+  if (id === "handoff") {
+    return ["qualified", "ready_for_comms", "converted"].includes(input.status)
+      ? { emphasis: "supporting", reason: "The company is past qualification." }
+      : { emphasis: "quiet", reason: "Not relevant before this company is qualified." };
+  }
+
+  if (id === "people") {
+    return ["qualified", "ready_for_comms"].includes(input.status)
+      ? { emphasis: "supporting", reason: "Reachability is what stands between here and Comms." }
+      : { emphasis: "quiet", reason: "People matter once the company is qualified." };
+  }
+
+  if (id === "opportunity") {
+    return input.light === "red"
+      ? { emphasis: "quiet", reason: "The fit read is weak, so the opportunity is secondary." }
+      : { emphasis: "supporting", reason: "Shapes the first conversation once fit holds." };
+  }
+
+  if (id === "observed" || id === "timeline") {
+    return { emphasis: "quiet", reason: "Background record, not a decision." };
+  }
+
+  return { emphasis: "supporting", reason: "Context for the current decision." };
+}
+
 /* ------------------------------------------------------------------ *
  * Composition
  * ------------------------------------------------------------------ */
@@ -292,14 +551,36 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
     evaluation.icpVersion !== null &&
     evaluation.icpVersion !== activeIcpVersion;
 
-  const modules: ProspectModule[] = [
-    { id: "identity", zone: "decision", weight: 100 },
-    { id: "next_move", zone: "decision", weight: 90 },
-  ];
+  const nextMove = computeNextMove(input, coverage, needsRescore, staleDays);
+  const focus = FOCUS_BY_ACTION[nextMove.action];
+  const push = (
+    id: ProspectModule["id"],
+    zone: ProspectModule["zone"],
+    weight: number,
+  ) => {
+    const { emphasis, reason } = emphasisFor(id, {
+      focus,
+      status: prospect.status,
+      light: evaluation.light,
+      coverage,
+      needsRescore,
+    });
+    modules.push({
+      id,
+      zone,
+      weight: weight + EMPHASIS_LIFT[emphasis],
+      emphasis,
+      reason,
+    });
+  };
+
+  const modules: ProspectModule[] = [];
+  push("identity", "decision", 100);
+  push("next_move", "decision", 90);
   const unknown: UnknownNote[] = [];
 
   if (evaluation.scoreable) {
-    modules.push({ id: "fit_read", zone: "decision", weight: 80 });
+    push("fit_read", "decision", 80);
   } else {
     unknown.push({
       id: "fit_read",
@@ -312,7 +593,7 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
     ["limiting_system", "first_milestone", "roadmap_depth"].includes(c.key),
   );
   if (opportunity.some((c) => c.state === "met" || c.state === "partial")) {
-    modules.push({ id: "opportunity", zone: "decision", weight: 70 });
+    push("opportunity", "decision", 70);
   } else {
     unknown.push({
       id: "opportunity",
@@ -326,7 +607,7 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
     (c) => c.key === "decision_maker" && c.state === "met",
   );
   if (contacts > 0 || decisionMakerMet) {
-    modules.push({ id: "people", zone: "decision", weight: 60 });
+    push("people", "decision", 60);
   } else {
     unknown.push({
       id: "people",
@@ -336,25 +617,27 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
   }
 
   if (["qualified", "ready_for_comms", "converted"].includes(prospect.status)) {
-    modules.push({ id: "handoff", zone: "decision", weight: 50 });
+    push("handoff", "decision", 50);
   }
 
   if (candidate.signals.length > 0) {
-    modules.push({ id: "observed", zone: "decision", weight: 40 });
+    push("observed", "decision", 40);
   }
 
-  if (pulse) modules.push({ id: "pulse", zone: "rail", weight: 90 });
+  if (pulse) push("pulse", "rail", 90);
   if (candidate.source.kind === "live_website") {
-    modules.push({ id: "coverage", zone: "rail", weight: 80 });
+    push("coverage", "rail", 80);
   }
   if ((input.activityCount ?? 0) > 0) {
-    modules.push({ id: "timeline", zone: "rail", weight: 60 });
+    push("timeline", "rail", 60);
   }
 
   return {
     modules: modules.sort((a, b) => b.weight - a.weight),
+    focus,
+    confidence: fitConfidence(candidate, coverage, needsRescore, staleDays),
     unknown,
-    nextMove: computeNextMove(input, coverage, needsRescore, staleDays),
+    nextMove,
     coverage,
     pulse,
     history,
@@ -364,6 +647,14 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
 }
 
 /** Convenience for renderers: is this surface part of the composition? */
+/** The layout weight the composer chose for a module, if it is present. */
+export function emphasisOf(
+  composition: ProspectComposition,
+  id: ProspectModule["id"],
+): ModuleEmphasis | undefined {
+  return composition.modules.find((module) => module.id === id)?.emphasis;
+}
+
 export function hasModule(composition: ProspectComposition, id: ProspectModule["id"]): boolean {
   return composition.modules.some((module) => module.id === id);
 }

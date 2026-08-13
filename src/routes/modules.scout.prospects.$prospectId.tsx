@@ -8,6 +8,7 @@ import { EmptyState, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { peopleService } from "@/data/supabase/people-service";
 import { availablePeopleProviders, peopleProviderInfo } from "@/data/people/registry";
+import type { HandoffDraft } from "@/domain/comms-handoff";
 import type { Person } from "@/domain/people";
 import type { ManualPersonForm } from "@/components/tt/prospect/people-panel";
 import { scoutService } from "@/data/supabase/scout-service";
@@ -161,6 +162,12 @@ function ProspectDetail({
     onSuccess: refresh,
   });
 
+  const routeToComms = useMutation({
+    mutationFn: (draft: HandoffDraft) =>
+      scoutService.routeToComms(draft, { organizationId, userId }),
+    onSuccess: refresh,
+  });
+
   const candidate = (saved.data ?? []).find((c) => c.prospect.id === prospectId) ?? null;
   const error = (research.error ??
     setStatus.error ??
@@ -168,11 +175,13 @@ function ProspectDetail({
     ingest.error ??
     addPerson.error ??
     confirmEmail.error ??
+    routeToComms.error ??
     saved.error) as Error | null;
   const busy =
     research.isPending ||
     setStatus.isPending ||
     override.isPending ||
+    routeToComms.isPending ||
     ingest.isPending ||
     addPerson.isPending ||
     confirmEmail.isPending;
@@ -233,6 +242,7 @@ function ProspectDetail({
         onIngest={(providerId) => ingest.mutate(providerId)}
         onAddManual={(form) => addPerson.mutate(form)}
         onConfirmEmail={(person) => confirmEmail.mutate(person)}
+        onRouteToComms={(draft) => routeToComms.mutate(draft)}
         onQualify={(id) => setStatus.mutate({ id, status: "qualified" })}
         onPass={(id) => setStatus.mutate({ id, status: "passed" })}
         onResearch={(websiteUrl) => research.mutate(websiteUrl)}

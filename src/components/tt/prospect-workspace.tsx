@@ -13,7 +13,8 @@ import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 
 import { TTButton } from "@/components/tt/primitives";
-import { composeProspectPage, hasModule } from "@/data/prospect-modules";
+import { composeProspectPage, emphasisOf, hasModule } from "@/data/prospect-modules";
+import type { HandoffDraft } from "@/domain/comms-handoff";
 import type { ActivityEvent } from "@/domain/activity";
 import type { PeopleProviderInfo, Person } from "@/domain/people";
 
@@ -46,6 +47,7 @@ export function ProspectWorkspace({
   onIngest,
   onAddManual,
   onConfirmEmail,
+  onRouteToComms,
   onQualify,
   onPass,
   onResearch,
@@ -66,6 +68,7 @@ export function ProspectWorkspace({
   onIngest: (providerId: string) => void;
   onAddManual: (form: ManualPersonForm) => void;
   onConfirmEmail: (person: Person) => void;
+  onRouteToComms: (draft: HandoffDraft) => void;
   onQualify: (id: string) => void;
   onPass: (id: string) => void;
   onResearch: (websiteUrl: string) => void;
@@ -124,7 +127,12 @@ export function ProspectWorkspace({
           />
 
           {hasModule(composition, "fit_read") ? (
-            <FitReadPanel evaluation={evaluation} />
+            <FitReadPanel
+              evaluation={evaluation}
+              coverage={composition.coverage}
+              confidence={composition.confidence}
+              emphasis={emphasisOf(composition, "fit_read")}
+            />
           ) : null}
 
           {hasModule(composition, "opportunity") ? (
@@ -151,7 +159,12 @@ export function ProspectWorkspace({
             <HandoffPanel
               candidate={candidate}
               coverage={composition.coverage}
-              contactCount={contactCount}
+              people={people}
+              fitConfidence={composition.confidence}
+              onRoute={onRouteToComms}
+              routed={prospect.status === "ready_for_comms"}
+              emphasis={emphasisOf(composition, "handoff")}
+              busy={busy}
             />
           ) : null}
 

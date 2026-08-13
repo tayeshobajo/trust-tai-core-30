@@ -106,7 +106,11 @@ export function toPerson(row: ContactRow): Person {
       confidence && CONFIDENCES.includes(confidence) ? confidence : "asserted_by_provider",
     ...(text(meta["linkedin_url"]) ? { linkedinUrl: text(meta["linkedin_url"])! } : {}),
     ...(row.phone ? { phone: row.phone } : {}),
+    ...(text(meta["email_checked_at"]) ? { emailCheckedAt: text(meta["email_checked_at"])! } : {}),
+    ...(text(meta["email_checked_by"]) ? { emailCheckedBy: text(meta["email_checked_by"])! } : {}),
     sourceId: text(meta["source_id"]) ?? "manual",
+    ...(text(meta["source_url"]) ? { sourceUrl: text(meta["source_url"])! } : {}),
+    ...(text(meta["note"]) ? { note: text(meta["note"])! } : {}),
     provenance: {
       appId: String(provenance.appId ?? "scout"),
       actor: (provenance.actor as Provenance["actor"]) ?? {
@@ -205,6 +209,8 @@ export async function insertContact(input: ContactWrite): Promise<Person> {
 }
 
 export interface ContactPatch {
+  /** Stamped whenever `emailStatus` is set by a check or a confirmation. */
+  emailCheckedBy?: string | undefined;
   fullName?: string | undefined;
   roleTitle?: string | undefined;
   seniority?: Seniority | undefined;
@@ -235,7 +241,11 @@ export async function updateContact(
   const at = new Date().toISOString();
 
   if (patch.seniority) meta["seniority"] = patch.seniority;
-  if (patch.emailStatus) meta["email_status"] = patch.emailStatus;
+  if (patch.emailStatus) {
+    meta["email_status"] = patch.emailStatus;
+    meta["email_checked_at"] = at;
+    meta["email_checked_by"] = patch.emailCheckedBy ?? "human";
+  }
   if (patch.confidence) meta["confidence"] = patch.confidence;
   if (patch.linkedinUrl !== undefined) meta["linkedin_url"] = patch.linkedinUrl;
   meta["last_edited_by"] = userId;

@@ -61,8 +61,24 @@ function EmailLine({ person }: { person: Person }) {
       >
         {EMAIL_STATUS_LABEL[person.emailStatus]}
       </span>
+      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+        {person.emailCheckedAt
+          ? `checked ${checkedAgo(person.emailCheckedAt)}${person.emailCheckedBy ? ` by ${person.emailCheckedBy}` : ""}`
+          : "never checked"}
+      </span>
     </p>
   );
+}
+
+/** Plain-language age of the last check. Precision nobody needs is noise. */
+function checkedAgo(iso: string): string {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (Number.isNaN(days)) return "at an unknown time";
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 30) return `${days} days ago`;
+  const months = Math.floor(days / 30);
+  return `${months} month${months === 1 ? "" : "s"} ago`;
 }
 
 function PersonRow({
@@ -107,6 +123,16 @@ function PersonRow({
           {CONFIDENCE_LABEL[person.confidence]} · {person.sourceId.replace(/-/g, " ")}
           {isCommsReady(person) ? " · comms ready" : ""}
         </p>
+        {person.sourceUrl ? (
+          <a
+            href={person.sourceUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground underline decoration-border underline-offset-4 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            why we think this
+          </a>
+        ) : null}
         {person.linkedinUrl ? (
           <a
             href={person.linkedinUrl}

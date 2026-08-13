@@ -249,7 +249,7 @@ export const peopleService = {
     const result = await provider.verifyEmail(person.email);
     const updated = await updateContact(
       person.id,
-      { emailStatus: result.status },
+      { emailStatus: result.status, emailCheckedBy: provider.label },
       context.userId,
     );
     await record(
@@ -267,7 +267,7 @@ export const peopleService = {
     if (!person.email) throw new Error("There is no address to confirm.");
     const updated = await updateContact(
       person.id,
-      { emailStatus: "verified", confidence: "human_confirmed" },
+      { emailStatus: "verified", confidence: "human_confirmed", emailCheckedBy: "human" },
       context.userId,
     );
     await record(
