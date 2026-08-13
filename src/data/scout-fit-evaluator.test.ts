@@ -141,3 +141,77 @@ describe("scout fit evaluator v2 — structured v3 observations", () => {
     expect(result.criteria.length).toBeGreaterThan(0);
   });
 });
+
+describe("scout fit evaluator v3 — v4 absence discipline", () => {
+  it("cannot mark limiting_system met for a one-page WordPress-only company", () => {
+    const result = evaluateScoutFit({
+      ...base,
+      observed: [
+        obs("wordpress_detected", true, "wp-content asset paths"),
+        obs("contact_routes", 0),
+        obs("milestone_opportunities", ["WordPress support or modernization path"]),
+        obs("pages_researched", 1),
+      ],
+      pagesResearched: 1,
+      researchVersion: 4,
+    });
+    expect(result.criteria.find((c) => c.key === "limiting_system")?.state).not.toBe("met");
+    expect(result.criteria.find((c) => c.key === "first_milestone")?.state).toBe("missing");
+    expect(result.researchVersion).toBe(4);
+  });
+
+  it("does not create a gap from contact_routes=0 without contact_page_checked", () => {
+    const result = evaluateScoutFit({
+      ...base,
+      observed: [obs("contact_routes", 0), obs("clear_offer_signals", true), obs("pages_researched", 1)],
+      pagesResearched: 1,
+      researchVersion: 4,
+    });
+    const gap = result.criteria.find((c) => c.key === "limiting_system");
+    expect(gap?.state).toBe("partial");
+    expect(gap?.reason).toMatch(/unknown/i);
+  });
+
+  it("supports a gap when contact_page_checked is true and there are zero routes", () => {
+    const result = evaluateScoutFit({
+      ...base,
+      observed: [
+        obs("contact_page_checked", true),
+        obs("offer_page_checked", true),
+        obs("contact_routes", 0),
+        obs("clear_offer_signals", true),
+        obs("booking_signal", false),
+        obs("pages_researched", 2),
+      ],
+      pagesResearched: 2,
+      researchVersion: 4,
+    });
+    expect(result.criteria.find((c) => c.key === "limiting_system")?.state).toBe("met");
+  });
+
+  it("ignores the legacy WordPress milestone string", () => {
+    const result = evaluateScoutFit({
+      ...base,
+      observed: [obs("milestone_opportunities", ["WordPress support or modernization path"])],
+      researchVersion: 3,
+    });
+    expect(result.criteria.find((c) => c.key === "first_milestone")?.state).toBe("missing");
+    expect(result.criteria.find((c) => c.key === "roadmap_depth")?.state).toBe("missing");
+  });
+
+  it("satisfies roadmap depth with two supported concrete opportunities", () => {
+    const result = evaluateScoutFit({
+      ...base,
+      observed: [
+        obs("contact_page_checked", true),
+        obs("contact_routes", 0),
+        obs("milestone_opportunities", ["Add a booking path", "Rebuild the case-study library"]),
+        obs("pages_researched", 4),
+      ],
+      pagesResearched: 4,
+      researchVersion: 4,
+    });
+    expect(result.criteria.find((c) => c.key === "roadmap_depth")?.state).toBe("met");
+    expect(result.criteria.find((c) => c.key === "first_milestone")?.state).toBe("met");
+  });
+});

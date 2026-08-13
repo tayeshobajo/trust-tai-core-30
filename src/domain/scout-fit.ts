@@ -48,4 +48,4 @@ export interface ScoutFitEvaluation {
   researchVersion?: number;
 }
 
-export const SCOUT_EVALUATOR_VERSION = "trust-tai-icp-v2";
+export const SCOUT_EVALUATOR_VERSION = "trust-tai-icp-v3";

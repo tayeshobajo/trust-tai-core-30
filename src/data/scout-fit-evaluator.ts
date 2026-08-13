@@ -41,8 +41,13 @@ interface Observation {
   truth: boolean | null;
 }
 
-/** The generic backend fallback that must never count as a real opportunity. */
-const GENERIC_MILESTONE = /deeper human review before proposing a milestone/i;
+/**
+ * Generic backend fallbacks that must never count as a real opportunity.
+ * `WordPress support or modernization path` is capability alignment, not a
+ * observed problem, so v4 treats it exactly like the human-review fallback.
+ */
+const GENERIC_MILESTONE =
+  /(deeper human review before proposing a milestone|wordpress (support|modernization|modernisation)[^.]*)/i;
 
 function str(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -146,11 +151,24 @@ export function renderValue(value: unknown): string {
 class Structured {
   private readonly map = new Map<string, Observation>();
 
+  /** Public pages read. Confidence context for absence claims only. */
+  pages: number | null = null;
+
   constructor(observations: Observation[]) {
     for (const observation of observations) {
       if (!this.map.has(observation.key)) this.map.set(observation.key, observation);
     }
   }
+
+  /** v4 page-coverage flag: did the crawl actually reach that kind of page? */
+  checked(key: string): boolean {
+    return this.flag(key) === true;
+  }
+
+  depthAtLeast(pages: number): boolean {
+    return this.pages !== null && this.pages >= pages;
+  }
+
 
   has(key: string): boolean {
     const observation = this.map.get(key);
@@ -240,6 +258,50 @@ interface CriterionSpec {
 function withDetail(reason: string, detail: string): string {
   return detail ? `${reason} ${detail}` : reason;
 }
+
+/**
+ * v4 absence discipline. An absence only becomes a confident gap when the
+ * relevant page was actually checked, or the crawl was deep enough for the
+ * absence to mean something. WordPress presence never contributes.
+ */
+function qualifiedGaps(s: Structured): { confident: string[]; weak: string[] } {
+  const routes = s.count("contact_routes");
+  const booking = s.flag("booking_signal");
+  const offer = s.flag("clear_offer_signals");
+  const proof = s.count("proof_signals");
+  const active = s.count("active_business_signals");
+  const year = s.count("latest_visible_year");
+  const currentYear = new Date().getUTCFullYear();
+  const deep = s.depthAtLeast(3);
+
+  const confident: string[] = [];
+  const weak: string[] = [];
+
+  if (routes === 0) {
+    const claim = "no lead-capture route was found on the public pages";
+    if (s.checked("contact_page_checked") || deep) confident.push(claim);
+    else weak.push(`${claim}, but only a shallow run was made so this stays unknown`);
+  }
+  if (booking === false) {
+    const claim = "services are described but there is no booking path";
+    if ((s.checked("offer_page_checked") && offer === true) || (deep && (offer === true || (active ?? 0) >= 1))) {
+      confident.push(claim);
+    } else {
+      weak.push("no booking path was seen, but the offer pages were not confirmed");
+    }
+  }
+  if (proof === 0) {
+    const claim = "the business looks established but publishes no proof";
+    if ((s.checked("proof_page_checked") || deep) && (active ?? 0) >= 3) confident.push(claim);
+    else weak.push("no proof was seen, but proof pages were not confirmed");
+  }
+  if (year !== null && year > 1900 && year < currentYear - 2) {
+    confident.push(`the newest visible date is ${year}, which reads as stale`);
+  }
+
+  return { confident, weak };
+}
+
 
 const SPECS: CriterionSpec[] = [
   {
@@ -451,23 +513,12 @@ const SPECS: CriterionSpec[] = [
       const booking = s.flag("booking_signal");
       const offer = s.flag("clear_offer_signals");
       const proof = s.count("proof_signals");
-      const active = s.count("active_business_signals");
       const year = s.count("latest_visible_year");
-      const currentYear = new Date().getUTCFullYear();
 
-      const gaps: string[] = [];
-      if (routes === 0) gaps.push("no lead-capture route was found on the public pages");
-      if (booking === false && offer === true) {
-        gaps.push("services are described but there is no booking path");
-      }
-      if (proof === 0 && (active ?? 0) >= 3) {
-        gaps.push("the business looks established but publishes no proof");
-      }
-      if (year !== null && year > 1900 && year < currentYear - 2) {
-        gaps.push(`the newest visible date is ${year}, which reads as stale`);
-      }
-      if (milestones.length > 0) {
-        gaps.push(`a concrete opportunity was recorded: ${milestones[0]}`);
+      const { confident, weak } = qualifiedGaps(s);
+      const items = [...confident];
+      if (confident.length > 0 && milestones.length > 0) {
+        items.push(`a concrete opportunity was recorded: ${milestones[0]}`);
       }
 
       const structuredPresent =
@@ -475,17 +526,24 @@ const SPECS: CriterionSpec[] = [
       if (!structuredPresent && milestones.length === 0) return null;
 
       const sourceUrls = s.sources(["contact_routes", "booking_signal", "milestone_opportunities"]);
-      if (gaps.length >= 2) {
+      if (items.length >= 2) {
         return {
           state: "met",
-          reason: `The current presentation is visibly holding the business back: ${gaps.slice(0, 3).join("; ")}. WordPress alone is not treated as a problem.`,
+          reason: `The current presentation is visibly holding the business back: ${items.slice(0, 3).join("; ")}. WordPress alone is not treated as a problem.`,
           sourceUrls,
         };
       }
-      if (gaps.length === 1) {
+      if (items.length === 1) {
         return {
           state: "partial",
-          reason: `One constraint was observed: ${gaps[0]}. Not yet enough to call the system limiting.`,
+          reason: `One constraint was observed: ${items[0]}. Not yet enough to call the system limiting.`,
+          sourceUrls,
+        };
+      }
+      if (weak.length > 0) {
+        return {
+          state: "partial",
+          reason: `Possible weakness, held as unknown until more pages are read: ${weak[0]}.`,
           sourceUrls,
         };
       }
@@ -495,6 +553,7 @@ const SPECS: CriterionSpec[] = [
           "No constraint was observed in the current site or tooling. The platform in use, WordPress included, is not itself evidence of a gap.",
       };
     },
+
     patterns: [
       /\b(outdated|dated|legacy|slow|load time|no https|insecure|not mobile|mobile friendly|responsive|broken|missing|no analytics|no booking|no cms|page speed|accessib)\b/,
     ],
@@ -517,11 +576,8 @@ const SPECS: CriterionSpec[] = [
             "Only the generic fallback was returned, so no sellable first milestone is identifiable yet.",
         };
       }
-      const supported =
-        (s.count("contact_routes") ?? null) === 0 ||
-        s.flag("booking_signal") === false ||
-        (s.count("proof_signals") ?? null) === 0 ||
-        Boolean(s.evidence("milestone_opportunities"));
+      // v4: a milestone is only sellable when an observed constraint backs it.
+      const supported = qualifiedGaps(s).confident.length > 0;
       const detail = s.evidence("milestone_opportunities");
       const sourceUrls = s.sources(["milestone_opportunities"]);
       if (supported) {
@@ -550,17 +606,18 @@ const SPECS: CriterionSpec[] = [
     structuredKeys: ["milestone_opportunities"],
     structured: (s, milestones) => {
       if (!s.has("milestone_opportunities") && milestones.length === 0) return null;
-      if (milestones.length >= 2) {
+      const supported = qualifiedGaps(s).confident.length > 0;
+      if (milestones.length >= 2 && supported) {
         return {
           state: "met",
-          reason: `More than one concrete opportunity is visible: ${milestones.slice(0, 3).join("; ")}.`,
+          reason: `More than one concrete, evidence-backed opportunity is visible: ${milestones.slice(0, 3).join("; ")}.`,
           sourceUrls: s.sources(["milestone_opportunities"]),
         };
       }
-      if (milestones.length === 1) {
+      if (milestones.length >= 1) {
         return {
           state: "partial",
-          reason: `Only one concrete opportunity is visible: ${milestones[0]}.`,
+          reason: `Concrete opportunities are visible (${milestones.slice(0, 2).join("; ")}) but not yet supported by two observed constraints.`,
         };
       }
       return {
@@ -669,6 +726,7 @@ export function evaluateScoutFit(input: EvaluateInput): ScoutFitEvaluation {
   const structured = new Structured(observations);
   const milestones = collectMilestones(structured, input.suggested);
   const pages = readPageCount(structured, input.pagesResearched ?? null);
+  structured.pages = pages;
   const researchVersion = input.researchVersion ?? null;
   const depthNote =
     pages === null
