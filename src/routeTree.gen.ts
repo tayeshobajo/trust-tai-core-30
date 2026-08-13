@@ -24,6 +24,7 @@ import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
 import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/public/roadmap.research'
+import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/roadmap.studio'
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 
@@ -103,6 +104,11 @@ const ApiPublicRoadmapResearchRoute =
     path: '/api/public/roadmap/research',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicRoadmapStudioRoute = ApiPublicRoadmapStudioRouteImport.update({
+  id: '/api/public/roadmap/studio',
+  path: '/api/public/roadmap/studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicScoutDiscoverRoute = ApiPublicScoutDiscoverRouteImport.update({
   id: '/api/public/scout/discover',
   path: '/api/public/scout/discover',
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
+  '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
 }
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
+  '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
 }
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
+  '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
 }
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/api/public/comms/draft'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
+    | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
   fileRoutesByTo: FileRoutesByTo
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/api/public/comms/draft'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
+    | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
   id:
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/api/public/comms/draft'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
+    | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
   fileRoutesById: FileRoutesById
@@ -237,6 +249,7 @@ export interface RootRouteChildren {
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicRoadmapAskRoute: typeof ApiPublicRoadmapAskRoute
   ApiPublicRoadmapResearchRoute: typeof ApiPublicRoadmapResearchRoute
+  ApiPublicRoadmapStudioRoute: typeof ApiPublicRoadmapStudioRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
 }
 
@@ -347,6 +360,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRoadmapResearchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/roadmap/studio': {
+      id: '/api/public/roadmap/studio'
+      path: '/api/public/roadmap/studio'
+      fullPath: '/api/public/roadmap/studio'
+      preLoaderRoute: typeof ApiPublicRoadmapStudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/scout/discover': {
       id: '/api/public/scout/discover'
       path: '/api/public/scout/discover'
@@ -418,6 +438,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicRoadmapAskRoute: ApiPublicRoadmapAskRoute,
   ApiPublicRoadmapResearchRoute: ApiPublicRoadmapResearchRoute,
+  ApiPublicRoadmapStudioRoute: ApiPublicRoadmapStudioRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
 }
 export const routeTree = rootRouteImport

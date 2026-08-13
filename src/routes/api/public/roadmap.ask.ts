@@ -56,6 +56,9 @@ export const Route = createFileRoute("/api/public/roadmap/ask")({
             question,
             subjectLabel,
             context: body["context"] ?? {},
+            // Opt in, per question. Roadmap does not silently search the web.
+            research: body["research"] === true,
+
             gateway,
           });
           return withLovableAiGatewayRunIdHeader(

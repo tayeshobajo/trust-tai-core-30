@@ -62,9 +62,20 @@ async function requireMembership(
   return !error && (data ?? []).length > 0;
 }
 
+/**
+ * Fail closed for any Roadmap run: a valid Trust Tai token and an active
+ * membership in this organization, both checked against the real backend.
+ */
+export async function requireRoadmapAccess(
+  token: string,
+  organizationId: string,
+): Promise<boolean> {
+  return requireMembership(clientFor(token), organizationId);
+}
+
 /* --------------------------------------------------------------- provider */
 
-async function callProvider(
+export async function callRoadmapProvider(
   instructions: string,
   input: string,
   options: {
@@ -73,6 +84,7 @@ async function callProvider(
     initialRunId?: string | undefined;
   },
 ): Promise<{ raw: string; provider: string; model: string }> {
+
   const selected = selectScoutProvider();
   if (!selected) {
     throw new Error(
@@ -261,15 +273,17 @@ export async function* runRoadmapResearch(
     return;
   }
 
-  yield { stage: "reading", message: `Reading what we already hold on ${input.subjectLabel}` };
-  yield { stage: "searching", message: "Researching the public web" };
+  yield { stage: "reading", message: `Reading what we already know about ${input.subjectLabel}` };
+  yield { stage: "searching", message: `Researching ${input.subjectLabel}` };
+  yield { stage: "searching", message: "Studying the market and competitors" };
+
 
   const checkedAt = new Date().toISOString();
   let raw = "";
   let provider = "";
   let model = "";
   try {
-    const result = await callProvider(
+    const result = await callRoadmapProvider(
       researchInstructions(),
       researchInput({
         label: input.subjectLabel,
@@ -302,7 +316,7 @@ export async function* runRoadmapResearch(
     return;
   }
 
-  yield { stage: "composing", message: "Separating what is observed from what is inferred" };
+  yield { stage: "composing", message: "Synthesising a strategy from what was found" };
 
   const provenance = { provider, model, checkedAt };
   const research = normalizeResearch(parsed["research"] ?? parsed, provenance);
@@ -310,6 +324,11 @@ export async function* runRoadmapResearch(
   const milestones = Array.isArray(parsed["milestones"])
     ? (parsed["milestones"] as Record<string, unknown>[])
     : [];
+
+  yield {
+    stage: "composing",
+    message: `Generating candidate milestones (${milestones.length} considered)`,
+  };
 
   const result: RoadmapResearchResult = {
     research,
@@ -320,7 +339,12 @@ export async function* runRoadmapResearch(
     checkedAt,
   };
 
-  yield { stage: "complete", message: `Researched ${input.subjectLabel}`, data: result };
+  yield {
+    stage: "complete",
+    message: `Complete. ${research.sources.length} sources, ${research.unknowns.length} unknowns.`,
+    data: result,
+  };
+
 }
 
 /* -------------------------------------------------------------------- ask */
@@ -332,8 +356,11 @@ export interface AskInput {
   subjectLabel: string;
   /** Everything already stored for this roadmap, as plain evidence. */
   context: unknown;
+  /** Opt in, per question. Off by default: Roadmap does not silently search. */
+  research?: boolean | undefined;
   gateway?: ReturnType<typeof createLovableAiGatewayRunIdFetch> | undefined;
   initialRunId?: string | undefined;
+
 }
 
 export interface AskResult {
@@ -346,8 +373,10 @@ export interface AskResult {
 }
 
 /**
- * Ask Roadmap. Grounded in stored evidence only: no web search, no new facts.
- * Anything the stored evidence does not support comes back as an unknown.
+ * Ask Roadmap. Grounded in stored evidence by default: no web search, no new
+ * facts, and anything the stored evidence does not support comes back as an
+ * unknown. A person can opt one question into fresh research, and when they do
+ * the new claims still have to carry real source urls.
  */
 export async function askRoadmap(input: AskInput): Promise<AskResult> {
   const supabase = clientFor(input.token);
@@ -355,20 +384,25 @@ export async function askRoadmap(input: AskInput): Promise<AskResult> {
     throw new Error("You do not have access to this workspace.");
   }
 
+  const fresh = input.research === true;
   const instructions = [
-    "You answer questions about one business using only the stored evidence provided, and you return json.",
-    "Facts must quote or paraphrase a stored statement and repeat its sources.",
+    "You answer questions about one business and you return json.",
+    fresh
+      ? "Start from the stored evidence, then use web search to answer what the stored evidence cannot. Every new fact needs a real https source url."
+      : "Use only the stored evidence provided. Do not search the web.",
+    "Facts must quote or paraphrase a sourced statement and repeat its sources.",
     "Anything you reason on top of those facts goes in inferences, clearly separate from facts.",
     "Anything the evidence does not answer goes in unknowns. Never fill a gap with a guess.",
     VOICE,
   ].join(" ");
 
-  const { raw, provider, model } = await callProvider(
+  const { raw, provider, model } = await callRoadmapProvider(
     instructions,
     JSON.stringify({
       question: input.question,
       company: input.subjectLabel,
       stored_evidence: input.context,
+      fresh_research_allowed: fresh,
       json_shape: {
         answer: "",
         facts: [{ statement: "", sources: [{ label: "", url: "", checked_at: "" }] }],
@@ -376,8 +410,9 @@ export async function askRoadmap(input: AskInput): Promise<AskResult> {
         unknowns: [""],
       },
     }),
-    { webSearch: false, gateway: input.gateway, initialRunId: input.initialRunId },
+    { webSearch: fresh, gateway: input.gateway, initialRunId: input.initialRunId },
   );
+
 
   let parsed: Record<string, unknown>;
   try {

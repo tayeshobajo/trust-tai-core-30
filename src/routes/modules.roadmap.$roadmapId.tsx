@@ -41,18 +41,21 @@ import { WalkthroughView } from "@/components/tt/roadmap/walkthrough-view";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { roadmapService, type RoadmapContext } from "@/data/supabase/roadmap-service";
 import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-service";
-import { composeFull, composePreview } from "@/data/roadmap-studio";
 import {
   normalizeMilestones,
   normalizeResearch,
   normalizeStrategy,
 } from "@/data/roadmap-research-parse";
+import { readNdjsonStream } from "@/lib/ndjson-stream";
 import type {
   ApprovalState,
+  ArtifactSection,
   MilestoneStatus,
+  RoadmapArtifact,
   RoadmapMilestone,
   WalkthroughEntryKind,
 } from "@/domain/roadmap-intel";
+
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type {
   DecisionState,
@@ -228,6 +231,8 @@ function RoadmapWorkspace({
   const [researchStage, setResearchStage] = useState<string | null>(null);
   const [researchError, setResearchError] = useState<string | null>(null);
   const [askError, setAskError] = useState<string | null>(null);
+  const [studioStage, setStudioStage] = useState<string | null>(null);
+
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const intelQuery = useQuery({
@@ -372,28 +377,74 @@ function RoadmapWorkspace({
     onError: fail,
   });
 
+  /**
+   * Studio composition. The server builds an approved evidence packet, asks the
+   * model to express only that packet, then validates the result back against
+   * it. Nothing here can add a fact, and a hand edited document is only
+   * replaced when someone explicitly says so.
+   */
   const compose = useMutation({
-    mutationFn: async (kind: "preview" | "full") => {
+    mutationFn: async ({ kind, replace }: { kind: "preview" | "full"; replace?: boolean }) => {
       const detail = detailQuery.data;
       const intel = intelQuery.data;
       if (!detail || !intel) throw new Error("There is nothing to compose yet.");
-      const input = {
-        subjectLabel: detail.roadmap.subjectLabel,
-        strategy: intel.strategy,
-        milestones: intel.milestones,
-      };
-      const sections = kind === "preview" ? composePreview(input) : composeFull(input);
+      setStudioStage("Starting");
+
+      const response = await fetch("/api/public/roadmap/studio", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await accessToken()}`,
+        },
+        body: JSON.stringify({
+          organization_id: identity.organizationId,
+          subject_label: detail.roadmap.subjectLabel,
+          kind,
+          strategy: intel.strategy,
+          milestones: intel.milestones,
+        }),
+      });
+
+      const payload = await readNdjsonStream(response, (stage) => setStudioStage(stage.message));
+      if (!payload) throw new Error("Studio returned nothing. Nothing was saved.");
+
+      const sections = (payload["sections"] ?? []) as ArtifactSection[];
       return roadmapIntel.saveArtifact(
         intelContext,
         roadmapId,
         kind,
         `${detail.roadmap.subjectLabel} roadmap`,
         sections,
+        {
+          provider: String(payload["provider"] ?? "unknown"),
+          model: String(payload["model"] ?? "unknown"),
+          rejected: (payload["rejected"] ?? []) as {
+            section: string;
+            line: string;
+            reason: string;
+          }[],
+          replaceHumanEdits: replace === true,
+        },
       );
     },
+    onSettled: () => setStudioStage(null),
     onSuccess: refresh,
     onError: fail,
   });
+
+  /** A human edit to the composed document. Decided truth, so it is protected. */
+  const editArtifact = useMutation({
+    mutationFn: async ({
+      artifact,
+      sections,
+    }: {
+      artifact: RoadmapArtifact;
+      sections: ArtifactSection[];
+    }) => roadmapIntel.editArtifact(intelContext, artifact, sections),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
 
   const walkthrough = useMutation({
     mutationFn: async (
@@ -420,7 +471,7 @@ function RoadmapWorkspace({
   });
 
   const ask = useMutation({
-    mutationFn: async (question: string) => {
+    mutationFn: async ({ question, research }: { question: string; research: boolean }) => {
       const detail = detailQuery.data;
       const intel = intelQuery.data;
       if (!detail) throw new Error("This roadmap could not be read.");
@@ -435,6 +486,7 @@ function RoadmapWorkspace({
           organization_id: identity.organizationId,
           subject_label: detail.roadmap.subjectLabel,
           question,
+          research,
           context: {
             point_a: detail.roadmap.pointA,
             objective: detail.roadmap.objective,
@@ -557,7 +609,7 @@ function RoadmapWorkspace({
         answers={intel?.questions ?? []}
         pending={ask.isPending}
         error={askError}
-        onAsk={(question) => ask.mutate(question)}
+        onAsk={(question, research) => ask.mutate({ question, research })}
       />
 
       {view === "research" ? (
@@ -597,9 +649,12 @@ function RoadmapWorkspace({
         <StudioView
           preview={intel?.artifacts.find((entry) => entry.kind === "preview") ?? null}
           full={intel?.artifacts.find((entry) => entry.kind === "full") ?? null}
-          busy={compose.isPending}
-          onCompose={(kind) => compose.mutate(kind)}
+          busy={compose.isPending || editArtifact.isPending}
+          stage={studioStage}
+          onCompose={(kind, replace) => compose.mutate({ kind, ...(replace ? { replace } : {}) })}
+          onEdit={(artifact, sections) => editArtifact.mutate({ artifact, sections })}
         />
+
       ) : null}
 
       {view === "walkthrough" ? (

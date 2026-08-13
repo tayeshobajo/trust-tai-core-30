@@ -444,14 +444,43 @@ export const roadmapIntel = {
 
   /* ----------------------------------------------------------- studio */
 
+  /**
+   * Save a composed artifact.
+   *
+   * A person's edits outrank a regeneration. If the stored document has been
+   * edited by hand, this refuses unless the caller explicitly asked to replace
+   * it, so Studio can never quietly overwrite someone's work.
+   */
   async saveArtifact(
     context: IntelContext,
     roadmapId: ID,
     kind: ArtifactKind,
     title: string,
     sections: ArtifactSection[],
-    brand?: { accent?: string | undefined; logoUrl?: string | undefined },
+    options?: {
+      brand?: { accent?: string | undefined; logoUrl?: string | undefined } | undefined;
+      provider?: string | undefined;
+      model?: string | undefined;
+      rejected?: { section: string; line: string; reason: string }[] | undefined;
+      replaceHumanEdits?: boolean | undefined;
+    },
   ): Promise<RoadmapArtifact> {
+    const existing = await supabase
+      .from("roadmap_artifacts")
+      .select(ARTIFACT_COLUMNS)
+      .eq("roadmap_id", roadmapId)
+      .eq("kind", kind)
+      .maybeSingle();
+    assertOk(existing.error);
+
+    const current = existing.data ? toArtifact(existing.data as Row) : null;
+    if (current?.humanEdited && options?.replaceHumanEdits !== true) {
+      throw new Error(
+        "This document has been edited by hand. Choose replace if you want the new composition to take its place.",
+      );
+    }
+
+    const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("roadmap_artifacts")
       .upsert(
@@ -461,11 +490,17 @@ export const roadmapIntel = {
           kind,
           title,
           sections,
-          accent: brand?.accent ?? null,
-          logo_url: brand?.logoUrl ?? null,
-          generated_at: new Date().toISOString(),
+          accent: options?.brand?.accent ?? null,
+          logo_url: options?.brand?.logoUrl ?? null,
+          provider: options?.provider ?? null,
+          model: options?.model ?? null,
+          rejected: options?.rejected ?? [],
+          human_edited: false,
+          edited_at: null,
+          edited_by: null,
+          generated_at: now,
           created_by: context.userId,
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         },
         { onConflict: "roadmap_id,kind" },
       )
@@ -478,10 +513,44 @@ export const roadmapIntel = {
       "roadmap.generated",
       roadmapId,
       title,
-      `Composed the ${kind === "preview" ? "Roadmap Preview" : "full roadmap"} structure from approved strategy only.`,
+      `Composed the ${kind === "preview" ? "Roadmap Preview" : "full roadmap"} from approved strategy and approved milestones only.`,
     );
     return toArtifact(data as Row);
   },
+
+  /** A human edit to a composed document. This is Decided truth, so it sticks. */
+  async editArtifact(
+    context: IntelContext,
+    artifact: RoadmapArtifact,
+    sections: ArtifactSection[],
+    title?: string,
+  ): Promise<RoadmapArtifact> {
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_artifacts")
+      .update({
+        sections,
+        ...(title ? { title } : {}),
+        human_edited: true,
+        edited_at: now,
+        edited_by: context.userId,
+        updated_at: now,
+      })
+      .eq("id", artifact.id)
+      .select(ARTIFACT_COLUMNS)
+      .single();
+
+    assertOk(error);
+    await record(
+      context,
+      "roadmap.generated",
+      artifact.roadmapId,
+      artifact.title,
+      "Edited the composed document by hand.",
+    );
+    return toArtifact(data as Row);
+  },
+
 
   /* ------------------------------------------------------ walkthrough */
 

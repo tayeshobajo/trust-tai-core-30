@@ -81,6 +81,8 @@ export function ResearchView({
             </MetaPill>
           ) : null}
           {research ? <MetaPill>{research.sources.length} sources</MetaPill> : null}
+          {research ? <MetaPill>{research.unknowns.length} unknowns</MetaPill> : null}
+
         </div>
         <TTButton onClick={onRun} disabled={running}>
           {running ? "Researching…" : research ? "Research again" : "Research this business"}

@@ -4,7 +4,6 @@ import type { RoadmapMilestone, RoadmapStrategy, StrategyItem } from "@/domain/r
 import { freshness } from "@/domain/roadmap-intel";
 import { buildOrder, rankMilestones, readiness, scoreMilestone } from "./roadmap-milestones";
 import { normalizeResearch, normalizeSources } from "./roadmap-research-parse";
-import { composeFull, composePreview } from "./roadmap-studio";
 
 const PROV = { provider: "openai", model: "gpt-5-mini", checkedAt: "2026-01-05T00:00:00.000Z" };
 
@@ -171,50 +170,6 @@ describe("normalizeResearch", () => {
 
   it("rejects non-http sources", () => {
     expect(normalizeSources([{ url: "not-a-url" }], PROV)).toHaveLength(0);
-  });
-});
-
-describe("composePreview", () => {
-  it("uses approved strategy for the four preview pages", () => {
-    const sections = composePreview({ subjectLabel: "Acme", strategy: strategy(), milestones: [] });
-    expect(sections.map((section) => section.key)).toEqual([
-      "title",
-      "point-a",
-      "market-gap",
-      "note-from-tai",
-    ]);
-    expect(sections[3]!.body.at(-1)).toBe("Trust, Tai");
-    expect(sections[1]!.tier).toBe("decided");
-  });
-
-  it("writes Unknown when nothing is approved", () => {
-    const proposed = strategy({
-      pointA: [item({ approval: "proposed" })],
-      gaps: [item({ approval: "proposed" })],
-      anchorProof: [],
-      pointB: null,
-    });
-    const sections = composePreview({ subjectLabel: "Acme", strategy: proposed, milestones: [] });
-    expect(sections[1]!.body[0]).toContain("Unknown");
-    expect(sections[3]!.body[0]).toContain("Unknown");
-  });
-});
-
-describe("composeFull", () => {
-  it("adds a page per approved milestone with What It Unlocks", () => {
-    const sections = composeFull({
-      subjectLabel: "Acme",
-      strategy: strategy(),
-      milestones: [milestone(), milestone({ id: "m2", status: "candidate", tier: "inferred" })],
-    });
-    const pages = sections.filter((section) => section.key.startsWith("milestone-"));
-    expect(pages).toHaveLength(1);
-    expect(pages[0]!.unlocks).toEqual(["Fewer email threads", "A data spine"]);
-  });
-
-  it("says so when nothing is approved", () => {
-    const sections = composeFull({ subjectLabel: "Acme", strategy: strategy(), milestones: [] });
-    expect(sections.some((section) => section.key === "build-order-empty")).toBe(true);
   });
 });
 

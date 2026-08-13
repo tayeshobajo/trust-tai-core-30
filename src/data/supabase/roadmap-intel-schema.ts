@@ -41,7 +41,8 @@ export const MILESTONE_COLUMNS =
   "id, organization_id, roadmap_id, name, what_we_build, intended_user, supporting_market_direction, client_advantage, current_gap, evidence, immediate_value, long_term_value, dependencies, execution_boundary, confidence, priority_score, priority_rationale, recommended_sequence, status, tier, owner_user_id, owner_label, decision_note, decided_by, decided_at, created_at, updated_at";
 
 export const ARTIFACT_COLUMNS =
-  "id, organization_id, roadmap_id, kind, title, sections, accent, logo_url, generated_at, created_at, updated_at";
+  "id, organization_id, roadmap_id, kind, title, sections, accent, logo_url, provider, model, rejected, human_edited, edited_at, edited_by, generated_at, created_at, updated_at";
+
 
 export const SESSION_COLUMNS =
   "id, organization_id, roadmap_id, started_at, ended_at, entries, created_by, created_at, updated_at";
@@ -271,7 +272,18 @@ export function toArtifact(row: Row): RoadmapArtifact {
     sections: sectionList(row["sections"]),
     ...(text(row["accent"]) ? { accent: text(row["accent"])! } : {}),
     ...(text(row["logo_url"]) ? { logoUrl: text(row["logo_url"])! } : {}),
+    ...(text(row["provider"]) ? { provider: text(row["provider"])! } : {}),
+    ...(text(row["model"]) ? { model: text(row["model"])! } : {}),
+    rejected: rows(row["rejected"]).map((entry) => ({
+      section: str(entry["section"], "section"),
+      line: str(entry["line"]),
+      reason: str(entry["reason"]),
+    })),
+    humanEdited: row["human_edited"] === true,
+    ...(text(row["edited_at"]) ? { editedAt: text(row["edited_at"])! } : {}),
+    ...(text(row["edited_by"]) ? { editedBy: text(row["edited_by"])! } : {}),
     generatedAt: str(row["generated_at"], new Date().toISOString()),
+
     createdAt: str(row["created_at"], new Date().toISOString()),
     updatedAt: str(row["updated_at"], new Date().toISOString()),
   };
