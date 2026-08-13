@@ -259,6 +259,50 @@ function withDetail(reason: string, detail: string): string {
   return detail ? `${reason} ${detail}` : reason;
 }
 
+/**
+ * v4 absence discipline. An absence only becomes a confident gap when the
+ * relevant page was actually checked, or the crawl was deep enough for the
+ * absence to mean something. WordPress presence never contributes.
+ */
+function qualifiedGaps(s: Structured): { confident: string[]; weak: string[] } {
+  const routes = s.count("contact_routes");
+  const booking = s.flag("booking_signal");
+  const offer = s.flag("clear_offer_signals");
+  const proof = s.count("proof_signals");
+  const active = s.count("active_business_signals");
+  const year = s.count("latest_visible_year");
+  const currentYear = new Date().getUTCFullYear();
+  const deep = s.depthAtLeast(3);
+
+  const confident: string[] = [];
+  const weak: string[] = [];
+
+  if (routes === 0) {
+    const claim = "no lead-capture route was found on the public pages";
+    if (s.checked("contact_page_checked") || deep) confident.push(claim);
+    else weak.push(`${claim}, but only a shallow run was made so this stays unknown`);
+  }
+  if (booking === false) {
+    const claim = "services are described but there is no booking path";
+    if ((s.checked("offer_page_checked") && offer === true) || (deep && (offer === true || (active ?? 0) >= 1))) {
+      confident.push(claim);
+    } else {
+      weak.push("no booking path was seen, but the offer pages were not confirmed");
+    }
+  }
+  if (proof === 0) {
+    const claim = "the business looks established but publishes no proof";
+    if ((s.checked("proof_page_checked") || deep) && (active ?? 0) >= 3) confident.push(claim);
+    else weak.push("no proof was seen, but proof pages were not confirmed");
+  }
+  if (year !== null && year > 1900 && year < currentYear - 2) {
+    confident.push(`the newest visible date is ${year}, which reads as stale`);
+  }
+
+  return { confident, weak };
+}
+
+
 const SPECS: CriterionSpec[] = [
   {
     key: "active_operating",
