@@ -356,8 +356,11 @@ export interface AskInput {
   subjectLabel: string;
   /** Everything already stored for this roadmap, as plain evidence. */
   context: unknown;
+  /** Opt in, per question. Off by default: Roadmap does not silently search. */
+  research?: boolean | undefined;
   gateway?: ReturnType<typeof createLovableAiGatewayRunIdFetch> | undefined;
   initialRunId?: string | undefined;
+
 }
 
 export interface AskResult {
