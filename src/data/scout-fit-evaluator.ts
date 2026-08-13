@@ -41,8 +41,13 @@ interface Observation {
   truth: boolean | null;
 }
 
-/** The generic backend fallback that must never count as a real opportunity. */
-const GENERIC_MILESTONE = /deeper human review before proposing a milestone/i;
+/**
+ * Generic backend fallbacks that must never count as a real opportunity.
+ * `WordPress support or modernization path` is capability alignment, not a
+ * observed problem, so v4 treats it exactly like the human-review fallback.
+ */
+const GENERIC_MILESTONE =
+  /(deeper human review before proposing a milestone|wordpress (support|modernization|modernisation)[^.]*)/i;
 
 function str(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
