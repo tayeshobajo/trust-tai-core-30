@@ -241,10 +241,20 @@ export interface RoadmapArtifact {
   /** Client accent, only when a validated brand colour is already on record. */
   accent?: string;
   logoUrl?: string;
+  /** Who wrote it. Studio is model backed, so this is never left implied. */
+  provider?: string;
+  model?: string;
+  /** Lines the validator refused because approved evidence did not back them. */
+  rejected: { section: string; line: string; reason: string }[];
+  /** True once a person has edited the composed document by hand. */
+  humanEdited: boolean;
+  editedAt?: ISODateTime;
+  editedBy?: ID;
   generatedAt: ISODateTime;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }
+
 
 /* -------------------------------------------------------------- walkthrough */
 
