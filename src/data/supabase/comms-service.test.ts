@@ -48,7 +48,8 @@ function handoffDraft(overrides: Partial<HandoffDraft> = {}): HandoffDraft {
       emailStatus: "verified",
       confidence: "human_confirmed",
       why: "Founder listed on the site.",
-    } as HandoffDraft["contact"],
+      reachable: true,
+    } as NonNullable<HandoffDraft["contact"]>,
     targets: [
       {
         rank: "primary",
@@ -59,6 +60,7 @@ function handoffDraft(overrides: Partial<HandoffDraft> = {}): HandoffDraft {
         emailStatus: "verified",
         confidence: "human_confirmed",
         why: "Founder listed on the site.",
+        reachable: true,
       } as HandoffDraft["targets"][number],
     ],
     intent: "introduce",
@@ -83,7 +85,11 @@ function handoffDraft(overrides: Partial<HandoffDraft> = {}): HandoffDraft {
         evidence: [{ label: "Chosen by a person", kind: "human" }],
       },
     ],
-    confidence: { level: "medium", because: "Two read signals." } as HandoffDraft["confidence"],
+    confidence: {
+      level: "medium",
+      because: "Two read signals.",
+      evidence: [{ label: "northbeam.example/book", kind: "page" }],
+    } as HandoffDraft["confidence"],
     blockers: [],
     ready: true,
     generatedAt: at,
