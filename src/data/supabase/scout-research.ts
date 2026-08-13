@@ -289,3 +289,40 @@ export function observationFacts(observed: unknown[]): Record<string, unknown> {
   return facts;
 }
 
+
+/**
+ * Buying signals, digital opportunities and people the research function
+ * reported. The Edge Function's payload shape has grown over versions, so a
+ * few known key spellings are accepted — but nothing is inferred: if the
+ * payload does not state it, it is simply absent.
+ */
+export function intelFromResearch(payload: ScoutResearchPayload): Row | null {
+  const inferred = (payload.inferred ?? {}) as Row;
+  const pick = (...keys: string[]): Record<string, unknown>[] => {
+    for (const key of keys) {
+      const value = inferred[key];
+      if (Array.isArray(value) && value.length > 0) {
+        return value.filter(
+          (entry): entry is Record<string, unknown> => !!entry && typeof entry === "object",
+        );
+      }
+    }
+    return [];
+  };
+
+  const buying = pick("buying_signals", "signals", "timing_signals");
+  const opportunities = pick("digital_opportunities", "opportunities", "issues", "problems");
+  const people = pick("people", "team", "decision_makers");
+  const unknowns = Array.isArray(inferred["unknowns"]) ? (inferred["unknowns"] as string[]) : [];
+
+  if (buying.length === 0 && opportunities.length === 0 && people.length === 0) return null;
+
+  return {
+    buying_signals: buying,
+    opportunities,
+    people,
+    unknowns,
+    citations: Array.isArray(payload.pages_researched) ? payload.pages_researched : [],
+    collected_at: new Date().toISOString(),
+  };
+}
