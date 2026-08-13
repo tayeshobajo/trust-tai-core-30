@@ -164,6 +164,10 @@ export interface ResearchProspectInput {
   inferred: unknown;
   suggested: unknown;
   provenance: Row;
+  /** 0–100 deterministic ICP fit score. */
+  fitScore?: number | null;
+  /** Merged into the row's existing `metadata` (e.g. `{ scout_fit }`). */
+  metadata?: Row;
   existing?: ProspectRow | null;
 }
 
@@ -180,6 +184,10 @@ export async function saveResearchProspect(input: ResearchProspectInput): Promis
     inferred: input.inferred ?? {},
     suggested: input.suggested ?? {},
     provenance: input.provenance,
+    ...(input.fitScore === undefined ? {} : { fit_score: input.fitScore }),
+    ...(input.metadata
+      ? { metadata: { ...((input.existing?.metadata ?? {}) as Row), ...input.metadata } }
+      : {}),
   };
 
   if (input.existing) {
