@@ -13,6 +13,7 @@ import {
   TTButton,
   TTInput,
 } from "@/components/tt/primitives";
+import { ScoutTabs } from "@/components/tt/scout-tabs";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { getCurrentIcp, saveIcp, type IcpProfile } from "@/data/supabase/icp";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -136,13 +137,15 @@ function IcpSettings({ identity }: { identity: WorkspaceIdentity }) {
         supporting="Scout uses this profile to decide who deserves deeper research."
         action={
           <TTButton asChild variant="quiet" size="sm">
-            <Link to="/modules/scout">
+            <Link to="/modules/scout" search={{ section: "scout" }}>
               <ArrowLeft aria-hidden />
               Back to Scout
             </Link>
           </TTButton>
         }
       />
+
+      <ScoutTabs active="settings" />
 
       {icpQuery.isPending ? (
         <p className="text-sm text-muted-foreground" role="status">
