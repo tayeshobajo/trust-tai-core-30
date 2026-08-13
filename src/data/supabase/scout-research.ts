@@ -267,5 +267,21 @@ export function candidateFromResearchRow(
       inferred,
       observed,
     }),
+    facts: observationFacts(observed),
+    history: readResearchHistory(row.metadata),
   };
 }
+
+/** Observation key → raw value, so coverage flags can be read structurally. */
+export function observationFacts(observed: unknown[]): Record<string, unknown> {
+  const facts: Record<string, unknown> = {};
+  for (const item of observed) {
+    if (!item || typeof item !== "object") continue;
+    const entry = item as Row;
+    const key = text(entry["key"]) || text(entry["id"]);
+    if (!key || key in facts) continue;
+    facts[key] = entry["value"];
+  }
+  return facts;
+}
+
