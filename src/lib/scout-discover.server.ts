@@ -29,6 +29,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   DISCOVERY_SOURCE,
   SCOUT_DISCOVERY_EVALUATOR_VERSION,
+  asArray,
   acceptCandidates,
   discoveryEvaluation,
   rootDomain,
@@ -375,9 +376,9 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     // Buying signals, digital opportunities and named people, kept apart from
     // the fit read: they inform timing, work and reachability, never the score.
     const intelMeta = {
-      buying_signals: asArray(candidate["buying_signals"]),
-      opportunities: asArray(candidate["digital_opportunities"]),
-      people: asArray(candidate["people"]),
+      buying_signals: asArray(candidate.buying_signals),
+      opportunities: asArray(candidate.digital_opportunities),
+      people: asArray(candidate.people),
       unknowns: candidate.unknowns ?? [],
       citations: candidate.source_urls ?? [],
       collected_at: finishedAt,
