@@ -61,21 +61,26 @@ sent by a person.
 `src/data/supabase/comms-handoff-receiver.ts` turns a Scout brief into a
 relationship at stage `ready_to_reach`, carrying the primary contact, the intent
 as the next move, and every required context item into its matching tier. It is
-idempotent per prospect. If Comms is not provisioned, the Scout handoff still
-stands.
+idempotent per prospect: a second handoff of the same prospect returns the
+relationship already open rather than a duplicate, enforced both by the receiver
+and by a unique index on `(organization_id, prospect_id)`.
 
 ## Capture
 
 Adding someone you met takes a name. Where you met and one thing worth
 remembering are optional, and the note is stored as a human decision with human
-evidence. Nothing is enriched silently.
+evidence. The person is matched against the shared `contacts` table first, by
+email and then by exact name, so a capture never creates a second copy of a
+human being. Nothing is enriched silently.
 
 ## Persistence
 
 Six organization-scoped tables (`comms_relationships`, `comms_threads`,
 `comms_touches`, `comms_drafts`, `comms_reminders`, `comms_voice_profiles`),
-defined in `docs/comms-v1-schema.sql`. Until they are applied, Comms shows a
-calm "not provisioned" state instead of failing.
+defined in `docs/comms-v1-schema.sql` and live in the Trust Tai Supabase project
+with RLS enabled. Every policy checks membership through the hardened
+`private.is_org_member(organization_id)` helper, so every read and write passes
+as the signed-in member. A failed read is reported as the real error it is.
 
 ## Deliberately deferred
 
