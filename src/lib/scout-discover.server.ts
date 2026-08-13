@@ -209,7 +209,9 @@ export interface DiscoverInput {
   query: string;
   limit?: number;
   organizationId?: string;
+  initialRunId?: string;
 }
+
 
 /**
  * Run a discovery pass, yielding progress stages as they happen so the board can
