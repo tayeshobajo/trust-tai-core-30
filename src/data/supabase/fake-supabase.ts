@@ -23,10 +23,13 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
 
   constructor(
     private readonly rows: FakeRow[],
-    private readonly mode: "select" | "insert" | "update" | "delete",
+    private readonly mode: "select" | "insert" | "update" | "delete" | "upsert",
     private readonly body?: FakeRow | FakeRow[],
     private readonly onWrite?: (row: FakeRow) => void,
+    /** Columns that make an upsert idempotent, as PostgREST's on_conflict does. */
+    private readonly conflict: string[] = [],
   ) {}
+
 
   eq(column: string, value: unknown): Query {
     this.filters.push({ column, value });
@@ -64,7 +67,33 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
   }
 
   private run(): { data: unknown; error: null } {
+    if (this.mode === "upsert") {
+      const bodies = Array.isArray(this.body) ? this.body : [this.body ?? {}];
+      const written = bodies.map((body) => {
+        const existing =
+          this.conflict.length > 0
+            ? this.rows.find((row) => this.conflict.every((column) => row[column] === body[column]))
+            : undefined;
+        if (existing) {
+          Object.assign(existing, body, { updated_at: new Date().toISOString() });
+          this.onWrite?.(existing);
+          return existing;
+        }
+        const row: FakeRow = {
+          id: crypto.randomUUID(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          ...body,
+        };
+        this.rows.push(row);
+        this.onWrite?.(row);
+        return row;
+      });
+      return { data: written.length === 1 ? written[0]! : written, error: null };
+    }
+
     if (this.mode === "insert") {
+
       const bodies = Array.isArray(this.body) ? this.body : [this.body ?? {}];
       const written = bodies.map((body) => {
         const row: FakeRow = {
@@ -77,7 +106,9 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
         this.onWrite?.(row);
         return row;
       });
-      return { data: written.length === 1 ? written[0]! : written, error: null };
+      // PostgREST returns a list for a list body, exactly as the real client does.
+      return { data: Array.isArray(this.body) ? written : (written[0] ?? null), error: null };
+
     }
 
     if (this.mode === "delete") {
@@ -125,6 +156,7 @@ export interface FakeSupabase {
   from: (table: string) => {
     select: (columns?: string) => Query;
     insert: (body: FakeRow | FakeRow[]) => Query;
+    upsert: (body: FakeRow | FakeRow[], options?: { onConflict?: string }) => Query;
     update: (body: FakeRow) => Query;
     delete: () => Query;
   };
@@ -142,9 +174,18 @@ export function createFakeSupabase(seed: Record<string, FakeRow[]> = {}): FakeSu
       return {
         select: () => new Query(rows, "select"),
         insert: (body: FakeRow | FakeRow[]) => new Query(rows, "insert", body),
+        upsert: (body: FakeRow | FakeRow[], options?: { onConflict?: string }) =>
+          new Query(
+            rows,
+            "upsert",
+            body,
+            undefined,
+            (options?.onConflict ?? "").split(",").map((column) => column.trim()).filter(Boolean),
+          ),
         update: (body: FakeRow) => new Query(rows, "update", body),
         delete: () => new Query(rows, "delete"),
       };
     },
   };
+
 }
