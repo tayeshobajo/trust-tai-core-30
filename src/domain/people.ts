@@ -82,11 +82,19 @@ export interface Person {
   seniority: Seniority;
   email?: string;
   emailStatus: EmailStatus;
+  /** When the address was last checked or confirmed. Never assumed. */
+  emailCheckedAt?: ISODateTime;
+  /** Who or what performed that last check. */
+  emailCheckedBy?: string;
   confidence: PersonConfidence;
   linkedinUrl?: string;
   phone?: string;
   /** Id of the provider that produced this record, or "manual". */
   sourceId: string;
+  /** Public page or provider record this person was read from. */
+  sourceUrl?: string;
+  /** Anything worth saying out loud about how this record was formed. */
+  note?: string;
   provenance: Provenance;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
@@ -156,6 +164,11 @@ export interface PeopleProvider extends PeopleProviderInfo {
   discover(input: PeopleDiscoveryInput): Promise<PersonDraft[]>;
   findEmail?(input: EmailLookupInput): Promise<EmailVerification | null>;
   verifyEmail?(email: string): Promise<EmailVerification>;
+}
+
+/** Email states that are safe to send to. Nothing else is reachable. */
+export function isReachable(person: Person): boolean {
+  return person.emailStatus === "verified";
 }
 
 /** A contact is ready for Comms only when all of this is true. */
