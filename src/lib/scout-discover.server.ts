@@ -455,13 +455,18 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
       fit_score: score,
     };
 
+    // Stored in the app's own evaluation shape so a discovered company reads on
+    // the board exactly like a researched one.
+    const evaluation = discoveryEvaluation(candidate, { icpVersion, at: finishedAt });
+    const discoveryMeta = { run_id: runId, query, at: finishedAt, model, citations: candidate.source_urls ?? [] };
+
     const existing = byDomain.get(domain);
     let prospectId: string | undefined;
     if (existing) {
       const metadata = {
         ...((existing["metadata"] ?? {}) as Record<string, unknown>),
-        scout_discovery: { run_id: runId, query, at: finishedAt },
-        scout_fit: { score, light: fit.light ?? "yellow", confidence: fit.confidence ?? "unknown" },
+        scout_discovery: discoveryMeta,
+        scout_fit: evaluation,
       };
       const { data } = await supabase
         .from("prospects")
@@ -479,7 +484,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
           status: "discovered",
           created_by: user.id,
           metadata: {
-            scout_discovery: { run_id: runId, query, at: finishedAt },
+            scout_discovery: discoveryMeta,
             scout_fit: { score, light: fit.light ?? "yellow", confidence: fit.confidence ?? "unknown" },
           },
         })
