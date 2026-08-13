@@ -69,31 +69,46 @@ export function HandoffPanel({
       <div className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-border bg-background p-4">
-            <p className="tt-eyebrow">Who to contact</p>
-            {draft.contact ? (
-              <>
-                <p className="mt-1.5 text-sm text-foreground">
-                  {draft.contact.fullName}
-                  {draft.contact.roleTitle ? (
-                    <span className="text-muted-foreground"> · {draft.contact.roleTitle}</span>
-                  ) : null}
-                </p>
-                <p className="mt-1 text-[13px] text-muted-foreground">
-                  {draft.contact.email ?? "No email on record"}
-                  <span
-                    className={cn(
-                      "ml-2 font-mono text-[10px] uppercase tracking-[0.14em]",
-                      draft.contact.reachable ? "text-success" : "text-muted-foreground",
-                    )}
-                  >
-                    {EMAIL_STATUS_LABEL[draft.contact.emailStatus]}
-                  </span>
-                </p>
-              </>
-            ) : (
+            <p className="tt-eyebrow">Outreach targets</p>
+            {draft.targets.length === 0 ? (
               <p className="mt-1.5 text-[13px] text-muted-foreground">
-                Nobody is named yet. Comms cannot open without a person.
+                No founder or decision maker is on record. Comms cannot open without one.
               </p>
+            ) : (
+              <ul className="mt-2 space-y-3">
+                {draft.targets.map((target) => (
+                  <li key={target.personId ?? target.fullName}>
+                    <p className="text-[13px] text-foreground">
+                      {target.fullName}
+                      <span
+                        className={cn(
+                          "ml-2 font-mono text-[10px] uppercase tracking-[0.14em]",
+                          target.rank === "primary" ? "text-royal" : "text-muted-foreground",
+                        )}
+                      >
+                        {target.rank === "primary" ? "open with" : "fallback"}
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-[13px] text-muted-foreground">{target.why}</p>
+                    <p className="mt-0.5 text-[13px]">
+                      <span className="text-muted-foreground">
+                        {target.email ?? "No email on record"}
+                      </span>
+                      <span
+                        className={cn(
+                          "ml-2 font-mono text-[10px] uppercase tracking-[0.14em]",
+                          target.reachable ? "text-success" : "text-warning",
+                        )}
+                      >
+                        {EMAIL_STATUS_LABEL[target.emailStatus]}
+                      </span>
+                    </p>
+                    {target.blocker ? (
+                      <p className="mt-0.5 text-[13px] text-muted-foreground">{target.blocker}</p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
