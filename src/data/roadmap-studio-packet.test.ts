@@ -118,7 +118,7 @@ describe("buildEvidencePacket", () => {
       subjectLabel: "Acme",
       kind: "full",
       strategy: strategy(),
-      milestones: [milestone({ status: "proposed", tier: "inferred" })],
+      milestones: [milestone({ status: "candidate", tier: "inferred" })],
     });
     expect(packet.ready).toBe(false);
     expect(packet.missing.join(" ")).toContain("No milestone has been approved");
