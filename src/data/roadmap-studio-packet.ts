@@ -430,6 +430,36 @@ export function packetSummary(packet: EvidencePacket): PacketSummary {
   };
 }
 
+/**
+ * Every packet fact and milestone, indexed by the support key that names it.
+ * Studio's evidence disclosure reads this so a reader can see the fact behind
+ * a page rather than only the count of them.
+ */
+export function packetFactIndex(packet: EvidencePacket): Map<string, PacketFact> {
+  const index = new Map<string, PacketFact>();
+  for (const fact of [
+    ...packet.pointA,
+    ...packet.anchorProof,
+    ...packet.gaps,
+    ...packet.observed,
+    ...(packet.centralTruth ? [packet.centralTruth] : []),
+    ...(packet.leveragePoint ? [packet.leveragePoint] : []),
+    ...(packet.pointB ? [packet.pointB] : []),
+    ...(packet.pointC ? [packet.pointC] : []),
+  ]) {
+    index.set(fact.key, fact);
+  }
+  for (const milestone of packet.milestones) {
+    index.set(`milestone:${milestone.id}`, {
+      key: `milestone:${milestone.id}`,
+      statement: `${milestone.sequence}. ${milestone.name}`,
+      because: milestone.whatWeBuild,
+      sources: milestone.sources,
+    });
+  }
+  return index;
+}
+
 export const NOT_READY_LINE =
   "Not ready. The approved evidence does not support this page yet.";
 
@@ -519,7 +549,28 @@ export function validateSections(
       }
     }
 
-    const unlocks = (section.unlocks ?? []).map(normalizeVoice).filter(Boolean);
+    /**
+     * "What it unlocks" is a client facing claim like any other, so it obeys
+     * the same rule: name the evidence or do not ship the line.
+     */
+    const unlocks: string[] = [];
+    for (const raw of section.unlocks ?? []) {
+      const line = normalizeVoice(raw);
+      if (!line) continue;
+      const keys = (stated.get(line) ?? []).filter((key) => known.has(key));
+      if (keys.length === 0) {
+        rejected.push({
+          section: section.key,
+          line,
+          reason: "No approved or observed evidence was cited for this claim.",
+          severity: "unsupported",
+        });
+        continue;
+      }
+      unlocks.push(line);
+      support.push({ line, keys: [...new Set(keys)] });
+    }
+
     const empty = body.length === 0;
     const supportKeys = [...new Set(support.flatMap((entry) => entry.keys))];
 
