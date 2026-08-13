@@ -10,6 +10,8 @@
 import type { Provenance } from "./activity";
 import type { ID, Prospect } from "./entities";
 import type { ScoutFitEvaluation } from "./scout-fit";
+import type { ResearchRun } from "./prospect-modules";
+
 import type { CompanyIdentity } from "@/lib/company-identity";
 
 /** A single piece of evidence Scout observed about a company. */
