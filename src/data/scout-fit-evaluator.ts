@@ -726,6 +726,7 @@ export function evaluateScoutFit(input: EvaluateInput): ScoutFitEvaluation {
   const structured = new Structured(observations);
   const milestones = collectMilestones(structured, input.suggested);
   const pages = readPageCount(structured, input.pagesResearched ?? null);
+  structured.pages = pages;
   const researchVersion = input.researchVersion ?? null;
   const depthNote =
     pages === null
