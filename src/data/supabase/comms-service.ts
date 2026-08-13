@@ -27,7 +27,7 @@ import type { VoiceRegister } from "@/domain/voice";
 
 import { supabaseActivity } from "./activities";
 import {
-  assertProvisioned,
+  assertOk,
   DRAFT_COLUMNS,
   memoryPayload,
   REMINDER_COLUMNS,
@@ -109,7 +109,7 @@ export const commsService = {
       .select(RELATIONSHIP_COLUMNS)
       .eq("organization_id", organizationId)
       .order("updated_at", { ascending: false });
-    assertProvisioned(error);
+    assertOk(error);
     return ((data ?? []) as unknown as RelationshipRow[]).map(toRelationship);
   },
 
@@ -158,7 +158,7 @@ export const commsService = {
       .insert(payload)
       .select(RELATIONSHIP_COLUMNS)
       .single();
-    assertProvisioned(error);
+    assertOk(error);
     if (!data) throw new Error("That relationship could not be saved.");
 
     const relationship = toRelationship(data as unknown as RelationshipRow);
@@ -195,7 +195,7 @@ export const commsService = {
       .eq("organization_id", context.organizationId)
       .select(RELATIONSHIP_COLUMNS)
       .single();
-    assertProvisioned(error);
+    assertOk(error);
     if (!data) throw new Error("That relationship could not be updated.");
 
     const relationship = toRelationship(data as unknown as RelationshipRow);
@@ -235,7 +235,7 @@ export const commsService = {
       .eq("organization_id", context.organizationId)
       .select(RELATIONSHIP_COLUMNS)
       .single();
-    assertProvisioned(error);
+    assertOk(error);
     if (!data) throw new Error("That note could not be saved.");
     return toRelationship(data as unknown as RelationshipRow);
   },
@@ -248,7 +248,7 @@ export const commsService = {
       .select(TOUCH_COLUMNS)
       .eq("relationship_id", relationshipId)
       .order("occurred_at", { ascending: false });
-    assertProvisioned(error);
+    assertOk(error);
     return ((data ?? []) as unknown as TouchRow[]).map(toTouch);
   },
 
@@ -284,7 +284,7 @@ export const commsService = {
       })
       .select(TOUCH_COLUMNS)
       .single();
-    assertProvisioned(error);
+    assertOk(error);
     if (!data) throw new Error("That touch could not be logged.");
 
     const patch: Row = { last_touch_at: occurredAt, updated_at: occurredAt };
@@ -319,7 +319,7 @@ export const commsService = {
       .select(DRAFT_COLUMNS)
       .eq("relationship_id", relationshipId)
       .order("created_at", { ascending: false });
-    assertProvisioned(error);
+    assertOk(error);
     return ((data ?? []) as unknown as DraftRow[]).map(toDraft);
   },
 
@@ -352,7 +352,7 @@ export const commsService = {
       })
       .select(DRAFT_COLUMNS)
       .single();
-    assertProvisioned(error);
+    assertOk(error);
     if (!data) throw new Error("That draft could not be saved.");
     return toDraft(data as unknown as DraftRow);
   },
@@ -370,7 +370,7 @@ export const commsService = {
       .eq("organization_id", context.organizationId)
       .select(DRAFT_COLUMNS)
       .single();
-    assertProvisioned(error);
+    assertOk(error);
     if (!data) throw new Error("That draft could not be updated.");
 
     await record(
@@ -392,7 +392,7 @@ export const commsService = {
       .eq("organization_id", organizationId)
       .eq("state", "pending")
       .order("due_at", { ascending: true });
-    assertProvisioned(error);
+    assertOk(error);
     return ((data ?? []) as unknown as ReminderRow[]).map(toReminder);
   },
 
@@ -420,7 +420,7 @@ export const commsService = {
       })
       .select(REMINDER_COLUMNS)
       .single();
-    assertProvisioned(error);
+    assertOk(error);
     if (!data) throw new Error("That reminder could not be saved.");
     return toReminder(data as unknown as ReminderRow);
   },
@@ -435,6 +435,6 @@ export const commsService = {
       .update({ state, updated_at: new Date().toISOString() })
       .eq("id", reminder.id)
       .eq("organization_id", context.organizationId);
-    assertProvisioned(error);
+    assertOk(error);
   },
 };
