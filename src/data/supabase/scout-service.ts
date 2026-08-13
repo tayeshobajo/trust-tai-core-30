@@ -25,6 +25,8 @@ import {
 } from "@/domain/scout";
 import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
+import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
+
 
 import { supabaseActivity } from "./activities";
 import { fetchCompanyIdentity } from "./company-identity";
@@ -120,6 +122,18 @@ export const scoutService = {
     return rows.map((row) => toCandidate(row, icp?.version ?? null));
   },
 
+  /** Recorded history for one company: research, decisions, overrides. */
+  async activity(organizationId: ID, prospectId: ID) {
+    return supabaseActivity.list({
+      organizationId,
+      subjectType: "prospect",
+      subjectId: prospectId,
+      limit: 12,
+    });
+  },
+
+
+
   /**
    * Preview discovery. Ranks the demo catalogue against the plain-English
    * description and persists any candidate not already saved.
@@ -210,7 +224,15 @@ export const scoutService = {
         icpVersion: icp?.version ?? null,
       }),
       fitScore: evaluation.score,
-      metadata: { scout_fit: evaluation, ...(identity ? { identity } : {}) },
+      metadata: {
+        scout_fit: evaluation,
+        ...(identity ? { identity } : {}),
+        research_history: appendResearchRun(
+          existing?.metadata,
+          runFromEvaluation(evaluation, evaluation.evaluatedAt),
+        ),
+      },
+
       existing,
     });
 

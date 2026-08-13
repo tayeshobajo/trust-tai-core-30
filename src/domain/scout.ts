@@ -10,6 +10,8 @@
 import type { Provenance } from "./activity";
 import type { ID, Prospect } from "./entities";
 import type { ScoutFitEvaluation } from "./scout-fit";
+import type { ResearchRun } from "./prospect-modules";
+
 import type { CompanyIdentity } from "@/lib/company-identity";
 
 /** A single piece of evidence Scout observed about a company. */
@@ -62,7 +64,12 @@ export interface ProspectCandidate {
   lastCheckedAt: string;
   /** Company-owned identity (real theme colour / logo URL) when recorded. */
   identity?: CompanyIdentity;
+  /** Raw observation key → value, for coverage and structured reads. */
+  facts?: Record<string, unknown>;
+  /** Append-only log of completed research passes, oldest first. */
+  history?: ResearchRun[];
 }
+
 
 export interface ScoutSearchRequest {
   organizationId: ID;

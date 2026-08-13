@@ -85,8 +85,17 @@ function ProspectDetail({
     queryFn: () => scoutService.list(organizationId),
   });
 
+  const events = useQuery({
+    queryKey: ["scout", "activity", organizationId, prospectId],
+    queryFn: () => scoutService.activity(organizationId, prospectId),
+  });
+
+
   const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] }),
+      queryClient.invalidateQueries({ queryKey: ["scout", "activity", organizationId, prospectId] }),
+    ]);
 
   const research = useMutation({
     mutationFn: (websiteUrl: string) =>
@@ -158,6 +167,7 @@ function ProspectDetail({
         candidate={candidate}
         activeIcpVersion={icp.data?.version ?? null}
         backSearch={backSearch}
+        events={events.data ?? []}
         onQualify={(id) => setStatus.mutate({ id, status: "qualified" })}
         onPass={(id) => setStatus.mutate({ id, status: "passed" })}
         onResearch={(websiteUrl) => research.mutate(websiteUrl)}
