@@ -23,8 +23,8 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
 
   constructor(
     private readonly rows: FakeRow[],
-    private readonly mode: "select" | "insert" | "update",
-    private readonly body?: FakeRow,
+    private readonly mode: "select" | "insert" | "update" | "delete",
+    private readonly body?: FakeRow | FakeRow[],
     private readonly onWrite?: (row: FakeRow) => void,
   ) {}
 
@@ -65,21 +65,34 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
 
   private run(): { data: unknown; error: null } {
     if (this.mode === "insert") {
-      const row: FakeRow = {
-        id: crypto.randomUUID(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        ...this.body,
-      };
-      this.rows.push(row);
-      this.onWrite?.(row);
-      return { data: row, error: null };
+      const bodies = Array.isArray(this.body) ? this.body : [this.body ?? {}];
+      const written = bodies.map((body) => {
+        const row: FakeRow = {
+          id: crypto.randomUUID(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          ...body,
+        };
+        this.rows.push(row);
+        this.onWrite?.(row);
+        return row;
+      });
+      return { data: written.length === 1 ? written[0]! : written, error: null };
+    }
+
+    if (this.mode === "delete") {
+      const doomed = this.matched();
+      for (const row of doomed) {
+        const index = this.rows.indexOf(row);
+        if (index >= 0) this.rows.splice(index, 1);
+      }
+      return { data: doomed, error: null };
     }
 
     if (this.mode === "update") {
       const target = this.matched()[0];
       if (!target) return { data: null, error: null };
-      Object.assign(target, this.body, { updated_at: new Date().toISOString() });
+      Object.assign(target, this.body as FakeRow, { updated_at: new Date().toISOString() });
       this.onWrite?.(target);
       return { data: target, error: null };
     }
@@ -111,8 +124,9 @@ export interface FakeSupabase {
   tables: Record<string, FakeRow[]>;
   from: (table: string) => {
     select: (columns?: string) => Query;
-    insert: (body: FakeRow) => Query;
+    insert: (body: FakeRow | FakeRow[]) => Query;
     update: (body: FakeRow) => Query;
+    delete: () => Query;
   };
 }
 
@@ -127,8 +141,9 @@ export function createFakeSupabase(seed: Record<string, FakeRow[]> = {}): FakeSu
       const rows = rowsFor(table);
       return {
         select: () => new Query(rows, "select"),
-        insert: (body: FakeRow) => new Query(rows, "insert", body),
+        insert: (body: FakeRow | FakeRow[]) => new Query(rows, "insert", body),
         update: (body: FakeRow) => new Query(rows, "update", body),
+        delete: () => new Query(rows, "delete"),
       };
     },
   };
