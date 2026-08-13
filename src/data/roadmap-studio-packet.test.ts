@@ -379,7 +379,7 @@ describe("packetSummary", () => {
     expect(summary.ready).toBe(true);
     expect(summary.approvedMilestoneCount).toBe(1);
     expect(summary.observedFactCount).toBe(1);
-    expect(summary.approvedStrategyCount).toBe(6);
+    expect(summary.approvedStrategyCount).toBe(7);
     expect(summary.sourceCount).toBeGreaterThan(0);
     expect(summary.checkedAt).toBe(CHECKED);
   });
