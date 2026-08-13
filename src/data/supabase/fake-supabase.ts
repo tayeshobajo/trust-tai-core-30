@@ -154,6 +154,7 @@ export interface FakeSupabase {
   from: (table: string) => {
     select: (columns?: string) => Query;
     insert: (body: FakeRow | FakeRow[]) => Query;
+    upsert: (body: FakeRow | FakeRow[], options?: { onConflict?: string }) => Query;
     update: (body: FakeRow) => Query;
     delete: () => Query;
   };
@@ -171,9 +172,18 @@ export function createFakeSupabase(seed: Record<string, FakeRow[]> = {}): FakeSu
       return {
         select: () => new Query(rows, "select"),
         insert: (body: FakeRow | FakeRow[]) => new Query(rows, "insert", body),
+        upsert: (body: FakeRow | FakeRow[], options?: { onConflict?: string }) =>
+          new Query(
+            rows,
+            "upsert",
+            body,
+            undefined,
+            (options?.onConflict ?? "").split(",").map((column) => column.trim()).filter(Boolean),
+          ),
         update: (body: FakeRow) => new Query(rows, "update", body),
         delete: () => new Query(rows, "delete"),
       };
     },
   };
+
 }
