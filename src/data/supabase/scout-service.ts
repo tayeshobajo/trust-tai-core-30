@@ -373,6 +373,14 @@ export const scoutService = {
       occurredAt: routedAt,
     });
 
+    // Open the relationship in Comms with the brief's context intact. If Comms
+    // is not provisioned in this backend, the handoff still stands in Scout.
+    const { receiveScoutHandoff } = await import("./comms-handoff-receiver");
+    await receiveScoutHandoff(draft, {
+      organizationId: context.organizationId,
+      userId: context.userId,
+    });
+
     return record;
   },
 
