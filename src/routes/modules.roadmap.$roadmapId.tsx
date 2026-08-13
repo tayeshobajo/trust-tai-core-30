@@ -6,7 +6,7 @@
  * and its own evidence.
  */
 
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -83,7 +83,9 @@ function RoadmapWorkspace({
     userLabel: identity.name,
   };
 
+  const navigate = useNavigate();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const detailQuery = useQuery({
@@ -112,6 +114,34 @@ function RoadmapWorkspace({
       );
     },
     onSuccess: refresh,
+    onError: fail,
+  });
+
+  const archive = useMutation({
+    mutationFn: async () => {
+      const detail = detailQuery.data;
+      if (!detail) throw new Error("There is no roadmap to archive.");
+      return roadmapService.setStatus(
+        detail.roadmap.id,
+        detail.roadmap.status === "archived" ? "in_progress" : "archived",
+        detail.roadmap.subjectLabel,
+        context,
+      );
+    },
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  const remove = useMutation({
+    mutationFn: async () => {
+      const detail = detailQuery.data;
+      if (!detail) throw new Error("There is no roadmap to delete.");
+      await roadmapService.remove(detail.roadmap.id, detail.roadmap.subjectLabel, context);
+    },
+    onSuccess: async () => {
+      await refresh();
+      await navigate({ to: "/modules/roadmap" });
+    },
     onError: fail,
   });
 
@@ -200,7 +230,36 @@ function RoadmapWorkspace({
         eyebrow={`Roadmap · ${roadmap.subjectLabel}`}
         title={roadmap.title}
         supporting={roadmap.objective}
-        action={<MetaPill>{ROADMAP_STATUS_LABEL[roadmap.status]}</MetaPill>}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <MetaPill>{ROADMAP_STATUS_LABEL[roadmap.status]}</MetaPill>
+            <TTButton
+              variant="secondary"
+              disabled={archive.isPending}
+              onClick={() => archive.mutate()}
+            >
+              {roadmap.status === "archived" ? "Reopen" : "Archive"}
+            </TTButton>
+            {confirmingDelete ? (
+              <>
+                <TTButton
+                  variant="secondary"
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutate()}
+                >
+                  Delete permanently
+                </TTButton>
+                <TTButton variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                  Keep it
+                </TTButton>
+              </>
+            ) : (
+              <TTButton variant="ghost" onClick={() => setConfirmingDelete(true)}>
+                Delete
+              </TTButton>
+            )}
+          </div>
+        }
       />
 
       {actionError ? <p className="text-sm text-danger">{actionError}</p> : null}
