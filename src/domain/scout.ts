@@ -62,7 +62,12 @@ export interface ProspectCandidate {
   lastCheckedAt: string;
   /** Company-owned identity (real theme colour / logo URL) when recorded. */
   identity?: CompanyIdentity;
+  /** Raw observation key → value, for coverage and structured reads. */
+  facts?: Record<string, unknown>;
+  /** Append-only log of completed research passes, oldest first. */
+  history?: ResearchRun[];
 }
+
 
 export interface ScoutSearchRequest {
   organizationId: ID;
