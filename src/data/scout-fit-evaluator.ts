@@ -513,23 +513,12 @@ const SPECS: CriterionSpec[] = [
       const booking = s.flag("booking_signal");
       const offer = s.flag("clear_offer_signals");
       const proof = s.count("proof_signals");
-      const active = s.count("active_business_signals");
       const year = s.count("latest_visible_year");
-      const currentYear = new Date().getUTCFullYear();
 
-      const gaps: string[] = [];
-      if (routes === 0) gaps.push("no lead-capture route was found on the public pages");
-      if (booking === false && offer === true) {
-        gaps.push("services are described but there is no booking path");
-      }
-      if (proof === 0 && (active ?? 0) >= 3) {
-        gaps.push("the business looks established but publishes no proof");
-      }
-      if (year !== null && year > 1900 && year < currentYear - 2) {
-        gaps.push(`the newest visible date is ${year}, which reads as stale`);
-      }
-      if (milestones.length > 0) {
-        gaps.push(`a concrete opportunity was recorded: ${milestones[0]}`);
+      const { confident, weak } = qualifiedGaps(s);
+      const items = [...confident];
+      if (confident.length > 0 && milestones.length > 0) {
+        items.push(`a concrete opportunity was recorded: ${milestones[0]}`);
       }
 
       const structuredPresent =
@@ -537,17 +526,24 @@ const SPECS: CriterionSpec[] = [
       if (!structuredPresent && milestones.length === 0) return null;
 
       const sourceUrls = s.sources(["contact_routes", "booking_signal", "milestone_opportunities"]);
-      if (gaps.length >= 2) {
+      if (items.length >= 2) {
         return {
           state: "met",
-          reason: `The current presentation is visibly holding the business back: ${gaps.slice(0, 3).join("; ")}. WordPress alone is not treated as a problem.`,
+          reason: `The current presentation is visibly holding the business back: ${items.slice(0, 3).join("; ")}. WordPress alone is not treated as a problem.`,
           sourceUrls,
         };
       }
-      if (gaps.length === 1) {
+      if (items.length === 1) {
         return {
           state: "partial",
-          reason: `One constraint was observed: ${gaps[0]}. Not yet enough to call the system limiting.`,
+          reason: `One constraint was observed: ${items[0]}. Not yet enough to call the system limiting.`,
+          sourceUrls,
+        };
+      }
+      if (weak.length > 0) {
+        return {
+          state: "partial",
+          reason: `Possible weakness, held as unknown until more pages are read: ${weak[0]}.`,
           sourceUrls,
         };
       }
@@ -557,6 +553,7 @@ const SPECS: CriterionSpec[] = [
           "No constraint was observed in the current site or tooling. The platform in use, WordPress included, is not itself evidence of a gap.",
       };
     },
+
     patterns: [
       /\b(outdated|dated|legacy|slow|load time|no https|insecure|not mobile|mobile friendly|responsive|broken|missing|no analytics|no booking|no cms|page speed|accessib)\b/,
     ],
