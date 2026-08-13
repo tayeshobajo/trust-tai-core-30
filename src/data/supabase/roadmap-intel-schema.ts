@@ -271,7 +271,18 @@ export function toArtifact(row: Row): RoadmapArtifact {
     sections: sectionList(row["sections"]),
     ...(text(row["accent"]) ? { accent: text(row["accent"])! } : {}),
     ...(text(row["logo_url"]) ? { logoUrl: text(row["logo_url"])! } : {}),
+    ...(text(row["provider"]) ? { provider: text(row["provider"])! } : {}),
+    ...(text(row["model"]) ? { model: text(row["model"])! } : {}),
+    rejected: rows(row["rejected"]).map((entry) => ({
+      section: str(entry["section"], "section"),
+      line: str(entry["line"]),
+      reason: str(entry["reason"]),
+    })),
+    humanEdited: row["human_edited"] === true,
+    ...(text(row["edited_at"]) ? { editedAt: text(row["edited_at"])! } : {}),
+    ...(text(row["edited_by"]) ? { editedBy: text(row["edited_by"])! } : {}),
     generatedAt: str(row["generated_at"], new Date().toISOString()),
+
     createdAt: str(row["created_at"], new Date().toISOString()),
     updatedAt: str(row["updated_at"], new Date().toISOString()),
   };
