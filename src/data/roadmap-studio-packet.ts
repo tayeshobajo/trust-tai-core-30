@@ -281,10 +281,62 @@ function packetCorpus(packet: EvidencePacket): string {
   return parts.join(" ").toLowerCase();
 }
 
+/**
+ * Why a line was refused.
+ *
+ * "voice" is a writing problem: the sentence is interchangeable, so it is
+ * dropped and the rest of the page still stands. "fabrication" is a truth
+ * problem: a figure or a source the approved packet never contained. A
+ * fabrication is not an edit, it means the composition cannot be trusted, so
+ * the caller refuses the whole run rather than saving a corrected version of
+ * a document that invented something.
+ */
+export type RejectionSeverity = "voice" | "fabrication";
+
+export interface RejectedLine {
+  section: string;
+  line: string;
+  reason: string;
+  severity: RejectionSeverity;
+}
+
 export interface ValidationResult {
   sections: ArtifactSection[];
   /** Every line that was refused, and why, so the room can see the edit. */
-  rejected: { section: string; line: string; reason: string }[];
+  rejected: RejectedLine[];
+}
+
+/** True when the model asserted something the approved packet cannot back. */
+export function hasFabrication(rejected: RejectedLine[]): boolean {
+  return rejected.some((entry) => entry.severity === "fabrication");
+}
+
+/** What the room needs to see before pressing compose. */
+export interface PacketSummary {
+  ready: boolean;
+  missing: string[];
+  approvedStrategyCount: number;
+  approvedMilestoneCount: number;
+  sourceCount: number;
+}
+
+export function packetSummary(packet: EvidencePacket): PacketSummary {
+  const strategy =
+    packet.pointA.length +
+    packet.anchorProof.length +
+    packet.gaps.length +
+    (packet.centralTruth ? 1 : 0) +
+    (packet.leveragePoint ? 1 : 0) +
+    (packet.pointB ? 1 : 0) +
+    (packet.pointC ? 1 : 0);
+
+  return {
+    ready: packet.ready,
+    missing: packet.missing,
+    approvedStrategyCount: strategy,
+    approvedMilestoneCount: packet.milestones.length,
+    sourceCount: packet.allowedUrls.length,
+  };
 }
 
 export const NOT_READY_LINE =
@@ -318,6 +370,7 @@ export function validateSections(
           section: section.key,
           line,
           reason: `Interchangeable language: "${generic}".`,
+          severity: "voice",
         });
         continue;
       }
@@ -329,6 +382,7 @@ export function validateSections(
           section: section.key,
           line,
           reason: `Figure "${invented.trim()}" is not in the approved evidence.`,
+          severity: "fabrication",
         });
         continue;
       }
@@ -343,6 +397,7 @@ export function validateSections(
           section: section.key,
           line: ref.url,
           reason: "Source was not in the approved evidence packet.",
+          severity: "fabrication",
         });
       }
     }
