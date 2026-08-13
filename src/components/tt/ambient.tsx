@@ -41,7 +41,7 @@ export interface AmbientProps {
    * A real, validated colour belonging to the subject of this page — a
    * company's own brand colour, for example. Falls back to the app accent.
    */
-  contextAccent?: string | null;
+  contextAccent?: string | null | undefined;
   strength?: AmbientStrength;
   depth?: AmbientDepth;
 }
