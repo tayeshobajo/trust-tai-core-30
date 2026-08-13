@@ -52,7 +52,7 @@ function memoryFromBrief(draft: HandoffDraft): {
 }
 
 /** The relationship already carried across for this prospect, if any. */
-async function existing(prospectId: ID, organizationId: ID): Promise<Relationship> {
+async function existing(prospectId: ID, organizationId: ID): Promise<Relationship | null> {
   const { data, error } = await supabase
     .from("comms_relationships")
     .select(RELATIONSHIP_COLUMNS)
