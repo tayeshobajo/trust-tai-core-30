@@ -41,18 +41,21 @@ import { WalkthroughView } from "@/components/tt/roadmap/walkthrough-view";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { roadmapService, type RoadmapContext } from "@/data/supabase/roadmap-service";
 import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-service";
-import { composeFull, composePreview } from "@/data/roadmap-studio";
 import {
   normalizeMilestones,
   normalizeResearch,
   normalizeStrategy,
 } from "@/data/roadmap-research-parse";
+import { readNdjsonStream } from "@/lib/ndjson-stream";
 import type {
   ApprovalState,
+  ArtifactSection,
   MilestoneStatus,
+  RoadmapArtifact,
   RoadmapMilestone,
   WalkthroughEntryKind,
 } from "@/domain/roadmap-intel";
+
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type {
   DecisionState,
