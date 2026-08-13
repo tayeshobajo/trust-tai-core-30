@@ -185,10 +185,12 @@ export function readCompanyIdentity(sources: {
         if (source) identity.logoSource = source;
       }
     }
-    if (!identity.fetchedAt) {
-      const fetchedAt = firstString(block, ["identity_fetched_at"]);
-      if (fetchedAt) identity.fetchedAt = fetchedAt;
-    }
+
   }
+  // `fetched_at` only means identity freshness inside the identity block.
+  const identityBlock = (sources.metadata as Record<string, unknown> | undefined)?.["identity"];
+  const fetchedAt = firstString(identityBlock, ["fetched_at"]);
+  if (fetchedAt) identity.fetchedAt = fetchedAt;
+
   return identity;
 }
