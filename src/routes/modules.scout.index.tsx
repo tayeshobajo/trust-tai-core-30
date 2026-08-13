@@ -13,6 +13,8 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { scoutService } from "@/data/supabase/scout-service";
 import type { DiscoveryStage } from "@/data/supabase/scout-discovery";
 import { SCOUT_STARTER_PROMPTS, type ProspectCandidate } from "@/domain/scout";
+import { byPriority, computeDecisionMetrics } from "@/data/scout-intel";
+import { EMPTY_INTEL } from "@/domain/scout-intel";
 import type { FitLight } from "@/domain/scout-fit";
 import { looksLikeWebsite } from "@/lib/website-url";
 import type { WorkspaceIdentity } from "@/lib/workspace";
