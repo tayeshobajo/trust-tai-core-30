@@ -25,9 +25,35 @@ import {
   PointBPanel,
   StageList,
 } from "@/components/tt/roadmap/roadmap-spine";
+import { AskPanel } from "@/components/tt/roadmap/ask-panel";
+import { BuildOrderView } from "@/components/tt/roadmap/build-order-view";
+import { MilestonesView } from "@/components/tt/roadmap/milestones-view";
+import { ResearchView } from "@/components/tt/roadmap/research-view";
+import {
+  isRoadmapView,
+  RoadmapTabs,
+  type RoadmapView,
+} from "@/components/tt/roadmap/roadmap-tabs";
+import { StrategyView } from "@/components/tt/roadmap/strategy-view";
+import { StudioView } from "@/components/tt/roadmap/studio-view";
 import { TierChip } from "@/components/tt/roadmap/tier";
+import { WalkthroughView } from "@/components/tt/roadmap/walkthrough-view";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { roadmapService, type RoadmapContext } from "@/data/supabase/roadmap-service";
+import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-service";
+import { composeFull, composePreview } from "@/data/roadmap-studio";
+import {
+  normalizeMilestones,
+  normalizeResearch,
+  normalizeStrategy,
+} from "@/data/roadmap-research-parse";
+import type {
+  ApprovalState,
+  MilestoneStatus,
+  RoadmapMilestone,
+  WalkthroughEntryKind,
+} from "@/domain/roadmap-intel";
+import { supabase } from "@/integrations/trust-tai/supabase";
 import type {
   DecisionState,
   RoadmapDecision,
@@ -53,16 +79,20 @@ export const Route = createFileRoute("/modules/roadmap/$roadmapId")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>): { view: RoadmapView } => ({
+    view: isRoadmapView(search["view"]) ? search["view"] : "overview",
+  }),
   component: RoadmapDetailRoute,
 });
 
 function RoadmapDetailRoute() {
   const { roadmapId } = Route.useParams();
+  const { view } = Route.useSearch();
   return (
     <WorkspaceGate>
       {(identity) => (
         <AppShell identity={identity}>
-          <RoadmapWorkspace identity={identity} roadmapId={roadmapId} />
+          <RoadmapWorkspace identity={identity} roadmapId={roadmapId} view={view} />
         </AppShell>
       )}
     </WorkspaceGate>
@@ -72,9 +102,11 @@ function RoadmapDetailRoute() {
 function RoadmapWorkspace({
   identity,
   roadmapId,
+  view,
 }: {
   identity: WorkspaceIdentity;
   roadmapId: string;
+  view: RoadmapView;
 }) {
   const queryClient = useQueryClient();
   const context: RoadmapContext = {
