@@ -23,10 +23,13 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
 
   constructor(
     private readonly rows: FakeRow[],
-    private readonly mode: "select" | "insert" | "update" | "delete",
+    private readonly mode: "select" | "insert" | "update" | "delete" | "upsert",
     private readonly body?: FakeRow | FakeRow[],
     private readonly onWrite?: (row: FakeRow) => void,
+    /** Columns that make an upsert idempotent, as PostgREST's on_conflict does. */
+    private readonly conflict: string[] = [],
   ) {}
+
 
   eq(column: string, value: unknown): Query {
     this.filters.push({ column, value });
