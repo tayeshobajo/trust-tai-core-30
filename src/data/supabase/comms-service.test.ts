@@ -86,7 +86,7 @@ function handoffDraft(overrides: Partial<HandoffDraft> = {}): HandoffDraft {
       },
     ],
     confidence: {
-      level: "medium",
+      level: "moderate",
       because: "Two read signals.",
       evidence: [{ label: "northbeam.example/book", kind: "page" }],
     } as HandoffDraft["confidence"],
