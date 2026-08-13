@@ -480,6 +480,9 @@ export const roadmapIntel = {
       );
     }
 
+    // Snapshot what is about to be replaced before the live row changes.
+    if (current) await snapshot(context, current);
+
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("roadmap_artifacts")
@@ -496,6 +499,7 @@ export const roadmapIntel = {
           model: options?.model ?? null,
           rejected: options?.rejected ?? [],
           human_edited: false,
+          version: (current?.version ?? 0) + 1,
           edited_at: null,
           edited_by: null,
           generated_at: now,
@@ -525,6 +529,7 @@ export const roadmapIntel = {
     sections: ArtifactSection[],
     title?: string,
   ): Promise<RoadmapArtifact> {
+    await snapshot(context, artifact);
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("roadmap_artifacts")
@@ -532,6 +537,7 @@ export const roadmapIntel = {
         sections,
         ...(title ? { title } : {}),
         human_edited: true,
+        version: artifact.version + 1,
         edited_at: now,
         edited_by: context.userId,
         updated_at: now,
@@ -551,6 +557,26 @@ export const roadmapIntel = {
     return toArtifact(data as Row);
   },
 
+  /** Every version this document has had, newest first. */
+  async listArtifactVersions(artifactId: ID): Promise<ArtifactVersion[]> {
+    const { data, error } = await supabase
+      .from("roadmap_artifact_versions")
+      .select("id, artifact_id, kind, version, title, provider, model, human_edited, replaced_at")
+      .eq("artifact_id", artifactId)
+      .order("version", { ascending: false });
+    assertOk(error);
+    return ((data ?? []) as Row[]).map((row) => ({
+      id: String(row["id"]),
+      artifactId: String(row["artifact_id"]),
+      kind: row["kind"] === "full" ? "full" : "preview",
+      version: typeof row["version"] === "number" ? row["version"] : 1,
+      title: String(row["title"] ?? ""),
+      provider: row["provider"] ? String(row["provider"]) : undefined,
+      model: row["model"] ? String(row["model"]) : undefined,
+      humanEdited: row["human_edited"] === true,
+      replacedAt: String(row["replaced_at"] ?? new Date().toISOString()),
+    }));
+  },
 
   /* ------------------------------------------------------ walkthrough */
 
