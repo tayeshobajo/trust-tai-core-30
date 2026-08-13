@@ -37,7 +37,13 @@ export function ProspectWorkspace({
   activeIcpVersion,
   backSearch,
   events = [],
-  contactCount = 0,
+  people = [],
+  providers = [],
+  availableProviders = [],
+  peopleNote,
+  onIngest,
+  onAddManual,
+  onConfirmEmail,
   onQualify,
   onPass,
   onResearch,
@@ -49,8 +55,15 @@ export function ProspectWorkspace({
   backSearch: { section: "scout" | "qualified" | "research"; fit: "all" | FitLight };
   /** Recorded events for this prospect, newest first. */
   events?: ActivityEvent[];
-  /** Known people on record for this company. */
-  contactCount?: number;
+  /** People on record for this company. */
+  people?: Person[];
+  /** Approved people sources, and which of them can run right now. */
+  providers?: PeopleProviderInfo[];
+  availableProviders?: string[];
+  peopleNote?: string | undefined;
+  onIngest: (providerId: string) => void;
+  onAddManual: (form: ManualPersonForm) => void;
+  onConfirmEmail: (person: Person) => void;
   onQualify: (id: string) => void;
   onPass: (id: string) => void;
   onResearch: (websiteUrl: string) => void;
@@ -58,6 +71,8 @@ export function ProspectWorkspace({
   busy?: boolean | undefined;
 }) {
   const { prospect, evaluation } = candidate;
+  const contactCount = people.length;
+
 
   const composition = useMemo(
     () =>
