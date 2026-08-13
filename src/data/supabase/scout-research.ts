@@ -13,7 +13,7 @@
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ID } from "@/domain/entities";
 import type { CandidateSource, ProspectCandidate, ScoutSignal } from "@/domain/scout";
-import { evaluateScoutFit, storedEvaluation } from "@/data/scout-fit-evaluator";
+import { evaluateScoutFit, storedEvaluation, withOverride } from "@/data/scout-fit-evaluator";
 import type { ProspectRow, Row } from "./schema";
 import { toProspect } from "./prospects";
 
@@ -232,7 +232,7 @@ export function candidateFromResearchRow(
         "Review the observed pages and decide whether to qualify.",
     },
     source: liveSource(pages.length, pages, researchedAt),
-    evaluation:
+    evaluation: withOverride(
       storedEvaluation(row.metadata) ??
       evaluateScoutFit({
         observed,
@@ -246,6 +246,8 @@ export function candidateFromResearchRow(
             : null),
         at: researchedAt,
       }),
+      row.metadata,
+    ),
     lastCheckedAt: researchedAt,
   };
 }

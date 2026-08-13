@@ -213,3 +213,34 @@ export async function saveResearchProspect(input: ResearchProspectInput): Promis
 }
 
 export { normalizeWebsiteUrl };
+
+/** Manually set the ICP fit light for a prospect. `null` clears the override. */
+export async function setProspectFitOverride(
+  id: ID,
+  light: "green" | "yellow" | "red" | "neutral" | null,
+  userId: ID,
+): Promise<ProspectRow> {
+  const { data: current, error: readError } = await supabase
+    .from("prospects")
+    .select("metadata")
+    .eq("id", id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+
+  const metadata = { ...(((current?.metadata ?? {}) as Row) ?? {}) };
+  if (light) {
+    metadata["scout_fit_override"] = { light, by: userId, at: new Date().toISOString() };
+  } else {
+    delete metadata["scout_fit_override"];
+  }
+
+  const { data, error } = await supabase
+    .from("prospects")
+    .update({ metadata })
+    .eq("id", id)
+    .select(SELECT_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("The fit override could not be saved.");
+  return data as unknown as ProspectRow;
+}

@@ -396,3 +396,37 @@ export function storedEvaluation(metadata: unknown): ScoutFitEvaluation | null {
   if (typeof candidate.score !== "number" || !Array.isArray(candidate.criteria)) return null;
   return candidate as ScoutFitEvaluation;
 }
+
+export interface FitOverride {
+  light: FitLight;
+  by: string | null;
+  at: string;
+}
+
+/** A manual fit override always wins over the evaluator. */
+export function fitOverride(metadata: unknown): FitOverride | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const stored = (metadata as Row)["scout_fit_override"];
+  if (!stored || typeof stored !== "object") return null;
+  const light = str((stored as Row)["light"]) as FitLight;
+  if (!["green", "yellow", "red", "neutral"].includes(light)) return null;
+  return {
+    light,
+    by: str((stored as Row)["by"]) || null,
+    at: str((stored as Row)["at"]) || "",
+  };
+}
+
+/** Apply a stored manual override to an evaluation, keeping the score honest. */
+export function withOverride(
+  evaluation: ScoutFitEvaluation,
+  metadata: unknown,
+): ScoutFitEvaluation {
+  const override = fitOverride(metadata);
+  if (!override || override.light === evaluation.light) return evaluation;
+  return {
+    ...evaluation,
+    light: override.light,
+    explanation: `Fit set manually by a Trust Tai member. The evaluator read this as ${evaluation.light}: ${evaluation.explanation}`,
+  };
+}
