@@ -230,7 +230,7 @@ log("artifact saved", `${artifact.id} v${artifact.version} humanEdited=${artifac
 /* --------------------------------------- human edit + protection + versions */
 
 const edited: ArtifactSection[] = artifact.sections.map((section, index) =>
-  index === 0 ? { ...section, lines: [...section.lines, "Reviewed and signed off by Tai."] } : section,
+  index === 0 ? { ...section, body: [...section.body, "Reviewed and signed off by Tai."] } : section,
 );
 artifact = await roadmapIntel.editArtifact(context, artifact, edited);
 log("hand edited", `v${artifact.version} humanEdited=${artifact.humanEdited}`);
@@ -276,7 +276,7 @@ for (const question of [
     context: { research: stored.research, strategy: stored.strategy, milestones: stored.milestones },
     research: false,
   });
-  const saved = await roadmapIntel.saveAnswer(context, roadmapId, question, answer);
+  const saved = await roadmapIntel.saveAnswer(context, roadmapId, { ...answer, question });
   console.log(`\nQ: ${question}`);
   console.log(JSON.stringify({ ...answer, savedId: saved.id }, null, 2));
 }
