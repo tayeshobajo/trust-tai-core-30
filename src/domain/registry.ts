@@ -111,7 +111,7 @@ export const APP_REGISTRY: AppRegistration[] = [
     name: "Pulse",
     slug: "pulse",
     description: "Signals and outcomes across the portfolio.",
-    status: "mapped",
+    status: "in_build",
     route: "/modules/pulse",
     icon: "Activity",
     capabilities: ["analytics", "intelligence"],
