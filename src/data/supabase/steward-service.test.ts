@@ -66,7 +66,7 @@ describe("fails closed when nobody is signed in", () => {
     const result = readRehearsal();
     expect(result.conversation.rehearsal).toBe(true);
     expect(result.proposals.length).toBeGreaterThan(0);
-    expect(db.tables["steward_conversations"] ?? []).toHaveLength(0);
+    expect(db.tables["conversations"] ?? []).toHaveLength(0);
   });
 });
 
@@ -89,7 +89,7 @@ describe("another organization's stewardship is invisible", () => {
   });
 
   it("keeps the two organizations' rows separate on disk", () => {
-    const rows = db.tables["steward_commitments"] ?? [];
+    const rows = db.tables["commitments"] ?? [];
     expect(rows).toHaveLength(2);
     expect(new Set(rows.map((row) => row["organization_id"]))).toEqual(new Set([ORG_A, ORG_B]));
   });

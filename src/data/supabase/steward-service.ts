@@ -142,7 +142,7 @@ function toBelief(row: Row): Belief {
 export const stewardService = {
   /** Whether Steward's own tables exist in this workspace. */
   async provisioned(): Promise<boolean> {
-    const { error } = await supabase.from("steward_commitments").select("id").limit(1);
+    const { error } = await supabase.from("commitments").select("id").limit(1);
     if (!error) return true;
     if (NOT_PROVISIONED.test(`${error.code} ${error.message}`)) return false;
     return true;
@@ -150,7 +150,7 @@ export const stewardService = {
 
   async conversations(organizationId: ID, limit = 40): Promise<StoredConversation[]> {
     const { data, error } = await supabase
-      .from("steward_conversations")
+      .from("conversations")
       .select("*")
       .eq("organization_id", organizationId)
       .order("occurred_at", { ascending: false })
@@ -161,7 +161,7 @@ export const stewardService = {
 
   async conversation(id: ID): Promise<StoredConversation | null> {
     const { data, error } = await supabase
-      .from("steward_conversations")
+      .from("conversations")
       .select("*")
       .eq("id", id)
       .maybeSingle();
@@ -196,7 +196,7 @@ export const stewardService = {
       ["organization_id", "source_provider", "source_external_id", "title", "occurred_at"],
       async (body) =>
         await supabase
-          .from("steward_conversations")
+          .from("conversations")
           .upsert(body, { onConflict: "organization_id,source_provider,source_external_id" })
           .select("*")
           .single(),
@@ -207,7 +207,7 @@ export const stewardService = {
 
   async commitments(organizationId: ID): Promise<Commitment[]> {
     const { data, error } = await supabase
-      .from("steward_commitments")
+      .from("commitments")
       .select("*")
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
@@ -253,7 +253,7 @@ export const stewardService = {
       ["organization_id", "conversation_id", "source_key", "statement", "owner_name", "status"],
       async (body) =>
         await supabase
-          .from("steward_commitments")
+          .from("commitments")
           .upsert(body, { onConflict: "organization_id,source_key" })
           .select("*")
           .single(),
@@ -264,7 +264,7 @@ export const stewardService = {
 
   async setStatus(id: ID, status: CommitmentStatus): Promise<Commitment | null> {
     const { data, error } = await supabase
-      .from("steward_commitments")
+      .from("commitments")
       .update({ status, updated_at: new Date().toISOString() })
       .eq("id", id)
       .select("*")
@@ -275,7 +275,7 @@ export const stewardService = {
 
   async setDue(id: ID, dueAt: string | null): Promise<Commitment | null> {
     const { data, error } = await supabase
-      .from("steward_commitments")
+      .from("commitments")
       .update({ due_at: dueAt, updated_at: new Date().toISOString() })
       .eq("id", id)
       .select("*")
