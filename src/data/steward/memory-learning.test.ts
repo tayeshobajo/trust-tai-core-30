@@ -174,7 +174,10 @@ describe("repeated evidence", () => {
       }),
     ).flat();
     const first = accumulatePatterns({ observations, existing: [] });
-    const held = [belief({ meta: { ...belief().meta, patternKey: first[0]!.meta.patternKey } })];
+    const held = [
+      belief({ meta: { ...belief().meta, patternKey: first[0]!.meta.patternKey ?? "" } }),
+    ];
+
     expect(accumulatePatterns({ observations, existing: held })).toEqual([]);
   });
 });
