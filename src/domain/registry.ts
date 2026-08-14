@@ -81,7 +81,7 @@ export const APP_REGISTRY: AppRegistration[] = [
     name: "Projects",
     slug: "projects",
     description: "Delivery, ownership, and milestone truth.",
-    status: "mapped",
+    status: "in_build",
     route: "/modules/projects",
     icon: "SquareStack",
     capabilities: ["projects", "tasks"],

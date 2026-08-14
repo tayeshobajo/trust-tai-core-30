@@ -10,6 +10,7 @@
  */
 
 import { commsService } from "@/data/supabase/comms-service";
+import { projectsService } from "@/data/supabase/projects-service";
 import { roadmapService } from "@/data/supabase/roadmap-service";
 import { scoutService } from "@/data/supabase/scout-service";
 import { supabaseActivity } from "@/data/supabase/activities";
@@ -40,16 +41,17 @@ async function safe<T>(
 /** Assemble everything the current organization can legitimately read. */
 export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapshot> {
   const base = emptySnapshot(organizationId);
-  const [candidates, relationships, roadmaps, decisions, events] = await Promise.all([
+  const [candidates, relationships, roadmaps, decisions, projects, events] = await Promise.all([
     safe("scout", base.candidates, () => scoutService.list(organizationId)),
     safe("comms", base.relationships, () => commsService.list(organizationId)),
     safe("roadmap", base.roadmaps, () => roadmapService.list(organizationId)),
     safe("roadmap", base.openDecisions, () => roadmapService.openDecisions(organizationId)),
+    safe("projects", base.projects, () => projectsService.list(organizationId)),
     safe("activity", base.events, () => supabaseActivity.list({ organizationId, limit: 40 })),
   ]);
 
   const withheld: WithheldSource[] = [];
-  for (const part of [candidates, relationships, roadmaps, decisions, events]) {
+  for (const part of [candidates, relationships, roadmaps, decisions, projects, events]) {
     if (part.withheld && !withheld.some((w) => w.appId === part.withheld?.appId)) {
       withheld.push(part.withheld);
     }
@@ -61,6 +63,7 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     relationships: relationships.value,
     roadmaps: roadmaps.value,
     openDecisions: decisions.value,
+    projects: projects.value,
     events: events.value,
     withheld,
   };

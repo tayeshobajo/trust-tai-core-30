@@ -6,13 +6,22 @@
  * honest readiness read. Nothing proposed can slip in.
  */
 
+import type { ReactNode } from "react";
+
 import { EvidenceList, TierChip } from "@/components/tt/roadmap/tier";
 import { EmptyState, MetaPill, SectionHeading } from "@/components/tt/primitives";
 import { buildOrder, readiness } from "@/data/roadmap-milestones";
 import type { RoadmapMilestone } from "@/domain/roadmap-intel";
 import { UNKNOWN } from "@/domain/roadmap-intel";
 
-export function BuildOrderView({ milestones }: { milestones: RoadmapMilestone[] }) {
+export function BuildOrderView({
+  milestones,
+  action,
+}: {
+  milestones: RoadmapMilestone[];
+  /** Rendered under each approved milestone, e.g. the Projects handoff. */
+  action?: (milestone: RoadmapMilestone) => ReactNode;
+}) {
   const ordered = buildOrder(milestones);
 
   if (ordered.length === 0) {
@@ -67,6 +76,7 @@ export function BuildOrderView({ milestones }: { milestones: RoadmapMilestone[] 
                   kind: "page" as const,
                 }))}
               />
+              {action ? action(milestone) : null}
             </li>
           );
         })}

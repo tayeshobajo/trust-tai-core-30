@@ -27,6 +27,7 @@ import {
 } from "@/components/tt/roadmap/roadmap-spine";
 import { AskPanel } from "@/components/tt/roadmap/ask-panel";
 import { BuildOrderView } from "@/components/tt/roadmap/build-order-view";
+import { StartInProjects } from "@/components/tt/projects/start-in-projects";
 import { MilestonesView } from "@/components/tt/roadmap/milestones-view";
 import { ResearchView } from "@/components/tt/roadmap/research-view";
 import {
@@ -677,7 +678,22 @@ function RoadmapWorkspace({
         />
       ) : null}
 
-      {view === "build" ? <BuildOrderView milestones={intel?.milestones ?? []} /> : null}
+      {view === "build" ? (
+        <BuildOrderView
+          milestones={intel?.milestones ?? []}
+          action={(milestone) => (
+            <StartInProjects
+              milestone={milestone}
+              subjectLabel={roadmap.subjectLabel}
+              context={{
+                organizationId: identity.organizationId,
+                userId: identity.userId,
+                userLabel: identity.name,
+              }}
+            />
+          )}
+        />
+      ) : null}
 
       {view !== "overview" ? null : (
       <>

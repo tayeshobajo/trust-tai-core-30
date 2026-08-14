@@ -12,6 +12,8 @@ import type { EvidenceRef } from "@/domain/confidence";
 import type { ActivityEvent } from "@/domain/activity";
 import type { EntityRef, ID } from "@/domain/entities";
 import type { Roadmap, RoadmapDecision } from "@/domain/roadmap";
+import type { ExecutionProject } from "@/domain/projects";
+import { isOpenProject, projectHealth, recommendedMove } from "@/domain/projects";
 import type { ProspectCandidate } from "@/domain/scout";
 import type {
   AskAnswer,
@@ -32,6 +34,7 @@ export interface SuiteSnapshot {
   relationships: Relationship[];
   roadmaps: Roadmap[];
   openDecisions: RoadmapDecision[];
+  projects: ExecutionProject[];
   events: ActivityEvent[];
   withheld: WithheldSource[];
 }
@@ -44,6 +47,7 @@ export function emptySnapshot(organizationId: ID, now = new Date().toISOString()
     relationships: [],
     roadmaps: [],
     openDecisions: [],
+    projects: [],
     events: [],
     withheld: [],
   };
@@ -211,6 +215,36 @@ export function contextBlocks(snapshot: SuiteSnapshot): ContextBlock[] {
     }
   }
 
+  for (const project of snapshot.projects) {
+    const entity: EntityRef = { type: "project", id: project.id, label: project.name };
+    const health = projectHealth(project, new Date(now));
+    blocks.push(
+      block({
+        now,
+        id: `projects:state:${project.id}`,
+        appId: "projects",
+        entity,
+        fact: `${project.name} is ${project.state.replace(/_/g, " ")} in Projects, carried by ${project.ownerLabel ?? "no one yet"}.`,
+        tier: "decided",
+        evidence: [human("Projects delivery record")],
+        at: project.updatedAt,
+      }),
+    );
+    blocks.push(
+      block({
+        now,
+        id: `projects:health:${project.id}`,
+        appId: "projects",
+        entity,
+        fact: `Delivery health reads ${health.level.replace(/_/g, " ")}. ${health.because}`,
+        tier: "inferred",
+        evidence: [computed("Derived from the Projects record")],
+        at: project.lastMovedAt,
+        confidence: project.nextMove ? "moderate" : "low",
+      }),
+    );
+  }
+
   for (const decision of snapshot.openDecisions) {
     blocks.push(
       block({
@@ -244,7 +278,7 @@ export function bundleFor(
   const subject = options.subject;
   const blocks = subject ? all.filter((b) => matches(b.entity, subject, subject.label ?? "")) : all;
   const contributing = [...new Set(blocks.map((b) => b.appId))] as ContextSourceApp[];
-  const emptyRooms: WithheldSource[] = (["scout", "comms", "roadmap"] as ContextSourceApp[])
+  const emptyRooms: WithheldSource[] = (["scout", "comms", "roadmap", "projects"] as ContextSourceApp[])
     .filter((app) => !contributing.includes(app))
     .filter((app) => !snapshot.withheld.some((w) => w.appId === app))
     .map((appId) => ({ appId, reason: "no_data" as const }));
@@ -432,6 +466,38 @@ export function deriveSignals(snapshot: SuiteSnapshot): Signal[] {
     });
   }
 
+  /* Delivery: work that is blocked, stalled, or missing what it needs. */
+  for (const project of snapshot.projects) {
+    if (!isOpenProject(project)) continue;
+    const health = projectHealth(project, nowDate);
+    if (health.level === "on_track") continue;
+    const ref = `projects:state:${project.id}`;
+    if (!byId.has(ref)) continue;
+    const move = recommendedMove(project, nowDate);
+    signals.push({
+      id: signalId(["projects", "health", project.id]),
+      category: "delivery",
+      title:
+        health.level === "at_risk"
+          ? `${project.name} is at risk`
+          : `${project.name} cannot move yet`,
+      why: health.because,
+      subject: { type: "project", id: project.id, label: project.name },
+      evidence: [human("Projects delivery record")],
+      contextRefs: [ref, `projects:health:${project.id}`].filter((id) => byId.has(id)),
+      confidence: "high",
+      recommendedNextMove: move.move,
+      destination: {
+        appId: "projects",
+        label: "Open in Projects",
+        route: `/modules/projects/${project.id}`,
+      },
+      status: "new",
+      urgency: health.level === "at_risk" ? 88 : 60,
+      at: project.lastMovedAt,
+    });
+  }
+
   /* Pattern: only claimed when the count itself is the evidence. */
   const lateRefs = signals
     .filter((signal) => signal.category === "relationship" && signal.urgency >= 90)
@@ -488,6 +554,11 @@ export function subjectFromQuestion(
         id: candidate.prospect.id,
         label: candidate.prospect.name,
       };
+    }
+  }
+  for (const project of snapshot.projects) {
+    if (project.name && text.includes(project.name.toLowerCase())) {
+      return { type: "project", id: project.id, label: project.name };
     }
   }
   for (const relationship of snapshot.relationships) {
