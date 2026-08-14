@@ -14,7 +14,7 @@ import type { ConfidenceLevel, EvidenceRef } from "./confidence";
 import type { EntityRef, ID, ISODateTime } from "./entities";
 
 /** Which room a fact came from. */
-export type ContextSourceApp = "scout" | "comms" | "roadmap" | "projects" | "studio";
+export type ContextSourceApp = "scout" | "comms" | "roadmap" | "projects" | "studio" | "ops";
 
 /** Observed = read. Inferred = worked out. Decided = a person committed to it. */
 export type TruthTier = "observed" | "inferred" | "decided";
