@@ -8,6 +8,11 @@
  *
  * Re-reading the same conversation produces the same ids, so confirming twice
  * can never create the promise twice.
+ *
+ * Restraint is the point. A real meeting is mostly conversation: greetings,
+ * audio checks, coaching, rhetoric. Steward shows a person only the lines that
+ * carry work. Ability ("I can hear you") and self-description ("I try to
+ * manage my time") are never commitments.
  */
 
 import type { EvidenceRef } from "@/domain/confidence";
@@ -18,7 +23,7 @@ import type {
   TranscriptSegment,
 } from "@/domain/steward";
 
-export const EXTRACTOR_VERSION = "steward-extract-1";
+export const EXTRACTOR_VERSION = "steward-extract-2";
 
 /** Small stable hash. Same text in, same id out, on server and browser. */
 export function stableKey(...parts: string[]): string {
@@ -37,38 +42,233 @@ export function sourceKeyOf(conversation: NormalizedConversation, statement: str
   return `${ref.provider}:${source}:${stableKey(statement)}`;
 }
 
-const FIRST_PERSON = /\b(i['’]?ll|i will|i'?m going to|i am going to|i can|we['’]?ll|we will)\b/i;
-const REQUEST = /\b(can you|could you|would you|please)\b/i;
-const DECISION = /\b(we (decided|agreed)|let['’]?s go with|the decision is|we are going with|we['’]?re going with|agreed[,:])\b/i;
-const FOLLOW_UP = /\b(send|share|email|write up|follow up|circle back|forward)\b/i;
-const BLOCKER = /\b(blocked|blocker|waiting on|stuck on|can['’]?t (proceed|move|start)|held up|dependency on)\b/i;
-const QUESTION = /\b(not sure|unclear|need to (check|confirm)|who owns|open question|we should decide|tbd)\b/i;
+/* --------------------------------------------------------- thought windows */
+
+/**
+ * One speaker's continuous thought, stitched from adjacent segments when a
+ * segment clearly stops mid-sentence. Never crosses a speaker boundary and
+ * never bridges a long pause. The first segment keeps the timestamp and the
+ * whole span keeps its evidence.
+ */
+export interface ThoughtWindow {
+  speaker: string;
+  speakerEmail?: string;
+  at: string;
+  index: number;
+  text: string;
+  segments: TranscriptSegment[];
+}
+
+const MAX_GAP_SECONDS = 45;
+const MAX_WINDOW_SEGMENTS = 6;
+const MAX_WINDOW_CHARS = 700;
+
+function seconds(at: string): number {
+  const parts = at.split(":").map((part) => Number.parseInt(part, 10));
+  if (parts.some((part) => Number.isNaN(part))) return 0;
+  return parts.reduce((total, part) => total * 60 + part, 0);
+}
+
+/** True when the text stops mid-thought rather than at a sentence end. */
+function endsMidSentence(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+  if (/[.?!…]["')\]]?$/.test(trimmed)) return false;
+  return true;
+}
+
+export function stitchSegments(segments: TranscriptSegment[]): ThoughtWindow[] {
+  const windows: ThoughtWindow[] = [];
+  for (const segment of segments) {
+    const current = windows[windows.length - 1];
+    const joinable =
+      current !== undefined &&
+      current.speaker === segment.speaker &&
+      current.segments.length < MAX_WINDOW_SEGMENTS &&
+      current.text.length < MAX_WINDOW_CHARS &&
+      endsMidSentence(current.text) &&
+      seconds(segment.at) - seconds(current.segments[current.segments.length - 1]!.at) <=
+        MAX_GAP_SECONDS;
+
+    if (joinable && current) {
+      current.text = `${current.text.trim()} ${segment.text.trim()}`.trim();
+      current.segments.push(segment);
+      continue;
+    }
+
+    windows.push({
+      speaker: segment.speaker,
+      ...(segment.speakerEmail ? { speakerEmail: segment.speakerEmail } : {}),
+      at: segment.at,
+      index: segment.index,
+      text: segment.text.trim(),
+      segments: [segment],
+    });
+  }
+  return windows;
+}
+
+/* ------------------------------------------------------ owner reconciliation */
+
+function normalizeToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function participantTokens(name: string, email?: string): string[] {
+  const tokens = new Set<string>();
+  for (const part of name.split(/[\s._@-]+/)) {
+    const token = normalizeToken(part);
+    if (token.length >= 3) tokens.add(token);
+  }
+  const local = email?.split("@")[0];
+  if (local) {
+    for (const part of local.split(/[._\-+\d]+/)) {
+      const token = normalizeToken(part);
+      if (token.length >= 3) tokens.add(token);
+    }
+  }
+  return [...tokens];
+}
+
+/**
+ * Reconcile a spoken speaker label against the participant list, which may
+ * carry email addresses rather than display names. Fails closed: an ambiguous
+ * or unmatched label stays unresolved.
+ */
+export function resolveSpeaker(
+  speaker: string,
+  conversation: NormalizedConversation,
+): { name: string; resolved: boolean } {
+  const spoken = speaker
+    .split(/[\s._@-]+/)
+    .map(normalizeToken)
+    .filter((token) => token.length >= 3);
+  if (spoken.length === 0) return { name: speaker, resolved: false };
+
+  const matches = conversation.participants.filter((participant) => {
+    const local = normalizeToken(participant.email?.split("@")[0] ?? "");
+    const tokens = participantTokens(participant.name, participant.email);
+    /* Every spoken token lives inside the address, e.g. arthuremmanuel270. */
+    if (local && spoken.every((token) => local.includes(token))) return true;
+    /* Or a whole name token matches exactly, e.g. henry@trust-tai.com. */
+    return spoken.some((token) => tokens.includes(token));
+  });
+
+  return matches.length === 1
+    ? { name: speaker, resolved: true }
+    : { name: speaker, resolved: false };
+}
+
+/**
+ * A participant named inside the sentence. Third parties who merely appear in
+ * the words are never resolved into owners.
+ */
+function namedParticipant(
+  text: string,
+  conversation: NormalizedConversation,
+): { name: string; resolved: boolean } | null {
+  const found = conversation.participants.filter((participant) =>
+    participantTokens(participant.name, participant.email).some((token) =>
+      new RegExp(`\\b${token}\\b`, "i").test(text),
+    ),
+  );
+  if (found.length !== 1) return null;
+  const participant = found[0]!;
+  return { name: participant.name, resolved: true };
+}
+
+/* ------------------------------------------------------------ language cues */
+
+/** Verbs that move work. Ability and state verbs are deliberately absent. */
+const ACTION_VERB =
+  /\b(send|sends|sending|share|shares|sharing|email|emails|forward|write|writing|write up|draft|drafting|prepare|preparing|populate|populated|document|documenting|schedule|scheduling|book|booking|set up|create|creating|build|building|add|adding|update|updating|review|reviewing|check|checking|confirm|confirming|follow up|circle back|present|presenting|deliver|delivering|ship|fix|fixing|call|calling|reach out|put together|pull together|log|logging|submit|sign|pay|hire|plan|planning|define|map|block|record|publish|test|deploy|migrate|arrange|organise|organize|invite|assign|finalise|finalize|chase|escalate|onboard|hand over|handover|raise)\b/i;
+
+/** Sharing-shaped work belongs in follow ups. */
+const SHARE_VERB =
+  /\b(send|share|email|forward|write up|follow up|circle back|present|document|report back|hand over|handover|invite|schedule|book)\b/i;
+
+/** A promise about the future, in the speaker's own words. */
+const PROMISE =
+  /\b(i['’]?ll|i will|we['’]?ll|we will|i['’]?m going to|i am going to|we['’]?re going to|we are going to|i want us to|i need to|we need to|i plan to|we plan to|let me)\b/i;
+
+/** Work handed to someone else. */
+const REQUEST = /\b(can you|could you|would you|please|i need you to|i'd like you to)\b/i;
+
+const DECISION =
+  /\b(we (decided|agreed|have agreed)|let['’]?s go with|the decision is|we are going with|we['’]?re going with|decision:|agreed[,:])\b/i;
+
+const HEDGE = /\b(maybe|perhaps|possibly|might|thereabout|i think we (could|might)|not sure)\b/i;
+
+const BLOCKER =
+  /\b(blocked|blocker|waiting on|waiting for|stuck on|can['’]?t (proceed|move|start)|held up|dependency on|depends on)\b/i;
+
+/** "once X, then Y" — a real dependency, not ordinary sequencing. */
+const CONDITIONAL =
+  /\b(once|as soon as|after|until|when)\b[^.?!]{0,120}?\b(then|i['’]?ll|we['’]?ll|i will|we will|you can|we can|i can)\b/i;
+
+/** Questions that leave work unresolved. */
+const OPEN_QUESTION =
+  /\b(who (owns|will own|is going to|should)|who['’]?s (going to|responsible)|what is the next step|what['’]?s the next step|when (will|do|are) (we|you)|do we need|should we|need to (check|confirm|decide)|open question|unclear|to be decided|tbd|not sure (who|when|what|how) )\b/i;
+
+/** Conversation, not work. Audio checks, coaching, rhetoric, hypotheticals. */
+const RHETORICAL =
+  /(can you hear|do you hear|are you there|you know\?|right\?|okay\?|make sense\?|is that (ok|fine|clear)|do you mind|what if|would you take|is it (a|an) |don['’]?t you|isn['’]?t it|am i (right|clear)|did you get what i said)/i;
+
 const TIMING =
   /\b(today|tomorrow|tonight|this (week|afternoon|morning)|next (week|month)|by (monday|tuesday|wednesday|thursday|friday|saturday|sunday|end of (day|week|month)|the \d{1,2}(st|nd|rd|th)?)|end of (day|week|month)|on (monday|tuesday|wednesday|thursday|friday))\b/i;
-
-/** A name that actually appears in the participant list. Never a new person. */
-function namedParticipant(text: string, conversation: NormalizedConversation): string | null {
-  for (const participant of conversation.participants) {
-    const first = participant.name.trim().split(/\s+/)[0];
-    if (!first || first.length < 3) continue;
-    const pattern = new RegExp(`\\b${first.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-    if (pattern.test(text)) return participant.name;
-  }
-  return null;
-}
 
 function timingOf(text: string): string | null {
   const match = text.match(TIMING);
   return match ? match[0] : null;
 }
 
-function classify(text: string): ProposalKind | null {
-  if (BLOCKER.test(text)) return "blocker";
-  if (DECISION.test(text)) return "decision";
-  if (FIRST_PERSON.test(text) || REQUEST.test(text)) {
-    return FOLLOW_UP.test(text) ? "follow_up" : "action";
+/**
+ * The clause a promise or request introduces. Commitment lives there, so this
+ * is where an actionable verb has to appear — not anywhere in the sentence.
+ */
+function commitmentClause(text: string, marker: RegExp): string | null {
+  const match = text.match(marker);
+  if (!match || match.index === undefined) return null;
+  return text.slice(match.index + match[0].length, match.index + match[0].length + 160);
+}
+
+/** An actionable verb plus something to act on. */
+function isActionable(clause: string | null): boolean {
+  if (!clause) return false;
+  const verb = clause.match(ACTION_VERB);
+  if (!verb || verb.index === undefined) return false;
+  const object = clause.slice(verb.index + verb[0].length).trim();
+  return object.split(/\s+/).filter(Boolean).length >= 2;
+}
+
+interface Read {
+  kind: ProposalKind;
+  /** Owner came from the speaker's own promise rather than a named request. */
+  firstPerson: boolean;
+}
+
+function classify(text: string): Read | null {
+  /* A dependency is only a dependency when something waits on something. */
+  if (BLOCKER.test(text)) return { kind: "blocker", firstPerson: false };
+  if (CONDITIONAL.test(text) && ACTION_VERB.test(text)) {
+    return { kind: "blocker", firstPerson: false };
   }
-  if (QUESTION.test(text) || /\?\s*$/.test(text)) return "question";
+
+  if (DECISION.test(text) && !HEDGE.test(text)) return { kind: "decision", firstPerson: false };
+
+  const promised = isActionable(commitmentClause(text, PROMISE));
+  if (promised) {
+    return { kind: SHARE_VERB.test(text) ? "follow_up" : "action", firstPerson: true };
+  }
+
+  const requested = isActionable(commitmentClause(text, REQUEST));
+  if (requested && !RHETORICAL.test(text)) {
+    return { kind: SHARE_VERB.test(text) ? "follow_up" : "action", firstPerson: false };
+  }
+
+  if (OPEN_QUESTION.test(text) && !RHETORICAL.test(text)) {
+    return { kind: "question", firstPerson: false };
+  }
   return null;
 }
 
@@ -79,11 +279,13 @@ function trimStatement(text: string): string {
 
 function evidenceFor(
   conversation: NormalizedConversation,
-  segment: TranscriptSegment,
+  window: ThoughtWindow,
 ): EvidenceRef[] {
-  const label = `${conversation.title} · ${segment.speaker} at ${segment.at}`;
-  const url = segment.url ?? conversation.sourceRef.url;
-  return url ? [{ label, kind: "page", url }] : [{ label, kind: "page" }];
+  return window.segments.slice(0, 3).map((segment) => {
+    const label = `${conversation.title} · ${segment.speaker} at ${segment.at}`;
+    const url = segment.url ?? conversation.sourceRef.url;
+    return url ? { label, kind: "page" as const, url } : { label, kind: "page" as const };
+  });
 }
 
 /**
@@ -97,47 +299,45 @@ export function extractProposals(conversation: NormalizedConversation): Proposal
   const proposals: Proposal[] = [];
   const seen = new Set<string>();
 
-  for (const segment of conversation.segments) {
-    const text = segment.text.trim();
+  for (const window of stitchSegments(conversation.segments)) {
+    const text = window.text.trim();
     if (text.length < 12) continue;
-    const kind = classify(text);
-    if (!kind) continue;
+    const read = classify(text);
+    if (!read) continue;
 
     const statement = trimStatement(text);
     const key = sourceKeyOf(conversation, statement);
     if (seen.has(key)) continue;
     seen.add(key);
 
-    const firstPerson = FIRST_PERSON.test(text);
-    const requested = REQUEST.test(text);
-    const named = requested ? namedParticipant(text, conversation) : null;
-    const ownerName = firstPerson ? segment.speaker : named;
+    const speaker = resolveSpeaker(window.speaker, conversation);
+    const named = read.firstPerson ? null : namedParticipant(text, conversation);
+    const owner = read.firstPerson ? speaker : named;
     const dueText = timingOf(text);
 
-    const tier: Proposal["tier"] =
-      kind === "decision" || (!firstPerson && kind !== "blocker") ? "inferred" : "observed";
+    const tier: Proposal["tier"] = read.firstPerson ? "observed" : "inferred";
     const confidence: Proposal["confidence"] =
-      firstPerson && kind !== "decision"
+      read.firstPerson && owner?.resolved
         ? "high"
-        : named || kind === "blocker"
+        : owner?.resolved || read.kind === "blocker"
           ? "moderate"
           : "low";
 
     proposals.push({
       id: key,
-      kind,
+      kind: read.kind,
       statement,
       tier,
       confidence,
-      ownerName: ownerName ?? null,
-      ownerResolved: Boolean(ownerName),
+      ownerName: owner?.name ?? null,
+      ownerResolved: Boolean(owner?.resolved),
       dueText,
       dueResolved: false,
       beneficiary: null,
       quote: text,
-      at: segment.at,
-      segmentIndex: segment.index,
-      evidence: evidenceFor(conversation, segment),
+      at: window.at,
+      segmentIndex: window.index,
+      evidence: evidenceFor(conversation, window),
       status: "proposed",
     });
   }
@@ -155,7 +355,7 @@ export function extractProposals(conversation: NormalizedConversation): Proposal
       tier: "inferred",
       confidence: item.assigneeName ? "moderate" : "low",
       ownerName: item.assigneeName ?? null,
-      ownerResolved: Boolean(item.assigneeName),
+      ownerResolved: false,
       dueText: timingOf(statement),
       dueResolved: false,
       beneficiary: null,
