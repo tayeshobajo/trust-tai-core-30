@@ -33,7 +33,8 @@ function opsRow(
     payload: {
       source_app: "ops",
       canonical_project_id: "proj-1",
-      destination_url: `${OPS_ORIGIN}/projects/proj-1/runs/run-9`,
+      destination_route: `/projects/proj-1/runs/run-9`,
+      ops_run_id: "run-9",
       label: "northbeam.example",
       ...(overrides.metadata ?? {}),
     },
@@ -88,6 +89,24 @@ describe("Ops evidence", () => {
     expect(signal).toBeDefined();
     expect(signal!.contextRefs.length).toBeGreaterThan(0);
     expect(signal!.destination.route).toBe(`${OPS_ORIGIN}/projects/proj-1/runs/run-9`);
+  });
+
+  it("reads the real Ops payload keys for route, run and dedupe", () => {
+    const row = opsRow("ops.blocked", { metadata: { source_event_key: "evt-live-1" } });
+    const blocks = contextBlocks(snapshotWith([row])).filter((b) => b.appId === "ops");
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]!.evidence[0]?.url).toBe(`${OPS_ORIGIN}/projects/proj-1/runs/run-9`);
+  });
+
+  it("de-duplicates on provenance.dedupe_key for rows written before the column", () => {
+    const first = opsRow("ops.blocked");
+    const second = opsRow("ops.blocked", { at: "2026-08-13T09:00:07.000Z" });
+    for (const row of [first, second]) {
+      delete (row.payload as Record<string, unknown>)["source_event_key"];
+      (row.provenance as unknown as Record<string, unknown>)["dedupe_key"] = "legacy-key-1";
+    }
+    const snapshot = snapshotWith([first, second]);
+    expect(contextBlocks(snapshot).filter((b) => b.appId === "ops")).toHaveLength(1);
   });
 
   it("routes to Ops home when the row carries no destination", () => {

@@ -74,7 +74,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           title="Open Ops with this session"
           description={`Ops runs at ${OPS_ORIGIN}. Your session is handed over in memory once Ops answers, never in a link.`}
         />
-        <LaunchOpsButton />
+        <LaunchOpsButton organizationId={identity.organizationId} returnContext="ops-room" />
       </section>
 
       <section>

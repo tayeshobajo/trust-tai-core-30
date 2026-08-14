@@ -195,6 +195,8 @@ function ProjectWorkspace({
           <LaunchOpsButton
             variant="secondary"
             label="Open in Ops"
+            organizationId={identity.organizationId}
+            returnContext="project"
             canonicalProjectId={project.id}
           />
         </section>
