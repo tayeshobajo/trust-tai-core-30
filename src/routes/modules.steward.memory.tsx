@@ -485,8 +485,12 @@ function Memory({ identity }: { identity: WorkspaceIdentity }) {
                   blurb={group.blurb}
                   beliefs={group.beliefs}
                   defaultOpen={index === 0}
-                  busy={retire.isPending}
+                  busy={retire.isPending || remember.isPending}
                   onRetire={(belief, because) => retire.mutate({ belief, because })}
+                  onConfirm={(belief) => remember.mutate(endorseBeliefDraft(belief))}
+                  onEdit={(belief, statement) =>
+                    remember.mutate(editBeliefDraft(belief, statement))
+                  }
                 />
               ))}
             </div>
