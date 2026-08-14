@@ -278,7 +278,7 @@ export function bundleFor(
   const subject = options.subject;
   const blocks = subject ? all.filter((b) => matches(b.entity, subject, subject.label ?? "")) : all;
   const contributing = [...new Set(blocks.map((b) => b.appId))] as ContextSourceApp[];
-  const emptyRooms: WithheldSource[] = (["scout", "comms", "roadmap"] as ContextSourceApp[])
+  const emptyRooms: WithheldSource[] = (["scout", "comms", "roadmap", "projects"] as ContextSourceApp[])
     .filter((app) => !contributing.includes(app))
     .filter((app) => !snapshot.withheld.some((w) => w.appId === app))
     .map((appId) => ({ appId, reason: "no_data" as const }));
@@ -554,6 +554,11 @@ export function subjectFromQuestion(
         id: candidate.prospect.id,
         label: candidate.prospect.name,
       };
+    }
+  }
+  for (const project of snapshot.projects) {
+    if (project.name && text.includes(project.name.toLowerCase())) {
+      return { type: "project", id: project.id, label: project.name };
     }
   }
   for (const relationship of snapshot.relationships) {
