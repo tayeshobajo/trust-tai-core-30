@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
+import { Route as ModulesProjectsRouteImport } from './routes/modules.projects'
 import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
@@ -50,6 +51,11 @@ const ModulesSlugRoute = ModulesSlugRouteImport.update({
 const ModulesCommsRoute = ModulesCommsRouteImport.update({
   id: '/modules/comms',
   path: '/modules/comms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesProjectsRoute = ModulesProjectsRouteImport.update({
+  id: '/modules/projects',
+  path: '/modules/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesRoadmapRoute = ModulesRoadmapRouteImport.update({
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
+  '/modules/projects': typeof ModulesProjectsRoute
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
+  '/modules/projects': typeof ModulesProjectsRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
+  '/modules/projects': typeof ModulesProjectsRoute
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/modules/$slug'
     | '/modules/comms'
+    | '/modules/projects'
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/comms/integrations'
@@ -248,6 +258,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/modules/$slug'
+    | '/modules/projects'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/roadmap/$roadmapId'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/modules/$slug'
     | '/modules/comms'
+    | '/modules/projects'
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/comms/integrations'
@@ -295,6 +307,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
+  ModulesProjectsRoute: typeof ModulesProjectsRoute
   ModulesRoadmapRoute: typeof ModulesRoadmapRouteWithChildren
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
@@ -335,6 +348,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/comms'
       fullPath: '/modules/comms'
       preLoaderRoute: typeof ModulesCommsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/projects': {
+      id: '/modules/projects'
+      path: '/modules/projects'
+      fullPath: '/modules/projects'
+      preLoaderRoute: typeof ModulesProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/roadmap': {
@@ -517,6 +537,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesCommsRoute: ModulesCommsRouteWithChildren,
+  ModulesProjectsRoute: ModulesProjectsRoute,
   ModulesRoadmapRoute: ModulesRoadmapRouteWithChildren,
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
