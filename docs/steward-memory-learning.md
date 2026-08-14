@@ -109,3 +109,24 @@ plan update. Latest run:
 Unit coverage: `src/data/steward/memory-learning.test.ts` (18 tests) over
 corrections, thresholds, resolution precedence, continuity, bounded selection,
 conflict surfacing, the person-safety law, and payload hiding.
+
+## Feedback, conflict and audit
+
+Every reading now carries three explicit acts: **Confirm**, **Edit & confirm**
+(the label changes as soon as a field moves) and **Dismiss as context**. On the
+memory shelves the same three exist as **Confirm as true**, **Edit & confirm**
+and **This is no longer true**. Each writes an attributed, dated row to the
+append-only belief ledger with a `LearningOutcome`; nothing is deleted and
+nothing is scored. Two dismissals of the same pattern stop Steward raising that
+shape of reading.
+
+When memory disagrees with the transcript, the review shows both sentences side
+by side — who taught Steward the remembered side and when, against what was just
+heard — and asks a person which is true now. Steward never picks.
+
+Selection is relevance-first and hard-bounded (8 decided, 5 inferred): people in
+the room, people named or called by first name, projects actually discussed.
+Matching is forgiving about how people speak and strict about everything else —
+a loose match scores lower rather than passing free. The review's **Memory used**
+panel lists exactly which beliefs were handed to the model, out of how many held,
+each with the plain sentence explaining why it was chosen.
