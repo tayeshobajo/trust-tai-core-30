@@ -125,10 +125,8 @@ function StewardToday({ identity }: { identity: WorkspaceIdentity }) {
   const now = new Date().toISOString();
   const rows = commitments.data ?? [];
   const mine = buildToday({ commitments: rows, now, viewerKey: identity.email.toLowerCase() });
-  const mineOnly = mine.filter(
-    (move) => move.ownerName.toLowerCase() === identity.name.toLowerCase() || move.urgency >= 100,
-  );
-  const others = mine.filter((move) => !mineOnly.includes(move));
+  const mineOnly = mine.filter((move) => move.urgency >= 100);
+  const others = mine.filter((move) => move.urgency < 100);
 
   return (
     <div className="space-y-8">
