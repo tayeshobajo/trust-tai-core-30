@@ -471,15 +471,7 @@ export function resolveMemory(beliefs: MemoryBelief[]): MemoryBelief[] {
 /* ------------------------------------------------------- feedback, bounded */
 
 /** What a person did with a reading. Structured feedback, not a score. */
-export type LearningOutcome =
-  | "confirmed"
-  | "edited_then_confirmed"
-  | "dismissed_as_context"
-  | "marked_kept"
-  | "marked_waiting"
-  | "released"
-  | "belief_corrected"
-  | "belief_retired";
+export type { LearningOutcome };
 
 export interface OutcomeRecord {
   patternKey: string;
@@ -488,6 +480,7 @@ export interface OutcomeRecord {
 
 /** How many dismissals it takes before Steward stops raising a shape of reading. */
 export const DISMISSAL_SUPPRESSION_THRESHOLD = 2;
+
 
 /**
  * Patterns Steward should stop raising, because people keep saying they are
