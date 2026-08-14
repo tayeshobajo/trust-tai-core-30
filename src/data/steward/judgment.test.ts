@@ -179,7 +179,7 @@ describe("promise at risk", () => {
 
   it("vague timing never invents urgency", () => {
     const read = judge(
-      input({ commitments: [commitment({ dueText: "sometime soon", dueAt: undefined })] }),
+      input({ commitments: [commitment({ dueText: "sometime soon" })] }),
     );
     expect(read.items).toHaveLength(0);
     expect(read.headline).toBe("Nothing needs you right now.");
@@ -212,7 +212,7 @@ describe("suppression", () => {
         evidence: [],
         recordedBy: "henry@trusttai.com",
         recordedAt: "2026-05-19T09:00:00.000Z",
-        meta: { kind: "commitment_pattern", facet: "commitment", commitmentId: "c1", outcome: "marked_kept" },
+        meta: { kind: "correction", facet: "status", commitmentId: "c1", outcome: "marked_kept" },
       },
     ];
     expect(decidedClosures(memory).has("c1")).toBe(true);
