@@ -196,8 +196,8 @@ export const projectsService = {
       ...payloadFor(input, state, now),
     };
 
-    const { data, error } = await writeTolerant(payload, REQUIRED, (body) =>
-      supabase.from("projects").insert(body).select("*").single(),
+    const { data, error } = await writeTolerant(payload, REQUIRED, async (body) =>
+      await supabase.from("projects").insert(body).select("*").single(),
     );
     if (error || !data) throw new Error(error?.message ?? "That project could not be started.");
 
@@ -270,8 +270,8 @@ export const projectsService = {
     metadata["blocked_because"] =
       state === "blocked" ? (changes.blockedBecause ?? project.blockedBecause ?? null) : null;
 
-    const { data, error } = await writeTolerant({ ...body, updated_at: now }, REQUIRED, (payload) =>
-      supabase
+    const { data, error } = await writeTolerant({ ...body, updated_at: now }, REQUIRED, async (payload) =>
+      await supabase
         .from("projects")
         .update(payload)
         .eq("id", project.id)
