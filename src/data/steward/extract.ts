@@ -256,17 +256,18 @@ function classify(text: string): Read | null {
 
   if (DECISION.test(text) && !HEDGE.test(text)) return { kind: "decision", firstPerson: false };
 
+  const rhetorical = RHETORICAL.test(text);
   const promised = isActionable(commitmentClause(text, PROMISE));
-  if (promised) {
+  if (promised && !rhetorical) {
     return { kind: SHARE_VERB.test(text) ? "follow_up" : "action", firstPerson: true };
   }
 
   const requested = isActionable(commitmentClause(text, REQUEST));
-  if (requested && !RHETORICAL.test(text)) {
+  if (requested && !rhetorical) {
     return { kind: SHARE_VERB.test(text) ? "follow_up" : "action", firstPerson: false };
   }
 
-  if (OPEN_QUESTION.test(text) && !RHETORICAL.test(text)) {
+  if (OPEN_QUESTION.test(text) && !rhetorical) {
     return { kind: "question", firstPerson: false };
   }
   return null;
