@@ -145,6 +145,10 @@ export async function interpretConversation(input: {
     run: body["run"] as InterpretationRun,
     stateChanges: (body["stateChanges"] ?? []) as StateChangeProposal[],
     conflicts: (body["conflicts"] ?? []) as MemoryConflict[],
+    memoryUsed: (body["memoryUsed"] ?? []) as MemoryUsage[],
+    memoryConsidered: Number(body["memoryConsidered"] ?? 0),
+    suppressedCount: Number(body["suppressedCount"] ?? 0),
   };
+
 }
 
