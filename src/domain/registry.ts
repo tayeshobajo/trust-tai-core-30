@@ -28,8 +28,13 @@ export interface AppRegistration {
   slug: string;
   description: string;
   status: AppStatus;
-  /** Route inside this shell, or an absolute URL for external products. */
+  /** Route inside this shell. External apps still have a room here. */
   route: string;
+  /**
+   * Where the real product lives, for apps deployed outside this shell. The
+   * room stays in the shell; this is the door out of it.
+   */
+  launchUrl?: string;
   /** Lucide icon name, resolved by the navigation component. */
   icon: string;
   capabilities: CapabilityTag[];
@@ -90,9 +95,10 @@ export const APP_REGISTRY: AppRegistration[] = [
     id: "ops",
     name: "Ops",
     slug: "ops",
-    description: "Maintenance and site health. Lives in the existing Ops product.",
+    description: "Maintenance, technical stewardship and site health, in the standalone Ops app.",
     status: "external",
     route: "/modules/ops",
+    launchUrl: "https://ops.trusttai.com",
     icon: "ShieldCheck",
     capabilities: ["websites", "monitoring", "tasks"],
   },

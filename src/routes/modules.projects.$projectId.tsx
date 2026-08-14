@@ -19,9 +19,11 @@ import {
   TTButton,
   TTInput,
 } from "@/components/tt/primitives";
+import { LaunchOpsButton } from "@/components/tt/ops/launch-ops";
 import { StateTrack, daysAgo, movedPhrase } from "@/components/tt/projects/state-track";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
+import { isOpenProject } from "@/domain/projects";
 import {
   EXECUTION_STATES,
   EXECUTION_STATE_LABEL,
@@ -182,6 +184,21 @@ function ProjectWorkspace({
           </div>
         </dl>
       </section>
+
+      {isOpenProject(project) ? (
+        <section aria-label="Technical stewardship" className="tt-surface space-y-3 p-6">
+          <SectionHeading
+            eyebrow="Ops"
+            title="Take this into technical stewardship"
+            description="Ops runs the technical work for this project. Your Trust Tai session is handed over securely; this project's id travels with it."
+          />
+          <LaunchOpsButton
+            variant="secondary"
+            label="Open in Ops"
+            canonicalProjectId={project.id}
+          />
+        </section>
+      ) : null}
 
       <section className="tt-surface space-y-5 p-6">
         <SectionHeading eyebrow="The move" title={move.move} description={move.because} />

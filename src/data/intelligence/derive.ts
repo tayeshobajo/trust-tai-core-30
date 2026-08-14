@@ -15,6 +15,8 @@ import type { Roadmap, RoadmapDecision } from "@/domain/roadmap";
 import type { ExecutionProject } from "@/domain/projects";
 import { isOpenProject, projectHealth, recommendedMove } from "@/domain/projects";
 import type { ProspectCandidate } from "@/domain/scout";
+import { readOpsEvents } from "@/domain/ops";
+import { deriveOpsSignals, opsContextBlocks } from "./ops-signals";
 import type {
   AskAnswer,
   AskQuestionId,
@@ -36,6 +38,8 @@ export interface SuiteSnapshot {
   openDecisions: RoadmapDecision[];
   projects: ExecutionProject[];
   events: ActivityEvent[];
+  /** Rows written by the Ops specialist app into the shared activity table. */
+  opsActivities: ActivityEvent[];
   withheld: WithheldSource[];
 }
 
@@ -49,6 +53,7 @@ export function emptySnapshot(organizationId: ID, now = new Date().toISOString()
     openDecisions: [],
     projects: [],
     events: [],
+    opsActivities: [],
     withheld: [],
   };
 }
@@ -74,6 +79,11 @@ function computed(label: string): EvidenceRef {
 }
 
 /* ------------------------------------------------------------ context read */
+
+/** Ops rows, de-duplicated and scoped to this organization. */
+export function opsEventsOf(snapshot: SuiteSnapshot) {
+  return readOpsEvents([...snapshot.events, ...snapshot.opsActivities], snapshot.organizationId);
+}
 
 export function contextBlocks(snapshot: SuiteSnapshot): ContextBlock[] {
   const now = snapshot.now;
@@ -245,6 +255,10 @@ export function contextBlocks(snapshot: SuiteSnapshot): ContextBlock[] {
     );
   }
 
+  for (const opsBlock of opsContextBlocks(opsEventsOf(snapshot), now)) {
+    blocks.push(opsBlock);
+  }
+
   for (const decision of snapshot.openDecisions) {
     blocks.push(
       block({
@@ -278,7 +292,7 @@ export function bundleFor(
   const subject = options.subject;
   const blocks = subject ? all.filter((b) => matches(b.entity, subject, subject.label ?? "")) : all;
   const contributing = [...new Set(blocks.map((b) => b.appId))] as ContextSourceApp[];
-  const emptyRooms: WithheldSource[] = (["scout", "comms", "roadmap", "projects"] as ContextSourceApp[])
+  const emptyRooms: WithheldSource[] = (["scout", "comms", "roadmap", "projects", "ops"] as ContextSourceApp[])
     .filter((app) => !contributing.includes(app))
     .filter((app) => !snapshot.withheld.some((w) => w.appId === app))
     .map((appId) => ({ appId, reason: "no_data" as const }));
@@ -498,6 +512,11 @@ export function deriveSignals(snapshot: SuiteSnapshot): Signal[] {
     });
   }
 
+  /* Ops: technical risk, approvals and recommendations, from real rows only. */
+  for (const signal of deriveOpsSignals(opsEventsOf(snapshot), now, snapshot.organizationId)) {
+    if (signal.contextRefs.every((ref) => byId.has(ref))) signals.push(signal);
+  }
+
   /* Pattern: only claimed when the count itself is the evidence. */
   const lateRefs = signals
     .filter((signal) => signal.category === "relationship" && signal.urgency >= 90)
@@ -536,6 +555,7 @@ export const ASK_QUESTIONS: { id: AskQuestionId; label: string }[] = [
 
 export function classifyQuestion(question: string): AskQuestionId {
   const text = question.toLowerCase();
+  if (/clear(ed)?|resolved|fixed|still open|qa pass/.test(text)) return "company_across_suite";
   if (/next|should we|what now|why/.test(text) && !/attention/.test(text)) return "what_next";
   if (/know about|across trust tai|company|tell me about/.test(text)) return "company_across_suite";
   return "attention_today";
@@ -657,7 +677,7 @@ export function answer(
       signals: [top],
       blocks,
       contributingApps: [...new Set(blocks.map((b) => b.appId))],
-      withheld: snapshot.withheld,
+      withheld: bundleFor(snapshot, { question }).withheld,
       generatedAt: snapshot.now,
     };
   }
@@ -665,17 +685,18 @@ export function answer(
   const top = signals.slice(0, 5);
   const refs = new Set(top.flatMap((signal) => signal.contextRefs));
   const blocks = contextBlocks(snapshot).filter((b) => refs.has(b.id));
+  const attentionWithheld = bundleFor(snapshot, { question }).withheld;
   return {
     ...base,
     headline:
       top.length > 0
         ? `${top.length} thing${top.length === 1 ? "" : "s"} are asking for you, led by: ${top[0]?.title}.`
-        : "Nothing across Scout, Comms or Roadmap is asking for you today.",
+        : "Nothing across Scout, Comms, Roadmap, Projects or Ops is asking for you today.",
     sufficient: top.length > 0,
     signals: top,
     blocks,
     contributingApps: [...new Set(blocks.map((b) => b.appId))],
-    withheld: snapshot.withheld,
+    withheld: attentionWithheld,
     generatedAt: snapshot.now,
   };
 }

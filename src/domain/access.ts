@@ -66,9 +66,18 @@ export type Permission =
   | "roadmap.write"
   | "roadmap.decide"
   | "projects.read"
-  | "projects.write";
+  | "projects.write"
+  /** Enter Ops. Ops is a separate app and enforces its own access as well. */
+  | "ops.read";
 
-const READ_ONLY: Permission[] = ["workspace.read", "intelligence.read", "scout.read", "comms.read", "roadmap.read", "projects.read"];
+const READ_ONLY: Permission[] = [
+  "workspace.read",
+  "intelligence.read",
+  "scout.read",
+  "comms.read",
+  "roadmap.read",
+  "projects.read",
+];
 
 const OPERATOR: Permission[] = [
   ...READ_ONLY,
@@ -76,6 +85,7 @@ const OPERATOR: Permission[] = [
   "comms.write",
   "roadmap.write",
   "projects.write",
+  "ops.read",
 ];
 
 const FULL: Permission[] = [...OPERATOR, "org.manage", "roadmap.decide"];
@@ -95,7 +105,10 @@ export const ROLE_PERMISSIONS: Record<WorkspaceRole, Permission[]> = {
 export const MANAGING_ROLES: WorkspaceRole[] = ["owner", "admin"];
 
 export function normalizeRole(role: string | null | undefined): WorkspaceRole {
-  const candidate = (role ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const candidate = (role ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
   return (WORKSPACE_ROLES as string[]).includes(candidate)
     ? (candidate as WorkspaceRole)
     : "member";
@@ -168,6 +181,7 @@ const APP_READ_PERMISSION: Record<string, Permission> = {
   roadmap: "roadmap.read",
   projects: "projects.read",
   pulse: "intelligence.read",
+  ops: "ops.read",
   home: "workspace.read",
 };
 

@@ -14,7 +14,7 @@ import type { ConfidenceLevel, EvidenceRef } from "./confidence";
 import type { EntityRef, ID, ISODateTime } from "./entities";
 
 /** Which room a fact came from. */
-export type ContextSourceApp = "scout" | "comms" | "roadmap" | "projects" | "studio";
+export type ContextSourceApp = "scout" | "comms" | "roadmap" | "projects" | "studio" | "ops";
 
 /** Observed = read. Inferred = worked out. Decided = a person committed to it. */
 export type TruthTier = "observed" | "inferred" | "decided";
@@ -64,7 +64,9 @@ export type SignalCategory =
   | "delivery"
   | "relationship"
   | "pattern"
-  | "growth";
+  | "growth"
+  /** Technical risk observed by Ops, the specialist room. */
+  | "technical_risk";
 
 export const SIGNAL_CATEGORY_LABEL: Record<SignalCategory, string> = {
   client_stewardship: "Client stewardship",
@@ -73,6 +75,7 @@ export const SIGNAL_CATEGORY_LABEL: Record<SignalCategory, string> = {
   relationship: "Relationship",
   pattern: "Pattern",
   growth: "Growth",
+  technical_risk: "Technical risk",
 };
 
 /** Where the work actually happens. Intelligence only routes there. */

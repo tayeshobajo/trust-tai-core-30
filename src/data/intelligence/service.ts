@@ -41,17 +41,21 @@ async function safe<T>(
 /** Assemble everything the current organization can legitimately read. */
 export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapshot> {
   const base = emptySnapshot(organizationId);
-  const [candidates, relationships, roadmaps, decisions, projects, events] = await Promise.all([
+  const [candidates, relationships, roadmaps, decisions, projects, events, opsActivities] =
+    await Promise.all([
     safe("scout", base.candidates, () => scoutService.list(organizationId)),
     safe("comms", base.relationships, () => commsService.list(organizationId)),
     safe("roadmap", base.roadmaps, () => roadmapService.list(organizationId)),
     safe("roadmap", base.openDecisions, () => roadmapService.openDecisions(organizationId)),
     safe("projects", base.projects, () => projectsService.list(organizationId)),
     safe("activity", base.events, () => supabaseActivity.list({ organizationId, limit: 40 })),
+    safe("ops", base.opsActivities, () =>
+      supabaseActivity.list({ organizationId, appIds: ["ops"], limit: 60 }),
+    ),
   ]);
 
   const withheld: WithheldSource[] = [];
-  for (const part of [candidates, relationships, roadmaps, decisions, projects, events]) {
+  for (const part of [candidates, relationships, roadmaps, decisions, projects, events, opsActivities]) {
     if (part.withheld && !withheld.some((w) => w.appId === part.withheld?.appId)) {
       withheld.push(part.withheld);
     }
@@ -65,6 +69,7 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     openDecisions: decisions.value,
     projects: projects.value,
     events: events.value,
+    opsActivities: opsActivities.value,
     withheld,
   };
 }
