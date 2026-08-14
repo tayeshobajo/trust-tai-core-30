@@ -19,6 +19,7 @@ import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
+import { Route as ModulesProjectsIndexRouteImport } from './routes/modules.projects.index'
 import { Route as ModulesRoadmapIndexRouteImport } from './routes/modules.roadmap.index'
 import { Route as ModulesRoadmapRoadmapIdRouteImport } from './routes/modules.roadmap.$roadmapId'
 import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.index'
@@ -83,6 +84,11 @@ const ModulesCommsVoiceRoute = ModulesCommsVoiceRouteImport.update({
   id: '/voice',
   path: '/voice',
   getParentRoute: () => ModulesCommsRoute,
+} as any)
+const ModulesProjectsIndexRoute = ModulesProjectsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ModulesProjectsRoute,
 } as any)
 const ModulesRoadmapIndexRoute = ModulesRoadmapIndexRouteImport.update({
   id: '/',
@@ -159,7 +165,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
-  '/modules/projects': typeof ModulesProjectsRoute
+  '/modules/projects': typeof ModulesProjectsRouteWithChildren
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
+  '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
@@ -183,12 +190,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
-  '/modules/projects': typeof ModulesProjectsRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
+  '/modules/projects': typeof ModulesProjectsIndexRoute
   '/modules/roadmap': typeof ModulesRoadmapIndexRoute
   '/modules/scout': typeof ModulesScoutIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
@@ -207,7 +214,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
-  '/modules/projects': typeof ModulesProjectsRoute
+  '/modules/projects': typeof ModulesProjectsRouteWithChildren
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -215,6 +222,7 @@ export interface FileRoutesById {
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
+  '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
@@ -242,6 +250,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
     | '/modules/comms/'
+    | '/modules/projects/'
     | '/modules/roadmap/'
     | '/modules/scout/'
     | '/api/public/comms/draft'
@@ -258,12 +267,12 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/modules/$slug'
-    | '/modules/projects'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
     | '/modules/comms'
+    | '/modules/projects'
     | '/modules/roadmap'
     | '/modules/scout'
     | '/api/public/comms/draft'
@@ -289,6 +298,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
     | '/modules/comms/'
+    | '/modules/projects/'
     | '/modules/roadmap/'
     | '/modules/scout/'
     | '/api/public/comms/draft'
@@ -307,7 +317,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
-  ModulesProjectsRoute: typeof ModulesProjectsRoute
+  ModulesProjectsRoute: typeof ModulesProjectsRouteWithChildren
   ModulesRoadmapRoute: typeof ModulesRoadmapRouteWithChildren
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
@@ -391,6 +401,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/modules/comms/voice'
       preLoaderRoute: typeof ModulesCommsVoiceRouteImport
       parentRoute: typeof ModulesCommsRoute
+    }
+    '/modules/projects/': {
+      id: '/modules/projects/'
+      path: '/'
+      fullPath: '/modules/projects/'
+      preLoaderRoute: typeof ModulesProjectsIndexRouteImport
+      parentRoute: typeof ModulesProjectsRoute
     }
     '/modules/roadmap/': {
       id: '/modules/roadmap/'
@@ -502,6 +519,18 @@ const ModulesCommsRouteWithChildren = ModulesCommsRoute._addFileChildren(
   ModulesCommsRouteChildren,
 )
 
+interface ModulesProjectsRouteChildren {
+  ModulesProjectsIndexRoute: typeof ModulesProjectsIndexRoute
+}
+
+const ModulesProjectsRouteChildren: ModulesProjectsRouteChildren = {
+  ModulesProjectsIndexRoute: ModulesProjectsIndexRoute,
+}
+
+const ModulesProjectsRouteWithChildren = ModulesProjectsRoute._addFileChildren(
+  ModulesProjectsRouteChildren,
+)
+
 interface ModulesRoadmapRouteChildren {
   ModulesRoadmapRoadmapIdRoute: typeof ModulesRoadmapRoadmapIdRoute
   ModulesRoadmapIndexRoute: typeof ModulesRoadmapIndexRoute
@@ -537,7 +566,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesCommsRoute: ModulesCommsRouteWithChildren,
-  ModulesProjectsRoute: ModulesProjectsRoute,
+  ModulesProjectsRoute: ModulesProjectsRouteWithChildren,
   ModulesRoadmapRoute: ModulesRoadmapRouteWithChildren,
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
