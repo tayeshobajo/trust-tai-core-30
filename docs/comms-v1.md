@@ -88,3 +88,20 @@ as the signed-in member. A failed read is reported as the real error it is.
 - No sending of any kind.
 - No event feeds or contact enrichment providers.
 - No sequences. Relationships are not campaigns.
+
+## External integrations (Phase 0 in place)
+
+The integration layer is contracted before it is connected. `src/domain/comms-integrations.ts`
+holds the `MailProvider` and `EventProvider` shapes, connection state, and the
+derived `ThreadRead`; `src/data/comms-thread-state.ts` turns a message stream
+into that reading as a pure function, proved from fixtures with no vendor
+present. `src/data/events/registry.ts` mirrors the people registry and is
+deliberately empty until an approved source exists.
+
+`docs/comms-integrations-schema.sql` is the exact statement set for
+`comms_messages`, `comms_integrations`, `comms_events`, `comms_event_targets`
+and the new thread columns. It has not been applied; until it is,
+`/modules/comms/integrations` reports every track as not connected. Refresh
+tokens live in `private.comms_integration_secrets`, readable only by the
+service role, and Gmail is requested read-only so sending stays impossible by
+construction.
