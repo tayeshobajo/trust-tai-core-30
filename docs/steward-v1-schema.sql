@@ -1,7 +1,9 @@
 -- Trust Tai OS — canonical conversations + commitments, and Steward context.
 --
--- Run this against the managed Trust Tai Supabase project (ref okydosoacqdnursmmenf).
--- It has NOT been applied yet and is additive only.
+-- Applied to the managed Trust Tai Supabase project (ref okydosoacqdnursmmenf),
+-- together with a follow-up grant-hardening pass that is now folded in below.
+-- The file is additive and idempotent: a fresh environment reaches the same
+-- secure end state in this one migration.
 --
 -- Architecture note. Conversations and commitments are canonical shared truth,
 -- not Steward property. Steward is simply the first room that produces and
@@ -16,8 +18,8 @@
 -- Grants. Supabase applies default privileges to the public schema, so a new
 -- table can inherit broad anon/authenticated rights that this file never asked
 -- for. Every table below therefore REVOKES ALL from anon and authenticated
--- first, then grants back only the verbs the room actually needs. Nothing is
--- granted to anon, and no policy names anon.
+-- first, then grants back only the verbs the room actually needs. The
+-- unauthenticated role keeps no privilege and appears in no policy.
 
 create extension if not exists "pgcrypto";
 
