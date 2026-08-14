@@ -60,12 +60,28 @@ describe("security posture", () => {
     const created = [...sql.matchAll(/create table if not exists public\.(\w+)/g)].map((m) => m[1]);
     for (const table of created) {
       expect(sql).toContain(`alter table public.${table} enable row level security`);
-      expect(sql).toContain(`grant all on public.${table} to service_role`);
+      expect(sql).toContain(`grant all on table public.${table} to service_role`);
     }
   });
 
-  it("grants nothing to anon", () => {
-    expect(sql).not.toMatch(/to anon/);
+  it("grants nothing to anon, and revokes the privileges Supabase defaults in", () => {
+    expect(sql).not.toMatch(/grant[^;]*to anon/i);
+    const created = [...sql.matchAll(/create table if not exists public\.(\w+)/g)].map((m) => m[1]);
+    for (const table of created) {
+      // Default privileges on the public schema can hand anon and authenticated
+      // rights this file never granted, so each table revokes before granting.
+      expect(sql).toContain(`revoke all privileges on table public.${table} from anon;`);
+      expect(sql).toContain(`revoke all privileges on table public.${table} from authenticated;`);
+      const revoke = sql.indexOf(
+        `revoke all privileges on table public.${table} from authenticated;`,
+      );
+      const grant = sql.indexOf(`on table public.${table} to authenticated;`);
+      expect(grant).toBeGreaterThan(revoke);
+    }
+  });
+
+  it("mentions no anon policy", () => {
+    expect(sql).not.toMatch(/create policy[^;]*to anon/);
   });
 
   it("pairs every update policy with using and with check", () => {
@@ -79,7 +95,7 @@ describe("security posture", () => {
 
   it("grants no delete, and keeps the belief ledger append only", () => {
     expect(sql).not.toMatch(/grant[^;]*delete[^;]*to authenticated/);
-    expect(sql).toContain("grant select, insert on public.steward_beliefs to authenticated");
+    expect(sql).toContain("grant select, insert on table public.steward_beliefs to authenticated");
   });
 });
 

@@ -1,7 +1,9 @@
 -- Trust Tai OS — canonical conversations + commitments, and Steward context.
 --
--- Run this against the managed Trust Tai Supabase project (ref okydosoacqdnursmmenf).
--- It has NOT been applied yet and is additive only.
+-- Applied to the managed Trust Tai Supabase project (ref okydosoacqdnursmmenf),
+-- together with a follow-up grant-hardening pass that is now folded in below.
+-- The file is additive and idempotent: a fresh environment reaches the same
+-- secure end state in this one migration.
 --
 -- Architecture note. Conversations and commitments are canonical shared truth,
 -- not Steward property. Steward is simply the first room that produces and
@@ -10,8 +12,14 @@
 -- Steward specific, because they are specialised Steward context.
 --
 -- Security. Every policy reuses the existing hardened private.is_org_member(uuid).
--- This migration adds no privileged helper of its own, makes no grant to the
--- unauthenticated role, and enables RLS on every new table.
+-- This migration adds no privileged helper of its own and enables RLS on every
+-- new table.
+--
+-- Grants. Supabase applies default privileges to the public schema, so a new
+-- table can inherit broad anon/authenticated rights that this file never asked
+-- for. Every table below therefore REVOKES ALL from anon and authenticated
+-- first, then grants back only the verbs the room actually needs. The
+-- unauthenticated role keeps no privilege and appears in no policy.
 
 create extension if not exists "pgcrypto";
 
@@ -42,8 +50,10 @@ create index if not exists conversations_org_occurred_idx
   on public.conversations (organization_id, occurred_at desc);
 
 -- No delete: a conversation that was read stays readable as evidence.
-grant select, insert, update on public.conversations to authenticated;
-grant all on public.conversations to service_role;
+revoke all privileges on table public.conversations from anon;
+revoke all privileges on table public.conversations from authenticated;
+grant select, insert, update on table public.conversations to authenticated;
+grant all on table public.conversations to service_role;
 alter table public.conversations enable row level security;
 
 create policy "members read conversations"
@@ -97,8 +107,10 @@ create index if not exists commitments_org_project_idx
   on public.commitments (organization_id, project_id);
 
 -- No delete: a promise is released by status, never erased.
-grant select, insert, update on public.commitments to authenticated;
-grant all on public.commitments to service_role;
+revoke all privileges on table public.commitments from anon;
+revoke all privileges on table public.commitments from authenticated;
+grant select, insert, update on table public.commitments to authenticated;
+grant all on table public.commitments to service_role;
 alter table public.commitments enable row level security;
 
 create policy "members read commitments"
@@ -133,8 +145,10 @@ create table if not exists public.steward_role_memory (
   unique (organization_id, person_key)
 );
 
-grant select, insert, update on public.steward_role_memory to authenticated;
-grant all on public.steward_role_memory to service_role;
+revoke all privileges on table public.steward_role_memory from anon;
+revoke all privileges on table public.steward_role_memory from authenticated;
+grant select, insert, update on table public.steward_role_memory to authenticated;
+grant all on table public.steward_role_memory to service_role;
 alter table public.steward_role_memory enable row level security;
 
 create policy "members read role memory"
@@ -171,8 +185,10 @@ create index if not exists steward_beliefs_org_subject_idx
   on public.steward_beliefs (organization_id, subject_key, created_at desc);
 
 -- Read and append only: no update, no delete.
-grant select, insert on public.steward_beliefs to authenticated;
-grant all on public.steward_beliefs to service_role;
+revoke all privileges on table public.steward_beliefs from anon;
+revoke all privileges on table public.steward_beliefs from authenticated;
+grant select, insert on table public.steward_beliefs to authenticated;
+grant all on table public.steward_beliefs to service_role;
 alter table public.steward_beliefs enable row level security;
 
 create policy "members read beliefs"
