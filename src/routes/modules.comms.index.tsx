@@ -249,19 +249,25 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       </div>
 
       {capturing ? (
-        <div className="tt-surface mt-6 p-6">
+        <div className="tt-surface mt-6 space-y-5 p-6">
           <CaptureForm
             onCreate={(input) => create.mutate(input)}
             busy={create.isPending}
             onCancel={() => setCapturing(false)}
           />
+          <MailboxImport
+            organizationId={identity.organizationId}
+            onImport={(input) => create.mutate(input)}
+            busy={create.isPending}
+          />
           {create.isError ? (
-            <p className="mt-3 text-[13px] text-destructive">
+            <p className="text-[13px] text-destructive">
               {(create.error as Error).message}
             </p>
           ) : null}
         </div>
       ) : null}
+
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)_320px]">
         <aside className="tt-surface max-h-[70vh] overflow-hidden p-0 lg:sticky lg:top-20">
