@@ -109,7 +109,7 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
       stewardService.remember({
         organizationId: identity.organizationId,
         userId: identity.userId,
-        userName: identity.userName,
+        userName: identity.name,
         drafts: corrections.map((correction) =>
           correctionToDraft({ ...correction, conversationId }),
         ),
