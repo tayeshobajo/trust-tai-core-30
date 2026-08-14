@@ -8,7 +8,12 @@
 
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { NormalizedConversation, Proposal, SourceAdapterStatus } from "@/domain/steward";
-import type { MemoryConflict, StateChangeProposal } from "@/domain/steward-memory";
+import type {
+  MemoryConflict,
+  MemoryUsage,
+  StateChangeProposal,
+} from "@/domain/steward-memory";
+
 import type { InterpretationRun } from "@/domain/steward-semantic";
 
 
