@@ -1,38 +1,28 @@
--- Trust Tai OS — Steward v1 schema (additive).
+-- Trust Tai OS — canonical conversations + commitments, and Steward context.
 --
 -- Run this against the managed Trust Tai Supabase project (ref okydosoacqdnursmmenf).
--- It adds only Steward-owned tables. It does not touch profiles, organizations,
--- organization_memberships, clients, contacts, projects, prospects, activities
--- or decisions: those stay canonical and Steward references them by id.
+-- It has NOT been applied yet and is additive only.
 --
--- Every table is organization scoped, RLS enforced through the existing
--- organization_memberships boundary, and granted explicitly for the Data API.
+-- Architecture note. Conversations and commitments are canonical shared truth,
+-- not Steward property. Steward is simply the first room that produces and
+-- consumes them; Comms, Projects, Pulse, Gmail, PLAUD, Slack and Teams use the
+-- same rows later with no renaming. Only role memory and the belief ledger stay
+-- Steward specific, because they are specialised Steward context.
+--
+-- Security. Every policy reuses the existing hardened private.is_org_member(uuid).
+-- This migration adds no privileged helper of its own, makes no grant to the
+-- unauthenticated role, and enables RLS on every new table.
 
 create extension if not exists "pgcrypto";
 
--- Membership check used by every policy below. Security definer so a policy on
--- a Steward table never has to read organization_memberships through RLS.
-create or replace function public.steward_is_member(_organization_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1
-    from public.organization_memberships m
-    where m.organization_id = _organization_id
-      and m.user_id = auth.uid()
-      and coalesce(m.status, 'active') = 'active'
-  )
-$$;
+/* --------------------------------------------------------- conversations */
 
-/* ----------------------------------------------------------- conversations */
-
-create table if not exists public.steward_conversations (
+-- Source agnostic. source_provider is any adapter ('fathom', 'gmail', 'manual',
+-- 'plaud', 'slack', 'teams', 'calendar'); no provider semantics are baked in.
+create table if not exists public.conversations (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
+  source_app text,
   source_provider text not null,
   source_external_id text not null,
   source_url text,
@@ -48,28 +38,37 @@ create table if not exists public.steward_conversations (
   unique (organization_id, source_provider, source_external_id)
 );
 
-grant select, insert, update, delete on public.steward_conversations to authenticated;
-grant all on public.steward_conversations to service_role;
-alter table public.steward_conversations enable row level security;
+create index if not exists conversations_org_occurred_idx
+  on public.conversations (organization_id, occurred_at desc);
+
+-- No delete: a conversation that was read stays readable as evidence.
+grant select, insert, update on public.conversations to authenticated;
+grant all on public.conversations to service_role;
+alter table public.conversations enable row level security;
 
 create policy "members read conversations"
-  on public.steward_conversations for select to authenticated
-  using (public.steward_is_member(organization_id));
+  on public.conversations for select to authenticated
+  using (private.is_org_member(organization_id));
 create policy "members write conversations"
-  on public.steward_conversations for insert to authenticated
-  with check (public.steward_is_member(organization_id));
+  on public.conversations for insert to authenticated
+  with check (private.is_org_member(organization_id));
 create policy "members update conversations"
-  on public.steward_conversations for update to authenticated
-  using (public.steward_is_member(organization_id))
-  with check (public.steward_is_member(organization_id));
+  on public.conversations for update to authenticated
+  using (private.is_org_member(organization_id))
+  with check (private.is_org_member(organization_id));
 
-/* ------------------------------------------------------------- commitments */
+/* ---------------------------------------------------------- commitments */
 
-create table if not exists public.steward_commitments (
+-- A promise a person made, wherever it was made. Canonical work is referenced,
+-- never copied: project_id and decision_id point at the existing tables.
+create table if not exists public.commitments (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
-  conversation_id uuid references public.steward_conversations(id) on delete set null,
-  -- Stable key from the transcript line. Confirming twice updates, never duplicates.
+  conversation_id uuid references public.conversations(id) on delete set null,
+  -- Which room recorded it, and which adapter it came through.
+  source_app text,
+  source_provider text,
+  -- Stable key from the source line. Confirming twice updates, never duplicates.
   source_key text not null,
   kind text not null default 'action',
   statement text not null,
@@ -83,7 +82,6 @@ create table if not exists public.steward_commitments (
   due_text text,
   status text not null default 'open'
     check (status in ('open', 'waiting', 'kept', 'released')),
-  -- References to canonical truth. Steward never copies these records.
   project_id uuid references public.projects(id) on delete set null,
   decision_id uuid references public.decisions(id) on delete set null,
   evidence jsonb not null default '[]'::jsonb,
@@ -93,25 +91,28 @@ create table if not exists public.steward_commitments (
   unique (organization_id, source_key)
 );
 
-create index if not exists steward_commitments_org_status_idx
-  on public.steward_commitments (organization_id, status, due_at);
+create index if not exists commitments_org_status_idx
+  on public.commitments (organization_id, status, due_at);
+create index if not exists commitments_org_project_idx
+  on public.commitments (organization_id, project_id);
 
-grant select, insert, update, delete on public.steward_commitments to authenticated;
-grant all on public.steward_commitments to service_role;
-alter table public.steward_commitments enable row level security;
+-- No delete: a promise is released by status, never erased.
+grant select, insert, update on public.commitments to authenticated;
+grant all on public.commitments to service_role;
+alter table public.commitments enable row level security;
 
 create policy "members read commitments"
-  on public.steward_commitments for select to authenticated
-  using (public.steward_is_member(organization_id));
+  on public.commitments for select to authenticated
+  using (private.is_org_member(organization_id));
 create policy "members write commitments"
-  on public.steward_commitments for insert to authenticated
-  with check (public.steward_is_member(organization_id));
+  on public.commitments for insert to authenticated
+  with check (private.is_org_member(organization_id));
 create policy "members update commitments"
-  on public.steward_commitments for update to authenticated
-  using (public.steward_is_member(organization_id))
-  with check (public.steward_is_member(organization_id));
+  on public.commitments for update to authenticated
+  using (private.is_org_member(organization_id))
+  with check (private.is_org_member(organization_id));
 
-/* ------------------------------------------------------------ role memory */
+/* ------------------------------------------------- steward role memory */
 
 create table if not exists public.steward_role_memory (
   id uuid primary key default gen_random_uuid(),
@@ -132,24 +133,24 @@ create table if not exists public.steward_role_memory (
   unique (organization_id, person_key)
 );
 
-grant select, insert, update, delete on public.steward_role_memory to authenticated;
+grant select, insert, update on public.steward_role_memory to authenticated;
 grant all on public.steward_role_memory to service_role;
 alter table public.steward_role_memory enable row level security;
 
 create policy "members read role memory"
   on public.steward_role_memory for select to authenticated
-  using (public.steward_is_member(organization_id));
+  using (private.is_org_member(organization_id));
 create policy "members write role memory"
   on public.steward_role_memory for insert to authenticated
-  with check (public.steward_is_member(organization_id));
+  with check (private.is_org_member(organization_id));
 create policy "members update role memory"
   on public.steward_role_memory for update to authenticated
-  using (public.steward_is_member(organization_id))
-  with check (public.steward_is_member(organization_id));
+  using (private.is_org_member(organization_id))
+  with check (private.is_org_member(organization_id));
 
-/* ---------------------------------------------------------------- beliefs */
+/* ---------------------------------------------------- steward beliefs */
 
--- Memory is append only. A correction supersedes; nothing is deleted, so the
+-- Append only. A correction supersedes; nothing is deleted or edited, so the
 -- workspace can always show what was believed, and who changed it.
 create table if not exists public.steward_beliefs (
   id uuid primary key default gen_random_uuid(),
@@ -169,13 +170,14 @@ create table if not exists public.steward_beliefs (
 create index if not exists steward_beliefs_org_subject_idx
   on public.steward_beliefs (organization_id, subject_key, created_at desc);
 
+-- Read and append only: no update, no delete.
 grant select, insert on public.steward_beliefs to authenticated;
 grant all on public.steward_beliefs to service_role;
 alter table public.steward_beliefs enable row level security;
 
 create policy "members read beliefs"
   on public.steward_beliefs for select to authenticated
-  using (public.steward_is_member(organization_id));
+  using (private.is_org_member(organization_id));
 create policy "members write beliefs"
   on public.steward_beliefs for insert to authenticated
-  with check (public.steward_is_member(organization_id));
+  with check (private.is_org_member(organization_id));
