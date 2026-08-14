@@ -30,6 +30,7 @@ const ROOM_LABEL: Record<string, string> = {
   projects: "Projects",
   studio: "Studio",
   ops: "Ops",
+  steward: "Steward",
   activity: "Activity",
 };
 

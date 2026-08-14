@@ -17,6 +17,12 @@ import { isOpenProject, projectHealth, recommendedMove } from "@/domain/projects
 import type { ProspectCandidate } from "@/domain/scout";
 import { readOpsEvents } from "@/domain/ops";
 import { deriveOpsSignals, opsContextBlocks } from "./ops-signals";
+import {
+  deriveStewardSignals,
+  emptyStewardSnapshot,
+  stewardContextBlocks,
+  type StewardSnapshot,
+} from "@/data/steward/signals";
 import type {
   AskAnswer,
   AskQuestionId,
@@ -40,6 +46,8 @@ export interface SuiteSnapshot {
   events: ActivityEvent[];
   /** Rows written by the Ops specialist app into the shared activity table. */
   opsActivities: ActivityEvent[];
+  /** Confirmed promises and conversation headers, owned by Steward. */
+  steward: StewardSnapshot;
   withheld: WithheldSource[];
 }
 
@@ -54,6 +62,7 @@ export function emptySnapshot(organizationId: ID, now = new Date().toISOString()
     projects: [],
     events: [],
     opsActivities: [],
+    steward: emptyStewardSnapshot(),
     withheld: [],
   };
 }
@@ -259,6 +268,11 @@ export function contextBlocks(snapshot: SuiteSnapshot): ContextBlock[] {
     blocks.push(opsBlock);
   }
 
+  /* Steward: promises a person confirmed. Decided truth, never inferred. */
+  for (const stewardBlock of stewardContextBlocks(snapshot.steward, now)) {
+    blocks.push(stewardBlock);
+  }
+
   for (const decision of snapshot.openDecisions) {
     blocks.push(
       block({
@@ -292,7 +306,9 @@ export function bundleFor(
   const subject = options.subject;
   const blocks = subject ? all.filter((b) => matches(b.entity, subject, subject.label ?? "")) : all;
   const contributing = [...new Set(blocks.map((b) => b.appId))] as ContextSourceApp[];
-  const emptyRooms: WithheldSource[] = (["scout", "comms", "roadmap", "projects", "ops"] as ContextSourceApp[])
+  const emptyRooms: WithheldSource[] = (
+    ["scout", "comms", "roadmap", "projects", "ops", "steward"] as ContextSourceApp[]
+  )
     .filter((app) => !contributing.includes(app))
     .filter((app) => !snapshot.withheld.some((w) => w.appId === app))
     .map((appId) => ({ appId, reason: "no_data" as const }));
@@ -514,6 +530,11 @@ export function deriveSignals(snapshot: SuiteSnapshot): Signal[] {
 
   /* Ops: technical risk, approvals and recommendations, from real rows only. */
   for (const signal of deriveOpsSignals(opsEventsOf(snapshot), now, snapshot.organizationId)) {
+    if (signal.contextRefs.every((ref) => byId.has(ref))) signals.push(signal);
+  }
+
+  /* Steward: follow-through on promises people actually made. */
+  for (const signal of deriveStewardSignals(snapshot.steward, now)) {
     if (signal.contextRefs.every((ref) => byId.has(ref))) signals.push(signal);
   }
 
