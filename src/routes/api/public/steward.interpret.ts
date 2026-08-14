@@ -19,7 +19,12 @@ import type { MemoryBelief } from "@/domain/steward-memory";
 import type { MemoryContext } from "@/domain/steward-semantic";
 import { detectCandidates } from "@/data/steward/candidates";
 import { proposeStateChanges } from "@/data/steward/continuity";
-import { resolveMemory } from "@/data/steward/learning";
+import {
+  outcomeRecordsFromBeliefs,
+  resolveMemory,
+  suppressedPatterns,
+} from "@/data/steward/learning";
+
 import { toMemoryBelief } from "@/data/steward/memory-encoding";
 import { flagMemoryConflicts, selectRelevantMemory } from "@/data/steward/memory-context";
 import {
