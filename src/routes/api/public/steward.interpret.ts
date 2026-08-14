@@ -14,15 +14,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import type { Commitment, NormalizedConversation } from "@/domain/steward";
+import type { Belief, Commitment, NormalizedConversation } from "@/domain/steward";
+import type { MemoryBelief } from "@/domain/steward-memory";
 import type { MemoryContext } from "@/domain/steward-semantic";
 import { detectCandidates } from "@/data/steward/candidates";
+import { proposeStateChanges } from "@/data/steward/continuity";
+import { resolveMemory } from "@/data/steward/learning";
+import { toMemoryBelief } from "@/data/steward/memory-encoding";
+import { flagMemoryConflicts, selectRelevantMemory } from "@/data/steward/memory-context";
 import {
   interpretConversation,
   InterpretationUnavailableError,
 } from "@/lib/steward-interpret.server";
 import { createLovableAiGatewayRunIdFetch, getLovableAiGatewayRunId } from "@/lib/ai-gateway.server";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
+
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
