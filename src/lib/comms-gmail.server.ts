@@ -535,3 +535,126 @@ export async function readAccountEmail(accessToken: string): Promise<string> {
   if (!email) throw new Error("Google did not name the mailbox.");
   return email;
 }
+
+/* ------------------------------------------------------- import candidates */
+
+export interface MailboxCandidate {
+  email: string;
+  name?: string;
+  messageCount: number;
+  lastMessageAt: string;
+  lastSubject?: string;
+  alreadyTracked: boolean;
+}
+
+/**
+ * People you actually correspond with, read from message metadata only.
+ *
+ * This stores nothing. It exists so a member can turn one real correspondent
+ * into a Comms relationship without typing it out. Addresses already tracked
+ * are marked, never hidden, so the list stays honest.
+ */
+export async function listMailboxCandidates(input: {
+  token: string;
+  organizationId: string;
+  backfillDays?: number;
+  limit?: number;
+}): Promise<{ accountEmail?: string; candidates: MailboxCandidate[] }> {
+  const client = supabaseFor(input.token);
+  await requireMember(client, input.organizationId);
+
+  const { data: connectionRow, error: connectionError } = await client
+    .from("comms_integrations")
+    .select("id, account_email")
+    .eq("organization_id", input.organizationId)
+    .eq("provider", "gmail")
+    .maybeSingle();
+  if (connectionError) throw new Error(connectionError.message);
+  if (!connectionRow) throw new Error("No mailbox is connected yet.");
+  const connection = connectionRow as { id: string; account_email: string | null };
+  const mailbox = (connection.account_email ?? "").toLowerCase();
+
+  const { data: sealed, error: sealedError } = await client.rpc(
+    "comms_get_integration_secret",
+    { p_integration_id: connection.id },
+  );
+  if (sealedError) throw new Error(sealedError.message);
+  if (!sealed || typeof sealed !== "string") {
+    throw new Error("That mailbox needs to be connected again.");
+  }
+  const accessToken = await refreshAccessToken(await openSecret(sealed));
+
+  const days = Math.min(Math.max(input.backfillDays ?? DEFAULT_BACKFILL_DAYS, 1), 90);
+  const list = await gmailGet<{ messages?: { id: string }[] }>(
+    `/messages?maxResults=${MAX_MESSAGES_PER_PASS}&q=${encodeURIComponent(`newer_than:${days}d -in:spam -in:trash -category:promotions -category:social`)}`,
+    accessToken,
+  );
+  const ids = (list.messages ?? []).map((entry) => entry.id).filter(Boolean);
+
+  const { data: relationshipRows } = await client
+    .from("comms_relationships")
+    .select("email")
+    .eq("organization_id", input.organizationId);
+  const tracked = new Set(
+    ((relationshipRows ?? []) as { email: string | null }[])
+      .map((row) => row.email?.toLowerCase())
+      .filter((entry): entry is string => Boolean(entry)),
+  );
+
+  const found = new Map<string, MailboxCandidate>();
+  for (const id of ids) {
+    const raw = await gmailGet<GmailMessage>(
+      `/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`,
+      accessToken,
+    );
+    const message = normalize(raw, mailbox);
+    if (!message) continue;
+
+    const people: { email: string; name?: string }[] = [];
+    if (message.fromEmail && message.fromEmail !== mailbox) {
+      people.push({
+        email: message.fromEmail,
+        ...(message.fromName ? { name: message.fromName } : {}),
+      });
+    }
+    if (message.direction === "outbound") {
+      message.toEmails
+        .filter((email) => email !== mailbox)
+        .forEach((email) => people.push({ email }));
+    }
+
+    for (const person of people) {
+      if (/no-?reply|do-?not-?reply|notifications?@|mailer|support@|@google\.com$/i.test(person.email)) {
+        continue;
+      }
+      const existing = found.get(person.email);
+      if (existing) {
+        existing.messageCount += 1;
+        if (message.occurredAt > existing.lastMessageAt) {
+          existing.lastMessageAt = message.occurredAt;
+          if (message.subject) existing.lastSubject = message.subject;
+        }
+        if (!existing.name && person.name) existing.name = person.name;
+      } else {
+        found.set(person.email, {
+          email: person.email,
+          ...(person.name ? { name: person.name } : {}),
+          messageCount: 1,
+          lastMessageAt: message.occurredAt,
+          ...(message.subject ? { lastSubject: message.subject } : {}),
+          alreadyTracked: tracked.has(person.email),
+        });
+      }
+    }
+  }
+
+  const candidates = [...found.values()]
+    .sort(
+      (left, right) =>
+        right.messageCount - left.messageCount ||
+        right.lastMessageAt.localeCompare(left.lastMessageAt),
+    )
+    .slice(0, Math.min(Math.max(input.limit ?? 12, 1), 25));
+
+  return { ...(mailbox ? { accountEmail: mailbox } : {}), candidates };
+}

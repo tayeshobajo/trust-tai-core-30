@@ -73,3 +73,22 @@ export interface GmailSyncResult {
 export async function gmailSync(organizationId: string): Promise<GmailSyncResult> {
   return post<GmailSyncResult>(SYNC_URL, { organizationId });
 }
+
+export interface MailboxCandidate {
+  email: string;
+  name?: string;
+  messageCount: number;
+  lastMessageAt: string;
+  lastSubject?: string;
+  alreadyTracked: boolean;
+}
+
+/** People you correspond with, offered as import candidates. Reads only. */
+export async function gmailCandidates(
+  organizationId: string,
+): Promise<{ accountEmail?: string; candidates: MailboxCandidate[] }> {
+  return post<{ accountEmail?: string; candidates: MailboxCandidate[] }>(
+    "/api/public/comms/gmail/candidates",
+    { organizationId },
+  );
+}
