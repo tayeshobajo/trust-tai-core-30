@@ -52,7 +52,8 @@ describe("security posture", () => {
   it("reuses the hardened private.is_org_member in every policy", () => {
     const policies = [...sql.matchAll(/create policy[\s\S]*?;/g)].map((m) => m[0]);
     expect(policies.length).toBeGreaterThan(0);
-    for (const policy of policies) expect(policy).toContain("private.is_org_member(organization_id)");
+    for (const policy of policies)
+      expect(policy).toContain("private.is_org_member(organization_id)");
   });
 
   it("enables row level security on every new table", () => {

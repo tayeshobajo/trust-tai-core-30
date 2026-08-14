@@ -181,7 +181,9 @@ export const stewardService = {
       source_app: "steward",
       source_provider: conversation.sourceRef.provider,
       source_external_id:
-        conversation.sourceRef.externalId ?? conversation.sourceRef.shareToken ?? conversation.sourceRef.url,
+        conversation.sourceRef.externalId ??
+        conversation.sourceRef.shareToken ??
+        conversation.sourceRef.url,
       source_url: conversation.sourceRef.url,
       title: conversation.title,
       occurred_at: conversation.occurredAt,

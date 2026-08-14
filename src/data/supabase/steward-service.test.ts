@@ -41,7 +41,10 @@ async function seedCommitment(organizationId: string, sourceKey: string) {
   const stored = await stewardService.saveConversation({
     organizationId,
     userId: "user-1",
-    conversation: { ...conversation, sourceRef: { ...conversation.sourceRef, externalId: sourceKey } },
+    conversation: {
+      ...conversation,
+      sourceRef: { ...conversation.sourceRef, externalId: sourceKey },
+    },
   });
   const proposal = extractProposals(conversation)[0]!;
   return stewardService.confirm({
