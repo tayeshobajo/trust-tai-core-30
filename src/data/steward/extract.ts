@@ -189,7 +189,7 @@ const SHARE_VERB =
 
 /** A promise about the future, in the speaker's own words. */
 const PROMISE =
-  /\b(i['’]?ll|i will|we['’]?ll|we will|i['’]?m going to|i am going to|we['’]?re going to|we are going to|i want us to|i need to|we need to|i plan to|we plan to|let me)\b/i;
+  /\b(i['’]?ll|i will|we['’]?ll|we will|i['’]?m going to|i am going to|we['’]?re going to|we are going to|i want us to|i need to|we need to|i plan to|we plan to)\b/i;
 
 /** Work handed to someone else. */
 const REQUEST = /\b(can you|could you|would you|please|i need you to|i'd like you to)\b/i;
@@ -202,9 +202,25 @@ const HEDGE = /\b(maybe|perhaps|possibly|might|thereabout|i think we (could|migh
 const BLOCKER =
   /\b(blocked|blocker|waiting on|waiting for|stuck on|can['’]?t (proceed|move|start)|held up|dependency on|depends on)\b/i;
 
-/** "once X, then Y" — a real dependency, not ordinary sequencing. */
-const CONDITIONAL =
-  /\b(once|as soon as|after|until|when)\b[^.?!]{0,120}?\b(then|i['’]?ll|we['’]?ll|i will|we will|you can|we can|i can)\b/i;
+/**
+ * "once X lands, then Y" — a real dependency. Ordinary sequencing ("after the
+ * call we went back to work") is not a dependency and must not read as one.
+ */
+const CONDITION_OPENER = /\b(once|as soon as|until)\b/i;
+const CONDITION_VERB =
+  /\b(get|gets|receive|have|has|land|lands|confirm|confirmed|approve|approved|share|shared|finish|finished|complete|completed|sign off|signed off|in place|available|ready)\b/i;
+const CONSEQUENT = /\b(then|i['’]?ll|we['’]?ll|i will|we will|you can|we can)\b/i;
+
+function isDependency(text: string): boolean {
+  const opener = text.match(CONDITION_OPENER);
+  if (!opener || opener.index === undefined) return false;
+  const after = text.slice(opener.index + opener[0].length);
+  const condition = after.slice(0, 70);
+  if (!CONDITION_VERB.test(condition)) return false;
+  const consequent = after.match(CONSEQUENT);
+  if (!consequent || consequent.index === undefined) return false;
+  return ACTION_VERB.test(after.slice(consequent.index));
+}
 
 /** Questions that leave work unresolved. */
 const OPEN_QUESTION =
@@ -232,6 +248,9 @@ function commitmentClause(text: string, marker: RegExp): string | null {
   return text.slice(match.index + match[0].length, match.index + match[0].length + 160);
 }
 
+/** Meeting mechanics. Real speech, but not work anyone must follow through. */
+const MECHANICS = /\b(share|check|stop) (my|the|your) screen\b|\bpass the mic\b|\bdive in\b/i;
+
 /** An actionable verb plus something to act on. */
 function isActionable(clause: string | null): boolean {
   if (!clause) return false;
@@ -245,14 +264,14 @@ interface Read {
   kind: ProposalKind;
   /** Owner came from the speaker's own promise rather than a named request. */
   firstPerson: boolean;
+  /** Only a direct request may name someone else as the owner. */
+  requested?: boolean;
 }
 
 function classify(text: string): Read | null {
   /* A dependency is only a dependency when something waits on something. */
-  if (BLOCKER.test(text)) return { kind: "blocker", firstPerson: false };
-  if (CONDITIONAL.test(text) && ACTION_VERB.test(text)) {
-    return { kind: "blocker", firstPerson: false };
-  }
+  if (MECHANICS.test(text)) return null;
+  if (BLOCKER.test(text) || isDependency(text)) return { kind: "blocker", firstPerson: false };
 
   if (DECISION.test(text) && !HEDGE.test(text)) return { kind: "decision", firstPerson: false };
 
@@ -264,7 +283,11 @@ function classify(text: string): Read | null {
 
   const requested = isActionable(commitmentClause(text, REQUEST));
   if (requested && !rhetorical) {
-    return { kind: SHARE_VERB.test(text) ? "follow_up" : "action", firstPerson: false };
+    return {
+      kind: SHARE_VERB.test(text) ? "follow_up" : "action",
+      firstPerson: false,
+      requested: true,
+    };
   }
 
   if (OPEN_QUESTION.test(text) && !rhetorical) {
@@ -312,7 +335,7 @@ export function extractProposals(conversation: NormalizedConversation): Proposal
     seen.add(key);
 
     const speaker = resolveSpeaker(window.speaker, conversation);
-    const named = read.firstPerson ? null : namedParticipant(text, conversation);
+    const named = read.requested ? namedParticipant(text, conversation) : null;
     const owner = read.firstPerson ? speaker : named;
     const dueText = timingOf(text);
 
