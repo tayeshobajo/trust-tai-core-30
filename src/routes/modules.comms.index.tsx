@@ -105,9 +105,35 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: async (relationship) => {
       setSelectedId(relationship.id);
       setCapturing(false);
+
+      // The first relationship should show real work, not an empty room: give
+      // it a due date for today so it lands in "Needs you" straight away.
+      let live = relationship;
+      const firstEver = relationships.length === 0;
+      const undated = !relationship.responseDueAt && !relationship.followUpDueAt;
+      if (firstEver && undated) {
+        live = await commsService.update(
+          relationship.id,
+          {
+            followUpDueAt: new Date().toISOString(),
+            ...(relationship.nextAction
+              ? {}
+              : { nextAction: "Open the conversation with a first note." }),
+          },
+          context,
+        );
+      }
+
       await refresh();
+      // And a Voice DNA draft, so the first thing you see is something to send.
+      void composeFor(
+        live,
+        relationship.source === "in_person" ? "warm_intro" : "follow_up",
+        "",
+      );
     },
   });
+
 
   const update = useMutation({
     mutationFn: (input: Parameters<typeof commsService.update>[1]) =>
@@ -175,8 +201,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const [drafting, setDrafting] = useState(false);
 
-  async function compose(register: VoiceRegister, purpose: string) {
-    if (!selected) return;
+  async function composeFor(
+    relationship: Relationship,
+    register: VoiceRegister,
+    purpose: string,
+  ) {
     setDrafting(true);
     setDraftError(null);
     try {
@@ -186,7 +215,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       const response = await fetch("/api/public/comms/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ relationshipId: selected.id, register, purpose }),
+        body: JSON.stringify({ relationshipId: relationship.id, register, purpose }),
       });
       const payload = (await response.json()) as Record<string, unknown>;
       if (!response.ok) throw new Error(String(payload["error"] ?? "That draft could not be prepared."));
@@ -197,6 +226,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       setDrafting(false);
     }
   }
+
+  async function compose(register: VoiceRegister, purpose: string) {
+    if (!selected) return;
+    await composeFor(selected, register, purpose);
+  }
+
 
   if (relationshipsQuery.isError) {
     return (

@@ -117,10 +117,29 @@ export const commsService = {
   /**
    * Create a relationship. Minimal input is the point: a name, where you met,
    * and one thing worth remembering is enough to make a person real.
+   *
+   * Importing the same person twice is not an error and never doubles them:
+   * an email already tracked in this organization returns the relationship
+   * that exists, so messages keep mapping to one person.
    */
   async create(input: RelationshipInput, context: CommsContext): Promise<Relationship> {
     const fullName = input.fullName.trim();
     if (!fullName) throw new Error("A relationship needs a name before it can be saved.");
+
+    const email = input.email?.trim().toLowerCase() || null;
+    if (email) {
+      const { data: existing, error: existingError } = await supabase
+        .from("comms_relationships")
+        .select(RELATIONSHIP_COLUMNS)
+        .eq("organization_id", context.organizationId)
+        .eq("email", email)
+        .limit(1)
+        .maybeSingle();
+      assertOk(existingError);
+      if (existing) return toRelationship(existing as unknown as RelationshipRow);
+    }
+
+
 
     const at = new Date().toISOString();
     const decided: MemoryItem[] = [...(input.decided ?? [])];
