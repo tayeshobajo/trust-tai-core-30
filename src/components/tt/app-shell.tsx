@@ -5,6 +5,7 @@ import { AppLink } from "@/components/tt/app-link";
 import {
   Activity,
   Compass,
+  HeartHandshake,
   MessagesSquare,
   PenTool,
   Route as RouteIcon,
@@ -26,6 +27,7 @@ const ICONS: Record<string, LucideIcon> = {
   Compass,
   Search,
   MessagesSquare,
+  HeartHandshake,
   Route: RouteIcon,
   SquareStack,
   ShieldCheck,

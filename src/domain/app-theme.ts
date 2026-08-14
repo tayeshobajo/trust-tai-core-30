@@ -14,7 +14,8 @@ export type AppMotif =
   | "blueprint"
   | "systems"
   | "composition"
-  | "rhythm";
+  | "rhythm"
+  | "ledger";
 
 export interface AppTheme {
   motif: AppMotif;
@@ -51,6 +52,11 @@ export const APP_THEMES: Record<string, AppTheme> = {
     motif: "blueprint",
     tint: "oklch(0.50 0.08 250)",
     character: "The working table: materials, order, ownership.",
+  },
+  steward: {
+    motif: "ledger",
+    tint: "oklch(0.50 0.06 145)",
+    character: "A quiet ledger of what was said, and who carries it.",
   },
   ops: {
     motif: "systems",
