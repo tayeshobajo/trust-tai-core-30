@@ -22,15 +22,18 @@ import type { ID, ISODateTime } from "./entities";
 /** Ops production origin. Exact origin, never a wildcard. */
 export const OPS_ORIGIN = "https://ops.trusttai.com";
 
-/** The dedicated SSO waiting screen inside Ops. */
-export const OPS_SSO_PATH = "/sso/trust-tai";
+/**
+ * The Ops SSO landing screen. Ops matches /^\/sso\/?$/ exactly, so this is
+ * "/sso" and nothing longer.
+ */
+export const OPS_SSO_PATH = "/sso";
 
 export const OPS_APP_ID = "ops";
 
-/** Ops says it is mounted and listening. */
-export const OPS_READY_MESSAGE = "trust-tai-ops:ready";
+/** Ops says it is mounted and listening. Contract owned by the Ops bridge. */
+export const OPS_READY_MESSAGE = "trust-tai-ops:sso-ready";
 /** Trust Tai OS hands the session over. Only ever posted to `OPS_ORIGIN`. */
-export const OPS_SESSION_MESSAGE = "trust-tai-os:session";
+export const OPS_SESSION_MESSAGE = "trust-tai-os:sso";
 
 /** The Ops event vocabulary Trust Tai OS understands today. */
 export const OPS_EVENTS = [
@@ -157,10 +160,22 @@ export function readOpsEvent(event: ActivityEvent): OpsEvent | null {
     "project_id",
     "projectId",
   ]);
-  const runId = pick(source, ["run_id", "runId"]);
+  const runId = pick(source, ["ops_run_id", "opsRunId", "run_id", "runId"]);
   const issueKey = pick(source, ["issue_key", "issueKey", "issue_id"]);
-  const destination = pick(source, ["destination_url", "destinationUrl", "url", "deep_link"]);
-  const sourceEventKey = pick(source, ["source_event_key", "sourceEventKey", "event_key"]);
+  const destination = pick(source, [
+    "destination_route",
+    "destinationRoute",
+    "destination_url",
+    "destinationUrl",
+    "url",
+    "deep_link",
+  ]);
+  // Idempotency, newest shape first: the live `activities.source_event_key`
+  // column, then the keys Ops carries inside provenance on older rows.
+  const provenanceBag = (event.provenance ?? {}) as unknown as Record<string, unknown>;
+  const sourceEventKey =
+    pick(source, ["source_event_key", "sourceEventKey", "event_key"]) ??
+    pick(provenanceBag, ["ops_event_key", "dedupe_key", "externalRef"]);
   const label =
     pick(source, ["label", "subject_label", "website", "domain", "project_name"]) ??
     event.subject.label ??
