@@ -16,6 +16,7 @@ import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
 import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
+import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
 import { Route as ModulesRoadmapIndexRouteImport } from './routes/modules.roadmap.index'
 import { Route as ModulesRoadmapRoadmapIdRouteImport } from './routes/modules.roadmap.$roadmapId'
@@ -63,6 +64,12 @@ const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
+const ModulesCommsIntegrationsRoute =
+  ModulesCommsIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => ModulesCommsRoute,
+  } as any)
 const ModulesCommsVoiceRoute = ModulesCommsVoiceRouteImport.update({
   id: '/voice',
   path: '/voice',
@@ -128,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
+  '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
@@ -145,6 +153,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
+  '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
@@ -166,6 +175,7 @@ export interface FileRoutesById {
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
+  '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/modules/comms'
     | '/modules/roadmap'
     | '/modules/scout'
+    | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/modules/$slug'
+    | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
@@ -225,6 +237,7 @@ export interface FileRouteTypes {
     | '/modules/comms'
     | '/modules/roadmap'
     | '/modules/scout'
+    | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
@@ -302,6 +315,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/modules/comms/'
       preLoaderRoute: typeof ModulesCommsIndexRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
+    '/modules/comms/integrations': {
+      id: '/modules/comms/integrations'
+      path: '/integrations'
+      fullPath: '/modules/comms/integrations'
+      preLoaderRoute: typeof ModulesCommsIntegrationsRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
     '/modules/comms/voice': {
@@ -385,11 +405,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface ModulesCommsRouteChildren {
+  ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsVoiceRoute: typeof ModulesCommsVoiceRoute
   ModulesCommsIndexRoute: typeof ModulesCommsIndexRoute
 }
 
 const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
+  ModulesCommsIntegrationsRoute: ModulesCommsIntegrationsRoute,
   ModulesCommsVoiceRoute: ModulesCommsVoiceRoute,
   ModulesCommsIndexRoute: ModulesCommsIndexRoute,
 }

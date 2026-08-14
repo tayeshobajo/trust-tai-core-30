@@ -58,7 +58,8 @@ function Connections({ identity }: { identity: WorkspaceIdentity }) {
       <PageHeader
         eyebrow="Comms"
         title="Connections"
-        description="Comms reads only approved sources, only under your own access, and never sends anything."
+        supporting="Comms reads only approved sources, only under your own access, and never sends anything."
+        appId="comms"
       />
       <CommsTabs active="integrations" />
 
