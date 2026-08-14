@@ -18,7 +18,10 @@ import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { extractProposals } from "@/data/steward/extract";
 import { interpretConversation } from "@/data/steward/ingest";
+import { correctionToDraft } from "@/data/steward/learning";
+import type { CorrectionDraft } from "@/domain/steward-memory";
 import { stewardService } from "@/data/supabase/steward-service";
+
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Steward — Conversation review — Trust Tai OS";
