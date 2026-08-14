@@ -13,11 +13,7 @@
 
 import { OPS_ORIGIN, OPS_READY_MESSAGE, OPS_SESSION_MESSAGE, OPS_SSO_PATH } from "@/domain/ops";
 
-export type OpsLaunchFailure =
-  | "no_session"
-  | "no_organization"
-  | "popup_blocked"
-  | "no_ack";
+export type OpsLaunchFailure = "no_session" | "no_organization" | "popup_blocked" | "no_ack";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -99,9 +95,7 @@ export function launchOps(options: LaunchOpsOptions): Promise<OpsLaunchResult> {
           type: OPS_SESSION_MESSAGE,
           accessToken: token,
           organizationId,
-          ...(options.canonicalProjectId
-            ? { canonicalProjectId: options.canonicalProjectId }
-            : {}),
+          ...(options.canonicalProjectId ? { canonicalProjectId: options.canonicalProjectId } : {}),
           ...(options.returnContext ? { returnContext: options.returnContext } : {}),
           issuedAt: new Date().toISOString(),
         },
