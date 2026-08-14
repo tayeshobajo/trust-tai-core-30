@@ -28,6 +28,7 @@ import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/publi
 import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/roadmap.studio'
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
+import { Route as ApiPublicCommsGmailCandidatesRouteImport } from './routes/api/public/comms.gmail.candidates'
 import { Route as ApiPublicCommsGmailConnectRouteImport } from './routes/api/public/comms.gmail.connect'
 import { Route as ApiPublicCommsGmailSyncRouteImport } from './routes/api/public/comms.gmail.sync'
 
@@ -129,6 +130,12 @@ const ModulesScoutProspectsProspectIdRoute =
     path: '/prospects/$prospectId',
     getParentRoute: () => ModulesScoutRoute,
   } as any)
+const ApiPublicCommsGmailCandidatesRoute =
+  ApiPublicCommsGmailCandidatesRouteImport.update({
+    id: '/api/public/comms/gmail/candidates',
+    path: '/api/public/comms/gmail/candidates',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCommsGmailConnectRoute =
   ApiPublicCommsGmailConnectRouteImport.update({
     id: '/api/public/comms/gmail/connect',
@@ -161,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
+  '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
 }
@@ -181,6 +189,7 @@ export interface FileRoutesByTo {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
+  '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
 }
@@ -205,6 +214,7 @@ export interface FileRoutesById {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
+  '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
 }
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
+    | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/sync'
   fileRoutesByTo: FileRoutesByTo
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
+    | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/sync'
   id:
@@ -273,6 +285,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
+    | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/sync'
   fileRoutesById: FileRoutesById
@@ -289,6 +302,7 @@ export interface RootRouteChildren {
   ApiPublicRoadmapResearchRoute: typeof ApiPublicRoadmapResearchRoute
   ApiPublicRoadmapStudioRoute: typeof ApiPublicRoadmapStudioRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
+  ApiPublicCommsGmailCandidatesRoute: typeof ApiPublicCommsGmailCandidatesRoute
   ApiPublicCommsGmailConnectRoute: typeof ApiPublicCommsGmailConnectRoute
   ApiPublicCommsGmailSyncRoute: typeof ApiPublicCommsGmailSyncRoute
 }
@@ -428,6 +442,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesScoutProspectsProspectIdRouteImport
       parentRoute: typeof ModulesScoutRoute
     }
+    '/api/public/comms/gmail/candidates': {
+      id: '/api/public/comms/gmail/candidates'
+      path: '/api/public/comms/gmail/candidates'
+      fullPath: '/api/public/comms/gmail/candidates'
+      preLoaderRoute: typeof ApiPublicCommsGmailCandidatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/comms/gmail/connect': {
       id: '/api/public/comms/gmail/connect'
       path: '/api/public/comms/gmail/connect'
@@ -503,6 +524,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRoadmapResearchRoute: ApiPublicRoadmapResearchRoute,
   ApiPublicRoadmapStudioRoute: ApiPublicRoadmapStudioRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
+  ApiPublicCommsGmailCandidatesRoute: ApiPublicCommsGmailCandidatesRoute,
   ApiPublicCommsGmailConnectRoute: ApiPublicCommsGmailConnectRoute,
   ApiPublicCommsGmailSyncRoute: ApiPublicCommsGmailSyncRoute,
 }
