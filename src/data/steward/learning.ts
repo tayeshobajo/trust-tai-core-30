@@ -279,6 +279,86 @@ export function observationsFromSignals(input: {
 }
 
 /**
+ * Repeated evidence read from canonical truth.
+ *
+ * Confirmed commitments are the strongest evidence Steward has, because a
+ * person put their name to each one, and they persist across every
+ * conversation. Counting patterns here — rather than from one meeting's
+ * interpretation — means a belief only forms from work the organization
+ * actually agreed it was doing.
+ */
+export function observationsFromCommitments(input: {
+  commitments: Commitment[];
+  conversationTitleById?: Record<string, string>;
+}): MemoryObservation[] {
+  const observations: MemoryObservation[] = [];
+  const seen = new Set<string>();
+
+  for (const commitment of input.commitments) {
+    const ownerName = commitment.ownerName.trim();
+    if (!ownerName) continue;
+    const subject = subjectOf(commitment.what);
+    if (!subject) continue;
+    const personKey = personKeyOf({
+      email: commitment.ownerEmail ?? null,
+      name: ownerName,
+    });
+    const conversationId = commitment.conversationId || commitment.id;
+    const conversationTitle =
+      input.conversationTitleById?.[conversationId] ?? "an earlier conversation";
+
+    const push = (observation: MemoryObservation) => {
+      if (!isPersonSafeStatement(observation.statement)) return;
+      /* One conversation, one vote per pattern. */
+      const key = `${observation.patternKey}|${observation.conversationId}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      observations.push(observation);
+    };
+
+    push({
+      patternKey: patternKeyOf({ relation: "carries", personKey, subject }),
+      kind: "responsibility",
+      facet: "responsibility",
+      relation: "carries",
+      personKey,
+      personName: ownerName,
+      statement: `${ownerName} often carries ${subject}.`,
+      conversationId,
+      conversationTitle,
+      evidence: commitment.evidence,
+    });
+
+    const beneficiary = (commitment.beneficiary ?? "").trim();
+    if (beneficiary && beneficiary.toLowerCase() !== ownerName.toLowerCase()) {
+      const counterpartKey = personKeyOf({ name: beneficiary });
+      push({
+        patternKey: patternKeyOf({
+          relation: "prepares_for",
+          personKey,
+          counterpartKey,
+          subject,
+        }),
+        kind: "handoff",
+        facet: "relationship",
+        relation: "prepares_for",
+        personKey,
+        personName: ownerName,
+        counterpartKey,
+        counterpartName: beneficiary,
+        statement: `${ownerName} usually prepares ${subject} for ${beneficiary}.`,
+        conversationId,
+        conversationTitle,
+        evidence: commitment.evidence,
+      });
+    }
+  }
+
+  return observations;
+}
+
+/**
+
  * Patterns that have earned an inferred belief.
  *
  * A pattern needs `RECURRING_PATTERN_THRESHOLD` distinct conversations. Ones
