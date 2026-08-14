@@ -89,7 +89,11 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
       <section aria-labelledby="signals-heading">
         <SectionHeading
           eyebrow="Read just now"
-          title={signals.length > 0 ? `${signals.length} signal${signals.length === 1 ? "" : "s"}` : "Signals"}
+          title={
+            signals.length > 0
+              ? `${signals.length} signal${signals.length === 1 ? "" : "s"}`
+              : "Signals"
+          }
           description="Most urgent first. Pulse recommends and routes; the room that owns the change is where you act."
         />
 
@@ -116,7 +120,8 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
             Not read:{" "}
             {data.withheld
               .map(
-                (w) => `${ROOM_LABEL[w.appId] ?? w.appId} (${WITHHELD_REASON[w.reason] ?? w.reason})`,
+                (w) =>
+                  `${ROOM_LABEL[w.appId] ?? w.appId} (${WITHHELD_REASON[w.reason] ?? w.reason})`,
               )
               .join(", ")}
             .
