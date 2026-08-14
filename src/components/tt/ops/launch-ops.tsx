@@ -13,11 +13,16 @@ import { supabase } from "@/integrations/trust-tai/supabase";
 import { OPS_LAUNCH_MESSAGE, launchOps, type OpsLaunchFailure } from "@/lib/ops-launch";
 
 export function LaunchOpsButton({
+  organizationId,
   canonicalProjectId,
+  returnContext,
   label = "Open Ops",
   variant = "primary",
 }: {
+  /** The organization this session is acting in. Ops requires it. */
+  organizationId: string;
   canonicalProjectId?: string;
+  returnContext?: string;
   label?: string;
   variant?: "primary" | "secondary";
 }) {
@@ -30,7 +35,9 @@ export function LaunchOpsButton({
     const { data } = await supabase.auth.getSession();
     const result = await launchOps({
       accessToken: data.session?.access_token ?? null,
+      organizationId,
       ...(canonicalProjectId ? { canonicalProjectId } : {}),
+      ...(returnContext ? { returnContext } : {}),
     });
     if (result.ok) {
       setState("open");
