@@ -149,7 +149,7 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
         }
       />
 
-      <IntelligenceConsole organizationId={organizationId} userId={userId} />
+      <IntelligenceConsole organizationId={organizationId} />
 
       {/* Needs your decision — always first */}
       <section aria-labelledby="decisions-heading">
