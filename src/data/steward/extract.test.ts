@@ -82,7 +82,11 @@ describe("rhetorical talk is not a clarification item", () => {
     expect(
       kindsOf([
         ["00:00:05", "Henry Chigozie", "Can you hear me, are you there at all?"],
-        ["00:01:00", "Henry Chigozie", "If you were working in a bank, would you take this kind of decision?"],
+        [
+          "00:01:00",
+          "Henry Chigozie",
+          "If you were working in a bank, would you take this kind of decision?",
+        ],
         ["00:02:00", "Henry Chigozie", "It's something that we need to review, right?"],
         ["00:03:00", "Henry Chigozie", "Do you mind sharing a little bit about the program?"],
         ["00:04:00", "Taye Shobajo", "Is it a fireable offense, honestly?"],
@@ -93,7 +97,11 @@ describe("rhetorical talk is not a clarification item", () => {
   it("keeps a question that leaves real work unresolved", () => {
     const proposals = extractProposals(
       conversationOf([
-        ["00:30:00", "Taye Shobajo", "One open question, who owns the analytics handover after go live."],
+        [
+          "00:30:00",
+          "Taye Shobajo",
+          "One open question, who owns the analytics handover after go live.",
+        ],
       ]),
     );
     expect(proposals.map((p) => p.kind)).toEqual(["question"]);
@@ -105,7 +113,11 @@ describe("conditional dependencies surface as blockers", () => {
   it("reads once/then as a dependency with evidence", () => {
     const proposals = extractProposals(
       conversationOf([
-        ["00:49:38", "Henry Chigozie", "Once I get the template back, then I will share the weekly plan."],
+        [
+          "00:49:38",
+          "Henry Chigozie",
+          "Once I get the template back, then I will share the weekly plan.",
+        ],
       ]),
     );
     expect(proposals.map((p) => p.kind)).toEqual(["blocker"]);
@@ -114,9 +126,9 @@ describe("conditional dependencies surface as blockers", () => {
   });
 
   it("does not call ordinary sequencing a blocker", () => {
-    expect(kindsOf([["00:10:00", "Taye Shobajo", "After the call we all went back to work."]])).toEqual(
-      [],
-    );
+    expect(
+      kindsOf([["00:10:00", "Taye Shobajo", "After the call we all went back to work."]]),
+    ).toEqual([]);
   });
 });
 
@@ -191,7 +203,9 @@ describe("provider action items stay provider interpretation", () => {
   it("never becomes observed truth or a resolved owner", () => {
     const conversation: NormalizedConversation = {
       ...conversationOf([]),
-      sourceActionItems: [{ description: "Share weekly plan template", assigneeName: "Henry Chigozie" }],
+      sourceActionItems: [
+        { description: "Share weekly plan template", assigneeName: "Henry Chigozie" },
+      ],
     };
     const grouped = groupProposals(extractProposals(conversation));
     expect(grouped.action).toHaveLength(1);

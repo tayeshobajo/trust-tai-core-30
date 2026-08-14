@@ -301,10 +301,7 @@ function trimStatement(text: string): string {
   return cleaned.length > 220 ? `${cleaned.slice(0, 217)}…` : cleaned;
 }
 
-function evidenceFor(
-  conversation: NormalizedConversation,
-  window: ThoughtWindow,
-): EvidenceRef[] {
+function evidenceFor(conversation: NormalizedConversation, window: ThoughtWindow): EvidenceRef[] {
   return window.segments.slice(0, 3).map((segment) => {
     const label = `${conversation.title} · ${segment.speaker} at ${segment.at}`;
     const url = segment.url ?? conversation.sourceRef.url;
@@ -390,7 +387,7 @@ export function extractProposals(conversation: NormalizedConversation): Proposal
         {
           label: `Action item recorded by ${conversation.sourceRef.provider}`,
           kind: "provider",
-          ...(item.url ?? conversation.sourceRef.url
+          ...((item.url ?? conversation.sourceRef.url)
             ? { url: item.url ?? conversation.sourceRef.url }
             : {}),
         },
