@@ -29,6 +29,7 @@ const ROOM_LABEL: Record<string, string> = {
   roadmap: "Roadmap",
   projects: "Projects",
   studio: "Studio",
+  ops: "Ops",
   activity: "Activity",
 };
 
@@ -109,7 +110,7 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
           ) : (
             <EmptyState
               title="Nothing needs your attention"
-              belongsHere="Signals from Scout, Comms, Roadmap and Projects surface here."
+              belongsHere="Signals from Scout, Comms, Roadmap, Projects and Ops surface here."
               whyItMatters="An empty Pulse is a truthful result: the work is moving without you."
             />
           )}
@@ -173,12 +174,23 @@ function SignalCard({ signal }: { signal: Signal }) {
         </div>
       ) : null}
 
-      <Link
-        to={signal.destination.route}
-        className="mt-4 inline-block font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground underline underline-offset-4 transition-colors hover:text-royal"
-      >
-        {signal.destination.label} →
-      </Link>
+      {/^https?:\/\//.test(signal.destination.route) ? (
+        <a
+          href={signal.destination.route}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-block font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground underline underline-offset-4 transition-colors hover:text-royal"
+        >
+          {signal.destination.label} →
+        </a>
+      ) : (
+        <Link
+          to={signal.destination.route}
+          className="mt-4 inline-block font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground underline underline-offset-4 transition-colors hover:text-royal"
+        >
+          {signal.destination.label} →
+        </Link>
+      )}
     </TTCard>
   );
 }

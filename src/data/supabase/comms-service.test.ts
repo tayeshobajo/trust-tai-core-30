@@ -145,10 +145,12 @@ describe("conference capture", () => {
       { fullName: "Ada Rowe", email: "ada@northbeam.example", source: "manual" },
       CONTEXT,
     );
+    // Capturing the same person twice is the same relationship, not a second
+    // one. The contact stays shared and the relationship stays unique.
     expect(db.tables["contacts"]).toHaveLength(1);
-    expect(db.tables["comms_relationships"]).toHaveLength(2);
-    const [first, second] = db.tables["comms_relationships"]!;
-    expect(first!["contact_id"]).toBe(second!["contact_id"]);
+    expect(db.tables["comms_relationships"]).toHaveLength(1);
+    const [only] = db.tables["comms_relationships"]!;
+    expect(only!["contact_id"]).toBe(db.tables["contacts"]![0]!["id"]);
   });
 
   it("matches on name when no email was captured", async () => {

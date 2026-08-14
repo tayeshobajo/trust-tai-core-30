@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
+import { Route as ModulesOpsRouteImport } from './routes/modules.ops'
 import { Route as ModulesProjectsRouteImport } from './routes/modules.projects'
 import { Route as ModulesPulseRouteImport } from './routes/modules.pulse'
 import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
@@ -54,6 +55,11 @@ const ModulesSlugRoute = ModulesSlugRouteImport.update({
 const ModulesCommsRoute = ModulesCommsRouteImport.update({
   id: '/modules/comms',
   path: '/modules/comms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesOpsRoute = ModulesOpsRouteImport.update({
+  id: '/modules/ops',
+  path: '/modules/ops',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesProjectsRoute = ModulesProjectsRouteImport.update({
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
+  '/modules/ops': typeof ModulesOpsRoute
   '/modules/projects': typeof ModulesProjectsRouteWithChildren
   '/modules/pulse': typeof ModulesPulseRoute
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
@@ -205,6 +212,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
+  '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
+  '/modules/ops': typeof ModulesOpsRoute
   '/modules/projects': typeof ModulesProjectsRouteWithChildren
   '/modules/pulse': typeof ModulesPulseRoute
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/modules/$slug'
     | '/modules/comms'
+    | '/modules/ops'
     | '/modules/projects'
     | '/modules/pulse'
     | '/modules/roadmap'
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/modules/$slug'
+    | '/modules/ops'
     | '/modules/pulse'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/modules/$slug'
     | '/modules/comms'
+    | '/modules/ops'
     | '/modules/projects'
     | '/modules/pulse'
     | '/modules/roadmap'
@@ -342,6 +354,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
+  ModulesOpsRoute: typeof ModulesOpsRoute
   ModulesProjectsRoute: typeof ModulesProjectsRouteWithChildren
   ModulesPulseRoute: typeof ModulesPulseRoute
   ModulesRoadmapRoute: typeof ModulesRoadmapRouteWithChildren
@@ -384,6 +397,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/comms'
       fullPath: '/modules/comms'
       preLoaderRoute: typeof ModulesCommsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/ops': {
+      id: '/modules/ops'
+      path: '/modules/ops'
+      fullPath: '/modules/ops'
+      preLoaderRoute: typeof ModulesOpsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/projects': {
@@ -608,6 +628,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesCommsRoute: ModulesCommsRouteWithChildren,
+  ModulesOpsRoute: ModulesOpsRoute,
   ModulesProjectsRoute: ModulesProjectsRouteWithChildren,
   ModulesPulseRoute: ModulesPulseRoute,
   ModulesRoadmapRoute: ModulesRoadmapRouteWithChildren,
