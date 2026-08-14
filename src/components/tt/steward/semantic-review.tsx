@@ -32,6 +32,7 @@ import {
   STATE_CHANGE_LABEL,
   type CorrectionDraft,
   type MemoryConflict,
+  type MemoryUsage,
   type StateChangeProposal,
 } from "@/domain/steward-memory";
 import { correctionsFromEdit } from "@/data/steward/learning";
@@ -472,6 +473,8 @@ export function SemanticReview({
                     continuity={stateChanges.filter((change) => change.signalId === signal.id)}
                     {...(onConfirm ? { onConfirm } : {})}
                     {...(onCorrect ? { onCorrect } : {})}
+                    {...(onDismiss ? { onDismiss } : {})}
+                    {...(onResolveConflict ? { onResolveConflict } : {})}
                     {...(readOnlyBecause ? { readOnlyBecause } : {})}
                   />
                 ))}
