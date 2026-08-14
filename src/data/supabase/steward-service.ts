@@ -22,8 +22,12 @@ import type {
   RoleMemory,
 } from "@/domain/steward";
 import { personKeyOf } from "@/domain/steward";
+import type { MemoryBelief, MemoryDraft } from "@/domain/steward-memory";
+import { resolveMemory } from "@/data/steward/learning";
+import { draftEvidence, toMemoryBelief } from "@/data/steward/memory-encoding";
 
 import { writeTolerant, type Row } from "./schema";
+
 
 const NOT_PROVISIONED = /does not exist|schema cache|42P01|PGRST205|PGRST20[0-9]/i;
 
