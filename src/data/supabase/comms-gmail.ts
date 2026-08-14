@@ -1,0 +1,75 @@
+/**
+ * The browser side of the Gmail track.
+ *
+ * The client never sees a Google credential. It asks our own server for a
+ * consent URL, hands back the code Google returned, and asks for a read pass.
+ * Every call carries the signed-in member's Supabase token.
+ */
+
+import { supabase } from "@/integrations/trust-tai/supabase";
+
+const CONNECT_URL = "/api/public/comms/gmail/connect";
+const SYNC_URL = "/api/public/comms/gmail/sync";
+
+async function token(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const value = data.session?.access_token;
+  if (!value) throw new Error("Your session has expired. Sign in again.");
+  return value;
+}
+
+async function post<T>(url: string, body: Record<string, unknown>): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${await token()}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = (await response.json()) as Record<string, unknown>;
+  if (!response.ok) {
+    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That call failed.");
+  }
+  return payload as T;
+}
+
+/** Whether the server holds Google credentials, and the exact callback used. */
+export async function gmailStatus(): Promise<{ configured: boolean; redirectUri: string }> {
+  const response = await fetch(CONNECT_URL);
+  if (!response.ok) return { configured: false, redirectUri: "" };
+  return (await response.json()) as { configured: boolean; redirectUri: string };
+}
+
+export async function gmailAuthorizeUrl(organizationId: string): Promise<string> {
+  const result = await post<{ url: string }>(CONNECT_URL, {
+    action: "authorize-url",
+    organizationId,
+  });
+  return result.url;
+}
+
+export async function gmailExchange(input: {
+  organizationId: string;
+  code: string;
+  state: string;
+}): Promise<{ accountEmail: string }> {
+  return post<{ accountEmail: string }>(CONNECT_URL, { action: "exchange", ...input });
+}
+
+export async function gmailDisconnect(organizationId: string): Promise<void> {
+  await post(CONNECT_URL, { action: "disconnect", organizationId });
+}
+
+export interface GmailSyncResult {
+  accountEmail?: string;
+  messagesRead: number;
+  messagesStored: number;
+  relationshipsTouched: number;
+  skippedUnknownPeople: number;
+  lastSyncAt: string;
+}
+
+export async function gmailSync(organizationId: string): Promise<GmailSyncResult> {
+  return post<GmailSyncResult>(SYNC_URL, { organizationId });
+}

@@ -71,6 +71,7 @@ function Connections({ identity }: { identity: WorkspaceIdentity }) {
         <p className="text-sm text-muted-foreground">Reading connection state…</p>
       ) : (
         <IntegrationsPanel
+          organizationId={identity.organizationId}
           connections={query.data?.connections ?? []}
           provisioned={query.data?.provisioned ?? false}
         />

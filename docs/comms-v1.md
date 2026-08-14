@@ -105,3 +105,41 @@ and the new thread columns. It has not been applied; until it is,
 tokens live in `private.comms_integration_secrets`, readable only by the
 service role, and Gmail is requested read-only so sending stays impossible by
 construction.
+
+## Gmail track (Phase 1, read-only)
+
+Credentials live on the server only: `GOOGLE_OAUTH_CLIENT_ID`,
+`GOOGLE_OAUTH_CLIENT_SECRET`, plus `COMMS_TOKEN_ENC_KEY` and
+`COMMS_OAUTH_STATE_SECRET`. The browser never sees any of them.
+
+Registered redirect URI (exact match required by Google):
+
+- preview: `https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app/api/public/comms/gmail/connect`
+- production: `https://project--65944e34-ede5-4757-befb-870e1ff97444.lovable.app/api/public/comms/gmail/connect`
+
+Flow:
+
+1. A member clicks Connect. The server signs a state (organization + return
+   path + issue time) and returns Google's consent URL. Scope requested:
+   `gmail.readonly` only, so Comms cannot send.
+2. Google calls back to `/api/public/comms/gmail/connect`. That callback has no
+   Trust Tai session, so it touches no data: it verifies the signed state and
+   bounces the browser back to `/modules/comms/integrations` with the code.
+3. The signed-in page posts the code back. The server exchanges it, reads the
+   mailbox address, writes `comms_integrations`, and stores the refresh token
+   sealed with AES-GCM through `comms_put_integration_secret`. Even a member
+   reading that value back gets ciphertext.
+4. Read now runs one bounded pass: up to 60 messages from the last 30 days,
+   metadata and snippet only. A message is stored only when a participant
+   matches an existing `comms_relationships` email; everything else is counted
+   as skipped and dropped. Upserts key on
+   `(organization_id, provider, provider_message_id)`, so repeat passes are
+   idempotent. Thread state and the response clock come from the pure
+   `readThread` reading, not from Gmail.
+
+Body retention is off: only snippets are stored. `comms_messages.body_text`
+exists for a later opt-in and is never written today.
+
+Requires `docs/comms-integrations-schema.sql` to be applied in the Trust Tai
+Supabase project, including the two SECURITY DEFINER credential functions at
+the end of that file.

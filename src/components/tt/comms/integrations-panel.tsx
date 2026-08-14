@@ -7,6 +7,7 @@
  */
 
 import { MetaPill, SectionHeading, TTCard } from "@/components/tt/primitives";
+import { GmailConnection } from "@/components/tt/comms/gmail-connection";
 import { AmbientRule } from "@/components/tt/ambient";
 import {
   INTEGRATION_PROVIDER_LABEL,
@@ -24,13 +25,6 @@ interface TrackDescription {
 }
 
 const TRACKS: TrackDescription[] = [
-  {
-    key: "gmail",
-    title: "Mailbox",
-    provider: "gmail",
-    body: "Reads threads so the queue knows who is actually waiting on a reply. Read-only: no send scope is requested, so Comms cannot send even by mistake.",
-    needs: "A Google OAuth client and the mailbox to connect.",
-  },
   {
     key: "people",
     title: "People intelligence",
@@ -60,9 +54,11 @@ function statusFor(
 }
 
 export function IntegrationsPanel({
+  organizationId,
   connections,
   provisioned,
 }: {
+  organizationId: string;
   connections: IntegrationConnection[];
   provisioned: boolean;
 }) {
@@ -83,6 +79,11 @@ export function IntegrationsPanel({
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
+        <GmailConnection
+          organizationId={organizationId}
+          connection={statusFor(connections, "gmail")}
+          provisioned={provisioned}
+        />
         {TRACKS.map((track) => {
           const connection = statusFor(connections, track.provider);
           const label = connection

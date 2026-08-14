@@ -225,3 +225,73 @@ create policy "Members update event targets"
 create policy "Members delete event targets"
   on public.comms_event_targets for delete to authenticated
   using (private.is_org_member(organization_id));
+
+-- ------------------------------------------------- sealed credential access
+-- The refresh token is sealed by the server (AES-GCM under COMMS_TOKEN_ENC_KEY)
+-- before it ever leaves the app, so what is stored here is ciphertext. These
+-- two functions are the only way in or out. They are SECURITY DEFINER because
+-- `authenticated` has no rights in the private schema, and they check
+-- membership themselves. A member can therefore hand a sealed value back to
+-- the server, but cannot read the token: without the server key the ciphertext
+-- is inert.
+
+create or replace function public.comms_put_integration_secret(
+  p_integration_id uuid,
+  p_ciphertext text
+) returns void
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  v_org uuid;
+begin
+  select organization_id into v_org
+  from public.comms_integrations
+  where id = p_integration_id;
+
+  if v_org is null then
+    raise exception 'That connection does not exist.';
+  end if;
+  if not private.is_org_member(v_org) then
+    raise exception 'That workspace is not yours.';
+  end if;
+
+  insert into private.comms_integration_secrets (integration_id, refresh_token, updated_at)
+  values (p_integration_id, p_ciphertext, now())
+  on conflict (integration_id)
+  do update set refresh_token = excluded.refresh_token, updated_at = now();
+end;
+$$;
+
+create or replace function public.comms_get_integration_secret(
+  p_integration_id uuid
+) returns text
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  v_org uuid;
+  v_value text;
+begin
+  select organization_id into v_org
+  from public.comms_integrations
+  where id = p_integration_id;
+
+  if v_org is null or not private.is_org_member(v_org) then
+    raise exception 'That workspace is not yours.';
+  end if;
+
+  select refresh_token into v_value
+  from private.comms_integration_secrets
+  where integration_id = p_integration_id;
+
+  return v_value;
+end;
+$$;
+
+revoke all on function public.comms_put_integration_secret(uuid, text) from public, anon;
+revoke all on function public.comms_get_integration_secret(uuid) from public, anon;
+grant execute on function public.comms_put_integration_secret(uuid, text) to authenticated;
+grant execute on function public.comms_get_integration_secret(uuid) to authenticated;
