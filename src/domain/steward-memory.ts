@@ -270,12 +270,38 @@ export interface StateChangeProposal {
 
 /* ----------------------------------------------- memory offered to a reading */
 
-/** Memory conflicting with what the transcript plainly says. Never resolved silently. */
+/**
+ * Memory conflicting with what the transcript plainly says. Never resolved
+ * silently: both sides are carried so a person can read them next to each
+ * other and say which one is actually true.
+ */
 export interface MemoryConflict {
   signalId: ID;
   facet: MemoryFacet;
   memorySays: string;
   transcriptSays: string;
+  because: string;
+  /** The belief in disagreement, so a correction can supersede it directly. */
+  beliefId?: ID;
+  beliefStatement?: string;
+  subjectKey?: string;
+  subjectLabel?: string;
+  patternKey?: string;
+  /** Who taught Steward the remembered side, and when. */
+  memoryRecordedBy?: string;
+  memoryRecordedAt?: ISODateTime;
+  /** The sentence the transcript side would become if the reading is right. */
+  transcriptStatement?: string;
+}
+
+/** One belief that was actually handed to an interpretation, and why. */
+export interface MemoryUsage {
+  beliefId: ID;
+  subjectLabel: string;
+  statement: string;
+  tier: TruthTier;
+  facet: MemoryFacet;
+  /** Plain sentence: why this one was chosen out of everything Steward holds. */
   because: string;
 }
 
@@ -287,15 +313,20 @@ export interface RelevantMemory {
   inferred: string[];
   people: { name: string; title?: string }[];
   projects: { id: ID; label: string }[];
+  /** Exactly what was used, so a person can audit the reading. */
+  used: MemoryUsage[];
+  /** Beliefs held but deliberately left out, counted honestly. */
+  consideredCount: number;
 }
 
 /** Hard ceilings, so a prompt never becomes a dossier dump. */
 export const MEMORY_SELECTION_LIMITS = {
-  decided: 12,
-  inferred: 8,
-  people: 10,
-  projects: 8,
+  decided: 8,
+  inferred: 5,
+  people: 8,
+  projects: 5,
 } as const;
+
 
 /* --------------------------------------------------------------- the guard */
 
