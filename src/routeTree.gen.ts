@@ -37,6 +37,7 @@ import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
 import { Route as ApiPublicStewardConversationRouteImport } from './routes/api/public/steward.conversation'
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
+import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
 import { Route as ApiPublicCommsGmailCandidatesRouteImport } from './routes/api/public/comms.gmail.candidates'
 import { Route as ApiPublicCommsGmailConnectRouteImport } from './routes/api/public/comms.gmail.connect'
 import { Route as ApiPublicCommsGmailSyncRouteImport } from './routes/api/public/comms.gmail.sync'
@@ -186,6 +187,12 @@ const ModulesScoutProspectsProspectIdRoute =
     path: '/prospects/$prospectId',
     getParentRoute: () => ModulesScoutRoute,
   } as any)
+const ModulesStewardMeetingsIndexRoute =
+  ModulesStewardMeetingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ModulesStewardMeetingsRoute,
+  } as any)
 const ApiPublicCommsGmailCandidatesRoute =
   ApiPublicCommsGmailCandidatesRouteImport.update({
     id: '/api/public/comms/gmail/candidates',
@@ -220,7 +227,7 @@ export interface FileRoutesByFullPath {
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
-  '/modules/steward/meetings': typeof ModulesStewardMeetingsRoute
+  '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
+  '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
@@ -248,7 +256,6 @@ export interface FileRoutesByTo {
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
-  '/modules/steward/meetings': typeof ModulesStewardMeetingsRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
   '/modules/projects': typeof ModulesProjectsIndexRoute
   '/modules/roadmap': typeof ModulesRoadmapIndexRoute
@@ -261,6 +268,7 @@ export interface FileRoutesByTo {
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
+  '/modules/steward/meetings': typeof ModulesStewardMeetingsIndexRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
@@ -282,7 +290,7 @@ export interface FileRoutesById {
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
-  '/modules/steward/meetings': typeof ModulesStewardMeetingsRoute
+  '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -295,6 +303,7 @@ export interface FileRoutesById {
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
+  '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
@@ -330,6 +339,7 @@ export interface FileRouteTypes {
     | '/api/public/scout/discover'
     | '/api/public/steward/conversation'
     | '/modules/scout/prospects/$prospectId'
+    | '/modules/steward/meetings/'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/sync'
@@ -345,7 +355,6 @@ export interface FileRouteTypes {
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
-    | '/modules/steward/meetings'
     | '/modules/comms'
     | '/modules/projects'
     | '/modules/roadmap'
@@ -358,6 +367,7 @@ export interface FileRouteTypes {
     | '/api/public/scout/discover'
     | '/api/public/steward/conversation'
     | '/modules/scout/prospects/$prospectId'
+    | '/modules/steward/meetings'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/sync'
@@ -391,6 +401,7 @@ export interface FileRouteTypes {
     | '/api/public/scout/discover'
     | '/api/public/steward/conversation'
     | '/modules/scout/prospects/$prospectId'
+    | '/modules/steward/meetings/'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/sync'
@@ -616,6 +627,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesScoutProspectsProspectIdRouteImport
       parentRoute: typeof ModulesScoutRoute
     }
+    '/modules/steward/meetings/': {
+      id: '/modules/steward/meetings/'
+      path: '/'
+      fullPath: '/modules/steward/meetings/'
+      preLoaderRoute: typeof ModulesStewardMeetingsIndexRouteImport
+      parentRoute: typeof ModulesStewardMeetingsRoute
+    }
     '/api/public/comms/gmail/candidates': {
       id: '/api/public/comms/gmail/candidates'
       path: '/api/public/comms/gmail/candidates'
@@ -700,13 +718,27 @@ const ModulesScoutRouteWithChildren = ModulesScoutRoute._addFileChildren(
   ModulesScoutRouteChildren,
 )
 
+interface ModulesStewardMeetingsRouteChildren {
+  ModulesStewardMeetingsIndexRoute: typeof ModulesStewardMeetingsIndexRoute
+}
+
+const ModulesStewardMeetingsRouteChildren: ModulesStewardMeetingsRouteChildren =
+  {
+    ModulesStewardMeetingsIndexRoute: ModulesStewardMeetingsIndexRoute,
+  }
+
+const ModulesStewardMeetingsRouteWithChildren =
+  ModulesStewardMeetingsRoute._addFileChildren(
+    ModulesStewardMeetingsRouteChildren,
+  )
+
 interface ModulesStewardRouteChildren {
-  ModulesStewardMeetingsRoute: typeof ModulesStewardMeetingsRoute
+  ModulesStewardMeetingsRoute: typeof ModulesStewardMeetingsRouteWithChildren
   ModulesStewardIndexRoute: typeof ModulesStewardIndexRoute
 }
 
 const ModulesStewardRouteChildren: ModulesStewardRouteChildren = {
-  ModulesStewardMeetingsRoute: ModulesStewardMeetingsRoute,
+  ModulesStewardMeetingsRoute: ModulesStewardMeetingsRouteWithChildren,
   ModulesStewardIndexRoute: ModulesStewardIndexRoute,
 }
 
