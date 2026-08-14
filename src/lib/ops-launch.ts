@@ -80,9 +80,7 @@ export function launchOps(options: LaunchOpsOptions): Promise<OpsLaunchResult> {
         {
           type: OPS_SESSION_MESSAGE,
           accessToken: token,
-          ...(options.canonicalProjectId
-            ? { canonicalProjectId: options.canonicalProjectId }
-            : {}),
+          ...(options.canonicalProjectId ? { canonicalProjectId: options.canonicalProjectId } : {}),
           issuedAt: new Date().toISOString(),
         },
         origin,
@@ -91,7 +89,10 @@ export function launchOps(options: LaunchOpsOptions): Promise<OpsLaunchResult> {
     }
 
     host.addEventListener("message", onMessage);
-    timer = host.setTimeout(() => finish({ ok: false, reason: "no_ack" }), options.timeoutMs ?? 15_000);
+    timer = host.setTimeout(
+      () => finish({ ok: false, reason: "no_ack" }),
+      options.timeoutMs ?? 15_000,
+    );
   });
 }
 

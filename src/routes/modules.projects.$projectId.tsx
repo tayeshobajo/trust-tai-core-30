@@ -192,7 +192,11 @@ function ProjectWorkspace({
             title="Take this into technical stewardship"
             description="Ops runs the technical work for this project. Your Trust Tai session is handed over securely; this project's id travels with it."
           />
-          <LaunchOpsButton variant="secondary" label="Open in Ops" canonicalProjectId={project.id} />
+          <LaunchOpsButton
+            variant="secondary"
+            label="Open in Ops"
+            canonicalProjectId={project.id}
+          />
         </section>
       ) : null}
 

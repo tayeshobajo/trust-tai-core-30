@@ -16,7 +16,12 @@ const ORG = "org-1";
 
 function opsRow(
   name: string,
-  overrides: { at?: string; metadata?: Record<string, unknown>; summary?: string; org?: string } = {},
+  overrides: {
+    at?: string;
+    metadata?: Record<string, unknown>;
+    summary?: string;
+    org?: string;
+  } = {},
 ): ActivityEvent {
   const at = overrides.at ?? "2026-08-13T09:00:00.000Z";
   return {
@@ -67,7 +72,10 @@ describe("Ops evidence", () => {
   it("does not double count a duplicate Ops row", () => {
     const rows = [
       opsRow("ops.blocked", { metadata: { source_event_key: "evt-1" } }),
-      opsRow("ops.blocked", { at: "2026-08-13T09:00:05.000Z", metadata: { source_event_key: "evt-1" } }),
+      opsRow("ops.blocked", {
+        at: "2026-08-13T09:00:05.000Z",
+        metadata: { source_event_key: "evt-1" },
+      }),
     ];
     const snapshot = snapshotWith(rows);
     expect(contextBlocks(snapshot).filter((b) => b.appId === "ops")).toHaveLength(1);
@@ -118,7 +126,10 @@ describe("Ops evidence", () => {
   });
 
   it("answers what needs attention citing Ops and its destination", () => {
-    const result = answer(snapshotWith([opsRow("ops.blocked")]), "What technical risks are affecting active projects?");
+    const result = answer(
+      snapshotWith([opsRow("ops.blocked")]),
+      "What technical risks are affecting active projects?",
+    );
     expect(result.sufficient).toBe(true);
     expect(result.contributingApps).toContain("ops");
     expect(result.signals[0]!.destination.route).toContain(OPS_ORIGIN);

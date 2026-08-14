@@ -70,7 +70,14 @@ export type Permission =
   /** Enter Ops. Ops is a separate app and enforces its own access as well. */
   | "ops.read";
 
-const READ_ONLY: Permission[] = ["workspace.read", "intelligence.read", "scout.read", "comms.read", "roadmap.read", "projects.read"];
+const READ_ONLY: Permission[] = [
+  "workspace.read",
+  "intelligence.read",
+  "scout.read",
+  "comms.read",
+  "roadmap.read",
+  "projects.read",
+];
 
 const OPERATOR: Permission[] = [
   ...READ_ONLY,
@@ -98,7 +105,10 @@ export const ROLE_PERMISSIONS: Record<WorkspaceRole, Permission[]> = {
 export const MANAGING_ROLES: WorkspaceRole[] = ["owner", "admin"];
 
 export function normalizeRole(role: string | null | undefined): WorkspaceRole {
-  const candidate = (role ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const candidate = (role ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
   return (WORKSPACE_ROLES as string[]).includes(candidate)
     ? (candidate as WorkspaceRole)
     : "member";
