@@ -380,4 +380,95 @@ export const stewardService = {
     guard(error);
     return toBelief((data ?? {}) as Row);
   },
+
+  /* ------------------------------------------------------ memory + learning */
+
+  /**
+   * What Steward currently holds, with the structured memory decoded and
+   * history applied. Superseded and retired beliefs drop out of the read; they
+   * are never deleted from the ledger.
+   */
+  async memory(organizationId: ID, limit = 400): Promise<MemoryBelief[]> {
+    const rows = await stewardService.beliefs(organizationId, limit);
+    return resolveMemory(rows.map(toMemoryBelief));
+  },
+
+  /** Every belief ever recorded, decoded, newest first. History, in full. */
+  async memoryHistory(organizationId: ID, limit = 400): Promise<MemoryBelief[]> {
+    const rows = await stewardService.beliefs(organizationId, limit);
+    return rows.map(toMemoryBelief);
+  },
+
+  /** Write one learned or corrected belief. Append only, always. */
+  async rememberOne(input: {
+    organizationId: ID;
+    userId: ID;
+    userName: string;
+    draft: MemoryDraft;
+  }): Promise<MemoryBelief> {
+    const { draft } = input;
+    const belief = await stewardService.recordBelief({
+      organizationId: input.organizationId,
+      userId: input.userId,
+      userName: input.userName,
+      subjectKey: draft.subjectKey,
+      subjectLabel: draft.subjectLabel,
+      statement: draft.statement,
+      tier: draft.tier,
+      authority: draft.authority,
+      ...(draft.supersedesId ? { supersedesId: draft.supersedesId } : {}),
+      evidence: draftEvidence(draft),
+    });
+    return toMemoryBelief(belief);
+  },
+
+  /** Write several at once. One failure never leaves a half-taught memory silent. */
+  async remember(input: {
+    organizationId: ID;
+    userId: ID;
+    userName: string;
+    drafts: MemoryDraft[];
+  }): Promise<MemoryBelief[]> {
+    const written: MemoryBelief[] = [];
+    for (const draft of input.drafts) {
+      written.push(
+        await stewardService.rememberOne({
+          organizationId: input.organizationId,
+          userId: input.userId,
+          userName: input.userName,
+          draft,
+        }),
+      );
+    }
+    return written;
+  },
+
+  /**
+   * Stop consulting a belief. It stays on the record, superseded by an
+   * explicit human note saying it no longer holds.
+   */
+  async retireBelief(input: {
+    organizationId: ID;
+    userId: ID;
+    userName: string;
+    belief: MemoryBelief;
+    because: string;
+  }): Promise<MemoryBelief> {
+    return await stewardService.rememberOne({
+      organizationId: input.organizationId,
+      userId: input.userId,
+      userName: input.userName,
+      draft: {
+        subjectKey: input.belief.subjectKey,
+        subjectLabel: input.belief.subjectLabel,
+        statement: `No longer true: “${input.belief.statement}”. ${input.because}`.trim(),
+        tier: "decided",
+        authority: "human",
+        supersedesId: input.belief.id,
+        evidence: [{ kind: "human", label: `Retired by a person — ${input.because}` }],
+        meta: { ...input.belief.meta, kind: "correction", retired: true },
+      },
+    });
+  },
 };
+
