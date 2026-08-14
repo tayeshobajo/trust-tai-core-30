@@ -70,10 +70,17 @@ describe("readThread", () => {
   });
 
   it("owes a reply when they wrote last, with a due time", () => {
-    const read = readThread([outbound, inbound]);
+    const reply = message({
+      providerMessageId: "m3",
+      direction: "inbound",
+      fromEmail: "dana@teamsynerg.com",
+      toEmails: ["tai@trust-tai.com"],
+      occurredAt: "2026-08-03T10:00:00.000Z",
+    });
+    const read = readThread([inbound, outbound, reply]);
     expect(read.state).toBe("waiting_on_us");
-    expect(read.responseDueAt).toBe("2026-08-02T10:00:00.000Z");
-    expect(read.lastInboundAt).toBe("2026-08-01T10:00:00.000Z");
+    expect(read.responseDueAt).toBe("2026-08-04T10:00:00.000Z");
+    expect(read.lastInboundAt).toBe("2026-08-03T10:00:00.000Z");
   });
 
   it("waits on them when we wrote last, and owes nothing", () => {
