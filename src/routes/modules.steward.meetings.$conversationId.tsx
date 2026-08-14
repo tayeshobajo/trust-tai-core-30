@@ -172,10 +172,50 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
           confirmedKeys={confirmedKeys}
           stateChanges={interpretation.data.stateChanges}
           conflicts={interpretation.data.conflicts}
+          memoryUsed={interpretation.data.memoryUsed}
+          memoryConsidered={interpretation.data.memoryConsidered}
+          suppressedCount={interpretation.data.suppressedCount}
           onConfirm={(input) => confirm.mutate(input)}
           onCorrect={(corrections) => learn.mutate(corrections)}
+          onDismiss={(signal) =>
+            record_outcome.mutate(
+              outcomeToDraft({
+                outcome: "dismissed_as_context",
+                subjectKey: signal.ownerName
+                  ? signal.ownerName.trim().toLowerCase()
+                  : "this conversation",
+                subjectLabel: signal.ownerName?.trim() || record.title,
+                about: signal.normalizedMeaning,
+                patternKey: patternKeyForSignal(signal),
+                ...(signal.ownerName ? { personName: signal.ownerName } : {}),
+                conversationId,
+                candidateId: signal.candidateId,
+              }),
+            )
+          }
+          onResolveConflict={(conflict, keep) =>
+            record_outcome.mutate(
+              outcomeToDraft({
+                /* Keeping memory confirms it; choosing the transcript corrects it. */
+                outcome: keep === "memory" ? "belief_confirmed" : "belief_corrected",
+                subjectKey: conflict.subjectKey ?? "this conversation",
+                subjectLabel: conflict.subjectLabel ?? record.title,
+                about:
+                  keep === "memory"
+                    ? conflict.memorySays
+                    : (conflict.transcriptStatement ?? conflict.transcriptSays),
+                ...(conflict.patternKey ? { patternKey: conflict.patternKey } : {}),
+                conversationId,
+                note:
+                  keep === "memory"
+                    ? "Memory is still right; this conversation was read differently."
+                    : "This conversation is right; memory was out of date.",
+              }),
+            )
+          }
         />
       ) : (
+
 
         <>
           <p className="tt-surface p-5 text-sm text-muted-foreground">
