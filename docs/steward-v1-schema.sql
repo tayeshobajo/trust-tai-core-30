@@ -10,8 +10,8 @@
 -- Steward specific, because they are specialised Steward context.
 --
 -- Security. Every policy reuses the existing hardened private.is_org_member(uuid).
--- This migration creates NO SECURITY DEFINER helper in the public schema, grants
--- nothing to anon, and enables RLS on every new table.
+-- This migration adds no privileged helper of its own, makes no grant to the
+-- unauthenticated role, and enables RLS on every new table.
 
 create extension if not exists "pgcrypto";
 
