@@ -12,14 +12,29 @@ back in.
 
 ## 1. The door out: SSO handoff
 
-`src/lib/ops-launch.ts` opens `https://ops.trusttai.com/sso/waiting` in a new
-tab and then waits. It posts nothing until Ops answers with
-`trust-tai-ops:ready` from that exact origin.
+`src/lib/ops-launch.ts` opens `https://ops.trusttai.com/sso` in a new tab and
+then waits. It posts nothing until Ops answers with `trust-tai-ops:sso-ready`
+from that exact origin, then posts a single `trust-tai-os:sso` message.
+
+The contract belongs to the Ops bridge (`src/suite/ssoBridge.ts` in Ops) and
+this side matches it exactly:
+
+| Piece | Value |
+| --- | --- |
+| Landing path | `/sso` (Ops matches `/^\/sso\/?$/`) |
+| Ready message | `trust-tai-ops:sso-ready` |
+| Handoff message | `trust-tai-os:sso` |
+| Handoff payload | `{ type, accessToken, organizationId, canonicalProjectId?, returnContext? }` |
+
+`organizationId` is required and must be a UUID. Without it, or with a
+malformed one, the launcher fails closed before any window is opened.
 
 Guarantees, each covered by a test in `src/lib/ops-launch.test.ts`:
 
 - No session, no window. Launching signed out returns `no_session` and never
   opens anything.
+- No organization, no window. A missing or non-UUID `organizationId` returns
+  `no_organization` and posts nothing.
 - The token is never in a URL, a fragment, a window name, `localStorage` or
   `sessionStorage`. It exists only inside one `postMessage` payload.
 - `targetOrigin` is the literal Ops origin. Never `*`.
@@ -49,12 +64,15 @@ row belonging to another organization is invisible to both context and signals.
 
 ## 3. Idempotency
 
-Ops retries. `docs/ops-activity-idempotency.sql` adds a nullable
-`source_event_key` column and a partial unique index on
-`(organization_id, app_key, source_event_key)`. Existing producers are
-unaffected. The reader also de-duplicates in memory, falling back to event name
-plus chain plus timestamp when no key is present, so a duplicate never counts
-twice even before the migration is applied.
+Ops retries. `docs/ops-activity-idempotency.sql` adds a nullable `source_event_key` column
+and a partial unique index on `(organization_id, app_key, source_event_key)`.
+It has been applied to the live Trust Tai Supabase project.
+
+Reading prefers the top-level `source_event_key` column, then
+`provenance.ops_event_key`, then `provenance.dedupe_key` for rows written
+before the column existed, and finally falls back to event name plus chain plus
+timestamp. Writing sends the key both as the top-level column and as
+`provenance.dedupe_key`, so older readers stay correct.
 
 ## 4. Access
 
