@@ -8,7 +8,12 @@
 
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { NormalizedConversation, Proposal, SourceAdapterStatus } from "@/domain/steward";
-import type { MemoryConflict, StateChangeProposal } from "@/domain/steward-memory";
+import type {
+  MemoryConflict,
+  MemoryUsage,
+  StateChangeProposal,
+} from "@/domain/steward-memory";
+
 import type { InterpretationRun } from "@/domain/steward-semantic";
 
 
@@ -104,7 +109,14 @@ export interface InterpretationResult {
   stateChanges: StateChangeProposal[];
   /** Where this reading disagrees with something a person decided. */
   conflicts: MemoryConflict[];
+  /** The bounded memory actually handed to the model, and why each part. */
+  memoryUsed: MemoryUsage[];
+  /** How many beliefs Steward holds in total, so the bound is visible. */
+  memoryConsidered: number;
+  /** Patterns left out because people keep calling them context. */
+  suppressedCount: number;
 }
+
 
 /**
  * Interpret one conversation for meaning.
@@ -138,6 +150,10 @@ export async function interpretConversation(input: {
     run: body["run"] as InterpretationRun,
     stateChanges: (body["stateChanges"] ?? []) as StateChangeProposal[],
     conflicts: (body["conflicts"] ?? []) as MemoryConflict[],
+    memoryUsed: (body["memoryUsed"] ?? []) as MemoryUsage[],
+    memoryConsidered: Number(body["memoryConsidered"] ?? 0),
+    suppressedCount: Number(body["suppressedCount"] ?? 0),
   };
+
 }
 

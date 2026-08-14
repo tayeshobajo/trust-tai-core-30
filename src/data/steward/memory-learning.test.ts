@@ -24,6 +24,9 @@ import {
   correctionsFromEdit,
   observationsFromCommitments,
   observationsFromSignals,
+  outcomeRecordsFromBeliefs,
+  outcomeToDraft,
+  patternKeyForSignal,
   resolveMemory,
   suppressedPatterns,
 } from "./learning";
@@ -354,5 +357,171 @@ describe("feedback", () => {
         { patternKey: "carries|emmanuel||calls", outcome: "confirmed" },
       ]),
     ).toEqual(["carries|henry||templates"]);
+  });
+});
+
+describe("bounded relevance, and being able to audit it", () => {
+  function conversationAbout(text: string, participants: { name: string }[]) {
+    return {
+      sourceRef: { provider: "fixture" as const, url: "https://example.com" },
+      title: "Weekly",
+      occurredAt: "2026-01-03T09:00:00.000Z",
+      participants,
+      segments: [{ index: 0, speaker: participants[0]?.name ?? "Henry", at: "00:00:01", text }],
+      sourceActionItems: [],
+    };
+  }
+
+  it("leaves out beliefs about people who had nothing to do with the conversation", () => {
+    const relevant = selectRelevantMemory({
+      beliefs: [
+        belief({
+          id: "b-here",
+          statement: "Henry carries clinical onboarding.",
+          subjectKey: "henry",
+          subjectLabel: "Henry",
+          meta: { kind: "person", facet: "responsibility", personKey: "henry", personName: "Henry" },
+        }),
+        belief({
+          id: "b-elsewhere",
+          statement: "Priya carries billing.",
+          subjectKey: "priya",
+          subjectLabel: "Priya",
+          meta: { kind: "person", facet: "responsibility", personKey: "priya", personName: "Priya" },
+        }),
+      ],
+      conversation: conversationAbout("Morning all, onboarding first.", [{ name: "Henry" }]),
+      people: [{ name: "Henry" }, { name: "Priya" }],
+      projects: [],
+    });
+
+    expect(relevant.used.map((item) => item.beliefId)).toEqual(["b-here"]);
+    expect(relevant.consideredCount).toBe(2);
+  });
+
+  it("reads between the lines when a person is called by first name only", () => {
+    const relevant = selectRelevantMemory({
+      beliefs: [
+        belief({
+          id: "b-tai",
+          statement: "Tai Nguyen carries the Bioptrics relationship.",
+          subjectKey: "tai-nguyen",
+          subjectLabel: "Tai Nguyen",
+          meta: {
+            kind: "person",
+            facet: "responsibility",
+            personKey: "tai-nguyen",
+            personName: "Tai Nguyen",
+          },
+        }),
+      ],
+      conversation: conversationAbout("Tai will pick that up after the call.", [{ name: "Henry" }]),
+      people: [{ name: "Henry" }],
+      projects: [],
+    });
+
+    expect(relevant.used).toHaveLength(1);
+    expect(relevant.used[0]!.because).toContain("Tai");
+  });
+
+  it("explains every belief it hands over, and never exceeds its ceiling", () => {
+    const many = Array.from({ length: 20 }, (_, index) =>
+      belief({
+        id: `b-${index}`,
+        tier: "decided",
+        authority: "human",
+        statement: `Henry carries thread ${index}.`,
+        subjectKey: `henry-${index}`,
+        subjectLabel: "Henry",
+        meta: { kind: "person", facet: "responsibility", personKey: "henry", personName: "Henry" },
+      }),
+    );
+    const relevant = selectRelevantMemory({
+      beliefs: many,
+      conversation: conversationAbout("Henry, quick one.", [{ name: "Henry" }]),
+      people: [{ name: "Henry" }],
+      projects: [],
+    });
+
+    expect(relevant.decided.length).toBeLessThanOrEqual(8);
+    expect(relevant.used).toHaveLength(relevant.decided.length + relevant.inferred.length);
+    for (const item of relevant.used) expect(item.because.length).toBeGreaterThan(0);
+  });
+
+  it("stops offering a pattern people keep calling context", () => {
+    const suppressed = suppressedPatterns([
+      { patternKey: "noise", outcome: "dismissed_as_context" },
+      { patternKey: "noise", outcome: "dismissed_as_context" },
+    ]);
+    const relevant = selectRelevantMemory({
+      beliefs: [
+        belief({
+          id: "b-noise",
+          statement: "Henry usually opens with a status recap.",
+          subjectKey: "henry",
+          subjectLabel: "Henry",
+          meta: {
+            kind: "person",
+            facet: "cadence",
+            personKey: "henry",
+            personName: "Henry",
+            patternKey: "noise",
+          },
+        }),
+      ],
+      conversation: conversationAbout("Henry, quick one.", [{ name: "Henry" }]),
+      people: [{ name: "Henry" }],
+      projects: [],
+      suppressedPatterns: suppressed,
+    });
+
+    expect(relevant.used).toEqual([]);
+  });
+
+  it("carries provenance on both sides of a disagreement", () => {
+    const conflicts = flagMemoryConflicts({
+      signals: [
+        signal({ ownerName: "Emmanuel", normalizedMeaning: "Emmanuel owns Bioptrics onboarding." }),
+      ],
+      beliefs: [
+        belief({
+          id: "b-owner",
+          tier: "decided",
+          authority: "human",
+          recordedBy: "Tai Nguyen",
+          meta: {
+            kind: "correction",
+            facet: "owner",
+            corrected: "Henry",
+            projectLabel: "Bioptrics",
+          },
+        }),
+      ],
+    });
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]!.beliefId).toBe("b-owner");
+    expect(conflicts[0]!.memoryRecordedBy).toBe("Tai Nguyen");
+    expect(conflicts[0]!.transcriptStatement).toContain("Emmanuel");
+  });
+
+  it("records an explicit dismissal as attributable feedback, not a deletion", () => {
+    const draft = outcomeToDraft({
+      outcome: "dismissed_as_context",
+      subjectKey: "henry",
+      subjectLabel: "Henry",
+      about: "Henry sends the onboarding template.",
+      patternKey: patternKeyForSignal(signal()),
+      conversationId: "conv-1",
+    });
+
+    expect(draft.tier).toBe("decided");
+    expect(draft.authority).toBe("human");
+    expect(draft.meta.outcome).toBe("dismissed_as_context");
+    expect(
+      outcomeRecordsFromBeliefs([
+        belief({ id: "b-outcome", statement: draft.statement, meta: draft.meta }),
+      ]),
+    ).toEqual([{ patternKey: draft.meta.patternKey, outcome: "dismissed_as_context" }]);
   });
 });

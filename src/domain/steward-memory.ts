@@ -84,6 +84,39 @@ export type MemoryRelation =
   | "belongs_to"
   | "changed";
 
+/* ------------------------------------------------------------- outcomes */
+
+/**
+ * What a person did with something Steward offered.
+ *
+ * Outcomes are recorded, not scored. They exist so a person can see that their
+ * feedback landed, and so Steward can stop raising a shape of reading people
+ * keep telling it is only context. There is no weighting, no confidence maths
+ * and no judgement of anyone — only a countable record of explicit decisions.
+ */
+export type LearningOutcome =
+  | "confirmed"
+  | "edited_then_confirmed"
+  | "dismissed_as_context"
+  | "marked_kept"
+  | "marked_waiting"
+  | "released"
+  | "belief_confirmed"
+  | "belief_corrected"
+  | "belief_retired";
+
+export const LEARNING_OUTCOME_LABEL: Record<LearningOutcome, string> = {
+  confirmed: "Confirmed as read",
+  edited_then_confirmed: "Corrected, then confirmed",
+  dismissed_as_context: "Dismissed as context",
+  marked_kept: "Marked as kept",
+  marked_waiting: "Marked as waiting",
+  released: "Released",
+  belief_confirmed: "Confirmed as true",
+  belief_corrected: "Put right by a person",
+  belief_retired: "Retired",
+};
+
 /* --------------------------------------------------------------- the record */
 
 /**
@@ -115,9 +148,12 @@ export interface MemoryMeta {
   commitmentId?: ID;
   /** The interpretation candidate a correction came from. */
   candidateId?: ID;
+  /** What a person explicitly did, when this row records a decision. */
+  outcome?: LearningOutcome;
   /** A person retired this belief. History stays; it stops being consulted. */
   retired?: boolean;
 }
+
 
 /** A belief with its structured memory decoded. */
 export interface MemoryBelief {
@@ -234,12 +270,38 @@ export interface StateChangeProposal {
 
 /* ----------------------------------------------- memory offered to a reading */
 
-/** Memory conflicting with what the transcript plainly says. Never resolved silently. */
+/**
+ * Memory conflicting with what the transcript plainly says. Never resolved
+ * silently: both sides are carried so a person can read them next to each
+ * other and say which one is actually true.
+ */
 export interface MemoryConflict {
   signalId: ID;
   facet: MemoryFacet;
   memorySays: string;
   transcriptSays: string;
+  because: string;
+  /** The belief in disagreement, so a correction can supersede it directly. */
+  beliefId?: ID;
+  beliefStatement?: string;
+  subjectKey?: string;
+  subjectLabel?: string;
+  patternKey?: string;
+  /** Who taught Steward the remembered side, and when. */
+  memoryRecordedBy?: string;
+  memoryRecordedAt?: ISODateTime;
+  /** The sentence the transcript side would become if the reading is right. */
+  transcriptStatement?: string;
+}
+
+/** One belief that was actually handed to an interpretation, and why. */
+export interface MemoryUsage {
+  beliefId: ID;
+  subjectLabel: string;
+  statement: string;
+  tier: TruthTier;
+  facet: MemoryFacet;
+  /** Plain sentence: why this one was chosen out of everything Steward holds. */
   because: string;
 }
 
@@ -251,15 +313,20 @@ export interface RelevantMemory {
   inferred: string[];
   people: { name: string; title?: string }[];
   projects: { id: ID; label: string }[];
+  /** Exactly what was used, so a person can audit the reading. */
+  used: MemoryUsage[];
+  /** Beliefs held but deliberately left out, counted honestly. */
+  consideredCount: number;
 }
 
 /** Hard ceilings, so a prompt never becomes a dossier dump. */
 export const MEMORY_SELECTION_LIMITS = {
-  decided: 12,
-  inferred: 8,
-  people: 10,
-  projects: 8,
+  decided: 8,
+  inferred: 5,
+  people: 8,
+  projects: 5,
 } as const;
+
 
 /* --------------------------------------------------------------- the guard */
 

@@ -19,11 +19,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
-import { EmptyState, MetaPill, TTButton } from "@/components/tt/primitives";
+import { EmptyState, MetaPill, TTButton, TTInput } from "@/components/tt/primitives";
 import { StewardTabs } from "@/components/tt/steward/steward-tabs";
 import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { accumulatePatterns, observationsFromCommitments } from "@/data/steward/learning";
+import {
+  accumulatePatterns,
+  editBeliefDraft,
+  endorseBeliefDraft,
+  observationsFromCommitments,
+} from "@/data/steward/learning";
 import { stewardService } from "@/data/supabase/steward-service";
 import { TRUTH_TIER_LABEL } from "@/domain/signals";
 import {
@@ -106,14 +111,20 @@ function Disclosure({ open }: { open: boolean }) {
 function BeliefRow({
   belief,
   onRetire,
+  onConfirm,
+  onEdit,
   busy,
 }: {
   belief: MemoryBelief;
   onRetire?: (because: string) => void;
+  onConfirm?: () => void;
+  onEdit?: (statement: string) => void;
   busy?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [asking, setAsking] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(belief.statement);
 
   return (
     <li className="border-b border-border last:border-b-0">
@@ -193,6 +204,64 @@ function BeliefRow({
             </p>
           )}
 
+          {/*
+            Explicit feedback. Confirming something Steward only inferred turns
+            it into a person's word; editing records both the old sentence and
+            the new one. Nothing is overwritten either way.
+          */}
+          {editing ? (
+            <div className="mt-4 space-y-3">
+              <label className="block">
+                <span className="tt-eyebrow">Say it in your own words</span>
+                <TTInput
+                  className="mt-2"
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                />
+              </label>
+              <div className="flex flex-wrap items-center gap-3">
+                <TTButton
+                  type="button"
+                  disabled={busy || draft.trim().length === 0}
+                  onClick={() => {
+                    setEditing(false);
+                    onEdit?.(draft.trim());
+                  }}
+                >
+                  {busy ? "Recording…" : "Save & confirm"}
+                </TTButton>
+                <TTButton
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setDraft(belief.statement);
+                    setEditing(false);
+                  }}
+                >
+                  Cancel
+                </TTButton>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              {onConfirm && belief.tier !== "decided" ? (
+                <TTButton type="button" variant="secondary" disabled={busy} onClick={onConfirm}>
+                  Confirm as true
+                </TTButton>
+              ) : null}
+              {onEdit ? (
+                <TTButton
+                  type="button"
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => setEditing(true)}
+                >
+                  Edit &amp; confirm
+                </TTButton>
+              ) : null}
+            </div>
+          )}
+
           {onRetire ? (
             asking ? (
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -232,6 +301,8 @@ function MemoryGroup({
   beliefs,
   defaultOpen,
   onRetire,
+  onConfirm,
+  onEdit,
   busy,
 }: {
   kind: MemoryKind;
@@ -239,6 +310,8 @@ function MemoryGroup({
   beliefs: MemoryBelief[];
   defaultOpen: boolean;
   onRetire: (belief: MemoryBelief, because: string) => void;
+  onConfirm: (belief: MemoryBelief) => void;
+  onEdit: (belief: MemoryBelief, statement: string) => void;
   busy: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -268,6 +341,8 @@ function MemoryGroup({
               belief={belief}
               busy={busy}
               onRetire={(because) => onRetire(belief, because)}
+              onConfirm={() => onConfirm(belief)}
+              onEdit={(statement) => onEdit(belief, statement)}
             />
           ))}
         </ul>
@@ -415,8 +490,12 @@ function Memory({ identity }: { identity: WorkspaceIdentity }) {
                   blurb={group.blurb}
                   beliefs={group.beliefs}
                   defaultOpen={index === 0}
-                  busy={retire.isPending}
+                  busy={retire.isPending || remember.isPending}
                   onRetire={(belief, because) => retire.mutate({ belief, because })}
+                  onConfirm={(belief) => remember.mutate(endorseBeliefDraft(belief))}
+                  onEdit={(belief, statement) =>
+                    remember.mutate(editBeliefDraft(belief, statement))
+                  }
                 />
               ))}
             </div>

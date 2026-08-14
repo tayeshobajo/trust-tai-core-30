@@ -19,7 +19,12 @@ import type { MemoryBelief } from "@/domain/steward-memory";
 import type { MemoryContext } from "@/domain/steward-semantic";
 import { detectCandidates } from "@/data/steward/candidates";
 import { proposeStateChanges } from "@/data/steward/continuity";
-import { resolveMemory } from "@/data/steward/learning";
+import {
+  outcomeRecordsFromBeliefs,
+  resolveMemory,
+  suppressedPatterns,
+} from "@/data/steward/learning";
+
 import { toMemoryBelief } from "@/data/steward/memory-encoding";
 import { flagMemoryConflicts, selectRelevantMemory } from "@/data/steward/memory-context";
 import {
@@ -221,11 +226,14 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
 
         const { memory, commitments } = await readMemory(supabase, organizationId);
         const beliefs = await readBeliefs(supabase, organizationId);
+        /* Readings people keep calling context stop being raised. Countable, never hidden. */
+        const suppressed = suppressedPatterns(outcomeRecordsFromBeliefs(beliefs));
         const relevant = selectRelevantMemory({
           beliefs,
           conversation,
           people: memory.people,
           projects: memory.projects,
+          suppressedPatterns: suppressed,
         });
         const memoryWithBeliefs: MemoryContext = {
           ...memory,
@@ -234,6 +242,7 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
           decided: relevant.decided,
           inferred: relevant.inferred,
         };
+
         const candidates = detectCandidates(conversation);
         const initialRunId = getLovableAiGatewayRunId(request);
         const gateway = createLovableAiGatewayRunIdFetch(initialRunId);
@@ -250,7 +259,16 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
           /* Continuity and conflict are proposals for a person, never writes. */
           const stateChanges = proposeStateChanges({ signals: run.signals, commitments });
           const conflicts = flagMemoryConflicts({ signals: run.signals, beliefs });
-          return Response.json({ run, stateChanges, conflicts });
+          return Response.json({
+            run,
+            stateChanges,
+            conflicts,
+            /* Exactly what memory was consulted, so the reading can be audited. */
+            memoryUsed: relevant.used,
+            memoryConsidered: relevant.consideredCount,
+            suppressedCount: suppressed.length,
+          });
+
         } catch (error) {
 
           if (error instanceof InterpretationUnavailableError) {
