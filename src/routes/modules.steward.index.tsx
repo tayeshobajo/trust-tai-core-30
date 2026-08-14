@@ -64,6 +64,7 @@ function MoveRow({
         <MetaPill>{MOVE_STATE_LABEL[move.state]}</MetaPill>
         <MetaPill>Carried by {move.ownerName}</MetaPill>
         <MetaPill>{move.sourceLabel}</MetaPill>
+        {move.needsCorrection ? <MetaPill>Needs restating</MetaPill> : null}
       </div>
       <p className="mt-3 max-w-reading text-[15px] text-foreground">{move.title}</p>
       <p className="mt-2 max-w-reading text-sm text-muted-foreground">{move.why}</p>

@@ -38,6 +38,7 @@ import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/publi
 import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/roadmap.studio'
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
 import { Route as ApiPublicStewardConversationRouteImport } from './routes/api/public/steward.conversation'
+import { Route as ApiPublicStewardInterpretRouteImport } from './routes/api/public/steward.interpret'
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
 import { Route as ModulesStewardMeetingsConversationIdRouteImport } from './routes/modules.steward.meetings.$conversationId'
@@ -194,6 +195,12 @@ const ApiPublicStewardConversationRoute =
     path: '/api/public/steward/conversation',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicStewardInterpretRoute =
+  ApiPublicStewardInterpretRouteImport.update({
+    id: '/api/public/steward/interpret',
+    path: '/api/public/steward/interpret',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ModulesScoutProspectsProspectIdRoute =
   ModulesScoutProspectsProspectIdRouteImport.update({
     id: '/prospects/$prospectId',
@@ -260,6 +267,7 @@ export interface FileRoutesByFullPath {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
+  '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
@@ -291,6 +299,7 @@ export interface FileRoutesByTo {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
+  '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsIndexRoute
@@ -329,6 +338,7 @@ export interface FileRoutesById {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
+  '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
@@ -368,6 +378,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/api/public/steward/conversation'
+    | '/api/public/steward/interpret'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings/'
@@ -399,6 +410,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/api/public/steward/conversation'
+    | '/api/public/steward/interpret'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings'
@@ -436,6 +448,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/api/public/steward/conversation'
+    | '/api/public/steward/interpret'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings/'
@@ -461,6 +474,7 @@ export interface RootRouteChildren {
   ApiPublicRoadmapStudioRoute: typeof ApiPublicRoadmapStudioRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
   ApiPublicStewardConversationRoute: typeof ApiPublicStewardConversationRoute
+  ApiPublicStewardInterpretRoute: typeof ApiPublicStewardInterpretRoute
   ApiPublicCommsGmailCandidatesRoute: typeof ApiPublicCommsGmailCandidatesRoute
   ApiPublicCommsGmailConnectRoute: typeof ApiPublicCommsGmailConnectRoute
   ApiPublicCommsGmailSyncRoute: typeof ApiPublicCommsGmailSyncRoute
@@ -671,6 +685,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicStewardConversationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/steward/interpret': {
+      id: '/api/public/steward/interpret'
+      path: '/api/public/steward/interpret'
+      fullPath: '/api/public/steward/interpret'
+      preLoaderRoute: typeof ApiPublicStewardInterpretRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/modules/scout/prospects/$prospectId': {
       id: '/modules/scout/prospects/$prospectId'
       path: '/prospects/$prospectId'
@@ -828,6 +849,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRoadmapStudioRoute: ApiPublicRoadmapStudioRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
   ApiPublicStewardConversationRoute: ApiPublicStewardConversationRoute,
+  ApiPublicStewardInterpretRoute: ApiPublicStewardInterpretRoute,
   ApiPublicCommsGmailCandidatesRoute: ApiPublicCommsGmailCandidatesRoute,
   ApiPublicCommsGmailConnectRoute: ApiPublicCommsGmailConnectRoute,
   ApiPublicCommsGmailSyncRoute: ApiPublicCommsGmailSyncRoute,

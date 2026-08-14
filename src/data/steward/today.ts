@@ -9,6 +9,8 @@
 import type { EvidenceRef } from "@/domain/confidence";
 import type { Commitment, MoveState, TodayMove } from "@/domain/steward";
 
+import { isCleanMeaning } from "./interpretation";
+
 const DAY = 86_400_000;
 
 /** Days with no movement before a promise is worth raising. */
@@ -119,10 +121,14 @@ export function buildToday(input: TodayInput): TodayMove[] {
     const read = readCommitment(commitment, input.now);
     if (!read) continue;
     const mine = viewer.length > 0 && ownerKey(commitment) === viewer;
+    /* A promise nobody can read at a glance is not ready to be worked on. */
+    const needsCorrection = !isCleanMeaning(commitment.what);
     moves.push({
       id: commitment.id,
       title: commitment.what,
-      why: read.why,
+      why: needsCorrection
+        ? "This was saved as raw speech, so Steward cannot state it clearly. Restate it before working it."
+        : read.why,
       ownerName: commitment.ownerName,
       state: read.state,
       tier: "decided",
@@ -135,8 +141,9 @@ export function buildToday(input: TodayInput): TodayMove[] {
         label: "Open in Steward",
         route: "/modules/steward",
       },
-      urgency: read.urgency + (mine ? 100 : 0),
+      urgency: read.urgency + (mine ? 100 : 0) - (needsCorrection ? 40 : 0),
       at: commitment.updatedAt,
+      ...(needsCorrection ? { needsCorrection: true } : {}),
     });
   }
 

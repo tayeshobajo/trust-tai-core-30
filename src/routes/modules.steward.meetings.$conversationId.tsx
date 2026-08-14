@@ -12,10 +12,12 @@ import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { MetaPill, TTButton } from "@/components/tt/primitives";
 import { ProposalReview, type ConfirmInput } from "@/components/tt/steward/proposal-review";
+import { SemanticReview } from "@/components/tt/steward/semantic-review";
 import { StewardTabs } from "@/components/tt/steward/steward-tabs";
 import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { extractProposals } from "@/data/steward/extract";
+import { interpretConversation } from "@/data/steward/ingest";
 import { stewardService } from "@/data/supabase/steward-service";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -64,6 +66,19 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => stewardService.commitments(identity.organizationId),
   });
 
+  /* Interpretation is deliberate: a person asks for it, it never runs on open. */
+  const interpretation = useQuery({
+    queryKey: ["steward", "interpretation", conversationId],
+    enabled: false,
+    retry: false,
+    staleTime: Infinity,
+    queryFn: () =>
+      interpretConversation({
+        organizationId: identity.organizationId,
+        conversation: conversation.data!.conversation,
+      }),
+  });
+
   const confirm = useMutation({
     mutationFn: (input: ConfirmInput) =>
       stewardService.confirm({
@@ -93,6 +108,12 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
       .filter((commitment) => commitment.conversationId === record.id)
       .map((commitment) => commitment.sourceKey),
   );
+  const names = Array.from(
+    new Set([
+      ...record.conversation.participants.map((person) => person.name),
+      ...record.conversation.segments.map((segment) => segment.speaker),
+    ]),
+  );
 
   return (
     <div className="space-y-8">
@@ -114,16 +135,45 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
 
       <div className="flex flex-wrap gap-2">
         <MetaPill>{record.provider}</MetaPill>
-        <MetaPill>{proposals.length} heard</MetaPill>
+        <MetaPill>{proposals.length} passages heard</MetaPill>
         <MetaPill>{confirmedKeys.size} confirmed</MetaPill>
       </div>
 
-      <ProposalReview
-        conversation={record.conversation}
-        proposals={proposals}
-        confirmedKeys={confirmedKeys}
-        onConfirm={(input) => confirm.mutate(input)}
-      />
+      {interpretation.data ? (
+        <SemanticReview
+          run={interpretation.data}
+          names={names}
+          confirmedKeys={confirmedKeys}
+          onConfirm={(input) => confirm.mutate(input)}
+        />
+      ) : (
+        <>
+          <p className="tt-surface p-5 text-sm text-muted-foreground">
+            {interpretation.isFetching
+              ? "Steward is reading this conversation for meaning. This takes a moment, because it reads each passage in context rather than scanning for phrases."
+              : interpretation.isError
+                ? `Interpretation is unavailable, so Steward is showing only the raw passages its rules found. Nothing below has been read for meaning. ${
+                    interpretation.error instanceof Error ? interpretation.error.message : ""
+                  }`
+                : "Steward has not interpreted this conversation yet. Below are the raw passages its rules found — not yet read for meaning."}
+          </p>
+          <div>
+            <TTButton
+              type="button"
+              disabled={interpretation.isFetching}
+              onClick={() => void interpretation.refetch()}
+            >
+              {interpretation.isFetching ? "Reading…" : "Read this conversation for meaning"}
+            </TTButton>
+          </div>
+          <ProposalReview
+            conversation={record.conversation}
+            proposals={proposals}
+            confirmedKeys={confirmedKeys}
+            readOnlyBecause="Steward will not turn an uninterpreted passage into a commitment. Read the conversation for meaning first."
+          />
+        </>
+      )}
     </div>
   );
 }
