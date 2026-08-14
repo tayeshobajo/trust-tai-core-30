@@ -712,7 +712,7 @@ export function answer(
     headline:
       top.length > 0
         ? `${top.length} thing${top.length === 1 ? "" : "s"} are asking for you, led by: ${top[0]?.title}.`
-        : "Nothing across Scout, Comms, Roadmap, Projects or Ops is asking for you today.",
+        : "Nothing across Scout, Comms, Roadmap, Projects, Ops or Steward is asking for you today.",
     sufficient: top.length > 0,
     signals: top,
     blocks,
