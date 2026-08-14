@@ -19,6 +19,8 @@
 
 import type { EvidenceRef } from "@/domain/confidence";
 import { personKeyOf } from "@/domain/steward";
+import type { Commitment } from "@/domain/steward";
+
 import type { InterpretedSignal } from "@/domain/steward-semantic";
 import {
   RECURRING_PATTERN_THRESHOLD,
