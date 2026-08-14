@@ -229,11 +229,13 @@ function SignalRow({
       ))}
 
       {conflicts.map((conflict, index) => (
-        <p key={index} className="mt-3 border-l-2 border-border pl-3 text-[13px] text-muted-foreground">
-          Memory says {conflict.memorySays}; this conversation says {conflict.transcriptSays}.{" "}
-          {conflict.because}
-        </p>
+        <ConflictBanner
+          key={conflict.beliefId ?? index}
+          conflict={conflict}
+          {...(onResolveConflict ? { onResolve: onResolveConflict } : {})}
+        />
       ))}
+
 
       <Evidence signal={signal} />
 
