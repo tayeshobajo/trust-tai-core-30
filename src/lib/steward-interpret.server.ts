@@ -85,8 +85,11 @@ function payload(
           known_people: memory.people,
           projects: memory.projects,
           open_commitments: memory.openCommitments,
+          decided_memory: memory.decided ?? [],
+          inferred_memory: memory.inferred ?? [],
         }
       : { available: false, because: memory.because },
+
     candidates: candidates.map((candidate) => ({
       candidate_id: candidate.id,
       speaker: candidate.speaker,
