@@ -56,7 +56,7 @@ async function requireMembership(
 ): Promise<boolean> {
   const { data, error } = await supabase
     .from("organization_memberships")
-    .select("id")
+    .select("organization_id")
     .eq("organization_id", organizationId)
     .limit(1);
   return !error && (data ?? []).length > 0;
