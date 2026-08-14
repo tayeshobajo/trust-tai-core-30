@@ -74,6 +74,7 @@ export const supabaseActivity: ActivityStream = {
       .order("occurred_at", { ascending: false })
       .limit(query.limit ?? 20);
 
+    if (query.appIds && query.appIds.length > 0) request = request.in("app_key", query.appIds);
     if (query.subjectType) request = request.eq("entity_type", query.subjectType);
     if (query.subjectId) request = request.eq("entity_id", query.subjectId);
 

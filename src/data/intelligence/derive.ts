@@ -555,6 +555,7 @@ export const ASK_QUESTIONS: { id: AskQuestionId; label: string }[] = [
 
 export function classifyQuestion(question: string): AskQuestionId {
   const text = question.toLowerCase();
+  if (/clear(ed)?|resolved|fixed|still open|qa pass/.test(text)) return "company_across_suite";
   if (/next|should we|what now|why/.test(text) && !/attention/.test(text)) return "what_next";
   if (/know about|across trust tai|company|tell me about/.test(text)) return "company_across_suite";
   return "attention_today";
