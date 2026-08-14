@@ -677,7 +677,7 @@ export function answer(
       signals: [top],
       blocks,
       contributingApps: [...new Set(blocks.map((b) => b.appId))],
-      withheld: snapshot.withheld,
+      withheld: bundleFor(snapshot, { question }).withheld,
       generatedAt: snapshot.now,
     };
   }
@@ -685,17 +685,18 @@ export function answer(
   const top = signals.slice(0, 5);
   const refs = new Set(top.flatMap((signal) => signal.contextRefs));
   const blocks = contextBlocks(snapshot).filter((b) => refs.has(b.id));
+  const attentionWithheld = bundleFor(snapshot, { question }).withheld;
   return {
     ...base,
     headline:
       top.length > 0
         ? `${top.length} thing${top.length === 1 ? "" : "s"} are asking for you, led by: ${top[0]?.title}.`
-        : "Nothing across Scout, Comms or Roadmap is asking for you today.",
+        : "Nothing across Scout, Comms, Roadmap, Projects or Ops is asking for you today.",
     sufficient: top.length > 0,
     signals: top,
     blocks,
     contributingApps: [...new Set(blocks.map((b) => b.appId))],
-    withheld: snapshot.withheld,
+    withheld: attentionWithheld,
     generatedAt: snapshot.now,
   };
 }
