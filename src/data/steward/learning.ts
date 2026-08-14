@@ -27,11 +27,13 @@ import {
   isPersonSafeStatement,
   patternKeyOf,
   type CorrectionDraft,
+  type LearningOutcome,
   type MemoryBelief,
   type MemoryDraft,
   type MemoryFacet,
   type MemoryObservation,
 } from "@/domain/steward-memory";
+
 
 import {
   commitmentSubject,
