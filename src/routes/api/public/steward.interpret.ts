@@ -61,11 +61,50 @@ async function requireMembership(
   return (data ?? []).some((row) => (row["status"] ?? "active") === "active");
 }
 
+/**
+ * Beliefs Steward already holds, read as the caller so RLS still decides.
+ * Memory being unreadable is never fatal: the meeting is still worth reading.
+ */
+async function readBeliefs(
+  supabase: SupabaseClient,
+  organizationId: string,
+): Promise<MemoryBelief[]> {
+  try {
+    const { data, error } = await supabase
+      .from("steward_beliefs")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(400);
+    if (error) return [];
+    const beliefs = (data ?? []).map(
+      (row) =>
+        ({
+          id: String(row["id"] ?? ""),
+          organizationId,
+          subjectKey: String(row["subject_key"] ?? ""),
+          subjectLabel: String(row["subject_label"] ?? row["subject_key"] ?? ""),
+          statement: String(row["statement"] ?? ""),
+          tier: String(row["tier"] ?? "observed"),
+          authority: String(row["authority"] ?? "source"),
+          ...(row["supersedes_id"] ? { supersedesId: String(row["supersedes_id"]) } : {}),
+          evidence: Array.isArray(row["evidence"]) ? row["evidence"] : [],
+          recordedBy: String(row["recorded_by_name"] ?? "A person"),
+          recordedAt: String(row["created_at"] ?? ""),
+        }) as Belief,
+    );
+    return resolveMemory(beliefs.map(toMemoryBelief));
+  } catch {
+    return [];
+  }
+}
+
 /** Canonical memory, read as the caller. Unavailable is reported, never faked. */
 async function readMemory(
   supabase: SupabaseClient,
   organizationId: string,
 ): Promise<{ memory: MemoryContext; commitments: Commitment[] }> {
+
   try {
     const { data, error } = await supabase
       .from("commitments")
