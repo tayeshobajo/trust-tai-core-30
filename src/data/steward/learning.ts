@@ -506,3 +506,143 @@ export function suppressedPatterns(
 export function projectMemorySubject(label: string): string {
   return projectSubject(label);
 }
+
+/* --------------------------------------------------- outcomes, on the record */
+
+/**
+ * The stable identity of the shape of a reading, so a dismissal can be counted
+ * against the same shape next time rather than against one sentence.
+ */
+export function patternKeyForSignal(
+  signal: Pick<InterpretedSignal, "normalizedMeaning" | "ownerName">,
+): string {
+  const ownerName = (signal.ownerName ?? "").trim();
+  return patternKeyOf({
+    relation: "carries",
+    personKey: ownerName ? personKeyOf({ name: ownerName }) : "unnamed",
+    subject: subjectOf(signal.normalizedMeaning) || signal.normalizedMeaning,
+  });
+}
+
+const OUTCOME_SENTENCE: Record<LearningOutcome, (subject: string) => string> = {
+  confirmed: (subject) => `Confirmed as read: “${subject}”.`,
+  edited_then_confirmed: (subject) => `Corrected, then confirmed: “${subject}”.`,
+  dismissed_as_context: (subject) => `Only context, not work to carry: “${subject}”.`,
+  marked_kept: (subject) => `Marked as kept: “${subject}”.`,
+  marked_waiting: (subject) => `Marked as waiting: “${subject}”.`,
+  released: (subject) => `Released, no longer needed: “${subject}”.`,
+  belief_confirmed: (subject) => `Confirmed as true: “${subject}”.`,
+  belief_corrected: (subject) => `Put right by a person: “${subject}”.`,
+  belief_retired: (subject) => `No longer true: “${subject}”.`,
+};
+
+/**
+ * A person's explicit decision about something Steward offered, written to the
+ * same append-only ledger as everything else, attributed and dated.
+ *
+ * These rows are bookkeeping about feedback, not beliefs about work, so
+ * selection skips them — but a person can always read them.
+ */
+export function outcomeToDraft(input: {
+  outcome: LearningOutcome;
+  subjectKey: string;
+  subjectLabel: string;
+  /** The sentence the outcome is about. */
+  about: string;
+  patternKey?: string;
+  personKey?: string;
+  personName?: string;
+  projectLabel?: string;
+  conversationId?: string;
+  candidateId?: string;
+  commitmentId?: string;
+  evidence?: EvidenceRef[];
+  note?: string;
+}): MemoryDraft {
+  const statement = OUTCOME_SENTENCE[input.outcome](input.about);
+  return {
+    subjectKey: input.subjectKey,
+    subjectLabel: input.subjectLabel,
+    statement: isPersonSafeStatement(statement) ? statement : `Recorded a decision about work.`,
+    /* A person said it. It is decided, and its authority is human. */
+    tier: "decided",
+    authority: "human",
+    evidence: [
+      ...(input.evidence ?? []),
+      {
+        kind: "human" as const,
+        label: input.note
+          ? `Decided by a person — ${input.note}`
+          : `Decided by a person — ${OUTCOME_SENTENCE[input.outcome](input.about)}`,
+      },
+    ] satisfies EvidenceRef[],
+    meta: {
+      kind: "correction",
+      facet: input.outcome === "dismissed_as_context" ? "meaning" : "status",
+      outcome: input.outcome,
+      ...(input.patternKey ? { patternKey: input.patternKey } : {}),
+      ...(input.personKey ? { personKey: input.personKey } : {}),
+      ...(input.personName ? { personName: input.personName } : {}),
+      ...(input.projectLabel ? { projectLabel: input.projectLabel } : {}),
+      ...(input.conversationId ? { conversationId: input.conversationId } : {}),
+      ...(input.candidateId ? { candidateId: input.candidateId } : {}),
+      ...(input.commitmentId ? { commitmentId: input.commitmentId } : {}),
+    },
+  };
+}
+
+/** A person saying "yes, hold this" about something Steward only inferred. */
+export function endorseBeliefDraft(belief: MemoryBelief): MemoryDraft {
+  return {
+    subjectKey: belief.subjectKey,
+    subjectLabel: belief.subjectLabel,
+    statement: belief.statement,
+    tier: "decided",
+    authority: "human",
+    supersedesId: belief.id,
+    evidence: [
+      ...belief.evidence,
+      { kind: "human" as const, label: "Confirmed as true by a person." },
+    ],
+    meta: { ...belief.meta, outcome: "belief_confirmed" },
+  };
+}
+
+/** A person rewriting a belief in their own words. The original stays. */
+export function editBeliefDraft(belief: MemoryBelief, statement: string): MemoryDraft {
+  const corrected = statement.trim();
+  return {
+    subjectKey: belief.subjectKey,
+    subjectLabel: belief.subjectLabel,
+    statement: corrected,
+    tier: "decided",
+    authority: "human",
+    supersedesId: belief.id,
+    evidence: [
+      ...belief.evidence,
+      {
+        kind: "human" as const,
+        label: `Put right by a person: “${belief.statement}” → “${corrected}”`,
+      },
+    ],
+    meta: {
+      ...belief.meta,
+      kind: "correction",
+      outcome: "belief_corrected",
+      original: belief.statement,
+      corrected,
+    },
+  };
+}
+
+/** Feedback already on the record, in the shape suppression counts. */
+export function outcomeRecordsFromBeliefs(beliefs: MemoryBelief[]): OutcomeRecord[] {
+  const records: OutcomeRecord[] = [];
+  for (const belief of beliefs) {
+    const outcome = belief.meta.outcome;
+    const patternKey = belief.meta.patternKey;
+    if (!outcome || !patternKey) continue;
+    records.push({ patternKey, outcome });
+  }
+  return records;
+}
