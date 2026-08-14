@@ -178,6 +178,7 @@ export const stewardService = {
     const { conversation } = input;
     const payload: Row = {
       organization_id: input.organizationId,
+      source_app: "steward",
       source_provider: conversation.sourceRef.provider,
       source_external_id:
         conversation.sourceRef.externalId ?? conversation.sourceRef.shareToken ?? conversation.sourceRef.url,
@@ -233,6 +234,7 @@ export const stewardService = {
     const payload: Row = {
       organization_id: input.organizationId,
       conversation_id: input.conversationId,
+      source_app: "steward",
       source_key: input.proposal.id,
       statement: input.proposal.statement,
       owner_name: input.ownerName,
