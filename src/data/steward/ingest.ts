@@ -8,6 +8,7 @@
 
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { NormalizedConversation, Proposal, SourceAdapterStatus } from "@/domain/steward";
+import type { InterpretationRun } from "@/domain/steward-semantic";
 
 import { extractProposals } from "./extract";
 import { rehearsalConversation } from "./fixture";
@@ -92,4 +93,35 @@ export async function readConversation(input: {
 export function readRehearsal(): ReadResult {
   const conversation = rehearsalConversation();
   return { conversation, proposals: extractProposals(conversation) };
+}
+
+/**
+ * Interpret one conversation for meaning.
+ *
+ * The model runs server-side, as the signed-in member, over the workspace's
+ * own canonical memory. Nothing is written: a run is a reading, and only a
+ * person turns a reading into a commitment.
+ */
+export async function interpretConversation(input: {
+  organizationId: string;
+  conversation: NormalizedConversation;
+}): Promise<InterpretationRun> {
+  const response = await fetch("/api/public/steward/interpret", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${await token()}`,
+    },
+    body: JSON.stringify({
+      organization_id: input.organizationId,
+      conversation: input.conversation,
+    }),
+  });
+  const body = (await response.json()) as Record<string, unknown>;
+  if (!response.ok) {
+    throw new Error(
+      String(body["error"] ?? "Steward could not interpret this conversation right now."),
+    );
+  }
+  return body["run"] as InterpretationRun;
 }

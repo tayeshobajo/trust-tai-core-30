@@ -252,6 +252,12 @@ export interface TodayMove {
   destination: { appId: string; label: string; route: string };
   /** Sort weight. Derived, never typed in. */
   urgency: number;
+  /**
+   * True when the confirmed statement still reads as raw speech rather than a
+   * clear operational sentence. Steward shows it, says so, and asks a person
+   * to restate it rather than pretending it is actionable.
+   */
+  needsCorrection?: boolean;
   at: ISODateTime;
 }
 
