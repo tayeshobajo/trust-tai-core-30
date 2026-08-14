@@ -94,7 +94,7 @@ export function IntegrationsPanel({
                 <h3 className="text-base font-medium text-foreground">{track.title}</h3>
                 <MetaPill>{label}</MetaPill>
               </div>
-              <AmbientRule />
+              <AmbientRule appId="comms" contextAccent={null} />
               <p className="text-sm leading-relaxed text-muted-foreground">{track.body}</p>
               {connection?.accountEmail ? (
                 <p className="text-xs text-muted-foreground">
