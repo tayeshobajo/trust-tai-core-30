@@ -105,9 +105,35 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: async (relationship) => {
       setSelectedId(relationship.id);
       setCapturing(false);
+
+      // The first relationship should show real work, not an empty room: give
+      // it a due date for today so it lands in "Needs you" straight away.
+      let live = relationship;
+      const firstEver = relationships.length === 0;
+      const undated = !relationship.responseDueAt && !relationship.followUpDueAt;
+      if (firstEver && undated) {
+        live = await commsService.update(
+          relationship.id,
+          {
+            followUpDueAt: new Date().toISOString(),
+            ...(relationship.nextAction
+              ? {}
+              : { nextAction: "Open the conversation with a first note." }),
+          },
+          context,
+        );
+      }
+
       await refresh();
+      // And a Voice DNA draft, so the first thing you see is something to send.
+      void composeFor(
+        live,
+        relationship.source === "in_person" ? "warm_intro" : "follow_up",
+        "",
+      );
     },
   });
+
 
   const update = useMutation({
     mutationFn: (input: Parameters<typeof commsService.update>[1]) =>
