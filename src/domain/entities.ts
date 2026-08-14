@@ -25,11 +25,16 @@ export type EntityType =
   | "project"
   | "website"
   | "conversation"
+  /** A tracked human relationship, owned by Comms. */
+  | "relationship"
+  /** A produced artifact or published asset, owned by Studio/Roadmap. */
+  | "content"
   | "activity"
   | "task"
   | "decision"
   | "roadmap"
   | "app";
+
 
 /** Canonical Trust Tai lifecycle states. Never communicated by color alone. */
 export type LifecycleStatus =
