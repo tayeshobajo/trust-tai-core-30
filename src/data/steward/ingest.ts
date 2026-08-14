@@ -104,7 +104,14 @@ export interface InterpretationResult {
   stateChanges: StateChangeProposal[];
   /** Where this reading disagrees with something a person decided. */
   conflicts: MemoryConflict[];
+  /** The bounded memory actually handed to the model, and why each part. */
+  memoryUsed: MemoryUsage[];
+  /** How many beliefs Steward holds in total, so the bound is visible. */
+  memoryConsidered: number;
+  /** Patterns left out because people keep calling them context. */
+  suppressedCount: number;
 }
+
 
 /**
  * Interpret one conversation for meaning.
