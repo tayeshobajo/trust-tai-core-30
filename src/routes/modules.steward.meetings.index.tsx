@@ -59,6 +59,7 @@ function Meetings({ identity }: { identity: WorkspaceIdentity }) {
   const queryClient = useQueryClient();
   const [link, setLink] = useState("");
   const [result, setResult] = useState<ReadResult | null>(null);
+  const [rehearsal, setRehearsal] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const source = useQuery({
@@ -75,6 +76,7 @@ function Meetings({ identity }: { identity: WorkspaceIdentity }) {
     mutationFn: (sourceUrl: string) =>
       readConversation({ organizationId: identity.organizationId, sourceUrl }),
     onSuccess: (value) => {
+      setRehearsal(false);
       setResult(value);
       setMessage(null);
     },
@@ -104,8 +106,6 @@ function Meetings({ identity }: { identity: WorkspaceIdentity }) {
     onError: (error: unknown) =>
       setMessage(error instanceof Error ? error.message : "Steward could not save that conversation."),
   });
-
-  const rehearsal = result?.conversation.rehearsal === true;
 
   return (
     <div className="space-y-8">
@@ -161,6 +161,7 @@ function Meetings({ identity }: { identity: WorkspaceIdentity }) {
             type="button"
             variant="secondary"
             onClick={() => {
+              setRehearsal(true);
               setResult(readRehearsal());
               setMessage(null);
             }}
