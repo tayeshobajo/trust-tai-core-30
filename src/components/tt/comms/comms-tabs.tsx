@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
 
-export type CommsSection = "relationships" | "voice";
+export type CommsSection = "relationships" | "voice" | "integrations";
 
 function tabClass(active: boolean) {
   return cn(
@@ -13,7 +13,7 @@ function tabClass(active: boolean) {
   );
 }
 
-/** Comms' local navigation. Two rooms only: the people, and how Tai sounds. */
+/** Comms' local navigation: the people, how Tai sounds, and what we read from. */
 export function CommsTabs({ active }: { active: CommsSection }) {
   return (
     <nav
@@ -33,6 +33,13 @@ export function CommsTabs({ active }: { active: CommsSection }) {
         className={tabClass(active === "voice")}
       >
         Voice DNA
+      </Link>
+      <Link
+        to="/modules/comms/integrations"
+        aria-current={active === "integrations" ? "page" : undefined}
+        className={tabClass(active === "integrations")}
+      >
+        Connections
       </Link>
     </nav>
   );
