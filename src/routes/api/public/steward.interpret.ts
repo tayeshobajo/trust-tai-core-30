@@ -14,15 +14,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import type { Commitment, NormalizedConversation } from "@/domain/steward";
+import type { Belief, Commitment, NormalizedConversation } from "@/domain/steward";
+import type { MemoryBelief } from "@/domain/steward-memory";
 import type { MemoryContext } from "@/domain/steward-semantic";
 import { detectCandidates } from "@/data/steward/candidates";
+import { proposeStateChanges } from "@/data/steward/continuity";
+import { resolveMemory } from "@/data/steward/learning";
+import { toMemoryBelief } from "@/data/steward/memory-encoding";
+import { flagMemoryConflicts, selectRelevantMemory } from "@/data/steward/memory-context";
 import {
   interpretConversation,
   InterpretationUnavailableError,
 } from "@/lib/steward-interpret.server";
 import { createLovableAiGatewayRunIdFetch, getLovableAiGatewayRunId } from "@/lib/ai-gateway.server";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
+
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
@@ -55,11 +61,50 @@ async function requireMembership(
   return (data ?? []).some((row) => (row["status"] ?? "active") === "active");
 }
 
+/**
+ * Beliefs Steward already holds, read as the caller so RLS still decides.
+ * Memory being unreadable is never fatal: the meeting is still worth reading.
+ */
+async function readBeliefs(
+  supabase: SupabaseClient,
+  organizationId: string,
+): Promise<MemoryBelief[]> {
+  try {
+    const { data, error } = await supabase
+      .from("steward_beliefs")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(400);
+    if (error) return [];
+    const beliefs = (data ?? []).map(
+      (row) =>
+        ({
+          id: String(row["id"] ?? ""),
+          organizationId,
+          subjectKey: String(row["subject_key"] ?? ""),
+          subjectLabel: String(row["subject_label"] ?? row["subject_key"] ?? ""),
+          statement: String(row["statement"] ?? ""),
+          tier: String(row["tier"] ?? "observed"),
+          authority: String(row["authority"] ?? "source"),
+          ...(row["supersedes_id"] ? { supersedesId: String(row["supersedes_id"]) } : {}),
+          evidence: Array.isArray(row["evidence"]) ? row["evidence"] : [],
+          recordedBy: String(row["recorded_by_name"] ?? "A person"),
+          recordedAt: String(row["created_at"] ?? ""),
+        }) as Belief,
+    );
+    return resolveMemory(beliefs.map(toMemoryBelief));
+  } catch {
+    return [];
+  }
+}
+
 /** Canonical memory, read as the caller. Unavailable is reported, never faked. */
 async function readMemory(
   supabase: SupabaseClient,
   organizationId: string,
 ): Promise<{ memory: MemoryContext; commitments: Commitment[] }> {
+
   try {
     const { data, error } = await supabase
       .from("commitments")
@@ -175,6 +220,20 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
         }
 
         const { memory, commitments } = await readMemory(supabase, organizationId);
+        const beliefs = await readBeliefs(supabase, organizationId);
+        const relevant = selectRelevantMemory({
+          beliefs,
+          conversation,
+          people: memory.people,
+          projects: memory.projects,
+        });
+        const memoryWithBeliefs: MemoryContext = {
+          ...memory,
+          people: relevant.people,
+          projects: relevant.projects,
+          decided: relevant.decided,
+          inferred: relevant.inferred,
+        };
         const candidates = detectCandidates(conversation);
         const initialRunId = getLovableAiGatewayRunId(request);
         const gateway = createLovableAiGatewayRunIdFetch(initialRunId);
@@ -182,14 +241,18 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
         try {
           const run = await interpretConversation({
             conversation,
-            memory,
+            memory: memoryWithBeliefs,
             commitments,
             candidates,
             gateway,
             initialRunId,
           });
-          return Response.json({ run });
+          /* Continuity and conflict are proposals for a person, never writes. */
+          const stateChanges = proposeStateChanges({ signals: run.signals, commitments });
+          const conflicts = flagMemoryConflicts({ signals: run.signals, beliefs });
+          return Response.json({ run, stateChanges, conflicts });
         } catch (error) {
+
           if (error instanceof InterpretationUnavailableError) {
             return Response.json({ error: error.message }, { status: 503 });
           }

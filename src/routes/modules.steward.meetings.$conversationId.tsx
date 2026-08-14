@@ -18,7 +18,10 @@ import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { extractProposals } from "@/data/steward/extract";
 import { interpretConversation } from "@/data/steward/ingest";
+import { correctionToDraft } from "@/data/steward/learning";
+import type { CorrectionDraft } from "@/domain/steward-memory";
 import { stewardService } from "@/data/supabase/steward-service";
+
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Steward — Conversation review — Trust Tai OS";
@@ -96,6 +99,29 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
+  /**
+   * A correction is a gift of context. It is written before the confirmation
+   * lands, as decided truth attributed to the person who taught it, and it
+   * never overwrites what Steward previously believed.
+   */
+  const learn = useMutation({
+    mutationFn: (corrections: CorrectionDraft[]) =>
+      stewardService.remember({
+        organizationId: identity.organizationId,
+        userId: identity.userId,
+        userName: identity.name,
+        drafts: corrections.map((correction) =>
+          correctionToDraft({ ...correction, conversationId }),
+        ),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["steward", "memory", identity.organizationId],
+      });
+    },
+  });
+
+
   if (conversation.isError) return <StewardUnavailable error={conversation.error} />;
   if (conversation.isLoading || !conversation.data) {
     return <p className="text-sm text-muted-foreground">Opening the conversation…</p>;
@@ -141,12 +167,16 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
 
       {interpretation.data ? (
         <SemanticReview
-          run={interpretation.data}
+          run={interpretation.data.run}
           names={names}
           confirmedKeys={confirmedKeys}
+          stateChanges={interpretation.data.stateChanges}
+          conflicts={interpretation.data.conflicts}
           onConfirm={(input) => confirm.mutate(input)}
+          onCorrect={(corrections) => learn.mutate(corrections)}
         />
       ) : (
+
         <>
           <p className="tt-surface p-5 text-sm text-muted-foreground">
             {interpretation.isFetching

@@ -45,11 +45,15 @@ const LAWS = [
   "A dependency may have one owner and a different person being waited on.",
   "Reason person-first: use known_people roles and responsibilities to judge who realistically owns an action, and prefer the person whose role fits over whoever spoke last.",
   "When a role clearly implies the owner but nobody named them, keep owner_confidence at moderate or low and set truth_tier to inferred.",
+  "decided_memory is what a human being has already corrected or confirmed. Treat it as settled and do not re-litigate it.",
+  "inferred_memory is Steward's own reading of repeated evidence. It is context only. Never treat it as fact, and never let it override what this transcript plainly says.",
+  "If memory and this transcript disagree, follow the transcript, say so in ambiguity, and never silently overwrite what a person decided.",
   "Provider action items are another tool's interpretation. Compare against the transcript; never treat them as truth.",
   "Never invent an owner, a date, a project, or a beneficiary. due_text carries spoken words only, never a calendar date.",
   "truth_tier is observed when the words themselves carry it, inferred when you worked it out. It is never decided.",
   "normalized_meaning is one concise operational sentence in plain English that a reader can act on without reading the transcript. Never copy raw speech.",
 ].join(" ");
+
 
 function instructions(): string {
   return [
@@ -81,8 +85,11 @@ function payload(
           known_people: memory.people,
           projects: memory.projects,
           open_commitments: memory.openCommitments,
+          decided_memory: memory.decided ?? [],
+          inferred_memory: memory.inferred ?? [],
         }
       : { available: false, because: memory.because },
+
     candidates: candidates.map((candidate) => ({
       candidate_id: candidate.id,
       speaker: candidate.speaker,

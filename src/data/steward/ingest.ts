@@ -8,7 +8,9 @@
 
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { NormalizedConversation, Proposal, SourceAdapterStatus } from "@/domain/steward";
+import type { MemoryConflict, StateChangeProposal } from "@/domain/steward-memory";
 import type { InterpretationRun } from "@/domain/steward-semantic";
+
 
 import { extractProposals } from "./extract";
 import { rehearsalConversation } from "./fixture";
@@ -95,6 +97,15 @@ export function readRehearsal(): ReadResult {
   return { conversation, proposals: extractProposals(conversation) };
 }
 
+/** A reading, plus what it implies about work the workspace already carries. */
+export interface InterpretationResult {
+  run: InterpretationRun;
+  /** Suggested continuity of an existing commitment. Never applied. */
+  stateChanges: StateChangeProposal[];
+  /** Where this reading disagrees with something a person decided. */
+  conflicts: MemoryConflict[];
+}
+
 /**
  * Interpret one conversation for meaning.
  *
@@ -105,7 +116,7 @@ export function readRehearsal(): ReadResult {
 export async function interpretConversation(input: {
   organizationId: string;
   conversation: NormalizedConversation;
-}): Promise<InterpretationRun> {
+}): Promise<InterpretationResult> {
   const response = await fetch("/api/public/steward/interpret", {
     method: "POST",
     headers: {
@@ -123,5 +134,10 @@ export async function interpretConversation(input: {
       String(body["error"] ?? "Steward could not interpret this conversation right now."),
     );
   }
-  return body["run"] as InterpretationRun;
+  return {
+    run: body["run"] as InterpretationRun,
+    stateChanges: (body["stateChanges"] ?? []) as StateChangeProposal[],
+    conflicts: (body["conflicts"] ?? []) as MemoryConflict[],
+  };
 }
+
