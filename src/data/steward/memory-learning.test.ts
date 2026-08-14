@@ -518,6 +518,10 @@ describe("bounded relevance, and being able to audit it", () => {
     expect(draft.tier).toBe("decided");
     expect(draft.authority).toBe("human");
     expect(draft.meta.outcome).toBe("dismissed_as_context");
-    expect(outcomeRecordsFromBeliefs([toMemoryBelief(beliefRowFromDraft(draft))]).length).toBe(1);
+    expect(
+      outcomeRecordsFromBeliefs([
+        belief({ id: "b-outcome", statement: draft.statement, meta: draft.meta }),
+      ]),
+    ).toEqual([{ patternKey: draft.meta.patternKey, outcome: "dismissed_as_context" }]);
   });
 });
