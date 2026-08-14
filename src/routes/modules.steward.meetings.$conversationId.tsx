@@ -167,12 +167,16 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
 
       {interpretation.data ? (
         <SemanticReview
-          run={interpretation.data}
+          run={interpretation.data.run}
           names={names}
           confirmedKeys={confirmedKeys}
+          stateChanges={interpretation.data.stateChanges}
+          conflicts={interpretation.data.conflicts}
           onConfirm={(input) => confirm.mutate(input)}
+          onCorrect={(corrections) => learn.mutate(corrections)}
         />
       ) : (
+
         <>
           <p className="tt-surface p-5 text-sm text-muted-foreground">
             {interpretation.isFetching
