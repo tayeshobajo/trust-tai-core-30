@@ -29,6 +29,7 @@ import { Route as ModulesRoadmapRoadmapIdRouteImport } from './routes/modules.ro
 import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.index'
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
 import { Route as ModulesStewardIndexRouteImport } from './routes/modules.steward.index'
+import { Route as ModulesStewardMeetingsRouteImport } from './routes/modules.steward.meetings'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
 import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/public/roadmap.research'
@@ -142,6 +143,11 @@ const ModulesStewardIndexRoute = ModulesStewardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ModulesStewardRoute,
 } as any)
+const ModulesStewardMeetingsRoute = ModulesStewardMeetingsRouteImport.update({
+  id: '/meetings',
+  path: '/meetings',
+  getParentRoute: () => ModulesStewardRoute,
+} as any)
 const ApiPublicCommsDraftRoute = ApiPublicCommsDraftRouteImport.update({
   id: '/api/public/comms/draft',
   path: '/api/public/comms/draft',
@@ -214,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/steward/meetings': typeof ModulesStewardMeetingsRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -241,6 +248,7 @@ export interface FileRoutesByTo {
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/steward/meetings': typeof ModulesStewardMeetingsRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
   '/modules/projects': typeof ModulesProjectsIndexRoute
   '/modules/roadmap': typeof ModulesRoadmapIndexRoute
@@ -274,6 +282,7 @@ export interface FileRoutesById {
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/steward/meetings': typeof ModulesStewardMeetingsRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -308,6 +317,7 @@ export interface FileRouteTypes {
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
+    | '/modules/steward/meetings'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
@@ -335,6 +345,7 @@ export interface FileRouteTypes {
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
+    | '/modules/steward/meetings'
     | '/modules/comms'
     | '/modules/projects'
     | '/modules/roadmap'
@@ -367,6 +378,7 @@ export interface FileRouteTypes {
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
+    | '/modules/steward/meetings'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
@@ -548,6 +560,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardIndexRouteImport
       parentRoute: typeof ModulesStewardRoute
     }
+    '/modules/steward/meetings': {
+      id: '/modules/steward/meetings'
+      path: '/meetings'
+      fullPath: '/modules/steward/meetings'
+      preLoaderRoute: typeof ModulesStewardMeetingsRouteImport
+      parentRoute: typeof ModulesStewardRoute
+    }
     '/api/public/comms/draft': {
       id: '/api/public/comms/draft'
       path: '/api/public/comms/draft'
@@ -682,10 +701,12 @@ const ModulesScoutRouteWithChildren = ModulesScoutRoute._addFileChildren(
 )
 
 interface ModulesStewardRouteChildren {
+  ModulesStewardMeetingsRoute: typeof ModulesStewardMeetingsRoute
   ModulesStewardIndexRoute: typeof ModulesStewardIndexRoute
 }
 
 const ModulesStewardRouteChildren: ModulesStewardRouteChildren = {
+  ModulesStewardMeetingsRoute: ModulesStewardMeetingsRoute,
   ModulesStewardIndexRoute: ModulesStewardIndexRoute,
 }
 
