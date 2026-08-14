@@ -99,7 +99,10 @@ async function readMemory(
           ? (row["responsibilities"] as string[]).slice(0, 4).join(", ")
           : "";
         const detail = [title, responsibilities].filter(Boolean).join(" — ");
-        return { name: String(row["name"] ?? ""), title: detail || undefined };
+        return detail
+          ? { name: String(row["name"] ?? ""), title: detail }
+          : { name: String(row["name"] ?? "") };
+
       })
       .filter((person) => person.name.length > 0);
 
