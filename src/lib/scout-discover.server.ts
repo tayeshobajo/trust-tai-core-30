@@ -24,6 +24,10 @@
  */
 
 
+import {
+  trustTaiSupabaseKey,
+  trustTaiSupabaseUrl,
+} from "@/lib/trust-tai-backend.server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import {
@@ -67,17 +71,13 @@ export function discoveryConfigured(): boolean {
 
 function supabaseUrl(): string {
   return (
-    process.env["TRUST_TAI_SUPABASE_URL"] ||
-    process.env["VITE_SUPABASE_URL"] ||
-    "https://okydosoacqdnursmmenf.supabase.co"
+    trustTaiSupabaseUrl()
   );
 }
 
 function supabaseKey(): string {
   return (
-    process.env["TRUST_TAI_SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
-    "sb_publishable_uARvNwZli88tfhOHBwFTsQ_JUpQo-UL"
+    trustTaiSupabaseKey()
   );
 }
 
