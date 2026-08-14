@@ -220,6 +220,20 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
         }
 
         const { memory, commitments } = await readMemory(supabase, organizationId);
+        const beliefs = await readBeliefs(supabase, organizationId);
+        const relevant = selectRelevantMemory({
+          beliefs,
+          conversation,
+          people: memory.people,
+          projects: memory.projects,
+        });
+        const memoryWithBeliefs: MemoryContext = {
+          ...memory,
+          people: relevant.people,
+          projects: relevant.projects,
+          decided: relevant.decided,
+          inferred: relevant.inferred,
+        };
         const candidates = detectCandidates(conversation);
         const initialRunId = getLovableAiGatewayRunId(request);
         const gateway = createLovableAiGatewayRunIdFetch(initialRunId);
@@ -227,14 +241,18 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
         try {
           const run = await interpretConversation({
             conversation,
-            memory,
+            memory: memoryWithBeliefs,
             commitments,
             candidates,
             gateway,
             initialRunId,
           });
-          return Response.json({ run });
+          /* Continuity and conflict are proposals for a person, never writes. */
+          const stateChanges = proposeStateChanges({ signals: run.signals, commitments });
+          const conflicts = flagMemoryConflicts({ signals: run.signals, beliefs });
+          return Response.json({ run, stateChanges, conflicts });
         } catch (error) {
+
           if (error instanceof InterpretationUnavailableError) {
             return Response.json({ error: error.message }, { status: 503 });
           }
