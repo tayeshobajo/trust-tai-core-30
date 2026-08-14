@@ -37,7 +37,12 @@ function dedupeKeyOf(event: Omit<ActivityEvent, "id">): string | null {
 }
 
 function toEvent(row: Row): ActivityEvent {
-  const payload = (row["payload"] ?? {}) as Record<string, unknown>;
+  const stored = (row["payload"] ?? {}) as Record<string, unknown>;
+  // The live column wins over anything mirrored into the payload.
+  const payload: Record<string, unknown> =
+    typeof row["source_event_key"] === "string" && row["source_event_key"]
+      ? { ...stored, source_event_key: row["source_event_key"] }
+      : stored;
   return {
     id: String(row["id"] ?? crypto.randomUUID()),
     organizationId: String(row["organization_id"] ?? ""),
