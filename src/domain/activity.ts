@@ -25,7 +25,17 @@ export type ActivityAction =
   | "decision_requested"
   | "decision_resolved"
   | "next_move_changed"
-  | "flagged";
+  | "flagged"
+  /* --- shared suite vocabulary (see src/domain/events.ts) --- */
+  | "qualified"
+  | "discovered"
+  | "message_received"
+  | "promise_created"
+  | "milestone_approved"
+  | "started"
+  | "blocked"
+  | "published";
+
 
 /** Event name is always `entity.action`, e.g. "project.status_changed". */
 export type ActivityName = `${EntityType}.${ActivityAction}`;

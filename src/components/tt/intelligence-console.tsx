@@ -1,54 +1,56 @@
+import { Link } from "@tanstack/react-router";
 import { ArrowUp } from "lucide-react";
 import { useState, type FormEvent } from "react";
 
 import { MetaPill, TTButton } from "@/components/tt/primitives";
-import { memorySource } from "@/data/memory-source";
-import type { ContextResult } from "@/domain/intelligence";
+import { ASK_QUESTIONS } from "@/data/intelligence/derive";
+import { intelligenceService } from "@/data/intelligence/service";
+import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
+import { SIGNAL_CATEGORY_LABEL, TRUTH_TIER_LABEL, type AskAnswer } from "@/domain/signals";
 
-const EXAMPLES = [
-  "What needs my attention today?",
-  "What's going on with Northbank?",
-  "Which clients are at risk?",
-  "What should happen next?",
-];
+const ROOM_LABEL: Record<string, string> = {
+  scout: "Scout",
+  comms: "Comms",
+  roadmap: "Roadmap",
+  projects: "Projects",
+  studio: "Studio",
+  activity: "Activity",
+};
 
-const KIND_LABEL = {
-  fact: "Observed",
-  inference: "Inferred",
-  recommendation: "Suggested",
-} as const;
+const WITHHELD_REASON: Record<string, string> = {
+  unauthorized: "not readable for you",
+  not_connected: "not connected yet",
+  no_data: "nothing recorded yet",
+};
 
 /**
  * The doorway into Trust Tai Intelligence.
  *
- * This is not a live model. Submitting reads the existing in-memory
- * intelligence provider and returns its context, clearly labelled as a preview
- * with provenance and the observed / inferred / suggested distinction intact.
+ * Every answer is assembled from what Scout, Comms and Roadmap already hold,
+ * with the room, the tier and the evidence shown. Intelligence recommends and
+ * routes; the work itself always happens in the room that owns it.
  */
-export function IntelligenceConsole({
-  organizationId,
-  userId,
-}: {
-  organizationId: string;
-  userId: string;
-}) {
+export function IntelligenceConsole({ organizationId }: { organizationId: string }) {
   const [question, setQuestion] = useState("");
   const [asked, setAsked] = useState<string | null>(null);
-  const [result, setResult] = useState<ContextResult | null>(null);
+  const [result, setResult] = useState<AskAnswer | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function ask(value: string) {
     const trimmed = value.trim();
     if (!trimmed || pending) return;
     setPending(true);
+    setError(null);
     setAsked(trimmed);
-    const next = await memorySource.intelligence.retrieve({
-      organizationId,
-      userId,
-      question: trimmed,
-    });
-    setResult(next);
-    setPending(false);
+    try {
+      setResult(await intelligenceService.ask(organizationId, trimmed));
+    } catch {
+      setResult(null);
+      setError("That reading could not be completed. Nothing has been changed.");
+    } finally {
+      setPending(false);
+    }
   }
 
   function onSubmit(event: FormEvent) {
@@ -79,7 +81,7 @@ export function IntelligenceConsole({
               id="tt-ask"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Ask Trust Tai anything about clients, projects, communication, operations, or what needs your attention."
+              placeholder="Ask about a company, a relationship, or what needs your attention."
               className="h-12 min-w-0 flex-1 rounded-full border border-input bg-background px-5 text-sm text-foreground placeholder:text-muted-foreground"
             />
             <TTButton type="submit" variant="signal" disabled={pending} className="shrink-0">
@@ -90,50 +92,96 @@ export function IntelligenceConsole({
         </form>
 
         <ul className="mt-4 flex flex-wrap gap-2">
-          {EXAMPLES.map((example) => (
-            <li key={example}>
+          {ASK_QUESTIONS.map((example) => (
+            <li key={example.id}>
               <button
                 type="button"
                 onClick={() => {
-                  setQuestion(example);
-                  void ask(example);
+                  setQuestion(example.label);
+                  void ask(example.label);
                 }}
                 className="min-h-9 rounded-full border border-border px-3.5 py-1.5 text-left text-[13px] text-muted-foreground transition-colors duration-200 hover:bg-secondary hover:text-foreground"
               >
-                {example}
+                {example.label}
               </button>
             </li>
           ))}
         </ul>
       </div>
 
-      {result ? (
+      {error ? (
+        <div className="border-t border-border bg-secondary/50 p-6 text-sm text-foreground sm:p-8">
+          {error}
+        </div>
+      ) : null}
+
+      {result && !error ? (
         <div className="border-t border-border bg-secondary/50 p-6 sm:p-8">
           <div className="flex flex-wrap items-center gap-2">
-            <MetaPill>Preview response</MetaPill>
-            <span className="text-xs text-muted-foreground">
-              Read from the current in-memory context. No model has been called.
-            </span>
+            {result.contributingApps.length > 0 ? (
+              result.contributingApps.map((app) => (
+                <MetaPill key={app}>Read {ROOM_LABEL[app] ?? app}</MetaPill>
+              ))
+            ) : (
+              <MetaPill>No room had anything to say</MetaPill>
+            )}
           </div>
-          <p className="mt-4 text-sm text-foreground">
-            <span className="text-muted-foreground">You asked: </span>
-            {asked}
-          </p>
-          <ul className="mt-4 space-y-4">
-            {result.facts.map((fact) => (
-              <li key={fact.id} className="border-t border-border pt-4">
-                <p className="text-sm text-foreground">{fact.statement}</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <MetaPill>{KIND_LABEL[fact.kind]}</MetaPill>
-                  <MetaPill>via {fact.provenance.appId}</MetaPill>
-                </div>
-              </li>
-            ))}
-          </ul>
+
+          <p className="mt-4 text-sm text-muted-foreground">You asked: {asked}</p>
+          <p className="mt-2 text-[15px] text-foreground">{result.headline}</p>
+
+          {result.signals.length > 0 ? (
+            <ul className="mt-5 space-y-4">
+              {result.signals.map((signal) => (
+                <li key={signal.id} className="border-t border-border pt-4">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <MetaPill>{SIGNAL_CATEGORY_LABEL[signal.category]}</MetaPill>
+                    <MetaPill>{CONFIDENCE_LEVEL_LABEL[signal.confidence]}</MetaPill>
+                  </div>
+                  <p className="mt-2 text-sm text-foreground">{signal.title}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{signal.why}</p>
+                  <p className="mt-2 text-sm text-foreground">
+                    <span className="text-muted-foreground">Recommended: </span>
+                    {signal.recommendedNextMove}
+                  </p>
+                  <Link
+                    to={signal.destination.route}
+                    className="mt-2 inline-block text-[13px] text-foreground underline underline-offset-4"
+                  >
+                    {signal.destination.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {result.blocks.length > 0 ? (
+            <ul className="mt-5 space-y-3">
+              {result.blocks.slice(0, 8).map((entry) => (
+                <li key={entry.id} className="border-t border-border pt-3">
+                  <p className="text-sm text-foreground">{entry.fact}</p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <MetaPill>{TRUTH_TIER_LABEL[entry.tier]}</MetaPill>
+                    <MetaPill>via {ROOM_LABEL[entry.appId] ?? entry.appId}</MetaPill>
+                    {entry.stalenessDays > 14 ? (
+                      <MetaPill>{entry.stalenessDays} days old</MetaPill>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
           {result.withheld.length > 0 ? (
             <p className="mt-5 text-xs text-muted-foreground">
-              Not yet readable:{" "}
-              {result.withheld.map((w) => `${w.appId} (${w.reason.replace("_", " ")})`).join(", ")}.
+              Not read:{" "}
+              {result.withheld
+                .map(
+                  (w) =>
+                    `${ROOM_LABEL[w.appId] ?? w.appId} (${WITHHELD_REASON[w.reason] ?? w.reason})`,
+                )
+                .join(", ")}
+              .
             </p>
           ) : null}
         </div>
