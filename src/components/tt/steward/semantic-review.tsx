@@ -6,6 +6,12 @@
  * reasoning, and anything still ambiguous sit behind disclosure. Passages
  * Steward judged to be context, doubt or repetition are counted, not paraded.
  *
+ * This is also where Steward learns. A person can put a reading right before
+ * confirming it — the meaning, who carries it, who it is for, which work it
+ * belongs to, what was said about timing — and every field that moves is
+ * remembered as a correction taught by a named person. Correcting is never
+ * punished with extra steps: edit in place, confirm once.
+ *
  * Nothing here is truth. Confirmation is the only thing that makes it truth.
  */
 
@@ -22,6 +28,13 @@ import {
   type InterpretedSignal,
   type SemanticDisposition,
 } from "@/domain/steward-semantic";
+import {
+  STATE_CHANGE_LABEL,
+  type CorrectionDraft,
+  type MemoryConflict,
+  type StateChangeProposal,
+} from "@/domain/steward-memory";
+import { correctionsFromEdit } from "@/data/steward/learning";
 import { reviewableSignals, signalToProposal, withheldSignals } from "@/data/steward/interpretation";
 import type { ConfirmInput } from "@/components/tt/steward/proposal-review";
 
@@ -62,16 +75,25 @@ function SignalRow({
   signal,
   names,
   confirmed,
+  conflicts,
+  continuity,
   onConfirm,
+  onCorrect,
   readOnlyBecause,
 }: {
   signal: InterpretedSignal;
   names: string[];
   confirmed: boolean;
+  conflicts: MemoryConflict[];
+  continuity: StateChangeProposal[];
   onConfirm?: (input: ConfirmInput) => void;
+  onCorrect?: (corrections: CorrectionDraft[]) => void;
   readOnlyBecause?: string;
 }) {
+  const [meaning, setMeaning] = useState(signal.normalizedMeaning);
   const [ownerName, setOwnerName] = useState(signal.ownerName ?? "");
+  const [beneficiary, setBeneficiary] = useState(signal.beneficiary ?? "");
+  const [dueText, setDueText] = useState(signal.dueText ?? "");
   const [dueAt, setDueAt] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -100,10 +122,26 @@ function SignalRow({
       </p>
 
       {signal.ambiguity ? (
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          Still unclear: {signal.ambiguity}
-        </p>
+        <p className="mt-2 text-[13px] text-muted-foreground">Still unclear: {signal.ambiguity}</p>
       ) : null}
+
+      {continuity.map((proposal) => (
+        <p
+          key={proposal.commitmentId}
+          className="mt-3 border-l-2 border-border pl-3 text-[13px] text-muted-foreground"
+        >
+          {STATE_CHANGE_LABEL[proposal.kind]} Steward thinks this continues “
+          {proposal.commitmentStatement}”, currently {proposal.currentStatus}. It has not changed
+          anything — mark it yourself if that is right.
+        </p>
+      ))}
+
+      {conflicts.map((conflict, index) => (
+        <p key={index} className="mt-3 border-l-2 border-border pl-3 text-[13px] text-muted-foreground">
+          Memory says {conflict.memorySays}; this conversation says {conflict.transcriptSays}.{" "}
+          {conflict.because}
+        </p>
+      ))}
 
       <Evidence signal={signal} />
 
@@ -114,46 +152,98 @@ function SignalRow({
       ) : readOnlyBecause ? (
         <p className="mt-4 text-[13px] text-muted-foreground">{readOnlyBecause}</p>
       ) : onConfirm ? (
-        <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-[1.2fr_1fr_auto] sm:items-end">
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Put it in your own words — Steward remembers what you change
+          </p>
           <label className="block">
-            <span className="tt-eyebrow">Who carries it</span>
+            <span className="tt-eyebrow">What this actually is</span>
             <TTInput
               className="mt-2"
-              list={`people-${signal.id}`}
-              value={ownerName}
-              onChange={(event) => setOwnerName(event.target.value)}
-              placeholder="Name the owner"
-            />
-            <datalist id={`people-${signal.id}`}>
-              {names.map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
-          </label>
-          <label className="block">
-            <span className="tt-eyebrow">Due date (optional)</span>
-            <TTInput
-              className="mt-2"
-              type="date"
-              value={dueAt}
-              onChange={(event) => setDueAt(event.target.value)}
+              value={meaning}
+              onChange={(event) => setMeaning(event.target.value)}
             />
           </label>
-          <TTButton
-            type="button"
-            disabled={ownerName.trim().length === 0 || busy}
-            onClick={() => {
-              setBusy(true);
-              onConfirm({
-                proposal: signalToProposal(signal),
-                ownerName: ownerName.trim(),
-                dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null,
-              });
-              setBusy(false);
-            }}
-          >
-            {busy ? "Confirming…" : "Confirm"}
-          </TTButton>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="block">
+              <span className="tt-eyebrow">Who carries it</span>
+              <TTInput
+                className="mt-2"
+                list={`people-${signal.id}`}
+                value={ownerName}
+                onChange={(event) => setOwnerName(event.target.value)}
+                placeholder="Name the owner"
+              />
+              <datalist id={`people-${signal.id}`}>
+                {names.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            </label>
+            <label className="block">
+              <span className="tt-eyebrow">Who it is for</span>
+              <TTInput
+                className="mt-2"
+                value={beneficiary}
+                onChange={(event) => setBeneficiary(event.target.value)}
+                placeholder="Optional"
+              />
+            </label>
+            <label className="block">
+              <span className="tt-eyebrow">Timing as said</span>
+              <TTInput
+                className="mt-2"
+                value={dueText}
+                onChange={(event) => setDueText(event.target.value)}
+                placeholder="Optional"
+              />
+            </label>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <label className="block">
+              <span className="tt-eyebrow">Due date (optional)</span>
+              <TTInput
+                className="mt-2"
+                type="date"
+                value={dueAt}
+                onChange={(event) => setDueAt(event.target.value)}
+              />
+            </label>
+            <TTButton
+              type="button"
+              disabled={ownerName.trim().length === 0 || meaning.trim().length === 0 || busy}
+              onClick={() => {
+                setBusy(true);
+                const corrections = correctionsFromEdit({
+                  signal,
+                  edit: {
+                    normalizedMeaning: meaning,
+                    ownerName,
+                    beneficiary,
+                    dueText,
+                  },
+                });
+                if (corrections.length > 0) onCorrect?.(corrections);
+
+                const proposal = signalToProposal(signal);
+                onConfirm({
+                  proposal: {
+                    ...proposal,
+                    statement: meaning.trim(),
+                    ownerName: ownerName.trim(),
+                    ownerResolved: true,
+                    beneficiary: beneficiary.trim() || null,
+                    dueText: dueText.trim() || null,
+                  },
+                  ownerName: ownerName.trim(),
+                  dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null,
+                });
+                setBusy(false);
+              }}
+            >
+              {busy ? "Confirming…" : "Confirm"}
+            </TTButton>
+          </div>
         </div>
       ) : null}
     </li>
@@ -166,13 +256,19 @@ export function SemanticReview({
   run,
   names,
   confirmedKeys,
+  stateChanges = [],
+  conflicts = [],
   onConfirm,
+  onCorrect,
   readOnlyBecause,
 }: {
   run: InterpretationRun;
   names: string[];
   confirmedKeys: Set<string>;
+  stateChanges?: StateChangeProposal[];
+  conflicts?: MemoryConflict[];
   onConfirm?: (input: ConfirmInput) => void;
+  onCorrect?: (corrections: CorrectionDraft[]) => void;
   readOnlyBecause?: string;
 }) {
   const reviewable = reviewableSignals(run.signals);
@@ -185,6 +281,9 @@ export function SemanticReview({
         <MetaPill>{run.candidateCount} passages read</MetaPill>
         <MetaPill>{reviewable.length} worth your attention</MetaPill>
         <MetaPill>{withheld.length} held back</MetaPill>
+        {stateChanges.length > 0 ? (
+          <MetaPill>{stateChanges.length} may continue existing work</MetaPill>
+        ) : null}
       </div>
 
       {run.memory.available ? null : (
@@ -213,7 +312,10 @@ export function SemanticReview({
                     signal={signal}
                     names={names}
                     confirmed={confirmedKeys.has(signal.candidateId)}
+                    conflicts={conflicts.filter((conflict) => conflict.signalId === signal.id)}
+                    continuity={stateChanges.filter((change) => change.signalId === signal.id)}
                     {...(onConfirm ? { onConfirm } : {})}
+                    {...(onCorrect ? { onCorrect } : {})}
                     {...(readOnlyBecause ? { readOnlyBecause } : {})}
                   />
                 ))}
@@ -233,9 +335,7 @@ export function SemanticReview({
                 <p className="text-[13px] text-muted-foreground">
                   {DISPOSITION_LABEL[signal.disposition]} · {signal.at}
                 </p>
-                <p className="text-sm text-foreground">
-                  {signal.normalizedMeaning || signal.quote}
-                </p>
+                <p className="text-sm text-foreground">{signal.normalizedMeaning || signal.quote}</p>
                 <p className="text-[13px] text-muted-foreground">
                   {signal.ambiguity || signal.rationale}
                 </p>
