@@ -19,6 +19,7 @@ import {
   TTButton,
   TTInput,
 } from "@/components/tt/primitives";
+import { StateTrack, daysAgo, movedPhrase } from "@/components/tt/projects/state-track";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import {
@@ -147,15 +148,47 @@ function ProjectWorkspace({
       />
 
       <div className="flex flex-wrap gap-2">
-        <MetaPill>{EXECUTION_STATE_LABEL[project.state]}</MetaPill>
         <MetaPill>{HEALTH_LABEL[health.level]}</MetaPill>
         <MetaPill>Carried by {project.ownerLabel ?? "no one yet"}</MetaPill>
         {project.origin.subjectLabel ? <MetaPill>For {project.origin.subjectLabel}</MetaPill> : null}
+        {project.origin.kind === "roadmap_milestone" ? <MetaPill>From Roadmap</MetaPill> : null}
       </div>
+
+      <section aria-label="Where this stands" className="tt-surface space-y-3 p-6">
+        <StateTrack state={project.state} />
+        {project.state === "blocked" ? (
+          <p className="max-w-reading border-l-2 border-destructive pl-3 text-sm text-foreground">
+            Blocked: {project.blockedBecause?.trim() || "no reason recorded."}
+          </p>
+        ) : null}
+        <dl className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <dt className="tt-eyebrow">Last moved</dt>
+            <dd className="mt-1 text-sm text-foreground">{movedPhrase(project)}</dd>
+          </div>
+          <div>
+            <dt className="tt-eyebrow">Last recorded change</dt>
+            <dd className="mt-1 text-sm text-foreground">
+              {daysAgo(project.updatedAt)} day{daysAgo(project.updatedAt) === 1 ? "" : "s"} ago
+            </dd>
+          </div>
+          <div>
+            <dt className="tt-eyebrow">In delivery for</dt>
+            <dd className="mt-1 text-sm text-foreground">
+              {daysAgo(project.createdAt)} day{daysAgo(project.createdAt) === 1 ? "" : "s"}
+            </dd>
+          </div>
+        </dl>
+      </section>
 
       <section className="tt-surface space-y-5 p-6">
         <SectionHeading eyebrow="The move" title={move.move} description={move.because} />
-        <div className="flex flex-wrap gap-2">
+        <details className="group">
+          <summary className="cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-foreground">
+            <span className="group-open:hidden">Change the state →</span>
+            <span className="hidden group-open:inline">Leave the state as it is</span>
+          </summary>
+          <div className="mt-3 flex flex-wrap gap-2">
           {EXECUTION_STATES.filter((state) => state !== project.state).map((state) => (
             <TTButton
               key={state}
@@ -172,7 +205,8 @@ function ProjectWorkspace({
               {EXECUTION_STATE_LABEL[state]}
             </TTButton>
           ))}
-        </div>
+          </div>
+        </details>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
             <TTInput
