@@ -376,8 +376,13 @@ export function SemanticReview({
   confirmedKeys,
   stateChanges = [],
   conflicts = [],
+  memoryUsed = [],
+  memoryConsidered = 0,
+  suppressedCount = 0,
   onConfirm,
   onCorrect,
+  onDismiss,
+  onResolveConflict,
   readOnlyBecause,
 }: {
   run: InterpretationRun;
@@ -385,8 +390,13 @@ export function SemanticReview({
   confirmedKeys: Set<string>;
   stateChanges?: StateChangeProposal[];
   conflicts?: MemoryConflict[];
+  memoryUsed?: MemoryUsage[];
+  memoryConsidered?: number;
+  suppressedCount?: number;
   onConfirm?: (input: ConfirmInput) => void;
   onCorrect?: (corrections: CorrectionDraft[]) => void;
+  onDismiss?: (signal: InterpretedSignal) => void;
+  onResolveConflict?: (conflict: MemoryConflict, keep: "memory" | "transcript") => void;
   readOnlyBecause?: string;
 }) {
   const reviewable = reviewableSignals(run.signals);
@@ -407,6 +417,34 @@ export function SemanticReview({
       {run.memory.available ? null : (
         <p className="tt-surface p-4 text-[13px] text-muted-foreground">{run.memory.because}</p>
       )}
+
+      {/* What memory was consulted, in full. A reading you cannot audit is a rumour. */}
+      <details className="tt-surface p-5">
+        <summary className="cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+          Memory used · {memoryUsed.length} of {memoryConsidered} things Steward holds
+          {suppressedCount > 0 ? ` · ${suppressedCount} left out on purpose` : ""}
+        </summary>
+        {memoryUsed.length === 0 ? (
+          <p className="mt-3 text-[13px] text-muted-foreground">
+            Steward read this conversation on its own terms. Nothing it remembers was close enough
+            to the people or work discussed to be worth carrying in.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {memoryUsed.map((item) => (
+              <li key={item.beliefId} className="border-l-2 border-border pl-3">
+                <p className="text-sm text-foreground">
+                  {item.subjectLabel}: {item.statement}
+                </p>
+                <p className="text-[13px] text-muted-foreground">
+                  {TRUTH_TIER_LABEL[item.tier]} · {item.because}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
+
 
       {reviewable.length === 0 ? (
         <p className="tt-surface p-6 text-sm text-muted-foreground">
