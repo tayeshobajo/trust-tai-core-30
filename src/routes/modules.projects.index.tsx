@@ -70,7 +70,9 @@ function ProjectRow({ project }: { project: ExecutionProject }) {
         <MetaPill>{HEALTH_LABEL[health.level]}</MetaPill>
         <MetaPill>Carried by {project.ownerLabel ?? "no one yet"}</MetaPill>
         {project.origin.kind === "roadmap_milestone" ? <MetaPill>From Roadmap</MetaPill> : null}
-        {project.origin.subjectLabel ? <MetaPill>For {project.origin.subjectLabel}</MetaPill> : null}
+        {project.origin.subjectLabel ? (
+          <MetaPill>For {project.origin.subjectLabel}</MetaPill>
+        ) : null}
       </div>
       <h3 className="mt-3 font-display text-2xl text-foreground">
         <Link
@@ -164,8 +166,15 @@ function DeliveryStrip({ projects }: { projects: ExecutionProject[] }) {
   );
 }
 
-
-function Group({ title, eyebrow, projects }: { title: string; eyebrow: string; projects: ExecutionProject[] }) {
+function Group({
+  title,
+  eyebrow,
+  projects,
+}: {
+  title: string;
+  eyebrow: string;
+  projects: ExecutionProject[];
+}) {
   if (projects.length === 0) return null;
   return (
     <section className="space-y-4">
@@ -203,7 +212,9 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
         <EmptyState
           title="Projects could not be read."
           belongsHere="Delivery lives in the shared Trust Tai backend, read under your own access."
-          whyItMatters={error instanceof Error ? error.message : "An unexpected error stopped the read."}
+          whyItMatters={
+            error instanceof Error ? error.message : "An unexpected error stopped the read."
+          }
         />
       </div>
     );

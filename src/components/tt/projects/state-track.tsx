@@ -18,13 +18,7 @@ function positionOf(state: ExecutionState): number {
   return Math.max(0, TRACK.indexOf(state));
 }
 
-export function StateTrack({
-  state,
-  className,
-}: {
-  state: ExecutionState;
-  className?: string;
-}) {
+export function StateTrack({ state, className }: { state: ExecutionState; className?: string }) {
   const current = positionOf(state);
   const blocked = state === "blocked";
 

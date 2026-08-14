@@ -150,7 +150,9 @@ function ProjectWorkspace({
       <div className="flex flex-wrap gap-2">
         <MetaPill>{HEALTH_LABEL[health.level]}</MetaPill>
         <MetaPill>Carried by {project.ownerLabel ?? "no one yet"}</MetaPill>
-        {project.origin.subjectLabel ? <MetaPill>For {project.origin.subjectLabel}</MetaPill> : null}
+        {project.origin.subjectLabel ? (
+          <MetaPill>For {project.origin.subjectLabel}</MetaPill>
+        ) : null}
         {project.origin.kind === "roadmap_milestone" ? <MetaPill>From Roadmap</MetaPill> : null}
       </div>
 
@@ -189,22 +191,24 @@ function ProjectWorkspace({
             <span className="hidden group-open:inline">Leave the state as it is</span>
           </summary>
           <div className="mt-3 flex flex-wrap gap-2">
-          {EXECUTION_STATES.filter((state) => state !== project.state).map((state) => (
-            <TTButton
-              key={state}
-              size="sm"
-              variant={state === "blocked" ? "quiet" : "secondary"}
-              disabled={update.isPending}
-              onClick={() =>
-                update.mutate({
-                  state: state as ExecutionState,
-                  ...(state === "blocked" && blocked.trim() ? { blockedBecause: blocked.trim() } : {}),
-                })
-              }
-            >
-              {EXECUTION_STATE_LABEL[state]}
-            </TTButton>
-          ))}
+            {EXECUTION_STATES.filter((state) => state !== project.state).map((state) => (
+              <TTButton
+                key={state}
+                size="sm"
+                variant={state === "blocked" ? "quiet" : "secondary"}
+                disabled={update.isPending}
+                onClick={() =>
+                  update.mutate({
+                    state: state as ExecutionState,
+                    ...(state === "blocked" && blocked.trim()
+                      ? { blockedBecause: blocked.trim() }
+                      : {}),
+                  })
+                }
+              >
+                {EXECUTION_STATE_LABEL[state]}
+              </TTButton>
+            ))}
           </div>
         </details>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -242,7 +246,9 @@ function ProjectWorkspace({
         </div>
         {update.error ? (
           <p role="alert" className="text-sm text-destructive">
-            {update.error instanceof Error ? update.error.message : "That change could not be saved."}
+            {update.error instanceof Error
+              ? update.error.message
+              : "That change could not be saved."}
           </p>
         ) : null}
       </section>
