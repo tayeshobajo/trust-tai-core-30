@@ -30,6 +30,7 @@ import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.in
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
 import { Route as ModulesStewardIndexRouteImport } from './routes/modules.steward.index'
 import { Route as ModulesStewardMeetingsRouteImport } from './routes/modules.steward.meetings'
+import { Route as ModulesStewardMemoryRouteImport } from './routes/modules.steward.memory'
 import { Route as ModulesStewardTeamRouteImport } from './routes/modules.steward.team'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
@@ -151,6 +152,11 @@ const ModulesStewardMeetingsRoute = ModulesStewardMeetingsRouteImport.update({
   path: '/meetings',
   getParentRoute: () => ModulesStewardRoute,
 } as any)
+const ModulesStewardMemoryRoute = ModulesStewardMemoryRouteImport.update({
+  id: '/memory',
+  path: '/memory',
+  getParentRoute: () => ModulesStewardRoute,
+} as any)
 const ModulesStewardTeamRoute = ModulesStewardTeamRouteImport.update({
   id: '/team',
   path: '/team',
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
+  '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/team': typeof ModulesStewardTeamRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/team': typeof ModulesStewardTeamRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
   '/modules/projects': typeof ModulesProjectsIndexRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
+  '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/team': typeof ModulesStewardTeamRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
@@ -346,6 +355,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
     | '/modules/steward/meetings'
+    | '/modules/steward/memory'
     | '/modules/steward/team'
     | '/modules/comms/'
     | '/modules/projects/'
@@ -376,6 +386,7 @@ export interface FileRouteTypes {
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
+    | '/modules/steward/memory'
     | '/modules/steward/team'
     | '/modules/comms'
     | '/modules/projects'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
     | '/modules/steward/meetings'
+    | '/modules/steward/memory'
     | '/modules/steward/team'
     | '/modules/comms/'
     | '/modules/projects/'
@@ -603,6 +615,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardMeetingsRouteImport
       parentRoute: typeof ModulesStewardRoute
     }
+    '/modules/steward/memory': {
+      id: '/modules/steward/memory'
+      path: '/memory'
+      fullPath: '/modules/steward/memory'
+      preLoaderRoute: typeof ModulesStewardMemoryRouteImport
+      parentRoute: typeof ModulesStewardRoute
+    }
     '/modules/steward/team': {
       id: '/modules/steward/team'
       path: '/team'
@@ -776,12 +795,14 @@ const ModulesStewardMeetingsRouteWithChildren =
 
 interface ModulesStewardRouteChildren {
   ModulesStewardMeetingsRoute: typeof ModulesStewardMeetingsRouteWithChildren
+  ModulesStewardMemoryRoute: typeof ModulesStewardMemoryRoute
   ModulesStewardTeamRoute: typeof ModulesStewardTeamRoute
   ModulesStewardIndexRoute: typeof ModulesStewardIndexRoute
 }
 
 const ModulesStewardRouteChildren: ModulesStewardRouteChildren = {
   ModulesStewardMeetingsRoute: ModulesStewardMeetingsRouteWithChildren,
+  ModulesStewardMemoryRoute: ModulesStewardMemoryRoute,
   ModulesStewardTeamRoute: ModulesStewardTeamRoute,
   ModulesStewardIndexRoute: ModulesStewardIndexRoute,
 }
