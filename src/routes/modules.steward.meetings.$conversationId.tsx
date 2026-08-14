@@ -11,13 +11,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { MetaPill, TTButton } from "@/components/tt/primitives";
-import { ProposalReview } from "@/components/tt/steward/proposal-review";
+import { ProposalReview, type ConfirmInput } from "@/components/tt/steward/proposal-review";
 import { StewardTabs } from "@/components/tt/steward/steward-tabs";
 import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { extractProposals } from "@/data/steward/extract";
 import { stewardService } from "@/data/supabase/steward-service";
-import type { CommitmentProposal } from "@/domain/steward";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Steward — Conversation review — Trust Tai OS";
@@ -66,11 +65,14 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   const confirm = useMutation({
-    mutationFn: (proposal: CommitmentProposal) =>
-      stewardService.confirmCommitment({
+    mutationFn: (input: ConfirmInput) =>
+      stewardService.confirm({
         organizationId: identity.organizationId,
         userId: identity.userId,
-        proposal,
+        conversationId,
+        proposal: input.proposal,
+        ownerName: input.ownerName,
+        dueAt: input.dueAt,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -85,7 +87,7 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
   }
 
   const record = conversation.data;
-  const proposals = extractProposals(record);
+  const proposals = extractProposals(record.conversation);
   const confirmedKeys = new Set(
     (commitments.data ?? [])
       .filter((commitment) => commitment.conversationId === record.id)
@@ -117,11 +119,10 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
       </div>
 
       <ProposalReview
-        conversation={record}
+        conversation={record.conversation}
         proposals={proposals}
         confirmedKeys={confirmedKeys}
-        onConfirm={(proposal) => confirm.mutate(proposal)}
-        pending={confirm.isPending}
+        onConfirm={(input) => confirm.mutate(input)}
       />
     </div>
   );
