@@ -6,6 +6,9 @@
  * understands: the people, what they recurringly carry, how work passes
  * between them, and what a human being has put right.
  *
+ * Progressive disclosure: groups collapse, each belief reads as one calm
+ * sentence, and the evidence behind it opens only when a person asks for it.
+ *
  * Corrections supersede; nothing is ever deleted. A belief can be retired,
  * which stops Steward consulting it and leaves the history intact.
  */
@@ -64,15 +67,43 @@ function MemoryRoute() {
   );
 }
 
-const GROUP_ORDER: MemoryKind[] = [
-  "correction",
-  "responsibility",
-  "handoff",
-  "person",
-  "project",
+/** Order of the shelves, and the one line that says what each shelf holds. */
+const GROUPS: { kind: MemoryKind; blurb: string }[] = [
+  {
+    kind: "person",
+    blurb: "Who someone is at work — their title, their pod, the context they operate in.",
+  },
+  {
+    kind: "responsibility",
+    blurb: "What a person recurringly carries, seen enough times to be worth remembering.",
+  },
+  {
+    kind: "handoff",
+    blurb: "How work passes between two people, and who waits on whom.",
+  },
+  {
+    kind: "project",
+    blurb: "Context about the work itself, so a reading lands in the right place.",
+  },
+  {
+    kind: "correction",
+    blurb: "What a person put right. These outrank anything Steward worked out on its own.",
+  },
 ];
 
-function BeliefCard({
+function Disclosure({ open }: { open: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className="font-mono text-[10px] text-muted-foreground transition-transform"
+      style={{ transform: open ? "rotate(90deg)" : "none", display: "inline-block" }}
+    >
+      ▸
+    </span>
+  );
+}
+
+function BeliefRow({
   belief,
   onRetire,
   busy,
@@ -81,87 +112,167 @@ function BeliefCard({
   onRetire?: (because: string) => void;
   busy?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const [asking, setAsking] = useState(false);
 
   return (
-    <li className="tt-surface p-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <MetaPill>{TRUTH_TIER_LABEL[belief.tier]}</MetaPill>
-        <MetaPill>
-          {belief.authority === "human" ? "Taught by a person" : "Read from evidence"}
-        </MetaPill>
-        <MetaPill>{MEMORY_FACET_LABEL[belief.meta.facet]}</MetaPill>
-        <MetaPill>{belief.subjectLabel}</MetaPill>
-      </div>
+    <li className="border-b border-border last:border-b-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-start gap-3 px-1 py-4 text-left hover:bg-muted/40"
+      >
+        <span className="mt-1">
+          <Disclosure open={open} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block max-w-reading text-[15px] text-foreground">
+            {belief.statement}
+          </span>
+          <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            {belief.subjectLabel} · {MEMORY_FACET_LABEL[belief.meta.facet]} ·{" "}
+            {belief.authority === "human" ? "Taught by a person" : "Read from evidence"}
+          </span>
+        </span>
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+          {belief.evidence.length > 0 ? `Why · ${belief.evidence.length}` : "Why"}
+        </span>
+      </button>
 
-      <p className="mt-3 max-w-reading text-[15px] text-foreground">{belief.statement}</p>
+      {open ? (
+        <div className="pb-5 pl-7 pr-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <MetaPill>{TRUTH_TIER_LABEL[belief.tier]}</MetaPill>
+            <MetaPill>{MEMORY_FACET_LABEL[belief.meta.facet]}</MetaPill>
+            {belief.meta.retired ? <MetaPill>No longer consulted</MetaPill> : null}
+          </div>
 
-      {belief.meta.original && belief.meta.corrected ? (
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          Steward had “{belief.meta.original || "nothing"}”. You said “{belief.meta.corrected}”.
-        </p>
-      ) : null}
+          {belief.meta.original && belief.meta.corrected ? (
+            <p className="mt-3 max-w-reading text-[13px] text-muted-foreground">
+              Steward had “{belief.meta.original || "nothing"}”. You said “{belief.meta.corrected}”.
+            </p>
+          ) : null}
 
-      {belief.meta.sourceConversationIds && belief.meta.sourceConversationIds.length > 0 ? (
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          Held after {belief.meta.sourceConversationIds.length} separate conversations said the same
-          thing.
-        </p>
-      ) : null}
+          {belief.meta.sourceConversationIds && belief.meta.sourceConversationIds.length > 0 ? (
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              Held after {belief.meta.sourceConversationIds.length} separate conversations said the
+              same thing.
+            </p>
+          ) : null}
 
-      <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-        {belief.recordedBy} · {belief.recordedAt.slice(0, 10)}
-      </p>
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            {belief.recordedBy} · {belief.recordedAt.slice(0, 10)}
+          </p>
 
-      {belief.evidence.length > 0 ? (
-        <ul className="mt-3 space-y-1 border-t border-border pt-3">
-          {belief.evidence.map((item, index) => (
-            <li key={index} className="text-[13px] text-muted-foreground">
-              {item.url ? (
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-4 hover:text-foreground"
+          {belief.evidence.length > 0 ? (
+            <>
+              <p className="mt-4 tt-eyebrow">What this rests on</p>
+              <ul className="mt-2 space-y-1">
+                {belief.evidence.map((item, index) => (
+                  <li key={index} className="text-[13px] text-muted-foreground">
+                    {item.url ? (
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline underline-offset-4 hover:text-foreground"
+                      >
+                        {item.label}
+                      </a>
+                    ) : (
+                      item.label
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="mt-4 text-[13px] text-muted-foreground">
+              No source page or conversation is attached to this belief.
+            </p>
+          )}
+
+          {onRetire ? (
+            asking ? (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <p className="text-[13px] text-muted-foreground">
+                  Steward will stop using this. It stays on the record.
+                </p>
+                <TTButton
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onRetire("It no longer reflects how the work runs.")}
                 >
-                  {item.label}
-                </a>
-              ) : (
-                item.label
-              )}
-            </li>
+                  {busy ? "Recording…" : "Yes, stop using it"}
+                </TTButton>
+                <TTButton type="button" variant="secondary" onClick={() => setAsking(false)}>
+                  Keep it
+                </TTButton>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                onClick={() => setAsking(true)}
+              >
+                This is no longer true →
+              </button>
+            )
+          ) : null}
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+function MemoryGroup({
+  kind,
+  blurb,
+  beliefs,
+  defaultOpen,
+  onRetire,
+  busy,
+}: {
+  kind: MemoryKind;
+  blurb: string;
+  beliefs: MemoryBelief[];
+  defaultOpen: boolean;
+  onRetire: (belief: MemoryBelief, because: string) => void;
+  busy: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="tt-surface px-6 py-5">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center gap-3 text-left"
+      >
+        <Disclosure open={open} />
+        <span className="flex-1">
+          <span className="tt-eyebrow block">
+            {MEMORY_KIND_LABEL[kind]} · {beliefs.length}
+          </span>
+          <span className="mt-1 block max-w-reading text-[13px] text-muted-foreground">{blurb}</span>
+        </span>
+      </button>
+
+      {open ? (
+        <ul className="mt-4 border-t border-border">
+          {beliefs.map((belief) => (
+            <BeliefRow
+              key={belief.id}
+              belief={belief}
+              busy={busy}
+              onRetire={(because) => onRetire(belief, because)}
+            />
           ))}
         </ul>
       ) : null}
-
-      {onRetire ? (
-        asking ? (
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4">
-            <p className="text-[13px] text-muted-foreground">
-              Steward will stop using this. It stays on the record.
-            </p>
-            <TTButton
-              type="button"
-              disabled={busy}
-              onClick={() => onRetire("It no longer reflects how the work runs.")}
-            >
-              {busy ? "Recording…" : "Yes, stop using it"}
-            </TTButton>
-            <TTButton type="button" variant="secondary" onClick={() => setAsking(false)}>
-              Keep it
-            </TTButton>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            onClick={() => setAsking(true)}
-          >
-            This is no longer true →
-          </button>
-        )
-      ) : null}
-    </li>
+    </section>
   );
 }
 
@@ -215,6 +326,11 @@ function Memory({ identity }: { identity: WorkspaceIdentity }) {
     existing: rows,
   });
 
+  const groups = GROUPS.map((group) => ({
+    ...group,
+    beliefs: rows.filter((belief) => belief.meta.kind === group.kind),
+  })).filter((group) => group.beliefs.length > 0);
+
   return (
     <div className="space-y-8">
       <AppHero
@@ -234,9 +350,7 @@ function Memory({ identity }: { identity: WorkspaceIdentity }) {
         <>
           {noticed.length > 0 ? (
             <section>
-              <h3 className="tt-eyebrow">
-                Steward has noticed a pattern · {noticed.length}
-              </h3>
+              <h3 className="tt-eyebrow">Steward has noticed a pattern · {noticed.length}</h3>
               <p className="mt-2 max-w-reading text-[13px] text-muted-foreground">
                 Each of these turned up in at least {RECURRING_PATTERN_THRESHOLD} separate
                 conversations. Steward will not hold any of them as memory until you say it is
@@ -293,28 +407,19 @@ function Memory({ identity }: { identity: WorkspaceIdentity }) {
               whyItMatters="Memory is what lets Steward recommend a next move without asking you to explain the business again."
             />
           ) : (
-            GROUP_ORDER.filter((kind) => rows.some((belief) => belief.meta.kind === kind)).map(
-              (kind) => (
-                <section key={kind}>
-                  <h3 className="tt-eyebrow">
-                    {MEMORY_KIND_LABEL[kind]} ·{" "}
-                    {rows.filter((belief) => belief.meta.kind === kind).length}
-                  </h3>
-                  <ul className="mt-3 space-y-3">
-                    {rows
-                      .filter((belief) => belief.meta.kind === kind)
-                      .map((belief) => (
-                        <BeliefCard
-                          key={belief.id}
-                          belief={belief}
-                          busy={retire.isPending}
-                          onRetire={(because) => retire.mutate({ belief, because })}
-                        />
-                      ))}
-                  </ul>
-                </section>
-              ),
-            )
+            <div className="space-y-4">
+              {groups.map((group, index) => (
+                <MemoryGroup
+                  key={group.kind}
+                  kind={group.kind}
+                  blurb={group.blurb}
+                  beliefs={group.beliefs}
+                  defaultOpen={index === 0}
+                  busy={retire.isPending}
+                  onRetire={(belief, because) => retire.mutate({ belief, because })}
+                />
+              ))}
+            </div>
           )}
         </>
       )}
