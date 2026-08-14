@@ -143,7 +143,7 @@ function ProjectWorkspace({
       <PageHeader
         eyebrow="Trust Tai OS / Projects"
         title={project.name}
-        description={health.because}
+        supporting={health.because}
       />
 
       <div className="flex flex-wrap gap-2">
