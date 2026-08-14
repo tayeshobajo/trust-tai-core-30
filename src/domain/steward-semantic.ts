@@ -118,7 +118,12 @@ export interface MemoryContext {
   openCommitments: { id: ID; statement: string; ownerName: string; status: string }[];
   people: { name: string; email?: string; title?: string }[];
   projects: { id: ID; label: string }[];
+  /** What a person has decided. Outranks anything Steward worked out. */
+  decided?: string[];
+  /** What Steward inferred from repeated evidence. Context, never authority. */
+  inferred?: string[];
 }
+
 
 export interface InterpretationRun {
   conversationTitle: string;
