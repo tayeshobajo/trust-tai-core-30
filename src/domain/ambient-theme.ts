@@ -34,6 +34,7 @@ const FOUNDATION: AmbientTheme = {
  * comms    Warm Terracotta  #B96D52  human conversation, warmth
  * roadmap  Iris             #7667C9  direction, possibility, sequencing
  * projects Slate Blue       #52789C  structure, delivery, steadiness
+ * steward  Stewardship Green #4F7D63 follow-through, care, kept promises
  * ops      Steward Green    #5F8F72  health, maintenance, stewardship
  * studio   Soft Coral       #C77A6B  creation, expression, craft
  * pulse    Mulberry         #8A5C92  signals, synthesis, portfolio intelligence
@@ -44,6 +45,7 @@ export const APP_AMBIENT_THEMES: Record<string, AmbientTheme> = {
   comms: { accent: "var(--tt-app-comms)", accentName: "Warm Terracotta" },
   roadmap: { accent: "var(--tt-app-roadmap)", accentName: "Iris" },
   projects: { accent: "var(--tt-app-projects)", accentName: "Slate Blue" },
+  steward: { accent: "var(--tt-app-steward)", accentName: "Stewardship Green" },
   ops: { accent: "var(--tt-app-ops)", accentName: "Steward Green" },
   studio: { accent: "var(--tt-app-studio)", accentName: "Soft Coral" },
   pulse: { accent: "var(--tt-app-pulse)", accentName: "Mulberry" },

@@ -45,6 +45,11 @@ export const APP_IMAGERY: Record<string, AppImage> = {
     alt: "",
     objectPosition: "38% 55%",
   },
+  steward: {
+    src: "/assets/trust-tai-os-steward.png",
+    alt: "",
+    objectPosition: "48% 55%",
+  },
   ops: {
     src: "/assets/trust-tai-os-ops.png",
     alt: "",

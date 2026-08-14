@@ -216,6 +216,28 @@ function Rhythm() {
   );
 }
 
+/** Steward: a ledger of lines carried forward, each one owned. */
+function Ledger() {
+  return (
+    <g stroke="currentColor" fill="none" strokeWidth="1">
+      {Array.from({ length: 9 }).map((_, index) => (
+        <line
+          key={index}
+          x1="40"
+          x2="360"
+          y1={44 + index * 26}
+          y2={44 + index * 26}
+          opacity={0.12 + index * 0.015}
+        />
+      ))}
+      {[0, 2, 5, 7].map((row) => (
+        <circle key={row} cx="52" cy={44 + row * 26} r="3.5" fill="currentColor" opacity="0.3" stroke="none" />
+      ))}
+      <line x1="96" y1="24" x2="96" y2="276" opacity="0.18" />
+    </g>
+  );
+}
+
 const MOTIFS: Record<AppMotif, () => React.ReactElement> = {
   horizon: Horizon,
   terrain: Terrain,
@@ -225,6 +247,7 @@ const MOTIFS: Record<AppMotif, () => React.ReactElement> = {
   systems: Systems,
   composition: Composition,
   rhythm: Rhythm,
+  ledger: Ledger,
 };
 
 export function AppMotifArt({

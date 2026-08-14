@@ -92,6 +92,16 @@ export const APP_REGISTRY: AppRegistration[] = [
     capabilities: ["projects", "tasks"],
   },
   {
+    id: "steward",
+    name: "Steward",
+    slug: "steward",
+    description: "Conversations become commitments, and commitments get kept.",
+    status: "in_build",
+    route: "/modules/steward",
+    icon: "HeartHandshake",
+    capabilities: ["conversations", "tasks", "decisions", "intelligence"],
+  },
+  {
     id: "ops",
     name: "Ops",
     slug: "ops",
