@@ -232,7 +232,7 @@ async function requireMember(
   if (error || !user?.user) throw new Error("Sign in to manage connections.");
   const { data: membership, error: membershipError } = await client
     .from("organization_memberships")
-    .select("id")
+    .select("organization_id, user_id, status")
     .eq("organization_id", organizationId)
     .eq("user_id", user.user.id)
     .maybeSingle();
