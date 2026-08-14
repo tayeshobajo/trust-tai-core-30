@@ -72,7 +72,9 @@ describe("security posture", () => {
       // rights this file never granted, so each table revokes before granting.
       expect(sql).toContain(`revoke all privileges on table public.${table} from anon;`);
       expect(sql).toContain(`revoke all privileges on table public.${table} from authenticated;`);
-      const revoke = sql.indexOf(`revoke all privileges on table public.${table} from authenticated;`);
+      const revoke = sql.indexOf(
+        `revoke all privileges on table public.${table} from authenticated;`,
+      );
       const grant = sql.indexOf(`on table public.${table} to authenticated;`);
       expect(grant).toBeGreaterThan(revoke);
     }
