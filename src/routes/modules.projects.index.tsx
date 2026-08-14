@@ -235,6 +235,8 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
         />
       ) : (
         <>
+          <DeliveryStrip projects={projects} />
+
           <Group eyebrow={`${atRisk.length} at risk`} title="Asking for you" projects={atRisk} />
           <Group
             eyebrow={`${attention.length} incomplete`}
