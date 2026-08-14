@@ -96,6 +96,29 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
+  /**
+   * A correction is a gift of context. It is written before the confirmation
+   * lands, as decided truth attributed to the person who taught it, and it
+   * never overwrites what Steward previously believed.
+   */
+  const learn = useMutation({
+    mutationFn: (corrections: CorrectionDraft[]) =>
+      stewardService.remember({
+        organizationId: identity.organizationId,
+        userId: identity.userId,
+        userName: identity.userName,
+        drafts: corrections.map((correction) =>
+          correctionToDraft({ ...correction, conversationId }),
+        ),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["steward", "memory", identity.organizationId],
+      });
+    },
+  });
+
+
   if (conversation.isError) return <StewardUnavailable error={conversation.error} />;
   if (conversation.isLoading || !conversation.data) {
     return <p className="text-sm text-muted-foreground">Opening the conversation…</p>;
