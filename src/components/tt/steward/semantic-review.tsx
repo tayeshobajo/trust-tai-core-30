@@ -71,6 +71,85 @@ function Evidence({ signal }: { signal: InterpretedSignal }) {
   );
 }
 
+/**
+ * Where memory and this conversation disagree.
+ *
+ * Shown side by side, in full, with who taught Steward the remembered side and
+ * when. Steward does not pick. A person reads both sentences and says which is
+ * true now — memory going stale is as ordinary as a reading going wrong.
+ */
+function ConflictBanner({
+  conflict,
+  onResolve,
+}: {
+  conflict: MemoryConflict;
+  onResolve?: (conflict: MemoryConflict, keep: "memory" | "transcript") => void;
+}) {
+  const [settled, setSettled] = useState<"memory" | "transcript" | null>(null);
+
+  return (
+    <div className="mt-3 border-l-2 border-foreground/40 pl-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-foreground">
+        This disagrees with something you decided before
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="tt-surface p-3">
+          <p className="tt-eyebrow">What Steward remembers</p>
+          <p className="mt-1 text-sm text-foreground">{conflict.memorySays}</p>
+          {conflict.beliefStatement ? (
+            <p className="mt-1 text-[13px] text-muted-foreground">“{conflict.beliefStatement}”</p>
+          ) : null}
+          <p className="mt-2 text-[13px] text-muted-foreground">
+            {conflict.memoryRecordedBy
+              ? `Taught by ${conflict.memoryRecordedBy}`
+              : "Recorded earlier"}
+            {conflict.memoryRecordedAt ? ` on ${conflict.memoryRecordedAt.slice(0, 10)}` : ""}.
+          </p>
+          {onResolve ? (
+            <TTButton
+              type="button"
+              variant="secondary"
+              className="mt-3"
+              disabled={settled !== null}
+              onClick={() => {
+                setSettled("memory");
+                onResolve(conflict, "memory");
+              }}
+            >
+              {settled === "memory" ? "Kept" : "Memory is still right"}
+            </TTButton>
+          ) : null}
+        </div>
+        <div className="tt-surface p-3">
+          <p className="tt-eyebrow">What this conversation says</p>
+          <p className="mt-1 text-sm text-foreground">{conflict.transcriptSays}</p>
+          {conflict.transcriptStatement ? (
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              “{conflict.transcriptStatement}”
+            </p>
+          ) : null}
+          <p className="mt-2 text-[13px] text-muted-foreground">Heard in this conversation.</p>
+          {onResolve ? (
+            <TTButton
+              type="button"
+              variant="secondary"
+              className="mt-3"
+              disabled={settled !== null}
+              onClick={() => {
+                setSettled("transcript");
+                onResolve(conflict, "transcript");
+              }}
+            >
+              {settled === "transcript" ? "Updated" : "This is true now"}
+            </TTButton>
+          ) : null}
+        </div>
+      </div>
+      <p className="mt-2 text-[13px] text-muted-foreground">{conflict.because}</p>
+    </div>
+  );
+}
+
 function SignalRow({
   signal,
   names,
@@ -79,6 +158,8 @@ function SignalRow({
   continuity,
   onConfirm,
   onCorrect,
+  onDismiss,
+  onResolveConflict,
   readOnlyBecause,
 }: {
   signal: InterpretedSignal;
@@ -88,6 +169,8 @@ function SignalRow({
   continuity: StateChangeProposal[];
   onConfirm?: (input: ConfirmInput) => void;
   onCorrect?: (corrections: CorrectionDraft[]) => void;
+  onDismiss?: (signal: InterpretedSignal) => void;
+  onResolveConflict?: (conflict: MemoryConflict, keep: "memory" | "transcript") => void;
   readOnlyBecause?: string;
 }) {
   const [meaning, setMeaning] = useState(signal.normalizedMeaning);
@@ -96,6 +179,15 @@ function SignalRow({
   const [dueText, setDueText] = useState(signal.dueText ?? "");
   const [dueAt, setDueAt] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  /* Editing then confirming is a different act from confirming as read. */
+  const edited =
+    meaning.trim() !== signal.normalizedMeaning.trim() ||
+    ownerName.trim() !== (signal.ownerName ?? "").trim() ||
+    beneficiary.trim() !== (signal.beneficiary ?? "").trim() ||
+    dueText.trim() !== (signal.dueText ?? "").trim();
+
 
   return (
     <li className="tt-surface p-5">
