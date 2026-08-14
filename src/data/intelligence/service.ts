@@ -14,6 +14,7 @@ import { projectsService } from "@/data/supabase/projects-service";
 import { roadmapService } from "@/data/supabase/roadmap-service";
 import { scoutService } from "@/data/supabase/scout-service";
 import { supabaseActivity } from "@/data/supabase/activities";
+import { stewardService } from "@/data/supabase/steward-service";
 import type { ID } from "@/domain/entities";
 import type { AskAnswer, ContextBundle, Signal, WithheldSource } from "@/domain/signals";
 import type { EntityRef } from "@/domain/entities";
@@ -41,8 +42,16 @@ async function safe<T>(
 /** Assemble everything the current organization can legitimately read. */
 export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapshot> {
   const base = emptySnapshot(organizationId);
-  const [candidates, relationships, roadmaps, decisions, projects, events, opsActivities] =
-    await Promise.all([
+  const [
+    candidates,
+    relationships,
+    roadmaps,
+    decisions,
+    projects,
+    events,
+    opsActivities,
+    steward,
+  ] = await Promise.all([
     safe("scout", base.candidates, () => scoutService.list(organizationId)),
     safe("comms", base.relationships, () => commsService.list(organizationId)),
     safe("roadmap", base.roadmaps, () => roadmapService.list(organizationId)),
@@ -52,10 +61,35 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     safe("ops", base.opsActivities, () =>
       supabaseActivity.list({ organizationId, appIds: ["ops"], limit: 60 }),
     ),
+    /* Steward may not be provisioned in a workspace yet; that is withheld, not empty. */
+    safe("steward", base.steward, async () => {
+      const [commitments, conversations] = await Promise.all([
+        stewardService.commitments(organizationId),
+        stewardService.conversations(organizationId),
+      ]);
+      return {
+        commitments,
+        conversations: conversations.map((conversation) => ({
+          id: conversation.id,
+          title: conversation.title,
+          occurredAt: conversation.occurredAt,
+          ...(conversation.sourceUrl ? { url: conversation.sourceUrl } : {}),
+        })),
+      };
+    }),
   ]);
 
   const withheld: WithheldSource[] = [];
-  for (const part of [candidates, relationships, roadmaps, decisions, projects, events, opsActivities]) {
+  for (const part of [
+    candidates,
+    relationships,
+    roadmaps,
+    decisions,
+    projects,
+    events,
+    opsActivities,
+    steward,
+  ]) {
     if (part.withheld && !withheld.some((w) => w.appId === part.withheld?.appId)) {
       withheld.push(part.withheld);
     }
@@ -70,6 +104,7 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     projects: projects.value,
     events: events.value,
     opsActivities: opsActivities.value,
+    steward: steward.value,
     withheld,
   };
 }
