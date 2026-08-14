@@ -83,21 +83,52 @@ async function readMemory(
       updatedAt: "",
     })) as Commitment[];
 
+    const [peopleResult, projectsResult] = await Promise.all([
+      supabase
+        .from("steward_role_memory")
+        .select("name, title, pod, responsibilities")
+        .eq("organization_id", organizationId)
+        .limit(100),
+      supabase.from("projects").select("id, name").eq("organization_id", organizationId).limit(100),
+    ]);
+
+    const people = (peopleResult.data ?? [])
+      .map((row) => {
+        const title = [row["title"], row["pod"]].filter(Boolean).join(" · ");
+        const responsibilities = Array.isArray(row["responsibilities"])
+          ? (row["responsibilities"] as string[]).slice(0, 4).join(", ")
+          : "";
+        const detail = [title, responsibilities].filter(Boolean).join(" — ");
+        return detail
+          ? { name: String(row["name"] ?? ""), title: detail }
+          : { name: String(row["name"] ?? "") };
+
+      })
+      .filter((person) => person.name.length > 0);
+
+    const projects = (projectsResult.data ?? [])
+      .map((row) => ({ id: String(row["id"] ?? ""), label: String(row["name"] ?? "") }))
+      .filter((project) => project.id.length > 0 && project.label.length > 0);
+
     return {
       commitments,
       memory: {
         available: true,
-        because: "Read from this workspace's open commitments.",
+        because:
+          people.length > 0
+            ? "Read from this workspace's open commitments and known people."
+            : "Read from this workspace's open commitments.",
         openCommitments: commitments.map((commitment) => ({
           id: commitment.id,
           statement: commitment.what,
           ownerName: commitment.ownerName,
           status: commitment.status,
         })),
-        people: [],
-        projects: [],
+        people,
+        projects,
       },
     };
+
   } catch (error) {
     return {
       commitments: [],

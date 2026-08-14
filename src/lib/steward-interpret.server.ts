@@ -43,6 +43,8 @@ const LAWS = [
   "If speech is transcription-corrupted, interpret only when the meaning is strongly recoverable from the surrounding turns. Otherwise withhold.",
   "Distinguish information from signal, signal from commitment, and commitment from task.",
   "A dependency may have one owner and a different person being waited on.",
+  "Reason person-first: use known_people roles and responsibilities to judge who realistically owns an action, and prefer the person whose role fits over whoever spoke last.",
+  "When a role clearly implies the owner but nobody named them, keep owner_confidence at moderate or low and set truth_tier to inferred.",
   "Provider action items are another tool's interpretation. Compare against the transcript; never treat them as truth.",
   "Never invent an owner, a date, a project, or a beneficiary. due_text carries spoken words only, never a calendar date.",
   "truth_tier is observed when the words themselves carry it, inferred when you worked it out. It is never decided.",
