@@ -259,7 +259,16 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
           /* Continuity and conflict are proposals for a person, never writes. */
           const stateChanges = proposeStateChanges({ signals: run.signals, commitments });
           const conflicts = flagMemoryConflicts({ signals: run.signals, beliefs });
-          return Response.json({ run, stateChanges, conflicts });
+          return Response.json({
+            run,
+            stateChanges,
+            conflicts,
+            /* Exactly what memory was consulted, so the reading can be audited. */
+            memoryUsed: relevant.used,
+            memoryConsidered: relevant.consideredCount,
+            suppressedCount: suppressed.length,
+          });
+
         } catch (error) {
 
           if (error instanceof InterpretationUnavailableError) {
