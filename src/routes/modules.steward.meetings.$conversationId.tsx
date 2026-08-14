@@ -18,8 +18,12 @@ import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { extractProposals } from "@/data/steward/extract";
 import { interpretConversation } from "@/data/steward/ingest";
-import { correctionToDraft } from "@/data/steward/learning";
-import type { CorrectionDraft } from "@/domain/steward-memory";
+import {
+  correctionToDraft,
+  outcomeToDraft,
+  patternKeyForSignal,
+} from "@/data/steward/learning";
+import type { CorrectionDraft, MemoryDraft } from "@/domain/steward-memory";
 import { stewardService } from "@/data/supabase/steward-service";
 
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -121,6 +125,28 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
+
+  /**
+   * Explicit feedback, on the record.
+   *
+   * Confirming, dismissing as context, or settling a disagreement are all
+   * written to the same append-only ledger, attributed and dated, so a person
+   * can see their decision landed rather than trusting that it did.
+   */
+  const record_outcome = useMutation({
+    mutationFn: (draft: MemoryDraft) =>
+      stewardService.remember({
+        organizationId: identity.organizationId,
+        userId: identity.userId,
+        userName: identity.name,
+        drafts: [draft],
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["steward", "memory", identity.organizationId],
+      });
+    },
+  });
 
   if (conversation.isError) return <StewardUnavailable error={conversation.error} />;
   if (conversation.isLoading || !conversation.data) {
