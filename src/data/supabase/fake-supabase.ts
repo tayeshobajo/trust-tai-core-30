@@ -14,6 +14,8 @@ export type FakeRow = Record<string, unknown>;
 interface Filter {
   column: string;
   value: unknown;
+  /** `in` filters match any value in the list, as PostgREST does. */
+  anyOf?: unknown[];
 }
 
 class Query implements PromiseLike<{ data: unknown; error: null }> {
@@ -36,6 +38,11 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     return this;
   }
 
+  in(column: string, values: unknown[]): Query {
+    this.filters.push({ column, value: values, anyOf: values });
+    return this;
+  }
+
   order(column: string, options?: { ascending?: boolean }): Query {
     this.orderBy = { column, ascending: options?.ascending !== false };
     return this;
@@ -52,7 +59,9 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
 
   private matched(): FakeRow[] {
     let rows = this.rows.filter((row) =>
-      this.filters.every((filter) => row[filter.column] === filter.value),
+      this.filters.every((filter) =>
+        filter.anyOf ? filter.anyOf.includes(row[filter.column]) : row[filter.column] === filter.value,
+      ),
     );
     if (this.orderBy) {
       const { column, ascending } = this.orderBy;
