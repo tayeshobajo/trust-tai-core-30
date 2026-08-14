@@ -28,6 +28,7 @@ import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/publi
 import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/roadmap.studio'
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
+import { Route as ApiPublicCommsGmailConnectRouteImport } from './routes/api/public/comms.gmail.connect'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -127,6 +128,12 @@ const ModulesScoutProspectsProspectIdRoute =
     path: '/prospects/$prospectId',
     getParentRoute: () => ModulesScoutRoute,
   } as any)
+const ApiPublicCommsGmailConnectRoute =
+  ApiPublicCommsGmailConnectRouteImport.update({
+    id: '/api/public/comms/gmail/connect',
+    path: '/api/public/comms/gmail/connect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
+  '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -166,6 +174,7 @@ export interface FileRoutesByTo {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
+  '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -188,6 +197,7 @@ export interface FileRoutesById {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
+  '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
+    | '/api/public/comms/gmail/connect'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
+    | '/api/public/comms/gmail/connect'
   id:
     | '__root__'
     | '/'
@@ -250,6 +262,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/scout/discover'
     | '/modules/scout/prospects/$prospectId'
+    | '/api/public/comms/gmail/connect'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -264,6 +277,7 @@ export interface RootRouteChildren {
   ApiPublicRoadmapResearchRoute: typeof ApiPublicRoadmapResearchRoute
   ApiPublicRoadmapStudioRoute: typeof ApiPublicRoadmapStudioRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
+  ApiPublicCommsGmailConnectRoute: typeof ApiPublicCommsGmailConnectRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -401,6 +415,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesScoutProspectsProspectIdRouteImport
       parentRoute: typeof ModulesScoutRoute
     }
+    '/api/public/comms/gmail/connect': {
+      id: '/api/public/comms/gmail/connect'
+      path: '/api/public/comms/gmail/connect'
+      fullPath: '/api/public/comms/gmail/connect'
+      preLoaderRoute: typeof ApiPublicCommsGmailConnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -462,6 +483,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRoadmapResearchRoute: ApiPublicRoadmapResearchRoute,
   ApiPublicRoadmapStudioRoute: ApiPublicRoadmapStudioRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
+  ApiPublicCommsGmailConnectRoute: ApiPublicCommsGmailConnectRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
