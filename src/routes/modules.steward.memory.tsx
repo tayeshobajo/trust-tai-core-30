@@ -19,11 +19,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
-import { EmptyState, MetaPill, TTButton } from "@/components/tt/primitives";
+import { EmptyState, MetaPill, TTButton, TTInput } from "@/components/tt/primitives";
 import { StewardTabs } from "@/components/tt/steward/steward-tabs";
 import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { accumulatePatterns, observationsFromCommitments } from "@/data/steward/learning";
+import {
+  accumulatePatterns,
+  editBeliefDraft,
+  endorseBeliefDraft,
+  observationsFromCommitments,
+} from "@/data/steward/learning";
 import { stewardService } from "@/data/supabase/steward-service";
 import { TRUTH_TIER_LABEL } from "@/domain/signals";
 import {
