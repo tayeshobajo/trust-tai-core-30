@@ -13,6 +13,10 @@
  *    made with the caller's token, so RLS still applies).
  */
 
+import {
+  trustTaiSupabaseKey,
+  trustTaiSupabaseUrl,
+} from "@/lib/trust-tai-backend.server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { openSecret, sealSecret } from "@/lib/comms-crypto.server";
@@ -211,13 +215,9 @@ function normalize(message: GmailMessage, mailbox: string): NormalizedMessage | 
 
 function supabaseFor(token: string): SupabaseClient {
   const url =
-    process.env["TRUST_TAI_SUPABASE_URL"] ||
-    process.env["VITE_SUPABASE_URL"] ||
-    "https://okydosoacqdnursmmenf.supabase.co";
+    trustTaiSupabaseUrl();
   const key =
-    process.env["TRUST_TAI_SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
-    "sb_publishable_uARvNwZli88tfhOHBwFTsQ_JUpQo-UL";
+    trustTaiSupabaseKey();
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
