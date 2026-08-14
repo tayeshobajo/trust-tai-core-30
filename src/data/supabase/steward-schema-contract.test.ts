@@ -65,7 +65,7 @@ describe("security posture", () => {
   });
 
   it("grants nothing to anon, and revokes the privileges Supabase defaults in", () => {
-    expect(sql).not.toMatch(/to anon/);
+    expect(sql).not.toMatch(/grant[^;]*to anon/i);
     const created = [...sql.matchAll(/create table if not exists public\.(\w+)/g)].map((m) => m[1]);
     for (const table of created) {
       // Default privileges on the public schema can hand anon and authenticated
