@@ -100,7 +100,11 @@ function subjectOf(statement: string): string {
   return statement.trim().toLowerCase().slice(0, 80);
 }
 
-function patternFor(relation: "carries" | "waits_on" | "hands_to", personKey: string, subject: string): string {
+function patternFor(
+  relation: "carries" | "depends_on" | "hands_off_to",
+  personKey: string,
+  subject: string,
+): string {
   return patternKeyOf({ relation, personKey, subject: subjectOf(subject) });
 }
 
@@ -226,7 +230,7 @@ function commitmentItems(input: JudgmentInput, closed: Set<string>): AttentionIt
         evidence: [...commitment.evidence, computed(`Carried by ${commitment.ownerName}`)],
         waitingOn: { name: commitment.ownerName, personKey: nameKey(commitment.ownerName) },
         order: orderOf("waiting", commitment.updatedAt, now),
-        patternKey: patternFor("waits_on", viewer.personKey, commitment.what),
+        patternKey: patternFor("depends_on", viewer.personKey, commitment.what),
       });
       continue;
     }
@@ -273,7 +277,7 @@ function commitmentItems(input: JudgmentInput, closed: Set<string>): AttentionIt
         evidence: [...commitment.evidence, human("Marked waiting by a person")],
         ...(meaningful ? { nextMove: "Ask where this stands, or set a date." } : {}),
         order: orderOf("waiting", commitment.updatedAt, now),
-        patternKey: patternFor("waits_on", viewer.personKey, commitment.what),
+        patternKey: patternFor("depends_on", viewer.personKey, commitment.what),
       });
       continue;
     }
@@ -289,7 +293,7 @@ function commitmentItems(input: JudgmentInput, closed: Set<string>): AttentionIt
         evidence: [...commitment.evidence, computed(`Promised to ${commitment.beneficiary}`)],
         waitingOn: { name: commitment.beneficiary, personKey: nameKey(commitment.beneficiary) },
         order: orderOf("needs_you", commitment.updatedAt, now),
-        patternKey: patternFor("hands_to", viewer.personKey, commitment.what),
+        patternKey: patternFor("hands_off_to", viewer.personKey, commitment.what),
       });
       continue;
     }
@@ -439,7 +443,7 @@ function commsItems(input: JudgmentInput): AttentionItem[] {
       tier: "decided",
       destination: { appId: "comms", label: "Open in Comms", route: "/modules/comms" },
       order: orderOf(state === "overdue" ? "promise_at_risk" : "needs_you", due, now),
-      patternKey: patternFor("hands_to", viewer.personKey, relationship.fullName),
+      patternKey: patternFor("hands_off_to", viewer.personKey, relationship.fullName),
     });
   }
 
