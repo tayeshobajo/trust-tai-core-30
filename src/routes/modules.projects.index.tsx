@@ -13,10 +13,10 @@ import { useQuery } from "@tanstack/react-query";
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
+import { StateTrack, movedPhrase } from "@/components/tt/projects/state-track";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService } from "@/data/supabase/projects-service";
 import {
-  EXECUTION_STATE_LABEL,
   HEALTH_LABEL,
   isOpenProject,
   projectHealth,
