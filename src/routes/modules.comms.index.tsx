@@ -201,8 +201,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const [drafting, setDrafting] = useState(false);
 
-  async function compose(register: VoiceRegister, purpose: string) {
-    if (!selected) return;
+  async function composeFor(
+    relationship: Relationship,
+    register: VoiceRegister,
+    purpose: string,
+  ) {
     setDrafting(true);
     setDraftError(null);
     try {
@@ -212,7 +215,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       const response = await fetch("/api/public/comms/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ relationshipId: selected.id, register, purpose }),
+        body: JSON.stringify({ relationshipId: relationship.id, register, purpose }),
       });
       const payload = (await response.json()) as Record<string, unknown>;
       if (!response.ok) throw new Error(String(payload["error"] ?? "That draft could not be prepared."));
@@ -223,6 +226,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       setDrafting(false);
     }
   }
+
+  async function compose(register: VoiceRegister, purpose: string) {
+    if (!selected) return;
+    await composeFor(selected, register, purpose);
+  }
+
 
   if (relationshipsQuery.isError) {
     return (
