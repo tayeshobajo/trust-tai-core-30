@@ -303,42 +303,66 @@ function SignalRow({
                 onChange={(event) => setDueAt(event.target.value)}
               />
             </label>
-            <TTButton
-              type="button"
-              disabled={ownerName.trim().length === 0 || meaning.trim().length === 0 || busy}
-              onClick={() => {
-                setBusy(true);
-                const corrections = correctionsFromEdit({
-                  signal,
-                  edit: {
-                    normalizedMeaning: meaning,
-                    ownerName,
-                    beneficiary,
-                    dueText,
-                  },
-                });
-                if (corrections.length > 0) onCorrect?.(corrections);
+            <div className="flex flex-wrap items-center gap-2">
+              <TTButton
+                type="button"
+                disabled={
+                  ownerName.trim().length === 0 || meaning.trim().length === 0 || busy || dismissed
+                }
+                onClick={() => {
+                  setBusy(true);
+                  const corrections = correctionsFromEdit({
+                    signal,
+                    edit: {
+                      normalizedMeaning: meaning,
+                      ownerName,
+                      beneficiary,
+                      dueText,
+                    },
+                  });
+                  if (corrections.length > 0) onCorrect?.(corrections);
 
-                const proposal = signalToProposal(signal);
-                onConfirm({
-                  proposal: {
-                    ...proposal,
-                    statement: meaning.trim(),
+                  const proposal = signalToProposal(signal);
+                  onConfirm({
+                    proposal: {
+                      ...proposal,
+                      statement: meaning.trim(),
+                      ownerName: ownerName.trim(),
+                      ownerResolved: true,
+                      beneficiary: beneficiary.trim() || null,
+                      dueText: dueText.trim() || null,
+                    },
                     ownerName: ownerName.trim(),
-                    ownerResolved: true,
-                    beneficiary: beneficiary.trim() || null,
-                    dueText: dueText.trim() || null,
-                  },
-                  ownerName: ownerName.trim(),
-                  dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null,
-                });
-                setBusy(false);
-              }}
-            >
-              {busy ? "Confirming…" : "Confirm"}
-            </TTButton>
+                    dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null,
+                  });
+                  setBusy(false);
+                }}
+              >
+                {busy ? "Confirming…" : edited ? "Edit & confirm" : "Confirm"}
+              </TTButton>
+              {/* Not everything said is work. Saying so is feedback, not deletion. */}
+              {onDismiss ? (
+                <TTButton
+                  type="button"
+                  variant="secondary"
+                  disabled={busy || dismissed}
+                  onClick={() => {
+                    setDismissed(true);
+                    onDismiss(signal);
+                  }}
+                >
+                  {dismissed ? "Dismissed as context" : "Dismiss as context"}
+                </TTButton>
+              ) : null}
+            </div>
           </div>
+          {dismissed ? (
+            <p className="text-[13px] text-muted-foreground">
+              Recorded as context. Steward will raise this shape of reading less often.
+            </p>
+          ) : null}
         </div>
+
       ) : null}
     </li>
   );
