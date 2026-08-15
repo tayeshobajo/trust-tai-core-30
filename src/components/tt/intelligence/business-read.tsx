@@ -12,6 +12,8 @@ import { Link } from "@tanstack/react-router";
 
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
+import type { AccessContext } from "@/domain/access";
+import { canAuthorizeAction } from "@/domain/action-authority";
 import { proposeActions } from "@/data/intelligence/engine/propose";
 import {
   BUSINESS_THEME_LABEL,
