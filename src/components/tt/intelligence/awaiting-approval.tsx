@@ -64,7 +64,7 @@ export function AwaitingApproval({
             <p className="tt-eyebrow mb-3">
               {ROOM_LABEL[proposal.appId] ?? proposal.appId} owns this change
             </p>
-            <ActionProposalRow proposal={proposal} access={access} onAuthorize={onAuthorize} />
+            <ActionProposalRow action={proposal} access={access} onAuthorize={onAuthorize} />
           </TTCard>
         ))}
       </div>
