@@ -8,7 +8,10 @@
  *
  * Context is not re-typed here. The roadmap is drafted from what the shared
  * tables already hold about the subject; this button only carries the subject
- * and the objective across the room boundary.
+ * reference and the objective across the room boundary.
+ *
+ * A roadmap is never opened on weak evidence. When the calling room passes a
+ * `blockedBecause`, the action refuses and says what is missing instead.
  */
 
 import { useNavigate } from "@tanstack/react-router";
@@ -30,11 +33,14 @@ export function SequenceInRoadmap({
   objective,
   context,
   label = "Sequence in Roadmap",
+  blockedBecause = null,
 }: {
   subject: SequenceSubject;
   objective: string;
   context: RoadmapContext;
   label?: string;
+  /** Why this subject may not be sequenced yet. Null means it may. */
+  blockedBecause?: string | null;
 }) {
   const navigate = useNavigate();
 
@@ -50,11 +56,18 @@ export function SequenceInRoadmap({
     <div className="flex flex-col items-start gap-1">
       <TTButton
         variant="secondary"
-        disabled={sequence.isPending}
-        onClick={() => sequence.mutate()}
+        disabled={sequence.isPending || Boolean(blockedBecause)}
+        title={blockedBecause ?? undefined}
+        onClick={() => {
+          if (blockedBecause) return;
+          sequence.mutate();
+        }}
       >
         {sequence.isPending ? "Opening the roadmap…" : label}
       </TTButton>
+      {blockedBecause ? (
+        <p className="max-w-reading text-sm text-muted-foreground">{blockedBecause}</p>
+      ) : null}
       {sequence.error ? (
         <p role="alert" className="text-sm text-destructive">
           {sequence.error instanceof Error

@@ -22,11 +22,18 @@ export async function emitSuiteEvent(input: SuiteEventInput): Promise<ActivityEv
       subject: input.subject,
       ...(input.related ? { related: input.related } : {}),
       summary: input.summary,
-      payload: { ...(input.metadata ?? {}), event: definition.name },
+      payload: {
+        ...(input.metadata ?? {}),
+        event: definition.name,
+        // Read by `supabaseActivity.record` and written to the unique
+        // `activities.source_event_key` column, so a retry is a no-op.
+        ...(input.sourceEventKey ? { source_event_key: input.sourceEventKey } : {}),
+      },
       provenance: {
         appId: definition.emittedBy,
         actor: input.actor,
         observedAt: at,
+        ...(input.sourceEventKey ? { externalRef: input.sourceEventKey } : {}),
         confidence: input.confidence ?? "observed",
       },
       occurredAt: at,

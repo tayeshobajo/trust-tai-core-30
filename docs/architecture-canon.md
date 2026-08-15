@@ -94,3 +94,25 @@ creation, no anonymous variant. With no verified membership, the workspace locks
 
 A single TanStack Start app with modular domains. No microservices, no per-module database,
 no second event store, no premature extraction. Ops is external because it already was.
+
+## Handoff law
+
+A handoff moves a **reference plus reasoning**, never a copy of a record.
+
+1. Every handoff carries the upstream stable id (`prospectId`, `relationshipId`,
+   `milestoneId`, `roadmapId`) and its provenance tier. The downstream room reads
+   upstream truth through that id; it never re-types or re-researches it.
+2. Every handoff is idempotent. A repeated route is a no-op: receivers look up the
+   existing downstream record by upstream id, and suite events carry a
+   `sourceEventKey` written to the unique `activities.source_event_key` column.
+3. A human decision stays `decided` downstream. Inference may never overwrite it.
+4. Weak evidence does not open the next room. Each boundary has an explicit
+   readiness gate that names what is missing rather than proceeding hopefully.
+
+Current gates: Scout → Comms (`buildHandoffDraft.ready`), Comms → Roadmap
+(`roadmapHandoffReadiness`), Roadmap → Projects (`projectFromMilestone`, approved
+milestones only).
+
+Cross-app moments are emitted once, by the owning room, in the shared vocabulary
+of `src/domain/events.ts` via `emitSuiteEvent`. Room-local history stays a plain
+activity. Steward and Pulse read this stream; they never write to it.

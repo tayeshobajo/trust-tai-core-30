@@ -25,6 +25,7 @@ import type {
 import { LIFECYCLE_FOR_STATE, stateFromLifecycle } from "@/domain/projects";
 
 import { supabaseActivity } from "./activities";
+import { emitSuiteEvent } from "@/data/events/suite-events";
 import { writeTolerant, type Row } from "./schema";
 
 export interface ProjectsContext {
@@ -202,15 +203,22 @@ export const projectsService = {
     if (error || !data) throw new Error(error?.message ?? "That project could not be started.");
 
     const project = toProject(data as Row);
-    await record(
-      context,
-      "project.started",
-      project,
-      input.origin.kind === "roadmap_milestone"
-        ? `${project.name} entered delivery from an approved roadmap milestone.`
-        : `${project.name} was started in Projects.`,
-      { origin: input.origin },
-    );
+    await emitSuiteEvent({
+      key: "PROJECT_STARTED",
+      organizationId: context.organizationId,
+      actor: {
+        type: "user",
+        id: context.userId,
+        ...(context.userLabel ? { label: context.userLabel } : {}),
+      },
+      subject: { type: "project", id: project.id, label: project.name },
+      summary:
+        input.origin.kind === "roadmap_milestone"
+          ? `${project.name} entered delivery from an approved roadmap milestone.`
+          : `${project.name} was started in Projects.`,
+      sourceEventKey: `project.started:${project.id}`,
+      metadata: { origin: input.origin },
+    });
     return project;
   },
 
@@ -283,13 +291,33 @@ export const projectsService = {
 
     const saved = toProject(data as Row);
     if (changes.state && changes.state !== project.state) {
-      await record(
-        context,
-        changes.state === "blocked" ? "project.blocked" : "project.status_changed",
-        saved,
-        `${saved.name} moved to ${changes.state.replace(/_/g, " ")}.`,
-        { from: project.state, to: changes.state },
-      );
+      if (changes.state === "blocked" || changes.state === "delivered") {
+        await emitSuiteEvent({
+          key: changes.state === "blocked" ? "PROJECT_BLOCKED" : "PROJECT_COMPLETED",
+          organizationId: context.organizationId,
+          actor: {
+            type: "user",
+            id: context.userId,
+            ...(context.userLabel ? { label: context.userLabel } : {}),
+          },
+          subject: { type: "project", id: saved.id, label: saved.name },
+          summary: `${saved.name} moved to ${changes.state.replace(/_/g, " ")}.`,
+          sourceEventKey: `${changes.state === "blocked" ? "project.blocked" : "project.completed"}:${saved.id}:${saved.updatedAt}`,
+          metadata: {
+            from: project.state,
+            to: changes.state,
+            ...(saved.blockedBecause ? { blocked_because: saved.blockedBecause } : {}),
+          },
+        });
+      } else {
+        await record(
+          context,
+          "project.status_changed",
+          saved,
+          `${saved.name} moved to ${changes.state.replace(/_/g, " ")}.`,
+          { from: project.state, to: changes.state },
+        );
+      }
     } else {
       await record(context, "project.next_move_changed", saved, `${saved.name} was updated.`);
     }
