@@ -74,7 +74,7 @@ export function LearningTrailPanel({ trail }: { trail: LearningTrail }) {
 
           {trail.entries.length > FIRST_SHOWN ? (
             <div className="mt-4">
-              <TTButton variant="ghost" onClick={() => setExpanded((value) => !value)}>
+              <TTButton variant="quiet" onClick={() => setExpanded((value) => !value)}>
                 {expanded
                   ? "Show fewer"
                   : `Show all ${trail.entries.length} decisions`}
