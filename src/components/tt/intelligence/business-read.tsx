@@ -363,7 +363,7 @@ export function ActionProposalRow({
         <p className="mt-3 text-sm text-muted-foreground">
           Declined. The engine will not propose this step again unprompted.
         </p>
-      ) : (
+      ) : authority.allowed ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <TTButton disabled={busy} onClick={() => void decide("authorized")}>
             Authorise this step
@@ -374,6 +374,11 @@ export function ActionProposalRow({
           <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
             {action.operation}
           </span>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <MetaPill>Not yours to authorise</MetaPill>
+          <p className="text-sm text-muted-foreground">{authority.because}</p>
         </div>
       )}
     </div>
