@@ -7,14 +7,17 @@
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
+import { BusinessRead } from "@/components/tt/intelligence/business-read";
 import { EmptyState, MetaPill, SectionHeading, TTCard } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { deriveSignals } from "@/data/intelligence/derive";
-import { loadSuiteSnapshot } from "@/data/intelligence/service";
+import { withReasoning } from "@/data/intelligence/engine";
+import { reasonAboutBusiness } from "@/data/intelligence/reason-client";
+import { intelligenceService, loadSuiteSnapshot } from "@/data/intelligence/service";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { SIGNAL_CATEGORY_LABEL, type Signal } from "@/domain/signals";
 import type { WorkspaceIdentity } from "@/lib/workspace";
