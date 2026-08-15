@@ -88,6 +88,8 @@ export function engineRead(snapshot: SuiteSnapshot, options: EngineOptions = {})
     recommendations,
     withheld: snapshot.withheld.map((row) => ({ appId: row.appId, reason: row.reason })),
     suppressed,
+    favoured: options.favoured ?? [],
+    decided,
     reasoned: reasoned.length > 0,
     generatedAt: now,
   };
