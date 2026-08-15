@@ -3,11 +3,32 @@
  *
  * Every internal Trust Tai app is registered here once. The shell, navigation,
  * and intelligence layer all read from this single list.
+ *
+ * Suite law (see docs/architecture-canon.md):
+ *   Apps own state. Core owns identity. The event stream owns history.
+ *   Steward owns interpretation. Pulse owns visibility.
+ *
+ * `layer` is the architectural position of a room, and it is not cosmetic:
+ * only `business` rooms own domain truth (clients, contacts, prospects,
+ * conversations, projects, content, websites). `intelligence` and
+ * `stewardship` rooms read across the suite with provenance, propose bounded
+ * work, and route execution back to the owning business room.
  */
 
 import type { ID } from "./entities";
 
 export type AppStatus = "live" | "in_build" | "mapped" | "external";
+
+/**
+ * Where a room sits in the suite topology.
+ * - `core`         — the shell itself (identity, navigation, shared entities).
+ * - `business`     — owns domain state: Scout, Comms, Roadmap, Projects, Ops, Studio.
+ * - `intelligence` — the suite-wide visibility/readout surface: Pulse.
+ * - `stewardship`  — the cross-suite interpretation, memory, judgment,
+ *                    recommendation and routing layer: Steward. It owns no
+ *                    business entity and never becomes a peer domain.
+ */
+export type AppLayer = "core" | "business" | "intelligence" | "stewardship";
 
 export type CapabilityTag =
   | "clients"
@@ -28,6 +49,8 @@ export interface AppRegistration {
   slug: string;
   description: string;
   status: AppStatus;
+  /** Architectural position. Only `business` rooms own domain truth. */
+  layer: AppLayer;
   /** Route inside this shell. External apps still have a room here. */
   route: string;
   /**
@@ -39,6 +62,7 @@ export interface AppRegistration {
   icon: string;
   capabilities: CapabilityTag[];
 }
+
 
 export const APP_REGISTRY: AppRegistration[] = [
   {
