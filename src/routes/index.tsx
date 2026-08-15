@@ -8,6 +8,7 @@ import { AppLink } from "@/components/tt/app-link";
 import { AppShell } from "@/components/tt/app-shell";
 import { ContextPanel } from "@/components/tt/context-panel";
 import { DecisionCard } from "@/components/tt/decision-card";
+import { BusinessReadSummary } from "@/components/tt/intelligence/business-read";
 import { IntelligenceConsole } from "@/components/tt/intelligence-console";
 import { JourneySpine, type SpineStage } from "@/components/tt/journey-spine";
 import { TodayPanel } from "@/components/tt/today-panel";
@@ -19,6 +20,7 @@ import {
   TTButton,
   TTCard,
 } from "@/components/tt/primitives";
+import { intelligenceService } from "@/data/intelligence/service";
 import { memorySource } from "@/data/memory-source";
 import { getAppTheme } from "@/domain/app-theme";
 import { APP_REGISTRY } from "@/domain/registry";
@@ -71,6 +73,12 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
       ]);
       return { decisions, projects, users, activity, context };
     },
+  });
+
+  /* Deterministic only on Home. Reasoning runs in Pulse, where it was asked for. */
+  const engineRead = useQuery({
+    queryKey: ["home-engine", organizationId],
+    queryFn: () => intelligenceService.engine(organizationId),
   });
 
   const { lastVisit, ready } = useLastVisit();
@@ -148,6 +156,8 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
           ) : undefined
         }
       />
+
+      {engineRead.data ? <BusinessReadSummary read={engineRead.data} /> : null}
 
       <IntelligenceConsole organizationId={organizationId} />
 

@@ -18,6 +18,21 @@ import { stewardService } from "@/data/supabase/steward-service";
 import type { ID } from "@/domain/entities";
 import type { AskAnswer, ContextBundle, Signal, WithheldSource } from "@/domain/signals";
 import type { EntityRef } from "@/domain/entities";
+import type { MemoryBelief } from "@/domain/steward-memory";
+import type {
+  EngineRead,
+  Hypothesis,
+  Recommendation,
+  RecommendationDecision,
+} from "@/domain/intelligence-engine";
+import {
+  decidedStatements,
+  engineFavouredPatterns,
+  enginePatternsToSuppress,
+  engineRead,
+  packetFor,
+  recommendationOutcomeDraft,
+} from "./engine";
 
 import {
   answer as deriveAnswer,
@@ -126,4 +141,62 @@ export const intelligenceService = {
   async ask(organizationId: ID, question: string, subject?: EntityRef): Promise<AskAnswer> {
     return deriveAnswer(await loadSuiteSnapshot(organizationId), question, { subject });
   },
+
+  /**
+   * The Intelligence Engine's read of the business.
+   *
+   * Reads the suite and whatever the workspace has already learned, then
+   * derives observations, readings and proposals. Reasoned hypotheses from the
+   * model stage are passed in already verified; without them the read is
+   * deterministic and says so.
+   */
+  async engine(organizationId: ID, reasoned?: Hypothesis[]): Promise<EngineRead> {
+    const [snapshot, beliefs] = await Promise.all([
+      loadSuiteSnapshot(organizationId),
+      stewardService.memory(organizationId).catch(() => [] as MemoryBelief[]),
+    ]);
+    return engineRead(snapshot, {
+      ...(reasoned ? { reasoned } : {}),
+      suppressed: enginePatternsToSuppress(beliefs),
+      favoured: engineFavouredPatterns(beliefs),
+      decided: decidedStatements(beliefs),
+    });
+  },
+
+  /** The only material the model stage may reason over. */
+  async packet(organizationId: ID) {
+    const [snapshot, beliefs] = await Promise.all([
+      loadSuiteSnapshot(organizationId),
+      stewardService.memory(organizationId).catch(() => [] as MemoryBelief[]),
+    ]);
+    return packetFor(snapshot, {
+      suppressed: enginePatternsToSuppress(beliefs),
+      decided: decidedStatements(beliefs),
+    });
+  },
+
+  /**
+   * Record what a person decided about a proposal. This is the only write the
+   * engine makes, it is append-only, and it is always a person's decision.
+   */
+  async decide(input: {
+    organizationId: ID;
+    userId: ID;
+    userName: string;
+    recommendation: Recommendation;
+    decision: RecommendationDecision;
+    editedText?: string;
+  }): Promise<void> {
+    await stewardService.rememberOne({
+      organizationId: input.organizationId,
+      userId: input.userId,
+      userName: input.userName,
+      draft: recommendationOutcomeDraft({
+        recommendation: input.recommendation,
+        decision: input.decision,
+        ...(input.editedText ? { editedText: input.editedText } : {}),
+      }),
+    });
+  },
 };
+

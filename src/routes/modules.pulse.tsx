@@ -7,14 +7,17 @@
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
+import { BusinessRead } from "@/components/tt/intelligence/business-read";
 import { EmptyState, MetaPill, SectionHeading, TTCard } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { deriveSignals } from "@/data/intelligence/derive";
-import { loadSuiteSnapshot } from "@/data/intelligence/service";
+import { withReasoning } from "@/data/intelligence/engine";
+import { reasonAboutBusiness } from "@/data/intelligence/reason-client";
+import { intelligenceService, loadSuiteSnapshot } from "@/data/intelligence/service";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { SIGNAL_CATEGORY_LABEL, type Signal } from "@/domain/signals";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -69,11 +72,29 @@ function PulseRoute() {
 
 function Pulse({ identity }: { identity: WorkspaceIdentity }) {
   const { organizationId } = identity;
+  const queryClient = useQueryClient();
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["pulse", organizationId],
     queryFn: async () => {
       const snapshot = await loadSuiteSnapshot(organizationId);
       return { signals: deriveSignals(snapshot), withheld: snapshot.withheld };
+    },
+  });
+
+  /* The deterministic read lands first; the model stage only ever adds to it. */
+  const engine = useQuery({
+    queryKey: ["pulse-engine", organizationId],
+    queryFn: async () => {
+      const read = await intelligenceService.engine(organizationId);
+      const packet = await intelligenceService.packet(organizationId);
+      const reasoned = await reasonAboutBusiness({
+        organizationId,
+        packet,
+        observations: read.observations,
+        now: read.generatedAt,
+      });
+      return reasoned.hypotheses.length > 0 ? withReasoning(read, reasoned.hypotheses) : read;
     },
   });
 
@@ -87,6 +108,25 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
         title="What the system noticed."
         supporting="Signals are read, not stored. Each one says why it matters, what it rests on, and where the work happens."
       />
+
+      {engine.data ? (
+        <BusinessRead
+          read={engine.data}
+          onDecide={async ({ recommendation, decision, editedText }) => {
+            await intelligenceService.decide({
+              organizationId,
+              userId: identity.userId,
+              userName: identity.name,
+              recommendation,
+              decision,
+              ...(editedText ? { editedText } : {}),
+            });
+            await queryClient.invalidateQueries({ queryKey: ["pulse-engine", organizationId] });
+          }}
+        />
+      ) : engine.isLoading ? (
+        <p className="text-sm text-muted-foreground">Reading the business.</p>
+      ) : null}
 
       <section aria-labelledby="signals-heading">
         <SectionHeading
