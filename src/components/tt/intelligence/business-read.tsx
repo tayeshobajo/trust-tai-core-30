@@ -187,7 +187,7 @@ function ProposalCard({
             >
               Save and accept
             </TTButton>
-            <TTButton variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
+            <TTButton variant="quiet" disabled={busy} onClick={() => setEditing(false)}>
               Cancel
             </TTButton>
           </div>
@@ -197,13 +197,13 @@ function ProposalCard({
           <TTButton disabled={busy} onClick={() => void run("accepted")}>
             Accept
           </TTButton>
-          <TTButton variant="ghost" disabled={busy} onClick={() => setEditing(true)}>
+          <TTButton variant="quiet" disabled={busy} onClick={() => setEditing(true)}>
             Edit
           </TTButton>
-          <TTButton variant="ghost" disabled={busy} onClick={() => void run("deferred")}>
+          <TTButton variant="quiet" disabled={busy} onClick={() => void run("deferred")}>
             Not now
           </TTButton>
-          <TTButton variant="ghost" disabled={busy} onClick={() => void run("rejected")}>
+          <TTButton variant="quiet" disabled={busy} onClick={() => void run("rejected")}>
             Not useful
           </TTButton>
 
