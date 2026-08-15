@@ -13,6 +13,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
+import { accessContext, type AccessContext } from "@/domain/access";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import {
   ADMIN_ROLES,
