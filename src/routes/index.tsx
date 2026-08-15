@@ -149,6 +149,8 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
         }
       />
 
+      {engineRead.data ? <BusinessReadSummary read={engineRead.data} /> : null}
+
       <IntelligenceConsole organizationId={organizationId} />
 
       {/* Needs your decision — always first */}
