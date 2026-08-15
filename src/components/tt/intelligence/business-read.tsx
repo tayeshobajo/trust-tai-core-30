@@ -138,6 +138,7 @@ function ProposalCard({
   hypotheses,
   onDecide,
   onAuthorize,
+  access,
 }: {
   recommendation: Recommendation;
   hypotheses: Hypothesis[];
@@ -151,6 +152,7 @@ function ProposalCard({
     decision: ActionAuthorizationDecision;
     note?: string;
   }) => Promise<void>;
+  access: AccessContext | null;
 }) {
   const actions = proposeActions(recommendation);
   const [editing, setEditing] = useState(false);
