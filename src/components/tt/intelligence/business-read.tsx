@@ -12,9 +12,12 @@ import { Link } from "@tanstack/react-router";
 
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
+import { proposeActions } from "@/data/intelligence/engine/propose";
 import {
   BUSINESS_THEME_LABEL,
   RECOMMENDATION_KIND_LABEL,
+  type ActionAuthorizationDecision,
+  type ActionProposal,
   type EngineRead,
   type Hypothesis,
   type Recommendation,
@@ -42,11 +45,25 @@ export interface BusinessReadProps {
     decision: RecommendationDecision;
     editedText?: string;
   }) => Promise<void>;
+  /**
+   * Called when a person authorises or declines a bounded action. Omit it and
+   * no action is offered: authorisation must have somewhere to be recorded.
+   */
+  onAuthorize?: (input: {
+    proposal: ActionProposal;
+    decision: ActionAuthorizationDecision;
+    note?: string;
+  }) => Promise<void>;
   /** True while the model stage is still running behind a deterministic read. */
   reasoning?: boolean;
 }
 
-export function BusinessRead({ read, onDecide, reasoning = false }: BusinessReadProps) {
+export function BusinessRead({
+  read,
+  onDecide,
+  onAuthorize,
+  reasoning = false,
+}: BusinessReadProps) {
   const [decided, setDecided] = useState<Record<string, RecommendationDecision>>({});
 
   async function decide(
@@ -91,6 +108,7 @@ export function BusinessRead({ read, onDecide, reasoning = false }: BusinessRead
                 recommendation.hypothesisRefs.includes(row.id),
               )}
               onDecide={decide}
+              {...(onAuthorize ? { onAuthorize } : {})}
             />
           ))}
         </div>
@@ -109,6 +127,7 @@ function ProposalCard({
   recommendation,
   hypotheses,
   onDecide,
+  onAuthorize,
 }: {
   recommendation: Recommendation;
   hypotheses: Hypothesis[];
@@ -117,7 +136,13 @@ function ProposalCard({
     decision: RecommendationDecision,
     editedText?: string,
   ) => Promise<void>;
+  onAuthorize?: (input: {
+    proposal: ActionProposal;
+    decision: ActionAuthorizationDecision;
+    note?: string;
+  }) => Promise<void>;
 }) {
+  const actions = proposeActions(recommendation);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(recommendation.headline);
   const [busy, setBusy] = useState(false);
@@ -226,9 +251,111 @@ function ProposalCard({
           )}
         </div>
       )}
+
+      {onAuthorize && actions.length > 0 ? (
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
+          <p className="tt-eyebrow">Bounded next step · needs your authorisation</p>
+          {actions.map((action) => (
+            <ActionProposalRow key={action.id} action={action} onAuthorize={onAuthorize} />
+          ))}
+        </div>
+      ) : null}
     </TTCard>
   );
 }
+
+/**
+ * One bounded action. Nothing happens until a person authorises it, and even
+ * then the work is done by that person in the room that owns the change.
+ */
+function ActionProposalRow({
+  action,
+  onAuthorize,
+}: {
+  action: ActionProposal;
+  onAuthorize: (input: {
+    proposal: ActionProposal;
+    decision: ActionAuthorizationDecision;
+    note?: string;
+  }) => Promise<void>;
+}) {
+  const [state, setState] = useState<ActionAuthorizationDecision | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function decide(decision: ActionAuthorizationDecision) {
+    setBusy(true);
+    try {
+      await onAuthorize({ proposal: action, decision });
+      setState(decision);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-md border border-border bg-muted/20 p-4">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <MetaPill>{ROOM_LABEL[action.appId] ?? action.appId}</MetaPill>
+        <MetaPill>{action.reversible ? "Reversible" : "Not reversible"}</MetaPill>
+        <MetaPill>Needs approval</MetaPill>
+      </div>
+
+      <h4 className="mt-2 text-sm font-semibold text-foreground">{action.title}</h4>
+      <p className="mt-1 text-sm text-muted-foreground">{action.summary}</p>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div>
+          <p className="tt-eyebrow">What it will do</p>
+          <ul className="mt-1 space-y-1 text-sm text-foreground">
+            {action.willDo.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="tt-eyebrow">What it will not do</p>
+          <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
+            {action.willNotDo.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {state === "authorized" ? (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <p className="text-sm text-foreground">
+            Authorised. {ROOM_LABEL[action.appId] ?? action.appId} owns the change — finish it
+            there.
+          </p>
+          <a
+            href={action.route}
+            className="font-mono text-[10px] uppercase tracking-[0.16em] text-royal underline underline-offset-4"
+          >
+            {action.routeLabel} →
+          </a>
+        </div>
+      ) : state === "declined" ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Declined. The engine will not propose this step again unprompted.
+        </p>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <TTButton disabled={busy} onClick={() => void decide("authorized")}>
+            Authorise this step
+          </TTButton>
+          <TTButton variant="quiet" disabled={busy} onClick={() => void decide("declined")}>
+            Don&rsquo;t do this
+          </TTButton>
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            {action.operation}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 /** What the read saw, what it could not see, and what it was told to leave alone. */
 function ReadFooting({ read }: { read: EngineRead }) {

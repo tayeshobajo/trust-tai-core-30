@@ -123,7 +123,18 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
             });
             await queryClient.invalidateQueries({ queryKey: ["pulse-engine", organizationId] });
           }}
+          onAuthorize={async ({ proposal, decision, note }) => {
+            await intelligenceService.authorizeAction({
+              organizationId,
+              userId: identity.userId,
+              userName: identity.name,
+              proposal,
+              decision,
+              ...(note ? { note } : {}),
+            });
+          }}
         />
+
       ) : engine.isLoading ? (
         <p className="text-sm text-muted-foreground">Reading the business.</p>
       ) : null}

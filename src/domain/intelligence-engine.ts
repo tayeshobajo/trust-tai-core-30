@@ -175,14 +175,51 @@ export interface Recommendation {
 export interface ActionProposal {
   id: ID;
   recommendationId: ID;
+  /** The room that owns the change. The engine never owns it. */
   appId: string;
   /** e.g. "comms.draft_reply". Always an operation the owning app already has. */
   operation: string;
+  /** What the person is being asked to authorise, in plain language. */
+  title: string;
+  /** One sentence: what this does, and to what. */
+  summary: string;
+  /** The explicit limits of the action. Never empty — a boundless action is not proposed. */
+  willDo: string[];
+  willNotDo: string[];
   payload: Record<string, unknown>;
   reversible: boolean;
-  /** Always true in v1. There is no silent path to action. */
+  /** Where the person completes it, inside the owning room. */
+  route: string;
+  routeLabel: string;
+  /** Always true. There is no silent path to action. */
   requiresApproval: true;
 }
+
+/** What a person did with a bounded action. Authorisation is never implied. */
+export type ActionAuthorizationDecision = "authorized" | "declined";
+
+/**
+ * The record of a person authorising a bounded action.
+ *
+ * Authorisation is permission to do the thing in the owning room — it is not
+ * execution. The engine writes the record and hands the person to the room;
+ * the room, with the person present, does the work.
+ */
+export interface ActionAuthorization {
+  proposalId: ID;
+  recommendationId: ID;
+  appId: string;
+  operation: string;
+  decision: ActionAuthorizationDecision;
+  /** Why, when a person said no. Kept so the engine can stop proposing it. */
+  note?: string;
+  authorizedBy: { id: ID; label: string };
+  at: ISODateTime;
+}
+
+/** No recommendation may carry more bounded actions than this. */
+export const MAX_ACTION_PROPOSALS = 2;
+
 
 /* ----------------------------------------------------------------- outcome */
 

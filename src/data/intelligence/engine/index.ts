@@ -28,6 +28,7 @@ export * from "./observe";
 export * from "./hypothesise";
 export * from "./verify";
 export * from "./recommend";
+export * from "./propose";
 export * from "./learn";
 
 export interface EngineOptions {
