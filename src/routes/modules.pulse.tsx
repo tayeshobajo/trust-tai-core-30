@@ -104,6 +104,7 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
           <BusinessRead
             read={engine.read}
             reasoning={engine.refreshing}
+            access={access}
             onDecide={async ({ recommendation, decision, editedText }) => {
               await intelligenceService.decide({
                 organizationId,
@@ -120,6 +121,7 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
                 organizationId,
                 userId: identity.userId,
                 userName: identity.name,
+                access,
                 proposal,
                 decision,
                 ...(note ? { note } : {}),
