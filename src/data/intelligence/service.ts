@@ -202,5 +202,71 @@ export const intelligenceService = {
       }),
     });
   },
-};
+  /**
+   * The bounded, reversible actions a proposal may offer. Pure and read-only:
+   * offering an action is not the same as being allowed to take it.
+   */
+  actions(recommendation: Recommendation): ActionProposal[] {
+    return proposeActions(recommendation);
+  },
 
+  /**
+   * Record a person's authorisation of a bounded action.
+   *
+   * This is permission, not execution. The engine writes an auditable record
+   * that names the person, the room, and the operation, then hands the person
+   * to that room to do the work. Nothing is performed on their behalf.
+   */
+  async authorizeAction(input: {
+    organizationId: ID;
+    userId: ID;
+    userName: string;
+    proposal: ActionProposal;
+    decision: ActionAuthorization["decision"];
+    note?: string;
+  }): Promise<ActionAuthorization> {
+    const at = new Date().toISOString();
+    const authorization: ActionAuthorization = {
+      proposalId: input.proposal.id,
+      recommendationId: input.proposal.recommendationId,
+      appId: input.proposal.appId,
+      operation: input.proposal.operation,
+      decision: input.decision,
+      ...(input.note ? { note: input.note } : {}),
+      authorizedBy: { id: input.userId, label: input.userName },
+      at,
+    };
+
+    await supabaseActivity.record({
+      organizationId: input.organizationId,
+      name: input.decision === "authorized" ? "decision.approved" : "decision.decided",
+      subject: {
+        type: "decision",
+        id: input.proposal.id,
+        label: input.proposal.title,
+      },
+      summary:
+        input.decision === "authorized"
+          ? `${input.userName} authorised "${input.proposal.title}" in ${input.proposal.appId}. The work is done there, by a person.`
+          : `${input.userName} declined "${input.proposal.title}".`,
+      payload: {
+        operation: input.proposal.operation,
+        recommendationId: input.proposal.recommendationId,
+        reversible: input.proposal.reversible,
+        willDo: input.proposal.willDo,
+        willNotDo: input.proposal.willNotDo,
+        route: input.proposal.route,
+        ...(input.note ? { note: input.note } : {}),
+      },
+      provenance: {
+        appId: "intelligence",
+        actor: { type: "user", id: input.userId, label: input.userName },
+        observedAt: at,
+        confidence: "observed",
+      },
+      occurredAt: at,
+    });
+
+    return authorization;
+  },
+};
