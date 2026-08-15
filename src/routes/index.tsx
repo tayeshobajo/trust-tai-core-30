@@ -8,6 +8,7 @@ import { AppLink } from "@/components/tt/app-link";
 import { AppShell } from "@/components/tt/app-shell";
 import { ContextPanel } from "@/components/tt/context-panel";
 import { DecisionCard } from "@/components/tt/decision-card";
+import { AwaitingApproval } from "@/components/tt/intelligence/awaiting-approval";
 import { BusinessReadSummary } from "@/components/tt/intelligence/business-read";
 import { IntelligenceConsole } from "@/components/tt/intelligence-console";
 import { JourneySpine, type SpineStage } from "@/components/tt/journey-spine";
@@ -26,7 +27,7 @@ import { getAppTheme } from "@/domain/app-theme";
 import { APP_REGISTRY } from "@/domain/registry";
 import { useLastVisit } from "@/hooks/use-last-visit";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import type { WorkspaceIdentity } from "@/lib/workspace";
+import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Trust Tai OS — one operating system for how Trust Tai works";
 const DESCRIPTION =
@@ -61,6 +62,7 @@ function HomeRoute() {
 
 function Home({ identity }: { identity: WorkspaceIdentity }) {
   const { organizationId, userId } = identity;
+  const access = workspaceAccess(identity);
   const { data } = useQuery({
     queryKey: ["home", organizationId, userId],
     queryFn: async () => {
