@@ -159,6 +159,24 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
 
       {engineRead.data ? <BusinessReadSummary read={engineRead.data} /> : null}
 
+      {engineRead.data ? (
+        <AwaitingApproval
+          read={engineRead.data}
+          access={access}
+          onAuthorize={async ({ proposal, decision, note }) => {
+            await intelligenceService.authorizeAction({
+              organizationId,
+              userId: identity.userId,
+              userName: identity.name,
+              access,
+              proposal,
+              decision,
+              ...(note ? { note } : {}),
+            });
+          }}
+        />
+      ) : null}
+
       <IntelligenceConsole organizationId={organizationId} />
 
       {/* Needs your decision — always first */}
