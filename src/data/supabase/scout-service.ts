@@ -423,25 +423,26 @@ export const scoutService = {
         metadata: { status: prospect.status, domain: prospect.domain },
         occurredAt,
       });
-    } else await supabaseActivity.record({
-      organizationId: context.organizationId,
-      name: "prospect.status_changed",
-      subject: { type: "prospect", id, label: prospect.name },
-      summary:
-        prospect.status === "passed"
-          ? `${prospect.name} was passed by Scout.`
-          : prospect.status === "qualified"
-            ? `${prospect.name} was qualified in Scout. No contact has been made.`
+    } else {
+      await supabaseActivity.record({
+        organizationId: context.organizationId,
+        name: "prospect.status_changed",
+        subject: { type: "prospect", id, label: prospect.name },
+        summary:
+          prospect.status === "passed"
+            ? `${prospect.name} was passed by Scout.`
             : `${prospect.name} moved to ${prospect.status.replace(/_/g, " ")}.`,
-      payload: { status: prospect.status, domain: prospect.domain },
-      provenance: {
-        appId: "scout",
-        actor: { type: "user", id: context.userId },
-        observedAt: occurredAt,
-        confidence: "observed",
-      },
-      occurredAt,
-    });
+        payload: { status: prospect.status, domain: prospect.domain },
+        provenance: {
+          appId: "scout",
+          actor: { type: "user", id: context.userId },
+          observedAt: occurredAt,
+          confidence: "observed",
+        },
+        occurredAt,
+      });
+    }
+
 
     if (prospect.status === "qualified" || prospect.status === "passed") {
       await recordScoutFeedback({
