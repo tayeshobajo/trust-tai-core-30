@@ -328,12 +328,12 @@ function ActionProposalRow({
             Authorised. {ROOM_LABEL[action.appId] ?? action.appId} owns the change — finish it
             there.
           </p>
-          <Link
-            to={action.route}
+          <a
+            href={action.route}
             className="font-mono text-[10px] uppercase tracking-[0.16em] text-royal underline underline-offset-4"
           >
             {action.routeLabel} →
-          </Link>
+          </a>
         </div>
       ) : state === "declined" ? (
         <p className="mt-3 text-sm text-muted-foreground">
