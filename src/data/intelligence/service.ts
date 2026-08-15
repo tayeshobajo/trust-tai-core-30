@@ -18,6 +18,21 @@ import { stewardService } from "@/data/supabase/steward-service";
 import type { ID } from "@/domain/entities";
 import type { AskAnswer, ContextBundle, Signal, WithheldSource } from "@/domain/signals";
 import type { EntityRef } from "@/domain/entities";
+import type { MemoryBelief } from "@/domain/steward-memory";
+import type {
+  EngineRead,
+  Hypothesis,
+  Recommendation,
+  RecommendationDecision,
+} from "@/domain/intelligence-engine";
+import {
+  decidedStatements,
+  engineFavouredPatterns,
+  enginePatternsToSuppress,
+  engineRead,
+  packetFor,
+  recommendationOutcomeDraft,
+} from "./engine";
 
 import {
   answer as deriveAnswer,
