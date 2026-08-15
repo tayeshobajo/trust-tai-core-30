@@ -8,6 +8,7 @@ import { AppLink } from "@/components/tt/app-link";
 import { AppShell } from "@/components/tt/app-shell";
 import { ContextPanel } from "@/components/tt/context-panel";
 import { DecisionCard } from "@/components/tt/decision-card";
+import { BusinessReadSummary } from "@/components/tt/intelligence/business-read";
 import { IntelligenceConsole } from "@/components/tt/intelligence-console";
 import { JourneySpine, type SpineStage } from "@/components/tt/journey-spine";
 import { TodayPanel } from "@/components/tt/today-panel";
