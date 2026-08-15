@@ -22,6 +22,7 @@ import {
 import { NextMoveRail, type DraftPreview } from "@/components/tt/comms/next-move-rail";
 import { RelationshipWorkspace } from "@/components/tt/comms/relationship-workspace";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
+import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
@@ -263,6 +264,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                   label: selected.companyName || selected.fullName,
                 }}
                 objective={`Turn the relationship with ${selected.companyName || selected.fullName} into a sequenced path both sides have agreed.`}
+                blockedBecause={
+                  roadmapHandoffReadiness(selected).ready
+                    ? null
+                    : roadmapHandoffReadiness(selected).because
+                }
                 context={{
                   organizationId: identity.organizationId,
                   userId: identity.userId,
