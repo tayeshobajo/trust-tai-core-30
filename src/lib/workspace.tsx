@@ -160,3 +160,18 @@ export async function signOut(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.clear();
   await supabase.auth.signOut();
 }
+
+/**
+ * The authorization envelope for a verified identity.
+ *
+ * Built only from a membership the database already returned, so every
+ * permission question in the product asks the same, fail-closed question.
+ */
+export function workspaceAccess(identity: WorkspaceIdentity): AccessContext {
+  return accessContext({
+    userId: identity.userId,
+    organizationId: identity.organizationId,
+    role: identity.role,
+  });
+}
+
