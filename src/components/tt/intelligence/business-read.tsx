@@ -54,6 +54,12 @@ export interface BusinessReadProps {
     decision: ActionAuthorizationDecision;
     note?: string;
   }) => Promise<void>;
+  /**
+   * Who is looking. Authorising a bounded action is a role question owned by
+   * the room the change belongs to; without an access context nothing is
+   * approvable.
+   */
+  access?: AccessContext | null;
   /** True while the model stage is still running behind a deterministic read. */
   reasoning?: boolean;
 }
@@ -62,6 +68,7 @@ export function BusinessRead({
   read,
   onDecide,
   onAuthorize,
+  access,
   reasoning = false,
 }: BusinessReadProps) {
   const [decided, setDecided] = useState<Record<string, RecommendationDecision>>({});
