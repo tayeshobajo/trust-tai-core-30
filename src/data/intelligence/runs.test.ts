@@ -16,7 +16,7 @@ function belief(partial: Partial<MemoryBelief> & { id: string }): MemoryBelief {
     authority: "human",
     recordedBy: "Ari",
     recordedAt: "2026-01-05T10:00:00.000Z",
-    meta: { patternKey: "engine:comms_silence", outcome: "confirmed" },
+    meta: { kind: "responsibility", facet: "engine", patternKey: "engine:comms_silence", outcome: "confirmed" },
     ...partial,
   } as MemoryBelief;
 }
@@ -75,7 +75,7 @@ describe("learningTrail", () => {
 
   it("ignores beliefs that did not come from an engine decision", () => {
     const trail = learningTrail([
-      belief({ id: "x", meta: { patternKey: "steward:role", outcome: "confirmed" } }),
+      belief({ id: "x", meta: { kind: "responsibility", facet: "engine", patternKey: "steward:role", outcome: "confirmed" } }),
     ]);
     expect(trail.entries).toHaveLength(0);
   });
@@ -85,7 +85,7 @@ describe("learningTrail", () => {
       belief({
         id,
         recordedAt: at,
-        meta: { patternKey: "engine:comms_silence", outcome: "dismissed_as_context" },
+        meta: { kind: "responsibility", facet: "engine", patternKey: "engine:comms_silence", outcome: "dismissed_as_context" },
       });
 
     const once = learningTrail([dismissal("d1", "2026-01-01T00:00:00.000Z")]);
@@ -105,7 +105,7 @@ describe("learningTrail", () => {
       belief({
         id: "e1",
         statement: "Reply to Nadia before Friday.",
-        meta: { patternKey: "engine:comms_silence", outcome: "edited_then_confirmed" },
+        meta: { kind: "responsibility", facet: "engine", patternKey: "engine:comms_silence", outcome: "edited_then_confirmed" },
       }),
     ]);
     expect(trail.adopted[0]?.statement).toBe("Reply to Nadia before Friday.");
