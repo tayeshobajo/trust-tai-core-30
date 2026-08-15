@@ -72,7 +72,9 @@ function PulseRoute() {
 
 function Pulse({ identity }: { identity: WorkspaceIdentity }) {
   const { organizationId } = identity;
+  const access = workspaceAccess(identity);
   const queryClient = useQueryClient();
+
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["pulse", organizationId],
