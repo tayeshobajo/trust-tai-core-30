@@ -113,6 +113,6 @@ describe("roadmapHandoffRef", () => {
   });
 
   it("falls back to the person's name when there is no company", () => {
-    expect(roadmapHandoffRef(relationship({ companyName: undefined })).label).toBe("Ada Rowe");
+    expect(roadmapHandoffRef(relationship({ companyName: "" })).label).toBe("Ada Rowe");
   });
 });
