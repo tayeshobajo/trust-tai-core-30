@@ -15,7 +15,8 @@ import type { EntityRef } from "@/domain/entities";
 import { isOpenProject, projectHealth, STALE_AFTER_DAYS } from "@/domain/projects";
 import type { BusinessTheme, Observation } from "@/domain/intelligence-engine";
 
-import { contextBlocks, type SuiteSnapshot } from "../derive";
+import { contextBlocks, opsEventsOf, type SuiteSnapshot } from "../derive";
+import { deriveOpsSignals } from "../ops-signals";
 
 const DAY = 86_400_000;
 
@@ -30,6 +31,22 @@ export const STALE_SOURCING_DAYS = 21;
 
 /** The same blocker this many times stops being an incident. */
 export const RECURRING_BLOCKER_THRESHOLD = 2;
+
+/** A roadmap untouched this long has stopped being a live direction. */
+export const STALE_ROADMAP_DAYS = 21;
+
+/** A room with records but no activity for this long reads as quiet. */
+export const QUIET_ROOM_DAYS = 14;
+
+/** Rooms whose cadence the engine watches in the shared activity record. */
+const CADENCE_ROOMS: { appId: string; label: string }[] = [
+  { appId: "scout", label: "Scout" },
+  { appId: "comms", label: "Comms" },
+  { appId: "roadmap", label: "Roadmap" },
+  { appId: "projects", label: "Projects" },
+  { appId: "steward", label: "Steward" },
+  { appId: "ops", label: "Ops" },
+];
 
 function daysOld(at: string | undefined, now: string): number {
   if (!at) return 0;
@@ -332,6 +349,138 @@ export function observeBusiness(snapshot: SuiteSnapshot): Observation[] {
       evidence: [human("Relationship source recorded in Comms")],
       contextRefs: inbound.map((r) => `comms:stage:${r.id}`),
       sourceApps: ["comms"],
+    });
+  }
+
+  /* -------------------------------------------------------------- roadmap */
+
+  const liveRoadmaps = snapshot.roadmaps.filter(
+    (roadmap) => roadmap.status !== "archived" && roadmap.status !== "complete",
+  );
+  const undecided = liveRoadmaps.filter((roadmap) => roadmap.pointB === null);
+  if (undecided.length > 0) {
+    drafts.push({
+      kind: "roadmap_direction_undecided",
+      theme: "delivery",
+      statement: `${undecided.length} roadmap${undecided.length === 1 ? " has" : "s have"} no decided destination in Roadmap.`,
+      magnitude: undecided.length,
+      evidence: [human("Roadmap destination record")],
+      sourceApps: ["roadmap"],
+    });
+  }
+
+  const staleRoadmaps = liveRoadmaps.filter(
+    (roadmap) => daysOld(roadmap.updatedAt, now) >= STALE_ROADMAP_DAYS,
+  );
+  if (staleRoadmaps.length > 0) {
+    const oldest = staleRoadmaps
+      .map((roadmap) => daysOld(roadmap.updatedAt, now))
+      .sort((a, b) => b - a)[0] ?? 0;
+    drafts.push({
+      kind: "roadmap_stale",
+      theme: "delivery",
+      statement: `${staleRoadmaps.length} live roadmap${staleRoadmaps.length === 1 ? " has" : "s have"} not been updated for at least ${oldest} days.`,
+      magnitude: staleRoadmaps.length,
+      evidence: [computed("Last update recorded in Roadmap")],
+      sourceApps: ["roadmap"],
+    });
+  }
+
+  /* ------------------------------------------------------------------ ops */
+
+  const opsSignals = deriveOpsSignals(opsEventsOf(snapshot), now, snapshot.organizationId);
+  const openOps = opsSignals.filter((signal) => signal.status !== "resolved");
+  if (openOps.length > 0) {
+    const first = openOps[0];
+    drafts.push({
+      kind: "ops_open_signal",
+      theme: "friction",
+      statement: `${openOps.length} technical signal${openOps.length === 1 ? " is" : "s are"} open in Ops${first ? `, the most urgent being: ${first.title}` : ""}.`,
+      magnitude: openOps.length,
+      evidence: [computed("Ops recorded in the shared activity record")],
+      contextRefs: openOps.flatMap((signal) => signal.contextRefs),
+      sourceApps: ["ops"],
+      at: first?.at ?? now,
+    });
+  }
+
+  /* --------------------------------------------------------- room cadence */
+
+  const allEvents = [...snapshot.events, ...snapshot.opsActivities];
+  const roomHasRecords: Record<string, boolean> = {
+    scout: snapshot.candidates.length > 0,
+    comms: snapshot.relationships.length > 0,
+    roadmap: snapshot.roadmaps.length > 0,
+    projects: snapshot.projects.length > 0,
+    steward: snapshot.steward.conversations.length > 0,
+    ops: snapshot.opsActivities.length > 0,
+  };
+  for (const room of CADENCE_ROOMS) {
+    if (!roomHasRecords[room.appId]) continue;
+    const last = allEvents
+      .filter((event) => event.provenance.appId === room.appId)
+      .map((event) => event.occurredAt)
+      .sort()
+      .at(-1);
+    if (!last) continue;
+    const quiet = daysOld(last, now);
+    if (quiet < QUIET_ROOM_DAYS) continue;
+    drafts.push({
+      kind: "room_quiet",
+      theme: "capacity",
+      statement: `Nothing has been recorded in ${room.label} for ${quiet} days.`,
+      magnitude: quiet,
+      evidence: [computed("Shared activity record")],
+      sourceApps: [room.appId, "activity"],
+      at: last,
+    });
+  }
+
+  const weekAgo = nowDate.getTime() - 7 * DAY;
+  const recent = allEvents.filter((event) => new Date(event.occurredAt).getTime() >= weekAgo);
+  if (allEvents.length > 0) {
+    drafts.push({
+      kind: "activity_volume",
+      theme: "capacity",
+      statement: `${recent.length} thing${recent.length === 1 ? " was" : "s were"} recorded across the suite in the last seven days.`,
+      magnitude: recent.length,
+      evidence: [computed("Shared activity record")],
+      sourceApps: ["activity"],
+    });
+  }
+
+  /* ----------------------------------------------------------- what we know */
+
+  const recurringMemory = snapshot.memory.filter(
+    (belief) =>
+      !belief.meta.retired &&
+      belief.meta.kind === "responsibility" &&
+      (belief.meta.sourceConversationIds?.length ?? 0) > 0,
+  );
+  if (recurringMemory.length > 0) {
+    drafts.push({
+      kind: "memory_recurring_work",
+      theme: "friction",
+      statement: `${recurringMemory.length} recurring piece${recurringMemory.length === 1 ? "" : "s"} of work ${recurringMemory.length === 1 ? "is" : "are"} remembered from conversations.`,
+      magnitude: recurringMemory.length,
+      tier: "inferred",
+      evidence: [computed("Steward memory, learned from repeated conversations")],
+      sourceApps: ["steward"],
+    });
+  }
+
+  const decidedMemory = snapshot.memory.filter(
+    (belief) => !belief.meta.retired && belief.tier === "decided" && belief.authority === "human",
+  );
+  if (decidedMemory.length > 0) {
+    drafts.push({
+      kind: "memory_decided",
+      theme: "follow_through",
+      statement: `${decidedMemory.length} thing${decidedMemory.length === 1 ? " has" : "s have"} been decided by a person and are held as settled.`,
+      magnitude: decidedMemory.length,
+      tier: "decided",
+      evidence: [human("Recorded by a person")],
+      sourceApps: ["steward"],
     });
   }
 

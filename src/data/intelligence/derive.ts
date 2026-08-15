@@ -15,6 +15,7 @@ import type { Roadmap, RoadmapDecision } from "@/domain/roadmap";
 import type { ExecutionProject } from "@/domain/projects";
 import { isOpenProject, projectHealth, recommendedMove } from "@/domain/projects";
 import type { ProspectCandidate } from "@/domain/scout";
+import type { MemoryBelief } from "@/domain/steward-memory";
 import { readOpsEvents } from "@/domain/ops";
 import { deriveOpsSignals, opsContextBlocks } from "./ops-signals";
 import {
@@ -48,6 +49,8 @@ export interface SuiteSnapshot {
   opsActivities: ActivityEvent[];
   /** Confirmed promises and conversation headers, owned by Steward. */
   steward: StewardSnapshot;
+  /** What the workspace has learned and a person has decided. Read-only here. */
+  memory: MemoryBelief[];
   withheld: WithheldSource[];
 }
 
@@ -63,6 +66,7 @@ export function emptySnapshot(organizationId: ID, now = new Date().toISOString()
     events: [],
     opsActivities: [],
     steward: emptyStewardSnapshot(),
+    memory: [],
     withheld: [],
   };
 }
