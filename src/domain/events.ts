@@ -139,6 +139,11 @@ export interface SuiteEventInput {
   summary: string;
   related?: EntityRef[];
   metadata?: Record<string, unknown>;
+  /**
+   * Stable key for "the same happening", so a retried write does not create a
+   * second event. Required wherever a handoff can plausibly be retried.
+   */
+  sourceEventKey?: string;
   /** Model or rule output is `inferred`; anything read or done is `observed`. */
   confidence?: "observed" | "inferred";
   occurredAt?: ISODateTime;
