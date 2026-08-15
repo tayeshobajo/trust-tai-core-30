@@ -13,6 +13,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
+import { accessContext, type AccessContext } from "@/domain/access";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import {
   ADMIN_ROLES,
@@ -160,3 +161,18 @@ export async function signOut(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.clear();
   await supabase.auth.signOut();
 }
+
+/**
+ * The authorization envelope for a verified identity.
+ *
+ * Built only from a membership the database already returned, so every
+ * permission question in the product asks the same, fail-closed question.
+ */
+export function workspaceAccess(identity: WorkspaceIdentity): AccessContext {
+  return accessContext({
+    userId: identity.userId,
+    organizationId: identity.organizationId,
+    role: identity.role,
+  });
+}
+

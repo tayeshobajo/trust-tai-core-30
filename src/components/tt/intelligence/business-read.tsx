@@ -12,6 +12,8 @@ import { Link } from "@tanstack/react-router";
 
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
+import type { AccessContext } from "@/domain/access";
+import { canAuthorizeAction } from "@/domain/action-authority";
 import { proposeActions } from "@/data/intelligence/engine/propose";
 import {
   BUSINESS_THEME_LABEL,
@@ -54,6 +56,12 @@ export interface BusinessReadProps {
     decision: ActionAuthorizationDecision;
     note?: string;
   }) => Promise<void>;
+  /**
+   * Who is looking. Authorising a bounded action is a role question owned by
+   * the room the change belongs to; without an access context nothing is
+   * approvable.
+   */
+  access?: AccessContext | null;
   /** True while the model stage is still running behind a deterministic read. */
   reasoning?: boolean;
 }
@@ -62,6 +70,7 @@ export function BusinessRead({
   read,
   onDecide,
   onAuthorize,
+  access,
   reasoning = false,
 }: BusinessReadProps) {
   const [decided, setDecided] = useState<Record<string, RecommendationDecision>>({});
@@ -108,6 +117,7 @@ export function BusinessRead({
                 recommendation.hypothesisRefs.includes(row.id),
               )}
               onDecide={decide}
+              access={access ?? null}
               {...(onAuthorize ? { onAuthorize } : {})}
             />
           ))}
@@ -128,6 +138,7 @@ function ProposalCard({
   hypotheses,
   onDecide,
   onAuthorize,
+  access,
 }: {
   recommendation: Recommendation;
   hypotheses: Hypothesis[];
@@ -141,6 +152,7 @@ function ProposalCard({
     decision: ActionAuthorizationDecision;
     note?: string;
   }) => Promise<void>;
+  access: AccessContext | null;
 }) {
   const actions = proposeActions(recommendation);
   const [editing, setEditing] = useState(false);
@@ -256,7 +268,12 @@ function ProposalCard({
         <div className="mt-4 space-y-3 border-t border-border pt-4">
           <p className="tt-eyebrow">Bounded next step · needs your authorisation</p>
           {actions.map((action) => (
-            <ActionProposalRow key={action.id} action={action} onAuthorize={onAuthorize} />
+            <ActionProposalRow
+              key={action.id}
+              action={action}
+              onAuthorize={onAuthorize}
+              access={access}
+            />
           ))}
         </div>
       ) : null}
@@ -267,10 +284,15 @@ function ProposalCard({
 /**
  * One bounded action. Nothing happens until a person authorises it, and even
  * then the work is done by that person in the room that owns the change.
+ *
+ * Authorisation is role-bound: the room that owns the change decides which
+ * roles may approve work in it, and a person without that authority sees the
+ * step and its limits but no approval control.
  */
-function ActionProposalRow({
+export function ActionProposalRow({
   action,
   onAuthorize,
+  access,
 }: {
   action: ActionProposal;
   onAuthorize: (input: {
@@ -278,7 +300,9 @@ function ActionProposalRow({
     decision: ActionAuthorizationDecision;
     note?: string;
   }) => Promise<void>;
+  access: AccessContext | null;
 }) {
+  const authority = canAuthorizeAction(access, action);
   const [state, setState] = useState<ActionAuthorizationDecision | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -339,7 +363,7 @@ function ActionProposalRow({
         <p className="mt-3 text-sm text-muted-foreground">
           Declined. The engine will not propose this step again unprompted.
         </p>
-      ) : (
+      ) : authority.allowed ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <TTButton disabled={busy} onClick={() => void decide("authorized")}>
             Authorise this step
@@ -350,6 +374,11 @@ function ActionProposalRow({
           <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
             {action.operation}
           </span>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <MetaPill>Not yours to authorise</MetaPill>
+          <p className="text-sm text-muted-foreground">{authority.because}</p>
         </div>
       )}
     </div>

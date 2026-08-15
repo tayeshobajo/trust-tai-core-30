@@ -20,7 +20,7 @@ import { deriveSignals } from "@/data/intelligence/derive";
 import { intelligenceService, loadSuiteSnapshot } from "@/data/intelligence/service";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { SIGNAL_CATEGORY_LABEL, type Signal } from "@/domain/signals";
-import type { WorkspaceIdentity } from "@/lib/workspace";
+import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Pulse — Signals across the suite — Trust Tai OS";
 const DESCRIPTION =
@@ -72,7 +72,9 @@ function PulseRoute() {
 
 function Pulse({ identity }: { identity: WorkspaceIdentity }) {
   const { organizationId } = identity;
+  const access = workspaceAccess(identity);
   const queryClient = useQueryClient();
+
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["pulse", organizationId],
@@ -104,6 +106,7 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
           <BusinessRead
             read={engine.read}
             reasoning={engine.refreshing}
+            access={access}
             onDecide={async ({ recommendation, decision, editedText }) => {
               await intelligenceService.decide({
                 organizationId,
@@ -120,6 +123,7 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
                 organizationId,
                 userId: identity.userId,
                 userName: identity.name,
+                access,
                 proposal,
                 decision,
                 ...(note ? { note } : {}),

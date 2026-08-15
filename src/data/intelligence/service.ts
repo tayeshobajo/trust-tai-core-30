@@ -15,6 +15,8 @@ import { roadmapService } from "@/data/supabase/roadmap-service";
 import { scoutService } from "@/data/supabase/scout-service";
 import { supabaseActivity } from "@/data/supabase/activities";
 import { stewardService } from "@/data/supabase/steward-service";
+import { assertSameOrganization, type AccessContext } from "@/domain/access";
+import { assertCanAuthorizeAction } from "@/domain/action-authority";
 import type { ID } from "@/domain/entities";
 import type { AskAnswer, ContextBundle, Signal, WithheldSource } from "@/domain/signals";
 import type { EntityRef } from "@/domain/entities";
@@ -273,7 +275,9 @@ export const intelligenceService = {
   /**
    * Record a person's authorisation of a bounded action.
    *
-   * This is permission, not execution. The engine writes an auditable record
+   * This is permission, not execution. Authority is checked first: the room
+   * that owns the change decides which roles may approve work in it, and a
+   * refusal writes nothing. Otherwise the engine writes an auditable record
    * that names the person, the room, and the operation, then hands the person
    * to that room to do the work. Nothing is performed on their behalf.
    */
@@ -281,10 +285,14 @@ export const intelligenceService = {
     organizationId: ID;
     userId: ID;
     userName: string;
+    access: AccessContext;
     proposal: ActionProposal;
     decision: ActionAuthorization["decision"];
     note?: string;
   }): Promise<ActionAuthorization> {
+    assertSameOrganization(input.access, input.organizationId);
+    assertCanAuthorizeAction(input.access, input.proposal);
+
     const at = new Date().toISOString();
     const authorization: ActionAuthorization = {
       proposalId: input.proposal.id,
