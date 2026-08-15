@@ -20,6 +20,8 @@ import type { AskAnswer, ContextBundle, Signal, WithheldSource } from "@/domain/
 import type { EntityRef } from "@/domain/entities";
 import type { MemoryBelief } from "@/domain/steward-memory";
 import type {
+  ActionAuthorization,
+  ActionProposal,
   EngineRead,
   Hypothesis,
   Recommendation,
@@ -31,8 +33,10 @@ import {
   enginePatternsToSuppress,
   engineRead,
   packetFor,
+  proposeActions,
   recommendationOutcomeDraft,
 } from "./engine";
+
 
 import {
   answer as deriveAnswer,
