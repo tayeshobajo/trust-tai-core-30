@@ -117,6 +117,7 @@ export function BusinessRead({
                 recommendation.hypothesisRefs.includes(row.id),
               )}
               onDecide={decide}
+              access={access ?? null}
               {...(onAuthorize ? { onAuthorize } : {})}
             />
           ))}
