@@ -74,6 +74,12 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
+  /* Deterministic only on Home. Reasoning runs in Pulse, where it was asked for. */
+  const engineRead = useQuery({
+    queryKey: ["home-engine", organizationId],
+    queryFn: () => intelligenceService.engine(organizationId),
+  });
+
   const { lastVisit, ready } = useLastVisit();
   const [resolvedCount, setResolvedCount] = useState(0);
 
