@@ -222,6 +222,10 @@ export interface EngineRead {
   withheld: { appId: string; reason: string }[];
   /** Patterns a person has told the engine to stop raising. */
   suppressed: string[];
+  /** Patterns a person accepted before. Ordering only. */
+  favoured: string[];
+  /** Human-decided statements the read was checked against. Shown on request. */
+  decided: string[];
   /** Whether a model contributed. False means deterministic-only, and honest. */
   reasoned: boolean;
   generatedAt: ISODateTime;
