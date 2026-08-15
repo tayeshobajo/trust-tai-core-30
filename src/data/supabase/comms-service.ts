@@ -26,6 +26,7 @@ import type { EvidenceRef } from "@/domain/confidence";
 import type { VoiceRegister } from "@/domain/voice";
 
 import { supabaseActivity } from "./activities";
+import { emitSuiteEvent } from "@/data/events/suite-events";
 import { findOrCreateContact } from "./contacts";
 import {
   assertOk,
@@ -71,6 +72,29 @@ async function record(
       confidence: "observed",
     },
     occurredAt: at,
+  });
+}
+
+/**
+ * Cross-app moments go out in the shared suite vocabulary with a dedupe key.
+ * Comms owns the relationship; other rooms only read this event.
+ */
+async function suite(
+  context: CommsContext,
+  key: "RELATIONSHIP_CREATED" | "RELATIONSHIP_STAGE_CHANGED" | "RELATIONSHIP_MESSAGE_RECEIVED",
+  subject: { id: ID; label: string },
+  sourceEventKey: string,
+  summary: string,
+  metadata: Record<string, unknown> = {},
+) {
+  await emitSuiteEvent({
+    key,
+    organizationId: context.organizationId,
+    actor: { type: "user", id: context.userId },
+    subject: { type: "relationship", id: subject.id, label: subject.label },
+    summary,
+    sourceEventKey,
+    metadata,
   });
 }
 
@@ -199,10 +223,11 @@ export const commsService = {
     if (!data) throw new Error("That relationship could not be saved.");
 
     const relationship = toRelationship(data as unknown as RelationshipRow);
-    await record(
+    await suite(
       context,
-      "conversation.created",
+      "RELATIONSHIP_CREATED",
       { id: relationship.id, label: relationship.fullName },
+      `relationship.created:${relationship.id}`,
       `${relationship.fullName}${relationship.companyName ? ` (${relationship.companyName})` : ""} was added to Comms${relationship.metWhere ? `, met at ${relationship.metWhere}` : ""}.`,
       {
         source: relationship.source,
@@ -242,10 +267,12 @@ export const commsService = {
 
     const relationship = toRelationship(data as unknown as RelationshipRow);
     if (patch.stage) {
-      await record(
+      await suite(
         context,
-        "conversation.status_changed",
+        "RELATIONSHIP_STAGE_CHANGED",
         { id: relationship.id, label: relationship.fullName },
+        // A stage can legitimately be revisited, so this is keyed per move.
+        `relationship.stage_changed:${relationship.id}:${relationship.stage}:${relationship.updatedAt}`,
         `${relationship.fullName} moved to ${STAGE_LABEL[relationship.stage]}.`,
         { stage: relationship.stage },
       );

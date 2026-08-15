@@ -31,6 +31,7 @@ import { HANDOFF_INTENT_LABEL } from "@/domain/comms-handoff";
 
 
 import { supabaseActivity } from "./activities";
+import { emitSuiteEvent } from "@/data/events/suite-events";
 import { fetchCompanyIdentity } from "./company-identity";
 import { getCurrentIcp, type IcpProfile } from "./icp";
 import {
@@ -351,24 +352,22 @@ export const scoutService = {
     const record: HandoffRecord = { draft, routedAt, routedBy: context.userId };
     await saveHandoffRecord(draft.prospectId, record as unknown as Record<string, unknown>);
 
-    await supabaseActivity.record({
+    // Shared vocabulary, written once. The dedupe key makes a retried handoff
+    // a no-op rather than a second event in the suite's history.
+    await emitSuiteEvent({
+      key: "PROSPECT_HANDED_OVER",
       organizationId: context.organizationId,
-      name: "prospect.handed_over",
+      actor: { type: "user", id: context.userId },
       subject: { type: "prospect", id: draft.prospectId, label: draft.companyName },
       summary: `${draft.companyName} was handed to Comms with ${draft.contact?.fullName ?? "no named contact"} as the contact. Nothing was sent.`,
-      payload: {
+      sourceEventKey: `prospect.handed_over:${draft.prospectId}`,
+      metadata: {
         intent: draft.intent,
         intent_label: HANDOFF_INTENT_LABEL[draft.intent],
         contact_name: draft.contact?.fullName ?? null,
         contact_email_status: draft.contact?.emailStatus ?? null,
         confidence: draft.confidence.level,
         context_items: draft.requiredContext.length,
-      },
-      provenance: {
-        appId: "scout",
-        actor: { type: "user", id: context.userId },
-        observedAt: routedAt,
-        confidence: "observed",
       },
       occurredAt: routedAt,
     });
@@ -411,7 +410,20 @@ export const scoutService = {
     const prospect = await updateProspectStatus(id, status);
 
     const occurredAt = new Date().toISOString();
-    await supabaseActivity.record({
+    // Qualification is a cross-app moment in the shared vocabulary; every other
+    // status move stays Scout's own history.
+    if (prospect.status === "qualified") {
+      await emitSuiteEvent({
+        key: "PROSPECT_QUALIFIED",
+        organizationId: context.organizationId,
+        actor: { type: "user", id: context.userId },
+        subject: { type: "prospect", id, label: prospect.name },
+        summary: `${prospect.name} was qualified in Scout. No contact has been made.`,
+        sourceEventKey: `prospect.qualified:${id}`,
+        metadata: { status: prospect.status, domain: prospect.domain },
+        occurredAt,
+      });
+    } else await supabaseActivity.record({
       organizationId: context.organizationId,
       name: "prospect.status_changed",
       subject: { type: "prospect", id, label: prospect.name },

@@ -34,6 +34,7 @@ import {
 } from "@/data/roadmap-draft";
 
 import { supabaseActivity } from "./activities";
+import { emitSuiteEvent } from "@/data/events/suite-events";
 import {
   assertOk,
   DECISION_COLUMNS,
@@ -387,13 +388,22 @@ export const roadmapService = {
       assertOk(decisionError);
     }
 
-    await record(
-      context,
-      "roadmap.generated",
-      { id: roadmap.id, label: roadmap.subjectLabel },
-      `A roadmap was drafted for ${roadmap.subjectLabel} from ${source.observed.length} observed ${source.observed.length === 1 ? "fact" : "facts"}.`,
-      { subject_kind: input.subject.kind, unknowns: draft.unknowns.length },
-    );
+    // Shared vocabulary: other rooms learn a path was opened for this subject.
+    // The subject travels as a reference, never as a copy of its record.
+    await emitSuiteEvent({
+      key: "ROADMAP_CREATED",
+      organizationId: context.organizationId,
+      actor: {
+        type: "user",
+        id: context.userId,
+        ...(context.userLabel ? { label: context.userLabel } : {}),
+      },
+      subject: { type: "roadmap", id: roadmap.id, label: roadmap.subjectLabel },
+      related: [{ type: input.subject.kind === "relationship" ? "relationship" : input.subject.kind, id: input.subject.id, label: roadmap.subjectLabel }],
+      summary: `A roadmap was drafted for ${roadmap.subjectLabel} from ${source.observed.length} observed ${source.observed.length === 1 ? "fact" : "facts"}.`,
+      sourceEventKey: `roadmap.created:${roadmap.id}`,
+      metadata: { subject_kind: input.subject.kind, unknowns: draft.unknowns.length },
+    });
 
     const detail = await this.detail(roadmap.id, context.organizationId);
     if (!detail) throw new Error("That roadmap could not be read back.");
