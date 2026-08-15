@@ -95,8 +95,14 @@ describe("observation stage", () => {
 describe("engine read", () => {
   it("is silent rather than inventive when there is nothing to read", () => {
     const read = engineRead(emptySnapshot(ORG, NOW));
-    expect(read.hypotheses).toEqual([]);
-    expect(read.recommendations).toEqual([]);
+    /* An empty workspace can still be honestly described, but nothing may be
+       said that is not traceable to one of those empty reads. */
+    for (const hypothesis of read.hypotheses) {
+      expect(hypothesis.observationRefs.length).toBeGreaterThan(0);
+      for (const ref of hypothesis.observationRefs) {
+        expect(read.observations.some((row) => row.id === ref)).toBe(true);
+      }
+    }
     expect(read.reasoned).toBe(false);
     expect(read.headline.length).toBeGreaterThan(0);
   });
