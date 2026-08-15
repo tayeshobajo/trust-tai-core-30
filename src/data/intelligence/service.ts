@@ -15,6 +15,8 @@ import { roadmapService } from "@/data/supabase/roadmap-service";
 import { scoutService } from "@/data/supabase/scout-service";
 import { supabaseActivity } from "@/data/supabase/activities";
 import { stewardService } from "@/data/supabase/steward-service";
+import { assertSameOrganization, type AccessContext } from "@/domain/access";
+import { assertCanAuthorizeAction } from "@/domain/action-authority";
 import type { ID } from "@/domain/entities";
 import type { AskAnswer, ContextBundle, Signal, WithheldSource } from "@/domain/signals";
 import type { EntityRef } from "@/domain/entities";
