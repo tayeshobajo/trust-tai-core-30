@@ -12,9 +12,12 @@ import { Link } from "@tanstack/react-router";
 
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
+import { proposeActions } from "@/data/intelligence/engine/propose";
 import {
   BUSINESS_THEME_LABEL,
   RECOMMENDATION_KIND_LABEL,
+  type ActionAuthorizationDecision,
+  type ActionProposal,
   type EngineRead,
   type Hypothesis,
   type Recommendation,
@@ -42,11 +45,25 @@ export interface BusinessReadProps {
     decision: RecommendationDecision;
     editedText?: string;
   }) => Promise<void>;
+  /**
+   * Called when a person authorises or declines a bounded action. Omit it and
+   * no action is offered: authorisation must have somewhere to be recorded.
+   */
+  onAuthorize?: (input: {
+    proposal: ActionProposal;
+    decision: ActionAuthorizationDecision;
+    note?: string;
+  }) => Promise<void>;
   /** True while the model stage is still running behind a deterministic read. */
   reasoning?: boolean;
 }
 
-export function BusinessRead({ read, onDecide, reasoning = false }: BusinessReadProps) {
+export function BusinessRead({
+  read,
+  onDecide,
+  onAuthorize,
+  reasoning = false,
+}: BusinessReadProps) {
   const [decided, setDecided] = useState<Record<string, RecommendationDecision>>({});
 
   async function decide(
@@ -91,6 +108,7 @@ export function BusinessRead({ read, onDecide, reasoning = false }: BusinessRead
                 recommendation.hypothesisRefs.includes(row.id),
               )}
               onDecide={decide}
+              {...(onAuthorize ? { onAuthorize } : {})}
             />
           ))}
         </div>
@@ -109,6 +127,7 @@ function ProposalCard({
   recommendation,
   hypotheses,
   onDecide,
+  onAuthorize,
 }: {
   recommendation: Recommendation;
   hypotheses: Hypothesis[];
@@ -117,7 +136,13 @@ function ProposalCard({
     decision: RecommendationDecision,
     editedText?: string,
   ) => Promise<void>;
+  onAuthorize?: (input: {
+    proposal: ActionProposal;
+    decision: ActionAuthorizationDecision;
+    note?: string;
+  }) => Promise<void>;
 }) {
+  const actions = proposeActions(recommendation);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(recommendation.headline);
   const [busy, setBusy] = useState(false);
