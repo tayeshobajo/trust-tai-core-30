@@ -120,3 +120,42 @@ export function packetFor(snapshot: SuiteSnapshot, options: EngineOptions = {}) 
     withheld: snapshot.withheld.map((row) => ({ appId: row.appId, reason: row.reason })),
   });
 }
+
+/**
+ * Fold verified model readings into a read that was already taken.
+ *
+ * Used by the workspace so reasoning does not cost a second pass over the
+ * suite: the deterministic read arrives first and is shown, and this replaces
+ * it once the model stage returns. Pure, and safe to call with nothing.
+ */
+export function withReasoning(read: EngineRead, reasoned: Hypothesis[]): EngineRead {
+  const additions = reasoned.filter(
+    (hypothesis) => !read.suppressed.includes(hypothesis.patternKey),
+  );
+  if (additions.length === 0) return read;
+
+  const hypotheses = dedupe([...read.hypotheses, ...additions])
+    .sort(
+      (a, b) =>
+        CONFIDENCE_RANK[b.confidence] - CONFIDENCE_RANK[a.confidence] ||
+        b.observationRefs.length - a.observationRefs.length ||
+        a.id.localeCompare(b.id),
+    )
+    .slice(0, MAX_HYPOTHESES);
+
+  const recommendations = deriveRecommendations({
+    hypotheses,
+    observations: read.observations,
+    now: read.generatedAt,
+    suppressed: read.suppressed,
+    ...(read.favoured.length > 0 ? { favoured: read.favoured } : {}),
+  });
+
+  return {
+    ...read,
+    hypotheses,
+    recommendations,
+    headline: engineHeadline(recommendations.length),
+    reasoned: true,
+  };
+}
