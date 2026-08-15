@@ -20,6 +20,7 @@ import {
   TTButton,
   TTCard,
 } from "@/components/tt/primitives";
+import { intelligenceService } from "@/data/intelligence/service";
 import { memorySource } from "@/data/memory-source";
 import { getAppTheme } from "@/domain/app-theme";
 import { APP_REGISTRY } from "@/domain/registry";
