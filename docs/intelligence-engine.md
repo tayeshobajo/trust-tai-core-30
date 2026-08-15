@@ -86,3 +86,26 @@ to action, now or later.
 
 No schema, no scheduler, no background loop, no per-user notification state, no confidence
 percentages, no charts. The read is taken when a person looks.
+
+## Action proposals and authorization
+
+A recommendation says what is worth doing. An **action proposal**
+(`src/data/intelligence/engine/propose.ts`) is the smallest reversible piece of
+that work, named as an operation the owning room already performs
+(`comms.draft_reply`, `scout.route_to_comms`, …) and routed there.
+
+Laws:
+
+1. **The engine never executes.** Every proposal carries `requiresApproval: true`.
+   Authorising it records permission and hands the person to the owning room;
+   the work is done there, by that person.
+2. **Every action is bounded.** `willDo` and `willNotDo` are both non-empty and
+   shown side by side before anyone can authorise.
+3. **Only reversible work is proposed.** Irreversible work stays advice.
+4. **A hunch earns no action.** Low or unknown confidence routes a person to
+   look, never to act. At most `MAX_ACTION_PROPOSALS` per recommendation.
+
+`intelligenceService.authorizeAction()` writes one append-only activity event
+(`decision.approved` / `decision.decided`) naming the person, the room, the
+operation, its boundaries and the route. Declining is recorded too, so the
+engine stops offering that step unprompted.
