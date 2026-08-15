@@ -20,7 +20,7 @@ import { deriveSignals } from "@/data/intelligence/derive";
 import { intelligenceService, loadSuiteSnapshot } from "@/data/intelligence/service";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { SIGNAL_CATEGORY_LABEL, type Signal } from "@/domain/signals";
-import type { WorkspaceIdentity } from "@/lib/workspace";
+import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Pulse — Signals across the suite — Trust Tai OS";
 const DESCRIPTION =
