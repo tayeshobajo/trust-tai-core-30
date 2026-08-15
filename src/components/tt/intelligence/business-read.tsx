@@ -268,7 +268,12 @@ function ProposalCard({
         <div className="mt-4 space-y-3 border-t border-border pt-4">
           <p className="tt-eyebrow">Bounded next step · needs your authorisation</p>
           {actions.map((action) => (
-            <ActionProposalRow key={action.id} action={action} onAuthorize={onAuthorize} />
+            <ActionProposalRow
+              key={action.id}
+              action={action}
+              onAuthorize={onAuthorize}
+              access={access}
+            />
           ))}
         </div>
       ) : null}
@@ -279,10 +284,15 @@ function ProposalCard({
 /**
  * One bounded action. Nothing happens until a person authorises it, and even
  * then the work is done by that person in the room that owns the change.
+ *
+ * Authorisation is role-bound: the room that owns the change decides which
+ * roles may approve work in it, and a person without that authority sees the
+ * step and its limits but no approval control.
  */
-function ActionProposalRow({
+export function ActionProposalRow({
   action,
   onAuthorize,
+  access,
 }: {
   action: ActionProposal;
   onAuthorize: (input: {
@@ -290,7 +300,9 @@ function ActionProposalRow({
     decision: ActionAuthorizationDecision;
     note?: string;
   }) => Promise<void>;
+  access: AccessContext | null;
 }) {
+  const authority = canAuthorizeAction(access, action);
   const [state, setState] = useState<ActionAuthorizationDecision | null>(null);
   const [busy, setBusy] = useState(false);
 
