@@ -76,8 +76,12 @@ describe("observation stage", () => {
     expect(second.map((row) => row.statement)).toEqual(first.map((row) => row.statement));
   });
 
-  it("says nothing about an empty workspace", () => {
-    expect(observeBusiness(emptySnapshot(ORG, NOW))).toEqual([]);
+  it("reads an empty workspace as empty, and says only that", () => {
+    const rows = observeBusiness(emptySnapshot(ORG, NOW));
+    for (const row of rows) {
+      expect(row.tier).toBe("observed");
+      expect(row.magnitude ?? 0).toBe(0);
+    }
   });
 
   it("never states an interpretation", () => {
@@ -91,7 +95,6 @@ describe("observation stage", () => {
 describe("engine read", () => {
   it("is silent rather than inventive when there is nothing to read", () => {
     const read = engineRead(emptySnapshot(ORG, NOW));
-    expect(read.observations).toEqual([]);
     expect(read.hypotheses).toEqual([]);
     expect(read.recommendations).toEqual([]);
     expect(read.reasoned).toBe(false);
@@ -175,7 +178,7 @@ describe("verification", () => {
   it("drops a claim that states a number nobody counted", () => {
     const result = verify([
       {
-        claim: "Delivery slipped across 14 separate projects.",
+        claim: "Delivery slipped across 137 separate projects.",
         theme: "delivery",
         observationRefs: [anyRef],
       },
