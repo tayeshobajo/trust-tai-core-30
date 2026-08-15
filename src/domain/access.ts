@@ -67,6 +67,13 @@ export type Permission =
   | "roadmap.decide"
   | "projects.read"
   | "projects.write"
+  /**
+   * Steward is the cross-suite stewardship layer, not a business domain.
+   * `steward.write` grants interpretation, memory and judgment actions
+   * (confirming a meaning, correcting a belief, authorising a proposal). It
+   * never substitutes for the owning room's own write permission: executing
+   * work in Comms still requires `comms.write`, and so on.
+   */
   | "steward.read"
   | "steward.write"
   /** Enter Ops. Ops is a separate app and enforces its own access as well. */

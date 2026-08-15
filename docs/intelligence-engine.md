@@ -9,11 +9,27 @@ Engine does that, and only that.
 ## What it is, and what it refuses to be
 
 It is a reasoning layer over rooms that already own their truth. It owns no entity, has no
-table of its own, and changes nothing in Scout, Comms, Roadmap, Projects, Ops or Steward.
+table of its own, and changes nothing in Scout, Comms, Roadmap, Projects, Ops or Studio.
 It reads broadly and writes one thing: what a person decided about a proposal.
 
 It is not a scoring system, a notification centre, a task queue, or a productivity monitor.
 It never comments on a person's performance. It talks about the business.
+
+### Engine, Steward and Pulse
+
+They are one intelligence, in three positions (see `docs/architecture-canon.md`):
+
+- The **engine** (`src/data/intelligence/engine/`) is the reasoning pipeline: observe →
+  … → recommend. Pure and stateless apart from the ledger it reads.
+- **Steward** is the stewardship layer that surface that pipeline in human terms —
+  interpretation of conversations, person-centred memory, judgment about what deserves
+  attention, and routing. It is not a business domain: it owns no conversation, task,
+  decision, project risk or client risk. Those stay with the owning room and the core
+  entities. `steward_beliefs` holds interpretation and memory only.
+- **Pulse** is the visibility surface: the full read, its evidence, its gaps, and the
+  learning trail. Pulse owns no entity and emits no suite event.
+
+Business rooms — Scout, Comms, Roadmap, Projects, Ops, Studio — own state and execute.
 
 ## The loop
 

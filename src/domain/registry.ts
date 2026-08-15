@@ -3,11 +3,32 @@
  *
  * Every internal Trust Tai app is registered here once. The shell, navigation,
  * and intelligence layer all read from this single list.
+ *
+ * Suite law (see docs/architecture-canon.md):
+ *   Apps own state. Core owns identity. The event stream owns history.
+ *   Steward owns interpretation. Pulse owns visibility.
+ *
+ * `layer` is the architectural position of a room, and it is not cosmetic:
+ * only `business` rooms own domain truth (clients, contacts, prospects,
+ * conversations, projects, content, websites). `intelligence` and
+ * `stewardship` rooms read across the suite with provenance, propose bounded
+ * work, and route execution back to the owning business room.
  */
 
 import type { ID } from "./entities";
 
 export type AppStatus = "live" | "in_build" | "mapped" | "external";
+
+/**
+ * Where a room sits in the suite topology.
+ * - `core`         — the shell itself (identity, navigation, shared entities).
+ * - `business`     — owns domain state: Scout, Comms, Roadmap, Projects, Ops, Studio.
+ * - `intelligence` — the suite-wide visibility/readout surface: Pulse.
+ * - `stewardship`  — the cross-suite interpretation, memory, judgment,
+ *                    recommendation and routing layer: Steward. It owns no
+ *                    business entity and never becomes a peer domain.
+ */
+export type AppLayer = "core" | "business" | "intelligence" | "stewardship";
 
 export type CapabilityTag =
   | "clients"
@@ -28,6 +49,8 @@ export interface AppRegistration {
   slug: string;
   description: string;
   status: AppStatus;
+  /** Architectural position. Only `business` rooms own domain truth. */
+  layer: AppLayer;
   /** Route inside this shell. External apps still have a room here. */
   route: string;
   /**
@@ -40,9 +63,11 @@ export interface AppRegistration {
   capabilities: CapabilityTag[];
 }
 
+
 export const APP_REGISTRY: AppRegistration[] = [
   {
     id: "home",
+    layer: "core",
     name: "Home",
     slug: "home",
     description: "Where you are, what matters now, and the next move.",
@@ -53,6 +78,7 @@ export const APP_REGISTRY: AppRegistration[] = [
   },
   {
     id: "scout",
+    layer: "business",
     name: "Scout",
     slug: "scout",
     description: "Find and qualify the right clients before outreach begins.",
@@ -63,6 +89,7 @@ export const APP_REGISTRY: AppRegistration[] = [
   },
   {
     id: "comms",
+    layer: "business",
     name: "Comms",
     slug: "comms",
     description: "Relationships kept warm, with a truthful reason to reach out.",
@@ -73,6 +100,7 @@ export const APP_REGISTRY: AppRegistration[] = [
   },
   {
     id: "roadmap",
+    layer: "business",
     name: "Roadmap",
     slug: "roadmap",
     description: "Point A to Point B, sequenced into a build order.",
@@ -83,6 +111,7 @@ export const APP_REGISTRY: AppRegistration[] = [
   },
   {
     id: "projects",
+    layer: "business",
     name: "Projects",
     slug: "projects",
     description: "Delivery, ownership, and milestone truth.",
@@ -93,16 +122,22 @@ export const APP_REGISTRY: AppRegistration[] = [
   },
   {
     id: "steward",
+    layer: "stewardship",
     name: "Steward",
     slug: "steward",
-    description: "Conversations become commitments, and commitments get kept.",
+    description:
+      "Interpretation, memory and judgment across the suite: conversations become commitments, and commitments get kept.",
     status: "in_build",
     route: "/modules/steward",
     icon: "HeartHandshake",
-    capabilities: ["conversations", "tasks", "decisions", "intelligence"],
+    // Steward reads conversations, commitments and decisions that other rooms
+    // and core entities own. It stores interpretation and memory, never a
+    // second copy of domain truth.
+    capabilities: ["intelligence"],
   },
   {
     id: "ops",
+    layer: "business",
     name: "Ops",
     slug: "ops",
     description: "Maintenance, technical stewardship and site health, in the standalone Ops app.",
@@ -114,6 +149,7 @@ export const APP_REGISTRY: AppRegistration[] = [
   },
   {
     id: "studio",
+    layer: "business",
     name: "Studio",
     slug: "studio",
     description: "Brand, content, and asset production.",
@@ -124,9 +160,10 @@ export const APP_REGISTRY: AppRegistration[] = [
   },
   {
     id: "pulse",
+    layer: "intelligence",
     name: "Pulse",
     slug: "pulse",
-    description: "Signals and outcomes across the portfolio.",
+    description: "Signals and outcomes across the portfolio — the suite readout surface.",
     status: "in_build",
     route: "/modules/pulse",
     icon: "Activity",
@@ -136,4 +173,13 @@ export const APP_REGISTRY: AppRegistration[] = [
 
 export function getApp(slug: string): AppRegistration | undefined {
   return APP_REGISTRY.find((app) => app.slug === slug);
+}
+
+/** Rooms that own domain state. Only these may write business truth. */
+export function businessApps(): AppRegistration[] {
+  return APP_REGISTRY.filter((app) => app.layer === "business");
+}
+
+export function isBusinessApp(appId: string): boolean {
+  return APP_REGISTRY.some((app) => app.id === appId && app.layer === "business");
 }

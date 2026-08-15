@@ -13,7 +13,13 @@
 import type { ActivityName, Provenance } from "./activity";
 import type { EntityRef, ID, ISODateTime } from "./entities";
 
-export type SuiteAppId = "scout" | "comms" | "roadmap" | "projects" | "studio" | "pulse" | "ops";
+/**
+ * Only business rooms emit cross-app suite events, because only they own the
+ * state a suite event reports. Pulse (visibility) and Steward (interpretation)
+ * read this vocabulary; they never author it. Steward's own interpretation and
+ * memory history stays local to Steward's ledger.
+ */
+export type SuiteAppId = "scout" | "comms" | "roadmap" | "projects" | "studio" | "ops";
 
 export interface SuiteEventDefinition {
   name: ActivityName;
