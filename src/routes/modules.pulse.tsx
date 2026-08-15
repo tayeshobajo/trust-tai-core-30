@@ -12,11 +12,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { BusinessRead } from "@/components/tt/intelligence/business-read";
-import { EmptyState, MetaPill, SectionHeading, TTCard } from "@/components/tt/primitives";
+import { LearningTrailPanel } from "@/components/tt/intelligence/learning-trail";
+import { useIntelligenceRuns } from "@/hooks/use-intelligence-runs";
+import { EmptyState, MetaPill, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { deriveSignals } from "@/data/intelligence/derive";
-import { withReasoning } from "@/data/intelligence/engine";
-import { reasonAboutBusiness } from "@/data/intelligence/reason-client";
 import { intelligenceService, loadSuiteSnapshot } from "@/data/intelligence/service";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { SIGNAL_CATEGORY_LABEL, type Signal } from "@/domain/signals";
@@ -82,21 +82,11 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
-  /* The deterministic read lands first; the model stage only ever adds to it. */
-  const engine = useQuery({
-    queryKey: ["pulse-engine", organizationId],
-    queryFn: async () => {
-      const read = await intelligenceService.engine(organizationId);
-      const packet = await intelligenceService.packet(organizationId);
-      const reasoned = await reasonAboutBusiness({
-        organizationId,
-        packet,
-        observations: read.observations,
-        now: read.generatedAt,
-      });
-      return reasoned.hypotheses.length > 0 ? withReasoning(read, reasoned.hypotheses) : read;
-    },
-  });
+  /*
+   * The engine runs itself: on arrival, when a room records something, and
+   * once a day in a quiet week. A person can always ask for a read now.
+   */
+  const engine = useIntelligenceRuns(organizationId);
 
   const signals = data?.signals ?? [];
 
@@ -109,35 +99,52 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
         supporting="Signals are read, not stored. Each one says why it matters, what it rests on, and where the work happens."
       />
 
-      {engine.data ? (
-        <BusinessRead
-          read={engine.data}
-          onDecide={async ({ recommendation, decision, editedText }) => {
-            await intelligenceService.decide({
-              organizationId,
-              userId: identity.userId,
-              userName: identity.name,
-              recommendation,
-              decision,
-              ...(editedText ? { editedText } : {}),
-            });
-            await queryClient.invalidateQueries({ queryKey: ["pulse-engine", organizationId] });
-          }}
-          onAuthorize={async ({ proposal, decision, note }) => {
-            await intelligenceService.authorizeAction({
-              organizationId,
-              userId: identity.userId,
-              userName: identity.name,
-              proposal,
-              decision,
-              ...(note ? { note } : {}),
-            });
-          }}
-        />
+      {engine.read ? (
+        <div className="space-y-4">
+          <BusinessRead
+            read={engine.read}
+            reasoning={engine.refreshing}
+            onDecide={async ({ recommendation, decision, editedText }) => {
+              await intelligenceService.decide({
+                organizationId,
+                userId: identity.userId,
+                userName: identity.name,
+                recommendation,
+                decision,
+                ...(editedText ? { editedText } : {}),
+              });
+              await engine.invalidate();
+            }}
+            onAuthorize={async ({ proposal, decision, note }) => {
+              await intelligenceService.authorizeAction({
+                organizationId,
+                userId: identity.userId,
+                userName: identity.name,
+                proposal,
+                decision,
+                ...(note ? { note } : {}),
+              });
+            }}
+          />
 
-      ) : engine.isLoading ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-xs text-muted-foreground">
+              {engine.refreshing ? "Reading again." : engine.because}
+            </p>
+            <TTButton variant="quiet" onClick={() => void engine.refresh()}>
+              Read now
+            </TTButton>
+          </div>
+        </div>
+      ) : engine.loading ? (
         <p className="text-sm text-muted-foreground">Reading the business.</p>
+      ) : engine.failed ? (
+        <p className="text-sm text-muted-foreground">
+          That read could not be completed. Nothing has been changed.
+        </p>
       ) : null}
+
+      {engine.trail ? <LearningTrailPanel trail={engine.trail} /> : null}
 
       <section aria-labelledby="signals-heading">
         <SectionHeading

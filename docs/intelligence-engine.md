@@ -109,3 +109,35 @@ Laws:
 (`decision.approved` / `decision.decided`) naming the person, the room, the
 operation, its boundaries and the route. Declining is recorded too, so the
 engine stops offering that step unprompted.
+
+## Suite-wide evidence
+
+The engine reads every room the workspace can legitimately see: Scout, Comms,
+Roadmap, Projects, Ops, Steward, and the shared activity record (250 most
+recent events, wide enough for cadence over several weeks). Steward's belief
+ledger travels inside the snapshot, so what a person already decided is
+evidence during observation rather than a second read afterwards.
+
+Observations now include roadmap direction and staleness, open Ops signals,
+per-room quiet periods, weekly activity volume, recurring remembered work, and
+settled human decisions. Anything a room refuses to return is listed as
+withheld, never guessed at.
+
+## When the engine runs
+
+`engine/runs.ts` is pure: `snapshotFingerprint` turns a snapshot into a short
+string that changes exactly when evidence does, and `shouldRun` decides between
+`first_run`, `new_activity`, `daily_cadence`, `requested` and `up_to_date`.
+`useIntelligenceRuns` owns the timers: it reads on arrival, checks every two
+minutes, refreshes on window focus, and renews daily. When nothing moved the
+read on screen is kept and the model stage is not asked again. A person can
+always ask for a read now.
+
+## Learning audit trail
+
+`engine/audit.ts` derives the trail from the append-only ledger — there is no
+second copy of the truth. Each entry shows the decision, who made it, when, and
+the exact consequence: suppressed, one dismissal away from suppression, wording
+adopted, offered earlier, or held for later. Suppression is a count, not a
+verdict: the same reading must be dismissed twice before the engine stops
+raising it. Accepting something changes ordering only — never confidence.

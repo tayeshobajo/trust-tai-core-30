@@ -32,10 +32,38 @@ import {
   engineFavouredPatterns,
   enginePatternsToSuppress,
   engineRead,
+  learningTrail,
   packetFor,
   proposeActions,
   recommendationOutcomeDraft,
+  snapshotFingerprint,
+  type LearningTrail,
 } from "./engine";
+
+/**
+ * One read, taken from a snapshot that has already been loaded.
+ *
+ * Learned memory travels inside the snapshot, so a read never costs a second
+ * pass over the ledger and can never disagree with the evidence it was taken
+ * with.
+ */
+function readFromSnapshot(snapshot: SuiteSnapshot, reasoned?: Hypothesis[]): EngineRead {
+  const beliefs = snapshot.memory;
+  return engineRead(snapshot, {
+    ...(reasoned ? { reasoned } : {}),
+    suppressed: enginePatternsToSuppress(beliefs),
+    favoured: engineFavouredPatterns(beliefs),
+    decided: decidedStatements(beliefs),
+  });
+}
+
+/** The packet for a snapshot already in hand. */
+function packetFromSnapshot(snapshot: SuiteSnapshot) {
+  return packetFor(snapshot, {
+    suppressed: enginePatternsToSuppress(snapshot.memory),
+    decided: decidedStatements(snapshot.memory),
+  });
+}
 
 
 import {
@@ -58,6 +86,14 @@ async function safe<T>(
   }
 }
 
+/**
+ * How much of the shared activity record the engine reads.
+ *
+ * Wide enough that cadence and recurrence across every room are countable,
+ * bounded so one workspace can never make a read unbounded.
+ */
+export const ACTIVITY_READ_LIMIT = 250;
+
 /** Assemble everything the current organization can legitimately read. */
 export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapshot> {
   const base = emptySnapshot(organizationId);
@@ -70,13 +106,16 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     events,
     opsActivities,
     steward,
+    memory,
   ] = await Promise.all([
     safe("scout", base.candidates, () => scoutService.list(organizationId)),
     safe("comms", base.relationships, () => commsService.list(organizationId)),
     safe("roadmap", base.roadmaps, () => roadmapService.list(organizationId)),
     safe("roadmap", base.openDecisions, () => roadmapService.openDecisions(organizationId)),
     safe("projects", base.projects, () => projectsService.list(organizationId)),
-    safe("activity", base.events, () => supabaseActivity.list({ organizationId, limit: 40 })),
+    safe("activity", base.events, () =>
+      supabaseActivity.list({ organizationId, limit: ACTIVITY_READ_LIMIT }),
+    ),
     safe("ops", base.opsActivities, () =>
       supabaseActivity.list({ organizationId, appIds: ["ops"], limit: 60 }),
     ),
@@ -96,6 +135,8 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
         })),
       };
     }),
+    /* Learned memory is evidence too: what a person decided is the strongest kind. */
+    safe("steward", base.memory, () => stewardService.memory(organizationId)),
   ]);
 
   const withheld: WithheldSource[] = [];
@@ -108,6 +149,7 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     events,
     opsActivities,
     steward,
+    memory,
   ]) {
     if (part.withheld && !withheld.some((w) => w.appId === part.withheld?.appId)) {
       withheld.push(part.withheld);
@@ -124,9 +166,12 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     events: events.value,
     opsActivities: opsActivities.value,
     steward: steward.value,
+    memory: memory.value,
     withheld,
   };
 }
+
+
 
 export const intelligenceService = {
   snapshot: loadSuiteSnapshot,
@@ -155,29 +200,44 @@ export const intelligenceService = {
    * deterministic and says so.
    */
   async engine(organizationId: ID, reasoned?: Hypothesis[]): Promise<EngineRead> {
-    const [snapshot, beliefs] = await Promise.all([
-      loadSuiteSnapshot(organizationId),
-      stewardService.memory(organizationId).catch(() => [] as MemoryBelief[]),
-    ]);
-    return engineRead(snapshot, {
-      ...(reasoned ? { reasoned } : {}),
-      suppressed: enginePatternsToSuppress(beliefs),
-      favoured: engineFavouredPatterns(beliefs),
-      decided: decidedStatements(beliefs),
-    });
+    const snapshot = await loadSuiteSnapshot(organizationId);
+    return readFromSnapshot(snapshot, reasoned);
+  },
+
+  /**
+   * One complete run: the snapshot, the read taken from it, and the
+   * fingerprint that says whether anything has moved since. Callers that
+   * schedule runs use this so the suite is read once, not three times.
+   */
+  async run(organizationId: ID, reasoned?: Hypothesis[]) {
+    const snapshot = await loadSuiteSnapshot(organizationId);
+    return {
+      read: readFromSnapshot(snapshot, reasoned),
+      packet: packetFromSnapshot(snapshot),
+      fingerprint: snapshotFingerprint(snapshot),
+      trail: learningTrail(snapshot.memory),
+    };
   },
 
   /** The only material the model stage may reason over. */
   async packet(organizationId: ID) {
-    const [snapshot, beliefs] = await Promise.all([
-      loadSuiteSnapshot(organizationId),
-      stewardService.memory(organizationId).catch(() => [] as MemoryBelief[]),
-    ]);
-    return packetFor(snapshot, {
-      suppressed: enginePatternsToSuppress(beliefs),
-      decided: decidedStatements(beliefs),
-    });
+    return packetFromSnapshot(await loadSuiteSnapshot(organizationId));
   },
+
+  /**
+   * What the engine has learned from this workspace's decisions, in full.
+   *
+   * Read straight from the append-only belief ledger, so the trail is the
+   * record itself rather than a summary of it.
+   */
+  async learning(organizationId: ID): Promise<LearningTrail> {
+    const beliefs = await stewardService
+      .memory(organizationId)
+      .catch(() => [] as MemoryBelief[]);
+    return learningTrail(beliefs);
+  },
+
+
 
   /**
    * Record what a person decided about a proposal. This is the only write the
