@@ -282,3 +282,31 @@ function ReadFooting({ read }: { read: EngineRead }) {
     </div>
   );
 }
+
+/**
+ * The same read, compressed to one line for Home.
+ *
+ * Home is a doorway, not a console: it says the one thing that would change
+ * someone's day and points at Pulse for the rest. Deterministic only — the
+ * model stage runs where a person went looking for it.
+ */
+export function BusinessReadSummary({ read }: { read: EngineRead }) {
+  const lead = read.recommendations[0];
+  return (
+    <TTCard className="p-5">
+      <p className="tt-eyebrow">What the engine reads across the suite</p>
+      <p className="mt-2 font-serif text-lg leading-snug text-foreground">{read.headline}</p>
+      {lead ? (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {lead.headline} — {lead.rationale}
+        </p>
+      ) : null}
+      <Link
+        to="/modules/pulse"
+        className="mt-4 inline-block font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground underline underline-offset-4 transition-colors hover:text-royal"
+      >
+        Open Pulse →
+      </Link>
+    </TTCard>
+  );
+}
