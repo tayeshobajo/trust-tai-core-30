@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PostgrestError } from "@supabase/supabase-js";
 
-import { classifyError, healthMessage } from "./conductor-schema";
+import { LEARNING_TABLES, classifyError, healthMessage } from "./conductor-schema";
 
 function err(partial: Partial<PostgrestError>): PostgrestError {
   return {
@@ -57,5 +57,29 @@ describe("conductor schema health", () => {
 
   it("says plainly when everything is reachable", () => {
     expect(healthMessage([], [], [])).toContain("Ledger reachable");
+  });
+});
+
+describe("the V3 learning ledger check", () => {
+  it("names both outcome tables, and only those", () => {
+    expect([...LEARNING_TABLES]).toEqual(["conductor_observations", "conductor_learning"]);
+  });
+
+  it("distinguishes an absent V3 migration from a refused one", () => {
+    /* This is the exact pair the live project returns today: V2 present and
+     * anon-denied, V3 not created at all. */
+    expect(
+      classifyError(
+        err({
+          code: "PGRST205",
+          message: "Could not find the table 'public.conductor_learning' in the schema cache",
+        }),
+      ),
+    ).toBe("missing");
+    expect(
+      classifyError(
+        err({ code: "42501", message: "permission denied for table conductor_observations" }),
+      ),
+    ).toBe("forbidden");
   });
 });
