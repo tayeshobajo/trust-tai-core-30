@@ -343,7 +343,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
           ? "Nothing I can read is at risk."
           : `${atRisk.length} vital sign${atRisk.length === 1 ? " is" : "s are"} at risk: ${atRisk
               .slice(0, 3)
-              .map((reading) => reading.label.toLowerCase())
+              .map((reading) => reading.definition.label.toLowerCase())
               .join(", ")}.`;
       answer = sentence([
         headline,
