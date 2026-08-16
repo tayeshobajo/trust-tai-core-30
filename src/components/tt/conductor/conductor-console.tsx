@@ -202,6 +202,7 @@ export function ConductorConsole({
                   <Link
                     to="/modules/roadmap/$roadmapId"
                     params={{ roadmapId: answer.roadmapCanon.roadmapId }}
+                    search={{ view: "overview" as const }}
                   >
                     <TTButton variant="secondary">Open the roadmap</TTButton>
                   </Link>
