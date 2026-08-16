@@ -114,7 +114,7 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
     }) =>
       recordFigure({
         organizationId: identity.organizationId,
-        recordedBy: { id: identity.userId, label: identity.displayName },
+        recordedBy: { id: identity.userId, label: identity.name },
         ...input,
       }),
     onSuccess: async () => {
@@ -129,7 +129,7 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
     mutationFn: async (draft: CorrectionDraft) =>
       recordCorrection({
         organizationId: identity.organizationId,
-        correctedBy: { id: identity.userId, label: identity.displayName },
+        correctedBy: { id: identity.userId, label: identity.name },
         ...(answer ? { answerId: answer.id, topic: answer.topic } : {}),
         ...(lastQuestion ? { question: lastQuestion } : {}),
         ...draft,
