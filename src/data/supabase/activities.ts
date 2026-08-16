@@ -97,19 +97,23 @@ export const supabaseActivity: ActivityStream = {
   async record(event) {
     const occurredAt = event.occurredAt ?? new Date().toISOString();
     const dedupeKey = dedupeKeyOf(event);
+    const subjectKey = event.subject.id;
+    const storable = UUID.test(subjectKey) ? subjectKey : subjectUuid(subjectKey);
     const payload: Row = {
       organization_id: event.organizationId,
       app_key: event.provenance.appId,
       event_type: event.name,
       actor_user_id: event.provenance.actor.type === "user" ? event.provenance.actor.id : null,
       entity_type: event.subject.type,
-      entity_id: event.subject.id,
+      entity_id: storable,
       summary: event.summary,
       occurred_at: occurredAt,
       payload: {
         ...(event.payload ?? {}),
         label: event.subject.label,
+        ...(storable === subjectKey ? {} : { entity_ref: subjectKey }),
         ...(dedupeKey ? { source_event_key: dedupeKey } : {}),
+
         provenance: {
           ...event.provenance,
           ...(dedupeKey ? { dedupe_key: dedupeKey } : {}),
