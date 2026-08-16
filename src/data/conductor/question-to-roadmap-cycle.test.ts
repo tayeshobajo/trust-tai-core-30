@@ -330,11 +330,13 @@ describe("human authority is unchanged", () => {
   });
 
   it("keeps roadmap operations behind a roadmap permission", () => {
-    expect(capabilityFor(ROADMAP_SHELL_OPERATION)).toContain("roadmap");
-    expect(capabilityFor(ROADMAP_DECISION_OPERATION)).toContain("roadmap");
+    expect(capabilityFor("roadmap", ROADMAP_SHELL_OPERATION)?.capability).toContain("roadmap");
+    expect(capabilityFor("roadmap", ROADMAP_DECISION_OPERATION)?.capability).toContain("roadmap");
   });
 
   it("never lets a learned lesson grant execution", () => {
-    expect(learningGrantsExecution()).toBe(false);
+    expect(
+      learningGrantsExecution({ id: "l1", organizationId: ORG } as never),
+    ).toBe(false);
   });
 });
