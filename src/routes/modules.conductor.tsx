@@ -85,6 +85,16 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
+  /*
+   * Before anything is written, the ledger is asked whether it exists at all.
+   * A missing migration is a named condition here, not a silent failed save.
+   */
+  const schema = useQuery({
+    queryKey: ["conductor-schema", identity.organizationId],
+    queryFn: () => checkConductorSchema(identity.organizationId),
+    staleTime: 60_000,
+  });
+
   const now = new Date().toISOString();
 
   /*
