@@ -278,7 +278,37 @@ export function ConductorConsole({ answer, thinking, onAsk }: ConductorConsolePr
             </section>
           ) : null}
 
+          {/* ---------------------------------------------------- evidence */}
+          {answer.evidence.length > 0 ? (
+            <section className="space-y-3">
+              <h2 className="text-sm uppercase tracking-wide text-[var(--tt-ink-muted)]">
+                What this answer rests on
+              </h2>
+              <TTCard className="space-y-2 p-5">
+                <ul className="space-y-2">
+                  {answer.evidence.map((ref) => (
+                    <li key={`${ref.kind}-${ref.label}`} className="flex flex-wrap items-baseline gap-2">
+                      <MetaPill>{ref.kind}</MetaPill>
+                      {ref.url ? (
+                        <a
+                          href={ref.url}
+                          className="text-sm underline-offset-4 hover:underline"
+                          rel="noreferrer"
+                        >
+                          {ref.label}
+                        </a>
+                      ) : (
+                        <span className="text-sm">{ref.label}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </TTCard>
+            </section>
+          ) : null}
+
           {/* ------------------------------------------------ the boundary */}
+
           <TTCard className="space-y-4 p-5">
             <button
               type="button"
