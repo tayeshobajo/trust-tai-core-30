@@ -9,16 +9,26 @@
 
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { ConductorConsole } from "@/components/tt/conductor/conductor-console";
+import { FiguresPanel } from "@/components/tt/conductor/figures-panel";
+import type { CorrectionDraft } from "@/components/tt/conductor/correct-answer";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { answerQuestion } from "@/data/intelligence/conductor";
 import { loadSuiteSnapshot } from "@/data/intelligence/service";
+import {
+  loadBusinessFigures,
+  loadBusinessIntents,
+  loadCorrections,
+  recordCorrection,
+  recordFigure,
+} from "@/data/supabase/conductor-service";
 import type { ConductorAnswer } from "@/domain/conductor";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+
 
 const TITLE = "Ask Trust Tai — the Conductor — Trust Tai OS";
 const DESCRIPTION =
