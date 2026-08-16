@@ -184,7 +184,7 @@ describe("stage 1 — a question yields a governed cross-room recommendation", (
         organizationId: ORG,
         fullName: `Person ${index}`,
         stage: "in_conversation" as const,
-        source: "scout",
+        source: "scout" as const,
         lastTouchAt: "2026-06-01T09:00:00.000Z",
         responseDueAt: "2026-07-01T09:00:00.000Z",
         observed: [],
