@@ -828,6 +828,7 @@ export type ConductorTopic =
   | "growth"
   | "plan"
   | "improve"
+  | "roadmap"
   | "unclear";
 
 export const CONDUCTOR_TOPIC_LABEL: Record<ConductorTopic, string> = {
@@ -838,6 +839,7 @@ export const CONDUCTOR_TOPIC_LABEL: Record<ConductorTopic, string> = {
   growth: "More business",
   plan: "Operating plan",
   improve: "System improvement",
+  roadmap: "Roadmap sequence",
   unclear: "Read of the business",
 };
 
