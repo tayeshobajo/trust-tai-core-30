@@ -36,12 +36,17 @@ import type {
 } from "@/domain/roadmap";
 import { UNKNOWN_STATEMENT, isActiveRoadmap, orderStages } from "@/domain/roadmap";
 
-import type { CanonMilestone, MilestoneAttention, RoadmapCanonRead } from "@/domain/conductor";
+import type {
+  CanonMilestone,
+  MilestoneAttention,
+  MilestoneProgression,
+  RoadmapCanonRead,
+} from "@/domain/conductor";
 
 import type { SuiteSnapshot } from "../derive";
 import type { InputResolution } from "./payload-fill";
 
-export type { CanonMilestone, MilestoneAttention, RoadmapCanonRead };
+export type { CanonMilestone, MilestoneAttention, MilestoneProgression, RoadmapCanonRead };
 
 export const ROADMAP_SHELL_OPERATION = "roadmap.create_shell";
 export const ROADMAP_DECISION_OPERATION = "roadmap.request_decision";
@@ -262,6 +267,16 @@ export function readRoadmapCanon(input: {
     milestoneAttention: stages
       ? milestoneAttentionOf({ milestones, openDecisions: open, pointB })
       : null,
+    /* Progression is only honest once the sequence itself was actually read. */
+    milestoneProgression: stages
+      ? milestoneProgressionOf({
+          milestones,
+          decisions: input.decisions.filter(
+            (decision) => decision.roadmapId === roadmap.id,
+          ),
+          pointB,
+        })
+      : null,
     openDecisions: open,
 
     nextMove: roadmap.nextMove
@@ -318,6 +333,9 @@ export function describeRoadmapCanon(canon: RoadmapCanonRead): string {
         ? `${canon.milestones.length} milestone${canon.milestones.length === 1 ? " is" : "s are"} sequenced; the first is "${canon.milestones[0]!.title}".`
         : "No milestones are sequenced yet.",
     );
+    if (canon.milestoneProgression) {
+      parts.push(canon.milestoneProgression.statement);
+    }
     if (canon.milestoneAttention) {
       const { milestone, because } = canon.milestoneAttention;
       parts.push(
