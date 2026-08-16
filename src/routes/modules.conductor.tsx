@@ -286,6 +286,28 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
         }
       />
 
+      {controlSchema.data && !controlSchema.data.ready ? (
+        <p className="text-sm text-[var(--tt-ink-muted)]">{controlSchema.data.message}</p>
+      ) : (
+        <ApprovalQueue
+          control={describeControl(control.data?.actions ?? [], access)}
+          receipts={control.data?.receipts ?? []}
+          canApprove={can(access, "conductor.approve")}
+          canExecute={can(access, "conductor.execute")}
+          deciding={decideMutation.isPending || approveAllMutation.isPending}
+          routing={routeMutation.isPending || routeAllMutation.isPending}
+          onDecide={(decisions) => decideMutation.mutateAsync(decisions).then(() => undefined)}
+          onRoute={(actionId) => routeMutation.mutateAsync(actionId).then(() => undefined)}
+          onRouteAll={() => routeAllMutation.mutateAsync().then(() => undefined)}
+        />
+      )}
+
+      {routeMutation.isError ? (
+        <p className="text-sm text-[var(--tt-ink-muted)]">
+          Nothing was handed over: {(routeMutation.error as Error).message}
+        </p>
+      ) : null}
+
       {record.isError ? (
         <p className="text-sm text-[var(--tt-ink-muted)]">
           That figure was not recorded: {(record.error as Error).message}
