@@ -198,9 +198,11 @@ export interface InputResolution {
   missing: string[];
   /** Provenance for every hydrated input. */
   source?: {
-    kind: "icp_profiles";
+    /** Which stored record the input came from: `icp_profiles`, `roadmaps`, … */
+    kind: string;
     recordId: string;
-    version: number;
+    /** Present when the source record is versioned. */
+    version?: number;
     fields: string[];
   };
 }
