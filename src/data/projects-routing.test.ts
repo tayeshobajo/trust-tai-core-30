@@ -9,6 +9,7 @@ import {
   routeSummary,
 } from "@/domain/project-routing";
 import { SUITE_EVENTS, mayEmit } from "@/domain/events";
+import { ROLE_PERMISSIONS, can, type AccessContext } from "@/domain/access";
 import type { ExecutionProject } from "@/domain/projects";
 
 function project(overrides: Partial<ExecutionProject> = {}): ExecutionProject {
@@ -136,5 +137,25 @@ describe("Projects → Ops / Studio routing", () => {
       expect(mayEmit("studio", key)).toBe(true);
       expect(mayEmit("projects", key)).toBe(false);
     }
+  });
+});
+
+describe("routing authority", () => {
+  it("keeps routing a human, role-bound action in Projects", () => {
+    const viewer: AccessContext = {
+      userId: "u2",
+      organizationId: "org-1",
+      role: "viewer",
+      permissions: ROLE_PERMISSIONS["viewer"],
+    };
+    const lead: AccessContext = {
+      userId: "u1",
+      organizationId: "org-1",
+      role: "project_lead",
+      permissions: ROLE_PERMISSIONS["project_lead"],
+    };
+    expect(can(viewer, "projects.write")).toBe(false);
+    expect(can(lead, "projects.write")).toBe(true);
+    expect(can(null, "projects.write")).toBe(false);
   });
 });
