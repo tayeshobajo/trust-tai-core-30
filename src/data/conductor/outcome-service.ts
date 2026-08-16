@@ -53,8 +53,10 @@ export interface ObserveRunResult {
 /**
  * One pass of observe → learn.
  *
- * Idempotent within a moment: observations are keyed by action and timestamp,
- * and a lesson identical to the standing one is not written again.
+ * Idempotent by content: an observation's id is the reading itself, so
+ * re-checking an unchanged room resolves to the row already there instead of
+ * adding a second identical result. A lesson identical to the standing one is
+ * not written again either.
  */
 export async function runObservationPass(input: ObserveRunInput): Promise<ObserveRunResult> {
   const now = input.now ?? new Date().toISOString();
@@ -66,6 +68,7 @@ export async function runObservationPass(input: ObserveRunInput): Promise<Observ
   };
 
   const receiptByAction = new Map(input.receipts.map((receipt) => [receipt.actionId, receipt]));
+  const known = new Map(ledger.observations.map((observation) => [observation.id, observation]));
   const observations: ActionObservation[] = [];
   const skipped: { actionId: ID; because: string }[] = [];
 
@@ -90,11 +93,24 @@ export async function runObservationPass(input: ObserveRunInput): Promise<Observ
       organizationId: input.organizationId,
       now,
     });
-    observations.push(await ledger.appendObservation(observation));
+    /* Same reading as one already recorded: nothing new happened, so nothing
+     * new is written and nothing new is counted. */
+    const existing = known.get(observation.id);
+    if (existing) {
+      skipped.push({
+        actionId: action.id,
+        because: "The owning room says exactly what it said last time; this is the same result, not a new one.",
+      });
+      continue;
+    }
+    const saved = await ledger.appendObservation(observation);
+    known.set(saved.id, saved);
+    observations.push(saved);
   }
 
   /* Distil per scope, so a lesson is about a room operation, not one event. */
-  const all = [...ledger.observations, ...observations];
+  const all = [...known.values()];
+
   const scopes = new Map<string, { owningApp: string; operation: string }>();
   for (const observation of all) {
     scopes.set(scopeKey({ owningApp: observation.owningApp, operation: observation.operation }), {
@@ -145,4 +161,27 @@ export async function learningContext(input: {
       ...(input.limit ? { limit: input.limit } : {}),
     }),
   );
+}
+
+/* ------------------------------------------------------------ operability */
+
+/**
+ * Which actions could honestly be re-checked right now.
+ *
+ * Only work that has actually been handed to a room, and only operations the
+ * system can read. Held, rejected, withdrawn and merely proposed actions are
+ * never observed — nothing has happened to them.
+ */
+export function observableActions(actions: ControlledAction[]): ControlledAction[] {
+  return actions.filter(
+    (action) => OBSERVABLE_STATES.includes(action.status) && canObserve(action.operation),
+  );
+}
+
+/** When the ledger last looked, in the organization's own record. */
+export function lastObservedAt(observations: ActionObservation[]): string | undefined {
+  return observations
+    .map((observation) => observation.measuredAt)
+    .sort()
+    .reverse()[0];
 }

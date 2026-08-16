@@ -26,6 +26,12 @@ import {
   type VitalReading,
 } from "@/domain/conductor";
 
+import type { LearningRecord } from "@/domain/outcomes";
+import {
+  learningForPacket,
+  relevantLearning,
+} from "@/data/conductor/learning";
+
 import { engineRead } from "../engine";
 import { actionsForRead } from "../engine/propose";
 import type { SuiteSnapshot } from "../derive";
@@ -141,6 +147,12 @@ export interface ConductorInput {
   suppressed?: string[];
   /** Statements a person decided. Inference never overrides these. */
   decided?: string[];
+  /**
+   * The outcome ledger (V3): what previous approved work actually produced.
+   * Passed in whole and filtered here to the rooms this answer touches, so a
+   * question about Comms never drags in every lesson the system ever formed.
+   */
+  priorLearning?: LearningRecord[];
 }
 
 /**
@@ -403,6 +415,61 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
   }
 
   const finalActions = proposedActions.length > 0 ? proposedActions : allActions.slice(0, 2);
+
+  /*
+   * What we learned last time, brought to bear on this answer.
+   *
+   * Bounded three ways: only the rooms this answer actually touches, only the
+   * operations it is about when it names any, and only the strongest current
+   * records — never the whole history, and never a superseded one. A person's
+   * correction outranks inference, and thin evidence stays labelled thin.
+   *
+   * Learning may sharpen the wording of a suggestion. It may not change who
+   * may do it, whether approval is needed, how consequential it is, or which
+   * adapters exist. None of those are read from here.
+   */
+  const roomsInPlay = Array.from(
+    new Set(
+      [
+        ...finalActions.map((action) => action.appId),
+        nextMove?.appId,
+        ...(plan?.rooms.map((room) => room.appId) ?? []),
+      ].filter((room): room is string => Boolean(room) && room !== "conductor"),
+    ),
+  );
+  const operationsInPlay = Array.from(new Set(finalActions.map((action) => action.operation)));
+  const lessons =
+    roomsInPlay.length === 0
+      ? []
+      : relevantLearning({
+          records: input.priorLearning ?? [],
+          rooms: roomsInPlay,
+          ...(operationsInPlay.length > 0 ? { operations: operationsInPlay } : {}),
+          limit: 3,
+        });
+  const priorLearning = learningForPacket(lessons);
+
+  /*
+   * A standing lesson is said out loud rather than quietly steering the
+   * answer. The suggestion still stands; the person simply gets to see what
+   * happened the last few times before authorising it again.
+   */
+  const standing = lessons.find((record) => record.basis === "decided") ?? lessons.find((record) => record.isRule);
+  if (standing) {
+    answer = sentence([
+      answer,
+      standing.basis === "decided"
+        ? `You corrected this before: ${standing.lesson}`
+        : `Worth knowing: ${standing.lesson}`,
+    ]);
+    evidence.push(
+      computed(
+        standing.basis === "decided"
+          ? "A correction you recorded about this room"
+          : "A pattern in the outcome ledger for this room",
+      ),
+    );
+  }
   const actionGraph = buildActionGraph({
     organizationId: snapshot.organizationId,
     purpose: question.trim().length > 0 ? question.trim() : "Read of the business",
@@ -428,6 +495,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     proposedActions: finalActions,
     ...(actionGraph ? { actionGraph } : {}),
     learning,
+    priorLearning,
     figures,
     control: CONDUCTOR_CONTROL,
     withheld: snapshot.withheld.map((row) => ({ appId: row.appId, reason: row.reason })),

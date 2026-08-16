@@ -47,6 +47,20 @@ export interface ActionExecutionRead {
   learning?: LearningRecord;
   /** Honest answer to "have we learned anything from this yet?" */
   learningState: "not_yet" | "one_result" | "pattern" | "human_corrected";
+  /**
+   * The intelligence layer's own lifecycle, kept deliberately separate from
+   * the business action's status. Knowing that a signal is absent says nothing
+   * about whether the owning room considers its work complete.
+   */
+  outcomeStage:
+    | "not_observed"
+    | "not_measurable"
+    | "signal_present"
+    | "signal_absent"
+    | "partial"
+    | "inconclusive";
+  /** When this action was last checked, if it ever was. */
+  lastCheckedAt?: string;
 }
 
 function stageFor(
@@ -116,6 +130,17 @@ function stageFor(
   };
 }
 
+function outcomeStage(
+  observation: ActionObservation | undefined,
+  measurable: boolean,
+): ActionExecutionRead["outcomeStage"] {
+  if (!observation) return measurable ? "not_observed" : "not_measurable";
+  if (observation.result === "not_measurable") return "not_measurable";
+  if (observation.result === "unknown") return "inconclusive";
+  if (observation.outcomeStatus === "inconclusive") return "inconclusive";
+  return observation.result;
+}
+
 function learningState(
   observation: ActionObservation | undefined,
   learning: LearningRecord | undefined,
@@ -178,6 +203,8 @@ export function buildExecutionRead(input: ExecutionReadInput): ActionExecutionRe
       ...(receiptByAction.get(action.id) ? { receipt: receiptByAction.get(action.id)! } : {}),
       ...(learning ? { learning } : {}),
       learningState: learningState(observation, learning),
+      outcomeStage: outcomeStage(observation, canObserve(action.operation)),
+      ...(observation ? { lastCheckedAt: observation.measuredAt } : {}),
     };
   });
 }

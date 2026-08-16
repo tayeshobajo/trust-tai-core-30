@@ -9,6 +9,8 @@
  * or a person's own correction — is shown as something learned.
  */
 
+import { useState } from "react";
+
 import { MetaPill, TTCard } from "@/components/tt/primitives";
 import type { ActionExecutionRead, ExecutionStage } from "@/data/intelligence/conductor/execution-read";
 import { METRIC_CLASS_LABEL } from "@/domain/outcomes";
@@ -31,6 +33,27 @@ const LEARNING_LABEL: Record<ActionExecutionRead["learningState"], string> = {
   human_corrected: "You corrected this",
 };
 
+const OUTCOME_LABEL: Record<ActionExecutionRead["outcomeStage"], string> = {
+  not_observed: "Not observed yet",
+  not_measurable: "Nothing can prove this yet",
+  signal_present: "Signal present",
+  signal_absent: "Signal absent",
+  partial: "Part of the signal",
+  inconclusive: "Inconclusive",
+};
+
+function whenLabel(at: string | undefined): string {
+  if (!at) return "never";
+  const date = new Date(at);
+  return Number.isNaN(date.getTime()) ? at : date.toLocaleString();
+}
+
+export interface CorrectionDraft {
+  owningApp: string;
+  operation: string;
+  statement: string;
+}
+
 export interface OutcomeLearningProps {
   reads: ActionExecutionRead[];
   statement: string;
@@ -41,10 +64,29 @@ export interface OutcomeLearningProps {
    * never mistaken for "nothing happened".
    */
   notice?: string;
+  /** When the ledger last looked at the owning rooms. */
+  lastCheckedAt?: string;
+  /** How many routed actions could honestly be re-checked right now. */
+  checkable?: number;
+  checking?: boolean;
+  onCheckOutcomes?: () => void;
+  /** A person's own reading, appended as a decided record. */
+  correcting?: boolean;
+  onCorrect?: (draft: CorrectionDraft) => void;
 }
 
-function Row({ read }: { read: ActionExecutionRead }) {
+function Row({
+  read,
+  correcting,
+  onCorrect,
+}: {
+  read: ActionExecutionRead;
+  correcting?: boolean;
+  onCorrect?: (draft: CorrectionDraft) => void;
+}) {
   const observation = read.observation;
+  const [open, setOpen] = useState(false);
+  const [statement, setStatement] = useState("");
   return (
     <li className="border-t border-[var(--tt-line)] py-4 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -93,6 +135,7 @@ function Row({ read }: { read: ActionExecutionRead }) {
       </dl>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        <MetaPill>{OUTCOME_LABEL[read.outcomeStage]}</MetaPill>
         <MetaPill>{LEARNING_LABEL[read.learningState]}</MetaPill>
         {read.learning ? (
           <span className="text-sm text-[var(--tt-ink-muted)]">
@@ -100,14 +143,91 @@ function Row({ read }: { read: ActionExecutionRead }) {
           </span>
         ) : null}
       </div>
+      {read.lastCheckedAt ? (
+        <p className="mt-2 text-xs text-[var(--tt-ink-muted)]">
+          Last checked {whenLabel(read.lastCheckedAt)}.
+        </p>
+      ) : null}
       {read.boundary ? (
         <p className="mt-2 text-xs text-[var(--tt-ink-muted)]">Boundary crossed: {read.boundary}</p>
+      ) : null}
+
+      {onCorrect ? (
+        <div className="mt-3">
+          {open ? (
+            <form
+              className="space-y-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (statement.trim().length === 0) return;
+                onCorrect({
+                  owningApp: read.action.owningApp,
+                  operation: read.action.operation,
+                  statement: statement.trim(),
+                });
+                setStatement("");
+                setOpen(false);
+              }}
+            >
+              <label className="block text-xs uppercase tracking-wide text-[var(--tt-ink-muted)]">
+                What actually happened, in your words
+              </label>
+              <textarea
+                value={statement}
+                onChange={(event) => setStatement(event.target.value)}
+                rows={2}
+                required
+                className="w-full rounded-md border border-[var(--tt-line)] bg-transparent px-3 py-2 text-sm"
+                placeholder="The draft was prepared, but I sent it by hand — the ledger cannot see that."
+              />
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={correcting || statement.trim().length === 0}
+                  className="rounded-md border border-[var(--tt-line)] px-3 py-1.5 text-sm disabled:opacity-50"
+                >
+                  {correcting ? "Recording…" : "Record correction"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-md px-3 py-1.5 text-sm text-[var(--tt-ink-muted)]"
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="text-xs text-[var(--tt-ink-muted)]">
+                Your reading is added to the ledger and outranks anything the system inferred.
+                Nothing already recorded is edited or removed.
+              </p>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="text-sm text-[var(--tt-ink-muted)] underline underline-offset-4"
+            >
+              Correct this reading
+            </button>
+          )}
+        </div>
       ) : null}
     </li>
   );
 }
 
-export function OutcomeLearning({ reads, statement, gaps = [], notice }: OutcomeLearningProps) {
+export function OutcomeLearning({
+  reads,
+  statement,
+  gaps = [],
+  notice,
+  lastCheckedAt,
+  checkable = 0,
+  checking = false,
+  onCheckOutcomes,
+  correcting,
+  onCorrect,
+}: OutcomeLearningProps) {
   return (
     <TTCard>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -115,6 +235,20 @@ export function OutcomeLearning({ reads, statement, gaps = [], notice }: Outcome
         <MetaPill>{reads.length} governed actions</MetaPill>
       </div>
       <p className="mt-1 text-sm text-[var(--tt-ink-muted)]">{statement}</p>
+
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[var(--tt-ink-muted)]">
+        <span>Last checked {whenLabel(lastCheckedAt)}.</span>
+        {onCheckOutcomes && checkable > 0 ? (
+          <button
+            type="button"
+            onClick={onCheckOutcomes}
+            disabled={checking}
+            className="underline underline-offset-4 disabled:opacity-50"
+          >
+            {checking ? "Checking…" : `Check outcomes (${checkable})`}
+          </button>
+        ) : null}
+      </div>
 
       {notice ? (
         <p className="mt-3 rounded-md border border-[var(--tt-line)] px-3 py-2 text-sm text-[var(--tt-ink-muted)]">
@@ -130,7 +264,12 @@ export function OutcomeLearning({ reads, statement, gaps = [], notice }: Outcome
       ) : (
         <ul className="mt-4">
           {reads.map((read) => (
-            <Row key={read.action.id} read={read} />
+            <Row
+              key={read.action.id}
+              read={read}
+              {...(correcting !== undefined ? { correcting } : {})}
+              {...(onCorrect ? { onCorrect } : {})}
+            />
           ))}
         </ul>
       )}

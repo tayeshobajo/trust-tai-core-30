@@ -936,6 +936,12 @@ export interface ConductorAnswer {
   control: ControlStatement;
   /** What earlier corrections changed about this answer. */
   learning: LearningState;
+  /**
+   * What the outcome ledger already knows about the rooms this answer touches,
+   * each sentence carrying how strongly it is held. Bounded and relevant —
+   * never the whole history — and never a source of authority.
+   */
+  priorLearning: string[];
   /** The recorded figures this answer stood on. */
   figures: BusinessFigure[];
   withheld: WithheldRoom[];

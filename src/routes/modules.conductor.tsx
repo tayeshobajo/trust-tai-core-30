@@ -15,7 +15,12 @@ import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { ApprovalQueue } from "@/components/tt/conductor/approval-queue";
 import { OutcomeLearning } from "@/components/tt/conductor/outcome-learning";
-import { runObservationPass } from "@/data/conductor/outcome-service";
+import {
+  lastObservedAt,
+  observableActions,
+  runObservationPass,
+} from "@/data/conductor/outcome-service";
+import { correctLearning } from "@/data/supabase/conductor-learning-service";
 import { ConductorConsole } from "@/components/tt/conductor/conductor-console";
 import { FiguresPanel } from "@/components/tt/conductor/figures-panel";
 import { SchemaStatus } from "@/components/tt/conductor/schema-status";
@@ -190,6 +195,9 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
         intents: ledger.data?.intents ?? [],
         figures: ledger.data?.figures ?? [],
         corrections: ledger.data?.corrections ?? [],
+        /* What earlier approved work actually produced. Filtered inside the
+         * reasoning path to the rooms this answer touches. */
+        priorLearning: control.data?.learning ?? [],
       });
 
       /*
@@ -247,6 +255,43 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
       /* An observation pass never blocks a handover. */
     }
   };
+
+  /*
+   * The deliberate re-check. Only offered when there is something honestly
+   * observable, and it never invents a result: an unchanged room resolves to
+   * the reading already recorded rather than a second identical one.
+   */
+  const checkOutcomes = useMutation({
+    mutationFn: observeNow,
+    onSuccess: refreshControl,
+  });
+
+  /*
+   * A person's own reading of what happened, appended as decided truth. It
+   * supersedes what the system inferred and is retrievable by later answers.
+   */
+  const correctReading = useMutation({
+    mutationFn: async (draft: { owningApp: string; operation: string; statement: string }) => {
+      const standing = (control.data?.learning ?? [])
+        .filter(
+          (record) =>
+            record.scope.owningApp === draft.owningApp &&
+            record.scope.operation === draft.operation,
+        )
+        .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))[0];
+      return correctLearning({
+        organizationId: identity.organizationId,
+        scope: { owningApp: draft.owningApp, operation: draft.operation },
+        statement: draft.statement,
+        correctedBy: actor,
+        ...(standing ? { standing } : {}),
+      });
+    },
+    onSuccess: refreshControl,
+  });
+
+  const checkable = observableActions(control.data?.actions ?? []).length;
+  const lastChecked = lastObservedAt(control.data?.observations ?? []);
 
   const routeMutation = useMutation({
     mutationFn: async (actionId: string) => {
@@ -369,6 +414,14 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
           reads={executionRead}
           statement={describeExecution(executionRead)}
           gaps={ADAPTER_GAPS}
+          {...(lastChecked ? { lastCheckedAt: lastChecked } : {})}
+          checkable={learningSchema.data?.ready ? checkable : 0}
+          checking={checkOutcomes.isPending}
+          onCheckOutcomes={() => checkOutcomes.mutate()}
+          correcting={correctReading.isPending}
+          {...(learningSchema.data?.ready
+            ? { onCorrect: (draft) => correctReading.mutate(draft) }
+            : {})}
           {...(learningSchema.data && !learningSchema.data.ready
             ? { notice: learningSchema.data.message }
             : {})}
