@@ -308,10 +308,5 @@ describe("Conductor V2 — three-branch controlled plan", () => {
     expect(held.status).toBe("held");
     expect(held.approval?.reason).toBe("Too early — one reply is enough.");
     expect(first.outcomes).toHaveLength(2);
-    console.log("EVIDENCE", JSON.stringify({
-      actions: (await loadControl(ORG)).map((a) => ({ id: a.id, key: a.sourceEventKey, status: a.status, receipt: a.receiptId ?? null })),
-      receipts: [...receiptRows.values()].map((r) => ({ id: r.id, action: r.actionId, adapter: r.adapterId, boundary: r.boundaryCrossed, approver: r.approvedBy.id, key: r.sourceEventKey, state: r.resultingState })),
-      events: names(),
-    }, null, 1));
   });
 });
