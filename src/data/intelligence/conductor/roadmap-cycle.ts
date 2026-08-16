@@ -378,7 +378,7 @@ export function resolveRoadmapSubject(input: {
 export interface RoadmapCycleResult {
   answer: string;
   canon?: RoadmapCanonRead;
-  nextMove?: { statement: string; appId: string; route: string; routeLabel: string };
+  nextMove?: { statement: string; appId: string; route: string; routeLabel: string } | undefined;
   proposals: ActionProposal[];
   resolutions: Record<string, InputResolution>;
   evidence: EvidenceRef[];
