@@ -460,7 +460,7 @@ async function notifyReceivingRoom(
   let delivered = false;
   let because = "No inbox is configured for that room yet, so nobody was notified.";
   try {
-    const response = await fetch("/api/public/routing.notify", {
+    const response = await fetch("/api/public/routing/notify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
