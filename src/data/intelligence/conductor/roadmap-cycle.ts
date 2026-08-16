@@ -214,16 +214,6 @@ export function milestoneProgressionOf(input: {
   };
 }
 
-
-  /* 3. Earliest unfinished milestone in the recorded sequence. */
-  const first = open[0]!;
-  return {
-    milestone: first,
-    rule: "sequence_position",
-    because: `Earliest unfinished milestone in the recorded sequence (position ${first.position}, ${first.state.replace(/_/g, " ")}, ${first.tier}). No dependency is recorded against it.`,
-  };
-}
-
 /** Map Roadmap state onto the canonical concepts. Read-only and pure. */
 export function readRoadmapCanon(input: {
   roadmap: Roadmap;
