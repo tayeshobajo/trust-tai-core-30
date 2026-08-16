@@ -16,6 +16,19 @@
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/**
+ * Generic typing bridge: as soon as `src/integrations/supabase/types.ts`
+ * contains the real generated `Database` export (non-empty `public.Tables`),
+ * the client below becomes `SupabaseClient<Database>` and every `.from()` /
+ * `.rpc()` call is compile-checked. While the file still holds the empty
+ * placeholder schema, the client stays untyped so nothing breaks.
+ */
+type HasGeneratedSchema = [keyof Database["public"]["Tables"]] extends [never] ? false : true;
+export type TrustTaiClient = HasGeneratedSchema extends true
+  ? SupabaseClient<Database>
+  : SupabaseClient;
 
 /** Trust Tai's managed Supabase project reference. */
 export const TRUST_TAI_PROJECT_REF = "okydosoacqdnursmmenf";
@@ -65,8 +78,8 @@ function trustTaiFetch(key: string): typeof fetch {
   };
 }
 
-function create(): SupabaseClient {
-  return createClient(config.url, config.key, {
+function create(): TrustTaiClient {
+  return createClient<Database>(config.url, config.key, {
     global: { fetch: trustTaiFetch(config.key) },
     auth: {
       storage: typeof window !== "undefined" ? window.localStorage : undefined,
@@ -75,13 +88,13 @@ function create(): SupabaseClient {
       autoRefreshToken: true,
       detectSessionInUrl: typeof window !== "undefined",
     },
-  });
+  }) as TrustTaiClient;
 }
 
-let instance: SupabaseClient | undefined;
+let instance: TrustTaiClient | undefined;
 
 /** The one Supabase client for the whole app. */
-export const supabase = new Proxy({} as SupabaseClient, {
+export const supabase = new Proxy({} as TrustTaiClient, {
   get(_target, prop, receiver) {
     if (!instance) instance = create();
     return Reflect.get(instance, prop, receiver);
