@@ -153,6 +153,12 @@ export interface ConductorInput {
    * question about Comms never drags in every lesson the system ever formed.
    */
   priorLearning?: LearningRecord[];
+  /**
+   * The organisation's saved ICP, read from `icp_profiles`. When present, the
+   * discovery proposal is filled from it so Scout's adapter has the brief it
+   * requires. Absent, the proposal stays look-only — nothing is invented.
+   */
+  icp?: IcpContext | null;
 }
 
 /**
