@@ -39,7 +39,13 @@ import { findBlindSpots } from "./blindspots";
 import { readFactory } from "./factory";
 import { detectFriction, proposeImprovements } from "./improve";
 import { buildActionGraph } from "./graph";
-import { fillProposalPayloads, type IcpContext } from "./payload-fill";
+import {
+  DISCOVERY_PROPOSAL_OPERATION,
+  fillProposalPayloads,
+  resolveProposalInputs,
+  type IcpContext,
+} from "./payload-fill";
+
 import { figuresWithCorrections, isSuppressed, learningState } from "./learning";
 import { buildOperatingPlan } from "./plan";
 import { readVitals, troubledAreas, vitalReading } from "./vitals";
