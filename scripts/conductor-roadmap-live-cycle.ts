@@ -46,14 +46,21 @@ if (signIn.error || !signIn.data.user) throw new Error(`sign-in failed: ${signIn
 log("user", signIn.data.user.email ?? signIn.data.user.id);
 
 log("STEP 2 — membership + capabilities");
-const membership = await supabase
+const memberships = await supabase
   .from("organization_memberships")
   .select("organization_id, role, status")
-  .eq("status", "active")
-  .maybeSingle();
-if (membership.error || !membership.data) {
-  throw new Error(`no active membership under RLS: ${membership.error?.message ?? "none"}`);
+  .eq("status", "active");
+if (memberships.error || !memberships.data?.length) {
+  throw new Error(`no active membership under RLS: ${memberships.error?.message ?? "none"}`);
 }
+log("active memberships", memberships.data);
+const preferred = process.env["TT_ORG_ID"];
+const membership = {
+  data:
+    (preferred
+      ? memberships.data.find((row) => String((row as Record<string, unknown>)["organization_id"]) === preferred)
+      : undefined) ?? memberships.data[0],
+};
 const organizationId = String((membership.data as Record<string, unknown>)["organization_id"]);
 const role = String((membership.data as Record<string, unknown>)["role"]);
 log("organization", `${organizationId} (${role})`);
