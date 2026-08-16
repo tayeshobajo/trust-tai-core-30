@@ -17,6 +17,7 @@
 import { roadmapService } from "@/data/supabase/roadmap-service";
 import type { RoadmapSubjectKind } from "@/domain/roadmap";
 import type { RoomAdapter } from "@/domain/conductor-control";
+import { existingEquivalentDecision } from "@/data/intelligence/conductor/roadmap-cycle";
 import { adapterReceipt, requireText, roomVerdict } from "./adapter-kit";
 
 const SUBJECT_KINDS: RoadmapSubjectKind[] = ["client", "prospect", "relationship"];
@@ -195,6 +196,29 @@ export const roadmapDecisionAdapter: RoomAdapter = {
           failure: "That roadmap is not in this organization.",
         });
       }
+      /*
+       * Duplication safety. A retry, a refresh or a second phrasing of the
+       * same unresolved question must not leave Roadmap holding the same
+       * decision twice. The existing one is returned as the receipt.
+       */
+      const already = existingEquivalentDecision(
+        String(prepared.payload!["question"]),
+        detail.decisions,
+      );
+      if (already) {
+        return adapterReceipt({
+          action,
+          adapter: this,
+          context,
+          status: "routed",
+          resultingState: "routed",
+          result: {
+            reference: already.id,
+            label: "That decision is already open in Roadmap, waiting on you",
+          },
+        });
+      }
+
       const options = prepared.payload!["options"] as string[];
       const recommendation = prepared.payload!["recommendation"];
       const decision = await roadmapService.addDecision(

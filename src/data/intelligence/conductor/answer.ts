@@ -44,11 +44,14 @@ import {
   fillProposalPayloads,
   resolveProposalInputs,
   type IcpContext,
+  type InputResolution,
 } from "./payload-fill";
+import type { RoadmapCanonRead } from "./roadmap-cycle";
 
 import { figuresWithCorrections, isSuppressed, learningState } from "./learning";
 import { buildOperatingPlan } from "./plan";
 import { readVitals, troubledAreas, vitalReading } from "./vitals";
+import { planRoadmapCycle } from "./roadmap-cycle";
 
 /** Every reading across every area, flattened. */
 function allReadings(vitals: { areas: { readings: VitalReading[] }[] }): VitalReading[] {
@@ -68,6 +71,21 @@ interface TopicRule {
  * question into an answer about something else.
  */
 const TOPIC_RULES: TopicRule[] = [
+  /*
+   * Roadmap first: "what decision in our roadmap deserves my attention" is a
+   * Roadmap question, not a generic attention question, and must be read
+   * against real Roadmap state rather than the recommendation stream.
+   */
+  {
+    topic: "roadmap",
+    patterns: [
+      /\broadmaps?\b/i,
+      /\bpoint (a|b)\b/i,
+      /\bmilestones?\b/i,
+      /\bsequence\b/i,
+      /\bdestination\b/i,
+    ],
+  },
   {
     topic: "plan",
     patterns: [
@@ -232,6 +250,9 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
   let watch: ConductorAnswer["watch"];
   let shownImprovements: SystemImprovement[] = [];
   let proposedActions: ActionProposal[] = [];
+  /* Roadmap input resolutions, merged with Scout's below. */
+  let roadmapResolutions: Record<string, InputResolution> = {};
+  let roadmapCanon: RoadmapCanonRead | undefined;
 
   const troubled = troubledAreas(vitals);
   const worstFlow = factory.warnings[0];
@@ -397,6 +418,26 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
       break;
     }
 
+    /*
+     * Roadmap. Answered from real Roadmap state in Roadmap's own language:
+     * Point A, the proof under it, whether Point B is inferred or decided,
+     * and which decision is already waiting on a person. An existing open
+     * decision is surfaced, never duplicated, and no decision is ever
+     * answered here.
+     */
+    case "roadmap": {
+      const cycle = planRoadmapCycle({ snapshot, question });
+      answer = cycle.answer;
+      if (cycle.nextMove) nextMove = cycle.nextMove;
+      proposedActions = cycle.proposals;
+      roadmapResolutions = cycle.resolutions;
+      evidence.push(...cycle.evidence);
+      if (cycle.canon) {
+        roadmapCanon = cycle.canon;
+      }
+      break;
+    }
+
     case "business_read":
     case "unclear":
     default: {
@@ -471,7 +512,10 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
    * the missing fields named on it.
    */
   const finalActions = fillProposalPayloads(selected.slice(0, 3), input.icp ?? null);
-  const inputResolutions = resolveProposalInputs(finalActions, input.icp ?? null);
+  const inputResolutions = {
+    ...resolveProposalInputs(finalActions, input.icp ?? null),
+    ...roadmapResolutions,
+  };
 
 
   /*
@@ -552,6 +596,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     improvements: shownImprovements,
     proposedActions: finalActions,
     inputResolutions,
+    ...(roadmapCanon ? { roadmapCanon } : {}),
 
     ...(actionGraph ? { actionGraph } : {}),
     learning,
