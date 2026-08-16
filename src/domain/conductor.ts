@@ -930,6 +930,10 @@ export interface ConductorAnswer {
   /** The same work, ordered across rooms. Prepared only, never executed. */
   actionGraph?: ConductorActionGraph;
   control: ControlStatement;
+  /** What earlier corrections changed about this answer. */
+  learning: LearningState;
+  /** The recorded figures this answer stood on. */
+  figures: BusinessFigure[];
   withheld: WithheldRoom[];
   /** The metric to watch to find out whether the answer was any good. */
   watch?: { statement: string; vitalKey?: string };

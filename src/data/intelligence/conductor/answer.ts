@@ -15,7 +15,9 @@ import type { ActionProposal } from "@/domain/intelligence-engine";
 import {
   CONDUCTOR_CONTROL,
   type BlindSpot,
+  type BusinessFigure,
   type BusinessIntent,
+  type ConductorCorrection,
   type ConductorAnswer,
   type ConductorTopic,
   type OperatingPlan,
@@ -31,6 +33,7 @@ import { findBlindSpots } from "./blindspots";
 import { readFactory } from "./factory";
 import { detectFriction, proposeImprovements } from "./improve";
 import { buildActionGraph } from "./graph";
+import { figuresWithCorrections, isSuppressed, learningState } from "./learning";
 import { buildOperatingPlan } from "./plan";
 import { readVitals, troubledAreas, vitalReading } from "./vitals";
 
@@ -424,6 +427,8 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     improvements: shownImprovements,
     proposedActions: finalActions,
     ...(actionGraph ? { actionGraph } : {}),
+    learning,
+    figures,
     control: CONDUCTOR_CONTROL,
     withheld: snapshot.withheld.map((row) => ({ appId: row.appId, reason: row.reason })),
     ...(watch ? { watch } : {}),
