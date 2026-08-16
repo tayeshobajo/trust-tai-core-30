@@ -118,13 +118,16 @@ const READERS: Record<
       };
     }
     return {
-      result: match.savedCount > 0 ? "signal_present" : "partial",
+      result: (match.resultCount ?? 0) > 0 ? "signal_present" : "partial",
       truth: "observed",
       evidence: [
-        { label: `Scout run ${match.id} saved ${match.savedCount} companies`, kind: "computed" },
+        {
+          label: `Scout run ${match.id} (${match.status}) saved ${match.resultCount ?? 0} companies`,
+          kind: "computed",
+        },
       ],
       because:
-        match.savedCount > 0
+        (match.resultCount ?? 0) > 0
           ? "Scout ran the pass and saved companies it could verify."
           : "Scout ran the pass but saved nothing it could verify.",
       metricKey: "scout.discovery_runs",
@@ -205,8 +208,10 @@ export async function observeAction(input: ObservationInput): Promise<ActionObse
     measuredAt: at,
     ...(measured ? { observedAt: at } : {}),
     provenance: {
-      source: "conductor.outcome_observer",
-      note: reading.because,
+      appId: "conductor",
+      actor: { type: "system", id: "conductor.outcome_observer", label: reading.because },
+      observedAt: at,
+      confidence: reading.truth === "observed" ? "observed" : "inferred",
     },
   };
 }
