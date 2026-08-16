@@ -9,7 +9,7 @@ import {
   routeSummary,
 } from "@/domain/project-routing";
 import { SUITE_EVENTS, mayEmit } from "@/domain/events";
-import { ROLE_PERMISSIONS, can, type AccessContext } from "@/domain/access";
+import { can, type AccessContext } from "@/domain/access";
 import type { ExecutionProject } from "@/domain/projects";
 
 function project(overrides: Partial<ExecutionProject> = {}): ExecutionProject {
@@ -146,13 +146,13 @@ describe("routing authority", () => {
       userId: "u2",
       organizationId: "org-1",
       role: "viewer",
-      permissions: ROLE_PERMISSIONS["viewer"],
+      active: true,
     };
     const lead: AccessContext = {
       userId: "u1",
       organizationId: "org-1",
       role: "project_lead",
-      permissions: ROLE_PERMISSIONS["project_lead"],
+      active: true,
     };
     expect(can(viewer, "projects.write")).toBe(false);
     expect(can(lead, "projects.write")).toBe(true);
