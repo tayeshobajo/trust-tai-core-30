@@ -140,9 +140,19 @@ export function milestoneAttentionOf(input: {
         ...(input.openDecisions[0] ? { decisionId: input.openDecisions[0].id } : {}),
       };
     }
+  }
+
+  /* 3. Earliest unfinished milestone in the recorded sequence. */
+  const first = open[0]!;
+  return {
+    milestone: first,
+    rule: "sequence_position",
+    because: `Earliest unfinished milestone in the recorded sequence (position ${first.position}, ${first.state.replace(/_/g, " ")}, ${first.tier}). No dependency is recorded against it.`,
+  };
 }
 
 /* --------------------------------------------------------- progression */
+
 
 /**
  * What changed once a person answered a decision (V3.4).
