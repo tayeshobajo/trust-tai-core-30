@@ -110,6 +110,32 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
     staleTime: 60_000,
   });
 
+  /* The V2 control ledger is checked separately: without it the Conductor
+   * still reasons, but nothing may be approved or handed to a room. */
+  const controlSchema = useQuery({
+    queryKey: ["conductor-control-schema", identity.organizationId],
+    queryFn: () => checkControlSchema(identity.organizationId),
+    staleTime: 60_000,
+  });
+
+  const access = accessContext({
+    userId: identity.userId,
+    organizationId: identity.organizationId,
+    role: identity.role,
+  });
+  const actor = { id: identity.userId, label: identity.name };
+
+  const control = useQuery({
+    queryKey: ["conductor-control", identity.organizationId],
+    queryFn: async () => {
+      const [actions, receipts] = await Promise.all([
+        loadControlledActions(identity.organizationId),
+        loadReceipts(identity.organizationId),
+      ]);
+      return { actions, receipts };
+    },
+  });
+
   const now = new Date().toISOString();
 
   /*
@@ -120,15 +146,67 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
   const ask = useMutation({
     mutationFn: async (question: string) => {
       const snapshot = await loadSuiteSnapshot(identity.organizationId);
-      return answerQuestion({
+      const result = await answerQuestion({
         snapshot,
         question,
         intents: ledger.data?.intents ?? [],
         figures: ledger.data?.figures ?? [],
         corrections: ledger.data?.corrections ?? [],
       });
+
+      /*
+       * Preparing the queue is not acting: the graph becomes governed actions
+       * sitting at "proposed" until a person decides. Idempotent on the
+       * action's source key, so re-asking never duplicates the queue.
+       */
+      if (result.actionGraph && controlSchema.data?.ready) {
+        const actions = buildControlledActions({
+          organizationId: identity.organizationId,
+          graph: result.actionGraph,
+          answerId: result.id,
+          now: new Date().toISOString(),
+          existing: control.data?.actions ?? [],
+        });
+        await publishProposedActions(actions, access, actor).catch(() => undefined);
+        await queryClient.invalidateQueries({
+          queryKey: ["conductor-control", identity.organizationId],
+        });
+      }
+      return result;
     },
     onSuccess: (result) => setAnswer(result),
+  });
+
+  const refreshControl = () =>
+    queryClient.invalidateQueries({ queryKey: ["conductor-control", identity.organizationId] });
+
+  const decideMutation = useMutation({
+    mutationFn: async (
+      decisions: { actionId: string; kind: "approve" | "hold" | "reject" | "withdraw"; reason?: string }[],
+    ) => decide(control.data?.actions ?? [], decisions, access, actor),
+    onSuccess: refreshControl,
+  });
+
+  const approveAllMutation = useMutation({
+    mutationFn: async () => approveEverything(control.data?.actions ?? [], access, actor),
+    onSuccess: refreshControl,
+  });
+
+  const routeMutation = useMutation({
+    mutationFn: async (actionId: string) => {
+      const actions = control.data?.actions ?? [];
+      const action = actions.find((row) => row.id === actionId);
+      if (!action) throw new Error("That action is no longer in the queue.");
+      const outcome = await routeAction(action, actions, access, actor);
+      if (outcome.refusedBecause) throw new Error(outcome.refusedBecause);
+      return outcome;
+    },
+    onSuccess: refreshControl,
+  });
+
+  const routeAllMutation = useMutation({
+    mutationFn: async () => routeApproved(control.data?.actions ?? [], access, actor),
+    onSuccess: refreshControl,
   });
 
   /** Recording a figure re-asks the last question, so the answer moves with it. */
