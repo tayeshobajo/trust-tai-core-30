@@ -104,6 +104,7 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     relationships,
     roadmaps,
     decisions,
+    stages,
     projects,
     events,
     opsActivities,
@@ -114,6 +115,8 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     safe("comms", base.relationships, () => commsService.list(organizationId)),
     safe("roadmap", base.roadmaps, () => roadmapService.list(organizationId)),
     safe("roadmap", base.openDecisions, () => roadmapService.openDecisions(organizationId)),
+    /* Milestones. A failed read stays null: unknown is said, never guessed. */
+    safe("roadmap", base.roadmapStages, () => roadmapService.stagesByRoadmap(organizationId)),
     safe("projects", base.projects, () => projectsService.list(organizationId)),
     safe("activity", base.events, () =>
       supabaseActivity.list({ organizationId, limit: ACTIVITY_READ_LIMIT }),
@@ -147,6 +150,7 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     relationships,
     roadmaps,
     decisions,
+    stages,
     projects,
     events,
     opsActivities,
@@ -164,6 +168,7 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     relationships: relationships.value,
     roadmaps: roadmaps.value,
     openDecisions: decisions.value,
+    roadmapStages: stages.value,
     projects: projects.value,
     events: events.value,
     opsActivities: opsActivities.value,

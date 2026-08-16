@@ -43,6 +43,11 @@ export interface SuiteSnapshot {
   relationships: Relationship[];
   roadmaps: Roadmap[];
   openDecisions: RoadmapDecision[];
+  /**
+   * Stages, grouped by roadmap id, exactly as Roadmap holds them. `null`
+   * means the sequence could not be read; an empty map read successfully.
+   */
+  roadmapStages: Record<ID, RoadmapStage[]> | null;
   projects: ExecutionProject[];
   events: ActivityEvent[];
   /** Rows written by the Ops specialist app into the shared activity table. */
@@ -62,6 +67,7 @@ export function emptySnapshot(organizationId: ID, now = new Date().toISOString()
     relationships: [],
     roadmaps: [],
     openDecisions: [],
+    roadmapStages: null,
     projects: [],
     events: [],
     opsActivities: [],
