@@ -170,6 +170,46 @@ export function ConductorConsole({
           {/* ----------------------------------------------- operating plan */}
           {answer.plan ? <PlanPanel plan={answer.plan} /> : null}
 
+          {/* ------------------------------------------------ roadmap state */}
+          {answer.roadmapCanon ? (
+            <TTCard className="space-y-2 p-5 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <MetaPill>{answer.roadmapCanon.subjectLabel}</MetaPill>
+                <MetaPill>{answer.roadmapCanon.status.replace(/_/g, " ")}</MetaPill>
+                <MetaPill>
+                  Point B {answer.roadmapCanon.pointB?.tier ?? "not stated"}
+                </MetaPill>
+              </div>
+              <p className="text-[var(--tt-ink-muted)]">
+                Point A:{" "}
+                {answer.roadmapCanon.pointA[0]?.value ?? "not established"}
+              </p>
+              {answer.roadmapCanon.anchorProof ? (
+                <p className="text-[var(--tt-ink-muted)]">
+                  Proof: {answer.roadmapCanon.anchorProof.value}
+                </p>
+              ) : null}
+              {answer.roadmapCanon.openDecisions.length > 0 ? (
+                <div className="space-y-1 border-t border-[var(--tt-rule)] pt-2">
+                  <p>
+                    Already open in Roadmap, waiting on your answer — not raised again here:
+                  </p>
+                  {answer.roadmapCanon.openDecisions.map((decision) => (
+                    <p key={decision.id} className="text-[var(--tt-ink-muted)]">
+                      “{decision.question}”
+                    </p>
+                  ))}
+                  <Link to={`/modules/roadmap/${answer.roadmapCanon.roadmapId}`}>
+                    <TTButton variant="secondary">Open the roadmap</TTButton>
+                  </Link>
+                </div>
+              ) : null}
+              <p className="text-xs text-[var(--tt-ink-muted)]">
+                {answer.roadmapCanon.executionBoundary}
+              </p>
+            </TTCard>
+          ) : null}
+
 
           {/* -------------------------------------------------- improvements */}
           {answer.improvements.length > 0 ? (
@@ -246,7 +286,7 @@ export function ConductorConsole({
                       >
                         {resolution.status === "resolved"
                           ? resolution.because
-                          : `Needs Scout targeting details before this can be routed: ${resolution.missing.join(", ")}.`}
+                          : resolution.because}
                       </p>
                     );
                   })()}
