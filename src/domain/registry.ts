@@ -169,6 +169,18 @@ export const APP_REGISTRY: AppRegistration[] = [
     icon: "Activity",
     capabilities: ["analytics", "intelligence"],
   },
+  {
+    id: "conductor",
+    layer: "intelligence",
+    name: "Conductor",
+    slug: "conductor",
+    description:
+      "The command layer: ask the whole business a question and get a grounded answer, with bounded next steps you authorise.",
+    status: "in_build",
+    route: "/modules/conductor",
+    icon: "Compass",
+    capabilities: ["intelligence", "analytics"],
+  },
 ];
 
 export function getApp(slug: string): AppRegistration | undefined {
