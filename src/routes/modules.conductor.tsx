@@ -13,14 +13,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
+import { ApprovalQueue } from "@/components/tt/conductor/approval-queue";
 import { ConductorConsole } from "@/components/tt/conductor/conductor-console";
 import { FiguresPanel } from "@/components/tt/conductor/figures-panel";
 import { SchemaStatus } from "@/components/tt/conductor/schema-status";
-import { checkConductorSchema } from "@/data/supabase/conductor-schema";
+import { checkConductorSchema, checkControlSchema } from "@/data/supabase/conductor-schema";
 import type { CorrectionDraft } from "@/components/tt/conductor/correct-answer";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { answerQuestion } from "@/data/intelligence/conductor";
+import { buildControlledActions } from "@/data/intelligence/conductor/control";
+import {
+  approveEverything,
+  decide,
+  describeControl,
+  publishProposedActions,
+  routeAction,
+  routeApproved,
+} from "@/data/conductor/orchestrator";
 import { loadSuiteSnapshot } from "@/data/intelligence/service";
+import {
+  loadControlledActions,
+  loadReceipts,
+} from "@/data/supabase/conductor-control-service";
 import {
   loadBusinessFigures,
   loadBusinessIntents,
@@ -28,6 +42,7 @@ import {
   recordCorrection,
   recordFigure,
 } from "@/data/supabase/conductor-service";
+import { accessContext, can } from "@/domain/access";
 import type { ConductorAnswer } from "@/domain/conductor";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
