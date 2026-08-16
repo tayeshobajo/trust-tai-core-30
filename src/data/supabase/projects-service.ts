@@ -26,6 +26,7 @@ import { LIFECYCLE_FOR_STATE, stateFromLifecycle } from "@/domain/projects";
 import { can, type AccessContext } from "@/domain/access";
 import {
   ROUTE_EVENT_KEY,
+  ROUTE_TARGET_LABEL,
   buildRouteRequest,
   routeMetadata,
   routeSummary,
@@ -33,6 +34,8 @@ import {
   type RouteIntent,
 } from "@/domain/project-routing";
 
+
+import { buildRouteLedger, canAcceptRoute, type RouteLedgerEntry } from "@/domain/route-ledger";
 
 import { supabaseActivity } from "./activities";
 import { emitSuiteEvent } from "@/data/events/suite-events";
@@ -378,7 +381,126 @@ export const projectsService = {
       confidence: "observed",
     });
 
+    /*
+     * Tell the receiving room a request exists. Delivery is best effort and
+     * always recorded honestly: if no endpoint is configured for that room,
+     * the ledger says so rather than implying somebody was told.
+     */
+    await notifyReceivingRoom(request, context);
+
     return request;
   },
+
+  /** Every route this organization has asked for, read from the shared stream. */
+  async routeLedger(organizationId: ID, limit = 200): Promise<RouteLedgerEntry[]> {
+    const events = await supabaseActivity.list({ organizationId, limit });
+    return buildRouteLedger(events);
+  },
+
+  /**
+   * Take an ask back. Only a person with `projects.write` may withdraw, the
+   * event is keyed on the route it withdraws, and from then on the ledger
+   * refuses any acceptance the receiving room records.
+   */
+  async withdrawRoute(
+    entry: RouteLedgerEntry,
+    because: string,
+    context: ProjectsContext,
+    access: AccessContext | null | undefined,
+  ): Promise<void> {
+    if (!can(access, "projects.write")) {
+      throw new Error("Your role can read Projects but not withdraw work it routed.");
+    }
+    if (entry.status === "accepted") {
+      throw new Error(
+        `${ROUTE_TARGET_LABEL[entry.targetApp]} has already accepted this. Talk to them rather than withdrawing it here.`,
+      );
+    }
+    if (entry.status === "withdrawn") return;
+    const reason = because.trim();
+    if (!reason) throw new Error("Say why the ask is being taken back.");
+
+    await emitSuiteEvent({
+      key: "PROJECT_ROUTE_WITHDRAWN",
+      organizationId: entry.organizationId,
+      actor: {
+        type: "user",
+        id: context.userId,
+        ...(context.userLabel ? { label: context.userLabel } : {}),
+      },
+      subject: { type: "project", id: entry.projectId, label: entry.projectName },
+      summary: `${entry.projectName} withdrew its ask to ${ROUTE_TARGET_LABEL[entry.targetApp]}: ${entry.requestedOutcome}.`,
+      sourceEventKey: `${entry.key}:withdrawn`,
+      metadata: {
+        route_event_key: entry.key,
+        target_app: entry.targetApp,
+        project_id: entry.projectId,
+        because: reason,
+        acceptance: "no_longer_acceptable",
+      },
+      confidence: "observed",
+    });
+  },
+
+  /** Whether the receiving room may still record acceptance for a route. */
+  acceptanceAllowed(entry: RouteLedgerEntry | undefined): boolean {
+    return canAcceptRoute(entry);
+  },
 };
+
+/**
+ * Hand the request to the receiving room's inbox, when one is configured.
+ * Ops is an external product and Studio is not built yet, so a missing
+ * endpoint is an ordinary, recorded outcome — never a failed user action.
+ */
+async function notifyReceivingRoom(
+  request: ProjectRouteRequest,
+  context: ProjectsContext,
+): Promise<void> {
+  let delivered = false;
+  let because = "No inbox is configured for that room yet, so nobody was notified.";
+  try {
+    const response = await fetch("/api/public/routing.notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        organizationId: request.organizationId,
+        projectId: request.projectId,
+        projectName: request.projectName,
+        targetApp: request.targetApp,
+        requestedOutcome: request.requestedOutcome,
+        because: request.because,
+        routeEventKey: request.sourceEventKey,
+        requestedAt: request.requestedAt,
+      }),
+    });
+    const body = (await response.json()) as { delivered?: boolean; because?: string };
+    delivered = body.delivered === true;
+    if (typeof body.because === "string" && body.because) because = body.because;
+  } catch {
+    because = "That room could not be reached just now. The request still stands.";
+  }
+
+  await emitSuiteEvent({
+    key: "PROJECT_ROUTE_NOTIFIED",
+    organizationId: request.organizationId,
+    actor: {
+      type: "user",
+      id: context.userId,
+      ...(context.userLabel ? { label: context.userLabel } : {}),
+    },
+    subject: { type: "project", id: request.projectId, label: request.projectName },
+    summary: delivered
+      ? `${ROUTE_TARGET_LABEL[request.targetApp]} was notified of the ask on ${request.projectName}.`
+      : `${ROUTE_TARGET_LABEL[request.targetApp]} was not notified: ${because}`,
+    sourceEventKey: `${request.sourceEventKey}:notified`,
+    metadata: {
+      route_event_key: request.sourceEventKey,
+      target_app: request.targetApp,
+      delivered,
+      because,
+    },
+    confidence: "observed",
+  });
+}
 
