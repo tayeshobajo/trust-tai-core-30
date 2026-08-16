@@ -199,7 +199,10 @@ export function ConductorConsole({
                       “{decision.question}”
                     </p>
                   ))}
-                  <Link to={`/modules/roadmap/${answer.roadmapCanon.roadmapId}`}>
+                  <Link
+                    to="/modules/roadmap/$roadmapId"
+                    params={{ roadmapId: answer.roadmapCanon.roadmapId }}
+                  >
                     <TTButton variant="secondary">Open the roadmap</TTButton>
                   </Link>
                 </div>
@@ -284,9 +287,7 @@ export function ConductorConsole({
                             : "text-[var(--tt-warn,var(--tt-ink))]"
                         }`}
                       >
-                        {resolution.status === "resolved"
-                          ? resolution.because
-                          : resolution.because}
+                        {resolution.because}
                       </p>
                     );
                   })()}
