@@ -66,7 +66,9 @@ function graph(): ConductorActionGraph {
     id: "graph-1",
     organizationId: ORG,
     purpose: "Recover pipeline",
-    createdAt: NOW,
+    requiresApproval: true,
+    owningApps: ["comms", "projects"],
+    generatedAt: NOW,
     steps: [
       {
         id: "step-comms",
@@ -107,7 +109,7 @@ function graph(): ConductorActionGraph {
         evidence: [{ label: "Project is waiting", kind: "computed" }],
       },
     ],
-  } as ConductorActionGraph;
+  };
 }
 
 function actions(): ControlledAction[] {
