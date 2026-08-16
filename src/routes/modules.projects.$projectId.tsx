@@ -21,6 +21,8 @@ import {
 } from "@/components/tt/primitives";
 import { LaunchOpsButton } from "@/components/tt/ops/launch-ops";
 import { StateTrack, daysAgo, movedPhrase } from "@/components/tt/projects/state-track";
+import { RouteWork } from "@/components/tt/projects/route-work";
+
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import { isOpenProject } from "@/domain/projects";
@@ -33,7 +35,7 @@ import {
   type ExecutionProject,
   type ExecutionState,
 } from "@/domain/projects";
-import type { WorkspaceIdentity } from "@/lib/workspace";
+import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
 
 export const Route = createFileRoute("/modules/projects/$projectId")({
   head: () => ({
@@ -201,6 +203,11 @@ function ProjectWorkspace({
           />
         </section>
       ) : null}
+
+      {isOpenProject(project) ? (
+        <RouteWork project={project} context={context} access={workspaceAccess(identity)} />
+      ) : null}
+
 
       <section className="tt-surface space-y-5 p-6">
         <SectionHeading eyebrow="The move" title={move.move} description={move.because} />

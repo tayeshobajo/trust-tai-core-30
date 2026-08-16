@@ -111,8 +111,21 @@ A handoff moves a **reference plus reasoning**, never a copy of a record.
 
 Current gates: Scout → Comms (`buildHandoffDraft.ready`), Comms → Roadmap
 (`roadmapHandoffReadiness`), Roadmap → Projects (`projectFromMilestone`, approved
-milestones only).
+milestones only), Projects → Ops/Studio (`buildRouteRequest`).
+
+**A route is a request. Acceptance belongs to the receiving room.**
+
+Projects may route specialized work outward (`src/domain/project-routing.ts`) and emit
+`project.routed_to_ops` / `project.routed_to_studio`, because "Projects asked another room
+to take this" is Project-owned truth. Projects creates no Ops website, monitoring record
+or Studio asset, and never records acceptance. The receiving room owns acceptance and
+execution state and emits `ops.work_accepted|started|completed` /
+`studio.work_accepted|started|completed`. Those definitions exist in the shared
+vocabulary; receiver-side emission is deferred until Ops and Studio can persist it
+cleanly. Routing requires a human with `projects.write`; intelligence may only propose it
+as a bounded `ActionProposal`.
 
 Cross-app moments are emitted once, by the owning room, in the shared vocabulary
 of `src/domain/events.ts` via `emitSuiteEvent`. Room-local history stays a plain
 activity. Steward and Pulse read this stream; they never write to it.
+

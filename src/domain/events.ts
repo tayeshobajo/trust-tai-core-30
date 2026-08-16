@@ -109,12 +109,55 @@ export const SUITE_EVENTS = {
     emittedBy: "projects",
     meaning: "The committed outcome was delivered.",
   },
+  PROJECT_ROUTED_TO_OPS: {
+    name: "project.routed_to_ops",
+    emittedBy: "projects",
+    meaning:
+      "Projects asked Ops to take a bounded piece of technical work. A request, not acceptance.",
+  },
+  PROJECT_ROUTED_TO_STUDIO: {
+    name: "project.routed_to_studio",
+    emittedBy: "projects",
+    meaning:
+      "Projects asked Studio to take a bounded piece of content work. A request, not acceptance.",
+  },
+  OPS_WORK_ACCEPTED: {
+    name: "ops.work_accepted",
+    emittedBy: "ops",
+    meaning: "Ops accepted routed work and now owns its execution state.",
+  },
+  OPS_WORK_STARTED: {
+    name: "ops.work_started",
+    emittedBy: "ops",
+    meaning: "Ops began the accepted work.",
+  },
+  OPS_WORK_COMPLETED: {
+    name: "ops.work_completed",
+    emittedBy: "ops",
+    meaning: "Ops finished the accepted work.",
+  },
+  STUDIO_WORK_ACCEPTED: {
+    name: "studio.work_accepted",
+    emittedBy: "studio",
+    meaning: "Studio accepted routed work and now owns its execution state.",
+  },
+  STUDIO_WORK_STARTED: {
+    name: "studio.work_started",
+    emittedBy: "studio",
+    meaning: "Studio began the accepted work.",
+  },
+  STUDIO_WORK_COMPLETED: {
+    name: "studio.work_completed",
+    emittedBy: "studio",
+    meaning: "Studio finished the accepted work.",
+  },
   CONTENT_PUBLISHED: {
     name: "content.published",
     emittedBy: "studio",
     meaning: "An asset went live for a client or for Trust Tai.",
   },
 } as const satisfies Record<string, SuiteEventDefinition>;
+
 
 export type SuiteEventKey = keyof typeof SUITE_EVENTS;
 export type SuiteEventName = (typeof SUITE_EVENTS)[SuiteEventKey]["name"];
@@ -128,6 +171,15 @@ export function suiteEvent(name: string): SuiteEventDefinition | undefined {
 export function isSuiteEvent(name: string): name is SuiteEventName {
   return SUITE_EVENT_LIST.some((definition) => definition.name === name);
 }
+
+/**
+ * Only the owning room may author its own truth. Readers (Steward, Pulse) and
+ * neighbouring rooms may read every event but emit none of them.
+ */
+export function mayEmit(appId: string, key: SuiteEventKey): boolean {
+  return SUITE_EVENTS[key].emittedBy === appId;
+}
+
 
 /** The smallest useful envelope an emitting app has to fill in. */
 export interface SuiteEventInput {
