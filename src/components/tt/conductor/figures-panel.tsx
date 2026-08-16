@@ -31,7 +31,14 @@ function today(now: string): string {
   return new Date(now).toISOString().slice(0, 10);
 }
 
-export function FiguresPanel({ figures, now, saving, onRecord }: FiguresPanelProps) {
+export function FiguresPanel({
+  figures,
+  now,
+  saving,
+  disabled,
+  disabledReason,
+  onRecord,
+}: FiguresPanelProps) {
   const [key, setKey] = useState(FIGURE_INPUTS[0]!.key);
   const [value, setValue] = useState("");
   const [asOf, setAsOf] = useState(today(now));
@@ -42,7 +49,7 @@ export function FiguresPanel({ figures, now, saving, onRecord }: FiguresPanelPro
   const valid = value.trim().length > 0 && Number.isFinite(parsed);
 
   async function submit() {
-    if (!valid) return;
+    if (!valid || disabled) return;
     await onRecord({
       key,
       value: parsed,
@@ -134,11 +141,14 @@ export function FiguresPanel({ figures, now, saving, onRecord }: FiguresPanelPro
           className="w-full rounded-md border border-[var(--tt-rule)] bg-transparent p-2 text-sm"
         />
         <div className="flex items-center justify-between gap-3">
-          <MetaPill>Feeds: {definition.feeds}</MetaPill>
-          <TTButton type="submit" variant="secondary" disabled={!valid || saving}>
+          <MetaPill>{disabled ? "Recording unavailable" : `Feeds: ${definition.feeds}`}</MetaPill>
+          <TTButton type="submit" variant="secondary" disabled={!valid || saving || disabled}>
             {saving ? "Recording…" : "Record figure"}
           </TTButton>
         </div>
+        {disabled && disabledReason ? (
+          <p className="text-xs text-[var(--tt-ink-muted)]">{disabledReason}</p>
+        ) : null}
       </form>
     </TTCard>
   );
