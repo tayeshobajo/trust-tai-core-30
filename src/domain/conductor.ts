@@ -27,6 +27,7 @@
 import type { EvidenceRef } from "./confidence";
 import type { ID, ISODateTime } from "./entities";
 import type { ActionProposal } from "./intelligence-engine";
+import type { RoadmapDecision, RoadmapNote, Tier } from "./roadmap";
 
 /* ------------------------------------------------------------------ basis */
 
