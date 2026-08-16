@@ -106,8 +106,8 @@ const actor = { id: "u1", label: "Tai" };
 function graph(): ConductorActionGraph {
   const base = {
     dependsOn: [] as string[],
-    consequential: true,
-    requiresApproval: true,
+    consequential: true as const,
+    requiresApproval: true as const,
     basis: "recommended" as const,
     evidence: [{ label: "Observed in the suite", kind: "computed" as const }],
   };
@@ -227,7 +227,8 @@ describe("Conductor V2 — three-branch controlled plan", () => {
       "adapter:projects.blocker",
     ]);
     // The Projects adapter records a blocker only — nothing else.
-    expect(Object.keys(projectUpdate.mock.calls[0]![1] as object)).toEqual(["blockedBecause"]);
+    const patch = (projectUpdate.mock.calls as unknown as unknown[][])[0]![1] as object;
+    expect(Object.keys(patch)).toEqual(["blockedBecause"]);
   });
 
   it("4+5. the held branch persists its decision and reason, and has no room effect", async () => {
