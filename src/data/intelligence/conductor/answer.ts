@@ -130,6 +130,22 @@ export function classifyQuestion(question: string): ConductorTopic {
   return "unclear";
 }
 
+/**
+ * Questions that are genuinely about demand: weak pipeline, needing more
+ * qualified companies, or finding new prospects. Narrow on purpose — a general
+ * Scout question must not trigger a sourcing run.
+ */
+const DEMAND_PATTERNS: RegExp[] = [
+  /\b(thin|weak|empty|dry|light)\b[^.?]{0,24}\b(pipeline|funnel)\b/i,
+  /\bpipeline\b[^.?]{0,24}\b(thin|weak|empty|dry|drying|shrink)/i,
+  /\bmore (qualified )?(companies|prospects|leads|pipeline)\b/i,
+  /\bnew (prospects|companies|leads)\b/i,
+  /\b(create|generate|build|drive) (more )?demand\b/i,
+  /\bfind (more )?(companies|prospects|clients|leads)\b/i,
+  /\bnot enough (companies|prospects|leads|pipeline)\b/i,
+];
+
+
 /* ----------------------------------------------------------------- helpers */
 
 function computed(label: string): EvidenceRef {
