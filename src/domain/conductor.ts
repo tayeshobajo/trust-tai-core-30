@@ -286,7 +286,7 @@ export const VITAL_SIGNS: VitalSignDefinition[] = [
     key: "open_delivery",
     question: "can_deliver",
     label: "Work in delivery",
-    indicator: "observed" as unknown as IndicatorKind extends never ? never : IndicatorKind,
+    indicator: "lagging",
     unit: "projects",
     whyItMatters: "Capacity is the guardrail on every demand target.",
     ownerApp: "projects",
