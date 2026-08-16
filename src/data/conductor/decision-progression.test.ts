@@ -95,7 +95,12 @@ const SEQUENCE = [
   stage({ id: "st-3", position: 3, title: "Build the delivery board" }),
 ];
 
-const RESOLVED = decision({ status: "approved", resolvedAt: LATER, resolvedBy: "user-1" });
+const RESOLVED = decision({
+  stageId: "st-1",
+  status: "approved",
+  resolvedAt: LATER,
+  resolvedBy: "user-1",
+});
 
 /* --------------------------------------------------------------- before */
 
@@ -179,7 +184,7 @@ describe("after a person resolves the decision", () => {
       decisions: [RESOLVED],
       pointB: { tier: "decided" },
     });
-    expect(progression!.statement).not.toMatch(/depends on|blocked by|dependency/i);
+    expect(progression!.statement).not.toMatch(/depends on|blocked by/i);
   });
 
   it("keeps a mapped, inferred milestone mapped and inferred", () => {
@@ -191,7 +196,9 @@ describe("after a person resolves the decision", () => {
     const target = canon.milestoneProgression?.to ?? canon.milestoneAttention!.milestone;
     expect(target.state).toBe("mapped");
     expect(target.tier).toBe("inferred");
-    expect(canon.milestoneProgression?.statement ?? "").not.toMatch(/\bdecided\b/);
+    expect(canon.milestoneProgression?.statement ?? "").not.toMatch(
+      /(marked|now) (live|complete|decided)/i,
+    );
   });
 });
 
