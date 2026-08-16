@@ -681,7 +681,8 @@ export function planRoadmapCycle(input: {
   if (subject.roadmap) {
     const canon = readRoadmapCanon({
       roadmap: subject.roadmap,
-      decisions: snapshot.openDecisions,
+      /* Open and answered together: progression is only readable with both. */
+      decisions: [...snapshot.openDecisions, ...snapshot.resolvedDecisions],
       /*
        * Stages come from the caller when it already read them, otherwise from
        * the snapshot. A snapshot that read stages successfully but holds none

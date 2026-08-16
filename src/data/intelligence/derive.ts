@@ -43,6 +43,8 @@ export interface SuiteSnapshot {
   relationships: Relationship[];
   roadmaps: Roadmap[];
   openDecisions: RoadmapDecision[];
+  /** Decisions a person already answered. Used to explain where attention moved. */
+  resolvedDecisions: RoadmapDecision[];
   /**
    * Stages, grouped by roadmap id, exactly as Roadmap holds them. `null`
    * means the sequence could not be read; an empty map read successfully.
@@ -67,6 +69,7 @@ export function emptySnapshot(organizationId: ID, now = new Date().toISOString()
     relationships: [],
     roadmaps: [],
     openDecisions: [],
+    resolvedDecisions: [],
     roadmapStages: null,
     projects: [],
     events: [],
