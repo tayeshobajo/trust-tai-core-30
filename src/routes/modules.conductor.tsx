@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { ApprovalQueue } from "@/components/tt/conductor/approval-queue";
+import { OutcomeLearning } from "@/components/tt/conductor/outcome-learning";
 import { ConductorConsole } from "@/components/tt/conductor/conductor-console";
 import { FiguresPanel } from "@/components/tt/conductor/figures-panel";
 import { SchemaStatus } from "@/components/tt/conductor/schema-status";
@@ -22,6 +23,15 @@ import type { CorrectionDraft } from "@/components/tt/conductor/correct-answer";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { answerQuestion } from "@/data/intelligence/conductor";
 import { buildControlledActions } from "@/data/intelligence/conductor/control";
+import {
+  buildExecutionRead,
+  describeExecution,
+} from "@/data/intelligence/conductor/execution-read";
+import { ADAPTER_GAPS } from "@/data/conductor/adapters";
+import {
+  loadLearning,
+  loadObservations,
+} from "@/data/supabase/conductor-learning-service";
 import {
   approveEverything,
   decide,
@@ -128,15 +138,30 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
   const control = useQuery({
     queryKey: ["conductor-control", identity.organizationId],
     queryFn: async () => {
-      const [actions, receipts] = await Promise.all([
+      const [actions, receipts, observations, learning] = await Promise.all([
         loadControlledActions(identity.organizationId),
         loadReceipts(identity.organizationId),
+        loadObservations(identity.organizationId),
+        loadLearning(identity.organizationId),
       ]);
-      return { actions, receipts };
+      return { actions, receipts, observations, learning };
     },
   });
 
   const now = new Date().toISOString();
+
+  /*
+   * The factory execution read: one honest line per governed action covering
+   * where it stands, what should have become true, what was actually found in
+   * the owning room, and whether that is enough to have learned anything.
+   */
+  const executionRead = buildExecutionRead({
+    actions: control.data?.actions ?? [],
+    receipts: control.data?.receipts ?? [],
+    observations: control.data?.observations ?? [],
+    learning: control.data?.learning ?? [],
+    access,
+  });
 
   /*
    * Reading is a deliberate act, not a background poll: the suite is read when
@@ -299,6 +324,14 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
           onDecide={(decisions) => decideMutation.mutateAsync(decisions).then(() => undefined)}
           onRoute={(actionId) => routeMutation.mutateAsync(actionId).then(() => undefined)}
           onRouteAll={() => routeAllMutation.mutateAsync().then(() => undefined)}
+        />
+      )}
+
+      {controlSchema.data && !controlSchema.data.ready ? null : (
+        <OutcomeLearning
+          reads={executionRead}
+          statement={describeExecution(executionRead)}
+          gaps={ADAPTER_GAPS}
         />
       )}
 
