@@ -853,6 +853,53 @@ export interface WithheldRoom {
   reason: string;
 }
 
+/* -------------------------------------------------------- action graph */
+
+/**
+ * One bounded step the Conductor has prepared. It is always `recommended`:
+ * nothing here has happened, and nothing here can happen without a person in
+ * the owning room.
+ */
+export interface ConductorActionStep {
+  id: string;
+  /** The room whose service would carry this out. Never the Conductor. */
+  owningApp: string;
+  route: string;
+  routeLabel: string;
+  title: string;
+  summary: string;
+  willDo: string[];
+  willNotDo: string[];
+  /** Step ids that must be authorised first. */
+  dependsOn: string[];
+  /** Consequential steps always require approval; so do all others today. */
+  consequential: boolean;
+  requiresApproval: true;
+  /** The permission a person needs in the owning room to authorise it. */
+  requiredCapability: string;
+  /** What should become observably true afterwards. */
+  expectedSignal: string;
+  basis: "recommended";
+  evidence: EvidenceRef[];
+}
+
+/**
+ * A typed, ordered set of steps across rooms. Preparing one changes nothing:
+ * it is a proposal shaped like a plan, not an execution schedule.
+ */
+export interface ConductorActionGraph {
+  id: ID;
+  organizationId: ID;
+  /** The question or intent this graph serves. */
+  purpose: string;
+  steps: ConductorActionStep[];
+  /** True whenever any step is consequential — i.e. always gated. */
+  requiresApproval: boolean;
+  /** Rooms touched, so a reader can see the blast radius at a glance. */
+  owningApps: string[];
+  generatedAt: ISODateTime;
+}
+
 /**
  * The response contract. Every field is either populated from evidence or
  * honestly empty; nothing here is padded to look complete.
@@ -880,6 +927,8 @@ export interface ConductorAnswer {
   improvements: SystemImprovement[];
   /** Bounded actions, each owned by a room and each requiring approval. */
   proposedActions: ActionProposal[];
+  /** The same work, ordered across rooms. Prepared only, never executed. */
+  actionGraph?: ConductorActionGraph;
   control: ControlStatement;
   withheld: WithheldRoom[];
   /** The metric to watch to find out whether the answer was any good. */

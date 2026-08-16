@@ -21,7 +21,8 @@ import {
 const BASIS_LABEL: Record<ValueBasis, string> = {
   observed: "Observed",
   decided: "You decided",
-  derived: "Derived",
+  inferred: "Inferred",
+  recommended: "Recommended",
   unknown: "Not known",
 };
 
