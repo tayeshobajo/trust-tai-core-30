@@ -183,7 +183,7 @@ describe("stage 1 — a question yields a governed cross-room recommendation", (
         id: `rel-${index}`,
         organizationId: ORG,
         fullName: `Person ${index}`,
-        stage: "conversation",
+        stage: "in_conversation" as const,
         source: "scout",
         lastTouchAt: "2026-06-01T09:00:00.000Z",
         responseDueAt: "2026-07-01T09:00:00.000Z",
@@ -194,7 +194,7 @@ describe("stage 1 — a question yields a governed cross-room recommendation", (
         createdAt: "2026-06-01T09:00:00.000Z",
         updatedAt: "2026-06-01T09:00:00.000Z",
       })),
-    } as ReturnType<typeof emptySnapshot>;
+    };
 
     const answer = answerQuestion({ snapshot, question: "how can we win more business" });
     expect(answer.actionGraph).toBeDefined();
