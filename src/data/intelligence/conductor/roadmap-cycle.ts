@@ -140,7 +140,70 @@ export function milestoneAttentionOf(input: {
         ...(input.openDecisions[0] ? { decisionId: input.openDecisions[0].id } : {}),
       };
     }
-  }
+}
+
+/* --------------------------------------------------------- progression */
+
+/**
+ * What changed once a person answered a decision (V3.4).
+ *
+ * Read from Roadmap truth only, and computed the same deterministic way twice:
+ * attention as it stood while the most recently resolved decision was still
+ * open, and attention as it stands now. If those differ, that difference is
+ * the progression — nothing is moved, resolved, reordered or completed here.
+ */
+export function milestoneProgressionOf(input: {
+  milestones: CanonMilestone[];
+  /** Every decision on this roadmap, open and resolved. */
+  decisions: RoadmapDecision[];
+  pointB: { tier: "inferred" | "decided" } | null;
+}): MilestoneProgression | null {
+  const open = input.decisions.filter((row) => row.status === "open");
+  const resolved = input.decisions
+    .filter((row) => row.status !== "open")
+    .sort((a, b) =>
+      (b.resolvedAt ?? b.updatedAt).localeCompare(a.resolvedAt ?? a.updatedAt),
+    );
+  const latest = resolved[0];
+  if (!latest) return null;
+
+  const before = milestoneAttentionOf({
+    milestones: input.milestones,
+    openDecisions: [...open, latest],
+    pointB: input.pointB,
+  });
+  if (!before) return null;
+
+  const after = milestoneAttentionOf({
+    milestones: input.milestones,
+    openDecisions: open,
+    pointB: input.pointB,
+  });
+
+  const decisionDriven =
+    (before.rule === "open_decision" || before.rule === "destination_first") &&
+    before.decisionId === latest.id;
+  const moved = after?.milestone.id !== before.milestone.id;
+  if (!moved && !decisionDriven) return null;
+
+  const statement = after
+    ? moved
+      ? `“${latest.question}” is now resolved (${latest.status}), so attention moves from “${before.milestone.title}” to “${after.milestone.title}” (${after.milestone.state.replace(/_/g, " ")}, ${after.milestone.tier}). ${after.because}`
+      : `“${latest.question}” is now resolved (${latest.status}), so that reason no longer holds attention on “${before.milestone.title}”. It still deserves attention, now for a different reason. ${before.because}`
+    : `“${latest.question}” is now resolved (${latest.status}), and every milestone on this roadmap is already live, so no milestone is waiting on you here.`;
+
+  return {
+    decisionId: latest.id,
+    question: latest.question,
+    resolution: latest.status as "approved" | "declined" | "deferred",
+    ...(latest.resolvedAt ? { resolvedAt: latest.resolvedAt } : {}),
+    from: before.milestone,
+    to: after?.milestone ?? null,
+    clearedDecisionReason: decisionDriven,
+    statement,
+  };
+}
+
 
   /* 3. Earliest unfinished milestone in the recorded sequence. */
   const first = open[0]!;
