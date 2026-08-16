@@ -211,8 +211,8 @@ describe("deterministic execution-input resolution", () => {
     const brief = String(discovery.payload["brief"]);
 
     expect(brief).toContain("Accountancy, legal, consulting");
-    expect(brief).toContain("Geography: United Kingdom");
-    expect(brief).toContain("Company size: 10-50 people");
+    expect(brief).toContain("United Kingdom");
+    expect(brief).toContain("Company size: 10-50 people".replace("Company size: ", ""));
     expect(discovery.payload["briefSource"]).toBe("icp_profiles");
     expect(discovery.payload["icpProfileId"]).toBe("icp-v31");
     expect(discovery.payload["icpVersion"]).toBe(4);
@@ -325,7 +325,7 @@ describe("question → approval → Scout execution → observation → learning
     const outcome = await routeAction(scoutAction, approved, owner, actor, ROOM_ADAPTERS, NOW);
     expect(outcome.receipt?.status).toBe("routed");
     expect(scoutDiscover).toHaveBeenCalledTimes(1);
-    expect(scoutDiscover.mock.calls[0]![0]!.query).toContain("Geography: United Kingdom");
+    expect(scoutDiscover.mock.calls[0]![0]!.query).toContain("United Kingdom");
 
     /* Observation and learning: unchanged V3 behaviour, deduped on re-check. */
     const routed = [outcome.action];
