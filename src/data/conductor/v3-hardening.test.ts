@@ -198,7 +198,11 @@ describe("re-checking is not re-happening", () => {
       confidence: "high",
       outcomeStatus: "measured",
       measuredAt: "2026-08-20T09:00:00.000Z",
-      provenance: { source: "scout" },
+      provenance: {
+        appId: "scout",
+        actor: { id: "system", label: "Conductor" },
+        observedAt: "2026-08-20T09:00:00.000Z",
+      },
     } as ActionObservation;
     const { store, ledger: sink } = ledger([foreign]);
     await runObservationPass({ organizationId: ORG, actions: [action()], receipts: [], ledger: sink });
@@ -271,7 +275,7 @@ describe("learning changes advice, never authority", () => {
     const { isSupportedOperation } = await import("@/domain/adapter-registry");
     const governed = action({ status: "proposed" });
     expect(governed.requiresApproval).toBe(true);
-    expect(isSupportedOperation("scout.start_discovery_run")).toBe(true);
-    expect(isSupportedOperation("ops.schedule_delivery")).toBe(false);
+    expect(isSupportedOperation("scout", "scout.start_discovery_run")).toBe(true);
+    expect(isSupportedOperation("ops", "ops.schedule_delivery")).toBe(false);
   });
 });
