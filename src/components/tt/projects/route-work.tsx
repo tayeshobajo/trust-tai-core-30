@@ -6,10 +6,11 @@
  * ids, evidence and boundary travelling with the ask.
  */
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { SectionHeading, TTButton, TTInput } from "@/components/tt/primitives";
+import { MetaPill, SectionHeading, TTButton, TTInput } from "@/components/tt/primitives";
+import { routeStanding, type RouteLedgerEntry } from "@/domain/route-ledger";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import type { AccessContext } from "@/domain/access";
 import { can } from "@/domain/access";
@@ -33,6 +34,26 @@ export function RouteWork({
   const [outcome, setOutcome] = useState("");
   const [because, setBecause] = useState("");
   const allowed = can(access, "projects.write");
+  const queryClient = useQueryClient();
+
+  const ledger = useQuery({
+    queryKey: ["project-routes", project.organizationId, project.id],
+    queryFn: async () =>
+      (await projectsService.routeLedger(project.organizationId)).filter(
+        (entry) => entry.projectId === project.id,
+      ),
+  });
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["project-routes"] });
+    void queryClient.invalidateQueries({ queryKey: ["pulse-routes"] });
+  };
+
+  const withdraw = useMutation({
+    mutationFn: ({ entry, because }: { entry: RouteLedgerEntry; because: string }) =>
+      projectsService.withdrawRoute(entry, because, context, access),
+    onSuccess: invalidate,
+  });
 
   const route = useMutation({
     mutationFn: () =>
@@ -53,6 +74,7 @@ export function RouteWork({
     onSuccess: () => {
       setOutcome("");
       setBecause("");
+      invalidate();
     },
   });
 
@@ -107,11 +129,87 @@ export function RouteWork({
           record.
         </p>
       ) : null}
+      {(ledger.data ?? []).length > 0 ? (
+        <div className="space-y-3 border-t border-border/60 pt-4">
+          <p className="tt-eyebrow">Already asked</p>
+          {(ledger.data ?? []).map((entry) => (
+            <RouteRow
+              key={entry.key}
+              entry={entry}
+              allowed={allowed}
+              pending={withdraw.isPending}
+              onWithdraw={(because) => withdraw.mutate({ entry, because })}
+            />
+          ))}
+          {withdraw.error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {withdraw.error instanceof Error
+                ? withdraw.error.message
+                : "That withdrawal could not be recorded."}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {route.error ? (
         <p role="alert" className="text-sm text-destructive">
           {route.error instanceof Error ? route.error.message : "That route could not be recorded."}
         </p>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * One ask, as it stands. Withdrawing is a person's decision and needs a
+ * reason: the receiving room reads why, and can no longer record acceptance.
+ */
+function RouteRow({
+  entry,
+  allowed,
+  pending,
+  onWithdraw,
+}: {
+  entry: RouteLedgerEntry;
+  allowed: boolean;
+  pending: boolean;
+  onWithdraw: (because: string) => void;
+}) {
+  const [because, setBecause] = useState("");
+  const open = entry.status === "requested";
+
+  return (
+    <div className="space-y-2 rounded-md bg-muted/30 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <MetaPill>{ROUTE_TARGET_LABEL[entry.targetApp]}</MetaPill>
+        <MetaPill>{entry.status}</MetaPill>
+        {entry.unanswered ? <MetaPill>Unanswered</MetaPill> : null}
+      </div>
+      <p className="max-w-reading text-sm text-foreground">{entry.requestedOutcome}</p>
+      <p className="max-w-reading text-sm text-muted-foreground">{routeStanding(entry)}</p>
+      {entry.withdrawnBecause ? (
+        <p className="max-w-reading text-sm text-muted-foreground">
+          Withdrawn because: {entry.withdrawnBecause}
+        </p>
+      ) : null}
+      {open ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <TTInput
+            value={because}
+            onChange={(event) => setBecause(event.target.value)}
+            placeholder="Why the ask is being taken back"
+            aria-label="Why this route is withdrawn"
+            className="max-w-sm"
+          />
+          <TTButton
+            size="sm"
+            variant="quiet"
+            disabled={!allowed || pending || because.trim().length === 0}
+            onClick={() => onWithdraw(because.trim())}
+          >
+            Withdraw this ask
+          </TTButton>
+        </div>
+      ) : null}
+    </div>
   );
 }

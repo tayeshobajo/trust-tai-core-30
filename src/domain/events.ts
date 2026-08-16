@@ -121,6 +121,18 @@ export const SUITE_EVENTS = {
     meaning:
       "Projects asked Studio to take a bounded piece of content work. A request, not acceptance.",
   },
+  PROJECT_ROUTE_WITHDRAWN: {
+    name: "project.route_withdrawn",
+    emittedBy: "projects",
+    meaning:
+      "Projects withdrew a routing request. No room owes work on it, and acceptance can no longer be recorded.",
+  },
+  PROJECT_ROUTE_NOTIFIED: {
+    name: "project.route_notified",
+    emittedBy: "projects",
+    meaning:
+      "The receiving room was told a routing request exists, so it can consciously accept or reject it.",
+  },
   OPS_WORK_ACCEPTED: {
     name: "ops.work_accepted",
     emittedBy: "ops",

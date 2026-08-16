@@ -37,6 +37,7 @@ import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/pu
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
 import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/public/roadmap.research'
 import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/roadmap.studio'
+import { Route as ApiPublicRoutingNotifyRouteImport } from './routes/api/public/routing.notify'
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
 import { Route as ApiPublicStewardConversationRouteImport } from './routes/api/public/steward.conversation'
 import { Route as ApiPublicStewardInterpretRouteImport } from './routes/api/public/steward.interpret'
@@ -191,6 +192,11 @@ const ApiPublicRoadmapStudioRoute = ApiPublicRoadmapStudioRouteImport.update({
   path: '/api/public/roadmap/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRoutingNotifyRoute = ApiPublicRoutingNotifyRouteImport.update({
+  id: '/api/public/routing/notify',
+  path: '/api/public/routing/notify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicScoutDiscoverRoute = ApiPublicScoutDiscoverRouteImport.update({
   id: '/api/public/scout/discover',
   path: '/api/public/scout/discover',
@@ -273,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
+  '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
@@ -306,6 +313,7 @@ export interface FileRoutesByTo {
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
+  '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
@@ -346,6 +354,7 @@ export interface FileRoutesById {
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
+  '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
@@ -387,6 +396,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
+    | '/api/public/routing/notify'
     | '/api/public/scout/discover'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
@@ -420,6 +430,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
+    | '/api/public/routing/notify'
     | '/api/public/scout/discover'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
@@ -459,6 +470,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
+    | '/api/public/routing/notify'
     | '/api/public/scout/discover'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
@@ -486,6 +498,7 @@ export interface RootRouteChildren {
   ApiPublicRoadmapAskRoute: typeof ApiPublicRoadmapAskRoute
   ApiPublicRoadmapResearchRoute: typeof ApiPublicRoadmapResearchRoute
   ApiPublicRoadmapStudioRoute: typeof ApiPublicRoadmapStudioRoute
+  ApiPublicRoutingNotifyRoute: typeof ApiPublicRoutingNotifyRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
   ApiPublicStewardConversationRoute: typeof ApiPublicStewardConversationRoute
   ApiPublicStewardInterpretRoute: typeof ApiPublicStewardInterpretRoute
@@ -692,6 +705,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRoadmapStudioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/routing/notify': {
+      id: '/api/public/routing/notify'
+      path: '/api/public/routing/notify'
+      fullPath: '/api/public/routing/notify'
+      preLoaderRoute: typeof ApiPublicRoutingNotifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/scout/discover': {
       id: '/api/public/scout/discover'
       path: '/api/public/scout/discover'
@@ -869,6 +889,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRoadmapAskRoute: ApiPublicRoadmapAskRoute,
   ApiPublicRoadmapResearchRoute: ApiPublicRoadmapResearchRoute,
   ApiPublicRoadmapStudioRoute: ApiPublicRoadmapStudioRoute,
+  ApiPublicRoutingNotifyRoute: ApiPublicRoutingNotifyRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
   ApiPublicStewardConversationRoute: ApiPublicStewardConversationRoute,
   ApiPublicStewardInterpretRoute: ApiPublicStewardInterpretRoute,

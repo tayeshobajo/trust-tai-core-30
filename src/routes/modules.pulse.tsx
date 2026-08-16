@@ -13,10 +13,13 @@ import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { BusinessRead } from "@/components/tt/intelligence/business-read";
 import { LearningTrailPanel } from "@/components/tt/intelligence/learning-trail";
+import { UnansweredRoutes } from "@/components/tt/intelligence/unanswered-routes";
 import { useIntelligenceRuns } from "@/hooks/use-intelligence-runs";
 import { EmptyState, MetaPill, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { deriveSignals } from "@/data/intelligence/derive";
+import { projectsService } from "@/data/supabase/projects-service";
+import { unansweredRoutes } from "@/domain/route-ledger";
 import { intelligenceService, loadSuiteSnapshot } from "@/data/intelligence/service";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { SIGNAL_CATEGORY_LABEL, type Signal } from "@/domain/signals";
@@ -92,6 +95,12 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
 
   const signals = data?.signals ?? [];
 
+  /* Routed work nobody answered. Read only: Projects owns what happens next. */
+  const routes = useQuery({
+    queryKey: ["pulse-routes", organizationId],
+    queryFn: async () => unansweredRoutes(await projectsService.routeLedger(organizationId)),
+  });
+
   return (
     <div className="space-y-12">
       <AppHero
@@ -147,6 +156,8 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
           That read could not be completed. Nothing has been changed.
         </p>
       ) : null}
+
+      <UnansweredRoutes entries={routes.data ?? []} loading={routes.isLoading} />
 
       {engine.trail ? <LearningTrailPanel trail={engine.trail} /> : null}
 

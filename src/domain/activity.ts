@@ -38,6 +38,9 @@ export type ActivityAction =
   /** Projects asked a specialist room to take a bounded piece of work. */
   | "routed_to_ops"
   | "routed_to_studio"
+  /** Projects took its own ask back, or told the receiving room about it. */
+  | "route_withdrawn"
+  | "route_notified"
   /** The receiving room's own lifecycle for routed work. */
   | "work_accepted"
   | "work_started"
