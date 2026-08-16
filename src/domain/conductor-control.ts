@@ -182,6 +182,8 @@ export interface ControlledAction {
   owningApp: string;
   /** An operation the owning room already performs, e.g. "comms.draft_reply". */
   operation: string;
+  /** References the owning room's service needs. Never a copy of room truth. */
+  payload?: Record<string, unknown>;
   /** Plain language: what a person is being asked to allow. */
   intent: string;
   /** Why it matters, in one sentence, carried from the evidence. */

@@ -110,6 +110,7 @@ export function buildControlledActions(
       proposalId: step.id,
       owningApp: step.owningApp,
       operation: step.operation ?? step.id,
+      ...(step.payload ? { payload: step.payload } : {}),
       intent: step.title,
       whyItMatters: whyFrom(step),
       evidence,
