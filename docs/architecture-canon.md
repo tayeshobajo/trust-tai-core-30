@@ -149,3 +149,29 @@ A route is a request. Three additions keep it honest end to end:
   a server-configured inbox (`OPS_ROUTING_INBOX_URL` /
   `STUDIO_ROUTING_INBOX_URL`). A missing inbox is an ordinary recorded outcome,
   never a failed user action and never a claim that somebody was told.
+
+
+## The Conductor law
+
+**The Conductor coordinates. Steward interprets. Owning rooms execute.**
+
+The Conductor (`src/domain/conductor.ts`, `src/data/intelligence/conductor/*`,
+surface at `/modules/conductor`) is an intelligence-layer room, not a business
+app. It holds no business truth of its own and writes none: it reads the same
+authorized suite snapshot the intelligence engine reads, through existing data
+boundaries and organization scoping.
+
+- **It never invents.** Every number carries a basis — observed, decided,
+  derived or unknown. A metric with no instrumentation is reported as a blind
+  spot, never estimated. A goal with no decided target is refused, not guessed.
+- **Human-decided truth is never overwritten.** Decided values outrank derived
+  ones and are echoed back unchanged.
+- **It plans only where assumptions hold.** An operating plan is produced only
+  when its required inputs are known; otherwise it states what is missing.
+- **Risk is causal, not cosmetic.** Leading-vs-lagging risk is derived from the
+  factory graph, so an upstream drought is named before the downstream number
+  falls.
+- **Control is proposal-first.** The Conductor may prepare a typed action graph
+  across rooms. Every consequential step requires a human with the owning app's
+  authority, and executes in that room's service. The Conductor never writes to
+  Scout, Comms, Roadmap, Projects, Ops or Studio, and never mutates itself.
