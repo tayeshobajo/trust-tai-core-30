@@ -47,11 +47,25 @@ export interface ConductorConsoleProps {
   answer?: ConductorAnswer;
   thinking?: boolean;
   onAsk: (question: string) => void | Promise<void>;
+  /** The hand-recorded figures panel, injected so the console stays pure. */
+  figures?: ReactNode;
+  onCorrect?: (draft: CorrectionDraft) => void | Promise<void>;
+  correcting?: boolean;
+  corrected?: boolean;
 }
 
-export function ConductorConsole({ answer, thinking, onAsk }: ConductorConsoleProps) {
+export function ConductorConsole({
+  answer,
+  thinking,
+  onAsk,
+  figures,
+  onCorrect,
+  correcting,
+  corrected,
+}: ConductorConsoleProps) {
   const [question, setQuestion] = useState("");
   const [showWorking, setShowWorking] = useState(false);
+
 
   async function ask(text: string) {
     const trimmed = text.trim();
