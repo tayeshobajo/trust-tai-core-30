@@ -40,6 +40,11 @@ function json<T>(row: Row, key: string, fallback: T): T {
   return value === null || value === undefined ? fallback : (value as T);
 }
 
+/** A unique-key clash means the row is already there, not that anything failed. */
+function isDuplicate(error: { code?: string | undefined; message: string }): boolean {
+  return error.code === "23505" || error.message.toLowerCase().includes("duplicate key");
+}
+
 function fail(error: { message: string }): never {
   throw new Error(error.message.includes("does not exist") ? MISSING : error.message);
 }
