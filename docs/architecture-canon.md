@@ -129,3 +129,23 @@ Cross-app moments are emitted once, by the owning room, in the shared vocabulary
 of `src/domain/events.ts` via `emitSuiteEvent`. Room-local history stays a plain
 activity. Steward and Pulse read this stream; they never write to it.
 
+
+## Routed work: withdrawal, silence and notification
+
+A route is a request. Three additions keep it honest end to end:
+
+- **The ledger is read, not stored.** `src/domain/route-ledger.ts` folds the
+  shared activity stream into one row per route (`project.routed_to_*` +
+  `ops|studio.work_accepted` + `project.route_withdrawn` +
+  `project.route_notified`). No second table, no duplicated truth.
+- **Withdrawal beats late acceptance.** A withdrawn route can never become
+  accepted; acceptance recorded afterwards is kept visible as *refused*.
+  Only a person with `projects.write`, giving a reason, may withdraw.
+- **Silence is reported, not blamed.** A request unanswered for
+  `UNANSWERED_AFTER_DAYS` (3) surfaces on Pulse with its evidence and a link
+  back to the owning project — the only room that can withdraw or chase.
+- **Notification is best effort and recorded.** Projects tells the receiving
+  room through `/api/public/routing/notify`, which forwards references only to
+  a server-configured inbox (`OPS_ROUTING_INBOX_URL` /
+  `STUDIO_ROUTING_INBOX_URL`). A missing inbox is an ordinary recorded outcome,
+  never a failed user action and never a claim that somebody was told.
