@@ -15,7 +15,7 @@ import { roadmapService } from "@/data/supabase/roadmap-service";
 import { scoutService } from "@/data/supabase/scout-service";
 import type { ControlledAction, ExecutionReceipt } from "@/domain/conductor-control";
 import type { ActionObservation, ResultClassification, TruthClass } from "@/domain/outcomes";
-import { metricClassOf } from "@/domain/outcomes";
+import { metricClassOf, observationFingerprint, observationId } from "@/domain/outcomes";
 import type { EvidenceRef } from "@/domain/confidence";
 import type { ID } from "@/domain/entities";
 
@@ -188,8 +188,22 @@ export async function observeAction(input: ObservationInput): Promise<ActionObse
   const measured = reading.result !== "not_measurable" && reading.result !== "unknown";
   const metricKey = reading.metricKey;
 
+  /*
+   * Identity is the reading, not the clock: re-checking an unchanged room
+   * yields the same id, so a refresh can never inflate the evidence count.
+   */
+  const outcomeStatus = measured ? ("measured" as const) : ("inconclusive" as const);
+  const fingerprint = observationFingerprint({
+    actionId: input.action.id,
+    result: reading.result,
+    truth: reading.truth,
+    outcomeStatus,
+    metricKey,
+    evidence: reading.evidence,
+  });
+
   return {
-    id: `observation:${input.action.id}:${at}`,
+    id: observationId(input.action.id, fingerprint),
     organizationId: input.organizationId,
     actionId: input.action.id,
     ...(input.action.recommendationId ? { recommendationId: input.action.recommendationId } : {}),
@@ -204,7 +218,7 @@ export async function observeAction(input: ObservationInput): Promise<ActionObse
     truth: reading.truth,
     confidence: measured ? "high" : "unknown",
     ...(metricKey ? { metricKey, metricClass: metricClassOf(metricKey)! } : {}),
-    outcomeStatus: measured ? "measured" : "inconclusive",
+    outcomeStatus,
     measuredAt: at,
     ...(measured ? { observedAt: at } : {}),
     provenance: {
