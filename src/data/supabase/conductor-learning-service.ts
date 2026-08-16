@@ -94,43 +94,59 @@ export async function loadObservations(organizationId: ID): Promise<ActionObserv
 }
 
 /**
- * Append one measurement. Unique on (action, measured_at) so re-running the
- * observer for the same moment cannot double-count a single result.
+ * Append one measurement, without ever mutating one.
+ *
+ * The live tables grant `SELECT, INSERT` only — no UPDATE, by design — so a
+ * conflicting write must resolve, not overwrite. An observation's id is its
+ * content, so a duplicate key means "this exact reading is already recorded":
+ * the stored row is returned untouched and nothing is double-counted.
  */
 export async function recordObservation(
   observation: ActionObservation,
 ): Promise<ActionObservation> {
   const { data, error } = await supabase
     .from("conductor_observations")
-    .upsert(
-      {
-        id: observation.id,
-        organization_id: observation.organizationId,
-        action_id: observation.actionId,
-        recommendation_id: observation.recommendationId ?? null,
-        answer_id: observation.answerId ?? null,
-        plan_id: observation.planId ?? null,
-        owning_app: observation.owningApp,
-        operation: observation.operation,
-        expected_signal: observation.expectedSignal,
-        observation_window: observation.observationWindow ?? null,
-        observed_evidence: observation.observedEvidence,
-        result: observation.result,
-        truth: observation.truth,
-        confidence: observation.confidence,
-        metric_key: observation.metricKey ?? null,
-        metric_class: observation.metricClass ?? null,
-        outcome_status: observation.outcomeStatus,
-        measured_at: observation.measuredAt,
-        observed_at: observation.observedAt ?? null,
-        provenance: observation.provenance,
-      },
-      { onConflict: "id" },
-    )
+    .insert({
+      id: observation.id,
+      organization_id: observation.organizationId,
+      action_id: observation.actionId,
+      recommendation_id: observation.recommendationId ?? null,
+      answer_id: observation.answerId ?? null,
+      plan_id: observation.planId ?? null,
+      owning_app: observation.owningApp,
+      operation: observation.operation,
+      expected_signal: observation.expectedSignal,
+      observation_window: observation.observationWindow ?? null,
+      observed_evidence: observation.observedEvidence,
+      result: observation.result,
+      truth: observation.truth,
+      confidence: observation.confidence,
+      metric_key: observation.metricKey ?? null,
+      metric_class: observation.metricClass ?? null,
+      outcome_status: observation.outcomeStatus,
+      measured_at: observation.measuredAt,
+      observed_at: observation.observedAt ?? null,
+      provenance: observation.provenance,
+    })
     .select("*")
     .maybeSingle();
-  if (error) fail(error);
+
+  if (error) {
+    if (isDuplicate(error)) return (await readObservation(observation.id)) ?? observation;
+    fail(error);
+  }
   return data ? toObservation(data as Row) : observation;
+}
+
+/** The row already there, read back rather than rewritten. */
+async function readObservation(id: ID): Promise<ActionObservation | undefined> {
+  const { data, error } = await supabase
+    .from("conductor_observations")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return undefined;
+  return toObservation(data as Row);
 }
 
 /* -------------------------------------------------------------- learning */
@@ -173,35 +189,92 @@ export async function loadLearning(organizationId: ID): Promise<LearningRecord[]
   return (data ?? []).map((row) => toLearning(row as Row));
 }
 
-/** Append one lesson. Prior records are superseded, never overwritten. */
+/**
+ * Append one lesson. Prior records are superseded, never overwritten — and
+ * with INSERT-only grants there is no path that could overwrite one.
+ */
 export async function recordLearning(record: LearningRecord): Promise<LearningRecord> {
   const { data, error } = await supabase
     .from("conductor_learning")
-    .upsert(
-      {
-        id: record.id,
-        organization_id: record.organizationId,
-        owning_app: record.scope.owningApp,
-        operation: record.scope.operation,
-        source_action_ids: record.sourceActionIds,
-        source_observation_ids: record.sourceObservationIds,
-        recommendation_id: record.recommendationId ?? null,
-        hypothesis: record.hypothesis,
-        expected_signal: record.expectedSignal,
-        observed_result: record.observedResult,
-        evidence: record.evidence,
-        confidence: record.confidence,
-        lesson: record.lesson,
-        basis: record.basis,
-        is_rule: record.isRule,
-        recorded_at: record.recordedAt,
-        supersedes: record.supersedes ?? null,
-        contradicts: record.contradicts ?? null,
-      },
-      { onConflict: "id" },
-    )
+    .insert({
+      id: record.id,
+      organization_id: record.organizationId,
+      owning_app: record.scope.owningApp,
+      operation: record.scope.operation,
+      source_action_ids: record.sourceActionIds,
+      source_observation_ids: record.sourceObservationIds,
+      recommendation_id: record.recommendationId ?? null,
+      hypothesis: record.hypothesis,
+      expected_signal: record.expectedSignal,
+      observed_result: record.observedResult,
+      evidence: record.evidence,
+      confidence: record.confidence,
+      lesson: record.lesson,
+      basis: record.basis,
+      is_rule: record.isRule,
+      recorded_at: record.recordedAt,
+      supersedes: record.supersedes ?? null,
+      contradicts: record.contradicts ?? null,
+    })
     .select("*")
     .maybeSingle();
-  if (error) fail(error);
+
+  if (error) {
+    if (isDuplicate(error)) {
+      const { data: existing } = await supabase
+        .from("conductor_learning")
+        .select("*")
+        .eq("id", record.id)
+        .maybeSingle();
+      return existing ? toLearning(existing as Row) : record;
+    }
+    fail(error);
+  }
   return data ? toLearning(data as Row) : record;
+}
+
+/* ------------------------------------------------------ human correction */
+
+/**
+ * A person's own reading of what happened.
+ *
+ * This is the only way a human overrules the Conductor's inference, and it is
+ * still append-only: a new `decided` record that supersedes the standing one.
+ * Nothing is edited, nothing is deleted, and the person who said it is named
+ * on the record so future reasoning knows whose word it is.
+ */
+export async function correctLearning(input: {
+  organizationId: ID;
+  scope: { owningApp: string; operation: string };
+  statement: string;
+  correctedBy: { id: ID; label: string };
+  standing?: LearningRecord | undefined;
+  expectedSignal?: string;
+  now?: string;
+}): Promise<LearningRecord> {
+  const at = input.now ?? new Date().toISOString();
+  const statement = input.statement.trim();
+  if (statement.length === 0) {
+    throw new Error("A correction needs a sentence saying what actually happened.");
+  }
+  const record: LearningRecord = {
+    id: `learning:${input.scope.owningApp}:${input.scope.operation}:decided:${at}`,
+    organizationId: input.organizationId,
+    scope: input.scope,
+    sourceActionIds: input.standing?.sourceActionIds ?? [],
+    sourceObservationIds: input.standing?.sourceObservationIds ?? [],
+    hypothesis: input.standing?.hypothesis ?? "The Conductor's reading of this operation.",
+    expectedSignal: input.expectedSignal ?? input.standing?.expectedSignal ?? "—",
+    observedResult: "A person corrected the Conductor's reading.",
+    evidence: [{ label: `${input.correctedBy.label} corrected this reading`, kind: "human" }],
+    confidence: "high",
+    lesson: statement,
+    basis: "decided",
+    /* A person's word needs no evidence threshold. */
+    isRule: true,
+    grantsAuthority: false,
+    recordedAt: at,
+    ...(input.standing ? { supersedes: input.standing.id } : {}),
+  };
+  return recordLearning(record);
 }
