@@ -116,3 +116,59 @@ export async function checkConductorSchema(
     checkedAt: new Date().toISOString(),
   };
 }
+
+/* ------------------------------------------------------- control ledger */
+
+/**
+ * The V2 control ledger is separate on purpose: the Conductor can still
+ * reason and answer without it. Only approval and routing depend on it, so a
+ * missing V2 migration disables the queue rather than the whole room.
+ */
+export const CONTROL_TABLES = ["conductor_actions", "conductor_receipts"] as const;
+
+export type ControlTable = (typeof CONTROL_TABLES)[number];
+
+export interface ControlSchemaHealth {
+  ready: boolean;
+  missing: ControlTable[];
+  forbidden: ControlTable[];
+  tables: { table: ControlTable; status: TableStatus; detail?: string }[];
+  message: string;
+  checkedAt: string;
+}
+
+export async function checkControlSchema(organizationId: ID): Promise<ControlSchemaHealth> {
+  const tables = await Promise.all(
+    CONTROL_TABLES.map(async (table) => {
+      const { error } = await supabase
+        .from(table)
+        .select("id", { head: true, count: "exact" })
+        .eq("organization_id", organizationId)
+        .limit(1);
+      const status = classifyError(error);
+      return { table, status, ...(error ? { detail: error.message } : {}) };
+    }),
+  );
+
+  const missing = tables.filter((t) => t.status === "missing").map((t) => t.table);
+  const forbidden = tables.filter((t) => t.status === "forbidden").map((t) => t.table);
+  const unknown = tables.filter((t) => t.status === "unknown");
+
+  const message =
+    missing.length > 0
+      ? `The approval queue has no ledger yet (${missing.join(", ")}). Apply docs/conductor-v2-schema.sql — until then the Conductor can reason, but nothing can be approved or routed.`
+      : forbidden.length > 0
+        ? `The control ledger exists but this account cannot reach it (${forbidden.join(", ")}). Check your membership and the grants in docs/conductor-v2-schema.sql.`
+        : unknown.length > 0
+          ? `The control ledger could not be read just now: ${unknown[0]?.detail ?? "unknown error"}. Nothing was changed.`
+          : "Control ledger reachable. Approvals and handovers are recorded.";
+
+  return {
+    ready: tables.every((t) => t.status === "ready"),
+    missing,
+    forbidden,
+    tables,
+    message,
+    checkedAt: new Date().toISOString(),
+  };
+}
