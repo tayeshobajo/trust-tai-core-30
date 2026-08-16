@@ -34,11 +34,26 @@ export type ActivityAction =
   | "milestone_approved"
   | "started"
   | "blocked"
-  | "published";
+  | "published"
+  /** Projects asked a specialist room to take a bounded piece of work. */
+  | "routed_to_ops"
+  | "routed_to_studio"
+  /** The receiving room's own lifecycle for routed work. */
+  | "work_accepted"
+  | "work_started"
+  | "work_completed";
 
+/**
+ * What an event is *about*. Usually a shared core entity. Two suite rooms —
+ * Ops and Studio — own work that has no shared entity in Core yet, so they may
+ * scope their own lifecycle events to the room. This is a naming scope, never
+ * a licence to create a parallel entity store.
+ */
+export type ActivityScope = EntityType | "ops" | "studio";
 
-/** Event name is always `entity.action`, e.g. "project.status_changed". */
-export type ActivityName = `${EntityType}.${ActivityAction}`;
+/** Event name is always `scope.action`, e.g. "project.status_changed". */
+export type ActivityName = `${ActivityScope}.${ActivityAction}`;
+
 
 /** Where an event or fact came from, and how much to trust it. */
 export interface Provenance {
