@@ -132,10 +132,25 @@ export function ConductorConsole({ answer, thinking, onAsk }: ConductorConsolePr
                 Watch: {answer.watch.statement}
               </p>
             ) : null}
+
+            {onCorrect ? (
+              <div className="border-t border-[var(--tt-rule)] pt-4">
+                <CorrectAnswer
+                  answer={answer}
+                  {...(correcting !== undefined ? { saving: correcting } : {})}
+                  {...(corrected !== undefined ? { saved: corrected } : {})}
+                  onCorrect={onCorrect}
+                />
+              </div>
+            ) : null}
           </TTCard>
+
+          {/* ------------------------------------------ figures only you have */}
+          {figures ?? null}
 
           {/* ----------------------------------------------- operating plan */}
           {answer.plan ? <PlanPanel plan={answer.plan} /> : null}
+
 
           {/* -------------------------------------------------- improvements */}
           {answer.improvements.length > 0 ? (
