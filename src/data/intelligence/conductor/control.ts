@@ -90,11 +90,11 @@ export function buildControlledActions(
   const byKey = new Map((input.existing ?? []).map((action) => [action.sourceEventKey, action]));
 
   return graph.steps.map((step) => {
-    const consequence = consequenceOf(step.operationHint ?? step.id);
+    const consequence = consequenceOf(step.operation ?? step.id);
     const sourceEventKey = controlSourceEventKey({
       organizationId,
       owningApp: step.owningApp,
-      operation: step.operationHint ?? step.id,
+      operation: step.operation ?? step.id,
       subjectKey: step.id,
     });
     const already = byKey.get(sourceEventKey);
@@ -109,7 +109,7 @@ export function buildControlledActions(
       graphId: graph.id,
       proposalId: step.id,
       owningApp: step.owningApp,
-      operation: step.operationHint ?? step.id,
+      operation: step.operation ?? step.id,
       intent: step.title,
       whyItMatters: whyFrom(step),
       evidence,
