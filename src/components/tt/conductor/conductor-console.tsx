@@ -7,10 +7,15 @@
  * not do is stated on every answer rather than buried in a policy page.
  */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
+import {
+  CorrectAnswer,
+  type CorrectionDraft,
+} from "@/components/tt/conductor/correct-answer";
+
 import {
   BLIND_SPOT_SEVERITY_LABEL,
   CONDUCTOR_TOPIC_LABEL,
