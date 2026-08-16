@@ -11,6 +11,9 @@
  */
 
 import { commsService } from "@/data/supabase/comms-service";
+import { ROADMAP_ADAPTERS } from "./adapters-roadmap";
+import { SCOUT_ADAPTERS } from "./adapters-scout";
+import { ADAPTER_CAPABILITIES } from "@/domain/adapter-registry";
 import { projectsService } from "@/data/supabase/projects-service";
 import type {
   ActionLifecycleState,
@@ -300,38 +303,37 @@ export const projectsBlockerAdapter: RoomAdapter = {
 };
 
 /** Every adapter the Conductor may use. Adding one is a product decision. */
-export const ROOM_ADAPTERS: RoomAdapter[] = [commsDraftAdapter, projectsBlockerAdapter];
+export const ROOM_ADAPTERS: RoomAdapter[] = [
+  commsDraftAdapter,
+  projectsBlockerAdapter,
+  ...SCOUT_ADAPTERS,
+  ...ROADMAP_ADAPTERS,
+];
 
 /**
  * Rooms with no adapter, and the honest reason. Shown in the control surface
  * so "not routable" is never mistaken for "failed" or for "done".
  */
-export const ADAPTER_GAPS: { room: string; because: string }[] = [
-  {
-    room: "scout",
-    because:
-      "Scout's handoff needs a prepared brief with a named contact, which only Scout's board can assemble today.",
-  },
-  {
-    room: "roadmap",
-    because:
-      "Sequencing a capability is a decided commitment. Roadmap exposes no service that accepts it from outside the room.",
-  },
-  {
-    room: "steward",
-    because: "Steward interprets. It holds no executable work for the Conductor to route.",
-  },
-  {
-    room: "ops",
-    because:
-      "Ops is an external application reached through SSO. It accepts routed work from Projects, not from the Conductor.",
-  },
-  {
-    room: "studio",
-    because: "Studio has no execution service yet, so nothing may claim to have been routed to it.",
-  },
-];
+/**
+ * Rooms and operations with no adapter, and the honest reason. Derived from
+ * the capability registry so coverage is declared in exactly one place and
+ * "not routable" is never mistaken for "failed" or for "done".
+ */
+export const ADAPTER_GAPS: { room: string; operation: string; because: string }[] =
+  ADAPTER_CAPABILITIES.filter((row) => !row.supported).map((row) => ({
+    room: row.room,
+    operation: row.operation,
+    because: row.because!,
+  }));
 
+/** The reason a specific operation cannot be routed, when there is one. */
+export function operationGap(room: string, operation: string): string | undefined {
+  return ADAPTER_GAPS.find((gap) => gap.room === room && gap.operation === operation)?.because;
+}
+
+/** Whether a whole room is unreachable, and why. */
 export function adapterGap(room: string): string | undefined {
+  const hasAdapter = ROOM_ADAPTERS.some((adapter) => adapter.room === room);
+  if (hasAdapter) return undefined;
   return ADAPTER_GAPS.find((gap) => gap.room === room)?.because;
 }
