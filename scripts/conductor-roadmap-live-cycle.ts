@@ -140,10 +140,12 @@ const answer = answerQuestion({
   priorLearning: learningBefore,
 });
 log("topic", answer.topic);
-log("headline", answer.headline);
-log("body", answer.body);
+log("answer", answer.answer);
+log("nextMove", answer.nextMove ?? null);
+log("proposedActions", answer.proposedActions.map((a) => ({ id: a.id, app: a.owningApp, op: a.operation, title: a.title, consequential: a.consequential })));
+log("evidence", answer.evidence.map((e) => e.label));
 log("roadmapCanon", answer.roadmapCanon ?? null);
-log("actionGraph", answer.actionGraph ?? null);
+log("actionGraph ops", (answer.actionGraph?.actions ?? []).map((a) => ({ app: a.owningApp, op: a.operation, requiresApproval: a.requiresApproval })));
 log("inputResolutions", (answer as Record<string, unknown>)["inputResolutions"] ?? null);
 
 log("STEP 11 — related follow-up");
@@ -157,8 +159,9 @@ const followUp = answerQuestion({
   priorLearning: learningBefore,
 });
 log("follow-up topic", followUp.topic);
-log("follow-up headline", followUp.headline);
-log("follow-up actionGraph", followUp.actionGraph ?? null);
+log("follow-up answer", followUp.answer);
+log("follow-up proposedActions", followUp.proposedActions.map((a) => ({ app: a.owningApp, op: a.operation, title: a.title })));
+log("follow-up actionGraph ops", (followUp.actionGraph?.actions ?? []).map((a) => ({ app: a.owningApp, op: a.operation })));
 
 log("STEP 12 — cross-org closure");
 const foreign = await supabase
