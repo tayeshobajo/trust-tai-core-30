@@ -7,10 +7,15 @@
  * not do is stated on every answer rather than buried in a policy page.
  */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
+import {
+  CorrectAnswer,
+  type CorrectionDraft,
+} from "@/components/tt/conductor/correct-answer";
+
 import {
   BLIND_SPOT_SEVERITY_LABEL,
   CONDUCTOR_TOPIC_LABEL,
@@ -47,11 +52,25 @@ export interface ConductorConsoleProps {
   answer?: ConductorAnswer;
   thinking?: boolean;
   onAsk: (question: string) => void | Promise<void>;
+  /** The hand-recorded figures panel, injected so the console stays pure. */
+  figures?: ReactNode;
+  onCorrect?: (draft: CorrectionDraft) => void | Promise<void>;
+  correcting?: boolean;
+  corrected?: boolean;
 }
 
-export function ConductorConsole({ answer, thinking, onAsk }: ConductorConsoleProps) {
+export function ConductorConsole({
+  answer,
+  thinking,
+  onAsk,
+  figures,
+  onCorrect,
+  correcting,
+  corrected,
+}: ConductorConsoleProps) {
   const [question, setQuestion] = useState("");
   const [showWorking, setShowWorking] = useState(false);
+
 
   async function ask(text: string) {
     const trimmed = text.trim();
@@ -132,10 +151,25 @@ export function ConductorConsole({ answer, thinking, onAsk }: ConductorConsolePr
                 Watch: {answer.watch.statement}
               </p>
             ) : null}
+
+            {onCorrect ? (
+              <div className="border-t border-[var(--tt-rule)] pt-4">
+                <CorrectAnswer
+                  answer={answer}
+                  {...(correcting !== undefined ? { saving: correcting } : {})}
+                  {...(corrected !== undefined ? { saved: corrected } : {})}
+                  onCorrect={onCorrect}
+                />
+              </div>
+            ) : null}
           </TTCard>
+
+          {/* ------------------------------------------ figures only you have */}
+          {figures ?? null}
 
           {/* ----------------------------------------------- operating plan */}
           {answer.plan ? <PlanPanel plan={answer.plan} /> : null}
+
 
           {/* -------------------------------------------------- improvements */}
           {answer.improvements.length > 0 ? (

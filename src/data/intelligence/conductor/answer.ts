@@ -15,7 +15,9 @@ import type { ActionProposal } from "@/domain/intelligence-engine";
 import {
   CONDUCTOR_CONTROL,
   type BlindSpot,
+  type BusinessFigure,
   type BusinessIntent,
+  type ConductorCorrection,
   type ConductorAnswer,
   type ConductorTopic,
   type OperatingPlan,
@@ -31,6 +33,7 @@ import { findBlindSpots } from "./blindspots";
 import { readFactory } from "./factory";
 import { detectFriction, proposeImprovements } from "./improve";
 import { buildActionGraph } from "./graph";
+import { figuresWithCorrections, isSuppressed, learningState } from "./learning";
 import { buildOperatingPlan } from "./plan";
 import { readVitals, troubledAreas, vitalReading } from "./vitals";
 
@@ -130,6 +133,10 @@ export interface ConductorInput {
   snapshot: SuiteSnapshot;
   question: string;
   intents?: BusinessIntent[];
+  /** Numbers a person recorded that no room can count for itself. */
+  figures?: BusinessFigure[];
+  /** Every correction a person has made to a previous answer. */
+  corrections?: ConductorCorrection[];
   /** Pattern keys a person told the engine to stop raising. */
   suppressed?: string[];
   /** Statements a person decided. Inference never overrides these. */
@@ -147,11 +154,25 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
   const intents = input.intents ?? [];
   const topic = classifyQuestion(question);
 
-  const vitals = readVitals(snapshot, intents);
+  /*
+   * Corrections are read before anything else. A number a person supplied by
+   * contradicting an earlier answer is the strongest input available, and a
+   * suggestion they rejected must not be raised again this fortnight.
+   */
+  const learning = learningState(
+    snapshot.organizationId,
+    input.corrections ?? [],
+    snapshot.now,
+  );
+  const figures = figuresWithCorrections(input.figures ?? [], learning);
+
+  const vitals = readVitals(snapshot, intents, figures);
   const factory = readFactory(snapshot);
   const blindSpots = findBlindSpots({ snapshot, vitals, factory, intents });
   const friction = detectFriction(snapshot);
-  const improvements = proposeImprovements(friction);
+  const improvements = proposeImprovements(friction).filter(
+    (improvement) => !isSuppressed(learning, improvement.frictionKey),
+  );
 
   const read = engineRead(snapshot, {
     ...(input.suppressed ? { suppressed: input.suppressed } : {}),
@@ -406,6 +427,8 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     improvements: shownImprovements,
     proposedActions: finalActions,
     ...(actionGraph ? { actionGraph } : {}),
+    learning,
+    figures,
     control: CONDUCTOR_CONTROL,
     withheld: snapshot.withheld.map((row) => ({ appId: row.appId, reason: row.reason })),
     ...(watch ? { watch } : {}),

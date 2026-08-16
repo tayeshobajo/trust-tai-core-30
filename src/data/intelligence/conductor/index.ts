@@ -8,6 +8,8 @@
  */
 
 export * from "./vitals";
+export * from "./figures";
+export * from "./learning";
 export * from "./factory";
 export * from "./blindspots";
 export * from "./graph";

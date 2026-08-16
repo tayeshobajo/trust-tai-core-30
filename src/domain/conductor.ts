@@ -930,6 +930,10 @@ export interface ConductorAnswer {
   /** The same work, ordered across rooms. Prepared only, never executed. */
   actionGraph?: ConductorActionGraph;
   control: ControlStatement;
+  /** What earlier corrections changed about this answer. */
+  learning: LearningState;
+  /** The recorded figures this answer stood on. */
+  figures: BusinessFigure[];
   withheld: WithheldRoom[];
   /** The metric to watch to find out whether the answer was any good. */
   watch?: { statement: string; vitalKey?: string };
@@ -964,3 +968,159 @@ export const CONDUCTOR_CONTROL: ControlStatement = {
     "Send external messages, publish content, change pricing or spend money.",
   ],
 };
+
+/* ------------------------------------------------------------------ *
+ * Recorded figures: the instrument of last resort.
+ *
+ * Some numbers no room in the suite will ever hold — cash in the bank,
+ * monthly burn, money owed. Rather than leave the survival question
+ * permanently unanswerable, a person may record the figure themselves. A
+ * recorded figure is `decided` truth: it carries who said it, when it was
+ * true, and it goes stale on a clock so a nine-month-old bank balance never
+ * masquerades as a current one.
+ * ------------------------------------------------------------------ */
+
+/** Beyond this age a figure still counts, but the reading is only ever "watch". */
+export const FIGURE_STALE_DAYS = 45;
+
+/** Beyond this age a figure is treated as unknown again. Old money is not money. */
+export const FIGURE_EXPIRY_DAYS = 120;
+
+/** A figure a person recorded by hand, or a connected source wrote. */
+export interface BusinessFigure {
+  id: ID;
+  organizationId: ID;
+  /** A vital sign key, or one of the runway inputs below. */
+  key: string;
+  value: number;
+  unit?: string;
+  /** `decided` when a person typed it, `observed` when a source wrote it. */
+  basis: Extract<ValueBasis, "decided" | "observed">;
+  /** The date the figure was true, which is not the date it was typed. */
+  asOf: ISODateTime;
+  note?: string;
+  recordedBy: { id: ID; label: string };
+  recordedAt: ISODateTime;
+}
+
+export interface FigureInputDefinition {
+  key: string;
+  label: string;
+  unit: string;
+  /** What it feeds. Shown so nobody records a number for no reason. */
+  feeds: string;
+  placeholder?: string;
+}
+
+/**
+ * The figures worth asking a person for. Deliberately short: every entry here
+ * is a number the suite genuinely cannot count for itself.
+ */
+export const FIGURE_INPUTS: FigureInputDefinition[] = [
+  {
+    key: "cash_on_hand",
+    label: "Cash in the bank",
+    unit: "currency",
+    feeds: "Runway, with monthly burn.",
+    placeholder: "120000",
+  },
+  {
+    key: "monthly_burn",
+    label: "Monthly burn",
+    unit: "currency / month",
+    feeds: "Runway, with cash in the bank.",
+    placeholder: "24000",
+  },
+  {
+    key: "recurring_revenue",
+    label: "Recurring revenue",
+    unit: "currency / month",
+    feeds: "Will we survive?",
+  },
+  {
+    key: "receivables",
+    label: "Money owed to us",
+    unit: "currency",
+    feeds: "Will we survive?",
+  },
+  {
+    key: "average_deal_size",
+    label: "Average deal size",
+    unit: "currency",
+    feeds: "Turning a revenue goal into a pipeline goal.",
+  },
+  {
+    key: "close_rate",
+    label: "Close rate",
+    unit: "%",
+    feeds: "Turning deals into opportunities to open.",
+  },
+  {
+    key: "sales_cycle",
+    label: "Sales cycle",
+    unit: "days",
+    feeds: "Whether this quarter's target can still be met.",
+  },
+];
+
+export function figureInput(key: string): FigureInputDefinition | undefined {
+  return FIGURE_INPUTS.find((row) => row.key === key);
+}
+
+/* ------------------------------------------------------------------ *
+ * Corrections: the learning loop.
+ *
+ * When the Conductor is wrong, the correction is recorded rather than
+ * argued with. A corrected figure becomes decided truth. A rejected
+ * suggestion stops being raised for a while. Nothing is silently rewritten:
+ * every correction is an append-only row with a name against it.
+ * ------------------------------------------------------------------ */
+
+/** How long a rejected suggestion stays quiet before it may be raised again. */
+export const CORRECTION_SUPPRESSION_DAYS = 14;
+
+export type CorrectionKind =
+  /** The number was wrong. Carries the right one. */
+  | "wrong_figure"
+  /** The reasoning was wrong, but nothing needs suppressing. */
+  | "wrong_read"
+  /** Already dealt with outside the suite. */
+  | "already_handled"
+  /** Not worth raising. Stop suggesting it for a while. */
+  | "not_useful";
+
+export const CORRECTION_KIND_LABEL: Record<CorrectionKind, string> = {
+  wrong_figure: "That number is wrong",
+  wrong_read: "That read is wrong",
+  already_handled: "Already handled",
+  not_useful: "Not worth raising",
+};
+
+/** One recorded correction. Append-only; corrections are never edited. */
+export interface ConductorCorrection {
+  id: ID;
+  organizationId: ID;
+  kind: CorrectionKind;
+  /** The answer this corrects, when it corrects one. */
+  answerId?: ID;
+  question?: string;
+  topic?: ConductorTopic;
+  /** The suggestion or pattern being corrected, e.g. an improvement key. */
+  subjectKey?: string;
+  /** Present on `wrong_figure`: the figure the person says is right. */
+  figure?: { key: string; value: number; unit?: string; asOf: ISODateTime };
+  note: string;
+  correctedBy: { id: ID; label: string };
+  at: ISODateTime;
+}
+
+/** What the recorded corrections change about the next answer. */
+export interface LearningState {
+  organizationId: ID;
+  /** Suggestion keys held quiet, with the reason and until when. */
+  suppressed: { key: string; because: string; until: ISODateTime }[];
+  /** Figures a person supplied by correcting an answer. */
+  correctedFigures: BusinessFigure[];
+  /** Every correction considered, newest first. Shown as an audit trail. */
+  considered: ConductorCorrection[];
+}

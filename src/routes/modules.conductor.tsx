@@ -9,16 +9,26 @@
 
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { ConductorConsole } from "@/components/tt/conductor/conductor-console";
+import { FiguresPanel } from "@/components/tt/conductor/figures-panel";
+import type { CorrectionDraft } from "@/components/tt/conductor/correct-answer";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { answerQuestion } from "@/data/intelligence/conductor";
 import { loadSuiteSnapshot } from "@/data/intelligence/service";
+import {
+  loadBusinessFigures,
+  loadBusinessIntents,
+  loadCorrections,
+  recordCorrection,
+  recordFigure,
+} from "@/data/supabase/conductor-service";
 import type { ConductorAnswer } from "@/domain/conductor";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+
 
 const TITLE = "Ask Trust Tai — the Conductor — Trust Tai OS";
 const DESCRIPTION =
@@ -53,6 +63,27 @@ function ConductorRoute() {
 
 function Conductor({ identity }: { identity: WorkspaceIdentity }) {
   const [answer, setAnswer] = useState<ConductorAnswer | undefined>(undefined);
+  const [lastQuestion, setLastQuestion] = useState("");
+  const queryClient = useQueryClient();
+
+  /*
+   * Decided truth — outcomes, hand-recorded figures, and corrections — is
+   * loaded up front, because it changes what the very first answer is allowed
+   * to say. Everything else is read at the moment a question is asked.
+   */
+  const ledger = useQuery({
+    queryKey: ["conductor-ledger", identity.organizationId],
+    queryFn: async () => {
+      const [intents, figures, corrections] = await Promise.all([
+        loadBusinessIntents(identity.organizationId),
+        loadBusinessFigures(identity.organizationId),
+        loadCorrections(identity.organizationId),
+      ]);
+      return { intents, figures, corrections };
+    },
+  });
+
+  const now = new Date().toISOString();
 
   /*
    * Reading is a deliberate act, not a background poll: the suite is read when
@@ -62,9 +93,53 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
   const ask = useMutation({
     mutationFn: async (question: string) => {
       const snapshot = await loadSuiteSnapshot(identity.organizationId);
-      return answerQuestion({ snapshot, question });
+      return answerQuestion({
+        snapshot,
+        question,
+        intents: ledger.data?.intents ?? [],
+        figures: ledger.data?.figures ?? [],
+        corrections: ledger.data?.corrections ?? [],
+      });
     },
     onSuccess: (result) => setAnswer(result),
+  });
+
+  /** Recording a figure re-asks the last question, so the answer moves with it. */
+  const record = useMutation({
+    mutationFn: async (input: {
+      key: string;
+      value: number;
+      asOf: string;
+      note?: string;
+    }) =>
+      recordFigure({
+        organizationId: identity.organizationId,
+        recordedBy: { id: identity.userId, label: identity.name },
+        ...input,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["conductor-ledger", identity.organizationId],
+      });
+      if (lastQuestion) await ask.mutateAsync(lastQuestion);
+    },
+  });
+
+  const correct = useMutation({
+    mutationFn: async (draft: CorrectionDraft) =>
+      recordCorrection({
+        organizationId: identity.organizationId,
+        correctedBy: { id: identity.userId, label: identity.name },
+        ...(answer ? { answerId: answer.id, topic: answer.topic } : {}),
+        ...(lastQuestion ? { question: lastQuestion } : {}),
+        ...draft,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["conductor-ledger", identity.organizationId],
+      });
+      if (lastQuestion) await ask.mutateAsync(lastQuestion);
+    },
   });
 
   return (
@@ -79,7 +154,21 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
       <ConductorConsole
         {...(answer ? { answer } : {})}
         thinking={ask.isPending}
-        onAsk={(question) => ask.mutateAsync(question).then(() => undefined)}
+        onAsk={(question) => {
+          setLastQuestion(question);
+          return ask.mutateAsync(question).then(() => undefined);
+        }}
+        correcting={correct.isPending}
+        corrected={correct.isSuccess}
+        onCorrect={(draft) => correct.mutateAsync(draft).then(() => undefined)}
+        figures={
+          <FiguresPanel
+            figures={ledger.data?.figures ?? []}
+            now={now}
+            saving={record.isPending}
+            onRecord={(input) => record.mutateAsync(input).then(() => undefined)}
+          />
+        }
       />
 
       {ask.isError ? (
@@ -90,3 +179,4 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
     </div>
   );
 }
+

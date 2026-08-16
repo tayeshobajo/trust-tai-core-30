@@ -135,7 +135,11 @@ export function buildOperatingPlan(input: PlanInput): OperatingPlan {
 
   const dealSize =
     dealSizeReading && dealSizeReading.basis !== "unknown" && dealSizeReading.value
-      ? { value: dealSizeReading.value, basis: "observed" as const, because: dealSizeReading.because }
+      ? {
+          value: dealSizeReading.value,
+          basis: dealSizeReading.basis as "observed" | "decided",
+          because: dealSizeReading.because,
+        }
       : dealSizeIntent?.target
         ? {
             value: dealSizeIntent.target,
@@ -146,7 +150,11 @@ export function buildOperatingPlan(input: PlanInput): OperatingPlan {
 
   const closeRate =
     closeReading && closeReading.basis !== "unknown" && closeReading.value
-      ? { value: closeReading.value, basis: "observed" as const, because: closeReading.because }
+      ? {
+          value: closeReading.value,
+          basis: closeReading.basis as "observed" | "decided",
+          because: closeReading.because,
+        }
       : null;
 
   const missing: string[] = [];
@@ -202,7 +210,11 @@ export function buildOperatingPlan(input: PlanInput): OperatingPlan {
       basis: dealSize!.basis,
       because: dealSize!.because,
       value: dealSize!.value,
-      evidence: [dealSize!.basis === "decided" ? human("Planning figure you decided") : computed("Counted from won work")],
+      evidence: [
+        dealSize!.basis === "decided"
+          ? human("Planning figure you recorded")
+          : computed("Counted from won work"),
+      ],
     });
     targets.push({
       key: "deals",
@@ -231,7 +243,11 @@ export function buildOperatingPlan(input: PlanInput): OperatingPlan {
     basis: closeRate!.basis,
     because: closeRate!.because,
     value: closeRate!.value,
-    evidence: [computed("Counted from recorded outcomes")],
+    evidence: [
+      closeRate!.basis === "decided"
+        ? human("Close rate you recorded")
+        : computed("Counted from recorded outcomes"),
+    ],
   });
 
   const opportunities = round(dealsNeeded / (closeRate!.value / 100));
