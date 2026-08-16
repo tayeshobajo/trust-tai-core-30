@@ -171,7 +171,10 @@ export function buildExecutionRead(input: ExecutionReadInput): ActionExecutionRe
       expectedSignal: action.expectedSignal.statement,
       measurable: canObserve(action.operation),
       ...(observation ? { observation, observedResult: RESULT_LABEL[observation.result] } : {}),
-      ...(metricKey ? { metricKey, metricClass: metricClassOf(metricKey) } : {}),
+      ...(metricKey ? { metricKey } : {}),
+      ...(metricKey && metricClassOf(metricKey)
+        ? { metricClass: metricClassOf(metricKey)! }
+        : {}),
       ...(receiptByAction.get(action.id) ? { receipt: receiptByAction.get(action.id)! } : {}),
       ...(learning ? { learning } : {}),
       learningState: learningState(observation, learning),
