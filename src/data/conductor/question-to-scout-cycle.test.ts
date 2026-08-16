@@ -281,8 +281,9 @@ describe("question → approval → Scout execution → observation → learning
     const approved = await decide(
       [governed],
       [{ actionId: governed.id, kind: "approve" }],
-      access,
+      owner,
       actor,
+      NOW,
     );
     const scoutAction = approved.find((a) => a.id === governed.id)!;
     expect(scoutAction.status).toBe("approved");
@@ -301,36 +302,31 @@ describe("question → approval → Scout execution → observation → learning
         .routable,
     ).toBe(true);
 
-    const receipt = await routeAction(scoutAction, approved, access, actor);
-    expect(receipt.status).toBe("routed");
+    const outcome = await routeAction(scoutAction, approved, owner, actor, ROOM_ADAPTERS, NOW);
+    expect(outcome.receipt?.status).toBe("routed");
     expect(scoutDiscover).toHaveBeenCalledTimes(1);
     expect(scoutDiscover.mock.calls[0]![0]!.query).toContain("Geography: United Kingdom");
 
     /* Observation and learning: unchanged V3 behaviour, deduped on re-check. */
-    const routed = persisted.find((a) => a.id === scoutAction.id) ?? {
-      ...scoutAction,
-      status: "routed" as const,
-    };
-    await runObservationPass({
+    const routed = [outcome.action];
+    const receiptsFor = outcome.receipt ? [outcome.receipt] : [];
+    const first = await runObservationPass({
       organizationId: ORG,
-      actions: [routed],
-      receipts,
-      observations: observationLedger,
-      learning: learningLedger,
+      actions: routed,
+      receipts: receiptsFor,
       now: "2026-08-27T09:00:00.000Z",
     });
+    expect(first.observations.length).toBeGreaterThan(0);
     const afterFirst = observationLedger.length;
-    expect(afterFirst).toBeGreaterThan(0);
 
     await runObservationPass({
       organizationId: ORG,
-      actions: [routed],
-      receipts,
-      observations: observationLedger,
-      learning: learningLedger,
+      actions: routed,
+      receipts: receiptsFor,
       now: "2026-08-27T10:00:00.000Z",
     });
     expect(observationLedger.length).toBe(afterFirst);
+
 
     /* A later related question carries the bounded lesson; an unrelated one
      * does not. */
