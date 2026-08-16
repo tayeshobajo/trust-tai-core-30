@@ -10,7 +10,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ControlledAction } from "@/domain/conductor-control";
+import type { ControlledAction, ExecutionReceipt } from "@/domain/conductor-control";
 import type { ActionObservation, LearningRecord } from "@/domain/outcomes";
 import { relevantLearning, learningForPacket } from "@/data/conductor/learning";
 
@@ -72,6 +72,18 @@ function action(overrides: Partial<ControlledAction> = {}): ControlledAction {
   } as ControlledAction;
 }
 
+/** Scout's own handover record: the run it says it started. */
+const receipt = {
+  id: "receipt:1",
+  organizationId: ORG,
+  actionId: "action:x",
+  owningApp: "scout",
+  operation: "scout.start_discovery_run",
+  status: "accepted",
+  result: { reference: "run-1", summary: "Discovery run started" },
+  recordedAt: "2026-08-20T10:00:00.000Z",
+} as unknown as ExecutionReceipt;
+
 function ledger(seed: ActionObservation[] = []) {
   const observations = [...seed];
   const learning: LearningRecord[] = [];
@@ -125,7 +137,7 @@ beforeEach(() => {
 describe("re-checking is not re-happening", () => {
   it("records one result no matter how many times the room is opened", async () => {
     const { store, ledger: sink } = ledger();
-    const input = { organizationId: ORG, actions: [action()], receipts: [], ledger: sink };
+    const input = { organizationId: ORG, actions: [action()], receipts: [receipt], ledger: sink };
 
     await runObservationPass({ ...input, now: "2026-08-20T11:00:00.000Z" });
     await runObservationPass({ ...input, now: "2026-08-20T12:00:00.000Z" });
@@ -138,7 +150,7 @@ describe("re-checking is not re-happening", () => {
 
   it("records a new result when the owning room genuinely says something else", async () => {
     const { store, ledger: sink } = ledger();
-    const input = { organizationId: ORG, actions: [action()], receipts: [], ledger: sink };
+    const input = { organizationId: ORG, actions: [action()], receipts: [receipt], ledger: sink };
 
     await runObservationPass(input);
     scoutRuns.mockResolvedValue([]);
@@ -176,7 +188,7 @@ describe("re-checking is not re-happening", () => {
     const result = await runObservationPass({
       organizationId: ORG,
       actions: [routed],
-      receipts: [],
+      receipts: [receipt],
       ledger: sink,
     });
     /* The reading is honest about not knowing; the handover still stands. */
@@ -205,7 +217,7 @@ describe("re-checking is not re-happening", () => {
       },
     } as ActionObservation;
     const { store, ledger: sink } = ledger([foreign]);
-    await runObservationPass({ organizationId: ORG, actions: [action()], receipts: [], ledger: sink });
+    await runObservationPass({ organizationId: ORG, actions: [action()], receipts: [receipt], ledger: sink });
     const mine = store.observations.filter((row) => row.organizationId === ORG);
     expect(mine).toHaveLength(1);
     expect(mine[0]?.actionId).toBe("action:x");
