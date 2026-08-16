@@ -229,6 +229,49 @@ export function isHonestObservation(observation: ActionObservation): boolean {
   return true;
 }
 
+/* ------------------------------------------------------- identity of a measurement */
+
+/**
+ * What makes one measurement *the same* measurement.
+ *
+ * An observation is a reading of one action's expected signal. Opening the
+ * control room three times does not create three results — it re-reads the
+ * same unchanged fact. So an observation's identity is its content, not the
+ * moment it was taken: the action, what was found, how it is known, and the
+ * evidence behind it. Only a genuinely different reading is a new row, and
+ * therefore only a genuinely different reading can count towards a pattern.
+ */
+export function observationFingerprint(input: {
+  actionId: ID;
+  result: ResultClassification;
+  truth: TruthClass;
+  outcomeStatus: OutcomeStatus;
+  metricKey?: string | undefined;
+  evidence: { label: string }[];
+}): string {
+  const material = [
+    input.actionId,
+    input.result,
+    input.truth,
+    input.outcomeStatus,
+    input.metricKey ?? "-",
+    ...input.evidence.map((item) => item.label).sort(),
+  ].join("|");
+  /* djb2 — small, stable, and readable in a row id. Not a security hash. */
+  let hash = 5381;
+  for (let index = 0; index < material.length; index += 1) {
+    hash = ((hash << 5) + hash + material.charCodeAt(index)) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+/** The row id for a measurement: same reading, same id, one row. */
+export function observationId(actionId: ID, fingerprint: string): ID {
+  return `observation:${actionId}:${fingerprint}`;
+}
+
+
+
 /* -------------------------------------------------------------- learning */
 
 export type LearningConfidence = "none" | "low" | "moderate" | "high";
