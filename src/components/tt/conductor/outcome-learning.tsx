@@ -36,6 +36,11 @@ export interface OutcomeLearningProps {
   statement: string;
   /** Rooms whose operations have no adapter, with the reason. */
   gaps?: { room: string; operation: string; because: string }[];
+  /**
+   * Said plainly when the ledger itself is unreachable, so an empty panel is
+   * never mistaken for "nothing happened".
+   */
+  notice?: string;
 }
 
 function Row({ read }: { read: ActionExecutionRead }) {
