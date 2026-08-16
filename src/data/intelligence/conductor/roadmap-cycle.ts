@@ -167,7 +167,7 @@ const ROADMAP_PATTERNS: RegExp[] = [
 /** An explicit ask to map, sequence or build a path for a subject. */
 const MAPPING_PATTERNS: RegExp[] = [
   /\b(map|sequence|build|draft|open|start|create) (out |up )?(a |the |our |their )?(roadmap|path|sequence|plan for)\b/i,
-  /\broadmap\b[^.?]{0,20}\bfor\b/i,
+  /\b(map|sequence|draft|open|start|create)\b[^.?]{0,24}\broadmap for\b/i,
 ];
 
 /**

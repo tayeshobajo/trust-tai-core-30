@@ -325,8 +325,15 @@ describe("human authority is unchanged", () => {
   it("has no adapter that resolves a roadmap decision", () => {
     const operations = ADAPTER_CAPABILITIES.map((row) => row.operation);
     expect(operations).toContain(ROADMAP_DECISION_OPERATION);
-    expect(operations).not.toContain("roadmap.resolve_decision");
-    expect(operations).not.toContain("roadmap.reorder_stages");
+    const resolve = ADAPTER_CAPABILITIES.find(
+      (row) => row.operation === "roadmap.resolve_decision",
+    );
+    expect(resolve?.supported).toBe(false);
+    expect(resolve?.adapterId).toBeUndefined();
+    const sequencing = ADAPTER_CAPABILITIES.find(
+      (row) => row.operation === "roadmap.change_sequencing",
+    );
+    expect(sequencing?.supported).toBe(false);
   });
 
   it("keeps roadmap operations behind a roadmap permission", () => {
