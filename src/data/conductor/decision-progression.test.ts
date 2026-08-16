@@ -255,7 +255,7 @@ describe("edges", () => {
 describe("authority is unchanged", () => {
   it("adds no roadmap capability beyond the two existing adapters", () => {
     const roadmapOps = ADAPTER_CAPABILITIES.filter(
-      (capability) => capability.owningApp === "roadmap",
+      (capability) => capability.room === "roadmap" && capability.supported,
     ).map((capability) => capability.operation);
     expect(roadmapOps.sort()).toEqual(["roadmap.create_shell", "roadmap.request_decision"]);
   });
