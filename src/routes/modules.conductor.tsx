@@ -18,7 +18,11 @@ import { OutcomeLearning } from "@/components/tt/conductor/outcome-learning";
 import { ConductorConsole } from "@/components/tt/conductor/conductor-console";
 import { FiguresPanel } from "@/components/tt/conductor/figures-panel";
 import { SchemaStatus } from "@/components/tt/conductor/schema-status";
-import { checkConductorSchema, checkControlSchema } from "@/data/supabase/conductor-schema";
+import {
+  checkConductorSchema,
+  checkControlSchema,
+  checkLearningSchema,
+} from "@/data/supabase/conductor-schema";
 import type { CorrectionDraft } from "@/components/tt/conductor/correct-answer";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { answerQuestion } from "@/data/intelligence/conductor";
@@ -128,6 +132,14 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
     staleTime: 60_000,
   });
 
+  /* V3: without the learning ledger the room still acts, but remembers
+   * nothing afterwards. That is said out loud rather than shown as silence. */
+  const learningSchema = useQuery({
+    queryKey: ["conductor-learning-schema", identity.organizationId],
+    queryFn: () => checkLearningSchema(identity.organizationId),
+    staleTime: 60_000,
+  });
+
   const access = accessContext({
     userId: identity.userId,
     organizationId: identity.organizationId,
@@ -217,6 +229,24 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: refreshControl,
   });
 
+  /*
+   * Observation is event-driven as well as read on load: the moment something
+   * is handed to a room, the room is asked what actually became true. Nothing
+   * is inferred — an unreachable ledger simply skips the pass.
+   */
+  const observeNow = async () => {
+    if (!learningSchema.data?.ready) return;
+    try {
+      await runObservationPass({
+        organizationId: identity.organizationId,
+        actions: await loadControlledActions(identity.organizationId),
+        receipts: await loadReceipts(identity.organizationId),
+      });
+    } catch {
+      /* An observation pass never blocks a handover. */
+    }
+  };
+
   const routeMutation = useMutation({
     mutationFn: async (actionId: string) => {
       const actions = control.data?.actions ?? [];
@@ -226,12 +256,18 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
       if (outcome.refusedBecause) throw new Error(outcome.refusedBecause);
       return outcome;
     },
-    onSuccess: refreshControl,
+    onSuccess: async () => {
+      await observeNow();
+      await refreshControl();
+    },
   });
 
   const routeAllMutation = useMutation({
     mutationFn: async () => routeApproved(control.data?.actions ?? [], access, actor),
-    onSuccess: refreshControl,
+    onSuccess: async () => {
+      await observeNow();
+      await refreshControl();
+    },
   });
 
   /** Recording a figure re-asks the last question, so the answer moves with it. */
@@ -332,6 +368,9 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
           reads={executionRead}
           statement={describeExecution(executionRead)}
           gaps={ADAPTER_GAPS}
+          {...(learningSchema.data && !learningSchema.data.ready
+            ? { notice: learningSchema.data.message }
+            : {})}
         />
       )}
 
