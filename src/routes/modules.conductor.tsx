@@ -15,6 +15,7 @@ import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { ApprovalQueue } from "@/components/tt/conductor/approval-queue";
 import { OutcomeLearning } from "@/components/tt/conductor/outcome-learning";
+import { runObservationPass } from "@/data/conductor/outcome-service";
 import { ConductorConsole } from "@/components/tt/conductor/conductor-console";
 import { FiguresPanel } from "@/components/tt/conductor/figures-panel";
 import { SchemaStatus } from "@/components/tt/conductor/schema-status";
