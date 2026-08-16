@@ -874,6 +874,29 @@ export interface MilestoneAttention {
 }
 
 /**
+ * A decision a person has resolved, and what that changed about where
+ * attention sits. Derived only from Roadmap truth: Conductor never resolves a
+ * decision, moves a stage, or infers that a milestone is complete because a
+ * decision changed.
+ */
+export interface MilestoneProgression {
+  /** The resolved decision that produced the change. */
+  decisionId: string;
+  question: string;
+  /** Roadmap's own resolution state. */
+  resolution: "approved" | "declined" | "deferred";
+  resolvedAt?: string;
+  /** Where attention sat while that decision was still open. */
+  from: CanonMilestone;
+  /** Where attention sits now, under the same deterministic rules. */
+  to: CanonMilestone | null;
+  /** True when the earlier reason was the decision itself, now cleared. */
+  clearedDecisionReason: boolean;
+  statement: string;
+}
+
+
+/**
  * The canonical Roadmap concepts, read from state the Roadmap app owns.
  * Nothing here is stored separately; this is a projection, not a model.
  */
