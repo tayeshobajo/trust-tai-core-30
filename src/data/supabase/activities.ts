@@ -36,6 +36,33 @@ function dedupeKeyOf(event: Omit<ActivityEvent, "id">): string | null {
   return null;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * `activities.entity_id` is a uuid column, but not every subject in the suite
+ * is a database row: a governed Conductor action is identified by a readable
+ * key such as `act:rec:hyp:idle_capacity:scout.route_to_comms`. Writing that
+ * key straight into the column is rejected by Postgres, and because control
+ * events are emitted best-effort the history was simply lost.
+ *
+ * So a non-uuid subject is stored as a deterministic uuid derived from the
+ * key — same subject, same id, so dedupe and `subjectId` queries still work —
+ * and the readable key travels with the row in `payload.entity_ref`.
+ */
+function subjectUuid(key: string): string {
+  /* FNV-1a over the key, expanded to 32 hex digits. Deterministic, no I/O. */
+  let hex = "";
+  for (let round = 0; round < 4; round += 1) {
+    let hash = 0x811c9dc5 ^ round;
+    for (let index = 0; index < key.length; index += 1) {
+      hash ^= key.charCodeAt(index);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    hex += hash.toString(16).padStart(8, "0");
+  }
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
 function toEvent(row: Row): ActivityEvent {
   const stored = (row["payload"] ?? {}) as Record<string, unknown>;
   // The live column wins over anything mirrored into the payload.
@@ -43,15 +70,17 @@ function toEvent(row: Row): ActivityEvent {
     typeof row["source_event_key"] === "string" && row["source_event_key"]
       ? { ...stored, source_event_key: row["source_event_key"] }
       : stored;
+  const ref = typeof payload["entity_ref"] === "string" ? (payload["entity_ref"] as string) : null;
   return {
     id: String(row["id"] ?? crypto.randomUUID()),
     organizationId: String(row["organization_id"] ?? ""),
     name: String(row["event_type"] ?? "activity.created") as ActivityEvent["name"],
     subject: {
       type: (row["entity_type"] ?? "activity") as ActivityEvent["subject"]["type"],
-      id: String(row["entity_id"] ?? ""),
+      id: ref ?? String(row["entity_id"] ?? ""),
       ...(typeof payload["label"] === "string" ? { label: payload["label"] as string } : {}),
     },
+
     summary: String(row["summary"] ?? payload["summary"] ?? ""),
     payload,
     provenance: {
