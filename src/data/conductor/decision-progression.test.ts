@@ -241,7 +241,9 @@ describe("edges", () => {
       stages: SEQUENCE.map((row) => ({ ...row, state: "live" as const, tier: "decided" as const })),
     });
     expect(canon.milestoneAttention).toBeNull();
-    expect(canon.milestoneProgression).toBeNull();
+    /* Attention moves nowhere, and nothing is claimed complete by Conductor. */
+    expect(canon.milestoneProgression?.to).toBeNull();
+    expect(canon.milestoneProgression?.statement).toContain("no milestone is waiting");
   });
 
   it("never reads another organisation's roadmap decisions", () => {
