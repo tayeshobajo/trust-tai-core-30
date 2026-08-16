@@ -172,6 +172,15 @@ export function isSuiteEvent(name: string): name is SuiteEventName {
   return SUITE_EVENT_LIST.some((definition) => definition.name === name);
 }
 
+/**
+ * Only the owning room may author its own truth. Readers (Steward, Pulse) and
+ * neighbouring rooms may read every event but emit none of them.
+ */
+export function mayEmit(appId: string, key: SuiteEventKey): boolean {
+  return SUITE_EVENTS[key].emittedBy === appId;
+}
+
+
 /** The smallest useful envelope an emitting app has to fill in. */
 export interface SuiteEventInput {
   key: SuiteEventKey;
