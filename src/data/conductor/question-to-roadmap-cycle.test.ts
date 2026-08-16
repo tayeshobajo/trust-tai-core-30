@@ -330,8 +330,8 @@ describe("human authority is unchanged", () => {
   });
 
   it("keeps roadmap operations behind a roadmap permission", () => {
-    expect(capabilityFor("roadmap", ROADMAP_SHELL_OPERATION)?.capability).toContain("roadmap");
-    expect(capabilityFor("roadmap", ROADMAP_DECISION_OPERATION)?.capability).toContain("roadmap");
+    expect(capabilityFor("roadmap", ROADMAP_SHELL_OPERATION)?.requiredCapability).toContain("roadmap");
+    expect(capabilityFor("roadmap", ROADMAP_DECISION_OPERATION)?.requiredCapability).toContain("roadmap");
   });
 
   it("never lets a learned lesson grant execution", () => {
