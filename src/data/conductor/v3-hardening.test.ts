@@ -200,7 +200,7 @@ describe("re-checking is not re-happening", () => {
       measuredAt: "2026-08-20T09:00:00.000Z",
       provenance: {
         appId: "scout",
-        actor: { id: "system", label: "Conductor" },
+        actor: { type: "system", id: "system", label: "Conductor" },
         observedAt: "2026-08-20T09:00:00.000Z",
       },
     } as ActionObservation;
