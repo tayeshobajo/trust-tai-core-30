@@ -15,16 +15,19 @@ import {
   VITAL_QUESTION_LABEL,
   VITAL_QUESTION_ORDER,
   VITAL_SIGNS,
+  type BusinessFigure,
   type BusinessIntent,
   type BusinessVitals,
   type VitalArea,
   type VitalQuestion,
   type VitalReading,
   type VitalSignDefinition,
+  type ValueBasis,
   type VitalStanding,
 } from "@/domain/conductor";
 
 import type { SuiteSnapshot } from "../derive";
+import { readFigures } from "./figures";
 
 const DAY = 86_400_000;
 
@@ -67,6 +70,8 @@ function countEvents(snapshot: SuiteSnapshot, names: string[], windowDays: numbe
 interface ReadingDraft {
   key: string;
   standing: VitalStanding;
+  /** Defaults to observed. Recorded and derived figures say otherwise. */
+  basis?: ValueBasis;
   value?: number;
   statement: string;
   because: string;
@@ -93,6 +98,7 @@ function unknownReading(definition: VitalSignDefinition): ReadingDraft {
 export function readVitals(
   snapshot: SuiteSnapshot,
   intents: BusinessIntent[] = [],
+  figures: BusinessFigure[] = [],
 ): BusinessVitals {
   const now = snapshot.now;
   const nowDate = new Date(now);
@@ -261,6 +267,25 @@ export function readVitals(
     });
   }
 
+  /* ------------------------------------------- figures a person recorded */
+
+  /*
+   * Recorded last, deliberately: a number a person stands behind outranks
+   * anything counted for the same sign, and runway is only ever arithmetic
+   * over two figures they supplied.
+   */
+  for (const reading of readFigures(figures, now)) {
+    record({
+      key: reading.key,
+      standing: reading.standing,
+      basis: reading.basis,
+      value: reading.value,
+      statement: reading.statement,
+      because: reading.because,
+      evidence: reading.evidence,
+    });
+  }
+
   /* ------------------------------------------------------ assemble */
 
   const intentFor = (key: string) =>
@@ -270,7 +295,8 @@ export function readVitals(
     const draft = drafts.get(definition.key) ?? unknownReading(definition);
     const intent = intentFor(definition.key);
     const decidedTarget = intent?.target;
-    const basis = draft.standing === "unknown" ? "unknown" : "observed";
+    const basis: ValueBasis =
+      draft.standing === "unknown" ? "unknown" : (draft.basis ?? "observed");
 
     /* A decided target can only worsen a standing, never flatter it. */
     let standing = draft.standing;
