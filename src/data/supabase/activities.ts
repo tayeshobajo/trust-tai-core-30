@@ -142,7 +142,14 @@ export const supabaseActivity: ActivityStream = {
 
     if (query.appIds && query.appIds.length > 0) request = request.in("app_key", query.appIds);
     if (query.subjectType) request = request.eq("entity_type", query.subjectType);
-    if (query.subjectId) request = request.eq("entity_id", query.subjectId);
+    if (query.subjectId) {
+      /* Readable subject keys are stored as their derived uuid; match either. */
+      request = request.eq(
+        "entity_id",
+        UUID.test(query.subjectId) ? query.subjectId : subjectUuid(query.subjectId),
+      );
+    }
+
 
     const { data, error } = await request;
     if (error) throw new Error(error.message);
