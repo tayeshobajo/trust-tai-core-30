@@ -19,7 +19,16 @@ import {
   readFactory,
   readVitals,
 } from "./conductor";
-import { FRICTION_THRESHOLD, type BusinessIntent } from "@/domain/conductor";
+import {
+  FACTUAL_BASES,
+  FRICTION_THRESHOLD,
+  type BusinessIntent,
+} from "@/domain/conductor";
+import type { ActivityEvent } from "@/domain/activity";
+import { vitalReading } from "./conductor";
+
+/** The rooms that may own work. The Conductor is not one of them. */
+const SUITE_ROOM_IDS = ["scout", "comms", "roadmap", "projects", "ops", "studio", "steward"];
 
 const NOW = "2026-03-01T09:00:00.000Z";
 const ORG = "org-1";
@@ -198,5 +207,136 @@ describe("conversational answers", () => {
     const first = answerQuestion({ snapshot: snapshot(), question: "how's business?" });
     const second = answerQuestion({ snapshot: snapshot(), question: "how's business?" });
     expect(second.answer).toEqual(first.answer);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The Conductor's laws, part two: truth classes, causality, ownership.
+ * ------------------------------------------------------------------ */
+
+function event(name: string, at: string, id: string): ActivityEvent {
+  return {
+    id,
+    organizationId: ORG,
+    name: name as ActivityEvent["name"],
+    subject: { type: "prospect", id: `subject-${id}` },
+    summary: name,
+    provenance: {
+      appId: "scout",
+      actor: { type: "system", id: "test" },
+      observedAt: at,
+    },
+    occurredAt: at,
+  };
+}
+
+describe("truth classes", () => {
+  it("keeps observed, decided, inferred and unknown distinct in one plan", () => {
+    const snap = snapshot();
+    const intent = revenueIntent();
+    const plan = buildOperatingPlan({
+      intent,
+      intents: [intent],
+      vitals: readVitals(snap, [intent]),
+      factory: readFactory(snap),
+      blindSpots: [],
+      now: NOW,
+    });
+    /* The decided outcome survives even when the plan cannot be completed. */
+    const outcome = plan.assumptions.find((row) => row.key === "outcome");
+    expect(outcome?.basis).toBe("decided");
+    /* Unknown inputs are stated as unknown and carry no value. */
+    for (const row of plan.assumptions.filter((a) => a.basis === "unknown")) {
+      expect(row.value).toBeUndefined();
+    }
+    /* Nothing was inferred on top of an unknown. */
+    expect(plan.targets.filter((t) => t.basis === "inferred")).toHaveLength(0);
+  });
+
+  it("never labels a Conductor suggestion as a fact", () => {
+    const answer = answerQuestion({ snapshot: snapshot(), question: "what should I do today?" });
+    for (const action of answer.proposedActions) {
+      expect(FACTUAL_BASES).not.toContain("recommended");
+      expect(action.requiresApproval).toBe(true);
+    }
+  });
+});
+
+describe("human authority", () => {
+  it("lets a decided target darken a reading but never overwrite the count", () => {
+    const snap = snapshot();
+    snap.events = [
+      event("prospect.qualified", daysAgo(2), "e1"),
+      event("prospect.qualified", daysAgo(3), "e2"),
+    ];
+    const intent: BusinessIntent = {
+      ...revenueIntent(),
+      kind: "qualified_pipeline",
+      target: 40,
+      unit: "companies",
+    };
+    const plain = readVitals(snap);
+    const withGoal = readVitals(snap, [intent]);
+    const key = "qualified_companies";
+    const before = vitalReading(plain, key);
+    const after = vitalReading(withGoal, key);
+    if (before && after && before.basis !== "unknown") {
+      expect(after.value).toEqual(before.value);
+      expect(after.target).toBe(40);
+    }
+    expect(withGoal.organizationId).toBe(ORG);
+  });
+});
+
+describe("causal reasoning", () => {
+  it("warns downstream from an upstream fall before the outcome moves", () => {
+    const snap = snapshot();
+    snap.events = [
+      /* Prior window busy, recent window empty: a real fall at the top. */
+      event("prospect.discovered", daysAgo(30), "p1"),
+      event("prospect.discovered", daysAgo(31), "p2"),
+      event("prospect.discovered", daysAgo(32), "p3"),
+      event("prospect.discovered", daysAgo(33), "p4"),
+      /* Downstream still ticking along, so it has not felt it yet. */
+      event("project.completed", daysAgo(2), "d1"),
+      event("project.completed", daysAgo(25), "d2"),
+    ];
+    const factory = readFactory(snap);
+    const warning = factory.warnings.find((row) => row.nodeId === "demand");
+    expect(warning).toBeDefined();
+    expect(warning!.downstreamIds.length).toBeGreaterThan(0);
+    expect(warning!.expectedByDays).toBeGreaterThan(0);
+    expect(warning!.evidence.length).toBeGreaterThan(0);
+  });
+});
+
+describe("ownership and isolation", () => {
+  it("routes every proposed action to a room that owns the work", () => {
+    const snap = snapshot();
+    snap.projects = [];
+    const answer = answerQuestion({ snapshot: snap, question: "where are we leaking work?" });
+    for (const action of answer.proposedActions) {
+      expect(SUITE_ROOM_IDS).toContain(action.appId);
+    }
+    if (answer.actionGraph) {
+      expect(answer.actionGraph.requiresApproval).toBe(true);
+      for (const step of answer.actionGraph.steps) {
+        expect(SUITE_ROOM_IDS).toContain(step.owningApp);
+      }
+    }
+  });
+
+  it("answers only about the organization it was handed", () => {
+    const answer = answerQuestion({ snapshot: snapshot(), question: "how's business?" });
+    expect(answer.organizationId).toBe(ORG);
+    expect(answer.vitals.organizationId).toBe(ORG);
+    expect(answer.factory.organizationId).toBe(ORG);
+  });
+
+  it("carries evidence and names what it cannot see", () => {
+    const answer = answerQuestion({ snapshot: snapshot(), question: "how's business?" });
+    expect(answer.evidence.length).toBeGreaterThan(0);
+    expect(answer.unknowns.length).toBeGreaterThan(0);
+    for (const spot of answer.unknowns) expect(spot.howToInstrument).toBeTruthy();
   });
 });

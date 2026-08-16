@@ -21,7 +21,8 @@ import {
 const BASIS_LABEL: Record<ValueBasis, string> = {
   observed: "Observed",
   decided: "You decided",
-  derived: "Derived",
+  inferred: "Inferred",
+  recommended: "Recommended",
   unknown: "Not known",
 };
 
@@ -275,6 +276,40 @@ export function ConductorConsole({ answer, thinking, onAsk }: ConductorConsolePr
                   <p className="text-sm">{spot.howToInstrument}</p>
                 </TTCard>
               ))}
+            </section>
+          ) : null}
+
+          {/* ------------------------------------------------- action graph */}
+          {answer.actionGraph && answer.actionGraph.steps.length > 1 ? (
+            <section className="space-y-3">
+              <h2 className="text-sm uppercase tracking-wide text-[var(--tt-ink-muted)]">
+                Prepared across rooms — nothing has happened
+              </h2>
+              <TTCard className="space-y-4 p-5">
+                <p className="text-sm text-[var(--tt-ink-muted)]">
+                  {answer.actionGraph.owningApps.join(", ")} · every step needs your
+                  approval in the room that owns it.
+                </p>
+                <ol className="space-y-3">
+                  {answer.actionGraph.steps.map((step, index) => (
+                    <li key={step.id} className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <MetaPill>{index + 1}</MetaPill>
+                        <MetaPill>{step.owningApp}</MetaPill>
+                        {step.consequential ? <MetaPill>Consequential</MetaPill> : null}
+                        <MetaPill>Needs {step.requiredCapability}</MetaPill>
+                      </div>
+                      <p className="text-sm">{step.title}</p>
+                      <p className="text-xs text-[var(--tt-ink-muted)]">
+                        {step.dependsOn.length > 0
+                          ? "Only after the step above is authorised. "
+                          : ""}
+                        {step.expectedSignal}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              </TTCard>
             </section>
           ) : null}
 

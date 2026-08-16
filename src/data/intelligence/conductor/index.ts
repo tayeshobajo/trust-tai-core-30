@@ -10,6 +10,7 @@
 export * from "./vitals";
 export * from "./factory";
 export * from "./blindspots";
+export * from "./graph";
 export * from "./plan";
 export * from "./improve";
 export * from "./answer";

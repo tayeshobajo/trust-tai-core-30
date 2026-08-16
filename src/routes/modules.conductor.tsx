@@ -20,7 +20,7 @@ import { loadSuiteSnapshot } from "@/data/intelligence/service";
 import type { ConductorAnswer } from "@/domain/conductor";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Conductor — Talk to the whole business — Trust Tai OS";
+const TITLE = "Ask Trust Tai — the Conductor — Trust Tai OS";
 const DESCRIPTION =
   "Ask the Trust Tai factory a question and get a grounded answer: vital signs, upstream causes, what is missing, and bounded next steps that only you can authorise.";
 
@@ -71,8 +71,8 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
     <div className="space-y-12">
       <AppHero
         appId="conductor"
-        eyebrow="Trust Tai OS / Conductor"
-        title="Talk to the whole business."
+        eyebrow="Steward / Intelligence · Conductor"
+        title="Ask Trust Tai."
         supporting="One question, one grounded answer. What is observed, what you decided, what follows from it, and what nobody can see yet."
       />
 

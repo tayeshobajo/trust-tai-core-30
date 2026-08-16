@@ -31,9 +31,9 @@ import type { ActionProposal } from "./intelligence-engine";
 /* ------------------------------------------------------------------ basis */
 
 /**
- * Where a value came from. This is the spine of the whole subsystem: every
- * number the Conductor says out loud carries one of these, and they never
- * collapse into each other.
+ * Where a value came from — the truth class. This is the spine of the whole
+ * subsystem: every number the Conductor says out loud carries one of these,
+ * and they never collapse into each other.
  */
 export type ValueBasis =
   /** Counted or dated from a room's own record. */
@@ -41,16 +41,23 @@ export type ValueBasis =
   /** A person committed to it. Outranks anything worked out. */
   | "decided"
   /** Arithmetic over observed and decided values only. */
-  | "derived"
+  | "inferred"
+  /** The Conductor's suggestion. Never a fact, never a commitment. */
+  | "recommended"
   /** Not instrumented. Said plainly, never filled in. */
   | "unknown";
 
 export const VALUE_BASIS_LABEL: Record<ValueBasis, string> = {
   observed: "Observed",
   decided: "Decided by you",
-  derived: "Derived",
+  inferred: "Inferred",
+  recommended: "Recommended",
   unknown: "Unknown",
 };
+
+/** Truth classes that may be used as an input to arithmetic. */
+export const FACTUAL_BASES: ValueBasis[] = ["observed", "decided"];
+
 
 /* --------------------------------------------------------- business intent */
 
@@ -303,6 +310,36 @@ export const VITAL_SIGNS: VitalSignDefinition[] = [
     instrumentation: "Projects already holds this.",
   },
   {
+    key: "capacity_utilization",
+    question: "can_deliver",
+    label: "Capacity in use",
+    indicator: "leading",
+    unit: "%",
+    whyItMatters: "Selling past capacity is how delivery quality quietly fails.",
+    ownerApp: "projects",
+    instrumentation: "Record planned hours per project and available hours per person.",
+  },
+  {
+    key: "estimate_accuracy",
+    question: "can_deliver",
+    label: "Estimate accuracy",
+    indicator: "lagging",
+    unit: "%",
+    whyItMatters: "If estimates are wrong, every plan built on them is wrong too.",
+    ownerApp: "projects",
+    instrumentation: "Record estimated and actual effort on completed projects.",
+  },
+  {
+    key: "site_traffic",
+    question: "compounding",
+    label: "Site traffic",
+    indicator: "leading",
+    unit: "visits / 30 days",
+    whyItMatters: "Inbound attention is the cheapest demand the business ever gets.",
+    ownerApp: "ops",
+    instrumentation: "Connect an analytics source for the public site.",
+  },
+  {
     key: "overdue_commitments",
     question: "clients_healthy",
     label: "Overdue promises",
@@ -512,14 +549,34 @@ export const FACTORY_GRAPH: FactoryNode[] = [
     meaning: "Approved work moving through execution.",
   },
   {
-    id: "outcomes",
-    label: "Outcomes and retention",
+    id: "revenue",
+    label: "Delivered revenue",
     role: "stage",
     ownerApp: "projects",
     upstream: ["delivery"],
     lagDays: 30,
     eventNames: ["project.completed"],
     meaning: "Delivered results, the only thing that earns the next engagement.",
+  },
+  {
+    id: "retention",
+    label: "Retention",
+    role: "stage",
+    ownerApp: "comms",
+    upstream: ["revenue"],
+    lagDays: 60,
+    eventNames: ["relationship.stage_changed", "relationship.message_received"],
+    meaning: "Clients who stay in conversation after the work is delivered.",
+  },
+  {
+    id: "expansion",
+    label: "Expansion and referrals",
+    role: "stage",
+    ownerApp: "scout",
+    upstream: ["retention"],
+    lagDays: 90,
+    eventNames: ["prospect.discovered", "roadmap.created"],
+    meaning: "New work that came from work already delivered.",
   },
   {
     id: "authority",
@@ -616,8 +673,13 @@ export const BLIND_SPOT_SEVERITY_LABEL: Record<BlindSpotSeverity, string> = {
  * Something the business cannot currently see. Never a guess about what the
  * answer would be — only the question, why it matters, and how to instrument it.
  */
+/** Why the answer is missing: nothing is wired up, or it is wired and silent. */
+export type BlindSpotState = "not_connected" | "no_signal";
+
 export interface BlindSpot {
   key: string;
+  /** Whether an instrument is missing entirely, or exists and says nothing. */
+  state?: BlindSpotState;
   /** The business question that cannot be answered today. */
   question: string;
   whyItMatters: string;
@@ -649,7 +711,7 @@ export interface DerivedTarget {
   label: string;
   value: number;
   unit: string;
-  basis: "derived" | "decided";
+  basis: "inferred" | "decided";
   /** The arithmetic, written out so a person can disagree with it. */
   workedOut: string;
   assumptionKeys: string[];
@@ -791,6 +853,53 @@ export interface WithheldRoom {
   reason: string;
 }
 
+/* -------------------------------------------------------- action graph */
+
+/**
+ * One bounded step the Conductor has prepared. It is always `recommended`:
+ * nothing here has happened, and nothing here can happen without a person in
+ * the owning room.
+ */
+export interface ConductorActionStep {
+  id: string;
+  /** The room whose service would carry this out. Never the Conductor. */
+  owningApp: string;
+  route: string;
+  routeLabel: string;
+  title: string;
+  summary: string;
+  willDo: string[];
+  willNotDo: string[];
+  /** Step ids that must be authorised first. */
+  dependsOn: string[];
+  /** Consequential steps always require approval; so do all others today. */
+  consequential: boolean;
+  requiresApproval: true;
+  /** The permission a person needs in the owning room to authorise it. */
+  requiredCapability: string;
+  /** What should become observably true afterwards. */
+  expectedSignal: string;
+  basis: "recommended";
+  evidence: EvidenceRef[];
+}
+
+/**
+ * A typed, ordered set of steps across rooms. Preparing one changes nothing:
+ * it is a proposal shaped like a plan, not an execution schedule.
+ */
+export interface ConductorActionGraph {
+  id: ID;
+  organizationId: ID;
+  /** The question or intent this graph serves. */
+  purpose: string;
+  steps: ConductorActionStep[];
+  /** True whenever any step is consequential — i.e. always gated. */
+  requiresApproval: boolean;
+  /** Rooms touched, so a reader can see the blast radius at a glance. */
+  owningApps: string[];
+  generatedAt: ISODateTime;
+}
+
 /**
  * The response contract. Every field is either populated from evidence or
  * honestly empty; nothing here is padded to look complete.
@@ -818,6 +927,8 @@ export interface ConductorAnswer {
   improvements: SystemImprovement[];
   /** Bounded actions, each owned by a room and each requiring approval. */
   proposedActions: ActionProposal[];
+  /** The same work, ordered across rooms. Prepared only, never executed. */
+  actionGraph?: ConductorActionGraph;
   control: ControlStatement;
   withheld: WithheldRoom[];
   /** The metric to watch to find out whether the answer was any good. */

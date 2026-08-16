@@ -58,6 +58,7 @@ export function findBlindSpots(input: {
       whyItMatters: `You decided this goal${intent.critical ? " and marked it critical" : ""}, and nothing in the suite can answer whether it is being met.`,
       howToInstrument: definition?.instrumentation ?? "Connect a source for this metric.",
       severity: intent.critical ? "critical" : "important",
+      state: "not_connected",
       vitalKey: key,
       ...(definition?.ownerApp ? { ownerApp: definition.ownerApp } : {}),
       evidence: [human("Business intent you decided")],
@@ -80,6 +81,7 @@ export function findBlindSpots(input: {
         : definition.whyItMatters,
       howToInstrument: definition.instrumentation,
       severity: wantsPipeline ? "critical" : "important",
+      state: "not_connected",
       vitalKey: key,
       ...(definition.ownerApp ? { ownerApp: definition.ownerApp } : {}),
       evidence: [computed("No source in the suite answers this")],
@@ -96,6 +98,7 @@ export function findBlindSpots(input: {
       whyItMatters: definition.whyItMatters,
       howToInstrument: definition.instrumentation,
       severity: "critical",
+      state: "not_connected",
       vitalKey: key,
       evidence: [computed("No finance source is connected")],
     });
@@ -110,13 +113,14 @@ export function findBlindSpots(input: {
       whyItMatters: `${flow.node.meaning} Nothing writes this stage into the shared record, so an upstream fall here cannot be seen before it reaches revenue.`,
       howToInstrument: `Have ${flow.node.ownerApp} record its own events (${flow.node.eventNames.join(", ")}) in the shared stream.`,
       severity: "important",
+      state: "not_connected",
       ownerApp: flow.node.ownerApp,
       evidence: [computed("No events for this stage in the shared record")],
     });
   }
 
   /* 5. Activity without progress: rooms busy while the outcome stage is dark. */
-  const outcomes = factory.flows.find((flow) => flow.node.id === "outcomes");
+  const outcomes = factory.flows.find((flow) => flow.node.id === "revenue");
   const busyUpstream = factory.flows.filter(
     (flow) => flow.node.role === "stage" && (flow.recent ?? 0) > 0,
   );
@@ -129,6 +133,7 @@ export function findBlindSpots(input: {
         "Record completion in Projects for every engagement, so outcome throughput is countable.",
       ownerApp: "projects",
       severity: "important",
+      state: "no_signal",
       evidence: [computed(`Activity record, last ${factory.windowDays} days`)],
     });
   }

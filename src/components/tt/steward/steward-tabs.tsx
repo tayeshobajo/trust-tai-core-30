@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
 
-export type StewardSection = "today" | "meetings" | "team" | "memory";
+export type StewardSection = "today" | "meetings" | "team" | "memory" | "ask";
 
 function tabClass(active: boolean) {
   return cn(
@@ -13,7 +13,11 @@ function tabClass(active: boolean) {
   );
 }
 
-/** Steward has four surfaces. There is no fifth. */
+/**
+ * Steward's surfaces, plus the one doorway into the Conductor. "Ask Trust Tai"
+ * is not a fifth Steward surface: it is the intelligence-layer command room,
+ * reached from here because interpretation and coordination sit together.
+ */
 export function StewardTabs({ active }: { active: StewardSection }) {
   return (
     <nav
@@ -43,6 +47,13 @@ export function StewardTabs({ active }: { active: StewardSection }) {
         className={tabClass(active === "memory")}
       >
         Memory
+      </Link>
+      <Link
+        to="/modules/conductor"
+        aria-current={active === "ask" ? "page" : undefined}
+        className={tabClass(active === "ask")}
+      >
+        Ask Trust Tai
       </Link>
     </nav>
   );
