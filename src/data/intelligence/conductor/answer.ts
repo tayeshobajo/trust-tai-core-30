@@ -21,6 +21,7 @@ import {
   type OperatingPlan,
   type PlanAssumption,
   type SystemImprovement,
+  type VitalReading,
 } from "@/domain/conductor";
 
 import { engineRead } from "../engine";
@@ -31,6 +32,11 @@ import { readFactory } from "./factory";
 import { detectFriction, proposeImprovements } from "./improve";
 import { buildOperatingPlan } from "./plan";
 import { readVitals, troubledAreas, vitalReading } from "./vitals";
+
+/** Every reading across every area, flattened. */
+function allReadings(vitals: { areas: { readings: VitalReading[] }[] }): VitalReading[] {
+  return vitals.areas.flatMap((area) => area.readings);
+}
 
 /* ------------------------------------------------------------------ intent */
 
@@ -153,7 +159,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
   const actionsByRecommendation = actionsForRead(read.recommendations);
   const allActions: ActionProposal[] = Object.values(actionsByRecommendation).flat();
 
-  const grounded = snapshot.withheld.length < 6 && vitals.readings.length > 0;
+  const grounded = snapshot.withheld.length < 6 && allReadings(vitals).length > 0;
   const evidence: EvidenceRef[] = [computed("Vital signs read across the suite")];
   const assumptions: PlanAssumption[] = [];
   const unknowns: BlindSpot[] = [];
@@ -236,7 +242,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     }
 
     case "leaks": {
-      const leaks = factory.warnings.filter((warning) => warning.kind === "leak");
+      const leaks = factory.warnings;
       const stalled = read.recommendations.filter((row) =>
         ["reply_debt", "unworked_opportunity", "promises_slipping"].includes(row.patternKey),
       );
@@ -246,7 +252,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
       } else {
         answer = sentence([
           leaks[0]?.statement ?? stalled[0]?.headline ?? "",
-          leaks[0]?.because ?? stalled[0]?.because ?? "",
+          leaks[0]?.because ?? stalled[0]?.rationale ?? "",
         ]);
         const first = stalled[0];
         if (first) {
@@ -315,7 +321,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
         answer =
           "Nothing in the record is asking for you right now. Everything recorded is either moving or waiting on someone else.";
       } else {
-        answer = sentence([top.headline, top.because]);
+        answer = sentence([top.headline, top.rationale]);
         nextMove = {
           statement: top.headline,
           appId: top.destination.appId,
@@ -331,7 +337,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     case "business_read":
     case "unclear":
     default: {
-      const atRisk = vitals.readings.filter((reading) => reading.standing === "at_risk");
+      const atRisk = allReadings(vitals).filter((reading) => reading.standing === "at_risk");
       const headline =
         atRisk.length === 0
           ? "Nothing I can read is at risk."
