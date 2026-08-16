@@ -36,12 +36,17 @@ import type {
 } from "@/domain/roadmap";
 import { UNKNOWN_STATEMENT, isActiveRoadmap, orderStages } from "@/domain/roadmap";
 
-import type { CanonMilestone, MilestoneAttention, RoadmapCanonRead } from "@/domain/conductor";
+import type {
+  CanonMilestone,
+  MilestoneAttention,
+  MilestoneProgression,
+  RoadmapCanonRead,
+} from "@/domain/conductor";
 
 import type { SuiteSnapshot } from "../derive";
 import type { InputResolution } from "./payload-fill";
 
-export type { CanonMilestone, MilestoneAttention, RoadmapCanonRead };
+export type { CanonMilestone, MilestoneAttention, MilestoneProgression, RoadmapCanonRead };
 
 export const ROADMAP_SHELL_OPERATION = "roadmap.create_shell";
 export const ROADMAP_DECISION_OPERATION = "roadmap.request_decision";
@@ -151,6 +156,86 @@ export function milestoneAttentionOf(input: {
   };
 }
 
+/* --------------------------------------------------------- progression */
+
+
+/**
+ * What changed once a person answered a decision (V3.4).
+ *
+ * Read from Roadmap truth only, and computed the same deterministic way twice:
+ * attention as it stood while the most recently resolved decision was still
+ * open, and attention as it stands now. If those differ, that difference is
+ * the progression — nothing is moved, resolved, reordered or completed here.
+ */
+export function milestoneProgressionOf(input: {
+  milestones: CanonMilestone[];
+  /** Every decision on this roadmap, open and resolved. */
+  decisions: RoadmapDecision[];
+  pointB: { tier: "inferred" | "decided" } | null;
+}): MilestoneProgression | null {
+  const open = input.decisions.filter((row) => row.status === "open");
+  const resolved = input.decisions
+    .filter((row) => row.status !== "open")
+    .sort((a, b) =>
+      (b.resolvedAt ?? b.updatedAt).localeCompare(a.resolvedAt ?? a.updatedAt),
+    );
+  const latest = resolved[0];
+  if (!latest) return null;
+
+  /*
+   * Where attention sat while that decision was open. When the decision was
+   * recorded against a milestone, that milestone is where attention sat, even
+   * if Roadmap has since marked it live — that is Roadmap's own record, not an
+   * inference of completion by Conductor.
+   */
+  const linked = latest.stageId
+    ? input.milestones.find((milestone) => milestone.id === latest.stageId)
+    : undefined;
+  const before: MilestoneAttention | null = linked
+    ? {
+        milestone: linked,
+        rule: "open_decision",
+        because: `An unresolved decision sat on this milestone: "${latest.question}".`,
+        decisionId: latest.id,
+      }
+    : milestoneAttentionOf({
+        milestones: input.milestones,
+        openDecisions: [...open, latest],
+        pointB: input.pointB,
+      });
+  if (!before) return null;
+
+
+  const after = milestoneAttentionOf({
+    milestones: input.milestones,
+    openDecisions: open,
+    pointB: input.pointB,
+  });
+
+  const decisionDriven =
+    (before.rule === "open_decision" || before.rule === "destination_first") &&
+    before.decisionId === latest.id;
+  const moved = after?.milestone.id !== before.milestone.id;
+  if (!moved && !decisionDriven) return null;
+
+  const statement = after
+    ? moved
+      ? `“${latest.question}” is now resolved (${latest.status}), so attention moves from “${before.milestone.title}” to “${after.milestone.title}” (${after.milestone.state.replace(/_/g, " ")}, ${after.milestone.tier}). ${after.because}`
+      : `“${latest.question}” is now resolved (${latest.status}), so that reason no longer holds attention on “${before.milestone.title}”. It still deserves attention, now for a different reason. ${before.because}`
+    : `“${latest.question}” is now resolved (${latest.status}), and every milestone on this roadmap is already live, so no milestone is waiting on you here.`;
+
+  return {
+    decisionId: latest.id,
+    question: latest.question,
+    resolution: latest.status as "approved" | "declined" | "deferred",
+    ...(latest.resolvedAt ? { resolvedAt: latest.resolvedAt } : {}),
+    from: before.milestone,
+    to: after?.milestone ?? null,
+    clearedDecisionReason: decisionDriven,
+    statement,
+  };
+}
+
 /** Map Roadmap state onto the canonical concepts. Read-only and pure. */
 export function readRoadmapCanon(input: {
   roadmap: Roadmap;
@@ -198,6 +283,16 @@ export function readRoadmapCanon(input: {
     milestonesKnown: Boolean(stages),
     milestoneAttention: stages
       ? milestoneAttentionOf({ milestones, openDecisions: open, pointB })
+      : null,
+    /* Progression is only honest once the sequence itself was actually read. */
+    milestoneProgression: stages
+      ? milestoneProgressionOf({
+          milestones,
+          decisions: input.decisions.filter(
+            (decision) => decision.roadmapId === roadmap.id,
+          ),
+          pointB,
+        })
       : null,
     openDecisions: open,
 
@@ -255,6 +350,9 @@ export function describeRoadmapCanon(canon: RoadmapCanonRead): string {
         ? `${canon.milestones.length} milestone${canon.milestones.length === 1 ? " is" : "s are"} sequenced; the first is "${canon.milestones[0]!.title}".`
         : "No milestones are sequenced yet.",
     );
+    if (canon.milestoneProgression) {
+      parts.push(canon.milestoneProgression.statement);
+    }
     if (canon.milestoneAttention) {
       const { milestone, because } = canon.milestoneAttention;
       parts.push(
@@ -583,7 +681,8 @@ export function planRoadmapCycle(input: {
   if (subject.roadmap) {
     const canon = readRoadmapCanon({
       roadmap: subject.roadmap,
-      decisions: snapshot.openDecisions,
+      /* Open and answered together: progression is only readable with both. */
+      decisions: [...snapshot.openDecisions, ...snapshot.resolvedDecisions],
       /*
        * Stages come from the caller when it already read them, otherwise from
        * the snapshot. A snapshot that read stages successfully but holds none

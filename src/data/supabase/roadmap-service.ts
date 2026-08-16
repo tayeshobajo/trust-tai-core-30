@@ -261,6 +261,24 @@ export const roadmapService = {
   },
 
   /**
+   * Decisions a person has already answered, newest resolution first.
+   *
+   * Read-only, and bounded: only what is recent enough to explain where
+   * attention has just moved. Resolution is Roadmap's own record.
+   */
+  async resolvedDecisions(organizationId: ID, limit = 40): Promise<RoadmapDecision[]> {
+    const { data, error } = await supabase
+      .from("roadmap_decisions")
+      .select(DECISION_COLUMNS)
+      .eq("organization_id", organizationId)
+      .neq("status", "open")
+      .order("resolved_at", { ascending: false, nullsFirst: false })
+      .limit(limit);
+    assertOk(error);
+    return ((data ?? []) as Row[]).map(toDecision);
+  },
+
+  /**
    * Every stage in the organisation, grouped by roadmap. Read-only.
    *
    * A roadmap with no stages is simply absent from the map; the caller reads

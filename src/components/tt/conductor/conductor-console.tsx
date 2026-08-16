@@ -204,6 +204,12 @@ export function ConductorConsole({
                   {answer.roadmapCanon.milestoneAttention.because}
                 </p>
               ) : null}
+              {answer.roadmapCanon.milestoneProgression ? (
+                <p className="text-[var(--tt-ink-muted)]">
+                  Progression: {answer.roadmapCanon.milestoneProgression.statement}
+                </p>
+              ) : null}
+
 
               {answer.roadmapCanon.openDecisions.length > 0 ? (
                 <div className="space-y-1 border-t border-[var(--tt-rule)] pt-2">
