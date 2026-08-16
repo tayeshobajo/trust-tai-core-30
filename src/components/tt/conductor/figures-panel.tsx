@@ -21,6 +21,9 @@ export interface FiguresPanelProps {
   figures: BusinessFigure[];
   now: string;
   saving?: boolean;
+  /** Set when the ledger cannot be written yet — recording is refused up front. */
+  disabled?: boolean;
+  disabledReason?: string;
   onRecord: (input: { key: string; value: number; asOf: string; note?: string }) => void | Promise<void>;
 }
 
