@@ -551,6 +551,8 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     ...(plan ? { plan } : {}),
     improvements: shownImprovements,
     proposedActions: finalActions,
+    inputResolutions,
+
     ...(actionGraph ? { actionGraph } : {}),
     learning,
     priorLearning,
