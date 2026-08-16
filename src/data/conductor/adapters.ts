@@ -90,14 +90,13 @@ function baseVerdict(
 /**
  * Comms: prepare an unsent draft.
  *
- * The only thing this crosses into Comms with is `commsService.saveDraft`, in
- * `needs_review`. No message is sent, no relationship stage moves.
+ * The only thing this crosses into Comms with is `commsService.saveDraft`, that needs human review. No message is sent, no relationship stage moves.
  */
 export const commsDraftAdapter: RoomAdapter = {
   id: "adapter:comms.draft",
   room: "comms",
   operations: ["comms.draft_reply"],
-  boundary: "commsService.saveDraft — an unsent draft in needs_review",
+  boundary: "commsService.saveDraft — an unsent draft that needs human review",
   supports(operation) {
     return this.operations.includes(operation);
   },
@@ -160,13 +159,13 @@ export const commsDraftAdapter: RoomAdapter = {
       const draft = await commsService.saveDraft(
         {
           relationship,
-          register: "warm_professional",
+          register: "follow_up",
           intent: action.operation,
           ...(prepared.payload!["subject"]
             ? { subject: String(prepared.payload!["subject"]) }
             : {}),
           body: String(prepared.payload!["body"]),
-          reviewState: "needs_review",
+          reviewState: "needs_human_review",
           rationale: {
             conductor_action: action.id,
             source_event_key: action.sourceEventKey,
