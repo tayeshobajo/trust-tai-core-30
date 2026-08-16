@@ -51,6 +51,7 @@ import {
   routeApproved,
 } from "@/data/conductor/orchestrator";
 import { loadSuiteSnapshot } from "@/data/intelligence/service";
+import { getCurrentIcp } from "@/data/supabase/icp";
 import {
   loadControlledActions,
   loadReceipts,
@@ -188,10 +189,24 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
    */
   const ask = useMutation({
     mutationFn: async (question: string) => {
-      const snapshot = await loadSuiteSnapshot(identity.organizationId);
+      const [snapshot, icp] = await Promise.all([
+        loadSuiteSnapshot(identity.organizationId),
+        /* Targeting truth a person already saved. Unreadable ICP simply means
+         * no auto-filled brief — never an invented one. */
+        getCurrentIcp(identity.organizationId).catch(() => null),
+      ]);
       const result = await answerQuestion({
         snapshot,
         question,
+        icp: icp
+          ? {
+              profileId: icp.id,
+              version: icp.version,
+              title: icp.title,
+              contentMarkdown: icp.contentMarkdown,
+              updatedAt: icp.updatedAt,
+            }
+          : null,
         intents: ledger.data?.intents ?? [],
         figures: ledger.data?.figures ?? [],
         corrections: ledger.data?.corrections ?? [],
