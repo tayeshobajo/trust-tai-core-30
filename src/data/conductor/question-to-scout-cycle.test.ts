@@ -130,9 +130,29 @@ const SAVED_ICP: IcpContext = {
 };
 
 /** A snapshot whose Scout board is genuinely empty. */
-function thinPipeline() {
-  return emptySnapshot(ORG, NOW);
+function thinPipeline(organizationId = ORG) {
+  return {
+    ...emptySnapshot(organizationId, NOW),
+    /* Conversations exist, but the Scout board is empty: the evidence the
+     * thin-pipeline hypothesis actually reads. */
+    relationships: [1, 2, 3].map((index) => ({
+      id: `rel-${index}`,
+      organizationId,
+      fullName: `Person ${index}`,
+      stage: "in_conversation" as const,
+      source: "scout_handoff" as const,
+      lastTouchAt: "2026-06-01T09:00:00.000Z",
+      responseDueAt: "2026-07-01T09:00:00.000Z",
+      observed: [],
+      inferred: [],
+      decided: [],
+      metadata: {},
+      createdAt: "2026-06-01T09:00:00.000Z",
+      updatedAt: "2026-06-01T09:00:00.000Z",
+    })),
+  };
 }
+
 
 const DEMAND_QUESTION = "our pipeline is thin, how do we find more qualified companies";
 
