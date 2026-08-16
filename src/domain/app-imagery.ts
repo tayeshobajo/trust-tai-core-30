@@ -60,6 +60,11 @@ export const APP_IMAGERY: Record<string, AppImage> = {
     alt: "",
     objectPosition: "47% 55%",
   },
+  conductor: {
+    src: "/assets/trust-tai-os-conductor.png",
+    alt: "",
+    objectPosition: "50% 50%",
+  },
   pulse: {
     src: "/assets/trust-tai-os-pulse.png",
     alt: "",
