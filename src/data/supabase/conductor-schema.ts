@@ -172,3 +172,60 @@ export async function checkControlSchema(organizationId: ID): Promise<ControlSch
     checkedAt: new Date().toISOString(),
   };
 }
+
+/* ------------------------------------------------------ learning ledger */
+
+/**
+ * The V3 outcome and learning tables are checked on their own, for the same
+ * reason V2 is: without them the Conductor still reasons, approves and routes
+ * — it simply cannot remember what happened afterwards. A person should be
+ * told that plainly rather than watching an empty panel and guessing.
+ */
+export const LEARNING_TABLES = ["conductor_observations", "conductor_learning"] as const;
+
+export type LearningTable = (typeof LEARNING_TABLES)[number];
+
+export interface LearningSchemaHealth {
+  ready: boolean;
+  missing: LearningTable[];
+  forbidden: LearningTable[];
+  tables: { table: LearningTable; status: TableStatus; detail?: string }[];
+  message: string;
+  checkedAt: string;
+}
+
+export async function checkLearningSchema(organizationId: ID): Promise<LearningSchemaHealth> {
+  const tables = await Promise.all(
+    LEARNING_TABLES.map(async (table) => {
+      const { error } = await supabase
+        .from(table)
+        .select("id", { head: true, count: "exact" })
+        .eq("organization_id", organizationId)
+        .limit(1);
+      const status = classifyError(error);
+      return { table, status, ...(error ? { detail: error.message } : {}) };
+    }),
+  );
+
+  const missing = tables.filter((t) => t.status === "missing").map((t) => t.table);
+  const forbidden = tables.filter((t) => t.status === "forbidden").map((t) => t.table);
+  const unknown = tables.filter((t) => t.status === "unknown");
+
+  const message =
+    missing.length > 0
+      ? `Outcomes cannot be remembered yet (${missing.join(", ")}). Apply docs/conductor-v3-schema.sql to the Trust Tai Supabase project — until then the Conductor can act, but learns nothing from what happens next.`
+      : forbidden.length > 0
+        ? `The learning ledger exists but this account cannot reach it (${forbidden.join(", ")}). Check your membership and the grants in docs/conductor-v3-schema.sql.`
+        : unknown.length > 0
+          ? `The learning ledger could not be read just now: ${unknown[0]?.detail ?? "unknown error"}. Nothing was changed.`
+          : "Learning ledger reachable. Outcomes are observed and lessons recorded.";
+
+  return {
+    ready: tables.every((t) => t.status === "ready"),
+    missing,
+    forbidden,
+    tables,
+    message,
+    checkedAt: new Date().toISOString(),
+  };
+}
