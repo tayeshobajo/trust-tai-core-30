@@ -37,6 +37,8 @@ function stepFromProposal(proposal: ActionProposal, dependsOn: string[]): Conduc
   return {
     id: proposal.id,
     owningApp: proposal.appId,
+    operation: proposal.operation,
+    payload: proposal.payload,
     route: proposal.route,
     routeLabel: proposal.routeLabel,
     title: proposal.title,

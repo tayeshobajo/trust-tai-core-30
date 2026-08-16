@@ -13,14 +13,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
+import { ApprovalQueue } from "@/components/tt/conductor/approval-queue";
 import { ConductorConsole } from "@/components/tt/conductor/conductor-console";
 import { FiguresPanel } from "@/components/tt/conductor/figures-panel";
 import { SchemaStatus } from "@/components/tt/conductor/schema-status";
-import { checkConductorSchema } from "@/data/supabase/conductor-schema";
+import { checkConductorSchema, checkControlSchema } from "@/data/supabase/conductor-schema";
 import type { CorrectionDraft } from "@/components/tt/conductor/correct-answer";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { answerQuestion } from "@/data/intelligence/conductor";
+import { buildControlledActions } from "@/data/intelligence/conductor/control";
+import {
+  approveEverything,
+  decide,
+  describeControl,
+  publishProposedActions,
+  routeAction,
+  routeApproved,
+} from "@/data/conductor/orchestrator";
 import { loadSuiteSnapshot } from "@/data/intelligence/service";
+import {
+  loadControlledActions,
+  loadReceipts,
+} from "@/data/supabase/conductor-control-service";
 import {
   loadBusinessFigures,
   loadBusinessIntents,
@@ -28,6 +42,7 @@ import {
   recordCorrection,
   recordFigure,
 } from "@/data/supabase/conductor-service";
+import { accessContext, can } from "@/domain/access";
 import type { ConductorAnswer } from "@/domain/conductor";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -95,6 +110,32 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
     staleTime: 60_000,
   });
 
+  /* The V2 control ledger is checked separately: without it the Conductor
+   * still reasons, but nothing may be approved or handed to a room. */
+  const controlSchema = useQuery({
+    queryKey: ["conductor-control-schema", identity.organizationId],
+    queryFn: () => checkControlSchema(identity.organizationId),
+    staleTime: 60_000,
+  });
+
+  const access = accessContext({
+    userId: identity.userId,
+    organizationId: identity.organizationId,
+    role: identity.role,
+  });
+  const actor = { id: identity.userId, label: identity.name };
+
+  const control = useQuery({
+    queryKey: ["conductor-control", identity.organizationId],
+    queryFn: async () => {
+      const [actions, receipts] = await Promise.all([
+        loadControlledActions(identity.organizationId),
+        loadReceipts(identity.organizationId),
+      ]);
+      return { actions, receipts };
+    },
+  });
+
   const now = new Date().toISOString();
 
   /*
@@ -105,15 +146,67 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
   const ask = useMutation({
     mutationFn: async (question: string) => {
       const snapshot = await loadSuiteSnapshot(identity.organizationId);
-      return answerQuestion({
+      const result = await answerQuestion({
         snapshot,
         question,
         intents: ledger.data?.intents ?? [],
         figures: ledger.data?.figures ?? [],
         corrections: ledger.data?.corrections ?? [],
       });
+
+      /*
+       * Preparing the queue is not acting: the graph becomes governed actions
+       * sitting at "proposed" until a person decides. Idempotent on the
+       * action's source key, so re-asking never duplicates the queue.
+       */
+      if (result.actionGraph && controlSchema.data?.ready) {
+        const actions = buildControlledActions({
+          organizationId: identity.organizationId,
+          graph: result.actionGraph,
+          answerId: result.id,
+          now: new Date().toISOString(),
+          existing: control.data?.actions ?? [],
+        });
+        await publishProposedActions(actions, access, actor).catch(() => undefined);
+        await queryClient.invalidateQueries({
+          queryKey: ["conductor-control", identity.organizationId],
+        });
+      }
+      return result;
     },
     onSuccess: (result) => setAnswer(result),
+  });
+
+  const refreshControl = () =>
+    queryClient.invalidateQueries({ queryKey: ["conductor-control", identity.organizationId] });
+
+  const decideMutation = useMutation({
+    mutationFn: async (
+      decisions: { actionId: string; kind: "approve" | "hold" | "reject" | "withdraw"; reason?: string }[],
+    ) => decide(control.data?.actions ?? [], decisions, access, actor),
+    onSuccess: refreshControl,
+  });
+
+  const approveAllMutation = useMutation({
+    mutationFn: async () => approveEverything(control.data?.actions ?? [], access, actor),
+    onSuccess: refreshControl,
+  });
+
+  const routeMutation = useMutation({
+    mutationFn: async (actionId: string) => {
+      const actions = control.data?.actions ?? [];
+      const action = actions.find((row) => row.id === actionId);
+      if (!action) throw new Error("That action is no longer in the queue.");
+      const outcome = await routeAction(action, actions, access, actor);
+      if (outcome.refusedBecause) throw new Error(outcome.refusedBecause);
+      return outcome;
+    },
+    onSuccess: refreshControl,
+  });
+
+  const routeAllMutation = useMutation({
+    mutationFn: async () => routeApproved(control.data?.actions ?? [], access, actor),
+    onSuccess: refreshControl,
   });
 
   /** Recording a figure re-asks the last question, so the answer moves with it. */
@@ -192,6 +285,28 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
           </div>
         }
       />
+
+      {controlSchema.data && !controlSchema.data.ready ? (
+        <p className="text-sm text-[var(--tt-ink-muted)]">{controlSchema.data.message}</p>
+      ) : (
+        <ApprovalQueue
+          control={describeControl(control.data?.actions ?? [], access)}
+          receipts={control.data?.receipts ?? []}
+          canApprove={can(access, "conductor.approve")}
+          canExecute={can(access, "conductor.execute")}
+          deciding={decideMutation.isPending || approveAllMutation.isPending}
+          routing={routeMutation.isPending || routeAllMutation.isPending}
+          onDecide={(decisions) => decideMutation.mutateAsync(decisions).then(() => undefined)}
+          onRoute={(actionId) => routeMutation.mutateAsync(actionId).then(() => undefined)}
+          onRouteAll={() => routeAllMutation.mutateAsync().then(() => undefined)}
+        />
+      )}
+
+      {routeMutation.isError ? (
+        <p className="text-sm text-[var(--tt-ink-muted)]">
+          Nothing was handed over: {(routeMutation.error as Error).message}
+        </p>
+      ) : null}
 
       {record.isError ? (
         <p className="text-sm text-[var(--tt-ink-muted)]">

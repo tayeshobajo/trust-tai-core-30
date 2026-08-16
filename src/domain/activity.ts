@@ -44,15 +44,27 @@ export type ActivityAction =
   /** The receiving room's own lifecycle for routed work. */
   | "work_accepted"
   | "work_started"
-  | "work_completed";
+  | "work_completed"
+  /* --- Conductor governance (see src/domain/control-events.ts) ---
+   * These describe the Conductor's own approval loop, never a room's truth. */
+  | "action_proposed"
+  | "action_approved"
+  | "action_held"
+  | "action_rejected"
+  | "action_withdrawn"
+  | "action_routed"
+  | "action_failed"
+  | "action_completed"
+  | "action_measured";
 
 /**
  * What an event is *about*. Usually a shared core entity. Two suite rooms —
  * Ops and Studio — own work that has no shared entity in Core yet, so they may
- * scope their own lifecycle events to the room. This is a naming scope, never
- * a licence to create a parallel entity store.
+ * scope their own lifecycle events to the room. The Conductor scope carries
+ * governance history only. This is a naming scope, never a licence to create a
+ * parallel entity store.
  */
-export type ActivityScope = EntityType | "ops" | "studio";
+export type ActivityScope = EntityType | "ops" | "studio" | "conductor";
 
 /** Event name is always `scope.action`, e.g. "project.status_changed". */
 export type ActivityName = `${ActivityScope}.${ActivityAction}`;

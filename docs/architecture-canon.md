@@ -175,3 +175,26 @@ boundaries and organization scoping.
   across rooms. Every consequential step requires a human with the owning app's
   authority, and executes in that room's service. The Conductor never writes to
   Scout, Comms, Roadmap, Projects, Ops or Studio, and never mutates itself.
+
+
+## Conductor control law (V2)
+
+Approval is permission, never execution.
+
+- **The queue is governance, not truth.** `conductor_actions` and
+  `conductor_receipts` hold references and decisions. No room's record is
+  copied into them, ever.
+- **Adapters are the only door.** The Conductor reaches a room solely through
+  `src/data/conductor/adapters.ts`, which calls that room's existing service,
+  with that room's own permission and RLS still enforced inside it. No generic
+  table write exists, and no adapter may act for a room other than its own.
+- **Selective and reversible.** A person approves, holds, rejects or withdraws
+  each step individually, with a reason. A prerequisite that has not reached
+  its room blocks its dependents by name.
+- **External work is never routed.** Anything whose effect leaves the building
+  stays advice, done by a person.
+- **Nothing is done until the owning room says so.** Routing means handed over.
+  Completion is reported by the receiving room; it is never inferred, and the
+  Conductor's own words are constrained accordingly.
+- **Failure is recorded, not swallowed.** Every hand-over writes a receipt —
+  routed, refused or failed — and a governance event in the shared stream.

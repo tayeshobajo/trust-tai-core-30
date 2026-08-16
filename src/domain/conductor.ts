@@ -864,6 +864,10 @@ export interface ConductorActionStep {
   id: string;
   /** The room whose service would carry this out. Never the Conductor. */
   owningApp: string;
+  /** The room operation this step names, e.g. "comms.draft_reply". */
+  operation?: string;
+  /** References the owning room's service would need. Never room truth itself. */
+  payload?: Record<string, unknown>;
   route: string;
   routeLabel: string;
   title: string;

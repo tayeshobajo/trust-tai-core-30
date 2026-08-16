@@ -77,7 +77,16 @@ export type Permission =
   | "steward.read"
   | "steward.write"
   /** Enter Ops. Ops is a separate app and enforces its own access as well. */
-  | "ops.read";
+  | "ops.read"
+  /**
+   * Conductor governance. `conductor.approve` allows a person to approve, hold
+   * or reject a prepared cross-room action; `conductor.execute` allows routing
+   * an approved action to the owning room's service. Neither ever substitutes
+   * for the owning room's own write permission: routing a Comms draft still
+   * requires `comms.write` inside Comms.
+   */
+  | "conductor.approve"
+  | "conductor.execute";
 
 const READ_ONLY: Permission[] = [
   "workspace.read",
@@ -99,13 +108,16 @@ const OPERATOR: Permission[] = [
   "ops.read",
 ];
 
-const FULL: Permission[] = [...OPERATOR, "org.manage", "roadmap.decide"];
+/** Governing the Conductor's control loop is a leadership act, not an ordinary write. */
+const CONTROL: Permission[] = ["conductor.approve", "conductor.execute"];
+
+const FULL: Permission[] = [...OPERATOR, "org.manage", "roadmap.decide", ...CONTROL];
 
 export const ROLE_PERMISSIONS: Record<WorkspaceRole, Permission[]> = {
   owner: FULL,
   admin: FULL,
-  leadership: [...OPERATOR, "roadmap.decide"],
-  project_lead: [...OPERATOR, "roadmap.decide"],
+  leadership: [...OPERATOR, "roadmap.decide", ...CONTROL],
+  project_lead: [...OPERATOR, "roadmap.decide", ...CONTROL],
   client_support: [...READ_ONLY, "comms.write"],
   team_member: OPERATOR,
   member: OPERATOR,
