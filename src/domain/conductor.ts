@@ -31,9 +31,9 @@ import type { ActionProposal } from "./intelligence-engine";
 /* ------------------------------------------------------------------ basis */
 
 /**
- * Where a value came from. This is the spine of the whole subsystem: every
- * number the Conductor says out loud carries one of these, and they never
- * collapse into each other.
+ * Where a value came from — the truth class. This is the spine of the whole
+ * subsystem: every number the Conductor says out loud carries one of these,
+ * and they never collapse into each other.
  */
 export type ValueBasis =
   /** Counted or dated from a room's own record. */
@@ -41,16 +41,23 @@ export type ValueBasis =
   /** A person committed to it. Outranks anything worked out. */
   | "decided"
   /** Arithmetic over observed and decided values only. */
-  | "derived"
+  | "inferred"
+  /** The Conductor's suggestion. Never a fact, never a commitment. */
+  | "recommended"
   /** Not instrumented. Said plainly, never filled in. */
   | "unknown";
 
 export const VALUE_BASIS_LABEL: Record<ValueBasis, string> = {
   observed: "Observed",
   decided: "Decided by you",
-  derived: "Derived",
+  inferred: "Inferred",
+  recommended: "Recommended",
   unknown: "Unknown",
 };
+
+/** Truth classes that may be used as an input to arithmetic. */
+export const FACTUAL_BASES: ValueBasis[] = ["observed", "decided"];
+
 
 /* --------------------------------------------------------- business intent */
 
