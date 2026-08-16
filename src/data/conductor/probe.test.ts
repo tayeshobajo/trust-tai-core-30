@@ -1,7 +1,8 @@
 import { it } from "vitest";
 import { emptySnapshot } from "@/data/intelligence/derive";
-import { answerQuestion } from "@/data/intelligence/conductor";
+import { engineRead } from "@/data/intelligence/engine";
+import { actionsForRead } from "@/data/intelligence/engine/propose";
 it("probe", () => {
-  const a = answerQuestion({ snapshot: emptySnapshot("org-x","2026-08-26T09:00:00.000Z"), question: "our pipeline is thin, how do we find more qualified companies" } as any);
-  console.log(JSON.stringify({ actions: a.proposedActions.map(x=>({id:x.id,op:x.operation,app:x.appId,payload:x.payload})), graph: !!a.actionGraph, res: a.inputResolutions }, null, 1));
+  const r = engineRead({ snapshot: emptySnapshot("org-x","2026-08-26T09:00:00.000Z") } as any);
+  console.log(JSON.stringify({ obs: r.observations?.map((o:any)=>o.kind), hyp: r.hypotheses?.map((h:any)=>({id:h.id,c:h.confidence?.level ?? h.confidence})), recs: r.recommendations?.map((x:any)=>x.id), acts: actionsForRead(r).map((a:any)=>a.operation) }, null, 1));
 });
