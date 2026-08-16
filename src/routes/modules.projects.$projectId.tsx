@@ -35,7 +35,7 @@ import {
   type ExecutionProject,
   type ExecutionState,
 } from "@/domain/projects";
-import type { WorkspaceIdentity } from "@/lib/workspace";
+import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
 
 export const Route = createFileRoute("/modules/projects/$projectId")({
   head: () => ({
