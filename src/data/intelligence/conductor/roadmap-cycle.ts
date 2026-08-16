@@ -36,12 +36,12 @@ import type {
 } from "@/domain/roadmap";
 import { UNKNOWN_STATEMENT, isActiveRoadmap, orderStages } from "@/domain/roadmap";
 
-import type { CanonMilestone, RoadmapCanonRead } from "@/domain/conductor";
+import type { CanonMilestone, MilestoneAttention, RoadmapCanonRead } from "@/domain/conductor";
 
 import type { SuiteSnapshot } from "../derive";
 import type { InputResolution } from "./payload-fill";
 
-export type { CanonMilestone, RoadmapCanonRead };
+export type { CanonMilestone, MilestoneAttention, RoadmapCanonRead };
 
 export const ROADMAP_SHELL_OPERATION = "roadmap.create_shell";
 export const ROADMAP_DECISION_OPERATION = "roadmap.request_decision";
@@ -211,7 +211,16 @@ export function readRoadmapCanon(input: {
     executionBoundary: EXECUTION_BOUNDARY,
     evidence: [
       { label: `Roadmap "${roadmap.title}" as recorded in Roadmap`, kind: "computed" },
-      ...(input.stages ? [] : []),
+      ...(stages
+        ? ([
+            {
+              label: `${stages.length} milestone${stages.length === 1 ? "" : "s"} read from Roadmap's own sequence`,
+              kind: "computed",
+            },
+          ] as EvidenceRef[])
+        : ([
+            { label: "Milestones could not be read, so none are claimed", kind: "computed" },
+          ] as EvidenceRef[])),
     ],
   };
 }
@@ -243,9 +252,17 @@ export function describeRoadmapCanon(canon: RoadmapCanonRead): string {
   if (canon.milestonesKnown) {
     parts.push(
       canon.milestones.length > 0
-        ? `${canon.milestones.length} milestone${canon.milestones.length === 1 ? "" : "s"} are sequenced; the first is "${canon.milestones[0]!.title}".`
+        ? `${canon.milestones.length} milestone${canon.milestones.length === 1 ? " is" : "s are"} sequenced; the first is "${canon.milestones[0]!.title}".`
         : "No milestones are sequenced yet.",
     );
+    if (canon.milestoneAttention) {
+      const { milestone, because } = canon.milestoneAttention;
+      parts.push(
+        `The milestone that deserves attention next is "${milestone.title}" (${milestone.state.replace(/_/g, " ")}, ${milestone.tier}). ${because}`,
+      );
+    }
+  } else {
+    parts.push("Milestones could not be read, so I am not claiming what is sequenced.");
   }
 
   parts.push(
