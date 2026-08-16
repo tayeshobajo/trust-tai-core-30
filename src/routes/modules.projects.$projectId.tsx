@@ -204,6 +204,11 @@ function ProjectWorkspace({
         </section>
       ) : null}
 
+      {isOpenProject(project) ? (
+        <RouteWork project={project} context={context} access={workspaceAccess(identity)} />
+      ) : null}
+
+
       <section className="tt-surface space-y-5 p-6">
         <SectionHeading eyebrow="The move" title={move.move} description={move.because} />
         <details className="group">
