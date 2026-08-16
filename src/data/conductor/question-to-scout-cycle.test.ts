@@ -262,7 +262,7 @@ describe("deterministic execution-input resolution", () => {
     /* The resolver only ever sees the ICP the caller loaded for the current
      * organization; nothing in the reasoning path can reach across orgs. */
     const answer = answerQuestion({
-      snapshot: emptySnapshot("org-other", NOW),
+      snapshot: thinPipeline("org-other"),
       question: DEMAND_QUESTION,
       icp: null,
     });
