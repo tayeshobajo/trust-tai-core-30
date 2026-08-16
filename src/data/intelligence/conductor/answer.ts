@@ -422,14 +422,35 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
   }
 
   /*
-   * Fill what the owning room needs from context that already exists. Today
-   * that is Scout's discovery brief, derived from the saved ICP. Nothing is
-   * invented, and an unfillable proposal stays exactly as proposed.
+   * Question-originated operation selection (V3.1).
+   *
+   * A question about weak pipeline, new prospects or creating demand should be
+   * able to reach Scout's real sourcing operation, not only a look-only step.
+   * Conservative by construction: the discovery proposal is only added when
+   * the read already produced it — that is, when the evidence says the
+   * pipeline is genuinely thin. No question invents the recommendation.
    */
-  const finalActions = fillProposalPayloads(
-    proposedActions.length > 0 ? proposedActions : allActions.slice(0, 2),
-    input.icp ?? null,
+  const demandQuestion = DEMAND_PATTERNS.some((pattern) => pattern.test(question));
+  const discoveryAction = allActions.find(
+    (action) => action.operation === DISCOVERY_PROPOSAL_OPERATION,
   );
+  const selected =
+    demandQuestion && discoveryAction
+      ? [discoveryAction, ...proposedActions.filter((action) => action.id !== discoveryAction.id)]
+      : proposedActions.length > 0
+        ? proposedActions
+        : allActions.slice(0, 2);
+
+  /*
+   * Bounded action input resolution: hydrate what the owning room needs from
+   * trusted state that already exists. Today that is Scout's discovery brief,
+   * composed deterministically from the saved ICP's targeting fields. Nothing
+   * is invented, and an unresolvable proposal stays exactly as proposed, with
+   * the missing fields named on it.
+   */
+  const finalActions = fillProposalPayloads(selected.slice(0, 3), input.icp ?? null);
+  const inputResolutions = resolveProposalInputs(finalActions, input.icp ?? null);
+
 
   /*
    * What we learned last time, brought to bear on this answer.
