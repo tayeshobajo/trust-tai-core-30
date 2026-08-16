@@ -160,7 +160,7 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
     receipts: control.data?.receipts ?? [],
     observations: control.data?.observations ?? [],
     learning: control.data?.learning ?? [],
-    access,
+    access: { can: (permission: string) => can(access, permission as never) },
   });
 
   /*
