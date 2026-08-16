@@ -182,12 +182,29 @@ export function milestoneProgressionOf(input: {
   const latest = resolved[0];
   if (!latest) return null;
 
-  const before = milestoneAttentionOf({
-    milestones: input.milestones,
-    openDecisions: [...open, latest],
-    pointB: input.pointB,
-  });
+  /*
+   * Where attention sat while that decision was open. When the decision was
+   * recorded against a milestone, that milestone is where attention sat, even
+   * if Roadmap has since marked it live — that is Roadmap's own record, not an
+   * inference of completion by Conductor.
+   */
+  const linked = latest.stageId
+    ? input.milestones.find((milestone) => milestone.id === latest.stageId)
+    : undefined;
+  const before: MilestoneAttention | null = linked
+    ? {
+        milestone: linked,
+        rule: "open_decision",
+        because: `An unresolved decision sat on this milestone: "${latest.question}".`,
+        decisionId: latest.id,
+      }
+    : milestoneAttentionOf({
+        milestones: input.milestones,
+        openDecisions: [...open, latest],
+        pointB: input.pointB,
+      });
   if (!before) return null;
+
 
   const after = milestoneAttentionOf({
     milestones: input.milestones,
