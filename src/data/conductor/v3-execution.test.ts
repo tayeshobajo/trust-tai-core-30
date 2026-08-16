@@ -17,7 +17,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { accessContext } from "@/domain/access";
+import { accessContext, can, type Permission } from "@/domain/access";
 import type { ControlledAction, ExecutionReceipt } from "@/domain/conductor-control";
 import type { ActionObservation, LearningRecord } from "@/domain/outcomes";
 import {
@@ -29,16 +29,16 @@ import { learningGrantsExecution, metricClassOf } from "@/domain/outcomes";
 
 /* -------------------------------------------------------------- room spies */
 
-const scoutDiscover = vi.fn(async () => ({ runId: "run-1", saved: 4, rejected: 1, returned: 5 }));
-const scoutFeedback = vi.fn(async () => undefined);
+const scoutDiscover = vi.fn(async (..._args: any[]) => ({ runId: "run-1", saved: 4, rejected: 1, returned: 5 }));
+const scoutFeedback = vi.fn(async (..._args: any[]) => undefined);
 const scoutRuns = vi.fn(async () => [
   { id: "run-1", query: "fintech", status: "succeeded", resultCount: 4 },
 ]);
 
 vi.mock("@/data/supabase/scout-service", () => ({
   scoutService: {
-    discover: (...args: unknown[]) => scoutDiscover(...(args as [])),
-    feedback: (...args: unknown[]) => scoutFeedback(...(args as [])),
+    discover: (...args: unknown[]) => scoutDiscover(...args),
+    feedback: (...args: unknown[]) => scoutFeedback(...args),
     runs: (...args: unknown[]) => scoutRuns(...(args as [])),
   },
 }));
@@ -104,7 +104,7 @@ const { distillLearning, relevantLearning, confidenceFor, phraseLesson } = await
 const ORG = "org-v3";
 const NOW = "2026-08-20T09:00:00.000Z";
 const owner = accessContext({ userId: "u1", organizationId: ORG, role: "owner" });
-const access = { can: (permission: string) => owner.permissions.includes(permission as never) };
+const access = { can: (permission: string) => can(owner, permission as Permission) };
 const context = {
   organizationId: ORG,
   actor: { id: "u1", label: "Tai" },
