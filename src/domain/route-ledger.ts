@@ -117,7 +117,7 @@ export function buildRouteLedger(
       key,
       organizationId: event.organizationId,
       projectId: text(data["project_id"]) || event.subject.id,
-      projectName: event.subject.label ?? text(data["label"]) || "This project",
+      projectName: event.subject.label || text(data["label"]) || "This project",
       targetApp: target,
       requestedOutcome: text(data["requested_outcome"]),
       because: text(data["because"]),
