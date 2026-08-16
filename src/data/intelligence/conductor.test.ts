@@ -316,7 +316,7 @@ describe("ownership and isolation", () => {
     snap.projects = [];
     const answer = answerQuestion({ snapshot: snap, question: "where are we leaking work?" });
     for (const action of answer.proposedActions) {
-      expect(SUITE_ROOM_IDS).toContain(action.owningApp);
+      expect(SUITE_ROOM_IDS).toContain(action.appId);
     }
     if (answer.actionGraph) {
       expect(answer.actionGraph.requiresApproval).toBe(true);
