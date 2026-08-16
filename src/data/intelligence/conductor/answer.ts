@@ -30,6 +30,7 @@ import type { SuiteSnapshot } from "../derive";
 import { findBlindSpots } from "./blindspots";
 import { readFactory } from "./factory";
 import { detectFriction, proposeImprovements } from "./improve";
+import { buildActionGraph } from "./graph";
 import { buildOperatingPlan } from "./plan";
 import { readVitals, troubledAreas, vitalReading } from "./vitals";
 
@@ -380,6 +381,15 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
       "I cannot see enough of the suite to answer honestly. Rooms you are not authorised to read are listed below, and nothing has been inferred in their place.";
   }
 
+  const finalActions = proposedActions.length > 0 ? proposedActions : allActions.slice(0, 2);
+  const actionGraph = buildActionGraph({
+    organizationId: snapshot.organizationId,
+    purpose: question.trim().length > 0 ? question.trim() : "Read of the business",
+    proposals: finalActions,
+    plan,
+    now: snapshot.now,
+  });
+
   return {
     id: `conductor:${topic}:${snapshot.now}`,
     organizationId: snapshot.organizationId,
@@ -394,7 +404,8 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     ...(nextMove ? { nextMove } : {}),
     ...(plan ? { plan } : {}),
     improvements: shownImprovements,
-    proposedActions: proposedActions.length > 0 ? proposedActions : allActions.slice(0, 2),
+    proposedActions: finalActions,
+    ...(actionGraph ? { actionGraph } : {}),
     control: CONDUCTOR_CONTROL,
     withheld: snapshot.withheld.map((row) => ({ appId: row.appId, reason: row.reason })),
     ...(watch ? { watch } : {}),
