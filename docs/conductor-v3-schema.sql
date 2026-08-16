@@ -137,3 +137,9 @@ begin
       for insert to authenticated with check (private.is_org_member(organization_id));
   end if;
 end $$;
+
+-- Data API privileges (required in addition to RLS; idempotent)
+grant select, insert on public.conductor_observations to authenticated;
+grant select, insert on public.conductor_learning to authenticated;
+grant all on public.conductor_observations to service_role;
+grant all on public.conductor_learning to service_role;
