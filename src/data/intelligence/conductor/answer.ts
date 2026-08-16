@@ -39,6 +39,7 @@ import { findBlindSpots } from "./blindspots";
 import { readFactory } from "./factory";
 import { detectFriction, proposeImprovements } from "./improve";
 import { buildActionGraph } from "./graph";
+import { fillProposalPayloads, type IcpContext } from "./payload-fill";
 import { figuresWithCorrections, isSuppressed, learningState } from "./learning";
 import { buildOperatingPlan } from "./plan";
 import { readVitals, troubledAreas, vitalReading } from "./vitals";
@@ -153,6 +154,12 @@ export interface ConductorInput {
    * question about Comms never drags in every lesson the system ever formed.
    */
   priorLearning?: LearningRecord[];
+  /**
+   * The organisation's saved ICP, read from `icp_profiles`. When present, the
+   * discovery proposal is filled from it so Scout's adapter has the brief it
+   * requires. Absent, the proposal stays look-only — nothing is invented.
+   */
+  icp?: IcpContext | null;
 }
 
 /**
@@ -414,7 +421,15 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
       "I cannot see enough of the suite to answer honestly. Rooms you are not authorised to read are listed below, and nothing has been inferred in their place.";
   }
 
-  const finalActions = proposedActions.length > 0 ? proposedActions : allActions.slice(0, 2);
+  /*
+   * Fill what the owning room needs from context that already exists. Today
+   * that is Scout's discovery brief, derived from the saved ICP. Nothing is
+   * invented, and an unfillable proposal stays exactly as proposed.
+   */
+  const finalActions = fillProposalPayloads(
+    proposedActions.length > 0 ? proposedActions : allActions.slice(0, 2),
+    input.icp ?? null,
+  );
 
   /*
    * What we learned last time, brought to bear on this answer.
