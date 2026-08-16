@@ -918,6 +918,13 @@ export interface RoadmapCanonRead {
   milestonesKnown: boolean;
   /** The milestone that deserves attention next, when stages were read. */
   milestoneAttention: MilestoneAttention | null;
+  /**
+   * How attention moved after a person resolved a decision. Null when nothing
+   * has been resolved, when stages could not be read, or when the resolution
+   * did not change which milestone deserves attention.
+   */
+  milestoneProgression: MilestoneProgression | null;
+
 
   /** Unresolved human decisions on this roadmap. */
   openDecisions: RoadmapDecision[];
