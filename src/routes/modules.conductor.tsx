@@ -15,6 +15,8 @@ import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { ConductorConsole } from "@/components/tt/conductor/conductor-console";
 import { FiguresPanel } from "@/components/tt/conductor/figures-panel";
+import { SchemaStatus } from "@/components/tt/conductor/schema-status";
+import { checkConductorSchema } from "@/data/supabase/conductor-schema";
 import type { CorrectionDraft } from "@/components/tt/conductor/correct-answer";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { answerQuestion } from "@/data/intelligence/conductor";
@@ -81,6 +83,16 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
       ]);
       return { intents, figures, corrections };
     },
+  });
+
+  /*
+   * Before anything is written, the ledger is asked whether it exists at all.
+   * A missing migration is a named condition here, not a silent failed save.
+   */
+  const schema = useQuery({
+    queryKey: ["conductor-schema", identity.organizationId],
+    queryFn: () => checkConductorSchema(identity.organizationId),
+    staleTime: 60_000,
   });
 
   const now = new Date().toISOString();
@@ -162,14 +174,31 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
         corrected={correct.isSuccess}
         onCorrect={(draft) => correct.mutateAsync(draft).then(() => undefined)}
         figures={
-          <FiguresPanel
-            figures={ledger.data?.figures ?? []}
-            now={now}
-            saving={record.isPending}
-            onRecord={(input) => record.mutateAsync(input).then(() => undefined)}
-          />
+          <div className="space-y-3">
+            <SchemaStatus
+              {...(schema.data ? { health: schema.data } : {})}
+              checking={schema.isPending}
+            />
+            <FiguresPanel
+              figures={ledger.data?.figures ?? []}
+              now={now}
+              saving={record.isPending}
+              disabled={schema.data ? !schema.data.ready : true}
+              {...(schema.data && !schema.data.ready
+                ? { disabledReason: schema.data.message }
+                : {})}
+              onRecord={(input) => record.mutateAsync(input).then(() => undefined)}
+            />
+          </div>
         }
       />
+
+      {record.isError ? (
+        <p className="text-sm text-[var(--tt-ink-muted)]">
+          That figure was not recorded: {(record.error as Error).message}
+        </p>
+      ) : null}
+
 
       {ask.isError ? (
         <p className="text-sm text-[var(--tt-ink-muted)]">
