@@ -231,6 +231,26 @@ export function ConductorConsole({
                       </ul>
                     </div>
                   </div>
+                  {(() => {
+                    /* Execution inputs resolved from decided state — or named
+                     * as missing. Never presented as a recommendation. */
+                    const resolution = answer.inputResolutions?.[action.id];
+                    if (!resolution || resolution.status === "not_applicable") return null;
+                    return (
+                      <p
+                        className={`text-xs ${
+                          resolution.status === "resolved"
+                            ? "text-[var(--tt-ink-muted)]"
+                            : "text-[var(--tt-warn,var(--tt-ink))]"
+                        }`}
+                      >
+                        {resolution.status === "resolved"
+                          ? resolution.because
+                          : `Needs Scout targeting details before this can be routed: ${resolution.missing.join(", ")}.`}
+                      </p>
+                    );
+                  })()}
+
                   <div className="flex items-center justify-between gap-3 border-t border-[var(--tt-rule)] pt-3">
                     <span className="text-xs text-[var(--tt-ink-muted)]">
                       Authorised and completed by you, in {action.appId}.

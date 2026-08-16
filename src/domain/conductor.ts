@@ -931,6 +931,22 @@ export interface ConductorAnswer {
   improvements: SystemImprovement[];
   /** Bounded actions, each owned by a room and each requiring approval. */
   proposedActions: ActionProposal[];
+  /**
+   * Per-action execution-input resolution, keyed by proposal id. Distinguishes
+   * a model/rule recommendation from an execution input resolved
+   * deterministically from decided or observed state.
+   */
+  inputResolutions?: Record<
+    string,
+    {
+      operation: string;
+      status: "resolved" | "missing_input" | "not_applicable";
+      because: string;
+      missing: string[];
+      source?: { kind: string; recordId: string; version: number; fields: string[] };
+    }
+  >;
+
   /** The same work, ordered across rooms. Prepared only, never executed. */
   actionGraph?: ConductorActionGraph;
   control: ControlStatement;
