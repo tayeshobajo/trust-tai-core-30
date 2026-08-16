@@ -162,3 +162,26 @@ export async function learningContext(input: {
     }),
   );
 }
+
+/* ------------------------------------------------------------ operability */
+
+/**
+ * Which actions could honestly be re-checked right now.
+ *
+ * Only work that has actually been handed to a room, and only operations the
+ * system can read. Held, rejected, withdrawn and merely proposed actions are
+ * never observed — nothing has happened to them.
+ */
+export function observableActions(actions: ControlledAction[]): ControlledAction[] {
+  return actions.filter(
+    (action) => OBSERVABLE_STATES.includes(action.status) && canObserve(action.operation),
+  );
+}
+
+/** When the ledger last looked, in the organization's own record. */
+export function lastObservedAt(observations: ActionObservation[]): string | undefined {
+  return observations
+    .map((observation) => observation.measuredAt)
+    .sort()
+    .reverse()[0];
+}
