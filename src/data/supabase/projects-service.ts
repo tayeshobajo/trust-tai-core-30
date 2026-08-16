@@ -323,4 +323,52 @@ export const projectsService = {
     }
     return saved;
   },
+
+  /**
+   * Ask Ops or Studio to take a bounded piece of specialized work.
+   *
+   * A route is a request. Acceptance belongs to the receiving room, so this
+   * writes no downstream state and claims none: it emits exactly one
+   * Projects-owned suite event, keyed so a retry is the same happening.
+   * A person with `projects.write` must ask; intelligence may only propose.
+   */
+  async routeWork(
+    project: ExecutionProject,
+    intent: RouteIntent,
+    context: ProjectsContext,
+    access: AccessContext | null | undefined,
+  ): Promise<ProjectRouteRequest> {
+    if (!can(access, "projects.write")) {
+      throw new Error("Your role can read Projects but not route work out of it.");
+    }
+    const built = buildRouteRequest(project, intent);
+    if (!built.ok) throw new Error(built.because);
+    const request = built.request;
+
+    await emitSuiteEvent({
+      key: ROUTE_EVENT_KEY[request.targetApp],
+      organizationId: request.organizationId,
+      actor: {
+        type: "user",
+        id: context.userId,
+        ...(context.userLabel ? { label: context.userLabel } : {}),
+      },
+      subject: { type: "project", id: request.projectId, label: request.projectName },
+      related: [
+        ...(request.clientId
+          ? [{ type: "client" as const, id: request.clientId }]
+          : []),
+        ...(request.roadmapId
+          ? [{ type: "roadmap" as const, id: request.roadmapId }]
+          : []),
+      ],
+      summary: routeSummary(request),
+      sourceEventKey: request.sourceEventKey,
+      metadata: routeMetadata(request),
+      confidence: "observed",
+    });
+
+    return request;
+  },
 };
+
