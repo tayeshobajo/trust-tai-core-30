@@ -943,7 +943,7 @@ export interface ConductorAnswer {
       status: "resolved" | "missing_input" | "not_applicable";
       because: string;
       missing: string[];
-      source?: { kind: string; recordId: string; version: number; fields: string[] };
+      source?: { kind: string; recordId: string; version?: number; fields: string[] };
     }
   >;
 
