@@ -174,14 +174,31 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
         corrected={correct.isSuccess}
         onCorrect={(draft) => correct.mutateAsync(draft).then(() => undefined)}
         figures={
-          <FiguresPanel
-            figures={ledger.data?.figures ?? []}
-            now={now}
-            saving={record.isPending}
-            onRecord={(input) => record.mutateAsync(input).then(() => undefined)}
-          />
+          <div className="space-y-3">
+            <SchemaStatus
+              {...(schema.data ? { health: schema.data } : {})}
+              checking={schema.isPending}
+            />
+            <FiguresPanel
+              figures={ledger.data?.figures ?? []}
+              now={now}
+              saving={record.isPending}
+              disabled={schema.data ? !schema.data.ready : true}
+              {...(schema.data && !schema.data.ready
+                ? { disabledReason: schema.data.message }
+                : {})}
+              onRecord={(input) => record.mutateAsync(input).then(() => undefined)}
+            />
+          </div>
         }
       />
+
+      {record.isError ? (
+        <p className="text-sm text-[var(--tt-ink-muted)]">
+          That figure was not recorded: {(record.error as Error).message}
+        </p>
+      ) : null}
+
 
       {ask.isError ? (
         <p className="text-sm text-[var(--tt-ink-muted)]">
