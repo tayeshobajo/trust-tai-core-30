@@ -36,12 +36,12 @@ import type {
 } from "@/domain/roadmap";
 import { UNKNOWN_STATEMENT, isActiveRoadmap, orderStages } from "@/domain/roadmap";
 
-import type { CanonMilestone, RoadmapCanonRead } from "@/domain/conductor";
+import type { CanonMilestone, MilestoneAttention, RoadmapCanonRead } from "@/domain/conductor";
 
 import type { SuiteSnapshot } from "../derive";
 import type { InputResolution } from "./payload-fill";
 
-export type { CanonMilestone, RoadmapCanonRead };
+export type { CanonMilestone, MilestoneAttention, RoadmapCanonRead };
 
 export const ROADMAP_SHELL_OPERATION = "roadmap.create_shell";
 export const ROADMAP_DECISION_OPERATION = "roadmap.request_decision";
@@ -64,10 +64,101 @@ function anchorProofOf(notes: RoadmapNote[]): RoadmapNote | null {
   return [...proven].sort((a, b) => b.evidence.length - a.evidence.length)[0]!;
 }
 
+/**
+ * Which milestone deserves attention next.
+ *
+ * Decided by rule, before any wording, and only from what Roadmap records:
+ *
+ *   1. A milestone carrying an unresolved human decision.
+ *   2. When Point B is not yet decided, the milestone that agrees the
+ *      destination — because everything sequenced after it assumes that
+ *      answer. This is sequence logic, not a recorded dependency.
+ *   3. Otherwise the earliest unfinished milestone by sequence position,
+ *      then by stage state, then by truth tier, then by having a named owner.
+ *
+ * No dependency is ever invented.
+ */
+const STATE_RANK: Record<string, number> = { blocked: 0, in_build: 1, mapped: 2, live: 3 };
+const TIER_RANK: Record<Tier, number> = { decided: 0, observed: 1, inferred: 2 };
+
+const DESTINATION_PATTERNS: RegExp[] = [
+  /\bdestination\b/i,
+  /\bpoint b\b/i,
+  /\bagree(ment|d)?\b/i,
+  /\bobjective\b/i,
+];
+
+function looksLikeDestinationWork(milestone: CanonMilestone): boolean {
+  const text = `${milestone.title} ${milestone.intent ?? ""}`;
+  return DESTINATION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function unfinished(milestone: CanonMilestone): boolean {
+  return milestone.state !== "live";
+}
+
+function bySequence(a: CanonMilestone, b: CanonMilestone): number {
+  return (
+    a.position - b.position ||
+    (STATE_RANK[a.state] ?? 9) - (STATE_RANK[b.state] ?? 9) ||
+    TIER_RANK[a.tier] - TIER_RANK[b.tier] ||
+    Number(Boolean(b.ownerLabel ?? b.ownerUserId)) - Number(Boolean(a.ownerLabel ?? a.ownerUserId)) ||
+    a.id.localeCompare(b.id)
+  );
+}
+
+export function milestoneAttentionOf(input: {
+  milestones: CanonMilestone[];
+  openDecisions: RoadmapDecision[];
+  pointB: { tier: "inferred" | "decided" } | null;
+}): MilestoneAttention | null {
+  const open = [...input.milestones].filter(unfinished).sort(bySequence);
+  if (open.length === 0) return null;
+
+  /* 1. An unresolved human decision sitting on a milestone outranks sequence. */
+  for (const milestone of open) {
+    const decision = input.openDecisions.find((row) => row.stageId === milestone.id);
+    if (decision) {
+      return {
+        milestone,
+        rule: "open_decision",
+        because: `An unresolved decision sits on this milestone: "${decision.question}". Only you can answer it.`,
+        decisionId: decision.id,
+      };
+    }
+  }
+
+  /* 2. An undecided destination comes before anything sequenced after it. */
+  if (input.pointB?.tier !== "decided" && input.openDecisions.length > 0) {
+    const destination = open.find(looksLikeDestinationWork);
+    if (destination) {
+      return {
+        milestone: destination,
+        rule: "destination_first",
+        because:
+          "Point B is not decided yet, and the milestones after this one assume the answer. That is sequence logic, not a recorded dependency.",
+        ...(input.openDecisions[0] ? { decisionId: input.openDecisions[0].id } : {}),
+      };
+    }
+  }
+
+  /* 3. Earliest unfinished milestone in the recorded sequence. */
+  const first = open[0]!;
+  return {
+    milestone: first,
+    rule: "sequence_position",
+    because: `Earliest unfinished milestone in the recorded sequence (position ${first.position}, ${first.state.replace(/_/g, " ")}, ${first.tier}). No dependency is recorded against it.`,
+  };
+}
+
 /** Map Roadmap state onto the canonical concepts. Read-only and pure. */
 export function readRoadmapCanon(input: {
   roadmap: Roadmap;
   decisions: RoadmapDecision[];
+  /**
+   * Stages as Roadmap holds them. An empty array is a real, read, empty
+   * sequence. `undefined` means stages could not be read at all.
+   */
   stages?: RoadmapStage[] | undefined;
 }): RoadmapCanonRead {
   const { roadmap } = input;
@@ -75,6 +166,25 @@ export function readRoadmapCanon(input: {
     (decision) => decision.roadmapId === roadmap.id && decision.status === "open",
   );
   const stages = input.stages ? orderStages(input.stages) : undefined;
+  const milestones: CanonMilestone[] = (stages ?? []).map((stage) => ({
+    id: stage.id,
+    roadmapId: stage.roadmapId,
+    position: stage.position,
+    title: stage.title,
+    ...(stage.intent ? { intent: stage.intent } : {}),
+    state: stage.state,
+    tier: stage.tier,
+    ...(stage.ownerLabel ? { ownerLabel: stage.ownerLabel } : {}),
+    ...(stage.ownerUserId ? { ownerUserId: stage.ownerUserId } : {}),
+    evidence: stage.evidence,
+  }));
+  const pointB = roadmap.pointB
+    ? {
+        statement: roadmap.pointB.statement,
+        tier: roadmap.pointB.tier,
+        because: roadmap.pointB.because,
+      }
+    : null;
 
   return {
     roadmapId: roadmap.id,
@@ -83,21 +193,14 @@ export function readRoadmapCanon(input: {
     governingThought: roadmap.objective.trim() || UNKNOWN_STATEMENT,
     pointA: roadmap.pointA.filter((note) => note.tier === "observed"),
     anchorProof: anchorProofOf(roadmap.pointA),
-    pointB: roadmap.pointB
-      ? {
-          statement: roadmap.pointB.statement,
-          tier: roadmap.pointB.tier,
-          because: roadmap.pointB.because,
-        }
-      : null,
-    milestones: (stages ?? []).map((stage) => ({
-      title: stage.title,
-      ...(stage.intent ? { intent: stage.intent } : {}),
-      state: stage.state,
-      tier: stage.tier,
-    })),
+    pointB,
+    milestones,
     milestonesKnown: Boolean(stages),
+    milestoneAttention: stages
+      ? milestoneAttentionOf({ milestones, openDecisions: open, pointB })
+      : null,
     openDecisions: open,
+
     nextMove: roadmap.nextMove
       ? {
           action: roadmap.nextMove.action,
@@ -108,7 +211,16 @@ export function readRoadmapCanon(input: {
     executionBoundary: EXECUTION_BOUNDARY,
     evidence: [
       { label: `Roadmap "${roadmap.title}" as recorded in Roadmap`, kind: "computed" },
-      ...(input.stages ? [] : []),
+      ...(stages
+        ? ([
+            {
+              label: `${stages.length} milestone${stages.length === 1 ? "" : "s"} read from Roadmap's own sequence`,
+              kind: "computed",
+            },
+          ] as EvidenceRef[])
+        : ([
+            { label: "Milestones could not be read, so none are claimed", kind: "computed" },
+          ] as EvidenceRef[])),
     ],
   };
 }
@@ -140,9 +252,17 @@ export function describeRoadmapCanon(canon: RoadmapCanonRead): string {
   if (canon.milestonesKnown) {
     parts.push(
       canon.milestones.length > 0
-        ? `${canon.milestones.length} milestone${canon.milestones.length === 1 ? "" : "s"} are sequenced; the first is "${canon.milestones[0]!.title}".`
+        ? `${canon.milestones.length} milestone${canon.milestones.length === 1 ? " is" : "s are"} sequenced; the first is "${canon.milestones[0]!.title}".`
         : "No milestones are sequenced yet.",
     );
+    if (canon.milestoneAttention) {
+      const { milestone, because } = canon.milestoneAttention;
+      parts.push(
+        `The milestone that deserves attention next is "${milestone.title}" (${milestone.state.replace(/_/g, " ")}, ${milestone.tier}). ${because}`,
+      );
+    }
+  } else {
+    parts.push("Milestones could not be read, so I am not claiming what is sequenced.");
   }
 
   parts.push(
@@ -464,9 +584,16 @@ export function planRoadmapCycle(input: {
     const canon = readRoadmapCanon({
       roadmap: subject.roadmap,
       decisions: snapshot.openDecisions,
+      /*
+       * Stages come from the caller when it already read them, otherwise from
+       * the snapshot. A snapshot that read stages successfully but holds none
+       * for this roadmap is an empty sequence, not an unknown one.
+       */
       ...(input.stagesByRoadmap?.[subject.roadmap.id]
         ? { stages: input.stagesByRoadmap[subject.roadmap.id]! }
-        : {}),
+        : snapshot.roadmapStages
+          ? { stages: snapshot.roadmapStages[subject.roadmap.id] ?? [] }
+          : {}),
     });
 
     const existingDecision = canon.openDecisions[0];

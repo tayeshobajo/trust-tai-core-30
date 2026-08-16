@@ -846,10 +846,31 @@ export const CONDUCTOR_TOPIC_LABEL: Record<ConductorTopic, string> = {
 
 /** One milestone as Roadmap already holds it: an asset, system or capability. */
 export interface CanonMilestone {
+  id: string;
+  roadmapId: string;
+  position: number;
   title: string;
   intent?: string;
   state: string;
+  /** Never blended: a mapped, inferred stage is not a decided one. */
   tier: Tier;
+  ownerLabel?: string;
+  ownerUserId?: string;
+  /** Provenance carried straight from the stage record. */
+  evidence: EvidenceRef[];
+}
+
+/**
+ * Which milestone deserves attention next, and why, decided by rule before
+ * any wording. Never a dependency claim unless Roadmap actually records one.
+ */
+export interface MilestoneAttention {
+  milestone: CanonMilestone;
+  /** The rule that selected it. */
+  rule: "open_decision" | "destination_first" | "sequence_position";
+  because: string;
+  /** The unresolved decision behind it, when the rule was decision-driven. */
+  decisionId?: string;
 }
 
 /**
@@ -870,7 +891,11 @@ export interface RoadmapCanonRead {
   pointB: { statement: string; tier: "inferred" | "decided"; because: string } | null;
   /** Milestones, when stages were read. Absent stages are said, not guessed. */
   milestones: CanonMilestone[];
+  /** True whenever stages were actually read, including a genuinely empty set. */
   milestonesKnown: boolean;
+  /** The milestone that deserves attention next, when stages were read. */
+  milestoneAttention: MilestoneAttention | null;
+
   /** Unresolved human decisions on this roadmap. */
   openDecisions: RoadmapDecision[];
   nextMove: { action: string; because: string; tier: Tier } | null;

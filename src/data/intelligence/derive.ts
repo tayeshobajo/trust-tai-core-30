@@ -11,7 +11,7 @@ import { dueState, isActive, type Relationship } from "@/domain/comms";
 import type { EvidenceRef } from "@/domain/confidence";
 import type { ActivityEvent } from "@/domain/activity";
 import type { EntityRef, ID } from "@/domain/entities";
-import type { Roadmap, RoadmapDecision } from "@/domain/roadmap";
+import type { Roadmap, RoadmapDecision, RoadmapStage } from "@/domain/roadmap";
 import type { ExecutionProject } from "@/domain/projects";
 import { isOpenProject, projectHealth, recommendedMove } from "@/domain/projects";
 import type { ProspectCandidate } from "@/domain/scout";
@@ -43,6 +43,11 @@ export interface SuiteSnapshot {
   relationships: Relationship[];
   roadmaps: Roadmap[];
   openDecisions: RoadmapDecision[];
+  /**
+   * Stages, grouped by roadmap id, exactly as Roadmap holds them. `null`
+   * means the sequence could not be read; an empty map read successfully.
+   */
+  roadmapStages: Record<ID, RoadmapStage[]> | null;
   projects: ExecutionProject[];
   events: ActivityEvent[];
   /** Rows written by the Ops specialist app into the shared activity table. */
@@ -62,6 +67,7 @@ export function emptySnapshot(organizationId: ID, now = new Date().toISOString()
     relationships: [],
     roadmaps: [],
     openDecisions: [],
+    roadmapStages: null,
     projects: [],
     events: [],
     opsActivities: [],

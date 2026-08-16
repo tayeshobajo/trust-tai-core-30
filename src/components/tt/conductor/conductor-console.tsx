@@ -189,6 +189,22 @@ export function ConductorConsole({
                   Proof: {answer.roadmapCanon.anchorProof.value}
                 </p>
               ) : null}
+              <p className="text-[var(--tt-ink-muted)]">
+                Milestones:{" "}
+                {answer.roadmapCanon.milestonesKnown
+                  ? `${answer.roadmapCanon.milestones.length} sequenced`
+                  : "could not be read — not claimed"}
+              </p>
+              {answer.roadmapCanon.milestoneAttention ? (
+                <p>
+                  Next milestone attention: “
+                  {answer.roadmapCanon.milestoneAttention.milestone.title}” (
+                  {answer.roadmapCanon.milestoneAttention.milestone.state.replace(/_/g, " ")},{" "}
+                  {answer.roadmapCanon.milestoneAttention.milestone.tier}) —{" "}
+                  {answer.roadmapCanon.milestoneAttention.because}
+                </p>
+              ) : null}
+
               {answer.roadmapCanon.openDecisions.length > 0 ? (
                 <div className="space-y-1 border-t border-[var(--tt-rule)] pt-2">
                   <p>

@@ -260,6 +260,28 @@ export const roadmapService = {
     return ((data ?? []) as Row[]).map(toDecision);
   },
 
+  /**
+   * Every stage in the organisation, grouped by roadmap. Read-only.
+   *
+   * A roadmap with no stages is simply absent from the map; the caller reads
+   * an empty sequence, which is a real answer. A failed read throws, so a
+   * caller can say "unknown" rather than "none".
+   */
+  async stagesByRoadmap(organizationId: ID): Promise<Record<ID, RoadmapStage[]>> {
+    const { data, error } = await supabase
+      .from("roadmap_stages")
+      .select(STAGE_COLUMNS)
+      .eq("organization_id", organizationId)
+      .order("position", { ascending: true });
+    assertOk(error);
+    const grouped: Record<ID, RoadmapStage[]> = {};
+    for (const stage of ((data ?? []) as Row[]).map(toStage)) {
+      (grouped[stage.roadmapId] ??= []).push(stage);
+    }
+    for (const key of Object.keys(grouped)) grouped[key] = orderStages(grouped[key]!);
+    return grouped;
+  },
+
   async detail(id: ID, organizationId: ID): Promise<RoadmapDetail | null> {
     const { data, error } = await supabase
       .from("roadmaps")
