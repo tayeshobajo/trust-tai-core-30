@@ -584,9 +584,16 @@ export function planRoadmapCycle(input: {
     const canon = readRoadmapCanon({
       roadmap: subject.roadmap,
       decisions: snapshot.openDecisions,
+      /*
+       * Stages come from the caller when it already read them, otherwise from
+       * the snapshot. A snapshot that read stages successfully but holds none
+       * for this roadmap is an empty sequence, not an unknown one.
+       */
       ...(input.stagesByRoadmap?.[subject.roadmap.id]
         ? { stages: input.stagesByRoadmap[subject.roadmap.id]! }
-        : {}),
+        : snapshot.roadmapStages
+          ? { stages: snapshot.roadmapStages[subject.roadmap.id] ?? [] }
+          : {}),
     });
 
     const existingDecision = canon.openDecisions[0];

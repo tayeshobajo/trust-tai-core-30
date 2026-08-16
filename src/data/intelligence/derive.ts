@@ -11,7 +11,7 @@ import { dueState, isActive, type Relationship } from "@/domain/comms";
 import type { EvidenceRef } from "@/domain/confidence";
 import type { ActivityEvent } from "@/domain/activity";
 import type { EntityRef, ID } from "@/domain/entities";
-import type { Roadmap, RoadmapDecision } from "@/domain/roadmap";
+import type { Roadmap, RoadmapDecision, RoadmapStage } from "@/domain/roadmap";
 import type { ExecutionProject } from "@/domain/projects";
 import { isOpenProject, projectHealth, recommendedMove } from "@/domain/projects";
 import type { ProspectCandidate } from "@/domain/scout";
