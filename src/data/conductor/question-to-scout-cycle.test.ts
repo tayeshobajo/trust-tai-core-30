@@ -212,7 +212,7 @@ describe("deterministic execution-input resolution", () => {
 
     expect(brief).toContain("Accountancy, legal, consulting");
     expect(brief).toContain("United Kingdom");
-    expect(brief).toContain("Company size: 10-50 people".replace("Company size: ", ""));
+    expect(brief).toContain("Company size: 10-50 people");
     expect(discovery.payload["briefSource"]).toBe("icp_profiles");
     expect(discovery.payload["icpProfileId"]).toBe("icp-v31");
     expect(discovery.payload["icpVersion"]).toBe(4);
