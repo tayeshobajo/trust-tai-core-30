@@ -227,6 +227,9 @@ export function relevantLearning(input: {
     )
     .filter((record) => record.confidence !== "none")
     .sort((a, b) => {
+      /* A person's decision comes first, whatever the inference says. */
+      const decided = Number(b.basis === "decided") - Number(a.basis === "decided");
+      if (decided !== 0) return decided;
       const rank = CONFIDENCE_RANK[b.confidence] - CONFIDENCE_RANK[a.confidence];
       if (rank !== 0) return rank;
       return b.recordedAt.localeCompare(a.recordedAt);
