@@ -23,6 +23,16 @@ import type {
   ProjectOrigin,
 } from "@/domain/projects";
 import { LIFECYCLE_FOR_STATE, stateFromLifecycle } from "@/domain/projects";
+import { can, type AccessContext } from "@/domain/access";
+import {
+  ROUTE_EVENT_KEY,
+  buildRouteRequest,
+  routeMetadata,
+  routeSummary,
+  type ProjectRouteRequest,
+  type RouteIntent,
+} from "@/domain/project-routing";
+
 
 import { supabaseActivity } from "./activities";
 import { emitSuiteEvent } from "@/data/events/suite-events";
