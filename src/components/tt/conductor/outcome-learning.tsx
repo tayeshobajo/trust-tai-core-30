@@ -107,7 +107,7 @@ function Row({ read }: { read: ActionExecutionRead }) {
   );
 }
 
-export function OutcomeLearning({ reads, statement, gaps = [] }: OutcomeLearningProps) {
+export function OutcomeLearning({ reads, statement, gaps = [], notice }: OutcomeLearningProps) {
   return (
     <TTCard>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -115,6 +115,13 @@ export function OutcomeLearning({ reads, statement, gaps = [] }: OutcomeLearning
         <MetaPill>{reads.length} governed actions</MetaPill>
       </div>
       <p className="mt-1 text-sm text-[var(--tt-ink-muted)]">{statement}</p>
+
+      {notice ? (
+        <p className="mt-3 rounded-md border border-[var(--tt-line)] px-3 py-2 text-sm text-[var(--tt-ink-muted)]">
+          {notice}
+        </p>
+      ) : null}
+
 
       {reads.length === 0 ? (
         <p className="mt-4 text-sm text-[var(--tt-ink-muted)]">
