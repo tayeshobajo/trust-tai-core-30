@@ -36,48 +36,17 @@ import type {
 } from "@/domain/roadmap";
 import { UNKNOWN_STATEMENT, isActiveRoadmap, orderStages } from "@/domain/roadmap";
 
+import type { CanonMilestone, RoadmapCanonRead } from "@/domain/conductor";
+
 import type { SuiteSnapshot } from "../derive";
 import type { InputResolution } from "./payload-fill";
+
+export type { CanonMilestone, RoadmapCanonRead };
 
 export const ROADMAP_SHELL_OPERATION = "roadmap.create_shell";
 export const ROADMAP_DECISION_OPERATION = "roadmap.request_decision";
 
 /* ------------------------------------------------------------- canon read */
-
-/** One milestone as Roadmap already holds it: an asset, system or capability. */
-export interface CanonMilestone {
-  title: string;
-  intent?: string;
-  state: string;
-  tier: Tier;
-}
-
-/**
- * The canonical Roadmap concepts, read from state the Roadmap app owns.
- * Nothing here is stored separately; this is a projection, not a model.
- */
-export interface RoadmapCanonRead {
-  roadmapId: string;
-  subjectLabel: string;
-  status: string;
-  /** The governing business thought: what this roadmap is for. */
-  governingThought: string;
-  /** Point A: observed current position only. */
-  pointA: RoadmapNote[];
-  /** The single strongest observed fact carrying its own evidence. */
-  anchorProof: RoadmapNote | null;
-  /** Point B: proposed (inferred) until a person approves it (decided). */
-  pointB: { statement: string; tier: "inferred" | "decided"; because: string } | null;
-  /** Milestones, when stages were read. Absent stages are said, not guessed. */
-  milestones: CanonMilestone[];
-  milestonesKnown: boolean;
-  /** Unresolved human decisions on this roadmap. */
-  openDecisions: RoadmapDecision[];
-  nextMove: { action: string; because: string; tier: Tier } | null;
-  /** What Trust Tai can credibly do here through governed action. */
-  executionBoundary: string;
-  evidence: EvidenceRef[];
-}
 
 const EXECUTION_BOUNDARY =
   "Conductor can open a draft roadmap or hold an open question. Sequencing and every decision stay with a person, in Roadmap.";

@@ -843,6 +843,41 @@ export const CONDUCTOR_TOPIC_LABEL: Record<ConductorTopic, string> = {
   unclear: "Read of the business",
 };
 
+/** One milestone as Roadmap already holds it: an asset, system or capability. */
+export interface CanonMilestone {
+  title: string;
+  intent?: string;
+  state: string;
+  tier: Tier;
+}
+
+/**
+ * The canonical Roadmap concepts, read from state the Roadmap app owns.
+ * Nothing here is stored separately; this is a projection, not a model.
+ */
+export interface RoadmapCanonRead {
+  roadmapId: string;
+  subjectLabel: string;
+  status: string;
+  /** The governing business thought: what this roadmap is for. */
+  governingThought: string;
+  /** Point A: observed current position only. */
+  pointA: RoadmapNote[];
+  /** The single strongest observed fact carrying its own evidence. */
+  anchorProof: RoadmapNote | null;
+  /** Point B: proposed (inferred) until a person approves it (decided). */
+  pointB: { statement: string; tier: "inferred" | "decided"; because: string } | null;
+  /** Milestones, when stages were read. Absent stages are said, not guessed. */
+  milestones: CanonMilestone[];
+  milestonesKnown: boolean;
+  /** Unresolved human decisions on this roadmap. */
+  openDecisions: RoadmapDecision[];
+  nextMove: { action: string; because: string; tier: Tier } | null;
+  /** What Trust Tai can credibly do here through governed action. */
+  executionBoundary: string;
+  evidence: EvidenceRef[];
+}
+
 /** What the Conductor is doing, and refusing to do, for this answer. */
 export interface ControlStatement {
   willDo: string[];
@@ -963,6 +998,11 @@ export interface ConductorAnswer {
   /** The recorded figures this answer stood on. */
   figures: BusinessFigure[];
   withheld: WithheldRoom[];
+  /**
+   * The canonical Roadmap read behind a Roadmap answer: Point A, anchor proof,
+   * Point B and its truth class, milestones, and the decisions still open.
+   */
+  roadmapCanon?: RoadmapCanonRead;
   /** The metric to watch to find out whether the answer was any good. */
   watch?: { statement: string; vitalKey?: string };
   /** False when no room could be read at all. */
