@@ -62,7 +62,7 @@ export function CompanyCell({ candidate }: { candidate: ProspectCandidate }) {
   );
 }
 
-function Cell({ value }: { value?: string }) {
+function Cell({ value }: { value?: string | undefined }) {
   return (
     <span className="hidden truncate text-[13px] text-muted-foreground xl:block">
       {value && value.trim() ? value : "—"}
