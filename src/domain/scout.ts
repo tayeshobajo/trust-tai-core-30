@@ -14,6 +14,8 @@ import type { ResearchRun } from "./prospect-modules";
 import type { ScoutIntel } from "./scout-intel";
 
 import type { CompanyIdentity } from "@/lib/company-identity";
+import type { CompanyProfile } from "@/data/scout-profile";
+
 
 /** A single piece of evidence Scout observed about a company. */
 export interface ScoutSignal {
