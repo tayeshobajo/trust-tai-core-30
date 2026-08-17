@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
+import type { ExecutionDatabase } from "@/lib/execution-bridge.types";
 import { trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 
 const SCOUT_PIPELINE_TARGET = 15;
@@ -92,14 +93,14 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-let serviceRoleClient:
-  | ReturnType<typeof createClient>
-  | undefined;
+type ExecutionClient = ReturnType<typeof createClient<ExecutionDatabase>>;
 
-export function trustTaiServiceRoleClient() {
+let serviceRoleClient: ExecutionClient | undefined;
+
+export function trustTaiServiceRoleClient(): ExecutionClient {
   if (!serviceRoleClient) {
     const key = serviceRoleKey();
-    serviceRoleClient = createClient(trustTaiSupabaseUrl(), key, {
+    serviceRoleClient = createClient<ExecutionDatabase>(trustTaiSupabaseUrl(), key, {
       global: { fetch: createSupabaseFetch(key) },
       auth: { persistSession: false, autoRefreshToken: false },
     });
