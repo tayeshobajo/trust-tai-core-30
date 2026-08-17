@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 
 import { AmbientRule, AmbientSurface } from "@/components/tt/ambient";
-import { AppArtwork } from "@/components/tt/app-artwork";
-import { getAppTheme } from "@/domain/app-theme";
 import { cn } from "@/lib/utils";
 
 /**
- * Framed editorial hero. The motif frame is a fixed slot: an art-directed
- * photograph can replace the abstract motif later without changing layout.
+ * Compact room header.
+ *
+ * One band, roughly 200px tall: mono label, serif statement, one supporting
+ * line, and the room's primary action. The per-app accent stays as a light
+ * wash — atmosphere, never decoration that costs working space.
  */
 export function AppHero({
   appId,
@@ -26,8 +27,6 @@ export function AppHero({
   action?: ReactNode;
   className?: string;
 }) {
-  const theme = getAppTheme(appId);
-
   return (
     <header
       className={cn(
@@ -36,40 +35,28 @@ export function AppHero({
       )}
     >
       <AmbientRule appId={appId} />
-      <div className="grid gap-0 lg:grid-cols-[1.35fr_1fr]">
-        <AmbientSurface appId={appId} depth="deep" className="p-6 sm:p-10 lg:p-12">
-          <p className="tt-eyebrow">{eyebrow}</p>
-          {greeting ? (
-            <p className="mt-5 font-display text-2xl text-muted-foreground sm:text-3xl">
-              {greeting}
-            </p>
-          ) : null}
-          <h1
-            className={cn(
-              "tt-display max-w-[18ch] text-3xl text-foreground sm:text-4xl lg:text-5xl",
-              greeting ? "mt-2" : "mt-5",
-            )}
-          >
-            {title}
-          </h1>
-          {supporting ? (
-            <p className="mt-5 max-w-reading text-base text-muted-foreground">{supporting}</p>
-          ) : null}
-          <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            {theme.character}
-          </p>
-          {action ? <div className="mt-7">{action}</div> : null}
-        </AmbientSurface>
-
-        <div
-          className="relative min-h-44 border-t border-border sm:min-h-56 lg:min-h-full lg:border-l lg:border-t-0"
-          style={{
-            backgroundColor: `color-mix(in oklab, ${theme.tint} 5%, var(--card))`,
-          }}
-        >
-          <AppArtwork appId={appId} className="absolute inset-0" />
+      <AmbientSurface appId={appId} className="px-6 py-7 sm:px-8 sm:py-8">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-6">
+          <div className="min-w-0">
+            <p className="tt-eyebrow">{eyebrow}</p>
+            {greeting ? (
+              <p className="mt-3 font-display text-xl text-muted-foreground">{greeting}</p>
+            ) : null}
+            <h1
+              className={cn(
+                "tt-display max-w-[22ch] text-[28px] text-foreground sm:text-[34px]",
+                greeting ? "mt-1" : "mt-3",
+              )}
+            >
+              {title}
+            </h1>
+            {supporting ? (
+              <p className="mt-3 max-w-reading text-sm text-muted-foreground">{supporting}</p>
+            ) : null}
+          </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
         </div>
-      </div>
+      </AmbientSurface>
     </header>
   );
 }
