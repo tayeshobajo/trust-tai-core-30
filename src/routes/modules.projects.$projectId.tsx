@@ -319,7 +319,7 @@ function ProjectWorkspace({
           <Link
             to="/modules/roadmap/$roadmapId"
             params={{ roadmapId: project.origin.roadmapId }}
-            search={{ view: "build" as const }}
+            search={{ view: "milestones" as const }}
           >
             Open the roadmap this came from
           </Link>

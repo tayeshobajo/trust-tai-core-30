@@ -183,7 +183,9 @@ export function BuildFromScoutPanel({
                 <div className="min-w-0">
                   <p className="truncate text-[14px] text-foreground">{selected.prospect.name}</p>
                   <p className="truncate text-[11px] text-muted-foreground">
-                    {selected.prospect.domain || selected.prospect.websiteUrl || "No domain on file"}
+                    {selected.prospect.domain ||
+                      selected.prospect.websiteUrl ||
+                      "No domain on file"}
                   </p>
                 </div>
               </div>

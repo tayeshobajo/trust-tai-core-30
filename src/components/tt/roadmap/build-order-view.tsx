@@ -49,9 +49,7 @@ export function BuildOrderView({
               <div className="flex flex-wrap items-center gap-2">
                 <MetaPill>Step {index + 1}</MetaPill>
                 <TierChip tier={milestone.tier} />
-                <MetaPill>
-                  {ready.ready ? "Ready for Projects" : "Not ready for Projects"}
-                </MetaPill>
+                <MetaPill>{ready.ready ? "Ready for Projects" : "Not ready for Projects"}</MetaPill>
                 <MetaPill>Carried by {milestone.ownerLabel ?? "no one yet"}</MetaPill>
               </div>
               <h3 className="mt-3 font-display text-2xl text-foreground">{milestone.name}</h3>

@@ -27,7 +27,10 @@ export function PointAPanel({ notes }: { notes: RoadmapNote[] }) {
       </h2>
       <ul className="mt-4 space-y-4">
         {notes.map((note, index) => (
-          <li key={`${note.label}-${index}`} className="border-t border-border pt-4 first:border-0 first:pt-0">
+          <li
+            key={`${note.label}-${index}`}
+            className="border-t border-border pt-4 first:border-0 first:pt-0"
+          >
             <div className="flex flex-wrap items-center gap-2">
               <p className="tt-eyebrow">{note.label}</p>
               <TierChip tier={note.tier} />
@@ -115,7 +118,10 @@ export function StageList({
             )}
           />
           {index < stages.length - 1 ? (
-            <span aria-hidden className="absolute left-[6px] top-10 h-[calc(100%-1rem)] w-px bg-border" />
+            <span
+              aria-hidden
+              className="absolute left-[6px] top-10 h-[calc(100%-1rem)] w-px bg-border"
+            />
           ) : null}
 
           <article className="tt-surface p-5">

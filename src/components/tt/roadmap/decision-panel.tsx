@@ -19,7 +19,11 @@ export function DecisionPanel({
   busyId,
 }: {
   decisions: RoadmapDecision[];
-  onResolve: (decision: RoadmapDecision, status: Exclude<DecisionState, "open">, note: string) => void;
+  onResolve: (
+    decision: RoadmapDecision,
+    status: Exclude<DecisionState, "open">,
+    note: string,
+  ) => void;
   busyId?: string | null;
 }) {
   const open = decisions.filter((decision) => decision.status === "open");
@@ -50,7 +54,10 @@ export function DecisionPanel({
           <p className="tt-eyebrow">Decided</p>
           <ul className="mt-3 space-y-3">
             {resolved.map((decision) => (
-              <li key={decision.id} className="border-t border-border pt-3 first:border-0 first:pt-0">
+              <li
+                key={decision.id}
+                className="border-t border-border pt-3 first:border-0 first:pt-0"
+              >
                 <div className="flex flex-wrap items-center gap-2">
                   <MetaPill>{DECISION_STATE_LABEL[decision.status]}</MetaPill>
                   {decision.resolvedAt ? (
@@ -76,7 +83,11 @@ function OpenDecision({
   busy,
 }: {
   decision: RoadmapDecision;
-  onResolve: (decision: RoadmapDecision, status: Exclude<DecisionState, "open">, note: string) => void;
+  onResolve: (
+    decision: RoadmapDecision,
+    status: Exclude<DecisionState, "open">,
+    note: string,
+  ) => void;
   busy: boolean;
 }) {
   const [note, setNote] = useState("");

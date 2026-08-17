@@ -9,7 +9,13 @@
 import { useState } from "react";
 
 import { EvidenceList, TierChip } from "@/components/tt/roadmap/tier";
-import { EmptyState, MetaPill, SectionHeading, TTButton, TTInput } from "@/components/tt/primitives";
+import {
+  EmptyState,
+  MetaPill,
+  SectionHeading,
+  TTButton,
+  TTInput,
+} from "@/components/tt/primitives";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
 import { MILESTONE_STATUS_LABEL, UNKNOWN } from "@/domain/roadmap-intel";
@@ -65,10 +71,7 @@ function MilestoneCard({
         <Line label="Current gap" value={milestone.currentGap} />
         <Line label="Immediate value" value={milestone.immediateValue} />
         <Line label="Long term value" value={milestone.longTermValue} />
-        <Line
-          label="Dependencies"
-          value={milestone.dependencies.join(", ")}
-        />
+        <Line label="Dependencies" value={milestone.dependencies.join(", ")} />
         <Line label="Execution boundary" value={milestone.executionBoundary} />
       </div>
 

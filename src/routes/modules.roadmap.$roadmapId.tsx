@@ -9,36 +9,50 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
-import {
-  EmptyState,
-  MetaPill,
-  PageHeader,
-  SectionHeading,
-  TTButton,
-} from "@/components/tt/primitives";
+import { EmptyState } from "@/components/tt/primitives";
 import { DecisionPanel } from "@/components/tt/roadmap/decision-panel";
+import { RoadmapCompanyHeader } from "@/components/tt/roadmap/detail/header";
 import {
-  PointAPanel,
-  PointBPanel,
-  StageList,
-} from "@/components/tt/roadmap/roadmap-spine";
+  AnchorProofCard,
+  CurrentMilestoneCard,
+  PathSection,
+  PointSummary,
+} from "@/components/tt/roadmap/detail/overview";
+import {
+  ActionsCard,
+  ClientCopyCard,
+  NextAttentionCard,
+  NotesCard,
+} from "@/components/tt/roadmap/detail/rail";
+import { ExportsView } from "@/components/tt/roadmap/detail/exports-view";
+import { ActivityView } from "@/components/tt/roadmap/detail/activity-view";
+import {
+  anchorProof,
+  buildExportSnapshot,
+  buildMilestonePath,
+  currentMilestone,
+  exportFreshness,
+  nextAttention,
+  pathProgress,
+} from "@/data/roadmap/detail/projection";
+import { nextVersion } from "@/domain/roadmap-exports";
+import {
+  roadmapExportsService,
+  type ExportsContext,
+} from "@/data/supabase/roadmap-exports-service";
+import { supabaseActivity } from "@/data/supabase/activities";
 import { AskPanel } from "@/components/tt/roadmap/ask-panel";
 import { BuildOrderView } from "@/components/tt/roadmap/build-order-view";
 import { StartInProjects } from "@/components/tt/projects/start-in-projects";
 import { MilestonesView } from "@/components/tt/roadmap/milestones-view";
 import { ResearchView } from "@/components/tt/roadmap/research-view";
-import {
-  isRoadmapView,
-  RoadmapTabs,
-  type RoadmapView,
-} from "@/components/tt/roadmap/roadmap-tabs";
+import { isRoadmapView, RoadmapTabs, type RoadmapView } from "@/components/tt/roadmap/roadmap-tabs";
 import { StrategyView } from "@/components/tt/roadmap/strategy-view";
 import { StudioView } from "@/components/tt/roadmap/studio-view";
 import { readRoadmapBrand } from "@/data/supabase/roadmap-brand";
-import { TierChip } from "@/components/tt/roadmap/tier";
 import { WalkthroughView } from "@/components/tt/roadmap/walkthrough-view";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { roadmapService, type RoadmapContext } from "@/data/supabase/roadmap-service";
@@ -59,13 +73,7 @@ import type {
 } from "@/domain/roadmap-intel";
 
 import { supabase } from "@/integrations/trust-tai/supabase";
-import type {
-  DecisionState,
-  RoadmapDecision,
-  RoadmapStage,
-  StageState,
-} from "@/domain/roadmap";
-import { ROADMAP_STATUS_LABEL } from "@/domain/roadmap";
+import type { DecisionState, RoadmapDecision } from "@/domain/roadmap";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Roadmap workspace — Trust Tai OS";
@@ -182,21 +190,6 @@ function RoadmapWorkspace({
     onError: fail,
   });
 
-  const stageState = useMutation({
-    mutationFn: async ({ stage, state }: { stage: RoadmapStage; state: StageState }) => {
-      setBusyId(stage.id);
-      return roadmapService.setStageState(
-        stage,
-        state,
-        detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
-        context,
-      );
-    },
-    onSettled: () => setBusyId(null),
-    onSuccess: refresh,
-    onError: fail,
-  });
-
   const resolve = useMutation({
     mutationFn: async ({
       decision,
@@ -220,7 +213,6 @@ function RoadmapWorkspace({
     onSuccess: refresh,
     onError: fail,
   });
-
 
   /* ------------------------------------------------- roadmap intelligence */
 
@@ -451,7 +443,6 @@ function RoadmapWorkspace({
     onError: fail,
   });
 
-
   const walkthrough = useMutation({
     mutationFn: async (
       action:
@@ -519,6 +510,115 @@ function RoadmapWorkspace({
       setAskError(error instanceof Error ? error.message : "Roadmap could not answer."),
   });
 
+  /* ------------------------------------------ client copies, links, history */
+
+  const exportsContext: ExportsContext = {
+    organizationId: identity.organizationId,
+    userId: identity.userId,
+    userLabel: identity.name,
+  };
+
+  const linksQuery = useQuery({
+    queryKey: ["roadmap", "links", roadmapId],
+    queryFn: () => roadmapExportsService.listLinks(roadmapId),
+    retry: false,
+  });
+
+  const exportsQuery = useQuery({
+    queryKey: ["roadmap", "exports", roadmapId],
+    queryFn: () => roadmapExportsService.listExports(roadmapId),
+    retry: false,
+  });
+
+  const notesQuery = useQuery({
+    queryKey: ["roadmap", "notes", roadmapId],
+    queryFn: () => roadmapExportsService.listNotes(roadmapId),
+    retry: false,
+  });
+
+  const activityQuery = useQuery({
+    queryKey: ["roadmap", "activity", roadmapId],
+    queryFn: () =>
+      supabaseActivity.list({
+        organizationId: identity.organizationId,
+        subjectId: roadmapId,
+        limit: 30,
+      }),
+    retry: false,
+  });
+
+  /* Identity is decoration only: a failed read never blocks the page. */
+  const brandQuery = useQuery({
+    queryKey: ["roadmap", "brand", roadmapId],
+    queryFn: async () =>
+      detailQuery.data ? await readRoadmapBrand(detailQuery.data.roadmap) : null,
+    enabled: Boolean(detailQuery.data),
+    retry: false,
+  });
+
+  const milestones = useMemo(() => intelQuery.data?.milestones ?? [], [intelQuery.data]);
+  const decisionList = useMemo(() => detailQuery.data?.decisions ?? [], [detailQuery.data]);
+  const path = useMemo(
+    () => buildMilestonePath(milestones, linksQuery.data?.items ?? [], decisionList),
+    [milestones, linksQuery.data, decisionList],
+  );
+  const progress = useMemo(() => pathProgress(path), [path]);
+  const current = useMemo(() => currentMilestone(path), [path]);
+  const anchors = useMemo(() => anchorProof(intelQuery.data?.strategy ?? null), [intelQuery.data]);
+  const attention = useMemo(
+    () => (detailQuery.data ? nextAttention(detailQuery.data.roadmap, path, decisionList) : null),
+    [detailQuery.data, path, decisionList],
+  );
+  const freshness = useMemo(
+    () =>
+      detailQuery.data
+        ? exportFreshness(detailQuery.data.roadmap, exportsQuery.data?.items ?? [])
+        : null,
+    [detailQuery.data, exportsQuery.data],
+  );
+
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  /** A client copy is frozen here and never rewritten afterwards. */
+  const createExport = useMutation({
+    mutationFn: async () => {
+      const detail = detailQuery.data;
+      if (!detail) throw new Error("This roadmap could not be read.");
+      const snapshot = buildExportSnapshot(detail.roadmap, path);
+      if (snapshot.milestones.length === 0) {
+        throw new Error("No milestone is approved yet, so there is nothing a client should see.");
+      }
+      return roadmapExportsService.createExport(
+        {
+          roadmapId,
+          version: nextVersion(exportsQuery.data?.items ?? []),
+          snapshot,
+          subjectLabel: detail.roadmap.subjectLabel,
+        },
+        exportsContext,
+      );
+    },
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  const markSent = useMutation({
+    mutationFn: async (exportId: string) => {
+      setSendingId(exportId);
+      return roadmapExportsService.markSent(exportId, exportsContext);
+    },
+    onSettled: () => setSendingId(null),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  const addNote = useMutation({
+    mutationFn: async (noteBody: string) =>
+      roadmapExportsService.addNote({ roadmapId, body: noteBody }, exportsContext),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
   if (detailQuery.isLoading) {
     return (
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
@@ -533,14 +633,16 @@ function RoadmapWorkspace({
       <EmptyState
         title="This roadmap could not be read."
         belongsHere="Roadmaps live in the shared Trust Tai backend and are read under your own access."
-        whyItMatters={error instanceof Error ? error.message : "An unexpected error stopped the read."}
+        whyItMatters={
+          error instanceof Error ? error.message : "An unexpected error stopped the read."
+        }
         action={<BackLink />}
       />
     );
   }
 
   const detail = detailQuery.data;
-  if (!detail) {
+  if (!detail || !attention || !freshness) {
     return (
       <EmptyState
         title="That roadmap is not in this workspace."
@@ -551,51 +653,35 @@ function RoadmapWorkspace({
     );
   }
 
-  const { roadmap, stages, decisions } = detail;
+  const { roadmap, decisions } = detail;
   const intel = intelQuery.data;
-  const unknowns = Array.isArray(roadmap.metadata["unknowns"])
-    ? (roadmap.metadata["unknowns"] as string[])
-    : [];
+  const openDecisions = decisions.filter((entry) => entry.status === "open").length;
+  const decided = path.filter((entry) => entry.decided).length;
+  const exportBlocked =
+    decided === 0
+      ? "A client copy carries approved milestones only. Approve at least one first."
+      : "";
+
+  const projectsContext = {
+    organizationId: identity.organizationId,
+    userId: identity.userId,
+    userLabel: identity.name,
+  };
 
   return (
-    <div className="space-y-8">
-      <BackLink />
-
-      <PageHeader
-        appId="roadmap"
-        eyebrow={`Roadmap · ${roadmap.subjectLabel}`}
-        title={roadmap.title}
-        supporting={roadmap.objective}
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <MetaPill>{ROADMAP_STATUS_LABEL[roadmap.status]}</MetaPill>
-            <TTButton
-              variant="secondary"
-              disabled={archive.isPending}
-              onClick={() => archive.mutate()}
-            >
-              {roadmap.status === "archived" ? "Reopen" : "Archive"}
-            </TTButton>
-            {confirmingDelete ? (
-              <>
-                <TTButton
-                  variant="secondary"
-                  disabled={remove.isPending}
-                  onClick={() => remove.mutate()}
-                >
-                  Delete permanently
-                </TTButton>
-                <TTButton variant="quiet" onClick={() => setConfirmingDelete(false)}>
-                  Keep it
-                </TTButton>
-              </>
-            ) : (
-              <TTButton variant="quiet" onClick={() => setConfirmingDelete(true)}>
-                Delete
-              </TTButton>
-            )}
-          </div>
-        }
+    <div className="space-y-6">
+      <RoadmapCompanyHeader
+        roadmap={roadmap}
+        identity={{
+          logoUrl: brandQuery.data?.logoUrl ?? null,
+          themeColor: brandQuery.data?.accent ?? null,
+        }}
+        progress={progress}
+        openDecisions={openDecisions}
+        archiving={archive.isPending}
+        deleting={remove.isPending}
+        onArchive={() => archive.mutate()}
+        onDelete={() => remove.mutate()}
       />
 
       {actionError ? <p className="text-sm text-danger">{actionError}</p> : null}
@@ -610,151 +696,165 @@ function RoadmapWorkspace({
         </p>
       ) : null}
 
-      <AskPanel
-        subjectLabel={roadmap.subjectLabel}
-        answers={intel?.questions ?? []}
-        pending={ask.isPending}
-        error={askError}
-        onAsk={(question, research) => ask.mutate({ question, research })}
-      />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start">
+        <div className="min-w-0 space-y-6">
+          {view === "overview" ? (
+            <>
+              <PointSummary
+                roadmap={roadmap}
+                approving={approve.isPending}
+                onApprove={() => approve.mutate()}
+              />
+              <PathSection path={path} activeId={current?.id ?? null} />
+              <CurrentMilestoneCard
+                entry={current}
+                action={
+                  current?.decided ? (
+                    <StartInProjects
+                      milestone={current.milestone}
+                      subjectLabel={roadmap.subjectLabel}
+                      context={projectsContext}
+                    />
+                  ) : null
+                }
+              />
+              <AnchorProofCard lines={anchors} />
+            </>
+          ) : null}
 
-      {view === "research" ? (
-        <ResearchView
-          research={intel?.research ?? null}
-          history={intel?.researchHistory ?? []}
-          running={research.isPending}
-          stage={researchStage}
-          error={researchError}
-          onRun={() => research.mutate()}
-        />
-      ) : null}
+          {view === "milestones" ? (
+            <>
+              <PathSection path={path} activeId={current?.id ?? null} />
+              <MilestonesView
+                milestones={milestones}
+                busyId={busyId}
+                generating={research.isPending}
+                onGenerate={() => research.mutate()}
+                onStatus={(milestone, status, note) =>
+                  milestoneStatus.mutate({ milestone, status, note })
+                }
+              />
+              <BuildOrderView
+                milestones={milestones}
+                action={(milestone) => (
+                  <StartInProjects
+                    milestone={milestone}
+                    subjectLabel={roadmap.subjectLabel}
+                    context={projectsContext}
+                  />
+                )}
+              />
+            </>
+          ) : null}
 
-      {view === "strategy" ? (
-        <StrategyView
-          strategy={intel?.strategy ?? null}
-          busyKey={busyKey}
-          generating={research.isPending}
-          onGenerate={() => research.mutate()}
-          onApproval={(key, state) => approval.mutate({ key, state })}
-        />
-      ) : null}
+          {view === "evidence" ? (
+            <>
+              <AskPanel
+                subjectLabel={roadmap.subjectLabel}
+                answers={intel?.questions ?? []}
+                pending={ask.isPending}
+                error={askError}
+                onAsk={(question, researchFirst) =>
+                  ask.mutate({ question, research: researchFirst })
+                }
+              />
+              <ResearchView
+                research={intel?.research ?? null}
+                history={intel?.researchHistory ?? []}
+                running={research.isPending}
+                stage={researchStage}
+                error={researchError}
+                onRun={() => research.mutate()}
+              />
+              <StrategyView
+                strategy={intel?.strategy ?? null}
+                busyKey={busyKey}
+                generating={research.isPending}
+                onGenerate={() => research.mutate()}
+                onApproval={(key, state) => approval.mutate({ key, state })}
+              />
+            </>
+          ) : null}
 
-      {view === "milestones" ? (
-        <MilestonesView
-          milestones={intel?.milestones ?? []}
-          busyId={busyId}
-          generating={research.isPending}
-          onGenerate={() => research.mutate()}
-          onStatus={(milestone, status, note) =>
-            milestoneStatus.mutate({ milestone, status, note })
-          }
-        />
-      ) : null}
-
-      {view === "studio" ? (
-        <StudioView
-          subjectLabel={detail?.roadmap.subjectLabel ?? ""}
-          strategy={intel?.strategy ?? null}
-          milestones={intel?.milestones ?? []}
-          research={intel?.research ?? null}
-          preview={intel?.artifacts.find((entry) => entry.kind === "preview") ?? null}
-          full={intel?.artifacts.find((entry) => entry.kind === "full") ?? null}
-          busy={compose.isPending || editArtifact.isPending}
-          stage={studioStage}
-          onCompose={(kind, replace) => compose.mutate({ kind, ...(replace ? { replace } : {}) })}
-          onEdit={(artifact, sections) => editArtifact.mutate({ artifact, sections })}
-        />
-
-      ) : null}
-
-      {view === "walkthrough" ? (
-        <WalkthroughView
-          session={intel?.sessions.find((entry) => !entry.endedAt) ?? null}
-          history={intel?.sessions ?? []}
-          busy={walkthrough.isPending}
-          onStart={() => walkthrough.mutate({ type: "start" })}
-          onCapture={(kind, body) => walkthrough.mutate({ type: "capture", kind, body })}
-          onEnd={() => walkthrough.mutate({ type: "end" })}
-        />
-      ) : null}
-
-      {view === "build" ? (
-        <BuildOrderView
-          milestones={intel?.milestones ?? []}
-          action={(milestone) => (
-            <StartInProjects
-              milestone={milestone}
-              subjectLabel={roadmap.subjectLabel}
-              context={{
-                organizationId: identity.organizationId,
-                userId: identity.userId,
-                userLabel: identity.name,
-              }}
+          {view === "decisions" ? (
+            <DecisionPanel
+              decisions={decisions}
+              busyId={busyId}
+              onResolve={(decision, status, note) => resolve.mutate({ decision, status, note })}
             />
-          )}
-        />
-      ) : null}
+          ) : null}
 
-      {view !== "overview" ? null : (
-      <>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <PointAPanel notes={roadmap.pointA} />
-        <PointBPanel
-          destination={roadmap.pointB}
-          approving={approve.isPending}
-          onApprove={() => approve.mutate()}
-        />
+          {view === "exports" ? (
+            <>
+              <ExportsView
+                exports={exportsQuery.data?.items ?? []}
+                available={exportsQuery.data?.available ?? false}
+                canExport={decided > 0}
+                blockedBecause={exportBlocked}
+                creating={createExport.isPending}
+                sendingId={sendingId}
+                onCreate={() => createExport.mutate()}
+                onMarkSent={(exportId) => markSent.mutate(exportId)}
+              />
+              <StudioView
+                subjectLabel={roadmap.subjectLabel}
+                strategy={intel?.strategy ?? null}
+                milestones={milestones}
+                research={intel?.research ?? null}
+                preview={intel?.artifacts.find((entry) => entry.kind === "preview") ?? null}
+                full={intel?.artifacts.find((entry) => entry.kind === "full") ?? null}
+                busy={compose.isPending || editArtifact.isPending}
+                stage={studioStage}
+                onCompose={(kind, replace) =>
+                  compose.mutate({ kind, ...(replace ? { replace } : {}) })
+                }
+                onEdit={(artifact, sections) => editArtifact.mutate({ artifact, sections })}
+              />
+            </>
+          ) : null}
+
+          {view === "activity" ? (
+            <>
+              <ActivityView
+                events={activityQuery.data ?? []}
+                loading={activityQuery.isLoading}
+                error={activityQuery.error instanceof Error ? activityQuery.error.message : null}
+              />
+              <WalkthroughView
+                session={intel?.sessions.find((entry) => !entry.endedAt) ?? null}
+                history={intel?.sessions ?? []}
+                busy={walkthrough.isPending}
+                onStart={() => walkthrough.mutate({ type: "start" })}
+                onCapture={(kind, entryBody) =>
+                  walkthrough.mutate({ type: "capture", kind, body: entryBody })
+                }
+                onEnd={() => walkthrough.mutate({ type: "end" })}
+              />
+            </>
+          ) : null}
+        </div>
+
+        <aside className="space-y-4" aria-label="Roadmap actions and attention">
+          <NextAttentionCard attention={attention} />
+          <ActionsCard
+            researching={research.isPending}
+            composing={compose.isPending}
+            exporting={createExport.isPending}
+            canExport={decided > 0}
+            exportBlockedBecause={exportBlocked}
+            onResearch={() => research.mutate()}
+            onCompose={() => compose.mutate({ kind: "preview" })}
+            onExport={() => createExport.mutate()}
+          />
+          <ClientCopyCard freshness={freshness} />
+          <NotesCard
+            notes={notesQuery.data?.items ?? []}
+            available={notesQuery.data?.available ?? false}
+            saving={addNote.isPending}
+            onAdd={(noteBody) => addNote.mutate(noteBody)}
+          />
+        </aside>
       </div>
-
-      {unknowns.length > 0 ? (
-        <section className="tt-surface p-6" aria-label="What is not established">
-          <p className="tt-eyebrow">Not established</p>
-          <ul className="mt-3 space-y-1.5">
-            {unknowns.map((entry) => (
-              <li key={entry} className="text-sm text-muted-foreground">
-                — {entry}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      <section aria-labelledby="the-walk">
-        <SectionHeading
-          eyebrow="The walk"
-          title="Build order"
-          description="Each stage is a step between where this stands and where it is going."
-        />
-        <StageList
-          stages={stages}
-          busyId={busyId}
-          onState={(stage, state) => stageState.mutate({ stage, state })}
-        />
-      </section>
-
-      <DecisionPanel
-        decisions={decisions}
-        busyId={busyId}
-        onResolve={(decision, status, note) => resolve.mutate({ decision, status, note })}
-      />
-
-      {roadmap.nextMove ? (
-        <section className="tt-surface p-6" aria-labelledby="next-move">
-          <p className="tt-eyebrow">Next move</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <TierChip tier={roadmap.nextMove.tier} />
-            <MetaPill>Carried by {roadmap.nextMove.ownerLabel ?? "no one yet"}</MetaPill>
-          </div>
-          <h2 id="next-move" className="mt-3 font-display text-2xl text-foreground">
-            {roadmap.nextMove.action}
-          </h2>
-          <p className="mt-2 max-w-reading text-sm text-muted-foreground">
-            {roadmap.nextMove.because}
-          </p>
-        </section>
-      ) : null}
-      </>
-      )}
     </div>
   );
 }
