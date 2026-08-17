@@ -174,7 +174,11 @@ export function CompanyHero({
         className="h-[3px] w-full"
         style={{ background: `linear-gradient(90deg, ${accent}, transparent)` }}
       />
-      <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div
+        style={{
+          background: `linear-gradient(180deg, color-mix(in oklab, ${accent} 6%, transparent) 0%, transparent 200px)`,
+        }}
+      >
         <div className="min-w-0 p-6 sm:p-8">
           <div className="flex min-w-0 items-start gap-4">
             <CompanyMark
@@ -234,13 +238,6 @@ export function CompanyHero({
           </div>
         </div>
 
-        <div
-          aria-hidden
-          className="hidden min-h-[180px] lg:block"
-          style={{
-            background: `linear-gradient(160deg, color-mix(in oklab, ${accent} 14%, transparent) 0%, transparent 70%)`,
-          }}
-        />
       </div>
 
       <div className="grid grid-cols-2 divide-x divide-border border-t border-border sm:grid-cols-3 xl:grid-cols-6">
