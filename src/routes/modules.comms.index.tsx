@@ -1,39 +1,44 @@
 /**
- * Comms — the relationship room.
+ * Comms — the conversation room.
  *
- * Three panes: who needs you, the person themselves, and the next move. Every
- * write goes to Supabase under the caller's own access. Nothing is sent from
- * here; a person always writes the message.
+ * Inbox on the left, the conversation itself in the middle, and a quiet rail of
+ * context on the right. Reading a relationship should feel like continuing a
+ * conversation, not administering a record.
+ *
+ * Every write goes to Supabase under the caller's own access. Nothing is sent
+ * from here; a person always writes and sends the message.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { CaptureForm } from "@/components/tt/comms/capture-form";
 import { MailboxImport } from "@/components/tt/comms/mailbox-import";
-
-import {
-  CoverageStrip,
-  RelationshipQueue,
-} from "@/components/tt/comms/relationship-queue";
-import { NextMoveRail, type DraftPreview } from "@/components/tt/comms/next-move-rail";
-import { RelationshipWorkspace } from "@/components/tt/comms/relationship-workspace";
+import { CommsInbox } from "@/components/tt/comms/comms-inbox";
+import { ConversationRoom } from "@/components/tt/comms/conversation-room";
+import { ConversationComposer } from "@/components/tt/comms/conversation-composer";
+import { ConversationContext } from "@/components/tt/comms/conversation-context";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
-import type { CommsDraft, MemoryItem, Relationship } from "@/domain/comms";
+import { conversationHealth, relationshipStrength } from "@/data/comms-health";
+import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
+import { inboxEntries, inboxView, type InboxTab } from "@/data/comms-inbox";
+import { reasonsToReconnect } from "@/data/comms-reminders";
+import type { ConversationHealthStatus } from "@/domain/comms-health";
+import type { MemoryItem, Relationship, Touch } from "@/domain/comms";
 import type { VoiceRegister } from "@/domain/voice";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Comms — relationships kept warm — Trust Tai OS";
+const TITLE = "Comms — conversations kept warm — Trust Tai OS";
 const DESCRIPTION =
-  "Trust Tai's relationship room: who needs a reply, who has gone quiet, and a truthful reason to reach out.";
+  "Trust Tai's conversation room: the whole thread, why it matters, and how the conversation is moving.";
 
 export const Route = createFileRoute("/modules/comms/")({
   head: () => ({
@@ -49,6 +54,15 @@ export const Route = createFileRoute("/modules/comms/")({
   }),
   component: CommsRoute,
 });
+
+interface DraftPreview {
+  subject: string;
+  body: string;
+  register: VoiceRegister;
+  reviewState: "draft" | "needs_human_review";
+  violations: { ruleId: string; severity: "block" | "flag"; excerpt: string; because: string }[];
+  usedEvidence: { label: string; value: string; tier: string }[];
+}
 
 function CommsRoute() {
   return (
@@ -68,8 +82,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<InboxTab>("all");
+  const [healthFilter, setHealthFilter] = useState<ConversationHealthStatus | null>(null);
   const [capturing, setCapturing] = useState(false);
-  const [preview, setPreview] = useState<DraftPreview | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
+  const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
 
   const relationshipsQuery = useQuery({
@@ -77,7 +95,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => commsService.list(identity.organizationId),
   });
 
-  const relationships = relationshipsQuery.data ?? [];
+  const orgTouchesQuery = useQuery({
+    queryKey: ["comms", "org-touches", identity.organizationId],
+    queryFn: () => commsService.listRecentTouches(identity.organizationId),
+  });
+
+  const relationships = useMemo(() => relationshipsQuery.data ?? [], [relationshipsQuery.data]);
   const selected: Relationship | null =
     relationships.find((entry) => entry.id === selectedId) ?? relationships[0] ?? null;
 
@@ -97,6 +120,36 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => commsService.listDrafts(selected!.id),
   });
 
+  const touchesByRelationship = useMemo(() => {
+    const map: Record<string, Touch[]> = {};
+    for (const touch of orgTouchesQuery.data ?? []) {
+      const list = map[touch.relationshipId] ?? [];
+      list.push(touch);
+      map[touch.relationshipId] = list;
+    }
+    return map;
+  }, [orgTouchesQuery.data]);
+
+  const view = useMemo(
+    () =>
+      inboxView(inboxEntries(relationships, touchesByRelationship), {
+        tab,
+        query,
+        health: healthFilter,
+      }),
+    [relationships, touchesByRelationship, tab, query, healthFilter],
+  );
+
+  const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
+  const drafts = draftsQuery.data ?? [];
+  const health = selected ? conversationHealth(selected, selectedTouches) : null;
+  const strength = selected ? relationshipStrength(selected, selectedTouches) : null;
+  const days = useMemo(
+    () => groupByDay(conversationTimeline(selectedTouches, drafts)),
+    [selectedTouches, drafts],
+  );
+  const savedDraft = drafts.find((draft) => draft.reviewState !== "discarded");
+
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: ["comms"] });
   }
@@ -106,35 +159,9 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: async (relationship) => {
       setSelectedId(relationship.id);
       setCapturing(false);
-
-      // The first relationship should show real work, not an empty room: give
-      // it a due date for today so it lands in "Needs you" straight away.
-      let live = relationship;
-      const firstEver = relationships.length === 0;
-      const undated = !relationship.responseDueAt && !relationship.followUpDueAt;
-      if (firstEver && undated) {
-        live = await commsService.update(
-          relationship.id,
-          {
-            followUpDueAt: new Date().toISOString(),
-            ...(relationship.nextAction
-              ? {}
-              : { nextAction: "Open the conversation with a first note." }),
-          },
-          context,
-        );
-      }
-
       await refresh();
-      // And a Voice DNA draft, so the first thing you see is something to send.
-      void composeFor(
-        live,
-        relationship.source === "in_person" ? "warm_intro" : "follow_up",
-        "",
-      );
     },
   });
-
 
   const update = useMutation({
     mutationFn: (input: Parameters<typeof commsService.update>[1]) =>
@@ -142,18 +169,23 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: refresh,
   });
 
-  const logTouch = useMutation({
-    mutationFn: (input: {
-      channel: Parameters<typeof commsService.logTouch>[0]["channel"];
-      direction: "inbound" | "outbound";
-      summary: string;
-    }) => commsService.logTouch({ relationship: selected!, ...input }, context),
-    onSuccess: refresh,
-  });
-
   const remember = useMutation({
     mutationFn: (item: Omit<MemoryItem, "at">) =>
       commsService.remember(selected!, item, context),
+    onSuccess: refresh,
+  });
+
+  const logNote = useMutation({
+    mutationFn: (value: string) =>
+      commsService.logTouch(
+        {
+          relationship: selected!,
+          channel: "note",
+          direction: "outbound",
+          summary: value,
+        },
+        context,
+      ),
     onSuccess: refresh,
   });
 
@@ -175,38 +207,15 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         },
         context,
       ),
-    onSuccess: async () => {
-      setPreview(null);
-      await refresh();
-    },
+    onSuccess: refresh,
   });
 
-  const markSent = useMutation({
-    mutationFn: (draft: CommsDraft) =>
-      commsService.setDraftState(draft, "sent", selected!, context),
-    onSuccess: async () => {
-      if (selected) {
-        await commsService.logTouch(
-          {
-            relationship: selected,
-            channel: "email",
-            direction: "outbound",
-            summary: "Sent an approved draft.",
-          },
-          context,
-        );
-      }
-      await refresh();
-    },
-  });
-
-  const [drafting, setDrafting] = useState(false);
-
-  async function composeFor(
-    relationship: Relationship,
-    register: VoiceRegister,
-    purpose: string,
-  ) {
+  /**
+   * Composing produces a draft that lands inline in the thread. It is never
+   * sent: a person reads it there and decides what happens next.
+   */
+  async function compose(register: VoiceRegister, purpose: string) {
+    if (!selected) return;
     setDrafting(true);
     setDraftError(null);
     try {
@@ -216,23 +225,21 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       const response = await fetch("/api/public/comms/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ relationshipId: relationship.id, register, purpose }),
+        body: JSON.stringify({ relationshipId: selected.id, register, purpose }),
       });
       const payload = (await response.json()) as Record<string, unknown>;
-      if (!response.ok) throw new Error(String(payload["error"] ?? "That draft could not be prepared."));
-      setPreview(payload as unknown as DraftPreview);
+      if (!response.ok) {
+        throw new Error(String(payload["error"] ?? "That draft could not be prepared."));
+      }
+      await saveDraft.mutateAsync(payload as unknown as DraftPreview);
     } catch (error) {
-      setDraftError(error instanceof Error ? error.message : "That draft could not be prepared.");
+      setDraftError(
+        error instanceof Error ? error.message : "That draft could not be prepared.",
+      );
     } finally {
       setDrafting(false);
     }
   }
-
-  async function compose(register: VoiceRegister, purpose: string) {
-    if (!selected) return;
-    await composeFor(selected, register, purpose);
-  }
-
 
   if (relationshipsQuery.isError) {
     return (
@@ -247,13 +254,26 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     );
   }
 
+  const rail =
+    selected && health && strength ? (
+      <ConversationContext
+        relationship={selected}
+        health={health}
+        strength={strength}
+        reasons={reasonsToReconnect(selected)}
+        savedDraft={savedDraft}
+        busy={update.isPending}
+        onNextAction={(value) => update.mutate({ nextAction: value || null })}
+      />
+    ) : null;
+
   return (
-    <div className="mx-auto w-full max-w-canvas px-4 py-8 lg:px-8">
+    <div className="mx-auto w-full max-w-canvas px-4 py-6 lg:px-8">
       <PageHeader
         appId="comms"
         eyebrow="Comms"
-        title="Relationships, kept warm."
-        supporting="Who is waiting on you, who has gone quiet, and a truthful reason to reach out. Nothing is sent from here."
+        title="Conversations, kept warm."
+        supporting="The whole thread in one place, with the reason it matters beside it. Nothing is sent from here."
         action={
           <div className="flex flex-wrap items-center gap-2">
             {selected ? (
@@ -283,16 +303,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         }
       />
 
-      <div className="mt-6">
+      <div className="mt-5">
         <CommsTabs active="relationships" />
       </div>
 
-      <div className="mt-6">
-        <CoverageStrip relationships={relationships} />
-      </div>
-
       {capturing ? (
-        <div className="tt-surface mt-6 space-y-5 p-6">
+        <div className="tt-surface mt-5 space-y-5 p-6">
           <CaptureForm
             onCreate={(input) => create.mutate(input)}
             busy={create.isPending}
@@ -304,50 +320,93 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             busy={create.isPending}
           />
           {create.isError ? (
-            <p className="text-[13px] text-destructive">
-              {(create.error as Error).message}
-            </p>
+            <p className="text-[13px] text-destructive">{(create.error as Error).message}</p>
           ) : null}
         </div>
       ) : null}
 
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)_320px]">
-        <aside className="tt-surface max-h-[70vh] overflow-hidden p-0 lg:sticky lg:top-20">
-          <RelationshipQueue
-            relationships={relationships}
+      <div className="mt-5 grid gap-4 lg:grid-cols-[24%_minmax(0,1fr)] xl:grid-cols-[24%_minmax(0,52%)_24%]">
+        <aside className="tt-surface max-h-[78vh] overflow-hidden p-0 lg:sticky lg:top-20">
+          <CommsInbox
+            view={view}
+            tab={tab}
+            onTab={setTab}
+            query={query}
+            onQuery={setQuery}
+            health={healthFilter}
+            onHealth={setHealthFilter}
             selectedId={selected?.id ?? null}
             onSelect={(id) => {
               setSelectedId(id);
-              setPreview(null);
               setDraftError(null);
+              setProfileOpen(false);
             }}
-            query={query}
-            onQuery={setQuery}
+            empty={relationships.length === 0}
           />
         </aside>
 
-        <main className="tt-surface flex min-h-[60vh] flex-col overflow-hidden p-0">
+        <main className="tt-surface flex h-[78vh] min-h-[560px] flex-col overflow-hidden p-0">
           {relationshipsQuery.isLoading ? (
             <p className="p-8 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              Reading your relationships…
+              Opening your conversations…
             </p>
-          ) : selected ? (
-            <RelationshipWorkspace
+          ) : selected && health ? (
+            <ConversationRoom
               relationship={selected}
-              touches={touchesQuery.data ?? []}
-              busy={update.isPending || logTouch.isPending || remember.isPending}
-              onStage={(stage) => update.mutate({ stage })}
-              onNextAction={(value) => update.mutate({ nextAction: value || null })}
-              onLogTouch={(input) => logTouch.mutate(input)}
-              onRemember={(item) => remember.mutate(item)}
-            />
+              days={days}
+              health={health}
+              onViewProfile={() => setProfileOpen((value) => !value)}
+              onOpenContext={() => setContextOpen(true)}
+            >
+              {profileOpen ? (
+                <div className="border-t border-border bg-secondary/30 px-5 py-4">
+                  <p className="tt-eyebrow">Profile</p>
+                  <p className="mt-2 text-[13px] text-muted-foreground">
+                    {[
+                      selected.email,
+                      selected.companyName,
+                      selected.metWhere ? `Met at ${selected.metWhere}` : null,
+                      selected.metAt
+                        ? `Met ${new Date(selected.metAt).toLocaleDateString()}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "Nothing else on record yet."}
+                  </p>
+                  <div className="mt-3">
+                    <TTButton
+                      variant="quiet"
+                      onClick={() =>
+                        remember.mutate({
+                          label: "Worth remembering",
+                          value: "Reviewed this profile.",
+                          tier: "decided",
+                          evidence: [{ label: "Entered by a person", kind: "human" }],
+                        })
+                      }
+                      disabled={remember.isPending}
+                    >
+                      Note this review
+                    </TTButton>
+                  </div>
+                </div>
+              ) : null}
+
+              <ConversationComposer
+                drafting={drafting}
+                busy={logNote.isPending || saveDraft.isPending}
+                error={draftError}
+                onCompose={(register, purpose) => void compose(register, purpose)}
+                onNote={(value) => logNote.mutate(value)}
+                onInsertInsight={() => reasonsToReconnect(selected)[0]?.reasonText ?? null}
+              />
+            </ConversationRoom>
           ) : (
             <div className="p-8">
               <EmptyState
-                title="No relationships yet."
-                belongsHere="The people behind the work: clients, prospects, and everyone you meet at an event."
-                whyItMatters="Add the last person you met, with where you met and one thing worth remembering. Comms carries it from there."
+                title="No conversations yet."
+                belongsHere="The people behind the work: clients, prospects, and everyone you meet."
+                whyItMatters="Add the last person you met and Comms carries the conversation from there."
                 action={
                   <TTButton onClick={() => setCapturing(true)}>Add someone you met</TTButton>
                 }
@@ -356,26 +415,38 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           )}
         </main>
 
-        <aside className="tt-surface flex max-h-[70vh] flex-col overflow-hidden p-0 lg:sticky lg:top-20">
-          {selected ? (
-            <NextMoveRail
-              relationship={selected}
-              drafts={draftsQuery.data ?? []}
-              preview={preview}
-              drafting={drafting}
-              draftError={draftError}
-              onDraft={(register, purpose) => void compose(register, purpose)}
-              onSave={(value) => saveDraft.mutate(value)}
-              onDiscard={() => setPreview(null)}
-              onMarkSent={(draft) => markSent.mutate(draft)}
-            />
-          ) : (
-            <p className="p-5 text-[13px] text-muted-foreground">
-              Select a relationship to see why it is worth reaching out.
+        <aside className="tt-surface hidden max-h-[78vh] flex-col overflow-hidden p-0 xl:sticky xl:top-20 xl:flex">
+          {rail ?? (
+            <p className="p-4 text-[13px] text-muted-foreground">
+              Open a conversation to see why it matters.
             </p>
           )}
         </aside>
       </div>
+
+      {contextOpen && rail ? (
+        <div className="fixed inset-0 z-50 flex justify-end bg-background/60 backdrop-blur-sm xl:hidden">
+          <button
+            type="button"
+            aria-label="Close context"
+            className="flex-1"
+            onClick={() => setContextOpen(false)}
+          />
+          <div className="flex h-full w-[min(360px,90vw)] flex-col border-l border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+              <p className="tt-eyebrow">Context</p>
+              <button
+                type="button"
+                onClick={() => setContextOpen(false)}
+                className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
+              >
+                Close
+              </button>
+            </div>
+            {rail}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
