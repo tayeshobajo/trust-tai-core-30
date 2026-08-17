@@ -8,8 +8,8 @@ if (typeof window !== 'undefined') {
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  process.env.TRUST_TAI_SUPABASE_URL!,
-  process.env.TRUST_TAI_SUPABASE_SERVICE_KEY!
+  process.env['TRUST_TAI_SUPABASE_URL']!,
+  process.env['TRUST_TAI_SUPABASE_SERVICE_KEY']!
 );
 
 export interface AgentContext {
@@ -25,7 +25,7 @@ export async function validateAgent(
   executionKey: string,
   paperclipAgentId: string
 ): Promise<AgentContext> {
-  const expectedKey = process.env.TRUST_TAI_EXECUTION_KEY;
+  const expectedKey = process.env['TRUST_TAI_EXECUTION_KEY'];
   if (!expectedKey || executionKey !== expectedKey) {
     throw Object.assign(new Error('Invalid execution key'), { status: 401 });
   }

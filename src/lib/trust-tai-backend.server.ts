@@ -1,3 +1,5 @@
+// Trust Tai OS backend — single Supabase project: okydosoacqdnursmmenf
+
 /**
  * Which backend the server talks to.
  *
