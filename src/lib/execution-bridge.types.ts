@@ -71,12 +71,13 @@ export interface IcpProfileRow {
 
 type TableContract<Row> = {
   Row: Row;
-  Insert: Partial<Row> & Record<string, unknown>;
-  Update: Partial<Row> & Record<string, unknown>;
+  Insert: Partial<Row>;
+  Update: Partial<Row>;
   Relationships: [];
 };
 
 export type ExecutionDatabase = {
+  __InternalSupabase: { PostgrestVersion: "14.15" };
   public: {
     Tables: {
       execution_agents: TableContract<ExecutionAgentRow>;
