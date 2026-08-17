@@ -141,7 +141,7 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
       if (found) byCompany[roadmap.subjectLabel || roadmap.title] = found;
     }
     for (const candidate of scoutQuery.data ?? []) {
-      const name = candidate.prospect.companyName;
+      const name = candidate.prospect.name;
       if (name && !byCompany[name]) {
         byCompany[name] = byProspect[candidate.prospect.id] ?? {};
       }
