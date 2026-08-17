@@ -135,8 +135,8 @@ export interface ExecutionProject {
   blockedSince?: ISODateTime;
   /** Agreed delivery date, when one has been agreed. */
   dueDate?: ISODateTime;
-  /** The delivery items a person recorded. Empty means none recorded yet. */
-  deliveryItems: DeliveryItem[];
+  /** The delivery items a person recorded. Absent means none recorded yet. */
+  deliveryItems?: DeliveryItem[];
   /** The single thing being worked on right now. */
   currentWork?: string;
   /** What the work rests on. Carried from the milestone that decided it. */
