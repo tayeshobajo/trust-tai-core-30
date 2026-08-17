@@ -18,6 +18,7 @@ import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { CaptureForm } from "@/components/tt/comms/capture-form";
 import { MailboxImport } from "@/components/tt/comms/mailbox-import";
 import { CommsInbox } from "@/components/tt/comms/comms-inbox";
+import { CommsSidebarPanels } from "@/components/tt/comms/comms-sidebar";
 import { ConversationRoom } from "@/components/tt/comms/conversation-room";
 import { ConversationComposer } from "@/components/tt/comms/conversation-composer";
 import { ConversationContext } from "@/components/tt/comms/conversation-context";
@@ -65,15 +66,7 @@ interface DraftPreview {
 }
 
 function CommsRoute() {
-  return (
-    <WorkspaceGate>
-      {(identity) => (
-        <AppShell identity={identity}>
-          <CommsRoom identity={identity} />
-        </AppShell>
-      )}
-    </WorkspaceGate>
-  );
+  return <WorkspaceGate>{(identity) => <CommsRoom identity={identity} />}</WorkspaceGate>;
 }
 
 function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
@@ -268,7 +261,19 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     ) : null;
 
   return (
-    <div className="mx-auto w-full max-w-canvas px-4 py-6 lg:px-8">
+    <AppShell
+      identity={identity}
+      sidebar={
+        <CommsSidebarPanels
+          view={view}
+          health={healthFilter}
+          onHealth={setHealthFilter}
+          onAdd={() => setCapturing(true)}
+        />
+      }
+    >
+    <div className="-mx-4 -mt-8 w-auto bg-[linear-gradient(180deg,var(--cloud)_0%,transparent_200px)] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-mt-10 lg:px-8">
+
       <PageHeader
         appId="comms"
         eyebrow="Comms"
@@ -448,5 +453,6 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         </div>
       ) : null}
     </div>
+    </AppShell>
   );
 }

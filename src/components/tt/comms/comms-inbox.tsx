@@ -49,8 +49,10 @@ export function ConversationListItem({
         onClick={onSelect}
         aria-current={active ? "true" : undefined}
         className={cn(
-          "flex w-full items-start gap-3 border-b border-border/70 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-          active ? "bg-secondary" : "hover:bg-secondary/50",
+          "flex w-full items-start gap-3 border-b border-border/70 border-l-2 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          active
+            ? "border-l-royal bg-cloud"
+            : "border-l-transparent hover:bg-cloud/50",
         )}
       >
         <span
