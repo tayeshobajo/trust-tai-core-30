@@ -8,7 +8,7 @@ export type ScoutSection = "scout" | "qualified" | "research" | "settings";
 const BOARD_SECTIONS: { key: Exclude<ScoutSection, "settings">; label: string }[] = [
   { key: "scout", label: "Scout" },
   { key: "qualified", label: "Qualified" },
-  { key: "research", label: "Research" },
+  { key: "research", label: "Review" },
 ];
 
 function tabClass(active: boolean) {
