@@ -47,6 +47,7 @@ const SOURCES: LineageSources = {
 
 const PROJECTS = [
   project("a", "in_flight", {
+    nextMove: "Ship the intake form",
     origin: { kind: "roadmap_milestone", roadmapId: "r1", milestoneId: "m1" },
   }),
   project("b", "blocked", {
@@ -90,7 +91,19 @@ describe("projects index projection", () => {
   it("splits tabs without losing rows", () => {
     expect(rows.filter((row) => inTab(row, "all"))).toHaveLength(3);
     expect(rows.filter((row) => inTab(row, "completed"))).toHaveLength(1);
-    expect(rows.filter((row) => inTab(row, "in_progress")).length).toBeGreaterThan(0);
+    expect(rows.filter((row) => inTab(row, "in_progress")).map((row) => row.project.id)).toEqual([
+      "a",
+    ]);
+  });
+
+  it("calls in-flight work with no next move waiting", () => {
+    const [waiting] = buildProjectRows(
+      [project("d", "in_flight")],
+      SOURCES,
+      NOW,
+    );
+    expect(waiting?.status).toBe("waiting");
+    expect(inTab(waiting!, "waiting")).toBe(true);
   });
 
   it("surfaces a blocked project as needing attention", () => {
