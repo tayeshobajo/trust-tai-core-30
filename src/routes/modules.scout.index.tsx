@@ -443,6 +443,9 @@ function Scout({
             )}
           </section>
         )}
+        </div>
+
+        <ScoutSupportRail glance={glance} />
       </div>
     </AppShell>
   );
