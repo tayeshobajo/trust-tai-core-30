@@ -158,7 +158,7 @@ export interface RoadmapDecision {
   whyItMatters: string;
   options: string[];
   /** Short human labels ("pricing", "scope"). Never a substitute for the question. */
-  labels: string[];
+  labels?: string[];
   recommendation?: string;
   recommendationBecause?: string;
   evidence: EvidenceRef[];
