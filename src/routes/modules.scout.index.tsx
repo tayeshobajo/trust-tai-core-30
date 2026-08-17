@@ -263,7 +263,8 @@ function Scout({
       identity={identity}
       sidebar={<ScoutSidebar glance={glance} driverLine={driverLine} />}
     >
-      <div className="space-y-6">
+      <div className="flex items-start gap-6">
+        <div className="min-w-0 flex-1 space-y-6">
         {/* 1 — Compact heading. No hero, no controls. */}
         <header>
           <p className="tt-eyebrow">Scout</p>
