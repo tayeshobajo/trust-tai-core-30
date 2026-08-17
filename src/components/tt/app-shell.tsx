@@ -165,8 +165,9 @@ export function AppShell({
       </header>
 
       <div className="mx-auto flex w-full max-w-canvas">
-        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-[292px] shrink-0 flex-col overflow-y-auto border-r border-border bg-sidebar p-4 lg:flex xl:w-[308px]">
-          <p className="tt-eyebrow mb-3 px-3">Suite</p>
+        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-[288px] shrink-0 flex-col overflow-y-auto border-r border-border bg-sidebar px-3 py-5 lg:flex xl:w-[308px]">
+          <p className="tt-eyebrow mb-2 px-4">Suite</p>
+
           <NavList />
           {sidebar ? <div className="mt-6 space-y-3">{sidebar}</div> : null}
           <div className="mt-auto pt-6">
