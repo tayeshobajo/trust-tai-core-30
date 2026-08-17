@@ -22,7 +22,7 @@ import type {
   ProjectInput,
   ProjectOrigin,
 } from "@/domain/projects";
-import { STATUS_COLUMN_FOR_STATE, stateFromLifecycle } from "@/domain/projects";
+import { STATUS_COLUMN_FOR_STATE, checkTransition, stateFromLifecycle } from "@/domain/projects";
 import { can, type AccessContext } from "@/domain/access";
 import {
   ROUTE_EVENT_KEY,
