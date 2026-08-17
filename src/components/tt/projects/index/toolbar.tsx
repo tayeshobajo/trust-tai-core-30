@@ -23,6 +23,7 @@ export function ProjectsToolbar({
   companies,
   owners,
   statuses,
+  milestones,
 }: {
   tab: ProjectsTab;
   onTabChange: (tab: ProjectsTab) => void;
@@ -32,6 +33,7 @@ export function ProjectsToolbar({
   companies: string[];
   owners: string[];
   statuses: SurfaceStatus[];
+  milestones: string[];
 }) {
   const set = (patch: Partial<ProjectFilters>) => onFiltersChange({ ...filters, ...patch });
 
@@ -116,6 +118,20 @@ export function ProjectsToolbar({
           {statuses.map((status) => (
             <option key={status} value={status}>
               {SURFACE_STATUS_LABEL[status]}
+            </option>
+          ))}
+        </select>
+
+        <select
+          aria-label="Filter by milestone"
+          className={SELECT}
+          value={filters.milestone}
+          onChange={(event) => set({ milestone: event.target.value })}
+        >
+          <option value="all">Any milestone</option>
+          {milestones.map((milestone) => (
+            <option key={milestone} value={milestone}>
+              {milestone}
             </option>
           ))}
         </select>
