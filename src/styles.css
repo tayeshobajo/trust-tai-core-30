@@ -47,6 +47,12 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
 
+  /* Cloud sky — calm suite surfaces and restrained blue accents. */
+  --color-cloud: var(--cloud);
+  --color-cloud-strong: var(--cloud-strong);
+  --color-cloud-line: var(--cloud-line);
+  --color-cloud-ink: var(--cloud-ink);
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -75,6 +81,12 @@
   --success: oklch(0.46 0.098 152);
   --warning: oklch(0.58 0.117 76);
   --danger: oklch(0.52 0.19 27);
+
+  /* Cloud sky blue: light surfaces, never wallpaper for text. */
+  --cloud: oklch(0.972 0.016 248);
+  --cloud-strong: oklch(0.938 0.032 248);
+  --cloud-line: oklch(0.9 0.032 248);
+  --cloud-ink: oklch(0.36 0.11 262);
 
   --background: var(--paper);
   --foreground: var(--ink);

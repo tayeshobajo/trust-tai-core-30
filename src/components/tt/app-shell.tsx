@@ -58,13 +58,22 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-200",
+              "relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-200",
               active
-                ? "bg-secondary font-medium text-foreground"
+                ? "bg-cloud font-medium text-foreground"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground",
             )}
           >
-            <Icon className="size-4 shrink-0" aria-hidden />
+            {active ? (
+              <span
+                aria-hidden
+                className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-royal"
+              />
+            ) : null}
+            <Icon
+              className={cn("size-4 shrink-0", active ? "text-royal" : undefined)}
+              aria-hidden
+            />
             <span className="flex-1">{app.name}</span>
             {note ? (
               <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -84,9 +93,12 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 export function AppShell({
   children,
   identity,
+  sidebar,
 }: {
   children: ReactNode;
   identity?: WorkspaceIdentity;
+  /** Room-specific panels rendered below the suite navigation. */
+  sidebar?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -145,19 +157,27 @@ export function AppShell({
       </header>
 
       <div className="mx-auto flex w-full max-w-canvas">
-        <aside className="hidden w-60 shrink-0 border-r border-border p-4 lg:block">
+        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-[280px] shrink-0 flex-col overflow-y-auto border-r border-border bg-sidebar p-4 lg:flex xl:w-[300px]">
           <p className="tt-eyebrow mb-3 px-3">Suite</p>
           <NavList />
+          {sidebar ? <div className="mt-6 space-y-3">{sidebar}</div> : null}
+          <div className="mt-auto pt-6">
+            <p className="px-3 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+              {identity?.organizationName ?? "Trust Tai"}
+            </p>
+          </div>
         </aside>
 
         {open ? (
-          <div className="fixed inset-x-0 top-16 z-20 border-b border-border bg-card p-4 lg:hidden">
+          <div className="fixed inset-x-0 top-16 z-20 max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-border bg-card p-4 lg:hidden">
             <NavList onNavigate={() => setOpen(false)} />
+            {sidebar ? <div className="mt-5 space-y-3">{sidebar}</div> : null}
           </div>
         ) : null}
 
-        <main className="min-w-0 flex-1 px-4 py-10 sm:px-6 lg:px-10 lg:py-14">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">{children}</main>
       </div>
+
     </div>
   );
 }

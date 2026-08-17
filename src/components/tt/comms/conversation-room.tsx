@@ -46,7 +46,7 @@ export function ConversationEvent({ event }: { event: EventShape }) {
   if (event.kind === "draft") {
     return (
       <li className="flex justify-end">
-        <div className="max-w-[78%] rounded-2xl rounded-br-md border border-dashed border-border bg-background px-3.5 py-2.5">
+        <div className="max-w-[78%] rounded-2xl rounded-br-md border border-dashed border-cloud-line bg-cloud/50 px-3.5 py-2.5">
           <p className="tt-eyebrow">Draft · not sent</p>
           <p className="mt-1 text-[13px] text-foreground">{event.title}</p>
           {event.body ? (
@@ -68,8 +68,8 @@ export function ConversationEvent({ event }: { event: EventShape }) {
         className={cn(
           "max-w-[78%] rounded-2xl px-3.5 py-2.5",
           mine
-            ? "rounded-br-md bg-secondary text-foreground"
-            : "rounded-bl-md border border-border bg-background text-foreground",
+            ? "rounded-br-md border border-cloud-line bg-cloud text-foreground"
+            : "rounded-bl-md border border-border bg-card text-foreground",
         )}
       >
         <p className="tt-eyebrow">
