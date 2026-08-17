@@ -729,7 +729,6 @@ function RoadmapWorkspace({
       const draft = await handClientCopyToComms(entry, relationship, {
         organizationId: identity.organizationId,
         userId: identity.userId,
-        userLabel: identity.name,
       });
       await roadmapExportsService.attachComms(
         entry.id,
@@ -741,10 +740,8 @@ function RoadmapWorkspace({
     onSettled: () => setHandingId(null),
     onSuccess: async (relationshipId) => {
       await refresh();
-      await navigate({
-        to: "/modules/comms",
-        search: { relationship: relationshipId },
-      });
+      void relationshipId;
+      await navigate({ to: "/modules/comms" });
     },
     onError: fail,
   });
