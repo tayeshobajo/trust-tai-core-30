@@ -155,10 +155,10 @@ describe("sidebar glance and driver read the same derived state", () => {
   it("counts every non-archived conversation exactly once across health rows", () => {
     const rows = glanceRows(view);
     const byKey = Object.fromEntries(rows.map((row) => [row.key, row.count]));
-    expect(byKey.needs_attention).toBe(view.healthCounts.needs_attention);
-    expect(byKey.at_risk).toBe(view.healthCounts.at_risk);
-    expect(byKey.quiet).toBe(view.healthCounts.quiet);
-    expect(byKey.following_up).toBe(view.tabCounts.following_up);
+    expect(byKey['needs_attention']).toBe(view.healthCounts.needs_attention);
+    expect(byKey['at_risk']).toBe(view.healthCounts.at_risk);
+    expect(byKey['quiet']).toBe(view.healthCounts.quiet);
+    expect(byKey['following_up']).toBe(view.tabCounts.following_up);
     const health = Object.values(view.healthCounts).reduce((sum, n) => sum + n, 0);
     expect(health).toBe(relationships.length);
   });
