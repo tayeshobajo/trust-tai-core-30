@@ -11,12 +11,17 @@
  */
 
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState } from "@/components/tt/primitives";
 import { NeedsAttention } from "@/components/tt/projects/index/attention";
+import {
+  CreateProjectModal,
+  type CreateProjectSeed,
+} from "@/components/tt/projects/index/create-modal";
+import { RoadmapHandoffs, type HandoffRow } from "@/components/tt/projects/index/handoff-list";
 import {
   ProjectsEmptyState,
   ProjectsHeader,
@@ -32,6 +37,7 @@ import {
   companyOptions,
   filterProjectRows,
   inTab,
+  milestoneOptions,
   needsAttention,
   needsYou,
   ownerOptions,
@@ -43,11 +49,16 @@ import {
   type ProjectRowModel,
   type ProjectsTab,
 } from "@/data/projects/index-projection";
+import { projectFromMilestone } from "@/data/projects-handoff";
+import { readiness } from "@/data/roadmap-milestones";
 import type { RoadmapIdentity } from "@/data/roadmap-index";
-import { projectsService } from "@/data/supabase/projects-service";
+import { listApprovedMilestones } from "@/data/supabase/roadmap-handoffs";
+import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import { roadmapService } from "@/data/supabase/roadmap-service";
 import { scoutService } from "@/data/supabase/scout-service";
+import type { ProjectInput } from "@/domain/projects";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+
 
 const TITLE = "Projects — Approved work in motion — Trust Tai OS";
 const DESCRIPTION =
@@ -78,8 +89,30 @@ function ordinal(position: number): string {
 
 function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<"delivery" | "handoffs">("delivery");
   const [tab, setTab] = useState<ProjectsTab>("all");
   const [filters, setFilters] = useState<ProjectFilters>(EMPTY_PROJECT_FILTERS);
+  const [search, setSearch] = useState("");
+  const [seed, setSeed] = useState<CreateProjectSeed | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [pendingMilestoneId, setPendingMilestoneId] = useState<string | null>(null);
+
+  // Typing should not thrash the list; results settle a beat after the person stops.
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setFilters((current) => ({ ...current, query: search })),
+      250,
+    );
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const context: ProjectsContext = {
+    organizationId: identity.organizationId,
+    userId: identity.userId,
+    userLabel: identity.name,
+  };
+
 
   const projectsQuery = useQuery({
     queryKey: ["projects", "list", identity.organizationId],
@@ -154,10 +187,75 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
     [projectsQuery.data, sources],
   );
 
+  // Ready from roadmap: approved milestones, and whether each already started.
+  const approvedQuery = useQuery({
+    queryKey: ["projects", "approved-milestones", identity.organizationId],
+    queryFn: () => listApprovedMilestones(identity.organizationId),
+    retry: false,
+  });
+
+  const handoffRows = useMemo<HandoffRow[]>(() => {
+    const started = new Map<string, string>();
+    for (const project of projectsQuery.data ?? []) {
+      if (project.origin.milestoneId) started.set(project.origin.milestoneId, project.id);
+    }
+    return (approvedQuery.data ?? []).map((milestone) => {
+      const company =
+        sources.roadmapCompany[milestone.roadmapId] ?? "No company attached";
+      const ready = readiness(milestone);
+      const existing = started.get(milestone.id);
+      return {
+        milestone,
+        company,
+        ready: ready.ready,
+        because: ready.because,
+        ...(existing ? { existingProjectId: existing } : {}),
+      };
+    });
+  }, [approvedQuery.data, projectsQuery.data, sources]);
+
+  const create = useMutation({
+    mutationFn: (input: ProjectInput) => projectsService.start(input, context),
+    onSuccess: async (project) => {
+      setModalOpen(false);
+      setSeed(null);
+      setPendingMilestoneId(null);
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      void navigate({ to: "/modules/projects/$projectId", params: { projectId: project.id } });
+    },
+    onError: () => setPendingMilestoneId(null),
+  });
+
+  function openBlankCreate() {
+    setSeed(null);
+    create.reset();
+    setModalOpen(true);
+  }
+
+  function openHandoffCreate(row: HandoffRow) {
+    const handoff = projectFromMilestone(row.milestone, row.company);
+    if (!handoff.ok) return;
+    setPendingMilestoneId(row.milestone.id);
+    create.reset();
+    setSeed({
+      name: handoff.input.name,
+      company: row.company,
+      pointA: handoff.input.pointA,
+      pointB: handoff.input.pointB,
+      ...(handoff.input.ownerLabel ? { ownerLabel: handoff.input.ownerLabel } : {}),
+      ...(handoff.input.ownerUserId ? { ownerUserId: handoff.input.ownerUserId } : {}),
+      ...(handoff.input.nextMove ? { nextMove: handoff.input.nextMove } : {}),
+      origin: handoff.input.origin,
+      lineageLine: `From ${row.company} · approved milestone “${row.milestone.name}”.`,
+    });
+    setModalOpen(true);
+  }
+
   const glance = useMemo(() => projectsGlance(rows), [rows]);
   const attention = useMemo(() => needsAttention(rows), [rows]);
   const tabbed = useMemo(() => rows.filter((row) => inTab(row, tab)), [rows, tab]);
   const visible = useMemo(() => filterProjectRows(tabbed, filters), [tabbed, filters]);
+
 
   const counts = useMemo(
     () =>
@@ -207,11 +305,50 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1 space-y-6">
           <ProjectsHeader
-            onCreate={() => void navigate({ to: "/modules/roadmap" })}
-            onHandoffs={() => void navigate({ to: "/modules/roadmap" })}
+            onCreate={openBlankCreate}
+            onHandoffs={() => setView(view === "handoffs" ? "delivery" : "handoffs")}
           />
 
-          {projectsQuery.isLoading ? (
+          {view === "handoffs" ? (
+            <section aria-labelledby="ready-from-roadmap" className="space-y-4">
+              <div>
+                <h2 id="ready-from-roadmap" className="font-display text-xl text-foreground">
+                  Ready from roadmap
+                </h2>
+                <p className="mt-1 max-w-reading text-[13px] text-muted-foreground">
+                  Milestones a person approved in Roadmap. Creating a project carries the company,
+                  outcome, owner and evidence across exactly as they were recorded.
+                </p>
+              </div>
+
+              {approvedQuery.isLoading ? (
+                <p className="text-sm text-muted-foreground">Reading approved milestones…</p>
+              ) : approvedQuery.isError ? (
+                <p role="alert" className="text-[13px] text-destructive">
+                  {approvedQuery.error instanceof Error
+                    ? approvedQuery.error.message
+                    : "Approved milestones could not be read."}
+                </p>
+              ) : (
+                <RoadmapHandoffs
+                  rows={handoffRows}
+                  pendingId={create.isPending ? pendingMilestoneId : null}
+                  onCreate={openHandoffCreate}
+                  onOpenProject={(projectId) =>
+                    void navigate({ to: "/modules/projects/$projectId", params: { projectId } })
+                  }
+                />
+              )}
+
+              <button
+                type="button"
+                className="text-[12px] text-royal underline-offset-4 hover:underline"
+                onClick={() => setView("delivery")}
+              >
+                Back to delivery
+              </button>
+            </section>
+          ) : projectsQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">Reading delivery…</p>
           ) : rows.length === 0 ? (
             <ProjectsEmptyState />
@@ -229,11 +366,15 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
                   tab={tab}
                   onTabChange={setTab}
                   counts={counts}
-                  filters={filters}
-                  onFiltersChange={setFilters}
+                  filters={{ ...filters, query: search }}
+                  onFiltersChange={(next) => {
+                    setSearch(next.query);
+                    setFilters((current) => ({ ...next, query: current.query }));
+                  }}
                   companies={companyOptions(rows)}
                   owners={ownerOptions(rows)}
                   statuses={statusOptions(rows)}
+                  milestones={milestoneOptions(rows)}
                 />
 
                 {visible.length === 0 ? (
@@ -244,6 +385,7 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
                       className="text-royal underline-offset-4 hover:underline"
                       onClick={() => {
                         setTab("all");
+                        setSearch("");
                         setFilters(EMPTY_PROJECT_FILTERS);
                       }}
                     >
@@ -282,6 +424,25 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
           />
         </aside>
       </div>
+
+      <CreateProjectModal
+        open={modalOpen}
+        seed={seed}
+        pending={create.isPending}
+        error={
+          create.error instanceof Error
+            ? create.error.message
+            : create.error
+              ? "That project could not be started."
+              : null
+        }
+        onClose={() => {
+          setModalOpen(false);
+          setPendingMilestoneId(null);
+        }}
+        onCreate={(input) => create.mutate(input)}
+      />
     </AppShell>
+
   );
 }

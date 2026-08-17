@@ -27,9 +27,10 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import { isOpenProject } from "@/domain/projects";
 import {
-  EXECUTION_STATES,
   EXECUTION_STATE_LABEL,
   HEALTH_LABEL,
+  checkTransition,
+  nextStates,
   projectHealth,
   recommendedMove,
   type ExecutionProject,
@@ -217,25 +218,39 @@ function ProjectWorkspace({
             <span className="hidden group-open:inline">Leave the state as it is</span>
           </summary>
           <div className="mt-3 flex flex-wrap gap-2">
-            {EXECUTION_STATES.filter((state) => state !== project.state).map((state) => (
-              <TTButton
-                key={state}
-                size="sm"
-                variant={state === "blocked" ? "quiet" : "secondary"}
-                disabled={update.isPending}
-                onClick={() =>
-                  update.mutate({
-                    state: state as ExecutionState,
-                    ...(state === "blocked" && blocked.trim()
-                      ? { blockedBecause: blocked.trim() }
-                      : {}),
-                  })
-                }
-              >
-                {EXECUTION_STATE_LABEL[state]}
-              </TTButton>
-            ))}
+            {nextStates(project).map((state) => {
+              const check = checkTransition(
+                project,
+                state,
+                blocked.trim() ? { blockedBecause: blocked.trim() } : {},
+              );
+              return (
+                <TTButton
+                  key={state}
+                  size="sm"
+                  variant={state === "blocked" ? "quiet" : "secondary"}
+                  disabled={update.isPending || !check.ok}
+                  title={check.because}
+                  onClick={() =>
+                    update.mutate({
+                      state: state as ExecutionState,
+                      ...(state === "blocked" && blocked.trim()
+                        ? { blockedBecause: blocked.trim() }
+                        : {}),
+                    })
+                  }
+                >
+                  {EXECUTION_STATE_LABEL[state]}
+                </TTButton>
+              );
+            })}
           </div>
+          {nextStates(project).length === 0 ? (
+            <p className="mt-3 text-[13px] text-muted-foreground">
+              Closed work does not move again. Start it fresh if it is genuinely back.
+            </p>
+          ) : null}
+
         </details>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">

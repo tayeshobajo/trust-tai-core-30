@@ -90,6 +90,84 @@ export function stateFromLifecycle(status: string | null | undefined): Execution
   }
 }
 
+/* ------------------------------------------------------- state machine */
+
+/**
+ * Which moves are legal, and only those. Delivery states are a person's
+ * decision, but not every jump is honest: work cannot land without having
+ * started, and closed work does not quietly reopen.
+ */
+export const ALLOWED_TRANSITIONS: Record<ExecutionState, ExecutionState[]> = {
+  not_started: ["in_flight", "blocked", "closed"],
+  in_flight: ["in_review", "blocked", "delivered", "not_started", "closed"],
+  in_review: ["in_flight", "blocked", "delivered", "closed"],
+  blocked: ["in_flight", "in_review", "not_started", "closed"],
+  delivered: ["closed", "in_flight"],
+  closed: [],
+};
+
+export interface TransitionCheck {
+  ok: boolean;
+  because: string;
+}
+
+/**
+ * Can this project move there, and why not. Pure: the same record and the same
+ * target always give the same answer, so the button and the write agree.
+ */
+export function checkTransition(
+  project: Pick<
+    ExecutionProject,
+    "state" | "pointB" | "ownerUserId" | "ownerLabel" | "blockedBecause"
+  >,
+  to: ExecutionState,
+  changes: { blockedBecause?: string; ownerLabel?: string; ownerUserId?: ID } = {},
+): TransitionCheck {
+  const from = project.state;
+  if (from === to) return { ok: true, because: "Already there." };
+
+  if (!ALLOWED_TRANSITIONS[from].includes(to)) {
+    return {
+      ok: false,
+      because:
+        from === "closed"
+          ? "Closed work cannot be moved again. Start it fresh if it is genuinely back."
+          : `${EXECUTION_STATE_LABEL[from]} cannot move straight to ${EXECUTION_STATE_LABEL[to]}.`,
+    };
+  }
+
+  if (to === "blocked") {
+    const reason = (changes.blockedBecause ?? project.blockedBecause ?? "").trim();
+    if (!reason) {
+      return { ok: false, because: "Say what is blocking it. A block nobody named cannot be cleared." };
+    }
+  }
+
+  if (to === "in_flight" || to === "in_review") {
+    const owned = Boolean(
+      changes.ownerUserId ??
+        project.ownerUserId ??
+        (changes.ownerLabel ?? project.ownerLabel ?? "").trim(),
+    );
+    if (!owned) {
+      return { ok: false, because: "Name who carries this before it moves." };
+    }
+  }
+
+  if (to === "delivered" && !project.pointB.trim()) {
+    return { ok: false, because: "There is no agreed destination, so nothing can be called done." };
+  }
+
+  return { ok: true, because: `Moves to ${EXECUTION_STATE_LABEL[to]}.` };
+}
+
+/** The legal next states for this project, in the order the room offers them. */
+export function nextStates(project: ExecutionProject): ExecutionState[] {
+  return ALLOWED_TRANSITIONS[project.state];
+}
+
+
+
 
 export type ProjectHealth = "on_track" | "needs_attention" | "at_risk" | "unknown";
 
