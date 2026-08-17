@@ -262,5 +262,8 @@ export interface ProjectInput {
   evidence?: EvidenceRef[];
   dependencies?: string[];
   executionBoundary?: string;
+  dueDate?: ISODateTime;
+  deliveryItems?: DeliveryItem[];
+  currentWork?: string;
   origin: ProjectOrigin;
 }

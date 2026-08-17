@@ -68,6 +68,20 @@ function evidenceOf(value: unknown): EvidenceRef[] {
     }));
 }
 
+function deliveryOf(value: unknown): { label: string; done: boolean }[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (typeof entry === "string") return { label: entry, done: false };
+      if (entry && typeof entry === "object") {
+        const row = entry as Row;
+        return { label: String(row["label"] ?? ""), done: row["done"] === true };
+      }
+      return { label: "", done: false };
+    })
+    .filter((item) => item.label.trim().length > 0);
+}
+
 function originOf(value: unknown): ProjectOrigin {
   if (!value || typeof value !== "object") return { kind: "manual" };
   const row = value as Row;
@@ -101,6 +115,16 @@ export function toProject(row: Row): ExecutionProject {
       ? { nextMove: String(row["next_move"] ?? meta["next_move"]) }
       : {}),
     ...(str(meta["blocked_because"]) ? { blockedBecause: String(meta["blocked_because"]) } : {}),
+    ...(str(row["blocked_since"]) || str(meta["blocked_since"])
+      ? { blockedSince: String(row["blocked_since"] ?? meta["blocked_since"]) }
+      : {}),
+    ...(str(row["due_date"]) || str(meta["due_date"])
+      ? { dueDate: String(row["due_date"] ?? meta["due_date"]) }
+      : {}),
+    deliveryItems: deliveryOf(meta["delivery_items"]),
+    ...(str(row["current_work"]) || str(meta["current_work"])
+      ? { currentWork: String(row["current_work"] ?? meta["current_work"]) }
+      : {}),
     evidence: evidenceOf(meta["evidence"]),
     dependencies: Array.isArray(meta["dependencies"])
       ? (meta["dependencies"] as unknown[]).map((entry) => String(entry))
@@ -158,6 +182,9 @@ function payloadFor(input: ProjectInput, state: ExecutionState, now: string): Ro
     dependencies: input.dependencies ?? [],
     execution_boundary: input.executionBoundary ?? null,
     origin: input.origin,
+    ...(input.dueDate ? { due_date: input.dueDate } : {}),
+    ...(input.deliveryItems ? { delivery_items: input.deliveryItems } : {}),
+    ...(input.currentWork ? { current_work: input.currentWork } : {}),
     last_moved_at: now,
   };
   return {
