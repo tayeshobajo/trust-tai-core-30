@@ -337,6 +337,9 @@ export function filterProjectRows(
     if (filters.company !== "all" && row.lineage.company !== filters.company) return false;
     if (filters.owner !== "all" && row.ownerLabel !== filters.owner) return false;
     if (filters.status !== "all" && row.status !== filters.status) return false;
+    if (filters.milestone !== "all" && (row.lineage.milestoneName ?? "") !== filters.milestone) {
+      return false;
+    }
     if (!matchesDue(row, filters.due)) return false;
     if (!query) return true;
     const haystack = [
@@ -360,12 +363,24 @@ export function ownerOptions(rows: ProjectRowModel[]): string[] {
   return [...new Set(rows.map((row) => row.ownerLabel))].sort((a, b) => a.localeCompare(b));
 }
 
+/** Only milestones that actually carried work into this room. */
+export function milestoneOptions(rows: ProjectRowModel[]): string[] {
+  return [
+    ...new Set(
+      rows
+        .map((row) => row.lineage.milestoneName ?? "")
+        .filter((name) => name.trim().length > 0),
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+}
+
 export function statusOptions(rows: ProjectRowModel[]): SurfaceStatus[] {
   const present = new Set(rows.map((row) => row.status));
   return (Object.keys(SURFACE_STATUS_LABEL) as SurfaceStatus[]).filter((status) =>
     present.has(status),
   );
 }
+
 
 /* --------------------------------------------------------------- rail */
 
