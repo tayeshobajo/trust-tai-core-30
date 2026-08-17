@@ -27,7 +27,9 @@ function Row({ label, value }: { label: string; value: number }) {
 export function ScoutSidebar({ glance, driverLine }: { glance: ScoutGlance; driverLine: string }) {
   return (
     <>
-      <section className="rounded-xl border border-border bg-card px-4 py-3">
+      {/* The glance lives in the right support rail on wide screens; the left
+          rail keeps it only where that rail is hidden. */}
+      <section className="rounded-xl border border-border bg-card px-4 py-3 xl:hidden">
         <p className="tt-eyebrow mb-2">Scout at a glance</p>
         <Row label="Companies on board" value={glance.onBoard} />
         <Row label="Qualified" value={glance.qualified} />
