@@ -271,6 +271,8 @@ export function candidateFromResearchRow(
       observed,
     }),
     facts: observationFacts(observed),
+    profile: companyProfile(inferred, observationFacts(observed)),
+
     history: readResearchHistory(row.metadata),
     intel: readScoutIntel(row.metadata),
   };
