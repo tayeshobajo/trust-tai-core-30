@@ -122,7 +122,7 @@ function CompanyDetail({
   prospectId: string;
   section: Section;
   fit: Fit;
-  tab: DetailTab | undefined;
+  tab: DetailTab;
 }) {
   const { organizationId, userId } = identity;
   const queryClient = useQueryClient();
