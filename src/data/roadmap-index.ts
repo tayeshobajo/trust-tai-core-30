@@ -206,3 +206,21 @@ export function relativeTime(iso: string, now = Date.now()): string {
   if (hours < 24) return `${hours}h ago`;
   return `${Math.round(hours / 24)}d ago`;
 }
+
+/**
+ * One company, one roadmap. Returns the roadmap that already sequences this
+ * subject, so the create action can refuse a duplicate before it is written.
+ */
+export function existingRoadmapForSubject(
+  roadmaps: Roadmap[],
+  subject: { kind: string; id: string },
+): Roadmap | null {
+  return (
+    roadmaps.find((roadmap) => {
+      if (subject.kind === "prospect") return roadmap.prospectId === subject.id;
+      if (subject.kind === "client") return roadmap.clientId === subject.id;
+      if (subject.kind === "relationship") return roadmap.relationshipId === subject.id;
+      return false;
+    }) ?? null
+  );
+}

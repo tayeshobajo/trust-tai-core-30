@@ -23,6 +23,7 @@ import { StartRoadmapForm, type StartRoadmapValues } from "@/components/tt/roadm
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import {
   buildRoadmapRows,
+  existingRoadmapForSubject,
   filterRoadmapRows,
   readyFromScout,
   roadmapGlance,
@@ -157,8 +158,24 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
   const attention = useMemo(() => rows.filter((row) => row.openDecisions.length > 0), [rows]);
   const ready = useMemo(() => readyFromScout(candidates, roadmaps), [candidates, roadmaps]);
 
+  /**
+   * One company, one roadmap. The rule is enforced at the create action, not
+   * only in the listing, so a stale selection cannot write a duplicate.
+   */
+  function startRoadmap(values: StartRoadmapValues): void {
+    const existing = existingRoadmapForSubject(roadmaps, values.subject);
+    if (existing) {
+      setStartError(
+        `${existing.subjectLabel || existing.title} already has a roadmap. One company keeps one roadmap — open the existing path instead.`,
+      );
+      return;
+    }
+    setStartError(null);
+    create.mutate(values);
+  }
+
   function startFromScout(candidate: ProspectCandidate, objective: string) {
-    create.mutate({
+    startRoadmap({
       subject: {
         kind: "prospect",
         id: candidate.prospect.id,
@@ -199,9 +216,14 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
 
       <section aria-labelledby="company-roadmaps" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="company-roadmaps" className="text-[15px] font-medium text-foreground">
-            Company roadmaps
-          </h2>
+          <div className="flex items-baseline gap-2">
+            <h2 id="company-roadmaps" className="text-[15px] font-medium text-foreground">
+              Company roadmaps
+            </h2>
+            <span aria-live="polite" className="text-[12px] text-muted-foreground">
+              {visible.length} of {rows.length}
+            </span>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <TTInput
               value={query}
@@ -282,6 +304,9 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
             loading={scoutQuery.isLoading}
             busy={create.isPending}
             error={startError}
+            takenProspectIds={roadmaps
+              .map((roadmap) => roadmap.prospectId)
+              .filter((id): id is string => Boolean(id))}
             onStart={startFromScout}
             onCancel={() => {
               setMode("idle");
@@ -296,7 +321,7 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
             loading={subjectsQuery.isLoading}
             busy={create.isPending}
             error={startError}
-            onStart={(values) => create.mutate(values)}
+            onStart={startRoadmap}
             onCancel={() => {
               setMode("idle");
               setStartError(null);
