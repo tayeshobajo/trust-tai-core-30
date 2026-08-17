@@ -92,9 +92,9 @@ export function DriverCard({
 }: {
   heading: string;
   statement: string;
-  detail?: string;
-  action?: string;
-  onAction?: () => void;
+  detail?: string | undefined;
+  action?: string | undefined;
+  onAction?: (() => void) | undefined;
 }) {
   return (
     <section className="rounded-xl border border-border bg-card p-3">
