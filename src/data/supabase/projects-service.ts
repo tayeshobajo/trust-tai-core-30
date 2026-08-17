@@ -34,7 +34,6 @@ import {
   type RouteIntent,
 } from "@/domain/project-routing";
 
-
 import { buildRouteLedger, canAcceptRoute, type RouteLedgerEntry } from "@/domain/route-ledger";
 
 import { supabaseActivity } from "./activities";
@@ -84,7 +83,8 @@ export function toProject(row: Row): ExecutionProject {
   const meta = metaOf(row);
   const createdAt = String(row["created_at"] ?? new Date().toISOString());
   const updatedAt = String(row["updated_at"] ?? createdAt);
-  const state = (str(meta["execution_state"]) as ExecutionState | undefined) ??
+  const state =
+    (str(meta["execution_state"]) as ExecutionState | undefined) ??
     stateFromLifecycle(str(row["status"]));
 
   return {
@@ -132,7 +132,11 @@ async function record(
       payload,
       provenance: {
         appId: "projects",
-        actor: { type: "user", id: context.userId, ...(context.userLabel ? { label: context.userLabel } : {}) },
+        actor: {
+          type: "user",
+          id: context.userId,
+          ...(context.userLabel ? { label: context.userLabel } : {}),
+        },
         observedAt: at,
         confidence: "observed",
       },
@@ -210,8 +214,10 @@ export const projectsService = {
       ...payloadFor(input, state, now),
     };
 
-    const { data, error } = await writeTolerant(payload, REQUIRED, async (body) =>
-      await supabase.from("projects").insert(body).select("*").single(),
+    const { data, error } = await writeTolerant(
+      payload,
+      REQUIRED,
+      async (body) => await supabase.from("projects").insert(body).select("*").single(),
     );
     if (error || !data) throw new Error(error?.message ?? "That project could not be started.");
 
@@ -270,13 +276,13 @@ export const projectsService = {
       name: project.name,
       pointA: project.pointA,
       pointB: changes.pointB ?? project.pointB,
-      ...(changes.nextMove ?? project.nextMove
+      ...((changes.nextMove ?? project.nextMove)
         ? { nextMove: changes.nextMove ?? project.nextMove }
         : {}),
-      ...(changes.ownerUserId ?? project.ownerUserId
+      ...((changes.ownerUserId ?? project.ownerUserId)
         ? { ownerUserId: changes.ownerUserId ?? project.ownerUserId }
         : {}),
-      ...(changes.ownerLabel ?? project.ownerLabel
+      ...((changes.ownerLabel ?? project.ownerLabel)
         ? { ownerLabel: changes.ownerLabel ?? project.ownerLabel }
         : {}),
       ...(project.clientId ? { clientId: project.clientId } : {}),
@@ -291,14 +297,17 @@ export const projectsService = {
     metadata["blocked_because"] =
       state === "blocked" ? (changes.blockedBecause ?? project.blockedBecause ?? null) : null;
 
-    const { data, error } = await writeTolerant({ ...body, updated_at: now }, REQUIRED, async (payload) =>
-      await supabase
-        .from("projects")
-        .update(payload)
-        .eq("id", project.id)
-        .eq("organization_id", context.organizationId)
-        .select("*")
-        .single(),
+    const { data, error } = await writeTolerant(
+      { ...body, updated_at: now },
+      REQUIRED,
+      async (payload) =>
+        await supabase
+          .from("projects")
+          .update(payload)
+          .eq("id", project.id)
+          .eq("organization_id", context.organizationId)
+          .select("*")
+          .single(),
     );
     if (error || !data) throw new Error(error?.message ?? "That change could not be saved.");
 
@@ -368,12 +377,8 @@ export const projectsService = {
       },
       subject: { type: "project", id: request.projectId, label: request.projectName },
       related: [
-        ...(request.clientId
-          ? [{ type: "client" as const, id: request.clientId }]
-          : []),
-        ...(request.roadmapId
-          ? [{ type: "roadmap" as const, id: request.roadmapId }]
-          : []),
+        ...(request.clientId ? [{ type: "client" as const, id: request.clientId }] : []),
+        ...(request.roadmapId ? [{ type: "roadmap" as const, id: request.roadmapId }] : []),
       ],
       summary: routeSummary(request),
       sourceEventKey: request.sourceEventKey,
@@ -503,4 +508,3 @@ async function notifyReceivingRoom(
     confidence: "observed",
   });
 }
-

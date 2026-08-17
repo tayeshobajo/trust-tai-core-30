@@ -101,7 +101,7 @@ export async function writeTolerant<T>(
   required: string[],
   run: (payload: Row) => Promise<{ data: T | null; error: PostgrestError | null }>,
 ): Promise<{ data: T | null; error: PostgrestError | null }> {
-  let current = { ...payload };
+  const current = { ...payload };
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const result = await run(current);
     const missing = isMissingColumn(result.error);

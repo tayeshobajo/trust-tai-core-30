@@ -28,6 +28,20 @@ import {
   NotesCard,
 } from "@/components/tt/roadmap/detail/rail";
 import { ExportsView } from "@/components/tt/roadmap/detail/exports-view";
+import { EvidenceLinksCard } from "@/components/tt/roadmap/detail/evidence-links";
+import {
+  ExecutionHandoffCard,
+  linkStatusFromProject,
+} from "@/components/tt/roadmap/detail/execution-handoff";
+import {
+  handClientCopyToComms,
+  relationshipForRoadmap,
+} from "@/data/supabase/roadmap-comms-handoff";
+import { projectsService } from "@/data/supabase/projects-service";
+import { projectFromMilestone } from "@/data/projects-handoff";
+import type { PathMilestone } from "@/data/roadmap/detail/projection";
+import type { RoadmapEvidenceInput, RoadmapExport } from "@/domain/roadmap-exports";
+import type { ExecutionState } from "@/domain/projects";
 import { ActivityView } from "@/components/tt/roadmap/detail/activity-view";
 import {
   anchorProof,
@@ -530,6 +544,12 @@ function RoadmapWorkspace({
     retry: false,
   });
 
+  const evidenceQuery = useQuery({
+    queryKey: ["roadmap", "evidence", roadmapId],
+    queryFn: () => roadmapExportsService.listEvidence(roadmapId),
+    retry: false,
+  });
+
   const notesQuery = useQuery({
     queryKey: ["roadmap", "notes", roadmapId],
     queryFn: () => roadmapExportsService.listNotes(roadmapId),
@@ -554,6 +574,29 @@ function RoadmapWorkspace({
       detailQuery.data ? await readRoadmapBrand(detailQuery.data.roadmap) : null,
     enabled: Boolean(detailQuery.data),
     retry: false,
+  });
+
+  /* Delivery truth is read back from Projects; the roadmap never sets it. */
+  const linkedProjectIds = useMemo(
+    () =>
+      (linksQuery.data?.items ?? [])
+        .map((link) => link.projectId)
+        .filter((id): id is string => Boolean(id)),
+    [linksQuery.data],
+  );
+
+  const projectStatesQuery = useQuery({
+    queryKey: ["roadmap", "link-projects", roadmapId, linkedProjectIds.join(",")],
+    enabled: linkedProjectIds.length > 0,
+    retry: false,
+    queryFn: async () => {
+      const states: Record<string, ExecutionState> = {};
+      for (const id of linkedProjectIds) {
+        const project = await projectsService.get(id, identity.organizationId);
+        if (project) states[id] = project.state;
+      }
+      return states;
+    },
   });
 
   const milestones = useMemo(() => intelQuery.data?.milestones ?? [], [intelQuery.data]);
@@ -608,6 +651,125 @@ function RoadmapWorkspace({
       return roadmapExportsService.markSent(exportId, exportsContext);
     },
     onSettled: () => setSendingId(null),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  const [handingId, setHandingId] = useState<string | null>(null);
+  const [removingEvidenceId, setRemovingEvidenceId] = useState<string | null>(null);
+
+  const addEvidence = useMutation({
+    mutationFn: async (input: RoadmapEvidenceInput) =>
+      roadmapExportsService.addEvidence(roadmapId, input, exportsContext),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  const removeEvidence = useMutation({
+    mutationFn: async (id: string) => {
+      setRemovingEvidenceId(id);
+      return roadmapExportsService.removeEvidence(id, exportsContext);
+    },
+    onSettled: () => setRemovingEvidenceId(null),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  const requestDecision = useMutation({
+    mutationFn: async (input: {
+      question: string;
+      whyItMatters: string;
+      options: string[];
+      labels: string[];
+    }) => {
+      const detail = detailQuery.data;
+      if (!detail) throw new Error("This roadmap could not be read.");
+      return roadmapService.addDecision(
+        roadmapId,
+        detail.roadmap.subjectLabel,
+        {
+          question: input.question,
+          whyItMatters: input.whyItMatters,
+          options: input.options,
+          evidence: [],
+        },
+        context,
+        input.labels,
+      );
+    },
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  const setLabels = useMutation({
+    mutationFn: async ({ decision, labels }: { decision: RoadmapDecision; labels: string[] }) =>
+      roadmapService.setDecisionLabels(decision, labels, context),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  /**
+   * The client copy travels to Comms as a draft that needs human review.
+   * Roadmap never sends: the conversation owns delivery.
+   */
+  const handToComms = useMutation({
+    mutationFn: async (entry: RoadmapExport) => {
+      const detail = detailQuery.data;
+      if (!detail) throw new Error("This roadmap could not be read.");
+      setHandingId(entry.id);
+      const relationship = await relationshipForRoadmap(detail.roadmap, identity.organizationId);
+      if (!relationship) {
+        throw new Error(
+          "No conversation exists for this company yet. Open one in Comms first, then hand the copy over.",
+        );
+      }
+      const draft = await handClientCopyToComms(entry, relationship, {
+        organizationId: identity.organizationId,
+        userId: identity.userId,
+      });
+      await roadmapExportsService.attachComms(
+        entry.id,
+        { relationshipId: relationship.id, draftId: draft.id },
+        exportsContext,
+      );
+      return relationship.id;
+    },
+    onSettled: () => setHandingId(null),
+    onSuccess: async (relationshipId) => {
+      await refresh();
+      void relationshipId;
+      await navigate({ to: "/modules/comms" });
+    },
+    onError: fail,
+  });
+
+  /**
+   * A person confirms which approved milestones move into delivery. Each one
+   * opens at most one project, and the link is what the roadmap reads back.
+   */
+  const confirmHandoff = useMutation({
+    mutationFn: async (entries: PathMilestone[]) => {
+      const detail = detailQuery.data;
+      if (!detail) throw new Error("This roadmap could not be read.");
+      for (const entry of entries) {
+        const handoff = projectFromMilestone(entry.milestone, detail.roadmap.subjectLabel);
+        if (!handoff.ok) throw new Error(handoff.because);
+        const project = await projectsService.start(handoff.input, {
+          organizationId: identity.organizationId,
+          userId: identity.userId,
+          userLabel: identity.name,
+        });
+        await roadmapExportsService.linkExecution(
+          {
+            roadmapId,
+            milestoneId: entry.id,
+            owningApp: "projects",
+            projectId: project.id,
+          },
+          exportsContext,
+        );
+      }
+    },
     onSuccess: refresh,
     onError: fail,
   });
@@ -734,6 +896,14 @@ function RoadmapWorkspace({
                   milestoneStatus.mutate({ milestone, status, note })
                 }
               />
+              <ExecutionHandoffCard
+                path={path}
+                links={linksQuery.data?.items ?? []}
+                available={linksQuery.data?.available ?? false}
+                busy={confirmHandoff.isPending}
+                projectStates={projectStatesQuery.data ?? {}}
+                onConfirm={(entries) => confirmHandoff.mutate(entries)}
+              />
               <BuildOrderView
                 milestones={milestones}
                 action={(milestone) => (
@@ -749,6 +919,14 @@ function RoadmapWorkspace({
 
           {view === "evidence" ? (
             <>
+              <EvidenceLinksCard
+                items={evidenceQuery.data?.items ?? []}
+                available={evidenceQuery.data?.available ?? false}
+                saving={addEvidence.isPending}
+                removingId={removingEvidenceId}
+                onAdd={(input) => addEvidence.mutate(input)}
+                onRemove={(id) => removeEvidence.mutate(id)}
+              />
               <AskPanel
                 subjectLabel={roadmap.subjectLabel}
                 answers={intel?.questions ?? []}
@@ -780,7 +958,10 @@ function RoadmapWorkspace({
             <DecisionPanel
               decisions={decisions}
               busyId={busyId}
+              requesting={requestDecision.isPending}
               onResolve={(decision, status, note) => resolve.mutate({ decision, status, note })}
+              onRequest={(input) => requestDecision.mutate(input)}
+              onLabels={(decision, labels) => setLabels.mutate({ decision, labels })}
             />
           ) : null}
 
@@ -793,8 +974,10 @@ function RoadmapWorkspace({
                 blockedBecause={exportBlocked}
                 creating={createExport.isPending}
                 sendingId={sendingId}
+                handingId={handingId}
                 onCreate={() => createExport.mutate()}
                 onMarkSent={(exportId) => markSent.mutate(exportId)}
+                onHandToComms={(entry) => handToComms.mutate(entry)}
               />
               <StudioView
                 subjectLabel={roadmap.subjectLabel}

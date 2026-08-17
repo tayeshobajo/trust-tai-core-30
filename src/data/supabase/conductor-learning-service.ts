@@ -56,7 +56,9 @@ function toObservation(row: Row): ActionObservation {
     id: String(row["id"]),
     organizationId: String(row["organization_id"]),
     actionId: String(row["action_id"]),
-    ...(text(row, "recommendation_id") ? { recommendationId: text(row, "recommendation_id")! } : {}),
+    ...(text(row, "recommendation_id")
+      ? { recommendationId: text(row, "recommendation_id")! }
+      : {}),
     ...(text(row, "answer_id") ? { answerId: text(row, "answer_id")! } : {}),
     ...(text(row, "plan_id") ? { planId: text(row, "plan_id")! } : {}),
     owningApp: text(row, "owning_app") ?? "unknown",
@@ -166,7 +168,9 @@ function toLearning(row: Row): LearningRecord {
     },
     sourceActionIds: json(row, "source_action_ids", [] as string[]),
     sourceObservationIds: json(row, "source_observation_ids", [] as string[]),
-    ...(text(row, "recommendation_id") ? { recommendationId: text(row, "recommendation_id")! } : {}),
+    ...(text(row, "recommendation_id")
+      ? { recommendationId: text(row, "recommendation_id")! }
+      : {}),
     hypothesis: text(row, "hypothesis") ?? "",
     expectedSignal: text(row, "expected_signal") ?? "",
     observedResult: text(row, "observed_result") ?? "",

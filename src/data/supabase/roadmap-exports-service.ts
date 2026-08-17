@@ -18,6 +18,9 @@ import type {
   ExportStatus,
   OwningApp,
   RoadmapDetailNote,
+  RoadmapEvidenceInput,
+  RoadmapEvidenceItem,
+  RoadmapEvidenceKind,
   RoadmapExecutionLink,
   RoadmapExport,
 } from "@/domain/roadmap-exports";
@@ -75,6 +78,7 @@ function toExport(row: Row): RoadmapExport {
     ...(text(row["comms_relationship_id"])
       ? { commsRelationshipId: text(row["comms_relationship_id"])! }
       : {}),
+    ...(text(row["comms_draft_id"]) ? { commsDraftId: text(row["comms_draft_id"])! } : {}),
     ...(text(row["comms_message_id"]) ? { commsMessageId: text(row["comms_message_id"])! } : {}),
   };
 }
@@ -111,6 +115,27 @@ function toNote(row: Row): RoadmapDetailNote {
     body: String(row["body"] ?? ""),
     ...(text(row["author_user_id"]) ? { authorUserId: text(row["author_user_id"])! } : {}),
     ...(text(row["author_label"]) ? { authorLabel: text(row["author_label"])! } : {}),
+    createdAt: String(row["created_at"] ?? new Date().toISOString()),
+  };
+}
+
+const EVIDENCE_KINDS: RoadmapEvidenceKind[] = ["page", "provider", "human", "computed"];
+
+function toEvidence(row: Row): RoadmapEvidenceItem {
+  const kind = EVIDENCE_KINDS.includes(row["kind"] as RoadmapEvidenceKind)
+    ? (row["kind"] as RoadmapEvidenceKind)
+    : "page";
+  return {
+    id: String(row["id"]),
+    organizationId: String(row["organization_id"]),
+    roadmapId: String(row["roadmap_id"]),
+    ...(text(row["milestone_id"]) ? { milestoneId: text(row["milestone_id"])! } : {}),
+    label: String(row["label"] ?? ""),
+    ...(text(row["url"]) ? { url: text(row["url"])! } : {}),
+    kind,
+    ...(text(row["source_note"]) ? { sourceNote: text(row["source_note"])! } : {}),
+    ...(text(row["observed_at"]) ? { observedAt: text(row["observed_at"])! } : {}),
+    ...(text(row["created_by"]) ? { createdBy: text(row["created_by"])! } : {}),
     createdAt: String(row["created_at"] ?? new Date().toISOString()),
   };
 }
@@ -253,5 +278,124 @@ export const roadmapExportsService = {
     }
     assertOk(error);
     return toNote((data ?? {}) as Row);
+  },
+  /* --------------------------------------------------------------- evidence */
+
+  async listEvidence(roadmapId: ID): Promise<Availability<RoadmapEvidenceItem>> {
+    const { data, error } = await supabase
+      .from("roadmap_evidence")
+      .select("*")
+      .eq("roadmap_id", roadmapId)
+      .order("created_at", { ascending: false });
+    if (missingTable(error)) return unavailable<RoadmapEvidenceItem>();
+    assertOk(error);
+    return { available: true, items: ((data ?? []) as Row[]).map(toEvidence) };
+  },
+
+  /** A person links a real proof point. Nothing is generated on their behalf. */
+  async addEvidence(
+    roadmapId: ID,
+    input: RoadmapEvidenceInput,
+    context: ExportsContext,
+  ): Promise<RoadmapEvidenceItem> {
+    const label = input.label.trim();
+    if (!label) throw new Error("Give this proof point a label first.");
+    const { data, error } = await supabase
+      .from("roadmap_evidence")
+      .insert({
+        organization_id: context.organizationId,
+        roadmap_id: roadmapId,
+        label,
+        kind: input.kind,
+        ...(input.url?.trim() ? { url: input.url.trim() } : {}),
+        ...(input.sourceNote?.trim() ? { source_note: input.sourceNote.trim() } : {}),
+        ...(input.milestoneId ? { milestone_id: input.milestoneId } : {}),
+        observed_at: new Date().toISOString(),
+        created_by: context.userId,
+      })
+      .select("*")
+      .maybeSingle();
+    if (missingTable(error)) {
+      throw new Error(
+        "Roadmap evidence is not set up in this backend yet. Apply docs/roadmap-exports-schema.sql.",
+      );
+    }
+    assertOk(error);
+    return toEvidence((data ?? {}) as Row);
+  },
+
+  async updateEvidence(
+    id: ID,
+    input: RoadmapEvidenceInput,
+    context: ExportsContext,
+  ): Promise<RoadmapEvidenceItem> {
+    const label = input.label.trim();
+    if (!label) throw new Error("Give this proof point a label first.");
+    const { data, error } = await supabase
+      .from("roadmap_evidence")
+      .update({
+        label,
+        kind: input.kind,
+        url: input.url?.trim() || null,
+        source_note: input.sourceNote?.trim() || null,
+        milestone_id: input.milestoneId ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("organization_id", context.organizationId)
+      .select("*")
+      .maybeSingle();
+    assertOk(error);
+    if (!data) throw new Error("That proof point could not be updated.");
+    return toEvidence(data as Row);
+  },
+
+  async removeEvidence(id: ID, context: ExportsContext): Promise<void> {
+    const { error } = await supabase
+      .from("roadmap_evidence")
+      .delete()
+      .eq("id", id)
+      .eq("organization_id", context.organizationId);
+    assertOk(error);
+  },
+
+  /* -------------------------------------------------- execution link status */
+
+  /**
+   * Roadmap never owns delivery state. This mirrors what the owning room
+   * already says, so the roadmap can show progress read-only.
+   */
+  async setLinkStatus(
+    link: RoadmapExecutionLink,
+    status: ExecutionLinkStatus,
+    context: ExportsContext,
+  ): Promise<void> {
+    if (link.status === status) return;
+    const { error } = await supabase
+      .from("roadmap_execution_links")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", link.id)
+      .eq("organization_id", context.organizationId);
+    if (missingTable(error)) return;
+    assertOk(error);
+  },
+
+  /* ------------------------------------------------------ export → Comms */
+
+  /** Record which Comms conversation and draft carry a client copy. */
+  async attachComms(
+    exportId: ID,
+    input: { relationshipId: ID; draftId: ID },
+    context: ExportsContext,
+  ): Promise<void> {
+    const { error } = await supabase
+      .from("roadmap_exports")
+      .update({
+        comms_relationship_id: input.relationshipId,
+        comms_draft_id: input.draftId,
+      })
+      .eq("id", exportId)
+      .eq("organization_id", context.organizationId);
+    assertOk(error);
   },
 };

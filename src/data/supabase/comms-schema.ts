@@ -30,7 +30,6 @@ export function assertOk(error: PostgrestError | null): void {
   throw new Error(error.message);
 }
 
-
 /* ------------------------------------------------------------------ helpers */
 
 function text(value: unknown): string | undefined {
@@ -55,9 +54,7 @@ function evidence(value: unknown): EvidenceRef[] {
     .filter((entry): entry is Row => Boolean(entry) && typeof entry === "object")
     .map((entry) => ({
       label: String(entry["label"] ?? "Evidence"),
-      kind: (["page", "provider", "human", "computed"] as const).includes(
-        entry["kind"] as never,
-      )
+      kind: (["page", "provider", "human", "computed"] as const).includes(entry["kind"] as never)
         ? (entry["kind"] as EvidenceRef["kind"])
         : "computed",
       ...(text(entry["url"]) ? { url: text(entry["url"])! } : {}),

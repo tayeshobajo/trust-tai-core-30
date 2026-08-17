@@ -108,10 +108,7 @@ export async function decideIntent(input: DecideIntentInput): Promise<BusinessIn
 
 /** Take an outcome out of force without deleting the record of it. */
 export async function retireIntent(id: ID, at = new Date().toISOString()): Promise<void> {
-  const { error } = await supabase
-    .from("business_intents")
-    .update({ retired_at: at })
-    .eq("id", id);
+  const { error } = await supabase.from("business_intents").update({ retired_at: at }).eq("id", id);
   if (error) throw new Error(error.message);
 }
 
@@ -204,7 +201,7 @@ function toCorrection(row: Row): ConductorCorrection {
             key: parsed.key,
             value: parsed.value,
             ...(parsed.unit ? { unit: parsed.unit } : {}),
-            asOf: parsed.asOf ?? (text(row, "created_at") ?? new Date().toISOString()),
+            asOf: parsed.asOf ?? text(row, "created_at") ?? new Date().toISOString(),
           },
         }
       : {}),
@@ -243,9 +240,7 @@ export interface RecordCorrectionInput {
  * itself as a decided figure in the same breath, so the next answer stands on
  * it rather than on the correction text.
  */
-export async function recordCorrection(
-  input: RecordCorrectionInput,
-): Promise<ConductorCorrection> {
+export async function recordCorrection(input: RecordCorrectionInput): Promise<ConductorCorrection> {
   const payload: Row = {
     organization_id: input.organizationId,
     kind: input.kind,

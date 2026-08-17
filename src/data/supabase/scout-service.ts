@@ -29,7 +29,6 @@ import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
 import type { HandoffDraft, HandoffRecord } from "@/domain/comms-handoff";
 import { HANDOFF_INTENT_LABEL } from "@/domain/comms-handoff";
 
-
 import { supabaseActivity } from "./activities";
 import { emitSuiteEvent } from "@/data/events/suite-events";
 import { fetchCompanyIdentity } from "./company-identity";
@@ -55,10 +54,7 @@ import {
   researchWebsite,
   intelFromResearch,
 } from "./scout-research";
-import {
-  SCOUT_DISCOVERY_SOURCE,
-  candidateFromDiscoveryRow,
-} from "./scout-discovery-map";
+import { SCOUT_DISCOVERY_SOURCE, candidateFromDiscoveryRow } from "./scout-discovery-map";
 import {
   discover as runDiscover,
   discoveryStatus,
@@ -179,7 +175,6 @@ export const scoutService = {
     });
   },
 
-
   /** Is live market discovery connected? */
   async discoveryStatus() {
     return discoveryStatus();
@@ -208,7 +203,6 @@ export const scoutService = {
   async feedback(input: FeedbackInput) {
     return recordScoutFeedback(input);
   },
-
 
   /**
    * Preview discovery. Ranks the demo catalogue against the plain-English
@@ -289,8 +283,7 @@ export const scoutService = {
     const row = await saveResearchProspect({
       organizationId: request.organizationId,
       userId: request.userId,
-      companyName:
-        existing?.company_name ?? companyNameFromResearch(payload, websiteUrl),
+      companyName: existing?.company_name ?? companyNameFromResearch(payload, websiteUrl),
       websiteUrl: payload.website_url || websiteUrl,
       observed: payload.observed ?? [],
       inferred: payload.inferred ?? {},
@@ -366,14 +359,9 @@ export const scoutService = {
    * full provenance and the company moves to `ready_for_comms`. Nothing is
    * sent: Comms opens the conversation, a person still writes it.
    */
-  async routeToComms(
-    draft: HandoffDraft,
-    context: ScoutContext,
-  ): Promise<HandoffRecord> {
+  async routeToComms(draft: HandoffDraft, context: ScoutContext): Promise<HandoffRecord> {
     if (!draft.ready) {
-      throw new Error(
-        "This brief is not ready for Comms yet. Clear what is missing first.",
-      );
+      throw new Error("This brief is not ready for Comms yet. Clear what is missing first.");
     }
 
     const routedAt = new Date().toISOString();
@@ -430,11 +418,7 @@ export const scoutService = {
   },
 
   /** Qualify / Pass. Writes the row, then appends the activity record. */
-  async setStatus(
-    id: ID,
-    status: ProspectStatus,
-    context: ScoutContext,
-  ): Promise<Prospect | null> {
+  async setStatus(id: ID, status: ProspectStatus, context: ScoutContext): Promise<Prospect | null> {
     const prospect = await updateProspectStatus(id, status);
 
     const occurredAt = new Date().toISOString();
@@ -470,7 +454,6 @@ export const scoutService = {
         occurredAt,
       });
     }
-
 
     if (prospect.status === "qualified" || prospect.status === "passed") {
       await recordScoutFeedback({

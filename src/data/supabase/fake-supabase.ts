@@ -32,7 +32,6 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     private readonly conflict: string[] = [],
   ) {}
 
-
   eq(column: string, value: unknown): Query {
     this.filters.push({ column, value });
     return this;
@@ -60,7 +59,9 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
   private matched(): FakeRow[] {
     let rows = this.rows.filter((row) =>
       this.filters.every((filter) =>
-        filter.anyOf ? filter.anyOf.includes(row[filter.column]) : row[filter.column] === filter.value,
+        filter.anyOf
+          ? filter.anyOf.includes(row[filter.column])
+          : row[filter.column] === filter.value,
       ),
     );
     if (this.orderBy) {
@@ -102,7 +103,6 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     }
 
     if (this.mode === "insert") {
-
       const bodies = Array.isArray(this.body) ? this.body : [this.body ?? {}];
       const written = bodies.map((body) => {
         const row: FakeRow = {
@@ -117,7 +117,6 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
       });
       // PostgREST returns a list for a list body, exactly as the real client does.
       return { data: Array.isArray(this.body) ? written : (written[0] ?? null), error: null };
-
     }
 
     if (this.mode === "delete") {
@@ -152,8 +151,7 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
 
   then<TResult1 = { data: unknown; error: null }, TResult2 = never>(
     onfulfilled?:
-      | ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>)
-      | null,
+      ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): PromiseLike<TResult1 | TResult2> {
     return Promise.resolve(this.run()).then(onfulfilled, onrejected);
@@ -189,12 +187,14 @@ export function createFakeSupabase(seed: Record<string, FakeRow[]> = {}): FakeSu
             "upsert",
             body,
             undefined,
-            (options?.onConflict ?? "").split(",").map((column) => column.trim()).filter(Boolean),
+            (options?.onConflict ?? "")
+              .split(",")
+              .map((column) => column.trim())
+              .filter(Boolean),
           ),
         update: (body: FakeRow) => new Query(rows, "update", body),
         delete: () => new Query(rows, "delete"),
       };
     },
   };
-
 }

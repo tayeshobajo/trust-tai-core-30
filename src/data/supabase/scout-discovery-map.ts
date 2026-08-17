@@ -24,7 +24,8 @@ export function discoverySource(row: ProspectRow): CandidateSource {
       ? (provenance["citations"] as string[])
       : [];
   const query = typeof discovery["query"] === "string" ? discovery["query"] : "";
-  const at = typeof discovery["at"] === "string" ? discovery["at"] : row.updated_at ?? row.created_at;
+  const at =
+    typeof discovery["at"] === "string" ? discovery["at"] : (row.updated_at ?? row.created_at);
 
   return {
     kind: "live_website",

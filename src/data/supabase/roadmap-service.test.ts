@@ -157,9 +157,7 @@ describe("handoff idempotency", () => {
     );
     expect(detail.roadmap.relationshipId).toBe("relationship-1");
     expect(detail.roadmap.subjectLabel).toBe("Northbeam Studio");
-    expect(
-      detail.roadmap.pointA.some((note) => note.value.includes("founders dinner")),
-    ).toBe(true);
+    expect(detail.roadmap.pointA.some((note) => note.value.includes("founders dinner"))).toBe(true);
   });
 
   it("does not re-draft stages when a roadmap already exists", async () => {

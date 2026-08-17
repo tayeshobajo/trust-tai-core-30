@@ -135,3 +135,66 @@ drop policy if exists "roadmap_notes_delete" on public.roadmap_notes;
 create policy "roadmap_notes_delete"
   on public.roadmap_notes for delete to authenticated
   using (private.is_org_member(organization_id) and author_user_id = auth.uid());
+
+/* ---------------------------------------------------------------- evidence */
+
+-- Anchor proof points a person linked by hand. Real references only: a label
+-- plus, where it exists, the page it was read on. Nothing here is generated.
+
+create table if not exists public.roadmap_evidence (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null,
+  roadmap_id uuid not null references public.roadmaps(id) on delete cascade,
+  milestone_id uuid,
+  label text not null,
+  url text,
+  kind text not null default 'page',
+  source_note text,
+  observed_at timestamptz,
+  created_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint roadmap_evidence_kind_check
+    check (kind in ('page', 'provider', 'human', 'computed'))
+);
+
+create index if not exists roadmap_evidence_roadmap_idx
+  on public.roadmap_evidence (roadmap_id, created_at desc);
+
+grant select, insert, update, delete on public.roadmap_evidence to authenticated;
+grant all on public.roadmap_evidence to service_role;
+
+alter table public.roadmap_evidence enable row level security;
+
+drop policy if exists "roadmap_evidence_read" on public.roadmap_evidence;
+create policy "roadmap_evidence_read"
+  on public.roadmap_evidence for select to authenticated
+  using (private.is_org_member(organization_id));
+
+drop policy if exists "roadmap_evidence_write" on public.roadmap_evidence;
+create policy "roadmap_evidence_write"
+  on public.roadmap_evidence for insert to authenticated
+  with check (private.is_org_member(organization_id));
+
+drop policy if exists "roadmap_evidence_update" on public.roadmap_evidence;
+create policy "roadmap_evidence_update"
+  on public.roadmap_evidence for update to authenticated
+  using (private.is_org_member(organization_id))
+  with check (private.is_org_member(organization_id));
+
+drop policy if exists "roadmap_evidence_delete" on public.roadmap_evidence;
+create policy "roadmap_evidence_delete"
+  on public.roadmap_evidence for delete to authenticated
+  using (private.is_org_member(organization_id));
+
+/* ------------------------------------------------- decisions: plain labels */
+
+-- Short human labels on an open decision ("pricing", "scope"). Optional, and
+-- never a substitute for the question itself.
+alter table public.roadmap_decisions
+  add column if not exists labels text[] not null default '{}'::text[];
+
+/* ----------------------------------------- exports: the Comms draft it made */
+
+alter table public.roadmap_exports
+  add column if not exists comms_draft_id uuid;

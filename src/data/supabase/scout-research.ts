@@ -21,8 +21,6 @@ import { readResearchHistory } from "@/data/prospect-modules";
 import { readScoutIntel } from "@/data/scout-intel";
 import { companyProfile } from "@/data/scout-profile";
 
-
-
 /** Raw payload returned by the Edge Function. */
 export interface ScoutResearchPayload {
   source: string;
@@ -111,7 +109,8 @@ export function researchVersion(payload: ScoutResearchPayload): number | null {
 }
 
 export function pageCount(payload: ScoutResearchPayload): number {
-  const pages = payload.pages_researched ?? (payload.provenance?.["pages"] as unknown[] | undefined);
+  const pages =
+    payload.pages_researched ?? (payload.provenance?.["pages"] as unknown[] | undefined);
   return Array.isArray(pages) ? pages.length : 0;
 }
 
@@ -122,7 +121,11 @@ function researchNote(pages: number): string {
 }
 
 /** Source descriptor shown on live-research cards. */
-export function liveSource(pages: number, pagesResearched: string[], researchedAt?: string): CandidateSource {
+export function liveSource(
+  pages: number,
+  pagesResearched: string[],
+  researchedAt?: string,
+): CandidateSource {
   return {
     kind: "live_website",
     label: "Live website research",
@@ -160,8 +163,7 @@ function renderObservationStatement(entry: Row, item: unknown): string {
   }
 
   // Legacy / fallback shapes.
-  const legacy =
-    text(entry["statement"]) || text(entry["fact"]) || text(entry["text"]);
+  const legacy = text(entry["statement"]) || text(entry["fact"]) || text(entry["text"]);
   if (legacy) return legacy;
   if (typeof item === "string") return item;
 
@@ -177,9 +179,7 @@ function toSignals(observed: unknown[], observedAtFallback: string): ScoutSignal
 
     // Safety net: never render "[object Object]" or an empty string.
     const safeStatement =
-      statement && statement !== "[object Object]"
-        ? statement
-        : "Observation recorded";
+      statement && statement !== "[object Object]" ? statement : "Observation recorded";
 
     return {
       id: text(entry["id"]) || text(entry["key"]) || `obs_${index}`,
@@ -246,23 +246,23 @@ export function candidateFromResearchRow(
     source: liveSource(pages.length, pages, researchedAt),
     evaluation: withOverride(
       storedEvaluation(row.metadata) ??
-      evaluateScoutFit({
-        observed,
-        inferred,
-        suggested,
-        scoreable: true,
-        icpVersion:
-          activeIcpVersion ??
-          (typeof provenance["icp_version"] === "number"
-            ? (provenance["icp_version"] as number)
-            : null),
-        at: researchedAt,
-        pagesResearched: pages.length,
-        researchVersion:
-          typeof provenance["research_version"] === "number"
-            ? (provenance["research_version"] as number)
-            : null,
-      }),
+        evaluateScoutFit({
+          observed,
+          inferred,
+          suggested,
+          scoreable: true,
+          icpVersion:
+            activeIcpVersion ??
+            (typeof provenance["icp_version"] === "number"
+              ? (provenance["icp_version"] as number)
+              : null),
+          at: researchedAt,
+          pagesResearched: pages.length,
+          researchVersion:
+            typeof provenance["research_version"] === "number"
+              ? (provenance["research_version"] as number)
+              : null,
+        }),
       row.metadata,
     ),
     lastCheckedAt: researchedAt,
@@ -292,7 +292,6 @@ export function observationFacts(observed: unknown[]): Record<string, unknown> {
   }
   return facts;
 }
-
 
 /**
  * Buying signals, digital opportunities and people the research function

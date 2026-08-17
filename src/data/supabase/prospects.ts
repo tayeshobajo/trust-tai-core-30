@@ -214,7 +214,12 @@ export async function saveResearchProspect(input: ResearchProspectInput): Promis
 
   const { data, error } = await supabase
     .from("prospects")
-    .insert({ ...research, organization_id: input.organizationId, status: "discovered", created_by: input.userId })
+    .insert({
+      ...research,
+      organization_id: input.organizationId,
+      status: "discovered",
+      created_by: input.userId,
+    })
     .select(SELECT_COLUMNS)
     .maybeSingle();
   if (error) throw new Error(error.message);

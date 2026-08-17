@@ -28,7 +28,6 @@ import { draftEvidence, toMemoryBelief } from "@/data/steward/memory-encoding";
 
 import { writeTolerant, type Row } from "./schema";
 
-
 const NOT_PROVISIONED = /does not exist|schema cache|42P01|PGRST205|PGRST20[0-9]/i;
 
 export class StewardNotProvisionedError extends Error {
@@ -475,4 +474,3 @@ export const stewardService = {
     });
   },
 };
-
