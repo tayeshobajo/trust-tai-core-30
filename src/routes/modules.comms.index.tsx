@@ -288,9 +288,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         <CommsSidebarPanels
           view={view}
           health={healthFilter}
+          tab={tab}
           onHealth={setHealthFilter}
+          onTab={setTab}
           onAdd={() => setCapturing(true)}
         />
+
       }
     >
     <div className="-mx-4 -mt-8 w-auto bg-[linear-gradient(180deg,var(--cloud)_0%,transparent_200px)] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-mt-10 lg:px-8">

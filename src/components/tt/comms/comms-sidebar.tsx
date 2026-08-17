@@ -6,12 +6,37 @@
  */
 
 import { HEALTH_LABEL, type ConversationHealthStatus } from "@/domain/comms-health";
-import type { InboxView } from "@/data/comms-inbox";
+import type { InboxTab, InboxView } from "@/data/comms-inbox";
 import { cn } from "@/lib/utils";
 
 import { HealthDot } from "./health-marks";
 
-const GLANCE: ConversationHealthStatus[] = ["needs_attention", "at_risk", "quiet", "healthy"];
+/**
+ * What the glance shows. Three of these are derived health reads; "following_up"
+ * is the inbox tab for conversations moving on their own rhythm, so selecting it
+ * switches tab rather than filtering by health.
+ */
+export type GlanceKey = ConversationHealthStatus | "following_up";
+
+const GLANCE: GlanceKey[] = ["needs_attention", "following_up", "at_risk", "quiet"];
+
+const GLANCE_LABEL: Record<GlanceKey, string> = {
+  needs_attention: "Needs attention",
+  following_up: "Following up",
+  at_risk: HEALTH_LABEL.at_risk,
+  quiet: HEALTH_LABEL.quiet,
+  healthy: HEALTH_LABEL.healthy,
+};
+
+/** Real counts, read from the same derived inbox state the room renders. */
+export function glanceRows(view: InboxView): { key: GlanceKey; label: string; count: number }[] {
+  return GLANCE.map((key) => ({
+    key,
+    label: GLANCE_LABEL[key],
+    count:
+      key === "following_up" ? view.tabCounts.following_up : view.healthCounts[key],
+  }));
+}
 
 export function SidebarStatusCard({
   title,
@@ -20,9 +45,9 @@ export function SidebarStatusCard({
   active,
 }: {
   title: string;
-  rows: { key: ConversationHealthStatus; label: string; count: number }[];
-  onSelect?: (key: ConversationHealthStatus) => void;
-  active?: ConversationHealthStatus | null;
+  rows: { key: GlanceKey; label: string; count: number }[];
+  onSelect?: (key: GlanceKey) => void;
+  active?: GlanceKey | null;
 }) {
   return (
     <section className="rounded-xl border border-cloud-line bg-cloud/60 p-3">
@@ -44,7 +69,7 @@ export function SidebarStatusCard({
                     : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
                 )}
               >
-                <HealthDot status={row.key} />
+                <HealthDot status={row.key === "following_up" ? "healthy" : row.key} />
                 <span className="flex-1 truncate">{row.label}</span>
                 <span className="font-mono text-[11px] tabular-nums text-foreground/80">
                   {row.count}
@@ -62,74 +87,136 @@ export function DriverCard({
   heading,
   statement,
   detail,
+  action,
+  onAction,
 }: {
   heading: string;
   statement: string;
-  detail?: string;
+  detail?: string | undefined;
+  action?: string | undefined;
+  onAction?: (() => void) | undefined;
 }) {
   return (
     <section className="rounded-xl border border-border bg-card p-3">
       <h2 className="tt-eyebrow">{heading}</h2>
       <p className="mt-1.5 font-display text-[17px] leading-snug text-foreground">{statement}</p>
       {detail ? <p className="mt-1 text-[12px] text-muted-foreground">{detail}</p> : null}
+      {action && onAction ? (
+        <button
+          type="button"
+          onClick={onAction}
+          className="mt-2 text-[12px] font-medium text-royal underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {action}
+        </button>
+      ) : null}
     </section>
   );
 }
 
-/** Plain-language driver derived only from what Comms can actually see. */
-export function commsDriver(view: InboxView): { statement: string; detail: string } {
+/**
+ * Plain-language driver derived only from what Comms can actually see.
+ *
+ * Deterministic order of concern: conversations at risk, then people waiting on
+ * us, then conversations that have gone quiet, then a calm inbox.
+ */
+export function commsDriver(view: InboxView): {
+  statement: string;
+  detail: string;
+  focus: GlanceKey | null;
+  count: number;
+} {
   const needsYou = view.tabCounts.needs_you;
   const atRisk = view.healthCounts.at_risk;
+  const quiet = view.healthCounts.quiet;
+  const followingUp = view.tabCounts.following_up;
+  const plural = (n: number) => (n === 1 ? "" : "s");
+
   if (atRisk > 0) {
     return {
       statement: "Bring these back to life.",
-      detail: `${atRisk} conversation${atRisk === 1 ? "" : "s"} at risk of going cold.`,
+      detail: `${atRisk} conversation${plural(atRisk)} at risk of going cold.`,
+      focus: "at_risk",
+      count: atRisk,
     };
   }
   if (needsYou > 0) {
     return {
       statement: "Keep conversations warm.",
-      detail: `${needsYou} conversation${needsYou === 1 ? "" : "s"} waiting on you.`,
+      detail: `${needsYou} conversation${plural(needsYou)} waiting on you.`,
+      focus: "needs_attention",
+      count: needsYou,
+    };
+  }
+  if (quiet > 0) {
+    return {
+      statement: "Reopen a quiet one.",
+      detail: `${quiet} conversation${plural(quiet)} have gone quiet with nothing due.`,
+      focus: "quiet",
+      count: quiet,
     };
   }
   if (view.tabCounts.all > 0) {
     return {
       statement: "Nothing is waiting on you.",
-      detail: `${view.tabCounts.following_up} conversation${view.tabCounts.following_up === 1 ? "" : "s"} moving on their own rhythm.`,
+      detail: `${followingUp} conversation${plural(followingUp)} moving on their own rhythm.`,
+      focus: "following_up",
+      count: followingUp,
     };
   }
   return {
     statement: "Start with one person.",
     detail: "Add the last person you met and Comms carries it from there.",
+    focus: null,
+    count: 0,
   };
 }
 
 export function CommsSidebarPanels({
   view,
   health,
+  tab,
   onHealth,
+  onTab,
   onAdd,
 }: {
   view: InboxView;
   health: ConversationHealthStatus | null;
+  tab?: InboxTab;
   onHealth: (status: ConversationHealthStatus | null) => void;
+  onTab?: (tab: InboxTab) => void;
   onAdd: () => void;
 }) {
   const driver = commsDriver(view);
+  const active: GlanceKey | null =
+    health ?? (tab === "following_up" ? "following_up" : null);
+
+  function select(key: GlanceKey) {
+    if (key === "following_up") {
+      onHealth(null);
+      onTab?.(tab === "following_up" ? "all" : "following_up");
+      return;
+    }
+    onTab?.("all");
+    onHealth(health === key ? null : key);
+  }
+
   return (
     <>
       <SidebarStatusCard
         title="Comms at a glance"
-        active={health}
-        onSelect={(status) => onHealth(health === status ? null : status)}
-        rows={GLANCE.map((status) => ({
-          key: status,
-          label: status === "needs_attention" ? "Needs attention" : HEALTH_LABEL[status],
-          count: view.healthCounts[status],
-        }))}
+        active={active}
+        onSelect={select}
+        rows={glanceRows(view)}
       />
 
-      <DriverCard heading="Your driver" statement={driver.statement} detail={driver.detail} />
+      <DriverCard
+        heading="Your driver"
+        statement={driver.statement}
+        detail={driver.detail}
+        action={driver.focus ? "Show these" : undefined}
+        onAction={driver.focus ? () => select(driver.focus as GlanceKey) : undefined}
+      />
 
       <button
         type="button"
