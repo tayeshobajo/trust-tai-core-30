@@ -187,10 +187,75 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
     [projectsQuery.data, sources],
   );
 
+  // Ready from roadmap: approved milestones, and whether each already started.
+  const approvedQuery = useQuery({
+    queryKey: ["projects", "approved-milestones", identity.organizationId],
+    queryFn: () => listApprovedMilestones(identity.organizationId),
+    retry: false,
+  });
+
+  const handoffRows = useMemo<HandoffRow[]>(() => {
+    const started = new Map<string, string>();
+    for (const project of projectsQuery.data ?? []) {
+      if (project.origin.milestoneId) started.set(project.origin.milestoneId, project.id);
+    }
+    return (approvedQuery.data ?? []).map((milestone) => {
+      const company =
+        sources.roadmapCompany[milestone.roadmapId] ?? "No company attached";
+      const ready = readiness(milestone);
+      const existing = started.get(milestone.id);
+      return {
+        milestone,
+        company,
+        ready: ready.ready,
+        because: ready.because,
+        ...(existing ? { existingProjectId: existing } : {}),
+      };
+    });
+  }, [approvedQuery.data, projectsQuery.data, sources]);
+
+  const create = useMutation({
+    mutationFn: (input: ProjectInput) => projectsService.start(input, context),
+    onSuccess: async (project) => {
+      setModalOpen(false);
+      setSeed(null);
+      setPendingMilestoneId(null);
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      void navigate({ to: "/modules/projects/$projectId", params: { projectId: project.id } });
+    },
+    onError: () => setPendingMilestoneId(null),
+  });
+
+  function openBlankCreate() {
+    setSeed(null);
+    create.reset();
+    setModalOpen(true);
+  }
+
+  function openHandoffCreate(row: HandoffRow) {
+    const handoff = projectFromMilestone(row.milestone, row.company);
+    if (!handoff.ok) return;
+    setPendingMilestoneId(row.milestone.id);
+    create.reset();
+    setSeed({
+      name: handoff.input.name,
+      company: row.company,
+      pointA: handoff.input.pointA,
+      pointB: handoff.input.pointB,
+      ...(handoff.input.ownerLabel ? { ownerLabel: handoff.input.ownerLabel } : {}),
+      ...(handoff.input.ownerUserId ? { ownerUserId: handoff.input.ownerUserId } : {}),
+      ...(handoff.input.nextMove ? { nextMove: handoff.input.nextMove } : {}),
+      origin: handoff.input.origin,
+      lineageLine: `From ${row.company} · approved milestone “${row.milestone.name}”.`,
+    });
+    setModalOpen(true);
+  }
+
   const glance = useMemo(() => projectsGlance(rows), [rows]);
   const attention = useMemo(() => needsAttention(rows), [rows]);
   const tabbed = useMemo(() => rows.filter((row) => inTab(row, tab)), [rows, tab]);
   const visible = useMemo(() => filterProjectRows(tabbed, filters), [tabbed, filters]);
+
 
   const counts = useMemo(
     () =>
