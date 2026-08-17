@@ -8,7 +8,7 @@
 
 import type { Relationship, Touch } from "@/domain/comms";
 import type { ConversationHealth, ConversationHealthStatus } from "@/domain/comms-health";
-import { conversationHealth } from "./comms-health";
+import { deriveConversationHealth } from "./comms-health";
 import { matchesSearch } from "./comms-queue";
 
 export type InboxTab = "all" | "needs_you" | "following_up" | "archived";
@@ -35,7 +35,7 @@ export function inboxEntries(
 ): InboxEntry[] {
   return relationships.map((relationship) => ({
     relationship,
-    health: conversationHealth(relationship, touchesByRelationship[relationship.id] ?? [], now),
+    health: deriveConversationHealth(relationship, touchesByRelationship[relationship.id] ?? [], now),
   }));
 }
 

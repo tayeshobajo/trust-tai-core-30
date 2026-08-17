@@ -27,7 +27,7 @@ import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
-import { conversationHealth, relationshipStrength } from "@/data/comms-health";
+import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
 import { inboxEntries, inboxView, type InboxTab } from "@/data/comms-inbox";
 import { reasonsToReconnect } from "@/data/comms-reminders";
@@ -135,7 +135,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
   const drafts = draftsQuery.data ?? [];
-  const health = selected ? conversationHealth(selected, selectedTouches) : null;
+  const health = selected ? deriveConversationHealth(selected, selectedTouches) : null;
   const strength = selected ? relationshipStrength(selected, selectedTouches) : null;
   const days = useMemo(
     () => groupByDay(conversationTimeline(selectedTouches, drafts)),
