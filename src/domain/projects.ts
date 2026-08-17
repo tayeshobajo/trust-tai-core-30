@@ -53,9 +53,26 @@ export const LIFECYCLE_FOR_STATE: Record<ExecutionState, LifecycleStatus> = {
   closed: "live",
 };
 
+/**
+ * What the `projects.status` column actually accepts in the shared backend.
+ * The column is constrained to a coarse lifecycle, so the precise execution
+ * state lives in metadata and this is only the shelf it is filed under.
+ */
+export type ProjectStatusColumn = "planned" | "active" | "blocked" | "complete" | "archived";
+
+export const STATUS_COLUMN_FOR_STATE: Record<ExecutionState, ProjectStatusColumn> = {
+  not_started: "planned",
+  in_flight: "active",
+  in_review: "active",
+  blocked: "blocked",
+  delivered: "complete",
+  closed: "archived",
+};
+
 export function stateFromLifecycle(status: string | null | undefined): ExecutionState {
   switch (status) {
     case "in_build":
+    case "active":
       return "in_flight";
     case "needs_decision":
       return "in_review";
@@ -64,11 +81,15 @@ export function stateFromLifecycle(status: string | null | undefined): Execution
     case "at_risk":
       return "in_flight";
     case "live":
+    case "complete":
       return "delivered";
+    case "archived":
+      return "closed";
     default:
       return "not_started";
   }
 }
+
 
 export type ProjectHealth = "on_track" | "needs_attention" | "at_risk" | "unknown";
 
