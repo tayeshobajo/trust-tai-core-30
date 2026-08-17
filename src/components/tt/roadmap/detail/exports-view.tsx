@@ -18,8 +18,10 @@ export function ExportsView({
   blockedBecause,
   creating,
   sendingId,
+  handingId,
   onCreate,
   onMarkSent,
+  onHandToComms,
 }: {
   exports: RoadmapExport[];
   available: boolean;
@@ -27,8 +29,11 @@ export function ExportsView({
   blockedBecause: string;
   creating: boolean;
   sendingId: string | null;
+  handingId: string | null;
   onCreate: () => void;
   onMarkSent: (exportId: string) => void;
+  /** Hands the frozen copy to Comms as a draft. Sending stays a human act there. */
+  onHandToComms: (entry: RoadmapExport) => void;
 }) {
   if (!available) {
     return (
@@ -83,6 +88,19 @@ export function ExportsView({
                   </p>
                 ) : null}
               </div>
+              <div className="flex flex-wrap items-center gap-2">
+              {entry.commsDraftId ? (
+                <p className="text-[12px] text-muted-foreground">Draft waiting in Comms</p>
+              ) : (
+                <TTButton
+                  variant="secondary"
+                  size="sm"
+                  disabled={handingId === entry.id}
+                  onClick={() => onHandToComms(entry)}
+                >
+                  {handingId === entry.id ? "Handing over…" : "Send to Comms"}
+                </TTButton>
+              )}
               {entry.status !== "sent" ? (
                 <TTButton
                   variant="secondary"
@@ -97,6 +115,7 @@ export function ExportsView({
                   Sent {entry.sentAt ? new Date(entry.sentAt).toLocaleDateString() : ""}
                 </p>
               )}
+              </div>
             </li>
           ))}
         </ul>
