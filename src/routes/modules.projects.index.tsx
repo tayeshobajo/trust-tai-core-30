@@ -11,12 +11,17 @@
  */
 
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState } from "@/components/tt/primitives";
 import { NeedsAttention } from "@/components/tt/projects/index/attention";
+import {
+  CreateProjectModal,
+  type CreateProjectSeed,
+} from "@/components/tt/projects/index/create-modal";
+import { RoadmapHandoffs, type HandoffRow } from "@/components/tt/projects/index/handoff-list";
 import {
   ProjectsEmptyState,
   ProjectsHeader,
@@ -32,6 +37,7 @@ import {
   companyOptions,
   filterProjectRows,
   inTab,
+  milestoneOptions,
   needsAttention,
   needsYou,
   ownerOptions,
@@ -43,11 +49,16 @@ import {
   type ProjectRowModel,
   type ProjectsTab,
 } from "@/data/projects/index-projection";
+import { projectFromMilestone } from "@/data/projects-handoff";
+import { readiness } from "@/data/roadmap-milestones";
 import type { RoadmapIdentity } from "@/data/roadmap-index";
-import { projectsService } from "@/data/supabase/projects-service";
+import { listApprovedMilestones } from "@/data/supabase/roadmap-handoffs";
+import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import { roadmapService } from "@/data/supabase/roadmap-service";
 import { scoutService } from "@/data/supabase/scout-service";
+import type { ProjectInput } from "@/domain/projects";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+
 
 const TITLE = "Projects — Approved work in motion — Trust Tai OS";
 const DESCRIPTION =
