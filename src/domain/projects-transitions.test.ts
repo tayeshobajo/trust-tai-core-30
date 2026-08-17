@@ -33,7 +33,8 @@ describe("project state transitions", () => {
   });
 
   it("refuses in flight when nobody carries it", () => {
-    const check = checkTransition(project({ ownerLabel: undefined }), "in_flight");
+    const unowned = { ...project(), ownerLabel: undefined };
+    const check = checkTransition(unowned, "in_flight");
     expect(check.ok).toBe(false);
     expect(check.because).toContain("carries");
   });
