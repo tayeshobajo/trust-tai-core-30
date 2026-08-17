@@ -101,6 +101,27 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     if (!selectedId && selected) setSelectedId(selected.id);
   }, [selected, selectedId]);
 
+  // The context drawer is a small-screen affordance: Escape closes it, and it
+  // never lingers once the rail has room to sit beside the conversation again.
+  useEffect(() => {
+    if (!contextOpen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setContextOpen(false);
+    }
+    const wide = window.matchMedia("(min-width: 1280px)");
+    function onWide(event: MediaQueryListEvent) {
+      if (event.matches) setContextOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    wide.addEventListener("change", onWide);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      wide.removeEventListener("change", onWide);
+    };
+  }, [contextOpen]);
+
+
+
   const touchesQuery = useQuery({
     queryKey: ["comms", "touches", selected?.id],
     enabled: Boolean(selected),
