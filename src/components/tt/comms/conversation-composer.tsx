@@ -1,8 +1,10 @@
 /**
  * The composer.
  *
- * Two things a person can do here: write a message, or leave a note. Nothing is
- * sent from Comms — a composed reply becomes a draft a person approves.
+ * Two things a person can do here: prepare a message, or leave a note. Nothing
+ * is ever sent from Comms. A composed reply becomes a draft that lands in the
+ * thread, and a person decides what happens to it — so there is no Send here,
+ * by design, not by omission.
  */
 
 import { useState } from "react";
@@ -19,6 +21,11 @@ const INTENTS: { register: VoiceRegister; label: string }[] = [
   { register: "reconnect", label: "Reconnect" },
   { register: "logistics", label: "Check in" },
   { register: "sensitive", label: "More" },
+];
+
+const MODES: { mode: ComposerMode; label: string }[] = [
+  { mode: "compose", label: "Draft a reply" },
+  { mode: "note", label: "Internal note" },
 ];
 
 export function ConversationComposer({
@@ -51,22 +58,23 @@ export function ConversationComposer({
   }
 
   return (
-    <div className="border-t border-border bg-card px-4 py-3 sm:px-5">
-      <div className="flex items-center gap-1">
-        {(["compose", "note"] as ComposerMode[]).map((entry) => (
+    <div className="border-t border-border bg-card px-4 pb-4 pt-0 sm:px-5">
+      {/* Underline tabs, same geometry as the room's section tabs. */}
+      <div className="flex items-center gap-5 border-b border-border">
+        {MODES.map((entry) => (
           <button
-            key={entry}
+            key={entry.mode}
             type="button"
-            onClick={() => setMode(entry)}
-            aria-pressed={mode === entry}
+            onClick={() => setMode(entry.mode)}
+            aria-pressed={mode === entry.mode}
             className={cn(
-              "rounded-full px-2.5 py-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              mode === entry
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground",
+              "-mb-px inline-flex h-10 items-center border-b-2 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              mode === entry.mode
+                ? "border-[var(--royal)] font-medium text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
-            {entry === "compose" ? "Compose" : "Note"}
+            {entry.label}
           </button>
         ))}
       </div>
@@ -77,14 +85,14 @@ export function ConversationComposer({
         rows={3}
         placeholder={
           mode === "compose"
-            ? "Write your message… or leave this empty and let Comms draft it."
+            ? "Write your message… or leave this empty and let Comms prepare the draft."
             : "Leave an internal note. Only your team sees this."
         }
-        className="mt-2.5 w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="mt-3 w-full resize-none rounded-lg border border-border bg-[var(--cloud)] px-3.5 py-3 text-[13px] leading-relaxed text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
 
       {mode === "compose" ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
           {INTENTS.map((intent) => (
             <button
               key={intent.register}
@@ -92,9 +100,9 @@ export function ConversationComposer({
               onClick={() => setRegister(intent.register)}
               aria-pressed={register === intent.register}
               className={cn(
-                "rounded-full border px-2.5 py-0.5 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "rounded-full border px-3 py-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 register === intent.register
-                  ? "border-foreground text-foreground"
+                  ? "border-[var(--royal)] bg-[var(--cloud-strong)] text-foreground"
                   : "border-border text-muted-foreground hover:text-foreground",
               )}
             >
@@ -104,8 +112,8 @@ export function ConversationComposer({
         </div>
       ) : null}
 
-      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
           {onInsertInsight ? (
             <button
               type="button"
@@ -118,7 +126,9 @@ export function ConversationComposer({
               Insert insight
             </button>
           ) : null}
-          <span className="opacity-60">Nothing is sent from Comms</span>
+          <span className="opacity-70">
+            {mode === "compose" ? "Saved as a draft — never sent" : "Visible to your team only"}
+          </span>
         </div>
         <TTButton onClick={submit} disabled={busy || drafting}>
           {mode === "note"
@@ -126,8 +136,8 @@ export function ConversationComposer({
               ? "Saving…"
               : "Save note"
             : drafting
-              ? "Composing…"
-              : "Compose reply"}
+              ? "Preparing draft…"
+              : "Save as draft"}
         </TTButton>
       </div>
 

@@ -75,33 +75,54 @@ export function ConversationHealthCard({ health }: { health: ConversationHealth 
           onClick={() => setOpen((value) => !value)}
           className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {open ? "Hide" : "View"}
+          {open ? "Hide" : "Why"}
         </button>
       }
     >
-      <p className="flex items-center gap-2 text-[13px] text-foreground">
-        <HealthDot status={health.status} />
+      <p className="flex items-baseline gap-2 text-[13px] text-foreground">
+        <HealthDot status={health.status} className="translate-y-[-2px]" />
         {HEALTH_LABEL[health.status]}
-        <span className="font-mono text-[10px] text-muted-foreground">{health.score}/100</span>
+        <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+          {health.score}/100
+        </span>
       </p>
-      <p className="mt-1.5 text-[12px] text-muted-foreground">{health.reasons[0]}</p>
+
+      {/* The score is a sort key, not a grade: shown quietly, never celebrated. */}
+      <div
+        aria-hidden
+        className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--cloud-strong)]"
+      >
+        <span
+          className={cn(
+            "block h-full rounded-full",
+            health.status === "at_risk"
+              ? "bg-destructive"
+              : health.status === "needs_attention"
+                ? "bg-[var(--warning)]"
+                : health.status === "quiet"
+                  ? "bg-muted-foreground/40"
+                  : "bg-[var(--success)]",
+          )}
+          style={{ width: `${health.score}%` }}
+        />
+      </div>
+
+      <ul className="mt-2 space-y-1">
+        {health.reasons.map((reason) => (
+          <li key={reason} className="text-[12px] leading-relaxed text-muted-foreground">
+            {reason}
+          </li>
+        ))}
+      </ul>
 
       {open ? (
         <div className="mt-2.5 border-t border-border pt-2">
           <Factor label="Last reply" value={relative(health.lastReplyAt)} />
+          <Factor label="Last activity" value={relative(health.lastActivityAt)} />
           <Factor label="Cadence" value={CADENCE_LABEL[health.responseCadence]} />
           <Factor label="Next step" value={NEXT_MOVE_LABEL[health.nextMoveStatus]} />
           <Factor label="Momentum" value={MOMENTUM_LABEL[health.momentum]} />
           <Factor label="Waiting on" value={WAITING_LABEL[health.waitingOn]} />
-          {health.reasons.length > 1 ? (
-            <ul className="mt-2 space-y-1">
-              {health.reasons.slice(1).map((reason) => (
-                <li key={reason} className="text-[12px] text-muted-foreground">
-                  {reason}
-                </li>
-              ))}
-            </ul>
-          ) : null}
         </div>
       ) : null}
     </Card>

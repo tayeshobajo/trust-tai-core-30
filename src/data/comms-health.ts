@@ -340,3 +340,13 @@ export function relationshipStrength(
     computedAt: now.toISOString(),
   };
 }
+
+/**
+ * Canonical name for the health read.
+ *
+ * Deterministic: same relationship + same touches + same clock always produce
+ * the same status, score, and reasons. Exported under this name so every
+ * surface (inbox rows, the room header, the context rail, the drawer) derives
+ * health the one same way instead of inventing a local rule.
+ */
+export const deriveConversationHealth = conversationHealth;

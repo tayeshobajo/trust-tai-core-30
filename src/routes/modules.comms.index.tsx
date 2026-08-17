@@ -27,7 +27,7 @@ import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
-import { conversationHealth, relationshipStrength } from "@/data/comms-health";
+import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
 import { inboxEntries, inboxView, type InboxTab } from "@/data/comms-inbox";
 import { reasonsToReconnect } from "@/data/comms-reminders";
@@ -101,6 +101,27 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     if (!selectedId && selected) setSelectedId(selected.id);
   }, [selected, selectedId]);
 
+  // The context drawer is a small-screen affordance: Escape closes it, and it
+  // never lingers once the rail has room to sit beside the conversation again.
+  useEffect(() => {
+    if (!contextOpen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setContextOpen(false);
+    }
+    const wide = window.matchMedia("(min-width: 1280px)");
+    function onWide(event: MediaQueryListEvent) {
+      if (event.matches) setContextOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    wide.addEventListener("change", onWide);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      wide.removeEventListener("change", onWide);
+    };
+  }, [contextOpen]);
+
+
+
   const touchesQuery = useQuery({
     queryKey: ["comms", "touches", selected?.id],
     enabled: Boolean(selected),
@@ -135,7 +156,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
   const drafts = draftsQuery.data ?? [];
-  const health = selected ? conversationHealth(selected, selectedTouches) : null;
+  const health = selected ? deriveConversationHealth(selected, selectedTouches) : null;
   const strength = selected ? relationshipStrength(selected, selectedTouches) : null;
   const days = useMemo(
     () => groupByDay(conversationTimeline(selectedTouches, drafts)),
@@ -429,21 +450,30 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         </aside>
       </div>
 
+      {/*
+        Below xl the rail becomes a drawer so the conversation column stays the
+        dominant thing on screen. Escape closes it; the scrim is a real button.
+      */}
       {contextOpen && rail ? (
-        <div className="fixed inset-0 z-50 flex justify-end bg-background/60 backdrop-blur-sm xl:hidden">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Conversation context"
+          className="fixed inset-0 z-50 flex justify-end bg-foreground/25 backdrop-blur-sm xl:hidden"
+        >
           <button
             type="button"
             aria-label="Close context"
             className="flex-1"
             onClick={() => setContextOpen(false)}
           />
-          <div className="flex h-full w-[min(360px,90vw)] flex-col border-l border-border bg-card">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+          <div className="tt-rise flex h-full w-[min(380px,92vw)] flex-col overflow-y-auto border-l border-border bg-card">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3">
               <p className="tt-eyebrow">Context</p>
               <button
                 type="button"
                 onClick={() => setContextOpen(false)}
-                className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
+                className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Close
               </button>
