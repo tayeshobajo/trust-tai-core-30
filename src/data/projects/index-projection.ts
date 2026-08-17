@@ -304,6 +304,8 @@ export interface ProjectFilters {
   company: string;
   owner: string;
   status: string;
+  /** Milestone name, as the roadmap wrote it. */
+  milestone: string;
   due: "all" | "overdue" | "week" | "month" | "none";
 }
 
@@ -312,8 +314,10 @@ export const EMPTY_PROJECT_FILTERS: ProjectFilters = {
   company: "all",
   owner: "all",
   status: "all",
+  milestone: "all",
   due: "all",
 };
+
 
 function matchesDue(row: ProjectRowModel, due: ProjectFilters["due"]): boolean {
   if (due === "all") return true;
