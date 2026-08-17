@@ -89,8 +89,30 @@ function ordinal(position: number): string {
 
 function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<"delivery" | "handoffs">("delivery");
   const [tab, setTab] = useState<ProjectsTab>("all");
   const [filters, setFilters] = useState<ProjectFilters>(EMPTY_PROJECT_FILTERS);
+  const [search, setSearch] = useState("");
+  const [seed, setSeed] = useState<CreateProjectSeed | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [pendingMilestoneId, setPendingMilestoneId] = useState<string | null>(null);
+
+  // Typing should not thrash the list; results settle a beat after the person stops.
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setFilters((current) => ({ ...current, query: search })),
+      250,
+    );
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const context: ProjectsContext = {
+    organizationId: identity.organizationId,
+    userId: identity.userId,
+    userLabel: identity.name,
+  };
+
 
   const projectsQuery = useQuery({
     queryKey: ["projects", "list", identity.organizationId],
