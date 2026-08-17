@@ -9,7 +9,7 @@
 
 export type ExecutionJson = Record<string, unknown>;
 
-export interface ExecutionAgentRow {
+export type ExecutionAgentRow = {
   id: string;
   organization_id: string;
   paperclip_agent_id: string;
@@ -23,7 +23,7 @@ export interface ExecutionAgentRow {
   updated_at: string;
 }
 
-export interface ExecutionBindingRow {
+export type ExecutionBindingRow = {
   id: string;
   organization_id: string;
   source_app: string;
@@ -44,7 +44,7 @@ export interface ExecutionBindingRow {
   updated_at: string;
 }
 
-export interface ProspectRow {
+export type ProspectRow = {
   id: string;
   organization_id: string;
   company_name: string;
@@ -59,7 +59,7 @@ export interface ProspectRow {
   updated_at: string;
 }
 
-export interface IcpProfileRow {
+export type IcpProfileRow = {
   id: string;
   organization_id: string;
   version: number;
