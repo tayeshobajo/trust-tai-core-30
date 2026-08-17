@@ -110,6 +110,12 @@ export interface ProjectOrigin {
   subjectLabel?: string;
 }
 
+/** One unit of delivery inside a project. Recorded, never inferred. */
+export interface DeliveryItem {
+  label: string;
+  done: boolean;
+}
+
 export interface ExecutionProject {
   id: ID;
   organizationId: ID;
@@ -125,6 +131,14 @@ export interface ExecutionProject {
   nextMove?: string;
   /** Recorded only while the state is blocked. */
   blockedBecause?: string;
+  /** When the block was first recorded, so "blocked for N days" is honest. */
+  blockedSince?: ISODateTime;
+  /** Agreed delivery date, when one has been agreed. */
+  dueDate?: ISODateTime;
+  /** The delivery items a person recorded. Absent means none recorded yet. */
+  deliveryItems?: DeliveryItem[];
+  /** The single thing being worked on right now. */
+  currentWork?: string;
   /** What the work rests on. Carried from the milestone that decided it. */
   evidence: EvidenceRef[];
   dependencies: string[];
@@ -135,6 +149,7 @@ export interface ExecutionProject {
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }
+
 
 /** After this long with no recorded movement, silence is itself a signal. */
 export const STALE_AFTER_DAYS = 14;
@@ -247,5 +262,8 @@ export interface ProjectInput {
   evidence?: EvidenceRef[];
   dependencies?: string[];
   executionBoundary?: string;
+  dueDate?: ISODateTime;
+  deliveryItems?: DeliveryItem[];
+  currentWork?: string;
   origin: ProjectOrigin;
 }
