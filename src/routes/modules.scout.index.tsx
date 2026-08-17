@@ -11,6 +11,7 @@ import { ScoutFilterToolbar } from "@/components/tt/scout/filter-toolbar";
 import { ScoutCompanyTable } from "@/components/tt/scout/company-table";
 import { ScoutPagination } from "@/components/tt/scout/pagination";
 import { ScoutSidebar } from "@/components/tt/scout/sidebar";
+import { ScoutSupportRail } from "@/components/tt/scout/support-rail";
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { scoutService } from "@/data/supabase/scout-service";
