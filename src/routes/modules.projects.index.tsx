@@ -305,11 +305,50 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1 space-y-6">
           <ProjectsHeader
-            onCreate={() => void navigate({ to: "/modules/roadmap" })}
-            onHandoffs={() => void navigate({ to: "/modules/roadmap" })}
+            onCreate={openBlankCreate}
+            onHandoffs={() => setView(view === "handoffs" ? "delivery" : "handoffs")}
           />
 
-          {projectsQuery.isLoading ? (
+          {view === "handoffs" ? (
+            <section aria-labelledby="ready-from-roadmap" className="space-y-4">
+              <div>
+                <h2 id="ready-from-roadmap" className="font-display text-xl text-foreground">
+                  Ready from roadmap
+                </h2>
+                <p className="mt-1 max-w-reading text-[13px] text-muted-foreground">
+                  Milestones a person approved in Roadmap. Creating a project carries the company,
+                  outcome, owner and evidence across exactly as they were recorded.
+                </p>
+              </div>
+
+              {approvedQuery.isLoading ? (
+                <p className="text-sm text-muted-foreground">Reading approved milestones…</p>
+              ) : approvedQuery.isError ? (
+                <p role="alert" className="text-[13px] text-destructive">
+                  {approvedQuery.error instanceof Error
+                    ? approvedQuery.error.message
+                    : "Approved milestones could not be read."}
+                </p>
+              ) : (
+                <RoadmapHandoffs
+                  rows={handoffRows}
+                  pendingId={create.isPending ? pendingMilestoneId : null}
+                  onCreate={openHandoffCreate}
+                  onOpenProject={(projectId) =>
+                    void navigate({ to: "/modules/projects/$projectId", params: { projectId } })
+                  }
+                />
+              )}
+
+              <button
+                type="button"
+                className="text-[12px] text-royal underline-offset-4 hover:underline"
+                onClick={() => setView("delivery")}
+              >
+                Back to delivery
+              </button>
+            </section>
+          ) : projectsQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">Reading delivery…</p>
           ) : rows.length === 0 ? (
             <ProjectsEmptyState />
@@ -327,11 +366,15 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
                   tab={tab}
                   onTabChange={setTab}
                   counts={counts}
-                  filters={filters}
-                  onFiltersChange={setFilters}
+                  filters={{ ...filters, query: search }}
+                  onFiltersChange={(next) => {
+                    setSearch(next.query);
+                    setFilters((current) => ({ ...next, query: current.query }));
+                  }}
                   companies={companyOptions(rows)}
                   owners={ownerOptions(rows)}
                   statuses={statusOptions(rows)}
+                  milestones={milestoneOptions(rows)}
                 />
 
                 {visible.length === 0 ? (
@@ -342,6 +385,7 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
                       className="text-royal underline-offset-4 hover:underline"
                       onClick={() => {
                         setTab("all");
+                        setSearch("");
                         setFilters(EMPTY_PROJECT_FILTERS);
                       }}
                     >
@@ -380,6 +424,25 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
           />
         </aside>
       </div>
+
+      <CreateProjectModal
+        open={modalOpen}
+        seed={seed}
+        pending={create.isPending}
+        error={
+          create.error instanceof Error
+            ? create.error.message
+            : create.error
+              ? "That project could not be started."
+              : null
+        }
+        onClose={() => {
+          setModalOpen(false);
+          setPendingMilestoneId(null);
+        }}
+        onCreate={(input) => create.mutate(input)}
+      />
     </AppShell>
+
   );
 }
