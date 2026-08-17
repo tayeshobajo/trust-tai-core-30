@@ -74,6 +74,7 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const [mode, setMode] = useState<Mode>("idle");
   const [startError, setStartError] = useState<string | null>(null);
+  const [preselected, setPreselected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RoadmapFilter>("all");
 
@@ -250,9 +251,9 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
         candidates={ready}
         busy={create.isPending}
         onCreate={(candidate) => {
-          setMode("scout");
+          setPreselected(candidate.prospect.id);
           setStartError(null);
-          void candidate;
+          setMode("scout");
         }}
       />
     </div>
@@ -265,6 +266,7 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
           glance={glance}
           onBuildFromScout={() => {
             setStartError(null);
+            setPreselected(null);
             setMode("scout");
           }}
           onCreate={() => {
@@ -276,6 +278,7 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
         {mode === "scout" ? (
           <BuildFromScoutPanel
             candidates={ready}
+            initialCandidateId={preselected}
             loading={scoutQuery.isLoading}
             busy={create.isPending}
             error={startError}

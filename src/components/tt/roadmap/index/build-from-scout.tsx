@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 export function BuildFromScoutPanel({
   candidates,
+  initialCandidateId,
   loading,
   busy,
   error,
@@ -20,6 +21,7 @@ export function BuildFromScoutPanel({
   onCancel,
 }: {
   candidates: ProspectCandidate[];
+  initialCandidateId?: string | null;
   loading: boolean;
   busy: boolean;
   error?: string | null;
@@ -27,7 +29,7 @@ export function BuildFromScoutPanel({
   onCancel: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialCandidateId ?? null);
   const [objective, setObjective] = useState("");
 
   const filtered = useMemo(() => {
