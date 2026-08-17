@@ -11,6 +11,7 @@ import { ScoutFilterToolbar } from "@/components/tt/scout/filter-toolbar";
 import { ScoutCompanyTable } from "@/components/tt/scout/company-table";
 import { ScoutPagination } from "@/components/tt/scout/pagination";
 import { ScoutSidebar } from "@/components/tt/scout/sidebar";
+import { ScoutSupportRail } from "@/components/tt/scout/support-rail";
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { scoutService } from "@/data/supabase/scout-service";
@@ -263,7 +264,8 @@ function Scout({
       identity={identity}
       sidebar={<ScoutSidebar glance={glance} driverLine={driverLine} />}
     >
-      <div className="space-y-6">
+      <div className="flex items-start gap-6">
+        <div className="min-w-0 flex-1 space-y-6">
         {/* 1 — Compact heading. No hero, no controls. */}
         <header>
           <p className="tt-eyebrow">Scout</p>
@@ -442,6 +444,9 @@ function Scout({
             )}
           </section>
         )}
+        </div>
+
+        <ScoutSupportRail glance={glance} />
       </div>
     </AppShell>
   );

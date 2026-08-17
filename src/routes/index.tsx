@@ -138,7 +138,7 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
   );
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-16 pb-8">
+    <div className="w-full space-y-16 pb-8">
       <HomeHero firstName={identity.firstName} />
 
       <TodaySummary items={todayItems} />
