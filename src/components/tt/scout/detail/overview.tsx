@@ -62,24 +62,18 @@ export function ScoutSummaryCard({
       emphasis="lead"
       meta={`Confidence: ${summary.confidence}`}
     >
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-        <div className="min-w-0 flex-1">
-          <p className="max-w-reading text-[15px] leading-relaxed text-foreground">
-            {summary.summary}
-          </p>
-          <div className="mt-4">
-            <SectionLink onClick={onViewRationale}>View full rationale</SectionLink>
-          </div>
-        </div>
-        <div className="flex items-start gap-5">
-          <MatchDial value={summary.icpMatch} />
-          <ul className="min-w-0 space-y-2">
+      <div className="grid gap-5 sm:grid-cols-[104px_minmax(0,1fr)] sm:items-start">
+        <MatchDial value={summary.icpMatch} />
+        <div className="min-w-0">
+          <p className="text-[15px] leading-relaxed text-foreground">{summary.summary}</p>
+
+          <ul className="mt-4 space-y-2">
             {summary.topReasons.length === 0 ? (
               <li className="text-[13px] text-muted-foreground">
                 No reasons yet — this company has not been researched.
               </li>
             ) : (
-              summary.topReasons.map((reason) => (
+              summary.topReasons.slice(0, 3).map((reason) => (
                 <li key={reason} className="flex gap-2 text-[13px] text-muted-foreground">
                   <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full bg-royal" />
                   <span className="min-w-0">{reason}</span>
@@ -87,8 +81,13 @@ export function ScoutSummaryCard({
               ))
             )}
           </ul>
+
+          <div className="mt-4">
+            <SectionLink onClick={onViewRationale}>View full rationale</SectionLink>
+          </div>
         </div>
       </div>
+
     </DetailSection>
   );
 }
