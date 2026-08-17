@@ -40,6 +40,7 @@ export function LineageLine({ row }: { row: ProjectRowModel }) {
     <Link
       to="/modules/roadmap/$roadmapId"
       params={{ roadmapId: row.lineage.roadmapId }}
+      search={{ view: "overview" as const }}
       className="text-[12px] text-royal underline-offset-4 hover:underline"
     >
       {line}
@@ -145,6 +146,7 @@ export function ProjectCard({
             <Link
               to="/modules/roadmap/$roadmapId"
               params={{ roadmapId: row.lineage.roadmapId }}
+              search={{ view: "overview" as const }}
               className="inline-flex items-center gap-1 text-[12px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
               Open roadmap
