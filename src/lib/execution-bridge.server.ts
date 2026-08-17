@@ -1,5 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import type { ExecutionDatabase } from "@/lib/execution-bridge.types";
 import { trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 
 const SCOUT_PIPELINE_TARGET = 15;
