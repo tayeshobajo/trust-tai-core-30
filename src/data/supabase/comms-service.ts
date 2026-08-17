@@ -322,6 +322,21 @@ export const commsService = {
   },
 
   /**
+   * Recent touches across the organization, so the inbox can read the health of
+   * every conversation without opening each one. Read-only and bounded.
+   */
+  async listRecentTouches(organizationId: ID, limit = 1000): Promise<Touch[]> {
+    const { data, error } = await supabase
+      .from("comms_touches")
+      .select(TOUCH_COLUMNS)
+      .eq("organization_id", organizationId)
+      .order("occurred_at", { ascending: false })
+      .limit(limit);
+    assertOk(error);
+    return ((data ?? []) as unknown as TouchRow[]).map(toTouch);
+  },
+
+  /**
    * Log something that actually happened. This is the only way `last_touch_at`
    * moves, so the queue can never claim contact that did not occur.
    */
