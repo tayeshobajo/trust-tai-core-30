@@ -114,7 +114,7 @@ describe("deriveConversationHealth", () => {
   it("reads an untouched nurture conversation as quiet, not bad", () => {
     const read = deriveConversationHealth(QUIET.relationship, QUIET.touches, NOW);
     expect(read.status).toBe("quiet");
-    expect(read.nextMoveStatus).toBe("not_needed");
+    expect(read.nextMoveStatus).toBe("none");
   });
 
   it("keeps the score inside 0–100 and ordered by concern", () => {
