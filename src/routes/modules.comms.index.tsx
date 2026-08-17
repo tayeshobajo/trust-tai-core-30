@@ -354,7 +354,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[24%_minmax(0,1fr)] xl:grid-cols-[24%_minmax(0,52%)_24%]">
+      <div className="mt-5 grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(520px,1fr)_300px] 2xl:grid-cols-[340px_minmax(520px,1fr)_320px]">
         <aside className="tt-surface max-h-[78vh] overflow-hidden p-0 lg:sticky lg:top-20">
           <CommsInbox
             view={view}
