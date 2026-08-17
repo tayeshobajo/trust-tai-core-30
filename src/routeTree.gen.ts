@@ -45,6 +45,9 @@ import { Route as ApiPublicStewardInterpretRouteImport } from './routes/api/publ
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
 import { Route as ModulesStewardMeetingsConversationIdRouteImport } from './routes/modules.steward.meetings.$conversationId'
+import { Route as ApiInternalExecutionScoutIcpRouteImport } from './routes/api/internal/execution/scout.icp'
+import { Route as ApiInternalExecutionScoutPipelineRouteImport } from './routes/api/internal/execution/scout.pipeline'
+import { Route as ApiInternalExecutionScoutProspectRouteImport } from './routes/api/internal/execution/scout.prospect'
 import { Route as ApiPublicCommsGmailCandidatesRouteImport } from './routes/api/public/comms.gmail.candidates'
 import { Route as ApiPublicCommsGmailConnectRouteImport } from './routes/api/public/comms.gmail.connect'
 import { Route as ApiPublicCommsGmailSyncRouteImport } from './routes/api/public/comms.gmail.sync'
@@ -238,6 +241,24 @@ const ModulesStewardMeetingsConversationIdRoute =
     path: '/$conversationId',
     getParentRoute: () => ModulesStewardMeetingsRoute,
   } as any)
+const ApiInternalExecutionScoutIcpRoute =
+  ApiInternalExecutionScoutIcpRouteImport.update({
+    id: '/api/internal/execution/scout/icp',
+    path: '/api/internal/execution/scout/icp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiInternalExecutionScoutPipelineRoute =
+  ApiInternalExecutionScoutPipelineRouteImport.update({
+    id: '/api/internal/execution/scout/pipeline',
+    path: '/api/internal/execution/scout/pipeline',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiInternalExecutionScoutProspectRoute =
+  ApiInternalExecutionScoutProspectRouteImport.update({
+    id: '/api/internal/execution/scout/prospect',
+    path: '/api/internal/execution/scout/prospect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCommsGmailCandidatesRoute =
   ApiPublicCommsGmailCandidatesRouteImport.update({
     id: '/api/public/comms/gmail/candidates',
@@ -293,6 +314,9 @@ export interface FileRoutesByFullPath {
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
+  '/api/internal/execution/scout/icp': typeof ApiInternalExecutionScoutIcpRoute
+  '/api/internal/execution/scout/pipeline': typeof ApiInternalExecutionScoutPipelineRoute
+  '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
@@ -328,6 +352,9 @@ export interface FileRoutesByTo {
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsIndexRoute
+  '/api/internal/execution/scout/icp': typeof ApiInternalExecutionScoutIcpRoute
+  '/api/internal/execution/scout/pipeline': typeof ApiInternalExecutionScoutPipelineRoute
+  '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
@@ -370,6 +397,9 @@ export interface FileRoutesById {
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
+  '/api/internal/execution/scout/icp': typeof ApiInternalExecutionScoutIcpRoute
+  '/api/internal/execution/scout/pipeline': typeof ApiInternalExecutionScoutPipelineRoute
+  '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
@@ -413,6 +443,9 @@ export interface FileRouteTypes {
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings/'
+    | '/api/internal/execution/scout/icp'
+    | '/api/internal/execution/scout/pipeline'
+    | '/api/internal/execution/scout/prospect'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/sync'
@@ -448,6 +481,9 @@ export interface FileRouteTypes {
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings'
+    | '/api/internal/execution/scout/icp'
+    | '/api/internal/execution/scout/pipeline'
+    | '/api/internal/execution/scout/prospect'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/sync'
@@ -489,6 +525,9 @@ export interface FileRouteTypes {
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings/'
+    | '/api/internal/execution/scout/icp'
+    | '/api/internal/execution/scout/pipeline'
+    | '/api/internal/execution/scout/prospect'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/sync'
@@ -515,6 +554,9 @@ export interface RootRouteChildren {
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
   ApiPublicStewardConversationRoute: typeof ApiPublicStewardConversationRoute
   ApiPublicStewardInterpretRoute: typeof ApiPublicStewardInterpretRoute
+  ApiInternalExecutionScoutIcpRoute: typeof ApiInternalExecutionScoutIcpRoute
+  ApiInternalExecutionScoutPipelineRoute: typeof ApiInternalExecutionScoutPipelineRoute
+  ApiInternalExecutionScoutProspectRoute: typeof ApiInternalExecutionScoutProspectRoute
   ApiPublicCommsGmailCandidatesRoute: typeof ApiPublicCommsGmailCandidatesRoute
   ApiPublicCommsGmailConnectRoute: typeof ApiPublicCommsGmailConnectRoute
   ApiPublicCommsGmailSyncRoute: typeof ApiPublicCommsGmailSyncRoute
@@ -774,6 +816,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardMeetingsConversationIdRouteImport
       parentRoute: typeof ModulesStewardMeetingsRoute
     }
+    '/api/internal/execution/scout/icp': {
+      id: '/api/internal/execution/scout/icp'
+      path: '/api/internal/execution/scout/icp'
+      fullPath: '/api/internal/execution/scout/icp'
+      preLoaderRoute: typeof ApiInternalExecutionScoutIcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/execution/scout/pipeline': {
+      id: '/api/internal/execution/scout/pipeline'
+      path: '/api/internal/execution/scout/pipeline'
+      fullPath: '/api/internal/execution/scout/pipeline'
+      preLoaderRoute: typeof ApiInternalExecutionScoutPipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/execution/scout/prospect': {
+      id: '/api/internal/execution/scout/prospect'
+      path: '/api/internal/execution/scout/prospect'
+      fullPath: '/api/internal/execution/scout/prospect'
+      preLoaderRoute: typeof ApiInternalExecutionScoutProspectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/comms/gmail/candidates': {
       id: '/api/public/comms/gmail/candidates'
       path: '/api/public/comms/gmail/candidates'
@@ -914,6 +977,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
   ApiPublicStewardConversationRoute: ApiPublicStewardConversationRoute,
   ApiPublicStewardInterpretRoute: ApiPublicStewardInterpretRoute,
+  ApiInternalExecutionScoutIcpRoute: ApiInternalExecutionScoutIcpRoute,
+  ApiInternalExecutionScoutPipelineRoute:
+    ApiInternalExecutionScoutPipelineRoute,
+  ApiInternalExecutionScoutProspectRoute:
+    ApiInternalExecutionScoutProspectRoute,
   ApiPublicCommsGmailCandidatesRoute: ApiPublicCommsGmailCandidatesRoute,
   ApiPublicCommsGmailConnectRoute: ApiPublicCommsGmailConnectRoute,
   ApiPublicCommsGmailSyncRoute: ApiPublicCommsGmailSyncRoute,

@@ -42,6 +42,8 @@ import {
   loadLearning,
   loadObservations,
 } from "@/data/supabase/conductor-learning-service";
+import { getWorkforceSummary } from "@/data/execution-workforce";
+import { MetaPill, SectionHeading } from "@/components/tt/primitives";
 import {
   approveEverything,
   decide,
@@ -165,6 +167,12 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
       ]);
       return { actions, receipts, observations, learning };
     },
+  });
+
+  const workforce = useQuery({
+    queryKey: ["conductor-workforce", identity.organizationId],
+    queryFn: () => getWorkforceSummary({ data: { organizationId: identity.organizationId } }),
+    staleTime: 30_000,
   });
 
   const now = new Date().toISOString();
@@ -378,6 +386,8 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
         supporting="One question, one grounded answer. What is observed, what you decided, what follows from it, and what nobody can see yet."
       />
 
+      <WorkforceSection workforce={workforce.data} loading={workforce.isPending} />
+
       <ConductorConsole
         {...(answer ? { answer } : {})}
         thinking={ask.isPending}
@@ -465,3 +475,75 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
   );
 }
 
+function WorkforceSection({
+  workforce,
+  loading,
+}: {
+  workforce:
+    | Awaited<ReturnType<typeof getWorkforceSummary>>
+    | undefined;
+  loading: boolean;
+}) {
+  return (
+    <section className="tt-surface p-6">
+      <SectionHeading
+        eyebrow="Execution"
+        title="Workforce"
+        description="Who is available, what is moving, and where the execution line is waiting on a person."
+      />
+
+      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Available
+          </dt>
+          <dd className="mt-1 font-display text-3xl text-foreground">
+            {loading ? "—" : workforce?.available ?? 0}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Working
+          </dt>
+          <dd className="mt-1 font-display text-3xl text-foreground">
+            {loading ? "—" : workforce?.working ?? 0}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Blocked
+          </dt>
+          <dd className="mt-1 font-display text-3xl text-foreground">
+            {loading ? "—" : workforce?.blocked ?? 0}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Waiting for Tai
+          </dt>
+          <dd className="mt-1 font-display text-3xl text-foreground">
+            {loading ? "—" : workforce?.waitingForTai ?? 0}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mt-5 rounded-xl border border-border bg-card p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="tt-eyebrow">Scout work item</p>
+            <h3 className="mt-2 text-lg font-semibold text-foreground">
+              {workforce?.scout.name ?? "Scout Growth Agent"}
+            </h3>
+          </div>
+          <MetaPill>{workforce?.scout.status ?? "idle"}</MetaPill>
+        </div>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {workforce?.scout.goal ?? "Maintain 15 qualified prospects"}
+        </p>
+        <p className="mt-2 text-sm text-foreground">
+          Progress: {loading ? "—" : `${workforce?.scout.current ?? 0} / ${workforce?.scout.target ?? 15}`}
+        </p>
+      </div>
+    </section>
+  );
+}

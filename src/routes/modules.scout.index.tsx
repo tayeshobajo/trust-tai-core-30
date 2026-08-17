@@ -16,6 +16,7 @@ import { SCOUT_STARTER_PROMPTS, type ProspectCandidate } from "@/domain/scout";
 import { byPriority, computeDecisionMetrics } from "@/data/scout-intel";
 import { EMPTY_INTEL } from "@/domain/scout-intel";
 import type { FitLight } from "@/domain/scout-fit";
+import { getScoutDriver } from "@/data/execution-workforce";
 import { looksLikeWebsite } from "@/lib/website-url";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import { formatChecked } from "@/components/tt/fit-light";
@@ -110,9 +111,16 @@ function Scout({
     queryFn: () => scoutService.runs(organizationId),
   });
 
+  const driver = useQuery({
+    queryKey: ["scout", "driver", organizationId],
+    queryFn: () => getScoutDriver({ data: { organizationId } }),
+    staleTime: 30_000,
+  });
+
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] });
     await queryClient.invalidateQueries({ queryKey: ["scout", "runs", organizationId] });
+    await queryClient.invalidateQueries({ queryKey: ["scout", "driver", organizationId] });
   };
 
   const discover = useMutation({
@@ -237,6 +245,8 @@ function Scout({
           </TTButton>
         }
       />
+
+      <ScoutDriverCard driver={driver.data} loading={driver.isPending} />
 
       <ScoutTabs active={tab} />
 
@@ -386,6 +396,94 @@ function Scout({
         </section>
       )}
     </div>
+  );
+}
+
+function since(value: string | null): string {
+  if (!value) return "No run recorded";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "No run recorded";
+  const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60_000));
+  if (minutes < 1) return "Just now";
+  if (minutes === 1) return "1 minute ago";
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours === 1) return "1 hour ago";
+  if (hours < 24) return `${hours} hours ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 day ago" : `${days} days ago`;
+}
+
+function ScoutDriverCard({
+  driver,
+  loading,
+}: {
+  driver:
+    | Awaited<ReturnType<typeof getScoutDriver>>
+    | undefined;
+  loading: boolean;
+}) {
+  const blocked = driver?.status === "blocked";
+  return (
+    <section
+      className={[
+        "tt-surface p-5",
+        blocked ? "border border-destructive/30 bg-destructive/5" : "",
+      ].join(" ")}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="tt-eyebrow">Scout Driver</p>
+          <h2 className="mt-2 text-xl font-semibold text-foreground">
+            {driver?.name ?? "Scout Growth Agent"}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Goal: {driver?.goal ?? "Maintain 15 qualified prospects"}
+          </p>
+        </div>
+        <MetaPill>
+          Status: {loading ? "loading" : (driver?.status ?? "idle").replaceAll("_", " ")}
+        </MetaPill>
+      </div>
+
+      <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Current
+          </dt>
+          <dd className="mt-1 font-display text-3xl text-foreground">
+            {driver ? `${driver.current} / ${driver.target}` : "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Qualified
+          </dt>
+          <dd className="mt-1 text-sm text-foreground">{driver?.qualified ?? "—"}</dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Ready for Comms
+          </dt>
+          <dd className="mt-1 text-sm text-foreground">{driver?.readyForComms ?? "—"}</dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Last Run
+          </dt>
+          <dd className="mt-1 text-sm text-foreground">{since(driver?.lastRunAt ?? null)}</dd>
+        </div>
+      </dl>
+
+      <p className="mt-4 text-sm text-foreground">
+        Last output: {loading ? "Reading Scout state…" : driver?.lastOutput ?? "No recorded output yet"}
+      </p>
+      {blocked ? (
+        <p className="mt-2 text-sm text-destructive">
+          Needs human review before Scout can continue cleanly.
+        </p>
+      ) : null}
+    </section>
   );
 }
 
