@@ -35,6 +35,7 @@ const ICONS: Record<string, LucideIcon> = {
   Activity,
 };
 
+/** The room's build state, said quietly. Live rooms say nothing at all. */
 function statusNote(app: AppRegistration) {
   if (app.status === "live") return null;
   if (app.status === "external") return "Existing product";
@@ -42,14 +43,20 @@ function statusNote(app: AppRegistration) {
   return "Upcoming";
 }
 
+/** A room is current when you are anywhere inside it, not only on its index. */
+function isCurrent(pathname: string, route: string) {
+  if (route === "/") return pathname === "/";
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
+
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <nav aria-label="Trust Tai suite" className="space-y-1">
+    <nav aria-label="Trust Tai suite" className="space-y-0.5">
       {APP_REGISTRY.map((app) => {
         const Icon = ICONS[app.icon] ?? Compass;
-        const active = pathname === app.route;
+        const active = isCurrent(pathname, app.route);
         const note = statusNote(app);
         return (
           <AppLink
@@ -58,25 +65,25 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-200",
+              "relative flex min-h-12 items-center gap-3 rounded-lg pl-4 pr-3 py-2.5 text-[15px] transition-colors duration-200",
               active
-                ? "bg-cloud font-medium text-foreground"
+                ? "bg-cloud-strong font-medium text-foreground"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground",
             )}
           >
             {active ? (
               <span
                 aria-hidden
-                className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-royal"
+                className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-royal"
               />
             ) : null}
             <Icon
-              className={cn("size-4 shrink-0", active ? "text-royal" : undefined)}
+              className={cn("size-[18px] shrink-0", active ? "text-royal" : "text-muted-foreground")}
               aria-hidden
             />
-            <span className="flex-1">{app.name}</span>
+            <span className="min-w-0 flex-1 truncate">{app.name}</span>
             {note ? (
-              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+              <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/70">
                 {note}
               </span>
             ) : (
@@ -89,6 +96,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
     </nav>
   );
 }
+
 
 export function AppShell({
   children,
