@@ -33,36 +33,28 @@ function fact(facts: Row, keys: string[]): string | undefined {
 
 export function AtAGlanceCard({ candidate }: { candidate: ProspectCandidate }) {
   const facts = (candidate.facts ?? {}) as Row;
-  const rows: { label: string; value?: string }[] = [
+  const rows: { label: string; value: string | undefined }[] = [
     {
       label: "Employees",
-      ...(fact(facts, ["employees", "employee_count", "headcount", "company_size"]) ??
-      candidate.profile?.size
-        ? {
-            value:
-              fact(facts, ["employees", "employee_count", "headcount", "company_size"]) ??
-              candidate.profile?.size,
-          }
-        : {}),
+      value:
+        fact(facts, ["employees", "employee_count", "headcount", "company_size"]) ??
+        candidate.profile?.size,
     },
-    { label: "Founded", ...(fact(facts, ["founded", "founded_year", "year_founded"]) ? { value: fact(facts, ["founded", "founded_year", "year_founded"]) } : {}) },
-    { label: "Revenue", ...(fact(facts, ["revenue", "annual_revenue"]) ? { value: fact(facts, ["revenue", "annual_revenue"]) } : {}) },
+    { label: "Founded", value: fact(facts, ["founded", "founded_year", "year_founded"]) },
+    { label: "Revenue", value: fact(facts, ["revenue", "annual_revenue"]) },
     {
       label: "Headquarters",
-      ...(candidate.profile?.location ?? fact(facts, ["headquarters", "location", "city"])
-        ? { value: candidate.profile?.location ?? fact(facts, ["headquarters", "location", "city"]) }
-        : {}),
+      value: candidate.profile?.location ?? fact(facts, ["headquarters", "location", "city"]),
     },
     {
       label: "Industries",
-      ...(candidate.profile?.industry ?? fact(facts, ["industry", "industries", "sector"])
-        ? { value: candidate.profile?.industry ?? fact(facts, ["industry", "industries", "sector"]) }
-        : {}),
+      value: candidate.profile?.industry ?? fact(facts, ["industry", "industries", "sector"]),
     },
-    { label: "Keywords", ...(fact(facts, ["keywords", "tags", "services"]) ? { value: fact(facts, ["keywords", "tags", "services"]) } : {}) },
+    { label: "Keywords", value: fact(facts, ["keywords", "tags", "services"]) },
   ];
 
   const known = rows.filter((row) => row.value);
+
 
   return (
     <DetailSection title="At a glance" emphasis="quiet">
