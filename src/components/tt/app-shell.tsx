@@ -185,7 +185,10 @@ export function AppShell({
           </div>
         ) : null}
 
-        <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10 2xl:px-10">{children}</main>
+        <main className="mx-auto min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10 2xl:px-10">
+          {/* One calm reading canvas for every room — never edge to edge. */}
+          <div className="mx-auto w-full max-w-canvas">{children}</div>
+        </main>
       </div>
 
     </div>
