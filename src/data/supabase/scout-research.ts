@@ -19,6 +19,8 @@ import { toProspect } from "./prospects";
 import { readCompanyIdentity } from "@/lib/company-identity";
 import { readResearchHistory } from "@/data/prospect-modules";
 import { readScoutIntel } from "@/data/scout-intel";
+import { companyProfile } from "@/data/scout-profile";
+
 
 
 /** Raw payload returned by the Edge Function. */
@@ -271,6 +273,8 @@ export function candidateFromResearchRow(
       observed,
     }),
     facts: observationFacts(observed),
+    profile: companyProfile(inferred, observationFacts(observed)),
+
     history: readResearchHistory(row.metadata),
     intel: readScoutIntel(row.metadata),
   };
