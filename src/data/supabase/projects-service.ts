@@ -22,7 +22,7 @@ import type {
   ProjectInput,
   ProjectOrigin,
 } from "@/domain/projects";
-import { LIFECYCLE_FOR_STATE, stateFromLifecycle } from "@/domain/projects";
+import { STATUS_COLUMN_FOR_STATE, stateFromLifecycle } from "@/domain/projects";
 import { can, type AccessContext } from "@/domain/access";
 import {
   ROUTE_EVENT_KEY,
@@ -162,15 +162,13 @@ function payloadFor(input: ProjectInput, state: ExecutionState, now: string): Ro
   };
   return {
     name: input.name,
-    status: LIFECYCLE_FOR_STATE[state],
-    point_a: input.pointA,
-    point_b: input.pointB,
-    next_move: input.nextMove ?? null,
+    status: STATUS_COLUMN_FOR_STATE[state],
     client_id: input.clientId ?? null,
     owner_user_id: input.ownerUserId ?? null,
     metadata,
   };
 }
+
 
 export const projectsService = {
   /** Every project this organization can read, newest movement first. */
