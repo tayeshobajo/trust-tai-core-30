@@ -27,9 +27,10 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import { isOpenProject } from "@/domain/projects";
 import {
-  EXECUTION_STATES,
   EXECUTION_STATE_LABEL,
   HEALTH_LABEL,
+  checkTransition,
+  nextStates,
   projectHealth,
   recommendedMove,
   type ExecutionProject,
