@@ -97,13 +97,7 @@ function ReadinessStrip({
 const PAGE =
   "relative overflow-hidden rounded-xl border border-border bg-card px-6 py-10 md:aspect-[16/9] md:px-16 md:py-14";
 
-function Backing({
-  section,
-  facts,
-}: {
-  section: ArtifactSection;
-  facts: Map<string, PacketFact>;
-}) {
+function Backing({ section, facts }: { section: ArtifactSection; facts: Map<string, PacketFact> }) {
   const keys = section.supportKeys ?? [];
   const known = keys.map((key) => facts.get(key)).filter(Boolean) as PacketFact[];
   if (keys.length === 0) return null;
@@ -282,7 +276,9 @@ function EditorialPage({
           {section.title}
         </h3>
 
-        <div className={note ? "mt-6 space-y-4 md:max-w-reading" : "mt-6 grid gap-5 md:grid-cols-2"}>
+        <div
+          className={note ? "mt-6 space-y-4 md:max-w-reading" : "mt-6 grid gap-5 md:grid-cols-2"}
+        >
           {section.body.map((paragraph, index) => (
             <p
               key={index}

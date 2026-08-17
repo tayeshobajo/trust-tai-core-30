@@ -29,8 +29,8 @@ export function RoadmapSidebar({ glance }: { glance: RoadmapGlance }) {
       <section className="rounded-xl border border-border bg-cloud px-4 py-3">
         <p className="tt-eyebrow mb-2">Your driver</p>
         <p className="text-[13px] leading-relaxed text-foreground">
-          Turn current truth into a clear path forward. Roadmap keeps direction agreed and
-          sequence honest.
+          Turn current truth into a clear path forward. Roadmap keeps direction agreed and sequence
+          honest.
         </p>
         <Link
           to="/modules/conductor"

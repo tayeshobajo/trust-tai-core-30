@@ -46,10 +46,16 @@ export function SequenceInRoadmap({
 
   const sequence = useMutation({
     mutationFn: () =>
-      roadmapService.create({ subject: { kind: subject.kind, id: subject.id }, objective }, context),
+      roadmapService.create(
+        { subject: { kind: subject.kind, id: subject.id }, objective },
+        context,
+      ),
     onSuccess: (detail) =>
-      navigate({ to: "/modules/roadmap/$roadmapId",
-      search: { view: "overview" as const }, params: { roadmapId: detail.roadmap.id } }),
+      navigate({
+        to: "/modules/roadmap/$roadmapId",
+        search: { view: "overview" as const },
+        params: { roadmapId: detail.roadmap.id },
+      }),
   });
 
   return (

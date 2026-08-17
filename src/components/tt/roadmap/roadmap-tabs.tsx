@@ -4,22 +4,15 @@ import { cn } from "@/lib/utils";
 
 /** Single source of truth for Roadmap's local sections. */
 export type RoadmapView =
-  | "overview"
-  | "research"
-  | "strategy"
-  | "milestones"
-  | "studio"
-  | "walkthrough"
-  | "build";
+  "overview" | "milestones" | "evidence" | "decisions" | "exports" | "activity";
 
 export const ROADMAP_VIEWS: { key: RoadmapView; label: string }[] = [
-  { key: "overview", label: "Command center" },
-  { key: "research", label: "Research" },
-  { key: "strategy", label: "Strategy" },
+  { key: "overview", label: "Overview" },
   { key: "milestones", label: "Milestones" },
-  { key: "studio", label: "Studio" },
-  { key: "walkthrough", label: "Walkthrough" },
-  { key: "build", label: "Build order" },
+  { key: "evidence", label: "Evidence" },
+  { key: "decisions", label: "Decisions" },
+  { key: "exports", label: "Exports" },
+  { key: "activity", label: "Activity" },
 ];
 
 export function isRoadmapView(value: unknown): value is RoadmapView {

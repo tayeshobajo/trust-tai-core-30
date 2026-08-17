@@ -48,9 +48,7 @@ const DOT: Record<MilestoneMark["state"], string> = {
 
 export function RoadmapMilestoneStrip({ milestones }: { milestones: MilestoneMark[] }) {
   if (milestones.length === 0) {
-    return (
-      <p className="text-[12px] text-muted-foreground">No milestones sequenced yet.</p>
-    );
+    return <p className="text-[12px] text-muted-foreground">No milestones sequenced yet.</p>;
   }
   return (
     <div className="-mx-1 overflow-x-auto px-1 pb-1">
@@ -58,10 +56,7 @@ export function RoadmapMilestoneStrip({ milestones }: { milestones: MilestoneMar
         {milestones.map((milestone, index) => (
           <li key={milestone.id} className="flex items-start">
             {index > 0 ? (
-              <span
-                aria-hidden
-                className="mt-[13px] h-px w-8 shrink-0 bg-border md:w-10"
-              />
+              <span aria-hidden className="mt-[13px] h-px w-8 shrink-0 bg-border md:w-10" />
             ) : null}
             <span className="flex w-[86px] flex-col items-center gap-1.5 text-center md:w-[96px]">
               <span
@@ -173,9 +168,7 @@ export function RoadmapRow({ row }: { row: RoadmapRowModel }) {
             Open roadmap
           </Link>
           <p className="text-[11px] text-muted-foreground">Owner: {row.ownerLabel}</p>
-          <p className="text-[11px] text-muted-foreground">
-            Updated {relativeTime(row.updatedAt)}
-          </p>
+          <p className="text-[11px] text-muted-foreground">Updated {relativeTime(row.updatedAt)}</p>
         </div>
       </div>
     </article>

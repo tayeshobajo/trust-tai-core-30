@@ -70,7 +70,6 @@ export function AskPanel({
         back to the web for it.
       </p>
 
-
       {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
 
       {answers.length > 0 ? (

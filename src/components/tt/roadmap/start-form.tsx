@@ -94,7 +94,9 @@ export function StartRoadmapForm({
                     onClick={() => setSelectedKey(key)}
                     aria-pressed={active}
                     className={`flex w-full items-center justify-between gap-4 border-b border-border px-4 py-3 text-left text-sm last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                      active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60"
+                      active
+                        ? "bg-secondary text-foreground"
+                        : "text-muted-foreground hover:bg-secondary/60"
                     }`}
                   >
                     <span className="font-medium text-foreground">{entry.label}</span>
