@@ -143,14 +143,42 @@ export const scoutService = {
   },
 
   /** Recorded history for one company: research, decisions, overrides. */
-  async activity(organizationId: ID, prospectId: ID) {
+  async activity(organizationId: ID, prospectId: ID, limit = 12) {
     return supabaseActivity.list({
       organizationId,
       subjectType: "prospect",
       subjectId: prospectId,
-      limit: 12,
+      limit,
     });
   },
+
+  /**
+   * Notes are not a second store: they are `prospect.commented` entries on the
+   * shared activity stream, so company history stays in one ledger.
+   */
+  async addNote(
+    input: { prospectId: ID; companyName: string; body: string },
+    context: ScoutContext,
+  ) {
+    const body = input.body.trim();
+    if (!body) throw new Error("A note needs some words before it can be saved.");
+    const occurredAt = new Date().toISOString();
+    return supabaseActivity.record({
+      organizationId: context.organizationId,
+      name: "prospect.commented",
+      subject: { type: "prospect", id: input.prospectId, label: input.companyName },
+      summary: body,
+      payload: { note: body },
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: context.userId },
+        observedAt: occurredAt,
+        confidence: "observed",
+      },
+      occurredAt,
+    });
+  },
+
 
   /** Is live market discovery connected? */
   async discoveryStatus() {
