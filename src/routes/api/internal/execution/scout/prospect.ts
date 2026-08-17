@@ -11,8 +11,8 @@ import {
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.TRUST_TAI_SUPABASE_URL!,
-  process.env.TRUST_TAI_SUPABASE_SERVICE_KEY!
+  process.env['TRUST_TAI_SUPABASE_URL']!,
+  process.env['TRUST_TAI_SUPABASE_SERVICE_KEY']!
 );
 
 export const Route = createFileRoute(

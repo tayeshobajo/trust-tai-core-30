@@ -5,8 +5,8 @@ if (typeof window !== 'undefined') {
   throw new Error('paperclip-client.server.ts must not be imported on the client');
 }
 
-const PAPERCLIP_API_URL = process.env.PAPERCLIP_API_URL ?? 'http://127.0.0.1:3100';
-const PAPERCLIP_API_KEY = process.env.PAPERCLIP_BOARD_API_KEY ?? '';
+const PAPERCLIP_API_URL = process.env['PAPERCLIP_API_URL'] ?? 'http://127.0.0.1:3100';
+const PAPERCLIP_API_KEY = process.env['PAPERCLIP_BOARD_API_KEY'] ?? '';
 
 async function paperclipFetch(path: string, init?: RequestInit) {
   const res = await fetch(`${PAPERCLIP_API_URL}${path}`, {
