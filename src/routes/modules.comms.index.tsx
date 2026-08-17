@@ -429,21 +429,30 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         </aside>
       </div>
 
+      {/*
+        Below xl the rail becomes a drawer so the conversation column stays the
+        dominant thing on screen. Escape closes it; the scrim is a real button.
+      */}
       {contextOpen && rail ? (
-        <div className="fixed inset-0 z-50 flex justify-end bg-background/60 backdrop-blur-sm xl:hidden">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Conversation context"
+          className="fixed inset-0 z-50 flex justify-end bg-foreground/25 backdrop-blur-sm xl:hidden"
+        >
           <button
             type="button"
             aria-label="Close context"
             className="flex-1"
             onClick={() => setContextOpen(false)}
           />
-          <div className="flex h-full w-[min(360px,90vw)] flex-col border-l border-border bg-card">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+          <div className="tt-rise flex h-full w-[min(380px,92vw)] flex-col overflow-y-auto border-l border-border bg-card">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3">
               <p className="tt-eyebrow">Context</p>
               <button
                 type="button"
                 onClick={() => setContextOpen(false)}
-                className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
+                className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Close
               </button>
