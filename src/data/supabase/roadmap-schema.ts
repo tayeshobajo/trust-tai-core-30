@@ -31,8 +31,9 @@ export const ROADMAP_COLUMNS =
 export const STAGE_COLUMNS =
   "id, organization_id, roadmap_id, position, title, intent, state, tier, owner_user_id, owner_label, evidence, created_at, updated_at";
 
-export const DECISION_COLUMNS =
-  "id, organization_id, roadmap_id, stage_id, question, why_it_matters, options, recommendation, recommendation_because, evidence, owner_user_id, status, resolution_note, resolved_by, resolved_at, created_at, updated_at";
+// Selected with "*" so an optional column (labels) can be added to the table
+// without this read failing before the migration is applied everywhere.
+export const DECISION_COLUMNS = "*";
 
 /** Any Postgrest error is surfaced as itself. */
 export function assertOk(error: PostgrestError | null): void {
@@ -180,6 +181,7 @@ export function toDecision(row: Row): RoadmapDecision {
     question: String(row["question"] ?? ""),
     whyItMatters: String(row["why_it_matters"] ?? ""),
     options,
+    labels: Array.isArray(row["labels"]) ? row["labels"].map((entry) => String(entry)) : [],
     ...(text(row["recommendation"]) ? { recommendation: text(row["recommendation"])! } : {}),
     ...(text(row["recommendation_because"])
       ? { recommendationBecause: text(row["recommendation_because"])! }

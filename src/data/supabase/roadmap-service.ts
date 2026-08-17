@@ -607,10 +607,12 @@ export const roadmapService = {
     roadmapLabel: string,
     question: OpenQuestion,
     context: RoadmapContext,
+    labels: string[] = [],
   ): Promise<RoadmapDecision> {
     const { data, error } = await supabase
       .from("roadmap_decisions")
       .insert({
+        ...(labels.length > 0 ? { labels } : {}),
         organization_id: context.organizationId,
         roadmap_id: roadmapId,
         question: question.question,
@@ -633,6 +635,30 @@ export const roadmapService = {
       { id: roadmapId, label: roadmapLabel },
       `Needs a decision: ${question.question}`,
     );
+    return toDecision(data as Row);
+  },
+
+  /**
+   * Labels are organisational only. They never change the question, the
+   * answer, or who is allowed to answer it.
+   */
+  async setDecisionLabels(
+    decision: RoadmapDecision,
+    labels: string[],
+    context: RoadmapContext,
+  ): Promise<RoadmapDecision> {
+    const clean = Array.from(
+      new Set(labels.map((label) => label.trim().toLowerCase()).filter(Boolean)),
+    ).slice(0, 6);
+    const { data, error } = await supabase
+      .from("roadmap_decisions")
+      .update({ labels: clean, updated_at: new Date().toISOString() })
+      .eq("id", decision.id)
+      .eq("organization_id", context.organizationId)
+      .select(DECISION_COLUMNS)
+      .single();
+    assertOk(error);
+    if (!data) throw new Error("Those labels could not be saved.");
     return toDecision(data as Row);
   },
 
