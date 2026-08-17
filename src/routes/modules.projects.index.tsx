@@ -393,13 +393,7 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
                     </button>
                   </p>
                 ) : (
-                  <ul className="space-y-3">
-                    {visible.map((row) => (
-                      <li key={row.project.id}>
-                        <ProjectCard row={row} identity={identityFor(row.lineage.company)} />
-                      </li>
-                    ))}
-                  </ul>
+                  <CompanyGroups groups={groupByCompany(visible)} identityFor={identityFor} />
                 )}
               </section>
 
