@@ -89,32 +89,32 @@ export function ExportsView({
                 ) : null}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-              {entry.commsDraftId ? (
-                <p className="text-[12px] text-muted-foreground">Draft waiting in Comms</p>
-              ) : (
-                <TTButton
-                  variant="secondary"
-                  size="sm"
-                  disabled={handingId === entry.id}
-                  onClick={() => onHandToComms(entry)}
-                >
-                  {handingId === entry.id ? "Handing over…" : "Send to Comms"}
-                </TTButton>
-              )}
-              {entry.status !== "sent" ? (
-                <TTButton
-                  variant="secondary"
-                  size="sm"
-                  disabled={sendingId === entry.id}
-                  onClick={() => onMarkSent(entry.id)}
-                >
-                  {sendingId === entry.id ? "Recording…" : "Mark as sent"}
-                </TTButton>
-              ) : (
-                <p className="text-[12px] text-muted-foreground">
-                  Sent {entry.sentAt ? new Date(entry.sentAt).toLocaleDateString() : ""}
-                </p>
-              )}
+                {entry.commsDraftId ? (
+                  <p className="text-[12px] text-muted-foreground">Draft waiting in Comms</p>
+                ) : (
+                  <TTButton
+                    variant="secondary"
+                    size="sm"
+                    disabled={handingId === entry.id}
+                    onClick={() => onHandToComms(entry)}
+                  >
+                    {handingId === entry.id ? "Handing over…" : "Send to Comms"}
+                  </TTButton>
+                )}
+                {entry.status !== "sent" ? (
+                  <TTButton
+                    variant="secondary"
+                    size="sm"
+                    disabled={sendingId === entry.id}
+                    onClick={() => onMarkSent(entry.id)}
+                  >
+                    {sendingId === entry.id ? "Recording…" : "Mark as sent"}
+                  </TTButton>
+                ) : (
+                  <p className="text-[12px] text-muted-foreground">
+                    Sent {entry.sentAt ? new Date(entry.sentAt).toLocaleDateString() : ""}
+                  </p>
+                )}
               </div>
             </li>
           ))}

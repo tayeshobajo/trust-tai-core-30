@@ -251,7 +251,12 @@ function OpenDecision({
               key={label}
               type="button"
               className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground"
-              onClick={() => onLabels(decision, labels.filter((entry) => entry !== label))}
+              onClick={() =>
+                onLabels(
+                  decision,
+                  labels.filter((entry) => entry !== label),
+                )
+              }
               aria-label={`Remove label ${label}`}
             >
               {label} ×

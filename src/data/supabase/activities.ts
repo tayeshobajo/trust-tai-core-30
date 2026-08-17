@@ -150,7 +150,6 @@ export const supabaseActivity: ActivityStream = {
       );
     }
 
-
     const { data, error } = await request;
     if (error) throw new Error(error.message);
     return ((data ?? []) as Row[]).map(toEvent);

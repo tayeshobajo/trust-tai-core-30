@@ -84,9 +84,7 @@ export function healthMessage(
 }
 
 /** Probe all three tables at once and report in plain language. */
-export async function checkConductorSchema(
-  organizationId: ID,
-): Promise<ConductorSchemaHealth> {
+export async function checkConductorSchema(organizationId: ID): Promise<ConductorSchemaHealth> {
   const tables = await Promise.all(
     CONDUCTOR_TABLES.map(async (table): Promise<TableHealth> => {
       const { error } = await supabase

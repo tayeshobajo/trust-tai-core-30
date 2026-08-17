@@ -163,8 +163,6 @@ export const commsService = {
       if (existing) return toRelationship(existing as unknown as RelationshipRow);
     }
 
-
-
     const at = new Date().toISOString();
     const decided: MemoryItem[] = [...(input.decided ?? [])];
     if (input.note?.trim()) {
@@ -240,11 +238,7 @@ export const commsService = {
   },
 
   /** A stage only changes because a person changed it. */
-  async update(
-    id: ID,
-    patch: RelationshipPatch,
-    context: CommsContext,
-  ): Promise<Relationship> {
+  async update(id: ID, patch: RelationshipPatch, context: CommsContext): Promise<Relationship> {
     const payload: Row = {};
     if (patch.stage) payload["stage"] = patch.stage;
     if (patch.ownerUserId !== undefined) payload["owner_user_id"] = patch.ownerUserId;

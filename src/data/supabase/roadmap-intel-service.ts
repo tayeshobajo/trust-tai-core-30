@@ -97,11 +97,13 @@ async function snapshot(context: IntelContext, artifact: RoadmapArtifact): Promi
    * live document still saves, because losing a snapshot is not a reason to
    * block a person from composing. Every other failure is real and surfaces.
    */
-  if (error && !/does not exist|schema cache|42P01|PGRST205/i.test(`${error.code} ${error.message}`)) {
+  if (
+    error &&
+    !/does not exist|schema cache|42P01|PGRST205/i.test(`${error.code} ${error.message}`)
+  ) {
     assertOk(error);
   }
 }
-
 
 async function record(
   context: IntelContext,
@@ -174,7 +176,11 @@ export const roadmapIntel = {
         .eq("roadmap_id", roadmapId)
         .order("created_at", { ascending: false })
         .limit(10),
-      supabase.from("roadmap_strategies").select(STRATEGY_COLUMNS).eq("roadmap_id", roadmapId).maybeSingle(),
+      supabase
+        .from("roadmap_strategies")
+        .select(STRATEGY_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .maybeSingle(),
       supabase
         .from("roadmap_milestones")
         .select(MILESTONE_COLUMNS)

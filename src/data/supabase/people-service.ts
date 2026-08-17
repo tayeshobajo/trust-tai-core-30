@@ -23,12 +23,7 @@ import type { ProspectCandidate } from "@/domain/scout";
 import { getPeopleProvider } from "@/data/people/registry";
 
 import { supabaseActivity } from "./activities";
-import {
-  insertContact,
-  listProspectContacts,
-  updateContact,
-  type ContactPatch,
-} from "./contacts";
+import { insertContact, listProspectContacts, updateContact, type ContactPatch } from "./contacts";
 
 export interface PeopleContext {
   organizationId: ID;
@@ -195,8 +190,7 @@ export const peopleService = {
         continue;
       }
 
-      const confidence: PersonConfidence =
-        draft.confidence ?? provider.baseConfidence;
+      const confidence: PersonConfidence = draft.confidence ?? provider.baseConfidence;
       const person = await insertContact({
         organizationId: context.organizationId,
         prospectId,
@@ -236,11 +230,7 @@ export const peopleService = {
   },
 
   /** Ask an approved source to test an address. Never guesses a result. */
-  async verifyEmail(
-    providerId: string,
-    person: Person,
-    context: PeopleContext,
-  ): Promise<Person> {
+  async verifyEmail(providerId: string, person: Person, context: PeopleContext): Promise<Person> {
     if (!person.email) throw new Error("There is no address to verify.");
     const provider = getPeopleProvider(providerId);
     if (!provider?.verifyEmail || !(await provider.available())) {

@@ -110,11 +110,13 @@ function memoryNotes(value: unknown, tier: RoadmapNote["tier"], at: string): Roa
       value: String(entry["value"] ?? ""),
       tier,
       evidence: Array.isArray(entry["evidence"])
-        ? (entry["evidence"] as { label?: unknown; kind?: unknown; url?: unknown }[]).map((ref) => ({
-            label: String(ref.label ?? "Evidence"),
-            kind: "provider" as const,
-            ...(typeof ref.url === "string" ? { url: ref.url } : {}),
-          }))
+        ? (entry["evidence"] as { label?: unknown; kind?: unknown; url?: unknown }[]).map(
+            (ref) => ({
+              label: String(ref.label ?? "Evidence"),
+              kind: "provider" as const,
+              ...(typeof ref.url === "string" ? { url: ref.url } : {}),
+            }),
+          )
         : [],
       at: String(entry["at"] ?? at),
     }))
@@ -161,7 +163,13 @@ export async function gatherContext(
     );
     if (typeof row["fit_score"] === "number") {
       inferred.push(
-        note("ICP fit", `Scores ${row["fit_score"]} of 100 against the active ICP.`, "inferred", "Scout fit evaluator", at),
+        note(
+          "ICP fit",
+          `Scores ${row["fit_score"]} of 100 against the active ICP.`,
+          "inferred",
+          "Scout fit evaluator",
+          at,
+        ),
       );
     }
     observed.push(...memoryNotes(row["observed"], "observed", at));
@@ -196,7 +204,9 @@ export async function gatherContext(
     const row = (data ?? null) as Row | null;
     if (!row) throw new Error("That client is not in this workspace.");
     label = String(row["name"] ?? "Client");
-    observed.push(note("Client status", String(row["status"] ?? "unknown"), "observed", "Client record", at));
+    observed.push(
+      note("Client status", String(row["status"] ?? "unknown"), "observed", "Client record", at),
+    );
   }
 
   if (extraContext?.trim()) {
@@ -355,12 +365,7 @@ export const roadmapService = {
       if (detail) return detail;
     }
 
-    const source = await gatherContext(
-      input.subject,
-      input.objective,
-      context,
-      input.extraContext,
-    );
+    const source = await gatherContext(input.subject, input.objective, context, input.extraContext);
     const draft = composeRoadmapDraft(source);
 
     const payload: Row = {
@@ -439,7 +444,13 @@ export const roadmapService = {
         ...(context.userLabel ? { label: context.userLabel } : {}),
       },
       subject: { type: "roadmap", id: roadmap.id, label: roadmap.subjectLabel },
-      related: [{ type: input.subject.kind === "relationship" ? "relationship" : input.subject.kind, id: input.subject.id, label: roadmap.subjectLabel }],
+      related: [
+        {
+          type: input.subject.kind === "relationship" ? "relationship" : input.subject.kind,
+          id: input.subject.id,
+          label: roadmap.subjectLabel,
+        },
+      ],
       summary: `A roadmap was drafted for ${roadmap.subjectLabel} from ${source.observed.length} observed ${source.observed.length === 1 ? "fact" : "facts"}.`,
       sourceEventKey: `roadmap.created:${roadmap.id}`,
       metadata: { subject_kind: input.subject.kind, unknowns: draft.unknowns.length },

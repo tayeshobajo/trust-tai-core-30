@@ -717,10 +717,7 @@ function RoadmapWorkspace({
       const detail = detailQuery.data;
       if (!detail) throw new Error("This roadmap could not be read.");
       setHandingId(entry.id);
-      const relationship = await relationshipForRoadmap(
-        detail.roadmap,
-        identity.organizationId,
-      );
+      const relationship = await relationshipForRoadmap(detail.roadmap, identity.organizationId);
       if (!relationship) {
         throw new Error(
           "No conversation exists for this company yet. Open one in Comms first, then hand the copy over.",

@@ -68,19 +68,15 @@ export async function saveIcp(input: SaveIcpInput): Promise<IcpProfile> {
   };
   if (input.sourceFilename !== undefined) payload["source_filename"] = input.sourceFilename;
 
-  const { data, error } = await writeTolerant<Row>(
-    payload,
-    ["content_markdown"],
-    async (body) => {
-      const result = await supabase
-        .from("icp_profiles")
-        .update(body)
-        .eq("id", input.current.id)
-        .select("*")
-        .maybeSingle();
-      return { data: (result.data ?? null) as Row | null, error: result.error };
-    },
-  );
+  const { data, error } = await writeTolerant<Row>(payload, ["content_markdown"], async (body) => {
+    const result = await supabase
+      .from("icp_profiles")
+      .update(body)
+      .eq("id", input.current.id)
+      .select("*")
+      .maybeSingle();
+    return { data: (result.data ?? null) as Row | null, error: result.error };
+  });
   if (error) throw new Error(error.message);
   if (!data) throw new Error("The ICP could not be saved. You may not have permission to edit it.");
   return toIcp(data as unknown as IcpProfileRow);

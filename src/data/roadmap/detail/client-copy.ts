@@ -38,7 +38,8 @@ export function clientCopyBody(entry: RoadmapExport): string {
     for (const milestone of snapshot.milestones) {
       lines.push(`${milestone.ordinal}. ${milestone.name} — ${milestone.status}`);
       if (milestone.whatWeBuild.trim()) lines.push(`   What we build: ${milestone.whatWeBuild}`);
-      if (milestone.whatItUnlocks.trim()) lines.push(`   What it unlocks: ${milestone.whatItUnlocks}`);
+      if (milestone.whatItUnlocks.trim())
+        lines.push(`   What it unlocks: ${milestone.whatItUnlocks}`);
     }
     lines.push("");
   }

@@ -43,7 +43,6 @@ export const MILESTONE_COLUMNS =
 export const ARTIFACT_COLUMNS =
   "id, organization_id, roadmap_id, kind, title, sections, accent, logo_url, provider, model, rejected, human_edited, version, edited_at, edited_by, generated_at, created_at, updated_at";
 
-
 export const SESSION_COLUMNS =
   "id, organization_id, roadmap_id, started_at, ended_at, entries, created_by, created_at, updated_at";
 

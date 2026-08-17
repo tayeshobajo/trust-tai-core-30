@@ -57,14 +57,7 @@ const CONFIDENCES: PersonConfidence[] = [
   "human_confirmed",
 ];
 
-const SENIORITIES: Seniority[] = [
-  "founder",
-  "owner",
-  "exec",
-  "marketing",
-  "operations",
-  "other",
-];
+const SENIORITIES: Seniority[] = ["founder", "owner", "exec", "marketing", "operations", "other"];
 
 function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
@@ -127,10 +120,7 @@ export function toPerson(row: ContactRow): Person {
 }
 
 /** Everyone on record for one Scout prospect. */
-export async function listProspectContacts(
-  organizationId: ID,
-  prospectId: ID,
-): Promise<Person[]> {
+export async function listProspectContacts(organizationId: ID, prospectId: ID): Promise<Person[]> {
   const { data, error } = await supabase
     .from("contacts")
     .select(SELECT_COLUMNS)
@@ -195,11 +185,7 @@ export async function insertContact(input: ContactWrite): Promise<Person> {
     payload,
     ["organization_id", "full_name", "metadata"],
     async (body) => {
-      const result = await supabase
-        .from("contacts")
-        .insert(body)
-        .select(SELECT_COLUMNS)
-        .single();
+      const result = await supabase.from("contacts").insert(body).select(SELECT_COLUMNS).single();
       return { data: result.data as unknown as ContactRow | null, error: result.error };
     },
   );
@@ -222,16 +208,8 @@ export interface ContactPatch {
 }
 
 /** Patch one person, merging into the existing metadata rather than replacing. */
-export async function updateContact(
-  id: ID,
-  patch: ContactPatch,
-  userId: ID,
-): Promise<Person> {
-  const current = await supabase
-    .from("contacts")
-    .select(SELECT_COLUMNS)
-    .eq("id", id)
-    .single();
+export async function updateContact(id: ID, patch: ContactPatch, userId: ID): Promise<Person> {
+  const current = await supabase.from("contacts").select(SELECT_COLUMNS).eq("id", id).single();
   if (current.error || !current.data) {
     throw new Error(current.error?.message ?? "That person is no longer on record.");
   }
@@ -259,19 +237,15 @@ export async function updateContact(
     metadata: meta,
   };
 
-  const { data, error } = await writeTolerant<ContactRow>(
-    payload,
-    ["metadata"],
-    async (body) => {
-      const result = await supabase
-        .from("contacts")
-        .update(body)
-        .eq("id", id)
-        .select(SELECT_COLUMNS)
-        .single();
-      return { data: result.data as unknown as ContactRow | null, error: result.error };
-    },
-  );
+  const { data, error } = await writeTolerant<ContactRow>(payload, ["metadata"], async (body) => {
+    const result = await supabase
+      .from("contacts")
+      .update(body)
+      .eq("id", id)
+      .select(SELECT_COLUMNS)
+      .single();
+    return { data: result.data as unknown as ContactRow | null, error: result.error };
+  });
 
   if (error || !data) throw new Error(error?.message ?? "That change could not be saved.");
   return toPerson(data);
@@ -350,11 +324,7 @@ export async function findOrCreateContact(input: {
     },
     ["organization_id", "full_name", "metadata"],
     async (body) => {
-      const result = await supabase
-        .from("contacts")
-        .insert(body)
-        .select(SELECT_COLUMNS)
-        .single();
+      const result = await supabase.from("contacts").insert(body).select(SELECT_COLUMNS).single();
       return { data: result.data as unknown as ContactRow | null, error: result.error };
     },
   );

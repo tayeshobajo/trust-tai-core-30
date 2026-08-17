@@ -374,7 +374,6 @@ describe("studio", () => {
   });
 });
 
-
 describe("walkthrough", () => {
   it("captures entries in the room, attributed and timestamped", async () => {
     const session = await roadmapIntel.startSession(CONTEXT, ROADMAP, "Northbeam");

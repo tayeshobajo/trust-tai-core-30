@@ -88,8 +88,7 @@ export function EvidenceLinksCard({
               <div className="min-w-0">
                 <p className="text-[14px] text-foreground">{item.label}</p>
                 <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                  {EVIDENCE_KIND_LABEL[item.kind]} ·{" "}
-                  {new Date(item.createdAt).toLocaleDateString()}
+                  {EVIDENCE_KIND_LABEL[item.kind]} · {new Date(item.createdAt).toLocaleDateString()}
                 </p>
                 {item.sourceNote ? (
                   <p className="mt-1 text-[13px] text-muted-foreground">{item.sourceNote}</p>

@@ -17,13 +17,7 @@ import type { FitLight, ScoutFitEvaluation } from "@/domain/scout-fit";
 const ENDPOINT = "/api/public/scout/discover";
 
 export type DiscoveryStageName =
-  | "reading_icp"
-  | "searching"
-  | "verifying"
-  | "evaluating"
-  | "shortlist"
-  | "done"
-  | "error";
+  "reading_icp" | "searching" | "verifying" | "evaluating" | "shortlist" | "done" | "error";
 
 export interface DiscoveryStage {
   stage: DiscoveryStageName;

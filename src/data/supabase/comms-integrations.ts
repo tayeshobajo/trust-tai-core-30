@@ -53,9 +53,7 @@ function toConnection(row: IntegrationRow): IntegrationConnection {
     ...(text(row.account_email) ? { accountEmail: text(row.account_email)! } : {}),
     scopes: Array.isArray(row.scopes) ? row.scopes.map(String) : [],
     cursor:
-      row.cursor && typeof row.cursor === "object"
-        ? (row.cursor as Record<string, unknown>)
-        : {},
+      row.cursor && typeof row.cursor === "object" ? (row.cursor as Record<string, unknown>) : {},
     ...(text(row.last_sync_at) ? { lastSyncAt: text(row.last_sync_at)! } : {}),
     ...(text(row.last_error) ? { lastError: text(row.last_error)! } : {}),
     ...(text(row.connected_by) ? { connectedBy: text(row.connected_by)! } : {}),

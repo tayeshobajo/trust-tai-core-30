@@ -214,9 +214,9 @@ describe("touch logging", () => {
     expect(row["last_touch_at"]).toBeTruthy();
     expect(row["response_due_at"]).toBeNull();
     expect(db.tables["comms_touches"]).toHaveLength(1);
-    expect(db.tables["activities"]!.some((entry) => String(entry["summary"]).includes("Wrote to"))).toBe(
-      true,
-    );
+    expect(
+      db.tables["activities"]!.some((entry) => String(entry["summary"]).includes("Wrote to")),
+    ).toBe(true);
   });
 
   it("an inbound touch opens a response clock and moves the person into the waiting bucket", async () => {
@@ -258,7 +258,11 @@ describe("touch logging", () => {
       { fullName: "Ada Rowe", source: "in_person" },
       CONTEXT,
     );
-    const updated = await commsService.update(relationship.id, { stage: "in_conversation" }, CONTEXT);
+    const updated = await commsService.update(
+      relationship.id,
+      { stage: "in_conversation" },
+      CONTEXT,
+    );
     expect(updated.stage).toBe("in_conversation");
     expect(
       db.tables["activities"]!.some((entry) => String(entry["summary"]).includes("moved to")),

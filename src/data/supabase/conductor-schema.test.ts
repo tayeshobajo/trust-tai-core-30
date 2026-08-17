@@ -35,7 +35,9 @@ describe("conductor schema health", () => {
 
   it("recognises a missing grant or refusing policy", () => {
     expect(
-      classifyError(err({ code: "42501", message: "permission denied for table business_figures" })),
+      classifyError(
+        err({ code: "42501", message: "permission denied for table business_figures" }),
+      ),
     ).toBe("forbidden");
   });
 
