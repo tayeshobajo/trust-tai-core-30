@@ -62,8 +62,10 @@ export interface RoadmapExport {
   createdAt: ISODateTime;
   sentAt?: ISODateTime;
   commsRelationshipId?: ID;
+  commsDraftId?: ID;
   commsMessageId?: ID;
 }
+
 
 /* --------------------------------------------------------- execution links */
 
