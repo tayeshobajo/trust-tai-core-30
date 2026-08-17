@@ -40,6 +40,7 @@ import {
   type DetailTab,
 } from "@/components/tt/scout/detail/tabs";
 import { buildPersonPlan } from "@/data/person-priority";
+import { composeProspectPage } from "@/data/prospect-modules";
 import { buildScoutCompanySummary } from "@/data/scout/company-summary";
 import { readIcpFactors } from "@/data/scout/icp-factors";
 import { scoutNextSteps, type ScoutNextStep } from "@/data/scout/next-steps";
@@ -74,7 +75,9 @@ export const Route = createFileRoute("/modules/scout/prospects/$prospectId")({
   validateSearch: (search: Record<string, unknown>) => ({
     section: parseSection(search["section"]),
     fit: parseFit(search["fit"]),
-    tab: parseDetailTab(search["tab"]),
+    ...(parseDetailTab(search["tab"]) === "overview"
+      ? {}
+      : { tab: parseDetailTab(search["tab"]) }),
   }),
   head: () => ({
     meta: [
@@ -101,7 +104,7 @@ function ProspectRoute() {
           prospectId={prospectId}
           section={search.section}
           fit={search.fit}
-          tab={search.tab}
+          tab={search.tab ?? "overview"}
         />
       )}
     </WorkspaceGate>
@@ -119,7 +122,7 @@ function CompanyDetail({
   prospectId: string;
   section: Section;
   fit: Fit;
-  tab: DetailTab;
+  tab: DetailTab | undefined;
 }) {
   const { organizationId, userId } = identity;
   const queryClient = useQueryClient();
@@ -130,7 +133,7 @@ function CompanyDetail({
     navigate({
       to: "/modules/scout/prospects/$prospectId",
       params: { prospectId },
-      search: { section, fit, tab: next },
+      search: { section, fit, ...(next === "overview" ? {} : { tab: next }) },
     });
 
   const icp = useQuery({
@@ -324,7 +327,8 @@ function CompanyDetail({
     }
   };
 
-  const plan = buildPersonPlan(peopleRows, candidate);
+  const plan = buildPersonPlan(peopleRows);
+  const composition = composeProspectPage({ candidate, activeIcpVersion: icp.data?.version ?? null });
 
   return (
     <AppShell identity={identity}>
@@ -424,9 +428,9 @@ function CompanyDetail({
                 />
                 <HandoffPanel
                   candidate={candidate}
-                  coverage={evaluation.coverage}
+                  coverage={composition.coverage}
                   people={peopleRows}
-                  fitConfidence={evaluation.confidence}
+                  fitConfidence={composition.confidence}
                   onRoute={(draft) => routeToComms.mutate(draft)}
                   routed={prospect.status === "ready_for_comms"}
                   busy={busy}
