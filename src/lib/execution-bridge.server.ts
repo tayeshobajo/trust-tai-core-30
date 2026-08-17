@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 import type { ExecutionDatabase } from "@/lib/execution-bridge.types";
 import { trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
@@ -93,9 +93,11 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-let serviceRoleClient: SupabaseClient<ExecutionDatabase> | undefined;
+type ExecutionClient = ReturnType<typeof createClient<ExecutionDatabase>>;
 
-export function trustTaiServiceRoleClient(): SupabaseClient<ExecutionDatabase> {
+let serviceRoleClient: ExecutionClient | undefined;
+
+export function trustTaiServiceRoleClient(): ExecutionClient {
   if (!serviceRoleClient) {
     const key = serviceRoleKey();
     serviceRoleClient = createClient<ExecutionDatabase>(trustTaiSupabaseUrl(), key, {
