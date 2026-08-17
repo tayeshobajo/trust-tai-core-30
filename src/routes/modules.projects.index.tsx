@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState } from "@/components/tt/primitives";
 import { NeedsAttention } from "@/components/tt/projects/index/attention";
+import { CompanyGroups } from "@/components/tt/projects/index/company-group";
 import {
   CreateProjectModal,
   type CreateProjectSeed,
@@ -27,7 +28,6 @@ import {
   ProjectsHeader,
   ProjectsSignals,
 } from "@/components/tt/projects/index/header";
-import { ProjectCard } from "@/components/tt/projects/index/project-card";
 import { ProjectsGlanceRail, ProjectsSupportRail } from "@/components/tt/projects/index/rails";
 import { ProjectsToolbar } from "@/components/tt/projects/index/toolbar";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -36,6 +36,7 @@ import {
   buildProjectRows,
   companyOptions,
   filterProjectRows,
+  groupByCompany,
   inTab,
   milestoneOptions,
   needsAttention,
@@ -393,13 +394,7 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
                     </button>
                   </p>
                 ) : (
-                  <ul className="space-y-3">
-                    {visible.map((row) => (
-                      <li key={row.project.id}>
-                        <ProjectCard row={row} identity={identityFor(row.lineage.company)} />
-                      </li>
-                    ))}
-                  </ul>
+                  <CompanyGroups groups={groupByCompany(visible)} identityFor={identityFor} />
                 )}
               </section>
 

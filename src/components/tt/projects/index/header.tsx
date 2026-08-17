@@ -18,16 +18,14 @@ export function ProjectsHeader({
   onHandoffs: () => void;
 }) {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-4">
+    <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-border pb-4">
       <div className="min-w-0">
         <p className="tt-eyebrow">Projects</p>
-        <h1 className="mt-2 font-display text-3xl tracking-tight text-foreground">
+        <h1 className="mt-1 font-display text-[26px] leading-tight tracking-tight text-foreground">
           Approved work, in motion.
         </h1>
-        <p className="mt-1.5 max-w-reading text-sm text-muted-foreground">
-          Projects turns approved roadmap milestones into delivery.
-          <br className="hidden sm:block" /> Every project keeps its company, roadmap, milestone,
-          owner, and outcome attached.
+        <p className="mt-0.5 max-w-reading text-[13px] text-muted-foreground">
+          Each project keeps its company, roadmap milestone, owner and outcome attached.
         </p>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
