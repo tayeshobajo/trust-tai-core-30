@@ -282,7 +282,11 @@ export const projectsService = {
     return rows[0] ?? null;
   },
 
-  /** Move the work. State, next move and blocks are all a person's decision. */
+  /**
+   * Move the work. State, next move and blocks are all a person's decision,
+   * but only a legal one: an invalid transition is refused with the reason
+   * rather than written and explained away later.
+   */
   async update(
     project: ExecutionProject,
     changes: {
@@ -292,11 +296,25 @@ export const projectsService = {
       ownerLabel?: string;
       ownerUserId?: ID;
       pointB?: string;
+      dueDate?: string;
+      currentWork?: string;
+      deliveryItems?: { label: string; done: boolean }[];
     },
     context: ProjectsContext,
   ): Promise<ExecutionProject> {
     const now = new Date().toISOString();
     const state = changes.state ?? project.state;
+    if (changes.state && changes.state !== project.state) {
+      const check = checkTransition(project, changes.state, {
+        ...(changes.blockedBecause ? { blockedBecause: changes.blockedBecause } : {}),
+        ...(changes.ownerLabel ? { ownerLabel: changes.ownerLabel } : {}),
+        ...(changes.ownerUserId ? { ownerUserId: changes.ownerUserId } : {}),
+      });
+      if (!check.ok) throw new Error(check.because);
+    }
+    const dueDate = changes.dueDate ?? project.dueDate;
+    const currentWork = changes.currentWork ?? project.currentWork;
+    const deliveryItems = changes.deliveryItems ?? project.deliveryItems;
     const next: ProjectInput = {
       name: project.name,
       pointA: project.pointA,
@@ -314,6 +332,9 @@ export const projectsService = {
       evidence: project.evidence,
       dependencies: project.dependencies,
       ...(project.executionBoundary ? { executionBoundary: project.executionBoundary } : {}),
+      ...(dueDate ? { dueDate } : {}),
+      ...(currentWork ? { currentWork } : {}),
+      ...(deliveryItems ? { deliveryItems } : {}),
       origin: project.origin,
     };
 
@@ -321,6 +342,10 @@ export const projectsService = {
     const metadata = body["metadata"] as Row;
     metadata["blocked_because"] =
       state === "blocked" ? (changes.blockedBecause ?? project.blockedBecause ?? null) : null;
+    // "Blocked for N days" is only honest if the clock starts when it first stopped.
+    metadata["blocked_since"] =
+      state === "blocked" ? (project.state === "blocked" ? (project.blockedSince ?? now) : now) : null;
+
 
     const { data, error } = await writeTolerant(
       { ...body, updated_at: now },
