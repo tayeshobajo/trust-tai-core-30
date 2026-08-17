@@ -92,14 +92,12 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-let serviceRoleClient:
-  | ReturnType<typeof createClient>
-  | undefined;
+let serviceRoleClient: SupabaseClient<ExecutionDatabase> | undefined;
 
-export function trustTaiServiceRoleClient() {
+export function trustTaiServiceRoleClient(): SupabaseClient<ExecutionDatabase> {
   if (!serviceRoleClient) {
     const key = serviceRoleKey();
-    serviceRoleClient = createClient(trustTaiSupabaseUrl(), key, {
+    serviceRoleClient = createClient<ExecutionDatabase>(trustTaiSupabaseUrl(), key, {
       global: { fetch: createSupabaseFetch(key) },
       auth: { persistSession: false, autoRefreshToken: false },
     });
