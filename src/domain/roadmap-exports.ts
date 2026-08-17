@@ -100,6 +100,46 @@ export interface RoadmapExecutionLink {
   createdAt: ISODateTime;
 }
 
+/* ----------------------------------------------------------------- evidence */
+
+/**
+ * An anchor proof point a person linked by hand.
+ *
+ * Evidence is read, not written by the system: a label, and where it exists,
+ * the page it was read on. Nothing here is generated or inferred.
+ */
+export type RoadmapEvidenceKind = "page" | "provider" | "human" | "computed";
+
+export const EVIDENCE_KIND_LABEL: Record<RoadmapEvidenceKind, string> = {
+  page: "Read on a page",
+  provider: "From a data provider",
+  human: "Told to us by a person",
+  computed: "Worked out from stored data",
+};
+
+export interface RoadmapEvidenceItem {
+  id: ID;
+  organizationId: ID;
+  roadmapId: ID;
+  /** Set when the proof point anchors one milestone rather than the roadmap. */
+  milestoneId?: ID;
+  label: string;
+  url?: string;
+  kind: RoadmapEvidenceKind;
+  sourceNote?: string;
+  observedAt?: ISODateTime;
+  createdBy?: ID;
+  createdAt: ISODateTime;
+}
+
+export interface RoadmapEvidenceInput {
+  label: string;
+  url?: string;
+  kind: RoadmapEvidenceKind;
+  sourceNote?: string;
+  milestoneId?: ID;
+}
+
 /* -------------------------------------------------------------------- notes */
 
 export interface RoadmapDetailNote {
@@ -111,6 +151,7 @@ export interface RoadmapDetailNote {
   authorLabel?: string;
   createdAt: ISODateTime;
 }
+
 
 /** Next semantic version for a client copy: 1.0, 2.0, 3.0 … */
 export function nextVersion(existing: RoadmapExport[]): string {
