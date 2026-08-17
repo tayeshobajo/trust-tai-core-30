@@ -60,7 +60,7 @@ export async function handClientCopyToComms(
   return commsService.saveDraft(
     {
       relationship,
-      register: "direct",
+      register: "follow_up",
       intent: `Send the ${entry.snapshot.company} roadmap, version ${entry.version}`,
       subject: clientCopySubject(entry.snapshot, entry.version),
       body: clientCopyBody(entry),
