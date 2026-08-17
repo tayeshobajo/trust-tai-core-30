@@ -1,30 +1,45 @@
 /**
- * Roadmap — the sequencing room.
+ * Roadmap — one company, one roadmap, a clear path forward.
  *
- * Two things lead: what needs a decision, and what is actually moving.
+ * The page answers four questions fast: which companies have a path, where
+ * each path is going, which milestone is live, and what needs judgment next.
  * Everything is read from the live Trust Tai backend under the caller's own
  * access. A failure is reported as itself; there are no fixtures.
  */
 
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 
-import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
-import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
+import { EmptyState, TTButton, TTInput } from "@/components/tt/primitives";
+import { BuildFromScoutPanel } from "@/components/tt/roadmap/index/build-from-scout";
+import { DecisionAttentionCard } from "@/components/tt/roadmap/index/decision-card";
+import { RoadmapHeader } from "@/components/tt/roadmap/index/header";
+import { RoadmapList } from "@/components/tt/roadmap/index/list";
+import { ReadyFromScout } from "@/components/tt/roadmap/index/ready-from-scout";
+import { RoadmapSidebar } from "@/components/tt/roadmap/index/sidebar";
 import { StartRoadmapForm, type StartRoadmapValues } from "@/components/tt/roadmap/start-form";
-import { TierChip } from "@/components/tt/roadmap/tier";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
+import {
+  buildRoadmapRows,
+  filterRoadmapRows,
+  readyFromScout,
+  roadmapGlance,
+  ROADMAP_FILTERS,
+  type RoadmapFilter,
+  type RoadmapIdentity,
+} from "@/data/roadmap-index";
 import { listSubjects } from "@/data/supabase/roadmap-subjects";
 import { roadmapService, type RoadmapContext } from "@/data/supabase/roadmap-service";
-import type { Roadmap, RoadmapDecision } from "@/domain/roadmap";
-import { isActiveRoadmap, ROADMAP_STATUS_LABEL } from "@/domain/roadmap";
+import { scoutService } from "@/data/supabase/scout-service";
+import type { ProspectCandidate } from "@/domain/scout";
+import { cn } from "@/lib/utils";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Roadmap — Point A to Point B — Trust Tai OS";
 const DESCRIPTION =
-  "Trust Tai's sequencing room: current truth, an agreed destination, and the build order between them.";
+  "Trust Tai's sequencing room: one roadmap per company, with the milestone path and the decisions that hold it up.";
 
 export const Route = createFileRoute("/modules/roadmap/")({
   head: () => ({
@@ -43,15 +58,11 @@ export const Route = createFileRoute("/modules/roadmap/")({
 
 function RoadmapRoute() {
   return (
-    <WorkspaceGate>
-      {(identity) => (
-        <AppShell identity={identity}>
-          <RoadmapRoom identity={identity} />
-        </AppShell>
-      )}
-    </WorkspaceGate>
+    <WorkspaceGate>{(identity) => <RoadmapRoom identity={identity} />}</WorkspaceGate>
   );
 }
+
+type Mode = "idle" | "scout" | "manual";
 
 function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
   const queryClient = useQueryClient();
@@ -61,13 +72,22 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
     userLabel: identity.name,
   };
 
-  const [starting, setStarting] = useState(false);
+  const [mode, setMode] = useState<Mode>("idle");
   const [startError, setStartError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<RoadmapFilter>("all");
 
   const roadmapsQuery = useQuery({
     queryKey: ["roadmap", "list", identity.organizationId],
     queryFn: () => roadmapService.list(identity.organizationId),
     retry: false,
+  });
+
+  const stagesQuery = useQuery({
+    queryKey: ["roadmap", "stages", identity.organizationId],
+    queryFn: () => roadmapService.stagesByRoadmap(identity.organizationId),
+    retry: false,
+    enabled: !roadmapsQuery.isError,
   });
 
   const decisionsQuery = useQuery({
@@ -77,10 +97,18 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
     enabled: !roadmapsQuery.isError,
   });
 
+  // Scout supplies both the company identity behind a roadmap and the
+  // qualified companies that do not have one yet.
+  const scoutQuery = useQuery({
+    queryKey: ["roadmap", "scout", identity.organizationId],
+    queryFn: () => scoutService.list(identity.organizationId),
+    retry: false,
+  });
+
   const subjectsQuery = useQuery({
     queryKey: ["roadmap", "subjects", identity.organizationId],
     queryFn: () => listSubjects(identity.organizationId),
-    enabled: starting,
+    enabled: mode === "manual",
   });
 
   const create = useMutation({
@@ -94,7 +122,7 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
         context,
       ),
     onSuccess: async () => {
-      setStarting(false);
+      setMode("idle");
       setStartError(null);
       await queryClient.invalidateQueries({ queryKey: ["roadmap"] });
     },
@@ -102,192 +130,179 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
       setStartError(error instanceof Error ? error.message : "That roadmap could not be drafted."),
   });
 
-  if (roadmapsQuery.isError) {
-    const error = roadmapsQuery.error;
-    return (
-      <div className="space-y-8">
-        <RoadmapHero identity={identity} />
-        <EmptyState
-          title="Roadmap could not be read."
-          belongsHere="Roadmaps, their stages, and their decisions live in the shared Trust Tai backend, read under your own access."
-          whyItMatters={
-            error instanceof Error ? error.message : "An unexpected error stopped the read."
-          }
-        />
-      </div>
-    );
+  const roadmaps = useMemo(() => roadmapsQuery.data ?? [], [roadmapsQuery.data]);
+  const candidates = useMemo(() => scoutQuery.data ?? [], [scoutQuery.data]);
+
+  const identities = useMemo(() => {
+    const map: Record<string, RoadmapIdentity> = {};
+    for (const candidate of candidates) {
+      map[candidate.prospect.id] = {
+        websiteUrl: candidate.prospect.websiteUrl || candidate.prospect.domain,
+        logoUrl: candidate.identity?.logoUrl ?? null,
+        themeColor: candidate.identity?.themeColor ?? null,
+      };
+    }
+    return map;
+  }, [candidates]);
+
+  const rows = useMemo(
+    () =>
+      buildRoadmapRows(roadmaps, stagesQuery.data ?? {}, decisionsQuery.data ?? [], identities),
+    [roadmaps, stagesQuery.data, decisionsQuery.data, identities],
+  );
+
+  const glance = useMemo(() => roadmapGlance(rows), [rows]);
+  const visible = useMemo(() => filterRoadmapRows(rows, query, filter), [rows, query, filter]);
+  const attention = useMemo(() => rows.filter((row) => row.openDecisions.length > 0), [rows]);
+  const ready = useMemo(() => readyFromScout(candidates, roadmaps), [candidates, roadmaps]);
+
+  function startFromScout(candidate: ProspectCandidate, objective: string) {
+    create.mutate({
+      subject: {
+        kind: "prospect",
+        id: candidate.prospect.id,
+        label: candidate.prospect.name,
+        detail: `Scout · ${candidate.prospect.status}`,
+      },
+      objective,
+      extraContext: "",
+    });
   }
 
-  const roadmaps = roadmapsQuery.data ?? [];
-  const decisions = decisionsQuery.data ?? [];
-  const active = roadmaps.filter(isActiveRoadmap);
-  const settled = roadmaps.filter((roadmap) => !isActiveRoadmap(roadmap));
-
-  return (
-    <div className="space-y-10">
-      <RoadmapHero
-        identity={identity}
-        action={
-          starting ? undefined : (
-            <TTButton onClick={() => setStarting(true)}>Start a roadmap</TTButton>
-          )
-        }
-      />
-
-      {starting ? (
-        <StartRoadmapForm
-          subjects={subjectsQuery.data ?? []}
-          loading={subjectsQuery.isLoading}
-          busy={create.isPending}
-          error={startError}
-          onStart={(values) => create.mutate(values)}
-          onCancel={() => {
-            setStarting(false);
-            setStartError(null);
-          }}
-        />
-      ) : null}
-
-      <section aria-labelledby="needs-decision">
-        <SectionHeading
-          eyebrow="Needs your decision"
-          title={
-            decisions.length === 0
-              ? "Nothing is waiting on you"
-              : `${decisions.length} ${decisions.length === 1 ? "decision" : "decisions"} are holding work up`
-          }
-          description="Decisions sit above activity because nothing downstream moves until they are made."
-        />
-        {decisions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Every open question on every roadmap has an answer. The next moves below can go ahead.
-          </p>
-        ) : (
-          <ul className="grid gap-3 md:grid-cols-2">
-            {decisions.map((decision) => (
-              <li key={decision.id}>
-                <DecisionSummary decision={decision} roadmaps={roadmaps} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section aria-labelledby="active-roadmaps">
-        <SectionHeading
-          eyebrow="In motion"
-          title="Active roadmaps"
-          description="Each one carries a current truth, a destination, and one next move."
-        />
-        {active.length === 0 ? (
-          <EmptyState
-            title="No roadmaps yet."
-            belongsHere="A roadmap belongs here once a client, prospect or relationship needs a sequenced path rather than a conversation."
-            whyItMatters="Without one, the order of work lives in someone's head and depends on them being available."
-            action={<TTButton onClick={() => setStarting(true)}>Start a roadmap</TTButton>}
-          />
-        ) : (
-          <ul className="grid gap-4 lg:grid-cols-2">
-            {active.map((roadmap) => (
-              <li key={roadmap.id}>
-                <RoadmapCard roadmap={roadmap} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {settled.length > 0 ? (
-        <section aria-labelledby="settled-roadmaps">
-          <SectionHeading eyebrow="History" title="Complete and archived" />
-          <ul className="grid gap-4 lg:grid-cols-2">
-            {settled.map((roadmap) => (
-              <li key={roadmap.id}>
-                <RoadmapCard roadmap={roadmap} />
+  const body = roadmapsQuery.isError ? (
+    <EmptyState
+      title="Roadmap could not be read."
+      belongsHere="Roadmaps, their milestones, and their decisions live in the shared Trust Tai backend, read under your own access."
+      whyItMatters={
+        roadmapsQuery.error instanceof Error
+          ? roadmapsQuery.error.message
+          : "An unexpected error stopped the read."
+      }
+    />
+  ) : (
+    <div className="space-y-8">
+      {attention.length > 0 ? (
+        <section aria-labelledby="needs-decision" className="space-y-3">
+          <h2 id="needs-decision" className="tt-eyebrow text-warning">
+            Needs your decision
+          </h2>
+          <ul className="space-y-3">
+            {attention.map((row) => (
+              <li key={row.roadmapId}>
+                <DecisionAttentionCard row={row} decision={row.openDecisions[0]!} />
               </li>
             ))}
           </ul>
         </section>
       ) : null}
+
+      <section aria-labelledby="company-roadmaps" className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="company-roadmaps" className="text-[15px] font-medium text-foreground">
+            Company roadmaps
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <TTInput
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search roadmaps"
+              aria-label="Search roadmaps"
+              className="h-9 w-[200px] text-[13px]"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {ROADMAP_FILTERS.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  onClick={() => setFilter(entry.id)}
+                  aria-pressed={filter === entry.id}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-[12px] transition-colors",
+                    filter === entry.id
+                      ? "border-royal/30 bg-royal/8 text-royal"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {entry.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {rows.length === 0 ? (
+          <EmptyState
+            title="No roadmaps yet."
+            belongsHere="A roadmap belongs here once a company needs a sequenced path rather than a conversation."
+            whyItMatters="Without one, the order of work lives in someone's head and depends on them being available."
+            action={<TTButton onClick={() => setMode("scout")}>Build from Scout</TTButton>}
+          />
+        ) : visible.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground">
+            No roadmap matches that search or filter.
+          </p>
+        ) : (
+          <RoadmapList rows={visible} />
+        )}
+      </section>
+
+      <ReadyFromScout
+        candidates={ready}
+        busy={create.isPending}
+        onCreate={(candidate) => {
+          setMode("scout");
+          setStartError(null);
+          void candidate;
+        }}
+      />
     </div>
   );
-}
 
-function RoadmapHero({
-  identity,
-  action,
-}: {
-  identity: WorkspaceIdentity;
-  action?: ReactNode;
-}) {
   return (
-    <AppHero
-      appId="roadmap"
-      eyebrow="Roadmap"
-      greeting={`${identity.firstName}, here is the order of things.`}
-      title="Point A to Point B, sequenced."
-      supporting="Roadmap turns what we already know into a path someone can follow: current truth, an agreed destination, and the build order between them."
-      action={action}
-    />
-  );
-}
+    <AppShell identity={identity} sidebar={<RoadmapSidebar glance={glance} />}>
+      <div className="space-y-8">
+        <RoadmapHeader
+          glance={glance}
+          onBuildFromScout={() => {
+            setStartError(null);
+            setMode("scout");
+          }}
+          onCreate={() => {
+            setStartError(null);
+            setMode("manual");
+          }}
+        />
 
-function DecisionSummary({
-  decision,
-  roadmaps,
-}: {
-  decision: RoadmapDecision;
-  roadmaps: Roadmap[];
-}) {
-  const roadmap = roadmaps.find((entry) => entry.id === decision.roadmapId);
-  return (
-    <Link
-      to="/modules/roadmap/$roadmapId"
-          search={{ view: "overview" as const }}
-      params={{ roadmapId: decision.roadmapId }}
-      className="tt-surface block border-royal/20 p-5 transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <p className="tt-eyebrow text-royal">Needs your decision</p>
-      <p className="mt-2 text-sm font-medium text-foreground">{decision.question}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{decision.whyItMatters}</p>
-      {roadmap ? <MetaPill className="mt-3">{roadmap.subjectLabel}</MetaPill> : null}
-    </Link>
-  );
-}
+        {mode === "scout" ? (
+          <BuildFromScoutPanel
+            candidates={ready}
+            loading={scoutQuery.isLoading}
+            busy={create.isPending}
+            error={startError}
+            onStart={startFromScout}
+            onCancel={() => {
+              setMode("idle");
+              setStartError(null);
+            }}
+          />
+        ) : null}
 
-function RoadmapCard({ roadmap }: { roadmap: Roadmap }) {
-  return (
-    <Link
-      to="/modules/roadmap/$roadmapId"
-          search={{ view: "overview" as const }}
-      params={{ roadmapId: roadmap.id }}
-      className="tt-surface block p-6 transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <MetaPill>{ROADMAP_STATUS_LABEL[roadmap.status]}</MetaPill>
-        <MetaPill>{roadmap.subjectLabel}</MetaPill>
+        {mode === "manual" ? (
+          <StartRoadmapForm
+            subjects={subjectsQuery.data ?? []}
+            loading={subjectsQuery.isLoading}
+            busy={create.isPending}
+            error={startError}
+            onStart={(values) => create.mutate(values)}
+            onCancel={() => {
+              setMode("idle");
+              setStartError(null);
+            }}
+          />
+        ) : null}
+
+        {body}
       </div>
-      <h3 className="mt-3 font-display text-xl text-foreground">{roadmap.title}</h3>
-
-      {roadmap.pointB ? (
-        <div className="mt-4">
-          <p className="tt-eyebrow">Point B</p>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <TierChip tier={roadmap.pointB.tier} />
-          </div>
-          <p className="mt-2 text-sm text-foreground">{roadmap.pointB.statement}</p>
-        </div>
-      ) : null}
-
-      {roadmap.nextMove ? (
-        <div className="mt-4 border-t border-border pt-4">
-          <p className="tt-eyebrow">Next move</p>
-          <p className="mt-1 text-sm text-foreground">{roadmap.nextMove.action}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Carried by {roadmap.nextMove.ownerLabel ?? "no one yet"}
-          </p>
-        </div>
-      ) : null}
-    </Link>
+    </AppShell>
   );
 }
