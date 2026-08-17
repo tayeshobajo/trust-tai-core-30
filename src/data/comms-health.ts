@@ -322,7 +322,7 @@ export function relationshipStrength(
   score = Math.max(0, Math.min(100, score));
 
   const band: StrengthBand =
-    score >= 70 ? "established" : score >= 45 ? "building" : score >= 20 ? "early" : "untested";
+    score >= 65 ? "established" : score >= 40 ? "building" : score >= 20 ? "early" : "untested";
 
   const factors = [
     { label: "Exchanges", value: `${list.length} on record` },
