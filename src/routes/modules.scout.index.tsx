@@ -1,25 +1,36 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Settings2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
-import { FitFilters, ProspectBoard, type FitFilter } from "@/components/tt/prospect-board";
+import type { FitFilter } from "@/components/tt/prospect-board";
 import { DiscoveryProgress, DiscoveryRuns } from "@/components/tt/discovery";
 import { ScoutTabs } from "@/components/tt/scout-tabs";
+import { ScoutAgentSummary } from "@/components/tt/scout/agent-summary";
+import { ScoutFilterToolbar } from "@/components/tt/scout/filter-toolbar";
+import { ScoutCompanyTable } from "@/components/tt/scout/company-table";
+import { ScoutPagination } from "@/components/tt/scout/pagination";
+import { ScoutSidebar } from "@/components/tt/scout/sidebar";
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { scoutService } from "@/data/supabase/scout-service";
 import type { DiscoveryStage } from "@/data/supabase/scout-discovery";
 import { SCOUT_STARTER_PROMPTS, type ProspectCandidate } from "@/domain/scout";
 import { byPriority, computeDecisionMetrics } from "@/data/scout-intel";
+import {
+  EMPTY_FILTERS,
+  filterCandidates,
+  paginate,
+  profileOptions,
+  type ScoutTableFilters,
+} from "@/data/scout-table";
 import { EMPTY_INTEL } from "@/domain/scout-intel";
 import type { FitLight } from "@/domain/scout-fit";
 import { getScoutDriver } from "@/data/execution-workforce";
 import { looksLikeWebsite } from "@/lib/website-url";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import { formatChecked } from "@/components/tt/fit-light";
+
 
 const TITLE = "Scout — Trust Tai OS";
 const DESCRIPTION =
