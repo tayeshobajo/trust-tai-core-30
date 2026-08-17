@@ -1,24 +1,62 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+/**
+ * Scout — company detail.
+ *
+ * One question leads this page: does this company deserve our attention, and
+ * why? The Overview answers it in a curated way; the deeper tabs hold the
+ * exhaustive evidence. Nothing here executes on its own.
+ */
+
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { ScoutTabs } from "@/components/tt/scout-tabs";
-import { ProspectWorkspace } from "@/components/tt/prospect-workspace";
-import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { EmptyState, TTButton } from "@/components/tt/primitives";
+import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { peopleService } from "@/data/supabase/people-service";
+import { HandoffPanel } from "@/components/tt/prospect/handoff";
+import { PeoplePanel, type ManualPersonForm } from "@/components/tt/prospect/people-panel";
+import { CompanyHero, DetailUtilityRow } from "@/components/tt/scout/detail/hero";
+import {
+  IcpAlignmentCard,
+  KeySignalsCard,
+  RecentActivityCard,
+  ScoutSummaryCard,
+  SimilarCompaniesCard,
+} from "@/components/tt/scout/detail/overview";
+import {
+  AtAGlanceCard,
+  NextStepsCard,
+  NotesPreviewCard,
+  TopReasonsCard,
+} from "@/components/tt/scout/detail/rail";
+import {
+  ActivityTab,
+  DetailTabs,
+  IcpAnalysisTab,
+  NotesTab,
+  SignalsTab,
+  parseDetailTab,
+  type DetailTab,
+} from "@/components/tt/scout/detail/tabs";
+import { buildPersonPlan } from "@/data/person-priority";
+import { composeProspectPage } from "@/data/prospect-modules";
+import { buildScoutCompanySummary } from "@/data/scout/company-summary";
+import { readIcpFactors } from "@/data/scout/icp-factors";
+import { scoutNextSteps, type ScoutNextStep } from "@/data/scout/next-steps";
+import { similarCompanies } from "@/data/scout/similar-companies";
+import { rankScoutSignals, topScoutSignals } from "@/data/scout/top-signals";
 import { availablePeopleProviders, peopleProviderInfo } from "@/data/people/registry";
+import { peopleService } from "@/data/supabase/people-service";
+import { scoutService } from "@/data/supabase/scout-service";
 import type { HandoffDraft } from "@/domain/comms-handoff";
 import type { Person } from "@/domain/people";
-import type { ManualPersonForm } from "@/components/tt/prospect/people-panel";
-import { scoutService } from "@/data/supabase/scout-service";
 import type { FitLight } from "@/domain/scout-fit";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Prospect — Scout — Trust Tai OS";
+const TITLE = "Company — Scout — Trust Tai OS";
 const DESCRIPTION =
-  "The full prospect workspace: ICP fit reasoning, observed evidence, the opportunity, and the next move.";
+  "Does this company deserve our attention, and why? ICP alignment, dated signals, people, and the bounded next step.";
 
 type Section = "scout" | "qualified" | "research";
 type Fit = "all" | FitLight;
@@ -37,6 +75,9 @@ export const Route = createFileRoute("/modules/scout/prospects/$prospectId")({
   validateSearch: (search: Record<string, unknown>) => ({
     section: parseSection(search["section"]),
     fit: parseFit(search["fit"]),
+    ...(parseDetailTab(search["tab"]) === "overview"
+      ? {}
+      : { tab: parseDetailTab(search["tab"]) }),
   }),
   head: () => ({
     meta: [
@@ -58,28 +99,42 @@ function ProspectRoute() {
   return (
     <WorkspaceGate>
       {(identity) => (
-        <AppShell identity={identity}>
-          <div className="space-y-8">
-            <ScoutTabs active={search.section === "research" ? "research" : search.section} />
-            <ProspectDetail identity={identity} prospectId={prospectId} backSearch={search} />
-          </div>
-        </AppShell>
+        <CompanyDetail
+          identity={identity}
+          prospectId={prospectId}
+          section={search.section}
+          fit={search.fit}
+          tab={search.tab ?? "overview"}
+        />
       )}
     </WorkspaceGate>
   );
 }
 
-function ProspectDetail({
+function CompanyDetail({
   identity,
   prospectId,
-  backSearch,
+  section,
+  fit,
+  tab,
 }: {
   identity: WorkspaceIdentity;
   prospectId: string;
-  backSearch: { section: Section; fit: Fit };
+  section: Section;
+  fit: Fit;
+  tab: DetailTab;
 }) {
   const { organizationId, userId } = identity;
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const backSearch = { section, fit };
+
+  const goToTab = (next: DetailTab) =>
+    navigate({
+      to: "/modules/scout/prospects/$prospectId",
+      params: { prospectId },
+      search: { section, fit, ...(next === "overview" ? {} : { tab: next }) },
+    });
 
   const icp = useQuery({
     queryKey: ["scout", "icp", organizationId],
@@ -93,9 +148,8 @@ function ProspectDetail({
 
   const events = useQuery({
     queryKey: ["scout", "activity", organizationId, prospectId],
-    queryFn: () => scoutService.activity(organizationId, prospectId),
+    queryFn: () => scoutService.activity(organizationId, prospectId, 60),
   });
-
 
   const people = useQuery({
     queryKey: ["scout", "people", organizationId, prospectId],
@@ -115,6 +169,9 @@ function ProspectDetail({
       queryClient.invalidateQueries({ queryKey: ["scout", "people", organizationId, prospectId] }),
     ]);
 
+  const board = saved.data ?? [];
+  const candidate = board.find((c) => c.prospect.id === prospectId) ?? null;
+
   const research = useMutation({
     mutationFn: (websiteUrl: string) =>
       scoutService.research({ organizationId, userId, websiteUrl }),
@@ -127,15 +184,9 @@ function ProspectDetail({
     onSuccess: refresh,
   });
 
-  const override = useMutation({
-    mutationFn: ({ id, light }: { id: string; light: FitLight | null }) =>
-      scoutService.overrideFit(id, light, { organizationId, userId }),
-    onSuccess: refresh,
-  });
-
   const ingest = useMutation({
     mutationFn: (providerId: string) => {
-      if (!candidate) throw new Error("That prospect is no longer on your board.");
+      if (!candidate) throw new Error("That company is no longer on your board.");
       return peopleService.ingest(providerId, candidate, { organizationId, userId });
     },
     onSuccess: refresh,
@@ -158,8 +209,7 @@ function ProspectDetail({
   });
 
   const confirmEmail = useMutation({
-    mutationFn: (person: Person) =>
-      peopleService.confirmEmail(person, { organizationId, userId }),
+    mutationFn: (person: Person) => peopleService.confirmEmail(person, { organizationId, userId }),
     onSuccess: refresh,
   });
 
@@ -169,95 +219,271 @@ function ProspectDetail({
     onSuccess: refresh,
   });
 
-  const candidate = (saved.data ?? []).find((c) => c.prospect.id === prospectId) ?? null;
+  const addNote = useMutation({
+    mutationFn: (body: string) => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      return scoutService.addNote(
+        { prospectId, companyName: candidate.prospect.name, body },
+        { organizationId, userId },
+      );
+    },
+    onSuccess: refresh,
+  });
+
+  const derived = useMemo(() => {
+    if (!candidate) return null;
+    return {
+      summary: buildScoutCompanySummary(candidate),
+      factors: readIcpFactors(candidate.evaluation),
+      allSignals: rankScoutSignals(candidate),
+      keySignals: topScoutSignals(candidate, 4),
+      similar: similarCompanies(candidate, board),
+    };
+  }, [candidate, board]);
+
+  const allEvents = events.data ?? [];
+  const notes = allEvents.filter((event) => event.name === "prospect.commented");
+  const peopleRows = people.data ?? [];
+
   const error = (research.error ??
     setStatus.error ??
-    override.error ??
     ingest.error ??
     addPerson.error ??
     confirmEmail.error ??
     routeToComms.error ??
+    addNote.error ??
     saved.error) as Error | null;
+
   const busy =
     research.isPending ||
     setStatus.isPending ||
-    override.isPending ||
-    routeToComms.isPending ||
     ingest.isPending ||
     addPerson.isPending ||
-    confirmEmail.isPending;
+    confirmEmail.isPending ||
+    routeToComms.isPending ||
+    addNote.isPending;
 
   if (saved.isPending) {
     return (
-      <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
-        Opening the prospect workspace…
-      </p>
+      <AppShell identity={identity}>
+        <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+          Opening this company…
+        </p>
+      </AppShell>
     );
   }
 
-  if (!candidate) {
+  if (!candidate || !derived) {
     return (
-      <EmptyState
-        title="That prospect is not on your board"
-        belongsHere="Prospects are scoped to your organization. This one may have been removed, or it belongs to another workspace."
-        whyItMatters="Scout never shows records outside the organization you are signed in to."
-        action={
-          <TTButton asChild variant="secondary">
-            <Link to="/modules/scout" search={backSearch}>
-              Back to Scout
-            </Link>
-          </TTButton>
-        }
-      />
+      <AppShell identity={identity}>
+        <EmptyState
+          title="That company is not on your board"
+          belongsHere="Companies are scoped to your organization. This one may have been removed, or it belongs to another workspace."
+          whyItMatters="Scout never shows records outside the organization you are signed in to."
+          action={
+            <TTButton asChild variant="secondary">
+              <Link to="/modules/scout" search={backSearch}>
+                Back to Scout
+              </Link>
+            </TTButton>
+          }
+        />
+      </AppShell>
     );
   }
+
+  const { prospect, evaluation } = candidate;
+  const ordered = board.filter((c) => c.prospect.status !== "archived");
+  const position = ordered.findIndex((c) => c.prospect.id === prospectId);
+  const prevCandidate = position > 0 ? ordered[position - 1] : undefined;
+  const nextCandidate = position >= 0 ? ordered[position + 1] : undefined;
+
+  const steps = scoutNextSteps({
+    candidate,
+    peopleCount: peopleRows.length,
+    providerAvailable: (providers.data ?? []).length > 0,
+  });
+
+  const onStep = (step: ScoutNextStep) => {
+    if (!step.available) return;
+    switch (step.key) {
+      case "research_leadership":
+        void goToTab("people");
+        break;
+      case "rerun_research": {
+        const url = prospect.websiteUrl || prospect.domain;
+        if (url) research.mutate(url);
+        break;
+      }
+      case "prepare_comms_handoff":
+        void goToTab("people");
+        break;
+      case "add_note":
+        void goToTab("notes");
+        break;
+      case "track_signals":
+        void goToTab("signals");
+        break;
+    }
+  };
+
+  const plan = buildPersonPlan(peopleRows);
+  const composition = composeProspectPage({ candidate, activeIcpVersion: icp.data?.version ?? null });
 
   return (
-    <div className="space-y-4">
-      {research.isPending ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="tt-surface flex items-center gap-3 p-4 text-sm text-muted-foreground"
-        >
-          <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-royal" />
-          Re-reading the public pages on {candidate.prospect.domain}. This takes a few moments.
-        </div>
-      ) : null}
-
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error.message}
-        </p>
-      ) : null}
-
-      <div className="flex justify-end">
-        <SequenceInRoadmap
-          subject={{ kind: "prospect", id: candidate.prospect.id, label: candidate.prospect.name }}
-          objective={`Move ${candidate.prospect.name} from where they stand today to a working Trust Tai engagement.`}
-          context={{ organizationId, userId, userLabel: identity.name }}
+    <AppShell identity={identity}>
+      <div className="space-y-6">
+        <DetailUtilityRow
+          companyName={prospect.name}
+          backSearch={backSearch}
+          previous={
+            prevCandidate
+              ? { id: prevCandidate.prospect.id, name: prevCandidate.prospect.name }
+              : null
+          }
+          next={
+            nextCandidate
+              ? { id: nextCandidate.prospect.id, name: nextCandidate.prospect.name }
+              : null
+          }
         />
-      </div>
 
-      <ProspectWorkspace
-        candidate={candidate}
-        activeIcpVersion={icp.data?.version ?? null}
-        backSearch={backSearch}
-        events={events.data ?? []}
-        people={people.data ?? []}
-        providers={peopleProviderInfo()}
-        availableProviders={providers.data ?? []}
-        peopleNote={ingest.data?.note}
-        onIngest={(providerId) => ingest.mutate(providerId)}
-        onAddManual={(form) => addPerson.mutate(form)}
-        onConfirmEmail={(person) => confirmEmail.mutate(person)}
-        onRouteToComms={(draft) => routeToComms.mutate(draft)}
-        onQualify={(id) => setStatus.mutate({ id, status: "qualified" })}
-        onPass={(id) => setStatus.mutate({ id, status: "passed" })}
-        onResearch={(websiteUrl) => research.mutate(websiteUrl)}
-        onOverride={(id, light) => override.mutate({ id, light })}
-        busy={busy}
-      />
-    </div>
+        {research.isPending ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="tt-surface flex items-center gap-3 p-4 text-sm text-muted-foreground"
+          >
+            <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-royal" />
+            Re-reading the public pages on {prospect.domain}. This takes a few moments.
+          </div>
+        ) : null}
+
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error.message}
+          </p>
+        ) : null}
+
+        <CompanyHero candidate={candidate} summary={derived.summary} />
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
+          <div className="min-w-0 space-y-6">
+            <DetailTabs
+              active={tab}
+              counts={{
+                signals: derived.allSignals.length,
+                notes: notes.length,
+                people: peopleRows.length,
+              }}
+              onChange={(next) => void goToTab(next)}
+            />
+
+            {tab === "overview" ? (
+              <div className="space-y-6">
+                <ScoutSummaryCard
+                  summary={derived.summary}
+                  onViewRationale={() => void goToTab("icp")}
+                />
+                <KeySignalsCard
+                  signals={derived.keySignals}
+                  total={derived.allSignals.length}
+                  onViewAll={() => void goToTab("signals")}
+                />
+                <IcpAlignmentCard
+                  view={derived.factors}
+                  onViewAnalysis={() => void goToTab("icp")}
+                />
+                <RecentActivityCard
+                  events={allEvents}
+                  onViewAll={() => void goToTab("activity")}
+                />
+                <SimilarCompaniesCard companies={derived.similar} linkSearch={backSearch} />
+              </div>
+            ) : null}
+
+            {tab === "signals" ? <SignalsTab signals={derived.allSignals} /> : null}
+
+            {tab === "icp" ? (
+              <IcpAnalysisTab
+                view={derived.factors}
+                explanation={derived.summary.summary}
+                icpVersion={icp.data?.version ?? null}
+              />
+            ) : null}
+
+            {tab === "people" ? (
+              <div className="space-y-6">
+                <PeoplePanel
+                  criteria={evaluation.criteria.filter((c) => c.key === "decision_maker")}
+                  people={peopleRows}
+                  providers={peopleProviderInfo()}
+                  availableProviders={providers.data ?? []}
+                  onIngest={(providerId) => ingest.mutate(providerId)}
+                  onAddManual={(form) => addPerson.mutate(form)}
+                  onConfirmEmail={(person) => confirmEmail.mutate(person)}
+                  busy={busy}
+                  note={ingest.data?.note}
+                  plan={plan}
+                />
+                <HandoffPanel
+                  candidate={candidate}
+                  coverage={composition.coverage}
+                  people={peopleRows}
+                  fitConfidence={composition.confidence}
+                  onRoute={(draft) => routeToComms.mutate(draft)}
+                  routed={prospect.status === "ready_for_comms"}
+                  busy={busy}
+                />
+              </div>
+            ) : null}
+
+            {tab === "notes" ? (
+              <NotesTab
+                notes={notes}
+                onAdd={(body) => addNote.mutate(body)}
+                busy={addNote.isPending}
+              />
+            ) : null}
+
+            {tab === "activity" ? <ActivityTab events={allEvents} /> : null}
+          </div>
+
+          <aside className="space-y-5">
+            <AtAGlanceCard candidate={candidate} />
+            <TopReasonsCard reasons={derived.summary.topReasons} />
+            <NextStepsCard steps={steps} onSelect={onStep} busy={busy} />
+            <NotesPreviewCard
+              notes={notes}
+              onAdd={() => void goToTab("notes")}
+              onViewAll={() => void goToTab("notes")}
+            />
+            <div className="flex flex-col gap-2">
+              <TTButton
+                variant="secondary"
+                className="h-10 justify-center text-[13px]"
+                disabled={busy || prospect.status === "qualified"}
+                onClick={() => setStatus.mutate({ id: prospect.id, status: "qualified" })}
+              >
+                Qualify this company
+              </TTButton>
+              <TTButton
+                variant="quiet"
+                className="h-10 justify-center text-[13px]"
+                disabled={busy || prospect.status === "passed"}
+                onClick={() => setStatus.mutate({ id: prospect.id, status: "passed" })}
+              >
+                Pass for now
+              </TTButton>
+              <SequenceInRoadmap
+                subject={{ kind: "prospect", id: prospect.id, label: prospect.name }}
+                objective={`Move ${prospect.name} from where they stand today to a working Trust Tai engagement.`}
+                context={{ organizationId, userId, userLabel: identity.name }}
+              />
+            </div>
+          </aside>
+        </div>
+      </div>
+    </AppShell>
   );
 }
