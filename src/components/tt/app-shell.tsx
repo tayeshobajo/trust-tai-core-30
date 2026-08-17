@@ -164,8 +164,9 @@ export function AppShell({
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-canvas">
-        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-[288px] shrink-0 flex-col overflow-y-auto border-r border-border bg-sidebar px-3 py-5 lg:flex xl:w-[308px]">
+      {/* One continuous shell: full-bleed rail directly beneath the header, fluid canvas beside it. */}
+      <div className="flex w-full">
+        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-[248px] shrink-0 flex-col overflow-y-auto border-r border-border bg-sidebar px-3 py-5 lg:flex xl:w-[276px]">
           <p className="tt-eyebrow mb-2 px-4">Suite</p>
 
           <NavList />
@@ -184,7 +185,7 @@ export function AppShell({
           </div>
         ) : null}
 
-        <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10 2xl:px-10">{children}</main>
       </div>
 
     </div>
