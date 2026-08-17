@@ -199,21 +199,38 @@ function Scout({
     });
   }, [all, tab, filter]);
 
-  const counts = useMemo(() => {
-    const pool =
-      tab === "qualified"
-        ? all.filter(
-            (c) => c.prospect.status === "qualified" || c.prospect.status === "ready_for_comms",
-          )
-        : all.filter((c) => c.prospect.status !== "passed" && c.prospect.status !== "archived");
+  /** Scout at a glance — counts read from live board state only. */
+  const glance = useMemo(() => {
+    const active = all.filter(
+      (c) => c.prospect.status !== "passed" && c.prospect.status !== "archived",
+    );
     return {
-      all: pool.length,
-      green: pool.filter((c) => c.evaluation.light === "green").length,
-      yellow: pool.filter((c) => c.evaluation.light === "yellow").length,
-      red: pool.filter((c) => c.evaluation.light === "red").length,
-      neutral: pool.filter((c) => c.evaluation.light === "neutral").length,
-    } as Record<FitFilter, number>;
-  }, [all, tab]);
+      onBoard: active.length,
+      qualified: active.filter(
+        (c) => c.prospect.status === "qualified" || c.prospect.status === "ready_for_comms",
+      ).length,
+      inIcp: active.filter((c) => c.evaluation.light === "green").length,
+      highPotential: active.filter((c) => c.evaluation.scoreable && c.evaluation.score >= 80).length,
+      needsReview: active.filter((c) => !c.evaluation.scoreable).length,
+    };
+  }, [all]);
+
+  const [filters, setFilters] = useState<ScoutTableFilters>({ ...EMPTY_FILTERS, fit: filter });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // The URL still owns the fit filter, so returning from a prospect restores it.
+  useEffect(() => {
+    setFilters((current) => (current.fit === filter ? current : { ...current, fit: filter }));
+  }, [filter]);
+
+  const rows = useMemo(() => filterCandidates(board, filters), [board, filters]);
+  useEffect(() => setPage(1), [filters, pageSize, tab]);
+  const view = paginate(rows, page, pageSize);
+
+  const industries = useMemo(() => profileOptions(board, "industry"), [board]);
+  const locations = useMemo(() => profileOptions(board, "location"), [board]);
+  const sizes = useMemo(() => profileOptions(board, "size"), [board]);
 
   const configured = status.data?.configured ?? true;
 
@@ -237,175 +254,199 @@ function Scout({
   const busy = discover.isPending || research.isPending || setStatus.isPending;
   const blocked = !configured && !isWebsite;
 
+  const driverLine =
+    driver.data?.lastOutput ??
+    "Keep the board stocked with companies that genuinely match the active ICP.";
+
   return (
-    <div className="space-y-8">
-      <AppHero
-        appId="scout"
-        eyebrow="Trust Tai OS / Scout"
-        title="Who deserves our attention next?"
-        supporting="Describe the market and Scout sources real companies from the open web, ranks them against the active ICP, and shows the evidence behind every read."
-        action={
-          <TTButton asChild variant="secondary" size="sm">
-            <Link to="/modules/scout/settings">
-              <Settings2 aria-hidden />
-              ICP settings
-            </Link>
-          </TTButton>
-        }
-      />
+    <AppShell
+      identity={identity}
+      sidebar={<ScoutSidebar glance={glance} driverLine={driverLine} />}
+    >
+      <div className="space-y-6">
+        {/* 1 — Compact heading. No hero, no controls. */}
+        <header>
+          <p className="tt-eyebrow">Scout</p>
+          <h1 className="mt-2 font-display text-3xl tracking-tight text-foreground">
+            Who deserves our attention next?
+          </h1>
+          <p className="mt-1.5 max-w-reading text-sm text-muted-foreground">
+            Real companies, ranked against the active ICP, with the evidence behind every read.
+          </p>
+        </header>
 
-      <ScoutDriverCard driver={driver.data} loading={driver.isPending} />
+        {/* 2 — Scout Growth Agent, high on the page. */}
+        <ScoutAgentSummary
+          {...(driver.data?.name ? { name: driver.data.name } : {})}
+          {...(driver.data?.status ? { status: driver.data.status } : {})}
+          onBoard={glance.onBoard}
+          qualified={glance.qualified}
+          inIcp={glance.inIcp}
+          lastRun={since(driver.data?.lastRunAt ?? null)}
+          loading={driver.isPending}
+          blocked={driver.data?.status === "blocked"}
+        />
 
-      <ScoutTabs active={tab} />
+        {/* 3 — Sections. */}
+        <ScoutTabs active={tab} />
 
-      {/* Input */}
-      <section>
-        <form
-          className="tt-surface p-5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            run(query);
-          }}
-        >
-          <label htmlFor="scout-query" className="sr-only">
-            Describe the market to source, or paste one company website
-          </label>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <input
-              id="scout-query"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="e.g. IT companies in Nashville — or paste one company website"
-              className="h-12 w-full rounded-lg border border-input bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <TTButton
-              type="submit"
-              disabled={busy || blocked || !query.trim()}
-              className="shrink-0"
-            >
-              {research.isPending
-                ? "Researching…"
-                : discover.isPending
-                  ? "Sourcing…"
-                  : isWebsite
-                    ? "Research website"
-                    : "Source companies"}
-            </TTButton>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <p className="text-xs text-muted-foreground">
-              {isWebsite
-                ? "Live public website research. Public pages only — no private data."
-                : "Live market sourcing from the public web. Every company is saved with its sources."}
-            </p>
-            {icp.data ? (
-              <MetaPill>Using ICP v{icp.data.version}</MetaPill>
-            ) : icp.isPending ? null : (
-              <MetaPill>No ICP saved</MetaPill>
-            )}
-            {status.data?.model ? <MetaPill>{status.data.model}</MetaPill> : null}
-          </div>
-          {tab === "scout" ? (
-            <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-              {SCOUT_STARTER_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  onClick={() => run(prompt)}
-                  className="rounded-full border border-border bg-card px-3.5 py-1.5 text-left text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {prompt}
-                </button>
-              ))}
+        {/* Sourcing input — a real capability, kept compact. */}
+        <section>
+          <form
+            className="rounded-xl border border-border bg-card p-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              run(query);
+            }}
+          >
+            <label htmlFor="scout-query" className="sr-only">
+              Describe the market to source, or paste one company website
+            </label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                id="scout-query"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="e.g. IT companies in Nashville — or paste one company website"
+                className="h-10 w-full rounded-lg border border-input bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <TTButton
+                type="submit"
+                size="sm"
+                disabled={busy || blocked || !query.trim()}
+                className="shrink-0"
+              >
+                {research.isPending
+                  ? "Researching…"
+                  : discover.isPending
+                    ? "Sourcing…"
+                    : isWebsite
+                      ? "Research website"
+                      : "Run Scout"}
+              </TTButton>
+            </div>
+            <div className="mt-2.5 flex flex-wrap items-center gap-3">
+              <p className="text-xs text-muted-foreground">
+                {isWebsite
+                  ? "Live public website research. Public pages only — no private data."
+                  : "Live market sourcing from the public web. Every company is saved with its sources."}
+              </p>
+              {icp.data ? (
+                <MetaPill>Using ICP v{icp.data.version}</MetaPill>
+              ) : icp.isPending ? null : (
+                <MetaPill>No ICP saved</MetaPill>
+              )}
+              {status.data?.model ? <MetaPill>{status.data.model}</MetaPill> : null}
+            </div>
+            {tab === "scout" ? (
+              <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+                {SCOUT_STARTER_PROMPTS.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => run(prompt)}
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-left text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </form>
+
+          {!configured ? (
+            <div role="status" className="tt-surface mt-3 p-4 text-sm text-muted-foreground">
+              <p className="text-foreground">Market sourcing is not connected yet.</p>
+              <p className="mt-1">
+                Scout uses OpenAI directly when{" "}
+                <span className="font-mono text-[12px]">OPENAI_API_KEY</span> is set, and falls back
+                to the Lovable AI Gateway when only{" "}
+                <span className="font-mono text-[12px]">LOVABLE_API_KEY</span> is present. Add one in
+                project secrets to enable live market sourcing. Pasting a single company website
+                still works, and nothing here is ever filled with demo data.
+              </p>
             </div>
           ) : null}
-        </form>
 
-        {!configured ? (
-          <div
-            role="status"
-            className="tt-surface mt-3 p-4 text-sm text-muted-foreground"
-          >
-            <p className="text-foreground">Market sourcing is not connected yet.</p>
-            <p className="mt-1">
-              Scout uses OpenAI directly when{" "}
-              <span className="font-mono text-[12px]">OPENAI_API_KEY</span> is set, and falls back to
-              the Lovable AI Gateway when only{" "}
-              <span className="font-mono text-[12px]">LOVABLE_API_KEY</span> is present. Add one in
-              project secrets to enable live market sourcing. Pasting a single company website still
-              works, and nothing here is ever filled with demo data.
+          {discover.isPending || stages.length > 0 ? (
+            <DiscoveryProgress stages={stages} running={discover.isPending} query={query.trim()} />
+          ) : null}
+
+          {research.isPending ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="tt-surface mt-3 flex items-center gap-3 p-4 text-sm text-muted-foreground"
+            >
+              <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-royal" />
+              Reading the public pages on {query.trim()}. This takes a few moments.
+            </div>
+          ) : null}
+
+          {error ? (
+            <p role="alert" className="mt-3 text-sm text-destructive">
+              {error.message}
             </p>
-
-
-          </div>
-        ) : null}
-
-        {discover.isPending || stages.length > 0 ? (
-          <DiscoveryProgress stages={stages} running={discover.isPending} query={query.trim()} />
-        ) : null}
-
-        {research.isPending ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="tt-surface mt-3 flex items-center gap-3 p-4 text-sm text-muted-foreground"
-          >
-            <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-royal" />
-            Reading the public pages on {query.trim()}. This takes a few moments.
-          </div>
-        ) : null}
-
-        {error ? (
-          <p role="alert" className="mt-3 text-sm text-destructive">
-            {error.message}
-          </p>
-        ) : null}
-      </section>
-
-      {tab === "research" ? (
-        <>
-          <DiscoveryRuns runs={runs.data ?? []} />
-          <ResearchHistory candidates={all} linkSearch={{ section: tab, fit: filter }} />
-        </>
-      ) : (
-        <section>
-          <SectionHeading
-            eyebrow={tab === "qualified" ? "Carried forward" : "Clear output"}
-            title={
-              tab === "qualified"
-                ? `${board.length} qualified compan${board.length === 1 ? "y" : "ies"}`
-                : `${board.length} compan${board.length === 1 ? "y" : "ies"} on the board`
-            }
-            description={
-              tab === "qualified"
-                ? "Qualified in Scout. Nothing has been sent — each one is waiting on its next move."
-                : "Sorted by strongest ICP fit, then by most recently checked. Colour is fit, not stage."
-            }
-            action={<FitFilters value={filter} counts={counts} onChange={setFilter} />}
-          />
-
-          {board.length === 0 ? (
-            <EmptyState
-              title={tab === "qualified" ? "Nothing qualified yet" : "The board is empty"}
-              belongsHere={
-                tab === "qualified"
-                  ? "Companies you qualify in Scout appear here with their next move."
-                  : "Describe a market above and Scout sources real companies, each with the sources it read."
-              }
-              whyItMatters="Fit is judged conservatively: thin evidence never reads green, and unknown is never treated as a mismatch."
-            />
-          ) : (
-            <ProspectBoard
-              candidates={board}
-              linkSearch={{ section: tab, fit: filter }}
-              emphasizeNextMove={tab === "qualified"}
-            />
-          )}
+          ) : null}
         </section>
-      )}
-    </div>
+
+        {tab === "research" ? (
+          <>
+            <DiscoveryRuns runs={runs.data ?? []} />
+            <ResearchHistory candidates={all} linkSearch={{ section: tab, fit: filter }} />
+          </>
+        ) : (
+          <section className="space-y-3">
+            {/* 4 — Search + compact filters. */}
+            <ScoutFilterToolbar
+              filters={filters}
+              industries={industries}
+              locations={locations}
+              sizes={sizes}
+              onChange={(next) => {
+                setFilters(next);
+                if (next.fit !== filter) setFilter(next.fit);
+              }}
+            />
+
+            {/* 5 — The main paginated company table. */}
+            {board.length === 0 ? (
+              <EmptyState
+                title={tab === "qualified" ? "Nothing qualified yet" : "The board is empty"}
+                belongsHere={
+                  tab === "qualified"
+                    ? "Companies you qualify in Scout appear here with their next move."
+                    : "Describe a market above and Scout sources real companies, each with the sources it read."
+                }
+                whyItMatters="Fit is judged conservatively: thin evidence never reads green, and unknown is never treated as a mismatch."
+              />
+            ) : rows.length === 0 ? (
+              <EmptyState
+                title="No companies match these filters"
+                belongsHere="Clear a filter or widen the search to see the rest of the board."
+                whyItMatters="Filtering never removes a company — it only narrows what you are looking at."
+              />
+            ) : (
+              <ScoutCompanyTable
+                candidates={view.rows}
+                linkSearch={{ section: tab, fit: filter }}
+                footer={
+                  <ScoutPagination
+                    view={view}
+                    pageSize={pageSize}
+                    onPage={setPage}
+                    onPageSize={setPageSize}
+                  />
+                }
+              />
+            )}
+          </section>
+        )}
+      </div>
+    </AppShell>
   );
 }
+
 
 function since(value: string | null): string {
   if (!value) return "No run recorded";
