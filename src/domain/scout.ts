@@ -67,6 +67,9 @@ export interface ProspectCandidate {
   identity?: CompanyIdentity;
   /** Raw observation key → value, for coverage and structured reads. */
   facts?: Record<string, unknown>;
+  /** Industry / size / location as recorded by research. Never inferred here. */
+  profile?: CompanyProfile;
+
   /** Append-only log of completed research passes, oldest first. */
   history?: ResearchRun[];
   /** Buying signals, digital opportunities and people, kept apart from fit. */
