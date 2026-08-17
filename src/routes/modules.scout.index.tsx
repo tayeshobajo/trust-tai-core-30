@@ -71,14 +71,11 @@ function ScoutRoute() {
   const { section, fit } = Route.useSearch();
   return (
     <WorkspaceGate>
-      {(identity) => (
-        <AppShell identity={identity}>
-          <Scout identity={identity} tab={section} filter={fit} />
-        </AppShell>
-      )}
+      {(identity) => <Scout identity={identity} tab={section} filter={fit} />}
     </WorkspaceGate>
   );
 }
+
 
 const LIGHT_RANK: Record<FitLight, number> = { green: 3, yellow: 2, neutral: 1, red: 0 };
 
