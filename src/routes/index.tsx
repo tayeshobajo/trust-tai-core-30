@@ -13,7 +13,7 @@ import { memorySource } from "@/data/memory-source";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Trust Tai OS — one operating system for how Trust Tai works";
+const TITLE = "Trust Tai OS · one operating system for how Trust Tai works";
 const DESCRIPTION =
   "Welcome home: one shared foundation for clients, projects, conversations, operations, and intelligence across the Trust Tai suite.";
 

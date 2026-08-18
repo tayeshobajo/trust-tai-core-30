@@ -1,5 +1,5 @@
 /**
- * Comms — the conversation room.
+ * Comms, the conversation room.
  *
  * Inbox on the left, the conversation itself in the middle, and a quiet rail of
  * context on the right. Reading a relationship should feel like continuing a
@@ -37,7 +37,7 @@ import type { VoiceRegister } from "@/domain/voice";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Comms — conversations kept warm — Trust Tai OS";
+const TITLE = "Comms · conversations kept warm · Trust Tai OS";
 const DESCRIPTION =
   "Trust Tai's conversation room: the whole thread, why it matters, and how the conversation is moving.";
 

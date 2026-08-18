@@ -1,5 +1,5 @@
 /**
- * Signal pulse — what changed between research passes.
+ * Signal pulse, what changed between research passes.
  *
  * A trajectory of dots, not a chart. Scout is an editorial brief.
  */

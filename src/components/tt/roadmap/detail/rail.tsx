@@ -1,5 +1,5 @@
 /**
- * Roadmap detail — right rail.
+ * Roadmap detail, right rail.
  *
  * Three quiet cards: the actions that belong to this roadmap, the state of the
  * client copy, and the one thing that deserves attention next. Notes sit under

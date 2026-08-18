@@ -1,5 +1,5 @@
 /**
- * Roadmap detail — Overview.
+ * Roadmap detail, Overview.
  *
  * The whole path in one read: where the company is, where it is going, the
  * sequence between the two, the milestone actually in hand, and the proof the
@@ -51,7 +51,7 @@ export function PointSummary({
             <ul className="mt-3 space-y-1.5">
               {roadmap.pointA.slice(1, 4).map((note) => (
                 <li key={`${note.label}-${note.at}`} className="text-[13px] text-muted-foreground">
-                  — {note.value}
+  · {note.value}
                 </li>
               ))}
             </ul>
@@ -142,7 +142,7 @@ export function CurrentMilestoneCard({
         <ul className="mt-4 space-y-1">
           {entry.dependencies.map((dependency) => (
             <li key={dependency} className="text-[13px] text-muted-foreground">
-              Depends on — {dependency}
+              Depends on · {dependency}
             </li>
           ))}
         </ul>

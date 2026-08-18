@@ -3,7 +3,7 @@
  *
  * A person who corrects a machine deserves to see the correction take effect.
  * This is the record: every Accept, Edit, Not now and Not useful, in order,
- * with the exact consequence next to it — not a claim that learning happened.
+ * with the exact consequence next to it, not a claim that learning happened.
  *
  * Read-only by design. Nothing here can be edited, because the ledger it comes
  * from is append-only and the trail is the ledger.
@@ -128,7 +128,7 @@ export function LearningTrailPanel({ trail }: { trail: LearningTrail }) {
           {trail.favoured.length > 0 ? (
             <p className="mt-6 text-xs text-muted-foreground">
               Offered earlier when they recur:{" "}
-              {trail.favoured.map((item) => item.label).join(", ")}. Ordering only — accepting
+              {trail.favoured.map((item) => item.label).join(", ")}. Ordering only, accepting
               something never makes the engine more certain about it.
             </p>
           ) : null}

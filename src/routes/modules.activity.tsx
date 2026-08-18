@@ -1,5 +1,5 @@
 /**
- * The activity view — what the Conductor rail states, at full length.
+ * The activity view, what the Conductor rail states, at full length.
  *
  * Three readings of the same suite: what was recorded today, what is waiting
  * on Tai's judgment, and what has actually moved between rooms. This surface
@@ -29,7 +29,7 @@ import { loadControlledActions, loadReceipts } from "@/data/supabase/conductor-c
 import { supabaseActivity } from "@/data/supabase/activities";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Activity — Today, Needs Tai, Recently moved — Trust Tai OS";
+const TITLE = "Activity · Today, Needs Tai, Recently moved · Trust Tai OS";
 const DESCRIPTION =
   "Everything the suite recorded today, every bounded step still waiting on a person, and every handover that actually happened.";
 
@@ -80,7 +80,7 @@ function ActivityRoute() {
       preview={{
         room: "The activity view",
         purpose:
-          "Activity is a read of your organization's own history — what the rooms recorded today, what is waiting on your judgment, and what actually moved between rooms.",
+          "Activity is a read of your organization's own history, what the rooms recorded today, what is waiting on your judgment, and what actually moved between rooms.",
         unavailable: [
           "Today's recorded events across every room.",
           "Bounded steps still awaiting your authorisation.",

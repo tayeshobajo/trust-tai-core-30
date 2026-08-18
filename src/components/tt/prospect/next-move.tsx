@@ -34,7 +34,7 @@ export function NextMovePanel({
       <div className="space-y-4">
         <p className="max-w-reading text-sm text-foreground">{move.detail}</p>
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-          Why now — {move.because}
+          Why now · {move.because}
         </p>
         <WhyWeThink confidence={move.confidence} />
 

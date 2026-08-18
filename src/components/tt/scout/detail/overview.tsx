@@ -1,5 +1,5 @@
 /**
- * Scout company detail — Overview.
+ * Scout company detail, Overview.
  *
  * Curated, not exhaustive: Scout's judgment leads, then the strongest signals,
  * then how the ICP actually lines up, then quieter history and comparisons.
@@ -39,7 +39,7 @@ function MatchDial({ value }: { value: number | null }) {
     >
       <div className="grid size-[80px] place-items-center rounded-full bg-card text-center">
         <span className="text-[18px] font-semibold text-foreground">
-          {value === null ? "—" : `${value}%`}
+          {value === null ? "-" : `${value}%`}
         </span>
         <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
           ICP match
@@ -70,7 +70,7 @@ export function ScoutSummaryCard({
           <ul className="mt-4 space-y-2">
             {summary.topReasons.length === 0 ? (
               <li className="text-[13px] text-muted-foreground">
-                No reasons yet — this company has not been researched.
+                No reasons yet, this company has not been researched.
               </li>
             ) : (
               summary.topReasons.slice(0, 3).map((reason) => (

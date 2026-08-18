@@ -2,7 +2,7 @@
  * One thing that earned a person's attention.
  *
  * The card leads with the work and the reason, and keeps everything else
- * behind "Why this?" — evidence, who is waiting, and which canonical record it
+ * behind "Why this?", evidence, who is waiting, and which canonical record it
  * rests on. No scores, no colour theatre, no counters.
  */
 

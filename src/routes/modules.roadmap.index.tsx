@@ -1,5 +1,5 @@
 /**
- * Roadmap — one company, one roadmap, a clear path forward.
+ * Roadmap, one company, one roadmap, a clear path forward.
  *
  * The page answers four questions fast: which companies have a path, where
  * each path is going, which milestone is live, and what needs judgment next.
@@ -38,7 +38,7 @@ import type { ProspectCandidate } from "@/domain/scout";
 import { cn } from "@/lib/utils";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Roadmap — Point A to Point B — Trust Tai OS";
+const TITLE = "Roadmap · Point A to Point B · Trust Tai OS";
 const DESCRIPTION =
   "Trust Tai's sequencing room: one roadmap per company, with the milestone path and the decisions that hold it up.";
 
@@ -166,7 +166,7 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
     const existing = existingRoadmapForSubject(roadmaps, values.subject);
     if (existing) {
       setStartError(
-        `${existing.subjectLabel || existing.title} already has a roadmap. One company keeps one roadmap — open the existing path instead.`,
+        `${existing.subjectLabel || existing.title} already has a roadmap. One company keeps one roadmap · open the existing path instead.`,
       );
       return;
     }

@@ -1,5 +1,5 @@
 /**
- * Projects — the delivery room for approved work.
+ * Projects, the delivery room for approved work.
  *
  * Not a generic project manager. The page answers six questions in order:
  * what has been approved, what is being built now, who owns it, what is
@@ -63,7 +63,7 @@ import type { ExecutionProject, ProjectInput } from "@/domain/projects";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 
-const TITLE = "Projects — Approved work in motion — Trust Tai OS";
+const TITLE = "Projects · Approved work in motion · Trust Tai OS";
 const DESCRIPTION =
   "Every approved roadmap milestone in delivery: the company it serves, who carries it, what is blocked, and what is due next.";
 

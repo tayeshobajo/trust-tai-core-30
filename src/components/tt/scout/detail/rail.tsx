@@ -1,5 +1,5 @@
 /**
- * Scout company detail — right rail.
+ * Scout company detail, right rail.
  *
  * Quick context and bounded action, never a second copy of the main column.
  */

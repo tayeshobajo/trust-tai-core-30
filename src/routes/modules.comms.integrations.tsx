@@ -16,7 +16,7 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { listIntegrations } from "@/data/supabase/comms-integrations";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Connections — Comms — Trust Tai OS";
+const TITLE = "Connections · Comms · Trust Tai OS";
 const DESCRIPTION =
   "What Comms reads from the outside world: mailbox, people intelligence, email verification, and events.";
 

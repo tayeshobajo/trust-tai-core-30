@@ -3,7 +3,7 @@
  *
  * What the Conductor has learned, and what it cannot do. Both are closed by
  * default: they matter, but they are not what a person came here to decide.
- * Opening the first reveals the full ledger unchanged — evidence, confidence,
+ * Opening the first reveals the full ledger unchanged, evidence, confidence,
  * observation against rule, and the precedence of a person's own correction.
  */
 
@@ -51,7 +51,7 @@ export function BoundaryRows({
         eyebrow="What Conductor has learned"
         statement={
           lessons === 0
-            ? "Nothing has been learned yet — no approved step has produced an observed result."
+            ? "Nothing has been learned yet, no approved step has produced an observed result."
             : `${lessons} recorded lesson${lessons === 1 ? "" : "s"} appl${
                 lessons === 1 ? "ies" : "y"
               } to the recommendations above.`

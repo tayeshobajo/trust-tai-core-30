@@ -1,5 +1,5 @@
 /**
- * Steward — Today, the Judgment surface.
+ * Steward, Today, the Judgment surface.
  *
  * One question, answered plainly: what deserves your attention now? Most days
  * that is one thing, sometimes three, and often nothing at all. Everything
@@ -24,7 +24,7 @@ import { readOpsEvents } from "@/domain/ops";
 import type { CommitmentStatus } from "@/domain/steward";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Steward — Today — Trust Tai OS";
+const TITLE = "Steward · Today · Trust Tai OS";
 const DESCRIPTION =
   "What deserves your attention right now, why it matters today, and nothing else. Read from real conversations, projects and promises.";
 

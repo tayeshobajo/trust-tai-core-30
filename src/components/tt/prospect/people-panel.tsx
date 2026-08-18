@@ -1,5 +1,5 @@
 /**
- * People — who carries this company, and can we reach them.
+ * People, who carries this company, and can we reach them.
  *
  * Three things are kept visually apart and never blended: what a public page
  * said, what a provider asserted, and what a Trust Tai member confirmed. An
@@ -260,7 +260,7 @@ export function PeoplePanel({
                   title={ready ? provider.description : `${provider.label} is not connected yet.`}
                   onClick={() => onIngest(provider.id)}
                 >
-                  {ready ? `Ingest from ${provider.label}` : `${provider.label} — not connected`}
+                  {ready ? `Ingest from ${provider.label}` : `${provider.label} · not connected`}
                 </TTButton>
               );
             })}

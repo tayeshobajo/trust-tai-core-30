@@ -1,5 +1,5 @@
 /**
- * Roadmap detail — Activity.
+ * Roadmap detail, Activity.
  *
  * History as it happened, from the shared activity stream. Nothing is written
  * here; the rooms that acted own their own records.

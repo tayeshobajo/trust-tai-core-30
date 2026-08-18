@@ -1,5 +1,5 @@
 /**
- * Surfaces with nothing honest to say collapse here — one line each, with the
+ * Surfaces with nothing honest to say collapse here, one line each, with the
  * thing that would fill them. Never an empty card.
  */
 
@@ -12,7 +12,7 @@ export function UnknownStrip({ notes }: { notes: UnknownNote[] }) {
       <ul className="mt-3 space-y-2">
         {notes.map((note) => (
           <li key={note.id} className="text-[13px] text-muted-foreground">
-            <span className="text-foreground">{note.label}</span> — {note.fills}
+            <span className="text-foreground">{note.label}</span> · {note.fills}
           </li>
         ))}
       </ul>

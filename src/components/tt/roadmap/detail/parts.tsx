@@ -1,5 +1,5 @@
 /**
- * Roadmap detail — shared primitives.
+ * Roadmap detail, shared primitives.
  *
  * Small, quiet pieces used across the inner page: section shells, state pills,
  * and the numbered milestone strip. Nothing here decides anything; it renders

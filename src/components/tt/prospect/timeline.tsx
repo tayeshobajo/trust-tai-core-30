@@ -1,5 +1,5 @@
 /**
- * Activity timeline — the recorded history of this company inside Trust Tai.
+ * Activity timeline, the recorded history of this company inside Trust Tai.
  * Research, decisions, and overrides, newest first.
  */
 

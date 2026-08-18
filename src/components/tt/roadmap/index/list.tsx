@@ -106,7 +106,7 @@ export function RoadmapRow({ row }: { row: RoadmapRowModel }) {
   return (
     <article className="rounded-xl border border-border bg-card p-4 transition-shadow duration-200 hover:shadow-sm sm:p-5">
       <div className="grid gap-5 xl:grid-cols-[minmax(180px,1fr)_minmax(220px,1.3fr)_minmax(0,2fr)_auto] xl:items-center">
-        {/* A — identity */}
+        {/* A, identity */}
         <div className="flex min-w-0 items-start gap-3">
           <CompanyMark
             name={row.company}
@@ -126,7 +126,7 @@ export function RoadmapRow({ row }: { row: RoadmapRowModel }) {
           </div>
         </div>
 
-        {/* B — Point A → Point B */}
+        {/* B, Point A → Point B */}
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3">
           <PointColumn label="Point A" value={row.pointA} />
           <ArrowRight aria-hidden className="mt-5 size-4 shrink-0 text-muted-foreground" />
@@ -137,7 +137,7 @@ export function RoadmapRow({ row }: { row: RoadmapRowModel }) {
           />
         </div>
 
-        {/* C + D — the path, and what is live in it */}
+        {/* C + D, the path, and what is live in it */}
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <p className="tt-eyebrow">
@@ -157,7 +157,7 @@ export function RoadmapRow({ row }: { row: RoadmapRowModel }) {
           </div>
         </div>
 
-        {/* E — action, quietly */}
+        {/* E, action, quietly */}
         <div className="flex shrink-0 flex-col items-start gap-1.5 xl:items-end">
           <Link
             to="/modules/roadmap/$roadmapId"

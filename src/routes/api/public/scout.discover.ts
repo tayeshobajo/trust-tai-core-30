@@ -7,7 +7,7 @@
  *
  * Security: this path bypasses site auth, so the handler authenticates every
  * request itself. A caller must present a valid Trust Tai Supabase access token
- * and an active organization membership — both verified server-side.
+ * and an active organization membership, both verified server-side.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/api/public/scout/discover")({
   server: {
     handlers: {
       // Configuration probe. Reveals which provider is selected and what it can
-      // do — never a key, never any part of one.
+      // do, never a key, never any part of one.
       GET: async ({ request }) =>
         Response.json(scoutProviderStatus(), {
           headers: getLovableAiGatewayResponseHeaders(undefined, {

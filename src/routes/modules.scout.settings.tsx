@@ -18,7 +18,7 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { getCurrentIcp, saveIcp, type IcpProfile } from "@/data/supabase/icp";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "ICP settings — Scout — Trust Tai OS";
+const TITLE = "ICP settings · Scout · Trust Tai OS";
 const DESCRIPTION =
   "The Ideal Client Profile Scout uses to decide who deserves deeper research.";
 

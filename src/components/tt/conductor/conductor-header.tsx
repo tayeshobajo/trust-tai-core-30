@@ -1,6 +1,6 @@
 /**
  * The Conductor hero: a quiet band that says where you are and what this room
- * is for. The orbit mark is the Pulse radar's calmer relative — the same idea
+ * is for. The orbit mark is the Pulse radar's calmer relative, the same idea
  * (many rooms, one reading) said with less urgency, because nothing here is
  * asking for attention. It is waiting for a question.
  */

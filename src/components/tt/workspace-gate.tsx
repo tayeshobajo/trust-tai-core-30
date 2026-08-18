@@ -97,7 +97,7 @@ export function WorkspaceGate({
                   {preview.unavailable.map((item) => (
                     <li key={item} className="flex gap-2 text-sm text-foreground">
                       <span aria-hidden className="text-muted-foreground">
-                        —
+                        
                       </span>
                       <span>{item}</span>
                     </li>

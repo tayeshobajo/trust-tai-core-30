@@ -1,5 +1,5 @@
 /**
- * Research coverage — how much of the public website has actually been read,
+ * Research coverage, how much of the public website has actually been read,
  * and which page kinds were never reached. Absence is not a gap.
  */
 

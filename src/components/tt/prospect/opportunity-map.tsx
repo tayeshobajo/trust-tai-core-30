@@ -1,5 +1,5 @@
 /**
- * Opportunity map — the observed constraint, the first milestone, and how far
+ * Opportunity map, the observed constraint, the first milestone, and how far
  * the roadmap runs, read as Point A → Point B → Point C.
  */
 

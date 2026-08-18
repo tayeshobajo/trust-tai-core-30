@@ -1,5 +1,5 @@
 /**
- * Steward — Memory.
+ * Steward, Memory.
  *
  * What Steward believes, where each belief came from, and every correction a
  * person has made. Grouped so a person can see the shape of what Steward
@@ -41,7 +41,7 @@ import {
 } from "@/domain/steward-memory";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Steward — Memory — Trust Tai OS";
+const TITLE = "Steward · Memory · Trust Tai OS";
 const DESCRIPTION =
   "What Steward believes about Trust Tai, what each belief rests on, and every human correction on the record.";
 
@@ -76,7 +76,7 @@ function MemoryRoute() {
 const GROUPS: { kind: MemoryKind; blurb: string }[] = [
   {
     kind: "person",
-    blurb: "Who someone is at work — their title, their pod, the context they operate in.",
+    blurb: "Who someone is at work · their title, their pod, the context they operate in.",
   },
   {
     kind: "responsibility",
@@ -412,7 +412,7 @@ function Memory({ identity }: { identity: WorkspaceIdentity }) {
         appId="steward"
         eyebrow="Steward · Memory"
         title="What Steward believes, and why."
-        supporting="A human correction always outranks a source. The original stays on the record so the change is visible. Steward remembers how work moves between people — never a judgement about anyone."
+        supporting="A human correction always outranks a source. The original stays on the record so the change is visible. Steward remembers how work moves between people, never a judgement about anyone."
       />
 
       <StewardTabs active="memory" />

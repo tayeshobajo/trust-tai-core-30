@@ -52,7 +52,7 @@ export function ProjectLineage({ row }: { row: ProjectRowModel }) {
     ? `${lineage.milestoneOrdinal ? `${lineage.milestoneOrdinal} · ` : ""}${lineage.milestoneName}`
     : lineage.fromRoadmap
       ? "Approved milestone"
-      : "No milestone — started here";
+      : "No milestone, started here";
 
   return (
     <section aria-label="Where this work came from" className="tt-surface space-y-4 p-6">

@@ -1,6 +1,6 @@
 /**
  * Scout's lower rail: a glance at the board, the driver's current concern, and
- * the settings utility action. Deliberately short — the rail orients, the page
+ * the settings utility action. Deliberately short, the rail orients, the page
  * does the work.
  */
 

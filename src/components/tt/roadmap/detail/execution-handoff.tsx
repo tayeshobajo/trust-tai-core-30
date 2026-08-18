@@ -1,5 +1,5 @@
 /**
- * Roadmap detail — moving approved work into execution.
+ * Roadmap detail, moving approved work into execution.
  *
  * Roadmap decides sequence; it never runs delivery. This is a request with a
  * confirmation in front of it: a person chooses which approved milestones move
@@ -23,7 +23,7 @@ import type { ExecutionState } from "@/domain/projects";
 
 /**
  * How the owning room's state reads back inside the roadmap. Delivery truth
- * belongs to Projects, so this only translates it — it never overrides it.
+ * belongs to Projects, so this only translates it, it never overrides it.
  */
 export function linkStatusFromProject(state: ExecutionState) {
   if (state === "delivered" || state === "closed") return "complete" as const;

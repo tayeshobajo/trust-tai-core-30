@@ -58,13 +58,13 @@ import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
 export const Route = createFileRoute("/modules/projects/$projectId")({
   head: () => ({
     meta: [
-      { title: "Delivery room — Projects — Trust Tai OS" },
+      { title: "Delivery room · Projects · Trust Tai OS" },
       {
         name: "description",
         content:
           "One approved milestone in delivery: outcome, current work, blockers, decisions and lineage back to the roadmap.",
       },
-      { property: "og:title", content: "Delivery room — Projects — Trust Tai OS" },
+      { property: "og:title", content: "Delivery room · Projects · Trust Tai OS" },
       {
         property: "og:description",
         content:

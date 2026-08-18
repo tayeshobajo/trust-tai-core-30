@@ -66,7 +66,7 @@ export function RoutedWorkStep({
         <p className="text-sm text-[var(--tt-ink-muted)]">{gap}</p>
       ) : proposed ? (
         <p className="text-sm text-[var(--tt-ink-muted)]">
-          The step is in the approval queue below. Nothing has been withdrawn yet — approving it is
+          The step is in the approval queue below. Nothing has been withdrawn yet, approving it is
           what hands it to Projects.
         </p>
       ) : (

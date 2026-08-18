@@ -6,7 +6,7 @@ import { PageHeader, MetaPill, TTButton, TTInput } from "@/components/tt/primiti
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { useWorkspace } from "@/lib/workspace";
 
-const TITLE = "Sign in — Trust Tai OS";
+const TITLE = "Sign in · Trust Tai OS";
 const DESCRIPTION =
   "Sign in to Trust Tai OS with a one-time link sent to your Trust Tai email address.";
 
@@ -77,7 +77,7 @@ function AuthRoute() {
         appId="home"
         eyebrow="Trust Tai OS"
         title="Sign in to your workspace."
-        supporting="We send a one-time link to your inbox. Use your Trust Tai email address — access itself is granted by your organization membership, not by the address you type."
+        supporting="We send a one-time link to your inbox. Use your Trust Tai email address, access itself is granted by your organization membership, not by the address you type."
       />
 
       <div className="mt-8 flex flex-wrap items-center gap-2">

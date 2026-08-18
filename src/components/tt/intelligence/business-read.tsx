@@ -349,7 +349,7 @@ export function ActionProposalRow({
       {state === "authorized" ? (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <p className="text-sm text-foreground">
-            Authorised. {ROOM_LABEL[action.appId] ?? action.appId} owns the change — finish it
+            Authorised. {ROOM_LABEL[action.appId] ?? action.appId} owns the change, finish it
             there.
           </p>
           <a
@@ -443,7 +443,7 @@ function ReadFooting({ read }: { read: EngineRead }) {
  * The same read, compressed to one line for Home.
  *
  * Home is a doorway, not a console: it says the one thing that would change
- * someone's day and points at Pulse for the rest. Deterministic only — the
+ * someone's day and points at Pulse for the rest. Deterministic only, the
  * model stage runs where a person went looking for it.
  */
 export function BusinessReadSummary({ read }: { read: EngineRead }) {
@@ -454,7 +454,7 @@ export function BusinessReadSummary({ read }: { read: EngineRead }) {
       <p className="mt-2 font-serif text-lg leading-snug text-foreground">{read.headline}</p>
       {lead ? (
         <p className="mt-2 text-sm text-muted-foreground">
-          {lead.headline} — {lead.rationale}
+          {lead.headline} · {lead.rationale}
         </p>
       ) : null}
       <Link

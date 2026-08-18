@@ -1,5 +1,5 @@
 /**
- * The Scout company table — the core of the page.
+ * The Scout company table, the core of the page.
  *
  * Logos come from the company's own site (or a recorded logo URL) via the
  * shared `CompanyMark`, which falls back to monogram initials when no icon
@@ -65,7 +65,7 @@ export function CompanyCell({ candidate }: { candidate: ProspectCandidate }) {
 function Cell({ value }: { value?: string | undefined }) {
   return (
     <span className="hidden truncate text-[13px] text-muted-foreground xl:block">
-      {value && value.trim() ? value : "—"}
+      {value && value.trim() ? value : "-"}
     </span>
   );
 }
@@ -116,7 +116,7 @@ export function ScoutCompanyTable({
                 </span>
 
                 <span className="hidden font-mono text-[12px] text-foreground xl:block">
-                  {evaluation.scoreable ? `${evaluation.score}%` : "—"}
+                  {evaluation.scoreable ? `${evaluation.score}%` : "-"}
                 </span>
 
                 <Cell value={profile?.industry} />
@@ -127,7 +127,7 @@ export function ScoutCompanyTable({
                   <span className="inline-flex items-center gap-2 xl:hidden">
                     <FitDot light={evaluation.light} />
                     <span className="font-mono text-[11px] text-muted-foreground">
-                      {evaluation.scoreable ? `${evaluation.score}%` : "—"}
+                      {evaluation.scoreable ? `${evaluation.score}%` : "-"}
                     </span>
                   </span>
                   <ScoutStatusPill status={prospect.status} />

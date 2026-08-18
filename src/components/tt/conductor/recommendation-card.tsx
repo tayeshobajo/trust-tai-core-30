@@ -3,7 +3,7 @@
  *
  * A card says what to do, why it matters, what would prove it worked, and
  * which room owns it. The bounded step underneath appears only when a real
- * adapter can carry it — a step with no adapter is not a step, so it is said
+ * adapter can carry it, a step with no adapter is not a step, so it is said
  * plainly rather than offered as a button that cannot act.
  */
 

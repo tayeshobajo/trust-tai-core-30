@@ -1,5 +1,5 @@
 /**
- * The Conductor console — one place to talk to the whole business.
+ * The Conductor console, one place to talk to the whole business.
  *
  * The surface is deliberately quiet: a question, a direct answer, and then the
  * working underneath it. Every number says whether it was observed, decided,
@@ -201,14 +201,14 @@ export function ConductorConsole({
                 Milestones:{" "}
                 {answer.roadmapCanon.milestonesKnown
                   ? `${answer.roadmapCanon.milestones.length} sequenced`
-                  : "could not be read — not claimed"}
+                  : "could not be read, not claimed"}
               </p>
               {answer.roadmapCanon.milestoneAttention ? (
                 <p>
                   Next milestone attention: “
                   {answer.roadmapCanon.milestoneAttention.milestone.title}” (
                   {answer.roadmapCanon.milestoneAttention.milestone.state.replace(/_/g, " ")},{" "}
-                  {answer.roadmapCanon.milestoneAttention.milestone.tier}) —{" "}
+                  {answer.roadmapCanon.milestoneAttention.milestone.tier}) · {" "}
                   {answer.roadmapCanon.milestoneAttention.because}
                 </p>
               ) : null}
@@ -222,7 +222,7 @@ export function ConductorConsole({
               {answer.roadmapCanon.openDecisions.length > 0 ? (
                 <div className="space-y-1 border-t border-[var(--tt-rule)] pt-2">
                   <p>
-                    Already open in Roadmap, waiting on your answer — not raised again here:
+                    Already open in Roadmap, waiting on your answer, not raised again here:
                   </p>
                   {answer.roadmapCanon.openDecisions.map((decision) => (
                     <p key={decision.id} className="text-[var(--tt-ink-muted)]">
@@ -306,7 +306,7 @@ export function ConductorConsole({
                     </div>
                   </div>
                   {(() => {
-                    /* Execution inputs resolved from decided state — or named
+                    /* Execution inputs resolved from decided state, or named
                      * as missing. Never presented as a recommendation. */
                     const resolution = answer.inputResolutions?.[action.id];
                     if (!resolution || resolution.status === "not_applicable") return null;
@@ -353,7 +353,7 @@ export function ConductorConsole({
                           <span className={`text-sm ${STANDING_TONE[reading.standing] ?? ""}`}>
                             {reading.basis === "unknown"
                               ? "Not known"
-                              : `${reading.value ?? "—"}${reading.definition.unit === "percent" ? "%" : ""}`}
+                              : `${reading.value ?? "-"}${reading.definition.unit === "percent" ? "%" : ""}`}
                           </span>
                         </div>
                         <p className="text-xs text-[var(--tt-ink-muted)]">
@@ -409,7 +409,7 @@ export function ConductorConsole({
           {answer.actionGraph && answer.actionGraph.steps.length > 1 ? (
             <section className="space-y-3">
               <h2 className="text-sm uppercase tracking-wide text-[var(--tt-ink-muted)]">
-                Prepared across rooms — nothing has happened
+                Prepared across rooms, nothing has happened
               </h2>
               <TTCard className="space-y-4 p-5">
                 <p className="text-sm text-[var(--tt-ink-muted)]">
@@ -508,7 +508,7 @@ export function ConductorConsole({
                     <ul className="mt-2 space-y-1 text-sm text-[var(--tt-ink-muted)]">
                       {answer.withheld.map((room) => (
                         <li key={room.appId}>
-                          {room.appId} — {room.reason}
+                          {room.appId} · {room.reason}
                         </li>
                       ))}
                     </ul>
@@ -527,7 +527,7 @@ function PlanPanel({ plan }: { plan: NonNullable<ConductorAnswer["plan"]> }) {
   return (
     <section className="space-y-4">
       <h2 className="text-sm uppercase tracking-wide text-[var(--tt-ink-muted)]">
-        Operating plan — {plan.outcome}
+        Operating plan · {plan.outcome}
       </h2>
 
       {!plan.complete ? (
@@ -619,7 +619,7 @@ function PlanPanel({ plan }: { plan: NonNullable<ConductorAnswer["plan"]> }) {
                 {plan.checkpoints.map((checkpoint) => (
                   <li key={checkpoint.label}>
                     <span className="text-[var(--tt-ink-muted)]">
-                      Day {checkpoint.atDays} — {checkpoint.label}:
+                      Day {checkpoint.atDays} · {checkpoint.label}:
                     </span>{" "}
                     {checkpoint.expect}
                   </li>

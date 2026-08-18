@@ -1,5 +1,5 @@
 /**
- * The ask surface — the dominant thing on the page.
+ * The ask surface, the dominant thing on the page.
  *
  * A person should be able to type a sentence and get a grounded answer. The
  * chips are not features; they are the questions this room answers well, said

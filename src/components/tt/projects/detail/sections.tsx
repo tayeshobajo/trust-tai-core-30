@@ -154,7 +154,7 @@ function WorkItemSelect({
         onChange={(event) => onChange(event.target.value)}
         className="h-11 w-full rounded-lg border border-input bg-card px-3 text-[13px] text-foreground"
       >
-        <option value="">{label} — not linked to one item</option>
+        <option value="">{label} · not linked to one item</option>
         {sortWorkItems(items).map((item) => (
           <option key={item.id} value={item.id}>
             {item.title}
@@ -472,7 +472,7 @@ export function DecisionsTab({
                   <p className="text-[13px] text-muted-foreground">
                     {decision.status === "open"
                       ? (decision.whyItMatters ?? "Waiting on an answer.")
-                      : `Decided ${decision.decidedAt ? new Date(decision.decidedAt).toLocaleDateString() : ""}: ${decision.answer ?? "—"}`}
+                      : `Decided ${decision.decidedAt ? new Date(decision.decidedAt).toLocaleDateString() : ""}: ${decision.answer ?? "-"}`}
                     {decision.ownerLabel ? ` · ${decision.ownerLabel}` : ""}
                   </p>
                   <LinkedWork items={items} workItemId={decision.workItemId} />

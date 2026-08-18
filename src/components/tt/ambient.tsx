@@ -7,7 +7,7 @@
  *
  * The wash is light entering the top of a surface: 4–8% of the accent fading
  * to nothing within 140–220px. The canvas stays paper, the card stays white,
- * and every control, status colour and piece of text is untouched — contrast
+ * and every control, status colour and piece of text is untouched, contrast
  * is unaffected because the wash never sits behind body copy at strength.
  */
 
@@ -38,7 +38,7 @@ export interface AmbientProps {
   /** Registered app id. Chooses the room's canonical accent. */
   appId: string;
   /**
-   * A real, validated colour belonging to the subject of this page — a
+   * A real, validated colour belonging to the subject of this page, a
    * company's own brand colour, for example. Falls back to the app accent.
    */
   contextAccent?: string | null | undefined;
@@ -62,7 +62,7 @@ export function ambientStyle({
 
 /**
  * A surface carrying the wash. Use it on the identity/hero/primary region of a
- * page, not behind every card — one atmospheric region reads stronger than
+ * page, not behind every card, one atmospheric region reads stronger than
  * several tinted containers.
  */
 export function AmbientSurface({

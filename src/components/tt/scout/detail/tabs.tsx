@@ -1,5 +1,5 @@
 /**
- * Scout company detail — tab bar and the deeper tab views.
+ * Scout company detail, tab bar and the deeper tab views.
  *
  * Overview stays curated; everything exhaustive lives here. Each view is
  * mounted only when its tab is active.

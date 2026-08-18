@@ -1,8 +1,8 @@
 /**
  * Shared surfaces for the prospect workspace.
  *
- * Every panel states one idea. Nothing here decides what to show — that is the
- * composition's job — so these stay purely presentational.
+ * Every panel states one idea. Nothing here decides what to show, that is the
+ * composition's job, so these stay purely presentational.
  */
 
 import {

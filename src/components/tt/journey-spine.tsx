@@ -10,7 +10,7 @@ export interface SpineStage {
 
 /**
  * A quiet progression spine. It tells you where the work sits between a signal
- * and an outcome — history, current work, or something still ahead. No scores,
+ * and an outcome, history, current work, or something still ahead. No scores,
  * no streaks, no reward mechanics.
  */
 export function JourneySpine({ stages }: { stages: SpineStage[] }) {

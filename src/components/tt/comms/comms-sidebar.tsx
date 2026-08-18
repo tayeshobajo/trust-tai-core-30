@@ -1,7 +1,7 @@
 /**
  * The Comms panels that live under the suite navigation.
  *
- * Everything here is read from the same derived inbox state the room uses — no
+ * Everything here is read from the same derived inbox state the room uses, no
  * separate counts, no implied autonomy. If Comms doesn't know it, it isn't shown.
  */
 

@@ -1,8 +1,8 @@
 /**
  * Steward conversation ingestion endpoint.
  *
- * GET  — is a recording source connected, and which recent calls can be read.
- * POST — read one conversation and return it normalized, with Steward's
+ * GET, is a recording source connected, and which recent calls can be read.
+ * POST, read one conversation and return it normalized, with Steward's
  *        deterministic proposals attached.
  *
  * Nothing is written here. Reading is not confirming: only a person, in the

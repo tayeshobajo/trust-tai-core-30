@@ -88,7 +88,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                 {note}
               </span>
             ) : (
-              /* The room's own ambient accent — place recognition, not status. */
+              /* The room's own ambient accent, place recognition, not status. */
               <AmbientDot appId={app.id} />
             )}
           </AppLink>
@@ -131,7 +131,7 @@ export function AppShell({
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
 
-        <Link to="/" className="flex items-center gap-3" aria-label="Trust Tai OS — home">
+        <Link to="/" className="flex items-center gap-3" aria-label="Trust Tai OS · home">
           <BrandLogo height={26} className="sm:h-[30px] sm:w-auto" />
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:inline">
             OS
@@ -185,7 +185,7 @@ export function AppShell({
         ) : null}
 
         <main className="mx-auto min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10 2xl:px-10">
-          {/* One calm reading canvas for every room — never edge to edge. */}
+          {/* One calm reading canvas for every room, never edge to edge. */}
           <div className="mx-auto w-full max-w-canvas">{children}</div>
         </main>
       </div>
