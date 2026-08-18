@@ -201,12 +201,16 @@ export function OutcomeStrip({ outcome }: { outcome: string }) {
 
 export const PROJECT_TABS = [
   { value: "overview", label: "Overview" },
+  { value: "context", label: "Context" },
+  { value: "knowledge", label: "Knowledge" },
+  { value: "assets", label: "Assets" },
   { value: "work", label: "Work" },
   { value: "blockers", label: "Blockers" },
   { value: "decisions", label: "Decisions" },
   { value: "files", label: "Files" },
   { value: "activity", label: "Activity" },
 ] as const;
+
 
 export type ProjectTab = (typeof PROJECT_TABS)[number]["value"];
 
@@ -220,7 +224,7 @@ export function ProjectTabs({
   onChange: (tab: ProjectTab) => void;
 }) {
   return (
-    <div role="tablist" aria-label="Project sections" className="flex gap-1 border-b border-border">
+    <div role="tablist" aria-label="Project sections" className="flex flex-wrap gap-1 border-b border-border">
       {PROJECT_TABS.map((entry) => {
         const active = entry.value === tab;
         const count = counts[entry.value];

@@ -24,6 +24,11 @@ import {
   type ProjectTab,
 } from "@/components/tt/projects/detail/frame";
 import { OverviewTab } from "@/components/tt/projects/detail/overview";
+import {
+  AssetsTab,
+  ContextTab,
+  KnowledgeTab,
+} from "@/components/tt/projects/detail/intelligence";
 import { DetailRail } from "@/components/tt/projects/detail/rail";
 import {
   ActivityTab,
@@ -32,6 +37,10 @@ import {
   FilesTab,
   WorkTab,
 } from "@/components/tt/projects/detail/sections";
+import { buildProjectContextPacket, contextHealth } from "@/data/projects/context-packet";
+import { projectSuggestions } from "@/data/projects/suggestions";
+import { projectIntelligence } from "@/data/supabase/project-intelligence";
+import type { AssetType } from "@/domain/project-intelligence";
 import {
   completionModel,
   healthSignals,
@@ -104,6 +113,7 @@ function DeliveryRoom({
   const [blockedReason, setBlockedReason] = useState("");
   const [nextMove, setNextMove] = useState("");
   const [fileError, setFileError] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState<string[]>([]);
 
   const org = identity.organizationId;
   const projectsContext: ProjectsContext = {
@@ -181,6 +191,31 @@ function DeliveryRoom({
     retry: false,
   });
 
+  const thinkingQuery = useQuery({
+    queryKey: ["delivery", "thinking", projectId, org],
+    queryFn: () => projectIntelligence.listThinking(delivery),
+    enabled,
+    retry: false,
+  });
+  const knowledgeQuery = useQuery({
+    queryKey: ["delivery", "knowledge", projectId, org],
+    queryFn: () => projectIntelligence.listKnowledge(delivery),
+    enabled,
+    retry: false,
+  });
+  const assetsQuery = useQuery({
+    queryKey: ["delivery", "assets", projectId, org],
+    queryFn: () => projectIntelligence.listAssets(delivery),
+    enabled,
+    retry: false,
+  });
+  const connectionsQuery = useQuery({
+    queryKey: ["delivery", "connections", projectId, org],
+    queryFn: () => projectIntelligence.listConnections(delivery),
+    enabled,
+    retry: false,
+  });
+
   const roadmaps = roadmapsQuery.data ?? [];
   const row = useMemo(
     () =>
@@ -204,6 +239,10 @@ function DeliveryRoom({
   const blockers = blockersQuery.data ?? [];
   const decisions = decisionsQuery.data ?? [];
   const files = filesQuery.data ?? [];
+  const thinking = thinkingQuery.data ?? [];
+  const knowledge = knowledgeQuery.data ?? [];
+  const assets = assetsQuery.data ?? [];
+  const connections = connectionsQuery.data ?? [];
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["delivery"] });
@@ -264,6 +303,27 @@ function DeliveryRoom({
       : null;
 
   const completion = completionModel(project, items, row.lineage.milestoneName);
+  const packet = buildProjectContextPacket({
+    project,
+    ...(row.lineage.company ? { company: row.lineage.company } : {}),
+    roadmap: {
+      ...(row.lineage.roadmapId ? { roadmapId: row.lineage.roadmapId } : {}),
+      ...(row.lineage.milestoneId ? { milestoneId: row.lineage.milestoneId } : {}),
+      ...(row.lineage.milestoneName ? { milestoneName: row.lineage.milestoneName } : {}),
+    },
+    knowledge,
+    decisions,
+    blockers,
+    work: items,
+    assets,
+    connections,
+    thinking,
+  });
+  const health = contextHealth(
+    packet,
+    assets.some((asset) => asset.assetType === "mockup"),
+  );
+  const suggestions = projectSuggestions({ packet, work: items, assets, dismissed });
   const attention = needsJudgment(project, items, blockers, decisions);
   const busy = mutate.isPending || updateProject.isPending;
   const error = mutate.error ?? updateProject.error;
@@ -370,6 +430,8 @@ function DeliveryRoom({
       <ProjectTabs
         tab={tab}
         counts={{
+          knowledge: knowledge.filter((entry) => entry.reviewState !== "superseded").length,
+          assets: assets.length,
           work: items.length,
           blockers: blockers.filter((entry) => entry.status === "open").length,
           decisions: decisions.filter((entry) => entry.status === "open").length,
@@ -394,6 +456,89 @@ function DeliveryRoom({
               blockers={blockers}
               completion={completion}
               onOpenTab={openTab}
+            />
+          ) : null}
+
+          {tab === "context" ? (
+            <ContextTab
+              packet={packet}
+              health={health}
+              suggestions={suggestions}
+              thinking={thinking}
+              connections={connections}
+              busy={busy}
+              onAddThinking={(input) =>
+                mutate.mutate(() => projectIntelligence.addThinking(input, delivery))
+              }
+              onPrimaryThinking={(source) =>
+                mutate.mutate(() => projectIntelligence.markPrimaryThinking(source, delivery))
+              }
+              onRemoveThinking={(source) =>
+                mutate.mutate(() => projectIntelligence.removeThinking(source, delivery))
+              }
+              onAddConnection={(input) =>
+                mutate.mutate(() => projectIntelligence.addConnection(input, delivery))
+              }
+              onRemoveConnection={(connection) =>
+                mutate.mutate(() => projectIntelligence.removeConnection(connection, delivery))
+              }
+              onDismissSuggestion={(id) => setDismissed((current) => [...current, id])}
+            />
+          ) : null}
+
+          {tab === "knowledge" ? (
+            <KnowledgeTab
+              knowledge={knowledge}
+              busy={busy}
+              onAdd={(input) =>
+                mutate.mutate(() => projectIntelligence.addKnowledge(input, delivery))
+              }
+              onConfirm={(item) =>
+                mutate.mutate(() =>
+                  projectIntelligence.setKnowledgeReview(item, "confirmed", delivery),
+                )
+              }
+              onSupersede={(item) =>
+                mutate.mutate(() =>
+                  projectIntelligence.setKnowledgeReview(item, "superseded", delivery),
+                )
+              }
+            />
+          ) : null}
+
+          {tab === "assets" ? (
+            <AssetsTab
+              assets={assets}
+              items={items}
+              busy={busy}
+              onUpload={(file, assetType: AssetType, workItemId) =>
+                mutate.mutate(() =>
+                  projectIntelligence.uploadAsset(
+                    file,
+                    { assetType, ...(workItemId ? { workItemId } : {}) },
+                    delivery,
+                  ),
+                )
+              }
+              onStatus={(asset, status) =>
+                mutate.mutate(() => projectIntelligence.setAssetStatus(asset, status, delivery))
+              }
+              onOpen={(asset, download) => {
+                setFileError(null);
+                const linked = files.find((entry) => entry.id === asset.fileId);
+                if (!linked) {
+                  setFileError("That asset file is no longer readable.");
+                  return;
+                }
+                void projectDelivery
+                  .fileUrl(linked, download)
+                  .then((url) => window.open(url, "_blank", "noopener,noreferrer"))
+                  .catch((cause: unknown) => {
+                    setFileError(
+                      cause instanceof Error ? cause.message : "That asset could not be opened.",
+                    );
+                  });
+              }}
             />
           ) : null}
 
