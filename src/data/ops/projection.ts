@@ -270,9 +270,9 @@ export function sortOpsSystems(systems: OpsSystem[], key: OpsSortKey): OpsSystem
           a.name.localeCompare(b.name)
         );
       case "open_issues":
-        return b.openIssues - a.openIssues || newestFirst(a, b);
+        return (b.openIssues ?? -1) - (a.openIssues ?? -1) || newestFirst(a, b);
       case "open_approvals":
-        return b.openApprovals - a.openApprovals || newestFirst(a, b);
+        return (b.openApprovals ?? -1) - (a.openApprovals ?? -1) || newestFirst(a, b);
       case "attention":
       default:
         return (
