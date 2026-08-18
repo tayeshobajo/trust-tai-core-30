@@ -13,6 +13,7 @@ import { useMemo, useState, type DragEvent } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { TTButton, TTInput } from "@/components/tt/primitives";
+import { FathomSyncControl } from "@/components/tt/steward/fathom-sync";
 import { MemberDetailPanel } from "@/components/tt/steward/member-detail";
 import { ReassignPicker, type AssignablePerson } from "@/components/tt/steward/reassign-picker";
 import { RecentMeetings } from "@/components/tt/steward/recent-meetings";
@@ -31,7 +32,7 @@ import {
   TEAM_FILTER_LABEL,
   type TeamFilter,
 } from "@/data/steward/accountability";
-import { fathomStatusLine, readStewardTeam } from "@/data/steward/team-read";
+import { fathomLastSync, fathomStatusLine, readStewardTeam } from "@/data/steward/team-read";
 import { reassignAuthority } from "@/data/steward/authority";
 import { useStewardActions } from "@/data/steward/use-steward-actions";
 import type { StewardTask } from "@/domain/steward-accountability";
@@ -88,6 +89,7 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
   const [reassign, setReassign] = useState<StewardTask | null>(null);
   const [openPerson, setOpenPerson] = useState<string | null>(null);
   const [dragKey, setDragKey] = useState<string | null>(null);
+  const [announce, setAnnounce] = useState("");
 
   const actor = { userId: identity.userId, canManage: identity.canManage };
   const read = useQuery({ queryKey, queryFn: () => readStewardTeam(identity.organizationId) });
@@ -126,17 +128,24 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
+  /** One rule for both mouse and keyboard: a row only moves above a peer. */
+  function moveAbove(source: StewardTask | undefined, target: StewardTask | undefined) {
+    if (!source || !target || source.key === target.key) return;
+    if (source.owner.key !== target.owner.key) {
+      setAnnounce(`${source.title} belongs to ${source.owner.name}. Choose an owner instead.`);
+      setReassign(source);
+      return;
+    }
+    reorder.mutate({ source, target });
+    setAnnounce(`${source.title} moved above ${target.title}.`);
+  }
+
   function onDrop(target: StewardTask) {
     return (event: DragEvent<HTMLLIElement>) => {
       event.preventDefault();
       const source = tasks.find((task) => task.key === dragKey);
       setDragKey(null);
-      if (!source || source.key === target.key) return;
-      if (source.owner.key !== target.owner.key) {
-        setReassign(source);
-        return;
-      }
-      reorder.mutate({ source, target });
+      moveAbove(source, target);
     };
   }
 
@@ -154,6 +163,12 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
             </TTButton>
           </div>
         }
+      />
+
+      <FathomSyncControl
+        organizationId={identity.organizationId}
+        lastSyncedAt={fathomLastSync(read.data)}
+        refreshKeys={[queryKey, ["steward", "conversations", identity.organizationId]]}
       />
 
       <StewardTabs active="team" />
@@ -210,12 +225,20 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
                   </p>
                 </div>
               ) : (
-                <ul>
-                  {visible.map((task) => (
+                <ul aria-label="Accountability checklist">
+                  {visible.map((task, index) => (
                     <TaskRow
                       key={task.key}
                       task={task}
                       actor={actor}
+                      position={index + 1}
+                      total={visible.length}
+                      {...(index > 0
+                        ? { onMoveUp: () => moveAbove(task, visible[index - 1]) }
+                        : {})}
+                      {...(index < visible.length - 1
+                        ? { onMoveDown: () => moveAbove(visible[index + 1], task) }
+                        : {})}
                       onOpen={() => setOpenTask(task)}
                       onComplete={() => actions.complete(task, "")}
                       onReassign={() => setReassign(task)}
@@ -230,6 +253,10 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
                 </ul>
               )}
             </section>
+
+            <p aria-live="polite" className="sr-only">
+              {announce}
+            </p>
 
             {unowned.length > 0 ? (
               <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-card/60 px-5 py-4">
