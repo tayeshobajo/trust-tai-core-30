@@ -154,9 +154,12 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const attention = portfolio.attention;
   const lastSuccessAt = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
-  const freshness = isError
+  const openIncidents = sumKnown(portfolio.systems, (system) => system.openIssues);
+  const interrupted = isError || connection === "interrupted";
+  const freshness = interrupted
     ? "Ops sync interrupted"
     : opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now());
+
 
   return (
     <div className="space-y-10">
