@@ -215,7 +215,7 @@ describe("conversation timeline", () => {
     );
     expect(events.map((event) => event.kind)).toEqual([
       "meeting",
-      "they_wrote",
+      "they_emailed",
       "draft",
       "note",
     ]);
