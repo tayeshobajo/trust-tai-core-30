@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
+import { inviteEmailBody } from "@/lib/invite-email-template";
+
 
 import { SectionHeading, TTButton, TTField, TTInput } from "@/components/tt/primitives";
 import {
@@ -101,16 +103,25 @@ function PeopleSettings() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [checkedIds, setCheckedIds] = useState<string[]>([]);
+  const [bulkRole, setBulkRole] = useState<WorkspaceRole>("member");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkNote, setBulkNote] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({
     key: "name",
     direction: "asc",
   });
-  const toggleSort = (key: SortKey) =>
+  const toggleSort = (key: SortKey) => {
+    setPage(1);
     setSort((current) =>
       current.key === key
         ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
         : { key, direction: key === "lastActive" ? "desc" : "asc" },
     );
+  };
+
 
   const members = useQuery({
     queryKey: ["settings", "members", identity.organizationId],
@@ -226,6 +237,78 @@ function PeopleSettings() {
     });
   }, [members.data, search, sort, orgEnabled]);
 
+  /* Pagination is presentation only: the same filtered, sorted truth, windowed. */
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const pageRows = rows.slice(pageStart, pageStart + pageSize);
+
+  /* Bulk selection never reaches beyond what this admin may actually change. */
+  const eligibleOnPage = pageRows
+    .map(({ member }) => member)
+    .filter((member) => identity.canManage && member.userId !== identity.userId);
+  const checkedSet = new Set(checkedIds);
+  const checkedMembers = (members.data ?? []).filter(
+    (member) => checkedSet.has(member.userId) && member.userId !== identity.userId,
+  );
+  const allOnPageChecked =
+    eligibleOnPage.length > 0 && eligibleOnPage.every((member) => checkedSet.has(member.userId));
+
+  const toggleChecked = (userId: string) =>
+    setCheckedIds((previous) =>
+      previous.includes(userId)
+        ? previous.filter((id) => id !== userId)
+        : [...previous, userId],
+    );
+
+  const togglePage = () =>
+    setCheckedIds((previous) => {
+      const ids = eligibleOnPage.map((member) => member.userId);
+      return allOnPageChecked
+        ? previous.filter((id) => !ids.includes(id))
+        : Array.from(new Set([...previous, ...ids]));
+    });
+
+  const runBulk = async (action: { kind: "role" } | { kind: "status"; status: "active" | "deactivated" }) => {
+    if (checkedMembers.length === 0) return;
+    setBulkBusy(true);
+    setBulkNote(null);
+    let done = 0;
+    const failures: string[] = [];
+    for (const member of checkedMembers) {
+      try {
+        if (action.kind === "role") {
+          await setMemberRole({
+            organizationId: identity.organizationId,
+            userId: member.userId,
+            memberName: member.name,
+            role: bulkRole,
+            actorUserId: identity.userId,
+          });
+        } else {
+          await setMemberStatus({
+            organizationId: identity.organizationId,
+            userId: member.userId,
+            memberName: member.name,
+            status: action.status,
+            actorUserId: identity.userId,
+          });
+        }
+        done += 1;
+      } catch (error) {
+        failures.push(`${member.name}: ${(error as Error).message}`);
+      }
+    }
+    setBulkBusy(false);
+    setBulkNote(
+      failures.length === 0
+        ? `Updated ${done} ${done === 1 ? "person" : "people"}.`
+        : `Updated ${done}. ${failures[0] ?? ""}`,
+    );
+    if (failures.length === 0) setCheckedIds([]);
+    refresh();
+  };
+
   const selected = (members.data ?? []).find((member) => member.userId === selectedId) ?? null;
   const [deliveryById, setDeliveryById] = useState<Record<string, { delivered: boolean; because: string }>>({});
   const invitationAudit = useQuery({
@@ -233,6 +316,7 @@ function PeopleSettings() {
     queryFn: () => listInvitationAudit(identity.organizationId),
     enabled: identity.canManage,
   });
+
 
   return (
     <>
@@ -246,7 +330,10 @@ function PeopleSettings() {
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <TTInput
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setPage(1);
+              setSearch(event.target.value);
+            }}
             placeholder="Search people by name or email"
             aria-label="Search people"
             className="max-w-xs"
@@ -254,12 +341,95 @@ function PeopleSettings() {
           <span className="text-xs text-muted-foreground">
             {members.isPending ? "Reading members…" : `${rows.length} shown`}
           </span>
+          <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+            <label htmlFor="people-page-size">People per page</label>
+            <TTSelect
+              id="people-page-size"
+              className="h-9 w-20"
+              value={String(pageSize)}
+              onChange={(event) => {
+                setPage(1);
+                setPageSize(Number(event.target.value));
+              }}
+            >
+              {[10, 25, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </TTSelect>
+          </span>
         </div>
 
+        {identity.canManage && checkedMembers.length > 0 ? (
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-royal/30 bg-royal/5 px-4 py-3">
+            <span className="text-sm text-foreground">
+              {checkedMembers.length} selected
+            </span>
+            <TTSelect
+              aria-label="Role to apply to selected people"
+              className="h-9 w-40"
+              value={bulkRole}
+              onChange={(event) => setBulkRole(normalizeRole(event.target.value))}
+            >
+              {ASSIGNABLE_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABEL[role]}
+                </option>
+              ))}
+            </TTSelect>
+            <TTButton
+              variant="secondary"
+              disabled={bulkBusy}
+              onClick={() => void runBulk({ kind: "role" })}
+            >
+              Apply role
+            </TTButton>
+            <TTButton
+              variant="secondary"
+              disabled={bulkBusy}
+              onClick={() => void runBulk({ kind: "status", status: "deactivated" })}
+            >
+              Suspend
+            </TTButton>
+            <TTButton
+              variant="secondary"
+              disabled={bulkBusy}
+              onClick={() => void runBulk({ kind: "status", status: "active" })}
+            >
+              Reactivate
+            </TTButton>
+            <button
+              type="button"
+              className="text-[13px] text-muted-foreground hover:underline"
+              onClick={() => setCheckedIds([])}
+            >
+              Clear selection
+            </button>
+            <span className="w-full text-xs text-muted-foreground">
+              {bulkBusy
+                ? "Applying, one person at a time so every change is recorded."
+                : (bulkNote ?? "You are never included in a bulk change.")}
+            </span>
+          </div>
+        ) : null}
+
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[640px] text-left">
+          <table className="w-full min-w-[720px] text-left">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
+                {identity.canManage ? (
+                  <th scope="col" className="w-10 px-4 py-2">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-royal"
+                      aria-label="Select everyone on this page"
+                      checked={allOnPageChecked}
+                      disabled={eligibleOnPage.length === 0}
+                      onChange={togglePage}
+                    />
+                  </th>
+                ) : null}
                 <SortHeader label="Person" sortKey="name" sort={sort} onSort={toggleSort} />
                 <SortHeader
                   label="Role"
@@ -287,9 +457,22 @@ function PeopleSettings() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {rows.map(({ member, rooms }) => {
+              {pageRows.map(({ member, rooms }) => {
+                const selectable = identity.canManage && member.userId !== identity.userId;
                 return (
                   <tr key={member.userId} className="align-middle">
+                    {identity.canManage ? (
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-royal"
+                          aria-label={`Select ${member.name}`}
+                          checked={checkedSet.has(member.userId)}
+                          disabled={!selectable}
+                          onChange={() => toggleChecked(member.userId)}
+                        />
+                      </td>
+                    ) : null}
                     <td className="px-4 py-3">
                       <PersonChip
                         name={member.name}
@@ -299,7 +482,7 @@ function PeopleSettings() {
                       />
                     </td>
                     <td className="px-4 py-3">
-                      {identity.canManage && member.userId !== identity.userId ? (
+                      {selectable ? (
                         <TTSelect
                           aria-label={`Role for ${member.name}`}
                           className="h-9 w-40"
@@ -348,7 +531,10 @@ function PeopleSettings() {
               })}
               {!members.isPending && rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td
+                    colSpan={identity.canManage ? 7 : 6}
+                    className="px-4 py-8 text-center text-sm text-muted-foreground"
+                  >
                     No one matches that search.
                   </td>
                 </tr>
@@ -356,6 +542,35 @@ function PeopleSettings() {
             </tbody>
           </table>
         </div>
+
+        {rows.length > 0 ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <span className="text-xs text-muted-foreground">
+              Showing {pageStart + 1} to {Math.min(pageStart + pageSize, rows.length)} of{" "}
+              {rows.length}
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <TTButton
+                variant="secondary"
+                disabled={currentPage <= 1}
+                onClick={() => setPage(Math.max(1, currentPage - 1))}
+              >
+                Previous
+              </TTButton>
+              <span className="text-xs text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <TTButton
+                variant="secondary"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+              >
+                Next
+              </TTButton>
+            </div>
+          </div>
+        ) : null}
+
 
         {roleChange.error || accessChange.error || statusChange.error ? (
           <p className="mt-4 text-sm text-destructive" role="alert">
@@ -384,12 +599,15 @@ function PeopleSettings() {
       {identity.canManage ? (
         <InvitePanel
           organizationId={identity.organizationId}
+          organizationName={identity.organizationName}
+          invitedByName={identity.name}
           actorUserId={identity.userId}
           onDone={refresh}
           onDelivery={(invitationId, result) =>
             setDeliveryById((previous) => ({ ...previous, [invitationId]: result }))
           }
         />
+
       ) : null}
 
       <div className="tt-surface p-6">
@@ -655,11 +873,15 @@ function MemberAccessPanel({
 
 function InvitePanel({
   organizationId,
+  organizationName,
+  invitedByName,
   actorUserId,
   onDone,
   onDelivery,
 }: {
   organizationId: string;
+  organizationName: string;
+  invitedByName: string;
   actorUserId: string;
   onDone: () => void;
   onDelivery?: (invitationId: string, result: { delivered: boolean; because: string }) => void;
@@ -669,8 +891,29 @@ function InvitePanel({
   const [overrides, setOverrides] = useState<Record<string, AppAccessLevel>>({});
   const [sent, setSent] = useState<number | null>(null);
   const [delivered, setDelivered] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const parsed = parseEmails(emails);
+
+  /* The preview renders the same template the server sends. One source, no drift. */
+  const previewTo = parsed.valid[0] ?? "someone@company.com";
+  const preview = useMemo(
+    () =>
+      inviteEmailBody({
+        to: previewTo,
+        organizationName,
+        roleLabel: ROLE_LABEL[role],
+        invitedByName,
+        signInUrl:
+          typeof window === "undefined"
+            ? `/auth?email=${encodeURIComponent(previewTo)}`
+            : `${window.location.origin}/auth?email=${encodeURIComponent(previewTo)}`,
+        expiresAt: null,
+      }),
+    [previewTo, organizationName, role, invitedByName],
+  );
+
+
 
   const invite = useMutation({
     mutationFn: async () =>
@@ -800,7 +1043,51 @@ function InvitePanel({
         })}
       </div>
 
+      <div className="mt-6 rounded-xl border border-border">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">Email preview</p>
+            <p className="text-xs text-muted-foreground">
+              Exactly what {previewTo} will receive, subject included.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="text-[13px] text-royal hover:underline"
+            onClick={() => setShowPreview((value) => !value)}
+          >
+            {showPreview ? "Hide preview" : "Preview email"}
+          </button>
+        </div>
+        {showPreview ? (
+          <div className="space-y-3 border-t border-border px-4 py-4">
+            <div>
+              <p className="tt-eyebrow">Subject</p>
+              <p className="text-sm text-foreground">{preview.subject}</p>
+            </div>
+            <div>
+              <p className="tt-eyebrow">Message</p>
+              <iframe
+                title="Invitation email preview"
+                srcDoc={preview.html}
+                className="mt-2 h-[420px] w-full rounded-lg border border-border bg-white"
+                sandbox=""
+              />
+            </div>
+            <details>
+              <summary className="cursor-pointer text-xs text-muted-foreground">
+                Plain text version
+              </summary>
+              <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-secondary/50 p-3 text-xs text-muted-foreground">
+                {preview.text}
+              </pre>
+            </details>
+          </div>
+        ) : null}
+      </div>
+
       <div className="mt-6 flex flex-wrap items-center gap-3">
+
         <TTButton
           onClick={() => invite.mutate()}
           disabled={parsed.valid.length === 0 || invite.isPending}
