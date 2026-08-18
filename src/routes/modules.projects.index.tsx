@@ -57,6 +57,7 @@ import { projectFromMilestone } from "@/data/projects-handoff";
 import { readiness } from "@/data/roadmap-milestones";
 import type { RoadmapIdentity } from "@/data/roadmap-index";
 import { listApprovedMilestones } from "@/data/supabase/roadmap-handoffs";
+import { projectIntelligence } from "@/data/supabase/project-intelligence";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import { roadmapService } from "@/data/supabase/roadmap-service";
 import { scoutService } from "@/data/supabase/scout-service";
