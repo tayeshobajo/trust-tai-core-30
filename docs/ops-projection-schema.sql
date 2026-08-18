@@ -1,4 +1,11 @@
--- Trust Tai OS — Ops project projection (idempotent, additive).
+-- Trust Tai OS - Ops project projection (idempotent, additive).
+--
+-- NOTE (live): the applied migration in okydosoacqdnursmmenf uses the Ops-side
+-- column names, which Core reads: project_name, client_label, primary_domain,
+-- lifecycle_state, needs_attention, open_issues, open_approvals,
+-- open_recommendations, open_risks, ops_path, ops_url, synced_at,
+-- source_updated_at, app_key. RLS is org-scoped via private.is_org_member.
+-- The statements below are the original Core-side proposal, kept for history.
 --
 -- Ops remains the canonical owner of Ops truth. This table is a read-only
 -- projection inside Trust Tai OS: Ops pushes one row per Ops project through

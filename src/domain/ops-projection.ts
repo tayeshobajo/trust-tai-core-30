@@ -176,10 +176,10 @@ export function readOpsProjectRow(raw: Record<string, unknown>): OpsProjectRow |
   const lastSyncedAt = text(raw["synced_at"]) ?? text(raw["last_synced_at"]);
   if (!opsProjectId || !organizationId || !name || !lastSyncedAt) return null;
 
-  const company = text(raw["company"]);
+  const company = text(raw["client_label"]) ?? text(raw["company"]);
   const status = text(raw["status"]);
   const owner = text(raw["owner"]);
-  const environment = text(raw["environment"]);
+  const environment = text(raw["environment"]) ?? text(raw["primary_domain"]);
   const canonicalProjectId = text(raw["canonical_project_id"]);
   const opsPath = safeOpsPath(raw["ops_path"]);
   const opsUrl = opsPathFromUrl(raw["ops_url"]) ? String(raw["ops_url"]).trim() : undefined;

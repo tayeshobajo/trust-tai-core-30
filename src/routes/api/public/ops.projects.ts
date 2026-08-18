@@ -89,6 +89,7 @@ export const Route = createFileRoute("/api/public/ops/projects")({
           organization_id: organizationId,
           ops_project_id: project.opsProjectId,
           project_name: project.name,
+          client_label: project.company ?? null,
           status: project.status ?? null,
           health: project.health ?? "unknown",
           owner: project.owner ?? null,
