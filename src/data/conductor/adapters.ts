@@ -13,6 +13,7 @@
 import { commsService } from "@/data/supabase/comms-service";
 import { ROADMAP_ADAPTERS } from "./adapters-roadmap";
 import { SCOUT_ADAPTERS } from "./adapters-scout";
+import { projectsRouteAdapter } from "./adapters-projects-route";
 import { ADAPTER_CAPABILITIES } from "@/domain/adapter-registry";
 import { projectsService } from "@/data/supabase/projects-service";
 import type {
@@ -306,6 +307,7 @@ export const projectsBlockerAdapter: RoomAdapter = {
 export const ROOM_ADAPTERS: RoomAdapter[] = [
   commsDraftAdapter,
   projectsBlockerAdapter,
+  projectsRouteAdapter,
   ...SCOUT_ADAPTERS,
   ...ROADMAP_ADAPTERS,
 ];
