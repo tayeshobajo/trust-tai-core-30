@@ -133,6 +133,7 @@ export function ConversationRoom({
   onViewProfile,
   onOpenContext,
   onAddInteraction,
+  onExportSummary,
   onEditTouch,
   onRetractTouch,
   onRestoreTouch,
@@ -144,6 +145,7 @@ export function ConversationRoom({
   onViewProfile: () => void;
   onOpenContext?: () => void;
   onAddInteraction?: () => void;
+  onExportSummary?: () => void;
   onEditTouch?: (touchId: string) => void;
   onRetractTouch?: (touchId: string) => void;
   onRestoreTouch?: (touchId: string) => void;
@@ -198,6 +200,15 @@ export function ConversationRoom({
               className="rounded-md border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               + Add interaction
+            </button>
+          ) : null}
+          {onExportSummary ? (
+            <button
+              type="button"
+              onClick={onExportSummary}
+              className="rounded-md border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Export summary
             </button>
           ) : null}
           {onOpenContext ? (
