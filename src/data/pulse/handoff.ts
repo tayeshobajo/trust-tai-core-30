@@ -20,10 +20,28 @@ export interface ConductorHandoff {
   entity?: string;
   /** The question the Conductor should answer first. */
   ask: string;
+  /**
+   * The routed request this signal is about, when it is one. A pointer into
+   * the shared activity ledger — never a copy of the request itself.
+   */
+  route?: string;
 }
 
 /** The rooms whose signals can be carried into a specific Business Read. */
-export const HANDOFF_ROOMS = ["projects", "comms", "roadmap", "scout"] as const;
+export const HANDOFF_ROOMS = ["projects", "comms", "roadmap", "scout", "ops"] as const;
+
+/** A routed-work signal, whose governed step belongs to Projects, not Ops. */
+export function isRoutedWorkSignal(signal: Pick<PulseSignal, "id">): boolean {
+  return signal.id.startsWith("route:");
+}
+
+/**
+ * The routed request a signal is about, when it is one. The Conductor needs
+ * the key to name the ask; it still re-reads the ledger for everything else.
+ */
+export function routeKeyOf(signal: Pick<PulseSignal, "id">): string | undefined {
+  return isRoutedWorkSignal(signal) ? signal.id.slice("route:".length) || undefined : undefined;
+}
 
 /** Can this signal open a read the Conductor can make specific? */
 export function canOpenInConductor(signal: Pick<PulseSignal, "sourceApp">): boolean {
@@ -43,6 +61,11 @@ const SEVERITY_ASK: Record<PulseSeverity, string> = {
  * action — the Conductor still decides what, if anything, may be proposed.
  */
 export function handoffQuestion(signal: PulseSignal): string {
+  if (isRoutedWorkSignal(signal)) {
+    /* Ops and Studio answer for themselves. The only ask this house can settle
+     * is whether it is still waiting, so that is what the Conductor is asked. */
+    return `${signal.title} (${signal.entityPath}). Should this house still be waiting on it, or should the ask be taken back?`;
+  }
   const where = signal.entityPath && signal.entityPath !== signal.sourceAppLabel
     ? ` (${signal.entityPath}, in ${signal.sourceAppLabel})`
     : ` (in ${signal.sourceAppLabel})`;
@@ -51,11 +74,13 @@ export function handoffQuestion(signal: PulseSignal): string {
 
 /** Build the search params for /modules/conductor from one Pulse signal. */
 export function conductorHandoff(signal: PulseSignal): ConductorHandoff {
+  const route = routeKeyOf(signal);
   return {
     signal: signal.id,
     app: signal.sourceApp,
     ...(signal.entityPath ? { entity: signal.entityPath } : {}),
     ask: handoffQuestion(signal),
+    ...(route ? { route } : {}),
   };
 }
 
@@ -66,5 +91,6 @@ export function readHandoff(search: Record<string, unknown>): ConductorHandoff |
   if (!signal || !ask) return undefined;
   const app = typeof search["app"] === "string" ? search["app"] : "";
   const entity = typeof search["entity"] === "string" ? search["entity"] : "";
-  return { signal, app, ask, ...(entity ? { entity } : {}) };
+  const route = typeof search["route"] === "string" ? search["route"] : "";
+  return { signal, app, ask, ...(entity ? { entity } : {}), ...(route ? { route } : {}) };
 }

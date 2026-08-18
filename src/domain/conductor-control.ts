@@ -22,6 +22,7 @@
  *     roadmap, project or asset.
  */
 
+import type { AccessContext } from "./access";
 import type { EvidenceRef } from "./confidence";
 import type { ID, ISODateTime } from "./entities";
 import type { Permission } from "./access";
@@ -268,6 +269,11 @@ export interface AdapterContext {
   actor: { id: ID; label: string };
   /** The person whose approval authorises the routing. */
   approvedBy: { id: ID; label: string };
+  /**
+   * The approving person's own access, for services that re-check the owning
+   * room's permission themselves. Absent means the adapter must refuse.
+   */
+  access?: AccessContext;
   now?: ISODateTime;
 }
 

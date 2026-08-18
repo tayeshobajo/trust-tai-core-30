@@ -14,6 +14,7 @@
 
 import type { EvidenceRef } from "@/domain/confidence";
 import { actionPermission } from "@/domain/action-authority";
+import type { AccessContext } from "@/domain/access";
 import type {
   ActionLifecycleState,
   ActionOutcome,
@@ -416,9 +417,16 @@ export function adapterContext(
   action: ControlledAction,
   actor: { id: string; label: string },
   now: string,
+  access?: AccessContext,
 ): AdapterContext {
   const approvedBy = action.approval?.by ?? actor;
-  return { organizationId: action.organizationId, actor, approvedBy, now };
+  return {
+    organizationId: action.organizationId,
+    actor,
+    approvedBy,
+    ...(access ? { access } : {}),
+    now,
+  };
 }
 
 /** Convenience for tests and UI: the permission the owning room will demand. */
