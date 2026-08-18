@@ -179,6 +179,8 @@ export function CommsSidebarPanels({
   onHealth,
   onTab,
   onAdd,
+  attention,
+  onOpenRelationship,
 }: {
   view: InboxView;
   health: ConversationHealthStatus | null;
@@ -186,6 +188,9 @@ export function CommsSidebarPanels({
   onHealth: (status: ConversationHealthStatus | null) => void;
   onTab?: (tab: InboxTab) => void;
   onAdd: () => void;
+  /** Relationships with a real reason to hear from Tai today. */
+  attention?: AttentionEntry[];
+  onOpenRelationship?: (id: string) => void;
 }) {
   const driver = commsDriver(view);
   const active: GlanceKey | null =
