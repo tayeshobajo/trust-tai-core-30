@@ -37,6 +37,12 @@ export interface LaunchOpsOptions {
    */
   organizationId: string | null | undefined;
   canonicalProjectId?: string | undefined;
+  /**
+   * Where inside Ops to land after Ops has established the session. A safe
+   * same-site path only: no scheme, no host, no protocol-relative "//". It is
+   * a route hint, never a credential.
+   */
+  targetPath?: string | undefined;
   /** Optional hint about where the person came from. Never sensitive. */
   returnContext?: string | undefined;
   origin?: string;
@@ -53,6 +59,15 @@ function browserHost(): LaunchHost {
     setTimeout: (handler, ms) => window.setTimeout(handler, ms),
     clearTimeout: (handle) => window.clearTimeout(handle),
   };
+}
+
+/** A route hint Ops may redirect to, or undefined when it is not safe. */
+export function safeOpsTargetPath(candidate: string | null | undefined): string | undefined {
+  const value = (candidate ?? "").trim();
+  if (!value.startsWith("/")) return undefined;
+  if (value.startsWith("//")) return undefined;
+  if (/[\\]|[a-z][a-z0-9+.-]*:/i.test(value)) return undefined;
+  return value;
 }
 
 /** Open Ops and hand the session over once Ops acknowledges. */
@@ -96,6 +111,9 @@ export function launchOps(options: LaunchOpsOptions): Promise<OpsLaunchResult> {
           accessToken: token,
           organizationId,
           ...(options.canonicalProjectId ? { canonicalProjectId: options.canonicalProjectId } : {}),
+          ...(safeOpsTargetPath(options.targetPath)
+            ? { targetPath: safeOpsTargetPath(options.targetPath) }
+            : {}),
           ...(options.returnContext ? { returnContext: options.returnContext } : {}),
           issuedAt: new Date().toISOString(),
         },
