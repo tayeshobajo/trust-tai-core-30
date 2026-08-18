@@ -445,6 +445,100 @@ export const commsService = {
     return toTouch(data as unknown as TouchRow);
   },
 
+  /**
+   * Correct the wording of an interaction. The moment it happened, who logged
+   * it, and the original wording are all preserved in provenance, so an edit
+   * reads as a correction rather than a rewrite of history.
+   */
+  async editTouch(
+    input: {
+      touch: Touch;
+      relationship: Relationship;
+      summary: string;
+      body?: string | null;
+      editedBy?: string;
+    },
+    context: CommsContext,
+  ): Promise<Touch> {
+    const at = new Date().toISOString();
+    const provenance = editedProvenance(input.touch.provenance, {
+      previousSummary: input.touch.summary,
+      previousBody: input.touch.body ?? null,
+      occurredAt: input.touch.occurredAt,
+      at,
+      ...(input.editedBy ? { by: input.editedBy } : {}),
+    });
+
+    const patch: Row = { summary: input.summary.trim(), provenance };
+    if (input.body !== undefined) patch["body"] = input.body?.trim() || null;
+
+    const { data, error } = await supabase
+      .from("comms_touches")
+      .update(patch)
+      .eq("id", input.touch.id)
+      .eq("organization_id", context.organizationId)
+      .select(TOUCH_COLUMNS)
+      .single();
+    assertOk(error);
+    if (!data) throw new Error("That interaction could not be edited.");
+
+    await record(
+      context,
+      "conversation.updated",
+      { id: input.relationship.id, label: input.relationship.fullName },
+      `Corrected an interaction with ${input.relationship.fullName}: ${input.summary.trim()}`,
+      { touchId: input.touch.id, kind: "edit" },
+    );
+
+    return toTouch(data as unknown as TouchRow);
+  },
+
+  /**
+   * Withdraw an interaction. Nothing is deleted: the entry stays on the record
+   * marked as retracted, with its original timestamps and provenance intact.
+   */
+  async retractTouch(
+    input: {
+      touch: Touch;
+      relationship: Relationship;
+      because?: string;
+      retractedBy?: string;
+      restore?: boolean;
+    },
+    context: CommsContext,
+  ): Promise<Touch> {
+    const at = new Date().toISOString();
+    const provenance = input.restore
+      ? restoredProvenance(input.touch.provenance, { at })
+      : retractedProvenance(input.touch.provenance, {
+          at,
+          ...(input.retractedBy ? { by: input.retractedBy } : {}),
+          ...(input.because ? { because: input.because } : {}),
+        });
+
+    const { data, error } = await supabase
+      .from("comms_touches")
+      .update({ provenance })
+      .eq("id", input.touch.id)
+      .eq("organization_id", context.organizationId)
+      .select(TOUCH_COLUMNS)
+      .single();
+    assertOk(error);
+    if (!data) throw new Error("That interaction could not be updated.");
+
+    await record(
+      context,
+      "conversation.updated",
+      { id: input.relationship.id, label: input.relationship.fullName },
+      input.restore
+        ? `Restored a retracted interaction with ${input.relationship.fullName}.`
+        : `Retracted an interaction with ${input.relationship.fullName}.`,
+      { touchId: input.touch.id, kind: input.restore ? "restore" : "retract" },
+    );
+
+    return toTouch(data as unknown as TouchRow);
+  },
+
   /* -------------------------------------------------------------- drafts */
 
   async listDrafts(relationshipId: ID): Promise<CommsDraft[]> {
