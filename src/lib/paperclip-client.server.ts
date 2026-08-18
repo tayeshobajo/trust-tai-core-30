@@ -165,6 +165,19 @@ async function requestFirstMatch<T>(
 }
 
 export const paperclipClient = {
+  /** Cheap reachability probe for diagnostics. Never throws. */
+  async ping(): Promise<boolean> {
+    try {
+      const url = new URL("/api/health", paperclipApiUrl());
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${paperclipBoardKey()}` },
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  },
+
   getAgent(agentId: string) {
     return request<PaperclipAgent>(`/api/agents/${agentId}`);
   },
