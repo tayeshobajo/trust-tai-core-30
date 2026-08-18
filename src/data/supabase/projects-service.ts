@@ -115,6 +115,7 @@ export function toProject(row: Row): ExecutionProject {
       ? { nextMove: String(row["next_move"] ?? meta["next_move"]) }
       : {}),
     ...(str(meta["blocked_because"]) ? { blockedBecause: String(meta["blocked_because"]) } : {}),
+    ...(str(meta["waiting_on"]) ? { waitingOn: String(meta["waiting_on"]) } : {}),
     ...(str(row["blocked_since"]) || str(meta["blocked_since"])
       ? { blockedSince: String(row["blocked_since"] ?? meta["blocked_since"]) }
       : {}),
@@ -299,6 +300,8 @@ export const projectsService = {
       dueDate?: string;
       currentWork?: string;
       deliveryItems?: { label: string; done: boolean }[];
+      /** Pass "" to say the wait is over. */
+      waitingOn?: string;
     },
     context: ProjectsContext,
   ): Promise<ExecutionProject> {
@@ -343,6 +346,10 @@ export const projectsService = {
     metadata["blocked_because"] =
       state === "blocked" ? (changes.blockedBecause ?? project.blockedBecause ?? null) : null;
     // "Blocked for N days" is only honest if the clock starts when it first stopped.
+    // Waiting is only true while the work is in flight and a person said so.
+    const waitingOn =
+      changes.waitingOn !== undefined ? changes.waitingOn.trim() : (project.waitingOn ?? "");
+    metadata["waiting_on"] = state === "in_flight" && waitingOn ? waitingOn : null;
     metadata["blocked_since"] =
       state === "blocked" ? (project.state === "blocked" ? (project.blockedSince ?? now) : now) : null;
 
