@@ -1,58 +1,74 @@
 /**
- * A single piece of delivery.
+ * The delivery room for one approved roadmap milestone.
  *
- * Point A, Point B, who carries it, what it rests on, and the one move it is
- * asking for. State changes are a person's decision and are mirrored into the
- * shared activity stream, so the rest of the suite reads the same truth.
+ * It answers four things without scrolling: what we are building, why we are
+ * building it, what is happening now, and what is stopping it from moving.
+ * The chain Company → Roadmap → Milestone → Project → Delivery → Outcome stays
+ * visible, because execution without lineage is just activity.
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
-import {
-  EmptyState,
-  MetaPill,
-  PageHeader,
-  SectionHeading,
-  TTButton,
-  TTInput,
-} from "@/components/tt/primitives";
+import { EmptyState, TTButton, TTInput } from "@/components/tt/primitives";
 import { LaunchOpsButton } from "@/components/tt/ops/launch-ops";
-import { StateTrack, daysAgo, movedPhrase } from "@/components/tt/projects/state-track";
 import { RouteWork } from "@/components/tt/projects/route-work";
-import { ProjectLineage } from "@/components/tt/projects/lineage";
+import {
+  OutcomeStrip,
+  PROJECT_TABS,
+  ProjectIdentityHeader,
+  ProjectTabs,
+  UtilityRow,
+  type ProjectTab,
+} from "@/components/tt/projects/detail/frame";
+import { OverviewTab } from "@/components/tt/projects/detail/overview";
+import { DetailRail } from "@/components/tt/projects/detail/rail";
+import {
+  ActivityTab,
+  BlockersTab,
+  DecisionsTab,
+  FilesTab,
+  WorkTab,
+} from "@/components/tt/projects/detail/sections";
+import {
+  completionModel,
+  healthSignals,
+  needsJudgment,
+  peopleOnProject,
+} from "@/data/projects/detail-projection";
 import { buildProjectRow, lineageSourcesFrom } from "@/data/projects/index-projection";
+import { projectDelivery, type DeliveryContext } from "@/data/supabase/project-delivery";
+import { readRoadmapBrand } from "@/data/supabase/roadmap-brand";
 import { roadmapService } from "@/data/supabase/roadmap-service";
-
+import { supabaseActivity } from "@/data/supabase/activities";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
-import { isOpenProject } from "@/domain/projects";
 import {
   EXECUTION_STATE_LABEL,
-  HEALTH_LABEL,
   checkTransition,
+  isOpenProject,
   nextStates,
-  projectHealth,
-  recommendedMove,
-  type ExecutionProject,
   type ExecutionState,
 } from "@/domain/projects";
+import type { ProjectFileKind, WorkItemStatus } from "@/domain/project-delivery";
 import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
 
 export const Route = createFileRoute("/modules/projects/$projectId")({
   head: () => ({
     meta: [
-      { title: "Project — Delivery — Trust Tai OS" },
+      { title: "Delivery room — Projects — Trust Tai OS" },
       {
         name: "description",
-        content: "One piece of Trust Tai delivery: Point A, Point B, owner, blocks and next move.",
+        content:
+          "One approved milestone in delivery: outcome, current work, blockers, decisions and lineage back to the roadmap.",
       },
-      { property: "og:title", content: "Project — Delivery — Trust Tai OS" },
+      { property: "og:title", content: "Delivery room — Projects — Trust Tai OS" },
       {
         property: "og:description",
-        content: "One piece of Trust Tai delivery: Point A, Point B, owner, blocks and next move.",
+        content:
+          "One approved milestone in delivery: outcome, current work, blockers, decisions and lineage back to the roadmap.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -68,23 +84,14 @@ function ProjectRoute() {
     <WorkspaceGate>
       {(identity) => (
         <AppShell identity={identity}>
-          <ProjectWorkspace identity={identity} projectId={projectId} />
+          <DeliveryRoom identity={identity} projectId={projectId} />
         </AppShell>
       )}
     </WorkspaceGate>
   );
 }
 
-function Line({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="tt-eyebrow">{label}</p>
-      <p className="mt-1 max-w-reading text-sm text-foreground">{value || "Not recorded yet."}</p>
-    </div>
-  );
-}
-
-function ProjectWorkspace({
+function DeliveryRoom({
   identity,
   projectId,
 }: {
@@ -92,43 +99,130 @@ function ProjectWorkspace({
   projectId: string;
 }) {
   const queryClient = useQueryClient();
-  const context: ProjectsContext = {
-    organizationId: identity.organizationId,
+  const [tab, setTab] = useState<ProjectTab>("overview");
+  const [updating, setUpdating] = useState(false);
+  const [blockedReason, setBlockedReason] = useState("");
+  const [nextMove, setNextMove] = useState("");
+
+  const org = identity.organizationId;
+  const projectsContext: ProjectsContext = {
+    organizationId: org,
     userId: identity.userId,
     userLabel: identity.name,
   };
 
   const projectQuery = useQuery({
-    queryKey: ["projects", "detail", projectId, identity.organizationId],
-    queryFn: () => projectsService.get(projectId, identity.organizationId),
+    queryKey: ["projects", "detail", projectId, org],
+    queryFn: () => projectsService.get(projectId, org),
     retry: false,
   });
-
-  // Lineage is read from roadmap truth, never re-stated here.
+  const allProjectsQuery = useQuery({
+    queryKey: ["projects", "list", org],
+    queryFn: () => projectsService.list(org),
+    retry: false,
+  });
   const roadmapsQuery = useQuery({
-    queryKey: ["projects", "roadmaps", identity.organizationId],
-    queryFn: () => roadmapService.list(identity.organizationId),
+    queryKey: ["projects", "roadmaps", org],
+    queryFn: () => roadmapService.list(org),
     retry: false,
   });
   const stagesQuery = useQuery({
-    queryKey: ["projects", "stages", identity.organizationId],
-    queryFn: () => roadmapService.stagesByRoadmap(identity.organizationId),
+    queryKey: ["projects", "stages", org],
+    queryFn: () => roadmapService.stagesByRoadmap(org),
     retry: false,
   });
 
-  const [nextMove, setNextMove] = useState("");
-  const [blocked, setBlocked] = useState("");
+  const project = projectQuery.data ?? null;
 
-  const update = useMutation({
+  const delivery: DeliveryContext = {
+    organizationId: org,
+    projectId,
+    projectName: project?.name ?? "Project",
+    userId: identity.userId,
+    userLabel: identity.name,
+  };
+
+  const enabled = Boolean(project);
+  const workQuery = useQuery({
+    queryKey: ["delivery", "work", projectId, org],
+    queryFn: () => projectDelivery.listWork(delivery),
+    enabled,
+    retry: false,
+  });
+  const blockersQuery = useQuery({
+    queryKey: ["delivery", "blockers", projectId, org],
+    queryFn: () => projectDelivery.listBlockers(delivery),
+    enabled,
+    retry: false,
+  });
+  const decisionsQuery = useQuery({
+    queryKey: ["delivery", "decisions", projectId, org],
+    queryFn: () => projectDelivery.listDecisions(delivery),
+    enabled,
+    retry: false,
+  });
+  const filesQuery = useQuery({
+    queryKey: ["delivery", "files", projectId, org],
+    queryFn: () => projectDelivery.listFiles(delivery),
+    enabled,
+    retry: false,
+  });
+  const activityQuery = useQuery({
+    queryKey: ["delivery", "activity", projectId, org],
+    queryFn: () =>
+      supabaseActivity.list({
+        organizationId: org,
+        subjectType: "project",
+        subjectId: projectId,
+        limit: 40,
+      }),
+    enabled,
+    retry: false,
+  });
+
+  const roadmaps = roadmapsQuery.data ?? [];
+  const row = useMemo(
+    () =>
+      project
+        ? buildProjectRow(project, lineageSourcesFrom(roadmaps, stagesQuery.data ?? {}))
+        : null,
+    [project, roadmaps, stagesQuery.data],
+  );
+
+  const roadmap = row?.lineage.roadmapId
+    ? (roadmaps.find((entry) => entry.id === row.lineage.roadmapId) ?? null)
+    : null;
+  const brandQuery = useQuery({
+    queryKey: ["delivery", "brand", roadmap?.id ?? "none"],
+    queryFn: () => (roadmap ? readRoadmapBrand(roadmap) : Promise.resolve(null)),
+    enabled: Boolean(roadmap),
+    retry: false,
+  });
+
+  const items = workQuery.data ?? [];
+  const blockers = blockersQuery.data ?? [];
+  const decisions = decisionsQuery.data ?? [];
+  const files = filesQuery.data ?? [];
+
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["delivery"] });
+    await queryClient.invalidateQueries({ queryKey: ["projects"] });
+  };
+
+  const mutate = useMutation({
+    mutationFn: async (run: () => Promise<unknown>) => run(),
+    onSuccess: refresh,
+  });
+
+  const updateProject = useMutation({
     mutationFn: (changes: Parameters<typeof projectsService.update>[1]) => {
-      const project = projectQuery.data;
       if (!project) throw new Error("This project is no longer readable.");
-      return projectsService.update(project, changes, context);
+      return projectsService.update(project, changes, projectsContext);
     },
     onSuccess: async () => {
+      setBlockedReason("");
       setNextMove("");
-      setBlocked("");
-      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      await refresh();
     },
   });
 
@@ -136,7 +230,7 @@ function ProjectWorkspace({
     return <p className="text-sm text-muted-foreground">Reading this work…</p>;
   }
 
-  if (projectQuery.isError || !projectQuery.data) {
+  if (projectQuery.isError || !project || !row) {
     return (
       <EmptyState
         title="That project could not be read."
@@ -155,109 +249,59 @@ function ProjectWorkspace({
     );
   }
 
-  const project: ExecutionProject = projectQuery.data;
-  const health = projectHealth(project);
-  const move = recommendedMove(project);
+  const siblings = (allProjectsQuery.data ?? []).filter(
+    (entry) => entry.origin.subjectLabel === project.origin.subjectLabel,
+  );
+  const position = siblings.findIndex((entry) => entry.id === project.id);
+  const previous =
+    position > 0 && siblings[position - 1]
+      ? { id: siblings[position - 1]!.id, name: siblings[position - 1]!.name }
+      : null;
+  const next =
+    position >= 0 && siblings[position + 1]
+      ? { id: siblings[position + 1]!.id, name: siblings[position + 1]!.name }
+      : null;
+
+  const completion = completionModel(project, items, row.lineage.milestoneName);
+  const attention = needsJudgment(project, items, blockers, decisions);
+  const busy = mutate.isPending || updateProject.isPending;
+  const error = mutate.error ?? updateProject.error;
+
+  const openTab = (value: "work" | "blockers" | "decisions") => setTab(value);
 
   return (
-    <div className="space-y-10">
-      <PageHeader
-        eyebrow="Trust Tai OS / Projects"
-        title={project.name}
-        supporting={health.because}
+    <div className="space-y-6">
+      <UtilityRow row={row} previous={previous} next={next} />
+
+      <ProjectIdentityHeader
+        row={row}
+        brand={brandQuery.data ?? null}
+        updatedLabel={new Date(project.updatedAt).toLocaleDateString()}
+        onUpdate={() => setUpdating((open) => !open)}
       />
 
-      <div className="flex flex-wrap gap-2">
-        <MetaPill>{HEALTH_LABEL[health.level]}</MetaPill>
-        <MetaPill>Carried by {project.ownerLabel ?? "no one yet"}</MetaPill>
-        {project.origin.subjectLabel ? (
-          <MetaPill>For {project.origin.subjectLabel}</MetaPill>
-        ) : null}
-        {project.origin.kind === "roadmap_milestone" ? <MetaPill>From Roadmap</MetaPill> : null}
-      </div>
-
-      <ProjectLineage
-        row={buildProjectRow(
-          project,
-          lineageSourcesFrom(roadmapsQuery.data ?? [], stagesQuery.data ?? {}),
-        )}
-      />
-
-      <section aria-label="Where this stands" className="tt-surface space-y-3 p-6">
-        <StateTrack state={project.state} />
-        {project.state === "blocked" ? (
-          <p className="max-w-reading border-l-2 border-destructive pl-3 text-sm text-foreground">
-            Blocked: {project.blockedBecause?.trim() || "no reason recorded."}
-          </p>
-        ) : null}
-        <dl className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <dt className="tt-eyebrow">Last moved</dt>
-            <dd className="mt-1 text-sm text-foreground">{movedPhrase(project)}</dd>
-          </div>
-          <div>
-            <dt className="tt-eyebrow">Last recorded change</dt>
-            <dd className="mt-1 text-sm text-foreground">
-              {daysAgo(project.updatedAt)} day{daysAgo(project.updatedAt) === 1 ? "" : "s"} ago
-            </dd>
-          </div>
-          <div>
-            <dt className="tt-eyebrow">In delivery for</dt>
-            <dd className="mt-1 text-sm text-foreground">
-              {daysAgo(project.createdAt)} day{daysAgo(project.createdAt) === 1 ? "" : "s"}
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      {isOpenProject(project) ? (
-        <section aria-label="Technical stewardship" className="tt-surface space-y-3 p-6">
-          <SectionHeading
-            eyebrow="Ops"
-            title="Take this into technical stewardship"
-            description="Ops runs the technical work for this project. Your Trust Tai session is handed over securely; this project's id travels with it."
-          />
-          <LaunchOpsButton
-            variant="secondary"
-            label="Open in Ops"
-            organizationId={identity.organizationId}
-            returnContext="project"
-            canonicalProjectId={project.id}
-          />
-        </section>
-      ) : null}
-
-      {isOpenProject(project) ? (
-        <RouteWork project={project} context={context} access={workspaceAccess(identity)} />
-      ) : null}
-
-
-      <section className="tt-surface space-y-5 p-6">
-        <SectionHeading eyebrow="The move" title={move.move} description={move.because} />
-        <details className="group">
-          <summary className="cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-foreground">
-            <span className="group-open:hidden">Change the state →</span>
-            <span className="hidden group-open:inline">Leave the state as it is</span>
-          </summary>
-          <div className="mt-3 flex flex-wrap gap-2">
+      {updating ? (
+        <section aria-label="Update project" className="tt-surface space-y-4 p-6">
+          <p className="tt-eyebrow">Move this project</p>
+          <div className="flex flex-wrap gap-2">
             {nextStates(project).map((state) => {
               const check = checkTransition(
                 project,
                 state,
-                blocked.trim() ? { blockedBecause: blocked.trim() } : {},
+                blockedReason.trim() ? { blockedBecause: blockedReason.trim() } : {},
               );
               return (
                 <TTButton
                   key={state}
                   size="sm"
                   variant={state === "blocked" ? "quiet" : "secondary"}
-                  disabled={update.isPending || !check.ok}
+                  disabled={busy || !check.ok}
                   title={check.because}
                   onClick={() =>
-                    update.mutate({
+                    updateProject.mutate({
                       state: state as ExecutionState,
-                      ...(state === "blocked" && blocked.trim()
-                        ? { blockedBecause: blocked.trim() }
+                      ...(state === "blocked" && blockedReason.trim()
+                        ? { blockedBecause: blockedReason.trim() }
                         : {}),
                     })
                   }
@@ -266,102 +310,198 @@ function ProjectWorkspace({
                 </TTButton>
               );
             })}
+            {nextStates(project).length === 0 ? (
+              <p className="text-[13px] text-muted-foreground">
+                Closed work does not move again. Start it fresh if it is genuinely back.
+              </p>
+            ) : null}
           </div>
-          {nextStates(project).length === 0 ? (
-            <p className="mt-3 text-[13px] text-muted-foreground">
-              Closed work does not move again. Start it fresh if it is genuinely back.
-            </p>
-          ) : null}
-
-        </details>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2">
-            <TTInput
-              value={nextMove}
-              onChange={(event) => setNextMove(event.target.value)}
-              placeholder="Write the next move in one sentence"
-              aria-label="Next move"
-            />
-            <TTButton
-              size="sm"
-              disabled={update.isPending || nextMove.trim().length === 0}
-              onClick={() => update.mutate({ nextMove: nextMove.trim() })}
-            >
-              Record next move
-            </TTButton>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <TTInput
+                value={nextMove}
+                onChange={(event) => setNextMove(event.target.value)}
+                placeholder="Write the next move in one sentence"
+                aria-label="Next move"
+              />
+              <TTButton
+                size="sm"
+                disabled={busy || nextMove.trim().length === 0}
+                onClick={() => updateProject.mutate({ nextMove: nextMove.trim() })}
+              >
+                Record next move
+              </TTButton>
+            </div>
+            <div className="space-y-2">
+              <TTInput
+                value={blockedReason}
+                onChange={(event) => setBlockedReason(event.target.value)}
+                placeholder="What is blocking this"
+                aria-label="Blocking reason"
+              />
+              <TTButton
+                size="sm"
+                variant="secondary"
+                disabled={busy || blockedReason.trim().length === 0}
+                onClick={() =>
+                  updateProject.mutate({
+                    state: "blocked",
+                    blockedBecause: blockedReason.trim(),
+                  })
+                }
+              >
+                Record a block
+              </TTButton>
+            </div>
           </div>
-          <div className="space-y-2">
-            <TTInput
-              value={blocked}
-              onChange={(event) => setBlocked(event.target.value)}
-              placeholder="What is blocking this"
-              aria-label="Blocking reason"
-            />
-            <TTButton
-              size="sm"
-              variant="secondary"
-              disabled={update.isPending || blocked.trim().length === 0}
-              onClick={() => update.mutate({ state: "blocked", blockedBecause: blocked.trim() })}
-            >
-              Record a block
-            </TTButton>
-          </div>
-        </div>
-        {update.error ? (
-          <p role="alert" className="text-sm text-destructive">
-            {update.error instanceof Error
-              ? update.error.message
-              : "That change could not be saved."}
-          </p>
-        ) : null}
-      </section>
-
-      <section className="grid gap-5 sm:grid-cols-2">
-        <Line label="Point A" value={project.pointA} />
-        <Line label="Point B" value={project.pointB} />
-        <Line label="Execution boundary" value={project.executionBoundary ?? ""} />
-        <Line label="Dependencies" value={project.dependencies.join(", ")} />
-      </section>
-
-      {project.evidence.length > 0 ? (
-        <section className="space-y-3">
-          <SectionHeading
-            eyebrow="What this rests on"
-            title="Evidence carried from Roadmap"
-            description="Delivery inherits the evidence the decision was made on. Nothing new is claimed here."
-          />
-          <ul className="space-y-1">
-            {project.evidence.map((ref) => (
-              <li key={`${ref.label}-${ref.url ?? ""}`} className="text-sm text-muted-foreground">
-                {ref.url ? (
-                  <a
-                    href={ref.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline underline-offset-2 hover:text-foreground"
-                  >
-                    {ref.label}
-                  </a>
-                ) : (
-                  ref.label
-                )}
-              </li>
-            ))}
-          </ul>
         </section>
       ) : null}
 
-      {project.origin.roadmapId ? (
-        <TTButton asChild variant="secondary">
-          <Link
-            to="/modules/roadmap/$roadmapId"
-            params={{ roadmapId: project.origin.roadmapId }}
-            search={{ view: "milestones" as const }}
-          >
-            Open the roadmap this came from
-          </Link>
-        </TTButton>
+      <OutcomeStrip outcome={completion.outcome} />
+
+      <ProjectTabs
+        tab={tab}
+        counts={{
+          work: items.length,
+          blockers: blockers.filter((entry) => entry.status === "open").length,
+          decisions: decisions.filter((entry) => entry.status === "open").length,
+          files: files.length,
+        }}
+        onChange={setTab}
+      />
+
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error instanceof Error ? error.message : "That change could not be saved."}
+        </p>
       ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0">
+          {tab === "overview" ? (
+            <OverviewTab
+              project={project}
+              lineage={row.lineage}
+              items={items}
+              blockers={blockers}
+              completion={completion}
+              onOpenTab={openTab}
+            />
+          ) : null}
+
+          {tab === "work" ? (
+            <div className="space-y-5">
+              <WorkTab
+                items={items}
+                busy={busy}
+                onAdd={(title) =>
+                  mutate.mutate(() =>
+                    projectDelivery.addWork({ title, sequence: items.length }, delivery),
+                  )
+                }
+                onMove={(item, status: WorkItemStatus) =>
+                  mutate.mutate(() => projectDelivery.moveWork(item, status, delivery))
+                }
+              />
+              {isOpenProject(project) ? (
+                <>
+                  <section aria-label="Technical stewardship" className="tt-surface space-y-3 p-6">
+                    <p className="tt-eyebrow">Ops</p>
+                    <p className="max-w-reading text-[15px] text-foreground">
+                      Ops runs the technical work for this project. Your session is handed over
+                      securely and this project&apos;s id travels with it.
+                    </p>
+                    <LaunchOpsButton
+                      variant="secondary"
+                      label="Open in Ops"
+                      organizationId={org}
+                      returnContext="project"
+                      canonicalProjectId={project.id}
+                    />
+                  </section>
+                  <RouteWork
+                    project={project}
+                    context={projectsContext}
+                    access={workspaceAccess(identity)}
+                  />
+                </>
+              ) : null}
+            </div>
+          ) : null}
+
+          {tab === "blockers" ? (
+            <BlockersTab
+              blockers={blockers}
+              busy={busy}
+              onRaise={(reason, move) =>
+                mutate.mutate(() =>
+                  projectDelivery.raiseBlocker(
+                    { reason, ...(move ? { nextMove: move } : {}) },
+                    delivery,
+                  ),
+                )
+              }
+              onResolve={(blocker, resolution) =>
+                mutate.mutate(() => projectDelivery.resolveBlocker(blocker, resolution, delivery))
+              }
+            />
+          ) : null}
+
+          {tab === "decisions" ? (
+            <DecisionsTab
+              decisions={decisions}
+              busy={busy}
+              onAsk={(question, why) =>
+                mutate.mutate(() =>
+                  projectDelivery.askDecision(
+                    { question, ...(why ? { whyItMatters: why } : {}) },
+                    delivery,
+                  ),
+                )
+              }
+              onAnswer={(decision, answer) =>
+                mutate.mutate(() => projectDelivery.answerDecision(decision, answer, delivery))
+              }
+            />
+          ) : null}
+
+          {tab === "files" ? (
+            <FilesTab
+              files={files}
+              busy={busy}
+              onUpload={(file, kind: ProjectFileKind) =>
+                mutate.mutate(() => projectDelivery.uploadFile(file, { kind }, delivery))
+              }
+              onOpen={(file, download) => {
+                void projectDelivery.fileUrl(file, download).then((url) => {
+                  window.open(url, "_blank", "noopener,noreferrer");
+                });
+              }}
+            />
+          ) : null}
+
+          {tab === "activity" ? <ActivityTab events={activityQuery.data ?? []} /> : null}
+        </div>
+
+        <DetailRail
+          ownerLabel={row.ownerLabel}
+          attention={attention}
+          signals={healthSignals(project, items, blockers)}
+          people={peopleOnProject(project, items)}
+          lineage={row.lineage}
+          busy={busy}
+          onOpenTab={openTab}
+          onAddWork={() => setTab("work")}
+          onRaiseBlocker={() => setTab("blockers")}
+          onAskDecision={() => setTab("decisions")}
+          onComplete={() => updateProject.mutate({ state: "delivered" })}
+        />
+      </div>
+
+      <p className="text-[13px] text-muted-foreground">
+        {PROJECT_TABS.length} sections, one record. Everything here is written to the shared
+        activity stream so Pulse and Ask Trust Tai read the same truth.
+      </p>
     </div>
   );
 }
