@@ -1,6 +1,8 @@
 import { GripVertical, Bot, MoreHorizontal, User } from "lucide-react";
 import type { DragEvent } from "react";
 
+import { completeAuthority, reassignAuthority, type StewardActor } from "@/data/steward/authority";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
@@ -64,6 +66,7 @@ export function OwnerBadge({ task }: { task: StewardTask }) {
  */
 export function TaskRow({
   task,
+  actor,
   selected,
   onSelect,
   onOpen,
@@ -75,6 +78,8 @@ export function TaskRow({
   showSelect = false,
 }: {
   task: StewardTask;
+  /** Who is looking. Decides what this row may offer, and what it explains. */
+  actor: StewardActor;
   selected?: boolean;
   onSelect?: (checked: boolean) => void;
   onOpen: () => void;
@@ -86,7 +91,9 @@ export function TaskRow({
   showSelect?: boolean;
 }) {
   const done = task.state === "complete";
-  const canComplete = task.completionPath === "steward" && !done;
+  const canFinish = completeAuthority(task, actor);
+  const canReassign = reassignAuthority(task, actor);
+  const canComplete = canFinish.allowed;
 
   return (
     <li
@@ -106,14 +113,24 @@ export function TaskRow({
           onCheckedChange={(value) => onSelect?.(value === true)}
         />
       ) : (
-        <Checkbox
-          aria-label={
-            canComplete ? `Mark ${task.title} complete` : `${task.title} is completed elsewhere`
-          }
-          checked={done}
-          disabled={!canComplete}
-          onCheckedChange={() => canComplete && onComplete()}
-        />
+        <span title={canFinish.because ?? undefined} className="inline-flex">
+          <Checkbox
+            aria-label={
+              canComplete
+                ? `Mark ${task.title} complete`
+                : `Cannot complete ${task.title}. ${canFinish.because ?? ""}`.trim()
+            }
+            aria-describedby={canComplete ? undefined : `${task.key}-why-not`}
+            checked={done}
+            disabled={!canComplete}
+            onCheckedChange={() => canComplete && onComplete()}
+          />
+          {canComplete ? null : (
+            <span id={`${task.key}-why-not`} className="sr-only">
+              {canFinish.because}
+            </span>
+          )}
+        </span>
       )}
 
       <span
@@ -175,21 +192,33 @@ export function TaskRow({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onSelect={() => onOpen()}>Open detail</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onReassign()}>Reassign</DropdownMenuItem>
+          <DropdownMenuItem disabled={!canReassign.allowed} onSelect={() => onReassign()}>
+            Reassign
+          </DropdownMenuItem>
           {canComplete ? (
             <DropdownMenuItem onSelect={() => onComplete()}>Mark complete</DropdownMenuItem>
-          ) : null}
+          ) : (
+            <p className="px-2 py-2 text-xs text-muted-foreground">
+              {canFinish.because}
+            </p>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Narrow screens keep the essentials visible without horizontal scroll. */}
-      <div className="col-span-4 -mt-1 flex flex-wrap items-center gap-2 pl-[3.25rem] sm:hidden">
-        <Pill className={STEWARD_FOCUS_TONE[task.focus]}>{STEWARD_FOCUS_LABEL[task.focus]}</Pill>
-        <Pill className={STEWARD_STATE_TONE[task.state]}>{STEWARD_STATE_LABEL[task.state]}</Pill>
-        <span className="text-xs text-muted-foreground">
-          {task.owner.name}
-          {task.dueAt ? ` · ${task.dueAt.slice(0, 10)}` : ""}
-        </span>
+      {/* Narrow screens keep the essentials visible without horizontal scroll:
+          assignee, due and status stay, in the same words as the wide table. */}
+      <div className="col-span-4 -mt-1 space-y-1.5 pl-[3.25rem] sm:hidden">
+        <div className="flex flex-wrap items-center gap-2">
+          <Pill className={STEWARD_FOCUS_TONE[task.focus]}>{STEWARD_FOCUS_LABEL[task.focus]}</Pill>
+          <Pill className={STEWARD_STATE_TONE[task.state]}>{STEWARD_STATE_LABEL[task.state]}</Pill>
+        </div>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <span className="text-foreground">{task.owner.name}</span>
+          <span aria-hidden>·</span>
+          <span className={cn(task.overdue && !done ? "text-destructive" : undefined)}>
+            {task.dueAt ? `Due ${task.dueAt.slice(0, 10)}` : "No date"}
+          </span>
+        </p>
       </div>
     </li>
   );

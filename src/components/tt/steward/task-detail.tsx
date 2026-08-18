@@ -1,10 +1,16 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Lock } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { MetaPill, TTButton } from "@/components/tt/primitives";
 import { OwnerBadge } from "@/components/tt/steward/task-row";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  completeAuthority,
+  dueDateAuthority,
+  reassignAuthority,
+  type StewardActor,
+} from "@/data/steward/authority";
 import { Textarea } from "@/components/ui/textarea";
 import {
   STEWARD_FOCUS_LABEL,
@@ -25,7 +31,7 @@ export function TaskDetailPanel({
   onReassign,
   onFocus,
   onDue,
-  canAct,
+  actor,
 }: {
   task: StewardTask | null;
   onClose: () => void;
@@ -33,12 +39,15 @@ export function TaskDetailPanel({
   onReassign: () => void;
   onFocus: (focus: StewardFocus) => void;
   onDue: (due: string | null) => void;
-  canAct: boolean;
+  actor: StewardActor;
 }) {
   const [note, setNote] = useState("");
 
   if (!task) return null;
-  const canComplete = canAct && task.completionPath === "steward" && task.state !== "complete";
+  const finish = completeAuthority(task, actor);
+  const reassignable = reassignAuthority(task, actor);
+  const datable = dueDateAuthority(task, actor);
+  const canComplete = finish.allowed;
 
   return (
     <Sheet open onOpenChange={(open) => (open ? null : onClose())}>
@@ -121,7 +130,6 @@ export function TaskDetailPanel({
                 <button
                   key={focus}
                   type="button"
-                  disabled={!canAct}
                   onClick={() => onFocus(focus)}
                   className={`rounded-full border px-3 py-1.5 text-xs transition-colors disabled:opacity-50 ${
                     task.focus === focus
@@ -139,15 +147,13 @@ export function TaskDetailPanel({
             <p className="tt-eyebrow">Due date</p>
             <input
               type="date"
-              disabled={!canAct || task.origin !== "commitment"}
+              disabled={!datable.allowed}
               defaultValue={task.dueAt?.slice(0, 10) ?? ""}
               onChange={(event) => onDue(event.target.value || null)}
               className="h-11 rounded-lg border border-input bg-card px-3 text-sm text-foreground disabled:opacity-50"
             />
-            {task.origin !== "commitment" ? (
-              <p className="text-xs text-muted-foreground">
-                Dates on delivery work are set in the room that owns it.
-              </p>
+            {datable.because ? (
+              <p className="max-w-reading text-xs text-muted-foreground">{datable.because}</p>
             ) : null}
           </section>
 
@@ -165,34 +171,50 @@ export function TaskDetailPanel({
                   <TTButton type="button" onClick={() => onComplete(note)}>
                     Mark complete
                   </TTButton>
-                  <TTButton type="button" variant="secondary" onClick={onReassign} disabled={!canAct}>
-                    Reassign
-                  </TTButton>
+                  <ReassignButton allowed={reassignable.allowed} onReassign={onReassign} />
                 </div>
+                {reassignable.because ? (
+                  <p className="max-w-reading text-xs text-muted-foreground">
+                    {reassignable.because}
+                  </p>
+                ) : null}
               </>
             ) : (
               <>
-                <p className="max-w-reading text-sm text-muted-foreground">
-                  {task.completionBecause ??
-                    (task.state === "complete"
-                      ? "This is already complete."
-                      : "You do not have authority to complete this task.")}
-                </p>
+                <div className="flex max-w-reading gap-3 rounded-lg border border-border bg-secondary/60 p-4">
+                  <Lock aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <div className="space-y-1">
+                    <p className="text-sm text-foreground">You cannot complete this here.</p>
+                    <p className="text-sm text-muted-foreground">{finish.because}</p>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {task.sourceRoute ? (
                     <TTButton asChild variant="secondary">
                       <Link to={task.sourceRoute}>Open owning room</Link>
                     </TTButton>
                   ) : null}
-                  <TTButton type="button" variant="secondary" onClick={onReassign} disabled={!canAct}>
-                    Reassign
-                  </TTButton>
+                  <ReassignButton allowed={reassignable.allowed} onReassign={onReassign} />
                 </div>
+                {reassignable.because ? (
+                  <p className="max-w-reading text-xs text-muted-foreground">
+                    {reassignable.because}
+                  </p>
+                ) : null}
               </>
             )}
           </section>
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+/** Reassignment is offered only when it would actually be accepted. */
+function ReassignButton({ allowed, onReassign }: { allowed: boolean; onReassign: () => void }) {
+  return (
+    <TTButton type="button" variant="secondary" onClick={onReassign} disabled={!allowed}>
+      Reassign
+    </TTButton>
   );
 }

@@ -29,6 +29,7 @@ import {
   type TasksFilter,
 } from "@/data/steward/accountability";
 import { fathomStatusLine, readStewardTeam } from "@/data/steward/team-read";
+import { reassignAuthority } from "@/data/steward/authority";
 import { useStewardActions } from "@/data/steward/use-steward-actions";
 import { STEWARD_FOCUS_LABEL, type StewardTask } from "@/domain/steward-accountability";
 import { personKeyOf } from "@/domain/steward";
@@ -97,6 +98,7 @@ function StewardTasks({ identity }: { identity: WorkspaceIdentity }) {
   const [openTask, setOpenTask] = useState<StewardTask | null>(null);
   const [reassign, setReassign] = useState<StewardTask | null>(null);
 
+  const actor = { userId: identity.userId, canManage: identity.canManage };
   const read = useQuery({ queryKey, queryFn: () => readStewardTeam(identity.organizationId) });
   const actions = useStewardActions({ identity, queryKey });
 
@@ -259,6 +261,7 @@ function StewardTasks({ identity }: { identity: WorkspaceIdentity }) {
                     <TaskRow
                       key={task.key}
                       task={task}
+                      actor={actor}
                       showSelect
                       selected={selected.includes(task.key)}
                       onSelect={(checked) =>
@@ -282,7 +285,7 @@ function StewardTasks({ identity }: { identity: WorkspaceIdentity }) {
 
       <TaskDetailPanel
         task={openTask}
-        canAct={identity.canManage}
+        actor={actor}
         onClose={() => setOpenTask(null)}
         onComplete={(note) => {
           if (openTask) actions.complete(openTask, note);
@@ -302,6 +305,7 @@ function StewardTasks({ identity }: { identity: WorkspaceIdentity }) {
         people={people}
         agents={read.data?.agents.agents ?? []}
         eligibleAgent={actions.eligibleAgent}
+        refusal={reassign ? reassignAuthority(reassign, actor).because : null}
         onClose={() => setReassign(null)}
         onAssignPerson={(target) => {
           if (reassign) actions.reassignToPerson(reassign, target);

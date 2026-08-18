@@ -61,6 +61,8 @@ export interface StoredConversation {
   organizationId: ID;
   title: string;
   occurredAt: string;
+  /** When Steward actually stored the call. Empty when the row predates it. */
+  ingestedAt: string;
   provider: string;
   sourceUrl: string;
   participants: { name: string; email?: string }[];
@@ -74,6 +76,7 @@ function toConversation(row: Row): StoredConversation {
     organizationId: str(row["organization_id"]),
     title: str(row["title"]),
     occurredAt: str(row["occurred_at"]),
+    ingestedAt: str(row["created_at"]) || str(row["occurred_at"]),
     provider: str(row["source_provider"]),
     sourceUrl: str(row["source_url"]),
     participants: Array.isArray(row["participants"])
