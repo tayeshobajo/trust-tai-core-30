@@ -235,6 +235,66 @@ const service = {
     if (error) fail("That source could not be made primary.", error);
   },
 
+  /** Honest state changes only: a real import, or a person marking it read. */
+  async setThinkingSyncState(
+    source: ThinkingSource,
+    syncState: SourceSyncState,
+    context: DeliveryContext,
+  ): Promise<ThinkingSource> {
+    const { data, error } = await supabase
+      .from("project_thinking_sources")
+      .update({ sync_state: syncState, last_reviewed_at: new Date().toISOString() })
+      .eq("id", source.id)
+      .eq("organization_id", context.organizationId)
+      .select("*")
+      .single();
+    if (error || !data) fail("That source state could not be saved.", error);
+    return toThinking(data as Row);
+  },
+
+  /**
+   * Import pasted or uploaded content from a thinking room. Everything lands
+   * as Needs review, attached to the source, so only a person can make it
+   * canonical.
+   */
+  async importThinking(
+    source: ThinkingSource,
+    text: string,
+    context: DeliveryContext,
+  ): Promise<{ source: ThinkingSource; imported: KnowledgeItem[] }> {
+    const candidates = parseThinkingImport(text);
+    if (candidates.length === 0) {
+      throw new Error(
+        "Nothing in that text reads like a decision, a constraint or an open question yet.",
+      );
+    }
+    const inputs = knowledgeInputsFrom(candidates, source);
+    const payload = inputs.map((input) => ({
+      organization_id: context.organizationId,
+      project_id: context.projectId,
+      section: input.section,
+      body: input.body,
+      origin: input.origin ?? "thinking_room",
+      review_state: input.reviewState ?? "needs_review",
+      ...(input.sourceReference ? { source_reference: input.sourceReference } : {}),
+      ...(input.sourceLabel ? { source_label: input.sourceLabel } : {}),
+      ...(typeof input.confidence === "number" ? { confidence: input.confidence } : {}),
+      captured_by: context.userId,
+      ...(context.userLabel ? { captured_by_label: context.userLabel } : {}),
+    }));
+    const { data, error } = await supabase.from("project_knowledge").insert(payload).select("*");
+    if (error || !data) fail("That import could not be saved.", error);
+    const imported = (data as Row[]).map((row) => toKnowledge(row));
+    const updated = await service.setThinkingSyncState(source, "imported", context);
+    await record(
+      context,
+      "project.updated",
+      `Imported ${imported.length} candidate${imported.length === 1 ? "" : "s"} from ${source.title}`,
+      { sourceId: source.id, reviewState: "needs_review" },
+    );
+    return { source: updated, imported };
+  },
+
   /** Removing the link never removes knowledge a person already confirmed. */
   async removeThinking(source: ThinkingSource, context: DeliveryContext): Promise<void> {
     const { error } = await supabase
@@ -245,6 +305,7 @@ const service = {
     if (error) fail("That thinking room could not be removed.", error);
     await record(context, "project.updated", `Thinking room removed: ${source.title}`);
   },
+
 
   /* knowledge */
 
