@@ -38,7 +38,7 @@ export function ConductorRightRail({
         cta={
           <Link
             to="/modules/activity"
-            search={{ view: "today" as const, page: 1 }}
+            search={{ view: "today" as const, page: 1, kind: "all" as const, q: "" }}
             className="text-royal underline underline-offset-4"
           >
             View today&rsquo;s activity
@@ -66,7 +66,7 @@ export function ConductorRightRail({
         cta={
           <Link
             to="/modules/activity"
-            search={{ view: "needs" as const, page: 1 }}
+            search={{ view: "needs" as const, page: 1, kind: "all" as const, q: "" }}
             className="text-royal underline underline-offset-4"
           >
             View all
@@ -96,7 +96,7 @@ export function ConductorRightRail({
         cta={
           <Link
             to="/modules/activity"
-            search={{ view: "moved" as const, page: 1 }}
+            search={{ view: "moved" as const, page: 1, kind: "all" as const, q: "" }}
             className="text-royal underline underline-offset-4"
           >
             View all movements

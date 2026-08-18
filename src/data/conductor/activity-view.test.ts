@@ -108,6 +108,7 @@ describe("activity paging", () => {
     label: `row ${index}`,
     roomLabel: "Scout",
     standing: "recorded",
+    kind: "other" as const,
     at: null,
   }));
 
