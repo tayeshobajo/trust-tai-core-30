@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { BrandLogo } from "@/components/tt/brand-logo";
 import { PageHeader, MetaPill, TTButton } from "@/components/tt/primitives";
 import { useWorkspace, type WorkspaceIdentity } from "@/lib/workspace";
 
@@ -19,6 +20,7 @@ function Boundary({
 }) {
   return (
     <div className="mx-auto flex min-h-screen max-w-reading flex-col justify-center px-6 py-16">
+      <BrandLogo height={30} className="mb-8" />
       <PageHeader appId="home" eyebrow="Trust Tai OS" title={title} supporting={supporting} />
       <div className="mt-8 flex flex-wrap items-center gap-2">
         {pills.map((pill) => (
