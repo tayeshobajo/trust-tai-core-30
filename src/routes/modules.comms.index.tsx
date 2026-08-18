@@ -1,12 +1,13 @@
 /**
- * Comms, the conversation room.
+ * Comms, the relationship room.
  *
- * Inbox on the left, the conversation itself in the middle, and a quiet rail of
- * context on the right. Reading a relationship should feel like continuing a
- * conversation, not administering a record.
+ * Relationships on the left, the relationship itself in the middle, and its
+ * intelligence on the right. Reading a relationship should feel like
+ * continuing a conversation, not administering a record.
  *
- * Every write goes to Supabase under the caller's own access. Nothing is sent
- * from here; a person always writes and sends the message.
+ * Comms remembers what happened, holds what was promised, and only suggests
+ * outreach when there is a real reason. Every write goes to Supabase under the
+ * caller's own access. Nothing is sent from here; a person always sends.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -20,8 +21,9 @@ import { MailboxImport } from "@/components/tt/comms/mailbox-import";
 import { CommsInbox } from "@/components/tt/comms/comms-inbox";
 import { CommsSidebarPanels } from "@/components/tt/comms/comms-sidebar";
 import { ConversationRoom } from "@/components/tt/comms/conversation-room";
-import { ConversationComposer } from "@/components/tt/comms/conversation-composer";
-import { ConversationContext } from "@/components/tt/comms/conversation-context";
+import { ReplyRecordBar } from "@/components/tt/comms/reply-record";
+import { RelationshipRail } from "@/components/tt/comms/relationship-rail";
+import { AddInteraction, type InteractionSubmission } from "@/components/tt/comms/add-interaction";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
@@ -30,16 +32,23 @@ import { commsService, type RelationshipInput } from "@/data/supabase/comms-serv
 import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
 import { inboxEntries, inboxView, type InboxTab } from "@/data/comms-inbox";
-import { reasonsToReconnect } from "@/data/comms-reminders";
+import { nextRelationshipMove } from "@/data/comms-next-move";
+import { relationshipsWorthAttention } from "@/data/comms-attention";
 import type { ConversationHealthStatus } from "@/domain/comms-health";
 import type { MemoryItem, Relationship, Touch } from "@/domain/comms";
+import {
+  COMMITMENT_CATEGORY,
+  interactionDefinition,
+  manualProvenance,
+  type Commitment,
+} from "@/domain/comms-interactions";
 import type { VoiceRegister } from "@/domain/voice";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Comms · conversations kept warm · Trust Tai OS";
+const TITLE = "Comms · relationships kept warm · Trust Tai OS";
 const DESCRIPTION =
-  "Trust Tai's conversation room: the whole thread, why it matters, and how the conversation is moving.";
+  "Trust Tai's relationship room: what happened, what was promised, what needs attention, and the next thoughtful move.";
 
 export const Route = createFileRoute("/modules/comms/")({
   head: () => ({
@@ -82,6 +91,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [contextOpen, setContextOpen] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [interacting, setInteracting] = useState(false);
 
   const relationshipsQuery = useQuery({
     queryKey: ["comms", "relationships", identity.organizationId],
@@ -189,15 +199,62 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: refresh,
   });
 
-  const logNote = useMutation({
-    mutationFn: (value: string) =>
-      commsService.logTouch(
+  /**
+   * Record something that happened elsewhere. The touch keeps Tai's name on
+   * it, and only the derived facts a person ticked are written to memory.
+   */
+  const recordInteraction = useMutation({
+    mutationFn: async (submission: InteractionSubmission) => {
+      const relationship = selected!;
+      const definition = interactionDefinition(submission.type);
+      const provenance = manualProvenance(identity.name);
+
+      await commsService.logTouch(
         {
-          relationship: selected!,
-          channel: "note",
-          direction: "outbound",
-          summary: value,
+          relationship,
+          channel: definition.channel,
+          direction: definition.direction,
+          summary: `${submission.summary} · ${provenance.label}`,
+          body: submission.body,
+          occurredAt: submission.occurredAt,
         },
+        context,
+      );
+
+      for (const entry of submission.confirmed) {
+        await commsService.remember(
+          relationship,
+          {
+            label: entry.kind === "commitment" ? "Promise" : "Worth remembering",
+            value: entry.text,
+            tier: "decided",
+            evidence: [provenance, { label: `From: ${entry.because}`, kind: "human" }],
+            ...(entry.kind === "commitment"
+              ? {
+                  category: COMMITMENT_CATEGORY,
+                  status: "open" as const,
+                  owner: entry.owner ?? "us",
+                  ...(entry.due ? { due: entry.due } : {}),
+                }
+              : { category: entry.kind === "next_move" ? "Important context" : "What they care about" }),
+            addedBy: provenance.label,
+          },
+          context,
+        );
+      }
+    },
+    onSuccess: async () => {
+      setInteracting(false);
+      await refresh();
+    },
+  });
+
+  const settleCommitment = useMutation({
+    mutationFn: (input: { commitment: Commitment; status: "kept" | "released" }) =>
+      commsService.settleCommitment(
+        selected!,
+        { text: input.commitment.text, at: input.commitment.at },
+        input.status,
         context,
       ),
     onSuccess: refresh,
@@ -268,16 +325,23 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     );
   }
 
+  const move = selected ? nextRelationshipMove(selected) : null;
+  const attention = relationshipsWorthAttention(relationships);
+
   const rail =
-    selected && health && strength ? (
-      <ConversationContext
+    selected && health && strength && move ? (
+      <RelationshipRail
         relationship={selected}
         health={health}
         strength={strength}
-        reasons={reasonsToReconnect(selected)}
-        savedDraft={savedDraft}
-        busy={update.isPending}
-        onNextAction={(value) => update.mutate({ nextAction: value || null })}
+        move={move}
+        onRemember={() => setInteracting(true)}
+        onPrepareMove={() => void compose("follow_up", move.action)}
+        onRemindLater={() => update.mutate({ nextAction: move.action })}
+        onNotNeeded={() => update.mutate({ nextAction: null })}
+        onSettleCommitment={(commitment, status) =>
+          settleCommitment.mutate({ commitment, status })
+        }
       />
     ) : null;
 
@@ -292,6 +356,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           onHealth={setHealthFilter}
           onTab={setTab}
           onAdd={() => setCapturing(true)}
+          attention={attention}
+          onOpenRelationship={(id) => setSelectedId(id)}
         />
 
       }
@@ -301,8 +367,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       <PageHeader
         appId="comms"
         eyebrow="Comms"
-        title="Conversations, kept warm."
-        supporting="The whole thread in one place, with the reason it matters beside it. Nothing is sent from here."
+        title="Relationships, kept warm."
+        supporting="Comms remembers interactions, helps Tai decide the next move, and drafts in Tai's voice so every relationship stays cared for."
         action={
           <div className="flex flex-wrap items-center gap-2">
             {selected ? (
@@ -325,8 +391,13 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 }}
               />
             ) : null}
+            {selected ? (
+              <TTButton variant="quiet" onClick={() => setInteracting(true)}>
+                Add interaction
+              </TTButton>
+            ) : null}
             <TTButton onClick={() => setCapturing((value) => !value)}>
-              {capturing ? "Close" : "Add someone you met"}
+              {capturing ? "Close" : "Add relationship"}
             </TTButton>
           </div>
         }
@@ -386,6 +457,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               health={health}
               onViewProfile={() => setProfileOpen((value) => !value)}
               onOpenContext={() => setContextOpen(true)}
+              onAddInteraction={() => setInteracting(true)}
             >
               {profileOpen ? (
                 <div className="border-t border-border bg-secondary/30 px-5 py-4">
@@ -421,13 +493,13 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 </div>
               ) : null}
 
-              <ConversationComposer
+              <ReplyRecordBar
                 drafting={drafting}
-                busy={logNote.isPending || saveDraft.isPending}
+                busy={recordInteraction.isPending || saveDraft.isPending}
                 error={draftError}
-                onCompose={(register, purpose) => void compose(register, purpose)}
-                onNote={(value) => logNote.mutate(value)}
-                onInsertInsight={() => reasonsToReconnect(selected)[0]?.reasonText ?? null}
+                purposeHint={move?.needed ? move.action : null}
+                onPrepareDraft={(register, purpose) => void compose(register, purpose)}
+                onRecordInteraction={() => setInteracting(true)}
               />
             </ConversationRoom>
           ) : (
@@ -484,6 +556,16 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             {rail}
           </div>
         </div>
+      ) : null}
+
+      {interacting && selected ? (
+        <AddInteraction
+          personName={selected.fullName}
+          userLabel={identity.name}
+          busy={recordInteraction.isPending}
+          onCancel={() => setInteracting(false)}
+          onSave={(submission) => recordInteraction.mutate(submission)}
+        />
       ) : null}
     </div>
     </AppShell>
