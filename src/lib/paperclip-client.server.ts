@@ -217,7 +217,7 @@ export const paperclipClient = {
         `/api/agents/${agentId}/heartbeat`,
         `/api/agents/${agentId}/heartbeat/trigger`,
       ],
-      { method: "POST" },
+      { method: "POST", body: JSON.stringify({}) },
     );
   },
 

@@ -198,3 +198,27 @@ Approval is permission, never execution.
   Conductor's own words are constrained accordingly.
 - **Failure is recorded, not swallowed.** Every hand-over writes a receipt —
   routed, refused or failed — and a governance event in the shared stream.
+
+## 10. Paperclip bridge law (external execution handoff)
+
+Trust Tai routes bounded work to Paperclip agents through `execution_bindings`.
+The bridge follows handoff law: a reference plus reasoning, idempotent, never
+inferring completion. Contracts that future bridges must honor:
+
+1. **`source_entity_id` is a UUID.** The `execution_bindings.source_entity_id`
+   column is Postgres `uuid`. Callers (`assignPaperclipTask`) pass the Trust Tai
+   source entity's real id — a task key, milestone id, or generated UUID. Never
+   a free-form string key (`"my-task-1"` fails with
+   `invalid input syntax for type uuid` at insert).
+2. **Idempotency keys are structured**: `trusttai:task:<orgId>:<sourceEntityId>`.
+   Retries return the existing binding; no duplicate Paperclip issue is created.
+3. **Pause is agent status, not a flag.** Paperclip models pause as
+   `status: "paused"` (AGENT_STATUSES). `{ paused: true }` is silently ignored;
+   `pausedAt` populates only on company-level pause and must never be used as
+   the pause signal.
+4. **Wake requires a JSON object body.** `POST /api/agents/:id/wakeup` with no
+   body returns 400 (validation). `triggerHeartbeat` sends `{}`.
+5. **Completion converges via the reconcile loop, not the page.** The 5-minute
+   sweep (local launchd while Paperclip is laptop-local; edge fn when it has a
+   public URL) projects Paperclip issue status into bindings and agent state.
+   Steward reads; it never claims completion Paperclip has not reported.
