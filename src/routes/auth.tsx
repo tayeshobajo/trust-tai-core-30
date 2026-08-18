@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/tt/brand-logo";
 import { PageHeader, MetaPill, TTButton, TTInput } from "@/components/tt/primitives";
 import { supabase } from "@/integrations/trust-tai/supabase";
+import { authRedirectUrl, sanitizeReturnPath } from "@/lib/auth-origin";
 import { useWorkspace } from "@/lib/workspace";
 
 const TITLE = "Sign in · Trust Tai OS";
@@ -12,11 +13,9 @@ const DESCRIPTION =
 
 /** Only same-origin app paths may be restored after sign-in. */
 function readRedirect(search: Record<string, unknown>): string {
-  const raw = search["redirect"];
-  if (typeof raw !== "string") return "/";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
-  return raw;
+  return sanitizeReturnPath(search["redirect"]);
 }
+
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({ redirect: readRedirect(search) }),
