@@ -13,6 +13,13 @@ import appCss from "../styles.css?url";
 import { WorkspaceProvider } from "@/lib/workspace";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
+/** Brand constants for Trust Tai OS, adapted from the live trusttai.com identity. */
+const SITE_ORIGIN = "https://cmd.trusttai.com";
+const SITE_TITLE = "Trust Tai OS | The Operating System Behind the Roadmap";
+const SITE_DESCRIPTION =
+  "Trust Tai OS connects Scout, Comms, Roadmap, Projects, Ops, Pulse, Steward, and Conductor into one operating system for turning business signals into clear decisions, sequenced work, and measurable outcomes.";
+const SHARE_IMAGE = `${SITE_ORIGIN}/trust-tai-os-share.png`;
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -78,14 +85,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Trust Tai OS Foundation" },
-      {
-        name: "description",
-        content: "The shared internal foundation for Trust Tai apps.",
-      },
+      { title: SITE_TITLE },
+      { name: "description", content: SITE_DESCRIPTION },
       { name: "author", content: "Trust Tai" },
+      // Trust Tai OS is a private, sign-in-only workspace: it must never be indexed.
+      { name: "robots", content: "noindex, nofollow" },
+      { name: "googlebot", content: "noindex, nofollow" },
+      { property: "og:site_name", content: "Trust Tai OS" },
+      { property: "og:title", content: SITE_TITLE },
+      { property: "og:description", content: SITE_DESCRIPTION },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_ORIGIN}/` },
+      { property: "og:image", content: SHARE_IMAGE },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: SITE_TITLE },
+      { name: "twitter:description", content: SITE_DESCRIPTION },
+      { name: "twitter:image", content: SHARE_IMAGE },
+      { name: "theme-color", content: "#ffffff" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -98,7 +114,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      // The favicon identity is copied from trusttai.com, not recreated.
+      { rel: "icon", href: "/favicon.ico", type: "image/x-icon", sizes: "any" },
+      { rel: "icon", href: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+      { rel: "icon", href: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon-152x152.png", sizes: "152x152" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
   shellComponent: RootShell,

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { BrandLogo } from "@/components/tt/brand-logo";
 import { PageHeader, MetaPill, TTButton, TTInput } from "@/components/tt/primitives";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { useWorkspace } from "@/lib/workspace";
@@ -71,6 +72,7 @@ function AuthRoute() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-reading flex-col justify-center px-6 py-16">
+      <BrandLogo height={30} className="mb-8" />
       <PageHeader
         appId="home"
         eyebrow="Trust Tai OS"

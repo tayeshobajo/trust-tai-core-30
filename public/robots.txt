@@ -1,14 +1,3 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# Trust Tai OS is a private, sign-in-only workspace. It is not a marketing surface.
 User-agent: *
-Allow: /
+Disallow: /

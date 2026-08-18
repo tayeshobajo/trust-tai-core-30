@@ -2,6 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AppLink } from "@/components/tt/app-link";
+import { BrandLogo } from "@/components/tt/brand-logo";
 import {
   Activity,
   Compass,
@@ -130,12 +131,10 @@ export function AppShell({
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
 
-        <Link to="/" className="flex items-baseline gap-2">
-          <span className="font-display text-xl font-semibold tracking-tight text-foreground">
-            Trust Tai
-          </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            OS Foundation
+        <Link to="/" className="flex items-center gap-3" aria-label="Trust Tai OS — home">
+          <BrandLogo height={26} className="sm:h-[30px] sm:w-auto" />
+          <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:inline">
+            OS
           </span>
         </Link>
 
