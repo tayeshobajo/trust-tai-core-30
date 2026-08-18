@@ -21,8 +21,9 @@ import { MailboxImport } from "@/components/tt/comms/mailbox-import";
 import { CommsInbox } from "@/components/tt/comms/comms-inbox";
 import { CommsSidebarPanels } from "@/components/tt/comms/comms-sidebar";
 import { ConversationRoom } from "@/components/tt/comms/conversation-room";
-import { ConversationComposer } from "@/components/tt/comms/conversation-composer";
-import { ConversationContext } from "@/components/tt/comms/conversation-context";
+import { ReplyRecordBar } from "@/components/tt/comms/reply-record";
+import { RelationshipRail } from "@/components/tt/comms/relationship-rail";
+import { AddInteraction, type InteractionSubmission } from "@/components/tt/comms/add-interaction";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
@@ -31,16 +32,22 @@ import { commsService, type RelationshipInput } from "@/data/supabase/comms-serv
 import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
 import { inboxEntries, inboxView, type InboxTab } from "@/data/comms-inbox";
-import { reasonsToReconnect } from "@/data/comms-reminders";
+import { nextRelationshipMove } from "@/data/comms-next-move";
 import type { ConversationHealthStatus } from "@/domain/comms-health";
 import type { MemoryItem, Relationship, Touch } from "@/domain/comms";
+import {
+  COMMITMENT_CATEGORY,
+  interactionDefinition,
+  manualProvenance,
+  type Commitment,
+} from "@/domain/comms-interactions";
 import type { VoiceRegister } from "@/domain/voice";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Comms · conversations kept warm · Trust Tai OS";
+const TITLE = "Comms · relationships kept warm · Trust Tai OS";
 const DESCRIPTION =
-  "Trust Tai's conversation room: the whole thread, why it matters, and how the conversation is moving.";
+  "Trust Tai's relationship room: what happened, what was promised, what needs attention, and the next thoughtful move.";
 
 export const Route = createFileRoute("/modules/comms/")({
   head: () => ({
