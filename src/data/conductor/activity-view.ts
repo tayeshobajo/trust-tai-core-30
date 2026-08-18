@@ -27,6 +27,43 @@ export function readActivityView(search: Record<string, unknown>): ActivityView 
   return ACTIVITY_VIEWS.includes(raw as ActivityView) ? (raw as ActivityView) : "today";
 }
 
+/** How many rows a single page of activity shows. */
+export const ACTIVITY_PAGE_SIZE = 25;
+
+/** A defensive read of the `page` search param: anything else means page 1. */
+export function readActivityPage(search: Record<string, unknown>): number {
+  const raw = search["page"];
+  const value = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(1, Math.floor(value));
+}
+
+export interface ActivityPage {
+  rows: ActivityRow[];
+  page: number;
+  pageCount: number;
+  total: number;
+  hasMore: boolean;
+}
+
+/**
+ * Cumulative paging: page N shows the first N * size rows, so "Show more"
+ * grows the same list and the URL still restores exactly what was shared.
+ */
+export function pageActivity(rows: ActivityRow[], page: number): ActivityPage {
+  const total = rows.length;
+  const pageCount = Math.max(1, Math.ceil(total / ACTIVITY_PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, Math.floor(page)), pageCount);
+  const shown = rows.slice(0, safePage * ACTIVITY_PAGE_SIZE);
+  return {
+    rows: shown,
+    page: safePage,
+    pageCount,
+    total,
+    hasMore: shown.length < total,
+  };
+}
+
 export interface ActivityRow {
   id: string;
   label: string;

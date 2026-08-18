@@ -118,7 +118,20 @@ function ConductorRoute() {
   const search = Route.useSearch();
   const handoff = readHandoff(search as Record<string, unknown>);
   return (
-    <WorkspaceGate>
+    <WorkspaceGate
+      preview={{
+        room: "The Conductor",
+        purpose:
+          "The Conductor reads across every room, proposes one bounded next step at a time, and waits for a person to authorise it. None of that can run without a verified Trust Tai identity.",
+        unavailable: [
+          "Asking a question across Scout, Comms, Roadmap, Projects and Steward — answers are grounded in your organization's records, so there is nothing to read while signed out.",
+          "Seeing what needs your judgment, including bounded steps still awaiting authorisation.",
+          "Approving, holding or rejecting a step. Execution always requires an authenticated person with the right role in the owning room.",
+          "Reading the learning trail and what the Conductor has observed after past outcomes.",
+        ],
+        returnTo: "/modules/conductor",
+      }}
+    >
       {(identity) => (
         <Conductor identity={identity} {...(handoff ? { handoff } : {})} />
       )}
