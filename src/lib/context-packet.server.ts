@@ -33,7 +33,7 @@ import type {
 import { stateFromLifecycle, type ExecutionProject, type ExecutionState } from "@/domain/projects";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 
-type Row = Record<string, unknown>;
+export type Row = Record<string, unknown>;
 
 function str(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
@@ -87,7 +87,7 @@ export async function requireMember(
 
 /* ------------------------------------------------------------- mapping */
 
-function toProjectRow(row: Row): ExecutionProject {
+export function toProjectRow(row: Row): ExecutionProject {
   const meta =
     row["metadata"] && typeof row["metadata"] === "object" && !Array.isArray(row["metadata"])
       ? (row["metadata"] as Row)
@@ -133,7 +133,7 @@ function toProjectRow(row: Row): ExecutionProject {
   } as ExecutionProject;
 }
 
-function toKnowledgeRow(row: Row): KnowledgeItem {
+export function toKnowledgeRow(row: Row): KnowledgeItem {
   return {
     id: String(row["id"] ?? ""),
     organizationId: String(row["organization_id"] ?? ""),
@@ -149,7 +149,7 @@ function toKnowledgeRow(row: Row): KnowledgeItem {
   };
 }
 
-function toWorkRow(row: Row): WorkItem {
+export function toWorkRow(row: Row): WorkItem {
   return {
     id: String(row["id"] ?? ""),
     organizationId: String(row["organization_id"] ?? ""),
@@ -164,7 +164,7 @@ function toWorkRow(row: Row): WorkItem {
   };
 }
 
-function toBlockerRow(row: Row): ProjectBlocker {
+export function toBlockerRow(row: Row): ProjectBlocker {
   return {
     id: String(row["id"] ?? ""),
     organizationId: String(row["organization_id"] ?? ""),
@@ -177,7 +177,7 @@ function toBlockerRow(row: Row): ProjectBlocker {
   };
 }
 
-function toDecisionRow(row: Row): ProjectDecision {
+export function toDecisionRow(row: Row): ProjectDecision {
   return {
     id: String(row["id"] ?? ""),
     organizationId: String(row["organization_id"] ?? ""),
@@ -190,7 +190,7 @@ function toDecisionRow(row: Row): ProjectDecision {
   };
 }
 
-function toAssetRow(row: Row): ProjectAsset {
+export function toAssetRow(row: Row): ProjectAsset {
   return {
     id: String(row["id"] ?? ""),
     organizationId: String(row["organization_id"] ?? ""),
@@ -205,7 +205,7 @@ function toAssetRow(row: Row): ProjectAsset {
   };
 }
 
-function toConnectionRow(row: Row): ProjectConnection {
+export function toConnectionRow(row: Row): ProjectConnection {
   return {
     id: String(row["id"] ?? ""),
     organizationId: String(row["organization_id"] ?? ""),
@@ -219,7 +219,7 @@ function toConnectionRow(row: Row): ProjectConnection {
   };
 }
 
-function toThinkingRow(row: Row): ThinkingSource {
+export function toThinkingRow(row: Row): ThinkingSource {
   return {
     id: String(row["id"] ?? ""),
     organizationId: String(row["organization_id"] ?? ""),
