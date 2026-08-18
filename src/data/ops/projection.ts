@@ -119,8 +119,10 @@ export function opsPortfolio(events: OpsEvent[]): OpsPortfolio {
       openIssues,
       openApprovals,
       lastActivityAt: newest.at,
+      source: "activity",
       destinationUrl: newest.destinationUrl || OPS_ORIGIN,
     };
+
     const canonicalProjectId = chain.find((event) => event.canonicalProjectId)?.canonicalProjectId;
     const company = chain.find((event) => event.companyLabel)?.companyLabel;
     const environment = chain.find((event) => event.environment)?.environment;
