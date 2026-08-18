@@ -453,6 +453,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               health={health}
               onViewProfile={() => setProfileOpen((value) => !value)}
               onOpenContext={() => setContextOpen(true)}
+              onAddInteraction={() => setInteracting(true)}
             >
               {profileOpen ? (
                 <div className="border-t border-border bg-secondary/30 px-5 py-4">
