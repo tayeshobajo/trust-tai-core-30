@@ -13,13 +13,19 @@ import { toast } from "sonner";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { MetaPill, TTButton } from "@/components/tt/primitives";
+import { AgentAccountabilityPanel } from "@/components/tt/steward/agent-effectiveness";
 import { StewardHero } from "@/components/tt/steward/steward-hero";
 import { StewardTabs } from "@/components/tt/steward/steward-tabs";
 import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { agentEffectivenessService } from "@/data/supabase/project-intelligence";
 import { fathomStatusLine, readStewardTeam } from "@/data/steward/team-read";
 import { setPaperclipAgentPausedFn, postTaiNoteToIssueFn } from "@/data/steward-agents.functions";
+import type {
+  AgentEffectiveness,
+  AgentEffectivenessInput,
+} from "@/domain/project-intelligence";
 import {
   AGENT_LIFECYCLE_LABEL,
   type StewardAgent,
@@ -107,11 +113,17 @@ function ActivityFeed({ items }: { items: StewardAgentActivityItem[] }) {
 function AgentDetail({
   agent,
   identity,
+  definition,
+  savingDefinition,
+  onSaveDefinition,
   onClose,
   onPauseToggle,
 }: {
   agent: StewardAgent;
   identity: WorkspaceIdentity;
+  definition: AgentEffectiveness | null;
+  savingDefinition: boolean;
+  onSaveDefinition: (input: AgentEffectivenessInput) => void;
   onClose: () => void;
   onPauseToggle: () => void;
 }) {
@@ -172,6 +184,13 @@ function AgentDetail({
               )}
             </TTButton>
           </div>
+
+          <AgentAccountabilityPanel
+            agent={agent}
+            definition={definition}
+            pending={savingDefinition}
+            onSave={onSaveDefinition}
+          />
 
           <section className="space-y-2 border-t border-border pt-5">
             <p className="tt-eyebrow">Responsibility</p>
