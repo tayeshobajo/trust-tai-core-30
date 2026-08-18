@@ -164,6 +164,22 @@ export const projectDelivery = {
     return (data ?? []).map((row) => toWorkItem(row as Row));
   },
 
+  /**
+   * Every delivery work item in the workspace. Steward reads this to show who
+   * owes what; Projects stays the only room that writes it.
+   */
+  async listOrgWork(organizationId: ID, limit = 500): Promise<WorkItem[]> {
+    const { data, error } = await supabase
+      .from("project_work_items")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) return [];
+    return (data ?? []).map((row) => toWorkItem(row as Row));
+  },
+
+
   async addWork(input: WorkItemInput, context: DeliveryContext): Promise<WorkItem> {
     const { data, error } = await supabase
       .from("project_work_items")
