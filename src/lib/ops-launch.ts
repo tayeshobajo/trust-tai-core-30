@@ -100,8 +100,11 @@ export function launchOps(options: LaunchOpsOptions): Promise<OpsLaunchResult> {
     };
 
     function onMessage(event: MessageEvent) {
+      // Ops repeats its ready ping, so this must be safe to hit many times.
+      // Exact origin, exact window, and one send only.
+      if (settled) return;
       if (event.origin !== origin) return;
-      if (event.source && opened && event.source !== opened) return;
+      if (event.source !== opened) return;
       const data = event.data as { type?: unknown } | null;
       if (!data || data.type !== OPS_READY_MESSAGE) return;
 

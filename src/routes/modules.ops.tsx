@@ -20,9 +20,8 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import {
   EMPTY_OPS_FILTERS,
   filterOpsSystems,
-  mergeOpsPortfolio,
   opsFreshness,
-  opsPortfolio,
+  opsProjectionPortfolio,
   paginateOpsSystems,
   sortOpsSystems,
   sumKnown,
@@ -95,10 +94,14 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [failure, setFailure] = useState<OpsLaunchFailure | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
 
+  // One source for the portfolio: the synchronized Ops projection. Activity
+  // rows are only "recently moved" and never conjure a system of their own.
   const portfolio = useMemo(
-    () => mergeOpsPortfolio(opsPortfolio(data?.events ?? []), data?.projection.rows ?? []),
+    () => opsProjectionPortfolio(data?.projection.rows ?? [], data?.events ?? []),
     [data],
   );
+  const projectionOk = data?.projection.ok === true;
+  const provisioned = data?.projection.provisioned !== false;
   const lastSyncedAt = useMemo(() => {
     const stamps = (data?.projection.rows ?? []).map((row) => row.lastSyncedAt).sort();
     return stamps.length > 0 ? stamps[stamps.length - 1]! : null;
@@ -106,15 +109,20 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   // The projection only governs connection health once Ops has actually
   // pushed something. Before that, the activity stream read is the only
   // signal there is, and a quiet empty room is the truthful state.
-  const connection = lastSyncedAt
-    ? opsConnectionState({
-        lastSyncedAt,
-        projectionReadOk: data?.projection.ok !== false && !isError,
-        now: dataUpdatedAt || Date.now(),
-      })
-    : isError
-      ? "interrupted"
-      : "synchronized";
+  // A healthy read of an empty projection is not an interruption: the
+  // connection is fine, the portfolio is simply empty.
+  const connection =
+    lastSyncedAt === null
+      ? projectionOk && !isError
+        ? "synchronized"
+        : "interrupted"
+      : opsConnectionState({
+          lastSyncedAt,
+          projectionReadOk: projectionOk && !isError,
+          now: dataUpdatedAt || Date.now(),
+        });
+  // An empty portfolio and an unavailable one are different truths.
+  const unavailable = isError || !projectionOk;
 
   const systems = useMemo(
     () => sortOpsSystems(filterOpsSystems(portfolio.systems, filters), sort),
@@ -156,6 +164,8 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
     if (!result.ok) setFailure(result.reason);
   }
 
+  // Always through the handshake. Never a direct navigation to the Ops URL,
+  // which would land on the Ops login screen with no session handed over.
   function openSystem(system: OpsSystem) {
     void open(opsPathOf(system.destinationUrl), system.canonicalProjectId);
   }
@@ -163,7 +173,12 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const attention = portfolio.attention;
   const lastSuccessAt = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
   const openIncidents = sumKnown(portfolio.systems, (system) => system.openIssues);
-  const interrupted = isError || connection === "interrupted";
+  const needsAttention = portfolio.systems.filter(
+    (system) => system.needsAttention === true || system.health === "incident" || system.health === "attention",
+  ).length;
+  // Only a health word Ops actually said counts as healthy.
+  const healthy = portfolio.systems.filter((system) => system.health === "healthy").length;
+  const interrupted = unavailable || connection === "interrupted";
   const freshness = interrupted
     ? "Ops sync interrupted"
     : opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now());
@@ -186,16 +201,20 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           </>
         }
         metrics={[
-          { value: isLoading ? "…" : portfolio.systems.length, label: "Managed systems" },
-          { value: isLoading ? "…" : attention.length, label: "Needs attention" },
           {
-            value: isLoading ? "…" : (openIncidents ?? "—"),
+            value: isLoading ? "…" : unavailable ? "—" : portfolio.systems.length,
+            label: "Managed systems",
+          },
+          {
+            value: isLoading ? "…" : unavailable ? "—" : needsAttention,
+            label: "Needs attention",
+          },
+          {
+            value: isLoading || unavailable ? "—" : (openIncidents ?? "—"),
             label: "Open incidents",
           },
           {
-            value: isLoading
-              ? "…"
-              : portfolio.systems.filter((system) => system.health === "healthy").length,
+            value: isLoading || unavailable ? "—" : healthy,
             label: "Healthy",
           },
         ]}
@@ -219,7 +238,9 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           role="alert"
           className="rounded-xl border border-destructive/30 bg-destructive/10 p-4"
         >
-          <p className="text-[15px] text-destructive">Ops sync interrupted</p>
+          <p className="text-[15px] text-destructive">
+            {provisioned ? "Ops sync interrupted" : "Ops projection not provisioned"}
+          </p>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {lastSuccessAt
               ? `Trust Tai OS could not read current Ops state just now. The last successful sync was ${lastSuccessAt.toLocaleString()}${lastSyncedAt ? `, and Ops last pushed its projects ${new Date(lastSyncedAt).toLocaleString()}` : ""}, so everything below is that snapshot and may have moved on in Ops.`
@@ -257,7 +278,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
             {attention.map((item) => (
               <TTCard key={item.key} className="p-4">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <MetaPill>{item.kind.replace("ops.", "").replace(/_/g, " ")}</MetaPill>
+                  <MetaPill>{item.label}</MetaPill>
                   <MetaPill>{item.systemName}</MetaPill>
                   <MetaPill>{new Date(item.at).toLocaleDateString()}</MetaPill>
                 </div>
@@ -298,9 +319,13 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
             <p className="text-sm text-muted-foreground">Reading the Ops stream.</p>
           ) : systems.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
-              {portfolio.systems.length === 0
-                ? "No Ops systems have reported into Trust Tai OS yet. Anything Ops records will appear here."
-                : "No system matches these filters."}
+              {unavailable
+                ? provisioned
+                  ? "Trust Tai OS could not read the Ops projection just now, so nothing can be listed honestly."
+                  : "The Ops projection is not provisioned in this workspace yet."
+                : portfolio.systems.length === 0
+                  ? "Ops has not synchronized any projects into Trust Tai OS yet. Open Ops once from here and its projects will appear."
+                  : "No system matches these filters."}
             </p>
           ) : (
             <div className="space-y-3">

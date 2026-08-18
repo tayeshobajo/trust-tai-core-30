@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { mergeOpsPortfolio, opsPortfolio, sumKnown, type OpsSystem } from "./projection";
+import { opsProjectionPortfolio, sumKnown, type OpsSystem } from "./projection";
 import { opsPathOf } from "./destination";
 import { OPS_ORIGIN } from "@/domain/ops";
 import {
@@ -33,16 +33,18 @@ function row(overrides: Partial<OpsProjectRow> = {}): OpsProjectRow {
     openApprovals: null,
     lastActivityAt: null,
     lastSyncedAt: new Date(NOW).toISOString(),
+    lifecycleState: "active",
+    needsAttention: false,
+    removed: false,
     archived: false,
     ...overrides,
   };
 }
 
-const EMPTY = opsPortfolio([]);
 
 describe("Ops projection rows", () => {
   it("shows a real Ops project once the projection has it, with no invented counts", () => {
-    const portfolio = mergeOpsPortfolio(EMPTY, [row()]);
+    const portfolio = opsProjectionPortfolio([row()]);
     expect(portfolio.systems).toHaveLength(1);
     const system = portfolio.systems[0] as OpsSystem;
     expect(system.name).toBe("Elevate Orthodontics");
@@ -53,22 +55,22 @@ describe("Ops projection rows", () => {
   });
 
   it("keeps a proven zero as zero", () => {
-    const portfolio = mergeOpsPortfolio(EMPTY, [row({ openIssues: 0, openApprovals: 0 })]);
+    const portfolio = opsProjectionPortfolio([row({ openIssues: 0, openApprovals: 0 })]);
     expect(portfolio.systems[0]!.openIssues).toBe(0);
     expect(sumKnown(portfolio.systems, (s) => s.openIssues)).toBe(0);
   });
 
   it("reports an unknown total as null rather than zero", () => {
-    const portfolio = mergeOpsPortfolio(EMPTY, [row()]);
+    const portfolio = opsProjectionPortfolio([row()]);
     expect(sumKnown(portfolio.systems, (s) => s.openIssues)).toBeNull();
   });
 
   it("hides archived projects", () => {
-    expect(mergeOpsPortfolio(EMPTY, [row({ archived: true })]).systems).toHaveLength(0);
+    expect(opsProjectionPortfolio([row({ removed: true, lifecycleState: 'removed' })]).systems).toHaveLength(0);
   });
 
   it("never fabricates rows when Ops has sent nothing", () => {
-    expect(mergeOpsPortfolio(EMPTY, []).systems).toHaveLength(0);
+    expect(opsProjectionPortfolio([]).systems).toHaveLength(0);
   });
 
   it("refuses a row from another organization", () => {
@@ -79,14 +81,14 @@ describe("Ops projection rows", () => {
       last_synced_at: new Date(NOW).toISOString(),
     });
     expect(foreign?.organizationId).not.toBe(ORG);
-    const mine = mergeOpsPortfolio(EMPTY, [foreign!].filter((r) => r.organizationId === ORG));
+    const mine = opsProjectionPortfolio([foreign!].filter((r) => r.organizationId === ORG));
     expect(mine.systems).toHaveLength(0);
   });
 });
 
 describe("Ops deep links", () => {
   it("opens the exact Ops project path, with nothing sensitive in it", () => {
-    const system = mergeOpsPortfolio(EMPTY, [row({ opsPath: "/projects/ops-elevate" })])
+    const system = opsProjectionPortfolio([row({ opsPath: "/projects/ops-elevate" })])
       .systems[0] as OpsSystem;
     expect(system.destinationUrl).toBe(`${OPS_ORIGIN}/projects/ops-elevate`);
     expect(opsPathOf(system.destinationUrl)).toBe("/projects/ops-elevate");
@@ -123,5 +125,67 @@ describe("Ops connection semantics", () => {
 
   it("is live when a direct Ops read succeeds", () => {
     expect(opsConnectionState({ live: true, now: NOW })).toBe("live");
+  });
+});
+
+describe("Ops projection lifecycle and health", () => {
+  it("drops a removed project from the active portfolio", () => {
+    expect(
+      opsProjectionPortfolio([row({ removed: true, lifecycleState: "removed" })]).systems,
+    ).toHaveLength(0);
+  });
+
+  it("keeps an archived project visible with Ops' own lifecycle word", () => {
+    const system = opsProjectionPortfolio([
+      row({ archived: true, lifecycleState: "archived" }),
+    ]).systems[0] as OpsSystem;
+    expect(system.lifecycleState).toBe("archived");
+  });
+
+  it("raises attention from Ops' needs_attention flag, never from a guess", () => {
+    const portfolio = opsProjectionPortfolio([row({ needsAttention: true, health: "unknown" })]);
+    expect(portfolio.systems[0]!.health).toBe("attention");
+    expect(portfolio.attention).toHaveLength(1);
+    expect(portfolio.attention[0]!.label).toBe("needs attention");
+  });
+
+  it("never counts an unknown health as healthy", () => {
+    const portfolio = opsProjectionPortfolio([row({ health: "unknown" })]);
+    expect(portfolio.systems.filter((s) => s.health === "healthy")).toHaveLength(0);
+  });
+
+  it("reads Ops' live column names, including stable health and ops_url", () => {
+    const read = readOpsProjectRow({
+      ops_project_id: "ops-qa-trace",
+      organization_id: ORG,
+      project_name: "QA Trace Project",
+      status: "active",
+      health: "stable",
+      needs_attention: false,
+      lifecycle_state: "active",
+      ops_url: "https://ops.trusttai.com/projects/ops-qa-trace",
+      synced_at: new Date(NOW).toISOString(),
+    });
+    expect(read?.name).toBe("QA Trace Project");
+    expect(read?.health).toBe("healthy");
+    expect(read?.removed).toBe(false);
+    expect(opsProjectUrl(read!)).toBe(`${OPS_ORIGIN}/projects/ops-qa-trace`);
+  });
+
+  it("refuses an ops_url on any other origin", () => {
+    const read = readOpsProjectRow({
+      ops_project_id: "ops-evil",
+      organization_id: ORG,
+      project_name: "Elsewhere",
+      ops_url: "https://evil.example/projects/1",
+      synced_at: new Date(NOW).toISOString(),
+    });
+    expect(read?.opsUrl).toBeUndefined();
+    expect(opsProjectUrl(read!)).toBe(OPS_ORIGIN);
+  });
+
+  it("keeps activity rows out of the portfolio entirely", () => {
+    const portfolio = opsProjectionPortfolio([], []);
+    expect(portfolio.systems).toHaveLength(0);
   });
 });

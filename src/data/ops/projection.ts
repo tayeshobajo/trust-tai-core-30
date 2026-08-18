@@ -41,6 +41,10 @@ export interface OpsSystem {
   latestRun?: { label: string; at: string; passed?: boolean };
   lastActivityAt: string | null;
   lastSyncedAt?: string;
+  /** Ops said this project needs a person. Only set on projected rows. */
+  needsAttention?: boolean;
+  /** Ops' own lifecycle word, on projected rows. */
+  lifecycleState?: string;
   /** Where this row came from: the pushed projection, or the shared stream. */
   source: "projection" | "activity";
   destinationUrl: string;
@@ -51,7 +55,9 @@ export interface OpsAttentionItem {
   key: string;
   systemKey: string;
   systemName: string;
-  kind: OpsEventName;
+  kind?: OpsEventName;
+  /** Short human word for what needs a person. Always present. */
+  label: string;
   summary: string;
   at: string;
   destinationUrl: string;
@@ -149,6 +155,7 @@ export function opsPortfolio(events: OpsEvent[]): OpsPortfolio {
         systemKey: key,
         systemName: name,
         kind: event.name,
+        label: runLabel(event.name),
         summary: event.summary,
         at: event.at,
         destinationUrl: event.destinationUrl || OPS_ORIGIN,
@@ -319,73 +326,78 @@ export function paginateOpsSystems(systems: OpsSystem[], page: number, pageSize:
 }
 
 /* ------------------------------------------------------------------ */
-/* Merging the synchronized projection with the shared stream          */
+/* The projection portfolio                                            */
 /* ------------------------------------------------------------------ */
 
 /**
- * Fold the projection Ops pushes together with what the shared activity
- * stream already showed.
+ * The portfolio, built from the synchronized Ops projection.
  *
- * The projection is canonical for "which projects exist in Ops". Activity
- * rows only ever add detail to a project the projection already names, or
- * stand alone when the projection has never heard of that chain. Nothing is
- * invented: an unreported count stays null and an unreported path opens Ops
- * home rather than a guessed project URL.
+ * Ops owns Ops truth, so the projection is the only source for which projects
+ * exist and how they are doing. Activity rows are kept for "recently moved"
+ * and nothing else: they never invent a system, and they never contradict a
+ * projected one. A count Ops did not report stays null so the room can say
+ * "\u2014" instead of "0", and a project Ops removed leaves the portfolio.
  */
-export function mergeOpsPortfolio(base: OpsPortfolio, rows: OpsProjectRow[]): OpsPortfolio {
-  const live = rows.filter((row) => !row.archived);
-  if (live.length === 0) return base;
-
-  const remaining = new Map(base.systems.map((system) => [system.key, system]));
+export function opsProjectionPortfolio(
+  rows: OpsProjectRow[],
+  events: OpsEvent[] = [],
+): OpsPortfolio {
+  const live = rows.filter((row) => !row.removed);
 
   const systems: OpsSystem[] = live.map((row) => {
-    const match = [...remaining.values()].find(
-      (system) =>
-        system.key === row.opsProjectId ||
-        (!!row.canonicalProjectId && system.canonicalProjectId === row.canonicalProjectId) ||
-        system.name.toLowerCase() === row.name.toLowerCase(),
-    );
-    if (match) remaining.delete(match.key);
-
-    const health: OpsHealth = row.health;
-    const destination = opsProjectUrl(row);
+    const health: OpsHealth =
+      row.health !== "unknown" ? row.health : row.needsAttention ? "attention" : "unknown";
     const system: OpsSystem = {
       key: `ops:${row.opsProjectId}`,
       name: row.name,
       opsProjectId: row.opsProjectId,
       health,
-      openIssues: row.openIssues ?? match?.openIssues ?? null,
-      openApprovals: row.openApprovals ?? match?.openApprovals ?? null,
-      lastActivityAt: row.lastActivityAt ?? match?.lastActivityAt ?? null,
+      openIssues: row.openIssues,
+      openApprovals: row.openApprovals,
+      lastActivityAt: row.lastActivityAt,
       lastSyncedAt: row.lastSyncedAt,
+      needsAttention: row.needsAttention,
+      lifecycleState: row.lifecycleState,
       source: "projection",
-      destinationUrl: destination !== OPS_ORIGIN ? destination : (match?.destinationUrl ?? OPS_ORIGIN),
+      destinationUrl: opsProjectUrl(row),
     };
-    const canonicalProjectId = row.canonicalProjectId ?? match?.canonicalProjectId;
-    const company = row.company ?? match?.company;
-    const environment = row.environment ?? match?.environment;
-    const owner = row.owner ?? match?.owner;
-    if (canonicalProjectId) system.canonicalProjectId = canonicalProjectId;
-    if (company) system.company = company;
-    if (environment) system.environment = environment;
-    if (owner) system.owner = owner;
+    if (row.canonicalProjectId) system.canonicalProjectId = row.canonicalProjectId;
+    if (row.company) system.company = row.company;
+    if (row.environment) system.environment = row.environment;
+    if (row.owner) system.owner = row.owner;
     if (row.status) system.status = row.status;
-    if (match?.latestRun) system.latestRun = match.latestRun;
     return system;
   });
 
-  const all = [...systems, ...remaining.values()];
   const rank: Record<OpsHealth, number> = { incident: 0, attention: 1, unknown: 2, healthy: 3 };
-  all.sort(
-    (a, b) =>
-      rank[a.health] - rank[b.health] ||
-      ((a.lastActivityAt ?? "") < (b.lastActivityAt ?? "") ? 1 : -1),
-  );
+  systems.sort((a, b) => rank[a.health] - rank[b.health] || newestFirst(a, b));
+
+  const attention: OpsAttentionItem[] = live
+    .filter((row) => row.needsAttention || row.health === "incident" || row.health === "attention")
+    .map((row) => ({
+      key: `ops-attention:${row.opsProjectId}`,
+      systemKey: `ops:${row.opsProjectId}`,
+      systemName: row.name,
+      label: row.health === "incident" ? "incident" : "needs attention",
+      summary: row.status
+        ? `${row.name} is ${row.status} in Ops and needs a person.`
+        : `${row.name} needs a person in Ops.`,
+      at: row.lastActivityAt ?? row.lastSyncedAt,
+      destinationUrl: opsProjectUrl(row),
+    }))
+    .sort((a, b) => (a.at < b.at ? 1 : -1));
+
+  const recentlyMoved = [...events].sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 8);
+  const newest = recentlyMoved[0];
 
   return {
-    ...base,
-    systems: all,
-    companies: [...new Set(all.map((s) => s.company).filter(Boolean) as string[])].sort(),
-    environments: [...new Set(all.map((s) => s.environment).filter(Boolean) as string[])].sort(),
+    systems,
+    attention,
+    recentlyMoved,
+    ...(newest ? { lastEventAt: newest.at } : {}),
+    companies: [...new Set(systems.map((s) => s.company).filter(Boolean) as string[])].sort(),
+    environments: [
+      ...new Set(systems.map((s) => s.environment).filter(Boolean) as string[]),
+    ].sort(),
   };
 }
