@@ -109,11 +109,18 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   // The projection only governs connection health once Ops has actually
   // pushed something. Before that, the activity stream read is the only
   // signal there is, and a quiet empty room is the truthful state.
-  const connection = opsConnectionState({
-    lastSyncedAt,
-    projectionReadOk: projectionOk && !isError,
-    now: dataUpdatedAt || Date.now(),
-  });
+  // A healthy read of an empty projection is not an interruption: the
+  // connection is fine, the portfolio is simply empty.
+  const connection =
+    lastSyncedAt === null
+      ? projectionOk && !isError
+        ? "synchronized"
+        : "interrupted"
+      : opsConnectionState({
+          lastSyncedAt,
+          projectionReadOk: projectionOk && !isError,
+          now: dataUpdatedAt || Date.now(),
+        });
   // An empty portfolio and an unavailable one are different truths.
   const unavailable = isError || !projectionOk;
 
@@ -198,7 +205,10 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
             value: isLoading ? "…" : unavailable ? "—" : portfolio.systems.length,
             label: "Managed systems",
           },
-          { value: isLoading || unavailable ? "…" : needsAttention, label: "Needs attention" },
+          {
+            value: isLoading ? "…" : unavailable ? "—" : needsAttention,
+            label: "Needs attention",
+          },
           {
             value: isLoading || unavailable ? "—" : (openIncidents ?? "—"),
             label: "Open incidents",
