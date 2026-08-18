@@ -101,16 +101,25 @@ function PeopleSettings() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [checkedIds, setCheckedIds] = useState<string[]>([]);
+  const [bulkRole, setBulkRole] = useState<WorkspaceRole>("member");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkNote, setBulkNote] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({
     key: "name",
     direction: "asc",
   });
-  const toggleSort = (key: SortKey) =>
+  const toggleSort = (key: SortKey) => {
+    setPage(1);
     setSort((current) =>
       current.key === key
         ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
         : { key, direction: key === "lastActive" ? "desc" : "asc" },
     );
+  };
+
 
   const members = useQuery({
     queryKey: ["settings", "members", identity.organizationId],
