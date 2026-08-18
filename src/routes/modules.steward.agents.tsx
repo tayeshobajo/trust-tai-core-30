@@ -388,7 +388,12 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
 
   const saveDefinition = useMutation({
     mutationFn: (input: AgentEffectivenessInput) =>
-      agentEffectivenessService.save(input, identity.organizationId, identity.userId),
+      agentEffectivenessService.save(
+        input,
+        identity.organizationId,
+        identity.userId,
+        identity.name,
+      ),
     onSuccess: () => {
       toast.success("Definition saved.");
       queryClient.invalidateQueries({

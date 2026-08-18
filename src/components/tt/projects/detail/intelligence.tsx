@@ -6,6 +6,7 @@
  * Assets are the visual truth, and uploading is never approving.
  */
 
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Check, ExternalLink, FileUp, Plus, Trash2, Upload } from "lucide-react";
 
@@ -46,6 +47,8 @@ import {
   type ThinkingSourceType,
 } from "@/domain/project-intelligence";
 import { cn } from "@/lib/utils";
+import { intelligenceAudit } from "@/data/supabase/intelligence-audit";
+import { AUDIT_ACTION_LABEL, auditSentence } from "@/domain/intelligence-audit";
 
 function Empty({ title, body }: { title: string; body: string }) {
   return (
@@ -455,7 +458,56 @@ export function ContextTab({
           </ul>
         ) : null}
       </Panel>
+
+      <AuditTrail organizationId={packet.project.organizationId} projectId={packet.project.id} />
     </div>
+  );
+}
+
+/**
+ * How this project's intelligence got to be what it is. Append only, newest
+ * first: what changed, what it said before, who changed it and when.
+ */
+function AuditTrail({ organizationId, projectId }: { organizationId: string; projectId: string }) {
+  const [open, setOpen] = useState(false);
+  const trail = useQuery({
+    queryKey: ["projects", "intelligence-audit", organizationId, projectId],
+    queryFn: () => intelligenceAudit.list({ organizationId, projectId, limit: 40 }),
+    enabled: open,
+    retry: false,
+  });
+
+  return (
+    <Panel title="Change history">
+      <p className="max-w-reading text-[14px] text-muted-foreground">
+        Every import, confirmation, supersede and evidence change on this project, with the
+        person who made it. Nothing here can be edited or removed.
+      </p>
+      {!open ? (
+        <TTButton size="sm" variant="secondary" className="mt-4" onClick={() => setOpen(true)}>
+          Show change history
+        </TTButton>
+      ) : trail.isLoading ? (
+        <p className="mt-4 text-[13px] text-muted-foreground">Reading the trail…</p>
+      ) : (trail.data ?? []).length === 0 ? (
+        <p className="mt-4 text-[13px] text-muted-foreground">
+          Nothing has been changed here yet.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {(trail.data ?? []).map((entry) => (
+            <li key={entry.id} className="border-t border-border pt-3 first:border-0 first:pt-0">
+              <p className="text-[15px] text-foreground">{entry.subject}</p>
+              <p className="text-[13px] text-muted-foreground">{auditSentence(entry)}</p>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                <MetaPill>{AUDIT_ACTION_LABEL[entry.action]}</MetaPill>
+                <MetaPill>{new Date(entry.occurredAt).toLocaleString()}</MetaPill>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
   );
 }
 
