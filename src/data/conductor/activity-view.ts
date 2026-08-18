@@ -27,6 +27,58 @@ export function readActivityView(search: Record<string, unknown>): ActivityView 
   return ACTIVITY_VIEWS.includes(raw as ActivityView) ? (raw as ActivityView) : "today";
 }
 
+export const ACTIVITY_KINDS = ["all", "completed", "reordered", "reassigned", "other"] as const;
+export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
+
+export const ACTIVITY_KIND_LABEL: Record<ActivityKind, string> = {
+  all: "Everything",
+  completed: "Completed",
+  reordered: "Reordered",
+  reassigned: "Reassigned",
+  other: "Everything else",
+};
+
+/** A defensive read of the `kind` search param: anything else means all. */
+export function readActivityKind(search: Record<string, unknown>): ActivityKind {
+  const raw = search["kind"];
+  return ACTIVITY_KINDS.includes(raw as ActivityKind) ? (raw as ActivityKind) : "all";
+}
+
+/** A defensive read of the free-text `q` search param. */
+export function readActivityQuery(search: Record<string, unknown>): string {
+  const raw = search["q"];
+  return typeof raw === "string" ? raw.slice(0, 120) : "";
+}
+
+/**
+ * What kind of work an event describes, said in the words a person uses when
+ * looking for it later. Reordering and reassignment are both recorded as
+ * updates or assignments, so the summary decides between them.
+ */
+export function activityKind(name: string, summary: string): ActivityKind {
+  const said = summary.toLowerCase();
+  if (name.endsWith(".completed") || said.includes("completed")) return "completed";
+  if (name.endsWith(".assigned") || said.includes("now carried by") || said.includes("sent to"))
+    return "reassigned";
+  if (said.includes("moved above") || said.includes("above ") || said.includes("priority"))
+    return "reordered";
+  return "other";
+}
+
+/** Free text and kind, applied to any of the three readings. */
+export function filterActivity(
+  rows: ActivityRow[],
+  input: { query?: string; kind?: ActivityKind },
+): ActivityRow[] {
+  const needle = (input.query ?? "").trim().toLowerCase();
+  const kind = input.kind ?? "all";
+  return rows.filter((row) => {
+    if (kind !== "all" && row.kind !== kind) return false;
+    if (!needle) return true;
+    return `${row.label} ${row.roomLabel} ${row.standing}`.toLowerCase().includes(needle);
+  });
+}
+
 /** How many rows a single page of activity shows. */
 export const ACTIVITY_PAGE_SIZE = 25;
 
@@ -70,6 +122,8 @@ export interface ActivityRow {
   roomLabel: string;
   /** Said plainly, in the person's language: "handed over", "awaiting you". */
   standing: string;
+  /** What sort of change this was, for filtering. */
+  kind: ActivityKind;
   at: string | null;
   route?: string;
 }
@@ -95,6 +149,7 @@ export function todaysActivity(events: ActivityEvent[], now: Date): ActivityRow[
       label: event.summary || event.subject.label || event.subject.id,
       roomLabel: roomLabel(event.provenance.appId),
       standing: "recorded",
+      kind: activityKind(event.name, event.summary ?? ""),
       at: event.occurredAt,
     }));
 }
@@ -111,6 +166,7 @@ export function awaitingJudgment(actions: ControlledAction[]): ActivityRow[] {
       label: action.intent,
       roomLabel: roomLabel(action.owningApp),
       standing: "awaiting your authorisation",
+      kind: activityKind("", action.intent ?? ""),
       at: action.createdAt ?? null,
       route: action.route,
     }));
@@ -127,6 +183,7 @@ export function movements(input: {
     label: row.label,
     roomLabel: row.roomLabel,
     standing: row.outcome,
+    kind: activityKind("", row.label ?? ""),
     at: row.at,
   }));
 }
