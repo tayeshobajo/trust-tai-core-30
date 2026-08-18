@@ -157,3 +157,33 @@ describe("Ops launch", () => {
     expect(h.posts).toHaveLength(0);
   });
 });
+
+describe("Ops repeats its ready ping", () => {
+  it("sends the session exactly once however many ready messages arrive", async () => {
+    const h = harness();
+    const promise = launchOps({
+      accessToken: TOKEN,
+      organizationId: ORG,
+      targetPath: "/projects/ops-elevate",
+      host: h.host,
+    });
+    for (let i = 0; i < 5; i += 1) {
+      h.fire({ origin: OPS_ORIGIN, data: { type: OPS_READY_MESSAGE } });
+    }
+    await expect(promise).resolves.toEqual({ ok: true });
+    expect(h.posts).toHaveLength(1);
+    expect(h.posts[0]!.targetOrigin).toBe(OPS_ORIGIN);
+    expect(h.posts[0]!.data["targetPath"]).toBe("/projects/ops-elevate");
+    expect(h.opened[0]!.url).toBe(`${OPS_ORIGIN}${OPS_SSO_PATH}`);
+    expect(h.opened[0]!.url).not.toContain(TOKEN);
+  });
+
+  it("ignores a ready message from another window on the Ops origin", async () => {
+    const h = harness();
+    const promise = launchOps({ accessToken: TOKEN, organizationId: ORG, host: h.host });
+    h.fire({ origin: OPS_ORIGIN, source: {} as Window, data: { type: OPS_READY_MESSAGE } });
+    expect(h.posts).toHaveLength(0);
+    h.expire();
+    await expect(promise).resolves.toEqual({ ok: false, reason: "no_ack" });
+  });
+});
