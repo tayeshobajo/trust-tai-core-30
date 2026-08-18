@@ -79,11 +79,13 @@ describe("Ops projection rows", () => {
     const foreign = readOpsProjectRow({
       ops_project_id: "ops-x",
       organization_id: "0d2a3ad0-1111-4111-8111-111111111111",
-      name: "Someone else's system",
-      last_synced_at: new Date(NOW).toISOString(),
+      project_name: "Someone else's system",
+      synced_at: new Date(NOW).toISOString(),
     });
     expect(foreign?.organizationId).not.toBe(ORG);
-    const mine = opsProjectionPortfolio([foreign!].filter((r) => r.organizationId === ORG));
+    const mine = opsProjectionPortfolio(
+      [foreign].filter((r): r is OpsProjectRow => r?.organizationId === ORG),
+    );
     expect(mine.systems).toHaveLength(0);
   });
 });
@@ -255,7 +257,9 @@ describe("the live projection contract", () => {
 
   it("deep links to the exact Ops project path", () => {
     const parsed = readOpsProjectRow(raw)!;
-    expect(opsPathOf(opsProjectionPortfolio([parsed]).systems[0]!)).toBe("/projects/ops-elevate");
+    expect(opsPathOf(opsProjectionPortfolio([parsed]).systems[0]!.destinationUrl)).toBe(
+      "/projects/ops-elevate",
+    );
   });
 
   it("drops a row belonging to another organization", () => {
