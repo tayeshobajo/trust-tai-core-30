@@ -111,6 +111,22 @@ export const ADAPTER_CAPABILITIES: AdapterCapability[] = [
     because:
       "Routing work to another application is a request a person makes in Projects, with their own authority.",
   }),
+  /*
+   * An unanswered ask is Projects' own ask, so taking it back is Projects'
+   * own act. Withdrawing changes nothing in Ops or Studio: it records that
+   * this house is no longer waiting, and the ledger refuses any later
+   * acceptance from then on.
+   */
+  supported({
+    room: "projects",
+    operation: "projects.withdraw_route",
+    label: "Take back an unanswered ask to Ops or Studio",
+    adapterId: "adapter:projects.route",
+    requiredCapability: "projects.write",
+    consequence: "internal_change",
+    boundary: "projectsService.withdrawRoute — withdraws this house's own request only",
+    claimableState: "routed",
+  }),
 
   /* ------------------------------------------------------------- scout */
   supported({
