@@ -35,7 +35,7 @@ function exportEntry(overrides: Partial<RoadmapExport> = {}): RoadmapExport {
 describe("client copy", () => {
   it("names the company and version in the subject", () => {
     const entry = exportEntry();
-    expect(clientCopySubject(entry.snapshot, entry.version)).toBe("Northwind roadmap — version v1");
+    expect(clientCopySubject(entry.snapshot, entry.version)).toBe("Northwind roadmap, version v1");
   });
 
   it("carries only what the snapshot holds", () => {
