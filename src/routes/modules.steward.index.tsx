@@ -1,32 +1,45 @@
 /**
- * Steward, Today, the Judgment surface.
+ * Steward, Team.
  *
- * One question, answered plainly: what deserves your attention now? Most days
- * that is one thing, sometimes three, and often nothing at all. Everything
- * else Steward is carrying stays quiet until it earns an interruption.
+ * One question: what should everyone be focused on right now? A single
+ * checklist across people and agents, the commitments nobody has taken, the
+ * last three conversations, and two small cards. Nothing else.
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search } from "lucide-react";
+import { useMemo, useState, type DragEvent } from "react";
 
-import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
-import { AttentionCard } from "@/components/tt/steward/attention-card";
+import { TTButton, TTInput } from "@/components/tt/primitives";
+import { MemberDetailPanel } from "@/components/tt/steward/member-detail";
+import { ReassignPicker, type AssignablePerson } from "@/components/tt/steward/reassign-picker";
+import { RecentMeetings } from "@/components/tt/steward/recent-meetings";
+import { StewardHero } from "@/components/tt/steward/steward-hero";
 import { StewardTabs } from "@/components/tt/steward/steward-tabs";
+import { TaskDetailPanel } from "@/components/tt/steward/task-detail";
+import { TaskRow } from "@/components/tt/steward/task-row";
+import { TeamRail } from "@/components/tt/steward/team-rail";
 import { StewardUnavailable } from "@/components/tt/steward/unavailable";
-import { MetaPill, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { judge } from "@/data/steward/judgment";
-import { outcomeRecordsFromBeliefs, suppressedPatterns } from "@/data/steward/learning";
-import { loadSuiteSnapshot } from "@/data/intelligence/service";
-import { stewardService } from "@/data/supabase/steward-service";
-import { readOpsEvents } from "@/domain/ops";
-import type { CommitmentStatus } from "@/domain/steward";
+import {
+  applyTeamFilter,
+  glanceOf,
+  personRead,
+  searchTasks,
+  TEAM_FILTER_LABEL,
+  type TeamFilter,
+} from "@/data/steward/accountability";
+import { fathomStatusLine, readStewardTeam } from "@/data/steward/team-read";
+import { useStewardActions } from "@/data/steward/use-steward-actions";
+import type { StewardTask } from "@/domain/steward-accountability";
+import { cn } from "@/lib/utils";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Steward · Today · Trust Tai OS";
+const TITLE = "Steward · Team · Trust Tai OS";
 const DESCRIPTION =
-  "What deserves your attention right now, why it matters today, and nothing else. Read from real conversations, projects and promises.";
+  "What every person and agent should be focused on right now, read from meeting commitments, project work and Paperclip execution.";
 
 export const Route = createFileRoute("/modules/steward/")({
   head: () => ({
@@ -37,174 +50,266 @@ export const Route = createFileRoute("/modules/steward/")({
       { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "robots", content: "noindex" },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
-  component: StewardTodayRoute,
+  component: StewardTeamRoute,
 });
 
-function StewardTodayRoute() {
+function StewardTeamRoute() {
   return (
     <WorkspaceGate>
       {(identity) => (
         <AppShell identity={identity}>
-          <StewardToday identity={identity} />
+          <StewardTeam identity={identity} />
         </AppShell>
       )}
     </WorkspaceGate>
   );
 }
 
-function StewardToday({ identity }: { identity: WorkspaceIdentity }) {
+const FILTERS: TeamFilter[] = [
+  "all",
+  "needs_attention",
+  "overdue",
+  "blocked",
+  "no_owner",
+  "agents",
+  "team",
+];
+
+function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
   const queryClient = useQueryClient();
-  const queryKey = ["steward", "judgment", identity.organizationId, identity.userId];
+  const queryKey = ["steward", "team", identity.organizationId];
+  const [filter, setFilter] = useState<TeamFilter>("all");
+  const [query, setQuery] = useState("");
+  const [openTask, setOpenTask] = useState<StewardTask | null>(null);
+  const [reassign, setReassign] = useState<StewardTask | null>(null);
+  const [openPerson, setOpenPerson] = useState<string | null>(null);
+  const [dragKey, setDragKey] = useState<string | null>(null);
 
-  const judgment = useQuery({
-    queryKey,
-    queryFn: async () => {
-      const [snapshot, memory] = await Promise.all([
-        loadSuiteSnapshot(identity.organizationId),
-        stewardService.memory(identity.organizationId).catch(() => []),
-      ]);
-      return judge({
-        organizationId: identity.organizationId,
-        now: new Date().toISOString(),
-        viewer: {
-          personKey: identity.email.toLowerCase(),
-          name: identity.name,
-          userId: identity.userId,
-        },
-        commitments: snapshot.steward.commitments,
-        projects: snapshot.projects,
-        relationships: snapshot.relationships,
-        opsEvents: readOpsEvents(
-          [...snapshot.events, ...snapshot.opsActivities],
-          identity.organizationId,
-        ),
-        memory,
-        suppressedPatternKeys: suppressedPatterns(outcomeRecordsFromBeliefs(memory)),
+  const read = useQuery({ queryKey, queryFn: () => readStewardTeam(identity.organizationId) });
+  const actions = useStewardActions({ identity, queryKey });
+
+  const tasks = read.data?.tasks ?? [];
+  const visible = useMemo(
+    () => searchTasks(applyTeamFilter(tasks, filter), query).filter((task) => task.state !== "complete"),
+    [tasks, filter, query],
+  );
+  const glance = useMemo(() => glanceOf(tasks), [tasks]);
+  const unowned = useMemo(
+    () => tasks.filter((task) => task.owner.kind === "unowned" && task.state !== "complete"),
+    [tasks],
+  );
+  const overdue = useMemo(() => tasks.filter((task) => task.overdue), [tasks]);
+  const people = useMemo<AssignablePerson[]>(() => {
+    const map = new Map<string, AssignablePerson>();
+    for (const task of tasks) {
+      if (task.owner.kind !== "human") continue;
+      map.set(task.owner.key, {
+        key: task.owner.key,
+        name: task.owner.name,
+        initials: task.owner.initials,
       });
-    },
-  });
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks]);
 
-  const setStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: CommitmentStatus }) =>
-      stewardService.setStatus(id, status),
+  const person = openPerson ? personRead(tasks, openPerson, read.data?.now ?? new Date().toISOString()) : null;
+
+  const reorder = useMutation({
+    mutationFn: async ({ source, target }: { source: StewardTask; target: StewardTask }) => {
+      await actions.setRank(source, target.rank - 1);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
-  const read = judgment.data;
+  function onDrop(target: StewardTask) {
+    return (event: DragEvent<HTMLLIElement>) => {
+      event.preventDefault();
+      const source = tasks.find((task) => task.key === dragKey);
+      setDragKey(null);
+      if (!source || source.key === target.key) return;
+      if (source.owner.key !== target.owner.key) {
+        setReassign(source);
+        return;
+      }
+      reorder.mutate({ source, target });
+    };
+  }
 
   return (
     <div className="space-y-8">
-      <AppHero
-        appId="steward"
-        eyebrow="Steward"
-        greeting={`Welcome, ${identity.firstName}`}
-        title={read ? read.headline : "What deserves you now."}
-        supporting="Steward reads your promises, your work and what changed around it, then tells you the smallest number of things that genuinely need you."
+      <StewardHero
+        status={fathomStatusLine(read.data)}
         action={
-          <TTButton asChild>
-            <Link to="/modules/steward/meetings">Read a conversation</Link>
-          </TTButton>
+          <div className="flex flex-wrap gap-2">
+            <TTButton type="button" onClick={() => setFilter("needs_attention")}>
+              Review priorities
+            </TTButton>
+            <TTButton asChild variant="secondary">
+              <Link to="/modules/steward/memory">Search meeting memory</Link>
+            </TTButton>
+          </div>
         }
       />
 
-      <StewardTabs active="today" />
+      <StewardTabs active="team" />
 
-      {judgment.isError ? (
-        <StewardUnavailable error={judgment.error} />
-      ) : judgment.isLoading || !read ? (
-        <p className="text-sm text-muted-foreground">Reading what changed…</p>
+      {read.isError ? (
+        <StewardUnavailable error={read.error} />
+      ) : read.isLoading ? (
+        <p className="text-sm text-muted-foreground">Reading who owes what…</p>
       ) : (
-        <div className="space-y-10">
-          {read.items.length > 0 ? (
-            <section>
-              <h2 className="tt-eyebrow">{read.headline}</h2>
-              <ul className="mt-4 space-y-3">
-                {read.items.map((item) => (
-                  <AttentionCard
-                    key={item.id}
-                    item={item}
-                    actions={
-                      item.refs.commitmentId ? (
-                        <>
-                          <TTButton
-                            type="button"
-                            onClick={() =>
-                              setStatus.mutate({ id: item.refs.commitmentId!, status: "kept" })
-                            }
-                          >
-                            Mark kept
-                          </TTButton>
-                          <TTButton
-                            type="button"
-                            variant="secondary"
-                            onClick={() =>
-                              setStatus.mutate({ id: item.refs.commitmentId!, status: "waiting" })
-                            }
-                          >
-                            Waiting on someone
-                          </TTButton>
-                        </>
-                      ) : null
-                    }
-                  />
-                ))}
-              </ul>
-              {read.deferred > 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  {read.deferred} more could qualify. Steward is holding {read.deferred === 1 ? "it" : "them"} back
-                  until these are settled.
-                </p>
-              ) : null}
-            </section>
-          ) : (
-            <section className="tt-surface p-8">
-              <p className="tt-eyebrow">Today</p>
-              <h2 className="mt-3 max-w-reading font-display text-2xl text-foreground sm:text-3xl">
-                Nothing needs you right now.
-              </h2>
-              <p className="mt-4 max-w-reading text-sm text-muted-foreground">
-                Nothing you carry is overdue, and nobody is held up waiting on you. Steward will
-                bring something back the moment that changes.
-              </p>
-              {read.watching.length > 0 ? (
-                <div className="mt-6 space-y-3 border-t border-border pt-6">
-                  <p className="tt-eyebrow">What Steward is watching</p>
-                  {read.watching.map((note, index) => (
-                    <div key={index}>
-                      <p className="max-w-reading text-sm text-foreground">{note.label}</p>
-                      <p className="max-w-reading text-sm text-muted-foreground">{note.because}</p>
-                    </div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="space-y-8">
+            <section className="tt-surface overflow-hidden">
+              <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
+                <div className="flex flex-wrap gap-1">
+                  {FILTERS.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setFilter(value)}
+                      className={cn(
+                        "rounded-full px-3 py-1.5 text-xs transition-colors",
+                        filter === value
+                          ? "bg-foreground text-background"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {TEAM_FILTER_LABEL[value]}
+                    </button>
                   ))}
                 </div>
-              ) : null}
-            </section>
-          )}
+                <div className="relative ml-auto min-w-[180px] flex-1 sm:max-w-[240px]">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <TTInput
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search tasks"
+                    aria-label="Search tasks"
+                    className="h-10 pl-9"
+                  />
+                </div>
+              </div>
 
-          {read.items.length > 0 && read.waiting.length > 0 ? (
-            <section>
-              <h2 className="tt-eyebrow">Waiting, correctly</h2>
-              <p className="mt-2 max-w-reading text-sm text-muted-foreground">
-                These are moving through someone else. Nothing to chase.
-              </p>
-              <ul className="mt-4 space-y-3">
-                {read.waiting.map((item) => (
-                  <li key={item.id} className="tt-surface p-5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <MetaPill>Waiting</MetaPill>
-                      {item.waitingOn ? <MetaPill>{item.waitingOn.name}</MetaPill> : null}
-                    </div>
-                    <p className="mt-3 max-w-reading text-sm text-foreground">{item.headline}</p>
-                    <p className="mt-1 max-w-reading text-sm text-muted-foreground">{item.whyNow}</p>
-                  </li>
-                ))}
-              </ul>
+              {visible.length === 0 ? (
+                <div className="px-6 py-10">
+                  <p className="font-display text-xl text-foreground">
+                    {tasks.length === 0
+                      ? "Nothing has been promised or assigned yet."
+                      : "Nothing matches that view."}
+                  </p>
+                  <p className="mt-2 max-w-reading text-sm text-muted-foreground">
+                    {tasks.length === 0
+                      ? "Read a conversation in Meetings, or start work in Projects, and every promise made will appear here with an owner."
+                      : "Clear the filter or search to see the full checklist."}
+                  </p>
+                </div>
+              ) : (
+                <ul>
+                  {visible.map((task) => (
+                    <TaskRow
+                      key={task.key}
+                      task={task}
+                      onOpen={() => setOpenTask(task)}
+                      onComplete={() => actions.complete(task, "")}
+                      onReassign={() => setReassign(task)}
+                      onDragStart={(event) => {
+                        setDragKey(task.key);
+                        event.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={onDrop(task)}
+                    />
+                  ))}
+                </ul>
+              )}
             </section>
-          ) : null}
+
+            {unowned.length > 0 ? (
+              <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-card/60 px-5 py-4">
+                <p className="text-sm text-foreground">
+                  {unowned.length} commitment{unowned.length === 1 ? "" : "s"} need an owner
+                </p>
+                <TTButton
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setFilter("no_owner")}
+                >
+                  Review unowned
+                </TTButton>
+              </section>
+            ) : null}
+
+            <RecentMeetings
+              conversations={read.data?.conversations ?? []}
+              commitments={read.data?.commitments ?? []}
+            />
+
+            {!read.data?.stateProvisioned ? (
+              <p className="text-xs text-muted-foreground">
+                Focus and ordering will not persist until{" "}
+                <code>docs/steward-accountability-schema.sql</code> is applied to this workspace.
+              </p>
+            ) : null}
+          </div>
+
+          <TeamRail
+            glance={glance}
+            unownedCount={unowned.length}
+            overdueTasks={overdue}
+            agents={read.data?.agents}
+            onReviewUnowned={() => setFilter("no_owner")}
+            onReviewOverdue={() => setFilter("overdue")}
+          />
         </div>
       )}
+
+      <TaskDetailPanel
+        task={openTask}
+        canAct={identity.canManage}
+        onClose={() => setOpenTask(null)}
+        onComplete={(note) => {
+          if (openTask) actions.complete(openTask, note);
+          setOpenTask(null);
+        }}
+        onReassign={() => {
+          setReassign(openTask);
+          setOpenTask(null);
+        }}
+        onFocus={(focus) => openTask && actions.setFocus(openTask, focus)}
+        onDue={(due) => openTask && actions.setDue(openTask, due)}
+      />
+
+      <MemberDetailPanel
+        read={person}
+        now={read.data?.now ?? new Date().toISOString()}
+        onClose={() => setOpenPerson(null)}
+        onOpenTask={(task) => {
+          setOpenPerson(null);
+          setOpenTask(task);
+        }}
+      />
+
+      <ReassignPicker
+        open={Boolean(reassign)}
+        task={reassign}
+        people={people}
+        agents={read.data?.agents.agents ?? []}
+        eligibleAgent={actions.eligibleAgent}
+        onClose={() => setReassign(null)}
+        onAssignPerson={(target) => {
+          if (reassign) actions.reassignToPerson(reassign, target);
+          setReassign(null);
+        }}
+        onAssignAgent={(agent) => {
+          if (reassign) actions.requestAgentAssignment(reassign, agent);
+          setReassign(null);
+        }}
+      />
     </div>
   );
 }
