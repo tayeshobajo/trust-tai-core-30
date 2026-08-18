@@ -231,7 +231,15 @@ function ActivityPage({
             That history could not be read just now. Nothing was changed; try again.
           </p>
         ) : paged.total === 0 ? (
-          <EmptyState {...EMPTY[view]} />
+          query.trim() || kind !== "all" ? (
+            <EmptyState
+              title="Nothing matches that search"
+              belongsHere="Only events already recorded in this view can match."
+              whyItMatters="Clear the search or choose Everything to see the full history again."
+            />
+          ) : (
+            <EmptyState {...EMPTY[view]} />
+          )
         ) : (
           <>
           <ul className="divide-y divide-border rounded-xl border border-border bg-card">
