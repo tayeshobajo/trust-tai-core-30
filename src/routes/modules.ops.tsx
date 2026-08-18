@@ -103,11 +103,19 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
     const stamps = (data?.projection.rows ?? []).map((row) => row.lastSyncedAt).sort();
     return stamps.length > 0 ? stamps[stamps.length - 1]! : null;
   }, [data]);
-  const connection = opsConnectionState({
-    lastSyncedAt,
-    projectionReadOk: data?.projection.ok !== false && !isError,
-    now: dataUpdatedAt || Date.now(),
-  });
+  // The projection only governs connection health once Ops has actually
+  // pushed something. Before that, the activity stream read is the only
+  // signal there is, and a quiet empty room is the truthful state.
+  const connection = lastSyncedAt
+    ? opsConnectionState({
+        lastSyncedAt,
+        projectionReadOk: data?.projection.ok !== false && !isError,
+        now: dataUpdatedAt || Date.now(),
+      })
+    : isError
+      ? "interrupted"
+      : "synchronized";
+
   const systems = useMemo(
     () => sortOpsSystems(filterOpsSystems(portfolio.systems, filters), sort),
     [portfolio.systems, filters, sort],
