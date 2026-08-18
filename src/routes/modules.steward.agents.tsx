@@ -32,6 +32,11 @@ import {
   type StewardAgentActivityItem,
   type StewardAgentRoutine,
 } from "@/domain/steward-accountability";
+import {
+  metricText,
+  paperclipConnection,
+  type PaperclipConnection,
+} from "@/domain/paperclip-connection";
 import { cn } from "@/lib/utils";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -164,7 +169,7 @@ function AgentDetail({
             <MetaPill>{AGENT_LIFECYCLE_LABEL[agent.lifecycle]}</MetaPill>
             <MetaPill>{agent.owningApp}</MetaPill>
             {agent.isPaused ? <MetaPill>Paused</MetaPill> : null}
-            {agent.pendingApprovals > 0 ? (
+            {(agent.pendingApprovals ?? 0) > 0 ? (
               <MetaPill>{agent.pendingApprovals} awaiting approval</MetaPill>
             ) : null}
             {agent.lastHeartbeatAt ? (
@@ -274,7 +279,7 @@ function AgentDetail({
           <section className="space-y-2 border-t border-border pt-5">
             <p className="tt-eyebrow">Recent outcomes</p>
             <p className="text-sm text-foreground">
-              {agent.completedThisWeek} completed this week
+              {metricText(agent.completedThisWeek)} completed this week
               {agent.recentOutcome ? `. Most recent: ${agent.recentOutcome}.` : "."}
             </p>
           </section>
@@ -326,29 +331,26 @@ function AgentDetail({
   );
 }
 
-function SyncHealthPill({ syncHealth }: { syncHealth: { lastSuccessAt: string | null; consecutiveFailures: number } | null }) {
-  if (!syncHealth) return null;
-  const { lastSuccessAt, consecutiveFailures } = syncHealth;
-  const sinceMs = lastSuccessAt ? Date.now() - new Date(lastSuccessAt).getTime() : null;
-  const sinceSec = sinceMs !== null ? Math.round(sinceMs / 1000) : null;
-  const sinceStr = sinceSec !== null
-    ? sinceSec < 60 ? `${sinceSec}s ago`
-    : sinceSec < 3600 ? `${Math.round(sinceSec / 60)}m ago`
-    : `${Math.round(sinceSec / 3600)}h ago`
-    : "never";
-
-  if (consecutiveFailures >= 3) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/30 bg-warning/5 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-warning">
-        <span className="size-1.5 rounded-full bg-warning" />
-        Sync interrupted · Last success {sinceStr}
-      </span>
-    );
-  }
+function ConnectionPill({ state }: { state: PaperclipConnection }) {
+  const tone =
+    state.mode === "live"
+      ? "border-success/25 bg-success/5 text-success"
+      : state.prominentWarning
+        ? "border-destructive/30 bg-destructive/5 text-destructive"
+        : state.delayed
+          ? "border-warning/30 bg-warning/5 text-warning"
+          : "border-success/25 bg-success/5 text-success";
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-success/25 bg-success/5 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-success">
-      <span className="size-1.5 rounded-full bg-success" />
-      Synced {sinceStr}
+    <span
+      title={state.helper}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]",
+        tone,
+      )}
+    >
+      <span className="size-1.5 rounded-full bg-current" />
+      {state.label}
+      {state.mode !== "live" && state.ageLabel ? ` \u00b7 ${state.ageLabel}` : ""}
     </span>
   );
 }
@@ -408,6 +410,10 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   const agents = read.data?.agents;
+  const connection = paperclipConnection({
+    liveReachable: Boolean(agents?.connected),
+    lastSuccessAt: agents?.syncHealth?.lastSuccessAt ?? null,
+  });
 
   return (
     <div className="space-y-8">
@@ -423,7 +429,7 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <SyncHealthPill syncHealth={agents?.syncHealth ?? null} />
+          {agents ? <ConnectionPill state={connection} /> : null}
           <button
             type="button"
             aria-label="Refresh agents"
@@ -448,9 +454,38 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
         </div>
       ) : (
         <>
-          {!agents.connected ? (
-            <p className="rounded-lg border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-foreground">
-              {agents.because} What you see below is the registry, not live execution state.
+          {connection.prominentWarning ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+              <p className="text-sm font-medium text-foreground">
+                Agent state may be outdated \u00b7 Paperclip sync interrupted
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{connection.helper}</p>
+              <div className="mt-3 flex items-center gap-3">
+                <TTButton
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => queryClient.invalidateQueries({ queryKey })}
+                >
+                  Retry
+                </TTButton>
+                {agents.liveFailureDetail ? (
+                  <details className="text-xs text-muted-foreground">
+                    <summary className="cursor-pointer">Details</summary>
+                    <p className="mt-1 font-mono">{agents.liveFailureDetail}</p>
+                  </details>
+                ) : null}
+              </div>
+            </div>
+          ) : connection.mode === "synchronized" ? (
+            <p
+              title={agents.liveFailureDetail ?? undefined}
+              className={cn(
+                "text-sm",
+                connection.delayed ? "text-warning" : "text-muted-foreground",
+              )}
+            >
+              {connection.helper}
             </p>
           ) : null}
           <ul className="space-y-3">
@@ -473,7 +508,7 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
                       <MetaPill>AI agent</MetaPill>
                       <MetaPill>{AGENT_LIFECYCLE_LABEL[agent.lifecycle]}</MetaPill>
                       {agent.isPaused ? <MetaPill>Paused</MetaPill> : null}
-                      {agent.pendingApprovals > 0 ? (
+                      {(agent.pendingApprovals ?? 0) > 0 ? (
                         <MetaPill>{agent.pendingApprovals} pending approval</MetaPill>
                       ) : null}
                     </div>
@@ -485,8 +520,13 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-3">
                       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                        {agent.activeTasks.length} active · {agent.awaitingApproval.length} awaiting
-                        approval · {agent.completedThisWeek} completed this week
+                        {agent.dataSource === "live" ? agent.activeTasks.length : "\u2014"} active
+                        {" \u00b7 "}
+                        {agent.dataSource === "live" ? agent.awaitingApproval.length : "\u2014"}{" "}
+                        awaiting approval{" \u00b7 "}
+                        {metricText(agent.completedThisWeek)} completed this week
+                        {" \u00b7 "}
+                        {agent.dataSource === "live" ? "live" : "synced"}
                       </p>
                       {agent.routines.length > 0 ? (
                         <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">

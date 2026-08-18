@@ -10,6 +10,7 @@ import { projectDelivery } from "@/data/supabase/project-delivery";
 import { projectsService } from "@/data/supabase/projects-service";
 import { stewardService, type StoredConversation } from "@/data/supabase/steward-service";
 import { stewardTaskState } from "@/data/supabase/steward-task-state";
+import { paperclipConnection } from "@/domain/paperclip-connection";
 import { getStewardAgents } from "@/data/steward-agents.functions";
 import type { Commitment } from "@/domain/steward";
 import type { StewardAgentRead, StewardTask } from "@/domain/steward-accountability";
@@ -30,6 +31,7 @@ const NO_AGENTS: StewardAgentRead = {
   agents: [],
   connected: false,
   syncHealth: null,
+  liveFailureDetail: null,
   because: "Paperclip is not reachable from this workspace right now.",
 };
 
@@ -115,10 +117,14 @@ export function fathomStatusLine(read: StewardTeamRead | undefined): string | nu
   }
 
   const agentCount = read.agents.agents.length;
+  const connection = paperclipConnection({
+    liveReachable: read.agents.connected,
+    lastSuccessAt: read.agents.syncHealth?.lastSuccessAt ?? null,
+  });
   if (read.agents.connected && agentCount > 0) {
     parts.push(`${agentCount} Paperclip agent${agentCount === 1 ? "" : "s"} active`);
-  } else if (!read.agents.connected) {
-    parts.push("Paperclip not connected");
+  } else if (agentCount > 0 || !read.agents.connected) {
+    parts.push(connection.label);
   }
 
   return parts.join(" · ");

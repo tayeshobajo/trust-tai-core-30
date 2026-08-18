@@ -1,18 +1,3 @@
-/** Network-level unreachability — includes Cloudflare Workers' 403/1003
- * ("Direct IP access not allowed") returned when a Worker fetches a
- * laptop-local address like 127.0.0.1. Same bucket as ECONNREFUSED. */
-function isNetworkUnreachable(failure: string | null): boolean {
-  const f = (failure ?? "").toLowerCase();
-  return (
-    f.includes("fetch failed") ||
-    f.includes("econnrefused") ||
-    f.includes("enotfound") ||
-    f.includes("etimedout") ||
-    (f.includes("403") && (f.includes("1003") || f.includes("cloudflare"))) ||
-    f.includes("direct ip access")
-  );
-}
-
 /**
  * Steward's read + write layer over the Paperclip workforce (server only).
  *
@@ -21,6 +6,7 @@ function isNetworkUnreachable(failure: string | null): boolean {
  * Phase 4-6: adds comment timeline, pause/resume, routine visibility, sync health.
  */
 
+import { paperclipConnection } from "@/domain/paperclip-connection";
 import type {
   AgentLifecycle,
   StewardAgent,
@@ -31,6 +17,17 @@ import type {
 } from "@/domain/steward-accountability";
 
 const WEEK = 7 * 86_400_000;
+
+/**
+ * Honest connection sentence when the live Paperclip API is unavailable.
+ * A fresh reconciliation sweep is a healthy state, not an alert.
+ */
+function connectionLine(lastSuccessAt: string | null): string {
+  const state = paperclipConnection({ liveReachable: false, lastSuccessAt });
+  return state.mode === "synchronized"
+    ? `Paperclip \u00b7 synchronized. ${state.helper}`
+    : `Paperclip \u00b7 interrupted. ${state.helper}`;
+}
 
 /** Boundaries every Trust Tai agent has, regardless of capability list. */
 const UNIVERSAL_BOUNDARIES = [
@@ -123,6 +120,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       agents: [],
       connected: false,
       syncHealth: null,
+      liveFailureDetail: error instanceof Error ? error.message : null,
       because: error instanceof Error ? error.message : "The execution bridge is not available.",
     };
   }
@@ -135,6 +133,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       agents: [],
       connected: false,
       syncHealth: null,
+      liveFailureDetail: error instanceof Error ? error.message : null,
       because:
         error instanceof Error
           ? `The agent registry could not be read. ${error.message}`
@@ -147,6 +146,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       agents: [],
       connected: true,
       syncHealth: null,
+      liveFailureDetail: null,
       because: "No Paperclip agents are registered for this workspace yet.",
     };
   }
@@ -195,11 +195,12 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       currentWork: null,
       activeTasks: [],
       awaitingApproval: [],
-      completedThisWeek: 0,
+      completedThisWeek: null,
       recentOutcome: null,
       routines: [],
       activityTimeline: [],
-      pendingApprovals: 0,
+      pendingApprovals: null,
+      dataSource: "synced",
       lastHeartbeatAt: (record["last_heartbeat_at"] as string | null) ?? null,
 
       isPaused:
@@ -259,6 +260,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
         routines: rec.routines.map(toRoutine),
         activityTimeline,
         pendingApprovals: rec.approvals.length,
+        dataSource: "live",
         isPaused: rec.pausedAt != null || rec.status === "paused",
       });
     } else {
@@ -285,12 +287,9 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
     connected: reachable,
     syncHealth,
     because: reachable
-      ? `${agents.length} agent${agents.length === 1 ? "" : "s"} registered.`
-      : firstFailure?.includes("Missing PAPERCLIP_BOARD_KEY")
-        ? `Live Paperclip state is not configured here (no board key on this deployment). Showing the registry with the last synchronized state from ${syncHealth?.lastSuccessAt ?? "the last sweep"}.`
-        : firstFailure?.includes("fetch failed") || firstFailure?.toLowerCase().includes("econnrefused")
-          ? `Paperclip is running locally and not reachable from this deployment. Showing the registry with the last synchronized state from ${syncHealth?.lastSuccessAt ?? "the last sweep"}.`
-          : `Paperclip is not responding right now. ${firstFailure ?? ""} Showing the registry with the last synchronized state from ${syncHealth?.lastSuccessAt ?? "the last sweep"}.`.trim(),
+      ? `${agents.length} agent${agents.length === 1 ? "" : "s"} registered. Paperclip \u00b7 live.`
+      : connectionLine(syncHealth?.lastSuccessAt ?? null),
+    liveFailureDetail: reachable ? null : firstFailure
   };
 }
 
