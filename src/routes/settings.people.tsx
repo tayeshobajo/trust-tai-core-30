@@ -54,6 +54,46 @@ function whenText(value: string | null): string {
   return date.toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
+type SortKey = "name" | "role" | "rooms" | "lastActive" | "status";
+
+/** A sortable, explainable column header. Presentation only. */
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  hint,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: { key: SortKey; direction: "asc" | "desc" };
+  onSort: (key: SortKey) => void;
+  hint?: string;
+}) {
+  const active = sort.key === sortKey;
+  return (
+    <th
+      scope="col"
+      className="tt-eyebrow px-4 py-2 font-normal"
+      aria-sort={active ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <span className="inline-flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => onSort(sortKey)}
+          className="inline-flex items-center gap-1 uppercase tracking-[inherit] hover:text-foreground"
+        >
+          {label}
+          <span aria-hidden className={active ? "text-royal" : "text-muted-foreground/50"}>
+            {active ? (sort.direction === "asc" ? "\u2191" : "\u2193") : "\u2195"}
+          </span>
+        </button>
+        {hint ? <InfoTip label={`About ${label}`}>{hint}</InfoTip> : null}
+      </span>
+    </th>
+  );
+}
+
 function PeopleSettings() {
   const identity = useSettingsIdentity();
   const queryClient = useQueryClient();
