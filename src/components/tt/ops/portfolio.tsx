@@ -26,12 +26,14 @@ const HEALTH_LABEL: Record<OpsSystem["health"], string> = {
   incident: "Open incident",
   attention: "Needs attention",
   healthy: "Healthy",
+  unknown: "State not reported",
 };
 
 const HEALTH_TONE: Record<OpsSystem["health"], string> = {
   incident: "border-destructive/30 bg-destructive/10 text-destructive",
   attention: "border-warning/30 bg-warning/10 text-warning",
   healthy: "border-success/25 bg-success/10 text-success",
+  unknown: "border-border bg-muted/40 text-muted-foreground",
 };
 
 export function OpsHealthPill({ health }: { health: OpsSystem["health"] }) {
@@ -123,9 +125,19 @@ export function OpsToolbar({
   );
 }
 
-function when(at: string): string {
+function when(at: string | null): string {
+  if (!at) return "not reported";
   const date = new Date(at);
-  return Number.isNaN(date.getTime()) ? "unknown" : date.toLocaleDateString();
+  return Number.isNaN(date.getTime()) ? "not reported" : date.toLocaleDateString();
+}
+
+/**
+ * A count Ops never reported is a dash, never a zero. Zero is a claim, and
+ * this room only makes claims Ops actually made.
+ */
+function count(value: number | null, one: string, many: string): string {
+  if (value === null) return `\u2014 ${many}`;
+  return `${value} ${value === 1 ? one : many}`;
 }
 
 export function OpsSystemRow({
@@ -160,15 +172,13 @@ export function OpsSystemRow({
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <OpsHealthPill health={system.health} />
           {system.environment ? <MetaPill>{system.environment}</MetaPill> : null}
-          <MetaPill>
-            {system.openIssues} open {system.openIssues === 1 ? "issue" : "issues"}
-          </MetaPill>
-          <MetaPill>
-            {system.openApprovals} {system.openApprovals === 1 ? "approval" : "approvals"}
-          </MetaPill>
+          <MetaPill>{count(system.openIssues, "open issue", "open issues")}</MetaPill>
+          <MetaPill>{count(system.openApprovals, "approval", "approvals")}</MetaPill>
+          {system.status ? <MetaPill>{system.status}</MetaPill> : null}
           {system.latestRun ? <MetaPill>latest: {system.latestRun.label}</MetaPill> : null}
           {system.owner ? <MetaPill>{system.owner}</MetaPill> : null}
           {system.canonicalProjectId ? <MetaPill>linked to a project</MetaPill> : null}
+          <MetaPill>{system.source === "projection" ? "synced from Ops" : "from activity"}</MetaPill>
         </div>
       </div>
 
