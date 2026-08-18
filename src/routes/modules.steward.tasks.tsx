@@ -97,6 +97,7 @@ function StewardTasks({ identity }: { identity: WorkspaceIdentity }) {
   const [openTask, setOpenTask] = useState<StewardTask | null>(null);
   const [reassign, setReassign] = useState<StewardTask | null>(null);
 
+  const actor = { userId: identity.userId, canManage: identity.canManage };
   const read = useQuery({ queryKey, queryFn: () => readStewardTeam(identity.organizationId) });
   const actions = useStewardActions({ identity, queryKey });
 
@@ -259,6 +260,7 @@ function StewardTasks({ identity }: { identity: WorkspaceIdentity }) {
                     <TaskRow
                       key={task.key}
                       task={task}
+                      actor={actor}
                       showSelect
                       selected={selected.includes(task.key)}
                       onSelect={(checked) =>
@@ -282,7 +284,7 @@ function StewardTasks({ identity }: { identity: WorkspaceIdentity }) {
 
       <TaskDetailPanel
         task={openTask}
-        canAct={identity.canManage}
+        actor={actor}
         onClose={() => setOpenTask(null)}
         onComplete={(note) => {
           if (openTask) actions.complete(openTask, note);

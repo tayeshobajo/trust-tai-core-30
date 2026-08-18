@@ -88,6 +88,7 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
   const [openPerson, setOpenPerson] = useState<string | null>(null);
   const [dragKey, setDragKey] = useState<string | null>(null);
 
+  const actor = { userId: identity.userId, canManage: identity.canManage };
   const read = useQuery({ queryKey, queryFn: () => readStewardTeam(identity.organizationId) });
   const actions = useStewardActions({ identity, queryKey });
 
@@ -161,7 +162,7 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
       ) : read.isLoading ? (
         <p className="text-sm text-muted-foreground">Reading who owes what…</p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
           <div className="space-y-8">
             <section className="tt-surface overflow-hidden">
               <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
@@ -213,6 +214,7 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
                     <TaskRow
                       key={task.key}
                       task={task}
+                      actor={actor}
                       onOpen={() => setOpenTask(task)}
                       onComplete={() => actions.complete(task, "")}
                       onReassign={() => setReassign(task)}
@@ -258,6 +260,7 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
           </div>
 
           <TeamRail
+            stacked
             glance={glance}
             unownedCount={unowned.length}
             overdueTasks={overdue}
@@ -270,7 +273,7 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
 
       <TaskDetailPanel
         task={openTask}
-        canAct={identity.canManage}
+        actor={actor}
         onClose={() => setOpenTask(null)}
         onComplete={(note) => {
           if (openTask) actions.complete(openTask, note);
