@@ -10,6 +10,7 @@
  * prefix themselves, so authorization is verified here, in the handler.
  */
 
+import { signInUrlFor } from "@/lib/auth-origin";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -118,7 +119,7 @@ export const Route = createFileRoute("/api/public/settings/invite-email")({
           organizationName: organizations?.[0]?.name ?? "your Trust Tai workspace",
           roleLabel: ROLE_LABEL[normalizeRole(invitation.role)],
           invitedByName,
-          signInUrl: `${origin}/auth?email=${encodeURIComponent(invitation.email)}`,
+          signInUrl: signInUrlFor(invitation.email, origin),
           expiresAt: invitation.expires_at,
         });
 
