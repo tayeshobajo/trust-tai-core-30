@@ -54,13 +54,9 @@ function AuthRoute() {
     setError(null);
     const { error: sendError } = await supabase.auth.signInWithOtp({
       email: address,
-      options:
-        typeof window !== "undefined"
-          ? {
-              emailRedirectTo: `${window.location.origin}/auth?redirect=${encodeURIComponent(redirect)}`,
-            }
-          : {},
+      options: { emailRedirectTo: authRedirectUrl(redirect) },
     });
+
     setSending(false);
     if (sendError) {
       setError(sendError.message);
