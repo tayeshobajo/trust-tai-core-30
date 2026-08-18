@@ -22,12 +22,17 @@ import {
   filterActivity,
   readActivityKind,
   readActivityQuery,
+  readActivityDate,
+  hasRange,
+  orderRange,
+  recordedActivity,
   movements,
   pageActivity,
   readActivityPage,
   readActivityView,
   todaysActivity,
   type ActivityKind,
+  type ActivityRange,
   type ActivityRow,
   type ActivityView,
 } from "@/data/conductor/activity-view";
@@ -66,6 +71,8 @@ export const Route = createFileRoute("/modules/activity")({
     page: readActivityPage(search),
     kind: readActivityKind(search),
     q: readActivityQuery(search),
+    from: readActivityDate(search, "from"),
+    to: readActivityDate(search, "to"),
   }),
   head: () => ({
     meta: [
@@ -82,7 +89,7 @@ export const Route = createFileRoute("/modules/activity")({
 });
 
 function ActivityRoute() {
-  const { view, page, kind, q } = Route.useSearch();
+  const { view, page, kind, q, from, to } = Route.useSearch();
   return (
     <WorkspaceGate
       preview={{
@@ -98,7 +105,14 @@ function ActivityRoute() {
       }}
     >
       {(identity) => (
-        <ActivityPage identity={identity} view={view} page={page} kind={kind} query={q} />
+        <ActivityPage
+          identity={identity}
+          view={view}
+          page={page}
+          kind={kind}
+          query={q}
+          range={{ from, to }}
+        />
       )}
     </WorkspaceGate>
   );
@@ -122,12 +136,14 @@ function ActivityPage({
   page,
   kind,
   query,
+  range,
 }: {
   identity: WorkspaceIdentity;
   view: ActivityView;
   page: number;
   kind: ActivityKind;
   query: string;
+  range: ActivityRange;
 }) {
   const navigate = Route.useNavigate();
   const events = useQuery({
@@ -146,14 +162,19 @@ function ActivityPage({
   });
 
   const actions = control.data?.actions ?? [];
+  const window = orderRange(range);
+  const windowed = hasRange(window);
+  /* A window is a deliberate widening: Today reads the whole stream inside it. */
   const rows: ActivityRow[] =
     view === "today"
-      ? todaysActivity(events.data ?? [], new Date())
+      ? windowed
+        ? recordedActivity(events.data ?? [])
+        : todaysActivity(events.data ?? [], new Date())
       : view === "needs"
         ? awaitingJudgment(actions)
         : movements({ receipts: control.data?.receipts ?? [], actions });
 
-  const paged = pageActivity(filterActivity(rows, { query, kind }), page);
+  const paged = pageActivity(filterActivity(rows, { query, kind, range: window }), page);
 
   const loading = view === "today" ? events.isPending : control.isPending;
   const failed = view === "today" ? events.isError : control.isError;
@@ -177,7 +198,7 @@ function ActivityPage({
             <Link
               key={option}
               to="/modules/activity"
-              search={{ view: option, page: 1, kind, q: query }}
+              search={{ view: option, page: 1, kind, q: query, from: range.from, to: range.to }}
               className="rounded-full border border-border px-3.5 py-1.5 text-[13px] text-muted-foreground data-[status=active]:border-royal data-[status=active]:text-royal"
               activeOptions={{ includeSearch: true }}
               activeProps={{ "aria-current": "page" }}
@@ -224,6 +245,62 @@ function ActivityPage({
           </div>
         </div>
 
+        <div
+          className="flex flex-wrap items-end gap-3"
+          role="group"
+          aria-label="Narrow to a date window"
+        >
+          <label className="text-[12.5px] text-muted-foreground">
+            <span className="block pb-1">From</span>
+            <input
+              type="date"
+              value={range.from}
+              max={range.to || undefined}
+              onChange={(event) =>
+                navigate({
+                  search: (prev) => ({ ...prev, from: event.target.value, page: 1 }),
+                  replace: true,
+                })
+              }
+              className="h-10 rounded-xl border border-border bg-card px-3 text-[13px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
+          <label className="text-[12.5px] text-muted-foreground">
+            <span className="block pb-1">To</span>
+            <input
+              type="date"
+              value={range.to}
+              min={range.from || undefined}
+              onChange={(event) =>
+                navigate({
+                  search: (prev) => ({ ...prev, to: event.target.value, page: 1 }),
+                  replace: true,
+                })
+              }
+              className="h-10 rounded-xl border border-border bg-card px-3 text-[13px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
+          {windowed ? (
+            <button
+              type="button"
+              onClick={() =>
+                navigate({
+                  search: (prev) => ({ ...prev, from: "", to: "", page: 1 }),
+                  replace: true,
+                })
+              }
+              className="h-10 rounded-full border border-border px-3.5 text-[13px] text-royal"
+            >
+              Clear dates
+            </button>
+          ) : null}
+          {windowed && view === "today" ? (
+            <p className="w-full text-[12.5px] text-muted-foreground">
+              Reading the whole recorded stream inside this window, not only today.
+            </p>
+          ) : null}
+        </div>
+
         {loading ? (
           <p className="text-sm text-muted-foreground">Reading the suite.</p>
         ) : failed ? (
@@ -231,11 +308,11 @@ function ActivityPage({
             That history could not be read just now. Nothing was changed; try again.
           </p>
         ) : paged.total === 0 ? (
-          query.trim() || kind !== "all" ? (
+          query.trim() || kind !== "all" || windowed ? (
             <EmptyState
               title="Nothing matches that search"
               belongsHere="Only events already recorded in this view can match."
-              whyItMatters="Clear the search or choose Everything to see the full history again."
+              whyItMatters="Clear the search, the dates, or choose Everything to see the full history again."
             />
           ) : (
             <EmptyState {...EMPTY[view]} />
@@ -245,7 +322,18 @@ function ActivityPage({
           <ul className="divide-y divide-border rounded-xl border border-border bg-card">
             {paged.rows.map((row) => (
               <li key={row.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-3.5">
-                <span className="min-w-0 flex-1 text-[14px] text-foreground">{row.label}</span>
+                {row.task ? (
+                  <Link
+                    to="/modules/steward/tasks"
+                    search={{ task: row.task.key, at: row.at ?? "" }}
+                    className="min-w-0 flex-1 text-[14px] text-foreground underline decoration-border underline-offset-4 hover:decoration-royal"
+                    title={`Open ${row.task.title} as it stood when this was recorded`}
+                  >
+                    {row.label}
+                  </Link>
+                ) : (
+                  <span className="min-w-0 flex-1 text-[14px] text-foreground">{row.label}</span>
+                )}
                 <span className="tt-eyebrow">{row.roomLabel}</span>
                 <span className="text-[12.5px] text-muted-foreground">{row.standing}</span>
                 <span className="w-[128px] text-right text-[12.5px] tabular-nums text-muted-foreground">
@@ -261,7 +349,14 @@ function ActivityPage({
             {paged.hasMore ? (
               <Link
                 to="/modules/activity"
-                search={{ view, page: paged.page + 1, kind, q: query }}
+                search={{
+                  view,
+                  page: paged.page + 1,
+                  kind,
+                  q: query,
+                  from: range.from,
+                  to: range.to,
+                }}
                 replace
                 className="rounded-full border border-border px-3.5 py-1.5 text-[13px] text-royal"
               >
