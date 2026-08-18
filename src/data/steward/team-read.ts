@@ -71,19 +71,43 @@ export async function readStewardTeam(organizationId: string): Promise<StewardTe
   };
 }
 
-/** Fathom's real sync state, expressed only from rows Steward actually has. */
+/**
+ * Fathom's real sync state, expressed only from rows Steward actually has.
+ *
+ * "Synced" means when Steward stored the call, which is not the same thing as
+ * when the meeting happened, so both are said plainly. Counts describe only
+ * what was read from those calls.
+ */
 export function fathomStatusLine(read: StewardTeamRead | undefined): string | null {
   if (!read) return null;
-  const latest = read.conversations
-    .filter((row) => row.provider === "fathom")
-    .map((row) => row.occurredAt)
-    .sort()
-    .pop();
-  const agentCount = read.agents.agents.length;
+
+  const calls = read.conversations.filter((row) => row.provider === "fathom");
   const parts: string[] = [];
-  parts.push(latest ? `Fathom synced ${latest.slice(0, 10)}` : "Fathom has not synced a call yet");
+
+  if (calls.length === 0) {
+    parts.push("No Fathom call has been read yet");
+  } else {
+    const syncedAt = calls
+      .map((row) => row.ingestedAt || row.occurredAt)
+      .filter(Boolean)
+      .sort()
+      .pop();
+    const ids = new Set(calls.map((row) => row.id));
+    const derived = read.commitments.filter((row) => ids.has(row.conversationId)).length;
+    parts.push(
+      `${calls.length} Fathom call${calls.length === 1 ? "" : "s"} read${
+        syncedAt ? `, last synced ${syncedAt.slice(0, 10)}` : ""
+      }`,
+    );
+    parts.push(`${derived} promise${derived === 1 ? "" : "s"} taken from them`);
+  }
+
+  const agentCount = read.agents.agents.length;
   if (read.agents.connected && agentCount > 0) {
     parts.push(`${agentCount} Paperclip agent${agentCount === 1 ? "" : "s"} active`);
+  } else if (!read.agents.connected) {
+    parts.push("Paperclip not connected");
   }
+
   return parts.join(" · ");
 }
