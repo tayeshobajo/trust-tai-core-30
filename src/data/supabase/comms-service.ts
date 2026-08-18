@@ -303,6 +303,62 @@ export const commsService = {
     return toRelationship(data as unknown as RelationshipRow);
   },
 
+  /**
+   * Settle a promise. The wording of the promise never changes, only whether
+   * it was kept or released, so the record of what was said stays intact.
+   */
+  async settleCommitment(
+    relationship: Relationship,
+    commitment: { text: string; at: string },
+    status: "kept" | "released",
+    context: CommsContext,
+  ): Promise<Relationship> {
+    const settle = (items: MemoryItem[]) =>
+      items.map((item) =>
+        item.at === commitment.at && item.value === commitment.text ? { ...item, status } : item,
+      );
+    const at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from("comms_relationships")
+      .update({
+        decided: memoryPayload(settle(relationship.decided)),
+        observed: memoryPayload(settle(relationship.observed)),
+        updated_at: at,
+      })
+      .eq("id", relationship.id)
+      .eq("organization_id", context.organizationId)
+      .select(RELATIONSHIP_COLUMNS)
+      .single();
+    assertOk(error);
+    if (!data) throw new Error("That promise could not be updated.");
+    return toRelationship(data as unknown as RelationshipRow);
+  },
+
+  /**
+   * Set what kind of relationship this is. Intent lives in the existing
+   * metadata column, so different rhythms need no new schema.
+   */
+  async setIntent(
+    relationship: Relationship,
+    intent: string,
+    context: CommsContext,
+  ): Promise<Relationship> {
+    const { data, error } = await supabase
+      .from("comms_relationships")
+      .update({
+        metadata: { ...relationship.metadata, intent },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", relationship.id)
+      .eq("organization_id", context.organizationId)
+      .select(RELATIONSHIP_COLUMNS)
+      .single();
+    assertOk(error);
+    if (!data) throw new Error("That relationship type could not be saved.");
+    return toRelationship(data as unknown as RelationshipRow);
+  },
+
   /* ------------------------------------------------------------- touches */
 
   async listTouches(relationshipId: ID): Promise<Touch[]> {
