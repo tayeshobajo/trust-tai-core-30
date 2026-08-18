@@ -12,6 +12,7 @@ import {
   Route as RouteIcon,
   Search,
   ShieldCheck,
+  Settings,
   SquareStack,
   Menu,
   X,
@@ -51,12 +52,22 @@ function isCurrent(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`);
 }
 
-function NavList({ onNavigate }: { onNavigate?: () => void }) {
+function NavList({
+  onNavigate,
+  allowed,
+}: {
+  onNavigate?: () => void;
+  /** App ids this person may see. Undefined means "not yet resolved". */
+  allowed?: string[];
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  /* The rail is derived, never a static list: an app the organization has
+     switched off, or one hidden for this person, is simply not here. */
+  const rooms = allowed ? APP_REGISTRY.filter((app) => allowed.includes(app.id)) : APP_REGISTRY;
 
   return (
     <nav aria-label="Trust Tai suite" className="space-y-0.5">
-      {APP_REGISTRY.map((app) => {
+      {rooms.map((app) => {
         const Icon = ICONS[app.icon] ?? Compass;
         const active = isCurrent(pathname, app.route);
         const note = statusNote(app);
@@ -111,6 +122,7 @@ export function AppShell({
   sidebar?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const allowedApps = identity?.apps.map((app) => app.appId);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -145,6 +157,20 @@ export function AppShell({
           </span>
           {identity ? (
             <>
+              <Link
+                to="/settings"
+                aria-label="Settings"
+                className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <Settings className="size-[18px]" aria-hidden />
+              </Link>
+              {identity.avatarUrl ? (
+                <img
+                  src={identity.avatarUrl}
+                  alt={`${identity.name}, profile photo`}
+                  className="size-9 rounded-full object-cover"
+                />
+              ) : (
               <span
                 className="flex size-9 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
                 aria-label={`Signed in as ${identity.name}`}
@@ -152,6 +178,7 @@ export function AppShell({
               >
                 {initialsOf(identity.name)}
               </span>
+              )}
               <button
                 type="button"
                 onClick={() => void handleSignOut()}
@@ -169,7 +196,7 @@ export function AppShell({
         <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-[248px] shrink-0 flex-col overflow-y-auto border-r border-border bg-sidebar px-3 py-5 lg:flex xl:w-[276px]">
           <p className="tt-eyebrow mb-2 px-4">Suite</p>
 
-          <NavList />
+          <NavList allowed={allowedApps} />
           {sidebar ? <div className="mt-6 space-y-3">{sidebar}</div> : null}
           <div className="mt-auto pt-6">
             <p className="px-3 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
@@ -180,7 +207,7 @@ export function AppShell({
 
         {open ? (
           <div className="fixed inset-x-0 top-16 z-20 max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-border bg-card p-4 lg:hidden">
-            <NavList onNavigate={() => setOpen(false)} />
+            <NavList allowed={allowedApps} onNavigate={() => setOpen(false)} />
             {sidebar ? <div className="mt-5 space-y-3">{sidebar}</div> : null}
           </div>
         ) : null}
