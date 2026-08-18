@@ -41,6 +41,11 @@ const DESCRIPTION =
   "Everything people and agents own across Trust Tai, grouped by priority, owner, project or date.";
 
 export const Route = createFileRoute("/modules/steward/tasks")({
+  /* Activity links here with the task it recorded and the moment it happened. */
+  validateSearch: (search: Record<string, unknown>) => ({
+    task: typeof search["task"] === "string" ? (search["task"] as string).slice(0, 200) : "",
+    at: typeof search["at"] === "string" ? (search["at"] as string).slice(0, 40) : "",
+  }),
   head: () => ({
     meta: [
       { title: TITLE },
@@ -56,11 +61,12 @@ export const Route = createFileRoute("/modules/steward/tasks")({
 });
 
 function TasksRoute() {
+  const { task, at } = Route.useSearch();
   return (
     <WorkspaceGate>
       {(identity) => (
         <AppShell identity={identity}>
-          <StewardTasks identity={identity} />
+          <StewardTasks identity={identity} openKey={task} recordedAt={at} />
         </AppShell>
       )}
     </WorkspaceGate>
@@ -88,7 +94,15 @@ const GROUPING_LABEL: Record<Grouping, string> = {
   due: "Due date",
 };
 
-function StewardTasks({ identity }: { identity: WorkspaceIdentity }) {
+function StewardTasks({
+  identity,
+  openKey,
+  recordedAt,
+}: {
+  identity: WorkspaceIdentity;
+  openKey: string;
+  recordedAt: string;
+}) {
   const queryClient = useQueryClient();
   const queryKey = ["steward", "team", identity.organizationId];
   const [filter, setFilter] = useState<TasksFilter>("all");
@@ -98,11 +112,18 @@ function StewardTasks({ identity }: { identity: WorkspaceIdentity }) {
   const [openTask, setOpenTask] = useState<StewardTask | null>(null);
   const [reassign, setReassign] = useState<StewardTask | null>(null);
 
+  const navigate = Route.useNavigate();
   const actor = { userId: identity.userId, canManage: identity.canManage };
   const read = useQuery({ queryKey, queryFn: () => readStewardTeam(identity.organizationId) });
   const actions = useStewardActions({ identity, queryKey });
 
   const tasks = read.data?.tasks ?? [];
+
+  /* Opened from the activity stream: show the task the event was about, and
+   * say plainly that the row is as it stands now, not a snapshot. */
+  const linkedTask = openKey ? (tasks.find((row) => row.key === openKey) ?? null) : null;
+  const linkedMissing = Boolean(openKey) && !linkedTask && !read.isPending;
+  const shownTask = openTask ?? linkedTask;
   const viewerKey = personKeyOf({ email: identity.email, name: identity.name });
   const visible = useMemo(
     () =>
@@ -284,19 +305,25 @@ function StewardTasks({ identity }: { identity: WorkspaceIdentity }) {
       )}
 
       <TaskDetailPanel
-        task={openTask}
+        task={shownTask}
+        {...(shownTask && shownTask === linkedTask && recordedAt
+          ? { recordedAt }
+          : {})}
         actor={actor}
-        onClose={() => setOpenTask(null)}
+        onClose={() => {
+          setOpenTask(null);
+          if (openKey) navigate({ search: { task: "", at: "" }, replace: true });
+        }}
         onComplete={(note) => {
-          if (openTask) actions.complete(openTask, note);
+          if (shownTask) actions.complete(shownTask, note);
           setOpenTask(null);
         }}
         onReassign={() => {
-          setReassign(openTask);
+          setReassign(shownTask);
           setOpenTask(null);
         }}
-        onFocus={(focus) => openTask && actions.setFocus(openTask, focus)}
-        onDue={(due) => openTask && actions.setDue(openTask, due)}
+        onFocus={(focus) => shownTask && actions.setFocus(shownTask, focus)}
+        onDue={(due) => shownTask && actions.setDue(shownTask, due)}
       />
 
       <ReassignPicker
