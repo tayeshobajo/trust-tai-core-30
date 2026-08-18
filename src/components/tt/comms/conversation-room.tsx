@@ -1,18 +1,22 @@
 /**
- * The conversation room.
+ * The relationship room.
  *
- * The heart of Comms: one thread, read top to bottom. Their words on the left,
- * ours on the right, meeting notes and drafts inline where they happened.
+ * The heart of Comms: one relationship, read top to bottom. Their words on the
+ * left, ours on the right, calls, meetings, notes and suggestions inline where
+ * they happened. Each event says what it was, when it was, and, when it
+ * matters, who put it on the record.
  */
 
 import {
   EVENT_LABEL,
+  eventSide,
   type ConversationDay,
   type ConversationEvent as EventShape,
 } from "@/data/comms-timeline";
 import { initials } from "@/data/comms-inbox";
 import { HEALTH_LABEL, type ConversationHealth } from "@/domain/comms-health";
 import { SOURCE_LABEL, STAGE_LABEL, type Relationship } from "@/domain/comms";
+import { effectiveIntent, INTENT_LABEL } from "@/domain/comms-interactions";
 import { cn } from "@/lib/utils";
 
 import { HealthDot } from "./health-marks";
@@ -23,61 +27,51 @@ function timeOf(value: string): string {
   return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
+/** Each kind reads differently at a glance, without relying on colour alone. */
+const KIND_TONE: Record<EventShape["kind"], string> = {
+  we_emailed: "border-cloud-line bg-cloud",
+  they_emailed: "border-border bg-card",
+  they_texted: "border-border bg-card",
+  i_texted: "border-cloud-line bg-cloud",
+  phone_call: "border-border bg-secondary/40",
+  meeting: "border-border bg-secondary/40",
+  note: "border-dashed border-border bg-secondary/30",
+  suggestion: "border-dashed border-royal/30 bg-royal/5",
+  draft: "border-dashed border-cloud-line bg-cloud/50",
+};
+
 export function ConversationEvent({ event }: { event: EventShape }) {
-  const mine = event.kind === "we_wrote";
-  const inline = event.kind === "meeting" || event.kind === "note" || event.kind === "system";
-
-  if (inline) {
-    return (
-      <li className="flex justify-center">
-        <div className="w-full max-w-[85%] rounded-lg border border-dashed border-border bg-secondary/40 px-3.5 py-2.5">
-          <p className="tt-eyebrow">
-            {EVENT_LABEL[event.kind]} · {timeOf(event.occurredAt)}
-          </p>
-          <p className="mt-1 text-[13px] text-foreground">{event.title}</p>
-          {event.body ? (
-            <p className="mt-1 whitespace-pre-wrap text-[13px] text-muted-foreground">{event.body}</p>
-          ) : null}
-        </div>
-      </li>
-    );
-  }
-
-  if (event.kind === "draft") {
-    return (
-      <li className="flex justify-end">
-        <div className="max-w-[78%] rounded-2xl rounded-br-md border border-dashed border-cloud-line bg-cloud/50 px-3.5 py-2.5">
-          <p className="tt-eyebrow">Draft · not sent</p>
-          <p className="mt-1 text-[13px] text-foreground">{event.title}</p>
-          {event.body ? (
-            <p className="mt-1 line-clamp-6 whitespace-pre-wrap text-[13px] text-muted-foreground">
-              {event.body}
-            </p>
-          ) : null}
-          <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-            {event.source ?? "Prepared in Comms"}
-          </p>
-        </div>
-      </li>
-    );
-  }
+  const side = eventSide(event.kind);
 
   return (
-    <li className={cn("flex", mine ? "justify-end" : "justify-start")}>
+    <li
+      className={cn(
+        "flex",
+        side === "us" ? "justify-end" : side === "them" ? "justify-start" : "justify-center",
+      )}
+    >
       <div
         className={cn(
-          "max-w-[78%] rounded-2xl px-3.5 py-2.5",
-          mine
-            ? "rounded-br-md border border-cloud-line bg-cloud text-foreground"
-            : "rounded-bl-md border border-border bg-card text-foreground",
+          "rounded-2xl border px-3.5 py-2.5",
+          side === "center" ? "w-full max-w-[88%] rounded-lg" : "max-w-[78%]",
+          side === "us" ? "rounded-br-md" : side === "them" ? "rounded-bl-md" : "",
+          KIND_TONE[event.kind],
         )}
       >
         <p className="tt-eyebrow">
-          {EVENT_LABEL[event.kind]} · {timeOf(event.occurredAt)}
+          {EVENT_LABEL[event.kind]}
+          {timeOf(event.occurredAt) ? ` · ${timeOf(event.occurredAt)}` : ""}
         </p>
-        <p className="mt-1 whitespace-pre-wrap text-[13px]">{event.title}</p>
+        <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground">{event.title}</p>
         {event.body ? (
-          <p className="mt-1 whitespace-pre-wrap text-[13px] text-muted-foreground">{event.body}</p>
+          <p className="mt-1 line-clamp-[12] whitespace-pre-wrap text-[13px] text-muted-foreground">
+            {event.body}
+          </p>
+        ) : null}
+        {event.source ? (
+          <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            {event.source}
+          </p>
         ) : null}
       </div>
     </li>
@@ -90,6 +84,7 @@ export function ConversationRoom({
   health,
   onViewProfile,
   onOpenContext,
+  onAddInteraction,
   children,
 }: {
   relationship: Relationship;
@@ -97,12 +92,13 @@ export function ConversationRoom({
   health: ConversationHealth;
   onViewProfile: () => void;
   onOpenContext?: () => void;
+  onAddInteraction?: () => void;
   children?: React.ReactNode;
 }) {
   const chips = [
+    INTENT_LABEL[effectiveIntent(relationship)],
     STAGE_LABEL[relationship.stage],
     SOURCE_LABEL[relationship.source],
-    relationship.nextAction?.trim() ? "Next move set" : "No next move set",
   ];
 
   return (
@@ -135,12 +131,21 @@ export function ConversationRoom({
               ))}
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
                 <HealthDot status={health.status} />
-                Health: {HEALTH_LABEL[health.status]}
+                {HEALTH_LABEL[health.status]}
               </span>
             </div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          {onAddInteraction ? (
+            <button
+              type="button"
+              onClick={onAddInteraction}
+              className="rounded-md border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              + Add interaction
+            </button>
+          ) : null}
           {onOpenContext ? (
             <button
               type="button"
@@ -163,7 +168,8 @@ export function ConversationRoom({
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
         {days.length === 0 ? (
           <p className="py-10 text-center text-[13px] text-muted-foreground">
-            Nothing has been said yet. Write the first message below and it will live here.
+            Nothing is on the record yet. Add an interaction that already happened, or prepare the
+            first message below.
           </p>
         ) : (
           days.map((day) => (
