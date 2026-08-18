@@ -324,16 +324,22 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     );
   }
 
+  const move = selected ? nextRelationshipMove(selected) : null;
+
   const rail =
-    selected && health && strength ? (
-      <ConversationContext
+    selected && health && strength && move ? (
+      <RelationshipRail
         relationship={selected}
         health={health}
         strength={strength}
-        reasons={reasonsToReconnect(selected)}
-        savedDraft={savedDraft}
-        busy={update.isPending}
-        onNextAction={(value) => update.mutate({ nextAction: value || null })}
+        move={move}
+        onRemember={() => setInteracting(true)}
+        onPrepareMove={() => void compose("follow_up", move.action)}
+        onRemindLater={() => update.mutate({ nextAction: move.action })}
+        onNotNeeded={() => update.mutate({ nextAction: null })}
+        onSettleCommitment={(commitment, status) =>
+          settleCommitment.mutate({ commitment, status })
+        }
       />
     ) : null;
 
