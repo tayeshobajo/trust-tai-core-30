@@ -18,6 +18,7 @@ import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState } from "@/components/tt/primitives";
 import { NeedsAttention } from "@/components/tt/projects/index/attention";
 import { CompanyGroups } from "@/components/tt/projects/index/company-group";
+import { ProjectDrawer } from "@/components/tt/projects/index/drawer";
 import {
   CreateProjectModal,
   type CreateProjectSeed,
@@ -50,6 +51,7 @@ import {
   type ProjectRowModel,
   type ProjectsTab,
 } from "@/data/projects/index-projection";
+import type { SurfaceMoveChanges } from "@/data/projects/surface-actions";
 import { projectFromMilestone } from "@/data/projects-handoff";
 import { readiness } from "@/data/roadmap-milestones";
 import type { RoadmapIdentity } from "@/data/roadmap-index";
@@ -57,7 +59,7 @@ import { listApprovedMilestones } from "@/data/supabase/roadmap-handoffs";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import { roadmapService } from "@/data/supabase/roadmap-service";
 import { scoutService } from "@/data/supabase/scout-service";
-import type { ProjectInput } from "@/domain/projects";
+import type { ExecutionProject, ProjectInput } from "@/domain/projects";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 
@@ -98,6 +100,8 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [seed, setSeed] = useState<CreateProjectSeed | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingMilestoneId, setPendingMilestoneId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
 
   // Typing should not thrash the list; results settle a beat after the person stops.
   useEffect(() => {
@@ -226,6 +230,33 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
     },
     onError: () => setPendingMilestoneId(null),
   });
+
+  const move = useMutation({
+    mutationFn: ({
+      project,
+      changes,
+    }: {
+      project: ExecutionProject;
+      changes: SurfaceMoveChanges;
+    }) => projectsService.update(project, changes, context),
+    onSettled: async () => {
+      setMovingId(null);
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+
+  function onMove(project: ExecutionProject, changes: SurfaceMoveChanges) {
+    setMovingId(project.id);
+    move.reset();
+    move.mutate({ project, changes });
+  }
+
+  const moveError =
+    move.error instanceof Error
+      ? move.error.message
+      : move.error
+        ? "That change could not be saved."
+        : null;
 
   function openBlankCreate() {
     setSeed(null);
@@ -394,7 +425,14 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
                     </button>
                   </p>
                 ) : (
-                  <CompanyGroups groups={groupByCompany(visible)} identityFor={identityFor} />
+                  <CompanyGroups
+                    groups={groupByCompany(visible)}
+                    identityFor={identityFor}
+                    onMove={onMove}
+                    onOpenDetails={(row) => setDetailId(row.project.id)}
+                    movingId={move.isPending ? movingId : null}
+                    moveError={moveError}
+                  />
                 )}
               </section>
 
@@ -420,9 +458,22 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
         </aside>
       </div>
 
+      <ProjectDrawer
+        row={rows.find((row) => row.project.id === detailId) ?? null}
+        identity={identityFor(
+          rows.find((row) => row.project.id === detailId)?.lineage.company ?? "",
+        )}
+        onClose={() => setDetailId(null)}
+        onMove={onMove}
+        pending={move.isPending}
+        error={moveError}
+      />
+
       <CreateProjectModal
         open={modalOpen}
         seed={seed}
+        handoffs={handoffRows}
+        onSeedFromMilestone={(row) => openHandoffCreate(row)}
         pending={create.isPending}
         error={
           create.error instanceof Error
