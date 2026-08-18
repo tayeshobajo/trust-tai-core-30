@@ -22,6 +22,7 @@ import { Route as ModulesPulseRouteImport } from './routes/modules.pulse'
 import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesStewardRouteImport } from './routes/modules.steward'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
@@ -119,6 +120,11 @@ const ModulesStewardRoute = ModulesStewardRouteImport.update({
   id: '/modules/steward',
   path: '/modules/steward',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
 } as any)
 const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
   id: '/',
@@ -298,7 +304,7 @@ const ApiPublicCommsGmailSyncRoute = ApiPublicCommsGmailSyncRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
@@ -309,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/settings/': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -345,12 +352,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/settings': typeof SettingsRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
+  '/settings': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -387,7 +394,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
@@ -398,6 +405,7 @@ export interface FileRoutesById {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/settings/': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -447,6 +455,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/settings/'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -483,12 +492,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/settings'
     | '/modules/$slug'
     | '/modules/activity'
     | '/modules/conductor'
     | '/modules/ops'
     | '/modules/pulse'
+    | '/settings'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -535,6 +544,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/settings/'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -572,7 +582,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
-  SettingsRoute: typeof SettingsRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesActivityRoute: typeof ModulesActivityRoute
   ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
@@ -692,6 +702,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/modules/steward'
       preLoaderRoute: typeof ModulesStewardRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
     }
     '/modules/comms/': {
       id: '/modules/comms/'
@@ -920,6 +937,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface SettingsRouteChildren {
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 interface ModulesCommsRouteChildren {
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsVoiceRoute: typeof ModulesCommsVoiceRoute
@@ -1020,7 +1049,7 @@ const ModulesStewardRouteWithChildren = ModulesStewardRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
-  SettingsRoute: SettingsRoute,
+  SettingsRoute: SettingsRouteWithChildren,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesActivityRoute: ModulesActivityRoute,
   ModulesCommsRoute: ModulesCommsRouteWithChildren,
