@@ -15,13 +15,19 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import {
   ACTIVITY_PAGE_SIZE,
   ACTIVITY_VIEWS,
+  ACTIVITY_KINDS,
+  ACTIVITY_KIND_LABEL,
   ACTIVITY_VIEW_LABEL,
   awaitingJudgment,
+  filterActivity,
+  readActivityKind,
+  readActivityQuery,
   movements,
   pageActivity,
   readActivityPage,
   readActivityView,
   todaysActivity,
+  type ActivityKind,
   type ActivityRow,
   type ActivityView,
 } from "@/data/conductor/activity-view";
@@ -58,6 +64,8 @@ export const Route = createFileRoute("/modules/activity")({
   validateSearch: (search: Record<string, unknown>) => ({
     view: readActivityView(search),
     page: readActivityPage(search),
+    kind: readActivityKind(search),
+    q: readActivityQuery(search),
   }),
   head: () => ({
     meta: [
@@ -74,7 +82,7 @@ export const Route = createFileRoute("/modules/activity")({
 });
 
 function ActivityRoute() {
-  const { view, page } = Route.useSearch();
+  const { view, page, kind, q } = Route.useSearch();
   return (
     <WorkspaceGate
       preview={{
@@ -89,7 +97,9 @@ function ActivityRoute() {
         returnTo: "/modules/activity",
       }}
     >
-      {(identity) => <ActivityPage identity={identity} view={view} page={page} />}
+      {(identity) => (
+        <ActivityPage identity={identity} view={view} page={page} kind={kind} query={q} />
+      )}
     </WorkspaceGate>
   );
 }
@@ -110,11 +120,16 @@ function ActivityPage({
   identity,
   view,
   page,
+  kind,
+  query,
 }: {
   identity: WorkspaceIdentity;
   view: ActivityView;
   page: number;
+  kind: ActivityKind;
+  query: string;
 }) {
+  const navigate = Route.useNavigate();
   const events = useQuery({
     queryKey: ["activity-stream", identity.organizationId],
     queryFn: () => supabaseActivity.list({ organizationId: identity.organizationId, limit: 200 }),
@@ -138,7 +153,7 @@ function ActivityPage({
         ? awaitingJudgment(actions)
         : movements({ receipts: control.data?.receipts ?? [], actions });
 
-  const paged = pageActivity(rows, page);
+  const paged = pageActivity(filterActivity(rows, { query, kind }), page);
 
   const loading = view === "today" ? events.isPending : control.isPending;
   const failed = view === "today" ? events.isError : control.isError;
@@ -162,7 +177,7 @@ function ActivityPage({
             <Link
               key={option}
               to="/modules/activity"
-              search={{ view: option, page: 1 }}
+              search={{ view: option, page: 1, kind, q: query }}
               className="rounded-full border border-border px-3.5 py-1.5 text-[13px] text-muted-foreground data-[status=active]:border-royal data-[status=active]:text-royal"
               activeOptions={{ includeSearch: true }}
               activeProps={{ "aria-current": "page" }}
@@ -171,6 +186,43 @@ function ActivityPage({
             </Link>
           ))}
         </nav>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="min-w-[220px] flex-1 sm:max-w-[320px]">
+            <span className="sr-only">Search activity</span>
+            <input
+              type="search"
+              value={query}
+              placeholder="Search activity, e.g. completed, reassigned, a task title"
+              onChange={(event) =>
+                navigate({
+                  search: (prev) => ({ ...prev, q: event.target.value, page: 1 }),
+                  replace: true,
+                })
+              }
+              className="h-10 w-full rounded-full border border-border bg-card px-4 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by change">
+            {ACTIVITY_KINDS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={kind === option}
+                onClick={() =>
+                  navigate({ search: (prev) => ({ ...prev, kind: option, page: 1 }), replace: true })
+                }
+                className={
+                  kind === option
+                    ? "rounded-full border border-royal px-3.5 py-1.5 text-[13px] text-royal"
+                    : "rounded-full border border-border px-3.5 py-1.5 text-[13px] text-muted-foreground"
+                }
+              >
+                {ACTIVITY_KIND_LABEL[option]}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Reading the suite.</p>
@@ -201,7 +253,7 @@ function ActivityPage({
             {paged.hasMore ? (
               <Link
                 to="/modules/activity"
-                search={{ view, page: paged.page + 1 }}
+                search={{ view, page: paged.page + 1, kind, q: query }}
                 replace
                 className="rounded-full border border-border px-3.5 py-1.5 text-[13px] text-royal"
               >
