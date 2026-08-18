@@ -135,5 +135,6 @@ export const OPS_LAUNCH_MESSAGE: Record<OpsLaunchFailure, string> = {
   no_organization:
     "No Trust Tai organization is active for this session, so nothing was sent to Ops.",
   popup_blocked: "Your browser blocked the Ops window. Allow the popup and try again.",
-  no_ack: "Ops did not answer the handshake. Nothing was sent. Try again.",
+  no_ack:
+    "Ops did not answer the handshake, so nothing was sent. This usually means Ops does not yet trust this Trust Tai OS address. Ask an Ops admin to allow this origin, then try again.",
 };

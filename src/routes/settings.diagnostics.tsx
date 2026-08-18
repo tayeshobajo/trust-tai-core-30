@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SectionHeading } from "@/components/tt/primitives";
 import { useSettingsIdentity } from "@/components/tt/settings/shell";
 import { getRuntimeDiagnostics } from "@/data/diagnostics.functions";
+import { OPS_ORIGIN, OPS_SSO_PATH } from "@/domain/ops";
 import { PAPERCLIP_MODE_LABEL } from "@/domain/paperclip-connection";
 import { readBuildInfo } from "@/lib/build-info";
 
@@ -106,6 +107,11 @@ function DiagnosticsSettings() {
                   : "Not TLS. Set PAPERCLIP_API_URL to an https origin before going live."
               : undefined
           }
+        />
+        <Row
+          label="Ops handoff target"
+          value={`${OPS_ORIGIN}${OPS_SSO_PATH}`}
+          note="Sessions are handed to this exact origin. Ops must list this deployment's origin in its own allowlist, or the handshake is refused."
         />
         <Row label="Server time" value={pending ? "…" : (data?.serverTime ?? unknown)} />
       </dl>
