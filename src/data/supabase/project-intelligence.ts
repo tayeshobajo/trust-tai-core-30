@@ -582,11 +582,22 @@ const service = {
     return (data ?? []).map((row) => toEffectiveness(row as Row));
   },
 
+  /**
+   * Writing an agent definition decides what an agent is held to, so it is a
+   * Manage act in Steward, not everyday work. The previous definition is read
+   * first so the trail can say what changed rather than only that something did.
+   */
   async saveEffectiveness(
     input: AgentEffectivenessInput,
     organizationId: ID,
     userId: ID,
+    userLabel?: string,
   ): Promise<AgentEffectiveness> {
+    assertRoomManage("steward", "Steward", "Changing what an agent is accountable for");
+    const previous =
+      (await service.listEffectiveness(organizationId)).find(
+        (entry) => entry.agentId === input.agentId,
+      ) ?? null;
     const payload = {
       organization_id: organizationId,
       agent_id: input.agentId,
@@ -606,7 +617,42 @@ const service = {
       .select("*")
       .single();
     if (error || !data) fail("That agent definition could not be saved.", error);
-    return toEffectiveness(data as Row);
+    const saved = toEffectiveness(data as Row);
+
+    const base = {
+      organizationId,
+      agentId: saved.agentId,
+      actorId: userId,
+      ...(userLabel ? { actorLabel: userLabel } : {}),
+    };
+    await intelligenceAudit.record({
+      ...base,
+      action: "agent.definition_saved",
+      subject: saved.responsibility,
+      ...(previous ? { before: previous.responsibility } : {}),
+      after: saved.responsibility,
+    });
+    const contextChange = listDiff(previous?.requiredContext ?? [], saved.requiredContext);
+    if (contextChange.added.length > 0 || contextChange.removed.length > 0) {
+      await intelligenceAudit.record({
+        ...base,
+        action: "agent.required_context_changed",
+        subject: `Required context for ${saved.agentId}`,
+        before: (previous?.requiredContext ?? []).join(", "),
+        after: saved.requiredContext.join(", "),
+      });
+    }
+    const evidenceChange = listDiff(previous?.evidenceExpected ?? [], saved.evidenceExpected);
+    if (evidenceChange.added.length > 0 || evidenceChange.removed.length > 0) {
+      await intelligenceAudit.record({
+        ...base,
+        action: "agent.evidence_expectation_changed",
+        subject: `Expected evidence for ${saved.agentId}`,
+        before: (previous?.evidenceExpected ?? []).join(", "),
+        after: saved.evidenceExpected.join(", "),
+      });
+    }
+    return saved;
   },
 };
 
@@ -628,9 +674,18 @@ export const agentEffectivenessService = guardRoomWrites(
   "Steward",
   {
     list: (organizationId: ID) => service.listEffectiveness(organizationId),
-    save: (input: AgentEffectivenessInput, organizationId: ID, userId: ID) =>
-      service.saveEffectiveness(input, organizationId, userId),
+    save: (
+      input: AgentEffectivenessInput,
+      organizationId: ID,
+      userId: ID,
+      userLabel?: string,
+    ) => service.saveEffectiveness(input, organizationId, userId, userLabel),
+    /** The audit trail for one agent. Manage access only, same as the edits. */
+    history: (organizationId: ID, agentId: string) => {
+      assertRoomManage("steward", "Steward", "Reading the agent audit trail");
+      return intelligenceAudit.list({ organizationId, agentId, limit: 30 });
+    },
   },
-  ["list"],
+  ["list", "history"],
 );
 
