@@ -1,5 +1,5 @@
 /**
- * Scout — signal ranking.
+ * Scout, signal ranking.
  *
  * Two evidence sources already exist: the plain `signals` recorded on a
  * candidate, and the dated `buyingSignals` collected by intel. This unifies

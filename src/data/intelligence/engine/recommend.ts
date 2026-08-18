@@ -10,7 +10,7 @@
  *      worked. A proposal whose success could not be observed is not shown,
  *      because it could never be learned from.
  *   3. Proposing that something be *built* requires a repeated structural
- *      need — the same friction across three distinct sources — not a bad day.
+ *      need, the same friction across three distinct sources, not a bad day.
  */
 
 import {

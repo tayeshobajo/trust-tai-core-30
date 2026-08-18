@@ -3,8 +3,8 @@
  *
  * Handing a model everything Steward has ever believed makes it worse, not
  * better: it starts pattern-matching against strangers. So selection is
- * bounded and relevance-first — the people actually in the room, the people
- * actually talked about, the projects actually named — scored, ranked, and
+ * bounded and relevance-first, the people actually in the room, the people
+ * actually talked about, the projects actually named, scored, ranked, and
  * hard-capped by `MEMORY_SELECTION_LIMITS`.
  *
  * People do not speak in identifiers. Someone says "Tai" when memory holds
@@ -56,7 +56,7 @@ export function phraseOverlap(phrase: string, haystack: string): number {
  * Was this person talked about, even if they were not in the room?
  *
  * A full name counts outright. A distinctive first name counts too, because
- * people say "Tai will send it", not "Tai Nguyen will send it" — but a very
+ * people say "Tai will send it", not "Tai Nguyen will send it", but a very
  * short first name is ignored rather than guessed at.
  */
 export function personMentioned(name: string, spoken: string): "named" | "first_name" | null {

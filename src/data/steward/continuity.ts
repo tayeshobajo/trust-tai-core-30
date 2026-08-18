@@ -154,7 +154,7 @@ export function buildCommitmentThread(input: {
     {
       at: input.commitment.createdAt,
       label: `Promised by ${input.commitment.ownerName}${
-        input.commitment.dueText ? ` — ${input.commitment.dueText}` : ""
+        input.commitment.dueText ? ` · ${input.commitment.dueText}` : ""
       }`,
       ...(input.commitment.conversationId ? { conversationId: input.commitment.conversationId } : {}),
     },

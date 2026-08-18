@@ -76,7 +76,7 @@ export function IdentityBand({
                     {FIT_LIGHT_LABEL[evaluation.light]}
                   </span>
                   <span className="font-mono text-[11px] text-muted-foreground">
-                    {evaluation.scoreable ? `${evaluation.score}%` : "—"}
+                    {evaluation.scoreable ? `${evaluation.score}%` : "-"}
                   </span>
                 </span>
                 <StageTag status={prospect.status} />
@@ -130,7 +130,7 @@ export function IdentityBand({
           <Meta label="Evaluator" value={evaluation.evaluatorVersion} />
           <Meta
             label="Research"
-            value={evaluation.researchVersion ? `v${evaluation.researchVersion}` : "—"}
+            value={evaluation.researchVersion ? `v${evaluation.researchVersion}` : "-"}
           />
           <Meta
             label="Pages / last read"
@@ -140,7 +140,7 @@ export function IdentityBand({
 
         {needsRescore ? (
           <p className="mt-5 rounded-md border border-warning/30 bg-warning/8 px-4 py-3 text-[13px] text-warning">
-            Needs rescore — this was evaluated against ICP v{evaluation.icpVersion}, and the active
+            Needs rescore, this was evaluated against ICP v{evaluation.icpVersion}, and the active
             ICP is v{activeIcpVersion}.
           </p>
         ) : staleDays !== null && staleDays >= 30 ? (

@@ -1,5 +1,5 @@
 /**
- * Scout — derived company summary.
+ * Scout, derived company summary.
  *
  * Scout's judgment about one company, expressed in plain language and derived
  * from state that already exists: the deterministic fit evaluation and the

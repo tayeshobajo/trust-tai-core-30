@@ -33,7 +33,7 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 import { formatChecked } from "@/components/tt/fit-light";
 
 
-const TITLE = "Scout — Trust Tai OS";
+const TITLE = "Scout · Trust Tai OS";
 const DESCRIPTION =
   "Source real companies from a plain-English target, rank them against the active ICP, and see the evidence behind every read.";
 
@@ -200,7 +200,7 @@ function Scout({
     });
   }, [all, tab, filter]);
 
-  /** Scout at a glance — counts read from live board state only. */
+  /** Scout at a glance, counts read from live board state only. */
   const glance = useMemo(() => {
     const active = all.filter(
       (c) => c.prospect.status !== "passed" && c.prospect.status !== "archived",
@@ -266,7 +266,7 @@ function Scout({
     >
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1 space-y-6">
-        {/* 1 — Compact heading. No hero, no controls. */}
+        {/* 1, Compact heading. No hero, no controls. */}
         <header>
           <p className="tt-eyebrow">Scout</p>
           <h1 className="mt-2 font-display text-3xl tracking-tight text-foreground">
@@ -277,7 +277,7 @@ function Scout({
           </p>
         </header>
 
-        {/* 2 — Scout Growth Agent, high on the page. */}
+        {/* 2, Scout Growth Agent, high on the page. */}
         <ScoutAgentSummary
           {...(driver.data?.name ? { name: driver.data.name } : {})}
           {...(driver.data?.status ? { status: driver.data.status } : {})}
@@ -289,10 +289,10 @@ function Scout({
           blocked={driver.data?.status === "blocked"}
         />
 
-        {/* 3 — Sections. */}
+        {/* 3, Sections. */}
         <ScoutTabs active={tab} />
 
-        {/* Sourcing input — a real capability, kept compact. */}
+        {/* Sourcing input, a real capability, kept compact. */}
         <section>
           <form
             className="rounded-xl border border-border bg-card p-4"
@@ -309,7 +309,7 @@ function Scout({
                 id="scout-query"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="e.g. IT companies in Nashville — or paste one company website"
+                placeholder="e.g. IT companies in Nashville, or paste one company website"
                 className="h-10 w-full rounded-lg border border-input bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <TTButton
@@ -330,7 +330,7 @@ function Scout({
             <div className="mt-2.5 flex flex-wrap items-center gap-3">
               <p className="text-xs text-muted-foreground">
                 {isWebsite
-                  ? "Live public website research. Public pages only — no private data."
+                  ? "Live public website research. Public pages only, no private data."
                   : "Live market sourcing from the public web. Every company is saved with its sources."}
               </p>
               {icp.data ? (
@@ -399,7 +399,7 @@ function Scout({
           </>
         ) : (
           <section className="space-y-3">
-            {/* 4 — Search + compact filters. */}
+            {/* 4, Search + compact filters. */}
             <ScoutFilterToolbar
               filters={filters}
               industries={industries}
@@ -411,7 +411,7 @@ function Scout({
               }}
             />
 
-            {/* 5 — The main paginated company table. */}
+            {/* 5, The main paginated company table. */}
             {board.length === 0 ? (
               <EmptyState
                 title={tab === "qualified" ? "Nothing qualified yet" : "The board is empty"}
@@ -426,7 +426,7 @@ function Scout({
               <EmptyState
                 title="No companies match these filters"
                 belongsHere="Clear a filter or widen the search to see the rest of the board."
-                whyItMatters="Filtering never removes a company — it only narrows what you are looking at."
+                whyItMatters="Filtering never removes a company, it only narrows what you are looking at."
               />
             ) : (
               <ScoutCompanyTable
@@ -506,20 +506,20 @@ function ScoutDriverCard({
             Current
           </dt>
           <dd className="mt-1 font-display text-3xl text-foreground">
-            {driver ? `${driver.current} / ${driver.target}` : "—"}
+            {driver ? `${driver.current} / ${driver.target}` : "-"}
           </dd>
         </div>
         <div>
           <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
             Qualified
           </dt>
-          <dd className="mt-1 text-sm text-foreground">{driver?.qualified ?? "—"}</dd>
+          <dd className="mt-1 text-sm text-foreground">{driver?.qualified ?? "-"}</dd>
         </div>
         <div>
           <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
             Ready for Comms
           </dt>
-          <dd className="mt-1 text-sm text-foreground">{driver?.readyForComms ?? "—"}</dd>
+          <dd className="mt-1 text-sm text-foreground">{driver?.readyForComms ?? "-"}</dd>
         </div>
         <div>
           <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">

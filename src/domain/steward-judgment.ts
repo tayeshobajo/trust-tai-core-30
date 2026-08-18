@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Steward Judgment contracts.
+ * Trust Tai OS, Steward Judgment contracts.
  *
  * Judgment answers one human question: what deserves this person's attention
  * now? It is not a priority algorithm, not a task list and not a score. It

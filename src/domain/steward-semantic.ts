@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Steward semantic interpretation contracts.
+ * Trust Tai OS, Steward semantic interpretation contracts.
  *
  * Deterministic extraction is a scout. It finds passages that might carry
  * work. It does not decide what happened. Interpretation is where a bounded

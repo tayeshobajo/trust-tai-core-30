@@ -2,8 +2,8 @@
  * Needs your decision.
  *
  * Decisions are separated from general information everywhere in Trust Tai.
- * A decision states the question, why it matters, what it rests on, and — only
- * when there is evidence for it — a recommendation clearly marked as suggested.
+ * A decision states the question, why it matters, what it rests on, and, only
+ * when there is evidence for it, a recommendation clearly marked as suggested.
  */
 
 import { useState } from "react";
@@ -164,7 +164,7 @@ function RequestDecision({
         value={why}
         onChange={(event) => setWhy(event.target.value)}
         rows={2}
-        placeholder="Why it matters — what is blocked until it is answered"
+        placeholder="Why it matters, what is blocked until it is answered"
         aria-label="Why it matters"
         className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
       />
@@ -226,7 +226,7 @@ function OpenDecision({
         <ul className="mt-4 space-y-1.5">
           {decision.options.map((option) => (
             <li key={option} className="text-sm text-foreground">
-              — {option}
+  · {option}
             </li>
           ))}
         </ul>

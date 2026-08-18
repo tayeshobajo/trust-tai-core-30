@@ -1,5 +1,5 @@
 /**
- * Scout listing — pure search, filter and pagination.
+ * Scout listing, pure search, filter and pagination.
  *
  * Deliberately free of React and of Supabase: the board can be reasoned about
  * and tested on its own. Pagination is bounded client-side slicing over the

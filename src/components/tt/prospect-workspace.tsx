@@ -1,5 +1,5 @@
 /**
- * Scout — prospect workspace.
+ * Scout, prospect workspace.
  *
  * This component composes; it does not decide. Which surfaces appear comes
  * from `composeProspectPage`, so the page adapts to the evidence actually held

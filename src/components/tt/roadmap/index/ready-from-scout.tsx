@@ -1,7 +1,7 @@
 /**
  * Qualified Scout companies that do not have a roadmap yet.
  *
- * Just enough to decide whether to start a path — never a second Scout page.
+ * Just enough to decide whether to start a path, never a second Scout page.
  */
 
 import { CompanyMark } from "@/components/tt/company-identity";
@@ -35,7 +35,7 @@ export function ScoutCompanyRoadmapCard({
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] font-medium text-foreground">{prospect.name}</p>
         <p className="mt-0.5 text-[12px] text-success">{evaluation.score}% ICP match</p>
-        <p className="truncate text-[11px] text-muted-foreground">{industry || "—"}</p>
+        <p className="truncate text-[11px] text-muted-foreground">{industry || "-"}</p>
       </div>
       <TTButton
         variant="secondary"

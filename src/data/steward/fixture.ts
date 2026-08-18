@@ -33,7 +33,7 @@ export function rehearsalConversation(): NormalizedConversation {
       externalId: "rehearsal-northwind",
       url: "",
     },
-    title: "Rehearsal — Northwind rollout check-in",
+    title: "Rehearsal, Northwind rollout check-in",
     occurredAt: OCCURRED_AT,
     participants: [
       { name: "Tai" },

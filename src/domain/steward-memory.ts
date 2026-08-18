@@ -1,12 +1,12 @@
 /**
- * Trust Tai OS — Steward memory and learning contracts.
+ * Trust Tai OS, Steward memory and learning contracts.
  *
  * Core law: Steward does not manage people. Steward helps people remember what
  * matters to one another.
  *
  * Memory here is small on purpose. It holds what helps Steward read the next
- * conversation kindly and accurately — who carries what, who hands off to
- * whom, who a piece of work is prepared for — and nothing that would turn a
+ * conversation kindly and accurately, who carries what, who hands off to
+ * whom, who a piece of work is prepared for, and nothing that would turn a
  * colleague into a metric. There is no score, no ranking, no streak, and no
  * judgement of a person's character, motivation or reliability anywhere in
  * this file, and `MEMORY_FORBIDDEN_TERMS` exists so a test can keep it that
@@ -92,7 +92,7 @@ export type MemoryRelation =
  * Outcomes are recorded, not scored. They exist so a person can see that their
  * feedback landed, and so Steward can stop raising a shape of reading people
  * keep telling it is only context. There is no weighting, no confidence maths
- * and no judgement of anyone — only a countable record of explicit decisions.
+ * and no judgement of anyone, only a countable record of explicit decisions.
  */
 export type LearningOutcome =
   | "confirmed"

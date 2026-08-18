@@ -143,7 +143,7 @@ export function BuildFromScoutPanel({
 
         {duplicate && selected ? (
           <p className="text-[13px] text-warning">
-            {selected.prospect.name} already has a roadmap. One company keeps one roadmap — open the
+            {selected.prospect.name} already has a roadmap. One company keeps one roadmap, open the
             existing path instead of starting a second one.
           </p>
         ) : null}

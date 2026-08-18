@@ -4,8 +4,8 @@
  * Scout owns sourcing truth. These adapters cross exactly two existing Scout
  * service calls and nothing else:
  *
- *   - `scoutService.discover` — one sourcing pass for an approved brief.
- *   - `scoutService.feedback` — one calibration row for a human fit correction.
+ *   - `scoutService.discover` · one sourcing pass for an approved brief.
+ *   - `scoutService.feedback` · one calibration row for a human fit correction.
  *
  * Not adapted, deliberately: contacting a prospect (external, always a person
  * in Comms), changing the ICP (targeting truth a person owns), and the Comms
@@ -22,7 +22,7 @@ export const scoutDiscoveryAdapter: RoomAdapter = {
   id: "adapter:scout.discovery",
   room: "scout",
   operations: ["scout.start_discovery_run"],
-  boundary: "scoutService.discover — one sourcing pass against the active ICP",
+  boundary: "scoutService.discover, one sourcing pass against the active ICP",
   supports(operation) {
     return this.operations.includes(operation);
   },
@@ -109,7 +109,7 @@ export const scoutFeedbackAdapter: RoomAdapter = {
   id: "adapter:scout.feedback",
   room: "scout",
   operations: ["scout.record_fit_correction"],
-  boundary: "scoutService.feedback — one calibration row, no ICP rewrite",
+  boundary: "scoutService.feedback, one calibration row, no ICP rewrite",
   supports(operation) {
     return this.operations.includes(operation);
   },

@@ -1,8 +1,8 @@
 /**
  * The moves a project can make, in the room's own language.
  *
- * Projects speaks in six words — Ready, In progress, Blocked, Waiting,
- * In review, Complete — while the record underneath keeps execution states.
+ * Projects speaks in six words, Ready, In progress, Blocked, Waiting,
+ * In review, Complete, while the record underneath keeps execution states.
  * This module is the one translation, and it is pure: the same project always
  * offers the same moves with the same refusals, so a button on a card and a
  * write in the service can never disagree.

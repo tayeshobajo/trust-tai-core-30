@@ -1,5 +1,5 @@
 /**
- * Steward — Team.
+ * Steward, Team.
  *
  * Who carries what, and how each person is standing, derived only from their
  * confirmed promises. No scores, no rankings, no judgement of people.
@@ -24,7 +24,7 @@ import {
 } from "@/domain/steward";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Steward — Team — Trust Tai OS";
+const TITLE = "Steward · Team · Trust Tai OS";
 const DESCRIPTION =
   "Who carries what across Trust Tai, with each person's standing read from their own confirmed promises.";
 

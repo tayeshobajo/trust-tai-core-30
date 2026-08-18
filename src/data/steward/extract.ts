@@ -3,8 +3,8 @@
  *
  * A pure function from a normalized conversation to a set of proposals. No
  * model is called here. Every proposal points at the exact line it came from,
- * and anything the transcript did not say — who owns it, when it is due, which
- * project it belongs to — stays unresolved for a person to settle.
+ * and anything the transcript did not say, who owns it, when it is due, which
+ * project it belongs to, stays unresolved for a person to settle.
  *
  * Re-reading the same conversation produces the same ids, so confirming twice
  * can never create the promise twice.
@@ -203,7 +203,7 @@ const BLOCKER =
   /\b(blocked|blocker|waiting on|waiting for|stuck on|can['’]?t (proceed|move|start)|held up|dependency on|depends on)\b/i;
 
 /**
- * "once X lands, then Y" — a real dependency. Ordinary sequencing ("after the
+ * "once X lands, then Y", a real dependency. Ordinary sequencing ("after the
  * call we went back to work") is not a dependency and must not read as one.
  */
 const CONDITION_OPENER = /\b(once|as soon as|until)\b/i;
@@ -240,7 +240,7 @@ function timingOf(text: string): string | null {
 
 /**
  * The clause a promise or request introduces. Commitment lives there, so this
- * is where an actionable verb has to appear — not anywhere in the sentence.
+ * is where an actionable verb has to appear, not anywhere in the sentence.
  */
 function commitmentClause(text: string, marker: RegExp): string | null {
   const match = text.match(marker);

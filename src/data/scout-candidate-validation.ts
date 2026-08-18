@@ -1,5 +1,5 @@
 /**
- * Scout — discovery candidate validation.
+ * Scout, discovery candidate validation.
  *
  * Pure functions, deliberately dependency-free so they can be unit tested and
  * shared between the server discovery boundary and the UI.
@@ -103,7 +103,7 @@ export function acceptCandidates(candidates: RawDiscoveryCandidate[]): {
 /**
  * Translate a provider evaluation into the app's own `ScoutFitEvaluation`
  * shape, so a discovered company reads on the board exactly like a researched
- * one — same light, same criteria, same "why".
+ * one, same light, same criteria, same "why".
  *
  * Deliberately conservative: a company with fewer than three distinct evidence
  * points can never present as green, no matter what the provider claimed.
@@ -159,7 +159,7 @@ export function discoveryEvaluation(
       light === "green" && claimed === "green"
         ? undefined
         : evidenceCount < 3
-          ? "Evidence is thin — a human read is needed before this can be trusted as a strong fit."
+          ? "Evidence is thin, a human read is needed before this can be trusted as a strong fit."
           : undefined,
     confidence: fit.confidence ?? "unknown",
   };

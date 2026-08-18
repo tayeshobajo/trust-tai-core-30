@@ -1,5 +1,5 @@
 /**
- * Scout — app-specific contracts.
+ * Scout, app-specific contracts.
  *
  * Shared entities stay in `entities.ts`. Everything here is fit evidence that
  * only Scout needs: it is never copied into the core model.

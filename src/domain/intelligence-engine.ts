@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Intelligence Engine contracts.
+ * Trust Tai OS, Intelligence Engine contracts.
  *
  * The engine is the suite's steward. It reads broadly, notices structural
  * facts about the business rather than about a person, forms a small number of
@@ -27,7 +27,7 @@ import type { TruthTier } from "./signals";
 /**
  * The vocabulary the engine reasons in. Deliberately small: these are the
  * shapes of business health a services business actually lives or dies by.
- * A theme is not a rule — it says which observations belong together.
+ * A theme is not a rule, it says which observations belong together.
  */
 export type BusinessTheme =
   /** Is there work to do at all? */
@@ -61,7 +61,7 @@ export const BUSINESS_THEME_LABEL: Record<BusinessTheme, string> = {
  * One deterministic, dated read about the business.
  *
  * Business-level counterpart to `ContextBlock`, which is per entity. An
- * observation is a count, a date or a state — never an interpretation. If it
+ * observation is a count, a date or a state, never an interpretation. If it
  * contains the word "because", it belongs in a hypothesis instead.
  */
 export interface Observation {
@@ -201,7 +201,7 @@ export type ActionAuthorizationDecision = "authorized" | "declined";
 /**
  * The record of a person authorising a bounded action.
  *
- * Authorisation is permission to do the thing in the owning room — it is not
+ * Authorisation is permission to do the thing in the owning room, it is not
  * execution. The engine writes the record and hands the person to the room;
  * the room, with the person present, does the work.
  */

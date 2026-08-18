@@ -10,7 +10,7 @@ import type { ExportSnapshot, RoadmapExport } from "@/domain/roadmap-exports";
 
 /** Subject line for the Comms draft that carries this copy. */
 export function clientCopySubject(snapshot: ExportSnapshot, version: string): string {
-  return `${snapshot.company} roadmap — version ${version}`;
+  return `${snapshot.company} roadmap, version ${version}`;
 }
 
 /** Plain-text body. Readable as-is, and editable in Comms before anything is sent. */
@@ -18,7 +18,7 @@ export function clientCopyBody(entry: RoadmapExport): string {
   const snapshot = entry.snapshot;
   const lines: string[] = [];
 
-  lines.push(`Roadmap for ${snapshot.company} — version ${entry.version}`);
+  lines.push(`Roadmap for ${snapshot.company} · version ${entry.version}`);
   lines.push("");
 
   if (snapshot.pointA.length > 0) {
@@ -36,7 +36,7 @@ export function clientCopyBody(entry: RoadmapExport): string {
   if (snapshot.milestones.length > 0) {
     lines.push("The path");
     for (const milestone of snapshot.milestones) {
-      lines.push(`${milestone.ordinal}. ${milestone.name} — ${milestone.status}`);
+      lines.push(`${milestone.ordinal}. ${milestone.name} · ${milestone.status}`);
       if (milestone.whatWeBuild.trim()) lines.push(`   What we build: ${milestone.whatWeBuild}`);
       if (milestone.whatItUnlocks.trim())
         lines.push(`   What it unlocks: ${milestone.whatItUnlocks}`);

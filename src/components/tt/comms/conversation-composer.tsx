@@ -3,7 +3,7 @@
  *
  * Two things a person can do here: prepare a message, or leave a note. Nothing
  * is ever sent from Comms. A composed reply becomes a draft that lands in the
- * thread, and a person decides what happens to it — so there is no Send here,
+ * thread, and a person decides what happens to it, so there is no Send here,
  * by design, not by omission.
  */
 
@@ -127,7 +127,7 @@ export function ConversationComposer({
             </button>
           ) : null}
           <span className="opacity-70">
-            {mode === "compose" ? "Saved as a draft — never sent" : "Visible to your team only"}
+            {mode === "compose" ? "Saved as a draft, never sent" : "Visible to your team only"}
           </span>
         </div>
         <TTButton onClick={submit} disabled={busy || drafting}>

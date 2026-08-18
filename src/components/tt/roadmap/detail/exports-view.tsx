@@ -1,5 +1,5 @@
 /**
- * Roadmap detail — Exports.
+ * Roadmap detail, Exports.
  *
  * A client copy is frozen at the moment it is created. Nothing here rewrites an
  * earlier version: a change to the roadmap produces a new one, so what a client

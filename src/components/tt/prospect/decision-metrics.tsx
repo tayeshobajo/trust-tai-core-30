@@ -3,7 +3,7 @@
  *
  * Deliberately six numbers rather than one. Each states what it was computed
  * from, and the priority score shows its own arithmetic so ranking is never a
- * black box. Nothing here decides — it renders what the metric layer produced.
+ * black box. Nothing here decides, it renders what the metric layer produced.
  */
 
 import type { DecisionMetrics } from "@/domain/scout-intel";
@@ -30,7 +30,7 @@ export function DecisionMetricsPanel({ metrics }: { metrics: DecisionMetrics }) 
             Priority
           </p>
           <p className="text-2xl font-semibold tabular-nums text-foreground">
-            {metrics.priority === null ? "—" : metrics.priority}
+            {metrics.priority === null ? "-" : metrics.priority}
           </p>
         </div>
       }

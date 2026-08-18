@@ -1,5 +1,5 @@
 /**
- * Comms service — the one place relationship state is written.
+ * Comms service, the one place relationship state is written.
  *
  * Every write is organization-scoped, passes RLS as the signed-in user, and is
  * mirrored into the shared `activities` stream so Comms history reads like

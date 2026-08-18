@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Scout discovery intelligence boundary (server only).
+ * Trust Tai OS, Scout discovery intelligence boundary (server only).
  *
  * Real market sourcing. Given a plain-English target ("IT companies in
  * Nashville") this module:
@@ -8,8 +8,8 @@
  *      the client),
  *   3. loads the organization's active ICP as the governing rubric,
  *   4. loads a small set of recent human decisions as calibration examples,
- *   5. asks the Lovable AI Gateway OpenAI Responses API — with the hosted
- *      `web_search` tool and a strict JSON schema — for real, currently
+ *   5. asks the Lovable AI Gateway OpenAI Responses API, with the hosted
+ *      `web_search` tool and a strict JSON schema, for real, currently
  *      evidenced companies,
  *   6. validates and de-duplicates by normalized root domain,
  *   7. upserts `prospects` (source `scout_ai_discovery`), writes one
@@ -195,11 +195,11 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     .limit(12);
   const calibration = (feedbackRows ?? []).length
     ? [
-        "CALIBRATION — recent Trust Tai decisions. They sharpen how the ICP is read.",
+        "CALIBRATION, recent Trust Tai decisions. They sharpen how the ICP is read.",
         "They never override or replace the ICP.",
         ...(feedbackRows ?? []).map((row) => {
           const meta = (row["metadata"] ?? {}) as Record<string, unknown>;
-          return `- ${meta["company_name"] ?? "A company"} (${meta["domain"] ?? "domain unknown"}): Trust Tai chose "${row["decision"]}"${row["human_fit"] ? `, fit ${row["human_fit"]}` : ""}${row["reason"] ? ` — ${row["reason"]}` : ""}.`;
+          return `- ${meta["company_name"] ?? "A company"} (${meta["domain"] ?? "domain unknown"}): Trust Tai chose "${row["decision"]}"${row["human_fit"] ? `, fit ${row["human_fit"]}` : ""}${row["reason"] ? ` · ${row["reason"]}` : ""}.`;
         }),
       ].join("\n")
     : "";
@@ -510,7 +510,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
         summary:
           name === "prospect.discovered"
             ? `${candidate.company_name} was sourced from the public web for "${query}".`
-            : `${candidate.company_name} was evaluated against ICP v${icpVersion ?? "—"}: ${score}% (${fit.light ?? "yellow"}).`,
+            : `${candidate.company_name} was evaluated against ICP v${icpVersion ?? "-"}: ${score}% (${fit.light ?? "yellow"}).`,
         payload: {
           query,
           run_id: runId,

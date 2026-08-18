@@ -1,5 +1,5 @@
 /**
- * The factory execution read — pure (Conductor V3).
+ * The factory execution read, pure (Conductor V3).
  *
  * One honest view of a cross-room plan: what is waiting for a decision, what
  * is approved, what can actually be routed right now, what cannot and why,

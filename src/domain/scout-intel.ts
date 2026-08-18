@@ -1,5 +1,5 @@
 /**
- * Scout — decision intelligence contracts.
+ * Scout, decision intelligence contracts.
  *
  * Six metrics, kept deliberately separate. A single blended number hides the
  * reason a company is at the top of the board; these do not. The board may

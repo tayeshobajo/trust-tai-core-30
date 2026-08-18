@@ -468,7 +468,7 @@ export const stewardService = {
         tier: "decided",
         authority: "human",
         supersedesId: input.belief.id,
-        evidence: [{ kind: "human", label: `Retired by a person — ${input.because}` }],
+        evidence: [{ kind: "human", label: `Retired by a person · ${input.because}` }],
         meta: { ...input.belief.meta, kind: "correction", retired: true },
       },
     });

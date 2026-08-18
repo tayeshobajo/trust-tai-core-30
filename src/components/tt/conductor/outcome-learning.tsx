@@ -1,12 +1,12 @@
 /**
- * Outcome & Learning — the closed loop, made legible.
+ * Outcome & Learning, the closed loop, made legible.
  *
  * Three questions, answered in the order a person asks them:
  * what did we try, what happened, and what did the system learn?
  *
  * The restraint is the feature. Where a signal cannot be read, it says so.
- * Where there is one result, it says one result. Only a repeated pattern —
- * or a person's own correction — is shown as something learned.
+ * Where there is one result, it says one result. Only a repeated pattern 
+ * or a person's own correction, is shown as something learned.
  */
 
 import { useState } from "react";
@@ -28,7 +28,7 @@ const STAGE_LABEL: Record<ExecutionStage, string> = {
 
 const LEARNING_LABEL: Record<ActionExecutionRead["learningState"], string> = {
   not_yet: "Nothing learned yet",
-  one_result: "One result — not a rule",
+  one_result: "One result, not a rule",
   pattern: "A pattern worth trusting",
   human_corrected: "You corrected this",
 };
@@ -128,7 +128,7 @@ function Row({
               What kind of number this is
             </dt>
             <dd className="text-[var(--tt-ink-muted)]">
-              {METRIC_CLASS_LABEL[read.metricClass]} — not the same as business health.
+              {METRIC_CLASS_LABEL[read.metricClass]} · not the same as business health.
             </dd>
           </div>
         ) : null}
@@ -178,7 +178,7 @@ function Row({
                 rows={2}
                 required
                 className="w-full rounded-md border border-[var(--tt-line)] bg-transparent px-3 py-2 text-sm"
-                placeholder="The draft was prepared, but I sent it by hand — the ledger cannot see that."
+                placeholder="The draft was prepared, but I sent it by hand, the ledger cannot see that."
               />
               <div className="flex gap-2">
                 <button

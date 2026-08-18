@@ -113,7 +113,7 @@ export function ProspectBoard({
                 </span>
 
                 <span className="hidden font-mono text-[12px] text-foreground lg:block">
-                  {evaluation.scoreable ? `${evaluation.score}%` : "—"}
+                  {evaluation.scoreable ? `${evaluation.score}%` : "-"}
                 </span>
 
                 <span className="col-span-3 line-clamp-2 text-[13px] text-muted-foreground lg:col-span-1 lg:line-clamp-1">

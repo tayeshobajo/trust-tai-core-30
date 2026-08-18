@@ -73,7 +73,7 @@ export async function listSubjects(organizationId: ID): Promise<SubjectOption[]>
         id: String(row["id"]),
         label:
           String(row["company_name"] || row["full_name"] || "Relationship") +
-          (row["company_name"] && row["full_name"] ? ` — ${String(row["full_name"])}` : ""),
+          (row["company_name"] && row["full_name"] ? ` · ${String(row["full_name"])}` : ""),
         detail: `Comms · ${String(row["stage"] ?? "new").replace("_", " ")}`,
       }));
     }, [] as SubjectOption[]),

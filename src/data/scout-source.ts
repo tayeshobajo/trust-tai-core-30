@@ -1,5 +1,5 @@
 /**
- * Scout — in-memory preview source.
+ * Scout, in-memory preview source.
  *
  * This is a demo set, not a sourcing engine. No external service is contacted.
  * Status changes persist for the session only. When Lovable Cloud is connected,
@@ -153,7 +153,7 @@ const PREVIEW_ENTRIES: Omit<ProspectCandidate, "source" | "evaluation" | "lastCh
     ],
     fit: {
       whyItFits:
-        "Real neglect, but no visible sign of growth — the need is clear and the budget is not.",
+        "Real neglect, but no visible sign of growth, the need is clear and the budget is not.",
       recommendation: "Pass for now. Revisit if a growth signal appears.",
     },
   },

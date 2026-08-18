@@ -90,7 +90,7 @@ import { supabase } from "@/integrations/trust-tai/supabase";
 import type { DecisionState, RoadmapDecision } from "@/domain/roadmap";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Roadmap workspace — Trust Tai OS";
+const TITLE = "Roadmap workspace · Trust Tai OS";
 const DESCRIPTION =
   "One roadmap: current truth, the destination, the walk between them, and who carries each step.";
 

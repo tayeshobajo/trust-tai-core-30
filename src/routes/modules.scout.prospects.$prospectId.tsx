@@ -1,5 +1,5 @@
 /**
- * Scout — company detail.
+ * Scout, company detail.
  *
  * One question leads this page: does this company deserve our attention, and
  * why? The Overview answers it in a curated way; the deeper tabs hold the
@@ -54,7 +54,7 @@ import type { Person } from "@/domain/people";
 import type { FitLight } from "@/domain/scout-fit";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Company — Scout — Trust Tai OS";
+const TITLE = "Company · Scout · Trust Tai OS";
 const DESCRIPTION =
   "Does this company deserve our attention, and why? ICP alignment, dated signals, people, and the bounded next step.";
 

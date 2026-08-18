@@ -1,7 +1,7 @@
 /**
  * Judgment: what deserves this person's attention now.
  *
- * Pure functions over canonical truth other rooms already own — commitments,
+ * Pure functions over canonical truth other rooms already own, commitments,
  * projects, relationships and Ops activity. Nothing here writes, nothing
  * invents an owner, a date or a completion, and nothing scores a human.
  *
@@ -226,7 +226,7 @@ function commitmentItems(input: JudgmentInput, closed: Set<string>): AttentionIt
         id: `commitment:${commitment.id}:${viewer.personKey}`,
         state: "waiting",
         headline: commitment.what,
-        whyNow: `${commitment.ownerName} is carrying this for you. Nothing to chase yet — Steward will bring it back when it moves.`,
+        whyNow: `${commitment.ownerName} is carrying this for you. Nothing to chase yet, Steward will bring it back when it moves.`,
         evidence: [...commitment.evidence, computed(`Carried by ${commitment.ownerName}`)],
         waitingOn: { name: commitment.ownerName, personKey: nameKey(commitment.ownerName) },
         order: orderOf("waiting", commitment.updatedAt, now),
@@ -425,7 +425,7 @@ function commsItems(input: JudgmentInput): AttentionItem[] {
       forName: viewer.name,
       state: state === "overdue" ? "promise_at_risk" : "needs_you",
       headline: relationship.nextAction?.trim()
-        ? `${relationship.nextAction.trim()} — ${relationship.fullName}`
+        ? `${relationship.nextAction.trim()} · ${relationship.fullName}`
         : `Reply to ${relationship.fullName}`,
       whyNow:
         state === "overdue"

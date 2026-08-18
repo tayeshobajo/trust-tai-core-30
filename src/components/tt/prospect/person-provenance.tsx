@@ -2,7 +2,7 @@
  * Provenance details for one person.
  *
  * Where this record came from, how sure Scout is, and when each part of it was
- * last touched. It asserts nothing on its own — every line is read straight
+ * last touched. It asserts nothing on its own, every line is read straight
  * off the stored record, and anything unknown says so.
  */
 

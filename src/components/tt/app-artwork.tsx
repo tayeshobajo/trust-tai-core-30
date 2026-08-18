@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
  * is layered on top and only becomes visible once the browser confirms it
  * loaded; a missing or failed file simply leaves the motif in place.
  *
- * Artwork is never placed behind dense copy — callers give it its own frame.
+ * Artwork is never placed behind dense copy, callers give it its own frame.
  */
 export function AppArtwork({
   appId,

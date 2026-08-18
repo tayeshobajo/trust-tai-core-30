@@ -1,5 +1,5 @@
 /**
- * Scout — adaptive prospect workspace contract.
+ * Scout, adaptive prospect workspace contract.
  *
  * The prospect page does not render a fixed template. It composes surfaces
  * from the evidence actually held for that company. Everything here is a
@@ -8,9 +8,9 @@
  * without rendering.
  *
  * Three tiers stay strictly separated and are never blended:
- *   fact       — read from a public page or computed by the evaluator
- *   inference  — Scout's read of what the facts might mean
- *   decision   — what a Trust Tai member actually decided
+ *   fact, read from a public page or computed by the evaluator
+ *   inference, Scout's read of what the facts might mean
+ *   decision, what a Trust Tai member actually decided
  */
 
 import type { ConfidenceRead } from "./confidence";
@@ -79,7 +79,7 @@ export type ProspectModuleId =
 
 /**
  * How loudly a surface speaks right now. Chosen deterministically from
- * lifecycle stage, ICP match, and evidence coverage — never by the renderer.
+ * lifecycle stage, ICP match, and evidence coverage, never by the renderer.
  */
 export type ModuleEmphasis = "primary" | "supporting" | "quiet";
 

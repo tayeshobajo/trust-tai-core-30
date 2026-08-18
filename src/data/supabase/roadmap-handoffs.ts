@@ -2,7 +2,7 @@
  * Approved milestones waiting for delivery, read across every roadmap.
  *
  * Projects needs one honest list: what a person has already approved upstream
- * and has not yet started here. This reads roadmap truth only — it never
+ * and has not yet started here. This reads roadmap truth only, it never
  * approves anything, and it never writes.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Recorded figures — the instrument of last resort.
+ * Recorded figures, the instrument of last resort.
  *
  * Cash, burn, receivables, close rate, deal size: numbers no room in the
  * suite will ever count for itself. Rather than let the survival question sit
@@ -21,7 +21,7 @@ export interface FiguresPanelProps {
   figures: BusinessFigure[];
   now: string;
   saving?: boolean;
-  /** Set when the ledger cannot be written yet — recording is refused up front. */
+  /** Set when the ledger cannot be written yet, recording is refused up front. */
   disabled?: boolean;
   disabledReason?: string;
   onRecord: (input: { key: string; value: number; asOf: string; note?: string }) => void | Promise<void>;
@@ -66,7 +66,7 @@ export function FiguresPanel({
         <h2 className="text-base">Figures only you can supply</h2>
         <p className="text-sm text-[var(--tt-ink-muted)]">
           Nothing in the suite counts these. Record them and they become decided
-          truth — dated, attributed, and stale after {FIGURE_STALE_DAYS} days.
+          truth, dated, attributed, and stale after {FIGURE_STALE_DAYS} days.
         </p>
       </div>
 
@@ -85,7 +85,7 @@ export function FiguresPanel({
               <p className="text-xs text-[var(--tt-ink-muted)]">
                 {age === undefined
                   ? input.feeds
-                  : `${age} day${age === 1 ? "" : "s"} old${age > FIGURE_STALE_DAYS ? " — worth confirming" : ""}. ${input.feeds}`}
+                  : `${age} day${age === 1 ? "" : "s"} old${age > FIGURE_STALE_DAYS ? ", worth confirming" : ""}. ${input.feeds}`}
               </p>
             </li>
           );

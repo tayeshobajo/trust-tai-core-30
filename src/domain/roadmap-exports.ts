@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Roadmap client copies, execution links, and notes.
+ * Trust Tai OS, Roadmap client copies, execution links, and notes.
  *
  * An export is a frozen snapshot of approved roadmap state, not a live view.
  * Once created it is never regenerated: a change to the roadmap produces a new

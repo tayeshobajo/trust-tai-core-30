@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — shared activity/event contract.
+ * Trust Tai OS, shared activity/event contract.
  *
  * This is a contract, not a message bus. Every app writes the same event shape
  * so cross-app intelligence can read one stream with provenance intact.
@@ -58,8 +58,8 @@ export type ActivityAction =
   | "action_measured";
 
 /**
- * What an event is *about*. Usually a shared core entity. Two suite rooms —
- * Ops and Studio — own work that has no shared entity in Core yet, so they may
+ * What an event is *about*. Usually a shared core entity. Two suite rooms 
+ * Ops and Studio, own work that has no shared entity in Core yet, so they may
  * scope their own lifecycle events to the room. The Conductor scope carries
  * governance history only. This is a naming scope, never a licence to create a
  * parallel entity store.

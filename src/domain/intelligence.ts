@@ -1,10 +1,10 @@
 /**
- * Trust Tai OS — intelligence context contract.
+ * Trust Tai OS, intelligence context contract.
  *
  * Small input. Deep intelligence. Clear output.
  *
  * This defines HOW context will be retrieved across apps with provenance and
- * authorization. It does not orchestrate live AI yet — the current
+ * authorization. It does not orchestrate live AI yet, the current
  * implementation is a mocked, in-memory provider.
  */
 

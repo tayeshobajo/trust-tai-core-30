@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — the outcome and learning contract (Conductor V3).
+ * Trust Tai OS, the outcome and learning contract (Conductor V3).
  *
  * V2 proved a person can approve part of a plan and that the approved part
  * reaches the owning room through that room's own service. V3 closes the loop:
@@ -186,7 +186,7 @@ export type OutcomeStatus = "pending" | "measured" | "inconclusive";
 /**
  * One measurement of one governed action against its own expected signal.
  *
- * It links the whole chain back — recommendation, plan, action — so provenance
+ * It links the whole chain back, recommendation, plan, action, so provenance
  * survives from the sentence that suggested the work to the fact that says
  * what happened. It stores references and evidence, never a copy of the room's
  * record.
@@ -235,7 +235,7 @@ export function isHonestObservation(observation: ActionObservation): boolean {
  * What makes one measurement *the same* measurement.
  *
  * An observation is a reading of one action's expected signal. Opening the
- * control room three times does not create three results — it re-reads the
+ * control room three times does not create three results, it re-reads the
  * same unchanged fact. So an observation's identity is its content, not the
  * moment it was taken: the action, what was found, how it is known, and the
  * evidence behind it. Only a genuinely different reading is a new row, and
@@ -282,7 +282,7 @@ export const RULE_THRESHOLD = 3;
 /**
  * One append-only learning record.
  *
- * It is judgment about the Conductor's own recommendations — never a copy of
+ * It is judgment about the Conductor's own recommendations, never a copy of
  * business truth, and never a permission. `grantsAuthority` is typed `false`
  * so no code path can set it otherwise.
  */

@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Roadmap Intelligence v2 contracts.
+ * Trust Tai OS, Roadmap Intelligence v2 contracts.
  *
  * Roadmap v1 sequenced work. v2 researches the business first, forms a point of
  * view, and only then proposes what Trust Tai could build.
@@ -32,7 +32,7 @@ export interface SourceRef {
   model?: string;
 }
 
-export const UNKNOWN = "Unknown — not established";
+export const UNKNOWN = "Unknown, not established";
 
 /* ----------------------------------------------------------------- research */
 

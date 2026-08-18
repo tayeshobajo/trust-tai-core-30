@@ -3,7 +3,7 @@
  *
  * Pulse and Steward read this; neither of them changes it. Each row says what
  * was asked, how long it has been silent, what the ask rests on, and links
- * back to the project that owns it — the only room that can withdraw or chase.
+ * back to the project that owns it, the only room that can withdraw or chase.
  */
 
 import { Link } from "@tanstack/react-router";

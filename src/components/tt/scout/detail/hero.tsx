@@ -1,5 +1,5 @@
 /**
- * Scout company detail — utility row and company hero.
+ * Scout company detail, utility row and company hero.
  *
  * The hero is the heaviest surface on the page: identity, Scout's confidence,
  * and the six facts that frame every later judgment. The right side carries an
@@ -19,16 +19,16 @@ import { hostnameOf, normalizeThemeColor } from "@/lib/company-identity";
 import { cn } from "@/lib/utils";
 
 function formatDate(value?: string): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const at = new Date(value);
-  if (Number.isNaN(at.getTime())) return "—";
+  if (Number.isNaN(at.getTime())) return "-";
   return at.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function relative(value?: string): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const at = Date.parse(value);
-  if (Number.isNaN(at)) return "—";
+  if (Number.isNaN(at)) return "-";
   const days = Math.floor((Date.now() - at) / (24 * 60 * 60 * 1000));
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
@@ -247,7 +247,7 @@ export function CompanyHero({
         />
         <HeroStat
           label="ICP match"
-          value={summary.icpMatch === null ? "—" : `${summary.icpMatch}%`}
+          value={summary.icpMatch === null ? "-" : `${summary.icpMatch}%`}
         />
         <HeroStat label="Potential" value={POTENTIAL_LABEL[summary.potential]} />
         <HeroStat label="Last seen" value={relative(candidate.lastCheckedAt)} />

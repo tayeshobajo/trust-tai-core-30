@@ -1,5 +1,5 @@
 /**
- * Ledger status — said out loud, before anyone tries to save.
+ * Ledger status, said out loud, before anyone tries to save.
  *
  * A quiet line when the three Conductor tables are reachable; a plain,
  * unmistakable notice when they are missing or closed to this account.
@@ -24,7 +24,7 @@ export function SchemaStatus({ health, checking }: SchemaStatusProps) {
   if (health.ready) {
     return (
       <p className="text-xs text-[var(--tt-ink-muted)]">
-        Ledger reachable — figures and corrections are saved to your workspace.
+        Ledger reachable, figures and corrections are saved to your workspace.
       </p>
     );
   }
@@ -36,7 +36,7 @@ export function SchemaStatus({ health, checking }: SchemaStatusProps) {
       <ul className="space-y-1 text-xs text-[var(--tt-ink-muted)]">
         {health.tables.map((table) => (
           <li key={table.table}>
-            <span className="font-mono">{table.table}</span> — {table.status}
+            <span className="font-mono">{table.table}</span> · {table.status}
             {table.detail ? `: ${table.detail}` : ""}
           </li>
         ))}

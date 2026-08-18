@@ -4,10 +4,10 @@
  * Two jobs, one endpoint, because Google requires a single registered
  * redirect URI:
  *
- *  POST  — an authenticated member asks for a consent URL, or hands back the
+ *  POST, an authenticated member asks for a consent URL, or hands back the
  *          code Google returned so the server can exchange it. The exchange
  *          runs under the caller's own token, so RLS still applies.
- *  GET   — Google's callback. It carries no Trust Tai session, so it does not
+ *  GET, Google's callback. It carries no Trust Tai session, so it does not
  *          touch the database at all: it verifies the signed state and bounces
  *          the browser back into Comms, which completes the exchange while
  *          signed in.

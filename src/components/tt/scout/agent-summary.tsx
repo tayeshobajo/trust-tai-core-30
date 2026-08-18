@@ -1,5 +1,5 @@
 /**
- * Scout Growth Agent — the compact horizontal state of Scout's own driver.
+ * Scout Growth Agent, the compact horizontal state of Scout's own driver.
  * Every number comes from live Scout state; nothing here is illustrative.
  */
 

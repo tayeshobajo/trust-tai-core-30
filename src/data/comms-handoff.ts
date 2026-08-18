@@ -56,7 +56,7 @@ function toHandoffContact(person: Person): HandoffContact {
  *
  * Only decision-makers and founders are offered, ranked by whether the address
  * has been verified. Anyone unreachable still appears, but carries the reason
- * they cannot be written to yet — Scout never quietly drops a person.
+ * they cannot be written to yet, Scout never quietly drops a person.
  */
 export function selectTargets(people: Person[]): HandoffTarget[] {
   const deciders = people.filter(isDecisionMaker);
@@ -67,7 +67,7 @@ export function selectTargets(people: Person[]): HandoffTarget[] {
     const blocker = !person.email
       ? "No business email is on record."
       : person.emailStatus !== "verified"
-        ? `${EMAIL_STATUS_LABEL[person.emailStatus]} — nobody has confirmed this address.`
+        ? `${EMAIL_STATUS_LABEL[person.emailStatus]} · nobody has confirmed this address.`
         : undefined;
 
     return {
@@ -154,7 +154,7 @@ export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
     contextItem(
       "ICP fit",
       evaluation.scoreable
-        ? `${evaluation.score}% against ICP v${evaluation.icpVersion ?? "—"} (${evaluation.light}).`
+        ? `${evaluation.score}% against ICP v${evaluation.icpVersion ?? "-"} (${evaluation.light}).`
         : "Never scored against live evidence.",
       "fact",
       [{ label: "Deterministic evaluator", kind: "computed" }],

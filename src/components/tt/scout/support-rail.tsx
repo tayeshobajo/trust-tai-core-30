@@ -1,7 +1,7 @@
 /**
  * Scout's right support rail: the board at a glance, and one calm way out to
  * the Conductor when the next move isn't obvious. Counts come from the same
- * derived glance the page already computes — nothing new is invented here.
+ * derived glance the page already computes, nothing new is invented here.
  */
 
 import { Link } from "@tanstack/react-router";

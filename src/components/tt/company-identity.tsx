@@ -1,5 +1,5 @@
 /**
- * Company identity — shared across Trust Tai apps.
+ * Company identity, shared across Trust Tai apps.
  *
  * `CompanyMark` renders the company's own icon when one of its same-site paths
  * loads, and a refined monogram when none do. `CompanyIdentityHeader` pairs the
@@ -7,7 +7,7 @@
  * supplies. Comms, Roadmap, Projects, Ops and Pulse can reuse both as-is.
  *
  * A company's real theme colour, when research has recorded one, is used only
- * decoratively — through the shared Ambient Identity Wash primitives in
+ * decoratively, through the shared Ambient Identity Wash primitives in
  * `components/tt/ambient.tsx`: a thin accent rule, a small identity dot and a
  * faint wash.
  * Fit lights, status pills, controls, body text and the OS chrome never change.

@@ -2,8 +2,8 @@
  * The closed loop, wired (Conductor V3).
  *
  * Reads routed actions, checks each expected signal against the owning room's
- * own record, appends the measurement, and — only where the evidence is
- * strong enough — appends a lesson.
+ * own record, appends the measurement, and, only where the evidence is
+ * strong enough, appends a lesson.
  *
  * The whole point is restraint: nothing is measured that cannot be read,
  * nothing becomes a rule from one result, and a person's correction outranks
@@ -170,7 +170,7 @@ export async function learningContext(input: {
  *
  * Only work that has actually been handed to a room, and only operations the
  * system can read. Held, rejected, withdrawn and merely proposed actions are
- * never observed — nothing has happened to them.
+ * never observed, nothing has happened to them.
  */
 export function observableActions(actions: ControlledAction[]): ControlledAction[] {
   return actions.filter(

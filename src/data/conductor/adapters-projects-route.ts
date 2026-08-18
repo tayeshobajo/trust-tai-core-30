@@ -2,8 +2,8 @@
  * Projects: take back an unanswered ask to Ops or Studio.
  *
  * A routed request is Projects' own ask, so withdrawing it is Projects' own
- * act. This adapter crosses exactly one boundary — `projectsService.withdrawRoute`
- * — and it never touches Ops or Studio: it cannot accept work for them, cannot
+ * act. This adapter crosses exactly one boundary, `projectsService.withdrawRoute`
+ *, and it never touches Ops or Studio: it cannot accept work for them, cannot
  * chase them, and cannot claim they were told anything. It records that this
  * house has stopped waiting, and from then on the ledger refuses acceptance.
  *
@@ -19,7 +19,7 @@ export const projectsRouteAdapter: RoomAdapter = {
   id: "adapter:projects.route",
   room: "projects",
   operations: ["projects.withdraw_route"],
-  boundary: "projectsService.withdrawRoute — withdraws this house's own request only",
+  boundary: "projectsService.withdrawRoute, withdraws this house's own request only",
   supports(operation) {
     return this.operations.includes(operation);
   },

@@ -3,7 +3,7 @@
  *
  * An expected signal is only ever checked against the owning room's own
  * record. Where the room can be read, the result is `observed`. Where it
- * cannot, the result is `not_measurable` — never a guessed success.
+ * cannot, the result is `not_measurable` · never a guessed success.
  *
  * Nothing here claims causation. "The draft exists" is a fact about Comms; it
  * is not proof that the Conductor's suggestion caused anything to happen.

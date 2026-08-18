@@ -1,5 +1,5 @@
 /**
- * Roadmap Intelligence service — the one place v2 state is written.
+ * Roadmap Intelligence service, the one place v2 state is written.
  *
  * Every write keeps the truth model intact:
  *  - Research rows are appended, never overwritten, so history stays readable.

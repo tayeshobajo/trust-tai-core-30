@@ -25,7 +25,7 @@ export function AccountBriefPanel({ brief }: { brief: AccountBrief }) {
   return (
     <Panel
       eyebrow="Clear output"
-      title={`Account brief — ${brief.companyName}`}
+      title={`Account brief · ${brief.companyName}`}
       description={
         brief.grounded
           ? "Everything Scout can defend about this company, in the order a conversation needs it."

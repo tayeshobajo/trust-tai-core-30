@@ -1,5 +1,5 @@
 /**
- * Roadmap detail — company header.
+ * Roadmap detail, company header.
  *
  * Orientation in one glance: whose roadmap this is, where it stands, and the
  * few actions that belong to the roadmap as a whole. Destructive actions stay

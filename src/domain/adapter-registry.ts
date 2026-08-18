@@ -5,7 +5,7 @@
  * without guessing. This registry is the answer: one row per room operation,
  * saying whether a real adapter exists, which service boundary it crosses,
  * which permission the person still needs, how consequential it is, whether
- * approval is required, and — the important one — the furthest state that may
+ * approval is required, and, the important one, the furthest state that may
  * honestly be claimed once it is routed.
  *
  * A room operation absent from this file is unsupported by definition.
@@ -79,7 +79,7 @@ export const ADAPTER_CAPABILITIES: AdapterCapability[] = [
     adapterId: "adapter:comms.draft",
     requiredCapability: "comms.write",
     consequence: "internal_preparation",
-    boundary: "commsService.saveDraft — an unsent draft that needs human review",
+    boundary: "commsService.saveDraft, an unsent draft that needs human review",
     claimableState: "routed",
   }),
   unsupported({
@@ -99,7 +99,7 @@ export const ADAPTER_CAPABILITIES: AdapterCapability[] = [
     adapterId: "adapter:projects.blocker",
     requiredCapability: "projects.write",
     consequence: "internal_change",
-    boundary: "projectsService.update — records blockedBecause only",
+    boundary: "projectsService.update, records blockedBecause only",
     claimableState: "routed",
   }),
   unsupported({
@@ -124,7 +124,7 @@ export const ADAPTER_CAPABILITIES: AdapterCapability[] = [
     adapterId: "adapter:projects.route",
     requiredCapability: "projects.write",
     consequence: "internal_change",
-    boundary: "projectsService.withdrawRoute — withdraws this house's own request only",
+    boundary: "projectsService.withdrawRoute, withdraws this house's own request only",
     claimableState: "routed",
   }),
 
@@ -136,7 +136,7 @@ export const ADAPTER_CAPABILITIES: AdapterCapability[] = [
     adapterId: "adapter:scout.discovery",
     requiredCapability: "scout.write",
     consequence: "internal_change",
-    boundary: "scoutService.discover — one sourcing pass against the active ICP",
+    boundary: "scoutService.discover, one sourcing pass against the active ICP",
     claimableState: "routed",
   }),
   supported({
@@ -146,7 +146,7 @@ export const ADAPTER_CAPABILITIES: AdapterCapability[] = [
     adapterId: "adapter:scout.feedback",
     requiredCapability: "scout.write",
     consequence: "internal_change",
-    boundary: "scoutService.feedback — one calibration row, no ICP rewrite",
+    boundary: "scoutService.feedback, one calibration row, no ICP rewrite",
     claimableState: "routed",
   }),
   unsupported({
@@ -184,7 +184,7 @@ export const ADAPTER_CAPABILITIES: AdapterCapability[] = [
     adapterId: "adapter:roadmap.shell",
     requiredCapability: "roadmap.write",
     consequence: "internal_preparation",
-    boundary: "roadmapService.create — idempotent per subject, drafts only",
+    boundary: "roadmapService.create, idempotent per subject, drafts only",
     claimableState: "routed",
   }),
   supported({
@@ -194,7 +194,7 @@ export const ADAPTER_CAPABILITIES: AdapterCapability[] = [
     adapterId: "adapter:roadmap.decision",
     requiredCapability: "roadmap.write",
     consequence: "internal_preparation",
-    boundary: "roadmapService.addDecision — an open question, never an answer",
+    boundary: "roadmapService.addDecision, an open question, never an answer",
     claimableState: "routed",
   }),
   unsupported({

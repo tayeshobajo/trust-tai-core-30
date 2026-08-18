@@ -3,7 +3,7 @@
  *
  * Today's shape, the things only a person can settle, the last few movements,
  * and a short statement of what this room is allowed to do. Nothing here is a
- * control surface — every item points at where the work actually lives.
+ * control surface, every item points at where the work actually lives.
  */
 
 import { Link } from "@tanstack/react-router";

@@ -3,7 +3,7 @@
  *
  * Each node counts its own throughput in the shared activity record over a
  * recent window and the window before it. When an upstream node falls and its
- * downstream nodes have not felt it yet, that is stated — with the lag, the
+ * downstream nodes have not felt it yet, that is stated, with the lag, the
  * counts, and the nodes that will feel it. This is how the Conductor can say
  * "next month's pipeline is at risk" while revenue still looks fine.
  *

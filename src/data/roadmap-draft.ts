@@ -171,7 +171,7 @@ function decisions(
       question: `Is "${pointB.statement}" the right destination?`,
       whyItMatters:
         "Everything sequenced below assumes this destination. Until it is approved it stays a proposal.",
-      options: ["Approve as written", "Change the destination", "Not yet — needs more evidence"],
+      options: ["Approve as written", "Change the destination", "Not yet, needs more evidence"],
       ...(context.observed.length > 0
         ? {
             recommendation: "Approve as written",
@@ -244,7 +244,7 @@ export function composeRoadmapDraft(context: RoadmapSourceContext): RoadmapDraft
   const open = decisions(context, pointB, unknowns);
 
   return {
-    title: `${context.subject.label} — ${context.objective.trim() || "Path to be agreed"}`,
+    title: `${context.subject.label} · ${context.objective.trim() || "Path to be agreed"}`,
     pointA,
     pointB,
     stages,

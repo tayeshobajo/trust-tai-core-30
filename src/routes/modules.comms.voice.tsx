@@ -20,7 +20,7 @@ import { checkVoice } from "@/data/voice-policy";
 import { DEFAULT_VOICE_DOCUMENT, VOICE_RULES } from "@/domain/voice";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Voice DNA — Comms — Trust Tai OS";
+const TITLE = "Voice DNA · Comms · Trust Tai OS";
 const DESCRIPTION =
   "The drafting policy every Comms message is written under: warmth through specificity, authority through brevity.";
 

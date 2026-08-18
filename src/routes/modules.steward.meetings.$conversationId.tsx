@@ -1,5 +1,5 @@
 /**
- * Steward — one conversation.
+ * Steward, one conversation.
  *
  * Everything Steward heard, line-referenced, with a person deciding which
  * proposals become commitments the organization actually carries.
@@ -28,7 +28,7 @@ import { stewardService } from "@/data/supabase/steward-service";
 
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Steward — Conversation review — Trust Tai OS";
+const TITLE = "Steward · Conversation review · Trust Tai OS";
 const DESCRIPTION =
   "Review what was said, confirm the promises that were really made, and give each one an owner.";
 
@@ -251,7 +251,7 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
                 ? `Interpretation is unavailable, so Steward is showing only the raw passages its rules found. Nothing below has been read for meaning. ${
                     interpretation.error instanceof Error ? interpretation.error.message : ""
                   }`
-                : "Steward has not interpreted this conversation yet. Below are the raw passages its rules found — not yet read for meaning."}
+                : "Steward has not interpreted this conversation yet. Below are the raw passages its rules found, not yet read for meaning."}
           </p>
           <div>
             <TTButton

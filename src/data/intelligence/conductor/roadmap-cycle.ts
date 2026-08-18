@@ -2,7 +2,7 @@
  * Question → Roadmap cycle (Conductor V3.2).
  *
  * Roadmap is not a task list. It is a leadership-facing sequence from Point A
- * — where the business actually stands, with proof — to a stronger Point B,
+ *, where the business actually stands, with proof, to a stronger Point B,
  * carried by meaningful milestones and blocked, when it is blocked, by a
  * decision only a person may make.
  *
@@ -76,7 +76,7 @@ function anchorProofOf(notes: RoadmapNote[]): RoadmapNote | null {
  *
  *   1. A milestone carrying an unresolved human decision.
  *   2. When Point B is not yet decided, the milestone that agrees the
- *      destination — because everything sequenced after it assumes that
+ *      destination, because everything sequenced after it assumes that
  *      answer. This is sequence logic, not a recorded dependency.
  *   3. Otherwise the earliest unfinished milestone by sequence position,
  *      then by stage state, then by truth tier, then by having a named owner.
@@ -165,7 +165,7 @@ export function milestoneAttentionOf(input: {
  * Read from Roadmap truth only, and computed the same deterministic way twice:
  * attention as it stood while the most recently resolved decision was still
  * open, and attention as it stands now. If those differ, that difference is
- * the progression — nothing is moved, resolved, reordered or completed here.
+ * the progression, nothing is moved, resolved, reordered or completed here.
  */
 export function milestoneProgressionOf(input: {
   milestones: CanonMilestone[];
@@ -185,7 +185,7 @@ export function milestoneProgressionOf(input: {
   /*
    * Where attention sat while that decision was open. When the decision was
    * recorded against a milestone, that milestone is where attention sat, even
-   * if Roadmap has since marked it live — that is Roadmap's own record, not an
+   * if Roadmap has since marked it live, that is Roadmap's own record, not an
    * inference of completion by Conductor.
    */
   const linked = latest.stageId
@@ -327,7 +327,7 @@ export function describeRoadmapCanon(canon: RoadmapCanonRead): string {
   parts.push(
     canon.pointA.length > 0
       ? `Point A for ${canon.subjectLabel}: ${canon.pointA[0]!.value} (observed).`
-      : `Point A for ${canon.subjectLabel} is not established — no observed position is on record.`,
+      : `Point A for ${canon.subjectLabel} is not established, no observed position is on record.`,
   );
 
   if (canon.anchorProof) {
@@ -706,7 +706,7 @@ export function planRoadmapCycle(input: {
      */
     if (existingDecision && (duplicate || !posesDecision(question))) {
       return {
-        answer: `${describeRoadmapCanon(canon)} It already exists in Roadmap as an open decision and needs your answer — I have not raised another.`,
+        answer: `${describeRoadmapCanon(canon)} It already exists in Roadmap as an open decision and needs your answer, I have not raised another.`,
         canon,
         nextMove: {
           statement: `Answer the open decision on ${canon.subjectLabel}'s roadmap: ${existingDecision.question}`,
@@ -780,7 +780,7 @@ export function planRoadmapCycle(input: {
   /* -------------------------------------------------- no roadmap exists */
   if (!asksToMap(question)) {
     return {
-      answer: `${subject.label} has no roadmap on record. I will not open one from a question about it — ask me to map ${subject.label} if that is what you want.`,
+      answer: `${subject.label} has no roadmap on record. I will not open one from a question about it, ask me to map ${subject.label} if that is what you want.`,
       proposals: [],
       resolutions: {},
       evidence: [{ label: `No roadmap exists for ${subject.label}`, kind: "computed" }],

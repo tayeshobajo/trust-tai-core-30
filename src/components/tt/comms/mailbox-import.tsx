@@ -162,7 +162,7 @@ export function MailboxImport({
                 {prospects.map((prospect) => (
                   <option key={prospect.id} value={prospect.id}>
                     {prospect.name}
-                    {prospect.domain ? ` — ${prospect.domain}` : ""}
+                    {prospect.domain ? ` · ${prospect.domain}` : ""}
                   </option>
                 ))}
               </select>

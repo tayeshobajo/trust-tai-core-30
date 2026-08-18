@@ -1,5 +1,5 @@
 /**
- * The Conductor — the command layer over the whole factory.
+ * The Conductor, the command layer over the whole factory.
  *
  * Not a peer business room: it owns no entity and writes no room's truth. It
  * reads Scout, Comms, Roadmap, Projects, Ops, Studio, the shared activity
@@ -89,7 +89,7 @@ import type { ConductorAnswer } from "@/domain/conductor";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 
-const TITLE = "Ask Trust Tai — the Conductor — Trust Tai OS";
+const TITLE = "Ask Trust Tai · the Conductor · Trust Tai OS";
 const DESCRIPTION =
   "Ask the Trust Tai factory a question and get a grounded answer: vital signs, upstream causes, what is missing, and bounded next steps that only you can authorise.";
 
@@ -124,7 +124,7 @@ function ConductorRoute() {
         purpose:
           "The Conductor reads across every room, proposes one bounded next step at a time, and waits for a person to authorise it. None of that can run without a verified Trust Tai identity.",
         unavailable: [
-          "Asking a question across Scout, Comms, Roadmap, Projects and Steward — answers are grounded in your organization's records, so there is nothing to read while signed out.",
+          "Asking a question across Scout, Comms, Roadmap, Projects and Steward, answers are grounded in your organization's records, so there is nothing to read while signed out.",
           "Seeing what needs your judgment, including bounded steps still awaiting authorisation.",
           "Approving, holding or rejecting a step. Execution always requires an authenticated person with the right role in the owning room.",
           "Reading the learning trail and what the Conductor has observed after past outcomes.",
@@ -156,7 +156,7 @@ function Conductor({
   const queryClient = useQueryClient();
 
   /*
-   * Decided truth — outcomes, hand-recorded figures, and corrections — is
+   * Decided truth, outcomes, hand-recorded figures, and corrections, is
    * loaded up front, because it changes what the very first answer is allowed
    * to say. Everything else is read at the moment a question is asked.
    */
@@ -273,7 +273,7 @@ function Conductor({
       const [snapshot, icp] = await Promise.all([
         loadSuiteSnapshot(identity.organizationId),
         /* Targeting truth a person already saved. Unreadable ICP simply means
-         * no auto-filled brief — never an invented one. */
+         * no auto-filled brief, never an invented one. */
         getCurrentIcp(identity.organizationId).catch(() => null),
       ]);
       const result = await answerQuestion({
@@ -337,7 +337,7 @@ function Conductor({
   /*
    * Observation is event-driven as well as read on load: the moment something
    * is handed to a room, the room is asked what actually became true. Nothing
-   * is inferred — an unreachable ledger simply skips the pass.
+   * is inferred, an unreachable ledger simply skips the pass.
    */
   const observeNow = async () => {
     if (!learningSchema.data?.ready) return;

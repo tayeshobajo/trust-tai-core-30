@@ -1,7 +1,7 @@
 /**
  * Steward semantic interpretation endpoint.
  *
- * POST — read one conversation's candidate passages for meaning. Nothing is
+ * POST, read one conversation's candidate passages for meaning. Nothing is
  * written. Interpretation is not confirmation: only a person, in the room,
  * turns a signal into workspace truth.
  *
@@ -148,7 +148,7 @@ async function readMemory(
         const responsibilities = Array.isArray(row["responsibilities"])
           ? (row["responsibilities"] as string[]).slice(0, 4).join(", ")
           : "";
-        const detail = [title, responsibilities].filter(Boolean).join(" — ");
+        const detail = [title, responsibilities].filter(Boolean).join("-");
         return detail
           ? { name: String(row["name"] ?? ""), title: detail }
           : { name: String(row["name"] ?? "") };

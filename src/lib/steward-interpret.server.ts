@@ -4,7 +4,7 @@
  * Rules find candidate passages. This is where meaning is read: a bounded
  * window of one real conversation, the people in it, and whatever canonical
  * memory the caller was authorized to pass, handed to a model that must answer
- * in a strict shape and is allowed — expected — to say "this is only context"
+ * in a strict shape and is allowed, expected, to say "this is only context"
  * or "I cannot tell".
  *
  * Fails closed. With no provider configured, nothing is interpreted and the

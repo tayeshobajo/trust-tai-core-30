@@ -2,7 +2,7 @@
  * Bounded action input resolution (Conductor V3.1).
  *
  * A recommendation can say "source against the current ICP", but Scout's
- * discovery adapter needs a concrete brief before it will route anything —
+ * discovery adapter needs a concrete brief before it will route anything 
  * without one it refuses with `missing_input`, and the loop can never start
  * from a question alone.
  *
@@ -168,7 +168,7 @@ const SUFFICIENT_FIELDS: IcpField[] = ["target", "industries", "size", "geograph
 /**
  * The plain-English brief a saved ICP already states, composed from its
  * targeting fields in a fixed order. Returns null when the ICP holds nothing
- * to search on — silence is the honest answer, not a generic brief.
+ * to search on, silence is the honest answer, not a generic brief.
  */
 export function deriveDiscoveryBrief(icp: IcpContext | null | undefined): string | null {
   const fields = readIcpFields(icp);
@@ -300,8 +300,8 @@ export function resolveDiscoveryInputs(
 }
 
 /**
- * Upgrade the discovery proposal into a routable sourcing run when — and only
- * when — the organisation's saved ICP supplies the brief.
+ * Upgrade the discovery proposal into a routable sourcing run when, and only
+ * when, the organisation's saved ICP supplies the brief.
  */
 export function fillDiscoveryPayload(
   proposal: ActionProposal,

@@ -2,7 +2,7 @@
  * Writing Conductor governance history.
  *
  * The same append-only stream as everything else, so there is no second event
- * store — but a separate vocabulary, because these events report the control
+ * store, but a separate vocabulary, because these events report the control
  * loop, not a room's truth. Emitting is best effort: history matters, never
  * enough to lose a person's decision.
  */

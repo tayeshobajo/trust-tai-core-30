@@ -1,5 +1,5 @@
 /**
- * The approval queue — the Conductor's control surface.
+ * The approval queue, the Conductor's control surface.
  *
  * One list, one question per row: will you allow this? Each row says which
  * room owns it, what it will and will not do, what it rests on, and what would
@@ -131,7 +131,7 @@ function ActionRow({
       {action.approval ? (
         <p className="text-xs text-[var(--tt-ink-muted)]">
           {action.approval.kind} by {action.approval.by.label}
-          {action.approval.reason ? ` — ${action.approval.reason}` : ""}
+          {action.approval.reason ? ` · ${action.approval.reason}` : ""}
         </p>
       ) : null}
 
@@ -313,7 +313,7 @@ export function ApprovalQueue({
           <ul className="space-y-1 text-sm text-[var(--tt-ink-muted)]">
             {control.notRoutable.map(({ action, because }) => (
               <li key={action.id}>
-                {action.intent} — {because}
+                {action.intent} · {because}
               </li>
             ))}
           </ul>
@@ -327,7 +327,7 @@ export function ApprovalQueue({
             {control.rejected.map((action) => (
               <li key={action.id}>
                 {action.intent}
-                {action.approval?.reason ? ` — ${action.approval.reason}` : ""}
+                {action.approval?.reason ? ` · ${action.approval.reason}` : ""}
               </li>
             ))}
           </ul>

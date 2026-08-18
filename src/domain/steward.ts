@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Steward contracts.
+ * Trust Tai OS, Steward contracts.
  *
  * "Steward turns meetings, conversations, and commitments into clear next
  * moves, then helps every person follow through."
@@ -8,9 +8,9 @@
  * conversation, proposes what it thinks happened, and a human decides. Three
  * tiers of truth are kept apart at all times:
  *
- *   observed — the words are in the transcript
- *   inferred — Steward worked it out, and says so
- *   decided  — a person confirmed it
+ *   observed, the words are in the transcript
+ *   inferred, Steward worked it out, and says so
+ *   decided, a person confirmed it
  *
  * Nothing here invents an owner, a date, a commitment or a project link.
  */
@@ -114,7 +114,7 @@ export type ProposalStatus = "proposed" | "confirmed" | "dismissed";
 /**
  * One thing Steward believes came out of a conversation. It always carries the
  * line it rests on. An owner or a date that was not actually said stays
- * unresolved — it is never guessed.
+ * unresolved, it is never guessed.
  */
 export interface Proposal {
   /** Stable across re-analysis of the same conversation. */

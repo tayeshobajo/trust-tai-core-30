@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — the Conductor's control contract (V2).
+ * Trust Tai OS, the Conductor's control contract (V2).
  *
  * V1 could reason and prepare. V2 adds the only thing a command layer may
  * legitimately add: a governed way for a person to approve part of a prepared
@@ -51,7 +51,7 @@ export type ActionLifecycleState =
 
 export const LIFECYCLE_LABEL: Record<ActionLifecycleState, string> = {
   proposed: "Awaiting your decision",
-  approved: "Approved — not yet routed",
+  approved: "Approved, not yet routed",
   held: "Held",
   rejected: "Rejected",
   routed: "Routed to the owning room",
@@ -217,7 +217,7 @@ export type ReceiptStatus = "routed" | "refused" | "failed";
 
 /**
  * What actually happened when an approved action was handed over. A receipt
- * is written whether the handover succeeded, was refused, or failed — silence
+ * is written whether the handover succeeded, was refused, or failed, silence
  * is never an outcome.
  */
 export interface ExecutionReceipt {

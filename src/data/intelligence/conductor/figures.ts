@@ -7,7 +7,7 @@
  * still be said about them today.
  *
  * Two rules do all the work. A figure older than {@link FIGURE_EXPIRY_DAYS}
- * is not a figure any more — it returns to unknown rather than steering the
+ * is not a figure any more, it returns to unknown rather than steering the
  * business on a stale bank balance. A figure older than
  * {@link FIGURE_STALE_DAYS} may still be used, but never reads healthy.
  */
@@ -59,7 +59,7 @@ function label(key: string): string {
 
 /**
  * One usable figure, phrased. `standing` here is only about the figure's
- * freshness and sign — judging it against a target is the vitals layer's job.
+ * freshness and sign, judging it against a target is the vitals layer's job.
  */
 export function readFigure(
   figures: BusinessFigure[],
@@ -94,7 +94,7 @@ export function readFigure(
  * Runway, worked out rather than asked for.
  *
  * Cash divided by burn. Both inputs must be present and usable, and burn must
- * be positive — a business with no recorded burn does not have infinite
+ * be positive, a business with no recorded burn does not have infinite
  * runway, it has an unrecorded one.
  */
 export function deriveRunway(

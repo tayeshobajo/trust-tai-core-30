@@ -1,5 +1,5 @@
 /**
- * Projects service — the one place delivery state is written.
+ * Projects service, the one place delivery state is written.
  *
  * Projects does not own companies, people, roadmaps or history. It points at
  * them by id and mirrors every state change into the shared `activities`
@@ -513,7 +513,7 @@ export const projectsService = {
 /**
  * Hand the request to the receiving room's inbox, when one is configured.
  * Ops is an external product and Studio is not built yet, so a missing
- * endpoint is an ordinary, recorded outcome — never a failed user action.
+ * endpoint is an ordinary, recorded outcome, never a failed user action.
  */
 async function notifyReceivingRoom(
   request: ProjectRouteRequest,

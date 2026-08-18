@@ -3,7 +3,7 @@
  *
  * The room shows a single chronological conversation: what they wrote, what we
  * wrote, meeting notes, internal notes, and drafts that were prepared. Nothing
- * is invented here — every entry is a record that already exists.
+ * is invented here, every entry is a record that already exists.
  *
  * Future providers (a Comms driver preparing a draft, a follow-up recommended
  * by Steward) fold into the same `system` kind without a redesign.

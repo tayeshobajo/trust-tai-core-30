@@ -65,7 +65,7 @@ export function PointBPanel({
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <TierChip tier={destination.tier} />
             {destination.tier === "inferred" ? (
-              <MetaPill>Proposal — not yet approved</MetaPill>
+              <MetaPill>Proposal, not yet approved</MetaPill>
             ) : (
               <MetaPill>Approved by a person</MetaPill>
             )}

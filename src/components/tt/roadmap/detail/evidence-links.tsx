@@ -1,5 +1,5 @@
 /**
- * Roadmap detail — Evidence.
+ * Roadmap detail, Evidence.
  *
  * Anchor proof points, linked by hand. Everything here was read somewhere by
  * someone: a label, how it was learned, and where it can be checked. Nothing

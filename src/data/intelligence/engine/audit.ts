@@ -91,7 +91,7 @@ function isEngineDecision(belief: MemoryBelief): boolean {
 
 /**
  * The trail, newest first, with each entry's effect resolved against every
- * other decision about the same shape — because suppression is a count, and a
+ * other decision about the same shape, because suppression is a count, and a
  * single dismissal is not a verdict.
  */
 export function learningTrail(beliefs: MemoryBelief[]): LearningTrail {

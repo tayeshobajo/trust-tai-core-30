@@ -160,7 +160,7 @@ export function CreateProjectModal({
                     if (first && onSeedFromMilestone) onSeedFromMilestone(first);
                   }}
                 >
-                  <option value="">No roadmap — start here</option>
+                  <option value="">No roadmap, start here</option>
                   {roadmaps.map((entry) => (
                     <option key={entry.id} value={entry.id}>
                       {entry.label}
@@ -252,7 +252,7 @@ export function CreateProjectModal({
             </label>
             <label className="block space-y-1.5">
               <span className="text-[12px] text-muted-foreground">
-                Delivery items — one per line
+                Delivery items, one per line
               </span>
               <textarea
                 rows={3}

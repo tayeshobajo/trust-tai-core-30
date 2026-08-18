@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — identity and access contract.
+ * Trust Tai OS, identity and access contract.
  *
  * Layer 1 of the OS: user, organization, membership, role, permission, app
  * entitlement. This is deliberately small. Supabase Auth remains the identity

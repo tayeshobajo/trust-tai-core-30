@@ -2,7 +2,7 @@
  * Scout → Comms handoff.
  *
  * A handoff is a brief, not a message. It says who to contact, what the
- * conversation is for, and the context Comms cannot work without — every line
+ * conversation is for, and the context Comms cannot work without, every line
  * traceable to stored evidence or a human decision.
  *
  * Nothing here sends anything, drafts no copy, and invents no claim. A handoff

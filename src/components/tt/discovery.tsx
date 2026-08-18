@@ -1,5 +1,5 @@
 /**
- * Scout — sourcing progress and run history.
+ * Scout, sourcing progress and run history.
  *
  * A discovery pass takes minutes, so Scout narrates what it is doing rather
  * than spinning. Every finished pass stays on record: the query, the ICP it was
@@ -106,7 +106,7 @@ export function DiscoveryRuns({ runs }: { runs: DiscoveryRun[] }) {
         <EmptyState
           title="No sourcing runs yet"
           belongsHere="Each market search is recorded here with its query, model and result count."
-          whyItMatters="Knowing what was asked — and when — keeps the board's origins honest."
+          whyItMatters="Knowing what was asked, and when, keeps the board's origins honest."
         />
       ) : (
         <ul className="mb-8 overflow-hidden rounded-xl border border-border bg-card">

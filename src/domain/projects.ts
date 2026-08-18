@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — the Projects execution contract.
+ * Trust Tai OS, the Projects execution contract.
  *
  * Projects is not a task tracker. It is the room where a Decided milestone
  * becomes work with an owner, a Point A, a Point B, and one honest next move.
@@ -327,7 +327,7 @@ export function recommendedMove(
   const idle = daysSince(project.lastMovedAt, now);
   if (idle >= STALE_AFTER_DAYS) {
     return {
-      move: `${project.nextMove.trim()} — or say honestly that it has stalled.`,
+      move: `${project.nextMove.trim()} · or say honestly that it has stalled.`,
       because: `The recorded next move has not moved in ${idle} days.`,
     };
   }

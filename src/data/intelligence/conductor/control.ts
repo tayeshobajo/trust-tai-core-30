@@ -1,5 +1,5 @@
 /**
- * The Conductor's control loop — pure.
+ * The Conductor's control loop, pure.
  *
  * Everything here is arithmetic over data: turning a prepared action graph
  * into governed actions, applying a person's decisions, working out what may
@@ -39,8 +39,8 @@ import type { ConductorActionGraph, ConductorActionStep } from "@/domain/conduct
 /**
  * How much of the world each known operation touches.
  *
- * Unlisted operations are treated as `internal_change`: gated, and — unless a
- * room adapter claims them — not routable. Guessing "harmless" is the one
+ * Unlisted operations are treated as `internal_change`: gated, and, unless a
+ * room adapter claims them, not routable. Guessing "harmless" is the one
  * mistake this table exists to prevent.
  */
 const OPERATION_CONSEQUENCE: Record<string, ConsequenceClass> = {
@@ -390,7 +390,7 @@ export function controlResponse(
     rejected,
     statement:
       parts.length === 0
-        ? "Nothing is under control right now — there is no prepared action to decide on."
+        ? "Nothing is under control right now, there is no prepared action to decide on."
         : `${parts.join(", ")}. Routing hands work over; the owning room reports completion.`,
   };
 }

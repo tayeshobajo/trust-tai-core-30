@@ -15,7 +15,7 @@ function dateLabel(iso?: string): string | null {
   return Number.isNaN(at) ? iso : new Date(at).toLocaleDateString();
 }
 
-/** Why now — public, dated reasons this company might be buying. */
+/** Why now, public, dated reasons this company might be buying. */
 export function BuyingSignalsPanel({ intel }: { intel: ScoutIntel }) {
   return (
     <Panel

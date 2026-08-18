@@ -1,7 +1,7 @@
 /**
  * The relationship queue: bucketing and coverage.
  *
- * Pure and deterministic. The Comms Lead's whole job is answered here — what
+ * Pure and deterministic. The Comms Lead's whole job is answered here, what
  * is late, what is waiting, and what nobody is carrying.
  */
 

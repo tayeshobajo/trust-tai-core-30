@@ -1,5 +1,5 @@
 /**
- * Ops — the specialist room that runs outside this shell.
+ * Ops, the specialist room that runs outside this shell.
  *
  * Trust Tai OS does not rebuild Ops and does not mirror its technical state.
  * This page is a door: it hands the current session to Ops over a checked
@@ -20,7 +20,7 @@ import { loadSuiteSnapshot } from "@/data/intelligence/service";
 import { OPS_ORIGIN } from "@/domain/ops";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Ops — Technical stewardship — Trust Tai OS";
+const TITLE = "Ops · Technical stewardship · Trust Tai OS";
 const DESCRIPTION =
   "Open Trust Tai Ops with your Trust Tai session, and read the Ops evidence that reached the shared activity stream.";
 

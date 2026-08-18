@@ -94,7 +94,7 @@ function MilestoneCard({
         <ul className="mt-2 space-y-1">
           {milestone.priorityRationale.map((line) => (
             <li key={line} className="text-sm text-muted-foreground">
-              — {line}
+  · {line}
             </li>
           ))}
         </ul>

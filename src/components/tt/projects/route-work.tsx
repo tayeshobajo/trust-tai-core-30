@@ -125,7 +125,7 @@ export function RouteWork({
       ) : null}
       {route.isSuccess ? (
         <p className="text-sm text-muted-foreground">
-          Asked. {ROUTE_TARGET_LABEL[target]} has not accepted it yet — acceptance is theirs to
+          Asked. {ROUTE_TARGET_LABEL[target]} has not accepted it yet, acceptance is theirs to
           record.
         </p>
       ) : null}

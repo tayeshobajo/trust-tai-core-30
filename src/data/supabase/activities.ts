@@ -46,7 +46,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * events are emitted best-effort the history was simply lost.
  *
  * So a non-uuid subject is stored as a deterministic uuid derived from the
- * key — same subject, same id, so dedupe and `subjectId` queries still work —
+ * key, same subject, same id, so dedupe and `subjectId` queries still work 
  * and the readable key travels with the row in `payload.entity_ref`.
  */
 function subjectUuid(key: string): string {

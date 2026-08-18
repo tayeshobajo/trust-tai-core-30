@@ -1,5 +1,5 @@
 /**
- * Steward — Meetings.
+ * Steward, Meetings.
  *
  * Read a conversation, see exactly what Steward heard, then decide. Reading is
  * a server call to the connected source; confirming is a separate, deliberate
@@ -23,7 +23,7 @@ import { REHEARSAL_NOTICE } from "@/data/steward/fixture";
 import { stewardService } from "@/data/supabase/steward-service";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Steward — Meetings — Trust Tai OS";
+const TITLE = "Steward · Meetings · Trust Tai OS";
 const DESCRIPTION =
   "Read a call transcript, see what Steward heard, and confirm only what a person agrees actually happened.";
 

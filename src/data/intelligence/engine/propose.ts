@@ -12,7 +12,7 @@
  *   3. Only reversible work is proposed. Anything irreversible stays a
  *      recommendation for a person to carry out unaided.
  *   4. A hunch earns no action. A recommendation resting on one room, or on
- *      low confidence, routes a person to look — never to act.
+ *      low confidence, routes a person to look, never to act.
  */
 
 import {

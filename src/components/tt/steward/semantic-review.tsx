@@ -7,8 +7,8 @@
  * Steward judged to be context, doubt or repetition are counted, not paraded.
  *
  * This is also where Steward learns. A person can put a reading right before
- * confirming it — the meaning, who carries it, who it is for, which work it
- * belongs to, what was said about timing — and every field that moves is
+ * confirming it, the meaning, who carries it, who it is for, which work it
+ * belongs to, what was said about timing, and every field that moves is
  * remembered as a correction taught by a named person. Correcting is never
  * punished with extra steps: edit in place, confirm once.
  *
@@ -77,7 +77,7 @@ function Evidence({ signal }: { signal: InterpretedSignal }) {
  *
  * Shown side by side, in full, with who taught Steward the remembered side and
  * when. Steward does not pick. A person reads both sentences and says which is
- * true now — memory going stale is as ordinary as a reading going wrong.
+ * true now, memory going stale is as ordinary as a reading going wrong.
  */
 function ConflictBanner({
   conflict,
@@ -225,7 +225,7 @@ function SignalRow({
         >
           {STATE_CHANGE_LABEL[proposal.kind]} Steward thinks this continues “
           {proposal.commitmentStatement}”, currently {proposal.currentStatus}. It has not changed
-          anything — mark it yourself if that is right.
+          anything, mark it yourself if that is right.
         </p>
       ))}
 
@@ -249,7 +249,7 @@ function SignalRow({
       ) : onConfirm ? (
         <div className="mt-4 space-y-3 border-t border-border pt-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            Put it in your own words — Steward remembers what you change
+            Put it in your own words, Steward remembers what you change
           </p>
           <label className="block">
             <span className="tt-eyebrow">What this actually is</span>

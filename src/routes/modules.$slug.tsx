@@ -19,8 +19,8 @@ export const Route = createFileRoute("/modules/$slug")({
   },
   head: ({ loaderData }) => {
     const title = loaderData
-      ? `${loaderData.app.name} — Trust Tai OS`
-      : "Module — Trust Tai OS";
+      ? `${loaderData.app.name} · Trust Tai OS`
+      : "Module, Trust Tai OS";
     const description = loaderData?.app.description ?? "A Trust Tai OS module outline.";
     return {
       meta: [
@@ -74,7 +74,7 @@ function ModuleRoute() {
             belongsHere={
               external
                 ? "Site health, maintenance tasks, and monitoring signals belong to the existing Ops product."
-                : `${app.name} will read shared clients, projects, and activity from the Trust Tai core — it will not keep its own copies.`
+                : `${app.name} will read shared clients, projects, and activity from the Trust Tai core, it will not keep its own copies.`
             }
             whyItMatters={
               external

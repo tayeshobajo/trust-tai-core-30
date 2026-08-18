@@ -1,5 +1,5 @@
 /**
- * Scout — reading and scoring the decision intelligence for a company.
+ * Scout, reading and scoring the decision intelligence for a company.
  *
  * Pure functions only. Nothing here fetches; everything is derived from what
  * was already stored, so the same read can be tested without a network or a
@@ -89,7 +89,7 @@ function toPerson(entry: Row): DiscoveredPerson | null {
 
 /**
  * Read the intel block a discovery or research pass stored on the row.
- * Older rows simply have nothing here — that is a valid, honest empty state.
+ * Older rows simply have nothing here, that is a valid, honest empty state.
  */
 export function readScoutIntel(metadata: unknown): ScoutIntel {
   const meta = (metadata && typeof metadata === "object" ? metadata : {}) as Row;
@@ -279,7 +279,7 @@ export function computeDecisionMetrics(input: MetricsInput): DecisionMetrics {
       value: scoreable ? candidate.evaluation.score : null,
       because: scoreable
         ? candidate.evaluation.explanation
-        : "Not scoreable — no live evidence has been read for this record.",
+        : "Not scoreable, no live evidence has been read for this record.",
       weight: METRIC_WEIGHTS.icp_match,
     },
     {

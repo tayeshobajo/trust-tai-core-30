@@ -1,5 +1,5 @@
 /**
- * Approved source — compliant enrichment, behind the backend.
+ * Approved source, compliant enrichment, behind the backend.
  *
  * Trust Tai never calls an enrichment vendor from the browser: no provider key
  * may reach the client bundle. This provider speaks only to authenticated

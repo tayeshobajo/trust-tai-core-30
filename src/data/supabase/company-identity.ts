@@ -1,5 +1,5 @@
 /**
- * Company identity — managed `company-identity` Edge Function client.
+ * Company identity, managed `company-identity` Edge Function client.
  *
  * The function reads the company's own public website only: an explicitly
  * declared `<meta name="theme-color">`, an Organization-style JSON-LD logo or a
@@ -66,7 +66,7 @@ export function toStoredIdentity(payload: IdentityPayload | null): StoredCompany
 
 /**
  * Ask the Edge Function for a company's public identity.
- * Never throws — a failed or empty read simply yields `null`.
+ * Never throws, a failed or empty read simply yields `null`.
  */
 export async function fetchCompanyIdentity(
   websiteUrl: string,

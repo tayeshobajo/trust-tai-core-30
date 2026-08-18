@@ -1,5 +1,5 @@
 /**
- * Scout — ICP fit evaluation contract.
+ * Scout, ICP fit evaluation contract.
  *
  * Fit is deterministic, explainable, and conservative. It is NOT AI scoring:
  * every criterion states what was read, from where, and why it landed where it

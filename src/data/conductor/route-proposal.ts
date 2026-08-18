@@ -3,7 +3,7 @@
  *
  * Ops and Studio answer for themselves. Nothing here may accept, chase or
  * complete work on their behalf, and no adapter exists that could. What this
- * house *can* settle is whether it is still waiting — so the only proposal
+ * house *can* settle is whether it is still waiting, so the only proposal
  * built here is Projects withdrawing its own ask, and even that waits for a
  * person to approve it before any adapter is reached.
  *

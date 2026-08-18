@@ -1,6 +1,6 @@
 /**
  * Roadmap page header: who we are building paths for, and the two ways to
- * start one. Three counts only — orientation, not analytics.
+ * start one. Three counts only, orientation, not analytics.
  */
 
 import { Binoculars, Flag, HelpCircle, Plus } from "lucide-react";

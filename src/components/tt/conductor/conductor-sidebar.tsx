@@ -1,6 +1,6 @@
 /**
  * Sidebar context for the Conductor: the shape of the room in five numbers,
- * and one line saying what it is for. No controls — the sidebar orients, it
+ * and one line saying what it is for. No controls, the sidebar orients, it
  * does not operate.
  */
 

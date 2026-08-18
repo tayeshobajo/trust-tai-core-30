@@ -1,5 +1,5 @@
 /**
- * ICP fit read — what the evaluator found, condensed so it is scannable and
+ * ICP fit read, what the evaluator found, condensed so it is scannable and
  * expandable rather than a wall of criteria.
  */
 
@@ -105,7 +105,7 @@ export function FitReadPanel({
             <ul className="mt-2 space-y-1.5 text-[13px] text-muted-foreground">
               {unknown.map((criterion) => (
                 <li key={criterion.key}>
-                  {criterion.label} — {STATE_LABEL[criterion.state].toLowerCase()}
+                  {criterion.label} · {STATE_LABEL[criterion.state].toLowerCase()}
                 </li>
               ))}
             </ul>

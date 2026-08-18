@@ -1,7 +1,7 @@
 /**
  * Company profile fields (industry / size / location) read from what research
  * already recorded. Nothing is inferred or invented here: if the stored payload
- * does not state a field, it stays undefined and the table shows "—".
+ * does not state a field, it stays undefined and the table shows "-".
  */
 
 export interface CompanyProfile {

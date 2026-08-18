@@ -1,6 +1,6 @@
 /**
  * Small shared pieces for the Scout company detail page: section shells,
- * strength/status treatments and empty states. Weight is deliberate — the
+ * strength/status treatments and empty states. Weight is deliberate, the
  * summary card carries more than the activity list.
  */
 
@@ -128,9 +128,9 @@ export function FactorIcon({ status }: { status: ICPFactorStatus }) {
 }
 
 export function relativeTime(value?: string): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const at = Date.parse(value);
-  if (Number.isNaN(at)) return "—";
+  if (Number.isNaN(at)) return "-";
   const days = Math.floor((Date.now() - at) / (24 * 60 * 60 * 1000));
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";

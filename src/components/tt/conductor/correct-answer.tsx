@@ -2,8 +2,8 @@
  * Telling the Conductor it is wrong.
  *
  * The learning loop needs a door, and this is it. Four honest ways an answer
- * can be wrong — a bad number, a bad read, work already handled, or a
- * suggestion that simply is not useful — each recorded with a name and a
+ * can be wrong, a bad number, a bad read, work already handled, or a
+ * suggestion that simply is not useful, each recorded with a name and a
  * reason. Corrections are never silent: they appear in the learning trail and
  * they change the next answer.
  */
@@ -95,7 +95,7 @@ export function CorrectAnswer({ answer, saving, saved, onCorrect }: CorrectAnswe
     return (
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-[var(--tt-ink-muted)]">
-          {saved ? "Recorded. The next answer will take it into account." : "If this is wrong, say so — it changes what comes next."}
+          {saved ? "Recorded. The next answer will take it into account." : "If this is wrong, say so, it changes what comes next."}
         </span>
         <button
           type="button"

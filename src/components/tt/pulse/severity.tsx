@@ -1,6 +1,6 @@
 /**
  * Severity language: icon, tint and label. Colour always means one of the four
- * attention levels — never decoration.
+ * attention levels, never decoration.
  */
 
 import { AlertTriangle, Eye, Info, Scale, type LucideIcon } from "lucide-react";

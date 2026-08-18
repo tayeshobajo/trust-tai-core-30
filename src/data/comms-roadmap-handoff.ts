@@ -9,7 +9,7 @@
  *
  * Pure and deterministic. It reads the relationship Comms already owns and
  * copies nothing: the handoff carries the relationship id, not its record.
- * A roadmap is still opened by a person pressing the button — nothing here
+ * A roadmap is still opened by a person pressing the button, nothing here
  * auto-creates one, and weak evidence refuses rather than guesses.
  */
 
@@ -38,7 +38,7 @@ export interface RoadmapHandoffReadiness {
 }
 
 /**
- * The reference a roadmap receives. Stable ids and a label — never a copy of
+ * The reference a roadmap receives. Stable ids and a label, never a copy of
  * the relationship, the contact, or the conversation.
  */
 export interface RoadmapHandoffRef {
@@ -92,7 +92,7 @@ export function roadmapHandoffReadiness(
     return {
       ready: false,
       because:
-        "There is no two-way evidence on this relationship yet — no touch and nothing decided.",
+        "There is no two-way evidence on this relationship yet, no touch and nothing decided.",
       carries: [],
     };
   }

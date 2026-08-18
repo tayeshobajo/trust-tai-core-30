@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — app imagery manifest.
+ * Trust Tai OS, app imagery manifest.
  *
  * One explicit entry per registered app. The binaries are not in the project
  * yet: every surface that reads this manifest must render the SVG motif from

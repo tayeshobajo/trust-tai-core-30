@@ -1,5 +1,5 @@
 /**
- * Scout — explicit AI provider selection (server only).
+ * Scout, explicit AI provider selection (server only).
  *
  * Trust Tai owns which intelligence provider answered. Selection is explicit
  * and recorded truthfully on every run and evaluation:

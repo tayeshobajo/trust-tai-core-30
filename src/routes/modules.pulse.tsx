@@ -1,5 +1,5 @@
 /**
- * Pulse — the visibility room.
+ * Pulse, the visibility room.
  *
  * One question: what deserves attention right now, and why? Signals are read
  * from the suite, sorted into four attention levels, and routed to the room
@@ -36,9 +36,9 @@ import { unansweredRoutes } from "@/domain/route-ledger";
 import type { PulseFeedbackKind, PulseSignal } from "@/domain/pulse";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Pulse — What deserves attention now — Trust Tai OS";
+const TITLE = "Pulse · What deserves attention now · Trust Tai OS";
 const DESCRIPTION =
-  "The few signals across Scout, Comms, Roadmap, Projects and Ops that are worth deciding — each with its reason, its evidence, and the room that owns the work.";
+  "The few signals across Scout, Comms, Roadmap, Projects and Ops that are worth deciding, each with its reason, its evidence, and the room that owns the work.";
 
 const WITHHELD_REASON: Record<string, string> = {
   unauthorized: "not readable for you",
@@ -148,7 +148,7 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
       queryClient.invalidateQueries({ queryKey: ["pulse-feedback", organizationId] }),
   });
 
-  const lastUpdated = suite.data ? relativeAge(suite.data.readAt, new Date().toISOString()) : "—";
+  const lastUpdated = suite.data ? relativeAge(suite.data.readAt, new Date().toISOString()) : "-";
 
   return (
     <AppShell identity={identity} sidebar={<PulseSidebar counts={counts} />}>
@@ -240,7 +240,7 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
 
             <p className="text-[13px] text-muted-foreground">
               Pulse says what deserves attention and where the work lives. For the read behind a
-              signal — what it rests on, what it would take, and any step you can authorise —{" "}
+              signal, what it rests on, what it would take, and any step you can authorise,{" "}
               <Link to="/modules/conductor" className="text-foreground underline underline-offset-4">
                 open it in the Conductor
               </Link>

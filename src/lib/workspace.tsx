@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — real auth + workspace boundary.
+ * Trust Tai OS, real auth + workspace boundary.
  *
  * Fails closed. Nothing about the workspace is rendered until:
  *  1. Supabase Auth confirms a session, and

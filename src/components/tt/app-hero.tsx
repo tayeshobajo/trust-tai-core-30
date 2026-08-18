@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  *
  * One band, roughly 200px tall: mono label, serif statement, one supporting
  * line, and the room's primary action. The per-app accent stays as a light
- * wash — atmosphere, never decoration that costs working space.
+ * wash, atmosphere, never decoration that costs working space.
  */
 export function AppHero({
   appId,
