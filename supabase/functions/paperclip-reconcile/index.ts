@@ -97,11 +97,13 @@ Deno.serve(async (req: Request) => {
       }>(`/api/agents/${agentId}`);
 
       // 3. Project status back into execution_agents
+      // Pause is status="paused"; pausedAt only populates on company-level pause.
+      const pausedByStatus = agent.status === "paused";
       await supabase.from("execution_agents").update({
         last_known_status: agent.status,
         last_synced_at: now,
         last_heartbeat_at: agent.lastHeartbeatAt ?? null,
-        paused_at: agent.pausedAt ?? null,
+        paused_at: pausedByStatus ? (agent.pausedAt ?? now) : null,
         paperclip_company_id: agent.companyId,
         updated_at: now,
       }).eq("paperclip_agent_id", agentId);
