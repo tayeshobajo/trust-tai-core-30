@@ -30,6 +30,7 @@ export function TeamRail({
   agents,
   onReviewUnowned,
   onReviewOverdue,
+  stacked = false,
 }: {
   glance: TeamGlance;
   unownedCount: number;
@@ -37,13 +38,21 @@ export function TeamRail({
   agents: StewardAgentRead | undefined;
   onReviewUnowned: () => void;
   onReviewOverdue: () => void;
+  /** True when the rail sits under the checklist on narrow screens. */
+  stacked?: boolean;
 }) {
   const approvals = agents?.agents.reduce((total, agent) => total + agent.awaitingApproval.length, 0) ?? 0;
   const needsTai =
     unownedCount > 0 || overdueTasks.length > 0 || approvals > 0;
 
   return (
-    <aside className="space-y-4">
+    <aside
+      className={
+        stacked
+          ? "grid gap-4 sm:grid-cols-2 lg:sticky lg:top-6 lg:grid-cols-1"
+          : "space-y-4"
+      }
+    >
       <RailCard title="Team at a glance">
         <Line label="Team members" value={glance.teamMembers} />
         <Line label="Active tasks" value={glance.activeTasks} />

@@ -25,6 +25,7 @@ export function ReassignPicker({
   onAssignPerson,
   onAssignAgent,
   eligibleAgent,
+  refusal = null,
 }: {
   task: StewardTask | null;
   people: AssignablePerson[];
@@ -34,6 +35,8 @@ export function ReassignPicker({
   onAssignPerson: (person: AssignablePerson) => void;
   onAssignAgent: (agent: StewardAgent) => void;
   eligibleAgent: (agent: StewardAgent, task: StewardTask) => boolean;
+  /** Set when this person may not reassign. Nothing is offered, and it says why. */
+  refusal?: string | null;
 }) {
   const [review, setReview] = useState<StewardAgent | null>(null);
 
@@ -56,7 +59,20 @@ export function ReassignPicker({
           </DialogTitle>
         </DialogHeader>
 
-        {review ? (
+        {refusal ? (
+          <div className="space-y-4">
+            <div className="flex gap-3 rounded-lg border border-border bg-secondary/60 p-4">
+              <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <div className="space-y-1">
+                <p className="text-sm text-foreground">This is not yours to reassign.</p>
+                <p className="text-sm text-muted-foreground">{refusal}</p>
+              </div>
+            </div>
+            <TTButton type="button" variant="secondary" onClick={onClose}>
+              Close
+            </TTButton>
+          </div>
+        ) : review ? (
           <div className="space-y-4">
             <p className="max-w-reading text-sm text-muted-foreground">
               {review.name} would take “{task.title}”.

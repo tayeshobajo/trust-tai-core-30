@@ -120,7 +120,7 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
 
   const reorder = useMutation({
     mutationFn: async ({ source, target }: { source: StewardTask; target: StewardTask }) => {
-      await actions.setRank(source, target.rank - 1);
+      await actions.setRank(source, target.rank - 1, target.title);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
