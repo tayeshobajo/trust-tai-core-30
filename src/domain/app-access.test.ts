@@ -76,3 +76,53 @@ describe("app access", () => {
     expect(apps).not.toContain("conductor");
   });
 });
+
+/**
+ * The commissioned scenario, as a contract: Sarah is invited as a team member
+ * with Steward, Projects and Roadmap (view), while Scout and Conductor are
+ * hidden. The shell must show exactly the three allowed rooms plus Home.
+ */
+describe("invited team member with a narrowed room set", () => {
+  const overrides: Record<string, AppAccessLevel> = {
+    steward: "work",
+    projects: "work",
+    roadmap: "view",
+    scout: "hidden",
+    conductor: "hidden",
+  };
+
+  const decisions = visibleApps({
+    role: "team_member",
+    membershipActive: true,
+    organization: { enabled: {} },
+    overrides,
+  });
+  const ids = decisions.map((decision) => decision.appId);
+
+  it("hides every room set to hidden", () => {
+    expect(ids).not.toContain("scout");
+    expect(ids).not.toContain("conductor");
+  });
+
+  it("keeps the allowed rooms visible", () => {
+    expect(ids).toContain("steward");
+    expect(ids).toContain("projects");
+    expect(ids).toContain("roadmap");
+  });
+
+  it("keeps roadmap read-only", () => {
+    const roadmap = decisions.find((decision) => decision.appId === "roadmap");
+    expect(roadmap?.canWork).toBe(false);
+  });
+
+  it("gives nothing at all once the membership is deactivated", () => {
+    expect(
+      visibleApps({
+        role: "team_member",
+        membershipActive: false,
+        organization: { enabled: {} },
+        overrides,
+      }),
+    ).toHaveLength(0);
+  });
+});
