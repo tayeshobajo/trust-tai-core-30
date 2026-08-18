@@ -111,7 +111,7 @@ export const projectsRouteAdapter: RoomAdapter = {
           userId: context.actor.id,
           ...(context.actor.label ? { userLabel: context.actor.label } : {}),
         },
-        { organizationId: context.organizationId, permissions: [] } as never,
+        context.access,
       );
       return adapterReceipt({
         action,

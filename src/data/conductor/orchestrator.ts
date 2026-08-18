@@ -167,7 +167,7 @@ export async function routeAction(
   }
 
   const adapter = adapterFor(adapters, action)!;
-  const receipt = await adapter.route(action, adapterContext(action, actor, now, accessGate(access)));
+  const receipt = await adapter.route(action, adapterContext(action, actor, now, access));
   await recordReceipt(receipt).catch(() => undefined);
 
   if (receipt.status !== "routed") {

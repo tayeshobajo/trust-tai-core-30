@@ -22,6 +22,7 @@
  *     roadmap, project or asset.
  */
 
+import type { AccessContext } from "./access";
 import type { EvidenceRef } from "./confidence";
 import type { ID, ISODateTime } from "./entities";
 import type { Permission } from "./access";
@@ -272,7 +273,7 @@ export interface AdapterContext {
    * The approving person's own access, for services that re-check the owning
    * room's permission themselves. Absent means the adapter must refuse.
    */
-  access?: { can: (permission: string) => boolean };
+  access?: AccessContext;
   now?: ISODateTime;
 }
 

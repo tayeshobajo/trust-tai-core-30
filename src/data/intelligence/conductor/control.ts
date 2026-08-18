@@ -416,7 +416,7 @@ export function adapterContext(
   action: ControlledAction,
   actor: { id: string; label: string },
   now: string,
-  access?: { can: (permission: string) => boolean },
+  access?: AccessContext,
 ): AdapterContext {
   const approvedBy = action.approval?.by ?? actor;
   return {
