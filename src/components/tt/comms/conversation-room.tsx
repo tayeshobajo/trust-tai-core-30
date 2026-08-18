@@ -13,7 +13,7 @@ import {
   type ConversationDay,
   type ConversationEvent as EventShape,
 } from "@/data/comms-timeline";
-import { initials } from "@/data/comms-inbox";
+import { initialsOf } from "@/domain/steward-accountability";
 import { HEALTH_LABEL, type ConversationHealth } from "@/domain/comms-health";
 import { SOURCE_LABEL, STAGE_LABEL, type Relationship } from "@/domain/comms";
 import { effectiveIntent, INTENT_LABEL } from "@/domain/comms-interactions";
@@ -165,7 +165,7 @@ export function ConversationRoom({
             aria-hidden
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-secondary font-mono text-[12px] text-muted-foreground"
           >
-            {initials(relationship.fullName)}
+            {initialsOf(relationship.fullName)}
           </span>
           <div className="min-w-0">
             <h1 className="truncate text-base font-medium text-foreground">

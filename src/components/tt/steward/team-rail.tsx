@@ -61,7 +61,7 @@ export function TeamRail({
         <Line label="No owner" value={glance.noOwner} />
       </RailCard>
 
-      <RailCard title="Needs Tai">
+      <RailCard title="Needs you">
         {needsTai ? (
           <ul className="space-y-3">
             {unownedCount > 0 ? (

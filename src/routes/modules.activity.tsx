@@ -40,7 +40,7 @@ import { loadControlledActions, loadReceipts } from "@/data/supabase/conductor-c
 import { supabaseActivity } from "@/data/supabase/activities";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Activity · Today, Needs Tai, Recently moved · Trust Tai OS";
+const TITLE = "Activity · Today, Needs you, Recently moved · Trust Tai OS";
 const DESCRIPTION =
   "Everything the suite recorded today, every bounded step still waiting on a person, and every handover that actually happened.";
 

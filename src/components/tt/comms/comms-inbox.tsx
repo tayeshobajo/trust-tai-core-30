@@ -7,7 +7,6 @@
 
 import { HEALTH_LABEL, type ConversationHealthStatus } from "@/domain/comms-health";
 import {
-  initials,
   sinceLabel,
   TAB_LABEL,
   TABS,
@@ -15,6 +14,7 @@ import {
   type InboxTab,
   type InboxView,
 } from "@/data/comms-inbox";
+import { initialsOf } from "@/domain/steward-accountability";
 import { TTInput } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +59,7 @@ export function ConversationListItem({
           aria-hidden
           className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary font-mono text-[11px] tracking-[0.08em] text-muted-foreground"
         >
-          {initials(relationship.fullName)}
+          {initialsOf(relationship.fullName)}
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">

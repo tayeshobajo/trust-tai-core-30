@@ -17,7 +17,7 @@ export type ActivityView = (typeof ACTIVITY_VIEWS)[number];
 
 export const ACTIVITY_VIEW_LABEL: Record<ActivityView, string> = {
   today: "Today",
-  needs: "Needs Tai",
+  needs: "Needs you",
   moved: "Recently moved",
 };
 
