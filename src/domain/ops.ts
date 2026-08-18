@@ -101,7 +101,13 @@ export interface OpsEvent {
   /** True only when the row itself records a person's decision. */
   humanDecision: boolean;
   subjectLabel: string;
+  /** Only present when Ops actually carried it on the row. */
+  environment?: string;
+  ownerLabel?: string;
+  companyLabel?: string;
+  systemName?: string;
 }
+
 
 function text(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
