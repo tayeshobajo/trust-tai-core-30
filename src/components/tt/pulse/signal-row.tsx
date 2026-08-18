@@ -18,6 +18,7 @@ import {
   type PulseSignal,
 } from "@/domain/pulse";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
+import { canOpenInConductor, conductorHandoff } from "@/data/pulse/handoff";
 import { cn } from "@/lib/utils";
 
 import { PulseImpact, PulseSeverityIcon, SEVERITY_TEXT } from "./severity";
