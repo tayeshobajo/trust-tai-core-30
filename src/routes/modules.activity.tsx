@@ -30,18 +30,24 @@ const TITLE = "Activity — Today, Needs Tai, Recently moved — Trust Tai OS";
 const DESCRIPTION =
   "Everything the suite recorded today, every bounded step still waiting on a person, and every handover that actually happened.";
 
-const EMPTY: Record<ActivityView, { title: string; body: string }> = {
+const EMPTY: Record<ActivityView, { title: string; belongsHere: string; whyItMatters: string }> = {
   today: {
     title: "Nothing has been recorded today",
-    body: "Rooms write to the shared stream as work happens. An empty day is a truthful result, not a missing feed.",
+    belongsHere: "Every event the rooms wrote to the shared stream today.",
+    whyItMatters:
+      "An empty day is a truthful result, not a missing feed. Rooms record as work happens.",
   },
   needs: {
     title: "Nothing is waiting on your judgment",
-    body: "Bounded steps appear here the moment the Conductor proposes one and it needs your authorisation.",
+    belongsHere: "Bounded steps the Conductor has proposed but no one has settled.",
+    whyItMatters:
+      "A step appears the moment it needs your authorisation, and leaves as soon as you decide.",
   },
   moved: {
     title: "Nothing has moved yet",
-    body: "A movement is recorded when an authorised step is handed to the room that owns it — or when that room refuses it.",
+    belongsHere: "Every handover between rooms, including refusals and failures.",
+    whyItMatters:
+      "A movement is recorded when an authorised step reaches the room that owns it.",
   },
 };
 
@@ -143,7 +149,7 @@ function ActivityPage({ identity, view }: { identity: WorkspaceIdentity; view: A
             That history could not be read just now. Nothing was changed; try again.
           </p>
         ) : rows.length === 0 ? (
-          <EmptyState title={EMPTY[view].title} body={EMPTY[view].body} />
+          <EmptyState {...EMPTY[view]} />
         ) : (
           <ul className="divide-y divide-border rounded-xl border border-border bg-card">
             {rows.map((row) => (

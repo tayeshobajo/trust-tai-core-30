@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
+import { Route as ModulesActivityRouteImport } from './routes/modules.activity'
 import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
 import { Route as ModulesConductorRouteImport } from './routes/modules.conductor'
 import { Route as ModulesOpsRouteImport } from './routes/modules.ops'
@@ -65,6 +66,11 @@ const AuthRoute = AuthRouteImport.update({
 const ModulesSlugRoute = ModulesSlugRouteImport.update({
   id: '/modules/$slug',
   path: '/modules/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesActivityRoute = ModulesActivityRouteImport.update({
+  id: '/modules/activity',
+  path: '/modules/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesCommsRoute = ModulesCommsRouteImport.update({
@@ -281,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
+  '/modules/activity': typeof ModulesActivityRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
@@ -325,6 +332,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
+  '/modules/activity': typeof ModulesActivityRoute
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
@@ -364,6 +372,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/modules/$slug': typeof ModulesSlugRoute
+  '/modules/activity': typeof ModulesActivityRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
@@ -410,6 +419,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/modules/$slug'
+    | '/modules/activity'
     | '/modules/comms'
     | '/modules/conductor'
     | '/modules/ops'
@@ -454,6 +464,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/modules/$slug'
+    | '/modules/activity'
     | '/modules/conductor'
     | '/modules/ops'
     | '/modules/pulse'
@@ -492,6 +503,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/modules/$slug'
+    | '/modules/activity'
     | '/modules/comms'
     | '/modules/conductor'
     | '/modules/ops'
@@ -537,6 +549,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
+  ModulesActivityRoute: typeof ModulesActivityRoute
   ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
   ModulesConductorRoute: typeof ModulesConductorRoute
   ModulesOpsRoute: typeof ModulesOpsRoute
@@ -583,6 +596,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/$slug'
       fullPath: '/modules/$slug'
       preLoaderRoute: typeof ModulesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/activity': {
+      id: '/modules/activity'
+      path: '/modules/activity'
+      fullPath: '/modules/activity'
+      preLoaderRoute: typeof ModulesActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/comms': {
@@ -960,6 +980,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   ModulesSlugRoute: ModulesSlugRoute,
+  ModulesActivityRoute: ModulesActivityRoute,
   ModulesCommsRoute: ModulesCommsRouteWithChildren,
   ModulesConductorRoute: ModulesConductorRoute,
   ModulesOpsRoute: ModulesOpsRoute,
