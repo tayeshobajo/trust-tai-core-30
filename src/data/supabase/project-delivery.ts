@@ -316,7 +316,7 @@ export const projectDelivery = {
       .single();
     if (error || !data) fail("That decision could not be recorded.", error);
     const decision = toDecision(data as Row);
-    await record(context, "decision_requested", `Decision needed: ${decision.question}`, {
+    await record(context, "project.decision_requested", `Decision needed: ${decision.question}`, {
       decision_id: decision.id,
     });
     return decision;
@@ -337,7 +337,7 @@ export const projectDelivery = {
       .single();
     if (error || !data) fail("That answer could not be saved.", error);
     const saved = toDecision(data as Row);
-    await record(context, "decision_resolved", `Decided: ${saved.question}`, {
+    await record(context, "project.decision_resolved", `Decided: ${saved.question}`, {
       decision_id: saved.id,
     });
     return saved;
