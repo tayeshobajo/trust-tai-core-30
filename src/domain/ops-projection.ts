@@ -27,17 +27,25 @@ export interface OpsProjectRow {
   name: string;
   company?: string;
   status?: string;
+  /** Ops' own lifecycle word: active, archived, removed, and so on. */
+  lifecycleState: string;
+  /** Ops said this project needs a human. Never inferred by Core. */
+  needsAttention: boolean;
   health: OpsProjectHealth;
   owner?: string;
   environment?: string;
   canonicalProjectId?: ID;
   /** Same-site Ops path for the deep link. Absent means "Ops did not say". */
   opsPath?: string;
+  /** Absolute Ops URL, only kept when it really is on the Ops origin. */
+  opsUrl?: string;
   /** Null means unreported. Never render null as zero. */
   openIssues: number | null;
   openApprovals: number | null;
   lastActivityAt: ISODateTime | null;
   lastSyncedAt: ISODateTime;
+  /** Ops retired this project. It leaves the active portfolio. */
+  removed: boolean;
   archived: boolean;
 }
 
@@ -54,9 +62,29 @@ export function safeOpsPath(candidate: unknown): string | undefined {
   return value;
 }
 
+/** A path taken from an absolute Ops URL, when it truly is on Ops. */
+export function opsPathFromUrl(candidate: unknown): string | undefined {
+  if (typeof candidate !== "string" || candidate.trim().length === 0) return undefined;
+  try {
+    const url = new URL(candidate.trim());
+    if (url.origin !== OPS_ORIGIN) return undefined;
+    const path = `${url.pathname}${url.search}`;
+    return path === "/" ? undefined : safeOpsPath(path);
+  } catch {
+    return undefined;
+  }
+}
+
+/** The same-site Ops path for a projected project, or undefined. */
+export function opsProjectPath(
+  row: Pick<OpsProjectRow, "opsPath" | "opsUrl">,
+): string | undefined {
+  return safeOpsPath(row.opsPath) ?? opsPathFromUrl(row.opsUrl);
+}
+
 /** The absolute Ops URL for a projected project, or Ops home when unknown. */
-export function opsProjectUrl(row: Pick<OpsProjectRow, "opsPath">): string {
-  const path = safeOpsPath(row.opsPath);
+export function opsProjectUrl(row: Pick<OpsProjectRow, "opsPath" | "opsUrl">): string {
+  const path = opsProjectPath(row);
   return path ? `${OPS_ORIGIN}${path}` : OPS_ORIGIN;
 }
 
@@ -114,19 +142,38 @@ function count(value: unknown): number | null {
   return Math.floor(value);
 }
 
+const HEALTH_WORDS: Record<string, OpsProjectHealth> = {
+  healthy: "healthy",
+  stable: "healthy",
+  ok: "healthy",
+  green: "healthy",
+  good: "healthy",
+  attention: "attention",
+  warning: "attention",
+  degraded: "attention",
+  amber: "attention",
+  at_risk: "attention",
+  incident: "incident",
+  critical: "incident",
+  failing: "incident",
+  red: "incident",
+  blocked: "incident",
+};
+
+/** Ops' health word, or "unknown". A word Core cannot read never means healthy. */
 function health(value: unknown): OpsProjectHealth {
-  const candidate = text(value);
-  return candidate && (OPS_PROJECT_HEALTHS as string[]).includes(candidate)
-    ? (candidate as OpsProjectHealth)
-    : "unknown";
+  const candidate = text(value)?.toLowerCase();
+  if (!candidate) return "unknown";
+  if ((OPS_PROJECT_HEALTHS as string[]).includes(candidate)) return candidate as OpsProjectHealth;
+  return HEALTH_WORDS[candidate] ?? "unknown";
 }
 
 /** Read one database row into the projection shape, or null when unusable. */
 export function readOpsProjectRow(raw: Record<string, unknown>): OpsProjectRow | null {
   const opsProjectId = text(raw["ops_project_id"]);
   const organizationId = text(raw["organization_id"]);
-  const name = text(raw["name"]);
-  const lastSyncedAt = text(raw["last_synced_at"]);
+  const name = text(raw["project_name"]) ?? text(raw["name"]);
+  const lastSyncedAt = text(raw["synced_at"]) ?? text(raw["last_synced_at"]);
   if (!opsProjectId || !organizationId || !name || !lastSyncedAt) return null;
 
   const company = text(raw["company"]);
@@ -135,6 +182,8 @@ export function readOpsProjectRow(raw: Record<string, unknown>): OpsProjectRow |
   const environment = text(raw["environment"]);
   const canonicalProjectId = text(raw["canonical_project_id"]);
   const opsPath = safeOpsPath(raw["ops_path"]);
+  const opsUrl = opsPathFromUrl(raw["ops_url"]) ? String(raw["ops_url"]).trim() : undefined;
+  const lifecycleState = (text(raw["lifecycle_state"]) ?? "active").toLowerCase();
 
   return {
     opsProjectId,
@@ -145,13 +194,17 @@ export function readOpsProjectRow(raw: Record<string, unknown>): OpsProjectRow |
     openApprovals: count(raw["open_approvals"]),
     lastActivityAt: text(raw["last_activity_at"]) ?? null,
     lastSyncedAt,
-    archived: raw["archived"] === true,
+    lifecycleState,
+    needsAttention: raw["needs_attention"] === true,
+    removed: lifecycleState === "removed",
+    archived: raw["archived"] === true || lifecycleState === "archived",
     ...(company ? { company } : {}),
     ...(status ? { status } : {}),
     ...(owner ? { owner } : {}),
     ...(environment ? { environment } : {}),
     ...(canonicalProjectId ? { canonicalProjectId } : {}),
     ...(opsPath ? { opsPath } : {}),
+    ...(opsUrl ? { opsUrl } : {}),
   };
 }
 
