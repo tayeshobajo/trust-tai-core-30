@@ -165,7 +165,13 @@ function WorkItemSelect({
   );
 }
 
-function LinkedWork({ items, workItemId }: { items: WorkItem[]; workItemId?: string }) {
+function LinkedWork({
+  items,
+  workItemId,
+}: {
+  items: WorkItem[];
+  workItemId?: string | undefined;
+}) {
   const item = workItemId ? items.find((entry) => entry.id === workItemId) : undefined;
   if (!item) return null;
   return (
