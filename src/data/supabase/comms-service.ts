@@ -22,6 +22,11 @@ import type {
   Touch,
 } from "@/domain/comms";
 import { STAGE_LABEL } from "@/domain/comms";
+import {
+  editedProvenance,
+  restoredProvenance,
+  retractedProvenance,
+} from "@/domain/comms-touch-record";
 import type { EvidenceRef } from "@/domain/confidence";
 import type { VoiceRegister } from "@/domain/voice";
 
