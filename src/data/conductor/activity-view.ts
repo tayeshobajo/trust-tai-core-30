@@ -65,15 +65,67 @@ export function activityKind(name: string, summary: string): ActivityKind {
   return "other";
 }
 
-/** Free text and kind, applied to any of the three readings. */
+/**
+ * A defensive read of a `from`/`to` search param. Only a plain calendar day
+ * (YYYY-MM-DD) is accepted; anything else means no bound at all.
+ */
+export function readActivityDate(search: Record<string, unknown>, key: "from" | "to"): string {
+  const raw = search[key];
+  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return "";
+  return Number.isNaN(new Date(`${raw}T00:00:00`).getTime()) ? "" : raw;
+}
+
+/** The reader's own calendar day for a moment, so a window means what it says. */
+export function activityDay(at: string | null): string {
+  if (!at) return "";
+  const when = new Date(at);
+  if (Number.isNaN(when.getTime())) return "";
+  const month = String(when.getMonth() + 1).padStart(2, "0");
+  const day = String(when.getDate()).padStart(2, "0");
+  return `${when.getFullYear()}-${month}-${day}`;
+}
+
+export interface ActivityRange {
+  /** Inclusive first day, or "" for no lower bound. */
+  from: string;
+  /** Inclusive last day, or "" for no upper bound. */
+  to: string;
+}
+
+/** True when a window was actually asked for. */
+export function hasRange(range: ActivityRange): boolean {
+  return Boolean(range.from || range.to);
+}
+
+/** A window read back to front is still a window; the earlier day wins. */
+export function orderRange(range: ActivityRange): ActivityRange {
+  if (range.from && range.to && range.from > range.to) {
+    return { from: range.to, to: range.from };
+  }
+  return range;
+}
+
+function withinRange(at: string | null, range: ActivityRange): boolean {
+  if (!hasRange(range)) return true;
+  const day = activityDay(at);
+  /* An undated row cannot be proven to sit inside a window, so it is left out. */
+  if (!day) return false;
+  if (range.from && day < range.from) return false;
+  if (range.to && day > range.to) return false;
+  return true;
+}
+
+/** Free text, kind and a date window, applied to any of the three readings. */
 export function filterActivity(
   rows: ActivityRow[],
-  input: { query?: string; kind?: ActivityKind },
+  input: { query?: string; kind?: ActivityKind; range?: ActivityRange },
 ): ActivityRow[] {
   const needle = (input.query ?? "").trim().toLowerCase();
   const kind = input.kind ?? "all";
+  const range = orderRange(input.range ?? { from: "", to: "" });
   return rows.filter((row) => {
     if (kind !== "all" && row.kind !== kind) return false;
+    if (!withinRange(row.at, range)) return false;
     if (!needle) return true;
     return `${row.label} ${row.roomLabel} ${row.standing}`.toLowerCase().includes(needle);
   });
@@ -126,6 +178,8 @@ export interface ActivityRow {
   kind: ActivityKind;
   at: string | null;
   route?: string;
+  /** Set when the event is about a Steward task, so the row can open it. */
+  task?: { key: string; id: string; title: string };
 }
 
 /** Same calendar day as `now`, in the reader's own timezone. */
@@ -139,19 +193,35 @@ function sameDay(iso: string, now: Date): boolean {
   );
 }
 
+/** The task an event is about, when it is about one. */
+function taskOf(event: ActivityEvent): ActivityRow["task"] {
+  if (event.subject.type !== "task") return undefined;
+  const key = (event.payload?.["steward_task_key"] as string | undefined) ?? "";
+  if (!key) return undefined;
+  return { key, id: event.subject.id, title: event.subject.label ?? event.subject.id };
+}
+
+/** Every recorded event, newest first, unfiltered. */
+export function recordedActivity(events: ActivityEvent[]): ActivityRow[] {
+  return [...events]
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+    .map((event) => {
+      const task = taskOf(event);
+      return {
+        id: event.id,
+        label: event.summary || event.subject.label || event.subject.id,
+        roomLabel: roomLabel(event.provenance.appId),
+        standing: "recorded",
+        kind: activityKind(event.name, event.summary ?? ""),
+        at: event.occurredAt,
+        ...(task ? { task } : {}),
+      };
+    });
+}
+
 /** Everything the suite recorded today, newest first. */
 export function todaysActivity(events: ActivityEvent[], now: Date): ActivityRow[] {
-  return events
-    .filter((event) => sameDay(event.occurredAt, now))
-    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
-    .map((event) => ({
-      id: event.id,
-      label: event.summary || event.subject.label || event.subject.id,
-      roomLabel: roomLabel(event.provenance.appId),
-      standing: "recorded",
-      kind: activityKind(event.name, event.summary ?? ""),
-      at: event.occurredAt,
-    }));
+  return recordedActivity(events.filter((event) => sameDay(event.occurredAt, now)));
 }
 
 /**
