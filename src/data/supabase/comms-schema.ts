@@ -76,8 +76,9 @@ function memory(value: unknown, tier: MemoryItem["tier"]): MemoryItem[] {
       ...(text(entry["category"]) ? { category: text(entry["category"])! } : {}),
       ...(text(entry["due"]) ? { due: text(entry["due"])! } : {}),
       ...(["open", "kept", "released"].includes(String(entry["status"]))
-        ? { status: entry["status"] as MemoryItem["status"] }
+        ? { status: entry["status"] as NonNullable<MemoryItem["status"]> }
         : {}),
+
       ...(text(entry["owner"]) ? { owner: text(entry["owner"])! } : {}),
       ...(text(entry["added_by"]) ? { addedBy: text(entry["added_by"])! } : {}),
     }))
