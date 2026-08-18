@@ -66,6 +66,7 @@ const STATE_TO_SURFACE: Record<ExecutionState, SurfaceStatus> = {
 export function surfaceStatus(project: ExecutionProject): SurfaceStatus {
   const base = STATE_TO_SURFACE[project.state];
   if (base !== "in_progress") return base;
+  if (project.waitingOn?.trim()) return "waiting";
   const owned = Boolean(project.ownerUserId || project.ownerLabel?.trim());
   if (!owned || !project.nextMove?.trim()) return "waiting";
   return "in_progress";
