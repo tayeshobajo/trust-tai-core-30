@@ -70,7 +70,15 @@ function OpsRoute() {
 function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const { data, isLoading, isError, isFetching, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["ops-portfolio", identity.organizationId],
-    queryFn: async () => opsEventsOf(await loadSuiteSnapshot(identity.organizationId)),
+    queryFn: async () => {
+      // Two honest sources: the projection Ops pushes, and the shared stream.
+      // Neither is fabricated when the other is missing.
+      const [snapshot, projection] = await Promise.all([
+        loadSuiteSnapshot(identity.organizationId),
+        loadOpsProjection(identity.organizationId),
+      ]);
+      return { events: opsEventsOf(snapshot), projection };
+    },
     refetchInterval: 60_000,
   });
 
@@ -82,7 +90,19 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [failure, setFailure] = useState<OpsLaunchFailure | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
 
-  const portfolio = useMemo(() => opsPortfolio(data ?? []), [data]);
+  const portfolio = useMemo(
+    () => mergeOpsPortfolio(opsPortfolio(data?.events ?? []), data?.projection.rows ?? []),
+    [data],
+  );
+  const lastSyncedAt = useMemo(() => {
+    const stamps = (data?.projection.rows ?? []).map((row) => row.lastSyncedAt).sort();
+    return stamps.length > 0 ? stamps[stamps.length - 1]! : null;
+  }, [data]);
+  const connection = opsConnectionState({
+    lastSyncedAt,
+    projectionReadOk: data?.projection.ok !== false && !isError,
+    now: dataUpdatedAt || Date.now(),
+  });
   const systems = useMemo(
     () => sortOpsSystems(filterOpsSystems(portfolio.systems, filters), sort),
     [portfolio.systems, filters, sort],
@@ -91,6 +111,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
     () => paginateOpsSystems(systems, page, pageSize),
     [systems, page, pageSize],
   );
+
 
   // Any change to what is being listed returns to the first page, so the
   // person is never left staring at an empty page that used to have rows.
