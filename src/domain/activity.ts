@@ -26,6 +26,11 @@ export type ActivityAction =
   | "decision_resolved"
   | "next_move_changed"
   | "flagged"
+  /* --- Settings: identity, membership and application access --- */
+  | "invited"
+  | "access_changed"
+  | "deactivated"
+  | "reactivated"
   /* --- shared suite vocabulary (see src/domain/events.ts) --- */
   | "qualified"
   | "discovered"

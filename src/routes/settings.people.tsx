@@ -1,0 +1,593 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+
+import { SectionHeading, TTButton, TTField, TTInput } from "@/components/tt/primitives";
+import { Health, NotProvisioned, PersonChip, TTSelect } from "@/components/tt/settings/pieces";
+import { useSettingsIdentity } from "@/components/tt/settings/shell";
+import {
+  cancelInvitation,
+  inviteMembers,
+  listInvitations,
+  listMembers,
+  parseEmails,
+  readOrganizationApps,
+  resendInvitation,
+  setMemberAppAccess,
+  setMemberRole,
+  setMemberStatus,
+  type MemberProfile,
+} from "@/data/supabase/settings-service";
+import { ROLE_LABEL, WORKSPACE_ROLES, normalizeRole, type WorkspaceRole } from "@/domain/access";
+import {
+  APP_ACCESS_DESCRIPTION,
+  APP_ACCESS_LABEL,
+  APP_ACCESS_LEVELS,
+  resolveAppAccess,
+  roleDefaultAccess,
+  type AppAccessLevel,
+} from "@/domain/app-access";
+import { APP_REGISTRY } from "@/domain/registry";
+
+export const Route = createFileRoute("/settings/people")({
+  component: PeopleSettings,
+});
+
+function whenText(value: string | null): string {
+  if (!value) return "No activity recorded";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "No activity recorded";
+  return date.toLocaleDateString(undefined, { dateStyle: "medium" });
+}
+
+function PeopleSettings() {
+  const identity = useSettingsIdentity();
+  const queryClient = useQueryClient();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const members = useQuery({
+    queryKey: ["settings", "members", identity.organizationId],
+    queryFn: () => listMembers(identity.organizationId),
+  });
+  const apps = useQuery({
+    queryKey: ["settings", "org-apps", identity.organizationId],
+    queryFn: () => readOrganizationApps(identity.organizationId),
+  });
+  const invitations = useQuery({
+    queryKey: ["settings", "invitations", identity.organizationId],
+    queryFn: () => listInvitations(identity.organizationId),
+  });
+
+  const orgEnabled = apps.data?.value ?? {};
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["settings"] });
+    void queryClient.invalidateQueries({ queryKey: ["workspace"] });
+  };
+
+  const roleChange = useMutation({
+    mutationFn: async (input: { member: MemberProfile; role: WorkspaceRole }) =>
+      setMemberRole({
+        organizationId: identity.organizationId,
+        userId: input.member.userId,
+        memberName: input.member.name,
+        role: input.role,
+        actorUserId: identity.userId,
+      }),
+    onSuccess: refresh,
+  });
+
+  const accessChange = useMutation({
+    mutationFn: async (input: {
+      member: MemberProfile;
+      appId: string;
+      appName: string;
+      level: AppAccessLevel;
+    }) =>
+      setMemberAppAccess({
+        organizationId: identity.organizationId,
+        userId: input.member.userId,
+        memberName: input.member.name,
+        appId: input.appId,
+        appName: input.appName,
+        level: input.level,
+        actorUserId: identity.userId,
+      }),
+    onSuccess: refresh,
+  });
+
+  const statusChange = useMutation({
+    mutationFn: async (input: { member: MemberProfile; status: "active" | "deactivated" }) =>
+      setMemberStatus({
+        organizationId: identity.organizationId,
+        userId: input.member.userId,
+        memberName: input.member.name,
+        status: input.status,
+        actorUserId: identity.userId,
+      }),
+    onSuccess: refresh,
+  });
+
+  const rows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const all = members.data ?? [];
+    if (!term) return all;
+    return all.filter(
+      (member) =>
+        member.name.toLowerCase().includes(term) || member.email.toLowerCase().includes(term),
+    );
+  }, [members.data, search]);
+
+  const selected = (members.data ?? []).find((member) => member.userId === selectedId) ?? null;
+
+  return (
+    <>
+      <div className="tt-surface p-6">
+        <SectionHeading
+          eyebrow="Workspace"
+          title="People &amp; access"
+          description="Who is in this workspace, what authority they hold, and which rooms they can see. Access always fails closed."
+        />
+
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <TTInput
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search people by name or email"
+            aria-label="Search people"
+            className="max-w-xs"
+          />
+          <span className="text-xs text-muted-foreground">
+            {members.isPending ? "Reading members…" : `${rows.length} shown`}
+          </span>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full min-w-[640px] text-left">
+            <thead>
+              <tr className="border-b border-border bg-secondary/50">
+                <th className="tt-eyebrow px-4 py-2 font-normal">Person</th>
+                <th className="tt-eyebrow px-4 py-2 font-normal">Role</th>
+                <th className="tt-eyebrow px-4 py-2 font-normal">Rooms</th>
+                <th className="tt-eyebrow px-4 py-2 font-normal">Last active</th>
+                <th className="tt-eyebrow px-4 py-2 font-normal">Status</th>
+                <th className="px-4 py-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((member) => {
+                const visible = APP_REGISTRY.filter(
+                  (app) =>
+                    resolveAppAccess(app.id, {
+                      role: member.role,
+                      membershipActive: member.status === "active",
+                      organizationEnabled: orgEnabled[app.id] !== false,
+                      override: member.access[app.id],
+                    }).visible,
+                );
+                return (
+                  <tr key={member.userId} className="align-middle">
+                    <td className="px-4 py-3">
+                      <PersonChip
+                        name={member.name}
+                        email={member.email}
+                        avatarUrl={member.avatarUrl}
+                        supporting={member.jobTitle ?? member.email}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      {identity.canManage && member.userId !== identity.userId ? (
+                        <TTSelect
+                          aria-label={`Role for ${member.name}`}
+                          className="h-9 w-40"
+                          value={member.role}
+                          onChange={(event) =>
+                            roleChange.mutate({
+                              member,
+                              role: normalizeRole(event.target.value),
+                            })
+                          }
+                        >
+                          {WORKSPACE_ROLES.map((role) => (
+                            <option key={role} value={role}>
+                              {ROLE_LABEL[role]}
+                            </option>
+                          ))}
+                        </TTSelect>
+                      ) : (
+                        <span className="text-sm text-foreground">{ROLE_LABEL[member.role]}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {visible.length === 0
+                        ? "No rooms"
+                        : `${visible.length} of ${APP_REGISTRY.length}`}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {whenText(member.lastActiveAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Health tone={member.status === "active" ? "good" : "neutral"}>
+                        {member.status === "active" ? "Active" : "Deactivated"}
+                      </Health>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedId(selectedId === member.userId ? null : member.userId)
+                        }
+                        className="text-[13px] text-royal hover:underline"
+                      >
+                        {selectedId === member.userId ? "Close" : "Manage access"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!members.isPending && rows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    No one matches that search.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+
+        {roleChange.error || accessChange.error || statusChange.error ? (
+          <p className="mt-4 text-sm text-destructive" role="alert">
+            {
+              ((roleChange.error ?? accessChange.error ?? statusChange.error) as Error)
+                .message
+            }
+          </p>
+        ) : null}
+      </div>
+
+      {selected ? (
+        <MemberAccessPanel
+          member={selected}
+          orgEnabled={orgEnabled}
+          canManage={identity.canManage}
+          isSelf={selected.userId === identity.userId}
+          provisioned={apps.data?.provisioned ?? false}
+          onLevel={(appId, appName, level) =>
+            accessChange.mutate({ member: selected, appId, appName, level })
+          }
+          onStatus={(status) => statusChange.mutate({ member: selected, status })}
+        />
+      ) : null}
+
+      {identity.canManage ? (
+        <InvitePanel
+          organizationId={identity.organizationId}
+          actorUserId={identity.userId}
+          onDone={refresh}
+        />
+      ) : null}
+
+      <div className="tt-surface p-6">
+        <SectionHeading
+          title="Pending invitations"
+          description="People invited but not yet signed in. An invitation grants nothing until it is accepted."
+        />
+        {invitations.data?.provisioned === false ? (
+          <NotProvisioned what="Invitations" file="docs/settings-schema.sql" />
+        ) : (invitations.data?.value ?? []).filter((row) => row.status === "pending").length ===
+          0 ? (
+          <p className="text-sm text-muted-foreground">No invitations are waiting.</p>
+        ) : (
+          <div className="divide-y divide-border rounded-xl border border-border">
+            {(invitations.data?.value ?? [])
+              .filter((row) => row.status === "pending")
+              .map((invitation) => (
+                <div
+                  key={invitation.id}
+                  className="flex flex-wrap items-center gap-3 px-4 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-foreground">{invitation.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {ROLE_LABEL[invitation.role]} · invited {whenText(invitation.createdAt)}
+                    </p>
+                  </div>
+                  {identity.canManage ? (
+                    <>
+                      <button
+                        type="button"
+                        className="text-[13px] text-royal hover:underline"
+                        onClick={() =>
+                          void resendInvitation({
+                            organizationId: identity.organizationId,
+                            invitationId: invitation.id,
+                            email: invitation.email,
+                            actorUserId: identity.userId,
+                          }).then(refresh)
+                        }
+                      >
+                        Send again
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[13px] text-muted-foreground hover:text-destructive hover:underline"
+                        onClick={() =>
+                          void cancelInvitation({
+                            organizationId: identity.organizationId,
+                            invitationId: invitation.id,
+                            email: invitation.email,
+                            actorUserId: identity.userId,
+                          }).then(refresh)
+                        }
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function MemberAccessPanel({
+  member,
+  orgEnabled,
+  canManage,
+  isSelf,
+  provisioned,
+  onLevel,
+  onStatus,
+}: {
+  member: MemberProfile;
+  orgEnabled: Record<string, boolean>;
+  canManage: boolean;
+  isSelf: boolean;
+  provisioned: boolean;
+  onLevel: (appId: string, appName: string, level: AppAccessLevel) => void;
+  onStatus: (status: "active" | "deactivated") => void;
+}) {
+  return (
+    <div className="tt-surface p-6">
+      <SectionHeading
+        eyebrow="Access"
+        title={`What ${member.name} can reach`}
+        description="Visibility and authority are separate. Hidden rooms never appear in their navigation."
+      />
+
+      <div className="space-y-2">
+        {APP_REGISTRY.map((app) => {
+          const enabled = orgEnabled[app.id] !== false;
+          const ceiling = roleDefaultAccess(member.role, app.id);
+          const decision = resolveAppAccess(app.id, {
+            role: member.role,
+            membershipActive: member.status === "active",
+            organizationEnabled: enabled,
+            override: member.access[app.id],
+          });
+          const current = member.access[app.id] ?? ceiling;
+          return (
+            <div
+              key={app.id}
+              className="flex flex-wrap items-center gap-3 rounded-xl border border-border px-4 py-3"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground">{app.name}</p>
+                <p className="text-xs text-muted-foreground">{decision.because}</p>
+              </div>
+              <TTSelect
+                aria-label={`${app.name} access for ${member.name}`}
+                className="h-9 w-36"
+                value={current}
+                disabled={!canManage || !provisioned || !enabled || ceiling === "hidden"}
+                onChange={(event) =>
+                  onLevel(app.id, app.name, event.target.value as AppAccessLevel)
+                }
+              >
+                {APP_ACCESS_LEVELS.map((level) => (
+                  <option key={level} value={level}>
+                    {APP_ACCESS_LABEL[level]}
+                  </option>
+                ))}
+              </TTSelect>
+            </div>
+          );
+        })}
+      </div>
+
+      {provisioned ? null : (
+        <div className="mt-4">
+          <NotProvisioned what="Per-person application access" file="docs/settings-schema.sql" />
+        </div>
+      )}
+
+      <div className="mt-6 rounded-xl border border-border bg-secondary/40 p-4">
+        <p className="tt-eyebrow">What each level means</p>
+        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+          {APP_ACCESS_LEVELS.map((level) => (
+            <li key={level}>
+              <span className="text-foreground">{APP_ACCESS_LABEL[level]}</span>{" "}
+              {APP_ACCESS_DESCRIPTION[level]}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {canManage && !isSelf ? (
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <TTButton
+            variant="secondary"
+            onClick={() => onStatus(member.status === "active" ? "deactivated" : "active")}
+          >
+            {member.status === "active"
+              ? `Deactivate ${member.name}`
+              : `Reactivate ${member.name}`}
+          </TTButton>
+          <span className="text-xs text-muted-foreground">
+            A deactivated person keeps their history and loses every room immediately.
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function InvitePanel({
+  organizationId,
+  actorUserId,
+  onDone,
+}: {
+  organizationId: string;
+  actorUserId: string;
+  onDone: () => void;
+}) {
+  const [emails, setEmails] = useState("");
+  const [role, setRole] = useState<WorkspaceRole>("team_member");
+  const [overrides, setOverrides] = useState<Record<string, AppAccessLevel>>({});
+  const [sent, setSent] = useState<number | null>(null);
+
+  const parsed = parseEmails(emails);
+
+  const invite = useMutation({
+    mutationFn: async () =>
+      inviteMembers({
+        organizationId,
+        emails: parsed.valid,
+        role,
+        access: overrides,
+        actorUserId,
+      }),
+    onSuccess: (count) => {
+      setSent(count);
+      setEmails("");
+      onDone();
+    },
+  });
+
+  return (
+    <div className="tt-surface p-6">
+      <SectionHeading
+        eyebrow="Invite"
+        title="Invite people"
+        description="Choose the role first, then narrow the rooms. Anything you leave alone follows the role template."
+      />
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <TTField
+          label="Email addresses"
+          hint="One or several, separated by commas or new lines."
+        >
+          <TTInput
+            value={emails}
+            onChange={(event) => {
+              setSent(null);
+              setEmails(event.target.value);
+            }}
+            placeholder="sarah@company.com"
+          />
+        </TTField>
+        <TTField label="Role">
+          <TTSelect
+            value={role}
+            onChange={(event) => {
+              setOverrides({});
+              setRole(normalizeRole(event.target.value));
+            }}
+          >
+            {WORKSPACE_ROLES.map((value) => (
+              <option key={value} value={value}>
+                {ROLE_LABEL[value]}
+              </option>
+            ))}
+          </TTSelect>
+        </TTField>
+      </div>
+
+      <p className="tt-eyebrow mt-5 mb-2">Application access</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {APP_REGISTRY.map((app) => {
+          const ceiling = roleDefaultAccess(role, app.id);
+          const current = overrides[app.id] ?? ceiling;
+          return (
+            <label
+              key={app.id}
+              className="flex items-center gap-3 rounded-xl border border-border px-4 py-3"
+            >
+              <input
+                type="checkbox"
+                className="size-4 accent-royal"
+                checked={current !== "hidden"}
+                disabled={ceiling === "hidden"}
+                onChange={(event) =>
+                  setOverrides((previous) => ({
+                    ...previous,
+                    [app.id]: event.target.checked
+                      ? ceiling === "hidden"
+                        ? "hidden"
+                        : "view"
+                      : "hidden",
+                  }))
+                }
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm text-foreground">{app.name}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {ceiling === "hidden" ? "Not available to this role" : APP_ACCESS_LABEL[current]}
+                </span>
+              </span>
+              {ceiling !== "hidden" && current !== "hidden" ? (
+                <TTSelect
+                  aria-label={`${app.name} level`}
+                  className="h-9 w-28"
+                  value={current}
+                  onChange={(event) =>
+                    setOverrides((previous) => ({
+                      ...previous,
+                      [app.id]: event.target.value as AppAccessLevel,
+                    }))
+                  }
+                >
+                  {APP_ACCESS_LEVELS.filter((level) => level !== "hidden").map((level) => (
+                    <option key={level} value={level}>
+                      {APP_ACCESS_LABEL[level]}
+                    </option>
+                  ))}
+                </TTSelect>
+              ) : null}
+            </label>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <TTButton
+          onClick={() => invite.mutate()}
+          disabled={parsed.valid.length === 0 || invite.isPending}
+        >
+          {invite.isPending
+            ? "Sending…"
+            : `Send ${parsed.valid.length || ""} invitation${parsed.valid.length === 1 ? "" : "s"}`.trim()}
+        </TTButton>
+        {parsed.invalid.length > 0 ? (
+          <span className="text-xs text-warning">
+            Not a valid address: {parsed.invalid.join(", ")}
+          </span>
+        ) : null}
+        {sent ? (
+          <span className="text-sm text-success" role="status">
+            {sent} invitation{sent === 1 ? "" : "s"} recorded.
+          </span>
+        ) : null}
+        {invite.error ? (
+          <span className="text-sm text-destructive" role="alert">
+            {(invite.error as Error).message}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}

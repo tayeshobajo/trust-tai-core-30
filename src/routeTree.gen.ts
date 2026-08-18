@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesActivityRouteImport } from './routes/modules.activity'
 import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
@@ -21,6 +22,14 @@ import { Route as ModulesPulseRouteImport } from './routes/modules.pulse'
 import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesStewardRouteImport } from './routes/modules.steward'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsAppsRouteImport } from './routes/settings.apps'
+import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
+import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
+import { Route as SettingsOrganizationRouteImport } from './routes/settings.organization'
+import { Route as SettingsPeopleRouteImport } from './routes/settings.people'
+import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
+import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
@@ -62,6 +71,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesSlugRoute = ModulesSlugRouteImport.update({
@@ -113,6 +127,46 @@ const ModulesStewardRoute = ModulesStewardRouteImport.update({
   id: '/modules/steward',
   path: '/modules/steward',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAppsRoute = SettingsAppsRouteImport.update({
+  id: '/apps',
+  path: '/apps',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsOrganizationRoute = SettingsOrganizationRouteImport.update({
+  id: '/organization',
+  path: '/organization',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsPeopleRoute = SettingsPeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsProfileRoute = SettingsProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsSecurityRoute = SettingsSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => SettingsRoute,
 } as any)
 const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
   id: '/',
@@ -292,6 +346,7 @@ const ApiPublicCommsGmailSyncRoute = ApiPublicCommsGmailSyncRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
@@ -302,6 +357,14 @@ export interface FileRoutesByFullPath {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/settings/apps': typeof SettingsAppsRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/organization': typeof SettingsOrganizationRoute
+  '/settings/people': typeof SettingsPeopleRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/settings/security': typeof SettingsSecurityRoute
+  '/settings/': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -343,6 +406,14 @@ export interface FileRoutesByTo {
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
+  '/settings/apps': typeof SettingsAppsRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/organization': typeof SettingsOrganizationRoute
+  '/settings/people': typeof SettingsPeopleRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/settings/security': typeof SettingsSecurityRoute
+  '/settings': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -379,6 +450,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
@@ -389,6 +461,14 @@ export interface FileRoutesById {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/settings/apps': typeof SettingsAppsRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/organization': typeof SettingsOrganizationRoute
+  '/settings/people': typeof SettingsPeopleRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/settings/security': typeof SettingsSecurityRoute
+  '/settings/': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -427,6 +507,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/settings'
     | '/modules/$slug'
     | '/modules/activity'
     | '/modules/comms'
@@ -437,6 +518,14 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/settings/apps'
+    | '/settings/integrations'
+    | '/settings/notifications'
+    | '/settings/organization'
+    | '/settings/people'
+    | '/settings/profile'
+    | '/settings/security'
+    | '/settings/'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -478,6 +567,14 @@ export interface FileRouteTypes {
     | '/modules/conductor'
     | '/modules/ops'
     | '/modules/pulse'
+    | '/settings/apps'
+    | '/settings/integrations'
+    | '/settings/notifications'
+    | '/settings/organization'
+    | '/settings/people'
+    | '/settings/profile'
+    | '/settings/security'
+    | '/settings'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -513,6 +610,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/settings'
     | '/modules/$slug'
     | '/modules/activity'
     | '/modules/comms'
@@ -523,6 +621,14 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/settings/apps'
+    | '/settings/integrations'
+    | '/settings/notifications'
+    | '/settings/organization'
+    | '/settings/people'
+    | '/settings/profile'
+    | '/settings/security'
+    | '/settings/'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -560,6 +666,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesActivityRoute: typeof ModulesActivityRoute
   ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
@@ -601,6 +708,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/$slug': {
@@ -672,6 +786,62 @@ declare module '@tanstack/react-router' {
       fullPath: '/modules/steward'
       preLoaderRoute: typeof ModulesStewardRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/apps': {
+      id: '/settings/apps'
+      path: '/apps'
+      fullPath: '/settings/apps'
+      preLoaderRoute: typeof SettingsAppsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/integrations': {
+      id: '/settings/integrations'
+      path: '/integrations'
+      fullPath: '/settings/integrations'
+      preLoaderRoute: typeof SettingsIntegrationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/notifications': {
+      id: '/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof SettingsNotificationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/organization': {
+      id: '/settings/organization'
+      path: '/organization'
+      fullPath: '/settings/organization'
+      preLoaderRoute: typeof SettingsOrganizationRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/people': {
+      id: '/settings/people'
+      path: '/people'
+      fullPath: '/settings/people'
+      preLoaderRoute: typeof SettingsPeopleRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/profile': {
+      id: '/settings/profile'
+      path: '/profile'
+      fullPath: '/settings/profile'
+      preLoaderRoute: typeof SettingsProfileRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/security': {
+      id: '/settings/security'
+      path: '/security'
+      fullPath: '/settings/security'
+      preLoaderRoute: typeof SettingsSecurityRouteImport
+      parentRoute: typeof SettingsRoute
     }
     '/modules/comms/': {
       id: '/modules/comms/'
@@ -900,6 +1070,32 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface SettingsRouteChildren {
+  SettingsAppsRoute: typeof SettingsAppsRoute
+  SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
+  SettingsNotificationsRoute: typeof SettingsNotificationsRoute
+  SettingsOrganizationRoute: typeof SettingsOrganizationRoute
+  SettingsPeopleRoute: typeof SettingsPeopleRoute
+  SettingsProfileRoute: typeof SettingsProfileRoute
+  SettingsSecurityRoute: typeof SettingsSecurityRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsAppsRoute: SettingsAppsRoute,
+  SettingsIntegrationsRoute: SettingsIntegrationsRoute,
+  SettingsNotificationsRoute: SettingsNotificationsRoute,
+  SettingsOrganizationRoute: SettingsOrganizationRoute,
+  SettingsPeopleRoute: SettingsPeopleRoute,
+  SettingsProfileRoute: SettingsProfileRoute,
+  SettingsSecurityRoute: SettingsSecurityRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 interface ModulesCommsRouteChildren {
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsVoiceRoute: typeof ModulesCommsVoiceRoute
@@ -1000,6 +1196,7 @@ const ModulesStewardRouteWithChildren = ModulesStewardRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  SettingsRoute: SettingsRouteWithChildren,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesActivityRoute: ModulesActivityRoute,
   ModulesCommsRoute: ModulesCommsRouteWithChildren,
