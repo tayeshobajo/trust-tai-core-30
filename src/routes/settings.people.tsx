@@ -328,7 +328,10 @@ function PeopleSettings() {
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <TTInput
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setPage(1);
+              setSearch(event.target.value);
+            }}
             placeholder="Search people by name or email"
             aria-label="Search people"
             className="max-w-xs"
@@ -336,12 +339,95 @@ function PeopleSettings() {
           <span className="text-xs text-muted-foreground">
             {members.isPending ? "Reading members…" : `${rows.length} shown`}
           </span>
+          <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+            <label htmlFor="people-page-size">People per page</label>
+            <TTSelect
+              id="people-page-size"
+              className="h-9 w-20"
+              value={String(pageSize)}
+              onChange={(event) => {
+                setPage(1);
+                setPageSize(Number(event.target.value));
+              }}
+            >
+              {[10, 25, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </TTSelect>
+          </span>
         </div>
 
+        {identity.canManage && checkedMembers.length > 0 ? (
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-royal/30 bg-royal/5 px-4 py-3">
+            <span className="text-sm text-foreground">
+              {checkedMembers.length} selected
+            </span>
+            <TTSelect
+              aria-label="Role to apply to selected people"
+              className="h-9 w-40"
+              value={bulkRole}
+              onChange={(event) => setBulkRole(normalizeRole(event.target.value))}
+            >
+              {ASSIGNABLE_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABEL[role]}
+                </option>
+              ))}
+            </TTSelect>
+            <TTButton
+              variant="secondary"
+              disabled={bulkBusy}
+              onClick={() => void runBulk({ kind: "role" })}
+            >
+              Apply role
+            </TTButton>
+            <TTButton
+              variant="secondary"
+              disabled={bulkBusy}
+              onClick={() => void runBulk({ kind: "status", status: "deactivated" })}
+            >
+              Suspend
+            </TTButton>
+            <TTButton
+              variant="secondary"
+              disabled={bulkBusy}
+              onClick={() => void runBulk({ kind: "status", status: "active" })}
+            >
+              Reactivate
+            </TTButton>
+            <button
+              type="button"
+              className="text-[13px] text-muted-foreground hover:underline"
+              onClick={() => setCheckedIds([])}
+            >
+              Clear selection
+            </button>
+            <span className="w-full text-xs text-muted-foreground">
+              {bulkBusy
+                ? "Applying, one person at a time so every change is recorded."
+                : (bulkNote ?? "You are never included in a bulk change.")}
+            </span>
+          </div>
+        ) : null}
+
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[640px] text-left">
+          <table className="w-full min-w-[720px] text-left">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
+                {identity.canManage ? (
+                  <th scope="col" className="w-10 px-4 py-2">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-royal"
+                      aria-label="Select everyone on this page"
+                      checked={allOnPageChecked}
+                      disabled={eligibleOnPage.length === 0}
+                      onChange={togglePage}
+                    />
+                  </th>
+                ) : null}
                 <SortHeader label="Person" sortKey="name" sort={sort} onSort={toggleSort} />
                 <SortHeader
                   label="Role"
@@ -369,9 +455,22 @@ function PeopleSettings() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {rows.map(({ member, rooms }) => {
+              {pageRows.map(({ member, rooms }) => {
+                const selectable = identity.canManage && member.userId !== identity.userId;
                 return (
                   <tr key={member.userId} className="align-middle">
+                    {identity.canManage ? (
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-royal"
+                          aria-label={`Select ${member.name}`}
+                          checked={checkedSet.has(member.userId)}
+                          disabled={!selectable}
+                          onChange={() => toggleChecked(member.userId)}
+                        />
+                      </td>
+                    ) : null}
                     <td className="px-4 py-3">
                       <PersonChip
                         name={member.name}
@@ -381,7 +480,7 @@ function PeopleSettings() {
                       />
                     </td>
                     <td className="px-4 py-3">
-                      {identity.canManage && member.userId !== identity.userId ? (
+                      {selectable ? (
                         <TTSelect
                           aria-label={`Role for ${member.name}`}
                           className="h-9 w-40"
@@ -430,7 +529,10 @@ function PeopleSettings() {
               })}
               {!members.isPending && rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td
+                    colSpan={identity.canManage ? 7 : 6}
+                    className="px-4 py-8 text-center text-sm text-muted-foreground"
+                  >
                     No one matches that search.
                   </td>
                 </tr>
@@ -438,6 +540,35 @@ function PeopleSettings() {
             </tbody>
           </table>
         </div>
+
+        {rows.length > 0 ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <span className="text-xs text-muted-foreground">
+              Showing {pageStart + 1} to {Math.min(pageStart + pageSize, rows.length)} of{" "}
+              {rows.length}
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <TTButton
+                variant="secondary"
+                disabled={currentPage <= 1}
+                onClick={() => setPage(Math.max(1, currentPage - 1))}
+              >
+                Previous
+              </TTButton>
+              <span className="text-xs text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <TTButton
+                variant="secondary"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+              >
+                Next
+              </TTButton>
+            </div>
+          </div>
+        ) : null}
+
 
         {roleChange.error || accessChange.error || statusChange.error ? (
           <p className="mt-4 text-sm text-destructive" role="alert">
