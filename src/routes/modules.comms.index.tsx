@@ -436,7 +436,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           attention={attentionSplit.shown}
           setAside={attentionSplit.set_aside}
           onSnooze={(id, choice: SnoozeChoice) =>
-            decideAttention(snoozeRelationship(attentionState, id, choice))
+            decideAttention(snoozeRelationship(attentionState, id, snoozeUntil(choice)))
           }
           onMarkReviewed={(id) => decideAttention(markReviewed(attentionState, id))}
           onRestoreAttention={(id) => decideAttention(clearAttentionDecision(attentionState, id))}
