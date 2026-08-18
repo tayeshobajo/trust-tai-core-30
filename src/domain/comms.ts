@@ -123,16 +123,25 @@ export interface Relationship {
 
 /* --------------------------------------------------------------- threads */
 
-export type ThreadChannel = "email" | "call" | "meeting" | "message" | "note" | "linkedin";
+export type ThreadChannel =
+  | "email"
+  | "call"
+  | "meeting"
+  | "message"
+  | "note"
+  | "linkedin"
+  | "text";
 
 export const CHANNEL_LABEL: Record<ThreadChannel, string> = {
   email: "Email",
-  call: "Call",
+  call: "Phone call",
   meeting: "Meeting",
   message: "Message",
   note: "Note",
   linkedin: "LinkedIn",
+  text: "Text",
 };
+
 
 export type ThreadState = "open" | "waiting_on_us" | "waiting_on_them" | "scheduled" | "closed";
 
