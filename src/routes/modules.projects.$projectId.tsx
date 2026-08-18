@@ -476,6 +476,10 @@ function DeliveryRoom({
               onRemoveThinking={(source) =>
                 mutate.mutate(() => projectIntelligence.removeThinking(source, delivery))
               }
+              onImportThinking={(source, text) =>
+                mutate.mutate(() => projectIntelligence.importThinking(source, text, delivery))
+              }
+
               onAddConnection={(input) =>
                 mutate.mutate(() => projectIntelligence.addConnection(input, delivery))
               }

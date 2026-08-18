@@ -21,6 +21,7 @@ import { CompanyGroups } from "@/components/tt/projects/index/company-group";
 import { ProjectDrawer } from "@/components/tt/projects/index/drawer";
 import {
   CreateProjectModal,
+  type CreateProjectExtras,
   type CreateProjectSeed,
 } from "@/components/tt/projects/index/create-modal";
 import { RoadmapHandoffs, type HandoffRow } from "@/components/tt/projects/index/handoff-list";
@@ -56,6 +57,7 @@ import { projectFromMilestone } from "@/data/projects-handoff";
 import { readiness } from "@/data/roadmap-milestones";
 import type { RoadmapIdentity } from "@/data/roadmap-index";
 import { listApprovedMilestones } from "@/data/supabase/roadmap-handoffs";
+import { projectIntelligence } from "@/data/supabase/project-intelligence";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import { roadmapService } from "@/data/supabase/roadmap-service";
 import { scoutService } from "@/data/supabase/scout-service";
@@ -220,7 +222,41 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
   }, [approvedQuery.data, projectsQuery.data, sources]);
 
   const create = useMutation({
-    mutationFn: (input: ProjectInput) => projectsService.start(input, context),
+    mutationFn: async ({
+      input,
+      extras,
+    }: {
+      input: ProjectInput;
+      extras: CreateProjectExtras;
+    }) => {
+      const project = await projectsService.start(input, context);
+      // Everything after the promise is optional, so a failing extra must not
+      // undo a project that already exists. Each one is attempted on its own.
+      const delivery = { ...context, projectId: project.id, projectName: project.name };
+      for (const source of extras.thinking) {
+        try {
+          await projectIntelligence.addThinking(source, delivery);
+        } catch {
+          /* the link can be added again from the project itself */
+        }
+      }
+      for (const file of extras.mockups) {
+        try {
+          await projectIntelligence.uploadAsset(file, { assetType: "mockup" }, delivery);
+        } catch {
+          /* the mockup can be uploaded again from Assets */
+        }
+      }
+      for (const connection of extras.connections) {
+        try {
+          await projectIntelligence.addConnection(connection, delivery);
+        } catch {
+          /* the link can be added again from Context */
+        }
+      }
+      return project;
+    },
+
     onSuccess: async (project) => {
       setModalOpen(false);
       setSeed(null);
@@ -486,7 +522,7 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
           setModalOpen(false);
           setPendingMilestoneId(null);
         }}
-        onCreate={(input) => create.mutate(input)}
+        onCreate={(input, extras) => create.mutate({ input, extras })}
       />
     </AppShell>
 

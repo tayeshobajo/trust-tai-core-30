@@ -7,13 +7,19 @@
  */
 
 import { useState } from "react";
-import { Check, ExternalLink, Plus, Trash2, Upload } from "lucide-react";
+import { Check, ExternalLink, FileUp, Plus, Trash2, Upload } from "lucide-react";
 
 import { Panel } from "./overview";
 import { MetaPill, TTButton, TTInput } from "@/components/tt/primitives";
 import type { ContextHealth } from "@/data/projects/context-packet";
 import type { ProjectContextPacket } from "@/data/projects/context-packet";
 import type { ProjectSuggestion } from "@/data/projects/suggestions";
+import {
+  importSummary,
+  parseThinkingImport,
+  type ImportCandidate,
+} from "@/data/projects/thinking-import";
+
 import type { WorkItem } from "@/domain/project-delivery";
 import {
   ASSET_STATUS_LABEL,
@@ -53,6 +59,131 @@ function Empty({ title, body }: { title: string; body: string }) {
 const SELECT =
   "h-9 rounded-md border border-border bg-background px-2 text-[13px] text-foreground";
 
+/**
+ * One linked thinking room, with the honest thing it can do next. A private
+ * assistant thread cannot be read from its URL, so the only real path forward
+ * is a person pasting or uploading the part that matters.
+ */
+function ThinkingRow({
+  source,
+  busy,
+  onPrimary,
+  onRemove,
+  onImport,
+}: {
+  source: ThinkingSource;
+  busy: boolean;
+  onPrimary: () => void;
+  onRemove: () => void;
+  onImport?: (text: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [preview, setPreview] = useState<ImportCandidate[]>([]);
+
+  const canImport =
+    Boolean(onImport) &&
+    (source.syncState === "import_needs_upload" ||
+      source.syncState === "import_available" ||
+      source.syncState === "imported");
+
+  function read(value: string) {
+    setText(value);
+    setPreview(parseThinkingImport(value));
+  }
+
+  return (
+    <li className="border-t border-border pt-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-[15px] text-foreground">{source.title}</span>
+        <MetaPill>{THINKING_SOURCE_LABEL[source.sourceType]}</MetaPill>
+        <MetaPill>{SOURCE_SYNC_LABEL[source.syncState]}</MetaPill>
+        {source.isPrimary ? <MetaPill className="text-royal">Primary</MetaPill> : null}
+        {source.lastReviewedAt ? (
+          <MetaPill>Reviewed {source.lastReviewedAt.slice(0, 10)}</MetaPill>
+        ) : null}
+        <a
+          href={source.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[13px] text-royal underline-offset-2 hover:underline"
+        >
+          Open <ExternalLink aria-hidden className="size-3.5" />
+        </a>
+        {source.isPrimary ? null : (
+          <TTButton size="sm" variant="quiet" disabled={busy} onClick={onPrimary}>
+            Make primary
+          </TTButton>
+        )}
+        {canImport ? (
+          <TTButton size="sm" variant="secondary" onClick={() => setOpen((value) => !value)}>
+            <FileUp aria-hidden className="size-4" />
+            {source.syncState === "imported" ? "Import again" : "Import"}
+          </TTButton>
+        ) : null}
+        <TTButton
+          size="sm"
+          variant="quiet"
+          disabled={busy}
+          onClick={onRemove}
+          aria-label={`Remove ${source.title}`}
+        >
+          <Trash2 aria-hidden className="size-4" />
+        </TTButton>
+      </div>
+
+      {open && onImport ? (
+        <div className="mt-3 space-y-2 rounded-xl border border-border bg-secondary/40 p-3">
+          <p className="text-[13px] text-muted-foreground">
+            Paste the part of this thread that matters, or upload a Markdown or text export.
+            Everything found arrives as Needs review.
+          </p>
+          <textarea
+            rows={5}
+            aria-label={`Import from ${source.title}`}
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            value={text}
+            placeholder="Decision: we ship the calm version first…"
+            onChange={(event) => read(event.target.value)}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-royal">
+              <FileUp aria-hidden className="size-4" />
+              <span>Upload .md or .txt</span>
+              <input
+                type="file"
+                accept=".md,.markdown,.txt,text/plain,text/markdown"
+                className="sr-only"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) read(await file.text());
+                }}
+              />
+            </label>
+            <TTButton
+              size="sm"
+              disabled={busy || preview.length === 0}
+              onClick={() => {
+                onImport(text);
+                setText("");
+                setPreview([]);
+                setOpen(false);
+              }}
+            >
+              Import {preview.length > 0 ? `${preview.length} candidate${preview.length === 1 ? "" : "s"}` : ""}
+            </TTButton>
+          </div>
+          {text.trim().length > 0 ? (
+            <p className="text-[13px] text-muted-foreground">{importSummary(preview)}</p>
+          ) : null}
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+
 /* ---------------------------------------------------------------- context */
 
 export function ContextTab({
@@ -65,6 +196,7 @@ export function ContextTab({
   onAddThinking,
   onPrimaryThinking,
   onRemoveThinking,
+  onImportThinking,
   onAddConnection,
   onRemoveConnection,
   onDismissSuggestion,
@@ -78,9 +210,11 @@ export function ContextTab({
   onAddThinking: (input: ThinkingSourceInput) => void;
   onPrimaryThinking: (source: ThinkingSource) => void;
   onRemoveThinking: (source: ThinkingSource) => void;
+  onImportThinking?: (source: ThinkingSource, text: string) => void;
   onAddConnection: (input: ConnectionInput) => void;
   onRemoveConnection: (connection: ProjectConnection) => void;
   onDismissSuggestion: (id: string) => void;
+
 }) {
   const [sourceType, setSourceType] = useState<ThinkingSourceType>("chatgpt");
   const [sourceTitle, setSourceTitle] = useState("");
@@ -192,37 +326,20 @@ export function ContextTab({
         ) : (
           <ul className="mt-4 space-y-3">
             {thinking.map((source) => (
-              <li key={source.id} className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
-                <span className="text-[15px] text-foreground">{source.title}</span>
-                <MetaPill>{THINKING_SOURCE_LABEL[source.sourceType]}</MetaPill>
-                <MetaPill>{SOURCE_SYNC_LABEL[source.syncState]}</MetaPill>
-                {source.isPrimary ? <MetaPill className="text-royal">Primary</MetaPill> : null}
-                <a
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[13px] text-royal underline-offset-2 hover:underline"
-                >
-                  Open <ExternalLink aria-hidden className="size-3.5" />
-                </a>
-                {source.isPrimary ? null : (
-                  <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => onPrimaryThinking(source)}>
-                    Make primary
-                  </TTButton>
-                )}
-                <TTButton
-                  size="sm"
-                  variant="quiet"
-                  disabled={busy}
-                  onClick={() => onRemoveThinking(source)}
-                  aria-label={`Remove ${source.title}`}
-                >
-                  <Trash2 aria-hidden className="size-4" />
-                </TTButton>
-              </li>
+              <ThinkingRow
+                key={source.id}
+                source={source}
+                busy={busy}
+                onPrimary={() => onPrimaryThinking(source)}
+                onRemove={() => onRemoveThinking(source)}
+                {...(onImportThinking
+                  ? { onImport: (text: string) => onImportThinking(source, text) }
+                  : {})}
+              />
             ))}
           </ul>
         )}
+
         <p className="mt-4 text-[13px] text-muted-foreground">
           A link is a link. Nothing is read from these threads automatically, so the state shown is
           the honest one.
@@ -369,11 +486,17 @@ export function KnowledgeTab({
   const [section, setSection] = useState<KnowledgeSection>("decision");
   const [body, setBody] = useState("");
 
+  // Only confirmed items are canonical. Anything imported or detected waits in
+  // the review queue above until a person agrees with it.
   const live = knowledge.filter((item) => item.reviewState !== "superseded");
+  const pending = live.filter(
+    (item) => item.reviewState === "needs_review" || item.reviewState === "detected",
+  );
   const grouped = KNOWLEDGE_SECTIONS.map((value) => ({
     section: value,
-    items: live.filter((item) => item.section === value),
+    items: live.filter((item) => item.section === value && item.reviewState === "confirmed"),
   })).filter((group) => group.items.length > 0);
+
 
   return (
     <div className="space-y-5">
@@ -414,6 +537,40 @@ export function KnowledgeTab({
           Needs review until a person agrees with it.
         </p>
       </Panel>
+
+      {pending.length > 0 ? (
+        <Panel title={`Awaiting your review (${pending.length})`} tone="risk">
+          <p className="max-w-reading text-[13px] text-muted-foreground">
+            Imported from a thinking room, a meeting or an agent. None of it counts as project
+            truth, and none of it reaches the context packet, until you confirm it.
+          </p>
+          <ul className="mt-4 space-y-4">
+            {pending.map((item) => (
+              <li key={item.id} className="border-t border-border pt-3 first:border-0 first:pt-0">
+                <p className="max-w-reading text-[15px] text-foreground">{item.body}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <MetaPill>{KNOWLEDGE_SECTION_LABEL[item.section]}</MetaPill>
+                  <MetaPill>{KNOWLEDGE_REVIEW_LABEL[item.reviewState]}</MetaPill>
+                  <MetaPill>
+                    {item.sourceLabel ?? item.origin.replace(/_/g, " ")}
+                  </MetaPill>
+                  {typeof item.confidence === "number" ? (
+                    <MetaPill>Read as {Math.round(item.confidence * 100)}% likely</MetaPill>
+                  ) : null}
+                  <TTButton size="sm" disabled={busy} onClick={() => onConfirm(item)}>
+                    <Check aria-hidden className="size-4" /> Confirm
+                  </TTButton>
+                  <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => onSupersede(item)}>
+                    Discard
+                  </TTButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      ) : null}
+
+
 
       {grouped.length === 0 ? (
         <Empty
