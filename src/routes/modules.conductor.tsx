@@ -11,7 +11,6 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { ApprovalQueue } from "@/components/tt/conductor/approval-queue";
 import { OutcomeLearning } from "@/components/tt/conductor/outcome-learning";
@@ -42,8 +41,7 @@ import {
   loadLearning,
   loadObservations,
 } from "@/data/supabase/conductor-learning-service";
-import { getWorkforceSummary } from "@/data/execution-workforce";
-import { MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
+import { TTButton } from "@/components/tt/primitives";
 import {
   approveEverything,
   decide,
@@ -122,9 +120,7 @@ function ConductorRoute() {
   return (
     <WorkspaceGate>
       {(identity) => (
-        <AppShell identity={identity}>
-          <Conductor identity={identity} {...(handoff ? { handoff } : {})} />
-        </AppShell>
+        <Conductor identity={identity} {...(handoff ? { handoff } : {})} />
       )}
     </WorkspaceGate>
   );
@@ -237,12 +233,6 @@ function Conductor({
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["conductor-control", identity.organizationId] }),
-  });
-
-  const workforce = useQuery({
-    queryKey: ["conductor-workforce", identity.organizationId],
-    queryFn: () => getWorkforceSummary({ data: { organizationId: identity.organizationId } }),
-    staleTime: 30_000,
   });
 
   const now = new Date().toISOString();
@@ -474,6 +464,7 @@ function Conductor({
   };
 
   return (
+    <AppShell identity={identity} sidebar={<ConductorSidebar glance={glance} />}>
     <div className="space-y-8">
       <ConductorHeader onExplain={openBoundaries} />
 
@@ -700,6 +691,7 @@ function Conductor({
         />
       </div>
     </div>
+    </AppShell>
   );
 }
 
