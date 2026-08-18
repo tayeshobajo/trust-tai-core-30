@@ -18,13 +18,26 @@ export const getStewardAgents = createServerFn({ method: "GET" })
 /**
  * Hand one bounded task to a Paperclip agent. Steward asks; Paperclip decides
  * how and when it runs, and reports its own completion.
+ *
+ * Idempotency is enforced via `execution_bindings.idempotency_key`. Passing
+ * `sourceEntityId` (the Trust Tai task key) prevents duplicate Paperclip
+ * issues even on retry.
  */
 export const assignStewardAgentTask = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: { organizationId: string; agentId: string; title: string; description: string }) => data,
+    (data: {
+      organizationId: string;
+      agentId: string;
+      title: string;
+      description: string;
+      /** Trust Tai task key — used as idempotency key base. */
+      sourceEntityId?: string | null;
+      sourceEntityType?: string | null;
+      sourceApp?: string | null;
+    }) => data,
   )
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context, data }): Promise<{ issueId: string }> => {
+  .handler(async ({ context, data }): Promise<{ issueId: string; bindingId: string; isNew: boolean }> => {
     const { assertStewardMembership, assignPaperclipTask } = await import(
       "@/lib/steward-agents.server"
     );
@@ -34,5 +47,8 @@ export const assignStewardAgentTask = createServerFn({ method: "POST" })
       agentId: data.agentId,
       title: data.title,
       description: data.description,
+      sourceEntityId: data.sourceEntityId ?? null,
+      sourceEntityType: data.sourceEntityType ?? null,
+      sourceApp: data.sourceApp ?? "steward",
     });
   });

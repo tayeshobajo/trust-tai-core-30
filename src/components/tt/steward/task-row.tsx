@@ -8,6 +8,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -15,6 +16,7 @@ import {
   STEWARD_FOCUS_TONE,
   STEWARD_STATE_LABEL,
   STEWARD_STATE_TONE,
+  type StewardAgent,
   type StewardTask,
 } from "@/domain/steward-accountability";
 import { cn } from "@/lib/utils";
@@ -72,6 +74,8 @@ export function TaskRow({
   onOpen,
   onComplete,
   onReassign,
+  onAssignAgent,
+  eligibleAgents,
   onDragStart,
   onDragOver,
   onDrop,
@@ -89,6 +93,10 @@ export function TaskRow({
   onOpen: () => void;
   onComplete: () => void;
   onReassign: () => void;
+  /** Called when Tai picks a specific agent from the row dropdown directly. */
+  onAssignAgent?: (agent: StewardAgent) => void;
+  /** Agents eligible to take this specific task. Empty = no agent shortcut shown. */
+  eligibleAgents?: StewardAgent[];
   onDragStart?: (event: DragEvent<HTMLLIElement>) => void;
   onDragOver?: (event: DragEvent<HTMLLIElement>) => void;
   onDrop?: (event: DragEvent<HTMLLIElement>) => void;
@@ -225,7 +233,7 @@ export function TaskRow({
         >
           <MoreHorizontal className="size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuItem onSelect={() => onOpen()}>Open detail</DropdownMenuItem>
           <DropdownMenuItem disabled={!canReassign.allowed} onSelect={() => onReassign()}>
             Reassign
@@ -233,6 +241,24 @@ export function TaskRow({
           {canReassign.allowed ? null : (
             <p className="px-2 py-2 text-xs text-muted-foreground">{canReassign.because}</p>
           )}
+          {canReassign.allowed && eligibleAgents && eligibleAgents.length > 0 ? (
+            <>
+              <DropdownMenuSeparator />
+              <p className="px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                Assign to agent
+              </p>
+              {eligibleAgents.map((agent) => (
+                <DropdownMenuItem
+                  key={agent.id}
+                  onSelect={() => onAssignAgent?.(agent)}
+                  className="gap-2"
+                >
+                  <Bot aria-hidden className="size-3.5 text-royal" />
+                  {agent.name}
+                </DropdownMenuItem>
+              ))}
+            </>
+          ) : null}
           {onMoveUp ? (
             <DropdownMenuItem onSelect={() => onMoveUp()}>Move up</DropdownMenuItem>
           ) : null}

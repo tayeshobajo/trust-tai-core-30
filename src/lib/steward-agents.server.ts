@@ -183,25 +183,73 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
 }
 
 /**
- * Ask Paperclip to take one task. Steward records the request; the agent's
- * execution state, including completion, still comes back from Paperclip.
+ * Ask Paperclip to take one task. Steward records the binding with a
+ * correlation ID and idempotency key so the same task cannot be dispatched
+ * twice, even on retry.
  */
 export async function assignPaperclipTask(input: {
   organizationId: string;
   agentId: string;
   title: string;
   description: string;
-}): Promise<{ issueId: string }> {
+  /** Trust Tai task key, used as the idempotency key base. */
+  sourceEntityId?: string | null;
+  sourceEntityType?: string | null;
+  sourceApp?: string | null;
+}): Promise<{ issueId: string; bindingId: string; isNew: boolean }> {
   const { paperclipClient } = await import("@/lib/paperclip-client.server");
+  const { recordBinding } = await import("@/lib/execution-bridge.server");
+
+  // Idempotency key: scoped to org + source entity so the same Trust Tai task
+  // can never land in Paperclip more than once.
+  const idempotencyKey = input.sourceEntityId
+    ? `trusttai:task:${input.organizationId}:${input.sourceEntityId}`
+    : `trusttai:task:${input.organizationId}:${input.agentId}:${Date.now()}`;
+
   const agent = await paperclipClient.getAgent(input.agentId);
+
+  // Record the binding first. `recordBinding` returns the existing record if
+  // the idempotency key already exists — no duplicate Paperclip issue created.
+  const binding = await recordBinding({
+    organizationId: input.organizationId,
+    sourceApp: input.sourceApp ?? "steward",
+    sourceEntityType: input.sourceEntityType ?? "task",
+    sourceEntityId: input.sourceEntityId ?? null,
+    paperclipCompanyId: agent.companyId,
+    paperclipAgentId: input.agentId,
+    objective: input.title,
+    status: "dispatching",
+    idempotencyKey,
+  });
+
+  // If the binding already has a Paperclip issue, this was a retry — return
+  // the existing record without creating a duplicate issue.
+  if (binding.paperclip_issue_id) {
+    return { issueId: binding.paperclip_issue_id, bindingId: binding.id, isNew: false };
+  }
+
   const issue = await paperclipClient.createIssue(agent.companyId, {
     title: input.title,
-    description: input.description,
+    description: `${input.description}\n\n---\nTrust Tai source: ${input.sourceApp ?? "steward"}\nCorrelation key: ${idempotencyKey}`,
     createdByAgentId: input.agentId,
     assigneeAgentId: input.agentId,
     status: "todo",
   });
-  return { issueId: issue.id };
+
+  // Update the binding with the Paperclip issue ID and mark dispatched.
+  const { completeBinding } = await import("@/lib/execution-bridge.server");
+  await completeBinding(binding.id, {
+    status: "dispatched",
+  });
+
+  // Patch the issue ID onto the binding row directly.
+  const { trustTaiServiceRoleClient } = await import("@/lib/execution-bridge.server");
+  await trustTaiServiceRoleClient()
+    .from("execution_bindings")
+    .update({ paperclip_issue_id: issue.id, status: "dispatched" })
+    .eq("id", binding.id);
+
+  return { issueId: issue.id, bindingId: binding.id, isNew: true };
 }
 
 /**

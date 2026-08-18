@@ -42,6 +42,10 @@ export interface StewardWriteDeps {
     agentId: string;
     title: string;
     description: string;
+    /** Trust Tai task key — used as idempotency key base for correlation. */
+    sourceEntityId?: string | null;
+    sourceEntityType?: string | null;
+    sourceApp?: string | null;
   }): Promise<unknown>;
   now(): string;
 }
@@ -215,6 +219,9 @@ export async function requestAgentAssignment(
     agentId: agent.paperclipAgentId,
     title: task.title,
     description: `${task.why} Source: ${task.sourceLabel}.`,
+    sourceEntityId: task.key,
+    sourceEntityType: task.origin === "commitment" ? "commitment" : "task",
+    sourceApp: "steward",
   });
   await audit(writer, {
     name: "task.assigned",

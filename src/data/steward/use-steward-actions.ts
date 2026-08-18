@@ -39,7 +39,17 @@ const liveDeps: StewardWriteDeps = {
   recordActivity: (event) => supabaseActivity.record(event),
   assignAgentTask: async (input) => {
     const { assignStewardAgentTask } = await import("@/data/steward-agents.functions");
-    return assignStewardAgentTask({ data: input });
+    return assignStewardAgentTask({
+      data: {
+        organizationId: input.organizationId,
+        agentId: input.agentId,
+        title: input.title,
+        description: input.description,
+        sourceEntityId: input.sourceEntityId ?? null,
+        sourceEntityType: input.sourceEntityType ?? null,
+        sourceApp: input.sourceApp ?? "steward",
+      },
+    });
   },
   now: () => new Date().toISOString(),
 };

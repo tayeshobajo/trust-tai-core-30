@@ -286,25 +286,35 @@ function StewardTasks({
                   </span>
                 </div>
                 <ul>
-                  {group.tasks.map((task) => (
-                    <TaskRow
-                      key={task.key}
-                      task={task}
-                      actor={actor}
-                      showSelect
-                      selected={selected.includes(task.key)}
-                      onSelect={(checked) =>
-                        setSelected((current) =>
-                          checked
-                            ? [...current, task.key]
-                            : current.filter((key) => key !== task.key),
-                        )
-                      }
-                      onOpen={() => setOpenTask(task)}
-                      onComplete={() => actions.complete(task, "")}
-                      onReassign={() => setReassign(task)}
-                    />
-                  ))}
+                  {group.tasks.map((task) => {
+                    const allAgents = read.data?.agents.agents ?? [];
+                    const taskEligibleAgents = allAgents.filter((agent) =>
+                      actions.eligibleAgent(agent, task),
+                    );
+                    return (
+                      <TaskRow
+                        key={task.key}
+                        task={task}
+                        actor={actor}
+                        showSelect
+                        selected={selected.includes(task.key)}
+                        eligibleAgents={taskEligibleAgents}
+                        onSelect={(checked) =>
+                          setSelected((current) =>
+                            checked
+                              ? [...current, task.key]
+                              : current.filter((key) => key !== task.key),
+                          )
+                        }
+                        onOpen={() => setOpenTask(task)}
+                        onComplete={() => actions.complete(task, "")}
+                        onReassign={() => setReassign(task)}
+                        onAssignAgent={(agent) => {
+                          actions.requestAgentAssignment(task, agent);
+                        }}
+                      />
+                    );
+                  })}
                 </ul>
               </section>
             ))
