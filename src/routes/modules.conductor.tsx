@@ -66,8 +66,19 @@ import {
   recordCorrection,
   recordFigure,
 } from "@/data/supabase/conductor-service";
-import { BusinessRead } from "@/components/tt/intelligence/business-read";
 import { LearningTrailPanel } from "@/components/tt/intelligence/learning-trail";
+import { ConductorHeader } from "@/components/tt/conductor/conductor-header";
+import { AskSurface } from "@/components/tt/conductor/ask-surface";
+import { RecommendationCard } from "@/components/tt/conductor/recommendation-card";
+import { ConductorSidebar } from "@/components/tt/conductor/conductor-sidebar";
+import { ConductorRightRail } from "@/components/tt/conductor/conductor-right-rail";
+import { BoundaryRows } from "@/components/tt/conductor/boundary-rows";
+import {
+  conductorGlance,
+  leadRecommendations,
+  needsTai,
+  recentlyMoved,
+} from "@/data/conductor/page-projection";
 import { useIntelligenceRuns } from "@/hooks/use-intelligence-runs";
 import { intelligenceService } from "@/data/intelligence/service";
 import { readHandoff, type ConductorHandoff } from "@/data/pulse/handoff";
@@ -128,6 +139,7 @@ function Conductor({
 }) {
   const [answer, setAnswer] = useState<ConductorAnswer | undefined>(undefined);
   const [lastQuestion, setLastQuestion] = useState("");
+  const [decided, setDecided] = useState<Record<string, boolean>>({});
 
   /* The cross-suite Business Read lives here, not on Pulse: interpretation,
    * confidence, what a step would and would not do, and authorisation. */
