@@ -486,11 +486,17 @@ export function KnowledgeTab({
   const [section, setSection] = useState<KnowledgeSection>("decision");
   const [body, setBody] = useState("");
 
+  // Only confirmed items are canonical. Anything imported or detected waits in
+  // the review queue above until a person agrees with it.
   const live = knowledge.filter((item) => item.reviewState !== "superseded");
+  const pending = live.filter(
+    (item) => item.reviewState === "needs_review" || item.reviewState === "detected",
+  );
   const grouped = KNOWLEDGE_SECTIONS.map((value) => ({
     section: value,
-    items: live.filter((item) => item.section === value),
+    items: live.filter((item) => item.section === value && item.reviewState === "confirmed"),
   })).filter((group) => group.items.length > 0);
+
 
   return (
     <div className="space-y-5">
