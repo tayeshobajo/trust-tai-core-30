@@ -8,6 +8,11 @@
 import { HEALTH_LABEL, type ConversationHealthStatus } from "@/domain/comms-health";
 import type { InboxTab, InboxView } from "@/data/comms-inbox";
 import type { AttentionEntry } from "@/data/comms-attention";
+import {
+  SNOOZE_CHOICES,
+  type AttentionSplit,
+  type SnoozeChoice,
+} from "@/data/comms-attention-state";
 import { cn } from "@/lib/utils";
 
 import { HealthDot } from "./health-marks";
@@ -181,6 +186,10 @@ export function CommsSidebarPanels({
   onTab,
   onAdd,
   attention,
+  setAside,
+  onSnooze,
+  onMarkReviewed,
+  onRestoreAttention,
   onOpenRelationship,
 }: {
   view: InboxView;
@@ -191,6 +200,11 @@ export function CommsSidebarPanels({
   onAdd: () => void;
   /** Relationships with a real reason to hear from Tai today. */
   attention?: AttentionEntry[];
+  /** What a person already set aside today, and why. */
+  setAside?: AttentionSplit["set_aside"];
+  onSnooze?: (id: string, choice: SnoozeChoice) => void;
+  onMarkReviewed?: (id: string) => void;
+  onRestoreAttention?: (id: string) => void;
   onOpenRelationship?: (id: string) => void;
 }) {
   const driver = commsDriver(view);
