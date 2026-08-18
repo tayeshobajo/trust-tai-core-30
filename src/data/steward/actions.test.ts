@@ -261,7 +261,7 @@ describe("reassigning", () => {
     const r = writerFor();
     await expect(
       reassignToPerson(r.writer, {
-        task: task({ origin: "project_work" } as Partial<StewardTask>),
+        task: task({ origin: "project" }),
         person: { key: "ben", name: "Ben Ito" },
       }),
     ).rejects.toThrow(/owned by another room/);
@@ -302,7 +302,7 @@ describe("due dates", () => {
     const r = writerFor();
     await expect(
       setTaskDue(r.writer, {
-        task: task({ origin: "project_work" } as Partial<StewardTask>),
+        task: task({ origin: "project" }),
         dueAt: null,
       }),
     ).rejects.toThrow(/room that owns it/);
