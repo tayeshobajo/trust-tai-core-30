@@ -17,6 +17,13 @@ export interface ExecutionAgentRecord {
   capabilities: string[] | null;
   enabled: boolean;
   metadata: Json | null;
+  // Phase 4-6 sync projection fields
+  last_known_status: string | null;
+  last_synced_at: string | null;
+  paperclip_company_id: string | null;
+  paused_at: string | null;
+  last_heartbeat_at: string | null;
+  routine_ids: string[] | null;
 }
 
 export interface ExecutionBindingRecord {
@@ -296,4 +303,109 @@ export async function latestIcpProfile(organizationId: string) {
 
 export function scoutPipelineTarget() {
   return SCOUT_PIPELINE_TARGET;
+}
+
+/** Update an agent's sync projection fields after a live read from Paperclip. */
+export async function updateAgentSyncProjection(input: {
+  paperclipAgentId: string;
+  lastKnownStatus: string;
+  pausedAt: string | null;
+  lastHeartbeatAt: string | null;
+  paperclipCompanyId?: string | null;
+}): Promise<void> {
+  const { error } = await trustTaiServiceRoleClient()
+    .from("execution_agents")
+    .update({
+      last_known_status: input.lastKnownStatus,
+      last_synced_at: new Date().toISOString(),
+      paused_at: input.pausedAt,
+      last_heartbeat_at: input.lastHeartbeatAt,
+      ...(input.paperclipCompanyId ? { paperclip_company_id: input.paperclipCompanyId } : {}),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("paperclip_agent_id", input.paperclipAgentId);
+  if (error) throw new Error(error.message);
+}
+
+/** Upsert a sync state cursor row. Marks success or failure. */
+export async function upsertSyncState(input: {
+  organizationId: string;
+  resourceType: string;
+  success: boolean;
+  error?: string | null;
+  cursor?: string | null;
+}): Promise<void> {
+  const now = new Date().toISOString();
+  const supabase = trustTaiServiceRoleClient();
+
+  const { data: existing } = await supabase
+    .from("paperclip_sync_state")
+    .select("id, consecutive_failures")
+    .eq("organization_id", input.organizationId)
+    .eq("resource_type", input.resourceType)
+    .maybeSingle();
+
+  const consecutiveFailures = input.success
+    ? 0
+    : ((existing as { consecutive_failures?: number } | null)?.consecutive_failures ?? 0) + 1;
+
+  const upsertPayload: {
+    organization_id: string;
+    resource_type: string;
+    last_success_at?: string | null;
+    last_cursor: string | null;
+    last_error: string | null;
+    consecutive_failures: number;
+    updated_at: string;
+  } = {
+    organization_id: input.organizationId,
+    resource_type: input.resourceType,
+    last_cursor: input.cursor ?? null,
+    last_error: input.success ? null : (input.error ?? "Unknown error"),
+    consecutive_failures: consecutiveFailures,
+    updated_at: now,
+  };
+  if (input.success) upsertPayload.last_success_at = now;
+
+  const { error } = await supabase
+    .from("paperclip_sync_state")
+    .upsert(upsertPayload, { onConflict: "organization_id,resource_type" });
+  if (error) throw new Error(error.message);
+}
+
+/** Read the sync health for an org. */
+export async function getSyncState(
+  organizationId: string,
+): Promise<{ resourceType: string; lastSuccessAt: string | null; consecutiveFailures: number }[]> {
+  const { data, error } = await trustTaiServiceRoleClient()
+    .from("paperclip_sync_state")
+    .select("resource_type, last_success_at, consecutive_failures")
+    .eq("organization_id", organizationId);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    resourceType: String((row as { resource_type: string }).resource_type),
+    lastSuccessAt: (row as { last_success_at: string | null }).last_success_at,
+    consecutiveFailures: Number((row as { consecutive_failures: number }).consecutive_failures),
+  }));
+}
+
+/** Mark a binding complete when Paperclip reports the issue done. */
+export async function syncBindingCompletion(input: {
+  paperclipIssueId: string;
+  status: string;
+  resultSummary?: string | null;
+}): Promise<void> {
+  const terminalStatuses = ["done", "cancelled", "completed"];
+  if (!terminalStatuses.some((s) => input.status.toLowerCase().includes(s))) return;
+
+  const { error } = await trustTaiServiceRoleClient()
+    .from("execution_bindings")
+    .update({
+      status: input.status === "done" ? "completed" : "cancelled",
+      result_summary: input.resultSummary ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("paperclip_issue_id", input.paperclipIssueId)
+    .in("status", ["dispatched", "dispatching", "in_progress"]);
+  if (error) throw new Error(error.message);
 }

@@ -37,14 +37,56 @@ export interface PaperclipIssue {
   id: string;
   identifier?: string | null;
   title: string;
+  description?: string | null;
   status: string;
   priority?: string | null;
   assigneeAgentId?: string | null;
   assigneeUserId?: string | null;
   responsibleUserId?: string | null;
+  originKind?: string | null;
+  originId?: string | null;
+  startedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   completedAt?: string | null;
+  cancelledAt?: string | null;
+  blockerAttention?: {
+    state: string;
+    reason: string | null;
+    unresolvedBlockerCount: number;
+  } | null;
+}
+
+export interface PaperclipComment {
+  id: string;
+  companyId: string;
+  issueId: string;
+  authorAgentId: string | null;
+  authorUserId: string | null;
+  authorType: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface PaperclipRoutine {
+  id: string;
+  companyId: string;
+  title: string;
+  description?: string | null;
+  status: string;
+  assigneeAgentId: string | null;
+  lastTriggeredAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lastRun?: {
+    id: string;
+    status: string;
+    triggeredAt: string | null;
+    completedAt: string | null;
+    linkedIssue?: { id: string; identifier: string; title: string; status: string } | null;
+  } | null;
 }
 
 export interface PaperclipIssueFilter {
@@ -171,5 +213,47 @@ export const paperclipClient = {
       ],
       { method: "POST" },
     );
+  },
+
+  /** Set agent paused state. Returns the updated agent. */
+  setAgentPaused(agentId: string, paused: boolean) {
+    return request<PaperclipAgent>(`/api/agents/${agentId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ paused }),
+    });
+  },
+
+  /** Update an issue's status. Returns the updated issue. */
+  updateIssueStatus(issueId: string, status: string) {
+    return request<PaperclipIssue>(`/api/issues/${issueId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  /** Read comments for an issue (activity timeline). */
+  getIssueComments(issueId: string) {
+    return request<PaperclipComment[]>(`/api/issues/${issueId}/comments`);
+  },
+
+  /** List routines for a company. */
+  getRoutines(companyId: string) {
+    return request<PaperclipRoutine[]>(`/api/companies/${companyId}/routines`);
+  },
+
+  /** List pending approvals for a company. Returns [] when endpoint not supported. */
+  async getApprovals(companyId: string): Promise<Record<string, unknown>[]> {
+    try {
+      return await request<Record<string, unknown>[]>(`/api/companies/${companyId}/approvals`);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes("404") || msg.includes("not found")) return [];
+      throw error;
+    }
+  },
+
+  /** List all agents for a company. */
+  getCompanyAgents(companyId: string) {
+    return request<PaperclipAgent[]>(`/api/companies/${companyId}/agents`);
   },
 };

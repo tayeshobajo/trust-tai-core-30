@@ -62,6 +62,10 @@ const agent: StewardAgent = {
   completedThisWeek: 0,
   lastHeartbeatAt: null,
   recentOutcome: null,
+  routines: [],
+  activityTimeline: [],
+  pendingApprovals: 0,
+  isPaused: false,
 };
 
 interface Recorder {

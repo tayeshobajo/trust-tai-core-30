@@ -19,6 +19,25 @@ export type ExecutionAgentRow = {
   capabilities: string[] | null;
   enabled: boolean;
   metadata: ExecutionJson | null;
+  // Phase 4-6 sync projection fields
+  last_known_status: string | null;
+  last_synced_at: string | null;
+  paperclip_company_id: string | null;
+  paused_at: string | null;
+  last_heartbeat_at: string | null;
+  routine_ids: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PaperclipSyncStateRow = {
+  id: string;
+  organization_id: string;
+  resource_type: string;
+  last_success_at: string | null;
+  last_cursor: string | null;
+  last_error: string | null;
+  consecutive_failures: number;
   created_at: string;
   updated_at: string;
 }
@@ -82,6 +101,7 @@ export type ExecutionDatabase = {
     Tables: {
       execution_agents: TableContract<ExecutionAgentRow>;
       execution_bindings: TableContract<ExecutionBindingRow>;
+      paperclip_sync_state: TableContract<PaperclipSyncStateRow>;
       prospects: TableContract<ProspectRow>;
       icp_profiles: TableContract<IcpProfileRow>;
     };

@@ -52,3 +52,42 @@ export const assignStewardAgentTask = createServerFn({ method: "POST" })
       sourceApp: data.sourceApp ?? "steward",
     });
   });
+
+/**
+ * Pause or resume a Paperclip agent. Reflects the new state immediately.
+ * Steward does not store its own paused flag — Paperclip owns execution state.
+ */
+export const setPaperclipAgentPausedFn = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: { organizationId: string; agentId: string; paused: boolean }) => data,
+  )
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context, data }): Promise<{ status: string; pausedAt: string | null }> => {
+    const { assertStewardMembership, setPaperclipAgentPaused } = await import(
+      "@/lib/steward-agents.server"
+    );
+    await assertStewardMembership(context, data.organizationId);
+    return await setPaperclipAgentPaused(data.agentId, data.paused);
+  });
+
+/**
+ * Post a Tai response note into a Paperclip issue comment thread.
+ * Used to answer agent questions or leave context mid-task.
+ */
+export const postTaiNoteToIssueFn = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: { organizationId: string; issueId: string; note: string }) => data,
+  )
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context, data }): Promise<{ commentId: string }> => {
+    const { assertStewardMembership, postTaiNoteToIssue } = await import(
+      "@/lib/steward-agents.server"
+    );
+    await assertStewardMembership(context, data.organizationId);
+    const identity = context as unknown as { name?: string };
+    return await postTaiNoteToIssue({
+      issueId: data.issueId,
+      note: data.note,
+      taiName: identity.name ?? "Tai",
+    });
+  });

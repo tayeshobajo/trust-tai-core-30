@@ -184,6 +184,23 @@ export interface StewardAgentTask {
   updatedAt?: string;
 }
 
+export interface StewardAgentRoutine {
+  id: string;
+  title: string;
+  status: string;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  lastRunIssueTitle: string | null;
+}
+
+export interface StewardAgentActivityItem {
+  id: string;
+  kind: "comment" | "status_change" | "assignment";
+  authorKind: "agent" | "human";
+  body: string;
+  createdAt: string;
+}
+
 /** A Paperclip agent as Steward sees it. Paperclip stays the source of truth. */
 export interface StewardAgent {
   id: string;
@@ -201,6 +218,11 @@ export interface StewardAgent {
   completedThisWeek: number;
   lastHeartbeatAt: string | null;
   recentOutcome: string | null;
+  // Phase 4-6
+  routines: StewardAgentRoutine[];
+  activityTimeline: StewardAgentActivityItem[];
+  pendingApprovals: number;
+  isPaused: boolean;
 }
 
 export interface StewardAgentRead {
@@ -208,4 +230,9 @@ export interface StewardAgentRead {
   /** Honest connection state. Never faked. */
   connected: boolean;
   because: string;
+  /** Sync health from paperclip_sync_state. Null if never synced or unavailable. */
+  syncHealth: {
+    lastSuccessAt: string | null;
+    consecutiveFailures: number;
+  } | null;
 }

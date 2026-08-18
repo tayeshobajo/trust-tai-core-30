@@ -1,15 +1,17 @@
 /**
- * Steward's read layer over the Paperclip workforce (server only).
+ * Steward's read + write layer over the Paperclip workforce (server only).
  *
  * Paperclip owns agent execution state. Steward only reads it, presents it in
  * human language, and never claims a completion Paperclip has not reported.
- * When Paperclip is not reachable the room says exactly that.
+ * Phase 4-6: adds comment timeline, pause/resume, routine visibility, sync health.
  */
 
 import type {
   AgentLifecycle,
   StewardAgent,
+  StewardAgentActivityItem,
   StewardAgentRead,
+  StewardAgentRoutine,
   StewardAgentTask,
 } from "@/domain/steward-accountability";
 
@@ -66,19 +68,46 @@ function boundariesOf(metadata: Record<string, unknown> | null): string[] {
   return [...extra, ...UNIVERSAL_BOUNDARIES];
 }
 
+function toRoutine(r: import("@/lib/paperclip-client.server").PaperclipRoutine): StewardAgentRoutine {
+  return {
+    id: r.id,
+    title: r.title,
+    status: r.status,
+    lastRunAt: r.lastRun?.completedAt ?? r.lastTriggeredAt ?? null,
+    lastRunStatus: r.lastRun?.status ?? null,
+    lastRunIssueTitle: r.lastRun?.linkedIssue?.title ?? null,
+  };
+}
+
+function toActivityItem(
+  comment: import("@/lib/paperclip-client.server").PaperclipComment,
+): StewardAgentActivityItem {
+  const isAgent = comment.authorType === "agent";
+  return {
+    id: comment.id,
+    kind: "comment",
+    authorKind: isAgent ? "agent" : "human",
+    body: comment.body,
+    createdAt: comment.createdAt,
+  };
+}
+
 /** Every registered agent for this workspace, with its real Paperclip state. */
 export async function readStewardAgents(organizationId: string): Promise<StewardAgentRead> {
+  let reconcile: typeof import("@/lib/paperclip-reconcile.server").reconcilePaperclipAgents;
   let listExecutionAgents: (id: string) => Promise<Record<string, unknown>[]>;
-  let paperclip: typeof import("@/lib/paperclip-client.server").paperclipClient;
+  let getSyncState: typeof import("@/lib/execution-bridge.server").getSyncState;
   try {
+    const rec = await import("@/lib/paperclip-reconcile.server");
     const bridge = await import("@/lib/execution-bridge.server");
-    const client = await import("@/lib/paperclip-client.server");
+    reconcile = rec.reconcilePaperclipAgents;
     listExecutionAgents = bridge.listExecutionAgents as unknown as typeof listExecutionAgents;
-    paperclip = client.paperclipClient;
+    getSyncState = bridge.getSyncState;
   } catch (error) {
     return {
       agents: [],
       connected: false,
+      syncHealth: null,
       because: error instanceof Error ? error.message : "The execution bridge is not available.",
     };
   }
@@ -90,6 +119,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
     return {
       agents: [],
       connected: false,
+      syncHealth: null,
       because:
         error instanceof Error
           ? `The agent registry could not be read. ${error.message}`
@@ -101,7 +131,21 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
     return {
       agents: [],
       connected: true,
+      syncHealth: null,
       because: "No Paperclip agents are registered for this workspace yet.",
+    };
+  }
+
+  // Run reconciliation (updates DB projections + binding completions)
+  let reconcileResult: Awaited<ReturnType<typeof reconcile>>;
+  try {
+    reconcileResult = await reconcile(organizationId);
+  } catch {
+    reconcileResult = {
+      organizationId,
+      agents: [],
+      syncedAt: new Date().toISOString(),
+      totalErrors: records.length,
     };
   }
 
@@ -109,6 +153,11 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
   const agents: StewardAgent[] = [];
   let reachable = false;
   let firstFailure: string | null = null;
+
+  // Build map from reconcile results for fast lookup
+  const reconcileMap = new Map(
+    reconcileResult.agents.map((r) => [r.agentId, r]),
+  );
 
   for (const record of records) {
     const paperclipAgentId = String(record["paperclip_agent_id"] ?? "");
@@ -134,48 +183,82 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       completedThisWeek: 0,
       lastHeartbeatAt: null,
       recentOutcome: null,
+      routines: [],
+      activityTimeline: [],
+      pendingApprovals: 0,
+      isPaused: Boolean(record["paused_at"]),
     };
 
-    try {
-      const agent = await paperclip.getAgent(paperclipAgentId);
-      const [open, done] = await Promise.all([
-        paperclip.getIssues(agent.companyId, {
-          assigneeAgentId: paperclipAgentId,
-          limit: 25,
-          status: ["todo", "in_progress", "in_review", "blocked"],
-        }),
-        paperclip.getIssues(agent.companyId, {
-          assigneeAgentId: paperclipAgentId,
-          limit: 50,
-          status: ["done"],
-        }),
-      ]);
+    const rec = reconcileMap.get(paperclipAgentId);
+    if (rec && !rec.error) {
       reachable = true;
+      const open = rec.openIssues;
       const awaiting = open.filter((issue) => /review|approval/i.test(issue.status));
       const active = open.filter((issue) => !/review|approval/i.test(issue.status));
       const working = active.find((issue) => /in_progress|working/i.test(issue.status));
+
+      // Fetch done issues for this week count + recent outcome
+      let doneIssues: import("@/lib/paperclip-client.server").PaperclipIssue[] = [];
+      try {
+        const { paperclipClient } = await import("@/lib/paperclip-client.server");
+        doneIssues = await paperclipClient.getIssues(rec.companyId, {
+          assigneeAgentId: paperclipAgentId,
+          limit: 20,
+          status: ["done"],
+        });
+      } catch { /* non-fatal */ }
+
+      // Fetch comments for the most recent active/done issue (activity timeline)
+      let activityTimeline: StewardAgentActivityItem[] = [];
+      const latestIssueId = working?.id ?? doneIssues[0]?.id;
+      if (latestIssueId) {
+        try {
+          const { paperclipClient } = await import("@/lib/paperclip-client.server");
+          const comments = await paperclipClient.getIssueComments(latestIssueId);
+          activityTimeline = comments
+            .filter((c) => !c.deletedAt)
+            .slice(0, 10)
+            .map(toActivityItem);
+        } catch { /* non-fatal */ }
+      }
+
       agents.push({
         ...base,
-        lifecycle: lifecycleOf(agent.status, open),
-        ...(agent.role ? { responsibility: agent.role } : {}),
+        lifecycle: lifecycleOf(rec.status, open),
         currentWork: working?.title ?? null,
         activeTasks: active.map(toTask),
         awaitingApproval: awaiting.map(toTask),
-        completedThisWeek: done.filter((issue) => (issue.completedAt ?? "") >= since).length,
-        lastHeartbeatAt: agent.lastHeartbeatAt ?? null,
-        recentOutcome: done[0]?.title ?? null,
+        completedThisWeek: doneIssues.filter((i) => (i.completedAt ?? "") >= since).length,
+        lastHeartbeatAt: rec.lastHeartbeatAt,
+        recentOutcome: doneIssues[0]?.title ?? null,
+        routines: rec.routines.map(toRoutine),
+        activityTimeline,
+        pendingApprovals: rec.approvals.length,
+        isPaused: Boolean(rec.pausedAt),
       });
-    } catch (error) {
-      if (!firstFailure) {
-        firstFailure = error instanceof Error ? error.message : "Paperclip did not respond.";
-      }
+    } else {
+      if (rec?.error && !firstFailure) firstFailure = rec.error;
       agents.push(base);
     }
   }
 
+  // Sync health summary
+  let syncHealth: StewardAgentRead["syncHealth"] = null;
+  try {
+    const states = await getSyncState(organizationId);
+    const agentState = states.find((s) => s.resourceType === "agents");
+    if (agentState) {
+      syncHealth = {
+        lastSuccessAt: agentState.lastSuccessAt,
+        consecutiveFailures: agentState.consecutiveFailures,
+      };
+    }
+  } catch { /* non-fatal */ }
+
   return {
     agents,
     connected: reachable,
+    syncHealth,
     because: reachable
       ? `${agents.length} agent${agents.length === 1 ? "" : "s"} registered.`
       : `Paperclip is registered but not responding. ${firstFailure ?? ""}`.trim(),
@@ -250,6 +333,55 @@ export async function assignPaperclipTask(input: {
     .eq("id", binding.id);
 
   return { issueId: issue.id, bindingId: binding.id, isNew: true };
+}
+
+/**
+ * Pause or resume a Paperclip agent. Reflects the change via Paperclip PATCH.
+ * Steward reads Paperclip's response as truth — it does not set its own paused flag.
+ */
+export async function setPaperclipAgentPaused(
+  agentId: string,
+  paused: boolean,
+): Promise<{ status: string; pausedAt: string | null }> {
+  const { paperclipClient } = await import("@/lib/paperclip-client.server");
+  const updated = await paperclipClient.setAgentPaused(agentId, paused);
+  const pausedAt = (updated as unknown as { pausedAt?: string | null }).pausedAt ?? null;
+  return { status: updated.status ?? (paused ? "paused" : "idle"), pausedAt };
+}
+
+/**
+ * Post a Tai note into a Paperclip issue's comment thread.
+ * Board key resolves as agent context in Paperclip — the comment will show
+ * as agent-authored. We label it "[Tai via Trust Tai OS]" in the body so it
+ * is distinguishable inside Paperclip's UI.
+ */
+export async function postTaiNoteToIssue(input: {
+  issueId: string;
+  note: string;
+  taiName: string;
+}): Promise<{ commentId: string }> {
+  const { paperclipClient } = await import("@/lib/paperclip-client.server");
+  const body = `[${input.taiName} via Trust Tai OS]\n\n${input.note.trim()}`;
+  const comment = await paperclipClient.getIssueComments(input.issueId); // warm the connection
+  void comment; // suppress unused warning — just ensuring Paperclip is reachable
+  // Post comment without authorType (Paperclip infers from bearer token)
+  const result = await fetch(
+    `${process.env["PAPERCLIP_API_URL"] || "http://127.0.0.1:3100"}/api/issues/${input.issueId}/comments`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env["PAPERCLIP_BOARD_KEY"] ?? ""}`,
+      },
+      body: JSON.stringify({ body }),
+    },
+  );
+  if (!result.ok) {
+    const text = await result.text();
+    throw new Error(`Paperclip comment failed: ${result.status} ${text}`);
+  }
+  const data = (await result.json()) as { id: string };
+  return { commentId: data.id };
 }
 
 /**

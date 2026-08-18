@@ -43,6 +43,10 @@ const agent: StewardAgent = {
   completedThisWeek: 2,
   lastHeartbeatAt: null,
   recentOutcome: null,
+  routines: [],
+  activityTimeline: [],
+  pendingApprovals: 0,
+  isPaused: false,
 };
 
 const base = { now: NOW, workItems: [], projects: [], agents: [], taskState: [] };
