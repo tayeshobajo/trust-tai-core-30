@@ -471,7 +471,10 @@ function PeopleSettings() {
 function InvitationAudit({
   query,
 }: {
-  query: { data?: Awaited<ReturnType<typeof listInvitationAudit>>; isPending: boolean };
+  query: {
+    data?: Awaited<ReturnType<typeof listInvitationAudit>> | undefined;
+    isPending: boolean;
+  };
 }) {
   const entries = query.data?.value ?? [];
   return (
