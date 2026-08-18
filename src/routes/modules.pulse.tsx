@@ -6,23 +6,20 @@
  * that owns the change. Pulse never changes another room's truth.
  */
 
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { BusinessRead } from "@/components/tt/intelligence/business-read";
-import { LearningTrailPanel } from "@/components/tt/intelligence/learning-trail";
 import { PulseFilters, type PulseFilter } from "@/components/tt/pulse/filters";
 import { PulseHeader } from "@/components/tt/pulse/header";
 import { PulseRightRail } from "@/components/tt/pulse/right-rail";
 import { PulseSidebar } from "@/components/tt/pulse/sidebar";
 import { PulseSignalGroup } from "@/components/tt/pulse/signal-group";
-import { EmptyState, SectionHeading, TTButton } from "@/components/tt/primitives";
+import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { useIntelligenceRuns } from "@/hooks/use-intelligence-runs";
 import { deriveSignals } from "@/data/intelligence/derive";
-import { intelligenceService, loadSuiteSnapshot } from "@/data/intelligence/service";
+import { loadSuiteSnapshot } from "@/data/intelligence/service";
 import {
   PULSE_ROOM_LABEL,
   countSignals,
@@ -37,7 +34,7 @@ import { pulseFeedback } from "@/data/supabase/pulse-feedback";
 import { projectsService } from "@/data/supabase/projects-service";
 import { unansweredRoutes } from "@/domain/route-ledger";
 import type { PulseFeedbackKind, PulseSignal } from "@/domain/pulse";
-import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
+import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Pulse — What deserves attention now — Trust Tai OS";
 const DESCRIPTION =
@@ -72,7 +69,6 @@ function PulseRoute() {
 
 function Pulse({ identity }: { identity: WorkspaceIdentity }) {
   const { organizationId } = identity;
-  const access = workspaceAccess(identity);
   const queryClient = useQueryClient();
 
   const [filter, setFilter] = useState<PulseFilter>("all");
@@ -99,8 +95,6 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
     queryKey: ["pulse-feedback", organizationId],
     queryFn: () => pulseFeedback.list(organizationId),
   });
-
-  const engine = useIntelligenceRuns(organizationId);
 
   const now = suite.data?.readAt ?? new Date().toISOString();
 
@@ -244,54 +238,14 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
               ) : null}
             </section>
 
-            {engine.read ? (
-              <section aria-label="Business read" className="space-y-4">
-                <SectionHeading
-                  eyebrow="Business read"
-                  title="How the suite reads right now"
-                  description="A written read over the same evidence. Recommendations still need a person."
-                />
-                <BusinessRead
-                  read={engine.read}
-                  reasoning={engine.refreshing}
-                  access={access}
-                  onDecide={async ({ recommendation, decision, editedText }) => {
-                    await intelligenceService.decide({
-                      organizationId,
-                      userId: identity.userId,
-                      userName: identity.name,
-                      recommendation,
-                      decision,
-                      ...(editedText ? { editedText } : {}),
-                    });
-                    await engine.invalidate();
-                  }}
-                  onAuthorize={async ({ proposal, decision, note }) => {
-                    await intelligenceService.authorizeAction({
-                      organizationId,
-                      userId: identity.userId,
-                      userName: identity.name,
-                      access,
-                      proposal,
-                      decision,
-                      ...(note ? { note } : {}),
-                    });
-                  }}
-                />
-                <div className="flex flex-wrap items-center gap-3">
-                  <p className="text-xs text-muted-foreground">
-                    {engine.refreshing ? "Reading again." : engine.because}
-                  </p>
-                  <TTButton variant="quiet" onClick={() => void engine.refresh()}>
-                    Read now
-                  </TTButton>
-                </div>
-              </section>
-            ) : engine.loading ? (
-              <p className="text-sm text-muted-foreground">Reading the business.</p>
-            ) : null}
-
-            {engine.trail ? <LearningTrailPanel trail={engine.trail} /> : null}
+            <p className="text-[13px] text-muted-foreground">
+              Pulse says what deserves attention and where the work lives. For the read behind a
+              signal — what it rests on, what it would take, and any step you can authorise —{" "}
+              <Link to="/modules/conductor" className="text-foreground underline underline-offset-4">
+                open it in the Conductor
+              </Link>
+              .
+            </p>
           </div>
 
           <PulseRightRail

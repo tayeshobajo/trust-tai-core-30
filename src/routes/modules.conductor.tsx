@@ -43,7 +43,7 @@ import {
   loadObservations,
 } from "@/data/supabase/conductor-learning-service";
 import { getWorkforceSummary } from "@/data/execution-workforce";
-import { MetaPill, SectionHeading } from "@/components/tt/primitives";
+import { MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import {
   approveEverything,
   decide,
@@ -65,6 +65,11 @@ import {
   recordCorrection,
   recordFigure,
 } from "@/data/supabase/conductor-service";
+import { BusinessRead } from "@/components/tt/intelligence/business-read";
+import { LearningTrailPanel } from "@/components/tt/intelligence/learning-trail";
+import { useIntelligenceRuns } from "@/hooks/use-intelligence-runs";
+import { intelligenceService } from "@/data/intelligence/service";
+import { readHandoff, type ConductorHandoff } from "@/data/pulse/handoff";
 import { accessContext, can } from "@/domain/access";
 import type { ConductorAnswer } from "@/domain/conductor";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -75,6 +80,12 @@ const DESCRIPTION =
   "Ask the Trust Tai factory a question and get a grounded answer: vital signs, upstream causes, what is missing, and bounded next steps that only you can authorise.";
 
 export const Route = createFileRoute("/modules/conductor")({
+  /* Pulse hands over pointers only: which signal, which room, which lineage,
+   * and the question to answer first. No business state crosses the boundary. */
+  validateSearch: (search: Record<string, unknown>) => {
+    const handoff = readHandoff(search);
+    return handoff ? { ...handoff } : {};
+  },
   head: () => ({
     meta: [
       { title: TITLE },
@@ -90,20 +101,32 @@ export const Route = createFileRoute("/modules/conductor")({
 });
 
 function ConductorRoute() {
+  const search = Route.useSearch();
+  const handoff = readHandoff(search as Record<string, unknown>);
   return (
     <WorkspaceGate>
       {(identity) => (
         <AppShell identity={identity}>
-          <Conductor identity={identity} />
+          <Conductor identity={identity} {...(handoff ? { handoff } : {})} />
         </AppShell>
       )}
     </WorkspaceGate>
   );
 }
 
-function Conductor({ identity }: { identity: WorkspaceIdentity }) {
+function Conductor({
+  identity,
+  handoff,
+}: {
+  identity: WorkspaceIdentity;
+  handoff?: ConductorHandoff;
+}) {
   const [answer, setAnswer] = useState<ConductorAnswer | undefined>(undefined);
   const [lastQuestion, setLastQuestion] = useState("");
+
+  /* The cross-suite Business Read lives here, not on Pulse: interpretation,
+   * confidence, what a step would and would not do, and authorisation. */
+  const engine = useIntelligenceRuns(identity.organizationId);
   const queryClient = useQueryClient();
 
   /*
@@ -386,11 +409,24 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
         supporting="One question, one grounded answer. What is observed, what you decided, what follows from it, and what nobody can see yet."
       />
 
+      {handoff ? (
+        <section className="tt-surface p-5" aria-label="Opened from Pulse">
+          <p className="tt-eyebrow">Opened from Pulse</p>
+          <p className="mt-2 text-sm text-foreground">{handoff.entity ?? handoff.app}</p>
+          <p className="mt-1 text-sm text-[var(--tt-ink-muted)]">{handoff.ask}</p>
+          <p className="mt-2 text-xs text-[var(--tt-ink-muted)]">
+            Pulse carried a pointer, not a copy. Everything below is read again from the rooms that
+            own it, and nothing here executes without you.
+          </p>
+        </section>
+      ) : null}
+
       <WorkforceSection workforce={workforce.data} loading={workforce.isPending} />
 
       <ConductorConsole
         {...(answer ? { answer } : {})}
         thinking={ask.isPending}
+        {...(handoff ? { initialQuestion: handoff.ask } : {})}
         onAsk={(question) => {
           setLastQuestion(question);
           return ask.mutateAsync(question).then(() => undefined);
@@ -417,6 +453,55 @@ function Conductor({ identity }: { identity: WorkspaceIdentity }) {
           </div>
         }
       />
+
+      {engine.read ? (
+        <section aria-label="Business read" className="space-y-4">
+          <SectionHeading
+            eyebrow="Business read"
+            title="How the suite reads right now"
+            description="A written read over the same evidence Pulse surfaces. Every next step still needs a person to authorise it, and the owning room still executes."
+          />
+          <BusinessRead
+            read={engine.read}
+            reasoning={engine.refreshing}
+            access={access}
+            onDecide={async ({ recommendation, decision, editedText }) => {
+              await intelligenceService.decide({
+                organizationId: identity.organizationId,
+                userId: identity.userId,
+                userName: identity.name,
+                recommendation,
+                decision,
+                ...(editedText ? { editedText } : {}),
+              });
+              await engine.invalidate();
+            }}
+            onAuthorize={async ({ proposal, decision, note }) => {
+              await intelligenceService.authorizeAction({
+                organizationId: identity.organizationId,
+                userId: identity.userId,
+                userName: identity.name,
+                access,
+                proposal,
+                decision,
+                ...(note ? { note } : {}),
+              });
+            }}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-xs text-[var(--tt-ink-muted)]">
+              {engine.refreshing ? "Reading again." : engine.because}
+            </p>
+            <TTButton variant="quiet" onClick={() => void engine.refresh()}>
+              Read now
+            </TTButton>
+          </div>
+        </section>
+      ) : engine.loading ? (
+        <p className="text-sm text-[var(--tt-ink-muted)]">Reading the business.</p>
+      ) : null}
+
+      {engine.trail ? <LearningTrailPanel trail={engine.trail} /> : null}
 
       {controlSchema.data && !controlSchema.data.ready ? (
         <p className="text-sm text-[var(--tt-ink-muted)]">{controlSchema.data.message}</p>

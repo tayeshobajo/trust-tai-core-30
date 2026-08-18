@@ -18,6 +18,7 @@ import {
   type PulseSignal,
 } from "@/domain/pulse";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
+import { canOpenInConductor, conductorHandoff } from "@/data/pulse/handoff";
 import { cn } from "@/lib/utils";
 
 import { PulseImpact, PulseSeverityIcon, SEVERITY_TEXT } from "./severity";
@@ -113,6 +114,15 @@ export function PulseSignalRow({
 
         <div className="relative flex items-center gap-1">
           <Action signal={signal} />
+          {canOpenInConductor(signal) ? (
+            <Link
+              to="/modules/conductor"
+              search={conductorHandoff(signal)}
+              className="inline-flex min-h-9 items-center justify-center rounded-full px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              Open in Conductor
+            </Link>
+          ) : null}
           <button
             type="button"
             aria-label="More options for this signal"
