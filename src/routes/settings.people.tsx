@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
+import { browserOrigin, signInUrlFor } from "@/lib/auth-origin";
 import { inviteEmailBody } from "@/lib/invite-email-template";
 
 
@@ -904,10 +905,7 @@ function InvitePanel({
         organizationName,
         roleLabel: ROLE_LABEL[role],
         invitedByName,
-        signInUrl:
-          typeof window === "undefined"
-            ? `/auth?email=${encodeURIComponent(previewTo)}`
-            : `${window.location.origin}/auth?email=${encodeURIComponent(previewTo)}`,
+        signInUrl: signInUrlFor(previewTo, browserOrigin()),
         expiresAt: null,
       }),
     [previewTo, organizationName, role, invitedByName],
