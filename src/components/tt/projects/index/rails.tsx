@@ -118,7 +118,7 @@ export function ProjectsSupportRail({
         )}
       </RailSection>
 
-      <RailSection title="Needs Tai" note="Waiting on a person, not on the work.">
+      <RailSection title="Needs you" note="Waiting on a person, not on the work.">
         {needsYou.length === 0 ? (
           <p className="text-[13px] text-muted-foreground">Nothing needs your decision.</p>
         ) : (

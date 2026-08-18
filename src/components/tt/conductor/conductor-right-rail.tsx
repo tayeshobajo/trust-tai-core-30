@@ -62,7 +62,7 @@ export function ConductorRightRail({
       </Rail>
 
       <Rail
-        title="Needs Tai"
+        title="Needs you"
         cta={
           <Link
             to="/modules/activity"

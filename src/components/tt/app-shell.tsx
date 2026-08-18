@@ -20,6 +20,7 @@ import {
 import { useState, type ReactNode } from "react";
 
 import { APP_REGISTRY, type AppRegistration } from "@/domain/registry";
+import { initialsOf } from "@/domain/steward-accountability";
 import { cn } from "@/lib/utils";
 import { signOut, type WorkspaceIdentity } from "@/lib/workspace";
 import { AmbientDot } from "@/components/tt/ambient";
@@ -149,7 +150,7 @@ export function AppShell({
                 aria-label={`Signed in as ${identity.name}`}
                 title={identity.email}
               >
-                {identity.firstName.charAt(0).toUpperCase()}
+                {initialsOf(identity.name)}
               </span>
               <button
                 type="button"

@@ -72,7 +72,7 @@ export function PulseHeader({
               </Link>
             </li>
             <li aria-hidden>›</li>
-            <li className="truncate text-foreground">What Tai is seeing</li>
+            <li className="truncate text-foreground">What you&rsquo;re seeing</li>
           </ol>
         </nav>
 
@@ -133,7 +133,7 @@ export function PulseHeader({
         <AmbientSurface appId="pulse" className="px-6 py-7 sm:px-8">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-6">
             <div className="min-w-0">
-              <p className="tt-eyebrow text-royal">What Tai is seeing</p>
+              <p className="tt-eyebrow text-royal">What you&rsquo;re seeing</p>
               <h1 className="tt-display mt-3 max-w-[20ch] text-[30px] text-foreground sm:text-[36px]">
                 What the system noticed.
               </h1>
