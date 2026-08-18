@@ -3,11 +3,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { SectionHeading, TTButton, TTField, TTInput } from "@/components/tt/primitives";
-import { Health, NotProvisioned, PersonChip, TTSelect } from "@/components/tt/settings/pieces";
+import {
+  Health,
+  InfoTip,
+  NotProvisioned,
+  PersonChip,
+  TTSelect,
+} from "@/components/tt/settings/pieces";
+import { PermissionSummary } from "@/components/tt/settings/permission-summary";
 import { useSettingsIdentity } from "@/components/tt/settings/shell";
 import {
   cancelInvitation,
+  deliverInvitationEmail,
   inviteMembers,
+  listInvitationAudit,
   listInvitations,
   listMembers,
   parseEmails,
@@ -50,6 +59,16 @@ function PeopleSettings() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({
+    key: "name",
+    direction: "asc",
+  });
+  const toggleSort = (key: SortKey) =>
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: key === "lastActive" ? "desc" : "asc" },
+    );
 
   const members = useQuery({
     queryKey: ["settings", "members", identity.organizationId],
@@ -116,14 +135,56 @@ function PeopleSettings() {
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
     const all = members.data ?? [];
-    if (!term) return all;
-    return all.filter(
-      (member) =>
-        member.name.toLowerCase().includes(term) || member.email.toLowerCase().includes(term),
-    );
-  }, [members.data, search]);
+    const matches = term
+      ? all.filter(
+          (member) =>
+            member.name.toLowerCase().includes(term) ||
+            member.email.toLowerCase().includes(term) ||
+            (member.jobTitle ?? "").toLowerCase().includes(term) ||
+            ROLE_LABEL[member.role].toLowerCase().includes(term),
+        )
+      : all;
+
+    const decorated = matches.map((member) => ({
+      member,
+      rooms: APP_REGISTRY.filter(
+        (app) =>
+          resolveAppAccess(app.id, {
+            role: member.role,
+            membershipActive: member.status === "active",
+            organizationEnabled: orgEnabled[app.id] !== false,
+            override: member.access[app.id],
+          }).visible,
+      ).length,
+    }));
+
+    const direction = sort.direction === "asc" ? 1 : -1;
+    return [...decorated].sort((a, b) => {
+      switch (sort.key) {
+        case "role":
+          return direction * ROLE_LABEL[a.member.role].localeCompare(ROLE_LABEL[b.member.role]);
+        case "rooms":
+          return direction * (a.rooms - b.rooms);
+        case "lastActive":
+          return (
+            direction *
+            ((a.member.lastActiveAt ? Date.parse(a.member.lastActiveAt) : 0) -
+              (b.member.lastActiveAt ? Date.parse(b.member.lastActiveAt) : 0))
+          );
+        case "status":
+          return direction * a.member.status.localeCompare(b.member.status);
+        default:
+          return direction * a.member.name.localeCompare(b.member.name);
+      }
+    });
+  }, [members.data, search, sort, orgEnabled]);
 
   const selected = (members.data ?? []).find((member) => member.userId === selectedId) ?? null;
+  const invitationAudit = useQuery({
+    queryKey: ["settings", "invitation-audit", identity.organizationId],
+    queryFn: () => listInvitationAudit(identity.organizationId),
+    enabled: identity.canManage,
+  });
 
   return (
     <>
@@ -151,25 +212,34 @@ function PeopleSettings() {
           <table className="w-full min-w-[640px] text-left">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
-                <th className="tt-eyebrow px-4 py-2 font-normal">Person</th>
-                <th className="tt-eyebrow px-4 py-2 font-normal">Role</th>
-                <th className="tt-eyebrow px-4 py-2 font-normal">Rooms</th>
-                <th className="tt-eyebrow px-4 py-2 font-normal">Last active</th>
-                <th className="tt-eyebrow px-4 py-2 font-normal">Status</th>
+                <SortHeader label="Person" sortKey="name" sort={sort} onSort={toggleSort} />
+                <SortHeader
+                  label="Role"
+                  sortKey="role"
+                  sort={sort}
+                  onSort={toggleSort}
+                  hint="A role sets the ceiling. Room access can narrow it, never widen it."
+                />
+                <SortHeader
+                  label="Rooms"
+                  sortKey="rooms"
+                  sort={sort}
+                  onSort={toggleSort}
+                  hint="How many rooms this person can actually see, after the organization switches and their overrides."
+                />
+                <SortHeader label="Last active" sortKey="lastActive" sort={sort} onSort={toggleSort} />
+                <SortHeader
+                  label="Status"
+                  sortKey="status"
+                  sort={sort}
+                  onSort={toggleSort}
+                  hint="A deactivated person keeps their history and loses every room immediately."
+                />
                 <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {rows.map((member) => {
-                const visible = APP_REGISTRY.filter(
-                  (app) =>
-                    resolveAppAccess(app.id, {
-                      role: member.role,
-                      membershipActive: member.status === "active",
-                      organizationEnabled: orgEnabled[app.id] !== false,
-                      override: member.access[app.id],
-                    }).visible,
-                );
+              {rows.map(({ member, rooms }) => {
                 return (
                   <tr key={member.userId} className="align-middle">
                     <td className="px-4 py-3">
@@ -204,9 +274,7 @@ function PeopleSettings() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {visible.length === 0
-                        ? "No rooms"
-                        : `${visible.length} of ${APP_REGISTRY.length}`}
+                      {rooms === 0 ? "No rooms" : `${rooms} of ${APP_REGISTRY.length}`}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {whenText(member.lastActiveAt)}
