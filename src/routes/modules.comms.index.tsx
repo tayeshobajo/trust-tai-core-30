@@ -553,6 +553,16 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           </div>
         </div>
       ) : null}
+
+      {interacting && selected ? (
+        <AddInteraction
+          personName={selected.fullName}
+          userLabel={identity.name}
+          busy={recordInteraction.isPending}
+          onCancel={() => setInteracting(false)}
+          onSave={(submission) => recordInteraction.mutate(submission)}
+        />
+      ) : null}
     </div>
     </AppShell>
   );
