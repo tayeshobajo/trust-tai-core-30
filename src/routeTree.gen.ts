@@ -23,6 +23,7 @@ import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesStewardRouteImport } from './routes/modules.steward'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsAppsRouteImport } from './routes/settings.apps'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
@@ -126,6 +127,11 @@ const ModulesStewardRoute = ModulesStewardRouteImport.update({
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAppsRoute = SettingsAppsRouteImport.update({
+  id: '/apps',
+  path: '/apps',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
@@ -327,6 +333,7 @@ export interface FileRoutesByFullPath {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/settings/apps': typeof SettingsAppsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/': typeof SettingsIndexRoute
@@ -371,6 +378,7 @@ export interface FileRoutesByTo {
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
+  '/settings/apps': typeof SettingsAppsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings': typeof SettingsIndexRoute
@@ -421,6 +429,7 @@ export interface FileRoutesById {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/settings/apps': typeof SettingsAppsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/': typeof SettingsIndexRoute
@@ -473,6 +482,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/settings/apps'
     | '/settings/notifications'
     | '/settings/profile'
     | '/settings/'
@@ -517,6 +527,7 @@ export interface FileRouteTypes {
     | '/modules/conductor'
     | '/modules/ops'
     | '/modules/pulse'
+    | '/settings/apps'
     | '/settings/notifications'
     | '/settings/profile'
     | '/settings'
@@ -566,6 +577,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/settings/apps'
     | '/settings/notifications'
     | '/settings/profile'
     | '/settings/'
@@ -732,6 +744,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/settings/'
       preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/apps': {
+      id: '/settings/apps'
+      path: '/apps'
+      fullPath: '/settings/apps'
+      preLoaderRoute: typeof SettingsAppsRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/notifications': {
@@ -976,12 +995,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface SettingsRouteChildren {
+  SettingsAppsRoute: typeof SettingsAppsRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsAppsRoute: SettingsAppsRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsProfileRoute: SettingsProfileRoute,
   SettingsIndexRoute: SettingsIndexRoute,
