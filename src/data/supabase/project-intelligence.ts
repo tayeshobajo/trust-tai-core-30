@@ -37,7 +37,9 @@ import {
   type ThinkingSourceType,
 } from "@/domain/project-intelligence";
 import { knowledgeInputsFrom, parseThinkingImport } from "@/data/projects/thinking-import";
-import { guardRoomWrites } from "@/lib/room-authority";
+import { listDiff, type IntelligenceAuditAction } from "@/domain/intelligence-audit";
+import { assertRoomManage, guardRoomWrites } from "@/lib/room-authority";
+import { intelligenceAudit } from "./intelligence-audit";
 
 
 import { supabaseActivity } from "./activities";
@@ -85,6 +87,30 @@ async function record(
   } catch {
     // History matters, never enough to lose the person's work.
   }
+}
+
+/**
+ * Append to the intelligence audit trail. Separate from the activity stream:
+ * activity is what the workspace saw happen, the audit trail is who changed
+ * what a project believes, and what it said before.
+ */
+async function audit(
+  context: DeliveryContext,
+  action: IntelligenceAuditAction,
+  subject: string,
+  change: { before?: string; after?: string } = {},
+) {
+  await intelligenceAudit.record({
+    organizationId: context.organizationId,
+    projectId: context.projectId,
+    projectName: context.projectName,
+    action,
+    subject,
+    ...(change.before ? { before: change.before } : {}),
+    ...(change.after ? { after: change.after } : {}),
+    actorId: context.userId,
+    ...(context.userLabel ? { actorLabel: context.userLabel } : {}),
+  });
 }
 
 /* --------------------------------------------------------------- mappers */
@@ -219,6 +245,7 @@ const service = {
       sourceType: saved.sourceType,
       syncState: saved.syncState,
     });
+    await audit(context, "thinking.linked", saved.title, { after: saved.url });
     return saved;
   },
 
@@ -294,6 +321,9 @@ const service = {
       `Imported ${imported.length} candidate${imported.length === 1 ? "" : "s"} from ${source.title}`,
       { sourceId: source.id, reviewState: "needs_review" },
     );
+    await audit(context, "thinking.imported", source.title, {
+      after: `${imported.length} candidate${imported.length === 1 ? "" : "s"} awaiting review`,
+    });
     return { source: updated, imported };
   },
 
@@ -306,6 +336,7 @@ const service = {
       .eq("organization_id", context.organizationId);
     if (error) fail("That thinking room could not be removed.", error);
     await record(context, "project.updated", `Thinking room removed: ${source.title}`);
+    await audit(context, "thinking.removed", source.title, { before: source.url });
   },
 
 
@@ -348,6 +379,7 @@ const service = {
       section: saved.section,
       reviewState: saved.reviewState,
     });
+    await audit(context, "knowledge.recorded", saved.body, { after: saved.reviewState });
     return saved;
   },
 
@@ -371,6 +403,16 @@ const service = {
       `${reviewState === "confirmed" ? "Confirmed" : "Marked " + reviewState}: ${item.body.slice(0, 90)}`,
       { section: item.section },
     );
+    const auditAction: IntelligenceAuditAction =
+      reviewState === "confirmed"
+        ? "knowledge.confirmed"
+        : reviewState === "superseded"
+          ? "knowledge.superseded"
+          : "knowledge.returned_to_review";
+    await audit(context, auditAction, item.body, {
+      before: item.reviewState,
+      after: reviewState,
+    });
     return toKnowledge(data as Row);
   },
 
@@ -430,6 +472,7 @@ const service = {
       assetType: saved.assetType,
       status: saved.status,
     });
+    await audit(context, "asset.uploaded", saved.title, { after: saved.status });
     return saved;
   },
 
@@ -449,6 +492,10 @@ const service = {
     await record(context, "project.updated", `Asset ${status}: ${asset.title}`, {
       assetId: asset.id,
       status,
+    });
+    await audit(context, "asset.status_changed", asset.title, {
+      before: asset.status,
+      after: status,
     });
     return toAsset(data as Row);
   },
@@ -508,6 +555,7 @@ const service = {
     await record(context, "project.updated", `Linked ${saved.connectionType}: ${saved.label}`, {
       status: saved.status,
     });
+    await audit(context, "connection.linked", saved.label, { after: saved.connectionType });
     return saved;
   },
 
@@ -518,6 +566,9 @@ const service = {
       .eq("id", connection.id)
       .eq("organization_id", context.organizationId);
     if (error) fail("That link could not be removed.", error);
+    await audit(context, "connection.removed", connection.label, {
+      before: connection.connectionType,
+    });
   },
 
   /* agent effectiveness */
