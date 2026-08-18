@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
+import { inviteEmailBody } from "@/lib/invite-email-template";
+
 
 import { SectionHeading, TTButton, TTField, TTInput } from "@/components/tt/primitives";
 import {
