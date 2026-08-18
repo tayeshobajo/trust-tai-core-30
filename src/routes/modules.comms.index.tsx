@@ -90,6 +90,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [contextOpen, setContextOpen] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [interacting, setInteracting] = useState(false);
 
   const relationshipsQuery = useQuery({
     queryKey: ["comms", "relationships", identity.organizationId],
