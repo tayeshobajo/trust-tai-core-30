@@ -244,54 +244,14 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
               ) : null}
             </section>
 
-            {engine.read ? (
-              <section aria-label="Business read" className="space-y-4">
-                <SectionHeading
-                  eyebrow="Business read"
-                  title="How the suite reads right now"
-                  description="A written read over the same evidence. Recommendations still need a person."
-                />
-                <BusinessRead
-                  read={engine.read}
-                  reasoning={engine.refreshing}
-                  access={access}
-                  onDecide={async ({ recommendation, decision, editedText }) => {
-                    await intelligenceService.decide({
-                      organizationId,
-                      userId: identity.userId,
-                      userName: identity.name,
-                      recommendation,
-                      decision,
-                      ...(editedText ? { editedText } : {}),
-                    });
-                    await engine.invalidate();
-                  }}
-                  onAuthorize={async ({ proposal, decision, note }) => {
-                    await intelligenceService.authorizeAction({
-                      organizationId,
-                      userId: identity.userId,
-                      userName: identity.name,
-                      access,
-                      proposal,
-                      decision,
-                      ...(note ? { note } : {}),
-                    });
-                  }}
-                />
-                <div className="flex flex-wrap items-center gap-3">
-                  <p className="text-xs text-muted-foreground">
-                    {engine.refreshing ? "Reading again." : engine.because}
-                  </p>
-                  <TTButton variant="quiet" onClick={() => void engine.refresh()}>
-                    Read now
-                  </TTButton>
-                </div>
-              </section>
-            ) : engine.loading ? (
-              <p className="text-sm text-muted-foreground">Reading the business.</p>
-            ) : null}
-
-            {engine.trail ? <LearningTrailPanel trail={engine.trail} /> : null}
+            <p className="text-[13px] text-muted-foreground">
+              Pulse says what deserves attention and where the work lives. For the read behind a
+              signal — what it rests on, what it would take, and any step you can authorise —{" "}
+              <Link to="/modules/conductor" className="text-foreground underline underline-offset-4">
+                open it in the Conductor
+              </Link>
+              .
+            </p>
           </div>
 
           <PulseRightRail
