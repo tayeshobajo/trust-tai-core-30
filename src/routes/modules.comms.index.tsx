@@ -489,13 +489,13 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 </div>
               ) : null}
 
-              <ConversationComposer
+              <ReplyRecordBar
                 drafting={drafting}
-                busy={logNote.isPending || saveDraft.isPending}
+                busy={recordInteraction.isPending || saveDraft.isPending}
                 error={draftError}
-                onCompose={(register, purpose) => void compose(register, purpose)}
-                onNote={(value) => logNote.mutate(value)}
-                onInsertInsight={() => reasonsToReconnect(selected)[0]?.reasonText ?? null}
+                purposeHint={move?.needed ? move.action : null}
+                onPrepareDraft={(register, purpose) => void compose(register, purpose)}
+                onRecordInteraction={() => setInteracting(true)}
               />
             </ConversationRoom>
           ) : (
