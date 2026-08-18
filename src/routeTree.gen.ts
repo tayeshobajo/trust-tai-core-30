@@ -23,6 +23,7 @@ import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesStewardRouteImport } from './routes/modules.steward'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
@@ -124,6 +125,11 @@ const ModulesStewardRoute = ModulesStewardRouteImport.update({
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsProfileRoute = SettingsProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => SettingsRoute,
 } as any)
 const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
@@ -315,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/settings/profile': typeof SettingsProfileRoute
   '/settings/': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -357,6 +364,7 @@ export interface FileRoutesByTo {
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
+  '/settings/profile': typeof SettingsProfileRoute
   '/settings': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -405,6 +413,7 @@ export interface FileRoutesById {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/settings/profile': typeof SettingsProfileRoute
   '/settings/': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -455,6 +464,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/settings/profile'
     | '/settings/'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/modules/conductor'
     | '/modules/ops'
     | '/modules/pulse'
+    | '/settings/profile'
     | '/settings'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
@@ -544,6 +555,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/settings/profile'
     | '/settings/'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
@@ -708,6 +720,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/settings/'
       preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/profile': {
+      id: '/settings/profile'
+      path: '/profile'
+      fullPath: '/settings/profile'
+      preLoaderRoute: typeof SettingsProfileRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/modules/comms/': {
@@ -938,10 +957,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface SettingsRouteChildren {
+  SettingsProfileRoute: typeof SettingsProfileRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsProfileRoute: SettingsProfileRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
 
