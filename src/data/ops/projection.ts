@@ -234,11 +234,26 @@ export const OPS_SORT_OPTIONS: { value: OpsSortKey; label: string }[] = [
   { value: "open_approvals", label: "Most open approvals" },
 ];
 
-const HEALTH_RANK: Record<OpsHealth, number> = { incident: 0, attention: 1, healthy: 2 };
+const HEALTH_RANK: Record<OpsHealth, number> = { incident: 0, attention: 1, unknown: 2, healthy: 3 };
 
+/** Newest activity first. A system Ops never dated sorts last, not first. */
 function newestFirst(a: OpsSystem, b: OpsSystem): number {
-  return a.lastActivityAt < b.lastActivityAt ? 1 : a.lastActivityAt > b.lastActivityAt ? -1 : 0;
+  const left = a.lastActivityAt ?? "";
+  const right = b.lastActivityAt ?? "";
+  return left < right ? 1 : left > right ? -1 : 0;
 }
+
+/** Sum a column across systems, or null when nobody proved a number. */
+export function sumKnown(systems: OpsSystem[], pick: (system: OpsSystem) => number | null) {
+  let total: number | null = null;
+  for (const system of systems) {
+    const value = pick(system);
+    if (value === null) continue;
+    total = (total ?? 0) + value;
+  }
+  return total;
+}
+
 
 /** Order the portfolio. Ties always fall back to newest activity, then name. */
 export function sortOpsSystems(systems: OpsSystem[], key: OpsSortKey): OpsSystem[] {
