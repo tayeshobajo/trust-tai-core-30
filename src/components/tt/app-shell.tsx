@@ -1,8 +1,8 @@
-import { BrandLogo } from "@/components/tt/brand-logo";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AppLink } from "@/components/tt/app-link";
+import { BrandLogo } from "@/components/tt/brand-logo";
 import {
   Activity,
   Compass,
