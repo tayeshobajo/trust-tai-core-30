@@ -179,6 +179,13 @@ function StewardTasks({
 
       <StewardTabs active="tasks" />
 
+      {linkedMissing ? (
+        <p className="rounded-xl border border-border bg-card px-4 py-3 text-[13px] text-muted-foreground">
+          That activity entry points at a task this checklist no longer carries. The event stays in
+          the record; the task itself is gone or belongs to another workspace.
+        </p>
+      ) : null}
+
       <div>
         <h2 className="font-display text-2xl text-foreground">What everyone owns.</h2>
         <p className="mt-2 max-w-reading text-sm text-muted-foreground">

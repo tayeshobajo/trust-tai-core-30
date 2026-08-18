@@ -24,6 +24,17 @@ import {
  * A task, opened beside the checklist rather than on a page of its own. It
  * shows where the task came from, why it is a priority and who can act.
  */
+function formatMoment(at: string): string {
+  const when = new Date(at);
+  if (Number.isNaN(when.getTime())) return "earlier";
+  return when.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function TaskDetailPanel({
   task,
   onClose,
@@ -32,8 +43,11 @@ export function TaskDetailPanel({
   onFocus,
   onDue,
   actor,
+  recordedAt,
 }: {
   task: StewardTask | null;
+  /** When opened from activity: the moment the event was recorded. */
+  recordedAt?: string;
   onClose: () => void;
   onComplete: (note: string) => void;
   onReassign: () => void;
@@ -57,6 +71,12 @@ export function TaskDetailPanel({
           <SheetTitle className="font-display text-2xl leading-snug text-foreground">
             {task.title}
           </SheetTitle>
+          {recordedAt ? (
+            <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-[12.5px] text-muted-foreground">
+              Opened from activity recorded {formatMoment(recordedAt)}. This is the task as it
+              stands now, with its history below.
+            </p>
+          ) : null}
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
