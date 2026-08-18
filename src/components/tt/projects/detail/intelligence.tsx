@@ -7,13 +7,19 @@
  */
 
 import { useState } from "react";
-import { Check, ExternalLink, Plus, Trash2, Upload } from "lucide-react";
+import { Check, ExternalLink, FileUp, Plus, Trash2, Upload } from "lucide-react";
 
 import { Panel } from "./overview";
 import { MetaPill, TTButton, TTInput } from "@/components/tt/primitives";
 import type { ContextHealth } from "@/data/projects/context-packet";
 import type { ProjectContextPacket } from "@/data/projects/context-packet";
 import type { ProjectSuggestion } from "@/data/projects/suggestions";
+import {
+  importSummary,
+  parseThinkingImport,
+  type ImportCandidate,
+} from "@/data/projects/thinking-import";
+
 import type { WorkItem } from "@/domain/project-delivery";
 import {
   ASSET_STATUS_LABEL,
