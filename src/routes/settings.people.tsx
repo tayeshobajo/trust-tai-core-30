@@ -1070,7 +1070,7 @@ function InvitePanel({
               <iframe
                 title="Invitation email preview"
                 srcDoc={preview.html}
-                className="mt-2 h-[420px] w-full rounded-lg border border-border bg-white"
+                className="mt-2 h-[420px] w-full rounded-lg border border-border bg-card"
                 sandbox=""
               />
             </div>
