@@ -81,7 +81,7 @@ export const Route = createFileRoute("/modules/projects/$projectId")({
 function ProjectRoute() {
   const { projectId } = Route.useParams();
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="projects">
       {(identity) => (
         <AppShell identity={identity}>
           <DeliveryRoom identity={identity} projectId={projectId} />

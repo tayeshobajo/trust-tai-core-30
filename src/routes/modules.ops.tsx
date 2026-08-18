@@ -41,7 +41,7 @@ export const Route = createFileRoute("/modules/ops")({
 
 function OpsRoute() {
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="ops">
       {(identity) => (
         <AppShell identity={identity}>
           <OpsRoom identity={identity} />

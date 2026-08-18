@@ -10,6 +10,7 @@
  * proposed destination is written as Inferred until a person approves it.
  */
 
+import { guardRoomWrites } from "@/lib/room-authority";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ActivityName } from "@/domain/activity";
 import type { ID } from "@/domain/entities";
@@ -247,7 +248,7 @@ export interface CreateRoadmapInput {
   extraContext?: string | undefined;
 }
 
-export const roadmapService = {
+const roadmapServiceRaw = {
   async list(organizationId: ID): Promise<Roadmap[]> {
     const { data, error } = await supabase
       .from("roadmaps")
@@ -706,3 +707,14 @@ export const roadmapService = {
     return toDecision(data as Row);
   },
 };
+
+/* Roadmap truth may be read by anyone who can see the room, and changed only
+   by someone whose access carries authority to work in it. */
+export const roadmapService = guardRoomWrites("roadmap", "Roadmap", roadmapServiceRaw, [
+  "list",
+  "openDecisions",
+  "resolvedDecisions",
+  "stagesByRoadmap",
+  "detail",
+  "findBySubject",
+]);

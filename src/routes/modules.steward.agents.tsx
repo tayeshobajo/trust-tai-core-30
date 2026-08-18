@@ -50,7 +50,7 @@ export const Route = createFileRoute("/modules/steward/agents")({
 
 function AgentsRoute() {
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="steward">
       {(identity) => (
         <AppShell identity={identity}>
           <Agents identity={identity} />

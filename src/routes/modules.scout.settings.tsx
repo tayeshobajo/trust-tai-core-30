@@ -41,7 +41,7 @@ export const Route = createFileRoute("/modules/scout/settings")({
 
 function IcpSettingsRoute() {
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="scout">
       {(identity) => (
         <AppShell identity={identity}>
           <IcpSettings identity={identity} />

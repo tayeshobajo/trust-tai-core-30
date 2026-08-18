@@ -34,7 +34,7 @@ export const Route = createFileRoute("/")({
 
 function HomeRoute() {
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="home">
       {(identity) => (
         <AppShell identity={identity} sidebar={<SystemStatus identity={identity} />}>
           <Home identity={identity} />

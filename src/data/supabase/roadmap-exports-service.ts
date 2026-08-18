@@ -8,6 +8,7 @@
  * A client copy is frozen at creation. Nothing here rewrites a snapshot.
  */
 
+import { guardRoomWrites } from "@/lib/room-authority";
 import type { PostgrestError } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/trust-tai/supabase";
@@ -142,7 +143,7 @@ function toEvidence(row: Row): RoadmapEvidenceItem {
 
 /* ----------------------------------------------------------------- service */
 
-export const roadmapExportsService = {
+const roadmapExportsServiceRaw = {
   async listExports(roadmapId: ID): Promise<Availability<RoadmapExport>> {
     const { data, error } = await supabase
       .from("roadmap_exports")
@@ -399,3 +400,10 @@ export const roadmapExportsService = {
     assertOk(error);
   },
 };
+
+export const roadmapExportsService = guardRoomWrites(
+  "roadmap",
+  "Roadmap",
+  roadmapExportsServiceRaw,
+  ["listExports", "listLinks", "listNotes", "listEvidence"],
+);

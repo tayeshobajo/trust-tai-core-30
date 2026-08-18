@@ -18,7 +18,8 @@ import {
   setMemberStatus,
   type MemberProfile,
 } from "@/data/supabase/settings-service";
-import { ROLE_LABEL, WORKSPACE_ROLES, normalizeRole, type WorkspaceRole } from "@/domain/access";
+import { ROLE_LABEL, normalizeRole, type WorkspaceRole } from "@/domain/access";
+import { MEMBERSHIP_ROLES } from "@/data/supabase/schema";
 import {
   APP_ACCESS_DESCRIPTION,
   APP_ACCESS_LABEL,
@@ -29,9 +30,13 @@ import {
 } from "@/domain/app-access";
 import { APP_REGISTRY } from "@/domain/registry";
 
+/* Only the roles the workspace database will actually accept are offered. */
+const ASSIGNABLE_ROLES = MEMBERSHIP_ROLES as readonly WorkspaceRole[];
+
 export const Route = createFileRoute("/settings/people")({
   component: PeopleSettings,
 });
+
 
 function whenText(value: string | null): string {
   if (!value) return "No activity recorded";
@@ -188,7 +193,7 @@ function PeopleSettings() {
                             })
                           }
                         >
-                          {WORKSPACE_ROLES.map((role) => (
+                          {ASSIGNABLE_ROLES.map((role) => (
                             <option key={role} value={role}>
                               {ROLE_LABEL[role]}
                             </option>
@@ -446,7 +451,7 @@ function InvitePanel({
   onDone: () => void;
 }) {
   const [emails, setEmails] = useState("");
-  const [role, setRole] = useState<WorkspaceRole>("team_member");
+  const [role, setRole] = useState<WorkspaceRole>("member");
   const [overrides, setOverrides] = useState<Record<string, AppAccessLevel>>({});
   const [sent, setSent] = useState<number | null>(null);
 
@@ -498,7 +503,7 @@ function InvitePanel({
               setRole(normalizeRole(event.target.value));
             }}
           >
-            {WORKSPACE_ROLES.map((value) => (
+            {ASSIGNABLE_ROLES.map((value) => (
               <option key={value} value={value}>
                 {ROLE_LABEL[value]}
               </option>

@@ -42,7 +42,7 @@ function ModuleRoute() {
   const external = app.status === "external";
 
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId={app.id}>
       {(identity) => (
     <AppShell identity={identity}>
       <div className="space-y-12">

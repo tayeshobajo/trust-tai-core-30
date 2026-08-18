@@ -83,6 +83,15 @@ export interface IcpProfileRow {
 /** Roles allowed to mutate organization-level intelligence such as the ICP. */
 export const ADMIN_ROLES = ["owner", "admin"];
 
+/**
+ * The membership vocabulary the database actually accepts. The wider Trust Tai
+ * role language lives in `@/domain/access`; only these four may be persisted,
+ * and only these two statuses, so Settings never offers a choice the
+ * organization_memberships check constraint would refuse.
+ */
+export const MEMBERSHIP_ROLES = ["owner", "admin", "member", "viewer"] as const;
+export const MEMBERSHIP_STATUSES = ["active", "invited", "suspended"] as const;
+
 export function isMissingColumn(error: PostgrestError | null): string | null {
   if (!error) return null;
   const message = `${error.message} ${error.details ?? ""}`;

@@ -62,7 +62,7 @@ export const Route = createFileRoute("/modules/steward/memory")({
 
 function MemoryRoute() {
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="steward">
       {(identity) => (
         <AppShell identity={identity}>
           <Memory identity={identity} />

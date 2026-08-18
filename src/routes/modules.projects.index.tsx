@@ -83,7 +83,7 @@ export const Route = createFileRoute("/modules/projects/")({
 });
 
 function ProjectsRoute() {
-  return <WorkspaceGate>{(identity) => <ProjectsRoom identity={identity} />}</WorkspaceGate>;
+  return <WorkspaceGate appId="projects">{(identity) => <ProjectsRoom identity={identity} />}</WorkspaceGate>;
 }
 
 function ordinal(position: number): string {

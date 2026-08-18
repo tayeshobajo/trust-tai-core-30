@@ -60,7 +60,7 @@ export const Route = createFileRoute("/modules/steward/")({
 
 function StewardTeamRoute() {
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="steward">
       {(identity) => (
         <AppShell identity={identity}>
           <StewardTeam identity={identity} />
