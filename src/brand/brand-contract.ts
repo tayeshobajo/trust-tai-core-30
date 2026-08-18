@@ -80,6 +80,7 @@ export const VISUAL_SCREENS = [
   { id: "auth", path: "/auth?redirect=%2F" },
   { id: "home", path: "/" },
   { id: "scout", path: "/modules/scout" },
+  { id: "comms", path: "/modules/comms" },
   { id: "conductor", path: "/modules/conductor" },
   { id: "pulse", path: "/modules/pulse" },
 ] as const;

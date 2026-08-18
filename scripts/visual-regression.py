@@ -34,6 +34,7 @@ SCREENS = [
     ("auth", "/auth?redirect=%2F"),
     ("home", "/"),
     ("scout", "/modules/scout"),
+    ("comms", "/modules/comms"),
     ("conductor", "/modules/conductor"),
     ("pulse", "/modules/pulse"),
 ]
