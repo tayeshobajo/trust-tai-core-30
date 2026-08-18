@@ -41,7 +41,7 @@ export const Route = createFileRoute("/modules/comms/voice")({
 
 function VoiceRoute() {
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="comms">
       {(identity) => (
         <AppShell identity={identity}>
           <VoiceSettings identity={identity} />

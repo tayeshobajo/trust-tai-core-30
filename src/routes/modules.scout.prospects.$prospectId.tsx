@@ -97,7 +97,7 @@ function ProspectRoute() {
   const { prospectId } = Route.useParams();
   const search = Route.useSearch();
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="scout">
       {(identity) => (
         <CompanyDetail
           identity={identity}

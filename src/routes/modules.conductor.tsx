@@ -119,6 +119,7 @@ function ConductorRoute() {
   const handoff = readHandoff(search as Record<string, unknown>);
   return (
     <WorkspaceGate
+      appId="conductor"
       preview={{
         room: "The Conductor",
         purpose:

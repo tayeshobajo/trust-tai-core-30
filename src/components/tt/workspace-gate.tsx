@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/tt/brand-logo";
 import { PageHeader, MetaPill, TTButton } from "@/components/tt/primitives";
-import { useWorkspace, type WorkspaceIdentity } from "@/lib/workspace";
+import { canSeeApp, useWorkspace, type WorkspaceIdentity } from "@/lib/workspace";
 
 function Boundary({
   title,
@@ -51,9 +51,16 @@ export interface RoomPreview {
 export function WorkspaceGate({
   children,
   preview,
+  appId,
 }: {
   children: (identity: WorkspaceIdentity) => ReactNode;
   preview?: RoomPreview;
+  /**
+   * The room this surface belongs to. When given, the gate closes the room for
+   * anyone whose resolved access does not include it, so hiding a room from
+   * the navigation and closing the door are the same act.
+   */
+  appId?: string;
 }) {
   const state = useWorkspace();
 
@@ -157,6 +164,22 @@ export function WorkspaceGate({
         action={
           <TTButton asChild variant="secondary">
             <Link to="/auth" search={{ redirect: "/" }}>Back to sign in</Link>
+          </TTButton>
+        }
+      />
+    );
+  }
+
+  if (appId && !canSeeApp(state.identity, appId)) {
+    return (
+      <Boundary
+        title={`${preview?.room ?? "This room"} is not open to you.`}
+        supporting="Your access to this workspace does not include this room. Nothing here is loaded, and no record is read."
+        pills={["Identity: verified", "Room access: closed"]}
+        note="An owner or admin can change this in Settings, People and access."
+        action={
+          <TTButton asChild variant="secondary">
+            <Link to="/">Back to your workspace</Link>
           </TTButton>
         }
       />

@@ -89,7 +89,7 @@ interface DraftPreview {
 }
 
 function CommsRoute() {
-  return <WorkspaceGate>{(identity) => <CommsRoom identity={identity} />}</WorkspaceGate>;
+  return <WorkspaceGate appId="comms">{(identity) => <CommsRoom identity={identity} />}</WorkspaceGate>;
 }
 
 function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {

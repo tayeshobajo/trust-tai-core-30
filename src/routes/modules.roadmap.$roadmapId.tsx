@@ -116,7 +116,7 @@ function RoadmapDetailRoute() {
   const { roadmapId } = Route.useParams();
   const { view } = Route.useSearch();
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="roadmap">
       {(identity) => (
         <AppShell identity={identity}>
           <RoadmapWorkspace identity={identity} roadmapId={roadmapId} view={view} />

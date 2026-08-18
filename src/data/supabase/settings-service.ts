@@ -238,9 +238,12 @@ export async function setMemberStatus(input: {
   status: "active" | "deactivated";
   actorUserId: string;
 }): Promise<void> {
+  /* The database records loss of access as `suspended`. The product says
+     "deactivated"; the row keeps its history either way. */
+  const persisted = input.status === "active" ? "active" : "suspended";
   const { error } = await supabase
     .from("organization_memberships")
-    .update({ status: input.status, updated_at: new Date().toISOString() })
+    .update({ status: persisted, updated_at: new Date().toISOString() })
     .eq("organization_id", input.organizationId)
     .eq("user_id", input.userId);
   if (error) throw new Error(error.message);
@@ -464,8 +467,17 @@ export async function saveProfile(input: ProfileDetail): Promise<string[]> {
   const dropped: string[] = [];
   const before = Object.keys(payload);
 
+  /* The profile row already exists for every member: it is created with the
+     account. Settings updates it rather than upserting, because insert on
+     profiles is not a privilege a signed-in person holds. */
   const { data, error } = await writeTolerant<Row>(payload, ["id"], async (body) => {
-    const result = await supabase.from("profiles").upsert(body).select("*").maybeSingle();
+    const { id, ...fields } = body;
+    const result = await supabase
+      .from("profiles")
+      .update(fields)
+      .eq("id", String(id))
+      .select("*")
+      .maybeSingle();
     return { data: (result.data ?? null) as Row | null, error: result.error };
   });
   if (error) throw new Error(error.message);
@@ -517,7 +529,13 @@ export async function saveOrganization(
     updated_at: new Date().toISOString(),
   };
   const { error } = await writeTolerant<Row>(payload, ["id", "name", "slug"], async (body) => {
-    const result = await supabase.from("organizations").upsert(body).select("*").maybeSingle();
+    const { id, ...fields } = body;
+    const result = await supabase
+      .from("organizations")
+      .update(fields)
+      .eq("id", String(id))
+      .select("*")
+      .maybeSingle();
     return { data: (result.data ?? null) as Row | null, error: result.error };
   });
   if (error) throw new Error(error.message);

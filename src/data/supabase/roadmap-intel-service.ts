@@ -10,6 +10,7 @@
  * Postgrest errors surface as themselves. Nothing here falls back to demo data.
  */
 
+import { guardRoomWrites } from "@/lib/room-authority";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ActivityName } from "@/domain/activity";
 import type { ID } from "@/domain/entities";
@@ -167,7 +168,7 @@ function toAsk(row: Row): AskAnswer {
   };
 }
 
-export const roadmapIntel = {
+const roadmapIntelRaw = {
   async load(roadmapId: ID): Promise<RoadmapIntel> {
     const [research, strategy, milestones, artifacts, sessions, questions] = await Promise.all([
       supabase
@@ -724,3 +725,8 @@ export const roadmapIntel = {
 };
 
 export { entryList };
+
+export const roadmapIntel = guardRoomWrites("roadmap", "Roadmap", roadmapIntelRaw, [
+  "load",
+  "listArtifactVersions",
+]);

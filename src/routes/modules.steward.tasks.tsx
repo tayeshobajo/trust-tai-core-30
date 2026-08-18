@@ -64,7 +64,7 @@ export const Route = createFileRoute("/modules/steward/tasks")({
 function TasksRoute() {
   const { task = "", at = "" } = Route.useSearch();
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="steward">
       {(identity) => (
         <AppShell identity={identity}>
           <StewardTasks identity={identity} openKey={task} recordedAt={at} />

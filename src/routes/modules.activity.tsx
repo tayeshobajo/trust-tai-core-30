@@ -92,6 +92,7 @@ function ActivityRoute() {
   const { view, page, kind, q, from, to } = Route.useSearch();
   return (
     <WorkspaceGate
+      appId="home"
       preview={{
         room: "The activity view",
         purpose:

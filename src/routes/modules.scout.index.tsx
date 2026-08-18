@@ -71,7 +71,7 @@ export const Route = createFileRoute("/modules/scout/")({
 function ScoutRoute() {
   const { section, fit } = Route.useSearch();
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="scout">
       {(identity) => <Scout identity={identity} tab={section} filter={fit} />}
     </WorkspaceGate>
   );

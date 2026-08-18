@@ -16,6 +16,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { accessContext, type AccessContext } from "@/domain/access";
 import { visibleApps, type AppAccessDecision } from "@/domain/app-access";
 import { readMemberAccess, readOrganizationApps } from "@/data/supabase/settings-service";
+import { clearRoomAuthority, setRoomAuthority } from "@/lib/room-authority";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import {
   ADMIN_ROLES,
@@ -167,6 +168,11 @@ export function useWorkspace(): WorkspaceState {
         overrides: (memberAccess.value as Record<string, Record<string, string>>)[userId] ?? {},
       });
 
+      /* Publish authority once, so room services can refuse a write that this
+         person's access does not carry. Visibility alone is not authority. */
+      setRoomAuthority(apps);
+
+
       return {
         status: "ready",
         identity: {
@@ -194,6 +200,7 @@ export function useWorkspace(): WorkspaceState {
 }
 
 export async function signOut(queryClient: ReturnType<typeof useQueryClient>) {
+  clearRoomAuthority();
   await queryClient.cancelQueries();
   queryClient.clear();
   await supabase.auth.signOut();

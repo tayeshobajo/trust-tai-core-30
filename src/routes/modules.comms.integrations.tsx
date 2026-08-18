@@ -37,7 +37,7 @@ export const Route = createFileRoute("/modules/comms/integrations")({
 
 function IntegrationsRoute() {
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="comms">
       {(identity) => (
         <AppShell identity={identity}>
           <Connections identity={identity} />

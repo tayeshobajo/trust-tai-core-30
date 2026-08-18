@@ -49,7 +49,7 @@ export const Route = createFileRoute("/modules/steward/meetings/$conversationId"
 
 function ConversationRoute() {
   return (
-    <WorkspaceGate>
+    <WorkspaceGate appId="steward">
       {(identity) => (
         <AppShell identity={identity}>
           <ConversationReview identity={identity} />

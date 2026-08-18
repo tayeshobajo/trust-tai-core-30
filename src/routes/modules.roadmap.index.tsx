@@ -59,7 +59,7 @@ export const Route = createFileRoute("/modules/roadmap/")({
 
 function RoadmapRoute() {
   return (
-    <WorkspaceGate>{(identity) => <RoadmapRoom identity={identity} />}</WorkspaceGate>
+    <WorkspaceGate appId="roadmap">{(identity) => <RoadmapRoom identity={identity} />}</WorkspaceGate>
   );
 }
 

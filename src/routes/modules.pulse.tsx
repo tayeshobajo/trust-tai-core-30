@@ -63,7 +63,7 @@ export const Route = createFileRoute("/modules/pulse")({
 
 function PulseRoute() {
   return (
-    <WorkspaceGate>{(identity) => <Pulse identity={identity} />}</WorkspaceGate>
+    <WorkspaceGate appId="pulse">{(identity) => <Pulse identity={identity} />}</WorkspaceGate>
   );
 }
 
