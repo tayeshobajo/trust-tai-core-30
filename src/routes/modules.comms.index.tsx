@@ -354,6 +354,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           onHealth={setHealthFilter}
           onTab={setTab}
           onAdd={() => setCapturing(true)}
+          attention={attention}
+          onOpenRelationship={(id) => setSelectedId(id)}
         />
 
       }
