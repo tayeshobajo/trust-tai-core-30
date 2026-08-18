@@ -566,3 +566,20 @@ export const projectIntelligence = guardRoomWrites("projects", "Projects", servi
   "listConnections",
   "listEffectiveness",
 ]);
+
+/**
+ * Agent definitions are written from Steward, so they are guarded by Steward
+ * authority. A person with view access can read what good looks like and
+ * still cannot change it.
+ */
+export const agentEffectivenessService = guardRoomWrites(
+  "steward",
+  "Steward",
+  {
+    list: (organizationId: ID) => service.listEffectiveness(organizationId),
+    save: (input: AgentEffectivenessInput, organizationId: ID, userId: ID) =>
+      service.saveEffectiveness(input, organizationId, userId),
+  },
+  ["list"],
+);
+
