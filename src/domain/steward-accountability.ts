@@ -239,4 +239,6 @@ export interface StewardAgentRead {
     lastSuccessAt: string | null;
     consecutiveFailures: number;
   } | null;
+  /** Technical reason the live read failed. Detail only, never a headline. */
+  liveFailureDetail: string | null;
 }

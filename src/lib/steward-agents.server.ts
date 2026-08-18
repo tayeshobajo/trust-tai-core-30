@@ -1,18 +1,3 @@
-/** Network-level unreachability — includes Cloudflare Workers' 403/1003
- * ("Direct IP access not allowed") returned when a Worker fetches a
- * laptop-local address like 127.0.0.1. Same bucket as ECONNREFUSED. */
-function isNetworkUnreachable(failure: string | null): boolean {
-  const f = (failure ?? "").toLowerCase();
-  return (
-    f.includes("fetch failed") ||
-    f.includes("econnrefused") ||
-    f.includes("enotfound") ||
-    f.includes("etimedout") ||
-    (f.includes("403") && (f.includes("1003") || f.includes("cloudflare"))) ||
-    f.includes("direct ip access")
-  );
-}
-
 /**
  * Steward's read + write layer over the Paperclip workforce (server only).
  *
@@ -135,6 +120,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       agents: [],
       connected: false,
       syncHealth: null,
+      liveFailureDetail: error instanceof Error ? error.message : null,
       because: error instanceof Error ? error.message : "The execution bridge is not available.",
     };
   }
@@ -147,6 +133,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       agents: [],
       connected: false,
       syncHealth: null,
+      liveFailureDetail: error instanceof Error ? error.message : null,
       because:
         error instanceof Error
           ? `The agent registry could not be read. ${error.message}`
@@ -159,6 +146,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       agents: [],
       connected: true,
       syncHealth: null,
+      liveFailureDetail: null,
       because: "No Paperclip agents are registered for this workspace yet.",
     };
   }
@@ -300,7 +288,8 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
     syncHealth,
     because: reachable
       ? `${agents.length} agent${agents.length === 1 ? "" : "s"} registered. Paperclip \u00b7 live.`
-      : connectionLine(syncHealth?.lastSuccessAt ?? null)
+      : connectionLine(syncHealth?.lastSuccessAt ?? null),
+    liveFailureDetail: reachable ? null : firstFailure
   };
 }
 
