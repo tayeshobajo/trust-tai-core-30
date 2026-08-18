@@ -82,7 +82,7 @@ export function dueFromText(sentence: string, now: Date = new Date()): ISODateTi
 }
 
 const COMMITMENT_US =
-  /\b(i'?ll|i will|we'?ll|we will|i'?m going to|we'?re going to|i promised|we promised|let me)\b/i;
+  /\b(i'?ll|i will|we'?ll|we will|i'?m going to|we'?re going to|i promised|we promised|i said i would|we said we would|i agreed to|we agreed to|let me)\b/i;
 const COMMITMENT_THEM =
   /\b(they'?ll|they will|he'?ll|she'?ll|he will|she will|they promised|they agreed to|they'?re going to)\b/i;
 const LEARNED =
