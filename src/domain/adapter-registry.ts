@@ -235,6 +235,15 @@ export const ADAPTER_CAPABILITIES: AdapterCapability[] = [
       "Ops is a separate application reached through SSO. It accepts routed work from Projects, not from the Conductor.",
   }),
   unsupported({
+    room: "ops",
+    operation: "ops.accept_routed_work",
+    label: "Accept routed work on Ops' behalf",
+    requiredCapability: "ops.read",
+    consequence: "internal_change",
+    because:
+      "Acceptance is the receiving room's own word. Nothing here may record it for Ops, however long the silence has lasted.",
+  }),
+  unsupported({
     room: "studio",
     operation: "studio.publish",
     label: "Publish an asset",
