@@ -13,6 +13,12 @@
 
 export type PaperclipMode = "live" | "synchronized" | "interrupted";
 
+export const PAPERCLIP_MODE_LABEL: Record<PaperclipMode, string> = {
+  live: "Paperclip \u00b7 live",
+  synchronized: "Paperclip \u00b7 synchronized",
+  interrupted: "Paperclip \u00b7 interrupted",
+};
+
 /** Freshness of the reconciliation projection. */
 export type PaperclipFreshness = "live" | "fresh" | "delayed" | "stale" | "never";
 

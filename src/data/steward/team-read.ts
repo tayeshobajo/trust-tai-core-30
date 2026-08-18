@@ -31,6 +31,7 @@ const NO_AGENTS: StewardAgentRead = {
   agents: [],
   connected: false,
   syncHealth: null,
+  liveFailureDetail: null,
   because: "Paperclip is not reachable from this workspace right now.",
 };
 
