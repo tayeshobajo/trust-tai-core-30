@@ -12,7 +12,6 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
-import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { OpsSystemRow, OpsToolbar } from "@/components/tt/ops/portfolio";
 import { MetaPill, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
@@ -124,13 +123,6 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   return (
     <div className="space-y-10">
-      <AppHero
-        appId="ops"
-        eyebrow="Trust Tai OS / Ops"
-        title="Technical stewardship, without losing the thread."
-        supporting="Ops is its own application. Trust Tai OS carries your identity across, and shows the systems Ops is maintaining."
-      />
-
       <RoomHero
         eyebrow="Ops"
         title="Technical stewardship, without losing the thread."
