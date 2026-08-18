@@ -3,11 +3,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { SectionHeading, TTButton, TTField, TTInput } from "@/components/tt/primitives";
-import { Health, NotProvisioned, PersonChip, TTSelect } from "@/components/tt/settings/pieces";
+import {
+  Health,
+  InfoTip,
+  NotProvisioned,
+  PersonChip,
+  TTSelect,
+} from "@/components/tt/settings/pieces";
+import { PermissionSummary } from "@/components/tt/settings/permission-summary";
 import { useSettingsIdentity } from "@/components/tt/settings/shell";
 import {
   cancelInvitation,
+  deliverInvitationEmail,
   inviteMembers,
+  listInvitationAudit,
   listInvitations,
   listMembers,
   parseEmails,
@@ -45,11 +54,61 @@ function whenText(value: string | null): string {
   return date.toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
+type SortKey = "name" | "role" | "rooms" | "lastActive" | "status";
+
+/** A sortable, explainable column header. Presentation only. */
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  hint,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: { key: SortKey; direction: "asc" | "desc" };
+  onSort: (key: SortKey) => void;
+  hint?: string;
+}) {
+  const active = sort.key === sortKey;
+  return (
+    <th
+      scope="col"
+      className="tt-eyebrow px-4 py-2 font-normal"
+      aria-sort={active ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <span className="inline-flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => onSort(sortKey)}
+          className="inline-flex items-center gap-1 uppercase tracking-[inherit] hover:text-foreground"
+        >
+          {label}
+          <span aria-hidden className={active ? "text-royal" : "text-muted-foreground/50"}>
+            {active ? (sort.direction === "asc" ? "\u2191" : "\u2193") : "\u2195"}
+          </span>
+        </button>
+        {hint ? <InfoTip label={`About ${label}`}>{hint}</InfoTip> : null}
+      </span>
+    </th>
+  );
+}
+
 function PeopleSettings() {
   const identity = useSettingsIdentity();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({
+    key: "name",
+    direction: "asc",
+  });
+  const toggleSort = (key: SortKey) =>
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: key === "lastActive" ? "desc" : "asc" },
+    );
 
   const members = useQuery({
     queryKey: ["settings", "members", identity.organizationId],
@@ -116,14 +175,57 @@ function PeopleSettings() {
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
     const all = members.data ?? [];
-    if (!term) return all;
-    return all.filter(
-      (member) =>
-        member.name.toLowerCase().includes(term) || member.email.toLowerCase().includes(term),
-    );
-  }, [members.data, search]);
+    const matches = term
+      ? all.filter(
+          (member) =>
+            member.name.toLowerCase().includes(term) ||
+            member.email.toLowerCase().includes(term) ||
+            (member.jobTitle ?? "").toLowerCase().includes(term) ||
+            ROLE_LABEL[member.role].toLowerCase().includes(term),
+        )
+      : all;
+
+    const decorated = matches.map((member) => ({
+      member,
+      rooms: APP_REGISTRY.filter(
+        (app) =>
+          resolveAppAccess(app.id, {
+            role: member.role,
+            membershipActive: member.status === "active",
+            organizationEnabled: orgEnabled[app.id] !== false,
+            override: member.access[app.id],
+          }).visible,
+      ).length,
+    }));
+
+    const direction = sort.direction === "asc" ? 1 : -1;
+    return [...decorated].sort((a, b) => {
+      switch (sort.key) {
+        case "role":
+          return direction * ROLE_LABEL[a.member.role].localeCompare(ROLE_LABEL[b.member.role]);
+        case "rooms":
+          return direction * (a.rooms - b.rooms);
+        case "lastActive":
+          return (
+            direction *
+            ((a.member.lastActiveAt ? Date.parse(a.member.lastActiveAt) : 0) -
+              (b.member.lastActiveAt ? Date.parse(b.member.lastActiveAt) : 0))
+          );
+        case "status":
+          return direction * a.member.status.localeCompare(b.member.status);
+        default:
+          return direction * a.member.name.localeCompare(b.member.name);
+      }
+    });
+  }, [members.data, search, sort, orgEnabled]);
 
   const selected = (members.data ?? []).find((member) => member.userId === selectedId) ?? null;
+  const [delivery, setDelivery] = useState<string | null>(null);
+  const invitationAudit = useQuery({
+    queryKey: ["settings", "invitation-audit", identity.organizationId],
+    queryFn: () => listInvitationAudit(identity.organizationId),
+    enabled: identity.canManage,
+  });
 
   return (
     <>
@@ -151,25 +253,34 @@ function PeopleSettings() {
           <table className="w-full min-w-[640px] text-left">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
-                <th className="tt-eyebrow px-4 py-2 font-normal">Person</th>
-                <th className="tt-eyebrow px-4 py-2 font-normal">Role</th>
-                <th className="tt-eyebrow px-4 py-2 font-normal">Rooms</th>
-                <th className="tt-eyebrow px-4 py-2 font-normal">Last active</th>
-                <th className="tt-eyebrow px-4 py-2 font-normal">Status</th>
+                <SortHeader label="Person" sortKey="name" sort={sort} onSort={toggleSort} />
+                <SortHeader
+                  label="Role"
+                  sortKey="role"
+                  sort={sort}
+                  onSort={toggleSort}
+                  hint="A role sets the ceiling. Room access can narrow it, never widen it."
+                />
+                <SortHeader
+                  label="Rooms"
+                  sortKey="rooms"
+                  sort={sort}
+                  onSort={toggleSort}
+                  hint="How many rooms this person can actually see, after the organization switches and their overrides."
+                />
+                <SortHeader label="Last active" sortKey="lastActive" sort={sort} onSort={toggleSort} />
+                <SortHeader
+                  label="Status"
+                  sortKey="status"
+                  sort={sort}
+                  onSort={toggleSort}
+                  hint="A deactivated person keeps their history and loses every room immediately."
+                />
                 <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {rows.map((member) => {
-                const visible = APP_REGISTRY.filter(
-                  (app) =>
-                    resolveAppAccess(app.id, {
-                      role: member.role,
-                      membershipActive: member.status === "active",
-                      organizationEnabled: orgEnabled[app.id] !== false,
-                      override: member.access[app.id],
-                    }).visible,
-                );
+              {rows.map(({ member, rooms }) => {
                 return (
                   <tr key={member.userId} className="align-middle">
                     <td className="px-4 py-3">
@@ -204,9 +315,7 @@ function PeopleSettings() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {visible.length === 0
-                        ? "No rooms"
-                        : `${visible.length} of ${APP_REGISTRY.length}`}
+                      {rooms === 0 ? "No rooms" : `${rooms} of ${APP_REGISTRY.length}`}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {whenText(member.lastActiveAt)}
@@ -303,14 +412,24 @@ function PeopleSettings() {
                       <button
                         type="button"
                         className="text-[13px] text-royal hover:underline"
-                        onClick={() =>
-                          void resendInvitation({
-                            organizationId: identity.organizationId,
-                            invitationId: invitation.id,
-                            email: invitation.email,
-                            actorUserId: identity.userId,
-                          }).then(refresh)
-                        }
+                        onClick={() => {
+                          void (async () => {
+                            await resendInvitation({
+                              organizationId: identity.organizationId,
+                              invitationId: invitation.id,
+                              email: invitation.email,
+                              actorUserId: identity.userId,
+                            });
+                            const result = await deliverInvitationEmail({
+                              organizationId: identity.organizationId,
+                              invitationId: invitation.id,
+                              email: invitation.email,
+                              actorUserId: identity.userId,
+                            });
+                            setDelivery(result.because);
+                            refresh();
+                          })();
+                        }}
                       >
                         Send again
                       </button>
@@ -334,10 +453,80 @@ function PeopleSettings() {
               ))}
           </div>
         )}
+        {delivery ? (
+          <p className="mt-3 text-xs text-muted-foreground" role="status">
+            {delivery}
+          </p>
+        ) : null}
       </div>
+
+      {identity.canManage ? <InvitationAudit query={invitationAudit} /> : null}
+
+      <PermissionSummary role={normalizeRole(identity.role)} />
     </>
   );
 }
+
+/** Invitation history, drawn from the shared activity stream. Read only. */
+function InvitationAudit({
+  query,
+}: {
+  query: {
+    data?: Awaited<ReturnType<typeof listInvitationAudit>> | undefined;
+    isPending: boolean;
+  };
+}) {
+  const entries = query.data?.value ?? [];
+  return (
+    <div className="tt-surface p-6">
+      <SectionHeading
+        eyebrow="History"
+        title="Invitation activity"
+        description="Every invitation created, resent, emailed or cancelled in this workspace, with who did it and when."
+      />
+      {query.data?.provisioned === false ? (
+        <NotProvisioned what="Invitation history" file="docs/settings-schema.sql" />
+      ) : query.isPending ? (
+        <p className="text-sm text-muted-foreground">Reading history…</p>
+      ) : entries.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No invitation activity recorded yet.</p>
+      ) : (
+        <ol className="divide-y divide-border rounded-xl border border-border">
+          {entries.map((entry) => (
+            <li key={entry.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+              <Health
+                tone={
+                  entry.lifecycle === "cancelled"
+                    ? "caution"
+                    : entry.delivered === false
+                      ? "risk"
+                      : "good"
+                }
+              >
+                {LIFECYCLE_LABEL[entry.lifecycle]}
+              </Health>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-foreground">{entry.summary}</p>
+                <p className="text-xs text-muted-foreground">
+                  {entry.email ? `${entry.email} · ` : ""}
+                  {whenText(entry.at)}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+const LIFECYCLE_LABEL: Record<string, string> = {
+  created: "Created",
+  resent: "Resent",
+  emailed: "Emailed",
+  cancelled: "Cancelled",
+  other: "Recorded",
+};
 
 function MemberAccessPanel({
   member,
@@ -454,6 +643,7 @@ function InvitePanel({
   const [role, setRole] = useState<WorkspaceRole>("member");
   const [overrides, setOverrides] = useState<Record<string, AppAccessLevel>>({});
   const [sent, setSent] = useState<number | null>(null);
+  const [delivered, setDelivered] = useState<string | null>(null);
 
   const parsed = parseEmails(emails);
 
@@ -466,9 +656,24 @@ function InvitePanel({
         access: overrides,
         actorUserId,
       }),
-    onSuccess: (count) => {
-      setSent(count);
+    onSuccess: async (created) => {
+      setSent(created.length);
       setEmails("");
+      const outcomes: string[] = [];
+      for (const invitation of created) {
+        const result = await deliverInvitationEmail({
+          organizationId,
+          invitationId: invitation.id,
+          email: invitation.email,
+          actorUserId,
+        });
+        if (!result.delivered) outcomes.push(result.because);
+      }
+      setDelivered(
+        outcomes.length === 0
+          ? `${created.length} invitation${created.length === 1 ? "" : "s"} emailed.`
+          : outcomes[0] ?? null,
+      );
       onDone();
     },
   });
@@ -490,6 +695,7 @@ function InvitePanel({
             value={emails}
             onChange={(event) => {
               setSent(null);
+              setDelivered(null);
               setEmails(event.target.value);
             }}
             placeholder="sarah@company.com"
@@ -585,6 +791,7 @@ function InvitePanel({
         {sent ? (
           <span className="text-sm text-success" role="status">
             {sent} invitation{sent === 1 ? "" : "s"} recorded.
+            {delivered ? ` ${delivered}` : ""}
           </span>
         ) : null}
         {invite.error ? (

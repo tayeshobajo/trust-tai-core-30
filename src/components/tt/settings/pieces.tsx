@@ -1,5 +1,11 @@
 import type { ComponentProps, ReactNode } from "react";
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { initialsOf } from "@/domain/steward-accountability";
 
@@ -144,5 +150,28 @@ export function Health({ tone, children }: { tone: "good" | "caution" | "risk" |
       <span aria-hidden className="size-1.5 rounded-full bg-current" />
       {children}
     </span>
+  );
+}
+
+/**
+ * A small "why is this like that?" affordance. Explanation only: it never
+ * changes what a person may do, it just says what the rule is.
+ */
+export function InfoTip({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <TooltipProvider delayDuration={120}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={label}
+            className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] leading-none text-muted-foreground align-middle hover:border-royal hover:text-royal focus-visible:outline-2 focus-visible:outline-royal"
+          >
+            i
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-left leading-relaxed">{children}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

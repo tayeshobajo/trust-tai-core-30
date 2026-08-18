@@ -327,14 +327,20 @@ export function parseEmails(input: string): { valid: string[]; invalid: string[]
   return { valid, invalid };
 }
 
+/** One saved invitation, enough to deliver an email for it. */
+export interface InvitationRef {
+  id: string;
+  email: string;
+}
+
 export async function inviteMembers(input: {
   organizationId: string;
   emails: string[];
   role: WorkspaceRole;
   access: Record<string, AppAccessLevel>;
   actorUserId: string;
-}): Promise<number> {
-  if (input.emails.length === 0) return 0;
+}): Promise<InvitationRef[]> {
+  if (input.emails.length === 0) return [];
   const now = new Date();
   const expires = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -350,9 +356,10 @@ export async function inviteMembers(input: {
     expires_at: expires,
   }));
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("organization_invitations")
-    .upsert(rows, { onConflict: "organization_id,email" });
+    .upsert(rows, { onConflict: "organization_id,email" })
+    .select("id, email");
   if (error) throw new Error(error.message);
 
   for (const email of input.emails) {
@@ -362,10 +369,13 @@ export async function inviteMembers(input: {
       name: "user.invited",
       subject: { type: "user", id: email, label: email },
       summary: `${email} was invited as ${input.role}.`,
-      payload: { role: input.role, app_access: input.access },
+      payload: { role: input.role, app_access: input.access, lifecycle: "created" },
     });
   }
-  return input.emails.length;
+  return ((data ?? []) as Row[]).map((row) => ({
+    id: String(row["id"]),
+    email: String(row["email"] ?? ""),
+  }));
 }
 
 export async function resendInvitation(input: {
@@ -382,12 +392,13 @@ export async function resendInvitation(input: {
   await audit({
     organizationId: input.organizationId,
     actorUserId: input.actorUserId,
-    name: "user.invited",
+    name: "user.invite_resent",
     subject: { type: "user", id: input.email, label: input.email },
     summary: `The invitation for ${input.email} was sent again.`,
-    payload: { resend: true },
+    payload: { resend: true, lifecycle: "resent", invitation_id: input.invitationId },
   });
 }
+
 
 export async function cancelInvitation(input: {
   organizationId: string;
@@ -403,12 +414,146 @@ export async function cancelInvitation(input: {
   await audit({
     organizationId: input.organizationId,
     actorUserId: input.actorUserId,
-    name: "user.updated",
+    name: "user.invite_cancelled",
     subject: { type: "user", id: input.email, label: input.email },
     summary: `The invitation for ${input.email} was cancelled.`,
-    payload: { status: "cancelled" },
+    payload: { status: "cancelled", lifecycle: "cancelled", invitation_id: input.invitationId },
   });
 }
+
+/* --------------------------------------------- invitation email + audit trail */
+
+/** Event names that belong to the invitation lifecycle, in one place. */
+export const INVITATION_EVENTS = [
+  "user.invited",
+  "user.invite_resent",
+  "user.invite_cancelled",
+  "user.invite_emailed",
+] as const;
+
+export interface InvitationAuditEntry {
+  id: string;
+  at: string;
+  event: string;
+  lifecycle: "created" | "resent" | "cancelled" | "emailed" | "other";
+  email: string;
+  summary: string;
+  actorUserId: string | null;
+  delivered: boolean | null;
+}
+
+function lifecycleOf(event: string): InvitationAuditEntry["lifecycle"] {
+  if (event === "user.invited") return "created";
+  if (event === "user.invite_resent") return "resent";
+  if (event === "user.invite_cancelled") return "cancelled";
+  if (event === "user.invite_emailed") return "emailed";
+  return "other";
+}
+
+/**
+ * Everything that has happened to invitations in this organization. Read from
+ * the shared activity stream, so it is the same history the rest of the suite
+ * sees. RLS decides who may read it; nothing here widens that.
+ */
+export async function listInvitationAudit(
+  organizationId: string,
+  limit = 50,
+): Promise<Provisioned<InvitationAuditEntry[]>> {
+  const result = await supabase
+    .from("activities")
+    .select("id, event_type, summary, occurred_at, created_at, actor_user_id, payload")
+    .eq("organization_id", organizationId)
+    .in("event_type", INVITATION_EVENTS as unknown as string[])
+    .order("occurred_at", { ascending: false })
+    .limit(limit);
+  if (result.error) {
+    if (missingRelation(result.error)) return notProvisioned([]);
+    throw new Error(result.error.message);
+  }
+  const entries = ((result.data ?? []) as Row[]).map((row) => {
+    const payload = (row["payload"] ?? {}) as Record<string, unknown>;
+    const event = String(row["event_type"] ?? "");
+    const delivered = payload["delivered"];
+    return {
+      id: String(row["id"] ?? crypto.randomUUID()),
+      at: String(row["occurred_at"] ?? row["created_at"] ?? ""),
+      event,
+      lifecycle: lifecycleOf(event),
+      email:
+        typeof payload["label"] === "string"
+          ? (payload["label"] as string)
+          : typeof payload["entity_ref"] === "string"
+            ? (payload["entity_ref"] as string)
+            : "",
+      summary: String(row["summary"] ?? ""),
+      actorUserId: (row["actor_user_id"] as string | null) ?? null,
+      delivered: typeof delivered === "boolean" ? delivered : null,
+    } satisfies InvitationAuditEntry;
+  });
+  return { provisioned: true, value: entries };
+}
+
+export interface DeliveryResult {
+  delivered: boolean;
+  because: string;
+}
+
+/**
+ * Ask the server to email an invitation that already exists. Persistence and
+ * access control are untouched: this only sends a courtesy notification, and a
+ * failure to send is reported rather than hidden.
+ */
+export async function deliverInvitationEmail(input: {
+  organizationId: string;
+  invitationId: string;
+  email: string;
+  actorUserId: string;
+}): Promise<DeliveryResult> {
+  let outcome: DeliveryResult = {
+    delivered: false,
+    because: "The email could not be sent. The invitation still stands.",
+  };
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      outcome = { delivered: false, because: "Sign in again to send invitation emails." };
+    } else {
+      const response = await fetch("/api/public/settings/invite-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          organizationId: input.organizationId,
+          invitationId: input.invitationId,
+        }),
+      });
+      const body = (await response.json().catch(() => null)) as DeliveryResult | null;
+      if (body && typeof body.delivered === "boolean") outcome = body;
+    }
+  } catch {
+    /* Keep the default refusal message. */
+  }
+
+  await audit({
+    organizationId: input.organizationId,
+    actorUserId: input.actorUserId,
+    name: "user.invite_emailed",
+    subject: { type: "user", id: input.email, label: input.email },
+    summary: outcome.delivered
+      ? `An invitation email was sent to ${input.email}.`
+      : `An invitation email to ${input.email} was not delivered. ${outcome.because}`,
+    payload: {
+      lifecycle: "emailed",
+      delivered: outcome.delivered,
+      because: outcome.because,
+      invitation_id: input.invitationId,
+    },
+  });
+
+  return outcome;
+}
+
+
 
 /* ------------------------------------------------------------------ profile */
 

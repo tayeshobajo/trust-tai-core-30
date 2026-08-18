@@ -28,6 +28,10 @@ export type ActivityAction =
   | "flagged"
   /* --- Settings: identity, membership and application access --- */
   | "invited"
+  /** An existing invitation was sent again, cancelled, or emailed. */
+  | "invite_resent"
+  | "invite_cancelled"
+  | "invite_emailed"
   | "access_changed"
   | "deactivated"
   | "reactivated"
