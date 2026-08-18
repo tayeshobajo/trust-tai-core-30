@@ -234,11 +234,11 @@ export function CommsSidebarPanels({
           ) : (
             <ul className="mt-2 space-y-1.5">
               {attention.map((entry) => (
-                <li key={entry.relationship.id}>
+                <li key={entry.relationship.id} className="rounded-lg px-1 py-0.5">
                   <button
                     type="button"
                     onClick={() => onOpenRelationship?.(entry.relationship.id)}
-                    className="w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-full rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <span className="block text-[13px] text-foreground">
                       {entry.relationship.fullName}
@@ -247,10 +247,69 @@ export function CommsSidebarPanels({
                       {entry.move.action}
                     </span>
                   </button>
+                  {onSnooze || onMarkReviewed ? (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1.5 pb-1">
+                      {onMarkReviewed ? (
+                        <button
+                          type="button"
+                          onClick={() => onMarkReviewed(entry.relationship.id)}
+                          className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          Reviewed
+                        </button>
+                      ) : null}
+                      {onSnooze
+                        ? SNOOZE_CHOICES.map((choice) => (
+                            <button
+                              key={choice.id}
+                              type="button"
+                              onClick={() => onSnooze(entry.relationship.id, choice.id)}
+                              className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              {choice.label}
+                            </button>
+                          ))
+                        : null}
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
           )}
+
+          {setAside && setAside.length > 0 ? (
+            <details className="mt-2.5">
+              <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                Set aside ({setAside.length})
+              </summary>
+              <ul className="mt-1.5 space-y-1">
+                {setAside.map((item) => (
+                  <li
+                    key={item.entry.relationship.id}
+                    className="flex items-baseline justify-between gap-2 px-1.5"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-[12px] text-foreground">
+                        {item.entry.relationship.fullName}
+                      </span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {item.because}
+                      </span>
+                    </span>
+                    {onRestoreAttention ? (
+                      <button
+                        type="button"
+                        onClick={() => onRestoreAttention(item.entry.relationship.id)}
+                        className="shrink-0 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        Bring back
+                      </button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </section>
       ) : null}
 
