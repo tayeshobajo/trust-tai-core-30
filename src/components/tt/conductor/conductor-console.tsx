@@ -54,6 +54,8 @@ export interface ConductorConsoleProps {
   onAsk: (question: string) => void | Promise<void>;
   /** A question carried in from elsewhere (e.g. a Pulse signal). Never auto-asked. */
   initialQuestion?: string;
+  /** Render the built-in composer. Off when the page owns the ask surface. */
+  composer?: boolean;
   /** The hand-recorded figures panel, injected so the console stays pure. */
   figures?: ReactNode;
   onCorrect?: (draft: CorrectionDraft) => void | Promise<void>;
@@ -66,6 +68,7 @@ export function ConductorConsole({
   thinking,
   onAsk,
   initialQuestion,
+  composer = true,
   figures,
   onCorrect,
   correcting,
@@ -84,6 +87,7 @@ export function ConductorConsole({
 
   return (
     <div className="space-y-8">
+      {composer ? (
       <TTCard className="space-y-5 p-6">
         <form
           className="space-y-3"
@@ -129,6 +133,7 @@ export function ConductorConsole({
           ))}
         </div>
       </TTCard>
+      ) : null}
 
       {answer ? (
         <div className="space-y-8">

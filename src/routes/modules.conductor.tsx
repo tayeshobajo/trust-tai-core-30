@@ -11,7 +11,6 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { ApprovalQueue } from "@/components/tt/conductor/approval-queue";
 import { OutcomeLearning } from "@/components/tt/conductor/outcome-learning";
@@ -42,8 +41,7 @@ import {
   loadLearning,
   loadObservations,
 } from "@/data/supabase/conductor-learning-service";
-import { getWorkforceSummary } from "@/data/execution-workforce";
-import { MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
+import { TTButton } from "@/components/tt/primitives";
 import {
   approveEverything,
   decide,
@@ -66,8 +64,19 @@ import {
   recordCorrection,
   recordFigure,
 } from "@/data/supabase/conductor-service";
-import { BusinessRead } from "@/components/tt/intelligence/business-read";
 import { LearningTrailPanel } from "@/components/tt/intelligence/learning-trail";
+import { ConductorHeader } from "@/components/tt/conductor/conductor-header";
+import { AskSurface } from "@/components/tt/conductor/ask-surface";
+import { RecommendationCard } from "@/components/tt/conductor/recommendation-card";
+import { ConductorSidebar } from "@/components/tt/conductor/conductor-sidebar";
+import { ConductorRightRail } from "@/components/tt/conductor/conductor-right-rail";
+import { BoundaryRows } from "@/components/tt/conductor/boundary-rows";
+import {
+  conductorGlance,
+  leadRecommendations,
+  needsTai,
+  recentlyMoved,
+} from "@/data/conductor/page-projection";
 import { useIntelligenceRuns } from "@/hooks/use-intelligence-runs";
 import { intelligenceService } from "@/data/intelligence/service";
 import { readHandoff, type ConductorHandoff } from "@/data/pulse/handoff";
@@ -111,9 +120,7 @@ function ConductorRoute() {
   return (
     <WorkspaceGate>
       {(identity) => (
-        <AppShell identity={identity}>
-          <Conductor identity={identity} {...(handoff ? { handoff } : {})} />
-        </AppShell>
+        <Conductor identity={identity} {...(handoff ? { handoff } : {})} />
       )}
     </WorkspaceGate>
   );
@@ -128,6 +135,7 @@ function Conductor({
 }) {
   const [answer, setAnswer] = useState<ConductorAnswer | undefined>(undefined);
   const [lastQuestion, setLastQuestion] = useState("");
+  const [decided, setDecided] = useState<Record<string, boolean>>({});
 
   /* The cross-suite Business Read lives here, not on Pulse: interpretation,
    * confidence, what a step would and would not do, and authorisation. */
@@ -225,12 +233,6 @@ function Conductor({
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["conductor-control", identity.organizationId] }),
-  });
-
-  const workforce = useQuery({
-    queryKey: ["conductor-workforce", identity.organizationId],
-    queryFn: () => getWorkforceSummary({ data: { organizationId: identity.organizationId } }),
-    staleTime: 30_000,
   });
 
   const now = new Date().toISOString();
@@ -435,252 +437,262 @@ function Conductor({
     },
   });
 
+  /* Readings a person has already settled leave the surface immediately. */
+  const openRecommendations = (engine.read?.recommendations ?? []).filter(
+    (row) => !decided[row.id],
+  );
+  const lead = leadRecommendations(openRecommendations);
+
+  const glance = conductorGlance({
+    actions: control.data?.actions ?? [],
+    recommendations: openRecommendations,
+  });
+  const needs = needsTai({
+    actions: control.data?.actions ?? [],
+    recommendations: openRecommendations,
+  });
+  const moved = recentlyMoved({
+    receipts: control.data?.receipts ?? [],
+    actions: control.data?.actions ?? [],
+  });
+
+  const openBoundaries = () => {
+    const node = document.getElementById("conductor-boundaries");
+    if (!(node instanceof HTMLDetailsElement)) return;
+    node.open = true;
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   return (
-    <div className="space-y-12">
-      <AppHero
-        appId="conductor"
-        eyebrow="Steward / Intelligence · Conductor"
-        title="Ask Trust Tai."
-        supporting="One question, one grounded answer. What is observed, what you decided, what follows from it, and what nobody can see yet."
-      />
+    <AppShell identity={identity} sidebar={<ConductorSidebar glance={glance} />}>
+    <div className="space-y-8">
+      <ConductorHeader onExplain={openBoundaries} />
 
-      {routedWork.data ? (
-        <RoutedWorkStep
-          entry={routedWork.data}
-          {...(routeStepGap(routedWork.data) ? { gap: routeStepGap(routedWork.data)! } : {})}
-          opsGap={
-            operationGap("ops", "ops.accept_routed_work") ??
-            "Acceptance is the receiving room's own word."
-          }
-          canPropose={can(access, "projects.write")}
-          proposing={proposeWithdrawal.isPending}
-          proposed={(control.data?.actions ?? []).some(
-            (action) => action.sourceEventKey === `${routedWork.data!.key}:withdrawn`,
-          )}
-          onPropose={(because) => proposeWithdrawal.mutate(because)}
-        />
-      ) : null}
-
-      {handoff ? (
-        <section className="tt-surface p-5" aria-label="Opened from Pulse">
-          <p className="tt-eyebrow">Opened from Pulse</p>
-          <p className="mt-2 text-sm text-foreground">{handoff.entity ?? handoff.app}</p>
-          <p className="mt-1 text-sm text-[var(--tt-ink-muted)]">{handoff.ask}</p>
-          <p className="mt-2 text-xs text-[var(--tt-ink-muted)]">
-            Pulse carried a pointer, not a copy. Everything below is read again from the rooms that
-            own it, and nothing here executes without you.
-          </p>
-        </section>
-      ) : null}
-
-      <WorkforceSection workforce={workforce.data} loading={workforce.isPending} />
-
-      <ConductorConsole
-        {...(answer ? { answer } : {})}
+      <AskSurface
         thinking={ask.isPending}
         {...(handoff ? { initialQuestion: handoff.ask } : {})}
         onAsk={(question) => {
           setLastQuestion(question);
           return ask.mutateAsync(question).then(() => undefined);
         }}
-        correcting={correct.isPending}
-        corrected={correct.isSuccess}
-        onCorrect={(draft) => correct.mutateAsync(draft).then(() => undefined)}
-        figures={
-          <div className="space-y-3">
-            <SchemaStatus
-              {...(schema.data ? { health: schema.data } : {})}
-              checking={schema.isPending}
-            />
-            <FiguresPanel
-              figures={ledger.data?.figures ?? []}
-              now={now}
-              saving={record.isPending}
-              disabled={schema.data ? !schema.data.ready : true}
-              {...(schema.data && !schema.data.ready
-                ? { disabledReason: schema.data.message }
-                : {})}
-              onRecord={(input) => record.mutateAsync(input).then(() => undefined)}
-            />
-          </div>
-        }
       />
 
-      {engine.read ? (
-        <section aria-label="Business read" className="space-y-4">
-          <SectionHeading
-            eyebrow="Business read"
-            title="How the suite reads right now"
-            description="A written read over the same evidence Pulse surfaces. Every next step still needs a person to authorise it, and the owning room still executes."
-          />
-          <BusinessRead
-            read={engine.read}
-            reasoning={engine.refreshing}
-            access={access}
-            onDecide={async ({ recommendation, decision, editedText }) => {
-              await intelligenceService.decide({
-                organizationId: identity.organizationId,
-                userId: identity.userId,
-                userName: identity.name,
-                recommendation,
-                decision,
-                ...(editedText ? { editedText } : {}),
-              });
-              await engine.invalidate();
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-8">
+          {handoff ? (
+            <section className="rounded-xl border border-border bg-card p-4" aria-label="Opened from Pulse">
+              <p className="tt-eyebrow">Opened from Pulse</p>
+              <p className="mt-1.5 text-sm text-foreground">{handoff.entity ?? handoff.app}</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                Pulse carried a pointer, not a copy. Everything below is read again from the rooms
+                that own it, and nothing here moves without you.
+              </p>
+            </section>
+          ) : null}
+
+          {routedWork.data ? (
+            <RoutedWorkStep
+              entry={routedWork.data}
+              {...(routeStepGap(routedWork.data) ? { gap: routeStepGap(routedWork.data)! } : {})}
+              opsGap={
+                operationGap("ops", "ops.accept_routed_work") ??
+                "Acceptance is the receiving room's own word."
+              }
+              canPropose={can(access, "projects.write")}
+              proposing={proposeWithdrawal.isPending}
+              proposed={(control.data?.actions ?? []).some(
+                (action) => action.sourceEventKey === `${routedWork.data!.key}:withdrawn`,
+              )}
+              onPropose={(because) => proposeWithdrawal.mutate(because)}
+            />
+          ) : null}
+
+          <ConductorConsole
+            {...(answer ? { answer } : {})}
+            thinking={ask.isPending}
+            composer={false}
+            onAsk={(question) => {
+              setLastQuestion(question);
+              return ask.mutateAsync(question).then(() => undefined);
             }}
-            onAuthorize={async ({ proposal, decision, note }) => {
-              await intelligenceService.authorizeAction({
-                organizationId: identity.organizationId,
-                userId: identity.userId,
-                userName: identity.name,
-                access,
-                proposal,
-                decision,
-                ...(note ? { note } : {}),
-              });
-            }}
+            correcting={correct.isPending}
+            corrected={correct.isSuccess}
+            onCorrect={(draft) => correct.mutateAsync(draft).then(() => undefined)}
+            figures={
+              <div className="space-y-3">
+                <SchemaStatus
+                  {...(schema.data ? { health: schema.data } : {})}
+                  checking={schema.isPending}
+                />
+                <FiguresPanel
+                  figures={ledger.data?.figures ?? []}
+                  now={now}
+                  saving={record.isPending}
+                  disabled={schema.data ? !schema.data.ready : true}
+                  {...(schema.data && !schema.data.ready
+                    ? { disabledReason: schema.data.message }
+                    : {})}
+                  onRecord={(input) => record.mutateAsync(input).then(() => undefined)}
+                />
+              </div>
+            }
           />
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-xs text-[var(--tt-ink-muted)]">
-              {engine.refreshing ? "Reading again." : engine.because}
+
+          {engine.read ? (
+            <section aria-labelledby="business-read-heading" className="space-y-5">
+              <div>
+                <p className="tt-eyebrow">Business read</p>
+                <h2
+                  id="business-read-heading"
+                  className="tt-display mt-2 max-w-[30ch] text-[22px] text-foreground sm:text-[26px]"
+                >
+                  {lead.length > 0
+                    ? `${COUNT_WORD[lead.length] ?? lead.length} thing${
+                        lead.length === 1 ? "" : "s"
+                      } ${lead.length === 1 ? "is" : "are"} worth your judgment right now.`
+                    : engine.read.headline}
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Read across Projects, Comms, Roadmap, Scout, and the rest of the suite.
+                </p>
+                {engine.refreshing ? (
+                  <p className="mt-1 text-[13px] text-muted-foreground">Reading again.</p>
+                ) : null}
+              </div>
+
+              {lead.map((recommendation) => (
+                <RecommendationCard
+                  key={recommendation.id}
+                  recommendation={recommendation}
+                  hypotheses={engine.read!.hypotheses.filter((row) =>
+                    recommendation.hypothesisRefs.includes(row.id),
+                  )}
+                  access={access}
+                  onDecide={async ({ recommendation: row, decision, editedText }) => {
+                    await intelligenceService.decide({
+                      organizationId: identity.organizationId,
+                      userId: identity.userId,
+                      userName: identity.name,
+                      recommendation: row,
+                      decision,
+                      ...(editedText ? { editedText } : {}),
+                    });
+                    setDecided((current) => ({ ...current, [row.id]: true }));
+                    await engine.invalidate();
+                  }}
+                  onAuthorize={async ({ proposal, decision, note }) => {
+                    await intelligenceService.authorizeAction({
+                      organizationId: identity.organizationId,
+                      userId: identity.userId,
+                      userName: identity.name,
+                      access,
+                      proposal,
+                      decision,
+                      ...(note ? { note } : {}),
+                    });
+                  }}
+                />
+              ))}
+
+              {openRecommendations.length > lead.length ? (
+                <p className="text-[13px] text-muted-foreground">
+                  {openRecommendations.length - lead.length} further reading
+                  {openRecommendations.length - lead.length === 1 ? "" : "s"} were held back so the
+                  few that matter stay legible.
+                </p>
+              ) : null}
+
+              {lead.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nothing is waiting on your judgment. That is a truthful result, not an empty
+                  screen.
+                </p>
+              ) : null}
+
+              <div>
+                <TTButton variant="quiet" onClick={() => void engine.refresh()}>
+                  Read now
+                </TTButton>
+              </div>
+            </section>
+          ) : engine.loading ? (
+            <p className="text-sm text-muted-foreground">Reading the business.</p>
+          ) : null}
+
+          <div id="approval-queue">
+            {controlSchema.data && !controlSchema.data.ready ? (
+              <p className="text-sm text-muted-foreground">{controlSchema.data.message}</p>
+            ) : (
+              <ApprovalQueue
+                control={describeControl(control.data?.actions ?? [], access)}
+                receipts={control.data?.receipts ?? []}
+                canApprove={can(access, "conductor.approve")}
+                canExecute={can(access, "conductor.execute")}
+                deciding={decideMutation.isPending || approveAllMutation.isPending}
+                routing={routeMutation.isPending || routeAllMutation.isPending}
+                onDecide={(decisions) => decideMutation.mutateAsync(decisions).then(() => undefined)}
+                onRoute={(actionId) => routeMutation.mutateAsync(actionId).then(() => undefined)}
+                onRouteAll={() => routeAllMutation.mutateAsync().then(() => undefined)}
+              />
+            )}
+          </div>
+
+          <BoundaryRows
+            lessons={(control.data?.learning ?? []).length}
+            learning={
+              <div className="space-y-6">
+                {engine.trail ? <LearningTrailPanel trail={engine.trail} /> : null}
+                {controlSchema.data && !controlSchema.data.ready ? null : (
+                  <OutcomeLearning
+                    reads={executionRead}
+                    statement={describeExecution(executionRead)}
+                    gaps={ADAPTER_GAPS}
+                    {...(lastChecked ? { lastCheckedAt: lastChecked } : {})}
+                    checkable={learningSchema.data?.ready ? checkable : 0}
+                    checking={checkOutcomes.isPending}
+                    onCheckOutcomes={() => checkOutcomes.mutate()}
+                    correcting={correctReading.isPending}
+                    {...(learningSchema.data?.ready
+                      ? { onCorrect: (draft) => correctReading.mutate(draft) }
+                      : {})}
+                    {...(learningSchema.data && !learningSchema.data.ready
+                      ? { notice: learningSchema.data.message }
+                      : {})}
+                  />
+                )}
+              </div>
+            }
+          />
+
+          {routeMutation.isError ? (
+            <p className="text-sm text-muted-foreground">
+              Nothing was handed over: {(routeMutation.error as Error).message}
             </p>
-            <TTButton variant="quiet" onClick={() => void engine.refresh()}>
-              Read now
-            </TTButton>
-          </div>
-        </section>
-      ) : engine.loading ? (
-        <p className="text-sm text-[var(--tt-ink-muted)]">Reading the business.</p>
-      ) : null}
+          ) : null}
 
-      {engine.trail ? <LearningTrailPanel trail={engine.trail} /> : null}
+          {record.isError ? (
+            <p className="text-sm text-muted-foreground">
+              That figure was not recorded: {(record.error as Error).message}
+            </p>
+          ) : null}
 
-      {controlSchema.data && !controlSchema.data.ready ? (
-        <p className="text-sm text-[var(--tt-ink-muted)]">{controlSchema.data.message}</p>
-      ) : (
-        <ApprovalQueue
-          control={describeControl(control.data?.actions ?? [], access)}
-          receipts={control.data?.receipts ?? []}
-          canApprove={can(access, "conductor.approve")}
-          canExecute={can(access, "conductor.execute")}
-          deciding={decideMutation.isPending || approveAllMutation.isPending}
-          routing={routeMutation.isPending || routeAllMutation.isPending}
-          onDecide={(decisions) => decideMutation.mutateAsync(decisions).then(() => undefined)}
-          onRoute={(actionId) => routeMutation.mutateAsync(actionId).then(() => undefined)}
-          onRouteAll={() => routeAllMutation.mutateAsync().then(() => undefined)}
+          {ask.isError ? (
+            <p className="text-sm text-muted-foreground">
+              The suite could not be read just now. Nothing was changed; try again.
+            </p>
+          ) : null}
+        </div>
+
+        <ConductorRightRail
+          glance={glance}
+          needs={needs}
+          moved={moved}
+          onCapabilities={openBoundaries}
         />
-      )}
-
-      {controlSchema.data && !controlSchema.data.ready ? null : (
-        <OutcomeLearning
-          reads={executionRead}
-          statement={describeExecution(executionRead)}
-          gaps={ADAPTER_GAPS}
-          {...(lastChecked ? { lastCheckedAt: lastChecked } : {})}
-          checkable={learningSchema.data?.ready ? checkable : 0}
-          checking={checkOutcomes.isPending}
-          onCheckOutcomes={() => checkOutcomes.mutate()}
-          correcting={correctReading.isPending}
-          {...(learningSchema.data?.ready
-            ? { onCorrect: (draft) => correctReading.mutate(draft) }
-            : {})}
-          {...(learningSchema.data && !learningSchema.data.ready
-            ? { notice: learningSchema.data.message }
-            : {})}
-        />
-      )}
-
-      {routeMutation.isError ? (
-        <p className="text-sm text-[var(--tt-ink-muted)]">
-          Nothing was handed over: {(routeMutation.error as Error).message}
-        </p>
-      ) : null}
-
-      {record.isError ? (
-        <p className="text-sm text-[var(--tt-ink-muted)]">
-          That figure was not recorded: {(record.error as Error).message}
-        </p>
-      ) : null}
-
-
-      {ask.isError ? (
-        <p className="text-sm text-[var(--tt-ink-muted)]">
-          The suite could not be read just now. Nothing was changed; try again.
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function WorkforceSection({
-  workforce,
-  loading,
-}: {
-  workforce:
-    | Awaited<ReturnType<typeof getWorkforceSummary>>
-    | undefined;
-  loading: boolean;
-}) {
-  return (
-    <section className="tt-surface p-6">
-      <SectionHeading
-        eyebrow="Execution"
-        title="Workforce"
-        description="Who is available, what is moving, and where the execution line is waiting on a person."
-      />
-
-      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div>
-          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            Available
-          </dt>
-          <dd className="mt-1 font-display text-3xl text-foreground">
-            {loading ? "—" : workforce?.available ?? 0}
-          </dd>
-        </div>
-        <div>
-          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            Working
-          </dt>
-          <dd className="mt-1 font-display text-3xl text-foreground">
-            {loading ? "—" : workforce?.working ?? 0}
-          </dd>
-        </div>
-        <div>
-          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            Blocked
-          </dt>
-          <dd className="mt-1 font-display text-3xl text-foreground">
-            {loading ? "—" : workforce?.blocked ?? 0}
-          </dd>
-        </div>
-        <div>
-          <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            Waiting for Tai
-          </dt>
-          <dd className="mt-1 font-display text-3xl text-foreground">
-            {loading ? "—" : workforce?.waitingForTai ?? 0}
-          </dd>
-        </div>
-      </dl>
-
-      <div className="mt-5 rounded-xl border border-border bg-card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="tt-eyebrow">Scout work item</p>
-            <h3 className="mt-2 text-lg font-semibold text-foreground">
-              {workforce?.scout.name ?? "Scout Growth Agent"}
-            </h3>
-          </div>
-          <MetaPill>{workforce?.scout.status ?? "idle"}</MetaPill>
-        </div>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {workforce?.scout.goal ?? "Maintain 15 qualified prospects"}
-        </p>
-        <p className="mt-2 text-sm text-foreground">
-          Progress: {loading ? "—" : `${workforce?.scout.current ?? 0} / ${workforce?.scout.target ?? 15}`}
-        </p>
       </div>
-    </section>
+    </div>
+    </AppShell>
   );
 }
+
+const COUNT_WORD: Record<number, string> = { 1: "One", 2: "Two", 3: "Three" };
