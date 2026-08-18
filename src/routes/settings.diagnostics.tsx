@@ -18,7 +18,7 @@ export const Route = createFileRoute("/settings/diagnostics")({
   component: DiagnosticsSettings,
 });
 
-function Row({ label, value, note }: { label: string; value: string; note?: string }) {
+function Row({ label, value, note }: { label: string; value: string; note?: string | undefined }) {
   return (
     <div className="rounded-xl border border-border p-4">
       <dt className="tt-eyebrow">{label}</dt>
