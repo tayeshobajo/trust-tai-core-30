@@ -209,6 +209,12 @@ export interface ExecutionProject {
   nextMove?: string;
   /** Recorded only while the state is blocked. */
   blockedBecause?: string;
+  /**
+   * What this is waiting on. Waiting is not a stored execution state: it is
+   * in-flight work a person has said is paused on someone else, recorded in
+   * their own words so nobody has to guess why nothing is moving.
+   */
+  waitingOn?: string;
   /** When the block was first recorded, so "blocked for N days" is honest. */
   blockedSince?: ISODateTime;
   /** Agreed delivery date, when one has been agreed. */
