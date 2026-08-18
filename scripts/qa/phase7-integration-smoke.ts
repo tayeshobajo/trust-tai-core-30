@@ -327,12 +327,11 @@ async function runAll() {
   });
 
   // 13. Restart recovery — sync state table exists and is writable
-  // PostgREST schema cache may lag up to 60s after migration. Test via direct SQL shape check.
+  // Hardened 2026-08-18: a lenient "PostgREST cache lag" fallback here once masked
+  // the table not existing at all. The fallback checked execution_agents instead and
+  // passed while every sync_state write silently failed. Now: read-back or fail.
   await test(13, "Sync state cursor table exists", async () => {
-    // Verify table exists via execution_agents table check (always in cache)
-    // and sync state via service role raw upsert with explicit column list.
     const now = new Date().toISOString();
-    // Try upsert — if table not in cache yet, catch and verify via agents table instead
     const upsertResult = await supabase.from("paperclip_sync_state").upsert({
       organization_id: ORG_ID,
       resource_type: "agents",
@@ -340,26 +339,17 @@ async function runAll() {
       consecutive_failures: 0,
       updated_at: now,
     }, { onConflict: "organization_id,resource_type" });
-
     if (upsertResult.error) {
-      // If schema cache lag, verify by checking execution_agents has the new columns
-      const { data: agentRow, error: agentErr } = await supabase
-        .from("execution_agents")
-        .select("last_known_status, paperclip_company_id, last_synced_at")
-        .limit(1);
-      if (agentErr) throw new Error(`Schema cache lag: sync_state=${upsertResult.error.message}; agents=${agentErr.message}`);
-      pass(13, "Sync state cursor table exists",
-        `paperclip_sync_state migration applied (PostgREST cache lag); new agent columns confirmed. Row: ${JSON.stringify(agentRow?.[0])}`);
-    } else {
-      const { data, error } = await supabase
-        .from("paperclip_sync_state")
-        .select("resource_type, last_success_at, consecutive_failures")
-        .eq("organization_id", ORG_ID)
-        .eq("resource_type", "agents")
-        .single();
-      if (error) throw new Error(error.message);
-      pass(13, "Sync state cursor table exists", `last_success_at: ${data.last_success_at} failures: ${data.consecutive_failures}`);
+      throw new Error(`paperclip_sync_state unwritable: ${upsertResult.error.message} (run migration 20260818120000_paperclip_sync_state.sql)`);
     }
+    const { data, error } = await supabase
+      .from("paperclip_sync_state")
+      .select("resource_type, last_success_at, consecutive_failures")
+      .eq("organization_id", ORG_ID)
+      .eq("resource_type", "agents")
+      .single();
+    if (error) throw new Error(error.message);
+    pass(13, "Sync state cursor table exists", `last_success_at: ${data.last_success_at} failures: ${data.consecutive_failures}`);
   });
 
   // 14. Duplicate event — idempotency key prevents double insert
