@@ -21,9 +21,8 @@ const INTENTS: { register: VoiceRegister; label: string }[] = [
   { register: "follow_up", label: "Follow up" },
   { register: "warm_intro", label: "Warm intro" },
   { register: "reconnect", label: "Reconnect" },
-  { register: "gratitude", label: "Thank you" },
   { register: "logistics", label: "Check in" },
-  { register: "sensitive", label: "More" },
+  { register: "sensitive", label: "Thank you or sensitive" },
 ];
 
 export function ReplyRecordBar({
