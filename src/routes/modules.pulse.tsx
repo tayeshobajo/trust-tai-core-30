@@ -11,18 +11,15 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { BusinessRead } from "@/components/tt/intelligence/business-read";
-import { LearningTrailPanel } from "@/components/tt/intelligence/learning-trail";
 import { PulseFilters, type PulseFilter } from "@/components/tt/pulse/filters";
 import { PulseHeader } from "@/components/tt/pulse/header";
 import { PulseRightRail } from "@/components/tt/pulse/right-rail";
 import { PulseSidebar } from "@/components/tt/pulse/sidebar";
 import { PulseSignalGroup } from "@/components/tt/pulse/signal-group";
-import { EmptyState, SectionHeading, TTButton } from "@/components/tt/primitives";
+import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { useIntelligenceRuns } from "@/hooks/use-intelligence-runs";
 import { deriveSignals } from "@/data/intelligence/derive";
-import { intelligenceService, loadSuiteSnapshot } from "@/data/intelligence/service";
+import { loadSuiteSnapshot } from "@/data/intelligence/service";
 import {
   PULSE_ROOM_LABEL,
   countSignals,
@@ -37,7 +34,7 @@ import { pulseFeedback } from "@/data/supabase/pulse-feedback";
 import { projectsService } from "@/data/supabase/projects-service";
 import { unansweredRoutes } from "@/domain/route-ledger";
 import type { PulseFeedbackKind, PulseSignal } from "@/domain/pulse";
-import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
+import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Pulse — What deserves attention now — Trust Tai OS";
 const DESCRIPTION =
@@ -72,7 +69,6 @@ function PulseRoute() {
 
 function Pulse({ identity }: { identity: WorkspaceIdentity }) {
   const { organizationId } = identity;
-  const access = workspaceAccess(identity);
   const queryClient = useQueryClient();
 
   const [filter, setFilter] = useState<PulseFilter>("all");
@@ -99,8 +95,6 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
     queryKey: ["pulse-feedback", organizationId],
     queryFn: () => pulseFeedback.list(organizationId),
   });
-
-  const engine = useIntelligenceRuns(organizationId);
 
   const now = suite.data?.readAt ?? new Date().toISOString();
 
