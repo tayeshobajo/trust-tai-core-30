@@ -1041,7 +1041,51 @@ function InvitePanel({
         })}
       </div>
 
+      <div className="mt-6 rounded-xl border border-border">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">Email preview</p>
+            <p className="text-xs text-muted-foreground">
+              Exactly what {previewTo} will receive, subject included.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="text-[13px] text-royal hover:underline"
+            onClick={() => setShowPreview((value) => !value)}
+          >
+            {showPreview ? "Hide preview" : "Preview email"}
+          </button>
+        </div>
+        {showPreview ? (
+          <div className="space-y-3 border-t border-border px-4 py-4">
+            <div>
+              <p className="tt-eyebrow">Subject</p>
+              <p className="text-sm text-foreground">{preview.subject}</p>
+            </div>
+            <div>
+              <p className="tt-eyebrow">Message</p>
+              <iframe
+                title="Invitation email preview"
+                srcDoc={preview.html}
+                className="mt-2 h-[420px] w-full rounded-lg border border-border bg-white"
+                sandbox=""
+              />
+            </div>
+            <details>
+              <summary className="cursor-pointer text-xs text-muted-foreground">
+                Plain text version
+              </summary>
+              <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-secondary/50 p-3 text-xs text-muted-foreground">
+                {preview.text}
+              </pre>
+            </details>
+          </div>
+        ) : null}
+      </div>
+
       <div className="mt-6 flex flex-wrap items-center gap-3">
+
         <TTButton
           onClick={() => invite.mutate()}
           disabled={parsed.valid.length === 0 || invite.isPending}
