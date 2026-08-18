@@ -1,107 +1,75 @@
 /**
- * Projects header + operating signals. Compact by design: the page statement,
- * two lines of orientation, two actions, and four numbers worth reading.
+ * Projects header + operating signals, in one boxed band that matches the
+ * Roadmap hero: the page statement, one line of orientation, two actions, and
+ * four numbers worth reading.
  */
 
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, CalendarDays, FolderKanban, Lock, Plus } from "lucide-react";
-import type { ComponentType } from "react";
 
 import { TTButton } from "@/components/tt/primitives";
+import { RoomHero } from "@/components/tt/room-hero";
 import type { ProjectsGlance } from "@/data/projects/index-projection";
 
 export function ProjectsHeader({
+  glance,
   onCreate,
   onHandoffs,
 }: {
+  glance: ProjectsGlance;
   onCreate: () => void;
   onHandoffs: () => void;
 }) {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-border pb-4">
-      <div className="min-w-0">
-        <p className="tt-eyebrow">Projects</p>
-        <h1 className="mt-1 font-display text-[26px] leading-tight tracking-tight text-foreground">
-          Approved work, in motion.
-        </h1>
-        <p className="mt-0.5 max-w-reading text-[13px] text-muted-foreground">
-          Each project keeps its company, roadmap milestone, owner and outcome attached.
-        </p>
-      </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <TTButton size="sm" onClick={onCreate}>
-          <Plus aria-hidden className="size-4" />
-          Create project
-        </TTButton>
-        <TTButton size="sm" variant="secondary" onClick={onHandoffs}>
-          View roadmap handoffs
-        </TTButton>
-      </div>
-    </header>
+    <RoomHero
+      eyebrow="Projects"
+      title="Approved work, in motion."
+      supporting="Each project keeps its company, roadmap milestone, owner and outcome attached."
+      actions={
+        <>
+          <TTButton onClick={onCreate}>
+            <Plus aria-hidden />
+            Create project
+          </TTButton>
+          <TTButton variant="secondary" onClick={onHandoffs}>
+            View roadmap handoffs
+          </TTButton>
+        </>
+      }
+      metrics={[
+        {
+          icon: <FolderKanban className="size-4 text-royal" aria-hidden />,
+          tone: "bg-royal/10",
+          value: glance.active,
+          label: "Active projects",
+          note: `Across ${glance.companies} ${glance.companies === 1 ? "company" : "companies"}`,
+        },
+        {
+          icon: <AlertCircle className="size-4 text-warning" aria-hidden />,
+          tone: "bg-warning/12",
+          value: glance.attention,
+          label: "Need attention",
+          note: "Require your review",
+        },
+        {
+          icon: <CalendarDays className="size-4 text-success" aria-hidden />,
+          tone: "bg-success/12",
+          value: glance.dueThisWeek,
+          label: "Due this week",
+          note: "Across all projects",
+        },
+        {
+          icon: <Lock className="size-4 text-destructive" aria-hidden />,
+          tone: "bg-destructive/10",
+          value: glance.blocked,
+          label: "Blocked",
+          note: "Waiting to move forward",
+        },
+      ]}
+    />
   );
 }
 
-function Signal({
-  icon: Icon,
-  value,
-  label,
-  note,
-  tone,
-}: {
-  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
-  value: number;
-  label: string;
-  note: string;
-  tone: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
-      <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${tone}`}>
-        <Icon aria-hidden className="size-4" />
-      </span>
-      <span className="min-w-0">
-        <span className="block font-display text-2xl leading-none text-foreground">{value}</span>
-        <span className="mt-1 block truncate text-[13px] text-foreground">{label}</span>
-        <span className="block truncate text-[11px] text-muted-foreground">{note}</span>
-      </span>
-    </div>
-  );
-}
-
-export function ProjectsSignals({ glance }: { glance: ProjectsGlance }) {
-  return (
-    <section aria-label="State of delivery" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Signal
-        icon={FolderKanban}
-        value={glance.active}
-        label="Active projects"
-        note={`Across ${glance.companies} ${glance.companies === 1 ? "company" : "companies"}`}
-        tone="bg-royal/10 text-royal"
-      />
-      <Signal
-        icon={AlertCircle}
-        value={glance.attention}
-        label="Need attention"
-        note="Require your review"
-        tone="bg-warning/12 text-warning"
-      />
-      <Signal
-        icon={CalendarDays}
-        value={glance.dueThisWeek}
-        label="Due this week"
-        note="Across all projects"
-        tone="bg-success/12 text-success"
-      />
-      <Signal
-        icon={Lock}
-        value={glance.blocked}
-        label="Blocked"
-        note="Waiting to move forward"
-        tone="bg-destructive/10 text-destructive"
-      />
-    </section>
-  );
-}
 
 export function ProjectsEmptyState() {
   return (
