@@ -13,7 +13,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { OpsSystemRow, OpsToolbar } from "@/components/tt/ops/portfolio";
+import { OpsPager, OpsSortControl, OpsSystemRow, OpsToolbar } from "@/components/tt/ops/portfolio";
 import { MetaPill, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
 import { RoomHero } from "@/components/tt/room-hero";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -22,9 +22,13 @@ import {
   filterOpsSystems,
   opsFreshness,
   opsPortfolio,
+  paginateOpsSystems,
+  sortOpsSystems,
   type OpsFilters,
+  type OpsSortKey,
   type OpsSystem,
 } from "@/data/ops/projection";
+import { opsPathOf } from "@/data/ops/destination";
 import { opsEventsOf } from "@/data/intelligence/derive";
 import { loadSuiteSnapshot } from "@/data/intelligence/service";
 import { OPS_ORIGIN } from "@/domain/ops";
@@ -63,35 +67,45 @@ function OpsRoute() {
   );
 }
 
-/** The path inside Ops a destination points at, when it is on the Ops origin. */
-function opsPathOf(destination: string): string | undefined {
-  try {
-    const url = new URL(destination, OPS_ORIGIN);
-    if (url.origin !== OPS_ORIGIN) return undefined;
-    const path = `${url.pathname}${url.search}`;
-    return path === "/" ? undefined : path;
-  } catch {
-    return undefined;
-  }
-}
-
 function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
-  const { data, isLoading, isError, dataUpdatedAt } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["ops-portfolio", identity.organizationId],
     queryFn: async () => opsEventsOf(await loadSuiteSnapshot(identity.organizationId)),
     refetchInterval: 60_000,
   });
 
-  const [filters, setFilters] = useState<OpsFilters>(EMPTY_OPS_FILTERS);
+  const [filters, setFiltersState] = useState<OpsFilters>(EMPTY_OPS_FILTERS);
+  const [sort, setSortState] = useState<OpsSortKey>("attention");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeState] = useState(10);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<OpsLaunchFailure | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
 
   const portfolio = useMemo(() => opsPortfolio(data ?? []), [data]);
   const systems = useMemo(
-    () => filterOpsSystems(portfolio.systems, filters),
-    [portfolio.systems, filters],
+    () => sortOpsSystems(filterOpsSystems(portfolio.systems, filters), sort),
+    [portfolio.systems, filters, sort],
   );
+  const pageView = useMemo(
+    () => paginateOpsSystems(systems, page, pageSize),
+    [systems, page, pageSize],
+  );
+
+  // Any change to what is being listed returns to the first page, so the
+  // person is never left staring at an empty page that used to have rows.
+  function setFilters(next: OpsFilters) {
+    setFiltersState(next);
+    setPage(1);
+  }
+  function setSort(next: OpsSortKey) {
+    setSortState(next);
+    setPage(1);
+  }
+  function setPageSize(next: number) {
+    setPageSizeState(next);
+    setPage(1);
+  }
 
   async function open(targetPath?: string, canonicalProjectId?: string) {
     setBusy(true);
@@ -113,12 +127,9 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   }
 
   const attention = portfolio.attention;
+  const lastSuccessAt = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
   const freshness = isError
-    ? `Ops sync interrupted${
-        portfolio.lastEventAt
-          ? ` · last successful sync ${opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now()).replace("Ops synced ", "")}`
-          : ""
-      }`
+    ? "Ops sync interrupted"
     : opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now());
 
   return (
@@ -167,6 +178,32 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
         }
       />
 
+      {isError ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/30 bg-destructive/10 p-4"
+        >
+          <p className="text-[15px] text-destructive">Ops sync interrupted</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {lastSuccessAt
+              ? `Trust Tai OS could not read the Ops stream just now. The last successful sync was ${lastSuccessAt.toLocaleString()}, so everything below is that snapshot and may have moved on in Ops.`
+              : "Trust Tai OS has not completed a single successful read of the Ops stream in this session, so nothing below can be trusted as current."}
+          </p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Retrying re-reads the shared activity stream. It does not change anything in Ops, and
+            Ops itself may still be running normally while this connection is down.
+          </p>
+          <TTButton
+            className="mt-3"
+            variant="secondary"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching ? "Retrying…" : "Retry sync"}
+          </TTButton>
+        </div>
+      ) : null}
+
       <section>
         <SectionHeading
           eyebrow="Needs attention"
@@ -210,12 +247,17 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           description="Grouped from the canonical work Ops reports. Trust Tai OS never edits Ops truth."
         />
         <div className="space-y-4">
-          <OpsToolbar
-            filters={filters}
-            onFiltersChange={setFilters}
-            companies={portfolio.companies}
-            environments={portfolio.environments}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-[260px] flex-1">
+              <OpsToolbar
+                filters={filters}
+                onFiltersChange={setFilters}
+                companies={portfolio.companies}
+                environments={portfolio.environments}
+              />
+            </div>
+            <OpsSortControl value={sort} onChange={setSort} />
+          </div>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Reading the Ops stream.</p>
           ) : systems.length === 0 ? (
@@ -226,9 +268,10 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
             </p>
           ) : (
             <div className="space-y-3">
-              {systems.map((system) => (
+              {pageView.items.map((system) => (
                 <OpsSystemRow key={system.key} system={system} onOpen={openSystem} busy={busy} />
               ))}
+              <OpsPager page={pageView} onPageChange={setPage} onPageSizeChange={setPageSize} />
             </div>
           )}
         </div>
