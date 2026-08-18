@@ -192,37 +192,20 @@ export function ContextTab({
         ) : (
           <ul className="mt-4 space-y-3">
             {thinking.map((source) => (
-              <li key={source.id} className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
-                <span className="text-[15px] text-foreground">{source.title}</span>
-                <MetaPill>{THINKING_SOURCE_LABEL[source.sourceType]}</MetaPill>
-                <MetaPill>{SOURCE_SYNC_LABEL[source.syncState]}</MetaPill>
-                {source.isPrimary ? <MetaPill className="text-royal">Primary</MetaPill> : null}
-                <a
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[13px] text-royal underline-offset-2 hover:underline"
-                >
-                  Open <ExternalLink aria-hidden className="size-3.5" />
-                </a>
-                {source.isPrimary ? null : (
-                  <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => onPrimaryThinking(source)}>
-                    Make primary
-                  </TTButton>
-                )}
-                <TTButton
-                  size="sm"
-                  variant="quiet"
-                  disabled={busy}
-                  onClick={() => onRemoveThinking(source)}
-                  aria-label={`Remove ${source.title}`}
-                >
-                  <Trash2 aria-hidden className="size-4" />
-                </TTButton>
-              </li>
+              <ThinkingRow
+                key={source.id}
+                source={source}
+                busy={busy}
+                onPrimary={() => onPrimaryThinking(source)}
+                onRemove={() => onRemoveThinking(source)}
+                {...(onImportThinking
+                  ? { onImport: (text: string) => onImportThinking(source, text) }
+                  : {})}
+              />
             ))}
           </ul>
         )}
+
         <p className="mt-4 text-[13px] text-muted-foreground">
           A link is a link. Nothing is read from these threads automatically, so the state shown is
           the honest one.
