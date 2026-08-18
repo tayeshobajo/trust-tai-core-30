@@ -103,6 +103,7 @@ function DeliveryRoom({
   const [updating, setUpdating] = useState(false);
   const [blockedReason, setBlockedReason] = useState("");
   const [nextMove, setNextMove] = useState("");
+  const [fileError, setFileError] = useState<string | null>(null);
 
   const org = identity.organizationId;
   const projectsContext: ProjectsContext = {
@@ -266,6 +267,13 @@ function DeliveryRoom({
   const attention = needsJudgment(project, items, blockers, decisions);
   const busy = mutate.isPending || updateProject.isPending;
   const error = mutate.error ?? updateProject.error;
+  const errorMessage = fileError
+    ? fileError
+    : error
+      ? error instanceof Error
+        ? error.message
+        : "That change could not be saved."
+      : null;
 
   const openTab = (value: "work" | "blockers" | "decisions") => setTab(value);
 
@@ -370,9 +378,9 @@ function DeliveryRoom({
         onChange={setTab}
       />
 
-      {error ? (
+      {errorMessage ? (
         <p role="alert" className="text-sm text-destructive">
-          {error instanceof Error ? error.message : "That change could not be saved."}
+          {errorMessage}
         </p>
       ) : null}
 
@@ -431,34 +439,37 @@ function DeliveryRoom({
 
           {tab === "blockers" ? (
             <BlockersTab
+              items={items}
               blockers={blockers}
               busy={busy}
-              onRaise={(reason, move) =>
-                mutate.mutate(() =>
-                  projectDelivery.raiseBlocker(
-                    { reason, ...(move ? { nextMove: move } : {}) },
+              onRaise={(input) => mutate.mutate(() => projectDelivery.raiseBlocker(input, delivery))}
+              onResolve={(blocker, resolution, resumeWork) =>
+                mutate.mutate(async () => {
+                  const saved = await projectDelivery.resolveBlocker(
+                    blocker,
+                    resolution,
                     delivery,
-                  ),
-                )
-              }
-              onResolve={(blocker, resolution) =>
-                mutate.mutate(() => projectDelivery.resolveBlocker(blocker, resolution, delivery))
+                  );
+                  // Clearing a blocker may put its work item back in motion. Roadmap
+                  // truth is untouched: only the delivery record moves.
+                  const linked = blocker.workItemId
+                    ? items.find((entry) => entry.id === blocker.workItemId)
+                    : undefined;
+                  if (resumeWork && linked && linked.status === "blocked") {
+                    await projectDelivery.moveWork(linked, "in_progress", delivery);
+                  }
+                  return saved;
+                })
               }
             />
           ) : null}
 
           {tab === "decisions" ? (
             <DecisionsTab
+              items={items}
               decisions={decisions}
               busy={busy}
-              onAsk={(question, why) =>
-                mutate.mutate(() =>
-                  projectDelivery.askDecision(
-                    { question, ...(why ? { whyItMatters: why } : {}) },
-                    delivery,
-                  ),
-                )
-              }
+              onAsk={(input) => mutate.mutate(() => projectDelivery.askDecision(input, delivery))}
               onAnswer={(decision, answer) =>
                 mutate.mutate(() => projectDelivery.answerDecision(decision, answer, delivery))
               }
@@ -467,15 +478,40 @@ function DeliveryRoom({
 
           {tab === "files" ? (
             <FilesTab
+              items={items}
               files={files}
               busy={busy}
-              onUpload={(file, kind: ProjectFileKind) =>
-                mutate.mutate(() => projectDelivery.uploadFile(file, { kind }, delivery))
+              onUpload={(file, kind: ProjectFileKind, workItemId) =>
+                mutate.mutate(() =>
+                  projectDelivery.uploadFile(
+                    file,
+                    { kind, ...(workItemId ? { workItemId } : {}) },
+                    delivery,
+                  ),
+                )
               }
               onOpen={(file, download) => {
-                void projectDelivery.fileUrl(file, download).then((url) => {
-                  window.open(url, "_blank", "noopener,noreferrer");
-                });
+                setFileError(null);
+                void projectDelivery
+                  .fileUrl(file, download)
+                  .then((url) => {
+                    if (download) {
+                      const anchor = document.createElement("a");
+                      anchor.href = url;
+                      anchor.download = file.name;
+                      anchor.rel = "noopener";
+                      document.body.appendChild(anchor);
+                      anchor.click();
+                      anchor.remove();
+                      return;
+                    }
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  })
+                  .catch((cause: unknown) => {
+                    setFileError(
+                      cause instanceof Error ? cause.message : "That file could not be opened.",
+                    );
+                  });
               }}
             />
           ) : null}
