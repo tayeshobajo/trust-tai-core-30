@@ -304,7 +304,7 @@ const service = {
     if (error || !data) fail("That review state could not be saved.", error);
     await record(
       context,
-      reviewState === "confirmed" ? "decision.recorded" : "project.updated",
+      reviewState === "confirmed" ? "decision.decided" : "project.updated",
       `${reviewState === "confirmed" ? "Confirmed" : "Marked " + reviewState}: ${item.body.slice(0, 90)}`,
       { section: item.section },
     );
