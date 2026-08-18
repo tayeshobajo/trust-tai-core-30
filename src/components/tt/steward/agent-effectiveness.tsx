@@ -15,13 +15,15 @@ import {
   ACCOUNTABILITY_LABEL,
   agentAccountability,
 } from "@/data/projects/agent-effectiveness";
-import { agentEvidenceFrom, missingContext } from "@/data/steward/agent-evidence";
+import { agentEffectivenessService } from "@/data/supabase/project-intelligence";
+import { missingContext } from "@/data/steward/agent-evidence";
+import { EMPTY_AGENT_EVIDENCE } from "@/domain/project-intelligence";
 import type {
   AgentEffectiveness,
   AgentEffectivenessInput,
 } from "@/domain/project-intelligence";
 import type { StewardAgent } from "@/domain/steward-accountability";
-import { canWorkInRoom } from "@/lib/room-authority";
+import { canManageRoom, canWorkInRoom } from "@/lib/room-authority";
 
 const FIELD =
   "w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
@@ -60,8 +62,20 @@ export function AgentAccountabilityPanel({
   const [escalation, setEscalation] = useState(joined(definition?.escalationRules));
   const [evidenceExpected, setEvidenceExpected] = useState(joined(definition?.evidenceExpected));
 
-  const mayWrite = canWorkInRoom("steward");
-  const evidence = agentEvidenceFrom(agent, definition);
+  /* Two different questions. Working in Steward lets you see how an agent is
+     doing. Managing Steward lets you change what it is held to. Evidence is
+     read through the service, so the same rule holds if this panel is ever
+     rendered somewhere else. */
+  const maySeeEvidence = canWorkInRoom("steward");
+  const mayWrite = canManageRoom("steward");
+  let evidence = EMPTY_AGENT_EVIDENCE;
+  if (maySeeEvidence) {
+    try {
+      evidence = agentEffectivenessService.evidence(agent, definition);
+    } catch {
+      evidence = EMPTY_AGENT_EVIDENCE;
+    }
+  }
   const accountability = agentAccountability(definition, evidence);
   const missing = missingContext(definition, agent);
 
@@ -139,7 +153,9 @@ export function AgentAccountabilityPanel({
             {definition ? "Edit definition" : "Define what good looks like"}
           </TTButton>
         ) : (
-          <MetaPill className="ml-auto">View only</MetaPill>
+          <MetaPill className="ml-auto">
+            {maySeeEvidence ? "Managers change this" : "View only"}
+          </MetaPill>
         )}
       </div>
 
@@ -157,7 +173,14 @@ export function AgentAccountabilityPanel({
         </div>
       ) : null}
 
-      {accountability.evidence.length > 0 ? (
+      {!maySeeEvidence ? (
+        <p className="rounded-lg border border-border bg-muted/40 p-4 text-[13px] text-muted-foreground">
+          Observed evidence for this agent is kept with the people who carry Steward
+          authority. You can see that it is being tracked, not what it says.
+        </p>
+      ) : null}
+
+      {maySeeEvidence && accountability.evidence.length > 0 ? (
         <div className="space-y-1">
           <p className="tt-eyebrow">Evidence</p>
           <ul className="space-y-1 text-sm text-muted-foreground">

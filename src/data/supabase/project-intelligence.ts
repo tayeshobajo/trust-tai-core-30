@@ -37,7 +37,12 @@ import {
   type ThinkingSourceType,
 } from "@/domain/project-intelligence";
 import { knowledgeInputsFrom, parseThinkingImport } from "@/data/projects/thinking-import";
-import { guardRoomWrites } from "@/lib/room-authority";
+import { agentEvidenceFrom } from "@/data/steward/agent-evidence";
+import type { AgentEvidence } from "@/domain/project-intelligence";
+import type { StewardAgent } from "@/domain/steward-accountability";
+import { listDiff, type IntelligenceAuditAction } from "@/domain/intelligence-audit";
+import { assertRoomManage, guardRoomWrites } from "@/lib/room-authority";
+import { intelligenceAudit } from "./intelligence-audit";
 
 
 import { supabaseActivity } from "./activities";
@@ -85,6 +90,30 @@ async function record(
   } catch {
     // History matters, never enough to lose the person's work.
   }
+}
+
+/**
+ * Append to the intelligence audit trail. Separate from the activity stream:
+ * activity is what the workspace saw happen, the audit trail is who changed
+ * what a project believes, and what it said before.
+ */
+async function audit(
+  context: DeliveryContext,
+  action: IntelligenceAuditAction,
+  subject: string,
+  change: { before?: string; after?: string } = {},
+) {
+  await intelligenceAudit.record({
+    organizationId: context.organizationId,
+    projectId: context.projectId,
+    projectName: context.projectName,
+    action,
+    subject,
+    ...(change.before ? { before: change.before } : {}),
+    ...(change.after ? { after: change.after } : {}),
+    actorId: context.userId,
+    ...(context.userLabel ? { actorLabel: context.userLabel } : {}),
+  });
 }
 
 /* --------------------------------------------------------------- mappers */
@@ -219,6 +248,7 @@ const service = {
       sourceType: saved.sourceType,
       syncState: saved.syncState,
     });
+    await audit(context, "thinking.linked", saved.title, { after: saved.url });
     return saved;
   },
 
@@ -294,6 +324,9 @@ const service = {
       `Imported ${imported.length} candidate${imported.length === 1 ? "" : "s"} from ${source.title}`,
       { sourceId: source.id, reviewState: "needs_review" },
     );
+    await audit(context, "thinking.imported", source.title, {
+      after: `${imported.length} candidate${imported.length === 1 ? "" : "s"} awaiting review`,
+    });
     return { source: updated, imported };
   },
 
@@ -306,6 +339,7 @@ const service = {
       .eq("organization_id", context.organizationId);
     if (error) fail("That thinking room could not be removed.", error);
     await record(context, "project.updated", `Thinking room removed: ${source.title}`);
+    await audit(context, "thinking.removed", source.title, { before: source.url });
   },
 
 
@@ -348,6 +382,7 @@ const service = {
       section: saved.section,
       reviewState: saved.reviewState,
     });
+    await audit(context, "knowledge.recorded", saved.body, { after: saved.reviewState });
     return saved;
   },
 
@@ -371,6 +406,16 @@ const service = {
       `${reviewState === "confirmed" ? "Confirmed" : "Marked " + reviewState}: ${item.body.slice(0, 90)}`,
       { section: item.section },
     );
+    const auditAction: IntelligenceAuditAction =
+      reviewState === "confirmed"
+        ? "knowledge.confirmed"
+        : reviewState === "superseded"
+          ? "knowledge.superseded"
+          : "knowledge.returned_to_review";
+    await audit(context, auditAction, item.body, {
+      before: item.reviewState,
+      after: reviewState,
+    });
     return toKnowledge(data as Row);
   },
 
@@ -430,6 +475,7 @@ const service = {
       assetType: saved.assetType,
       status: saved.status,
     });
+    await audit(context, "asset.uploaded", saved.title, { after: saved.status });
     return saved;
   },
 
@@ -449,6 +495,10 @@ const service = {
     await record(context, "project.updated", `Asset ${status}: ${asset.title}`, {
       assetId: asset.id,
       status,
+    });
+    await audit(context, "asset.status_changed", asset.title, {
+      before: asset.status,
+      after: status,
     });
     return toAsset(data as Row);
   },
@@ -508,6 +558,7 @@ const service = {
     await record(context, "project.updated", `Linked ${saved.connectionType}: ${saved.label}`, {
       status: saved.status,
     });
+    await audit(context, "connection.linked", saved.label, { after: saved.connectionType });
     return saved;
   },
 
@@ -518,6 +569,9 @@ const service = {
       .eq("id", connection.id)
       .eq("organization_id", context.organizationId);
     if (error) fail("That link could not be removed.", error);
+    await audit(context, "connection.removed", connection.label, {
+      before: connection.connectionType,
+    });
   },
 
   /* agent effectiveness */
@@ -531,11 +585,22 @@ const service = {
     return (data ?? []).map((row) => toEffectiveness(row as Row));
   },
 
+  /**
+   * Writing an agent definition decides what an agent is held to, so it is a
+   * Manage act in Steward, not everyday work. The previous definition is read
+   * first so the trail can say what changed rather than only that something did.
+   */
   async saveEffectiveness(
     input: AgentEffectivenessInput,
     organizationId: ID,
     userId: ID,
+    userLabel?: string,
   ): Promise<AgentEffectiveness> {
+    assertRoomManage("steward", "Steward", "Changing what an agent is accountable for");
+    const previous =
+      (await service.listEffectiveness(organizationId)).find(
+        (entry) => entry.agentId === input.agentId,
+      ) ?? null;
     const payload = {
       organization_id: organizationId,
       agent_id: input.agentId,
@@ -555,7 +620,42 @@ const service = {
       .select("*")
       .single();
     if (error || !data) fail("That agent definition could not be saved.", error);
-    return toEffectiveness(data as Row);
+    const saved = toEffectiveness(data as Row);
+
+    const base = {
+      organizationId,
+      agentId: saved.agentId,
+      actorId: userId,
+      ...(userLabel ? { actorLabel: userLabel } : {}),
+    };
+    await intelligenceAudit.record({
+      ...base,
+      action: "agent.definition_saved",
+      subject: saved.responsibility,
+      ...(previous ? { before: previous.responsibility } : {}),
+      after: saved.responsibility,
+    });
+    const contextChange = listDiff(previous?.requiredContext ?? [], saved.requiredContext);
+    if (contextChange.added.length > 0 || contextChange.removed.length > 0) {
+      await intelligenceAudit.record({
+        ...base,
+        action: "agent.required_context_changed",
+        subject: `Required context for ${saved.agentId}`,
+        before: (previous?.requiredContext ?? []).join(", "),
+        after: saved.requiredContext.join(", "),
+      });
+    }
+    const evidenceChange = listDiff(previous?.evidenceExpected ?? [], saved.evidenceExpected);
+    if (evidenceChange.added.length > 0 || evidenceChange.removed.length > 0) {
+      await intelligenceAudit.record({
+        ...base,
+        action: "agent.evidence_expectation_changed",
+        subject: `Expected evidence for ${saved.agentId}`,
+        before: (previous?.evidenceExpected ?? []).join(", "),
+        after: saved.evidenceExpected.join(", "),
+      });
+    }
+    return saved;
   },
 };
 
@@ -577,9 +677,25 @@ export const agentEffectivenessService = guardRoomWrites(
   "Steward",
   {
     list: (organizationId: ID) => service.listEffectiveness(organizationId),
-    save: (input: AgentEffectivenessInput, organizationId: ID, userId: ID) =>
-      service.saveEffectiveness(input, organizationId, userId),
+    save: (
+      input: AgentEffectivenessInput,
+      organizationId: ID,
+      userId: ID,
+      userLabel?: string,
+    ) => service.saveEffectiveness(input, organizationId, userId, userLabel),
+    /**
+     * Observed evidence is not general reading. It says how an agent is
+     * performing against a definition, so it stays with the people who carry
+     * Steward authority. A view-only member sees that it exists, not what it says.
+     */
+    evidence: (agent: StewardAgent, definition: AgentEffectiveness | null): AgentEvidence =>
+      agentEvidenceFrom(agent, definition),
+    /** The audit trail for one agent. Manage access only, same as the edits. */
+    history: (organizationId: ID, agentId: string) => {
+      assertRoomManage("steward", "Steward", "Reading the agent audit trail");
+      return intelligenceAudit.list({ organizationId, agentId, limit: 30 });
+    },
   },
-  ["list"],
+  ["list", "history"],
 );
 
