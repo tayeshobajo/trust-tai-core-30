@@ -871,11 +871,15 @@ function MemberAccessPanel({
 
 function InvitePanel({
   organizationId,
+  organizationName,
+  invitedByName,
   actorUserId,
   onDone,
   onDelivery,
 }: {
   organizationId: string;
+  organizationName: string;
+  invitedByName: string;
   actorUserId: string;
   onDone: () => void;
   onDelivery?: (invitationId: string, result: { delivered: boolean; because: string }) => void;
@@ -885,8 +889,29 @@ function InvitePanel({
   const [overrides, setOverrides] = useState<Record<string, AppAccessLevel>>({});
   const [sent, setSent] = useState<number | null>(null);
   const [delivered, setDelivered] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const parsed = parseEmails(emails);
+
+  /* The preview renders the same template the server sends. One source, no drift. */
+  const previewTo = parsed.valid[0] ?? "someone@company.com";
+  const preview = useMemo(
+    () =>
+      inviteEmailBody({
+        to: previewTo,
+        organizationName,
+        roleLabel: ROLE_LABEL[role],
+        invitedByName,
+        signInUrl:
+          typeof window === "undefined"
+            ? `/auth?email=${encodeURIComponent(previewTo)}`
+            : `${window.location.origin}/auth?email=${encodeURIComponent(previewTo)}`,
+        expiresAt: null,
+      }),
+    [previewTo, organizationName, role, invitedByName],
+  );
+
+
 
   const invite = useMutation({
     mutationFn: async () =>
