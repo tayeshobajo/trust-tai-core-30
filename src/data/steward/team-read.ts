@@ -78,6 +78,17 @@ export async function readStewardTeam(organizationId: string): Promise<StewardTe
  * when the meeting happened, so both are said plainly. Counts describe only
  * what was read from those calls.
  */
+/** When Steward last stored a Fathom call, or null when it never has. */
+export function fathomLastSync(read: StewardTeamRead | undefined): string | null {
+  if (!read) return null;
+  const stamps = read.conversations
+    .filter((row) => row.provider === "fathom")
+    .map((row) => row.ingestedAt || row.occurredAt)
+    .filter(Boolean)
+    .sort();
+  return stamps.length > 0 ? (stamps[stamps.length - 1] as string) : null;
+}
+
 export function fathomStatusLine(read: StewardTeamRead | undefined): string | null {
   if (!read) return null;
 
