@@ -538,6 +538,40 @@ export function KnowledgeTab({
         </p>
       </Panel>
 
+      {pending.length > 0 ? (
+        <Panel title={`Awaiting your review (${pending.length})`} tone="risk">
+          <p className="max-w-reading text-[13px] text-muted-foreground">
+            Imported from a thinking room, a meeting or an agent. None of it counts as project
+            truth, and none of it reaches the context packet, until you confirm it.
+          </p>
+          <ul className="mt-4 space-y-4">
+            {pending.map((item) => (
+              <li key={item.id} className="border-t border-border pt-3 first:border-0 first:pt-0">
+                <p className="max-w-reading text-[15px] text-foreground">{item.body}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <MetaPill>{KNOWLEDGE_SECTION_LABEL[item.section]}</MetaPill>
+                  <MetaPill>{KNOWLEDGE_REVIEW_LABEL[item.reviewState]}</MetaPill>
+                  <MetaPill>
+                    {item.sourceLabel ?? item.origin.replace(/_/g, " ")}
+                  </MetaPill>
+                  {typeof item.confidence === "number" ? (
+                    <MetaPill>Read as {Math.round(item.confidence * 100)}% likely</MetaPill>
+                  ) : null}
+                  <TTButton size="sm" disabled={busy} onClick={() => onConfirm(item)}>
+                    <Check aria-hidden className="size-4" /> Confirm
+                  </TTButton>
+                  <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => onSupersede(item)}>
+                    Discard
+                  </TTButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      ) : null}
+
+
+
       {grouped.length === 0 ? (
         <Empty
           title="Nothing is written down yet."
