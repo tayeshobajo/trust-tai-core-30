@@ -189,6 +189,18 @@ export function readOpsEvent(event: ActivityEvent): OpsEvent | null {
 
   const chainKey = canonicalProjectId ?? runId ?? issueKey ?? event.subject.id ?? event.id;
   const decisionFlag = source["decision"] === true || Boolean(pick(source, ["decided_by"]));
+  // Portfolio detail, only when Ops actually carried it. Never inferred.
+  const environment = pick(source, ["environment", "env", "stage"]);
+  const ownerLabel = pick(source, ["owner", "owner_name", "ownerName", "assignee"]);
+  const companyLabel = pick(source, [
+    "company",
+    "company_name",
+    "companyName",
+    "client",
+    "client_name",
+    "account",
+  ]);
+  const systemName = pick(source, ["system", "system_name", "project_name", "projectName"]);
 
   return {
     id: event.id,
@@ -204,7 +216,12 @@ export function readOpsEvent(event: ActivityEvent): OpsEvent | null {
     destinationUrl: opsDestination(destination),
     humanDecision: decisionFlag,
     subjectLabel: label,
+    ...(environment ? { environment } : {}),
+    ...(ownerLabel ? { ownerLabel } : {}),
+    ...(companyLabel ? { companyLabel } : {}),
+    ...(systemName ? { systemName } : {}),
   };
+
 }
 
 /** Ops rows for this organization, de-duplicated by idempotency key. */
