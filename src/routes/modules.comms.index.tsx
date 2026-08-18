@@ -325,6 +325,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   }
 
   const move = selected ? nextRelationshipMove(selected) : null;
+  const attention = relationshipsWorthAttention(relationships);
 
   const rail =
     selected && health && strength && move ? (
