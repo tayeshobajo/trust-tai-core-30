@@ -10,6 +10,10 @@ import {
   todaysActivity,
   ACTIVITY_PAGE_SIZE,
   pageActivity,
+  activityKind,
+  filterActivity,
+  readActivityKind,
+  readActivityQuery,
   readActivityPage,
 } from "./activity-view";
 
@@ -129,5 +133,34 @@ describe("activity paging", () => {
     expect(readActivityPage({ page: "2" })).toBe(2);
     expect(readActivityPage({ page: "banana" })).toBe(1);
     expect(readActivityPage({})).toBe(1);
+  });
+});
+
+describe("activity search and filters", () => {
+  const rows = [
+    { id: "1", label: "Send the pricing note", roomLabel: "Steward", standing: "recorded", kind: activityKind("task.completed", "Tai completed the pricing note."), at: null },
+    { id: "2", label: "Draft intro", roomLabel: "Steward", standing: "recorded", kind: activityKind("task.assigned", "Draft intro now carried by Ana."), at: null },
+    { id: "3", label: "Kickoff", roomLabel: "Steward", standing: "recorded", kind: activityKind("task.updated", "Moved above Kickoff."), at: null },
+  ];
+
+  it("names completion, reassignment and reordering from what was recorded", () => {
+    expect(rows.map((row) => row.kind)).toEqual(["completed", "reassigned", "reordered"]);
+  });
+
+  it("keeps only the chosen kind", () => {
+    expect(filterActivity(rows, { kind: "reassigned" }).map((row) => row.id)).toEqual(["2"]);
+    expect(filterActivity(rows, { kind: "all" })).toHaveLength(3);
+  });
+
+  it("searches label, room and standing, case insensitively", () => {
+    expect(filterActivity(rows, { query: "pricing" }).map((row) => row.id)).toEqual(["1"]);
+    expect(filterActivity(rows, { query: "steward" })).toHaveLength(3);
+    expect(filterActivity(rows, { query: "nothing here" })).toHaveLength(0);
+  });
+
+  it("reads params defensively", () => {
+    expect(readActivityKind({ kind: "completed" })).toBe("completed");
+    expect(readActivityKind({ kind: "banana" })).toBe("all");
+    expect(readActivityQuery({ q: 5 })).toBe("");
   });
 });
