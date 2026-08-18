@@ -36,7 +36,9 @@ import {
   type ThinkingSourceInput,
   type ThinkingSourceType,
 } from "@/domain/project-intelligence";
+import { knowledgeInputsFrom, parseThinkingImport } from "@/data/projects/thinking-import";
 import { guardRoomWrites } from "@/lib/room-authority";
+
 
 import { supabaseActivity } from "./activities";
 import { projectDelivery, type DeliveryContext } from "./project-delivery";
