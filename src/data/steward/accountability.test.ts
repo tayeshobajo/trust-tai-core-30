@@ -46,6 +46,7 @@ const agent: StewardAgent = {
   routines: [],
   activityTimeline: [],
   pendingApprovals: 0,
+  dataSource: "live" as const,
   isPaused: false,
 };
 

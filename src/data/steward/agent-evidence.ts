@@ -22,7 +22,7 @@ export function agentEvidenceFrom(
   return {
     ...EMPTY_AGENT_EVIDENCE,
     expectedOutcomes: expected,
-    completedOutcomes: agent.completedThisWeek,
+    completedOutcomes: agent.completedThisWeek ?? 0,
     humanInterventions: agent.isPaused ? 1 : 0,
     linkedOutcomes: agent.recentOutcome ? [agent.recentOutcome] : [],
     ...(waitingTask
