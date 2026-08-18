@@ -215,13 +215,17 @@ export interface StewardAgent {
   currentWork: string | null;
   activeTasks: StewardAgentTask[];
   awaitingApproval: StewardAgentTask[];
-  completedThisWeek: number;
+  /** Null when only projection data exists. Unknown must never render as 0. */
+  completedThisWeek: number | null;
   lastHeartbeatAt: string | null;
   recentOutcome: string | null;
   // Phase 4-6
   routines: StewardAgentRoutine[];
   activityTimeline: StewardAgentActivityItem[];
-  pendingApprovals: number;
+  /** Null when only projection data exists. Unknown must never render as 0. */
+  pendingApprovals: number | null;
+  /** Where this row's numbers came from. Projection rows are "synced". */
+  dataSource: "live" | "synced";
   isPaused: boolean;
 }
 
