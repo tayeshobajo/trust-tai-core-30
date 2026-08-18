@@ -378,6 +378,30 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
       }),
   });
 
+  // What good looks like is written by a person and lives beside Paperclip
+  // state, never inside it.
+  const definitions = useQuery({
+    queryKey: ["steward", "agent-effectiveness", identity.organizationId],
+    queryFn: () => agentEffectivenessService.list(identity.organizationId),
+    retry: false,
+  });
+
+  const saveDefinition = useMutation({
+    mutationFn: (input: AgentEffectivenessInput) =>
+      agentEffectivenessService.save(input, identity.organizationId, identity.userId),
+    onSuccess: () => {
+      toast.success("Definition saved.");
+      queryClient.invalidateQueries({
+        queryKey: ["steward", "agent-effectiveness", identity.organizationId],
+      });
+    },
+    onError: (error: unknown) =>
+      toast.error("Definition not saved", {
+        description:
+          error instanceof Error ? error.message : "That definition could not be written.",
+      }),
+  });
+
   const agents = read.data?.agents;
 
   return (
@@ -485,6 +509,9 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
         <AgentDetail
           agent={open}
           identity={identity}
+          definition={definitions.data?.find((entry) => entry.agentId === open.id) ?? null}
+          savingDefinition={saveDefinition.isPending}
+          onSaveDefinition={(input) => saveDefinition.mutate(input)}
           onClose={() => setOpen(null)}
           onPauseToggle={() =>
             pauseAgent.mutate({ agentId: open.paperclipAgentId, paused: !open.isPaused })
