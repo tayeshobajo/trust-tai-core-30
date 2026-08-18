@@ -56,7 +56,9 @@ describe("pulse → conductor boundary", () => {
   });
 
   it("declines rooms with no governed read yet", () => {
-    expect(canOpenInConductor({ sourceApp: "ops" })).toBe(false);
+    /* Ops now opens a read: the governed step (withdrawing this house's own
+     * ask) lives in Projects, and the Ops gap is stated on the surface. */
+    expect(canOpenInConductor({ sourceApp: "ops" })).toBe(true);
     expect(canOpenInConductor({ sourceApp: "activity" })).toBe(false);
   });
 
