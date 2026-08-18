@@ -29,6 +29,7 @@ import {
   type TasksFilter,
 } from "@/data/steward/accountability";
 import { fathomStatusLine, readStewardTeam } from "@/data/steward/team-read";
+import { reassignAuthority } from "@/data/steward/authority";
 import { useStewardActions } from "@/data/steward/use-steward-actions";
 import { STEWARD_FOCUS_LABEL, type StewardTask } from "@/domain/steward-accountability";
 import { personKeyOf } from "@/domain/steward";
@@ -304,6 +305,7 @@ function StewardTasks({ identity }: { identity: WorkspaceIdentity }) {
         people={people}
         agents={read.data?.agents.agents ?? []}
         eligibleAgent={actions.eligibleAgent}
+        refusal={reassign ? reassignAuthority(reassign, actor).because : null}
         onClose={() => setReassign(null)}
         onAssignPerson={(target) => {
           if (reassign) actions.reassignToPerson(reassign, target);
