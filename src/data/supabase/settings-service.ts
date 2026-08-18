@@ -496,6 +496,7 @@ export async function listInvitationAudit(
 export interface DeliveryResult {
   delivered: boolean;
   because: string;
+  providerId?: string;
 }
 
 /**
@@ -547,6 +548,7 @@ export async function deliverInvitationEmail(input: {
       delivered: outcome.delivered,
       because: outcome.because,
       invitation_id: input.invitationId,
+      ...(outcome.providerId ? { provider_id: outcome.providerId } : {}),
     },
   });
 
