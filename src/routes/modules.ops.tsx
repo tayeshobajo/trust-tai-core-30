@@ -214,7 +214,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
         }
       />
 
-      {isError ? (
+      {interrupted ? (
         <div
           role="alert"
           className="rounded-xl border border-destructive/30 bg-destructive/10 p-4"
@@ -222,7 +222,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           <p className="text-[15px] text-destructive">Ops sync interrupted</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {lastSuccessAt
-              ? `Trust Tai OS could not read the Ops stream just now. The last successful sync was ${lastSuccessAt.toLocaleString()}, so everything below is that snapshot and may have moved on in Ops.`
+              ? `Trust Tai OS could not read current Ops state just now. The last successful sync was ${lastSuccessAt.toLocaleString()}${lastSyncedAt ? `, and Ops last pushed its projects ${new Date(lastSyncedAt).toLocaleString()}` : ""}, so everything below is that snapshot and may have moved on in Ops.`
               : "Trust Tai OS has not completed a single successful read of the Ops stream in this session, so nothing below can be trusted as current."}
           </p>
           <p className="mt-1 text-[13px] text-muted-foreground">
