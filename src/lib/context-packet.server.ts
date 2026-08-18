@@ -30,7 +30,7 @@ import type {
   ProjectConnection,
   ThinkingSource,
 } from "@/domain/project-intelligence";
-import type { ExecutionProject, ExecutionState } from "@/domain/projects";
+import { stateFromLifecycle, type ExecutionProject, type ExecutionState } from "@/domain/projects";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 
 type Row = Record<string, unknown>;
@@ -87,15 +87,6 @@ export async function requireMember(
 
 /* ------------------------------------------------------------- mapping */
 
-const LIFECYCLE: Record<string, ExecutionState> = {
-  ready: "ready",
-  in_progress: "in_progress",
-  blocked: "blocked",
-  waiting: "waiting",
-  in_review: "in_review",
-  complete: "complete",
-};
-
 function toProjectRow(row: Row): ExecutionProject {
   const meta =
     row["metadata"] && typeof row["metadata"] === "object" && !Array.isArray(row["metadata"])
@@ -103,8 +94,7 @@ function toProjectRow(row: Row): ExecutionProject {
       : {};
   const state =
     (str(meta["execution_state"]) as ExecutionState | undefined) ??
-    LIFECYCLE[String(row["status"] ?? "")] ??
-    "ready";
+    stateFromLifecycle(str(row["status"]));
   return {
     id: String(row["id"] ?? ""),
     organizationId: String(row["organization_id"] ?? ""),
@@ -137,6 +127,9 @@ function toProjectRow(row: Row): ExecutionProject {
     },
     createdAt: String(row["created_at"] ?? new Date().toISOString()),
     updatedAt: String(row["updated_at"] ?? row["created_at"] ?? new Date().toISOString()),
+    lastMovedAt: String(
+      meta["last_moved_at"] ?? row["updated_at"] ?? row["created_at"] ?? new Date().toISOString(),
+    ),
   } as ExecutionProject;
 }
 
