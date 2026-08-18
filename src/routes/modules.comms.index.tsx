@@ -1,12 +1,13 @@
 /**
- * Comms, the conversation room.
+ * Comms, the relationship room.
  *
- * Inbox on the left, the conversation itself in the middle, and a quiet rail of
- * context on the right. Reading a relationship should feel like continuing a
- * conversation, not administering a record.
+ * Relationships on the left, the relationship itself in the middle, and its
+ * intelligence on the right. Reading a relationship should feel like
+ * continuing a conversation, not administering a record.
  *
- * Every write goes to Supabase under the caller's own access. Nothing is sent
- * from here; a person always writes and sends the message.
+ * Comms remembers what happened, holds what was promised, and only suggests
+ * outreach when there is a real reason. Every write goes to Supabase under the
+ * caller's own access. Nothing is sent from here; a person always sends.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
