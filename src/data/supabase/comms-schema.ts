@@ -262,5 +262,11 @@ export function memoryPayload(items: MemoryItem[]): Row[] {
     tier: item.tier,
     evidence: item.evidence,
     at: item.at,
+    ...(item.category ? { category: item.category } : {}),
+    ...(item.due ? { due: item.due } : {}),
+    ...(item.status ? { status: item.status } : {}),
+    ...(item.owner ? { owner: item.owner } : {}),
+    ...(item.addedBy ? { added_by: item.addedBy } : {}),
   }));
 }
+
