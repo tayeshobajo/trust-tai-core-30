@@ -20,21 +20,26 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import {
   EMPTY_OPS_FILTERS,
   filterOpsSystems,
+  mergeOpsPortfolio,
   opsFreshness,
   opsPortfolio,
   paginateOpsSystems,
   sortOpsSystems,
+  sumKnown,
   type OpsFilters,
   type OpsSortKey,
   type OpsSystem,
 } from "@/data/ops/projection";
+import { loadOpsProjection } from "@/data/ops/projects";
 import { opsPathOf } from "@/data/ops/destination";
 import { opsEventsOf } from "@/data/intelligence/derive";
 import { loadSuiteSnapshot } from "@/data/intelligence/service";
 import { OPS_ORIGIN } from "@/domain/ops";
+import { OPS_CONNECTION_LABEL, opsConnectionState } from "@/domain/ops-projection";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { OPS_LAUNCH_MESSAGE, launchOps, type OpsLaunchFailure } from "@/lib/ops-launch";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+
 
 const TITLE = "Ops · Technical stewardship · Trust Tai OS";
 const DESCRIPTION =
