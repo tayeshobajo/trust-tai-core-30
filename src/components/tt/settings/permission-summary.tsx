@@ -6,7 +6,12 @@
  * is presentation over the existing permission model.
  */
 
-import { can, ROLE_LABEL, type Permission, type WorkspaceRole } from "@/domain/access";
+import {
+  ROLE_LABEL,
+  ROLE_PERMISSIONS,
+  type Permission,
+  type WorkspaceRole,
+} from "@/domain/access";
 
 import { InfoTip } from "./pieces";
 
@@ -69,7 +74,7 @@ const SHOWN_ROLES: WorkspaceRole[] = ["owner", "admin", "member", "viewer"];
 
 function allowed(role: WorkspaceRole, section: SettingsSection): boolean {
   if (section.permission === "self") return true;
-  return can({ role }, section.permission);
+  return ROLE_PERMISSIONS[role].includes(section.permission);
 }
 
 export function PermissionSummary({ role }: { role: WorkspaceRole }) {
@@ -130,7 +135,7 @@ export function PermissionSummary({ role }: { role: WorkspaceRole }) {
 
       <p className="mt-3 text-xs text-muted-foreground">
         You are signed in as {ROLE_LABEL[role]}.{" "}
-        {can({ role }, "org.manage")
+        {ROLE_PERMISSIONS[role].includes("org.manage")
           ? "You can change workspace and organization settings."
           : "You can read these sections and edit only your own profile and notifications."}
       </p>
