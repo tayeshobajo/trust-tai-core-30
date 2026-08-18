@@ -122,7 +122,7 @@ export function AppShell({
   sidebar?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const allowedApps = identity?.apps.map((app) => app.appId);
+  const allowedApps = identity?.apps.map((app) => app.appId) ?? [];
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 

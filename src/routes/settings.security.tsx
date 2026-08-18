@@ -74,7 +74,7 @@ function SecuritySettings() {
           title="Audit trail"
           description="Invitations, role changes, access changes and deactivations are written to the shared activity stream."
         />
-        <Link to="/modules/activity" className="text-[13px] text-royal hover:underline">
+        <Link to="/modules/activity" search={{ view: "today", page: 1, kind: "all", q: "", from: "", to: "" }} className="text-[13px] text-royal hover:underline">
           Open the activity stream
         </Link>
       </div>
