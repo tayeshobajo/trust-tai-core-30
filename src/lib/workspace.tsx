@@ -14,6 +14,8 @@ import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { accessContext, type AccessContext } from "@/domain/access";
+import { visibleApps, type AppAccessDecision } from "@/domain/app-access";
+import { readMemberAccess, readOrganizationApps } from "@/data/supabase/settings-service";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import {
   ADMIN_ROLES,
@@ -33,6 +35,24 @@ export interface WorkspaceIdentity {
   role: string;
   /** Owner/admin members may change organization-level intelligence. */
   canManage: boolean;
+  /** Profile photo, when the person has set one. */
+  avatarUrl: string | null;
+  /**
+   * Every room this person may actually see, already resolved against the
+   * organization's app switches, their per-app overrides and their role.
+   * The shell navigation reads only this. Fails closed by construction.
+   */
+  apps: AppAccessDecision[];
+}
+
+/** May this person see this room? Unknown room, unknown access: no. */
+export function canSeeApp(identity: WorkspaceIdentity, appId: string): boolean {
+  return identity.apps.some((app) => app.appId === appId);
+}
+
+/** May this person work in this room? */
+export function canWorkIn(identity: WorkspaceIdentity, appId: string): boolean {
+  return identity.apps.some((app) => app.appId === appId && app.canWork);
 }
 
 export type WorkspaceState =
@@ -131,6 +151,21 @@ export function useWorkspace(): WorkspaceState {
 
       const name = displayName(profile, email);
       const role = membership.role ?? "member";
+      const membershipActive = !membership.status || membership.status === "active";
+
+      /* App switches and per-person overrides are optional persistence: until
+         the Settings tables exist, role templates alone decide visibility. */
+      const [organizationApps, memberAccess] = await Promise.all([
+        readOrganizationApps(organization.id).catch(() => ({ provisioned: false, value: {} })),
+        readMemberAccess(organization.id).catch(() => ({ provisioned: false, value: {} })),
+      ]);
+
+      const apps = visibleApps({
+        role,
+        membershipActive,
+        organization: { enabled: organizationApps.value },
+        overrides: (memberAccess.value as Record<string, Record<string, string>>)[userId] ?? {},
+      });
 
       return {
         status: "ready",
@@ -144,6 +179,8 @@ export function useWorkspace(): WorkspaceState {
           organizationSlug: organization.slug,
           role,
           canManage: ADMIN_ROLES.includes(role),
+          avatarUrl: profile?.avatar_url ?? null,
+          apps,
         },
       };
     },
