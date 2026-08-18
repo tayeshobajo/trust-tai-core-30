@@ -46,6 +46,7 @@ import { Route as ModulesStewardMemoryRouteImport } from './routes/modules.stewa
 import { Route as ModulesStewardTasksRouteImport } from './routes/modules.steward.tasks'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/public/intelligence.reason'
+import { Route as ApiPublicProjectsContextPacketRouteImport } from './routes/api/public/projects.context-packet'
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
 import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/public/roadmap.research'
 import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/roadmap.studio'
@@ -252,6 +253,12 @@ const ApiPublicIntelligenceReasonRoute =
     path: '/api/public/intelligence/reason',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicProjectsContextPacketRoute =
+  ApiPublicProjectsContextPacketRouteImport.update({
+    id: '/api/public/projects/context-packet',
+    path: '/api/public/projects/context-packet',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicRoadmapAskRoute = ApiPublicRoadmapAskRouteImport.update({
   id: '/api/public/roadmap/ask',
   path: '/api/public/roadmap/ask',
@@ -388,6 +395,7 @@ export interface FileRoutesByFullPath {
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
+  '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
@@ -437,6 +445,7 @@ export interface FileRoutesByTo {
   '/modules/steward': typeof ModulesStewardIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
+  '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
@@ -494,6 +503,7 @@ export interface FileRoutesById {
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
+  '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
@@ -552,6 +562,7 @@ export interface FileRouteTypes {
     | '/modules/steward/'
     | '/api/public/comms/draft'
     | '/api/public/intelligence/reason'
+    | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
@@ -601,6 +612,7 @@ export interface FileRouteTypes {
     | '/modules/steward'
     | '/api/public/comms/draft'
     | '/api/public/intelligence/reason'
+    | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
@@ -657,6 +669,7 @@ export interface FileRouteTypes {
     | '/modules/steward/'
     | '/api/public/comms/draft'
     | '/api/public/intelligence/reason'
+    | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
@@ -692,6 +705,7 @@ export interface RootRouteChildren {
   ModulesStewardRoute: typeof ModulesStewardRouteWithChildren
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicIntelligenceReasonRoute: typeof ApiPublicIntelligenceReasonRoute
+  ApiPublicProjectsContextPacketRoute: typeof ApiPublicProjectsContextPacketRoute
   ApiPublicRoadmapAskRoute: typeof ApiPublicRoadmapAskRoute
   ApiPublicRoadmapResearchRoute: typeof ApiPublicRoadmapResearchRoute
   ApiPublicRoadmapStudioRoute: typeof ApiPublicRoadmapStudioRoute
@@ -969,6 +983,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicIntelligenceReasonRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/projects/context-packet': {
+      id: '/api/public/projects/context-packet'
+      path: '/api/public/projects/context-packet'
+      fullPath: '/api/public/projects/context-packet'
+      preLoaderRoute: typeof ApiPublicProjectsContextPacketRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/roadmap/ask': {
       id: '/api/public/roadmap/ask'
       path: '/api/public/roadmap/ask'
@@ -1230,6 +1251,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesStewardRoute: ModulesStewardRouteWithChildren,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicIntelligenceReasonRoute: ApiPublicIntelligenceReasonRoute,
+  ApiPublicProjectsContextPacketRoute: ApiPublicProjectsContextPacketRoute,
   ApiPublicRoadmapAskRoute: ApiPublicRoadmapAskRoute,
   ApiPublicRoadmapResearchRoute: ApiPublicRoadmapResearchRoute,
   ApiPublicRoadmapStudioRoute: ApiPublicRoadmapStudioRoute,
