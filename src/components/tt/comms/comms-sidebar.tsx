@@ -7,6 +7,7 @@
 
 import { HEALTH_LABEL, type ConversationHealthStatus } from "@/domain/comms-health";
 import type { InboxTab, InboxView } from "@/data/comms-inbox";
+import type { AttentionEntry } from "@/data/comms-attention";
 import { cn } from "@/lib/utils";
 
 import { HealthDot } from "./health-marks";
