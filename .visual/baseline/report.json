@@ -1,0 +1,707 @@
+{
+  "auth@mobile": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 36,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "home@mobile": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 36,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "scout@mobile": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 36,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "conductor@mobile": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 36,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "pulse@mobile": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 36,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "auth@tablet": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 48,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "home@tablet": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 48,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "scout@tablet": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 48,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "conductor@tablet": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 48,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "pulse@tablet": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 48,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "auth@desktop": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 48,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "home@desktop": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 48,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "scout@desktop": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 48,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "conductor@desktop": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 48,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  },
+  "pulse@desktop": {
+    "tokens": {
+      "ink": "oklch(19% .048 266)",
+      "paper": "oklch(100% 0 0)",
+      "royal": "oklch(49% .185 264)",
+      "rule": "oklch(90.6% .016 250)",
+      "cloud": "oklch(97.4% .012 250)",
+      "card": "oklch(100% 0 0)",
+      "ember": "oklch(62% .16 45)",
+      "danger": "oklch(52% .19 27)",
+      "scout": "#2aafc8",
+      "pulse": "#8a5c92"
+    },
+    "body": {
+      "background": "oklch(0.974 0.012 250)",
+      "color": "oklch(0.19 0.048 266)",
+      "family": "Inter"
+    },
+    "logos": [
+      {
+        "width": 165,
+        "height": 30,
+        "src": "http://localhost:8080/src/assets/brand/trust-tai-logo.png",
+        "complete": true
+      }
+    ],
+    "type": [
+      {
+        "tag": "p",
+        "family": "JetBrains Mono",
+        "size": 11,
+        "color": "oklch(0.545 0.03 262)"
+      },
+      {
+        "tag": "h1",
+        "family": "Cormorant Garamond",
+        "size": 48,
+        "color": "oklch(0.19 0.048 266)"
+      },
+      {
+        "tag": "p",
+        "family": "Inter",
+        "size": 16,
+        "color": "oklch(0.545 0.03 262)"
+      }
+    ]
+  }
+}
