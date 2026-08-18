@@ -28,7 +28,6 @@ import { RoadmapHandoffs, type HandoffRow } from "@/components/tt/projects/index
 import {
   ProjectsEmptyState,
   ProjectsHeader,
-  ProjectsSignals,
 } from "@/components/tt/projects/index/header";
 import { ProjectsGlanceRail, ProjectsSupportRail } from "@/components/tt/projects/index/rails";
 import { ProjectsToolbar } from "@/components/tt/projects/index/toolbar";
@@ -373,6 +372,7 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1 space-y-6">
           <ProjectsHeader
+            glance={glance}
             onCreate={openBlankCreate}
             onHandoffs={() => setView(view === "handoffs" ? "delivery" : "handoffs")}
           />
@@ -422,8 +422,6 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
             <ProjectsEmptyState />
           ) : (
             <>
-              <ProjectsSignals glance={glance} />
-
               <NeedsAttention rows={attention} />
 
               <section aria-labelledby="all-projects" className="space-y-4">
