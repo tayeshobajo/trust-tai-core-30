@@ -1,44 +1,47 @@
 /**
- * Pulse — the intelligence room.
+ * Pulse — the visibility room.
  *
- * Pulse reads the suite and shows what it noticed: one card per signal, with
- * why it matters, what it rests on, and a door into the room that owns the
- * change. Pulse never changes another room's truth.
+ * One question: what deserves attention right now, and why? Signals are read
+ * from the suite, sorted into four attention levels, and routed to the room
+ * that owns the change. Pulse never changes another room's truth.
  */
 
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AppHero } from "@/components/tt/app-hero";
 import { AppShell } from "@/components/tt/app-shell";
 import { BusinessRead } from "@/components/tt/intelligence/business-read";
 import { LearningTrailPanel } from "@/components/tt/intelligence/learning-trail";
-import { UnansweredRoutes } from "@/components/tt/intelligence/unanswered-routes";
-import { useIntelligenceRuns } from "@/hooks/use-intelligence-runs";
-import { EmptyState, MetaPill, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
+import { PulseFilters, type PulseFilter } from "@/components/tt/pulse/filters";
+import { PulseHeader } from "@/components/tt/pulse/header";
+import { PulseRightRail } from "@/components/tt/pulse/right-rail";
+import { PulseSidebar } from "@/components/tt/pulse/sidebar";
+import { PulseSignalGroup } from "@/components/tt/pulse/signal-group";
+import { EmptyState, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
+import { useIntelligenceRuns } from "@/hooks/use-intelligence-runs";
 import { deriveSignals } from "@/data/intelligence/derive";
+import { intelligenceService, loadSuiteSnapshot } from "@/data/intelligence/service";
+import {
+  PULSE_ROOM_LABEL,
+  countSignals,
+  groupSignals,
+  recentlyUpdated,
+  relativeAge,
+  topAreas,
+  toPulseSignals,
+  weeklyTrend,
+} from "@/data/pulse/projection";
+import { pulseFeedback } from "@/data/supabase/pulse-feedback";
 import { projectsService } from "@/data/supabase/projects-service";
 import { unansweredRoutes } from "@/domain/route-ledger";
-import { intelligenceService, loadSuiteSnapshot } from "@/data/intelligence/service";
-import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
-import { SIGNAL_CATEGORY_LABEL, type Signal } from "@/domain/signals";
+import type { PulseFeedbackKind, PulseSignal } from "@/domain/pulse";
 import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
 
-const TITLE = "Pulse — Signals across the suite — Trust Tai OS";
+const TITLE = "Pulse — What deserves attention now — Trust Tai OS";
 const DESCRIPTION =
-  "What Trust Tai noticed across Scout, Comms, Roadmap and Projects: each signal with its evidence and a door into the room that owns it.";
-
-const ROOM_LABEL: Record<string, string> = {
-  scout: "Scout",
-  comms: "Comms",
-  roadmap: "Roadmap",
-  projects: "Projects",
-  studio: "Studio",
-  ops: "Ops",
-  steward: "Steward",
-  activity: "Activity",
-};
+  "The few signals across Scout, Comms, Roadmap, Projects and Ops that are worth deciding — each with its reason, its evidence, and the room that owns the work.";
 
 const WITHHELD_REASON: Record<string, string> = {
   unauthorized: "not readable for you",
@@ -63,13 +66,7 @@ export const Route = createFileRoute("/modules/pulse")({
 
 function PulseRoute() {
   return (
-    <WorkspaceGate>
-      {(identity) => (
-        <AppShell identity={identity}>
-          <Pulse identity={identity} />
-        </AppShell>
-      )}
-    </WorkspaceGate>
+    <WorkspaceGate>{(identity) => <Pulse identity={identity} />}</WorkspaceGate>
   );
 }
 
@@ -78,193 +75,233 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
   const access = workspaceAccess(identity);
   const queryClient = useQueryClient();
 
+  const [filter, setFilter] = useState<PulseFilter>("all");
+  const [room, setRoom] = useState<string | "all">("all");
 
-  const { data, isLoading, isError } = useQuery({
+  const suite = useQuery({
     queryKey: ["pulse", organizationId],
     queryFn: async () => {
       const snapshot = await loadSuiteSnapshot(organizationId);
-      return { signals: deriveSignals(snapshot), withheld: snapshot.withheld };
+      return {
+        signals: deriveSignals(snapshot),
+        withheld: snapshot.withheld,
+        readAt: new Date().toISOString(),
+      };
     },
   });
 
-  /*
-   * The engine runs itself: on arrival, when a room records something, and
-   * once a day in a quiet week. A person can always ask for a read now.
-   */
-  const engine = useIntelligenceRuns(organizationId);
-
-  const signals = data?.signals ?? [];
-
-  /* Routed work nobody answered. Read only: Projects owns what happens next. */
   const routes = useQuery({
     queryKey: ["pulse-routes", organizationId],
     queryFn: async () => unansweredRoutes(await projectsService.routeLedger(organizationId)),
   });
 
+  const feedback = useQuery({
+    queryKey: ["pulse-feedback", organizationId],
+    queryFn: () => pulseFeedback.list(organizationId),
+  });
+
+  const engine = useIntelligenceRuns(organizationId);
+
+  const now = suite.data?.readAt ?? new Date().toISOString();
+
+  const signals = useMemo(
+    () =>
+      toPulseSignals({
+        organizationId,
+        now,
+        signals: suite.data?.signals ?? [],
+        routes: routes.data ?? [],
+        feedback: feedback.data ?? [],
+      }),
+    [organizationId, now, suite.data, routes.data, feedback.data],
+  );
+
+  const counts = useMemo(() => countSignals(signals), [signals]);
+
+  const feedbackBySignal = useMemo(() => {
+    const map: Record<string, PulseFeedbackKind> = {};
+    for (const entry of feedback.data ?? []) map[entry.signalId] = entry.kind;
+    return map;
+  }, [feedback.data]);
+
+  const rooms = useMemo(() => {
+    const ids = [...new Set(signals.map((signal) => signal.sourceApp))].sort();
+    return ids.map((id) => ({ id, label: PULSE_ROOM_LABEL[id] ?? id }));
+  }, [signals]);
+
+  const visible = useMemo(
+    () =>
+      signals.filter(
+        (signal) =>
+          (filter === "all" || signal.severity === filter) &&
+          (room === "all" || signal.sourceApp === room),
+      ),
+    [signals, filter, room],
+  );
+
+  const groups = useMemo(() => groupSignals(visible), [visible]);
+
+  const record = useMutation({
+    mutationFn: async ({ signal, kind }: { signal: PulseSignal; kind: PulseFeedbackKind }) =>
+      pulseFeedback.record({
+        organizationId,
+        userId: identity.userId,
+        signalId: signal.id,
+        kind,
+        signalTitle: signal.title,
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["pulse-feedback", organizationId] }),
+  });
+
+  const lastUpdated = suite.data ? relativeAge(suite.data.readAt, new Date().toISOString()) : "—";
+
   return (
-    <div className="space-y-12">
-      <AppHero
-        appId="pulse"
-        eyebrow="Trust Tai OS / Pulse"
-        title="What the system noticed."
-        supporting="Signals are read, not stored. Each one says why it matters, what it rests on, and where the work happens."
-      />
-
-      {engine.read ? (
-        <div className="space-y-4">
-          <BusinessRead
-            read={engine.read}
-            reasoning={engine.refreshing}
-            access={access}
-            onDecide={async ({ recommendation, decision, editedText }) => {
-              await intelligenceService.decide({
-                organizationId,
-                userId: identity.userId,
-                userName: identity.name,
-                recommendation,
-                decision,
-                ...(editedText ? { editedText } : {}),
-              });
-              await engine.invalidate();
-            }}
-            onAuthorize={async ({ proposal, decision, note }) => {
-              await intelligenceService.authorizeAction({
-                organizationId,
-                userId: identity.userId,
-                userName: identity.name,
-                access,
-                proposal,
-                decision,
-                ...(note ? { note } : {}),
-              });
-            }}
-          />
-
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-xs text-muted-foreground">
-              {engine.refreshing ? "Reading again." : engine.because}
-            </p>
-            <TTButton variant="quiet" onClick={() => void engine.refresh()}>
-              Read now
-            </TTButton>
-          </div>
-        </div>
-      ) : engine.loading ? (
-        <p className="text-sm text-muted-foreground">Reading the business.</p>
-      ) : engine.failed ? (
-        <p className="text-sm text-muted-foreground">
-          That read could not be completed. Nothing has been changed.
-        </p>
-      ) : null}
-
-      <UnansweredRoutes entries={routes.data ?? []} loading={routes.isLoading} />
-
-      {engine.trail ? <LearningTrailPanel trail={engine.trail} /> : null}
-
-      <section aria-labelledby="signals-heading">
-        <SectionHeading
-          eyebrow="Read just now"
-          title={
-            signals.length > 0
-              ? `${signals.length} signal${signals.length === 1 ? "" : "s"}`
-              : "Signals"
-          }
-          description="Most urgent first. Pulse recommends and routes; the room that owns the change is where you act."
+    <AppShell identity={identity} sidebar={<PulseSidebar counts={counts} />}>
+      <div className="space-y-8">
+        <PulseHeader
+          lastUpdated={lastUpdated}
+          refreshing={suite.isFetching}
+          onRefresh={() => {
+            void queryClient.invalidateQueries({ queryKey: ["pulse", organizationId] });
+            void queryClient.invalidateQueries({ queryKey: ["pulse-routes", organizationId] });
+          }}
         />
 
-        <div id="signals-heading" className="space-y-4">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Reading the suite.</p>
-          ) : isError ? (
-            <p className="text-sm text-muted-foreground">
-              That reading could not be completed. Nothing has been changed.
-            </p>
-          ) : signals.length > 0 ? (
-            signals.map((signal) => <SignalCard key={signal.id} signal={signal} />)
-          ) : (
-            <EmptyState
-              title="Nothing needs your attention"
-              belongsHere="Signals from Scout, Comms, Roadmap, Projects and Ops surface here."
-              whyItMatters="An empty Pulse is a truthful result: the work is moving without you."
-            />
-          )}
+        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 space-y-6">
+            <section aria-labelledby="signals-heading" className="space-y-5">
+              <div>
+                <p className="tt-eyebrow">High-impact signals</p>
+                <h2
+                  id="signals-heading"
+                  className="tt-display mt-2 max-w-[26ch] text-[22px] text-foreground sm:text-[26px]"
+                >
+                  {counts.total > 0
+                    ? `${counts.total} signal${counts.total === 1 ? "" : "s"} about the business ${
+                        counts.total === 1 ? "is" : "are"
+                      } worth deciding.`
+                    : "Nothing about the business needs deciding."}
+                </h2>
+              </div>
+
+              {counts.total > 0 ? (
+                <PulseFilters
+                  counts={counts}
+                  active={filter}
+                  onChange={setFilter}
+                  rooms={rooms}
+                  room={room}
+                  onRoomChange={setRoom}
+                />
+              ) : null}
+
+              {suite.isLoading ? (
+                <p className="text-sm text-muted-foreground">Reading the suite.</p>
+              ) : suite.isError ? (
+                <p className="text-sm text-muted-foreground">
+                  That reading could not be completed. Nothing has been changed.
+                </p>
+              ) : groups.length > 0 ? (
+                <div className="space-y-5">
+                  {groups.map((group) => (
+                    <PulseSignalGroup
+                      key={group.severity}
+                      severity={group.severity}
+                      signals={group.signals}
+                      feedback={feedbackBySignal}
+                      onFeedback={(signal, kind) => record.mutate({ signal, kind })}
+                    />
+                  ))}
+                </div>
+              ) : counts.total > 0 ? (
+                <EmptyState
+                  title="Nothing matches this filter"
+                  belongsHere="Clear the filter to see every signal Pulse read."
+                  whyItMatters="A narrow view is useful, but the work may sit at another level."
+                />
+              ) : (
+                <EmptyState
+                  title="Nothing needs your attention"
+                  belongsHere="Signals from Scout, Comms, Roadmap, Projects, Ops and Steward surface here."
+                  whyItMatters="An empty Pulse is a truthful result: the work is moving without you."
+                />
+              )}
+
+              {suite.data && suite.data.withheld.length > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Not read:{" "}
+                  {suite.data.withheld
+                    .map(
+                      (w) =>
+                        `${PULSE_ROOM_LABEL[w.appId] ?? w.appId} (${
+                          WITHHELD_REASON[w.reason] ?? w.reason
+                        })`,
+                    )
+                    .join(", ")}
+                  .
+                </p>
+              ) : null}
+            </section>
+
+            {engine.read ? (
+              <section aria-label="Business read" className="space-y-4">
+                <SectionHeading
+                  eyebrow="Business read"
+                  title="How the suite reads right now"
+                  description="A written read over the same evidence. Recommendations still need a person."
+                />
+                <BusinessRead
+                  read={engine.read}
+                  reasoning={engine.refreshing}
+                  access={access}
+                  onDecide={async ({ recommendation, decision, editedText }) => {
+                    await intelligenceService.decide({
+                      organizationId,
+                      userId: identity.userId,
+                      userName: identity.name,
+                      recommendation,
+                      decision,
+                      ...(editedText ? { editedText } : {}),
+                    });
+                    await engine.invalidate();
+                  }}
+                  onAuthorize={async ({ proposal, decision, note }) => {
+                    await intelligenceService.authorizeAction({
+                      organizationId,
+                      userId: identity.userId,
+                      userName: identity.name,
+                      access,
+                      proposal,
+                      decision,
+                      ...(note ? { note } : {}),
+                    });
+                  }}
+                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    {engine.refreshing ? "Reading again." : engine.because}
+                  </p>
+                  <TTButton variant="quiet" onClick={() => void engine.refresh()}>
+                    Read now
+                  </TTButton>
+                </div>
+              </section>
+            ) : engine.loading ? (
+              <p className="text-sm text-muted-foreground">Reading the business.</p>
+            ) : null}
+
+            {engine.trail ? <LearningTrailPanel trail={engine.trail} /> : null}
+          </div>
+
+          <PulseRightRail
+            counts={counts}
+            trend={weeklyTrend(signals, now)}
+            areas={topAreas(signals)}
+            recent={recentlyUpdated(signals, now)}
+          />
         </div>
-
-        {data && data.withheld.length > 0 ? (
-          <p className="mt-6 text-xs text-muted-foreground">
-            Not read:{" "}
-            {data.withheld
-              .map(
-                (w) =>
-                  `${ROOM_LABEL[w.appId] ?? w.appId} (${WITHHELD_REASON[w.reason] ?? w.reason})`,
-              )
-              .join(", ")}
-            .
-          </p>
-        ) : null}
-      </section>
-    </div>
-  );
-}
-
-function SignalCard({ signal }: { signal: Signal }) {
-  return (
-    <TTCard className="p-5">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <MetaPill>{SIGNAL_CATEGORY_LABEL[signal.category]}</MetaPill>
-        <MetaPill>{CONFIDENCE_LEVEL_LABEL[signal.confidence]}</MetaPill>
-        <MetaPill>via {ROOM_LABEL[signal.destination.appId] ?? signal.destination.appId}</MetaPill>
       </div>
-
-      <h3 className="mt-3 text-base font-semibold text-foreground">{signal.title}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">{signal.why}</p>
-
-      <p className="mt-3 text-sm text-foreground">
-        <span className="text-muted-foreground">Recommended: </span>
-        {signal.recommendedNextMove}
-      </p>
-
-      {signal.evidence.length > 0 ? (
-        <div className="mt-3 border-t border-border pt-3">
-          <p className="tt-eyebrow mb-2">What this rests on</p>
-          <ul className="flex flex-wrap gap-1.5">
-            {signal.evidence.map((ref, index) => (
-              <li key={`${ref.label}-${index}`}>
-                {ref.url ? (
-                  <a
-                    href={ref.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[13px] text-foreground underline underline-offset-4"
-                  >
-                    {ref.label}
-                  </a>
-                ) : (
-                  <MetaPill>{ref.label}</MetaPill>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {/^https?:\/\//.test(signal.destination.route) ? (
-        <a
-          href={signal.destination.route}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-4 inline-block font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground underline underline-offset-4 transition-colors hover:text-royal"
-        >
-          {signal.destination.label} →
-        </a>
-      ) : (
-        <Link
-          to={signal.destination.route}
-          className="mt-4 inline-block font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground underline underline-offset-4 transition-colors hover:text-royal"
-        >
-          {signal.destination.label} →
-        </Link>
-      )}
-    </TTCard>
+    </AppShell>
   );
 }
