@@ -31,6 +31,8 @@ function row(overrides: Partial<OpsProjectRow> = {}): OpsProjectRow {
     health: "healthy",
     openIssues: null,
     openApprovals: null,
+    openRecommendations: null,
+    openRisks: null,
     lastActivityAt: null,
     lastSyncedAt: new Date(NOW).toISOString(),
     lifecycleState: "active",
@@ -77,11 +79,13 @@ describe("Ops projection rows", () => {
     const foreign = readOpsProjectRow({
       ops_project_id: "ops-x",
       organization_id: "0d2a3ad0-1111-4111-8111-111111111111",
-      name: "Someone else's system",
-      last_synced_at: new Date(NOW).toISOString(),
+      project_name: "Someone else's system",
+      synced_at: new Date(NOW).toISOString(),
     });
     expect(foreign?.organizationId).not.toBe(ORG);
-    const mine = opsProjectionPortfolio([foreign!].filter((r) => r.organizationId === ORG));
+    const mine = opsProjectionPortfolio(
+      [foreign].filter((r): r is OpsProjectRow => r?.organizationId === ORG),
+    );
     expect(mine.systems).toHaveLength(0);
   });
 });
@@ -187,5 +191,81 @@ describe("Ops projection lifecycle and health", () => {
   it("keeps activity rows out of the portfolio entirely", () => {
     const portfolio = opsProjectionPortfolio([], []);
     expect(portfolio.systems).toHaveLength(0);
+  });
+});
+
+
+describe("the live projection contract", () => {
+  const raw = {
+    organization_id: ORG,
+    app_key: "ops",
+    ops_project_id: "ops-elevate",
+    canonical_project_id: null,
+    client_label: "Elevate Orthodontics",
+    project_name: "Elevate Orthodontics",
+    primary_domain: "production",
+    status: "in_progress",
+    lifecycle_state: "active",
+    health: "stable",
+    needs_attention: false,
+    owner: "Sarah",
+    open_issues: null,
+    open_approvals: null,
+    open_recommendations: null,
+    open_risks: null,
+    last_activity_at: "2026-02-01T09:00:00.000Z",
+    ops_path: "/projects/ops-elevate",
+    ops_url: `${OPS_ORIGIN}/projects/ops-elevate`,
+    source_updated_at: "2026-02-01T09:00:00.000Z",
+    synced_at: new Date(NOW).toISOString(),
+    created_at: "2026-01-01T00:00:00.000Z",
+  };
+
+  it("reads exactly the live column names", () => {
+    const parsed = readOpsProjectRow(raw)!;
+    expect(parsed.name).toBe("Elevate Orthodontics");
+    expect(parsed.company).toBe("Elevate Orthodontics");
+    expect(parsed.environment).toBe("production");
+    expect(parsed.lastSyncedAt).toBe(raw.synced_at);
+    expect(parsed.health).toBe("healthy");
+    expect(parsed.openIssues).toBeNull();
+    expect(parsed.openRecommendations).toBeNull();
+    expect(parsed.openRisks).toBeNull();
+  });
+
+  it("ignores the retired alternate contract field names", () => {
+    const legacy = {
+      organization_id: ORG,
+      ops_project_id: "ops-legacy",
+      name: "Legacy",
+      company: "Legacy",
+      last_synced_at: new Date(NOW).toISOString(),
+      archived: false,
+    };
+    expect(readOpsProjectRow(legacy)).toBeNull();
+  });
+
+  it("keeps a removed project out of the active portfolio", () => {
+    const removed = readOpsProjectRow({ ...raw, lifecycle_state: "removed" })!;
+    expect(removed.removed).toBe(true);
+    expect(opsProjectionPortfolio([removed]).systems).toHaveLength(0);
+  });
+
+  it("never counts an unreadable health word as healthy", () => {
+    expect(readOpsProjectRow({ ...raw, health: "sparkly" })!.health).toBe("unknown");
+  });
+
+  it("deep links to the exact Ops project path", () => {
+    const parsed = readOpsProjectRow(raw)!;
+    expect(opsPathOf(opsProjectionPortfolio([parsed]).systems[0]!.destinationUrl)).toBe(
+      "/projects/ops-elevate",
+    );
+  });
+
+  it("drops a row belonging to another organization", () => {
+    const foreign = readOpsProjectRow({ ...raw, organization_id: "other-org" })!;
+    expect(
+      opsProjectionPortfolio([foreign].filter((r) => r.organizationId === ORG)).systems,
+    ).toHaveLength(0);
   });
 });

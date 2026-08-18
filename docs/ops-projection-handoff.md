@@ -1,90 +1,74 @@
-# Ops → Trust Tai OS project sync (bounded handoff contract)
+# Ops → Trust Tai OS project projection (one live contract)
 
 Ops (Lovable project `79444c46-d25c-47a8-a708-ff496c9d2ad2`, production
-`https://ops.trusttai.com`) is the canonical owner of Ops projects. Trust Tai
-OS keeps a read-only projection so the Ops room can list real systems and open
-the exact one. Core never edits what arrives.
+`https://ops.trusttai.com`) owns Ops truth. Trust Tai OS keeps a read-only
+projection so the Ops room can list real systems and open the exact one.
 
-## 1. Core side (done)
+There is exactly **one** projection path, and it is already live:
+
+> Ops writes directly into `public.ops_project_projection` in Supabase project
+> `okydosoacqdnursmmenf`, over PostgREST, with the signed-in Core user's access
+> token received through the SSO handoff, under Core RLS.
+
+Core never edits what arrives, and Core exposes **no** ingest endpoint or sync
+secret. A second mechanism would create a competing schema, so it does not
+exist.
+
+## Live table
+
+`public.ops_project_projection`
+
+| Column | Notes |
+| --- | --- |
+| `organization_id` | Core organization uuid, from the SSO payload |
+| `app_key` | `ops` |
+| `ops_project_id` | Ops' own project id |
+| `canonical_project_id` | Core project uuid when Ops knows one |
+| `client_label` | Company/client label |
+| `project_name` | Display name |
+| `primary_domain` | Environment/domain label |
+| `status` | Ops' own status word |
+| `lifecycle_state` | `active`, `archived`, `removed` |
+| `health` | Ops' health word; unreadable words read as unknown |
+| `needs_attention` | boolean, Ops' own judgement |
+| `owner` | owner label |
+| `open_issues`, `open_approvals`, `open_recommendations`, `open_risks` | nullable counts; null means unreported |
+| `last_activity_at` | newest Ops activity |
+| `ops_path`, `ops_url` | deep link into the exact project |
+| `source_updated_at`, `synced_at`, `created_at` | freshness stamps |
+
+Unique key: `(organization_id, ops_project_id)`. Authenticated org members may
+`SELECT`/`INSERT`/`UPDATE` through `private.is_org_member`.
+
+Ops upserts deterministically on the unique key after a successful SSO
+handoff, and marks retired projects `lifecycle_state = 'removed'` rather than
+deleting them.
+
+## Core side
 
 | Piece | Where |
 | --- | --- |
-| Table | `public.ops_project_projection`, defined in `docs/ops-projection-schema.sql` |
-| Read | `src/data/ops/projects.ts`, member-only under RLS |
-| Merge | `mergeOpsPortfolio` in `src/data/ops/projection.ts` |
-| Endpoint | `POST /api/public/ops/projects` (`src/routes/api/public/ops.projects.ts`) |
-| Secret | `OPS_SYNC_SECRET` (generated in Core; share the value with Ops) |
+| Read | `src/data/ops/projects.ts` (member-only, RLS, excludes `lifecycle_state = 'removed'`) |
+| Row shape | `src/domain/ops-projection.ts` |
+| Portfolio | `opsProjectionPortfolio` in `src/data/ops/projection.ts` |
+| Room | `src/routes/modules.ops.tsx` |
+| Launch | `src/lib/ops-launch.ts` (`/sso` handshake, `targetPath = ops_path`) |
 
-Apply `docs/ops-projection-schema.sql` to Supabase project
-`okydosoacqdnursmmenf` before the first sync. Until it exists the room stays in
-its truthful empty state rather than erroring.
+Rules Core holds itself to:
 
-## 2. What Ops must implement
+- Projection rows are the only membership of the portfolio. Activity rows
+  enrich "Recently moved" and never invent a managed project.
+- Unreported counts stay null and render as "—", never as `0`.
+- Health counts as healthy only when Ops said something that plainly means
+  healthy or stable. Unknown never inflates the healthy count.
+- Every way into Ops is `launchOps`, which opens `https://ops.trusttai.com/sso`
+  in a new tab and posts the session only after Ops answers from its own
+  origin. No token in a URL, hash, storage, or window name.
 
-Send the full list of Ops projects for one organization, on a schedule (every
-5 minutes is enough) and after any project create/update/delete.
+## Acceptance
 
-```
-POST https://cmd.trusttai.com/api/public/ops/projects
-Authorization: Bearer <OPS_SYNC_SECRET>
-Content-Type: application/json
-
-{
-  "organizationId": "<Core organization uuid>",
-  "full": true,
-  "projects": [
-    {
-      "opsProjectId": "elevate-orthodontics",
-      "name": "Elevate Orthodontics",
-      "company": "Elevate Orthodontics",
-      "status": "in_progress",
-      "health": "healthy",            // healthy | attention | incident | unknown
-      "owner": "Sarah",
-      "environment": "production",
-      "canonicalProjectId": "<Core project uuid, when Ops knows one>",
-      "opsPath": "/projects/elevate-orthodontics",
-      "openIssues": 0,                 // omit or null when Ops cannot say
-      "openApprovals": null,
-      "lastActivityAt": "2026-02-01T09:12:00.000Z",
-      "archived": false
-    }
-  ]
-}
-```
-
-Rules Ops must honour:
-
-- `organizationId` is the **Core** organization uuid, not the Ops one. Ops
-  already receives it in the SSO handoff (`trust-tai-os:sso`); store it against
-  the Ops workspace at first sign-in and reuse it here.
-- `opsPath` is a same-site path only. A full URL, `//host`, or a scheme is
-  rejected and the row falls back to Ops home.
-- Omit a count Ops cannot compute. Do **not** send `0` to mean "unknown"; Core
-  renders unknown as an em dash and would otherwise state a false zero.
-- `full: true` retires anything not in the batch (marks it archived), so send
-  complete lists. Use `full: false` for incremental single-project pushes.
-
-Response: `{ "ok": true, "synced": n, "retired": n, "syncedAt": "..." }`.
-`401` means the secret is wrong, `503` means Core has no secret configured.
-
-## 3. Acceptance test
-
-1. Ops posts one batch containing a real project (e.g. "Elevate
-   Orthodontics") with `opsPath` set.
-2. A signed-in Core member opens `https://cmd.trusttai.com/modules/ops` and
-   sees that project, marked "synced from Ops", with `— open issues` where Ops
-   reported nothing.
-3. Clicking it opens `https://ops.trusttai.com/projects/...` in a new tab, with
-   the session handed over in memory. No token appears in any URL.
-4. A member of a different organization sees none of those rows.
-5. Stopping the sync for over an hour turns the room banner into "Ops sync
-   interrupted", showing the last successful sync time.
-
-## 4. Freshness semantics in Core
-
-| State | Meaning |
-| --- | --- |
-| `Ops · live` | A direct Ops read succeeded. Core has no such read yet; reserved. |
-| `Ops · synchronized` | Last push within 15 minutes. Healthy, no warning. |
-| `Ops · sync delayed` | 15 to 60 minutes. Soft notice only. |
-| `Ops · sync interrupted` | Over 60 minutes, or the read failed. Prominent warning with the last successful timestamp and a retry. |
+1. A signed-in Core user opens Ops from `cmd.trusttai.com` and is not asked to
+   sign in again.
+2. Ops upserts its projects; the rows appear in the Core Ops portfolio.
+3. Clicking a project opens that exact Ops project through the same handshake,
+   using `ops_path` as `targetPath`.

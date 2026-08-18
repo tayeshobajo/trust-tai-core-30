@@ -42,6 +42,8 @@ export interface OpsProjectRow {
   /** Null means unreported. Never render null as zero. */
   openIssues: number | null;
   openApprovals: number | null;
+  openRecommendations: number | null;
+  openRisks: number | null;
   lastActivityAt: ISODateTime | null;
   lastSyncedAt: ISODateTime;
   /** Ops retired this project. It leaves the active portfolio. */
@@ -172,14 +174,14 @@ function health(value: unknown): OpsProjectHealth {
 export function readOpsProjectRow(raw: Record<string, unknown>): OpsProjectRow | null {
   const opsProjectId = text(raw["ops_project_id"]);
   const organizationId = text(raw["organization_id"]);
-  const name = text(raw["project_name"]) ?? text(raw["name"]);
-  const lastSyncedAt = text(raw["synced_at"]) ?? text(raw["last_synced_at"]);
+  const name = text(raw["project_name"]);
+  const lastSyncedAt = text(raw["synced_at"]);
   if (!opsProjectId || !organizationId || !name || !lastSyncedAt) return null;
 
-  const company = text(raw["client_label"]) ?? text(raw["company"]);
+  const company = text(raw["client_label"]);
   const status = text(raw["status"]);
   const owner = text(raw["owner"]);
-  const environment = text(raw["environment"]) ?? text(raw["primary_domain"]);
+  const environment = text(raw["primary_domain"]);
   const canonicalProjectId = text(raw["canonical_project_id"]);
   const opsPath = safeOpsPath(raw["ops_path"]);
   const opsUrl = opsPathFromUrl(raw["ops_url"]) ? String(raw["ops_url"]).trim() : undefined;
@@ -192,12 +194,14 @@ export function readOpsProjectRow(raw: Record<string, unknown>): OpsProjectRow |
     health: health(raw["health"]),
     openIssues: count(raw["open_issues"]),
     openApprovals: count(raw["open_approvals"]),
+    openRecommendations: count(raw["open_recommendations"]),
+    openRisks: count(raw["open_risks"]),
     lastActivityAt: text(raw["last_activity_at"]) ?? null,
     lastSyncedAt,
     lifecycleState,
     needsAttention: raw["needs_attention"] === true,
     removed: lifecycleState === "removed",
-    archived: raw["archived"] === true || lifecycleState === "archived",
+    archived: lifecycleState === "archived",
     ...(company ? { company } : {}),
     ...(status ? { status } : {}),
     ...(owner ? { owner } : {}),
