@@ -36,9 +36,13 @@ export function ConductorRightRail({
       <Rail
         title="Today"
         cta={
-          <a href="#approval-queue" className="text-royal underline underline-offset-4">
+          <Link
+            to="/modules/activity"
+            search={{ view: "today" as const }}
+            className="text-royal underline underline-offset-4"
+          >
             View today&rsquo;s activity
-          </a>
+          </Link>
         }
       >
         <dl className="space-y-1.5 text-[13px]">
@@ -60,9 +64,13 @@ export function ConductorRightRail({
       <Rail
         title="Needs Tai"
         cta={
-          <a href="#approval-queue" className="text-royal underline underline-offset-4">
+          <Link
+            to="/modules/activity"
+            search={{ view: "needs" as const }}
+            className="text-royal underline underline-offset-4"
+          >
             View all
-          </a>
+          </Link>
         }
       >
         {needs.length === 0 ? (
@@ -86,9 +94,13 @@ export function ConductorRightRail({
       <Rail
         title="Recently moved"
         cta={
-          <a href="#conductor-learning" className="text-royal underline underline-offset-4">
-            View all activity
-          </a>
+          <Link
+            to="/modules/activity"
+            search={{ view: "moved" as const }}
+            className="text-royal underline underline-offset-4"
+          >
+            View all movements
+          </Link>
         }
       >
         {moved.length === 0 ? (
