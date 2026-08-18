@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
 import { TTButton, TTInput } from "@/components/tt/primitives";
+import type { HandoffRow } from "@/components/tt/projects/index/handoff-list";
 import type { ProjectInput, ProjectOrigin } from "@/domain/projects";
 
 export interface CreateProjectSeed {
@@ -40,6 +41,8 @@ const FIELD =
 export function CreateProjectModal({
   open,
   seed,
+  handoffs = [],
+  onSeedFromMilestone,
   pending,
   error,
   onClose,
@@ -47,6 +50,9 @@ export function CreateProjectModal({
 }: {
   open: boolean;
   seed?: CreateProjectSeed | null;
+  /** Approved milestones this project can be started from. */
+  handoffs?: HandoffRow[];
+  onSeedFromMilestone?: (row: HandoffRow) => void;
   pending: boolean;
   error: string | null;
   onClose: () => void;
@@ -74,6 +80,18 @@ export function CreateProjectModal({
   }, [open, seed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!open) return null;
+
+  // Lineage is chosen, never typed: roadmaps that still have approved work,
+  // then the milestone inside the one picked.
+  const startable = handoffs.filter((row) => row.ready && !row.existingProjectId);
+  const roadmaps: { id: string; label: string }[] = [];
+  for (const row of startable) {
+    if (!roadmaps.some((entry) => entry.id === row.milestone.roadmapId)) {
+      roadmaps.push({ id: row.milestone.roadmapId, label: row.company });
+    }
+  }
+  const chosenRoadmapId = base.origin.roadmapId ?? "";
+  const milestones = startable.filter((row) => row.milestone.roadmapId === chosenRoadmapId);
 
   const ready = name.trim().length > 0 && pointB.trim().length > 0 && owner.trim().length > 0;
 
@@ -129,6 +147,53 @@ export function CreateProjectModal({
         </div>
 
         <div className="mt-5 space-y-3">
+          {roadmaps.length > 0 ? (
+            <div className="grid gap-3 rounded-xl border border-border bg-secondary/40 p-3 sm:grid-cols-2">
+              <label className="block space-y-1.5">
+                <span className="text-[12px] text-muted-foreground">Roadmap (company)</span>
+                <select
+                  className={FIELD}
+                  value={chosenRoadmapId}
+                  onChange={(event) => {
+                    const roadmapId = event.target.value;
+                    const first = startable.find((row) => row.milestone.roadmapId === roadmapId);
+                    if (first && onSeedFromMilestone) onSeedFromMilestone(first);
+                  }}
+                >
+                  <option value="">No roadmap — start here</option>
+                  {roadmaps.map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      {entry.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-[12px] text-muted-foreground">Approved milestone</span>
+                <select
+                  className={FIELD}
+                  disabled={milestones.length === 0}
+                  value={base.origin.milestoneId ?? ""}
+                  onChange={(event) => {
+                    const row = milestones.find((entry) => entry.milestone.id === event.target.value);
+                    if (row && onSeedFromMilestone) onSeedFromMilestone(row);
+                  }}
+                >
+                  <option value="">
+                    {milestones.length === 0
+                      ? "Pick a roadmap first"
+                      : "Choose the approved milestone"}
+                  </option>
+                  {milestones.map((row) => (
+                    <option key={row.milestone.id} value={row.milestone.id}>
+                      {row.milestone.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
+
           <label className="block space-y-1.5">
             <span className="text-[12px] text-muted-foreground">Project name</span>
             <TTInput value={name} onChange={(event) => setName(event.target.value)} />
