@@ -14,6 +14,7 @@
 
 import type { EvidenceRef } from "@/domain/confidence";
 import { actionPermission } from "@/domain/action-authority";
+import type { AccessContext } from "@/domain/access";
 import type {
   ActionLifecycleState,
   ActionOutcome,
