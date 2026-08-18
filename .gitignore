@@ -34,3 +34,4 @@ dist-ssr
 # Visual regression working output (baselines are committed)
 .visual/current/
 .env.local.bak
+.acceptance-state.json
