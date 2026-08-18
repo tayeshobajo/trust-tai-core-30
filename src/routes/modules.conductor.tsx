@@ -70,6 +70,10 @@ import { LearningTrailPanel } from "@/components/tt/intelligence/learning-trail"
 import { useIntelligenceRuns } from "@/hooks/use-intelligence-runs";
 import { intelligenceService } from "@/data/intelligence/service";
 import { readHandoff, type ConductorHandoff } from "@/data/pulse/handoff";
+import { RoutedWorkStep } from "@/components/tt/conductor/routed-work-step";
+import { buildRouteWithdrawalAction, routeStepGap } from "@/data/conductor/route-proposal";
+import { projectsService } from "@/data/supabase/projects-service";
+import { operationGap } from "@/data/conductor/adapters";
 import { accessContext, can } from "@/domain/access";
 import type { ConductorAnswer } from "@/domain/conductor";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -190,6 +194,36 @@ function Conductor({
       ]);
       return { actions, receipts, observations, learning };
     },
+  });
+
+  /*
+   * A Pulse routed-work signal carries the request key only. The ledger is
+   * re-read here from the shared activity stream, never copied across.
+   */
+  const routedWork = useQuery({
+    queryKey: ["conductor-routed-work", identity.organizationId, handoff?.route ?? ""],
+    enabled: Boolean(handoff?.route),
+    queryFn: async () => {
+      const ledger = await projectsService.routeLedger(identity.organizationId);
+      return ledger.find((entry) => entry.key === handoff!.route) ?? null;
+    },
+  });
+
+  /* Proposing is not approving: the step enters the queue as "proposed". */
+  const proposeWithdrawal = useMutation({
+    mutationFn: async (because: string) => {
+      const entry = routedWork.data;
+      if (!entry) throw new Error("That routed request is no longer in the ledger.");
+      const action = buildRouteWithdrawalAction({
+        entry,
+        because,
+        createdAt: new Date().toISOString(),
+      });
+      if (!action) throw new Error("There is no bounded step to propose for this request.");
+      await saveControlledActions([action]);
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["conductor-control", identity.organizationId] }),
   });
 
   const workforce = useQuery({
@@ -408,6 +442,23 @@ function Conductor({
         title="Ask Trust Tai."
         supporting="One question, one grounded answer. What is observed, what you decided, what follows from it, and what nobody can see yet."
       />
+
+      {routedWork.data ? (
+        <RoutedWorkStep
+          entry={routedWork.data}
+          {...(routeStepGap(routedWork.data) ? { gap: routeStepGap(routedWork.data)! } : {})}
+          opsGap={
+            operationGap("ops", "ops.accept_routed_work") ??
+            "Acceptance is the receiving room's own word."
+          }
+          canPropose={can(access, "projects.write")}
+          proposing={proposeWithdrawal.isPending}
+          proposed={(control.data?.actions ?? []).some(
+            (action) => action.sourceEventKey === `${routedWork.data!.key}:withdrawn`,
+          )}
+          onPropose={(because) => proposeWithdrawal.mutate(because)}
+        />
+      ) : null}
 
       {handoff ? (
         <section className="tt-surface p-5" aria-label="Opened from Pulse">
