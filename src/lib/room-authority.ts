@@ -18,6 +18,7 @@ import type { AppAccessDecision } from "@/domain/app-access";
 interface RoomAuthority {
   visible: boolean;
   canWork: boolean;
+  canManage: boolean;
 }
 
 let known = false;
@@ -27,7 +28,11 @@ let rooms: Record<string, RoomAuthority> = {};
 export function setRoomAuthority(decisions: AppAccessDecision[]): void {
   const next: Record<string, RoomAuthority> = {};
   for (const decision of decisions) {
-    next[decision.appId] = { visible: decision.visible, canWork: decision.canWork };
+    next[decision.appId] = {
+      visible: decision.visible,
+      canWork: decision.canWork,
+      canManage: decision.canManage,
+    };
   }
   rooms = next;
   known = true;
@@ -49,6 +54,16 @@ export function canWorkInRoom(appId: string): boolean {
   return rooms[appId]?.canWork === true;
 }
 
+/**
+ * May this person change how the room is configured for the organization?
+ * Agent definitions, required context and evidence expectations sit here,
+ * because they decide what everyone else's agents are held to.
+ */
+export function canManageRoom(appId: string): boolean {
+  if (!known) return true;
+  return rooms[appId]?.canManage === true;
+}
+
 export function roomIsVisible(appId: string): boolean {
   if (!known) return true;
   return rooms[appId]?.visible === true;
@@ -66,6 +81,14 @@ export class RoomAuthorityError extends Error {
 /** Refuse a write the person's access does not carry. */
 export function assertRoomWrite(appId: string, roomName: string): void {
   if (!canWorkInRoom(appId)) throw new RoomAuthorityError(appId, roomName);
+}
+
+/** Refuse a configuration change to anyone below Manage in that room. */
+export function assertRoomManage(appId: string, roomName: string, what: string): void {
+  if (canManageRoom(appId)) return;
+  const error = new RoomAuthorityError(appId, roomName);
+  error.message = `${what} is limited to people who manage ${roomName}.`;
+  throw error;
 }
 
 /**
