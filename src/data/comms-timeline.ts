@@ -1,33 +1,47 @@
 /**
- * One thread, in order.
+ * One relationship, in order.
  *
- * The room shows a single chronological conversation: what they wrote, what we
- * wrote, meeting notes, internal notes, and drafts that were prepared. Nothing
- * is invented here, every entry is a record that already exists.
+ * The middle column is the relationship's source of truth: what they wrote,
+ * what we wrote, texts either way, calls, meetings, notes, suggestions Comms
+ * made, and drafts that were never sent. Nothing is invented here, every entry
+ * is a record that already exists.
  *
- * Future providers (a Comms driver preparing a draft, a follow-up recommended
- * by Steward) fold into the same `system` kind without a redesign.
+ * Every event carries provenance when it matters, so a line Tai typed himself
+ * never reads as something an integration observed.
  */
 
 import type { CommsDraft, Touch } from "@/domain/comms";
 import type { ISODateTime } from "@/domain/entities";
 
 export type ConversationEventKind =
-  | "they_wrote"
-  | "we_wrote"
+  | "we_emailed"
+  | "they_emailed"
+  | "they_texted"
+  | "i_texted"
+  | "phone_call"
   | "meeting"
   | "note"
-  | "draft"
-  | "system";
+  | "suggestion"
+  | "draft";
 
 export const EVENT_LABEL: Record<ConversationEventKind, string> = {
-  they_wrote: "They wrote",
-  we_wrote: "We wrote",
-  meeting: "Meeting note",
-  note: "Internal note",
-  draft: "Draft",
-  system: "Signal",
+  we_emailed: "We emailed",
+  they_emailed: "They emailed",
+  they_texted: "They texted",
+  i_texted: "I texted",
+  phone_call: "Phone call",
+  meeting: "Meeting",
+  note: "Note",
+  suggestion: "Comms suggestion",
+  draft: "Draft, not sent",
 };
+
+/** Which side of the thread an event sits on. */
+export function eventSide(kind: ConversationEventKind): "them" | "us" | "center" {
+  if (kind === "they_emailed" || kind === "they_texted") return "them";
+  if (kind === "we_emailed" || kind === "i_texted" || kind === "draft") return "us";
+  return "center";
+}
 
 export interface ConversationEvent {
   id: string;
@@ -40,10 +54,21 @@ export interface ConversationEvent {
   meta?: string;
 }
 
-function kindOf(touch: Touch): ConversationEventKind {
-  if (touch.channel === "meeting" || touch.channel === "call") return "meeting";
-  if (touch.channel === "note") return "note";
-  return touch.direction === "inbound" ? "they_wrote" : "we_wrote";
+export function kindOfTouch(touch: Touch): ConversationEventKind {
+  switch (touch.channel) {
+    case "call":
+      return "phone_call";
+    case "meeting":
+      return "meeting";
+    case "note":
+      return "note";
+    case "text":
+      return touch.direction === "inbound" ? "they_texted" : "i_texted";
+    case "email":
+      return touch.direction === "inbound" ? "they_emailed" : "we_emailed";
+    default:
+      return touch.direction === "inbound" ? "they_texted" : "i_texted";
+  }
 }
 
 /** Touches and drafts as one ordered thread, oldest first. */
@@ -56,7 +81,7 @@ export function conversationTimeline(
   for (const touch of touches) {
     events.push({
       id: `touch:${touch.id}`,
-      kind: kindOf(touch),
+      kind: kindOfTouch(touch),
       occurredAt: touch.occurredAt,
       title: touch.summary,
       ...(touch.body ? { body: touch.body } : {}),
