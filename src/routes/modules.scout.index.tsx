@@ -6,7 +6,7 @@ import { AppShell } from "@/components/tt/app-shell";
 import type { FitFilter } from "@/components/tt/prospect-board";
 import { DiscoveryProgress, DiscoveryRuns } from "@/components/tt/discovery";
 import { ScoutTabs } from "@/components/tt/scout-tabs";
-import { ScoutAgentSummary } from "@/components/tt/scout/agent-summary";
+import { RoomHero } from "@/components/tt/room-hero";
 import { ScoutFilterToolbar } from "@/components/tt/scout/filter-toolbar";
 import { ScoutCompanyTable } from "@/components/tt/scout/company-table";
 import { ScoutPagination } from "@/components/tt/scout/pagination";
@@ -266,27 +266,32 @@ function Scout({
     >
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1 space-y-6">
-        {/* 1, Compact heading. No hero, no controls. */}
-        <header>
-          <p className="tt-eyebrow">Scout</p>
-          <h1 className="mt-2 font-display text-3xl tracking-tight text-foreground">
-            Who deserves our attention next?
-          </h1>
-          <p className="mt-1.5 max-w-reading text-sm text-muted-foreground">
-            Real companies, ranked against the active ICP, with the evidence behind every read.
-          </p>
-        </header>
-
-        {/* 2, Scout Growth Agent, high on the page. */}
-        <ScoutAgentSummary
-          {...(driver.data?.name ? { name: driver.data.name } : {})}
-          {...(driver.data?.status ? { status: driver.data.status } : {})}
-          onBoard={glance.onBoard}
-          qualified={glance.qualified}
-          inIcp={glance.inIcp}
-          lastRun={since(driver.data?.lastRunAt ?? null)}
-          loading={driver.isPending}
-          blocked={driver.data?.status === "blocked"}
+        {/* 1, Boxed room hero: statement, one real action, live Scout numbers. */}
+        <RoomHero
+          eyebrow="Scout"
+          title="Who deserves our attention next?"
+          supporting="Real companies, ranked against the active ICP, with the evidence behind every read."
+          actions={
+            <TTButton asChild variant="secondary">
+              <Link to="/modules/scout/settings">ICP settings</Link>
+            </TTButton>
+          }
+          metrics={[
+            { value: glance.onBoard, label: "On board" },
+            { value: glance.qualified, label: "Qualified" },
+            { value: glance.inIcp, label: "In ICP" },
+            {
+              value: driver.isPending ? "…" : since(driver.data?.lastRunAt ?? null),
+              label: "Last run",
+            },
+          ]}
+          footer={
+            driver.data?.status === "blocked" ? (
+              <p className="text-[13px] text-destructive">
+                Needs human review before Scout can continue cleanly.
+              </p>
+            ) : null
+          }
         />
 
         {/* 3, Sections. */}
