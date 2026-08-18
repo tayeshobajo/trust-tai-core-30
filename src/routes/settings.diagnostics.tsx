@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SectionHeading } from "@/components/tt/primitives";
 import { useSettingsIdentity } from "@/components/tt/settings/shell";
 import { getRuntimeDiagnostics } from "@/data/diagnostics.functions";
+import { OPS_ORIGIN, OPS_SSO_PATH } from "@/domain/ops";
 import { PAPERCLIP_MODE_LABEL } from "@/domain/paperclip-connection";
 import { readBuildInfo } from "@/lib/build-info";
 
