@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { cn } from "@/lib/utils";
+
 import { SectionHeading, TTButton, TTField, TTInput } from "@/components/tt/primitives";
 import {
   Health,
@@ -123,6 +125,11 @@ function PeopleSettings() {
     queryFn: () => listInvitations(identity.organizationId),
   });
 
+  const pendingInvitations = useMemo(
+    () => (invitations.data?.value ?? []).filter((row) => row.status === "pending"),
+    [invitations.data?.value],
+  );
+
   const orgEnabled = apps.data?.value ?? {};
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ["settings"] });
@@ -220,7 +227,7 @@ function PeopleSettings() {
   }, [members.data, search, sort, orgEnabled]);
 
   const selected = (members.data ?? []).find((member) => member.userId === selectedId) ?? null;
-  const [delivery, setDelivery] = useState<string | null>(null);
+  const [deliveryById, setDeliveryById] = useState<Record<string, { delivered: boolean; because: string }>>({});
   const invitationAudit = useQuery({
     queryKey: ["settings", "invitation-audit", identity.organizationId],
     queryFn: () => listInvitationAudit(identity.organizationId),
@@ -379,6 +386,9 @@ function PeopleSettings() {
           organizationId={identity.organizationId}
           actorUserId={identity.userId}
           onDone={refresh}
+          onDelivery={(invitationId, result) =>
+            setDeliveryById((previous) => ({ ...previous, [invitationId]: result }))
+          }
         />
       ) : null}
 
@@ -389,14 +399,11 @@ function PeopleSettings() {
         />
         {invitations.data?.provisioned === false ? (
           <NotProvisioned what="Invitations" file="docs/settings-schema.sql" />
-        ) : (invitations.data?.value ?? []).filter((row) => row.status === "pending").length ===
-          0 ? (
+        ) : pendingInvitations.length === 0 ? (
           <p className="text-sm text-muted-foreground">No invitations are waiting.</p>
         ) : (
           <div className="divide-y divide-border rounded-xl border border-border">
-            {(invitations.data?.value ?? [])
-              .filter((row) => row.status === "pending")
-              .map((invitation) => (
+            {pendingInvitations.map((invitation) => (
                 <div
                   key={invitation.id}
                   className="flex flex-wrap items-center gap-3 px-4 py-3"
@@ -426,7 +433,10 @@ function PeopleSettings() {
                               email: invitation.email,
                               actorUserId: identity.userId,
                             });
-                            setDelivery(result.because);
+                            setDeliveryById((previous) => ({
+                              ...previous,
+                              [invitation.id]: result,
+                            }));
                             refresh();
                           })();
                         }}
@@ -453,11 +463,24 @@ function PeopleSettings() {
               ))}
           </div>
         )}
-        {delivery ? (
-          <p className="mt-3 text-xs text-muted-foreground" role="status">
-            {delivery}
-          </p>
-        ) : null}
+        {pendingInvitations.map((invitation) => {
+          const status = deliveryById[invitation.id];
+          if (!status) return null;
+          return (
+            <p
+              key={invitation.id}
+              className={cn(
+                "mt-3 text-xs",
+                status.delivered ? "text-emerald-700" : "text-amber-700",
+              )}
+              role="status"
+            >
+              {status.delivered
+                ? `Emailed ${invitation.email}: ${status.because}`
+                : `Could not email ${invitation.email}: ${status.because}`}
+            </p>
+          );
+        })}
       </div>
 
       {identity.canManage ? <InvitationAudit query={invitationAudit} /> : null}
@@ -634,10 +657,12 @@ function InvitePanel({
   organizationId,
   actorUserId,
   onDone,
+  onDelivery,
 }: {
   organizationId: string;
   actorUserId: string;
   onDone: () => void;
+  onDelivery?: (invitationId: string, result: { delivered: boolean; because: string }) => void;
 }) {
   const [emails, setEmails] = useState("");
   const [role, setRole] = useState<WorkspaceRole>("member");
@@ -659,7 +684,7 @@ function InvitePanel({
     onSuccess: async (created) => {
       setSent(created.length);
       setEmails("");
-      const outcomes: string[] = [];
+      const failures: string[] = [];
       for (const invitation of created) {
         const result = await deliverInvitationEmail({
           organizationId,
@@ -667,12 +692,13 @@ function InvitePanel({
           email: invitation.email,
           actorUserId,
         });
-        if (!result.delivered) outcomes.push(result.because);
+        onDelivery?.(invitation.id, result);
+        if (!result.delivered) failures.push(result.because);
       }
       setDelivered(
-        outcomes.length === 0
+        failures.length === 0
           ? `${created.length} invitation${created.length === 1 ? "" : "s"} emailed.`
-          : outcomes[0] ?? null,
+          : failures[0] ?? null,
       );
       onDone();
     },
