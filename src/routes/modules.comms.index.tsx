@@ -363,8 +363,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       <PageHeader
         appId="comms"
         eyebrow="Comms"
-        title="Conversations, kept warm."
-        supporting="The whole thread in one place, with the reason it matters beside it. Nothing is sent from here."
+        title="Relationships, kept warm."
+        supporting="Comms remembers interactions, helps Tai decide the next move, and drafts in Tai's voice so every relationship stays cared for."
         action={
           <div className="flex flex-wrap items-center gap-2">
             {selected ? (
