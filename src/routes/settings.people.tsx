@@ -597,12 +597,15 @@ function PeopleSettings() {
       {identity.canManage ? (
         <InvitePanel
           organizationId={identity.organizationId}
+          organizationName={identity.organizationName}
+          invitedByName={identity.name}
           actorUserId={identity.userId}
           onDone={refresh}
           onDelivery={(invitationId, result) =>
             setDeliveryById((previous) => ({ ...previous, [invitationId]: result }))
           }
         />
+
       ) : null}
 
       <div className="tt-surface p-6">
