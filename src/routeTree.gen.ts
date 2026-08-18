@@ -29,6 +29,7 @@ import { Route as SettingsNotificationsRouteImport } from './routes/settings.not
 import { Route as SettingsOrganizationRouteImport } from './routes/settings.organization'
 import { Route as SettingsPeopleRouteImport } from './routes/settings.people'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
+import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
@@ -160,6 +161,11 @@ const SettingsPeopleRoute = SettingsPeopleRouteImport.update({
 const SettingsProfileRoute = SettingsProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsSecurityRoute = SettingsSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
   getParentRoute: () => SettingsRoute,
 } as any)
 const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
@@ -357,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/people': typeof SettingsPeopleRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -405,6 +412,7 @@ export interface FileRoutesByTo {
   '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/people': typeof SettingsPeopleRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/settings/security': typeof SettingsSecurityRoute
   '/settings': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -459,6 +467,7 @@ export interface FileRoutesById {
   '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/people': typeof SettingsPeopleRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -515,6 +524,7 @@ export interface FileRouteTypes {
     | '/settings/organization'
     | '/settings/people'
     | '/settings/profile'
+    | '/settings/security'
     | '/settings/'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
@@ -563,6 +573,7 @@ export interface FileRouteTypes {
     | '/settings/organization'
     | '/settings/people'
     | '/settings/profile'
+    | '/settings/security'
     | '/settings'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
@@ -616,6 +627,7 @@ export interface FileRouteTypes {
     | '/settings/organization'
     | '/settings/people'
     | '/settings/profile'
+    | '/settings/security'
     | '/settings/'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
@@ -822,6 +834,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/settings/profile'
       preLoaderRoute: typeof SettingsProfileRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/security': {
+      id: '/settings/security'
+      path: '/security'
+      fullPath: '/settings/security'
+      preLoaderRoute: typeof SettingsSecurityRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/modules/comms/': {
@@ -1058,6 +1077,7 @@ interface SettingsRouteChildren {
   SettingsOrganizationRoute: typeof SettingsOrganizationRoute
   SettingsPeopleRoute: typeof SettingsPeopleRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
+  SettingsSecurityRoute: typeof SettingsSecurityRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
@@ -1068,6 +1088,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsOrganizationRoute: SettingsOrganizationRoute,
   SettingsPeopleRoute: SettingsPeopleRoute,
   SettingsProfileRoute: SettingsProfileRoute,
+  SettingsSecurityRoute: SettingsSecurityRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
 
