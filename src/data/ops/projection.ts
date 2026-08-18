@@ -18,24 +18,33 @@ import {
   type OpsEventName,
 } from "@/domain/ops";
 
-export type OpsHealth = "incident" | "attention" | "healthy";
+export type OpsHealth = "incident" | "attention" | "healthy" | "unknown";
 
-/** One thing Ops is maintaining, as far as the shared stream can see it. */
+/** One thing Ops is maintaining, as far as Trust Tai OS can honestly see it. */
 export interface OpsSystem {
   key: string;
   name: string;
   canonicalProjectId?: string;
+  /** Ops' own project id, present only on synchronized projection rows. */
+  opsProjectId?: string;
   company?: string;
   environment?: string;
   owner?: string;
+  /** Ops' own status word, when Ops reported one. */
+  status?: string;
   health: OpsHealth;
-  openIssues: number;
-  openApprovals: number;
+  /** Null means Ops did not report it. Never render null as zero. */
+  openIssues: number | null;
+  openApprovals: number | null;
   /** The latest run or QA row on this chain, when Ops recorded one. */
   latestRun?: { label: string; at: string; passed?: boolean };
-  lastActivityAt: string;
+  lastActivityAt: string | null;
+  lastSyncedAt?: string;
+  /** Where this row came from: the pushed projection, or the shared stream. */
+  source: "projection" | "activity";
   destinationUrl: string;
 }
+
 
 export interface OpsAttentionItem {
   key: string;
