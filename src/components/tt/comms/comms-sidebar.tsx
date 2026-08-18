@@ -218,12 +218,42 @@ export function CommsSidebarPanels({
         onAction={driver.focus ? () => select(driver.focus as GlanceKey) : undefined}
       />
 
+      {attention ? (
+        <section className="rounded-xl border border-cloud-line bg-cloud/60 p-3">
+          <h2 className="tt-eyebrow">Worth your attention today</h2>
+          {attention.length === 0 ? (
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              Nobody needs you today. Comms is watching quietly.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-1.5">
+              {attention.map((entry) => (
+                <li key={entry.relationship.id}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenRelationship?.(entry.relationship.id)}
+                    className="w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="block text-[13px] text-foreground">
+                      {entry.relationship.fullName}
+                    </span>
+                    <span className="block text-[12px] text-muted-foreground">
+                      {entry.move.action}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
+
       <button
         type="button"
         onClick={onAdd}
         className="flex min-h-11 w-full items-center justify-center rounded-lg border border-cloud-line bg-cloud px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-cloud-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        + Add someone you met
+        + Add relationship
       </button>
     </>
   );
