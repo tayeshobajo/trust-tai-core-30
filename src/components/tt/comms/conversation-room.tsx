@@ -40,8 +40,19 @@ const KIND_TONE: Record<EventShape["kind"], string> = {
   draft: "border-dashed border-cloud-line bg-cloud/50",
 };
 
-export function ConversationEvent({ event }: { event: EventShape }) {
+export function ConversationEvent({
+  event,
+  onEdit,
+  onRetract,
+  onRestore,
+}: {
+  event: EventShape;
+  onEdit?: (touchId: string) => void;
+  onRetract?: (touchId: string) => void;
+  onRestore?: (touchId: string) => void;
+}) {
   const side = eventSide(event.kind);
+  const touchId = event.touchId;
 
   return (
     <li
@@ -56,22 +67,59 @@ export function ConversationEvent({ event }: { event: EventShape }) {
           side === "center" ? "w-full max-w-[88%] rounded-lg" : "max-w-[78%]",
           side === "us" ? "rounded-br-md" : side === "them" ? "rounded-bl-md" : "",
           KIND_TONE[event.kind],
+          event.retracted ? "opacity-70" : "",
         )}
       >
         <p className="tt-eyebrow">
           {EVENT_LABEL[event.kind]}
           {timeOf(event.occurredAt) ? ` · ${timeOf(event.occurredAt)}` : ""}
         </p>
-        <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground">{event.title}</p>
+        <p
+          className={cn(
+            "mt-1 whitespace-pre-wrap text-[13px] text-foreground",
+            event.retracted ? "line-through decoration-muted-foreground/60" : "",
+          )}
+        >
+          {event.title}
+        </p>
         {event.body ? (
           <p className="mt-1 line-clamp-[12] whitespace-pre-wrap text-[13px] text-muted-foreground">
             {event.body}
           </p>
         ) : null}
         {event.source ? (
-          <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-            {event.source}
-          </p>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">{event.source}</p>
+        ) : null}
+        {touchId && (onEdit || onRetract || onRestore) ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {!event.retracted && onEdit ? (
+              <button
+                type="button"
+                onClick={() => onEdit(touchId)}
+                className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Edit
+              </button>
+            ) : null}
+            {!event.retracted && onRetract ? (
+              <button
+                type="button"
+                onClick={() => onRetract(touchId)}
+                className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Retract
+              </button>
+            ) : null}
+            {event.retracted && onRestore ? (
+              <button
+                type="button"
+                onClick={() => onRestore(touchId)}
+                className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Restore
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </li>
@@ -85,6 +133,10 @@ export function ConversationRoom({
   onViewProfile,
   onOpenContext,
   onAddInteraction,
+  onExportSummary,
+  onEditTouch,
+  onRetractTouch,
+  onRestoreTouch,
   children,
 }: {
   relationship: Relationship;
@@ -93,6 +145,10 @@ export function ConversationRoom({
   onViewProfile: () => void;
   onOpenContext?: () => void;
   onAddInteraction?: () => void;
+  onExportSummary?: () => void;
+  onEditTouch?: (touchId: string) => void;
+  onRetractTouch?: (touchId: string) => void;
+  onRestoreTouch?: (touchId: string) => void;
   children?: React.ReactNode;
 }) {
   const chips = [
@@ -146,6 +202,15 @@ export function ConversationRoom({
               + Add interaction
             </button>
           ) : null}
+          {onExportSummary ? (
+            <button
+              type="button"
+              onClick={onExportSummary}
+              className="rounded-md border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Export summary
+            </button>
+          ) : null}
           {onOpenContext ? (
             <button
               type="button"
@@ -183,7 +248,13 @@ export function ConversationRoom({
               </div>
               <ul className="space-y-2.5">
                 {day.events.map((event) => (
-                  <ConversationEvent key={event.id} event={event} />
+                  <ConversationEvent
+                    key={event.id}
+                    event={event}
+                    {...(onEditTouch ? { onEdit: onEditTouch } : {})}
+                    {...(onRetractTouch ? { onRetract: onRetractTouch } : {})}
+                    {...(onRestoreTouch ? { onRestore: onRestoreTouch } : {})}
+                  />
                 ))}
               </ul>
             </section>

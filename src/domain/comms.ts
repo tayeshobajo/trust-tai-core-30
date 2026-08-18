@@ -166,6 +166,11 @@ export interface Touch {
   summary: string;
   body?: string;
   loggedBy?: ID;
+  /**
+   * How this entry came to read as it does: who logged it, and any later
+   * correction or retraction. Read with `readTouchRecord`.
+   */
+  provenance?: Record<string, unknown>;
 }
 
 /* ----------------------------------------------------------------- drafts */

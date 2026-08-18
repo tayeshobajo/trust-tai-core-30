@@ -164,10 +164,11 @@ export interface TouchRow {
   summary: string;
   body: string | null;
   logged_by: string | null;
+  provenance?: unknown;
 }
 
 export const TOUCH_COLUMNS =
-  "id, organization_id, relationship_id, thread_id, channel, direction, occurred_at, summary, body, logged_by";
+  "id, organization_id, relationship_id, thread_id, channel, direction, occurred_at, summary, body, logged_by, provenance";
 
 export function toTouch(row: TouchRow): Touch {
   return {
@@ -183,6 +184,9 @@ export function toTouch(row: TouchRow): Touch {
     summary: row.summary,
     ...(row.body ? { body: row.body } : {}),
     ...(row.logged_by ? { loggedBy: row.logged_by } : {}),
+    ...(row.provenance && typeof row.provenance === "object"
+      ? { provenance: row.provenance as Record<string, unknown> }
+      : {}),
   };
 }
 

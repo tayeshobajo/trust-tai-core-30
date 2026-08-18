@@ -34,6 +34,20 @@ import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
 import { inboxEntries, inboxView, type InboxTab } from "@/data/comms-inbox";
 import { nextRelationshipMove } from "@/data/comms-next-move";
 import { relationshipsWorthAttention } from "@/data/comms-attention";
+import {
+  clearAttentionDecision,
+  loadAttentionState,
+  markReviewed,
+  saveAttentionState,
+  snoozeRelationship,
+  snoozeUntil,
+  splitAttention,
+  EMPTY_ATTENTION_STATE,
+  type AttentionState,
+  type SnoozeChoice,
+} from "@/data/comms-attention-state";
+import { EditInteraction, type InteractionEdit } from "@/components/tt/comms/edit-interaction";
+import { RelationshipExport } from "@/components/tt/comms/relationship-export";
 import type { ConversationHealthStatus } from "@/domain/comms-health";
 import type { MemoryItem, Relationship, Touch } from "@/domain/comms";
 import {
@@ -92,6 +106,22 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [interacting, setInteracting] = useState(false);
+  const [editingTouchId, setEditingTouchId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  /**
+   * What a person set aside today. Kept on this device: it is a decision about
+   * their own attention, not a fact about the relationship.
+   */
+  const [attentionState, setAttentionState] = useState<AttentionState>(EMPTY_ATTENTION_STATE);
+
+  useEffect(() => {
+    setAttentionState(loadAttentionState(identity.organizationId));
+  }, [identity.organizationId]);
+
+  function decideAttention(next: AttentionState) {
+    setAttentionState(next);
+    saveAttentionState(identity.organizationId, next);
+  }
 
   const relationshipsQuery = useQuery({
     queryKey: ["comms", "relationships", identity.organizationId],
@@ -260,6 +290,48 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: refresh,
   });
 
+  const editTouch = useMutation({
+    mutationFn: (input: { touchId: string; edit: InteractionEdit }) => {
+      const touch = selectedTouches.find((entry) => entry.id === input.touchId);
+      if (!touch) throw new Error("That interaction is no longer on screen.");
+      return commsService.editTouch(
+        {
+          touch,
+          relationship: selected!,
+          summary: input.edit.summary,
+          ...(input.edit.body !== undefined ? { body: input.edit.body } : {}),
+          editedBy: identity.name,
+        },
+        context,
+      );
+    },
+    onSuccess: () => {
+      setEditingTouchId(null);
+      refresh();
+    },
+  });
+
+  const retractTouch = useMutation({
+    mutationFn: (input: { touchId: string; because?: string; restore?: boolean }) => {
+      const touch = selectedTouches.find((entry) => entry.id === input.touchId);
+      if (!touch) throw new Error("That interaction is no longer on screen.");
+      return commsService.retractTouch(
+        {
+          touch,
+          relationship: selected!,
+          retractedBy: identity.name,
+          ...(input.because ? { because: input.because } : {}),
+          ...(input.restore ? { restore: true } : {}),
+        },
+        context,
+      );
+    },
+    onSuccess: () => {
+      setEditingTouchId(null);
+      refresh();
+    },
+  });
+
   const saveDraft = useMutation({
     mutationFn: (draft: DraftPreview) =>
       commsService.saveDraft(
@@ -326,7 +398,13 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   }
 
   const move = selected ? nextRelationshipMove(selected) : null;
-  const attention = relationshipsWorthAttention(relationships);
+  const attentionSplit = splitAttention(
+    relationshipsWorthAttention(relationships),
+    attentionState,
+  );
+  const editingTouch = editingTouchId
+    ? (selectedTouches.find((entry) => entry.id === editingTouchId) ?? null)
+    : null;
 
   const rail =
     selected && health && strength && move ? (
@@ -356,7 +434,13 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           onHealth={setHealthFilter}
           onTab={setTab}
           onAdd={() => setCapturing(true)}
-          attention={attention}
+          attention={attentionSplit.shown}
+          setAside={attentionSplit.set_aside}
+          onSnooze={(id, choice: SnoozeChoice) =>
+            decideAttention(snoozeRelationship(attentionState, id, snoozeUntil(choice)))
+          }
+          onMarkReviewed={(id) => decideAttention(markReviewed(attentionState, id))}
+          onRestoreAttention={(id) => decideAttention(clearAttentionDecision(attentionState, id))}
           onOpenRelationship={(id) => setSelectedId(id)}
         />
 
@@ -458,6 +542,10 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               onViewProfile={() => setProfileOpen((value) => !value)}
               onOpenContext={() => setContextOpen(true)}
               onAddInteraction={() => setInteracting(true)}
+              onExportSummary={() => setExporting(true)}
+              onEditTouch={(touchId) => setEditingTouchId(touchId)}
+              onRetractTouch={(touchId) => setEditingTouchId(touchId)}
+              onRestoreTouch={(touchId) => retractTouch.mutate({ touchId, restore: true })}
             >
               {profileOpen ? (
                 <div className="border-t border-border bg-secondary/30 px-5 py-4">
@@ -556,6 +644,35 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             {rail}
           </div>
         </div>
+      ) : null}
+
+      {editingTouch && selected ? (
+        <EditInteraction
+          touch={editingTouch}
+          personName={selected.fullName}
+          userLabel={identity.name}
+          busy={editTouch.isPending || retractTouch.isPending}
+          onCancel={() => setEditingTouchId(null)}
+          onSave={(edit) => editTouch.mutate({ touchId: editingTouch.id, edit })}
+          onRetract={(because) =>
+            retractTouch.mutate({ touchId: editingTouch.id, ...(because ? { because } : {}) })
+          }
+          onRestore={() => retractTouch.mutate({ touchId: editingTouch.id, restore: true })}
+        />
+      ) : null}
+
+      {exporting && selected && health && strength && move ? (
+        <RelationshipExport
+          input={{
+            relationship: selected,
+            health,
+            strength,
+            move,
+            touches: selectedTouches,
+            exportedBy: identity.name,
+          }}
+          onClose={() => setExporting(false)}
+        />
       ) : null}
 
       {interacting && selected ? (
