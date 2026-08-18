@@ -82,7 +82,7 @@ describe("Steward accountability projection", () => {
   it("treats a nameless owner as unowned", () => {
     const [task] = buildStewardTasks({
       ...base,
-      commitments: [commitment({ ownerName: "", ownerEmail: undefined })],
+      commitments: [commitment({ ownerName: "", ownerEmail: "" })],
     });
     expect(task?.owner.kind).toBe("unowned");
     expect(applyTeamFilter([task!], "no_owner")).toHaveLength(1);
