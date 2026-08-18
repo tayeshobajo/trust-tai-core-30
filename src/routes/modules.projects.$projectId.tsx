@@ -305,7 +305,7 @@ function DeliveryRoom({
   const completion = completionModel(project, items, row.lineage.milestoneName);
   const packet = buildProjectContextPacket({
     project,
-    ...(row.companyName ? { company: row.companyName } : {}),
+    ...(row.lineage.company ? { company: row.lineage.company } : {}),
     roadmap: {
       ...(row.lineage.roadmapId ? { roadmapId: row.lineage.roadmapId } : {}),
       ...(row.lineage.milestoneId ? { milestoneId: row.lineage.milestoneId } : {}),

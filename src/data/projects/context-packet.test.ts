@@ -20,7 +20,7 @@ const project: ExecutionProject = {
   dueDate: "2026-04-01",
   createdAt: NOW.toISOString(),
   updatedAt: NOW.toISOString(),
-} as ExecutionProject;
+} as unknown as ExecutionProject;
 
 function knowledge(partial: Partial<KnowledgeItem> & Pick<KnowledgeItem, "section" | "body">): KnowledgeItem {
   return {
@@ -154,7 +154,7 @@ describe("project context packet", () => {
 describe("context health", () => {
   it("is missing key context when nothing says what success is", () => {
     const packet = buildProjectContextPacket(
-      baseInput({ project: { ...project, pointB: "", ownerLabel: undefined } as ExecutionProject }),
+      baseInput({ project: { ...project, pointB: "", ownerLabel: undefined } as unknown as ExecutionProject }),
     );
     const health = contextHealth(packet);
 
