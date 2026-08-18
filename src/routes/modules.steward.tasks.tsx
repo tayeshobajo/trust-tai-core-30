@@ -42,10 +42,11 @@ const DESCRIPTION =
 
 export const Route = createFileRoute("/modules/steward/tasks")({
   /* Activity links here with the task it recorded and the moment it happened. */
-  validateSearch: (search: Record<string, unknown>) => ({
-    task: typeof search["task"] === "string" ? (search["task"] as string).slice(0, 200) : "",
-    at: typeof search["at"] === "string" ? (search["at"] as string).slice(0, 40) : "",
-  }),
+  validateSearch: (search: Record<string, unknown>): { task?: string; at?: string } => {
+    const task = typeof search["task"] === "string" ? search["task"].slice(0, 200) : "";
+    const at = typeof search["at"] === "string" ? search["at"].slice(0, 40) : "";
+    return { ...(task ? { task } : {}), ...(at ? { at } : {}) };
+  },
   head: () => ({
     meta: [
       { title: TITLE },
@@ -61,7 +62,7 @@ export const Route = createFileRoute("/modules/steward/tasks")({
 });
 
 function TasksRoute() {
-  const { task, at } = Route.useSearch();
+  const { task = "", at = "" } = Route.useSearch();
   return (
     <WorkspaceGate>
       {(identity) => (
@@ -319,7 +320,7 @@ function StewardTasks({
         actor={actor}
         onClose={() => {
           setOpenTask(null);
-          if (openKey) navigate({ search: { task: "", at: "" }, replace: true });
+          if (openKey) navigate({ search: {}, replace: true });
         }}
         onComplete={(note) => {
           if (shownTask) actions.complete(shownTask, note);
