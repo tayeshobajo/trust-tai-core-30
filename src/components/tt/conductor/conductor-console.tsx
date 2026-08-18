@@ -52,6 +52,8 @@ export interface ConductorConsoleProps {
   answer?: ConductorAnswer;
   thinking?: boolean;
   onAsk: (question: string) => void | Promise<void>;
+  /** A question carried in from elsewhere (e.g. a Pulse signal). Never auto-asked. */
+  initialQuestion?: string;
   /** The hand-recorded figures panel, injected so the console stays pure. */
   figures?: ReactNode;
   onCorrect?: (draft: CorrectionDraft) => void | Promise<void>;
@@ -63,12 +65,13 @@ export function ConductorConsole({
   answer,
   thinking,
   onAsk,
+  initialQuestion,
   figures,
   onCorrect,
   correcting,
   corrected,
 }: ConductorConsoleProps) {
-  const [question, setQuestion] = useState("");
+  const [question, setQuestion] = useState(initialQuestion ?? "");
   const [showWorking, setShowWorking] = useState(false);
 
 

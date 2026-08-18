@@ -426,6 +426,7 @@ function Conductor({
       <ConductorConsole
         {...(answer ? { answer } : {})}
         thinking={ask.isPending}
+        {...(handoff ? { initialQuestion: handoff.ask } : {})}
         onAsk={(question) => {
           setLastQuestion(question);
           return ask.mutateAsync(question).then(() => undefined);
