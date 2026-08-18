@@ -113,6 +113,34 @@ function paperclipApiUrl(): string {
   return process.env["PAPERCLIP_API_URL"] || "http://127.0.0.1:3100";
 }
 
+/**
+ * Where this deployment believes Paperclip lives, described as metadata only.
+ *
+ * The origin is not a secret, but a key never travels with it. `loopback`
+ * being true is why a deployment can only ever be SYNCHRONIZED: a hosted
+ * Trust Tai OS cannot reach a laptop's 127.0.0.1.
+ */
+export function paperclipHostInfo(): {
+  origin: string;
+  tls: boolean;
+  loopback: boolean;
+  configured: boolean;
+} {
+  const configured = Boolean(process.env["PAPERCLIP_API_URL"]);
+  const raw = paperclipApiUrl();
+  try {
+    const url = new URL(raw);
+    return {
+      origin: url.origin,
+      tls: url.protocol === "https:",
+      loopback: ["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(url.hostname),
+      configured,
+    };
+  } catch {
+    return { origin: raw, tls: false, loopback: false, configured };
+  }
+}
+
 function paperclipBoardKey(): string {
   const key = process.env["PAPERCLIP_BOARD_KEY"];
   if (!key) {

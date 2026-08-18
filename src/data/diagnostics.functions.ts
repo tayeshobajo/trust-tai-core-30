@@ -16,6 +16,8 @@ export interface RuntimeDiagnostics {
     lastSuccessAt: string | null;
     consecutiveFailures: number | null;
     boardKeyConfigured: boolean;
+    /** Metadata about the configured host. Never a credential. */
+    host: { origin: string; tls: boolean; loopback: boolean; configured: boolean };
   };
   serverTime: string;
 }
@@ -54,9 +56,12 @@ export const getRuntimeDiagnostics = createServerFn({ method: "GET" })
       /* non-fatal: report unknown rather than guess */
     }
 
+    const { paperclipClient, paperclipHostInfo } = await import(
+      "@/lib/paperclip-client.server"
+    );
+    const host = paperclipHostInfo();
     let liveReachable = false;
     try {
-      const { paperclipClient } = await import("@/lib/paperclip-client.server");
       liveReachable = await paperclipClient.ping();
     } catch {
       liveReachable = false;
@@ -70,6 +75,7 @@ export const getRuntimeDiagnostics = createServerFn({ method: "GET" })
         consecutiveFailures,
         // Presence only. The value is never serialized.
         boardKeyConfigured: Boolean(process.env["PAPERCLIP_BOARD_KEY"]),
+        host,
       },
       serverTime: new Date().toISOString(),
     };

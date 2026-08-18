@@ -205,3 +205,89 @@ export function opsFreshness(lastEventAt: string | undefined, now: number): stri
   if (hours < 36) return `Ops synced ${hours} hr ago`;
   return `Ops synced ${Math.round(hours / 24)} days ago`;
 }
+
+/** How the managed-systems table may be ordered. Every option is deterministic. */
+export type OpsSortKey =
+  | "attention"
+  | "recent"
+  | "name"
+  | "company"
+  | "open_issues"
+  | "open_approvals";
+
+export const OPS_SORT_OPTIONS: { value: OpsSortKey; label: string }[] = [
+  { value: "attention", label: "Needs attention first" },
+  { value: "recent", label: "Most recent activity" },
+  { value: "name", label: "System name (A-Z)" },
+  { value: "company", label: "Company (A-Z)" },
+  { value: "open_issues", label: "Most open incidents" },
+  { value: "open_approvals", label: "Most open approvals" },
+];
+
+const HEALTH_RANK: Record<OpsHealth, number> = { incident: 0, attention: 1, healthy: 2 };
+
+function newestFirst(a: OpsSystem, b: OpsSystem): number {
+  return a.lastActivityAt < b.lastActivityAt ? 1 : a.lastActivityAt > b.lastActivityAt ? -1 : 0;
+}
+
+/** Order the portfolio. Ties always fall back to newest activity, then name. */
+export function sortOpsSystems(systems: OpsSystem[], key: OpsSortKey): OpsSystem[] {
+  const sorted = [...systems];
+  sorted.sort((a, b) => {
+    switch (key) {
+      case "recent":
+        return newestFirst(a, b) || a.name.localeCompare(b.name);
+      case "name":
+        return a.name.localeCompare(b.name) || newestFirst(a, b);
+      case "company":
+        return (
+          (a.company ?? "\uffff").localeCompare(b.company ?? "\uffff") ||
+          a.name.localeCompare(b.name)
+        );
+      case "open_issues":
+        return b.openIssues - a.openIssues || newestFirst(a, b);
+      case "open_approvals":
+        return b.openApprovals - a.openApprovals || newestFirst(a, b);
+      case "attention":
+      default:
+        return (
+          HEALTH_RANK[a.health] - HEALTH_RANK[b.health] ||
+          newestFirst(a, b) ||
+          a.name.localeCompare(b.name)
+        );
+    }
+  });
+  return sorted;
+}
+
+export const OPS_PAGE_SIZES = [10, 25, 50] as const;
+
+export interface OpsPage {
+  items: OpsSystem[];
+  page: number;
+  pageCount: number;
+  pageSize: number;
+  total: number;
+  /** 1-based inclusive range of the rows shown, or zeros when empty. */
+  from: number;
+  to: number;
+}
+
+/** Slice a sorted portfolio into one page, clamping an out-of-range page. */
+export function paginateOpsSystems(systems: OpsSystem[], page: number, pageSize: number): OpsPage {
+  const size = Math.max(1, Math.floor(pageSize));
+  const total = systems.length;
+  const pageCount = Math.max(1, Math.ceil(total / size));
+  const current = Math.min(Math.max(1, Math.floor(page) || 1), pageCount);
+  const start = (current - 1) * size;
+  const items = systems.slice(start, start + size);
+  return {
+    items,
+    page: current,
+    pageCount,
+    pageSize: size,
+    total,
+    from: total === 0 ? 0 : start + 1,
+    to: total === 0 ? 0 : start + items.length,
+  };
+}

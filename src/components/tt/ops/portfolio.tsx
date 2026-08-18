@@ -9,7 +9,14 @@
 import { Search } from "lucide-react";
 
 import { MetaPill, TTButton } from "@/components/tt/primitives";
-import type { OpsFilters, OpsSystem } from "@/data/ops/projection";
+import {
+  OPS_PAGE_SIZES,
+  OPS_SORT_OPTIONS,
+  type OpsFilters,
+  type OpsPage,
+  type OpsSortKey,
+  type OpsSystem,
+} from "@/data/ops/projection";
 import { cn } from "@/lib/utils";
 
 const SELECT =
@@ -178,6 +185,79 @@ export function OpsSystemRow({
           }}
         >
           Open in Ops ↗
+        </TTButton>
+      </div>
+    </div>
+  );
+}
+
+export function OpsSortControl({
+  value,
+  onChange,
+}: {
+  value: OpsSortKey;
+  onChange: (value: OpsSortKey) => void;
+}) {
+  return (
+    <select
+      aria-label="Sort systems"
+      className={SELECT}
+      value={value}
+      onChange={(event) => onChange(event.target.value as OpsSortKey)}
+    >
+      {OPS_SORT_OPTIONS.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+export function OpsPager({
+  page,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  page: OpsPage;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+      <p className="text-[13px] text-muted-foreground">
+        Showing {page.from}-{page.to} of {page.total}{" "}
+        {page.total === 1 ? "system" : "systems"}
+      </p>
+      <div className="flex items-center gap-2">
+        <select
+          aria-label="Systems per page"
+          className={SELECT}
+          value={page.pageSize}
+          onChange={(event) => onPageSizeChange(Number(event.target.value))}
+        >
+          {OPS_PAGE_SIZES.map((size) => (
+            <option key={size} value={size}>
+              {size} per page
+            </option>
+          ))}
+        </select>
+        <TTButton
+          variant="secondary"
+          disabled={page.page <= 1}
+          onClick={() => onPageChange(page.page - 1)}
+        >
+          Previous
+        </TTButton>
+        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+          Page {page.page} of {page.pageCount}
+        </span>
+        <TTButton
+          variant="secondary"
+          disabled={page.page >= page.pageCount}
+          onClick={() => onPageChange(page.page + 1)}
+        >
+          Next
         </TTButton>
       </div>
     </div>

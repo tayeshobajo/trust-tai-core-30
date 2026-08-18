@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { OpsEvent } from "@/domain/ops";
 
-import { EMPTY_OPS_FILTERS, filterOpsSystems, opsFreshness, opsPortfolio } from "./projection";
+import {
+  EMPTY_OPS_FILTERS,
+  filterOpsSystems,
+  opsFreshness,
+  opsPortfolio,
+  paginateOpsSystems,
+  sortOpsSystems,
+} from "./projection";
 
 function event(partial: Partial<OpsEvent> & Pick<OpsEvent, "name" | "at">): OpsEvent {
   return {
@@ -63,5 +70,42 @@ describe("opsFreshness", () => {
     const now = Date.parse("2026-08-05T12:00:00Z");
     expect(opsFreshness("2026-08-05T11:59:18Z", now)).toBe("Ops synced 42 sec ago");
     expect(opsFreshness("2026-08-05T11:48:00Z", now)).toBe("Ops synced 12 min ago");
+  });
+});
+
+describe("sorting and pagination", () => {
+  const many = (count: number) =>
+    opsPortfolio(
+      Array.from({ length: count }, (_, index) =>
+        event({
+          name: index % 2 === 0 ? "ops.issue_detected" : "ops.completed",
+          at: `2026-08-${String((index % 27) + 1).padStart(2, "0")}T10:00:00Z`,
+          chainKey: `chain-${index}`,
+          subjectLabel: `System ${String(index).padStart(2, "0")}`,
+        }),
+      ),
+    ).systems;
+
+  it("orders by name, by open incidents, and keeps attention first by default", () => {
+    const systems = many(6);
+    expect(sortOpsSystems(systems, "name")[0]!.name).toBe("System 00");
+    expect(sortOpsSystems(systems, "open_issues")[0]!.openIssues).toBe(1);
+    expect(sortOpsSystems(systems, "attention")[0]!.health).toBe("incident");
+  });
+
+  it("pages a large portfolio and clamps out-of-range pages", () => {
+    const systems = sortOpsSystems(many(42), "name");
+    const first = paginateOpsSystems(systems, 1, 10);
+    expect(first.items).toHaveLength(10);
+    expect(first.pageCount).toBe(5);
+    expect([first.from, first.to]).toEqual([1, 10]);
+
+    const last = paginateOpsSystems(systems, 99, 10);
+    expect(last.page).toBe(5);
+    expect(last.items).toHaveLength(2);
+    expect([last.from, last.to]).toEqual([41, 42]);
+
+    const empty = paginateOpsSystems([], 3, 25);
+    expect(empty).toMatchObject({ page: 1, pageCount: 1, total: 0, from: 0, to: 0 });
   });
 });
