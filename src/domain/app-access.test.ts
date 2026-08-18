@@ -5,6 +5,7 @@ import {
   roleDefaultAccess,
   visibleApps,
   normalizeAccessLevel,
+  type AppAccessLevel,
 } from "./app-access";
 
 const base = { membershipActive: true, organizationEnabled: true };
