@@ -11,7 +11,7 @@ import { useState } from "react";
 
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
 import { ROUTE_TARGET_LABEL } from "@/domain/project-routing";
-import { routeStandingLabel } from "@/domain/route-ledger";
+import { routeStanding } from "@/domain/route-ledger";
 import type { RouteLedgerEntry } from "@/domain/route-ledger";
 
 export interface RoutedWorkStepProps {
@@ -45,7 +45,7 @@ export function RoutedWorkStep({
         <h3 className="text-lg font-medium text-foreground">
           {entry.projectName} asked {target} for: {entry.requestedOutcome}
         </h3>
-        <p className="text-sm text-[var(--tt-ink-muted)]">{routeStandingLabel?.(entry) ?? entry.because}</p>
+        <p className="text-sm text-[var(--tt-ink-muted)]">{routeStanding(entry)}</p>
         <div className="flex flex-wrap gap-2">
           <MetaPill>{`${entry.ageDays} day${entry.ageDays === 1 ? "" : "s"} old`}</MetaPill>
           <MetaPill>{entry.status}</MetaPill>
