@@ -73,9 +73,17 @@ function memory(value: unknown, tier: MemoryItem["tier"]): MemoryItem[] {
         : tier,
       evidence: evidence(entry["evidence"]),
       at: String(entry["at"] ?? new Date().toISOString()),
+      ...(text(entry["category"]) ? { category: text(entry["category"])! } : {}),
+      ...(text(entry["due"]) ? { due: text(entry["due"])! } : {}),
+      ...(["open", "kept", "released"].includes(String(entry["status"]))
+        ? { status: entry["status"] as MemoryItem["status"] }
+        : {}),
+      ...(text(entry["owner"]) ? { owner: text(entry["owner"])! } : {}),
+      ...(text(entry["added_by"]) ? { addedBy: text(entry["added_by"])! } : {}),
     }))
     .filter((entry) => entry.value.length > 0);
 }
+
 
 /* ------------------------------------------------------------------- rows */
 
