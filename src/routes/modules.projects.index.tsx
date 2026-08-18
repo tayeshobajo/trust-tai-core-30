@@ -220,7 +220,41 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
   }, [approvedQuery.data, projectsQuery.data, sources]);
 
   const create = useMutation({
-    mutationFn: (input: ProjectInput) => projectsService.start(input, context),
+    mutationFn: async ({
+      input,
+      extras,
+    }: {
+      input: ProjectInput;
+      extras: CreateProjectExtras;
+    }) => {
+      const project = await projectsService.start(input, context);
+      // Everything after the promise is optional, so a failing extra must not
+      // undo a project that already exists. Each one is attempted on its own.
+      const delivery = { ...context, projectId: project.id };
+      for (const source of extras.thinking) {
+        try {
+          await projectIntelligence.addThinking(source, delivery);
+        } catch {
+          /* the link can be added again from the project itself */
+        }
+      }
+      for (const file of extras.mockups) {
+        try {
+          await projectIntelligence.uploadAsset(file, { assetType: "mockup" }, delivery);
+        } catch {
+          /* the mockup can be uploaded again from Assets */
+        }
+      }
+      for (const connection of extras.connections) {
+        try {
+          await projectIntelligence.addConnection(connection, delivery);
+        } catch {
+          /* the link can be added again from Context */
+        }
+      }
+      return project;
+    },
+
     onSuccess: async (project) => {
       setModalOpen(false);
       setSeed(null);
