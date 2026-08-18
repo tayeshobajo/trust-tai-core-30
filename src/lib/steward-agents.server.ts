@@ -181,3 +181,25 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       : `Paperclip is registered but not responding. ${firstFailure ?? ""}`.trim(),
   };
 }
+
+/**
+ * Ask Paperclip to take one task. Steward records the request; the agent's
+ * execution state, including completion, still comes back from Paperclip.
+ */
+export async function assignPaperclipTask(input: {
+  organizationId: string;
+  agentId: string;
+  title: string;
+  description: string;
+}): Promise<{ issueId: string }> {
+  const { paperclipClient } = await import("@/lib/paperclip-client.server");
+  const agent = await paperclipClient.getAgent(input.agentId);
+  const issue = await paperclipClient.createIssue(agent.companyId, {
+    title: input.title,
+    description: input.description,
+    createdByAgentId: input.agentId,
+    assigneeAgentId: input.agentId,
+    status: "todo",
+  });
+  return { issueId: issue.id };
+}
