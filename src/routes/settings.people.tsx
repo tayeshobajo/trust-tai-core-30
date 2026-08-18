@@ -220,6 +220,7 @@ function PeopleSettings() {
   }, [members.data, search, sort, orgEnabled]);
 
   const selected = (members.data ?? []).find((member) => member.userId === selectedId) ?? null;
+  const [delivery, setDelivery] = useState<string | null>(null);
   const invitationAudit = useQuery({
     queryKey: ["settings", "invitation-audit", identity.organizationId],
     queryFn: () => listInvitationAudit(identity.organizationId),
@@ -411,14 +412,24 @@ function PeopleSettings() {
                       <button
                         type="button"
                         className="text-[13px] text-royal hover:underline"
-                        onClick={() =>
-                          void resendInvitation({
-                            organizationId: identity.organizationId,
-                            invitationId: invitation.id,
-                            email: invitation.email,
-                            actorUserId: identity.userId,
-                          }).then(refresh)
-                        }
+                        onClick={() => {
+                          void (async () => {
+                            await resendInvitation({
+                              organizationId: identity.organizationId,
+                              invitationId: invitation.id,
+                              email: invitation.email,
+                              actorUserId: identity.userId,
+                            });
+                            const result = await deliverInvitationEmail({
+                              organizationId: identity.organizationId,
+                              invitationId: invitation.id,
+                              email: invitation.email,
+                              actorUserId: identity.userId,
+                            });
+                            setDelivery(result.because);
+                            refresh();
+                          })();
+                        }}
                       >
                         Send again
                       </button>
@@ -442,10 +453,77 @@ function PeopleSettings() {
               ))}
           </div>
         )}
+        {delivery ? (
+          <p className="mt-3 text-xs text-muted-foreground" role="status">
+            {delivery}
+          </p>
+        ) : null}
       </div>
+
+      {identity.canManage ? <InvitationAudit query={invitationAudit} /> : null}
+
+      <PermissionSummary role={normalizeRole(identity.role)} />
     </>
   );
 }
+
+/** Invitation history, drawn from the shared activity stream. Read only. */
+function InvitationAudit({
+  query,
+}: {
+  query: { data?: Awaited<ReturnType<typeof listInvitationAudit>>; isPending: boolean };
+}) {
+  const entries = query.data?.value ?? [];
+  return (
+    <div className="tt-surface p-6">
+      <SectionHeading
+        eyebrow="History"
+        title="Invitation activity"
+        description="Every invitation created, resent, emailed or cancelled in this workspace, with who did it and when."
+      />
+      {query.data?.provisioned === false ? (
+        <NotProvisioned what="Invitation history" file="docs/settings-schema.sql" />
+      ) : query.isPending ? (
+        <p className="text-sm text-muted-foreground">Reading history…</p>
+      ) : entries.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No invitation activity recorded yet.</p>
+      ) : (
+        <ol className="divide-y divide-border rounded-xl border border-border">
+          {entries.map((entry) => (
+            <li key={entry.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+              <Health
+                tone={
+                  entry.lifecycle === "cancelled"
+                    ? "caution"
+                    : entry.delivered === false
+                      ? "risk"
+                      : "good"
+                }
+              >
+                {LIFECYCLE_LABEL[entry.lifecycle]}
+              </Health>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-foreground">{entry.summary}</p>
+                <p className="text-xs text-muted-foreground">
+                  {entry.email ? `${entry.email} · ` : ""}
+                  {whenText(entry.at)}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+const LIFECYCLE_LABEL: Record<string, string> = {
+  created: "Created",
+  resent: "Resent",
+  emailed: "Emailed",
+  cancelled: "Cancelled",
+  other: "Recorded",
+};
 
 function MemberAccessPanel({
   member,
@@ -562,6 +640,7 @@ function InvitePanel({
   const [role, setRole] = useState<WorkspaceRole>("member");
   const [overrides, setOverrides] = useState<Record<string, AppAccessLevel>>({});
   const [sent, setSent] = useState<number | null>(null);
+  const [delivered, setDelivered] = useState<string | null>(null);
 
   const parsed = parseEmails(emails);
 
@@ -574,9 +653,24 @@ function InvitePanel({
         access: overrides,
         actorUserId,
       }),
-    onSuccess: (count) => {
-      setSent(count);
+    onSuccess: async (created) => {
+      setSent(created.length);
       setEmails("");
+      const outcomes: string[] = [];
+      for (const invitation of created) {
+        const result = await deliverInvitationEmail({
+          organizationId,
+          invitationId: invitation.id,
+          email: invitation.email,
+          actorUserId,
+        });
+        if (!result.delivered) outcomes.push(result.because);
+      }
+      setDelivered(
+        outcomes.length === 0
+          ? `${created.length} invitation${created.length === 1 ? "" : "s"} emailed.`
+          : outcomes[0] ?? null,
+      );
       onDone();
     },
   });
@@ -598,6 +692,7 @@ function InvitePanel({
             value={emails}
             onChange={(event) => {
               setSent(null);
+              setDelivered(null);
               setEmails(event.target.value);
             }}
             placeholder="sarah@company.com"
@@ -693,6 +788,7 @@ function InvitePanel({
         {sent ? (
           <span className="text-sm text-success" role="status">
             {sent} invitation{sent === 1 ? "" : "s"} recorded.
+            {delivered ? ` ${delivered}` : ""}
           </span>
         ) : null}
         {invite.error ? (
