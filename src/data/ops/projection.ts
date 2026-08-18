@@ -17,6 +17,7 @@ import {
   type OpsEvent,
   type OpsEventName,
 } from "@/domain/ops";
+import { opsProjectUrl, type OpsProjectRow } from "@/domain/ops-projection";
 
 export type OpsHealth = "incident" | "attention" | "healthy" | "unknown";
 
@@ -314,5 +315,77 @@ export function paginateOpsSystems(systems: OpsSystem[], page: number, pageSize:
     total,
     from: total === 0 ? 0 : start + 1,
     to: total === 0 ? 0 : start + items.length,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Merging the synchronized projection with the shared stream          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Fold the projection Ops pushes together with what the shared activity
+ * stream already showed.
+ *
+ * The projection is canonical for "which projects exist in Ops". Activity
+ * rows only ever add detail to a project the projection already names, or
+ * stand alone when the projection has never heard of that chain. Nothing is
+ * invented: an unreported count stays null and an unreported path opens Ops
+ * home rather than a guessed project URL.
+ */
+export function mergeOpsPortfolio(base: OpsPortfolio, rows: OpsProjectRow[]): OpsPortfolio {
+  const live = rows.filter((row) => !row.archived);
+  if (live.length === 0) return base;
+
+  const remaining = new Map(base.systems.map((system) => [system.key, system]));
+
+  const systems: OpsSystem[] = live.map((row) => {
+    const match = [...remaining.values()].find(
+      (system) =>
+        system.key === row.opsProjectId ||
+        (!!row.canonicalProjectId && system.canonicalProjectId === row.canonicalProjectId) ||
+        system.name.toLowerCase() === row.name.toLowerCase(),
+    );
+    if (match) remaining.delete(match.key);
+
+    const health: OpsHealth = row.health;
+    const destination = opsProjectUrl(row);
+    const system: OpsSystem = {
+      key: `ops:${row.opsProjectId}`,
+      name: row.name,
+      opsProjectId: row.opsProjectId,
+      health,
+      openIssues: row.openIssues ?? match?.openIssues ?? null,
+      openApprovals: row.openApprovals ?? match?.openApprovals ?? null,
+      lastActivityAt: row.lastActivityAt ?? match?.lastActivityAt ?? null,
+      lastSyncedAt: row.lastSyncedAt,
+      source: "projection",
+      destinationUrl: destination !== OPS_ORIGIN ? destination : (match?.destinationUrl ?? OPS_ORIGIN),
+    };
+    const canonicalProjectId = row.canonicalProjectId ?? match?.canonicalProjectId;
+    const company = row.company ?? match?.company;
+    const environment = row.environment ?? match?.environment;
+    const owner = row.owner ?? match?.owner;
+    if (canonicalProjectId) system.canonicalProjectId = canonicalProjectId;
+    if (company) system.company = company;
+    if (environment) system.environment = environment;
+    if (owner) system.owner = owner;
+    if (row.status) system.status = row.status;
+    if (match?.latestRun) system.latestRun = match.latestRun;
+    return system;
+  });
+
+  const all = [...systems, ...remaining.values()];
+  const rank: Record<OpsHealth, number> = { incident: 0, attention: 1, unknown: 2, healthy: 3 };
+  all.sort(
+    (a, b) =>
+      rank[a.health] - rank[b.health] ||
+      ((a.lastActivityAt ?? "") < (b.lastActivityAt ?? "") ? 1 : -1),
+  );
+
+  return {
+    ...base,
+    systems: all,
+    companies: [...new Set(all.map((s) => s.company).filter(Boolean) as string[])].sort(),
+    environments: [...new Set(all.map((s) => s.environment).filter(Boolean) as string[])].sort(),
   };
 }
