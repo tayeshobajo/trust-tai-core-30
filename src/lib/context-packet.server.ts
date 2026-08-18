@@ -342,7 +342,7 @@ export async function readContextPacket(
   });
 
   const hasDesignWork = packet.approvedAssets.some(
-    (asset) => asset.assetType === "mockup" || asset.assetType === "design",
+    (asset) => asset.assetType === "mockup" || asset.assetType === "design_reference",
   );
 
   return { packet, health: contextHealth(packet, hasDesignWork) };
