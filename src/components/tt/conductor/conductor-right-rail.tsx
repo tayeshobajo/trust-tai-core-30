@@ -36,9 +36,9 @@ export function ConductorRightRail({
       <Rail
         title="Today"
         cta={
-          <Link to="/modules/activity" className="text-royal underline underline-offset-4">
+          <a href="#approval-queue" className="text-royal underline underline-offset-4">
             View today&rsquo;s activity
-          </Link>
+          </a>
         }
       >
         <dl className="space-y-1.5 text-[13px]">
@@ -60,9 +60,9 @@ export function ConductorRightRail({
       <Rail
         title="Needs Tai"
         cta={
-          <Link to="/modules/pulse" className="text-royal underline underline-offset-4">
+          <a href="#approval-queue" className="text-royal underline underline-offset-4">
             View all
-          </Link>
+          </a>
         }
       >
         {needs.length === 0 ? (
@@ -86,9 +86,9 @@ export function ConductorRightRail({
       <Rail
         title="Recently moved"
         cta={
-          <Link to="/modules/activity" className="text-royal underline underline-offset-4">
+          <a href="#conductor-learning" className="text-royal underline underline-offset-4">
             View all activity
-          </Link>
+          </a>
         }
       >
         {moved.length === 0 ? (
