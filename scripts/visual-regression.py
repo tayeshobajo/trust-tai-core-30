@@ -104,13 +104,31 @@ SANS = "Inter"
 MONO = "JetBrains Mono"
 
 
+def norm_color(value: str) -> str:
+    """CSS serialises oklch as `oklch(19% .048 266)`; compare on numbers, not text."""
+    v = value.strip().lower()
+    if not v.startswith("oklch("):
+        return v
+    parts = v[6:-1].replace("/", " ").split()
+    out = []
+    for part in parts:
+        num = part[:-1] if part.endswith("%") else part
+        try:
+            f = float(num) / 100 if part.endswith("%") else float(num)
+        except ValueError:
+            out.append(part)
+            continue
+        out.append(f"{f:g}")
+    return "oklch(" + " ".join(out) + ")"
+
+
 def check_probe(screen: str, bp: str, data: dict) -> list[str]:
     fails: list[str] = []
     where = f"{screen}@{bp}"
 
     for name, expected in EXPECTED_TOKENS.items():
         actual = data["tokens"].get(name, "")
-        if actual.lower() != expected.lower():
+        if norm_color(actual) != norm_color(expected):
             fails.append(f"{where}: token --{name} is '{actual}', expected '{expected}'")
 
     if data["body"]["family"] != SANS:
@@ -139,8 +157,10 @@ def check_probe(screen: str, bp: str, data: dict) -> list[str]:
             fails.append(f"{where}: <{t['tag']}> uses off-brand family {t['family']}")
         if t["tag"] in ("h1", "h2") and t["family"] == SERIF and not 26 <= t["size"] <= 56:
             fails.append(f"{where}: display size {t['size']}px outside 26-56px")
-        if t["tag"] == "p" and not 12 <= t["size"] <= 20:
+        if t["tag"] == "p" and t["family"] == SANS and not 12 <= t["size"] <= 20:
             fails.append(f"{where}: body size {t['size']}px outside 12-20px")
+        if t["family"] == MONO and not 9 <= t["size"] <= 13:
+            fails.append(f"{where}: eyebrow size {t['size']}px outside 9-13px")
 
     return fails
 
