@@ -79,3 +79,49 @@ timestamp. Writing sends the key both as the top-level column and as
 Entering the Ops room requires `ops.read`, held by operator roles and above.
 Ops enforces its own access independently; this is the outer gate, not the only
 one.
+
+## 5. The Ops room as a portfolio
+
+`/modules/ops` is no longer a launch page. It reads the same shared
+`activities` rows and folds them, in `src/data/ops/projection.ts`, into a
+read-only portfolio: one entry per Ops chain (canonical project, run, or
+issue), with open issue and approval counts, latest run or QA result, last
+activity, and health derived from what is still open.
+
+No projection table exists in Core and none is created. Trust Tai OS holds no
+editable copy of Ops truth; a filtered view of Ops evidence is all it is.
+
+Fields are shown only when Ops sent them. Company, environment, owner and
+system name are read from the row payload (`company`/`client`, `environment`,
+`owner`, `system`/`project_name`) and stay absent otherwise.
+
+Freshness is stated as the age of the newest Ops row we can see
+("Ops synced 42 sec ago"). If the read fails, the last-known projection stays
+on screen under "Ops sync interrupted".
+
+### Deep links
+
+Rows open through the same handshake. The launcher now accepts `targetPath`, a
+same-site path validated by `safeOpsTargetPath` (leading `/`, no `//`, no
+scheme). It is posted alongside the token inside the single `trust-tai-os:sso`
+message; Ops completes the redirect after the session is established. Nothing
+sensitive is ever in a URL.
+
+### Bounded Ops-side work still needed
+
+For systems created directly in Ops to appear here without waiting for an
+event, Ops must emit, per system, at least one activity row carrying:
+
+| Field | Where | Purpose |
+| --- | --- | --- |
+| `app_key = 'ops'` | column | routes the row to this room |
+| `source_event_key` | column | idempotency |
+| `canonical_project_id` | payload | lineage to a Core project, when one exists |
+| `system` / `project_name` | payload | portfolio row name |
+| `company` | payload | company filter |
+| `environment` | payload | environment filter |
+| `owner` | payload | owner column |
+| `destination_route` | payload | exact Ops path for the deep link |
+
+An `ops.completed` or `ops.qa_passed` row with those fields is enough to show a
+healthy system. Until Ops sends them, the room shows the truthful empty state.
