@@ -22,6 +22,9 @@ import {
 import { LaunchOpsButton } from "@/components/tt/ops/launch-ops";
 import { StateTrack, daysAgo, movedPhrase } from "@/components/tt/projects/state-track";
 import { RouteWork } from "@/components/tt/projects/route-work";
+import { ProjectLineage } from "@/components/tt/projects/lineage";
+import { buildProjectRow, lineageSourcesFrom } from "@/data/projects/index-projection";
+import { roadmapService } from "@/data/supabase/roadmap-service";
 
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
@@ -101,6 +104,18 @@ function ProjectWorkspace({
     retry: false,
   });
 
+  // Lineage is read from roadmap truth, never re-stated here.
+  const roadmapsQuery = useQuery({
+    queryKey: ["projects", "roadmaps", identity.organizationId],
+    queryFn: () => roadmapService.list(identity.organizationId),
+    retry: false,
+  });
+  const stagesQuery = useQuery({
+    queryKey: ["projects", "stages", identity.organizationId],
+    queryFn: () => roadmapService.stagesByRoadmap(identity.organizationId),
+    retry: false,
+  });
+
   const [nextMove, setNextMove] = useState("");
   const [blocked, setBlocked] = useState("");
 
@@ -160,6 +175,13 @@ function ProjectWorkspace({
         ) : null}
         {project.origin.kind === "roadmap_milestone" ? <MetaPill>From Roadmap</MetaPill> : null}
       </div>
+
+      <ProjectLineage
+        row={buildProjectRow(
+          project,
+          lineageSourcesFrom(roadmapsQuery.data ?? [], stagesQuery.data ?? {}),
+        )}
+      />
 
       <section aria-label="Where this stands" className="tt-surface space-y-3 p-6">
         <StateTrack state={project.state} />
