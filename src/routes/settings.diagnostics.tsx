@@ -107,6 +107,11 @@ function DiagnosticsSettings() {
               : undefined
           }
         />
+        <Row
+          label="Ops handoff target"
+          value={`${OPS_ORIGIN}${OPS_SSO_PATH}`}
+          note="Sessions are handed to this exact origin. Ops must list this deployment's origin in its own allowlist, or the handshake is refused."
+        />
         <Row label="Server time" value={pending ? "…" : (data?.serverTime ?? unknown)} />
       </dl>
     </div>
