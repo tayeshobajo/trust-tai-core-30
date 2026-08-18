@@ -56,6 +56,7 @@ import { loadSuiteSnapshot } from "@/data/intelligence/service";
 import { getCurrentIcp } from "@/data/supabase/icp";
 import {
   loadControlledActions,
+  saveControlledActions,
   loadReceipts,
 } from "@/data/supabase/conductor-control-service";
 import {
