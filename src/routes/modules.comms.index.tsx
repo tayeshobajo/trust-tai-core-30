@@ -33,6 +33,7 @@ import { deriveConversationHealth, relationshipStrength } from "@/data/comms-hea
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
 import { inboxEntries, inboxView, type InboxTab } from "@/data/comms-inbox";
 import { nextRelationshipMove } from "@/data/comms-next-move";
+import { relationshipsWorthAttention } from "@/data/comms-attention";
 import type { ConversationHealthStatus } from "@/domain/comms-health";
 import type { MemoryItem, Relationship, Touch } from "@/domain/comms";
 import {
