@@ -387,8 +387,13 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 }}
               />
             ) : null}
+            {selected ? (
+              <TTButton variant="quiet" onClick={() => setInteracting(true)}>
+                Add interaction
+              </TTButton>
+            ) : null}
             <TTButton onClick={() => setCapturing((value) => !value)}>
-              {capturing ? "Close" : "Add someone you met"}
+              {capturing ? "Close" : "Add relationship"}
             </TTButton>
           </div>
         }
