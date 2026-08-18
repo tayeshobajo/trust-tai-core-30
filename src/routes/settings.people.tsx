@@ -235,6 +235,78 @@ function PeopleSettings() {
     });
   }, [members.data, search, sort, orgEnabled]);
 
+  /* Pagination is presentation only: the same filtered, sorted truth, windowed. */
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const pageRows = rows.slice(pageStart, pageStart + pageSize);
+
+  /* Bulk selection never reaches beyond what this admin may actually change. */
+  const eligibleOnPage = pageRows
+    .map(({ member }) => member)
+    .filter((member) => identity.canManage && member.userId !== identity.userId);
+  const checkedSet = new Set(checkedIds);
+  const checkedMembers = (members.data ?? []).filter(
+    (member) => checkedSet.has(member.userId) && member.userId !== identity.userId,
+  );
+  const allOnPageChecked =
+    eligibleOnPage.length > 0 && eligibleOnPage.every((member) => checkedSet.has(member.userId));
+
+  const toggleChecked = (userId: string) =>
+    setCheckedIds((previous) =>
+      previous.includes(userId)
+        ? previous.filter((id) => id !== userId)
+        : [...previous, userId],
+    );
+
+  const togglePage = () =>
+    setCheckedIds((previous) => {
+      const ids = eligibleOnPage.map((member) => member.userId);
+      return allOnPageChecked
+        ? previous.filter((id) => !ids.includes(id))
+        : Array.from(new Set([...previous, ...ids]));
+    });
+
+  const runBulk = async (action: { kind: "role" } | { kind: "status"; status: "active" | "deactivated" }) => {
+    if (checkedMembers.length === 0) return;
+    setBulkBusy(true);
+    setBulkNote(null);
+    let done = 0;
+    const failures: string[] = [];
+    for (const member of checkedMembers) {
+      try {
+        if (action.kind === "role") {
+          await setMemberRole({
+            organizationId: identity.organizationId,
+            userId: member.userId,
+            memberName: member.name,
+            role: bulkRole,
+            actorUserId: identity.userId,
+          });
+        } else {
+          await setMemberStatus({
+            organizationId: identity.organizationId,
+            userId: member.userId,
+            memberName: member.name,
+            status: action.status,
+            actorUserId: identity.userId,
+          });
+        }
+        done += 1;
+      } catch (error) {
+        failures.push(`${member.name}: ${(error as Error).message}`);
+      }
+    }
+    setBulkBusy(false);
+    setBulkNote(
+      failures.length === 0
+        ? `Updated ${done} ${done === 1 ? "person" : "people"}.`
+        : `Updated ${done}. ${failures[0] ?? ""}`,
+    );
+    if (failures.length === 0) setCheckedIds([]);
+    refresh();
+  };
+
   const selected = (members.data ?? []).find((member) => member.userId === selectedId) ?? null;
   const [deliveryById, setDeliveryById] = useState<Record<string, { delivered: boolean; because: string }>>({});
   const invitationAudit = useQuery({
@@ -242,6 +314,7 @@ function PeopleSettings() {
     queryFn: () => listInvitationAudit(identity.organizationId),
     enabled: identity.canManage,
   });
+
 
   return (
     <>
