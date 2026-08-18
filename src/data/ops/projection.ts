@@ -155,11 +155,10 @@ export function opsPortfolio(events: OpsEvent[]): OpsPortfolio {
     }
   }
 
-  const rank: Record<OpsHealth, number> = { incident: 0, attention: 1, healthy: 2 };
-  systems.sort(
-    (a, b) => rank[a.health] - rank[b.health] || (a.lastActivityAt < b.lastActivityAt ? 1 : -1),
-  );
+  const rank: Record<OpsHealth, number> = { incident: 0, attention: 1, unknown: 2, healthy: 3 };
+  systems.sort((a, b) => rank[a.health] - rank[b.health] || newestFirst(a, b));
   attention.sort((a, b) => (a.at < b.at ? 1 : -1));
+
 
   const recentlyMoved = [...events].sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 8);
   const newest = recentlyMoved[0];
