@@ -37,6 +37,9 @@ import {
   type ThinkingSourceType,
 } from "@/domain/project-intelligence";
 import { knowledgeInputsFrom, parseThinkingImport } from "@/data/projects/thinking-import";
+import { agentEvidenceFrom } from "@/data/steward/agent-evidence";
+import type { AgentEvidence } from "@/domain/project-intelligence";
+import type { StewardAgent } from "@/domain/steward-accountability";
 import { listDiff, type IntelligenceAuditAction } from "@/domain/intelligence-audit";
 import { assertRoomManage, guardRoomWrites } from "@/lib/room-authority";
 import { intelligenceAudit } from "./intelligence-audit";
@@ -680,6 +683,13 @@ export const agentEffectivenessService = guardRoomWrites(
       userId: ID,
       userLabel?: string,
     ) => service.saveEffectiveness(input, organizationId, userId, userLabel),
+    /**
+     * Observed evidence is not general reading. It says how an agent is
+     * performing against a definition, so it stays with the people who carry
+     * Steward authority. A view-only member sees that it exists, not what it says.
+     */
+    evidence: (agent: StewardAgent, definition: AgentEffectiveness | null): AgentEvidence =>
+      agentEvidenceFrom(agent, definition),
     /** The audit trail for one agent. Manage access only, same as the edits. */
     history: (organizationId: ID, agentId: string) => {
       assertRoomManage("steward", "Steward", "Reading the agent audit trail");
