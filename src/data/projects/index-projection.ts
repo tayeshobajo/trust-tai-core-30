@@ -468,3 +468,33 @@ export function groupByCompany(rows: ProjectRowModel[]): CompanyGroup[] {
     }))
     .sort((a, b) => b.active - a.active || a.company.localeCompare(b.company));
 }
+
+/* ------------------------------------------------------- lineage sources */
+
+/**
+ * Build the lineage lookup from roadmap truth. Milestone ordinals follow the
+ * sequence Roadmap recorded, so "Milestone 02" means the same thing in both
+ * rooms.
+ */
+export function lineageSourcesFrom(
+  roadmaps: { id: string; subjectLabel?: string; title: string }[],
+  stagesByRoadmap: Record<string, { id: string; title: string; position: number }[]>,
+): LineageSources {
+  const roadmapCompany: Record<string, string> = {};
+  for (const roadmap of roadmaps) {
+    roadmapCompany[roadmap.id] = roadmap.subjectLabel || roadmap.title;
+  }
+  const milestones: LineageSources["milestones"] = {};
+  for (const [roadmapId, stages] of Object.entries(stagesByRoadmap)) {
+    [...stages]
+      .sort((a, b) => a.position - b.position)
+      .forEach((stage, index) => {
+        milestones[stage.id] = {
+          ordinal: String(index + 1).padStart(2, "0"),
+          name: stage.title,
+          roadmapId,
+        };
+      });
+  }
+  return { milestones, roadmapCompany, clientCompany: {} };
+}
