@@ -65,6 +65,7 @@ export function ContextTab({
   onAddThinking,
   onPrimaryThinking,
   onRemoveThinking,
+  onImportThinking,
   onAddConnection,
   onRemoveConnection,
   onDismissSuggestion,
@@ -78,9 +79,11 @@ export function ContextTab({
   onAddThinking: (input: ThinkingSourceInput) => void;
   onPrimaryThinking: (source: ThinkingSource) => void;
   onRemoveThinking: (source: ThinkingSource) => void;
+  onImportThinking?: (source: ThinkingSource, text: string) => void;
   onAddConnection: (input: ConnectionInput) => void;
   onRemoveConnection: (connection: ProjectConnection) => void;
   onDismissSuggestion: (id: string) => void;
+
 }) {
   const [sourceType, setSourceType] = useState<ThinkingSourceType>("chatgpt");
   const [sourceTitle, setSourceTitle] = useState("");
