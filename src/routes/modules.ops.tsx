@@ -20,21 +20,26 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import {
   EMPTY_OPS_FILTERS,
   filterOpsSystems,
+  mergeOpsPortfolio,
   opsFreshness,
   opsPortfolio,
   paginateOpsSystems,
   sortOpsSystems,
+  sumKnown,
   type OpsFilters,
   type OpsSortKey,
   type OpsSystem,
 } from "@/data/ops/projection";
+import { loadOpsProjection } from "@/data/ops/projects";
 import { opsPathOf } from "@/data/ops/destination";
 import { opsEventsOf } from "@/data/intelligence/derive";
 import { loadSuiteSnapshot } from "@/data/intelligence/service";
 import { OPS_ORIGIN } from "@/domain/ops";
+import { OPS_CONNECTION_LABEL, opsConnectionState } from "@/domain/ops-projection";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { OPS_LAUNCH_MESSAGE, launchOps, type OpsLaunchFailure } from "@/lib/ops-launch";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+
 
 const TITLE = "Ops · Technical stewardship · Trust Tai OS";
 const DESCRIPTION =
@@ -70,7 +75,15 @@ function OpsRoute() {
 function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const { data, isLoading, isError, isFetching, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["ops-portfolio", identity.organizationId],
-    queryFn: async () => opsEventsOf(await loadSuiteSnapshot(identity.organizationId)),
+    queryFn: async () => {
+      // Two honest sources: the projection Ops pushes, and the shared stream.
+      // Neither is fabricated when the other is missing.
+      const [snapshot, projection] = await Promise.all([
+        loadSuiteSnapshot(identity.organizationId),
+        loadOpsProjection(identity.organizationId),
+      ]);
+      return { events: opsEventsOf(snapshot), projection };
+    },
     refetchInterval: 60_000,
   });
 
@@ -82,7 +95,27 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [failure, setFailure] = useState<OpsLaunchFailure | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
 
-  const portfolio = useMemo(() => opsPortfolio(data ?? []), [data]);
+  const portfolio = useMemo(
+    () => mergeOpsPortfolio(opsPortfolio(data?.events ?? []), data?.projection.rows ?? []),
+    [data],
+  );
+  const lastSyncedAt = useMemo(() => {
+    const stamps = (data?.projection.rows ?? []).map((row) => row.lastSyncedAt).sort();
+    return stamps.length > 0 ? stamps[stamps.length - 1]! : null;
+  }, [data]);
+  // The projection only governs connection health once Ops has actually
+  // pushed something. Before that, the activity stream read is the only
+  // signal there is, and a quiet empty room is the truthful state.
+  const connection = lastSyncedAt
+    ? opsConnectionState({
+        lastSyncedAt,
+        projectionReadOk: data?.projection.ok !== false && !isError,
+        now: dataUpdatedAt || Date.now(),
+      })
+    : isError
+      ? "interrupted"
+      : "synchronized";
+
   const systems = useMemo(
     () => sortOpsSystems(filterOpsSystems(portfolio.systems, filters), sort),
     [portfolio.systems, filters, sort],
@@ -91,6 +124,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
     () => paginateOpsSystems(systems, page, pageSize),
     [systems, page, pageSize],
   );
+
 
   // Any change to what is being listed returns to the first page, so the
   // person is never left staring at an empty page that used to have rows.
@@ -128,9 +162,12 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const attention = portfolio.attention;
   const lastSuccessAt = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
-  const freshness = isError
+  const openIncidents = sumKnown(portfolio.systems, (system) => system.openIssues);
+  const interrupted = isError || connection === "interrupted";
+  const freshness = interrupted
     ? "Ops sync interrupted"
     : opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now());
+
 
   return (
     <div className="space-y-10">
@@ -152,9 +189,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           { value: isLoading ? "…" : portfolio.systems.length, label: "Managed systems" },
           { value: isLoading ? "…" : attention.length, label: "Needs attention" },
           {
-            value: isLoading
-              ? "…"
-              : portfolio.systems.reduce((total, system) => total + system.openIssues, 0),
+            value: isLoading ? "…" : (openIncidents ?? "—"),
             label: "Open incidents",
           },
           {
@@ -167,8 +202,9 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
         footer={
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              {freshness}
+              {OPS_CONNECTION_LABEL[connection]} · {freshness}
             </span>
+
             {failure ? (
               <span role="alert" className="text-[13px] text-destructive">
                 {OPS_LAUNCH_MESSAGE[failure]}
@@ -178,7 +214,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
         }
       />
 
-      {isError ? (
+      {interrupted ? (
         <div
           role="alert"
           className="rounded-xl border border-destructive/30 bg-destructive/10 p-4"
@@ -186,7 +222,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           <p className="text-[15px] text-destructive">Ops sync interrupted</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {lastSuccessAt
-              ? `Trust Tai OS could not read the Ops stream just now. The last successful sync was ${lastSuccessAt.toLocaleString()}, so everything below is that snapshot and may have moved on in Ops.`
+              ? `Trust Tai OS could not read current Ops state just now. The last successful sync was ${lastSuccessAt.toLocaleString()}${lastSyncedAt ? `, and Ops last pushed its projects ${new Date(lastSyncedAt).toLocaleString()}` : ""}, so everything below is that snapshot and may have moved on in Ops.`
               : "Trust Tai OS has not completed a single successful read of the Ops stream in this session, so nothing below can be trusted as current."}
           </p>
           <p className="mt-1 text-[13px] text-muted-foreground">

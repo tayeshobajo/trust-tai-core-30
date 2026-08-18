@@ -17,25 +17,35 @@ import {
   type OpsEvent,
   type OpsEventName,
 } from "@/domain/ops";
+import { opsProjectUrl, type OpsProjectRow } from "@/domain/ops-projection";
 
-export type OpsHealth = "incident" | "attention" | "healthy";
+export type OpsHealth = "incident" | "attention" | "healthy" | "unknown";
 
-/** One thing Ops is maintaining, as far as the shared stream can see it. */
+/** One thing Ops is maintaining, as far as Trust Tai OS can honestly see it. */
 export interface OpsSystem {
   key: string;
   name: string;
   canonicalProjectId?: string;
+  /** Ops' own project id, present only on synchronized projection rows. */
+  opsProjectId?: string;
   company?: string;
   environment?: string;
   owner?: string;
+  /** Ops' own status word, when Ops reported one. */
+  status?: string;
   health: OpsHealth;
-  openIssues: number;
-  openApprovals: number;
+  /** Null means Ops did not report it. Never render null as zero. */
+  openIssues: number | null;
+  openApprovals: number | null;
   /** The latest run or QA row on this chain, when Ops recorded one. */
   latestRun?: { label: string; at: string; passed?: boolean };
-  lastActivityAt: string;
+  lastActivityAt: string | null;
+  lastSyncedAt?: string;
+  /** Where this row came from: the pushed projection, or the shared stream. */
+  source: "projection" | "activity";
   destinationUrl: string;
 }
+
 
 export interface OpsAttentionItem {
   key: string;
@@ -110,8 +120,10 @@ export function opsPortfolio(events: OpsEvent[]): OpsPortfolio {
       openIssues,
       openApprovals,
       lastActivityAt: newest.at,
+      source: "activity",
       destinationUrl: newest.destinationUrl || OPS_ORIGIN,
     };
+
     const canonicalProjectId = chain.find((event) => event.canonicalProjectId)?.canonicalProjectId;
     const company = chain.find((event) => event.companyLabel)?.companyLabel;
     const environment = chain.find((event) => event.environment)?.environment;
@@ -144,11 +156,10 @@ export function opsPortfolio(events: OpsEvent[]): OpsPortfolio {
     }
   }
 
-  const rank: Record<OpsHealth, number> = { incident: 0, attention: 1, healthy: 2 };
-  systems.sort(
-    (a, b) => rank[a.health] - rank[b.health] || (a.lastActivityAt < b.lastActivityAt ? 1 : -1),
-  );
+  const rank: Record<OpsHealth, number> = { incident: 0, attention: 1, unknown: 2, healthy: 3 };
+  systems.sort((a, b) => rank[a.health] - rank[b.health] || newestFirst(a, b));
   attention.sort((a, b) => (a.at < b.at ? 1 : -1));
+
 
   const recentlyMoved = [...events].sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 8);
   const newest = recentlyMoved[0];
@@ -224,11 +235,26 @@ export const OPS_SORT_OPTIONS: { value: OpsSortKey; label: string }[] = [
   { value: "open_approvals", label: "Most open approvals" },
 ];
 
-const HEALTH_RANK: Record<OpsHealth, number> = { incident: 0, attention: 1, healthy: 2 };
+const HEALTH_RANK: Record<OpsHealth, number> = { incident: 0, attention: 1, unknown: 2, healthy: 3 };
 
+/** Newest activity first. A system Ops never dated sorts last, not first. */
 function newestFirst(a: OpsSystem, b: OpsSystem): number {
-  return a.lastActivityAt < b.lastActivityAt ? 1 : a.lastActivityAt > b.lastActivityAt ? -1 : 0;
+  const left = a.lastActivityAt ?? "";
+  const right = b.lastActivityAt ?? "";
+  return left < right ? 1 : left > right ? -1 : 0;
 }
+
+/** Sum a column across systems, or null when nobody proved a number. */
+export function sumKnown(systems: OpsSystem[], pick: (system: OpsSystem) => number | null) {
+  let total: number | null = null;
+  for (const system of systems) {
+    const value = pick(system);
+    if (value === null) continue;
+    total = (total ?? 0) + value;
+  }
+  return total;
+}
+
 
 /** Order the portfolio. Ties always fall back to newest activity, then name. */
 export function sortOpsSystems(systems: OpsSystem[], key: OpsSortKey): OpsSystem[] {
@@ -245,9 +271,9 @@ export function sortOpsSystems(systems: OpsSystem[], key: OpsSortKey): OpsSystem
           a.name.localeCompare(b.name)
         );
       case "open_issues":
-        return b.openIssues - a.openIssues || newestFirst(a, b);
+        return (b.openIssues ?? -1) - (a.openIssues ?? -1) || newestFirst(a, b);
       case "open_approvals":
-        return b.openApprovals - a.openApprovals || newestFirst(a, b);
+        return (b.openApprovals ?? -1) - (a.openApprovals ?? -1) || newestFirst(a, b);
       case "attention":
       default:
         return (
@@ -289,5 +315,77 @@ export function paginateOpsSystems(systems: OpsSystem[], page: number, pageSize:
     total,
     from: total === 0 ? 0 : start + 1,
     to: total === 0 ? 0 : start + items.length,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Merging the synchronized projection with the shared stream          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Fold the projection Ops pushes together with what the shared activity
+ * stream already showed.
+ *
+ * The projection is canonical for "which projects exist in Ops". Activity
+ * rows only ever add detail to a project the projection already names, or
+ * stand alone when the projection has never heard of that chain. Nothing is
+ * invented: an unreported count stays null and an unreported path opens Ops
+ * home rather than a guessed project URL.
+ */
+export function mergeOpsPortfolio(base: OpsPortfolio, rows: OpsProjectRow[]): OpsPortfolio {
+  const live = rows.filter((row) => !row.archived);
+  if (live.length === 0) return base;
+
+  const remaining = new Map(base.systems.map((system) => [system.key, system]));
+
+  const systems: OpsSystem[] = live.map((row) => {
+    const match = [...remaining.values()].find(
+      (system) =>
+        system.key === row.opsProjectId ||
+        (!!row.canonicalProjectId && system.canonicalProjectId === row.canonicalProjectId) ||
+        system.name.toLowerCase() === row.name.toLowerCase(),
+    );
+    if (match) remaining.delete(match.key);
+
+    const health: OpsHealth = row.health;
+    const destination = opsProjectUrl(row);
+    const system: OpsSystem = {
+      key: `ops:${row.opsProjectId}`,
+      name: row.name,
+      opsProjectId: row.opsProjectId,
+      health,
+      openIssues: row.openIssues ?? match?.openIssues ?? null,
+      openApprovals: row.openApprovals ?? match?.openApprovals ?? null,
+      lastActivityAt: row.lastActivityAt ?? match?.lastActivityAt ?? null,
+      lastSyncedAt: row.lastSyncedAt,
+      source: "projection",
+      destinationUrl: destination !== OPS_ORIGIN ? destination : (match?.destinationUrl ?? OPS_ORIGIN),
+    };
+    const canonicalProjectId = row.canonicalProjectId ?? match?.canonicalProjectId;
+    const company = row.company ?? match?.company;
+    const environment = row.environment ?? match?.environment;
+    const owner = row.owner ?? match?.owner;
+    if (canonicalProjectId) system.canonicalProjectId = canonicalProjectId;
+    if (company) system.company = company;
+    if (environment) system.environment = environment;
+    if (owner) system.owner = owner;
+    if (row.status) system.status = row.status;
+    if (match?.latestRun) system.latestRun = match.latestRun;
+    return system;
+  });
+
+  const all = [...systems, ...remaining.values()];
+  const rank: Record<OpsHealth, number> = { incident: 0, attention: 1, unknown: 2, healthy: 3 };
+  all.sort(
+    (a, b) =>
+      rank[a.health] - rank[b.health] ||
+      ((a.lastActivityAt ?? "") < (b.lastActivityAt ?? "") ? 1 : -1),
+  );
+
+  return {
+    ...base,
+    systems: all,
+    companies: [...new Set(all.map((s) => s.company).filter(Boolean) as string[])].sort(),
+    environments: [...new Set(all.map((s) => s.environment).filter(Boolean) as string[])].sort(),
   };
 }
