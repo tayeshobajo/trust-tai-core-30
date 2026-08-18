@@ -23,8 +23,8 @@ const HEALTH_LABEL: Record<OpsSystem["health"], string> = {
 
 const HEALTH_TONE: Record<OpsSystem["health"], string> = {
   incident: "border-destructive/30 bg-destructive/10 text-destructive",
-  attention: "border-amber-500/30 bg-amber-500/10 text-amber-700",
-  healthy: "border-emerald-600/25 bg-emerald-600/10 text-emerald-700",
+  attention: "border-warning/30 bg-warning/10 text-warning",
+  healthy: "border-success/25 bg-success/10 text-success",
 };
 
 export function OpsHealthPill({ health }: { health: OpsSystem["health"] }) {
