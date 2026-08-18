@@ -46,6 +46,9 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  /* Evaluate: a human decision. Distinct from watch-closely amber. */
+  --color-ember: var(--ember);
+
 
   /* Cloud sky — calm suite surfaces and restrained blue accents. */
   --color-cloud: var(--cloud);
