@@ -13,6 +13,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { OPS_ORIGIN } from "@/domain/ops";
+
 const Project = z.object({
   opsProjectId: z.string().trim().min(1).max(200),
   name: z.string().trim().min(1).max(300),
@@ -95,6 +97,9 @@ export const Route = createFileRoute("/api/public/ops/projects")({
           owner: project.owner ?? null,
           canonical_project_id: project.canonicalProjectId ?? null,
           ops_path: safePath(project.opsPath),
+          // The table requires an absolute Ops URL. It is always on the Ops
+          // origin, and it is only ever a destination, never a credential.
+          ops_url: `${OPS_ORIGIN}${safePath(project.opsPath) ?? ""}`,
           open_issues: project.openIssues ?? null,
           open_approvals: project.openApprovals ?? null,
           last_activity_at: timestamp(project.lastActivityAt),
