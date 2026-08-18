@@ -21,6 +21,7 @@ import { CompanyGroups } from "@/components/tt/projects/index/company-group";
 import { ProjectDrawer } from "@/components/tt/projects/index/drawer";
 import {
   CreateProjectModal,
+  type CreateProjectExtras,
   type CreateProjectSeed,
 } from "@/components/tt/projects/index/create-modal";
 import { RoadmapHandoffs, type HandoffRow } from "@/components/tt/projects/index/handoff-list";
@@ -520,7 +521,7 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
           setModalOpen(false);
           setPendingMilestoneId(null);
         }}
-        onCreate={(input) => create.mutate(input)}
+        onCreate={(input, extras) => create.mutate({ input, extras })}
       />
     </AppShell>
 
