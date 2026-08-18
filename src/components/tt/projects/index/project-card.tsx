@@ -8,6 +8,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 
 import { CompanyMark } from "@/components/tt/company-identity";
+import { ProjectActionBar, type ProjectMove } from "@/components/tt/projects/index/actions";
 import { TTButton } from "@/components/tt/primitives";
 import { ProjectStatusPill } from "@/components/tt/projects/index/status-pill";
 import type { ProjectRowModel } from "@/data/projects/index-projection";
@@ -53,9 +54,17 @@ export function LineageLine({ row }: { row: ProjectRowModel }) {
 export function ProjectCard({
   row,
   identity,
+  onMove,
+  onOpenDetails,
+  pending,
+  error,
 }: {
   row: ProjectRowModel;
   identity: RoadmapIdentity;
+  onMove: ProjectMove;
+  onOpenDetails: (row: ProjectRowModel) => void;
+  pending?: boolean;
+  error?: string | null;
 }) {
   const progress = row.progress;
   return (
@@ -127,6 +136,10 @@ export function ProjectCard({
                 ? ` · ${row.blockedForDays} day${row.blockedForDays === 1 ? "" : "s"}`
                 : ""}
             </p>
+          ) : row.waitingOn ? (
+            <p className="mt-3 border-l-2 border-warning pl-3 text-[13px] text-foreground">
+              Waiting on {row.waitingOn}
+            </p>
           ) : row.currentWork ? (
             <p className="mt-3 text-[13px] text-muted-foreground">
               <span className="text-foreground">Current:</span> {row.currentWork}
@@ -134,10 +147,21 @@ export function ProjectCard({
           ) : null}
 
           <p className="mt-2 text-[12px] text-muted-foreground">{row.because}</p>
+
+          <ProjectActionBar
+            className="mt-3 border-t border-border pt-3"
+            project={row.project}
+            onMove={onMove}
+            pending={pending ?? false}
+            error={error ?? null}
+          />
         </div>
 
         <div className="hidden shrink-0 flex-col items-end gap-2 sm:flex">
-          <TTButton asChild size="sm" variant="secondary">
+          <TTButton size="sm" variant="secondary" onClick={() => onOpenDetails(row)}>
+            Details
+          </TTButton>
+          <TTButton asChild size="sm" variant="quiet">
             <Link to="/modules/projects/$projectId" params={{ projectId: row.project.id }}>
               Open project
             </Link>

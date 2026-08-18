@@ -7,8 +7,9 @@
  */
 
 import { CompanyMark } from "@/components/tt/company-identity";
+import type { ProjectMove } from "@/components/tt/projects/index/actions";
 import { ProjectCard } from "@/components/tt/projects/index/project-card";
-import type { CompanyGroup } from "@/data/projects/index-projection";
+import type { CompanyGroup, ProjectRowModel } from "@/data/projects/index-projection";
 import type { RoadmapIdentity } from "@/data/roadmap-index";
 
 function countLine(group: CompanyGroup): string {
@@ -21,9 +22,17 @@ function countLine(group: CompanyGroup): string {
 export function CompanyGroups({
   groups,
   identityFor,
+  onMove,
+  onOpenDetails,
+  movingId,
+  moveError,
 }: {
   groups: CompanyGroup[];
   identityFor: (company: string) => RoadmapIdentity;
+  onMove: ProjectMove;
+  onOpenDetails: (row: ProjectRowModel) => void;
+  movingId: string | null;
+  moveError: string | null;
 }) {
   return (
     <div className="space-y-7">
@@ -50,7 +59,14 @@ export function CompanyGroups({
             <ul className="mt-3 space-y-3">
               {group.rows.map((row) => (
                 <li key={row.project.id}>
-                  <ProjectCard row={row} identity={identity} />
+                  <ProjectCard
+                    row={row}
+                    identity={identity}
+                    onMove={onMove}
+                    onOpenDetails={onOpenDetails}
+                    pending={movingId === row.project.id}
+                    error={movingId === row.project.id ? moveError : null}
+                  />
                 </li>
               ))}
             </ul>
