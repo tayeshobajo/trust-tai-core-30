@@ -285,17 +285,17 @@ async function runAll() {
     pass(9, "Failure state readable", `Summarizer status: ${agent.status}, pausedAt: ${agent.pausedAt ?? "null"}`);
   });
 
-  // 10. Reassignment — pause/resume (board key may lack agents:configure permission)
+  // 10. Reassignment — pause/resume (pause is agent status, not a boolean)
   await test(10, "Pause/resume agent via PATCH", async () => {
-    // Board key has limited permissions; agents:configure may be denied.
-    // We test both paths: success or a documented 403.
+    // Paperclip models pause as status="paused". { paused: true } is silently ignored.
     try {
       const paused = await pcPatch<{ id: string; status: string; pausedAt?: string | null }>(
         `/api/agents/239a7269-6309-4547-bd54-67e4e3798b85`,
-        { paused: true },
+        { status: "paused" },
       );
-      // Resume immediately if pause succeeded
-      await pcPatch(`/api/agents/239a7269-6309-4547-bd54-67e4e3798b85`, { paused: false });
+      // Resume immediately if pause succeeded — restore active, then back to idle
+      await pcPatch(`/api/agents/239a7269-6309-4547-bd54-67e4e3798b85`, { status: "active" });
+      await pcPatch(`/api/agents/239a7269-6309-4547-bd54-67e4e3798b85`, { status: "idle" });
       pass(10, "Pause/resume agent via PATCH", `Paused and resumed Comms Agent (status: ${paused.status})`);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);

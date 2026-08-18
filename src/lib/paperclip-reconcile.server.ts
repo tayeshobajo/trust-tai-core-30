@@ -58,6 +58,7 @@ export async function reconcilePaperclipAgents(
   } = await import("@/lib/execution-bridge.server");
 
   const now = new Date().toISOString();
+  const syncedAtIso = now;
   const agents: ReconcileAgentResult[] = [];
   let totalErrors = 0;
 
@@ -119,6 +120,10 @@ export async function reconcilePaperclipAgents(
       );
       agentResult.approvals = approvals;
 
+      // Paperclip models pause as status="paused" (AGENT_STATUSES); pausedAt is
+      // only set for company-level pauses, so status is the reliable signal.
+      const pausedByStatus = agent.status === "paused";
+
       // 3. Sync binding completions — mark dispatched bindings done when Paperclip says so
       for (const issue of doneIssues) {
         if (issue.id && issue.status === "done") {
@@ -136,10 +141,15 @@ export async function reconcilePaperclipAgents(
       await updateAgentSyncProjection({
         paperclipAgentId,
         lastKnownStatus: agent.status ?? "unknown",
-        pausedAt: (agent as unknown as { pausedAt?: string | null }).pausedAt ?? null,
+        pausedAt: pausedByStatus
+          ? (agent.pausedAt ?? syncedAtIso)
+          : null,
         lastHeartbeatAt: agent.lastHeartbeatAt ?? null,
         paperclipCompanyId: agent.companyId,
       });
+      agentResult.pausedAt = pausedByStatus
+        ? (agent.pausedAt ?? syncedAtIso)
+        : null;
     } catch (error) {
       agentResult.error = error instanceof Error ? error.message : "Paperclip did not respond.";
       totalErrors++;

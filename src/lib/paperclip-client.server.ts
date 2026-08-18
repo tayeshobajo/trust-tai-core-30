@@ -11,6 +11,8 @@ export interface PaperclipAgent {
   role?: string | null;
   lastHeartbeatAt?: string | null;
   updatedAt?: string | null;
+  /** Set on company-level pauses; agent status="paused" does not populate it. */
+  pausedAt?: string | null;
   runtimeConfig?: {
     heartbeat?: {
       enabled?: boolean;
@@ -206,6 +208,10 @@ export const paperclipClient = {
   triggerHeartbeat(agentId: string) {
     return requestFirstMatch<Record<string, unknown>>(
       [
+        // Confirmed against Paperclip server 2026.722.0 (dist route registration):
+        // the real on-demand wake endpoint is /wakeup. Older fallbacks kept last
+        // in case of version drift.
+        `/api/agents/${agentId}/wakeup`,
         `/api/agents/${agentId}/wake`,
         `/api/agents/${agentId}/wake-on-demand`,
         `/api/agents/${agentId}/heartbeat`,
@@ -215,11 +221,17 @@ export const paperclipClient = {
     );
   },
 
-  /** Set agent paused state. Returns the updated agent. */
-  setAgentPaused(agentId: string, paused: boolean) {
+  /** Set agent paused state. Returns the updated agent.
+   *
+   * Paperclip models pause as agent *status* ("paused" in AGENT_STATUSES), not a
+   * boolean — `{ paused: true }` is silently ignored. Resume restores "active";
+   * callers that want to preserve a prior non-paused status must pass it through
+   * resumeStatus.
+   */
+  setAgentPaused(agentId: string, paused: boolean, resumeStatus = "active") {
     return request<PaperclipAgent>(`/api/agents/${agentId}`, {
       method: "PATCH",
-      body: JSON.stringify({ paused }),
+      body: JSON.stringify({ status: paused ? "paused" : resumeStatus }),
     });
   },
 

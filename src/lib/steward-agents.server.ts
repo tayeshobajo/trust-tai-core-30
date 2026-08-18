@@ -186,7 +186,9 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       routines: [],
       activityTimeline: [],
       pendingApprovals: 0,
-      isPaused: Boolean(record["paused_at"]),
+      isPaused:
+        Boolean(record["paused_at"]) ||
+        String(record["last_known_status"] ?? "") === "paused",
     };
 
     const rec = reconcileMap.get(paperclipAgentId);
@@ -234,7 +236,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
         routines: rec.routines.map(toRoutine),
         activityTimeline,
         pendingApprovals: rec.approvals.length,
-        isPaused: Boolean(rec.pausedAt),
+        isPaused: rec.pausedAt != null || rec.status === "paused",
       });
     } else {
       if (rec?.error && !firstFailure) firstFailure = rec.error;
@@ -338,6 +340,9 @@ export async function assignPaperclipTask(input: {
 /**
  * Pause or resume a Paperclip agent. Reflects the change via Paperclip PATCH.
  * Steward reads Paperclip's response as truth — it does not set its own paused flag.
+ *
+ * Paperclip pause is status="paused"; pausedAt may stay null on status-pause,
+ * so we synthesize a timestamp for the UI when pausing.
  */
 export async function setPaperclipAgentPaused(
   agentId: string,
@@ -345,8 +350,12 @@ export async function setPaperclipAgentPaused(
 ): Promise<{ status: string; pausedAt: string | null }> {
   const { paperclipClient } = await import("@/lib/paperclip-client.server");
   const updated = await paperclipClient.setAgentPaused(agentId, paused);
-  const pausedAt = (updated as unknown as { pausedAt?: string | null }).pausedAt ?? null;
-  return { status: updated.status ?? (paused ? "paused" : "idle"), pausedAt };
+  const status = updated.status ?? (paused ? "paused" : "active");
+  const pausedAt = paused
+    ? (updated.pausedAt ??
+       new Date().toISOString())
+    : null;
+  return { status, pausedAt };
 }
 
 /**
