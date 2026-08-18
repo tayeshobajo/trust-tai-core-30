@@ -31,9 +31,10 @@ import { Route as ModulesRoadmapRoadmapIdRouteImport } from './routes/modules.ro
 import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.index'
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
 import { Route as ModulesStewardIndexRouteImport } from './routes/modules.steward.index'
+import { Route as ModulesStewardAgentsRouteImport } from './routes/modules.steward.agents'
 import { Route as ModulesStewardMeetingsRouteImport } from './routes/modules.steward.meetings'
 import { Route as ModulesStewardMemoryRouteImport } from './routes/modules.steward.memory'
-import { Route as ModulesStewardTeamRouteImport } from './routes/modules.steward.team'
+import { Route as ModulesStewardTasksRouteImport } from './routes/modules.steward.tasks'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/public/intelligence.reason'
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
@@ -165,6 +166,11 @@ const ModulesStewardIndexRoute = ModulesStewardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ModulesStewardRoute,
 } as any)
+const ModulesStewardAgentsRoute = ModulesStewardAgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
+  getParentRoute: () => ModulesStewardRoute,
+} as any)
 const ModulesStewardMeetingsRoute = ModulesStewardMeetingsRouteImport.update({
   id: '/meetings',
   path: '/meetings',
@@ -175,9 +181,9 @@ const ModulesStewardMemoryRoute = ModulesStewardMemoryRouteImport.update({
   path: '/memory',
   getParentRoute: () => ModulesStewardRoute,
 } as any)
-const ModulesStewardTeamRoute = ModulesStewardTeamRouteImport.update({
-  id: '/team',
-  path: '/team',
+const ModulesStewardTasksRoute = ModulesStewardTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
   getParentRoute: () => ModulesStewardRoute,
 } as any)
 const ApiPublicCommsDraftRoute = ApiPublicCommsDraftRouteImport.update({
@@ -301,9 +307,10 @@ export interface FileRoutesByFullPath {
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/steward/agents': typeof ModulesStewardAgentsRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
-  '/modules/steward/team': typeof ModulesStewardTeamRoute
+  '/modules/steward/tasks': typeof ModulesStewardTasksRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -341,8 +348,9 @@ export interface FileRoutesByTo {
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/steward/agents': typeof ModulesStewardAgentsRoute
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
-  '/modules/steward/team': typeof ModulesStewardTeamRoute
+  '/modules/steward/tasks': typeof ModulesStewardTasksRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
   '/modules/projects': typeof ModulesProjectsIndexRoute
   '/modules/roadmap': typeof ModulesRoadmapIndexRoute
@@ -386,9 +394,10 @@ export interface FileRoutesById {
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
+  '/modules/steward/agents': typeof ModulesStewardAgentsRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
-  '/modules/steward/team': typeof ModulesStewardTeamRoute
+  '/modules/steward/tasks': typeof ModulesStewardTasksRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -433,9 +442,10 @@ export interface FileRouteTypes {
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
+    | '/modules/steward/agents'
     | '/modules/steward/meetings'
     | '/modules/steward/memory'
-    | '/modules/steward/team'
+    | '/modules/steward/tasks'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
@@ -473,8 +483,9 @@ export interface FileRouteTypes {
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
+    | '/modules/steward/agents'
     | '/modules/steward/memory'
-    | '/modules/steward/team'
+    | '/modules/steward/tasks'
     | '/modules/comms'
     | '/modules/projects'
     | '/modules/roadmap'
@@ -517,9 +528,10 @@ export interface FileRouteTypes {
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
     | '/modules/scout/settings'
+    | '/modules/steward/agents'
     | '/modules/steward/meetings'
     | '/modules/steward/memory'
-    | '/modules/steward/team'
+    | '/modules/steward/tasks'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
@@ -731,6 +743,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardIndexRouteImport
       parentRoute: typeof ModulesStewardRoute
     }
+    '/modules/steward/agents': {
+      id: '/modules/steward/agents'
+      path: '/agents'
+      fullPath: '/modules/steward/agents'
+      preLoaderRoute: typeof ModulesStewardAgentsRouteImport
+      parentRoute: typeof ModulesStewardRoute
+    }
     '/modules/steward/meetings': {
       id: '/modules/steward/meetings'
       path: '/meetings'
@@ -745,11 +764,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardMemoryRouteImport
       parentRoute: typeof ModulesStewardRoute
     }
-    '/modules/steward/team': {
-      id: '/modules/steward/team'
-      path: '/team'
-      fullPath: '/modules/steward/team'
-      preLoaderRoute: typeof ModulesStewardTeamRouteImport
+    '/modules/steward/tasks': {
+      id: '/modules/steward/tasks'
+      path: '/tasks'
+      fullPath: '/modules/steward/tasks'
+      preLoaderRoute: typeof ModulesStewardTasksRouteImport
       parentRoute: typeof ModulesStewardRoute
     }
     '/api/public/comms/draft': {
@@ -959,16 +978,18 @@ const ModulesStewardMeetingsRouteWithChildren =
   )
 
 interface ModulesStewardRouteChildren {
+  ModulesStewardAgentsRoute: typeof ModulesStewardAgentsRoute
   ModulesStewardMeetingsRoute: typeof ModulesStewardMeetingsRouteWithChildren
   ModulesStewardMemoryRoute: typeof ModulesStewardMemoryRoute
-  ModulesStewardTeamRoute: typeof ModulesStewardTeamRoute
+  ModulesStewardTasksRoute: typeof ModulesStewardTasksRoute
   ModulesStewardIndexRoute: typeof ModulesStewardIndexRoute
 }
 
 const ModulesStewardRouteChildren: ModulesStewardRouteChildren = {
+  ModulesStewardAgentsRoute: ModulesStewardAgentsRoute,
   ModulesStewardMeetingsRoute: ModulesStewardMeetingsRouteWithChildren,
   ModulesStewardMemoryRoute: ModulesStewardMemoryRoute,
-  ModulesStewardTeamRoute: ModulesStewardTeamRoute,
+  ModulesStewardTasksRoute: ModulesStewardTasksRoute,
   ModulesStewardIndexRoute: ModulesStewardIndexRoute,
 }
 

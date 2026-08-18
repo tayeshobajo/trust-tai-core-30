@@ -291,7 +291,28 @@ export const stewardService = {
     return data ? toCommitment(data as Row) : null;
   },
 
+  /** Move a meeting commitment to a different person. Provenance is untouched. */
+  async setOwner(
+    id: ID,
+    owner: { name: string; email?: string | null; userId?: string | null },
+  ): Promise<Commitment | null> {
+    const { data, error } = await supabase
+      .from("commitments")
+      .update({
+        owner_name: owner.name,
+        owner_email: owner.email ?? null,
+        owner_user_id: owner.userId ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+    guard(error);
+    return data ? toCommitment(data as Row) : null;
+  },
+
   async roleMemory(organizationId: ID): Promise<RoleMemory[]> {
+
     const { data, error } = await supabase
       .from("steward_role_memory")
       .select("*")

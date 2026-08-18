@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
 
-export type StewardSection = "today" | "meetings" | "team" | "memory" | "ask";
+export type StewardSection = "team" | "meetings" | "tasks" | "agents" | "memory";
 
 function tabClass(active: boolean) {
   return cn(
@@ -14,9 +14,8 @@ function tabClass(active: boolean) {
 }
 
 /**
- * Steward's surfaces, plus the one doorway into the Conductor. "Ask Trust Tai"
- * is not a fifth Steward surface: it is the intelligence-layer command room,
- * reached from here because interpretation and coordination sit together.
+ * Steward's five surfaces. Each one has a single job: who is focused on what,
+ * what happened in the room, everything owed, the agent workforce, and memory.
  */
 export function StewardTabs({ active }: { active: StewardSection }) {
   return (
@@ -24,8 +23,8 @@ export function StewardTabs({ active }: { active: StewardSection }) {
       aria-label="Steward sections"
       className="flex flex-wrap items-center gap-1 border-b border-border pb-px"
     >
-      <Link to="/modules/steward" aria-current={active === "today" ? "page" : undefined} className={tabClass(active === "today")}>
-        Today
+      <Link to="/modules/steward" aria-current={active === "team" ? "page" : undefined} className={tabClass(active === "team")}>
+        Team
       </Link>
       <Link
         to="/modules/steward/meetings"
@@ -35,11 +34,18 @@ export function StewardTabs({ active }: { active: StewardSection }) {
         Meetings
       </Link>
       <Link
-        to="/modules/steward/team"
-        aria-current={active === "team" ? "page" : undefined}
-        className={tabClass(active === "team")}
+        to="/modules/steward/tasks"
+        aria-current={active === "tasks" ? "page" : undefined}
+        className={tabClass(active === "tasks")}
       >
-        Team
+        Tasks
+      </Link>
+      <Link
+        to="/modules/steward/agents"
+        aria-current={active === "agents" ? "page" : undefined}
+        className={tabClass(active === "agents")}
+      >
+        Agents
       </Link>
       <Link
         to="/modules/steward/memory"
@@ -47,13 +53,6 @@ export function StewardTabs({ active }: { active: StewardSection }) {
         className={tabClass(active === "memory")}
       >
         Memory
-      </Link>
-      <Link
-        to="/modules/conductor"
-        aria-current={active === "ask" ? "page" : undefined}
-        className={tabClass(active === "ask")}
-      >
-        Ask Trust Tai
       </Link>
     </nav>
   );
