@@ -43,6 +43,7 @@ const relationship: Relationship = {
     },
   ],
   inferred: [],
+  metadata: {},
   createdAt: "2026-01-01T10:00:00.000Z",
   updatedAt: "2026-02-01T10:00:00.000Z",
 } as unknown as Relationship;
