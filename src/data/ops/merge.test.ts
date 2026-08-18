@@ -127,3 +127,65 @@ describe("Ops connection semantics", () => {
     expect(opsConnectionState({ live: true, now: NOW })).toBe("live");
   });
 });
+
+describe("Ops projection lifecycle and health", () => {
+  it("drops a removed project from the active portfolio", () => {
+    expect(
+      opsProjectionPortfolio([row({ removed: true, lifecycleState: "removed" })]).systems,
+    ).toHaveLength(0);
+  });
+
+  it("keeps an archived project visible with Ops' own lifecycle word", () => {
+    const system = opsProjectionPortfolio([
+      row({ archived: true, lifecycleState: "archived" }),
+    ]).systems[0] as OpsSystem;
+    expect(system.lifecycleState).toBe("archived");
+  });
+
+  it("raises attention from Ops' needs_attention flag, never from a guess", () => {
+    const portfolio = opsProjectionPortfolio([row({ needsAttention: true, health: "unknown" })]);
+    expect(portfolio.systems[0]!.health).toBe("attention");
+    expect(portfolio.attention).toHaveLength(1);
+    expect(portfolio.attention[0]!.label).toBe("needs attention");
+  });
+
+  it("never counts an unknown health as healthy", () => {
+    const portfolio = opsProjectionPortfolio([row({ health: "unknown" })]);
+    expect(portfolio.systems.filter((s) => s.health === "healthy")).toHaveLength(0);
+  });
+
+  it("reads Ops' live column names, including stable health and ops_url", () => {
+    const read = readOpsProjectRow({
+      ops_project_id: "ops-qa-trace",
+      organization_id: ORG,
+      project_name: "QA Trace Project",
+      status: "active",
+      health: "stable",
+      needs_attention: false,
+      lifecycle_state: "active",
+      ops_url: "https://ops.trusttai.com/projects/ops-qa-trace",
+      synced_at: new Date(NOW).toISOString(),
+    });
+    expect(read?.name).toBe("QA Trace Project");
+    expect(read?.health).toBe("healthy");
+    expect(read?.removed).toBe(false);
+    expect(opsProjectUrl(read!)).toBe(`${OPS_ORIGIN}/projects/ops-qa-trace`);
+  });
+
+  it("refuses an ops_url on any other origin", () => {
+    const read = readOpsProjectRow({
+      ops_project_id: "ops-evil",
+      organization_id: ORG,
+      project_name: "Elsewhere",
+      ops_url: "https://evil.example/projects/1",
+      synced_at: new Date(NOW).toISOString(),
+    });
+    expect(read?.opsUrl).toBeUndefined();
+    expect(opsProjectUrl(read!)).toBe(OPS_ORIGIN);
+  });
+
+  it("keeps activity rows out of the portfolio entirely", () => {
+    const portfolio = opsProjectionPortfolio([], []);
+    expect(portfolio.systems).toHaveLength(0);
+  });
+});
