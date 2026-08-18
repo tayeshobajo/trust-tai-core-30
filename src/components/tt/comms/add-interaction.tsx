@@ -6,8 +6,9 @@
  * Tai typed never reads as something an integration observed.
  *
  * For calls, meetings and pasted conversations, Comms reads the capture and
- * proposes what it thinks it found. Nothing derived is saved until a person
- * ticks it.
+ * proposes what it thinks it found. Those captures cannot be saved straight
+ * from the form: they pass through a draft the person has to read and confirm,
+ * so nothing derived is ever written without a deliberate yes.
  */
 
 import { useMemo, useState } from "react";
@@ -60,7 +61,7 @@ export function AddInteraction({
   const [type, setType] = useState<InteractionType>("they_texted");
   const [value, setValue] = useState("");
   const [when, setWhen] = useState(() => localDateTimeValue(new Date()));
-  const [reviewing, setReviewing] = useState(false);
+  const [step, setStep] = useState<"capture" | "confirm">("capture");
   const [ticked, setTicked] = useState<Record<string, boolean>>({});
 
   const definition = interactionDefinition(type);
@@ -69,9 +70,16 @@ export function AddInteraction({
     [definition.narrative, value],
   );
 
+  const confirmedList = derived.suggestions.filter((entry) => ticked[entry.id]);
+
   function save() {
     const text = value.trim();
     if (!text) return;
+    /** A narrative capture only reaches the record through the draft step. */
+    if (definition.narrative && step !== "confirm") {
+      setStep("confirm");
+      return;
+    }
     const occurredAt = new Date(when).toISOString();
     const summary = definition.narrative ? derived.summary || text.slice(0, 120) : text.slice(0, 200);
     onSave({
@@ -79,7 +87,7 @@ export function AddInteraction({
       summary,
       ...(definition.narrative ? { body: text } : {}),
       occurredAt: Number.isNaN(Date.parse(occurredAt)) ? new Date().toISOString() : occurredAt,
-      confirmed: derived.suggestions.filter((entry) => ticked[entry.id]),
+      confirmed: confirmedList,
     });
   }
 
@@ -104,6 +112,8 @@ export function AddInteraction({
         </header>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          {step === "confirm" ? null : (
+          <>
           <fieldset>
             <legend className="tt-eyebrow">What kind</legend>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -114,7 +124,7 @@ export function AddInteraction({
                   aria-pressed={type === entry.type}
                   onClick={() => {
                     setType(entry.type);
-                    setReviewing(false);
+                    setStep("capture");
                     setTicked({});
                   }}
                   className={cn(
@@ -135,7 +145,7 @@ export function AddInteraction({
               value={value}
               onChange={(event) => {
                 setValue(event.target.value);
-                setReviewing(false);
+                setStep("capture");
               }}
               rows={definition.narrative ? 6 : 3}
               placeholder={definition.placeholder}
@@ -152,75 +162,93 @@ export function AddInteraction({
             />
           </TTField>
 
-          {definition.narrative ? (
-            <section className="rounded-lg border border-border bg-secondary/30 p-3.5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="tt-eyebrow">What Comms thinks it found</p>
-                <TTButton
-                  variant="quiet"
-                  size="sm"
-                  type="button"
-                  onClick={() => setReviewing(true)}
-                  disabled={!value.trim()}
-                >
-                  Read this back
-                </TTButton>
+          </>
+          )}
+
+          {step === "confirm" ? (
+            <section className="space-y-3.5">
+              <div className="rounded-lg border border-border bg-secondary/30 p-3.5">
+                <p className="tt-eyebrow">What will be written down</p>
+                <p className="mt-1.5 text-[13px] text-foreground">{derived.summary || value.trim().slice(0, 120)}</p>
+                <p className="mt-1.5 text-[12px] text-muted-foreground">
+                  Recorded as {new Date(when).toLocaleString()} · added by {userLabel}. The full
+                  capture is kept with it.
+                </p>
               </div>
 
-              {!reviewing ? (
-                <p className="mt-2 text-[12px] text-muted-foreground">
-                  Nothing is derived until you ask. Anything found stays a suggestion until you
-                  tick it.
-                </p>
-              ) : derived.suggestions.length === 0 ? (
-                <p className="mt-2 text-[12px] text-muted-foreground">
-                  Nothing structured stood out. The capture is saved as written.
-                </p>
-              ) : (
-                <ul className="mt-2 space-y-2">
-                  {derived.suggestions.map((entry) => (
-                    <li key={entry.id}>
-                      <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border bg-card p-2.5">
-                        <input
-                          type="checkbox"
-                          className="mt-0.5"
-                          checked={Boolean(ticked[entry.id])}
-                          onChange={(event) =>
-                            setTicked((current) => ({
-                              ...current,
-                              [entry.id]: event.target.checked,
-                            }))
-                          }
-                        />
-                        <span className="min-w-0">
-                          <span className="tt-eyebrow block">
-                            {KIND_LABEL[entry.kind]}
-                            {entry.due
-                              ? ` · due ${new Date(entry.due).toLocaleDateString()}`
-                              : ""}
-                          </span>
-                          <span className="mt-0.5 block text-[13px] text-foreground">
-                            {entry.text}
-                          </span>
-                          <span className="mt-0.5 block text-[12px] text-muted-foreground">
-                            Because you wrote: “{entry.because}”
-                          </span>
-                        </span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div>
+                <p className="tt-eyebrow">What Comms thinks it found</p>
+                {derived.suggestions.length === 0 ? (
+                  <p className="mt-2 text-[12px] text-muted-foreground">
+                    Nothing structured stood out. The capture will be saved as written, and no
+                    facts will be added to memory.
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-1.5 text-[12px] text-muted-foreground">
+                      Nothing here reaches memory unless you tick it. Untick anything Comms read
+                      wrong.
+                    </p>
+                    <ul className="mt-2 space-y-2">
+                      {derived.suggestions.map((entry) => (
+                        <li key={entry.id}>
+                          <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border bg-card p-2.5">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5"
+                              checked={Boolean(ticked[entry.id])}
+                              onChange={(event) =>
+                                setTicked((current) => ({
+                                  ...current,
+                                  [entry.id]: event.target.checked,
+                                }))
+                              }
+                            />
+                            <span className="min-w-0">
+                              <span className="tt-eyebrow block">
+                                {KIND_LABEL[entry.kind]}
+                                {entry.due
+                                  ? ` \u00b7 due ${new Date(entry.due).toLocaleDateString()}`
+                                  : ""}
+                              </span>
+                              <span className="mt-0.5 block text-[13px] text-foreground">
+                                {entry.text}
+                              </span>
+                              <span className="mt-0.5 block text-[12px] text-muted-foreground">
+                                Because you wrote: \u201c{entry.because}\u201d
+                              </span>
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 text-[12px] text-muted-foreground">
+                      {confirmedList.length === 0
+                        ? "Nothing is ticked, so only the interaction itself will be saved."
+                        : `${confirmedList.length} of ${derived.suggestions.length} will be added to memory.`}
+                    </p>
+                  </>
+                )}
+              </div>
             </section>
           ) : null}
         </div>
 
         <footer className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-          <TTButton variant="quiet" size="sm" type="button" onClick={onCancel}>
-            Cancel
+          <TTButton
+            variant="quiet"
+            size="sm"
+            type="button"
+            onClick={step === "confirm" ? () => setStep("capture") : onCancel}
+          >
+            {step === "confirm" ? "Back to the capture" : "Cancel"}
           </TTButton>
           <TTButton size="sm" type="button" onClick={save} disabled={busy || !value.trim()}>
-            {busy ? "Saving…" : "Save interaction"}
+            {busy
+              ? "Saving\u2026"
+              : definition.narrative && step === "capture"
+                ? "Read this back"
+                : "Save interaction"}
           </TTButton>
         </footer>
       </div>
