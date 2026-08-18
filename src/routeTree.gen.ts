@@ -24,6 +24,7 @@ import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesStewardRouteImport } from './routes/modules.steward'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsAppsRouteImport } from './routes/settings.apps'
+import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
@@ -132,6 +133,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
 const SettingsAppsRoute = SettingsAppsRouteImport.update({
   id: '/apps',
   path: '/apps',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
@@ -334,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
   '/settings/apps': typeof SettingsAppsRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/': typeof SettingsIndexRoute
@@ -379,6 +386,7 @@ export interface FileRoutesByTo {
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
   '/settings/apps': typeof SettingsAppsRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings': typeof SettingsIndexRoute
@@ -430,6 +438,7 @@ export interface FileRoutesById {
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
   '/settings/apps': typeof SettingsAppsRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/': typeof SettingsIndexRoute
@@ -483,6 +492,7 @@ export interface FileRouteTypes {
     | '/modules/scout'
     | '/modules/steward'
     | '/settings/apps'
+    | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
     | '/settings/'
@@ -528,6 +538,7 @@ export interface FileRouteTypes {
     | '/modules/ops'
     | '/modules/pulse'
     | '/settings/apps'
+    | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
     | '/settings'
@@ -578,6 +589,7 @@ export interface FileRouteTypes {
     | '/modules/scout'
     | '/modules/steward'
     | '/settings/apps'
+    | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
     | '/settings/'
@@ -751,6 +763,13 @@ declare module '@tanstack/react-router' {
       path: '/apps'
       fullPath: '/settings/apps'
       preLoaderRoute: typeof SettingsAppsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/integrations': {
+      id: '/settings/integrations'
+      path: '/integrations'
+      fullPath: '/settings/integrations'
+      preLoaderRoute: typeof SettingsIntegrationsRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/notifications': {
@@ -996,6 +1015,7 @@ declare module '@tanstack/react-router' {
 
 interface SettingsRouteChildren {
   SettingsAppsRoute: typeof SettingsAppsRoute
+  SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
@@ -1003,6 +1023,7 @@ interface SettingsRouteChildren {
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAppsRoute: SettingsAppsRoute,
+  SettingsIntegrationsRoute: SettingsIntegrationsRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsProfileRoute: SettingsProfileRoute,
   SettingsIndexRoute: SettingsIndexRoute,
