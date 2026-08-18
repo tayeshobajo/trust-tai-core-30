@@ -268,6 +268,11 @@ export interface AdapterContext {
   actor: { id: ID; label: string };
   /** The person whose approval authorises the routing. */
   approvedBy: { id: ID; label: string };
+  /**
+   * The approving person's own access, for services that re-check the owning
+   * room's permission themselves. Absent means the adapter must refuse.
+   */
+  access?: { can: (permission: string) => boolean };
   now?: ISODateTime;
 }
 

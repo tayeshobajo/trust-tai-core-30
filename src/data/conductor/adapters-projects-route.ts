@@ -93,6 +93,16 @@ export const projectsRouteAdapter: RoomAdapter = {
             "The receiving room has already accepted this. Talk to them rather than withdrawing it.",
         });
       }
+      if (!context.access) {
+        return adapterReceipt({
+          action,
+          adapter: this,
+          context,
+          status: "refused",
+          resultingState: "approved",
+          failure: "No access was carried with this routing, so Projects cannot verify authority.",
+        });
+      }
       await projectsService.withdrawRoute(
         entry,
         String(prepared.payload!["because"]),
@@ -101,7 +111,7 @@ export const projectsRouteAdapter: RoomAdapter = {
           userId: context.actor.id,
           ...(context.actor.label ? { userLabel: context.actor.label } : {}),
         },
-        { can: (permission: string) => context.access.can(permission) } as never,
+        { organizationId: context.organizationId, permissions: [] } as never,
       );
       return adapterReceipt({
         action,

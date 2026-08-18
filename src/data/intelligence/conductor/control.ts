@@ -416,9 +416,16 @@ export function adapterContext(
   action: ControlledAction,
   actor: { id: string; label: string },
   now: string,
+  access?: { can: (permission: string) => boolean },
 ): AdapterContext {
   const approvedBy = action.approval?.by ?? actor;
-  return { organizationId: action.organizationId, actor, approvedBy, now };
+  return {
+    organizationId: action.organizationId,
+    actor,
+    approvedBy,
+    ...(access ? { access } : {}),
+    now,
+  };
 }
 
 /** Convenience for tests and UI: the permission the owning room will demand. */
