@@ -186,10 +186,18 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       routines: [],
       activityTimeline: [],
       pendingApprovals: 0,
+      lastHeartbeatAt: (record["last_heartbeat_at"] as string | null) ?? null,
       isPaused:
         Boolean(record["paused_at"]) ||
         String(record["last_known_status"] ?? "") === "paused",
     };
+    // Projection freshness: when live Paperclip is unreachable (e.g. production
+    // while Paperclip runs laptop-local), hydrate lifecycle from the reconcile
+    // sweep's projection instead of showing raw "unknown".
+    const projectedStatus = String(record["last_known_status"] ?? "").toLowerCase();
+    if (projectedStatus) {
+      base.lifecycle = lifecycleOf(projectedStatus, []);
+    }
 
     const rec = reconcileMap.get(paperclipAgentId);
     if (rec && !rec.error) {
@@ -263,7 +271,11 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
     syncHealth,
     because: reachable
       ? `${agents.length} agent${agents.length === 1 ? "" : "s"} registered.`
-      : `Paperclip is registered but not responding. ${firstFailure ?? ""}`.trim(),
+      : firstFailure?.includes("Missing PAPERCLIP_BOARD_KEY")
+        ? `Live Paperclip state is not configured here (no board key on this deployment). Showing the registry with the last synchronized state from ${syncHealth?.lastSuccessAt ?? "the last sweep"}.`
+        : firstFailure?.includes("fetch failed") || firstFailure?.toLowerCase().includes("econnrefused")
+          ? `Paperclip is running locally and not reachable from this deployment. Showing the registry with the last synchronized state from ${syncHealth?.lastSuccessAt ?? "the last sweep"}.`
+          : `Paperclip is not responding right now. ${firstFailure ?? ""} Showing the registry with the last synchronized state from ${syncHealth?.lastSuccessAt ?? "the last sweep"}.`.trim(),
   };
 }
 
