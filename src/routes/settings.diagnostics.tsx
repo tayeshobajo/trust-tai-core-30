@@ -92,6 +92,21 @@ function DiagnosticsSettings() {
               : undefined
           }
         />
+        <Row
+          label="Paperclip host"
+          value={pending ? "…" : (data?.paperclip.host.origin ?? unknown)}
+          note={
+            data
+              ? data.paperclip.host.loopback
+                ? "Loopback address. A hosted deployment cannot reach it, so Paperclip stays synchronized rather than live."
+                : data.paperclip.host.tls
+                  ? data.paperclip.host.configured
+                    ? "Public TLS origin from PAPERCLIP_API_URL."
+                    : "Default origin."
+                  : "Not TLS. Set PAPERCLIP_API_URL to an https origin before going live."
+              : undefined
+          }
+        />
         <Row label="Server time" value={pending ? "…" : (data?.serverTime ?? unknown)} />
       </dl>
     </div>
