@@ -13,10 +13,13 @@ import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import {
+  ACTIVITY_PAGE_SIZE,
   ACTIVITY_VIEWS,
   ACTIVITY_VIEW_LABEL,
   awaitingJudgment,
   movements,
+  pageActivity,
+  readActivityPage,
   readActivityView,
   todaysActivity,
   type ActivityRow,
@@ -52,7 +55,10 @@ const EMPTY: Record<ActivityView, { title: string; belongsHere: string; whyItMat
 };
 
 export const Route = createFileRoute("/modules/activity")({
-  validateSearch: (search: Record<string, unknown>) => ({ view: readActivityView(search) }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    view: readActivityView(search),
+    page: readActivityPage(search),
+  }),
   head: () => ({
     meta: [
       { title: TITLE },
@@ -68,9 +74,23 @@ export const Route = createFileRoute("/modules/activity")({
 });
 
 function ActivityRoute() {
-  const { view } = Route.useSearch();
+  const { view, page } = Route.useSearch();
   return (
-    <WorkspaceGate>{(identity) => <ActivityPage identity={identity} view={view} />}</WorkspaceGate>
+    <WorkspaceGate
+      preview={{
+        room: "The activity view",
+        purpose:
+          "Activity is a read of your organization's own history — what the rooms recorded today, what is waiting on your judgment, and what actually moved between rooms.",
+        unavailable: [
+          "Today's recorded events across every room.",
+          "Bounded steps still awaiting your authorisation.",
+          "Handovers between rooms, including refusals and failures.",
+        ],
+        returnTo: "/modules/activity",
+      }}
+    >
+      {(identity) => <ActivityPage identity={identity} view={view} page={page} />}
+    </WorkspaceGate>
   );
 }
 
@@ -86,7 +106,15 @@ function when(at: string | null): string {
   });
 }
 
-function ActivityPage({ identity, view }: { identity: WorkspaceIdentity; view: ActivityView }) {
+function ActivityPage({
+  identity,
+  view,
+  page,
+}: {
+  identity: WorkspaceIdentity;
+  view: ActivityView;
+  page: number;
+}) {
   const events = useQuery({
     queryKey: ["activity-stream", identity.organizationId],
     queryFn: () => supabaseActivity.list({ organizationId: identity.organizationId, limit: 200 }),
@@ -110,6 +138,8 @@ function ActivityPage({ identity, view }: { identity: WorkspaceIdentity; view: A
         ? awaitingJudgment(actions)
         : movements({ receipts: control.data?.receipts ?? [], actions });
 
+  const paged = pageActivity(rows, page);
+
   const loading = view === "today" ? events.isPending : control.isPending;
   const failed = view === "today" ? events.isError : control.isError;
 
@@ -132,7 +162,7 @@ function ActivityPage({ identity, view }: { identity: WorkspaceIdentity; view: A
             <Link
               key={option}
               to="/modules/activity"
-              search={{ view: option }}
+              search={{ view: option, page: 1 }}
               className="rounded-full border border-border px-3.5 py-1.5 text-[13px] text-muted-foreground data-[status=active]:border-royal data-[status=active]:text-royal"
               activeOptions={{ includeSearch: true }}
               activeProps={{ "aria-current": "page" }}
@@ -148,11 +178,12 @@ function ActivityPage({ identity, view }: { identity: WorkspaceIdentity; view: A
           <p className="text-sm text-muted-foreground">
             That history could not be read just now. Nothing was changed; try again.
           </p>
-        ) : rows.length === 0 ? (
+        ) : paged.total === 0 ? (
           <EmptyState {...EMPTY[view]} />
         ) : (
+          <>
           <ul className="divide-y divide-border rounded-xl border border-border bg-card">
-            {rows.map((row) => (
+            {paged.rows.map((row) => (
               <li key={row.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-3.5">
                 <span className="min-w-0 flex-1 text-[14px] text-foreground">{row.label}</span>
                 <span className="tt-eyebrow">{row.roomLabel}</span>
@@ -163,6 +194,22 @@ function ActivityPage({ identity, view }: { identity: WorkspaceIdentity; view: A
               </li>
             ))}
           </ul>
+          <div className="flex flex-wrap items-center gap-4">
+            <p className="text-[12.5px] text-muted-foreground" aria-live="polite">
+              Showing {paged.rows.length} of {paged.total}
+            </p>
+            {paged.hasMore ? (
+              <Link
+                to="/modules/activity"
+                search={{ view, page: paged.page + 1 }}
+                replace
+                className="rounded-full border border-border px-3.5 py-1.5 text-[13px] text-royal"
+              >
+                Show {Math.min(ACTIVITY_PAGE_SIZE, paged.total - paged.rows.length)} more
+              </Link>
+            ) : null}
+          </div>
+          </>
         )}
 
         <p className="text-[13px] text-muted-foreground">

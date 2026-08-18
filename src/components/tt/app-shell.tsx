@@ -114,7 +114,7 @@ export function AppShell({
 
   async function handleSignOut() {
     await signOut(queryClient);
-    void navigate({ to: "/auth", replace: true });
+    void navigate({ to: "/auth", search: { redirect: "/" }, replace: true });
   }
 
   return (

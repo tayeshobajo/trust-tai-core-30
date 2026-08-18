@@ -8,6 +8,9 @@ import {
   movements,
   readActivityView,
   todaysActivity,
+  ACTIVITY_PAGE_SIZE,
+  pageActivity,
+  readActivityPage,
 } from "./activity-view";
 
 function event(id: string, occurredAt: string): ActivityEvent {
@@ -96,5 +99,34 @@ describe("activity view", () => {
     const rows = movements({ receipts, actions: [action({})] });
     expect(rows).toHaveLength(2);
     expect(rows.map((row) => row.standing)).toEqual(["refused", "handed over"]);
+  });
+});
+
+describe("activity paging", () => {
+  const rows = Array.from({ length: 60 }, (_, index) => ({
+    id: String(index),
+    label: `row ${index}`,
+    roomLabel: "Scout",
+    standing: "recorded",
+    at: null,
+  }));
+
+  it("shows the first page and reports what remains", () => {
+    const page = pageActivity(rows, 1);
+    expect(page.rows).toHaveLength(ACTIVITY_PAGE_SIZE);
+    expect(page.hasMore).toBe(true);
+    expect(page.total).toBe(60);
+  });
+
+  it("grows cumulatively so a shared URL restores the same list", () => {
+    expect(pageActivity(rows, 3).rows).toHaveLength(60);
+    expect(pageActivity(rows, 3).hasMore).toBe(false);
+  });
+
+  it("clamps out-of-range and unreadable page params", () => {
+    expect(pageActivity(rows, 99).page).toBe(3);
+    expect(readActivityPage({ page: "2" })).toBe(2);
+    expect(readActivityPage({ page: "banana" })).toBe(1);
+    expect(readActivityPage({})).toBe(1);
   });
 });

@@ -9,7 +9,16 @@ const TITLE = "Sign in — Trust Tai OS";
 const DESCRIPTION =
   "Sign in to Trust Tai OS with a one-time link sent to your Trust Tai email address.";
 
+/** Only same-origin app paths may be restored after sign-in. */
+function readRedirect(search: Record<string, unknown>): string {
+  const raw = search["redirect"];
+  if (typeof raw !== "string") return "/";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+  return raw;
+}
+
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>) => ({ redirect: readRedirect(search) }),
   head: () => ({
     meta: [
       { title: TITLE },
@@ -27,14 +36,15 @@ export const Route = createFileRoute("/auth")({
 function AuthRoute() {
   const workspace = useWorkspace();
   const navigate = useNavigate();
+  const { redirect } = Route.useSearch();
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (workspace.status === "ready") void navigate({ to: "/", replace: true });
-  }, [workspace.status, navigate]);
+    if (workspace.status === "ready") void navigate({ to: redirect, replace: true });
+  }, [workspace.status, navigate, redirect]);
 
   async function requestLink(event: React.FormEvent) {
     event.preventDefault();
@@ -46,7 +56,9 @@ function AuthRoute() {
       email: address,
       options:
         typeof window !== "undefined"
-          ? { emailRedirectTo: `${window.location.origin}/auth` }
+          ? {
+              emailRedirectTo: `${window.location.origin}/auth?redirect=${encodeURIComponent(redirect)}`,
+            }
           : {},
     });
     setSending(false);
