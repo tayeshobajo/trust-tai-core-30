@@ -146,8 +146,11 @@ export const SOURCE_RANK: Record<string, number> = {
 };
 
 export function rankOf(origin: KnowledgeOrigin, reviewState: KnowledgeReviewState): number {
-  if (origin === "human" && reviewState === "confirmed") return SOURCE_RANK["confirmed_knowledge"]!;
   if (origin === "roadmap") return SOURCE_RANK["roadmap"]!;
+  /* A person confirming an imported statement is the act that gives it
+     authority. Where it came from stays on the record as provenance, but a
+     confirmed line is no longer only a thinking room claim. */
+  if (reviewState === "confirmed") return SOURCE_RANK["confirmed_knowledge"]!;
   if (origin === "asset") return SOURCE_RANK["approved_asset"]!;
   if (origin === "meeting") return SOURCE_RANK["meeting"]!;
   if (origin === "thinking_room") return SOURCE_RANK["thinking_room"]!;
