@@ -196,12 +196,12 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       activeTasks: [],
       awaitingApproval: [],
       completedThisWeek: 0,
-      lastHeartbeatAt: null,
       recentOutcome: null,
       routines: [],
       activityTimeline: [],
       pendingApprovals: 0,
       lastHeartbeatAt: (record["last_heartbeat_at"] as string | null) ?? null,
+
       isPaused:
         Boolean(record["paused_at"]) ||
         String(record["last_known_status"] ?? "") === "paused",
