@@ -11,6 +11,7 @@
  */
 
 import type { CommsDraft, Touch } from "@/domain/comms";
+import { readTouchRecord, recordNote } from "@/domain/comms-touch-record";
 import type { ISODateTime } from "@/domain/entities";
 
 export type ConversationEventKind =
@@ -52,6 +53,10 @@ export interface ConversationEvent {
   /** Where this came from, in plain words. Never a vendor id. */
   source?: string;
   meta?: string;
+  /** Set when this event is an interaction that can be corrected. */
+  touchId?: string;
+  /** Withdrawn entries stay visible, marked, never deleted. */
+  retracted?: boolean;
 }
 
 export function kindOfTouch(touch: Touch): ConversationEventKind {
@@ -79,12 +84,17 @@ export function conversationTimeline(
   const events: ConversationEvent[] = [];
 
   for (const touch of touches) {
+    const record = readTouchRecord(touch.provenance);
+    const note = recordNote(record);
     events.push({
       id: `touch:${touch.id}`,
+      touchId: touch.id,
       kind: kindOfTouch(touch),
       occurredAt: touch.occurredAt,
       title: touch.summary,
       ...(touch.body ? { body: touch.body } : {}),
+      ...(note ? { source: note } : {}),
+      ...(record.retracted ? { retracted: true } : {}),
       meta: touch.channel,
     });
   }
