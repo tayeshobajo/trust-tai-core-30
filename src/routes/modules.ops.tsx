@@ -178,9 +178,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           { value: isLoading ? "…" : portfolio.systems.length, label: "Managed systems" },
           { value: isLoading ? "…" : attention.length, label: "Needs attention" },
           {
-            value: isLoading
-              ? "…"
-              : portfolio.systems.reduce((total, system) => total + system.openIssues, 0),
+            value: isLoading ? "…" : (openIncidents ?? "—"),
             label: "Open incidents",
           },
           {
@@ -193,8 +191,9 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
         footer={
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              {freshness}
+              {OPS_CONNECTION_LABEL[connection]} · {freshness}
             </span>
+
             {failure ? (
               <span role="alert" className="text-[13px] text-destructive">
                 {OPS_LAUNCH_MESSAGE[failure]}
