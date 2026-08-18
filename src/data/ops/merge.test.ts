@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { mergeOpsPortfolio, opsPortfolio, sumKnown, type OpsSystem } from "./projection";
+import { opsProjectionPortfolio, sumKnown, type OpsSystem } from "./projection";
 import { opsPathOf } from "./destination";
 import { OPS_ORIGIN } from "@/domain/ops";
 import {
@@ -33,16 +33,18 @@ function row(overrides: Partial<OpsProjectRow> = {}): OpsProjectRow {
     openApprovals: null,
     lastActivityAt: null,
     lastSyncedAt: new Date(NOW).toISOString(),
+    lifecycleState: "active",
+    needsAttention: false,
+    removed: false,
     archived: false,
     ...overrides,
   };
 }
 
-const EMPTY = opsPortfolio([]);
 
 describe("Ops projection rows", () => {
   it("shows a real Ops project once the projection has it, with no invented counts", () => {
-    const portfolio = mergeOpsPortfolio(EMPTY, [row()]);
+    const portfolio = opsProjectionPortfolio([row()]);
     expect(portfolio.systems).toHaveLength(1);
     const system = portfolio.systems[0] as OpsSystem;
     expect(system.name).toBe("Elevate Orthodontics");
@@ -53,22 +55,22 @@ describe("Ops projection rows", () => {
   });
 
   it("keeps a proven zero as zero", () => {
-    const portfolio = mergeOpsPortfolio(EMPTY, [row({ openIssues: 0, openApprovals: 0 })]);
+    const portfolio = opsProjectionPortfolio([row({ openIssues: 0, openApprovals: 0 })]);
     expect(portfolio.systems[0]!.openIssues).toBe(0);
     expect(sumKnown(portfolio.systems, (s) => s.openIssues)).toBe(0);
   });
 
   it("reports an unknown total as null rather than zero", () => {
-    const portfolio = mergeOpsPortfolio(EMPTY, [row()]);
+    const portfolio = opsProjectionPortfolio([row()]);
     expect(sumKnown(portfolio.systems, (s) => s.openIssues)).toBeNull();
   });
 
   it("hides archived projects", () => {
-    expect(mergeOpsPortfolio(EMPTY, [row({ archived: true })]).systems).toHaveLength(0);
+    expect(opsProjectionPortfolio([row({ removed: true, lifecycleState: 'removed' })]).systems).toHaveLength(0);
   });
 
   it("never fabricates rows when Ops has sent nothing", () => {
-    expect(mergeOpsPortfolio(EMPTY, []).systems).toHaveLength(0);
+    expect(opsProjectionPortfolio([]).systems).toHaveLength(0);
   });
 
   it("refuses a row from another organization", () => {
@@ -79,14 +81,14 @@ describe("Ops projection rows", () => {
       last_synced_at: new Date(NOW).toISOString(),
     });
     expect(foreign?.organizationId).not.toBe(ORG);
-    const mine = mergeOpsPortfolio(EMPTY, [foreign!].filter((r) => r.organizationId === ORG));
+    const mine = opsProjectionPortfolio([foreign!].filter((r) => r.organizationId === ORG));
     expect(mine.systems).toHaveLength(0);
   });
 });
 
 describe("Ops deep links", () => {
   it("opens the exact Ops project path, with nothing sensitive in it", () => {
-    const system = mergeOpsPortfolio(EMPTY, [row({ opsPath: "/projects/ops-elevate" })])
+    const system = opsProjectionPortfolio([row({ opsPath: "/projects/ops-elevate" })])
       .systems[0] as OpsSystem;
     expect(system.destinationUrl).toBe(`${OPS_ORIGIN}/projects/ops-elevate`);
     expect(opsPathOf(system.destinationUrl)).toBe("/projects/ops-elevate");

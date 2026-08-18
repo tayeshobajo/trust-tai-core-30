@@ -88,20 +88,18 @@ export const Route = createFileRoute("/api/public/ops/projects")({
         const rows = projects.map((project) => ({
           organization_id: organizationId,
           ops_project_id: project.opsProjectId,
-          name: project.name,
-          company: project.company ?? null,
+          project_name: project.name,
           status: project.status ?? null,
           health: project.health ?? "unknown",
           owner: project.owner ?? null,
-          environment: project.environment ?? null,
           canonical_project_id: project.canonicalProjectId ?? null,
           ops_path: safePath(project.opsPath),
           open_issues: project.openIssues ?? null,
           open_approvals: project.openApprovals ?? null,
           last_activity_at: timestamp(project.lastActivityAt),
-          last_synced_at: syncedAt,
-          archived: project.archived ?? false,
-          updated_at: syncedAt,
+          synced_at: syncedAt,
+          needs_attention: project.health === "attention" || project.health === "incident",
+          lifecycle_state: project.archived ? "archived" : "active",
         }));
 
         const { trustTaiServiceRoleClient } = await import("@/lib/execution-bridge.server");
@@ -123,9 +121,9 @@ export const Route = createFileRoute("/api/public/ops/projects")({
           const keep = rows.map((row) => row.ops_project_id);
           let query = supabase
             .from("ops_project_projection" as never)
-            .update({ archived: true, last_synced_at: syncedAt, updated_at: syncedAt } as never)
+            .update({ lifecycle_state: "archived", synced_at: syncedAt } as never)
             .eq("organization_id", organizationId)
-            .eq("archived", false);
+            .eq("lifecycle_state", "active");
           if (keep.length > 0) {
             query = query.not(
               "ops_project_id",
