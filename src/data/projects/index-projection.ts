@@ -201,6 +201,8 @@ export interface ProjectRowModel {
   outcome: string;
   currentWork: string | null;
   blocker: string | null;
+  /** What a person said this is paused on, when they said so. */
+  waitingOn: string | null;
   open: boolean;
 }
 
@@ -259,6 +261,7 @@ export function buildProjectRow(
     outcome: project.pointB.trim() || "No outcome agreed yet.",
     currentWork: project.currentWork?.trim() || project.nextMove?.trim() || null,
     blocker: project.blockedBecause?.trim() || null,
+    waitingOn: project.waitingOn?.trim() || null,
     open: isOpenProject(project),
   };
 }
