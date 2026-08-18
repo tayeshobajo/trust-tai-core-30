@@ -198,15 +198,62 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: refresh,
   });
 
-  const logNote = useMutation({
-    mutationFn: (value: string) =>
-      commsService.logTouch(
+  /**
+   * Record something that happened elsewhere. The touch keeps Tai's name on
+   * it, and only the derived facts a person ticked are written to memory.
+   */
+  const recordInteraction = useMutation({
+    mutationFn: async (submission: InteractionSubmission) => {
+      const relationship = selected!;
+      const definition = interactionDefinition(submission.type);
+      const provenance = manualProvenance(identity.name);
+
+      await commsService.logTouch(
         {
-          relationship: selected!,
-          channel: "note",
-          direction: "outbound",
-          summary: value,
+          relationship,
+          channel: definition.channel,
+          direction: definition.direction,
+          summary: `${submission.summary} · ${provenance.label}`,
+          body: submission.body,
+          occurredAt: submission.occurredAt,
         },
+        context,
+      );
+
+      for (const entry of submission.confirmed) {
+        await commsService.remember(
+          relationship,
+          {
+            label: entry.kind === "commitment" ? "Promise" : "Worth remembering",
+            value: entry.text,
+            tier: "decided",
+            evidence: [provenance, { label: `From: ${entry.because}`, kind: "human" }],
+            ...(entry.kind === "commitment"
+              ? {
+                  category: COMMITMENT_CATEGORY,
+                  status: "open" as const,
+                  owner: entry.owner ?? "us",
+                  ...(entry.due ? { due: entry.due } : {}),
+                }
+              : { category: entry.kind === "next_move" ? "Important context" : "What they care about" }),
+            addedBy: provenance.label,
+          },
+          context,
+        );
+      }
+    },
+    onSuccess: async () => {
+      setInteracting(false);
+      await refresh();
+    },
+  });
+
+  const settleCommitment = useMutation({
+    mutationFn: (input: { commitment: Commitment; status: "kept" | "released" }) =>
+      commsService.settleCommitment(
+        selected!,
+        { text: input.commitment.text, at: input.commitment.at },
+        input.status,
         context,
       ),
     onSuccess: refresh,
