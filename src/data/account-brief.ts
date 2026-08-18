@@ -1,5 +1,5 @@
 /**
- * Scout — the account brief.
+ * Scout, the account brief.
  *
  * One evidence-backed page a Trust Tai member could take into a conversation:
  * what the company is, why it fits, what the opportunity looks like, why now,
@@ -92,7 +92,7 @@ export function buildAccountBrief({ candidate, intel, plan }: BriefInput): Accou
         title: "Also worth knowing",
         tier: "inference",
         body: plan.supporting
-          .map((person) => `${person.fullName}${person.roleTitle ? ` (${person.roleTitle})` : ""} — ${person.routeNote}`)
+          .map((person) => `${person.fullName}${person.roleTitle ? ` (${person.roleTitle})` : ""} · ${person.routeNote}`)
           .join(" "),
         sources: [],
       });
@@ -112,7 +112,7 @@ export function buildAccountBrief({ candidate, intel, plan }: BriefInput): Accou
     ...(plan.gap ? [plan.gap] : []),
     ...evaluation.criteria
       .filter((criterion) => criterion.state === "missing")
-      .map((criterion) => `${criterion.label} is unknown — ${criterion.reason}`),
+      .map((criterion) => `${criterion.label} is unknown · ${criterion.reason}`),
   ];
 
   if (unknowns.length > 0) {
@@ -162,7 +162,7 @@ function buildAngle({ candidate, intel, plan }: BriefInput): string {
     );
   }
   if (signal) {
-    parts.push(`Tie it to what is happening now — ${signal.statement.replace(/\.$/, "")}.`);
+    parts.push(`Tie it to what is happening now · ${signal.statement.replace(/\.$/, "")}.`);
   }
   parts.push(`Address it to ${who}, and reference only what was actually read on their site.`);
   return parts.join(" ");

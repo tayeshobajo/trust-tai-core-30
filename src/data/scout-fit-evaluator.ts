@@ -1,5 +1,5 @@
 /**
- * Scout — conservative ICP fit evaluator (trust-tai-icp-v2).
+ * Scout, conservative ICP fit evaluator (trust-tai-icp-v2).
  *
  * Deterministic and explainable. It reads only what is already stored on the
  * prospect (`observed`, `inferred`, `suggested`, `provenance`) and maps it onto
@@ -8,7 +8,7 @@
  * v2 adds explicit, key-aware rules for the structured observations returned by
  * `scout-research` v3 (`active_business_signals`, `proof_signals`,
  * `decision_maker_signals`, `contact_routes`, `milestone_opportunities`, …).
- * When those keys are absent — v1/v2 rows — the original keyword rules are used
+ * When those keys are absent, v1/v2 rows, the original keyword rules are used
  * unchanged, so older prospects keep working.
  *
  * Conservatism rules, in order:
@@ -60,8 +60,8 @@ function truthOf(value: unknown): boolean | null {
   const text = str(value).toLowerCase();
   if (!text) return null;
   if (["yes", "true", "present", "found", "detected"].includes(text)) return true;
-  if (["no", "false", "none", "absent", "not found", "unknown", "n/a", "—"].includes(text)) {
-    return text === "unknown" || text === "n/a" || text === "—" ? null : false;
+  if (["no", "false", "none", "absent", "not found", "unknown", "n/a", "-"].includes(text)) {
+    return text === "unknown" || text === "n/a" || text === "-" ? null : false;
   }
   return true;
 }
@@ -135,17 +135,17 @@ function matches(observation: Observation, patterns: RegExp[]): boolean {
 
 /** Human-readable rendering of any observation value. Never "[object Object]". */
 export function renderValue(value: unknown): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "-";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "number") return String(value);
-  if (typeof value === "string") return value.trim() || "—";
+  if (typeof value === "string") return value.trim() || "-";
   if (Array.isArray(value)) {
-    const parts = value.map((v) => renderValue(v)).filter((v) => v && v !== "—");
-    return parts.length > 0 ? parts.join(", ") : "—";
+    const parts = value.map((v) => renderValue(v)).filter((v) => v && v !== "-");
+    return parts.length > 0 ? parts.join(", ") : "-";
   }
   const obj = value as Row;
   const nested = str(obj["value"]) || str(obj["text"]) || str(obj["label"]);
-  return nested || "—";
+  return nested || "-";
 }
 
 class Structured {
@@ -209,7 +209,7 @@ class Structured {
     const items = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
     return items
       .map((item) => (typeof item === "string" ? item.trim() : renderValue(item)))
-      .filter((item) => Boolean(item) && item !== "—" && !GENERIC_MILESTONE.test(item));
+      .filter((item) => Boolean(item) && item !== "-" && !GENERIC_MILESTONE.test(item));
   }
 
   evidence(key: string): string {
@@ -328,7 +328,7 @@ const SPECS: CriterionSpec[] = [
         return {
           state: "partial",
           reason: withDetail(
-            `${count} signal${count === 1 ? "" : "s"} of activity — enough to suggest the business is operating, not enough to confirm it.`,
+            `${count} signal${count === 1 ? "" : "s"} of activity, enough to suggest the business is operating, not enough to confirm it.`,
             detail,
           ),
           sourceUrls,
@@ -398,7 +398,7 @@ const SPECS: CriterionSpec[] = [
     patterns: [
       /\b(testimonial|review|case stud|results|portfolio|clients? logo|press|award|years? in business|since \d{4})\b/,
     ],
-    metReason: "Proof of past work is published — testimonials, results, or case studies.",
+    metReason: "Proof of past work is published, testimonials, results, or case studies.",
     partialReason: "Some proof language appears, but it is thin or unattributed.",
     missingReason: "No published proof of delivered work was found. Treated as unknown, not negative.",
   },
@@ -589,7 +589,7 @@ const SPECS: CriterionSpec[] = [
       }
       return {
         state: "partial",
-        reason: `An opportunity is visible — ${milestones[0]} — but nothing observed yet backs it up.`,
+        reason: `An opportunity is visible · ${milestones[0]} · but nothing observed yet backs it up.`,
         sourceUrls,
       };
     },
@@ -686,7 +686,7 @@ function collectMilestones(structured: Structured, suggested: unknown): string[]
   if (Array.isArray(opportunity)) {
     for (const entry of opportunity) {
       const text = typeof entry === "string" ? entry.trim() : renderValue(entry);
-      if (text && text !== "—" && !GENERIC_MILESTONE.test(text)) items.push(text);
+      if (text && text !== "-" && !GENERIC_MILESTONE.test(text)) items.push(text);
     }
   }
   return Array.from(new Set(items));
@@ -742,7 +742,7 @@ export function evaluateScoutFit(input: EvaluateInput): ScoutFitEvaluation {
       evidenceCount: 0,
       strongestSignal: input.scoreable
         ? "No evidence has been read for this company yet."
-        : "Preview demo candidate — not scored against live evidence.",
+        : "Preview demo candidate, not scored against live evidence.",
       criteria: [],
       icpVersion: input.icpVersion,
       evaluatorVersion: SCOUT_EVALUATOR_VERSION,

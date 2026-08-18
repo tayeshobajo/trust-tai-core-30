@@ -5,7 +5,7 @@
  * with no tolerance layer: a mismatch fails visibly rather than silently
  * dropping data.
  *
- * Sourcing is still PREVIEW/MOCKED — no external service is contacted and no
+ * Sourcing is still PREVIEW/MOCKED, no external service is contacted and no
  * AI or internet research is performed. What is real is the persistence:
  * preview candidates are written as rows tagged `scout_preview_demo`, and
  * Qualify / Pass update those rows through RLS.
@@ -172,8 +172,8 @@ export interface ResearchProspectInput {
 }
 
 /**
- * Shallow-merge new metadata over what is already stored so unrelated keys —
- * `scout_fit`, `scout_fit_override`, `identity` — are never dropped. Only the
+ * Shallow-merge new metadata over what is already stored so unrelated keys 
+ * `scout_fit`, `scout_fit_override`, `identity` · are never dropped. Only the
  * keys explicitly supplied are replaced.
  */
 export function mergeProspectMetadata(existing: unknown, incoming?: Row): Row {

@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Conversation health contracts.
+ * Trust Tai OS, Conversation health contracts.
  *
  * Health is a read about a *thread*, never a verdict about a person. It is
  * derived from records that already exist (touches, due dates, next moves) and

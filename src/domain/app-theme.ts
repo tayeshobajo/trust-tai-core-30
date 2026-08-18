@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — per-app visual world.
+ * Trust Tai OS, per-app visual world.
  *
  * Each registered app gets a distinct motif and a single tonal accent so the
  * suite reads as one building with different rooms. Paper, ink and royal stay

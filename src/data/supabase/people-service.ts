@@ -1,5 +1,5 @@
 /**
- * Scout — People service.
+ * Scout, People service.
  *
  * The one place ingestion, manual entry, and human confirmation meet. Every
  * write is organization-scoped, provenance-stamped, and mirrored into the

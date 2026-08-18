@@ -1,5 +1,5 @@
 /**
- * Scout — Supabase-backed service.
+ * Scout, Supabase-backed service.
  *
  * Two clearly separated sources:
  *  - PREVIEW DISCOVERY: plain-English prompts rank a fixed in-memory catalogue.

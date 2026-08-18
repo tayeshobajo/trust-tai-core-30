@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Home featured imagery.
+ * Trust Tai OS, Home featured imagery.
  *
  * One bundled photograph per room, all from the same Trust Tai world:
  * luminous architecture, warm white stone, open horizons, morning light.

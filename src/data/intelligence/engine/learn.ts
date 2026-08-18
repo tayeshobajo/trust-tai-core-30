@@ -3,7 +3,7 @@
  *
  * A decision about a recommendation is feedback about the business, so it is
  * written where every other piece of learned truth already lives: the
- * append-only belief ledger. No new table, no scores, no hidden weighting —
+ * append-only belief ledger. No new table, no scores, no hidden weighting 
  * only a countable record of what a person explicitly decided, and a small,
  * legible set of consequences:
  *
@@ -62,7 +62,7 @@ export function recommendationOutcomeDraft(input: {
     evidence: [
       {
         kind: "computed",
-        label: `Proposed by the Intelligence Engine — expected to change: ${recommendation.expectedSignal}`,
+        label: `Proposed by the Intelligence Engine, expected to change: ${recommendation.expectedSignal}`,
       },
     ],
     ...(input.note ? { note: input.note } : {}),

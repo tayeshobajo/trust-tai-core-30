@@ -4,7 +4,7 @@
  * Every reading is either counted from a room's own record (`observed`),
  * carried from a person's commitment (`decided`), computed from those two
  * (`derived`), or `unknown`. A sign nothing in the suite can answer is
- * reported as unknown with the instrument that would fix it — it is never
+ * reported as unknown with the instrument that would fix it, it is never
  * filled in with a zero, an average, or a plausible figure.
  */
 

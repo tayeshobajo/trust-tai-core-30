@@ -6,8 +6,8 @@
  * Projects owns exactly one new piece of truth here: "Projects asked another
  * room to take this specialized work." It creates no Ops website, no
  * monitoring record, no Studio asset, and no downstream state of any kind.
- * The request carries references and provenance — project, client, roadmap,
- * milestone ids — never copied entities, so Ops and Studio read upstream truth
+ * The request carries references and provenance, project, client, roadmap,
+ * milestone ids, never copied entities, so Ops and Studio read upstream truth
  * instead of re-researching it.
  *
  * Everything here is pure. Nothing is invented: a request that lacks the
@@ -59,7 +59,7 @@ export interface RouteRequestedBy {
 }
 
 /**
- * The whole contract. References plus provenance — no duplicated entity ever
+ * The whole contract. References plus provenance, no duplicated entity ever
  * travels in this envelope.
  */
 export interface ProjectRouteRequest {
@@ -135,7 +135,7 @@ export interface RouteIntent {
 
 /**
  * Build the request from what Projects already holds. Refuses rather than
- * guesses: no outcome, no reason, no destination, no identity — no route.
+ * guesses: no outcome, no reason, no destination, no identity, no route.
  */
 export function buildRouteRequest(
   project: ExecutionProject,
@@ -209,7 +209,7 @@ export function routeSummary(request: ProjectRouteRequest): string {
 }
 
 /**
- * The metadata carried into the event. References only — the receiving room
+ * The metadata carried into the event. References only, the receiving room
  * reads upstream truth through these ids.
  */
 export function routeMetadata(request: ProjectRouteRequest): Record<string, unknown> {

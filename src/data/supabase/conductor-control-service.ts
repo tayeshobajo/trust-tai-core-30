@@ -4,7 +4,7 @@
  * Two tables, both governance: `conductor_actions` (what was proposed and what
  * a person decided about it) and `conductor_receipts` (what was handed to a
  * room, when, by whose approval, through which boundary). Neither holds a copy
- * of a prospect, relationship, roadmap, project or asset — only references.
+ * of a prospect, relationship, roadmap, project or asset, only references.
  *
  * Every read is organization-scoped in the query as well as by RLS. A missing
  * table reads as an empty ledger so the Conductor still answers, and refuses

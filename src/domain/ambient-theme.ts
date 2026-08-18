@@ -1,9 +1,9 @@
 /**
- * Trust Tai OS — Ambient Identity Wash.
+ * Trust Tai OS, Ambient Identity Wash.
  *
  * Trust Tai stays the frame: paper canvas, ink type, royal signals, one shell.
  * Each room carries a single ambient accent so moving between apps feels like
- * moving between rooms in one house — the light changes, nothing else does.
+ * moving between rooms in one house, the light changes, nothing else does.
  *
  * The accents live as CSS custom properties in `src/styles.css` (`--tt-app-*`)
  * so any future page inherits them without importing anything. This module is
@@ -61,7 +61,7 @@ export function getAppAmbientTheme(appId: string): AmbientTheme {
  *
  * A detail page about a real subject (a company, and later a client or
  * project) may carry that subject's own colour. Only real, validated colours
- * qualify — pass `null` when none was recorded and the room's accent is used.
+ * qualify, pass `null` when none was recorded and the room's accent is used.
  */
 export function resolveAmbientAccent(appId: string, contextAccent?: string | null): string {
   return contextAccent && contextAccent.trim() !== ""

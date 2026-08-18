@@ -4,7 +4,7 @@
  * `src/integrations/supabase/types.ts` is still the empty placeholder schema,
  * so a plain `createClient()` resolves every `.from()` row type to `never`.
  * This local schema gives the service-role client real Row/Insert/Update
- * contracts for exactly the tables the bridge reads and writes — nothing more.
+ * contracts for exactly the tables the bridge reads and writes, nothing more.
  */
 
 export type ExecutionJson = Record<string, unknown>;

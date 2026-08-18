@@ -1,5 +1,5 @@
 /**
- * Scout — adaptive composition for the prospect workspace.
+ * Scout, adaptive composition for the prospect workspace.
  *
  * Pure functions only. Given what is stored for a company, decide which
  * surfaces are worth showing, what changed since last time, and the single
@@ -31,7 +31,7 @@ const PAGE_KINDS: { key: string; label: string }[] = [
 const STALE_AFTER_DAYS = 30;
 
 /* ------------------------------------------------------------------ *
- * Research history — stored in `prospects.metadata.research_history`
+ * Research history, stored in `prospects.metadata.research_history`
  * ------------------------------------------------------------------ */
 
 function isRun(value: unknown): value is ResearchRun {
@@ -163,7 +163,7 @@ export function computePulse(history: ResearchRun[]): SignalPulse | null {
     scoreDelta: delta,
     gained,
     lost,
-    summary: `${movement} since the previous read — ${evidence}.`,
+    summary: `${movement} since the previous read · ${evidence}.`,
   };
 }
 
@@ -175,7 +175,7 @@ function daysSince(value: string): number | null {
 
 
 /* ------------------------------------------------------------------ *
- * Confidence — how sure we are, and what that rests on
+ * Confidence, how sure we are, and what that rests on
  * ------------------------------------------------------------------ */
 
 /** Evidence for one ICP criterion: the pages the claim was actually read from. */
@@ -201,7 +201,7 @@ function pageLabel(url: string): string {
 
 /**
  * Confidence in one criterion. Evidence quantity sets the ceiling; thin
- * coverage lowers it. A criterion nobody has evidence for is never "low" —
+ * coverage lowers it. A criterion nobody has evidence for is never "low" 
  * it is simply not established.
  */
 export function criterionConfidence(
@@ -458,7 +458,7 @@ function nextMoveBase(
 
 
 /* ------------------------------------------------------------------ *
- * Emphasis — which surface the page leans on, decided by rule
+ * Emphasis, which surface the page leans on, decided by rule
  * ------------------------------------------------------------------ */
 
 const FOCUS_BY_ACTION: Record<NextMove["action"], ProspectModule["id"]> = {

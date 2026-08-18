@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Roadmap contracts.
+ * Trust Tai OS, Roadmap contracts.
  *
  * Roadmap is the decision and sequencing layer between an opportunity or a
  * relationship and actual execution. Its one job: turn a messy situation into
@@ -179,7 +179,7 @@ export interface RoadmapDetail {
 }
 
 /** The phrase used anywhere evidence is too weak to state something. */
-export const UNKNOWN_STATEMENT = "Unknown — needs confirmation";
+export const UNKNOWN_STATEMENT = "Unknown, needs confirmation";
 
 export function isOpen(decision: RoadmapDecision): boolean {
   return decision.status === "open";

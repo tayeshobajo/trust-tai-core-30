@@ -101,7 +101,7 @@ export interface DistillInput {
 /**
  * Turn observations into at most one new ledger record.
  *
- * Returns `undefined` when there is nothing honest to add — no observations,
+ * Returns `undefined` when there is nothing honest to add, no observations,
  * or nothing changed since the prior record.
  */
 export function distillLearning(input: DistillInput): LearningRecord | undefined {
@@ -123,7 +123,7 @@ export function distillLearning(input: DistillInput): LearningRecord | undefined
       sourceActionIds: measured.map((observation) => observation.actionId),
       sourceObservationIds: measured.map((observation) => observation.id),
       hypothesis: `${input.scopeLabel} works the way the Conductor assumed.`,
-      expectedSignal: measured[0]?.expectedSignal.statement ?? "—",
+      expectedSignal: measured[0]?.expectedSignal.statement ?? "-",
       observedResult: "A person corrected the Conductor's reading.",
       evidence: [
         { label: `${input.humanCorrection.by} corrected this`, kind: "human" } as EvidenceRef,

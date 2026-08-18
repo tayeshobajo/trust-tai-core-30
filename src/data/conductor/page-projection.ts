@@ -1,7 +1,7 @@
 /**
  * What the Conductor room can honestly say about itself, in numbers.
  *
- * Every count here is read from the governed action ledger and its receipts —
+ * Every count here is read from the governed action ledger and its receipts 
  * the same records the approval queue works from. Nothing is a second copy of
  * a room's truth, and nothing is inferred: an action that has been handed over
  * is reported as handed over, never as done.
@@ -66,7 +66,7 @@ export interface NeedsTaiItem {
 /**
  * Only things that genuinely need a human decision: a bounded step awaiting
  * authorisation, or a reading whose recommendation is a choice rather than a
- * task. Work already moving is not listed — it is not waiting on anyone.
+ * task. Work already moving is not listed, it is not waiting on anyone.
  */
 export function needsTai(input: {
   actions: ControlledAction[];

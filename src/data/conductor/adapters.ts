@@ -1,5 +1,5 @@
 /**
- * Room adapters — the only way the Conductor may reach another room.
+ * Room adapters, the only way the Conductor may reach another room.
  *
  * Each adapter calls the *existing* service of the room that owns the change,
  * with that room's own permission still required of the person. There is no
@@ -100,7 +100,7 @@ export const commsDraftAdapter: RoomAdapter = {
   id: "adapter:comms.draft",
   room: "comms",
   operations: ["comms.draft_reply"],
-  boundary: "commsService.saveDraft — an unsent draft that needs human review",
+  boundary: "commsService.saveDraft, an unsent draft that needs human review",
   supports(operation) {
     return this.operations.includes(operation);
   },
@@ -216,7 +216,7 @@ export const projectsBlockerAdapter: RoomAdapter = {
   id: "adapter:projects.blocker",
   room: "projects",
   operations: ["projects.record_blocker"],
-  boundary: "projectsService.update — records blockedBecause only",
+  boundary: "projectsService.update, records blockedBecause only",
   supports(operation) {
     return this.operations.includes(operation);
   },

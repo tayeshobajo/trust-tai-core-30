@@ -3,7 +3,7 @@
  *
  * Ingestion reads this list and nothing else: a source that is not registered
  * and approved here cannot reach Supabase. Adding a compliant vendor later is
- * one file — implement `PeopleProvider` and register it.
+ * one file, implement `PeopleProvider` and register it.
  */
 
 import type { PeopleProvider, PeopleProviderInfo } from "@/domain/people";

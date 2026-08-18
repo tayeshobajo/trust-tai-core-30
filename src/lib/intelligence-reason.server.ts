@@ -1,9 +1,9 @@
 /**
- * Intelligence Engine — bounded semantic reasoning (server only).
+ * Intelligence Engine, bounded semantic reasoning (server only).
  *
  * The model gets one job: connect observations the suite already made, and say
  * what they might mean together. It is given a packet of true statements and
- * nothing else — no transcripts, no free text, no web. Anything it returns
+ * nothing else, no transcripts, no free text, no web. Anything it returns
  * that is not traceable to that packet is dropped by verification before a
  * person ever sees it.
  *

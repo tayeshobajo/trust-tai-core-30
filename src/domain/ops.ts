@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — the Ops boundary.
+ * Trust Tai OS, the Ops boundary.
  *
  * Ops is a separately deployed specialist application. Trust Tai OS owns
  * identity, membership, canonical projects, shared activity and cross-suite

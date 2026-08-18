@@ -1,5 +1,5 @@
 /**
- * Projects delivery service — work items, blockers, decisions and files.
+ * Projects delivery service, work items, blockers, decisions and files.
  *
  * Everything is scoped by organization and project, read under the person's
  * own access, and mirrored into the shared `activities` stream so Home, Pulse

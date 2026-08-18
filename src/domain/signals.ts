@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — shared context and signal contracts (Intelligence, layer 3).
+ * Trust Tai OS, shared context and signal contracts (Intelligence, layer 3).
  *
  * Intelligence reads broadly and writes narrowly. It may assemble context,
  * notice a signal, explain it, and recommend a next move. It never changes

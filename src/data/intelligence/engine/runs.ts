@@ -7,7 +7,7 @@
  *
  * Everything here is pure: a fingerprint of what the suite currently holds, and
  * a decision about whether that is worth reading again. No timers, no network,
- * no storage — the surface owns those.
+ * no storage, the surface owns those.
  */
 
 import type { SuiteSnapshot } from "../derive";
@@ -50,7 +50,7 @@ function newest(values: (string | undefined)[]): string {
  *
  * Counts plus the newest timestamp per room. It is deliberately cheap and
  * deliberately blunt: it answers "is there anything new to read?", never "what
- * changed?" — that question is answered by re-reading, honestly.
+ * changed?", that question is answered by re-reading, honestly.
  */
 export function snapshotFingerprint(snapshot: SuiteSnapshot): string {
   const parts = [

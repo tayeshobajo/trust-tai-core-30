@@ -2,7 +2,7 @@
  * The conversational surface's brain.
  *
  * A question comes in as language; a grounded answer goes out. Everything here
- * is deterministic and pure over the snapshot — the same question against the
+ * is deterministic and pure over the snapshot, the same question against the
  * same suite always produces the same answer, and every claim carries where it
  * came from. A model may later phrase this more warmly, but it may not add a
  * fact to it.
@@ -66,7 +66,7 @@ interface TopicRule {
 }
 
 /**
- * Small, legible classification. Six real questions and an honest fallback —
+ * Small, legible classification. Six real questions and an honest fallback 
  * no model, no hidden taxonomy, and nothing that silently mis-routes a
  * question into an answer about something else.
  */
@@ -150,7 +150,7 @@ export function classifyQuestion(question: string): ConductorTopic {
 
 /**
  * Questions that are genuinely about demand: weak pipeline, needing more
- * qualified companies, or finding new prospects. Narrow on purpose — a general
+ * qualified companies, or finding new prospects. Narrow on purpose, a general
  * Scout question must not trigger a sourcing run.
  */
 const DEMAND_PATTERNS: RegExp[] = [
@@ -197,7 +197,7 @@ export interface ConductorInput {
   /**
    * The organisation's saved ICP, read from `icp_profiles`. When present, the
    * discovery proposal is filled from it so Scout's adapter has the brief it
-   * requires. Absent, the proposal stays look-only — nothing is invented.
+   * requires. Absent, the proposal stays look-only, nothing is invented.
    */
   icp?: IcpContext | null;
 }
@@ -456,7 +456,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
           ? `${vitals.unknownKeys.length} vital signs have no source, so this read is partial.`
           : "",
         topic === "unclear"
-          ? "I read your question as a general check on the business — ask about leaks, gaps, attention or a plan for a sharper answer."
+          ? "I read your question as a general check on the business, ask about leaks, gaps, attention or a plan for a sharper answer."
           : "",
       ]);
       unknowns.push(...blindSpots.filter((spot) => spot.severity === "critical").slice(0, 3));
@@ -490,7 +490,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
    * A question about weak pipeline, new prospects or creating demand should be
    * able to reach Scout's real sourcing operation, not only a look-only step.
    * Conservative by construction: the discovery proposal is only added when
-   * the read already produced it — that is, when the evidence says the
+   * the read already produced it, that is, when the evidence says the
    * pipeline is genuinely thin. No question invents the recommendation.
    */
   const demandQuestion = DEMAND_PATTERNS.some((pattern) => pattern.test(question));
@@ -523,7 +523,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
    *
    * Bounded three ways: only the rooms this answer actually touches, only the
    * operations it is about when it names any, and only the strongest current
-   * records — never the whole history, and never a superseded one. A person's
+   * records, never the whole history, and never a superseded one. A person's
    * correction outranks inference, and thin evidence stays labelled thin.
    *
    * Learning may sharpen the wording of a suggestion. It may not change who

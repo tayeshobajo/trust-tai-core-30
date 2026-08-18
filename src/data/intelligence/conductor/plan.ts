@@ -326,7 +326,7 @@ export function buildOperatingPlan(input: PlanInput): OperatingPlan {
       appId: "scout",
       label: "Scout",
       role: "produce",
-      contribution: `Qualify ${qualified} companies over ${weeks} weeks — about ${round(qualified / weeks)} a week.`,
+      contribution: `Qualify ${qualified} companies over ${weeks} weeks, about ${round(qualified / weeks)} a week.`,
       targets: [targets.find((t) => t.key === "qualified")!],
       dependencies: ["An ICP current enough that qualification means something."],
       route: "/modules/scout",

@@ -2,7 +2,7 @@
  * Stage two and three: understand, then remember.
  *
  * Deterministic connectors group observations into a small candidate set of
- * readings. This is not the intelligence — it is the floor under it: the set
+ * readings. This is not the intelligence, it is the floor under it: the set
  * the engine can defend with counts alone, and the fallback when no model is
  * available. The evidence packet built here is the only thing a model is ever
  * allowed to reason over.

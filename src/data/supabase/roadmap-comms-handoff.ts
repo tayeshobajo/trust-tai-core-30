@@ -22,7 +22,7 @@ import { RELATIONSHIP_COLUMNS, toRelationship, type RelationshipRow } from "./co
  *
  * Tried in order of certainty: the relationship the roadmap was opened from,
  * then the client, then the Scout prospect it came from. No match is a real
- * answer — the person is told to open the conversation in Comms first.
+ * answer, the person is told to open the conversation in Comms first.
  */
 export async function relationshipForRoadmap(
   roadmap: Roadmap,

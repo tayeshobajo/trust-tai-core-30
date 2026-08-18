@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — confidence and "why we think" contracts.
+ * Trust Tai OS, confidence and "why we think" contracts.
  *
  * Anywhere Scout states something, it must also be able to say how sure it is
  * and what that belief rests on. Confidence is derived, never typed in, and

@@ -1,5 +1,5 @@
 /**
- * The routing ledger — what Projects asked of Ops and Studio, and what came back.
+ * The routing ledger, what Projects asked of Ops and Studio, and what came back.
  *
  * Nothing is stored twice: the ledger is *read* from the shared activity
  * stream. A route is a request (`project.routed_to_*`), acceptance belongs to
@@ -9,7 +9,7 @@
  * Two rules are enforced here, and only here, so every reader agrees:
  *   1. A withdrawn route can never become accepted. Acceptance recorded after
  *      a withdrawal is refused and shown as refused, not silently applied.
- *   2. A route nobody has answered after N days is unanswered — a fact about
+ *   2. A route nobody has answered after N days is unanswered, a fact about
  *      silence, never an accusation about a room.
  */
 

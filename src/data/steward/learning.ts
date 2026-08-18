@@ -12,7 +12,7 @@
  * A pattern is never a single event. Repeated evidence can only become an
  * inferred belief after it has been seen in `RECURRING_PATTERN_THRESHOLD`
  * distinct canonical conversations, and only from readings a person could have
- * acted on — never from passages Steward itself withheld.
+ * acted on, never from passages Steward itself withheld.
  *
  * Pure functions only. Nothing here touches the network.
  */
@@ -287,8 +287,8 @@ export function observationsFromSignals(input: {
  *
  * Confirmed commitments are the strongest evidence Steward has, because a
  * person put their name to each one, and they persist across every
- * conversation. Counting patterns here — rather than from one meeting's
- * interpretation — means a belief only forms from work the organization
+ * conversation. Counting patterns here, rather than from one meeting's
+ * interpretation, means a belief only forms from work the organization
  * actually agreed it was doing.
  */
 export function observationsFromCommitments(input: {
@@ -366,7 +366,7 @@ export function observationsFromCommitments(input: {
  * Patterns that have earned an inferred belief.
  *
  * A pattern needs `RECURRING_PATTERN_THRESHOLD` distinct conversations. Ones
- * already held — and ones a person has decided against — are left alone, so
+ * already held, and ones a person has decided against, are left alone, so
  * Steward never re-proposes something it has been corrected on.
  */
 export function accumulatePatterns(input: {
@@ -486,7 +486,7 @@ export const DISMISSAL_SUPPRESSION_THRESHOLD = 2;
 
 /**
  * Patterns Steward should stop raising, because people keep saying they are
- * only context. Explicit and countable — no hidden weighting.
+ * only context. Explicit and countable, no hidden weighting.
  */
 export function suppressedPatterns(
   records: OutcomeRecord[],
@@ -541,7 +541,7 @@ const OUTCOME_SENTENCE: Record<LearningOutcome, (subject: string) => string> = {
  * same append-only ledger as everything else, attributed and dated.
  *
  * These rows are bookkeeping about feedback, not beliefs about work, so
- * selection skips them — but a person can always read them.
+ * selection skips them, but a person can always read them.
  */
 export function outcomeToDraft(input: {
   outcome: LearningOutcome;
@@ -572,8 +572,8 @@ export function outcomeToDraft(input: {
       {
         kind: "human" as const,
         label: input.note
-          ? `Decided by a person — ${input.note}`
-          : `Decided by a person — ${OUTCOME_SENTENCE[input.outcome](input.about)}`,
+          ? `Decided by a person · ${input.note}`
+          : `Decided by a person · ${OUTCOME_SENTENCE[input.outcome](input.about)}`,
       },
     ] satisfies EvidenceRef[],
     meta: {

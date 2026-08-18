@@ -1,5 +1,5 @@
 /**
- * Scout — similar companies.
+ * Scout, similar companies.
  *
  * Read-only, deterministic, and computed over the board already loaded for the
  * organization. No model, no extra query, no stored similarity truth.

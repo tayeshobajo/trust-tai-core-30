@@ -3,8 +3,8 @@
  *
  * Deterministic, pure, and deliberately dull. This file counts and dates what
  * the suite already holds. It never interprets, never uses the word "risk",
- * and never calls a model. Everything downstream — hypotheses, recommendations
- * and the learning loop — rests on these rows, so a wrong reading here is a
+ * and never calls a model. Everything downstream, hypotheses, recommendations
+ * and the learning loop, rests on these rows, so a wrong reading here is a
  * wrong reading everywhere. When the evidence is not in the snapshot, no
  * observation is produced.
  */

@@ -1,5 +1,5 @@
 /**
- * Roadmap service — the one place roadmap state is written.
+ * Roadmap service, the one place roadmap state is written.
  *
  * Roadmaps sequence work; they do not own companies, people, or history.
  * Subjects are pointed at by id (`clients`, `prospects`, `comms_relationships`)
@@ -700,7 +700,7 @@ export const roadmapService = {
       context,
       "roadmap.decision_resolved",
       { id: decision.roadmapId, label: roadmapLabel },
-      `${decision.question} — ${status}.`,
+      `${decision.question} · ${status}.`,
       { decision_id: decision.id, status },
     );
     return toDecision(data as Row);

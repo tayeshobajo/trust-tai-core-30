@@ -1,9 +1,9 @@
 /**
- * Scout — who to approach, and the honest reason why.
+ * Scout, who to approach, and the honest reason why.
  *
  * Deterministic. A person rises because of their role's relationship to a
  * website/technology decision, the quality of the evidence behind the record,
- * and whether a real contact route exists — never because a provider said so
+ * and whether a real contact route exists, never because a provider said so
  * loudly. Human-confirmed records always outrank provider assertions.
  */
 
@@ -46,7 +46,7 @@ function routeFor(person: Person): {
     return {
       route: "unverified_email",
       score: 16,
-      note: `${EMAIL_STATUS_LABEL[person.emailStatus]} — verify before sending.`,
+      note: `${EMAIL_STATUS_LABEL[person.emailStatus]} · verify before sending.`,
     };
   }
   if (person.linkedinUrl) {

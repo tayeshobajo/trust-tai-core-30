@@ -1,5 +1,5 @@
 /**
- * Scout — AI market discovery client.
+ * Scout, AI market discovery client.
  *
  * The browser never talks to the model provider. It calls Trust Tai's own
  * discovery endpoint with the signed-in user's Supabase token; the server
@@ -88,7 +88,7 @@ export interface DiscoverOutcome {
 
 /**
  * Run one discovery pass, reporting stages as they happen. Rejects with a plain
- * message when Scout could not complete — the board shows it as written.
+ * message when Scout could not complete, the board shows it as written.
  */
 export async function discover(input: DiscoverInput): Promise<DiscoverOutcome> {
   const { data: sessionData } = await supabase.auth.getSession();

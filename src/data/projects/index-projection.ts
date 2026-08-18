@@ -1,5 +1,5 @@
 /**
- * Projects index — deterministic read models.
+ * Projects index, deterministic read models.
  *
  * Pure functions only. The page never decides anything here: it reads delivery
  * truth (projects, their origin, their recorded delivery detail) and projects

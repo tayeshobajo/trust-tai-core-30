@@ -1,8 +1,8 @@
 /**
  * A tiny in-memory stand-in for the Supabase client, for tests only.
  *
- * It supports exactly the query shapes Scout's persistence layer uses —
- * insert/select/update with `eq` filters and `order` — so integration tests
+ * It supports exactly the query shapes Scout's persistence layer uses 
+ * insert/select/update with `eq` filters and `order` · so integration tests
  * can exercise real service code end to end without a network or a database.
  *
  * It is deliberately strict: an unsupported shape throws rather than quietly

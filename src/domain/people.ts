@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — People contracts.
+ * Trust Tai OS, People contracts.
  *
  * People are the layer between a company and a conversation: who decides, how
  * they can be reached, and how confident we are in either claim.
@@ -156,7 +156,7 @@ export interface EmailVerification {
 
 /**
  * The one shape every people source implements. Adding a compliant provider
- * later means writing this interface — no caller changes.
+ * later means writing this interface, no caller changes.
  */
 export interface PeopleProvider extends PeopleProviderInfo {
   /** Whether this source can run right now (keys present, function deployed). */

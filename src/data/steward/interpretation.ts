@@ -215,7 +215,7 @@ const KIND_OF: Record<string, "action" | "decision" | "blocker" | "question"> = 
  * The shape a person confirms.
  *
  * The statement written into the workspace is the normalized meaning, never
- * the raw speech — the transcript stays behind it as evidence. The id is the
+ * the raw speech, the transcript stays behind it as evidence. The id is the
  * candidate's stable key, so confirming the same passage twice cannot create
  * the promise twice.
  */

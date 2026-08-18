@@ -1,5 +1,5 @@
 /**
- * Scout — ICP factor read model.
+ * Scout, ICP factor read model.
  *
  * A normalized, presentation-ready view over the deterministic fit criteria
  * already produced by the evaluator. Nothing is re-scored here and nothing is

@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — shared application registry.
+ * Trust Tai OS, shared application registry.
  *
  * Every internal Trust Tai app is registered here once. The shell, navigation,
  * and intelligence layer all read from this single list.
@@ -21,10 +21,10 @@ export type AppStatus = "live" | "in_build" | "mapped" | "external";
 
 /**
  * Where a room sits in the suite topology.
- * - `core`         — the shell itself (identity, navigation, shared entities).
- * - `business`     — owns domain state: Scout, Comms, Roadmap, Projects, Ops, Studio.
- * - `intelligence` — the suite-wide visibility/readout surface: Pulse.
- * - `stewardship`  — the cross-suite interpretation, memory, judgment,
+ * - `core` · the shell itself (identity, navigation, shared entities).
+ * - `business` · owns domain state: Scout, Comms, Roadmap, Projects, Ops, Studio.
+ * - `intelligence` · the suite-wide visibility/readout surface: Pulse.
+ * - `stewardship` · the cross-suite interpretation, memory, judgment,
  *                    recommendation and routing layer: Steward. It owns no
  *                    business entity and never becomes a peer domain.
  */
@@ -163,7 +163,7 @@ export const APP_REGISTRY: AppRegistration[] = [
     layer: "intelligence",
     name: "Pulse",
     slug: "pulse",
-    description: "Signals and outcomes across the portfolio — the suite readout surface.",
+    description: "Signals and outcomes across the portfolio, the suite readout surface.",
     status: "in_build",
     route: "/modules/pulse",
     icon: "Activity",

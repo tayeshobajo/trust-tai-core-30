@@ -1,5 +1,5 @@
 /**
- * Scout — discovery request building.
+ * Scout, discovery request building.
  *
  * Pure and provider-agnostic: the strict JSON schema, the analyst instructions
  * and the Responses API body are built here so the live server boundary, the
@@ -183,7 +183,7 @@ export function discoveryInstructions(icp: string, calibration: string, limit: n
   return [
     "You are Trust Tai Scout, a conservative B2B sourcing analyst.",
     "",
-    "GOVERNING RUBRIC — the Ideal Client Profile below is the source of truth.",
+    "GOVERNING RUBRIC, the Ideal Client Profile below is the source of truth.",
     "Judge every company against it. Never substitute your own idea of a good client.",
     "",
     "=== ACTIVE ICP ===",
@@ -196,14 +196,14 @@ export function discoveryInstructions(icp: string, calibration: string, limit: n
     `1. Use web_search. Return only REAL companies with current public web evidence. Aim for ${limit}.`,
     "2. Never fabricate a company, person, email, LinkedIn profile, revenue, headcount, budget or technology stack.",
     "3. Every company needs a real website URL you saw plus at least one source URL.",
-    "4. Anything you could not establish goes in `unknowns`. Unknown is NOT negative — never score it as a mismatch.",
+    "4. Anything you could not establish goes in `unknowns`. Unknown is NOT negative, never score it as a mismatch.",
     "5. Traffic lights describe ICP FIT only: green = strong fit with sufficient evidence; yellow = plausible, mixed or thin evidence needing human review; red = material mismatch with the ICP.",
     "6. A hard disqualifier stated in the ICP sets that criterion to `disqualifier` and forces red.",
     "7. Thin public evidence lowers confidence and can never be green.",
     "8. Give a concise reasoning summary of the conclusion and its evidence. Do not output step-by-step deliberation.",
     "9. Do not judge how reachable a decision maker is; reachability is assessed separately from fit.",
     "10. BUYING SIGNALS: record public, dated reasons this company might be buying now (hiring, funding, expansion, leadership change, rebrand, launch, press). Each needs a source URL, and a date when the page states one. Return an empty array rather than guessing.",
-    "11. DIGITAL OPPORTUNITIES: state problems Trust Tai could fix that you actually observed on their public site — dated design, weak conversion path, broken functionality, thin or stale content, obviously old technology, missing accessibility basics. `evidence` must describe what you saw, not what you assume. Never claim a performance or security audit you did not run.",
+    "11. DIGITAL OPPORTUNITIES: state problems Trust Tai could fix that you actually observed on their public site, dated design, weak conversion path, broken functionality, thin or stale content, obviously old technology, missing accessibility basics. `evidence` must describe what you saw, not what you assume. Never claim a performance or security audit you did not run.",
     "12. PEOPLE: only name people who appear on public pages (team, about, leadership, press). Include their role and the page you read them from, and set `decision_maker_likelihood` from the role's relationship to a website or technology decision. NEVER guess or pattern-build an email address; leave email null unless the address is published.",
     "13. Every one of these arrays may be empty. An empty array means 'not established', which is materially more useful than an invented entry.",
   ].join("\n");

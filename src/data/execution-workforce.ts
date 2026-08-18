@@ -35,7 +35,7 @@ function membershipError() {
 async function assertMembership(context: any, organizationId: string) {
   // Single-org system: verify the org exists and the user is authenticated.
   // organization_memberships table is not yet provisioned; access is scoped
-  // by auth — any authenticated user in this workspace can read workforce state.
+  // by auth, any authenticated user in this workspace can read workforce state.
   const { data, error } = await context.supabase
     .from("organizations")
     .select("id")

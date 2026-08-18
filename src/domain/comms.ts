@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Comms contracts.
+ * Trust Tai OS, Comms contracts.
  *
  * Comms is not an inbox. It is the room where relationships are kept alive on
  * purpose: one queue, one state per person, one truthful reason to reconnect.
@@ -179,7 +179,7 @@ export interface CommsDraft {
 /* -------------------------------------------------------------- reminders */
 
 /**
- * A reminder must rest on something true. No reason code, no reminder — Comms
+ * A reminder must rest on something true. No reason code, no reminder, Comms
  * never manufactures a message to keep a cadence alive.
  */
 export type ReasonCode =

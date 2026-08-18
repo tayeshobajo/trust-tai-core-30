@@ -7,7 +7,7 @@
  * asks the plain question before anything is written: does the table exist,
  * and may this person read and write it?
  *
- * The probe is a zero-row read per table — cheap, side-effect free, and
+ * The probe is a zero-row read per table, cheap, side-effect free, and
  * scoped to one organization, so RLS answers the permission half honestly.
  */
 
@@ -72,7 +72,7 @@ export function healthMessage(
   unknown: TableHealth[],
 ): string {
   if (missing.length > 0) {
-    return `The Conductor's ledger has not been created yet (${missing.join(", ")}). Apply docs/conductor-v1-schema.sql to the Trust Tai Supabase project — nothing can be recorded until then.`;
+    return `The Conductor's ledger has not been created yet (${missing.join(", ")}). Apply docs/conductor-v1-schema.sql to the Trust Tai Supabase project, nothing can be recorded until then.`;
   }
   if (forbidden.length > 0) {
     return `The ledger exists but this account cannot reach it (${forbidden.join(", ")}). Check that you are an active member of this organization and that the table grants from docs/conductor-v1-schema.sql were applied.`;
@@ -154,7 +154,7 @@ export async function checkControlSchema(organizationId: ID): Promise<ControlSch
 
   const message =
     missing.length > 0
-      ? `The approval queue has no ledger yet (${missing.join(", ")}). Apply docs/conductor-v2-schema.sql — until then the Conductor can reason, but nothing can be approved or routed.`
+      ? `The approval queue has no ledger yet (${missing.join(", ")}). Apply docs/conductor-v2-schema.sql, until then the Conductor can reason, but nothing can be approved or routed.`
       : forbidden.length > 0
         ? `The control ledger exists but this account cannot reach it (${forbidden.join(", ")}). Check your membership and the grants in docs/conductor-v2-schema.sql.`
         : unknown.length > 0
@@ -176,7 +176,7 @@ export async function checkControlSchema(organizationId: ID): Promise<ControlSch
 /**
  * The V3 outcome and learning tables are checked on their own, for the same
  * reason V2 is: without them the Conductor still reasons, approves and routes
- * — it simply cannot remember what happened afterwards. A person should be
+ *, it simply cannot remember what happened afterwards. A person should be
  * told that plainly rather than watching an empty panel and guessing.
  */
 export const LEARNING_TABLES = ["conductor_observations", "conductor_learning"] as const;
@@ -211,7 +211,7 @@ export async function checkLearningSchema(organizationId: ID): Promise<LearningS
 
   const message =
     missing.length > 0
-      ? `Outcomes cannot be remembered yet (${missing.join(", ")}). Apply docs/conductor-v3-schema.sql to the Trust Tai Supabase project — until then the Conductor can act, but learns nothing from what happens next.`
+      ? `Outcomes cannot be remembered yet (${missing.join(", ")}). Apply docs/conductor-v3-schema.sql to the Trust Tai Supabase project, until then the Conductor can act, but learns nothing from what happens next.`
       : forbidden.length > 0
         ? `The learning ledger exists but this account cannot reach it (${forbidden.join(", ")}). Check your membership and the grants in docs/conductor-v3-schema.sql.`
         : unknown.length > 0

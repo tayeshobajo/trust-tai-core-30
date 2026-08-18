@@ -3,7 +3,7 @@
  *
  * There is no second event store: this is a thin adapter over the existing
  * `activities` table so Scout, Comms, Roadmap and later Projects all speak the
- * same vocabulary with the same envelope. Emitting is best-effort — history is
+ * same vocabulary with the same envelope. Emitting is best-effort, history is
  * important, never important enough to lose a person's work.
  */
 

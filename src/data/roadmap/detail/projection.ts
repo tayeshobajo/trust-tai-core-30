@@ -1,5 +1,5 @@
 /**
- * Roadmap detail — deterministic read models.
+ * Roadmap detail, deterministic read models.
  *
  * Pure functions only. The inner page never decides anything here: it reads
  * roadmap truth (milestones, decisions, execution links, exports) and projects

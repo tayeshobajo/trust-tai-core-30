@@ -1,5 +1,5 @@
 /**
- * Pulse — the visibility read model.
+ * Pulse, the visibility read model.
  *
  * Pulse owns no business truth. A `PulseSignal` is a presentation projection of
  * a derived `Signal`: the same fact, sorted into one of four attention levels

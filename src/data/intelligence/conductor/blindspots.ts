@@ -2,7 +2,7 @@
  * The gap finder: what the business cannot currently see.
  *
  * A blind spot is a question, not an answer. Nothing here guesses at the
- * missing value — it names the question, why it matters, and the instrument
+ * missing value, it names the question, why it matters, and the instrument
  * that would answer it. Detecting a gap is cheap; pretending it is filled is
  * how a business steers into a wall.
  */

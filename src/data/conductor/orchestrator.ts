@@ -1,7 +1,7 @@
 /**
  * The orchestrator: pure rules, real boundaries.
  *
- * It puts three things together and nothing else — the pure control layer
+ * It puts three things together and nothing else, the pure control layer
  * (what may happen), the room adapters (the only way out of the Conductor),
  * and the governance ledger (what actually happened). Every step writes a
  * receipt and a governance event, and no step ever claims more than it did.

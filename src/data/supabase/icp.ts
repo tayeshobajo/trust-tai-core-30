@@ -1,5 +1,5 @@
 /**
- * Ideal Client Profile — the organization's targeting intelligence.
+ * Ideal Client Profile, the organization's targeting intelligence.
  *
  * One row per organization in `icp_profiles`. The saved Markdown is the source
  * of truth; the frontend never carries its own copy.

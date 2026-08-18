@@ -1,5 +1,5 @@
 /**
- * Scout — what is still missing, and what Scout would do about it.
+ * Scout, what is still missing, and what Scout would do about it.
  *
  * A gap is never a failure state. It states plainly what has not been
  * established, whether Scout can close it from public sources on its own, and

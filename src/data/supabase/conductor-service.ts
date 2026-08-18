@@ -7,8 +7,8 @@
  * copy of something Scout, Comms, Roadmap, Projects or Ops already owns.
  *
  * Every read is scoped to one organization. A missing table is treated as an
- * empty ledger rather than an error, so the Conductor still answers — with the
- * gap named — before the migration in docs/conductor-v1-schema.sql is applied.
+ * empty ledger rather than an error, so the Conductor still answers, with the
+ * gap named, before the migration in docs/conductor-v1-schema.sql is applied.
  */
 
 import { supabase } from "@/integrations/trust-tai/supabase";
@@ -236,7 +236,7 @@ export interface RecordCorrectionInput {
 }
 
 /**
- * Record a correction, and — when it corrects a number — record the number
+ * Record a correction, and, when it corrects a number, record the number
  * itself as a decided figure in the same breath, so the next answer stands on
  * it rather than on the correction text.
  */

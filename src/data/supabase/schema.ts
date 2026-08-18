@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Supabase row shapes and write helpers.
+ * Trust Tai OS, Supabase row shapes and write helpers.
  *
  * The schema is owned and managed outside this project. Nothing here creates
  * or alters tables; these are read-only expectations about the existing public
@@ -93,7 +93,7 @@ export function isMissingColumn(error: PostgrestError | null): string | null {
 
 /**
  * Run a write, dropping any optional column the table does not have and
- * retrying. `required` keys are never dropped — if one of those is rejected the
+ * retrying. `required` keys are never dropped, if one of those is rejected the
  * error surfaces so the mismatch is reported rather than silently swallowed.
  */
 export async function writeTolerant<T>(

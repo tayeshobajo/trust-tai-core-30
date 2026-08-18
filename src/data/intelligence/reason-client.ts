@@ -4,7 +4,7 @@
  * The packet is assembled here, under the signed-in person's RLS, sent to the
  * reasoning endpoint, and everything that comes back is verified against that
  * same packet before it is trusted. If reasoning is unavailable for any reason
- * — no provider, no session, a refusal — the caller keeps its deterministic
+ *, no provider, no session, a refusal, the caller keeps its deterministic
  * read rather than losing the surface.
  */
 

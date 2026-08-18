@@ -6,7 +6,7 @@
  * expected signal was checked) and `conductor_learning` (what the Conductor
  * concluded about its own recommendations, with the evidence attached).
  *
- * Neither holds a copy of a prospect, relationship, roadmap or project — only
+ * Neither holds a copy of a prospect, relationship, roadmap or project, only
  * references and the evidence sentences behind a reading. Nothing is edited or
  * deleted: a changed conclusion is a new row that supersedes the old one.
  *
@@ -103,7 +103,7 @@ export async function loadObservations(organizationId: ID): Promise<ActionObserv
 /**
  * Append one measurement, without ever mutating one.
  *
- * The live tables grant `SELECT, INSERT` only — no UPDATE, by design — so a
+ * The live tables grant `SELECT, INSERT` only, no UPDATE, by design, so a
  * conflicting write must resolve, not overwrite. An observation's id is its
  * content, so a duplicate key means "this exact reading is already recorded":
  * the stored row is returned untouched and nothing is double-counted.
@@ -199,7 +199,7 @@ export async function loadLearning(organizationId: ID): Promise<LearningRecord[]
 }
 
 /**
- * Append one lesson. Prior records are superseded, never overwritten — and
+ * Append one lesson. Prior records are superseded, never overwritten, and
  * with INSERT-only grants there is no path that could overwrite one.
  */
 export async function recordLearning(record: LearningRecord): Promise<LearningRecord> {
@@ -273,7 +273,7 @@ export async function correctLearning(input: {
     sourceActionIds: input.standing?.sourceActionIds ?? [],
     sourceObservationIds: input.standing?.sourceObservationIds ?? [],
     hypothesis: input.standing?.hypothesis ?? "The Conductor's reading of this operation.",
-    expectedSignal: input.expectedSignal ?? input.standing?.expectedSignal ?? "—",
+    expectedSignal: input.expectedSignal ?? input.standing?.expectedSignal ?? "-",
     observedResult: "A person corrected the Conductor's reading.",
     evidence: [{ label: `${input.correctedBy.label} corrected this reading`, kind: "human" }],
     confidence: "high",

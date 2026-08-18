@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — Comms external integration contracts.
+ * Trust Tai OS, Comms external integration contracts.
  *
  * Comms is allowed to read the outside world. It is never allowed to speak for
  * Tai without a person, and it is never allowed to claim something it did not

@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — the Conductor contract.
+ * Trust Tai OS, the Conductor contract.
  *
  * The Conductor coordinates. Steward interprets. Owning rooms execute.
  *
@@ -32,7 +32,7 @@ import type { RoadmapDecision, RoadmapNote, Tier } from "./roadmap";
 /* ------------------------------------------------------------------ basis */
 
 /**
- * Where a value came from — the truth class. This is the spine of the whole
+ * Where a value came from, the truth class. This is the spine of the whole
  * subsystem: every number the Conductor says out loud carries one of these,
  * and they never collapse into each other.
  */
@@ -104,7 +104,7 @@ export const GOAL_HORIZON_DAYS: Record<GoalHorizon, number> = {
  * One thing the business has decided to achieve.
  *
  * Always `decided`: an intent is a human commitment, never something the
- * Conductor worked out. Without a target value it is still a valid intent —
+ * Conductor worked out. Without a target value it is still a valid intent 
  * it simply cannot be decomposed, and says so.
  */
 export interface BusinessIntent {
@@ -191,7 +191,7 @@ export interface VitalSignDefinition {
 
 /**
  * The registry. Every vital sign the Conductor knows how to ask about,
- * including the ones nothing in the suite can answer yet — a metric the
+ * including the ones nothing in the suite can answer yet, a metric the
  * business cannot see is exactly the thing worth naming.
  */
 export const VITAL_SIGNS: VitalSignDefinition[] = [
@@ -672,7 +672,7 @@ export const BLIND_SPOT_SEVERITY_LABEL: Record<BlindSpotSeverity, string> = {
 
 /**
  * Something the business cannot currently see. Never a guess about what the
- * answer would be — only the question, why it matters, and how to instrument it.
+ * answer would be, only the question, why it matters, and how to instrument it.
  */
 /** Why the answer is missing: nothing is wired up, or it is wired and silent. */
 export type BlindSpotState = "not_connected" | "no_signal";
@@ -791,7 +791,7 @@ export interface FrictionPattern {
 export type ImprovementRisk = "low" | "medium" | "high";
 
 /**
- * A proposed change to how the business works — a process, an automation, a
+ * A proposed change to how the business works, a process, an automation, a
  * capability. Always a proposal: the Conductor does not modify itself, the
  * suite, or any room.
  */
@@ -1047,8 +1047,8 @@ export interface ConductorAnswer {
   learning: LearningState;
   /**
    * What the outcome ledger already knows about the rooms this answer touches,
-   * each sentence carrying how strongly it is held. Bounded and relevant —
-   * never the whole history — and never a source of authority.
+   * each sentence carrying how strongly it is held. Bounded and relevant 
+   * never the whole history, and never a source of authority.
    */
   priorLearning: string[];
   /** The recorded figures this answer stood on. */
@@ -1096,7 +1096,7 @@ export const CONDUCTOR_CONTROL: ControlStatement = {
 /* ------------------------------------------------------------------ *
  * Recorded figures: the instrument of last resort.
  *
- * Some numbers no room in the suite will ever hold — cash in the bank,
+ * Some numbers no room in the suite will ever hold, cash in the bank,
  * monthly burn, money owed. Rather than leave the survival question
  * permanently unanswerable, a person may record the figure themselves. A
  * recorded figure is `decided` truth: it carries who said it, when it was

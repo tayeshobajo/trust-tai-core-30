@@ -5,9 +5,9 @@
  * Conductor may prepare the ground and it may ask a question. It may never
  * answer one.
  *
- *   - `roadmapService.create` — a draft roadmap shell for an approved subject.
+ *   - `roadmapService.create` · a draft roadmap shell for an approved subject.
  *     Idempotent: the service returns the existing roadmap for that subject.
- *   - `roadmapService.addDecision` — an open question waiting for a person.
+ *   - `roadmapService.addDecision` · an open question waiting for a person.
  *
  * Not adapted, deliberately: resolving a decision and changing approved
  * sequencing. Both are decided truth, and letting inference write them would
@@ -31,7 +31,7 @@ export const roadmapShellAdapter: RoomAdapter = {
   id: "adapter:roadmap.shell",
   room: "roadmap",
   operations: ["roadmap.create_shell"],
-  boundary: "roadmapService.create — idempotent per subject, drafts only",
+  boundary: "roadmapService.create, idempotent per subject, drafts only",
   supports(operation) {
     return this.operations.includes(operation);
   },
@@ -128,7 +128,7 @@ export const roadmapDecisionAdapter: RoomAdapter = {
   id: "adapter:roadmap.decision",
   room: "roadmap",
   operations: ["roadmap.request_decision"],
-  boundary: "roadmapService.addDecision — an open question, never an answer",
+  boundary: "roadmapService.addDecision, an open question, never an answer",
   supports(operation) {
     return this.operations.includes(operation);
   },

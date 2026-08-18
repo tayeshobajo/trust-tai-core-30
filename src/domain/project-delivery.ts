@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — what a delivery room holds.
+ * Trust Tai OS, what a delivery room holds.
  *
  * A project is the agreement. These are the things that actually move inside
  * it: the work, what is stopping it, the delivery decisions it needs, and the

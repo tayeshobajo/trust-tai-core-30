@@ -1,5 +1,5 @@
 /**
- * Scout — bounded next steps.
+ * Scout, bounded next steps.
  *
  * Only actions the product actually supports appear here. Anything the current
  * build cannot do is either omitted or shown as explicitly unavailable, with

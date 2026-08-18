@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — shared core entity contracts.
+ * Trust Tai OS, shared core entity contracts.
  *
  * One identity. One organization model. Shared entities.
  * Apps read and extend these entities; they never duplicate them.
@@ -78,7 +78,7 @@ export interface Contact extends BaseEntity {
 
 /**
  * A company Trust Tai is considering, before it becomes a client.
- * Deliberately minimal — fit evidence lives in the Scout module.
+ * Deliberately minimal, fit evidence lives in the Scout module.
  */
 export type ProspectStatus =
   | "discovered"

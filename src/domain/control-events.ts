@@ -1,10 +1,10 @@
 /**
- * Trust Tai OS — Conductor governance events.
+ * Trust Tai OS, Conductor governance events.
  *
  * These are deliberately *not* in `src/domain/events.ts`. That file is the
  * shared business vocabulary: only a business room may emit it, because only a
  * business room owns the state it reports. The events here report something
- * else entirely — what the Conductor proposed and what a person decided about
+ * else entirely, what the Conductor proposed and what a person decided about
  * it. They are the audit trail of governance, not a second copy of anyone's
  * truth, and no room reads them to learn what happened in another room.
  *
@@ -32,7 +32,7 @@ export const CONTROL_EVENTS = {
   ACTION_APPROVED: {
     name: "conductor.action_approved",
     emittedBy: "conductor",
-    meaning: "A person allowed the action. Permission only — nothing has been carried out.",
+    meaning: "A person allowed the action. Permission only, nothing has been carried out.",
   },
   ACTION_HELD: {
     name: "conductor.action_held",

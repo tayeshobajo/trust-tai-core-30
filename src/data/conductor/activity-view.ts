@@ -1,7 +1,7 @@
 /**
  * The filtered activity view behind the Conductor rail.
  *
- * The rail states three small truths — what happened today, what is waiting on
+ * The rail states three small truths, what happened today, what is waiting on
  * a person, what has actually moved. Each one is a link, and this module is
  * what the link opens: the same truth, unabridged, read from the same sources
  * the rail counted. Nothing new is inferred here; the view only widens.

@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — shared suite event vocabulary.
+ * Trust Tai OS, shared suite event vocabulary.
  *
  * The nervous system of the suite is one stream, not a message bus and not a
  * second event store. Every event written here lands in the existing

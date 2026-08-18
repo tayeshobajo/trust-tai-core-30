@@ -1,5 +1,5 @@
 /**
- * Scout — live public-website research.
+ * Scout, live public-website research.
  *
  * Calls the managed `scout-research` Edge Function with the signed-in user's
  * JWT. The function reads a company's PUBLIC website pages only: there is no
@@ -40,7 +40,7 @@ function text(value: unknown): string {
 }
 
 /**
- * Invoke the Edge Function. Failures are surfaced as calm, specific messages —
+ * Invoke the Edge Function. Failures are surfaced as calm, specific messages 
  * there is never a silent fall back to preview data.
  */
 export async function researchWebsite(websiteUrl: string): Promise<ScoutResearchPayload> {
@@ -139,18 +139,18 @@ function formatObservationValue(value: unknown): string {
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "number") return String(value);
   if (typeof value === "string") return value.trim();
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "-";
   if (Array.isArray(value)) {
     const parts = value
       .map((v) => (typeof v === "string" ? v.trim() : formatObservationValue(v)))
       .filter(Boolean);
-    return parts.length > 0 ? parts.join(", ") : "—";
+    return parts.length > 0 ? parts.join(", ") : "-";
   }
   // Object fallback for nested or loosely-typed values.
   const obj = value as Record<string, unknown>;
   const nested = text(obj["value"]) || text(obj["text"]) || text(obj["label"]);
   if (nested) return nested;
-  return "—";
+  return "-";
 }
 
 function renderObservationStatement(entry: Row, item: unknown): string {
@@ -159,7 +159,7 @@ function renderObservationStatement(entry: Row, item: unknown): string {
   if (label) {
     const valueText = formatObservationValue(entry["value"]);
     const evidence = text(entry["evidence"]);
-    return evidence ? `${label}: ${valueText} — ${evidence}` : `${label}: ${valueText}`;
+    return evidence ? `${label}: ${valueText} · ${evidence}` : `${label}: ${valueText}`;
   }
 
   // Legacy / fallback shapes.
@@ -296,7 +296,7 @@ export function observationFacts(observed: unknown[]): Record<string, unknown> {
 /**
  * Buying signals, digital opportunities and people the research function
  * reported. The Edge Function's payload shape has grown over versions, so a
- * few known key spellings are accepted — but nothing is inferred: if the
+ * few known key spellings are accepted, but nothing is inferred: if the
  * payload does not state it, it is simply absent.
  */
 export function intelFromResearch(payload: ScoutResearchPayload): Row | null {

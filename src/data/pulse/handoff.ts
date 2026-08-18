@@ -2,9 +2,9 @@
  * Pulse → Conductor handoff.
  *
  * Pulse identifies and routes; the Conductor interprets and governs. When a
- * person asks for the deeper read on one signal, Pulse hands over a pointer —
+ * person asks for the deeper read on one signal, Pulse hands over a pointer 
  * the signal's id, the room that owns it, the lineage it belongs to, and a
- * plainly worded question — and nothing else. No business state is copied:
+ * plainly worded question, and nothing else. No business state is copied:
  * the Conductor re-reads the suite for itself.
  */
 
@@ -22,7 +22,7 @@ export interface ConductorHandoff {
   ask: string;
   /**
    * The routed request this signal is about, when it is one. A pointer into
-   * the shared activity ledger — never a copy of the request itself.
+   * the shared activity ledger, never a copy of the request itself.
    */
   route?: string;
 }
@@ -58,7 +58,7 @@ const SEVERITY_ASK: Record<PulseSeverity, string> = {
 /**
  * The question Pulse hands the Conductor. It names the signal and the lineage
  * so the read is about this thing, and asks for interpretation rather than
- * action — the Conductor still decides what, if anything, may be proposed.
+ * action, the Conductor still decides what, if anything, may be proposed.
  */
 export function handoffQuestion(signal: PulseSignal): string {
   if (isRoutedWorkSignal(signal)) {

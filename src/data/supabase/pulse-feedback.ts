@@ -1,5 +1,5 @@
 /**
- * Pulse feedback — teaching, never truth.
+ * Pulse feedback, teaching, never truth.
  *
  * Accept / Not now / Not useful say how prominently Pulse should frame a
  * signal for this organization. They never touch a project, roadmap,

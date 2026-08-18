@@ -1,5 +1,5 @@
 /**
- * Roadmap Intelligence — server-side research (server only).
+ * Roadmap Intelligence, server-side research (server only).
  *
  * Same provider discipline as Scout: keys never leave the server, the provider
  * that answered is recorded truthfully, and if no provider is configured the
