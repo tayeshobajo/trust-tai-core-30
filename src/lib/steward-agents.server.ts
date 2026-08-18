@@ -203,3 +203,21 @@ export async function assignPaperclipTask(input: {
   });
   return { issueId: issue.id };
 }
+
+/**
+ * Single-org workspace: the org row must exist and the caller must hold a
+ * validated session. Untyped context on purpose, the generated Database types
+ * do not describe this externally managed schema.
+ */
+export async function assertStewardMembership(
+  context: { supabase: any },
+  organizationId: string,
+): Promise<void> {
+  const { data, error } = await context.supabase
+    .from("organizations")
+    .select("id")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("You are not a member of this Trust Tai workspace.");
+}
