@@ -232,7 +232,7 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
       const project = await projectsService.start(input, context);
       // Everything after the promise is optional, so a failing extra must not
       // undo a project that already exists. Each one is attempted on its own.
-      const delivery = { ...context, projectId: project.id };
+      const delivery = { ...context, projectId: project.id, projectName: project.name };
       for (const source of extras.thinking) {
         try {
           await projectIntelligence.addThinking(source, delivery);
