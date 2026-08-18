@@ -75,6 +75,10 @@ export function TaskRow({
   onDragStart,
   onDragOver,
   onDrop,
+  onMoveUp,
+  onMoveDown,
+  position,
+  total,
   showSelect = false,
 }: {
   task: StewardTask;
@@ -88,6 +92,12 @@ export function TaskRow({
   onDragStart?: (event: DragEvent<HTMLLIElement>) => void;
   onDragOver?: (event: DragEvent<HTMLLIElement>) => void;
   onDrop?: (event: DragEvent<HTMLLIElement>) => void;
+  /** Keyboard equivalents of dragging this row up or down the checklist. */
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  /** 1-based place in the visible checklist, spoken to screen readers. */
+  position?: number;
+  total?: number;
   showSelect?: boolean;
 }) {
   const done = task.state === "complete";
@@ -133,15 +143,40 @@ export function TaskRow({
         </span>
       )}
 
-      <span
-        aria-hidden
-        className={cn(
-          "cursor-grab text-muted-foreground/50 transition-opacity",
-          onDragStart ? "opacity-0 group-hover:opacity-100" : "invisible",
-        )}
-      >
-        <GripVertical className="size-4" />
-      </span>
+      {onMoveUp || onMoveDown ? (
+        <button
+          type="button"
+          aria-label={
+            `Reorder ${task.title}` +
+            (position && total ? `, position ${position} of ${total}` : "") +
+            ". Press the up or down arrow key to move it."
+          }
+          aria-keyshortcuts="ArrowUp ArrowDown"
+          onKeyDown={(event) => {
+            if (event.key === "ArrowUp" && onMoveUp) {
+              event.preventDefault();
+              onMoveUp();
+            }
+            if (event.key === "ArrowDown" && onMoveDown) {
+              event.preventDefault();
+              onMoveDown();
+            }
+          }}
+          className="cursor-grab rounded text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+        >
+          <GripVertical aria-hidden className="size-4" />
+        </button>
+      ) : (
+        <span
+          aria-hidden
+          className={cn(
+            "text-muted-foreground/50",
+            onDragStart ? "opacity-0 group-hover:opacity-100" : "invisible",
+          )}
+        >
+          <GripVertical className="size-4" />
+        </span>
+      )}
 
       <button
         type="button"
@@ -195,6 +230,15 @@ export function TaskRow({
           <DropdownMenuItem disabled={!canReassign.allowed} onSelect={() => onReassign()}>
             Reassign
           </DropdownMenuItem>
+          {canReassign.allowed ? null : (
+            <p className="px-2 py-2 text-xs text-muted-foreground">{canReassign.because}</p>
+          )}
+          {onMoveUp ? (
+            <DropdownMenuItem onSelect={() => onMoveUp()}>Move up</DropdownMenuItem>
+          ) : null}
+          {onMoveDown ? (
+            <DropdownMenuItem onSelect={() => onMoveDown()}>Move down</DropdownMenuItem>
+          ) : null}
           {canComplete ? (
             <DropdownMenuItem onSelect={() => onComplete()}>Mark complete</DropdownMenuItem>
           ) : (
