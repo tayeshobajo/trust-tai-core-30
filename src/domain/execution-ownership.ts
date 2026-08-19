@@ -2,7 +2,7 @@
  * Trust Tai OS, the execution ownership law.
  *
  * Roadmap proposes. It never executes, and it never decides on its own which
- * room will carry the work by借 borrowing a room's name from a sentence a model
+ * room will carry the work by borrowing a room's name from a sentence a model
  * happened to write. Ownership is deterministic here, in one place, so no
  * surface, prompt, projection or learned pattern can drift.
  *
