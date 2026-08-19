@@ -23,6 +23,7 @@ import { Route as ModulesPulseRouteImport } from './routes/modules.pulse'
 import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesStewardRouteImport } from './routes/modules.steward'
+import { Route as ModulesWebsiteRouteImport } from './routes/modules.website'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsAppsRouteImport } from './routes/settings.apps'
 import { Route as SettingsDiagnosticsRouteImport } from './routes/settings.diagnostics'
@@ -57,6 +58,8 @@ import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/
 import { Route as ApiPublicSettingsInviteEmailRouteImport } from './routes/api/public/settings.invite-email'
 import { Route as ApiPublicStewardConversationRouteImport } from './routes/api/public/steward.conversation'
 import { Route as ApiPublicStewardInterpretRouteImport } from './routes/api/public/steward.interpret'
+import { Route as ApiPublicWebsiteEventsRouteImport } from './routes/api/public/website.events'
+import { Route as ApiPublicWebsiteIntakeRouteImport } from './routes/api/public/website.intake'
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
 import { Route as ModulesStewardMeetingsConversationIdRouteImport } from './routes/modules.steward.meetings.$conversationId'
@@ -135,6 +138,11 @@ const ModulesScoutRoute = ModulesScoutRouteImport.update({
 const ModulesStewardRoute = ModulesStewardRouteImport.update({
   id: '/modules/steward',
   path: '/modules/steward',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesWebsiteRoute = ModulesWebsiteRouteImport.update({
+  id: '/modules/website',
+  path: '/modules/website',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
@@ -315,6 +323,16 @@ const ApiPublicStewardInterpretRoute =
     path: '/api/public/steward/interpret',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWebsiteEventsRoute = ApiPublicWebsiteEventsRouteImport.update({
+  id: '/api/public/website/events',
+  path: '/api/public/website/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWebsiteIntakeRoute = ApiPublicWebsiteIntakeRouteImport.update({
+  id: '/api/public/website/intake',
+  path: '/api/public/website/intake',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ModulesScoutProspectsProspectIdRoute =
   ModulesScoutProspectsProspectIdRouteImport.update({
     id: '/prospects/$prospectId',
@@ -384,6 +402,7 @@ export interface FileRoutesByFullPath {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
@@ -418,6 +437,8 @@ export interface FileRoutesByFullPath {
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
+  '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
+  '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
@@ -437,6 +458,7 @@ export interface FileRoutesByTo {
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
+  '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
@@ -470,6 +492,8 @@ export interface FileRoutesByTo {
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
+  '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
+  '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsIndexRoute
@@ -496,6 +520,7 @@ export interface FileRoutesById {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
@@ -530,6 +555,8 @@ export interface FileRoutesById {
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
+  '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
+  '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
@@ -557,6 +584,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/modules/website'
     | '/settings/apps'
     | '/settings/diagnostics'
     | '/settings/integrations'
@@ -591,6 +619,8 @@ export interface FileRouteTypes {
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
+    | '/api/public/website/events'
+    | '/api/public/website/intake'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings/'
@@ -610,6 +640,7 @@ export interface FileRouteTypes {
     | '/modules/conductor'
     | '/modules/ops'
     | '/modules/pulse'
+    | '/modules/website'
     | '/settings/apps'
     | '/settings/diagnostics'
     | '/settings/integrations'
@@ -643,6 +674,8 @@ export interface FileRouteTypes {
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
+    | '/api/public/website/events'
+    | '/api/public/website/intake'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings'
@@ -668,6 +701,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/modules/website'
     | '/settings/apps'
     | '/settings/diagnostics'
     | '/settings/integrations'
@@ -702,6 +736,8 @@ export interface FileRouteTypes {
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
+    | '/api/public/website/events'
+    | '/api/public/website/intake'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/steward/meetings/'
@@ -727,6 +763,7 @@ export interface RootRouteChildren {
   ModulesRoadmapRoute: typeof ModulesRoadmapRouteWithChildren
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
   ModulesStewardRoute: typeof ModulesStewardRouteWithChildren
+  ModulesWebsiteRoute: typeof ModulesWebsiteRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicIntelligenceReasonRoute: typeof ApiPublicIntelligenceReasonRoute
   ApiPublicProjectsContextPacketRoute: typeof ApiPublicProjectsContextPacketRoute
@@ -738,6 +775,8 @@ export interface RootRouteChildren {
   ApiPublicSettingsInviteEmailRoute: typeof ApiPublicSettingsInviteEmailRoute
   ApiPublicStewardConversationRoute: typeof ApiPublicStewardConversationRoute
   ApiPublicStewardInterpretRoute: typeof ApiPublicStewardInterpretRoute
+  ApiPublicWebsiteEventsRoute: typeof ApiPublicWebsiteEventsRoute
+  ApiPublicWebsiteIntakeRoute: typeof ApiPublicWebsiteIntakeRoute
   ApiInternalExecutionScoutIcpRoute: typeof ApiInternalExecutionScoutIcpRoute
   ApiInternalExecutionScoutPipelineRoute: typeof ApiInternalExecutionScoutPipelineRoute
   ApiInternalExecutionScoutProspectRoute: typeof ApiInternalExecutionScoutProspectRoute
@@ -844,6 +883,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/steward'
       fullPath: '/modules/steward'
       preLoaderRoute: typeof ModulesStewardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/website': {
+      id: '/modules/website'
+      path: '/modules/website'
+      fullPath: '/modules/website'
+      preLoaderRoute: typeof ModulesWebsiteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/': {
@@ -1084,6 +1130,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicStewardInterpretRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/website/events': {
+      id: '/api/public/website/events'
+      path: '/api/public/website/events'
+      fullPath: '/api/public/website/events'
+      preLoaderRoute: typeof ApiPublicWebsiteEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/website/intake': {
+      id: '/api/public/website/intake'
+      path: '/api/public/website/intake'
+      fullPath: '/api/public/website/intake'
+      preLoaderRoute: typeof ApiPublicWebsiteIntakeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/modules/scout/prospects/$prospectId': {
       id: '/modules/scout/prospects/$prospectId'
       path: '/prospects/$prospectId'
@@ -1299,6 +1359,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesRoadmapRoute: ModulesRoadmapRouteWithChildren,
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
   ModulesStewardRoute: ModulesStewardRouteWithChildren,
+  ModulesWebsiteRoute: ModulesWebsiteRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicIntelligenceReasonRoute: ApiPublicIntelligenceReasonRoute,
   ApiPublicProjectsContextPacketRoute: ApiPublicProjectsContextPacketRoute,
@@ -1310,6 +1371,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSettingsInviteEmailRoute: ApiPublicSettingsInviteEmailRoute,
   ApiPublicStewardConversationRoute: ApiPublicStewardConversationRoute,
   ApiPublicStewardInterpretRoute: ApiPublicStewardInterpretRoute,
+  ApiPublicWebsiteEventsRoute: ApiPublicWebsiteEventsRoute,
+  ApiPublicWebsiteIntakeRoute: ApiPublicWebsiteIntakeRoute,
   ApiInternalExecutionScoutIcpRoute: ApiInternalExecutionScoutIcpRoute,
   ApiInternalExecutionScoutPipelineRoute:
     ApiInternalExecutionScoutPipelineRoute,

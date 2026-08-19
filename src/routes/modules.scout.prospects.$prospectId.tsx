@@ -13,6 +13,7 @@ import { useMemo } from "react";
 import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState, TTButton } from "@/components/tt/primitives";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
+import { InboundSourceCard } from "@/components/tt/scout/inbound-source";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { HandoffPanel } from "@/components/tt/prospect/handoff";
 import { PeoplePanel, type ManualPersonForm } from "@/components/tt/prospect/people-panel";
@@ -381,6 +382,7 @@ function CompanyDetail({
 
             {tab === "overview" ? (
               <div className="space-y-6">
+                <InboundSourceCard organizationId={organizationId} prospectId={prospectId} />
                 <ScoutSummaryCard
                   summary={derived.summary}
                   onViewRationale={() => void goToTab("icp")}
