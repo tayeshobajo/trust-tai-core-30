@@ -31,6 +31,7 @@ import { Route as SettingsIntegrationsRouteImport } from './routes/settings.inte
 import { Route as SettingsIntelligenceRouteImport } from './routes/settings.intelligence'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsOrganizationRouteImport } from './routes/settings.organization'
+import { Route as SettingsOwnershipRouteImport } from './routes/settings.ownership'
 import { Route as SettingsPeopleRouteImport } from './routes/settings.people'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
@@ -180,6 +181,11 @@ const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
 const SettingsOrganizationRoute = SettingsOrganizationRouteImport.update({
   id: '/organization',
   path: '/organization',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsOwnershipRoute = SettingsOwnershipRouteImport.update({
+  id: '/ownership',
+  path: '/ownership',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsPeopleRoute = SettingsPeopleRouteImport.update({
@@ -422,6 +428,7 @@ export interface FileRoutesByFullPath {
   '/settings/intelligence': typeof SettingsIntelligenceRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/organization': typeof SettingsOrganizationRoute
+  '/settings/ownership': typeof SettingsOwnershipRoute
   '/settings/people': typeof SettingsPeopleRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/security': typeof SettingsSecurityRoute
@@ -480,6 +487,7 @@ export interface FileRoutesByTo {
   '/settings/intelligence': typeof SettingsIntelligenceRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/organization': typeof SettingsOrganizationRoute
+  '/settings/ownership': typeof SettingsOwnershipRoute
   '/settings/people': typeof SettingsPeopleRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/security': typeof SettingsSecurityRoute
@@ -544,6 +552,7 @@ export interface FileRoutesById {
   '/settings/intelligence': typeof SettingsIntelligenceRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/organization': typeof SettingsOrganizationRoute
+  '/settings/ownership': typeof SettingsOwnershipRoute
   '/settings/people': typeof SettingsPeopleRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/security': typeof SettingsSecurityRoute
@@ -610,6 +619,7 @@ export interface FileRouteTypes {
     | '/settings/intelligence'
     | '/settings/notifications'
     | '/settings/organization'
+    | '/settings/ownership'
     | '/settings/people'
     | '/settings/profile'
     | '/settings/security'
@@ -668,6 +678,7 @@ export interface FileRouteTypes {
     | '/settings/intelligence'
     | '/settings/notifications'
     | '/settings/organization'
+    | '/settings/ownership'
     | '/settings/people'
     | '/settings/profile'
     | '/settings/security'
@@ -731,6 +742,7 @@ export interface FileRouteTypes {
     | '/settings/intelligence'
     | '/settings/notifications'
     | '/settings/organization'
+    | '/settings/ownership'
     | '/settings/people'
     | '/settings/profile'
     | '/settings/security'
@@ -965,6 +977,13 @@ declare module '@tanstack/react-router' {
       path: '/organization'
       fullPath: '/settings/organization'
       preLoaderRoute: typeof SettingsOrganizationRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/ownership': {
+      id: '/settings/ownership'
+      path: '/ownership'
+      fullPath: '/settings/ownership'
+      preLoaderRoute: typeof SettingsOwnershipRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/people': {
@@ -1267,6 +1286,7 @@ interface SettingsRouteChildren {
   SettingsIntelligenceRoute: typeof SettingsIntelligenceRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsOrganizationRoute: typeof SettingsOrganizationRoute
+  SettingsOwnershipRoute: typeof SettingsOwnershipRoute
   SettingsPeopleRoute: typeof SettingsPeopleRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
   SettingsSecurityRoute: typeof SettingsSecurityRoute
@@ -1280,6 +1300,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsIntelligenceRoute: SettingsIntelligenceRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsOrganizationRoute: SettingsOrganizationRoute,
+  SettingsOwnershipRoute: SettingsOwnershipRoute,
   SettingsPeopleRoute: SettingsPeopleRoute,
   SettingsProfileRoute: SettingsProfileRoute,
   SettingsSecurityRoute: SettingsSecurityRoute,
