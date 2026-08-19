@@ -86,6 +86,8 @@ export interface ProspectCandidate {
   intel?: ScoutIntel;
   /** What the founder said about themselves, when they came to us inbound. */
   stated?: FounderSignalPacket;
+  /** A person's own decision about researching them, when the intake never asked. */
+  researchConsent?: ResearchConsentRecord;
 }
 
 
