@@ -10,6 +10,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 
 import { CompanyMark } from "@/components/tt/company-identity";
+import { InboundBadge } from "@/components/tt/scout/inbound";
 import { FitDot, FIT_LIGHT_LABEL, STAGE_LABEL, formatChecked } from "@/components/tt/fit-light";
 import type { ProspectCandidate } from "@/domain/scout";
 import type { ProspectStatus } from "@/domain/entities";
