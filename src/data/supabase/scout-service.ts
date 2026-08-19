@@ -327,8 +327,20 @@ export const scoutService = {
     const identity = await fetchCompanyIdentity(payload.website_url || websiteUrl);
 
     const existing = await findProspectRowByWebsite(request.organizationId, websiteUrl);
+
+    // A re-run updates evidence, it does not reset a company. Observations the
+    // new pass did not reach are preserved, and the founder's stated packet and
+    // the research consent decision live in metadata, which is merged, never
+    // replaced.
+    const priorObserved = Array.isArray(existing?.observed) ? (existing.observed as unknown[]) : [];
+    const merge = mergeObservedRows({
+      previous: priorObserved,
+      incoming: payload.observed ?? [],
+    });
+    const observed = merge.merged;
+
     const evaluation = evaluateScoutFit({
-      observed: payload.observed ?? [],
+      observed,
       inferred: payload.inferred ?? {},
       suggested: payload.suggested ?? {},
       scoreable: true,
@@ -341,7 +353,7 @@ export const scoutService = {
       userId: request.userId,
       companyName: existing?.company_name ?? companyNameFromResearch(payload, websiteUrl),
       websiteUrl: payload.website_url || websiteUrl,
-      observed: payload.observed ?? [],
+      observed,
       inferred: payload.inferred ?? {},
       suggested: payload.suggested ?? {},
       provenance: researchProvenance(payload, {
