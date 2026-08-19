@@ -163,6 +163,44 @@ export async function listWebsiteSubmissions(
   };
 }
 
+/** One submission, with the company name Scout holds for it. */
+export async function getWebsiteSubmission(
+  organizationId: string,
+  submissionRowId: string,
+): Promise<{ submission: WebsiteSubmission; prospectName: string | null } | null> {
+  const result = await supabase
+    .from("website_intake_submissions")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", submissionRowId)
+    .maybeSingle();
+
+  if (result.error) {
+    if (missingRelation(result.error)) return null;
+    throw new Error(result.error.message);
+  }
+  if (!result.data) return null;
+
+  const row = result.data as Row;
+  const prospectId = text(row["scout_prospect_id"]);
+  let status: string | null = null;
+  let prospectName: string | null = null;
+  if (prospectId) {
+    const scout = await supabase
+      .from("prospects")
+      .select("status, company_name")
+      .eq("id", prospectId)
+      .maybeSingle();
+    if (!scout.error && scout.data) {
+      const found = scout.data as Row;
+      status = String(found["status"] ?? "") || null;
+      prospectName = String(found["company_name"] ?? "") || null;
+    }
+  }
+
+  return { submission: toSubmission(row, status), prospectName };
+}
+
 /** Raw attention events. The room aggregates; nothing is inferred here. */
 export async function listWebsiteEvents(
   organizationId: string,
