@@ -129,11 +129,14 @@ export function packetFromSubmission(
     statedAt: submission.submittedAt,
     claims: claimsFromStructured(submission.structured),
     transcript: submission.verbatim.map((answer) => ({
+      questionId: answer.questionId ?? null,
       questionText: answer.questionText,
       answerText: answer.answerText,
       modality: answer.modality,
       skipped: answer.skipped === true,
+      mediaUrl: answer.mediaUrl ?? null,
     })),
+
     understanding: {
       frame: submission.signals.frame ?? null,
       frameConfidence: submission.signals.frameConfidence ?? null,
