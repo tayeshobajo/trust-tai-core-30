@@ -382,9 +382,9 @@ function Submissions({
               <Link
                 to="/modules/website/submissions/$submissionId"
                 params={{ submissionId: submission.id }}
-                className="text-royal hover:underline"
+                className="inline-flex items-center rounded-lg border border-royal/30 bg-royal/8 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-royal hover:bg-royal/12"
               >
-                Open the submission
+                Open submission
               </Link>
             </div>
 
