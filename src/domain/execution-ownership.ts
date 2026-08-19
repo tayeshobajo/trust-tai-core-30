@@ -123,8 +123,17 @@ function hits(haystack: string, words: string[]): string[] {
   return words.filter((word) => haystack.includes(word));
 }
 
+/** Every vocabulary term the classifier actually matched, kept for QA. */
+export interface OwnershipSignals {
+  engineering: string[];
+  maintenance: string[];
+  content: string[];
+}
+
 export interface OwnershipRead {
   primary: ExecutionRoom;
+  /** What the words said. Exposed so a person can audit the decision. */
+  signals: OwnershipSignals;
   /** Real secondary dependencies, never a replacement for the primary owner. */
   secondary: ExecutionRoom[];
   /** One plain sentence: why this room carries it. */
@@ -145,12 +154,15 @@ export function classifyExecutionOwner(...parts: (string | null | undefined)[]):
   const maintenance = hits(text, MAINTENANCE);
   const content = hits(text, CONTENT);
 
+  const signals: OwnershipSignals = { engineering, maintenance, content };
+
   if (engineering.length > 0) {
     const secondary: ExecutionRoom[] = [];
     if (content.length > 0) secondary.push("studio");
     if (maintenance.length > 0) secondary.push("ops");
     return {
       primary: "projects",
+      signals,
       secondary,
       because:
         secondary.length > 0
@@ -164,6 +176,7 @@ export function classifyExecutionOwner(...parts: (string | null | undefined)[]):
   if (maintenance.length > 0) {
     return {
       primary: "ops",
+      signals,
       secondary: [],
       because: "This is recurring technical work on something already live, so Ops carries it.",
     };
@@ -172,6 +185,7 @@ export function classifyExecutionOwner(...parts: (string | null | undefined)[]):
   if (content.length > 0) {
     return {
       primary: "studio",
+      signals,
       secondary: [],
       because: "This is content and creative production, so Studio carries it.",
     };
@@ -179,6 +193,7 @@ export function classifyExecutionOwner(...parts: (string | null | undefined)[]):
 
   return {
     primary: "projects",
+    signals,
     secondary: [],
     because: "Nothing here reads as content or maintenance, so delivery sits with Projects.",
   };
