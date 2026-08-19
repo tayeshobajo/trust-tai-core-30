@@ -55,7 +55,7 @@ export function InboundWash({ children }: { children: React.ReactNode }) {
 }
 
 function percent(value?: number | null): string {
-  return typeof value === "number" ? `${Math.round(value * 100)}%` : "—";
+  return typeof value === "number" ? `${Math.round(value * 100)}%` : "Not recorded";
 }
 
 /**
@@ -91,7 +91,7 @@ export function InboundOriginRail({
         <dl className="mt-4 grid gap-3 sm:grid-cols-4">
           {[
             { label: "Channel", value: channel },
-            { label: "Landed on", value: packet.attribution.landingPath || "—" },
+            { label: "Landed on", value: packet.attribution.landingPath || "Not recorded" },
             { label: "Coverage", value: percent(packet.understanding.objectiveCoverage) },
             {
               label: "Research consent",
