@@ -388,7 +388,14 @@ function SignalLine({ signal }: { signal: ScoutSignal }) {
   );
 }
 
-export function EvidenceLanes({ themes }: { themes: EvidenceTheme[] }) {
+export function EvidenceLanes({
+  themes,
+  observed = [],
+}: {
+  themes: EvidenceTheme[];
+  /** Every observation on file, used to resolve each audit trail. */
+  observed?: ScoutSignal[];
+}) {
   if (themes.length === 0) {
     return (
       <div className="tt-surface p-5">
