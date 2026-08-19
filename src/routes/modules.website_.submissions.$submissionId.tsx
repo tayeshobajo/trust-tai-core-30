@@ -20,8 +20,14 @@ import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { InboundBadge, InboundWash } from "@/components/tt/scout/inbound";
 import { getWebsiteSubmission } from "@/data/supabase/website-service";
-import { STATED_LANE_LABEL, STATED_LANE_ORDER, packetFromSubmission } from "@/domain/stated";
+import {
+  STATED_LANE_LABEL,
+  STATED_LANE_ORDER,
+  answerAnchorId,
+  packetFromSubmission,
+} from "@/domain/stated";
 import { claimsInLane } from "@/domain/stated";
+
 import { WEBSITE_INTAKE_LABEL, type WebsiteSubmission } from "@/domain/website";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
