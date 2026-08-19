@@ -70,7 +70,7 @@ function storedProspect(): ProspectCandidate {
     source: { kind: "live_website", label: "Public website" },
     evaluation: { light: "yellow", score: 55, scoreable: true, reasons: [], strongestSignal: "" },
     lastCheckedAt: AT,
-  } as ProspectCandidate;
+  } as unknown as ProspectCandidate;
 
   const origin = inboundOrigin({
     source: WEBSITE_INTAKE_ROW_SOURCE,
