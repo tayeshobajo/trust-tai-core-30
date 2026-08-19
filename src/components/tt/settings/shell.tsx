@@ -58,7 +58,9 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { to: "/settings/organization", label: "Organization profile", managing: true },
       { to: "/settings/security", label: "Security" },
+      { to: "/settings/intelligence", label: "Intelligence freshness" },
       { to: "/settings/diagnostics", label: "Diagnostics" },
+
     ],
   },
 ];

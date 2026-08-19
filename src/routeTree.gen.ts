@@ -28,6 +28,7 @@ import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsAppsRouteImport } from './routes/settings.apps'
 import { Route as SettingsDiagnosticsRouteImport } from './routes/settings.diagnostics'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
+import { Route as SettingsIntelligenceRouteImport } from './routes/settings.intelligence'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsOrganizationRouteImport } from './routes/settings.organization'
 import { Route as SettingsPeopleRouteImport } from './routes/settings.people'
@@ -164,6 +165,11 @@ const SettingsDiagnosticsRoute = SettingsDiagnosticsRouteImport.update({
 const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsIntelligenceRoute = SettingsIntelligenceRouteImport.update({
+  id: '/intelligence',
+  path: '/intelligence',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
@@ -413,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/intelligence': typeof SettingsIntelligenceRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/people': typeof SettingsPeopleRoute
@@ -470,6 +477,7 @@ export interface FileRoutesByTo {
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/intelligence': typeof SettingsIntelligenceRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/people': typeof SettingsPeopleRoute
@@ -533,6 +541,7 @@ export interface FileRoutesById {
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/intelligence': typeof SettingsIntelligenceRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/people': typeof SettingsPeopleRoute
@@ -598,6 +607,7 @@ export interface FileRouteTypes {
     | '/settings/apps'
     | '/settings/diagnostics'
     | '/settings/integrations'
+    | '/settings/intelligence'
     | '/settings/notifications'
     | '/settings/organization'
     | '/settings/people'
@@ -655,6 +665,7 @@ export interface FileRouteTypes {
     | '/settings/apps'
     | '/settings/diagnostics'
     | '/settings/integrations'
+    | '/settings/intelligence'
     | '/settings/notifications'
     | '/settings/organization'
     | '/settings/people'
@@ -717,6 +728,7 @@ export interface FileRouteTypes {
     | '/settings/apps'
     | '/settings/diagnostics'
     | '/settings/integrations'
+    | '/settings/intelligence'
     | '/settings/notifications'
     | '/settings/organization'
     | '/settings/people'
@@ -932,6 +944,13 @@ declare module '@tanstack/react-router' {
       path: '/integrations'
       fullPath: '/settings/integrations'
       preLoaderRoute: typeof SettingsIntegrationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/intelligence': {
+      id: '/settings/intelligence'
+      path: '/intelligence'
+      fullPath: '/settings/intelligence'
+      preLoaderRoute: typeof SettingsIntelligenceRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/notifications': {
@@ -1245,6 +1264,7 @@ interface SettingsRouteChildren {
   SettingsAppsRoute: typeof SettingsAppsRoute
   SettingsDiagnosticsRoute: typeof SettingsDiagnosticsRoute
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
+  SettingsIntelligenceRoute: typeof SettingsIntelligenceRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsOrganizationRoute: typeof SettingsOrganizationRoute
   SettingsPeopleRoute: typeof SettingsPeopleRoute
@@ -1257,6 +1277,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAppsRoute: SettingsAppsRoute,
   SettingsDiagnosticsRoute: SettingsDiagnosticsRoute,
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,
+  SettingsIntelligenceRoute: SettingsIntelligenceRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsOrganizationRoute: SettingsOrganizationRoute,
   SettingsPeopleRoute: SettingsPeopleRoute,

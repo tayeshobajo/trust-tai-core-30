@@ -19,6 +19,19 @@ import {
   StatedPanel,
   StatedTranscript,
 } from "@/components/tt/scout/inbound";
+import {
+  EvidenceHeader,
+  EvidenceReviewPanel,
+  TaiDecisionStatePanel,
+} from "@/components/tt/scout/detail/research";
+import {
+  hasResearchWorkspace,
+  reviewStatedEvidence,
+  scoutConductorAsk,
+  taiDecisionState,
+  type DecisionActionKey,
+} from "@/data/scout/research-workspace";
+
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { HandoffPanel } from "@/components/tt/prospect/handoff";
 import { PeoplePanel, type ManualPersonForm } from "@/components/tt/prospect/people-panel";
@@ -336,6 +349,43 @@ function CompanyDetail({
   const plan = buildPersonPlan(peopleRows);
   const composition = composeProspectPage({ candidate, activeIcpVersion: icp.data?.version ?? null });
 
+  const review = reviewStatedEvidence(candidate);
+  const decision = taiDecisionState({
+    candidate,
+    review,
+    peopleCount: peopleRows.length,
+    events: allEvents,
+  });
+  const workspace = { review, decision, ask: scoutConductorAsk(candidate, decision) };
+
+  const onDecisionAction = (key: DecisionActionKey) => {
+    switch (key) {
+      case "review_evidence":
+        document
+          .getElementById("scout-evidence-review")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        break;
+      case "run_research": {
+        const url = prospect.websiteUrl || prospect.domain;
+        if (url) research.mutate(url);
+        break;
+      }
+      case "find_people":
+      case "route_to_comms":
+        void goToTab("people");
+        break;
+      case "sequence_in_roadmap":
+        void goToTab("overview");
+        break;
+      case "pass":
+        setStatus.mutate({ id: prospect.id, status: "passed" });
+        break;
+      default:
+        break;
+    }
+  };
+
+
   return (
     <AppShell identity={identity}>
       <div className="space-y-6">
@@ -382,8 +432,30 @@ function CompanyDetail({
                 notes: notes.length,
                 people: peopleRows.length,
               }}
+              showResearch={hasResearchWorkspace(candidate)}
               onChange={(next) => void goToTab(next)}
             />
+
+            {tab === "research" ? (
+              <div className="space-y-6">
+                <EvidenceHeader
+                  candidate={candidate}
+                  review={workspace.review}
+                  confidence={workspace.decision.confidence}
+                />
+                <TaiDecisionStatePanel
+                  decision={workspace.decision}
+                  conductorSearch={workspace.ask}
+                  onAction={onDecisionAction}
+                  busy={busy}
+                />
+                <div id="scout-evidence-review">
+                  <EvidenceReviewPanel review={workspace.review} />
+                </div>
+                {candidate.stated ? <StatedTranscript packet={candidate.stated} /> : null}
+              </div>
+            ) : null}
+
 
             {tab === "overview" ? (
               <div className="space-y-6">
