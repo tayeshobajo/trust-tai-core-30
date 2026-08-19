@@ -63,11 +63,16 @@ export interface FounderSignalPacket {
   claims: StatedClaim[];
   /** The conversation itself, so a claim can always be traced to a sentence. */
   transcript: {
+    /** The website's own question id, so an answer can be opened at source. */
+    questionId?: string | null;
     questionText: string;
     answerText: string;
     modality: WebsiteModality;
     skipped: boolean;
+    /** Recording of a spoken answer, when the website kept one. */
+    mediaUrl?: string | null;
   }[];
+
   /** What the website's own extraction believed about the conversation. */
   understanding: {
     frame?: string | null;
