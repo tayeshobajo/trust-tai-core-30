@@ -241,8 +241,10 @@ function SubmissionBody({
                 {submission.verbatim.map((turn, index) => (
                   <li
                     key={`${turn.questionId}-${index}`}
-                    className="rounded-xl border border-border bg-card px-4 py-3"
+                    id={answerAnchorId(turn.questionId, index)}
+                    className="scroll-mt-24 rounded-xl border border-border bg-card px-4 py-3"
                   >
+
                     <div className="flex flex-wrap items-center gap-2">
                       <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
                       {turn.skipped ? <MetaPill>Skipped</MetaPill> : null}
