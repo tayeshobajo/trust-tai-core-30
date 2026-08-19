@@ -73,7 +73,7 @@ describe("planOwnershipBackfill", () => {
     const plan = planOwnershipBackfill(
       [
         milestone({
-          name: "Monthly platform maintenance",
+          name: "Monthly maintenance retainer",
           whatWeBuild: "Ongoing monitoring, patching and support.",
           executionBoundary: "Studio maintains the environment.",
         }),
