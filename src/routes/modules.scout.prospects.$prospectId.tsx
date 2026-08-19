@@ -397,13 +397,15 @@ function CompanyDetail({
     conflicts,
     permissionState: permission.state,
   });
-  const state = researchState({
+  const lifecycle = researchLifecycle({
+    coverage,
+    permission,
     observedCount: review.observed.length,
-    canResearch: permission.canResearch,
     contradictions: conflicts.length,
-    checkedCount: coverage.checkedCount,
+    lastResearchedAt: lastResearchedAt(candidate),
     running: research.isPending,
   });
+  const state = lifecycle.state;
   const decision = taiDecisionState({
     candidate,
     review,
