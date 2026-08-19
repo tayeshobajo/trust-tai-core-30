@@ -278,7 +278,7 @@ export function taiDecisionState(input: {
 
   const canResearch = input.canResearch ?? (!inbound || review.researchAuthorized);
   const researchBecause =
-    input.researchBecause ?? "Research permission has not been settled for this company.";
+    input.researchBecause ?? "Research consent has not been settled for this company.";
   const actions: DecisionAction[] = [];
 
   if (inbound) {
