@@ -46,6 +46,7 @@ import {
   normalizeWebsiteUrl,
   saveHandoffRecord,
   saveResearchConsent,
+  saveProspectMetadataPatch,
   saveResearchProspect,
   toProspect,
   setProspectFitOverride,
@@ -139,6 +140,17 @@ export interface ScoutContext {
   organizationId: ID;
   userId: ID;
 }
+
+/** Plain summaries for the decision ledger. No em dash, no assistant voice. */
+const DECISION_SUMMARY: Record<DecisionMoveKey, (name: string) => string> = {
+  qualify: (name) => `${name} was qualified in Scout by a person here. Nothing was sent.`,
+  pass: (name) => `${name} was passed by a person here. The history is preserved.`,
+  hold: (name) => `${name} was held in Scout by a person here. Nothing advanced.`,
+  ask_question: (name) =>
+    `A question for ${name} was drafted for review. Nothing was sent from Scout.`,
+  explore_roadmap: (name) =>
+    `A person here marked ${name} as worth exploring in Roadmap. No Roadmap was created.`,
+};
 
 export const scoutService = {
   /** The targeting definition Scout is currently working from. */
