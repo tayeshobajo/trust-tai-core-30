@@ -644,6 +644,14 @@ function CompanyDetail({
                   events={allEvents}
                   onViewAll={() => void goToTab("activity")}
                 />
+                {hasResearchWorkspace(candidate) ? null : (
+                  <DecisionStatePanel
+                    companyName={prospect.name}
+                    state={decisionState}
+                    onCommit={(commit) => recordDecision.mutate(commit)}
+                    busy={busy}
+                  />
+                )}
                 <SimilarCompaniesCard companies={derived.similar} linkSearch={backSearch} />
               </div>
             ) : null}
