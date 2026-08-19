@@ -8,6 +8,7 @@
 
 import { useState } from "react";
 
+import { OwnershipInspector } from "@/components/tt/roadmap/ownership-inspector";
 import { EvidenceList, TierChip } from "@/components/tt/roadmap/tier";
 import {
   EmptyState,
@@ -82,6 +83,12 @@ function MilestoneCard({
         <Line label="Owned by" value={`${owned.ownerLabel} · ${owned.because}`} />
         <Line label="Execution boundary" value={owned.boundary} />
       </div>
+
+      <OwnershipInspector
+        read={read.owner}
+        boundary={owned.boundary}
+        subject={milestone.name}
+      />
 
       <EvidenceList
         evidence={milestone.evidence.map((ref) => ({
