@@ -180,3 +180,12 @@ export function readPacket(metadata: unknown): FounderSignalPacket | null {
 export function researchAuthorized(packet: FounderSignalPacket | null): boolean {
   return packet?.understanding.authorizesResearch === true;
 }
+
+/**
+ * The id of one answer on the Website submission record, so Scout can send a
+ * person to the exact sentence a claim rests on.
+ */
+export function answerAnchorId(questionId: string | null | undefined, index: number): string {
+  const key = (questionId ?? "").trim();
+  return key ? `answer-${key}` : `answer-${index}`;
+}
