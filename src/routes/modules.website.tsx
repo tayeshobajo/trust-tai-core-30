@@ -379,6 +379,13 @@ function Submissions({
               >
                 {open ? "Hide the conversation" : "Read the conversation"}
               </button>
+              <Link
+                to="/modules/website/submissions/$submissionId"
+                params={{ submissionId: submission.id }}
+                className="text-royal hover:underline"
+              >
+                Open the submission
+              </Link>
             </div>
 
             {open ? (
