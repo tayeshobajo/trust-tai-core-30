@@ -173,7 +173,7 @@ function SubmissionBody({
             <MetaPill>
               {linked
                 ? "Linked to a Scout company"
-                : submission.processingStateLabel || "Not linked to a Scout prospect yet"}
+                : "Not linked to a Scout prospect yet"}
             </MetaPill>
             {submission.scoutStatus ? <MetaPill>Scout · {submission.scoutStatus}</MetaPill> : null}
             {linked ? (
