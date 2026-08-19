@@ -86,6 +86,16 @@ const COVERAGE_AREAS: { key: string; label: string; looksFor: string; match: Reg
   },
 ];
 
+/** The coverage area a piece of text belongs to, or null when it fits none. */
+export function areaForText(text: string): string | null {
+  if (!text.trim()) return null;
+  return COVERAGE_AREAS.find((area) => area.match.test(text))?.key ?? null;
+}
+
+export const COVERAGE_AREA_LABEL: Record<string, string> = Object.fromEntries(
+  COVERAGE_AREAS.map((area) => [area.key, area.label]),
+);
+
 /**
  * What has and has not been looked at. Derived only from observed signals and
  * recorded facts; absence is reported as not checked, never as a finding.
