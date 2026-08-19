@@ -10,6 +10,11 @@
  *  2. Where the evidence is thin, the model says so rather than guessing.
  */
 
+import {
+  EXECUTION_ROOM_LABEL,
+  ownedExecutionBoundary,
+  type ExecutionRoom,
+} from "@/domain/execution-ownership";
 import type { RoadmapDecision, Roadmap } from "@/domain/roadmap";
 import { UNKNOWN_STATEMENT } from "@/domain/roadmap";
 import type { RoadmapMilestone, RoadmapStrategy } from "@/domain/roadmap-intel";
@@ -41,6 +46,12 @@ export interface PathMilestone {
   evidenceCount: number;
   dependencies: string[];
   executionBoundary: string;
+  /** Which room actually carries this work. Derived, never typed in. */
+  owningRoom: ExecutionRoom;
+  owningRoomLabel: string;
+  /** Rooms that support the owner. Never a substitute for it. */
+  supportingRooms: string[];
+  ownershipBecause: string;
   link: RoadmapExecutionLink | null;
   openDecision: RoadmapDecision | null;
   milestone: RoadmapMilestone;
@@ -92,6 +103,7 @@ export function buildMilestonePath(
     (milestone, index) => {
       const link = linkByMilestone.get(milestone.id) ?? null;
       const openDecision = open.find((decision) => decision.stageId === milestone.id) ?? null;
+      const owned = ownedExecutionBoundary(milestone);
       return {
         id: milestone.id,
         ordinal: ordinal(index),
@@ -103,7 +115,11 @@ export function buildMilestonePath(
         ownerLabel: milestone.ownerLabel ?? "Unassigned",
         evidenceCount: milestone.evidence.filter((ref) => ref.url.trim().length > 0).length,
         dependencies: milestone.dependencies.filter((entry) => entry.trim().length > 0),
-        executionBoundary: milestone.executionBoundary,
+        executionBoundary: owned.boundary,
+        owningRoom: owned.owner.primary,
+        owningRoomLabel: EXECUTION_ROOM_LABEL[owned.owner.primary],
+        supportingRooms: owned.owner.secondary.map((room) => EXECUTION_ROOM_LABEL[room]),
+        ownershipBecause: owned.owner.because,
         link,
         openDecision,
         milestone,

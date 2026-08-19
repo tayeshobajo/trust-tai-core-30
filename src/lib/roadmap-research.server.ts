@@ -213,7 +213,9 @@ function researchInstructions(): string {
     "A claim with no source belongs in unknowns.",
     "Research competitors to understand market direction, not to copy features.",
     "Recognise what leadership has already built; that is anchor proof, not flattery.",
-    "Milestones must be practical assets or capabilities a small senior product studio can credibly build, each with a stated execution boundary.",
+    "Milestones must be practical assets or capabilities a small senior product team can credibly build, each with a stated execution boundary.",
+    "Ownership law, never break it: engineering and product delivery (websites, apps, software, dashboards, prototypes, integrations, feature builds) is carried by Projects; maintenance, support and recurring technical work is carried by Ops; only content and creative production (blog, newsletter, LinkedIn, Substack, social, campaign assets, media) is carried by Studio.",
+    "Never write that Studio builds software, a website, an app, a dashboard, a prototype, an integration or a feature. Name the owning room explicitly in the execution boundary.",
     "Return more milestone candidates than a final roadmap needs, between 8 and 12.",
     VOICE,
   ].join(" ");

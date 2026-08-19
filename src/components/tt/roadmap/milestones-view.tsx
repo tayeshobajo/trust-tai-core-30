@@ -17,6 +17,7 @@ import {
   TTInput,
 } from "@/components/tt/primitives";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
+import { EXECUTION_ROOM_LABEL, ownedExecutionBoundary } from "@/domain/execution-ownership";
 import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
 import { MILESTONE_STATUS_LABEL, UNKNOWN } from "@/domain/roadmap-intel";
 
@@ -47,6 +48,12 @@ function MilestoneCard({
   busyId: string | null;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
 }) {
+  const read = ownedExecutionBoundary(milestone);
+  const owned = {
+    ownerLabel: EXECUTION_ROOM_LABEL[read.owner.primary],
+    because: read.owner.because,
+    boundary: read.boundary,
+  };
   const [note, setNote] = useState("");
   const [open, setOpen] = useState(false);
   const busy = busyId === milestone.id;
@@ -72,7 +79,8 @@ function MilestoneCard({
         <Line label="Immediate value" value={milestone.immediateValue} />
         <Line label="Long term value" value={milestone.longTermValue} />
         <Line label="Dependencies" value={milestone.dependencies.join(", ")} />
-        <Line label="Execution boundary" value={milestone.executionBoundary} />
+        <Line label="Owned by" value={`${owned.ownerLabel} · ${owned.because}`} />
+        <Line label="Execution boundary" value={owned.boundary} />
       </div>
 
       <EvidenceList

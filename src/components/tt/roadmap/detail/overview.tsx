@@ -134,6 +134,14 @@ export function CurrentMilestoneCard({
         <KeyLine label="What it unlocks" value={entry.unlocks} />
         <KeyLine label="Who carries it" value={entry.ownerLabel} />
         <KeyLine
+          label="Owning room"
+          value={
+            entry.supportingRooms.length > 0
+              ? `${entry.owningRoomLabel}, supported by ${entry.supportingRooms.join(" and ")}`
+              : entry.owningRoomLabel
+          }
+        />
+        <KeyLine
           label="Boundary"
           value={entry.executionBoundary || "No execution boundary is recorded."}
         />
