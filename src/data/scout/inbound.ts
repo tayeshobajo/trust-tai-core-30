@@ -91,6 +91,19 @@ export function inboundFit(origin: InboundOrigin): { whyItFits: string; recommen
   };
 }
 
+/**
+ * The single concise line the founder gave about where they want to get to.
+ * Returns null rather than inferring one when they did not say.
+ */
+export function inboundToldUs(packet: FounderSignalPacket): string | null {
+  const line =
+    claimsInLane(packet, "desired_future")[0] ??
+    claimsInLane(packet, "goals")[0] ??
+    claimsInLane(packet, "pains")[0] ??
+    null;
+  return line && line.trim() ? line.trim() : null;
+}
+
 /** Lanes that actually have content, in reading order. */
 export function filledLanes(
   packet: FounderSignalPacket,

@@ -11,6 +11,7 @@ import { ChevronRight } from "lucide-react";
 
 import { CompanyMark } from "@/components/tt/company-identity";
 import { InboundBadge } from "@/components/tt/scout/inbound";
+import { inboundToldUs } from "@/data/scout/inbound";
 import { FitDot, FIT_LIGHT_LABEL, STAGE_LABEL, formatChecked } from "@/components/tt/fit-light";
 import type { ProspectCandidate } from "@/domain/scout";
 import type { ProspectStatus } from "@/domain/entities";
@@ -44,6 +45,8 @@ export function ScoutStatusPill({ status }: { status: ProspectStatus }) {
 
 export function CompanyCell({ candidate }: { candidate: ProspectCandidate }) {
   const { prospect, identity } = candidate;
+  const inbound = candidate.source.kind === "website_intake";
+  const toldUs = candidate.stated ? inboundToldUs(candidate.stated) : null;
   return (
     <span className="flex min-w-0 items-center gap-3">
       <CompanyMark
@@ -56,11 +59,16 @@ export function CompanyCell({ candidate }: { candidate: ProspectCandidate }) {
       <span className="min-w-0">
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm font-medium text-foreground">{prospect.name}</span>
-          {candidate.source.kind === "website_intake" ? <InboundBadge /> : null}
+          {inbound ? <InboundBadge /> : null}
         </span>
         <span className="block truncate font-mono text-[11px] text-muted-foreground">
           {prospect.domain || "No website recorded"}
         </span>
+        {inbound && toldUs ? (
+          <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
+            Told us: {toldUs}
+          </span>
+        ) : null}
       </span>
     </span>
   );
@@ -103,8 +111,12 @@ export function ScoutCompanyTable({
       <ul>
         {candidates.map((candidate) => {
           const { prospect, evaluation, profile } = candidate;
+          const inbound = candidate.source.kind === "website_intake";
           return (
-            <li key={prospect.id}>
+            <li
+              key={prospect.id}
+              className={cn(inbound && "border-l-2 border-royal/60")}
+            >
               <Link
                 to="/modules/scout/prospects/$prospectId"
                 params={{ prospectId: prospect.id }}

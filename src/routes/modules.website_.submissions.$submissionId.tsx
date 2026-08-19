@@ -1,10 +1,14 @@
 /**
- * Website submission detail.
+ * Website submission detail — the canonical source record.
  *
- * One inbound conversation, whole. This is the evidence page behind every
- * inbound company in Scout: what they were asked, what they said, where they
- * came from, and whether the submission reached a company. It asserts nothing
- * and decides nothing — the Website room reports, Scout judges.
+ * One inbound conversation, whole and addressable. This is the evidence page
+ * behind every inbound company in Scout: what they were asked, what they said,
+ * where they came from, and whether the submission reached a company. It
+ * asserts nothing and decides nothing — the Website room reports, Scout judges.
+ *
+ * TODO(stated-lane): when the canonical `stated` evidence lane lands, the
+ * "What they told us" block below becomes its rendering surface; the shape of
+ * `packetFromSubmission` is deliberately the only bridge.
  */
 
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
@@ -53,7 +57,15 @@ function SubmissionRoute() {
 }
 
 function percent(value?: number | null): string {
-  return typeof value === "number" ? `${Math.round(value * 100)}%` : "—";
+  return typeof value === "number" ? `${Math.round(value * 100)}%` : "Not stated";
+}
+
+function stated(value?: string | null): string {
+  return value && value.trim() ? value : "Not stated";
+}
+
+function shortId(value: string): string {
+  return value.length > 14 ? `${value.slice(0, 8)}…${value.slice(-4)}` : value;
 }
 
 function SubmissionDetail({ identity }: { identity: WorkspaceIdentity }) {
@@ -95,6 +107,17 @@ function SubmissionDetail({ identity }: { identity: WorkspaceIdentity }) {
   return <SubmissionBody submission={submission} prospectName={prospectName} />;
 }
 
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="mt-0.5 break-words text-[13px] text-foreground">{value}</dd>
+    </div>
+  );
+}
+
 function SubmissionBody({
   submission,
   prospectName,
@@ -103,12 +126,13 @@ function SubmissionBody({
   prospectName: string | null;
 }) {
   const packet = packetFromSubmission(submission, submission.id);
+  /** Every lane, always — an unanswered lane is itself a fact. */
   const lanes = STATED_LANE_ORDER.map((lane) => ({
     lane,
     statements: claimsInLane(packet, lane),
-  })).filter((entry) => entry.statements.length > 0);
-  const answered = submission.verbatim.filter((turn) => !turn.skipped && turn.answerText.trim());
+  }));
   const utm = submission.attribution.utm ?? {};
+  const linked = Boolean(submission.scoutProspectId);
 
   return (
     <div className="space-y-6">
@@ -121,57 +145,45 @@ function SubmissionBody({
       </Link>
 
       <InboundWash>
-        <div className="p-6">
+        <div className="border-l-2 border-royal/50 p-6">
           <div className="flex flex-wrap items-center gap-2">
             <InboundBadge />
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              {WEBSITE_INTAKE_LABEL}
+              TrustTai.com · {WEBSITE_INTAKE_LABEL}
             </span>
           </div>
 
           <h1 className="mt-3 font-display text-[34px] leading-tight text-foreground">
-            {submission.company.name || prospectName || "An inbound founder"}
+            {submission.company.name || prospectName || submission.person.name || "An inbound founder"}
           </h1>
           <p className="mt-2 max-w-reading text-[15px] text-muted-foreground">
             {submission.person.name ? `${submission.person.name} ` : "Someone "}
             completed the roadmap conversation on TrustTai.com on{" "}
-            {new Date(submission.submittedAt).toLocaleDateString(undefined, {
+            {new Date(submission.submittedAt).toLocaleString(undefined, {
               month: "long",
               day: "numeric",
               year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
             })}
             . {submission.linkReason}
           </p>
 
-          <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: "Source", value: utm.source || "Direct" },
-              { label: "Campaign", value: utm.campaign || "—" },
-              { label: "Landed on", value: submission.attribution.landingPath || "—" },
-              { label: "Coverage", value: percent(submission.signals.objectiveCoverage) },
-            ].map((item) => (
-              <div key={item.label}>
-                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  {item.label}
-                </dt>
-                <dd className="mt-1 truncate text-[13px] text-foreground">{item.value}</dd>
-              </div>
-            ))}
-          </dl>
-
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <MetaPill>
-              {submission.linkState === "linked" ? "Reached Scout" : "Waiting for a person"}
+              {linked
+                ? "Linked to a Scout company"
+                : "Not linked to a Scout prospect yet"}
             </MetaPill>
             {submission.scoutStatus ? <MetaPill>Scout · {submission.scoutStatus}</MetaPill> : null}
-            {submission.scoutProspectId ? (
+            {linked ? (
               <Link
                 to="/modules/scout/prospects/$prospectId"
-                params={{ prospectId: submission.scoutProspectId }}
+                params={{ prospectId: submission.scoutProspectId as string }}
                 search={{ section: "scout" as const, fit: "all" as const }}
                 className="inline-flex items-center gap-1.5 text-[13px] text-royal hover:underline"
               >
-                Open the company in Scout
+                Open in Scout
                 <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
             ) : null}
@@ -181,53 +193,22 @@ function SubmissionBody({
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-6">
-          <div className="tt-surface p-5">
-            <SectionHeading
-              eyebrow="Conversation"
-              title="The intake, in full"
-              description="Every question the website asked, and every answer given, unedited."
-            />
-            {answered.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No answers were recorded for this submission.
-              </p>
-            ) : (
-              <ol className="space-y-4">
-                {answered.map((turn) => (
-                  <li
-                    key={turn.questionId}
-                    className="rounded-xl border border-border bg-card px-4 py-3"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
-                      <p className="text-[13px] text-muted-foreground">{turn.questionText}</p>
-                    </div>
-                    <p className="mt-2 border-l-2 border-royal/25 pl-3 text-[15px] text-foreground">
-                      {turn.answerText}
-                    </p>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
-
+          {/* 1. What they told us */}
           <div className="tt-surface p-5">
             <SectionHeading
               eyebrow="Stated"
-              title="What the conversation says they need"
-              description="Extracted from their own words. Testimony, not evidence: nothing here has been verified."
+              title="What they told us"
+              description="Their own account, lane by lane. Testimony, not evidence: nothing here has been verified."
             />
-            {lanes.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Nothing structured was extracted from this conversation.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {lanes.map(({ lane, statements }) => (
-                  <div key={lane}>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                      {STATED_LANE_LABEL[lane]}
-                    </p>
+            <div className="space-y-4">
+              {lanes.map(({ lane, statements }) => (
+                <div key={lane}>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                    {STATED_LANE_LABEL[lane]}
+                  </p>
+                  {statements.length === 0 ? (
+                    <p className="mt-1 text-[14px] text-muted-foreground">Not stated</p>
+                  ) : (
                     <ul className="mt-2 space-y-1.5">
                       {statements.map((statement, index) => (
                         <li
@@ -238,65 +219,182 @@ function SubmissionBody({
                         </li>
                       ))}
                     </ul>
-                  </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 2. In their words */}
+          <div className="tt-surface p-5">
+            <SectionHeading
+              eyebrow="Conversation"
+              title="In their words"
+              description="Every question the website asked, and every answer given, unedited and in sequence."
+            />
+            {submission.verbatim.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No answers were recorded for this submission.
+              </p>
+            ) : (
+              <ol className="space-y-4">
+                {submission.verbatim.map((turn, index) => (
+                  <li
+                    key={`${turn.questionId}-${index}`}
+                    className="rounded-xl border border-border bg-card px-4 py-3"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
+                      {turn.skipped ? <MetaPill>Skipped</MetaPill> : null}
+                      {turn.answeredAt ? (
+                        <MetaPill>{new Date(turn.answeredAt).toLocaleTimeString()}</MetaPill>
+                      ) : null}
+                      <p className="text-[13px] text-muted-foreground">{turn.questionText}</p>
+                    </div>
+                    {turn.skipped || !turn.answerText.trim() ? (
+                      <p className="mt-2 pl-3 text-[14px] italic text-muted-foreground">
+                        No answer given.
+                      </p>
+                    ) : (
+                      <p className="mt-2 border-l-2 border-royal/25 pl-3 text-[15px] text-foreground">
+                        {turn.answerText}
+                      </p>
+                    )}
+                    {turn.mediaUrl ? (
+                      <a
+                        href={turn.mediaUrl}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="mt-2 inline-block text-[13px] text-royal hover:underline"
+                      >
+                        Open the recording
+                      </a>
+                    ) : null}
+                  </li>
                 ))}
-              </div>
+              </ol>
             )}
           </div>
         </div>
 
         <aside className="space-y-6">
+          {/* 5. Scout connection */}
           <div className="tt-surface p-5">
-            <SectionHeading eyebrow="Who" title="The person" />
-            <dl className="space-y-3 text-[13px]">
-              {[
-                { label: "Name", value: submission.person.name },
-                { label: "Role", value: submission.person.role },
-                { label: "Email", value: submission.person.email },
-                { label: "Phone", value: submission.person.phone },
-                { label: "Company website", value: submission.company.website },
-                { label: "Industry stated", value: submission.company.industryStated },
-                { label: "Size stated", value: submission.company.sizeStated },
-                { label: "Location stated", value: submission.company.locationStated },
-              ].map((item) => (
-                <div key={item.label}>
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                    {item.label}
-                  </dt>
-                  <dd className="mt-0.5 break-words text-foreground">{item.value || "—"}</dd>
-                </div>
-              ))}
+            <SectionHeading eyebrow="Scout" title="Scout connection" />
+            <dl className="space-y-3">
+              <Field
+                label="State"
+                value={linked ? "Linked" : submission.linkState === "unlinked" ? "Unlinked" : "Held"}
+              />
+              <Field label="Company in Scout" value={stated(prospectName)} />
+              <Field label="Reason" value={stated(submission.linkReason)} />
+              <Field label="Scout status" value={stated(submission.scoutStatus)} />
+            </dl>
+            {linked ? (
+              <Link
+                to="/modules/scout/prospects/$prospectId"
+                params={{ prospectId: submission.scoutProspectId as string }}
+                search={{ section: "scout" as const, fit: "all" as const }}
+                className="mt-4 inline-flex items-center gap-1.5 text-[13px] text-royal hover:underline"
+              >
+                Open in Scout
+                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            ) : (
+              <p className="mt-4 text-[13px] text-muted-foreground">
+                Not linked to a Scout prospect yet. Linking is a person's decision and happens in
+                Scout; nothing is connected from this page.
+              </p>
+            )}
+          </div>
+
+          {/* 4. Source */}
+          <div className="tt-surface p-5">
+            <SectionHeading eyebrow="Source" title="Where this came from" />
+            <dl className="space-y-3">
+              <Field label="Source" value="TrustTai.com" />
+              <Field label="Intake type" value="Build My Roadmap" />
+              <Field label="Landing page" value={stated(submission.attribution.landingPath)} />
+              <Field label="Referrer" value={stated(submission.attribution.entryReferrer)} />
+              <Field label="UTM source" value={stated(utm.source)} />
+              <Field label="UTM medium" value={stated(utm.medium)} />
+              <Field label="UTM campaign" value={stated(utm.campaign)} />
+              <Field label="UTM content" value={stated(utm.content)} />
+              <Field
+                label="Page views before start"
+                value={
+                  typeof submission.attribution.pageViewsBeforeStart === "number"
+                    ? String(submission.attribution.pageViewsBeforeStart)
+                    : "Not stated"
+                }
+              />
+              <Field label="Device" value={stated(submission.attribution.device)} />
+              <Field label="Locale" value={stated(submission.attribution.locale)} />
+              <Field
+                label="Session"
+                value={
+                  submission.attribution.sessionId
+                    ? shortId(submission.attribution.sessionId)
+                    : "Not stated"
+                }
+              />
+              <Field label="Submission" value={shortId(submission.submissionId)} />
+              <Field
+                label="Research authorization"
+                value={
+                  submission.signals.authorizesResearch === true
+                    ? "Given"
+                    : submission.signals.authorizesResearch === false
+                      ? "Withheld"
+                      : "Not asked"
+                }
+              />
+              <Field
+                label="Marketing consent"
+                value={
+                  submission.consent.marketingOptIn === true
+                    ? "Given"
+                    : submission.consent.marketingOptIn === false
+                      ? "Declined"
+                      : "Not asked"
+                }
+              />
+              <Field label="Privacy version" value={stated(submission.consent.privacyVersion)} />
             </dl>
           </div>
 
           <div className="tt-surface p-5">
+            <SectionHeading eyebrow="Who" title="The person" />
+            <dl className="space-y-3">
+              <Field label="Name" value={stated(submission.person.name)} />
+              <Field label="Role" value={stated(submission.person.role)} />
+              <Field label="Email" value={stated(submission.person.email)} />
+              <Field label="Phone" value={stated(submission.person.phone)} />
+              <Field label="Company website" value={stated(submission.company.website)} />
+              <Field label="Industry stated" value={stated(submission.company.industryStated)} />
+              <Field label="Size stated" value={stated(submission.company.sizeStated)} />
+              <Field label="Location stated" value={stated(submission.company.locationStated)} />
+            </dl>
+          </div>
+
+          {/* 3. Understanding — only what the intake actually stored */}
+          <div className="tt-surface p-5">
             <SectionHeading
               eyebrow="Understanding"
-              title="How complete this is"
-              description="The website's own read of the conversation. Shown, never trusted as fact."
+              title="What the intake recorded"
+              description="The website's own read of the conversation. Shown, never treated as fact."
             />
-            <dl className="space-y-3 text-[13px]">
-              {[
-                { label: "Frame", value: submission.signals.frame || "—" },
-                { label: "Frame confidence", value: percent(submission.signals.frameConfidence) },
-                { label: "Completeness", value: percent(submission.signals.completeness) },
-                {
-                  label: "Research consent",
-                  value:
-                    submission.signals.authorizesResearch === true
-                      ? "Given"
-                      : submission.signals.authorizesResearch === false
-                        ? "Withheld"
-                        : "Not asked",
-                },
-              ].map((item) => (
-                <div key={item.label}>
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                    {item.label}
-                  </dt>
-                  <dd className="mt-0.5 text-foreground">{item.value}</dd>
-                </div>
-              ))}
+            <dl className="space-y-3">
+              <Field label="Frame" value={stated(submission.signals.frame)} />
+              <Field
+                label="Frame confidence"
+                value={percent(submission.signals.frameConfidence)}
+              />
+              <Field
+                label="Objective coverage"
+                value={percent(submission.signals.objectiveCoverage)}
+              />
+              <Field label="Completeness" value={percent(submission.signals.completeness)} />
             </dl>
           </div>
         </aside>

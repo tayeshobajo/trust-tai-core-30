@@ -12,6 +12,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, Link2, MoreHorizontal } from "
 
 import { CompanyMark } from "@/components/tt/company-identity";
 import { ScoutStatusPill, type ScoutLinkSearch } from "@/components/tt/scout/company-table";
+import { InboundBadge } from "@/components/tt/scout/inbound";
 import { TTButton } from "@/components/tt/primitives";
 import { POTENTIAL_LABEL, type ScoutCompanySummary } from "@/data/scout/company-summary";
 import type { ProspectCandidate } from "@/domain/scout";
@@ -166,6 +167,11 @@ export function CompanyHero({
   const accent = normalizeThemeColor(identity?.themeColor ?? null) ?? "oklch(0.55 0.16 262)";
   const host = hostnameOf(prospect.websiteUrl || prospect.domain);
   const tags = [profile?.industry, profile?.size, profile?.location].filter(Boolean) as string[];
+  const stated = candidate.source.kind === "website_intake" ? candidate.stated : null;
+  const submitted = stated?.statedAt ? new Date(stated.statedAt) : null;
+  const campaign = [stated?.attribution.utmSource, stated?.attribution.utmCampaign]
+    .filter((part): part is string => Boolean(part && part.trim()))
+    .join(" · ");
 
   return (
     <section className="tt-rise overflow-hidden rounded-2xl border border-border bg-card">
@@ -191,6 +197,7 @@ export function CompanyHero({
             />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
+                {stated ? <InboundBadge /> : null}
                 <h1 className="tt-display truncate text-3xl text-foreground sm:text-4xl">
                   {prospect.name}
                 </h1>
@@ -234,6 +241,30 @@ export function CompanyHero({
               <p className="mt-4 max-w-reading text-[15px] leading-relaxed text-muted-foreground">
                 {summary.headline}.
               </p>
+
+              {stated ? (
+                <div className="mt-4 border-l-2 border-royal/50 pl-3">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-royal">
+                    Inbound · TrustTai.com
+                  </p>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    Build My Roadmap
+                    {submitted && !Number.isNaN(submitted.getTime())
+                      ? ` · submitted ${submitted.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}`
+                      : ""}
+                    {campaign ? ` · ${campaign}` : ""}
+                  </p>
+                  {stated.submissionRowId ? (
+                    <Link
+                      to="/modules/website/submissions/$submissionId"
+                      params={{ submissionId: stated.submissionRowId }}
+                      className="mt-1 inline-block text-[13px] text-royal hover:underline"
+                    >
+                      Open original conversation
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
