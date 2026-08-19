@@ -57,6 +57,7 @@ import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/
 import { Route as ApiPublicSettingsInviteEmailRouteImport } from './routes/api/public/settings.invite-email'
 import { Route as ApiPublicStewardConversationRouteImport } from './routes/api/public/steward.conversation'
 import { Route as ApiPublicStewardInterpretRouteImport } from './routes/api/public/steward.interpret'
+import { Route as ApiPublicWebsiteEventsRouteImport } from './routes/api/public/website.events'
 import { Route as ApiPublicWebsiteIntakeRouteImport } from './routes/api/public/website.intake'
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
@@ -316,6 +317,11 @@ const ApiPublicStewardInterpretRoute =
     path: '/api/public/steward/interpret',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWebsiteEventsRoute = ApiPublicWebsiteEventsRouteImport.update({
+  id: '/api/public/website/events',
+  path: '/api/public/website/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicWebsiteIntakeRoute = ApiPublicWebsiteIntakeRouteImport.update({
   id: '/api/public/website/intake',
   path: '/api/public/website/intake',
@@ -424,6 +430,7 @@ export interface FileRoutesByFullPath {
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
+  '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
@@ -477,6 +484,7 @@ export interface FileRoutesByTo {
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
+  '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
@@ -538,6 +546,7 @@ export interface FileRoutesById {
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
+  '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
@@ -600,6 +609,7 @@ export interface FileRouteTypes {
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
+    | '/api/public/website/events'
     | '/api/public/website/intake'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
@@ -653,6 +663,7 @@ export interface FileRouteTypes {
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
+    | '/api/public/website/events'
     | '/api/public/website/intake'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
@@ -713,6 +724,7 @@ export interface FileRouteTypes {
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
+    | '/api/public/website/events'
     | '/api/public/website/intake'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
@@ -750,6 +762,7 @@ export interface RootRouteChildren {
   ApiPublicSettingsInviteEmailRoute: typeof ApiPublicSettingsInviteEmailRoute
   ApiPublicStewardConversationRoute: typeof ApiPublicStewardConversationRoute
   ApiPublicStewardInterpretRoute: typeof ApiPublicStewardInterpretRoute
+  ApiPublicWebsiteEventsRoute: typeof ApiPublicWebsiteEventsRoute
   ApiPublicWebsiteIntakeRoute: typeof ApiPublicWebsiteIntakeRoute
   ApiInternalExecutionScoutIcpRoute: typeof ApiInternalExecutionScoutIcpRoute
   ApiInternalExecutionScoutPipelineRoute: typeof ApiInternalExecutionScoutPipelineRoute
@@ -1097,6 +1110,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicStewardInterpretRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/website/events': {
+      id: '/api/public/website/events'
+      path: '/api/public/website/events'
+      fullPath: '/api/public/website/events'
+      preLoaderRoute: typeof ApiPublicWebsiteEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/website/intake': {
       id: '/api/public/website/intake'
       path: '/api/public/website/intake'
@@ -1330,6 +1350,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSettingsInviteEmailRoute: ApiPublicSettingsInviteEmailRoute,
   ApiPublicStewardConversationRoute: ApiPublicStewardConversationRoute,
   ApiPublicStewardInterpretRoute: ApiPublicStewardInterpretRoute,
+  ApiPublicWebsiteEventsRoute: ApiPublicWebsiteEventsRoute,
   ApiPublicWebsiteIntakeRoute: ApiPublicWebsiteIntakeRoute,
   ApiInternalExecutionScoutIcpRoute: ApiInternalExecutionScoutIcpRoute,
   ApiInternalExecutionScoutPipelineRoute:
