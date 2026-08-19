@@ -29,7 +29,7 @@ import {
   topReferrers,
   websiteHeadline,
 } from "@/data/website/projection";
-import { WEBSITE_INTAKE_LABEL, type WebsiteSubmission } from "@/domain/website";
+import { WEBSITE_INTAKE_LABEL, type WebsiteEvent, type WebsiteSubmission } from "@/domain/website";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
 
@@ -176,7 +176,7 @@ function Bare({ children }: { children: string }) {
   return <p className="text-sm text-muted-foreground">{children}</p>;
 }
 
-function Attention({ events }: { events: ReturnType<typeof Object> & any[] }) {
+function Attention({ events }: { events: WebsiteEvent[] }) {
   const paths = topPaths(events);
   const referrers = topReferrers(events);
   const devices = deviceSplit(events);
@@ -234,7 +234,7 @@ function Attention({ events }: { events: ReturnType<typeof Object> & any[] }) {
   );
 }
 
-function Funnel({ events, submissions }: { events: any[]; submissions: WebsiteSubmission[] }) {
+function Funnel({ events, submissions }: { events: WebsiteEvent[]; submissions: WebsiteSubmission[] }) {
   const stages = intakeFunnel(events, submissions);
   const modality = modalityUsage(events);
   const dropOff = questionDropOff(events);
@@ -440,7 +440,7 @@ function Lists({ submission }: { submission: WebsiteSubmission }) {
   );
 }
 
-function Sources({ events, submissions }: { events: any[]; submissions: WebsiteSubmission[] }) {
+function Sources({ events, submissions }: { events: WebsiteEvent[]; submissions: WebsiteSubmission[] }) {
   const rows = sourceToQualified(events, submissions);
   if (rows.length === 0) {
     return (
