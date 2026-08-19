@@ -64,6 +64,6 @@ describe("merging observations", () => {
   });
 
   it("reports which areas a pass actually covered", () => {
-    expect(areasCovered([rows("a"), rows("b", "search")])).toEqual(["positioning", "search"]);
+    expect(areasCovered([rows("a"), rows("b", "search")])).toEqual(["Website / positioning", "Search visibility"]);
   });
 });
