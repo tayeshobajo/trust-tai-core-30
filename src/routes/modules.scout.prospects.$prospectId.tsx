@@ -28,9 +28,9 @@ import {
   evidenceCoverage,
   evidenceThemes,
   lastResearchedAt,
-  researchState,
   scoutRead,
 } from "@/data/scout/research-brief";
+import type { ProspectCandidate } from "@/domain/scout";
 import { researchPermission } from "@/data/scout/research-consent";
 import {
   planResearchRun,
