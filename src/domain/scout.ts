@@ -13,6 +13,7 @@ import type { ScoutFitEvaluation } from "./scout-fit";
 import type { ResearchRun } from "./prospect-modules";
 import type { ScoutIntel } from "./scout-intel";
 import type { FounderSignalPacket } from "./stated";
+import type { ResearchConsentRecord } from "@/data/scout/research-consent";
 
 import type { CompanyIdentity } from "@/lib/company-identity";
 import type { CompanyProfile } from "@/data/scout-profile";
