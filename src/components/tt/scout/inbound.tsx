@@ -12,7 +12,13 @@ import { ArrowUpRight, Quote } from "lucide-react";
 
 import { MetaPill, SectionHeading } from "@/components/tt/primitives";
 import { filledLanes } from "@/data/scout/inbound";
-import { STATED_LANE_LABEL, STATED_LANE_ORDER, type FounderSignalPacket } from "@/domain/stated";
+import {
+  STATED_LANE_LABEL,
+  STATED_LANE_ORDER,
+  answerAnchorId,
+  type FounderSignalPacket,
+} from "@/domain/stated";
+
 import { cn } from "@/lib/utils";
 
 /** The unmistakable-but-quiet mark. Use beside a company name. */
