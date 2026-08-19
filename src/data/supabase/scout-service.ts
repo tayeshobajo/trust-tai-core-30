@@ -25,6 +25,7 @@ import {
 } from "@/domain/scout";
 import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
 import { inboundOrigin, withInboundOrigin } from "@/data/scout/inbound";
+import { readResearchConsent } from "@/data/scout/research-consent";
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
 import type { HandoffDraft, HandoffRecord } from "@/domain/comms-handoff";
@@ -41,6 +42,7 @@ import {
   listProspectRows,
   normalizeWebsiteUrl,
   saveHandoffRecord,
+  saveResearchConsent,
   saveResearchProspect,
   toProspect,
   setProspectFitOverride,
@@ -97,7 +99,9 @@ function previewEvaluation(icpVersion: number | null, at: string) {
 function toCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandidate {
   const origin = inboundOrigin({ source: row.source, metadata: row.metadata });
   const base = baseCandidate(row, icpVersion);
-  return origin ? withInboundOrigin(base, origin) : base;
+  const candidate = origin ? withInboundOrigin(base, origin) : base;
+  const consent = readResearchConsent(row.metadata);
+  return consent ? { ...candidate, researchConsent: consent } : candidate;
 }
 
 function baseCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandidate {
@@ -183,6 +187,48 @@ export const scoutService = {
       },
       occurredAt,
     });
+  },
+
+  /**
+   * Settle the research question a founder was never asked. Written to the
+   * company itself and recorded on the shared activity stream, so the reason
+   * research was or was not run stays auditable.
+   */
+  async setResearchConsent(
+    input: {
+      prospectId: ID;
+      companyName: string;
+      decision: "granted" | "withheld";
+      actorLabel?: string;
+    },
+    context: ScoutContext,
+  ) {
+    const at = new Date().toISOString();
+    const record = {
+      decision: input.decision,
+      by: context.userId,
+      byLabel: input.actorLabel ?? null,
+      at,
+    };
+    await saveResearchConsent(input.prospectId, record);
+    await supabaseActivity.record({
+      organizationId: context.organizationId,
+      name: "prospect.decided",
+      subject: { type: "prospect", id: input.prospectId, label: input.companyName },
+      summary:
+        input.decision === "granted"
+          ? `Public research authorised for ${input.companyName} by a person here, because the intake never asked.`
+          : `Public research withheld for ${input.companyName} by a person here.`,
+      payload: { scout_research_consent: record },
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: context.userId },
+        observedAt: at,
+        confidence: "observed",
+      },
+      occurredAt: at,
+    });
+    return record;
   },
 
   /** Is live market discovery connected? */

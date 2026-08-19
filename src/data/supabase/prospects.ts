@@ -248,6 +248,33 @@ export async function saveHandoffRecord(id: ID, record: Row): Promise<ProspectRo
   return data as unknown as ProspectRow;
 }
 
+/**
+ * Record a person's decision about whether Scout may research this company.
+ * Only used when the intake never asked; it never overwrites a stated answer.
+ */
+export async function saveResearchConsent(
+  id: ID,
+  record: Row,
+): Promise<ProspectRow> {
+  const { data: current, error: readError } = await supabase
+    .from("prospects")
+    .select("metadata")
+    .eq("id", id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+
+  const metadata = mergeProspectMetadata(current?.metadata, { scout_research_consent: record });
+  const { data, error } = await supabase
+    .from("prospects")
+    .update({ metadata })
+    .eq("id", id)
+    .select(SELECT_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("That research decision could not be saved to this company.");
+  return data as unknown as ProspectRow;
+}
+
 export { normalizeWebsiteUrl };
 
 /** Manually set the ICP fit light for a prospect. `null` clears the override. */

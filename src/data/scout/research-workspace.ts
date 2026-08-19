@@ -170,6 +170,8 @@ export const TAI_DECISION_LABEL: Record<TaiDecision, string> = {
 export type DecisionActionKey =
   | "review_evidence"
   | "run_research"
+  | "ask_question"
+  | "qualify"
   | "find_people"
   | "route_to_comms"
   | "sequence_in_roadmap"
@@ -240,6 +242,13 @@ export function taiDecisionState(input: {
   review: EvidenceReview;
   peopleCount: number;
   events: ActivityEvent[];
+  /**
+   * Whether Scout may read public pages about this company. Absent means the
+   * caller has not resolved permission, which is treated as a no.
+   */
+  canResearch?: boolean;
+  /** Why research is or is not permitted, in the permission layer's words. */
+  researchBecause?: string;
 }): TaiDecisionStateView {
   const { candidate, review, peopleCount } = input;
   const status = candidate.prospect.status;
@@ -267,7 +276,9 @@ export function taiDecisionState(input: {
     because = `${review.corroboratedClaims} of ${review.totalClaims || 0} stated claims are backed by something we read, and fit reads ${candidate.evaluation.score}/100.`;
   }
 
-  const canResearch = !inbound || review.researchAuthorized;
+  const canResearch = input.canResearch ?? (!inbound || review.researchAuthorized);
+  const researchBecause =
+    input.researchBecause ?? "Research consent has not been settled for this company.";
   const actions: DecisionAction[] = [];
 
   if (inbound) {
@@ -286,14 +297,22 @@ export function taiDecisionState(input: {
     label: "Read their public pages",
     because: canResearch
       ? "Turn testimony into something we have checked ourselves."
-      : "They did not give us permission to research them.",
+      : researchBecause,
     kind: "room",
     ready: canResearch && Boolean(candidate.prospect.websiteUrl || candidate.prospect.domain),
     ...(canResearch
       ? candidate.prospect.websiteUrl || candidate.prospect.domain
         ? {}
         : { blockedBecause: "No website or domain is recorded for this company." }
-      : { blockedBecause: "Research consent was not given on the intake." }),
+      : { blockedBecause: researchBecause }),
+  });
+
+  actions.push({
+    key: "ask_question",
+    label: "Ask one more question",
+    because: "Only they can settle what no public page will show. Record what you asked.",
+    kind: "room",
+    ready: true,
   });
 
   actions.push({
@@ -340,6 +359,17 @@ export function taiDecisionState(input: {
     because: "Interpretation and any bounded next step still need your authorization.",
     kind: "conductor",
     ready: true,
+  });
+
+  actions.push({
+    key: "qualify",
+    label: "Qualify this company",
+    because: "Say plainly that this one deserves our attention. Scout records who decided.",
+    kind: "room",
+    ready: status !== "qualified" && status !== "ready_for_comms",
+    ...(status !== "qualified" && status !== "ready_for_comms"
+      ? {}
+      : { blockedBecause: "Already qualified." }),
   });
 
   actions.push({

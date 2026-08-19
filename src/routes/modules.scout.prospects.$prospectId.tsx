@@ -20,10 +20,27 @@ import {
   StatedTranscript,
 } from "@/components/tt/scout/inbound";
 import {
-  EvidenceHeader,
   EvidenceReviewPanel,
   TaiDecisionStatePanel,
 } from "@/components/tt/scout/detail/research";
+import {
+  contradictions,
+  evidenceCoverage,
+  evidenceThemes,
+  lastResearchedAt,
+  researchState,
+  scoutRead,
+} from "@/data/scout/research-brief";
+import { researchPermission } from "@/data/scout/research-consent";
+import { inboundToldUs } from "@/data/scout/inbound";
+import {
+  ContradictionsPanel,
+  CoverageStrip,
+  EvidenceLanes,
+  ResearchHeader,
+  ResearchSources,
+  ScoutReadPanel,
+} from "@/components/tt/scout/detail/research-brief";
 import {
   hasResearchWorkspace,
   reviewStatedEvidence,
@@ -197,6 +214,22 @@ function CompanyDetail({
     onSuccess: refresh,
   });
 
+  const setResearchConsent = useMutation({
+    mutationFn: (decision: "granted" | "withheld") => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      return scoutService.setResearchConsent(
+        {
+          prospectId,
+          companyName: candidate.prospect.name,
+          decision,
+          actorLabel: identity.name,
+        },
+        { organizationId, userId },
+      );
+    },
+    onSuccess: refresh,
+  });
+
   const setStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: "qualified" | "passed" }) =>
       scoutService.setStatus(id, status, { organizationId, userId }),
@@ -265,6 +298,7 @@ function CompanyDetail({
   const peopleRows = people.data ?? [];
 
   const error = (research.error ??
+    setResearchConsent.error ??
     setStatus.error ??
     ingest.error ??
     addPerson.error ??
@@ -275,6 +309,7 @@ function CompanyDetail({
 
   const busy =
     research.isPending ||
+    setResearchConsent.isPending ||
     setStatus.isPending ||
     ingest.isPending ||
     addPerson.isPending ||
@@ -331,7 +366,9 @@ function CompanyDetail({
         break;
       case "rerun_research": {
         const url = prospect.websiteUrl || prospect.domain;
-        if (url) research.mutate(url);
+        // Consent is a gate, not a hint: an inbound company that never granted
+        // research is never read, whichever surface asks for it.
+        if (url && permission.canResearch) research.mutate(url);
         break;
       }
       case "prepare_comms_handoff":
@@ -350,11 +387,30 @@ function CompanyDetail({
   const composition = composeProspectPage({ candidate, activeIcpVersion: icp.data?.version ?? null });
 
   const review = reviewStatedEvidence(candidate);
+  const permission = researchPermission(candidate);
+  const coverage = evidenceCoverage(candidate, review.observed);
+  const conflicts = contradictions(review);
+  const themes = evidenceThemes(candidate, review);
+  const brief = scoutRead({
+    review,
+    coverage,
+    conflicts,
+    permissionState: permission.state,
+  });
+  const state = researchState({
+    observedCount: review.observed.length,
+    canResearch: permission.canResearch,
+    contradictions: conflicts.length,
+    checkedCount: coverage.checkedCount,
+    running: research.isPending,
+  });
   const decision = taiDecisionState({
     candidate,
     review,
     peopleCount: peopleRows.length,
     events: allEvents,
+    canResearch: permission.canResearch,
+    researchBecause: permission.because,
   });
   const workspace = { review, decision, ask: scoutConductorAsk(candidate, decision) };
 
@@ -367,7 +423,7 @@ function CompanyDetail({
         break;
       case "run_research": {
         const url = prospect.websiteUrl || prospect.domain;
-        if (url) research.mutate(url);
+        if (url && permission.canResearch) research.mutate(url);
         break;
       }
       case "find_people":
@@ -376,6 +432,12 @@ function CompanyDetail({
         break;
       case "sequence_in_roadmap":
         void goToTab("overview");
+        break;
+      case "ask_question":
+        void goToTab("notes");
+        break;
+      case "qualify":
+        setStatus.mutate({ id: prospect.id, status: "qualified" });
         break;
       case "pass":
         setStatus.mutate({ id: prospect.id, status: "passed" });
@@ -438,11 +500,28 @@ function CompanyDetail({
 
             {tab === "research" ? (
               <div className="space-y-6">
-                <EvidenceHeader
-                  candidate={candidate}
-                  review={workspace.review}
-                  confidence={workspace.decision.confidence}
+                <ResearchHeader
+                  companyName={prospect.name}
+                  toldUs={candidate.stated ? inboundToldUs(candidate.stated) : null}
+                  permission={permission}
+                  state={state}
+                  researchedAt={lastResearchedAt(candidate)}
+                  onRunResearch={() => {
+                    const url = prospect.websiteUrl || prospect.domain;
+                    if (url && permission.canResearch) research.mutate(url);
+                  }}
+                  onResolveConsent={(decisionValue) => setResearchConsent.mutate(decisionValue)}
+                  busy={busy}
                 />
+                <CoverageStrip
+                  areas={coverage.areas}
+                  checkedCount={coverage.checkedCount}
+                  total={coverage.total}
+                />
+                <ContradictionsPanel conflicts={conflicts} />
+                <EvidenceLanes themes={themes} />
+                <ResearchSources observed={review.observed} />
+                <ScoutReadPanel read={brief} />
                 <TaiDecisionStatePanel
                   decision={workspace.decision}
                   conductorSearch={workspace.ask}

@@ -18,6 +18,19 @@ import type { CompanyIdentity } from "@/lib/company-identity";
 import type { CompanyProfile } from "@/data/scout-profile";
 
 
+/**
+ * A person's own decision about researching an inbound company, taken when the
+ * intake never asked. Recorded with who decided and when; it never rewrites
+ * what the founder said.
+ */
+export interface ResearchConsentRecord {
+  decision: "granted" | "withheld";
+  by: ID;
+  byLabel?: string | null;
+  at: string;
+  note?: string | null;
+}
+
 /** A single piece of evidence Scout observed about a company. */
 export interface ScoutSignal {
   id: ID;
@@ -86,6 +99,8 @@ export interface ProspectCandidate {
   intel?: ScoutIntel;
   /** What the founder said about themselves, when they came to us inbound. */
   stated?: FounderSignalPacket;
+  /** A person's own decision about researching them, when the intake never asked. */
+  researchConsent?: ResearchConsentRecord;
 }
 
 
