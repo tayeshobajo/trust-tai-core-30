@@ -20,8 +20,14 @@ import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { InboundBadge, InboundWash } from "@/components/tt/scout/inbound";
 import { getWebsiteSubmission } from "@/data/supabase/website-service";
-import { STATED_LANE_LABEL, STATED_LANE_ORDER, packetFromSubmission } from "@/domain/stated";
+import {
+  STATED_LANE_LABEL,
+  STATED_LANE_ORDER,
+  answerAnchorId,
+  packetFromSubmission,
+} from "@/domain/stated";
 import { claimsInLane } from "@/domain/stated";
+
 import { WEBSITE_INTAKE_LABEL, type WebsiteSubmission } from "@/domain/website";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -241,8 +247,10 @@ function SubmissionBody({
                 {submission.verbatim.map((turn, index) => (
                   <li
                     key={`${turn.questionId}-${index}`}
-                    className="rounded-xl border border-border bg-card px-4 py-3"
+                    id={answerAnchorId(turn.questionId, index)}
+                    className="scroll-mt-24 rounded-xl border border-border bg-card px-4 py-3"
                   >
+
                     <div className="flex flex-wrap items-center gap-2">
                       <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
                       {turn.skipped ? <MetaPill>Skipped</MetaPill> : null}

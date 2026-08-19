@@ -53,9 +53,14 @@ export function InboundSourceCard({
                   Wants: {submission.structured.desiredFuture[0]}
                 </p>
               ) : null}
-              <Link to="/modules/website" className="mt-2 inline-block text-[13px] text-royal hover:underline">
-                Read the submission in the Website room
+              <Link
+                to="/modules/website/submissions/$submissionId"
+                params={{ submissionId: submission.id }}
+                className="mt-2 inline-block text-[13px] text-royal hover:underline"
+              >
+                Open the original conversation
               </Link>
+
             </li>
           );
         })}

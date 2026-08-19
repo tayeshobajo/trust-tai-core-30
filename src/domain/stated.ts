@@ -63,11 +63,16 @@ export interface FounderSignalPacket {
   claims: StatedClaim[];
   /** The conversation itself, so a claim can always be traced to a sentence. */
   transcript: {
+    /** The website's own question id, so an answer can be opened at source. */
+    questionId?: string | null;
     questionText: string;
     answerText: string;
     modality: WebsiteModality;
     skipped: boolean;
+    /** Recording of a spoken answer, when the website kept one. */
+    mediaUrl?: string | null;
   }[];
+
   /** What the website's own extraction believed about the conversation. */
   understanding: {
     frame?: string | null;
@@ -124,11 +129,14 @@ export function packetFromSubmission(
     statedAt: submission.submittedAt,
     claims: claimsFromStructured(submission.structured),
     transcript: submission.verbatim.map((answer) => ({
+      questionId: answer.questionId ?? null,
       questionText: answer.questionText,
       answerText: answer.answerText,
       modality: answer.modality,
       skipped: answer.skipped === true,
+      mediaUrl: answer.mediaUrl ?? null,
     })),
+
     understanding: {
       frame: submission.signals.frame ?? null,
       frameConfidence: submission.signals.frameConfidence ?? null,
@@ -171,4 +179,13 @@ export function readPacket(metadata: unknown): FounderSignalPacket | null {
  */
 export function researchAuthorized(packet: FounderSignalPacket | null): boolean {
   return packet?.understanding.authorizesResearch === true;
+}
+
+/**
+ * The id of one answer on the Website submission record, so Scout can send a
+ * person to the exact sentence a claim rests on.
+ */
+export function answerAnchorId(questionId: string | null | undefined, index: number): string {
+  const key = (questionId ?? "").trim();
+  return key ? `answer-${key}` : `answer-${index}`;
 }

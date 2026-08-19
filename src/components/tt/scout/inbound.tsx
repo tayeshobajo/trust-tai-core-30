@@ -12,7 +12,13 @@ import { ArrowUpRight, Quote } from "lucide-react";
 
 import { MetaPill, SectionHeading } from "@/components/tt/primitives";
 import { filledLanes } from "@/data/scout/inbound";
-import { STATED_LANE_LABEL, STATED_LANE_ORDER, type FounderSignalPacket } from "@/domain/stated";
+import {
+  STATED_LANE_LABEL,
+  STATED_LANE_ORDER,
+  answerAnchorId,
+  type FounderSignalPacket,
+} from "@/domain/stated";
+
 import { cn } from "@/lib/utils";
 
 /** The unmistakable-but-quiet mark. Use beside a company name. */
@@ -25,10 +31,11 @@ export function InboundBadge({ className }: { className?: string }) {
       )}
     >
       <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-royal" />
-      Inbound
+      Inbound · TrustTai.com
     </span>
   );
 }
+
 
 /** The Ambient Identity Wash for an inbound surface. Light entering the page. */
 export function InboundWash({ children }: { children: React.ReactNode }) {
@@ -48,7 +55,7 @@ export function InboundWash({ children }: { children: React.ReactNode }) {
 }
 
 function percent(value?: number | null): string {
-  return typeof value === "number" ? `${Math.round(value * 100)}%` : "—";
+  return typeof value === "number" ? `${Math.round(value * 100)}%` : "Not recorded";
 }
 
 /**
@@ -84,7 +91,7 @@ export function InboundOriginRail({
         <dl className="mt-4 grid gap-3 sm:grid-cols-4">
           {[
             { label: "Channel", value: channel },
-            { label: "Landed on", value: packet.attribution.landingPath || "—" },
+            { label: "Landed on", value: packet.attribution.landingPath || "Not recorded" },
             { label: "Coverage", value: percent(packet.understanding.objectiveCoverage) },
             {
               label: "Research consent",
@@ -178,9 +185,21 @@ export function StatedTranscript({ packet }: { packet: FounderSignalPacket }) {
               <Quote className="mt-1 h-3.5 w-3.5 shrink-0 text-royal" aria-hidden />
               <span>{turn.answerText}</span>
             </p>
+            {packet.submissionRowId ? (
+              <Link
+                to="/modules/website/submissions/$submissionId"
+                params={{ submissionId: packet.submissionRowId }}
+                hash={answerAnchorId(turn.questionId, index)}
+                className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-royal hover:underline"
+              >
+                Open this answer on the website record
+                <ArrowUpRight className="h-3 w-3" aria-hidden />
+              </Link>
+            ) : null}
           </li>
         ))}
       </ol>
+
     </div>
   );
 }
