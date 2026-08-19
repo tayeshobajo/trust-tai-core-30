@@ -26,6 +26,8 @@ import {
 import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
 import { inboundOrigin, withInboundOrigin } from "@/data/scout/inbound";
 import { readResearchConsent } from "@/data/scout/research-consent";
+import type { DecisionMoveKey } from "@/data/scout/decision-state";
+
 import { areasCovered, mergeObservedRows, type ResearchRunPlan } from "@/data/scout/research-run";
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
@@ -44,6 +46,7 @@ import {
   normalizeWebsiteUrl,
   saveHandoffRecord,
   saveResearchConsent,
+  saveProspectMetadataPatch,
   saveResearchProspect,
   toProspect,
   setProspectFitOverride,
@@ -138,6 +141,17 @@ export interface ScoutContext {
   userId: ID;
 }
 
+/** Plain summaries for the decision ledger. No em dash, no assistant voice. */
+const DECISION_SUMMARY: Record<DecisionMoveKey, (name: string) => string> = {
+  qualify: (name) => `${name} was qualified in Scout by a person here. Nothing was sent.`,
+  pass: (name) => `${name} was passed by a person here. The history is preserved.`,
+  hold: (name) => `${name} was held in Scout by a person here. Nothing advanced.`,
+  ask_question: (name) =>
+    `A question for ${name} was drafted for review. Nothing was sent from Scout.`,
+  explore_roadmap: (name) =>
+    `A person here marked ${name} as worth exploring in Roadmap. No Roadmap was created.`,
+};
+
 export const scoutService = {
   /** The targeting definition Scout is currently working from. */
   async icp(organizationId: ID): Promise<IcpProfile | null> {
@@ -231,6 +245,75 @@ export const scoutService = {
     });
     return record;
   },
+
+  /**
+   * Record what a person decided about this company.
+   *
+   * Approval is not execution. Qualify and Pass move the existing Scout status
+   * through the canonical path; Hold, Ask one more question and Explore
+   * Roadmap are recorded as history and markers only. No Roadmap, no project,
+   * and no outbound message is created here.
+   */
+  async recordDecision(
+    input: {
+      prospectId: ID;
+      companyName: string;
+      move: DecisionMoveKey;
+      note?: string | undefined;
+      previousStatus: ProspectStatus;
+      evidence?: string[];
+    },
+    context: ScoutContext,
+  ) {
+    const at = new Date().toISOString();
+    const note = input.note?.trim() || null;
+
+    if (input.move === "qualify") {
+      await this.setStatus(input.prospectId, "qualified", context);
+    } else if (input.move === "pass") {
+      await this.setStatus(input.prospectId, "passed", context);
+    } else if (input.move === "explore_roadmap") {
+      await saveProspectMetadataPatch(input.prospectId, {
+        scout_roadmap_intent: { by: context.userId, at, note },
+      });
+    } else if (input.move === "ask_question") {
+      await saveProspectMetadataPatch(input.prospectId, {
+        scout_question_draft: { body: note, by: context.userId, at },
+      });
+    }
+
+    const name =
+      input.move === "ask_question"
+        ? "prospect.question_drafted"
+        : input.move === "explore_roadmap"
+          ? "prospect.roadmap_intent"
+          : "prospect.decided";
+
+    const summary = DECISION_SUMMARY[input.move](input.companyName);
+
+    await supabaseActivity.record({
+      organizationId: context.organizationId,
+      name,
+      subject: { type: "prospect", id: input.prospectId, label: input.companyName },
+      summary: note ? `${summary} Reason given: ${note}` : summary,
+      payload: {
+        scout_decision_move: input.move,
+        previous_status: input.previousStatus,
+        note,
+        evidence: input.evidence ?? [],
+      },
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: context.userId },
+        observedAt: at,
+        confidence: "observed",
+      },
+      occurredAt: at,
+    });
+
+    return { move: input.move, at, note };
+  },
+
 
   /** Is live market discovery connected? */
   async discoveryStatus() {

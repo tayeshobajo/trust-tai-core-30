@@ -307,3 +307,21 @@ export async function setProspectFitOverride(
   if (!data) throw new Error("The fit override could not be saved.");
   return data as unknown as ProspectRow;
 }
+
+/**
+ * Merge a small patch into a prospect's metadata. Used for markers a person
+ * sets on the record itself, such as an intent to explore a Roadmap. Never
+ * replaces metadata wholesale.
+ */
+export async function saveProspectMetadataPatch(id: ID, patch: Row): Promise<void> {
+  const { data: current, error: readError } = await supabase
+    .from("prospects")
+    .select("metadata")
+    .eq("id", id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+
+  const metadata = mergeProspectMetadata(current?.metadata, patch);
+  const { error } = await supabase.from("prospects").update({ metadata }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
