@@ -179,9 +179,21 @@ export function StatedTranscript({ packet }: { packet: FounderSignalPacket }) {
               <Quote className="mt-1 h-3.5 w-3.5 shrink-0 text-royal" aria-hidden />
               <span>{turn.answerText}</span>
             </p>
+            {packet.submissionRowId ? (
+              <Link
+                to="/modules/website/submissions/$submissionId"
+                params={{ submissionId: packet.submissionRowId }}
+                hash={answerAnchorId(turn.questionId, index)}
+                className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-royal hover:underline"
+              >
+                Open this answer on the website record
+                <ArrowUpRight className="h-3 w-3" aria-hidden />
+              </Link>
+            ) : null}
           </li>
         ))}
       </ol>
+
     </div>
   );
 }
