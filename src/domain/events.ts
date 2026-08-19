@@ -19,7 +19,15 @@ import type { EntityRef, ID, ISODateTime } from "./entities";
  * read this vocabulary; they never author it. Steward's own interpretation and
  * memory history stays local to Steward's ledger.
  */
-export type SuiteAppId = "scout" | "comms" | "roadmap" | "projects" | "studio" | "ops";
+export type SuiteAppId =
+  | "scout"
+  | "comms"
+  | "roadmap"
+  | "projects"
+  | "studio"
+  | "ops"
+  /** TrustTai.com: a signal source that owns attention and intake only. */
+  | "website";
 
 export interface SuiteEventDefinition {
   name: ActivityName;
@@ -167,6 +175,21 @@ export const SUITE_EVENTS = {
     name: "content.published",
     emittedBy: "studio",
     meaning: "An asset went live for a client or for Trust Tai.",
+  },
+  WEBSITE_INTAKE_RECEIVED: {
+    name: "website.intake_received",
+    emittedBy: "website",
+    meaning: "A founder completed the adaptive roadmap intake on TrustTai.com.",
+  },
+  WEBSITE_INTAKE_LINKED: {
+    name: "website.intake_linked",
+    emittedBy: "website",
+    meaning: "An inbound intake was resolved onto a Scout company on evidence.",
+  },
+  WEBSITE_INTAKE_HELD: {
+    name: "website.intake_held",
+    emittedBy: "website",
+    meaning: "An inbound intake is waiting for a person because identity was unclear.",
   },
 } as const satisfies Record<string, SuiteEventDefinition>;
 

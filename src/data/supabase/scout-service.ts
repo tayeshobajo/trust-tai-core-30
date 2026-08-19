@@ -24,6 +24,7 @@ import {
   type ScoutSearchResult,
 } from "@/domain/scout";
 import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
+import { inboundOrigin, withInboundOrigin } from "@/data/scout/inbound";
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
 import type { HandoffDraft, HandoffRecord } from "@/domain/comms-handoff";
@@ -94,13 +95,22 @@ function previewEvaluation(icpVersion: number | null, at: string) {
 
 /** Stored row → candidate, using the row's own source to pick the evidence. */
 function toCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandidate {
+  const origin = inboundOrigin({ source: row.source, metadata: row.metadata });
+  const base = baseCandidate(row, icpVersion);
+  return origin ? withInboundOrigin(base, origin) : base;
+}
+
+function baseCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandidate {
   if (row.source === SCOUT_DISCOVERY_SOURCE) return candidateFromDiscoveryRow(row, icpVersion);
   if (row.source === SCOUT_LIVE_SOURCE) return candidateFromResearchRow(row, icpVersion);
   const prospect = toProspect(row);
   const lastCheckedAt = row.updated_at ?? row.created_at;
+  const inbound = inboundOrigin({ source: row.source, metadata: row.metadata });
   return {
     prospect,
-    ...previewEvidence(prospect.domain),
+    // An inbound company has told us things but we have observed nothing yet,
+    // so it must never borrow the preview demo's evidence.
+    ...(inbound ? { signals: [], fit: { whyItFits: "", recommendation: "" } } : previewEvidence(prospect.domain)),
     source: PREVIEW_SOURCE,
     evaluation: previewEvaluation(icpVersion, lastCheckedAt),
     lastCheckedAt,

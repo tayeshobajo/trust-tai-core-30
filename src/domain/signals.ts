@@ -22,15 +22,18 @@ export type ContextSourceApp =
   | "studio"
   | "ops"
   /** Conversations, commitments and role memory, owned by Steward. */
-  | "steward";
+  | "steward"
+  /** Attention and inbound intake on TrustTai.com. A signal source only. */
+  | "website";
 
 /** Observed = read. Inferred = worked out. Decided = a person committed to it. */
-export type TruthTier = "observed" | "inferred" | "decided";
+export type TruthTier = "observed" | "inferred" | "decided" | "stated";
 
 export const TRUTH_TIER_LABEL: Record<TruthTier, string> = {
   observed: "Observed",
   inferred: "Inferred",
   decided: "Decided",
+  stated: "Stated",
 };
 
 /** One retrieved fact, always with a room, a tier, and where it came from. */

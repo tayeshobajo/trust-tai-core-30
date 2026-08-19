@@ -10,6 +10,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 
 import { CompanyMark } from "@/components/tt/company-identity";
+import { InboundBadge } from "@/components/tt/scout/inbound";
 import { FitDot, FIT_LIGHT_LABEL, STAGE_LABEL, formatChecked } from "@/components/tt/fit-light";
 import type { ProspectCandidate } from "@/domain/scout";
 import type { ProspectStatus } from "@/domain/entities";
@@ -53,7 +54,10 @@ export function CompanyCell({ candidate }: { candidate: ProspectCandidate }) {
         size="sm"
       />
       <span className="min-w-0">
-        <span className="block truncate text-sm font-medium text-foreground">{prospect.name}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium text-foreground">{prospect.name}</span>
+          {candidate.source.kind === "website_intake" ? <InboundBadge /> : null}
+        </span>
         <span className="block truncate font-mono text-[11px] text-muted-foreground">
           {prospect.domain || "No website recorded"}
         </span>

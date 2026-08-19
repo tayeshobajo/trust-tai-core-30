@@ -127,6 +127,29 @@ export function contextBlocks(snapshot: SuiteSnapshot): ContextBlock[] {
       }),
     );
 
+    // A company that came to us states its own Point A. That is testimony, so
+    // it enters the context with its own tier and never as observed evidence.
+    if (candidate.stated) {
+      const said =
+        candidate.stated.claims.find((claim) => claim.lane === "desired_future")?.statement ??
+        candidate.stated.claims[0]?.statement;
+      blocks.push(
+        block({
+          now,
+          id: `website:stated:${prospect.id}`,
+          appId: "website",
+          entity,
+          fact: said
+            ? `${prospect.name} came to us through the TrustTai.com roadmap intake and said: ${said}`
+            : `${prospect.name} came to us through the TrustTai.com roadmap intake.`,
+          tier: "stated",
+          evidence: [human("Roadmap intake on TrustTai.com")],
+          at: candidate.stated.statedAt,
+          confidence: "moderate",
+        }),
+      );
+    }
+
     if (candidate.evaluation.scoreable) {
       blocks.push(
         block({
@@ -320,7 +343,7 @@ export function bundleFor(
   const blocks = subject ? all.filter((b) => matches(b.entity, subject, subject.label ?? "")) : all;
   const contributing = [...new Set(blocks.map((b) => b.appId))] as ContextSourceApp[];
   const emptyRooms: WithheldSource[] = (
-    ["scout", "comms", "roadmap", "projects", "ops", "steward"] as ContextSourceApp[]
+    ["scout", "comms", "roadmap", "projects", "ops", "steward", "website"] as ContextSourceApp[]
   )
     .filter((app) => !contributing.includes(app))
     .filter((app) => !snapshot.withheld.some((w) => w.appId === app))

@@ -14,6 +14,11 @@ import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState, TTButton } from "@/components/tt/primitives";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { InboundSourceCard } from "@/components/tt/scout/inbound-source";
+import {
+  InboundOriginRail,
+  StatedPanel,
+  StatedTranscript,
+} from "@/components/tt/scout/inbound";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { HandoffPanel } from "@/components/tt/prospect/handoff";
 import { PeoplePanel, type ManualPersonForm } from "@/components/tt/prospect/people-panel";
@@ -382,6 +387,23 @@ function CompanyDetail({
 
             {tab === "overview" ? (
               <div className="space-y-6">
+                {candidate.stated ? (
+                  <>
+                    <InboundOriginRail
+                      packet={candidate.stated}
+                      channel={
+                        [
+                          candidate.stated.attribution.utmSource,
+                          candidate.stated.attribution.utmCampaign,
+                        ]
+                          .filter((part): part is string => Boolean(part && part.trim()))
+                          .join(" · ") || "Direct"
+                      }
+                    />
+                    <StatedPanel packet={candidate.stated} />
+                    <StatedTranscript packet={candidate.stated} />
+                  </>
+                ) : null}
                 <InboundSourceCard organizationId={organizationId} prospectId={prospectId} />
                 <ScoutSummaryCard
                   summary={derived.summary}
