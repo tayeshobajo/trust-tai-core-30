@@ -26,6 +26,11 @@ export type ActivityAction =
   | "decision_resolved"
   | "next_move_changed"
   | "flagged"
+  /** Scout: a person drafted a question for review. Nothing was sent. */
+  | "question_drafted"
+  /** Scout: a person marked a company as worth exploring in Roadmap. */
+  | "roadmap_intent"
+
   /* --- Settings: identity, membership and application access --- */
   | "invited"
   /** An existing invitation was sent again, cancelled, or emailed. */
