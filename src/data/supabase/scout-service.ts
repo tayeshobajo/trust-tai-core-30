@@ -404,6 +404,10 @@ export const scoutService = {
         fit_light: evaluation.light,
         research_version: researchVersion(payload),
         evidence_count: evaluation.evidenceCount,
+        observations_added: merge.added,
+        observations_replaced: merge.replaced,
+        observations_preserved: merge.kept,
+        areas_updated: areasCovered(payload.observed ?? []),
       },
       provenance: {
         appId: "scout",
@@ -421,6 +425,36 @@ export const scoutService = {
       generatedAt: occurredAt,
     };
   },
+
+  /**
+   * A controlled run for one company already on the board.
+   *
+   * Permission is enforced here as well as in the UI, so no surface can start
+   * a pass a founder declined or nobody authorised. The plan decides what the
+   * pass is for; the merge inside `research` decides what survives it.
+   */
+  async runResearch(
+    input: { candidate: ProspectCandidate; plan: ResearchRunPlan },
+    context: ScoutContext,
+  ): Promise<ScoutResearchResult> {
+    const { candidate, plan } = input;
+    if (!plan.allowed) {
+      throw new Error(
+        plan.blockedBecause ??
+          "Scout will not read anything about this company until research permission is settled.",
+      );
+    }
+    const websiteUrl = candidate.prospect.websiteUrl || candidate.prospect.domain;
+    if (!websiteUrl) {
+      throw new Error("This company has no website on file, so there is nothing public to read.");
+    }
+    return this.research({
+      organizationId: context.organizationId,
+      userId: context.userId,
+      websiteUrl,
+    });
+  },
+
 
   /**
    * Route a prepared brief to Comms. The brief is stored on the prospect with
