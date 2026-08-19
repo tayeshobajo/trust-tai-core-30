@@ -26,6 +26,8 @@ import {
 import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
 import { inboundOrigin, withInboundOrigin } from "@/data/scout/inbound";
 import { readResearchConsent } from "@/data/scout/research-consent";
+import type { DecisionMoveKey } from "@/data/scout/decision-state";
+
 import { areasCovered, mergeObservedRows, type ResearchRunPlan } from "@/data/scout/research-run";
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
