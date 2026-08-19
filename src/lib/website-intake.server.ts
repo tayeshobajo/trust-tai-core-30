@@ -509,7 +509,10 @@ async function writeStatedPacket(
       },
       attribution: {
         landingPath: body.attribution.landing_path ?? null,
-        utm: body.attribution.utm ?? {},
+        utm: {
+          source: body.attribution.utm?.source ?? null,
+          campaign: body.attribution.utm?.campaign ?? null,
+        },
       },
     },
     submissionRowId,

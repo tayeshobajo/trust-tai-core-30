@@ -80,7 +80,8 @@ function SubmissionDetail({ identity }: { identity: WorkspaceIdentity }) {
     return (
       <EmptyState
         title="This submission is not here"
-        description="It may have been removed, or it belongs to another workspace. Nothing was changed."
+        belongsHere="Completed roadmap intakes from TrustTai.com live here, in full."
+        whyItMatters="It may have been removed, or it belongs to another workspace. Nothing was changed."
         action={
           <Link to="/modules/website">
             <TTButton variant="secondary">Back to the Website room</TTButton>
