@@ -366,7 +366,9 @@ function CompanyDetail({
         break;
       case "rerun_research": {
         const url = prospect.websiteUrl || prospect.domain;
-        if (url) research.mutate(url);
+        // Consent is a gate, not a hint: an inbound company that never granted
+        // research is never read, whichever surface asks for it.
+        if (url && permission.canResearch) research.mutate(url);
         break;
       }
       case "prepare_comms_handoff":
@@ -421,7 +423,7 @@ function CompanyDetail({
         break;
       case "run_research": {
         const url = prospect.websiteUrl || prospect.domain;
-        if (url) research.mutate(url);
+        if (url && permission.canResearch) research.mutate(url);
         break;
       }
       case "find_people":
