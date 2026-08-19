@@ -20,8 +20,17 @@ import type {
   ScoutRead,
 } from "@/data/scout/research-brief";
 import { RESEARCH_STATE_LABEL } from "@/data/scout/research-brief";
+import type { EvidenceAudit } from "@/data/scout/evidence-provenance";
+import {
+  EVIDENCE_KIND_LABEL,
+  auditForInferred,
+  auditForSignal,
+  auditForSuggested,
+} from "@/data/scout/evidence-provenance";
+import type { ResearchRunPlan } from "@/data/scout/research-run";
 import type { ResearchPermission } from "@/data/scout/research-consent";
 import { RESEARCH_PERMISSION_LABEL } from "@/data/scout/research-consent";
+import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import type { ScoutSignal } from "@/domain/scout";
 import { cn } from "@/lib/utils";
 
