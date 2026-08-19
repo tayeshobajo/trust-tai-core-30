@@ -24,6 +24,11 @@ import {
   TaiDecisionStatePanel,
 } from "@/components/tt/scout/detail/research";
 import {
+  DecisionStatePanel,
+  type DecisionCommit,
+} from "@/components/tt/scout/detail/decision-state";
+import { buildDecisionState } from "@/data/scout/decision-state";
+import {
   contradictions,
   evidenceCoverage,
   evidenceThemes,
@@ -244,6 +249,23 @@ function CompanyDetail({
     onSuccess: refresh,
   });
 
+  const recordDecision = useMutation({
+    mutationFn: (commit: DecisionCommit) => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      return scoutService.recordDecision(
+        {
+          prospectId,
+          companyName: candidate.prospect.name,
+          move: commit.move,
+          note: commit.note,
+          previousStatus: candidate.prospect.status,
+        },
+        { organizationId, userId },
+      );
+    },
+    onSuccess: refresh,
+  });
+
   const ingest = useMutation({
     mutationFn: (providerId: string) => {
       if (!candidate) throw new Error("That company is no longer on your board.");
@@ -308,6 +330,7 @@ function CompanyDetail({
   const error = (research.error ??
     setResearchConsent.error ??
     setStatus.error ??
+    recordDecision.error ??
     ingest.error ??
     addPerson.error ??
     confirmEmail.error ??
@@ -319,6 +342,7 @@ function CompanyDetail({
     research.isPending ||
     setResearchConsent.isPending ||
     setStatus.isPending ||
+    recordDecision.isPending ||
     ingest.isPending ||
     addPerson.isPending ||
     confirmEmail.isPending ||
@@ -421,6 +445,18 @@ function CompanyDetail({
     researchBecause: permission.because,
   });
   const workspace = { review, decision, ask: scoutConductorAsk(candidate, decision) };
+
+  // The Tai Decision State: one suggested move, bounded human actions, and the
+  // record of everything already settled here.
+  const decisionState = buildDecisionState({
+    candidate,
+    review,
+    read: brief,
+    conflicts,
+    permission,
+    coverage,
+    events: allEvents,
+  });
 
   /** Start a controlled pass. `force` refreshes areas that are still fresh. */
   const startResearch = (force = false) => {
@@ -545,6 +581,18 @@ function CompanyDetail({
                 <EvidenceLanes themes={themes} observed={review.observed} />
                 <ResearchSources observed={review.observed} />
                 <ScoutReadPanel read={brief} />
+                <DecisionStatePanel
+                  companyName={prospect.name}
+                  state={decisionState}
+                  toldUs={candidate.stated ? inboundToldUs(candidate.stated) : null}
+                  submissionHref={
+                    candidate.stated?.submissionRowId
+                      ? `/modules/website/submissions/${candidate.stated.submissionRowId}`
+                      : null
+                  }
+                  onCommit={(commit) => recordDecision.mutate(commit)}
+                  busy={busy}
+                />
                 <TaiDecisionStatePanel
                   decision={workspace.decision}
                   conductorSearch={workspace.ask}
