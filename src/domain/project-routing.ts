@@ -16,6 +16,7 @@
  */
 
 import type { EvidenceRef } from "./confidence";
+import { classifyExecutionOwner, EXECUTION_ROOM_LABEL } from "./execution-ownership";
 import type { ID, ISODateTime } from "./entities";
 import type { SuiteEventKey } from "./events";
 import type { ExecutionProject } from "./projects";
@@ -164,6 +165,18 @@ export function buildRouteRequest(
       because: "Say why this is leaving Projects, so the receiving room does not re-research it.",
     };
   }
+  // The ownership law is enforced here, not only in copy. Studio is content
+  // and creative production; engineering work can never be handed to it.
+  if (intent.targetApp === "studio") {
+    const read = classifyExecutionOwner(outcome, because, project.name);
+    if (read.primary !== "studio") {
+      return {
+        ok: false,
+        because: `This reads as ${EXECUTION_ROOM_LABEL[read.primary]} work, not content production. ${read.because} Studio only carries content and creative production.`,
+      };
+    }
+  }
+
   const pointB = clean(project.pointB);
   if (!pointB) {
     return {
