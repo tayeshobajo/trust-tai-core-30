@@ -12,6 +12,7 @@ import type { ID, Prospect } from "./entities";
 import type { ScoutFitEvaluation } from "./scout-fit";
 import type { ResearchRun } from "./prospect-modules";
 import type { ScoutIntel } from "./scout-intel";
+import type { FounderSignalPacket } from "./stated";
 
 import type { CompanyIdentity } from "@/lib/company-identity";
 import type { CompanyProfile } from "@/data/scout-profile";
@@ -38,7 +39,7 @@ export interface ScoutFit {
  * Where a candidate's evidence came from. Preview discovery is a fixed demo
  * pool; live website research is real public-page reading by the backend.
  */
-export type CandidateSourceKind = "preview_demo" | "live_website";
+export type CandidateSourceKind = "preview_demo" | "live_website" | "website_intake";
 
 export interface CandidateSource {
   kind: CandidateSourceKind;
@@ -48,6 +49,13 @@ export interface CandidateSource {
   pagesResearched?: string[];
   researchedAt?: string;
 }
+
+/** A company that came to us through the TrustTai.com roadmap intake. */
+export const WEBSITE_INTAKE_SOURCE: CandidateSource = {
+  kind: "website_intake",
+  label: "Inbound · TrustTai.com",
+  note: "This company completed the adaptive roadmap intake. Everything below marked Stated is what they told us, in their own words.",
+};
 
 export const PREVIEW_SOURCE: CandidateSource = {
   kind: "preview_demo",
@@ -76,6 +84,8 @@ export interface ProspectCandidate {
   history?: ResearchRun[];
   /** Buying signals, digital opportunities and people, kept apart from fit. */
   intel?: ScoutIntel;
+  /** What the founder said about themselves, when they came to us inbound. */
+  stated?: FounderSignalPacket;
 }
 
 

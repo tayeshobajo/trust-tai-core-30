@@ -64,7 +64,16 @@ export type ActivityAction =
   | "action_routed"
   | "action_failed"
   | "action_completed"
-  | "action_measured";
+  | "action_measured"
+  /* --- Website signal boundary (see src/domain/website.ts) ---
+   * TrustTai.com owns attention and intake. It reports what arrived and
+   * whether it reached a company; it never qualifies anything. */
+  /** A completed adaptive intake was received and stored verbatim. */
+  | "intake_received"
+  /** The intake was resolved onto a canonical Scout company on evidence. */
+  | "intake_linked"
+  /** Identity was ambiguous, so the intake rests as an unlinked signal. */
+  | "intake_held";
 
 /**
  * What an event is *about*. Usually a shared core entity. Two suite rooms 
@@ -73,7 +82,7 @@ export type ActivityAction =
  * governance history only. This is a naming scope, never a licence to create a
  * parallel entity store.
  */
-export type ActivityScope = EntityType | "ops" | "studio" | "conductor";
+export type ActivityScope = EntityType | "ops" | "studio" | "conductor" | "website";
 
 /** Event name is always `scope.action`, e.g. "project.status_changed". */
 export type ActivityName = `${ActivityScope}.${ActivityAction}`;

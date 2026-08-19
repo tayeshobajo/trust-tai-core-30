@@ -31,6 +31,7 @@ import {
   isWebsiteEventName,
   type WebsiteStructured,
 } from "@/domain/website";
+import { STATED_METADATA_KEY, packetFromSubmission } from "@/domain/stated";
 import { trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 
 /* --------------------------------------------------------------- contract */
@@ -395,12 +396,35 @@ export async function receiveIntake(
     ? String((insert.data as Record<string, unknown>)["id"])
     : body.submission_id;
 
-  // 4. History. One row, traceable back to the submission.
+  // 4. Testimony. What the founder said travels with the company, so Scout can
+  //    show a `stated` lane without reaching into the Website room.
+  if (prospectId) {
+    await writeStatedPacket(db, prospectId, body, submissionRowId);
+  }
+
+  // 5. History. What arrived, then where it went. Two facts, never merged.
+  const who =
+    body.company.name ||
+    subjectDomain({
+      companyWebsite: body.company.website ?? null,
+      personEmail: body.person.email ?? null,
+    }) ||
+    "an inbound founder";
+
   await writeActivity(db, organizationId, {
-    action: prospectId ? "handed_over" : "flagged",
+    action: "intake_received",
+    summary: `${WEBSITE_INTAKE_LABEL}: ${who} completed the roadmap intake on TrustTai.com.`,
+    submissionId: body.submission_id,
+    entityId: submissionRowId,
+    prospectId,
+    created,
+  });
+
+  await writeActivity(db, organizationId, {
+    action: prospectId ? "intake_linked" : "intake_held",
     summary: prospectId
-      ? `${WEBSITE_INTAKE_LABEL}: ${body.company.name || subjectDomain({ companyWebsite: body.company.website ?? null, personEmail: body.person.email ?? null }) || "an inbound founder"} reached Scout. ${outcome.because}`
-      : `${WEBSITE_INTAKE_LABEL}: an inbound submission is waiting for review. ${outcome.because}`,
+      ? `${WEBSITE_INTAKE_LABEL}: ${who} reached Scout. ${outcome.because}`
+      : `${WEBSITE_INTAKE_LABEL}: an inbound submission is waiting for a person. ${outcome.because}`,
     submissionId: body.submission_id,
     entityId: submissionRowId,
     prospectId,
@@ -449,6 +473,67 @@ async function writeActivity(
   };
   const { error } = await db.from("activities").insert(payload);
   if (error) console.error("[website] activity not recorded:", error.message);
+}
+
+/**
+ * Store the founder's own account on the company, in the `stated` lane.
+ *
+ * This never touches `observed`, `inferred`, or `suggested`. Testimony is not
+ * evidence, so it must never quietly raise a fit score; it is kept beside the
+ * evidence so a person can compare the two.
+ */
+async function writeStatedPacket(
+  db: SupabaseClient,
+  prospectId: string,
+  body: IntakeInput,
+  submissionRowId: string,
+): Promise<void> {
+  const packet = packetFromSubmission(
+    {
+      submissionId: body.submission_id,
+      submittedAt: body.submitted_at,
+      structured: normalizeStructured(body.structured),
+      verbatim: body.verbatim.map((answer) => ({
+        questionId: answer.question_id,
+        questionText: answer.question_text,
+        answerText: answer.answer_text,
+        modality: answer.modality,
+        skipped: answer.skipped === true,
+      })),
+      signals: {
+        frame: body.signals.frame ?? null,
+        frameConfidence: body.signals.frame_confidence ?? null,
+        objectiveCoverage: body.signals.objective_coverage ?? null,
+        completeness: body.signals.completeness ?? null,
+        authorizesResearch: body.signals.authorizes_research ?? null,
+      },
+      attribution: {
+        landingPath: body.attribution.landing_path ?? null,
+        utm: body.attribution.utm ?? {},
+      },
+    },
+    submissionRowId,
+  );
+
+  const current = await db
+    .from("prospects")
+    .select("metadata")
+    .eq("id", prospectId)
+    .maybeSingle();
+  if (current.error) {
+    console.error("[website] stated packet not stored:", current.error.message);
+    return;
+  }
+  const existing = ((current.data as Record<string, unknown> | null)?.["metadata"] ?? {}) as Record<
+    string,
+    unknown
+  >;
+
+  const { error } = await db
+    .from("prospects")
+    .update({ metadata: { ...existing, [STATED_METADATA_KEY]: packet } })
+    .eq("id", prospectId);
+  if (error) console.error("[website] stated packet not stored:", error.message);
 }
 
 /* ------------------------------------------------------------------- events */
