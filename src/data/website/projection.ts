@@ -103,7 +103,7 @@ export function intakeFunnel(
       key: "intake_view",
       label: "Saw the intake",
       value: known(sessions(events, "intake_view")),
-      note: measured ? undefined : "No website events received yet.",
+      ...(measured ? {} : { note: "No website events received yet." }),
     },
     { key: "intake_started", label: "Started", value: known(sessions(events, "intake_started")) },
     {
@@ -116,7 +116,7 @@ export function intakeFunnel(
             .map((event) => event.sessionId ?? event.eventKey),
         ).size,
       ),
-      note: measured ? "Sessions that answered at least one question." : undefined,
+      ...(measured ? { note: "Sessions that answered at least one question." } : {}),
     },
     { key: "submitted", label: "Submitted", value: submissions.length },
     {

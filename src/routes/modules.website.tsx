@@ -65,7 +65,7 @@ function WebsiteRoute() {
   return (
     <WorkspaceGate appId="website">
       {(identity) => (
-        <AppShell appId="website">
+        <AppShell identity={identity}>
           <WebsiteRoom identity={identity} />
         </AppShell>
       )}
@@ -308,7 +308,8 @@ function Submissions({
     return (
       <EmptyState
         title="No website submissions yet"
-        description="Completed adaptive intakes from TrustTai.com appear here the moment they are received, with their verbatim answers preserved."
+        belongsHere="Completed adaptive intakes from TrustTai.com land here the moment they are received."
+        whyItMatters="Verbatim answers are preserved exactly, so Scout qualifies a real conversation rather than a summary of one."
       />
     );
   }
@@ -360,6 +361,7 @@ function Submissions({
                   <Link
                     to="/modules/scout/prospects/$prospectId"
                     params={{ prospectId: submission.scoutProspectId }}
+                    search={{ section: "scout" as const, fit: "all" as const }}
                     className="text-royal hover:underline"
                   >
                     Open in Scout
@@ -446,7 +448,8 @@ function Sources({ events, submissions }: { events: WebsiteEvent[]; submissions:
     return (
       <EmptyState
         title="No attributed sources yet"
-        description="Sources appear once website events or attributed submissions have been received."
+        belongsHere="Sources appear once website events or attributed submissions have been received."
+        whyItMatters="Attribution is what turns attention into an honest read on which campaigns produce qualified companies."
       />
     );
   }

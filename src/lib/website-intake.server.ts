@@ -399,7 +399,7 @@ export async function receiveIntake(
   await writeActivity(db, organizationId, {
     action: prospectId ? "handed_over" : "flagged",
     summary: prospectId
-      ? `${WEBSITE_INTAKE_LABEL}: ${body.company.name || subjectDomain({ companyWebsite: body.company.website, personEmail: body.person.email }) || "an inbound founder"} reached Scout. ${outcome.because}`
+      ? `${WEBSITE_INTAKE_LABEL}: ${body.company.name || subjectDomain({ companyWebsite: body.company.website ?? null, personEmail: body.person.email ?? null }) || "an inbound founder"} reached Scout. ${outcome.because}`
       : `${WEBSITE_INTAKE_LABEL}: an inbound submission is waiting for review. ${outcome.because}`,
     submissionId: body.submission_id,
     entityId: submissionRowId,
