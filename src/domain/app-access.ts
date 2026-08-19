@@ -70,6 +70,7 @@ const APP_PERMISSIONS: Record<string, AppPermissions> = {
   roadmap: { read: "roadmap.read", write: "roadmap.write" },
   projects: { read: "projects.read", write: "projects.write" },
   steward: { read: "steward.read", write: "steward.write" },
+  website: { read: "website.read", write: "website.write" },
   ops: { read: "ops.read" },
   studio: { read: "workspace.read" },
   pulse: { read: "intelligence.read" },

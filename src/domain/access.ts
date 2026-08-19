@@ -68,6 +68,13 @@ export type Permission =
   | "projects.read"
   | "projects.write"
   /**
+   * The Website room. TrustTai.com is a signal source: `website.read` is an
+   * awareness/analytics grant, `website.write` only covers acting on an
+   * inbound signal inside Core. It never grants Scout qualification.
+   */
+  | "website.read"
+  | "website.write"
+  /**
    * Steward is the cross-suite stewardship layer, not a business domain.
    * `steward.write` grants interpretation, memory and judgment actions
    * (confirming a meaning, correcting a belief, authorising a proposal). It
@@ -96,6 +103,7 @@ const READ_ONLY: Permission[] = [
   "roadmap.read",
   "projects.read",
   "steward.read",
+  "website.read",
 ];
 
 const OPERATOR: Permission[] = [
@@ -105,6 +113,7 @@ const OPERATOR: Permission[] = [
   "roadmap.write",
   "projects.write",
   "steward.write",
+  "website.write",
   "ops.read",
 ];
 
