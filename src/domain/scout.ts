@@ -13,11 +13,23 @@ import type { ScoutFitEvaluation } from "./scout-fit";
 import type { ResearchRun } from "./prospect-modules";
 import type { ScoutIntel } from "./scout-intel";
 import type { FounderSignalPacket } from "./stated";
-import type { ResearchConsentRecord } from "@/data/scout/research-consent";
 
 import type { CompanyIdentity } from "@/lib/company-identity";
 import type { CompanyProfile } from "@/data/scout-profile";
 
+
+/**
+ * A person's own decision about researching an inbound company, taken when the
+ * intake never asked. Recorded with who decided and when; it never rewrites
+ * what the founder said.
+ */
+export interface ResearchConsentRecord {
+  decision: "granted" | "withheld";
+  by: ID;
+  byLabel?: string | null;
+  at: string;
+  note?: string | null;
+}
 
 /** A single piece of evidence Scout observed about a company. */
 export interface ScoutSignal {

@@ -12,18 +12,10 @@
  * and it never rewrites what the founder said.
  */
 
-import type { ID, ISODateTime } from "@/domain/entities";
-import type { ProspectCandidate } from "@/domain/scout";
+import type { ProspectCandidate, ResearchConsentRecord } from "@/domain/scout";
 import type { FounderSignalPacket } from "@/domain/stated";
 
-/** A decision a person in the workspace took about researching this company. */
-export interface ResearchConsentRecord {
-  decision: "granted" | "withheld";
-  by: ID;
-  byLabel?: string | null;
-  at: ISODateTime;
-  note?: string | null;
-}
+export type { ResearchConsentRecord };
 
 /** The metadata key the decision lives under on `prospects.metadata`. */
 export const RESEARCH_CONSENT_METADATA_KEY = "scout_research_consent";
