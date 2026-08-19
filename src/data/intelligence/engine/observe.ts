@@ -46,6 +46,7 @@ const CADENCE_ROOMS: { appId: string; label: string }[] = [
   { appId: "projects", label: "Projects" },
   { appId: "steward", label: "Steward" },
   { appId: "ops", label: "Ops" },
+  { appId: "website", label: "Website" },
 ];
 
 function daysOld(at: string | undefined, now: string): number {

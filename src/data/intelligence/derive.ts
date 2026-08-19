@@ -320,7 +320,7 @@ export function bundleFor(
   const blocks = subject ? all.filter((b) => matches(b.entity, subject, subject.label ?? "")) : all;
   const contributing = [...new Set(blocks.map((b) => b.appId))] as ContextSourceApp[];
   const emptyRooms: WithheldSource[] = (
-    ["scout", "comms", "roadmap", "projects", "ops", "steward"] as ContextSourceApp[]
+    ["scout", "comms", "roadmap", "projects", "ops", "steward", "website"] as ContextSourceApp[]
   )
     .filter((app) => !contributing.includes(app))
     .filter((app) => !snapshot.withheld.some((w) => w.appId === app))
