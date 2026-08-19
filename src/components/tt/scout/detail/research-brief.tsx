@@ -20,8 +20,17 @@ import type {
   ScoutRead,
 } from "@/data/scout/research-brief";
 import { RESEARCH_STATE_LABEL } from "@/data/scout/research-brief";
+import type { EvidenceAudit } from "@/data/scout/evidence-provenance";
+import {
+  EVIDENCE_KIND_LABEL,
+  auditForInferred,
+  auditForSignal,
+  auditForSuggested,
+} from "@/data/scout/evidence-provenance";
+import type { ResearchRunPlan } from "@/data/scout/research-run";
 import type { ResearchPermission } from "@/data/scout/research-consent";
 import { RESEARCH_PERMISSION_LABEL } from "@/data/scout/research-consent";
+import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import type { ScoutSignal } from "@/domain/scout";
 import { cn } from "@/lib/utils";
 
@@ -222,6 +231,141 @@ export function CoverageStrip({
   );
 }
 
+/* ------------------------------------------------------ provenance trail - */
+
+export function AuditTrail({ audit }: { audit: EvidenceAudit }) {
+  return (
+    <details className="mt-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2">
+      <summary className="cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+        Audit trail
+      </summary>
+      <dl className="mt-2 grid gap-1.5 text-[12px] text-muted-foreground sm:grid-cols-2">
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.12em]">Source type</dt>
+          <dd className="text-foreground">{EVIDENCE_KIND_LABEL[audit.kind]}</dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.12em]">Read</dt>
+          <dd className="text-foreground">
+            {audit.observedAt ? (
+              <>
+                {relativeTime(audit.observedAt)}{" "}
+                <span className="text-muted-foreground">({audit.observedAt})</span>
+              </>
+            ) : (
+              "Not recorded"
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.12em]">Where</dt>
+          <dd className="text-foreground">
+            {audit.url ? (
+              <a
+                href={audit.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center gap-1 text-royal underline-offset-4 hover:underline"
+              >
+                {audit.title}
+                <ExternalLink aria-hidden className="size-3" />
+              </a>
+            ) : (
+              audit.title
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.12em]">Confidence</dt>
+          <dd className="text-foreground">{CONFIDENCE_LEVEL_LABEL[audit.confidence]}</dd>
+        </div>
+        <div className="sm:col-span-2">
+          <dt className="font-mono text-[10px] uppercase tracking-[0.12em]">Evidence snippet</dt>
+          <dd className="text-foreground">“{audit.snippet}”</dd>
+        </div>
+        <div className="sm:col-span-2">
+          <dt className="font-mono text-[10px] uppercase tracking-[0.12em]">Recorded by</dt>
+          <dd>{audit.actor}</dd>
+        </div>
+      </dl>
+    </details>
+  );
+}
+
+/* ------------------------------------------------------------ re-run ----- */
+
+export function RerunPanel({
+  plan,
+  onRun,
+  onForce,
+  busy,
+}: {
+  plan: ResearchRunPlan;
+  onRun: () => void;
+  onForce: () => void;
+  busy: boolean;
+}) {
+  return (
+    <div className="tt-surface p-5">
+      <SectionHeading
+        eyebrow="Controlled re-run"
+        title={plan.summary}
+        description="A re-run updates only what is missing or stale. Nothing already established is discarded."
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            Will be re-read
+          </p>
+          {plan.targets.length === 0 ? (
+            <p className="mt-1.5 text-[13px] text-muted-foreground">Nothing is missing or stale.</p>
+          ) : (
+            <ul className="mt-1.5 space-y-1">
+              {plan.targets.map((target) => (
+                <li key={target.key} className="text-[13px] text-foreground">
+                  {target.label}{" "}
+                  <span className="text-muted-foreground">
+                    — {target.reason === "never_checked" ? "never checked" : "older than 30 days"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            Kept untouched
+          </p>
+          <ul className="mt-1.5 space-y-1 text-[13px] text-muted-foreground">
+            {plan.preserves.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+            {plan.preservedAreas.length > 0 ? (
+              <li className="text-foreground">Fresh areas: {plan.preservedAreas.join(", ")}</li>
+            ) : null}
+          </ul>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <TTButton className="h-10 px-4 text-[13px]" disabled={busy || !plan.allowed} onClick={onRun}>
+          Update missing evidence
+        </TTButton>
+        <TTButton
+          variant="quiet"
+          className="h-10 px-4 text-[13px]"
+          disabled={busy || plan.mode === "blocked"}
+          onClick={onForce}
+        >
+          Refresh everything
+        </TTButton>
+      </div>
+      {plan.blockedBecause ? (
+        <p className="mt-2 text-[13px] text-muted-foreground">{plan.blockedBecause}</p>
+      ) : null}
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------- four lanes --- */
 
 function SignalLine({ signal }: { signal: ScoutSignal }) {
@@ -239,11 +383,19 @@ function SignalLine({ signal }: { signal: ScoutSignal }) {
           <ExternalLink aria-hidden className="size-3" />
         </a>
       ) : null}
+      <AuditTrail audit={auditForSignal(signal)} />
     </li>
   );
 }
 
-export function EvidenceLanes({ themes }: { themes: EvidenceTheme[] }) {
+export function EvidenceLanes({
+  themes,
+  observed = [],
+}: {
+  themes: EvidenceTheme[];
+  /** Every observation on file, used to resolve each audit trail. */
+  observed?: ScoutSignal[];
+}) {
   if (themes.length === 0) {
     return (
       <div className="tt-surface p-5">
@@ -312,6 +464,7 @@ export function EvidenceLanes({ themes }: { themes: EvidenceTheme[] }) {
                         <span className="font-mono text-[10px] uppercase tracking-[0.12em]">
                           {read.confidence} confidence
                         </span>
+                        <AuditTrail audit={auditForInferred(read, observed)} />
                       </li>
                     ))}
                   </ul>
@@ -329,6 +482,7 @@ export function EvidenceLanes({ themes }: { themes: EvidenceTheme[] }) {
                     {theme.suggested.map((move, index) => (
                       <li key={index} className="text-[13px] text-muted-foreground">
                         <span className="text-foreground">{move.statement}</span> — {move.because}
+                        <AuditTrail audit={auditForSuggested(move, observed)} />
                       </li>
                     ))}
                   </ul>
@@ -437,6 +591,7 @@ export function ResearchSources({ observed }: { observed: ScoutSignal[] }) {
                       </a>
                     ) : null}
                   </p>
+                  <AuditTrail audit={auditForSignal(signal)} />
                 </li>
               ))}
             </ul>

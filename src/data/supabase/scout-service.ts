@@ -26,6 +26,7 @@ import {
 import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
 import { inboundOrigin, withInboundOrigin } from "@/data/scout/inbound";
 import { readResearchConsent } from "@/data/scout/research-consent";
+import { areasCovered, mergeObservedRows, type ResearchRunPlan } from "@/data/scout/research-run";
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
 import type { HandoffDraft, HandoffRecord } from "@/domain/comms-handoff";
@@ -327,8 +328,20 @@ export const scoutService = {
     const identity = await fetchCompanyIdentity(payload.website_url || websiteUrl);
 
     const existing = await findProspectRowByWebsite(request.organizationId, websiteUrl);
+
+    // A re-run updates evidence, it does not reset a company. Observations the
+    // new pass did not reach are preserved, and the founder's stated packet and
+    // the research consent decision live in metadata, which is merged, never
+    // replaced.
+    const priorObserved = Array.isArray(existing?.observed) ? (existing.observed as unknown[]) : [];
+    const merge = mergeObservedRows({
+      previous: priorObserved,
+      incoming: payload.observed ?? [],
+    });
+    const observed = merge.merged;
+
     const evaluation = evaluateScoutFit({
-      observed: payload.observed ?? [],
+      observed,
       inferred: payload.inferred ?? {},
       suggested: payload.suggested ?? {},
       scoreable: true,
@@ -341,7 +354,7 @@ export const scoutService = {
       userId: request.userId,
       companyName: existing?.company_name ?? companyNameFromResearch(payload, websiteUrl),
       websiteUrl: payload.website_url || websiteUrl,
-      observed: payload.observed ?? [],
+      observed,
       inferred: payload.inferred ?? {},
       suggested: payload.suggested ?? {},
       provenance: researchProvenance(payload, {
@@ -392,6 +405,10 @@ export const scoutService = {
         fit_light: evaluation.light,
         research_version: researchVersion(payload),
         evidence_count: evaluation.evidenceCount,
+        observations_added: merge.added,
+        observations_replaced: merge.replaced,
+        observations_preserved: merge.kept,
+        areas_updated: areasCovered(payload.observed ?? []),
       },
       provenance: {
         appId: "scout",
@@ -409,6 +426,36 @@ export const scoutService = {
       generatedAt: occurredAt,
     };
   },
+
+  /**
+   * A controlled run for one company already on the board.
+   *
+   * Permission is enforced here as well as in the UI, so no surface can start
+   * a pass a founder declined or nobody authorised. The plan decides what the
+   * pass is for; the merge inside `research` decides what survives it.
+   */
+  async runResearch(
+    input: { candidate: ProspectCandidate; plan: ResearchRunPlan },
+    context: ScoutContext,
+  ): Promise<ScoutResearchResult> {
+    const { candidate, plan } = input;
+    if (!plan.allowed) {
+      throw new Error(
+        plan.blockedBecause ??
+          "Scout will not read anything about this company until research permission is settled.",
+      );
+    }
+    const websiteUrl = candidate.prospect.websiteUrl || candidate.prospect.domain;
+    if (!websiteUrl) {
+      throw new Error("This company has no website on file, so there is nothing public to read.");
+    }
+    return this.research({
+      organizationId: context.organizationId,
+      userId: context.userId,
+      websiteUrl,
+    });
+  },
+
 
   /**
    * Route a prepared brief to Comms. The brief is stored on the prospect with

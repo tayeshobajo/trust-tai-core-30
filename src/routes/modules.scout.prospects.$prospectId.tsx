@@ -28,10 +28,15 @@ import {
   evidenceCoverage,
   evidenceThemes,
   lastResearchedAt,
-  researchState,
   scoutRead,
 } from "@/data/scout/research-brief";
+import type { ProspectCandidate } from "@/domain/scout";
 import { researchPermission } from "@/data/scout/research-consent";
+import {
+  planResearchRun,
+  researchLifecycle,
+  type ResearchRunPlan,
+} from "@/data/scout/research-run";
 import { inboundToldUs } from "@/data/scout/inbound";
 import {
   ContradictionsPanel,
@@ -39,6 +44,7 @@ import {
   EvidenceLanes,
   ResearchHeader,
   ResearchSources,
+  RerunPanel,
   ScoutReadPanel,
 } from "@/components/tt/scout/detail/research-brief";
 import {
@@ -208,9 +214,11 @@ function CompanyDetail({
   const board = saved.data ?? [];
   const candidate = board.find((c) => c.prospect.id === prospectId) ?? null;
 
+  // A run is always planned first: the plan decides what gets re-read and what
+  // is preserved, and the service refuses a plan that permission does not allow.
   const research = useMutation({
-    mutationFn: (websiteUrl: string) =>
-      scoutService.research({ organizationId, userId, websiteUrl }),
+    mutationFn: (input: { candidate: ProspectCandidate; plan: ResearchRunPlan }) =>
+      scoutService.runResearch(input, { organizationId, userId }),
     onSuccess: refresh,
   });
 
@@ -364,13 +372,11 @@ function CompanyDetail({
       case "research_leadership":
         void goToTab("people");
         break;
-      case "rerun_research": {
-        const url = prospect.websiteUrl || prospect.domain;
+      case "rerun_research":
         // Consent is a gate, not a hint: an inbound company that never granted
         // research is never read, whichever surface asks for it.
-        if (url && permission.canResearch) research.mutate(url);
+        startResearch();
         break;
-      }
       case "prepare_comms_handoff":
         void goToTab("people");
         break;
@@ -397,13 +403,15 @@ function CompanyDetail({
     conflicts,
     permissionState: permission.state,
   });
-  const state = researchState({
+  const lifecycle = researchLifecycle({
+    coverage,
+    permission,
     observedCount: review.observed.length,
-    canResearch: permission.canResearch,
     contradictions: conflicts.length,
-    checkedCount: coverage.checkedCount,
+    lastResearchedAt: lastResearchedAt(candidate),
     running: research.isPending,
   });
+  const state = lifecycle.state;
   const decision = taiDecisionState({
     candidate,
     review,
@@ -414,6 +422,20 @@ function CompanyDetail({
   });
   const workspace = { review, decision, ask: scoutConductorAsk(candidate, decision) };
 
+  /** Start a controlled pass. `force` refreshes areas that are still fresh. */
+  const startResearch = (force = false) => {
+    const plan = force
+      ? planResearchRun({
+          coverage,
+          permission,
+          lastResearchedAt: lastResearchedAt(candidate),
+          force: true,
+        })
+      : lifecycle.plan;
+    if (!plan.allowed) return;
+    research.mutate({ candidate, plan });
+  };
+
   const onDecisionAction = (key: DecisionActionKey) => {
     switch (key) {
       case "review_evidence":
@@ -421,11 +443,9 @@ function CompanyDetail({
           .getElementById("scout-evidence-review")
           ?.scrollIntoView({ behavior: "smooth", block: "start" });
         break;
-      case "run_research": {
-        const url = prospect.websiteUrl || prospect.domain;
-        if (url && permission.canResearch) research.mutate(url);
+      case "run_research":
+        startResearch();
         break;
-      }
       case "find_people":
       case "route_to_comms":
         void goToTab("people");
@@ -506,10 +526,7 @@ function CompanyDetail({
                   permission={permission}
                   state={state}
                   researchedAt={lastResearchedAt(candidate)}
-                  onRunResearch={() => {
-                    const url = prospect.websiteUrl || prospect.domain;
-                    if (url && permission.canResearch) research.mutate(url);
-                  }}
+                  onRunResearch={() => startResearch()}
                   onResolveConsent={(decisionValue) => setResearchConsent.mutate(decisionValue)}
                   busy={busy}
                 />
@@ -518,8 +535,14 @@ function CompanyDetail({
                   checkedCount={coverage.checkedCount}
                   total={coverage.total}
                 />
+                <RerunPanel
+                  plan={lifecycle.plan}
+                  onRun={() => startResearch()}
+                  onForce={() => startResearch(true)}
+                  busy={busy}
+                />
                 <ContradictionsPanel conflicts={conflicts} />
-                <EvidenceLanes themes={themes} />
+                <EvidenceLanes themes={themes} observed={review.observed} />
                 <ResearchSources observed={review.observed} />
                 <ScoutReadPanel read={brief} />
                 <TaiDecisionStatePanel
