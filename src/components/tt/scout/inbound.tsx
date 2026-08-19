@@ -25,10 +25,11 @@ export function InboundBadge({ className }: { className?: string }) {
       )}
     >
       <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-royal" />
-      Inbound
+      Inbound · TrustTai.com
     </span>
   );
 }
+
 
 /** The Ambient Identity Wash for an inbound surface. Light entering the page. */
 export function InboundWash({ children }: { children: React.ReactNode }) {
