@@ -11,6 +11,7 @@
  *  - Nothing invents a figure, a timeline, a budget, or a client preference.
  */
 
+import { ownedExecutionBoundary } from "@/domain/execution-ownership";
 import type { ConfidenceLevel } from "@/domain/confidence";
 import type {
   HorizonBand,
@@ -322,7 +323,11 @@ export function normalizeMilestones(
       dependencies: Array.isArray(row["dependencies"])
         ? row["dependencies"].map((dep) => str(dep)).filter((dep) => dep.length > 0)
         : [],
-      executionBoundary: str(row["execution_boundary"] ?? row["executionBoundary"]),
+      executionBoundary: ownedExecutionBoundary({
+        name,
+        whatWeBuild: str(row["what_we_build"] ?? row["whatWeBuild"]),
+        executionBoundary: str(row["execution_boundary"] ?? row["executionBoundary"]),
+      }).boundary,
       confidence: confidence(row["confidence"], evidence),
     });
   }
