@@ -464,6 +464,7 @@ export function EvidenceLanes({
                         <span className="font-mono text-[10px] uppercase tracking-[0.12em]">
                           {read.confidence} confidence
                         </span>
+                        <AuditTrail audit={auditForInferred(read, observed)} />
                       </li>
                     ))}
                   </ul>
@@ -481,6 +482,7 @@ export function EvidenceLanes({
                     {theme.suggested.map((move, index) => (
                       <li key={index} className="text-[13px] text-muted-foreground">
                         <span className="text-foreground">{move.statement}</span> — {move.because}
+                        <AuditTrail audit={auditForSuggested(move, observed)} />
                       </li>
                     ))}
                   </ul>
