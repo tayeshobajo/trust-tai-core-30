@@ -591,6 +591,7 @@ export function ResearchSources({ observed }: { observed: ScoutSignal[] }) {
                       </a>
                     ) : null}
                   </p>
+                  <AuditTrail audit={auditForSignal(signal)} />
                 </li>
               ))}
             </ul>
