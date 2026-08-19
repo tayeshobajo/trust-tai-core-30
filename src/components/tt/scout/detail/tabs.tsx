@@ -17,7 +17,15 @@ import { cn } from "@/lib/utils";
 
 import { DetailSection, Empty, FactorIcon, StrengthPill, relativeTime } from "./parts";
 
-export const DETAIL_TABS = ["overview", "signals", "icp", "people", "notes", "activity"] as const;
+export const DETAIL_TABS = [
+  "overview",
+  "research",
+  "signals",
+  "icp",
+  "people",
+  "notes",
+  "activity",
+] as const;
 export type DetailTab = (typeof DETAIL_TABS)[number];
 
 export function parseDetailTab(value: unknown): DetailTab {
@@ -27,20 +35,25 @@ export function parseDetailTab(value: unknown): DetailTab {
 export function DetailTabs({
   active,
   counts,
+  showResearch = false,
   onChange,
 }: {
   active: DetailTab;
   counts: { signals: number; notes: number; people: number };
+  /** The Research workspace exists only for website-origin companies. */
+  showResearch?: boolean;
   onChange: (tab: DetailTab) => void;
 }) {
   const items: { key: DetailTab; label: string }[] = [
     { key: "overview", label: "Overview" },
+    ...(showResearch ? [{ key: "research" as DetailTab, label: "Research" }] : []),
     { key: "signals", label: counts.signals > 0 ? `Signals (${counts.signals})` : "Signals" },
     { key: "icp", label: "ICP Analysis" },
     { key: "people", label: counts.people > 0 ? `People (${counts.people})` : "People" },
     { key: "notes", label: counts.notes > 0 ? `Notes (${counts.notes})` : "Notes" },
     { key: "activity", label: "Activity" },
   ];
+
 
   return (
     <div role="tablist" aria-label="Company detail sections" className="flex gap-1 overflow-x-auto border-b border-border">
