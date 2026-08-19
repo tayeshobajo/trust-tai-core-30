@@ -232,6 +232,75 @@ export const scoutService = {
     return record;
   },
 
+  /**
+   * Record what a person decided about this company.
+   *
+   * Approval is not execution. Qualify and Pass move the existing Scout status
+   * through the canonical path; Hold, Ask one more question and Explore
+   * Roadmap are recorded as history and markers only. No Roadmap, no project,
+   * and no outbound message is created here.
+   */
+  async recordDecision(
+    input: {
+      prospectId: ID;
+      companyName: string;
+      move: DecisionMoveKey;
+      note?: string | undefined;
+      previousStatus: ProspectStatus;
+      evidence?: string[];
+    },
+    context: ScoutContext,
+  ) {
+    const at = new Date().toISOString();
+    const note = input.note?.trim() || null;
+
+    if (input.move === "qualify") {
+      await this.setStatus(input.prospectId, "qualified", context);
+    } else if (input.move === "pass") {
+      await this.setStatus(input.prospectId, "passed", context);
+    } else if (input.move === "explore_roadmap") {
+      await saveProspectMetadataPatch(input.prospectId, {
+        scout_roadmap_intent: { by: context.userId, at, note },
+      });
+    } else if (input.move === "ask_question") {
+      await saveProspectMetadataPatch(input.prospectId, {
+        scout_question_draft: { body: note, by: context.userId, at },
+      });
+    }
+
+    const name =
+      input.move === "ask_question"
+        ? "prospect.question_drafted"
+        : input.move === "explore_roadmap"
+          ? "prospect.roadmap_intent"
+          : "prospect.decided";
+
+    const summary = DECISION_SUMMARY[input.move](input.companyName);
+
+    await supabaseActivity.record({
+      organizationId: context.organizationId,
+      name,
+      subject: { type: "prospect", id: input.prospectId, label: input.companyName },
+      summary: note ? `${summary} Reason given: ${note}` : summary,
+      payload: {
+        scout_decision_move: input.move,
+        previous_status: input.previousStatus,
+        note,
+        evidence: input.evidence ?? [],
+      },
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: context.userId },
+        observedAt: at,
+        confidence: "observed",
+      },
+      occurredAt: at,
+    });
+
+    return { move: input.move, at, note };
+  },
+
+
   /** Is live market discovery connected? */
   async discoveryStatus() {
     return discoveryStatus();
