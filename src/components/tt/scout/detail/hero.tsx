@@ -12,6 +12,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, Link2, MoreHorizontal } from "
 
 import { CompanyMark } from "@/components/tt/company-identity";
 import { ScoutStatusPill, type ScoutLinkSearch } from "@/components/tt/scout/company-table";
+import { InboundBadge } from "@/components/tt/scout/inbound";
 import { TTButton } from "@/components/tt/primitives";
 import { POTENTIAL_LABEL, type ScoutCompanySummary } from "@/data/scout/company-summary";
 import type { ProspectCandidate } from "@/domain/scout";
