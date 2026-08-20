@@ -178,10 +178,18 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   ).length;
   // Only a health word Ops actually said counts as healthy.
   const healthy = portfolio.systems.filter((system) => system.health === "healthy").length;
-  const interrupted = unavailable || connection === "interrupted";
+  // Two different truths. We could not read Ops state at all, which is a
+  // problem here. Or we read it fine and Ops simply has not pushed in a while,
+  // which is usually a quiet day in Ops, not a broken connection.
+  const interrupted = unavailable;
+  const pushLabel = lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : null;
+  const delayed = !interrupted && (connection === "delayed" || connection === "interrupted");
   const freshness = interrupted
     ? "Ops sync interrupted"
-    : opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now());
+    : delayed && pushLabel
+      ? `Ops last pushed ${pushLabel}`
+      : opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now());
+
 
 
   return (
@@ -259,7 +267,23 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
             {isFetching ? "Retrying…" : "Retry sync"}
           </TTButton>
         </div>
+      ) : delayed ? (
+        <div className="rounded-xl border border-border bg-card/60 p-4">
+          <p className="text-[15px] text-foreground">Ops has been quiet</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {`Trust Tai OS read Ops fine just now. Ops last pushed its projects ${pushLabel}, so everything below is that snapshot. Ops pushes when something changes, so a quiet stretch usually means nothing moved.`}
+          </p>
+          <TTButton
+            className="mt-3"
+            variant="secondary"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching ? "Checking…" : "Check again"}
+          </TTButton>
+        </div>
       ) : null}
+
 
       <section>
         <SectionHeading

@@ -118,14 +118,18 @@ describe("Ops connection semantics", () => {
     expect(
       opsConnectionState({ lastSyncedAt: new Date(NOW - 30 * 60_000).toISOString(), now: NOW }),
     ).toBe("delayed");
-  });
-
-  it("is interrupted when the projection is old or unreadable", () => {
     expect(
       opsConnectionState({ lastSyncedAt: new Date(NOW - 5 * 3_600_000).toISOString(), now: NOW }),
+    ).toBe("delayed");
+  });
+
+  it("is interrupted only when the projection is unreadable or a day silent", () => {
+    expect(
+      opsConnectionState({ lastSyncedAt: new Date(NOW - 30 * 3_600_000).toISOString(), now: NOW }),
     ).toBe("interrupted");
     expect(opsConnectionState({ projectionReadOk: false, now: NOW })).toBe("interrupted");
   });
+
 
   it("is live when a direct Ops read succeeds", () => {
     expect(opsConnectionState({ live: true, now: NOW })).toBe("live");
