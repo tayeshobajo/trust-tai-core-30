@@ -1,5 +1,7 @@
-import { activePatterns, allPatterns } from "../src/data/intelligence/canon/patterns";
-import { allChains } from "../src/data/intelligence/canon/chains";
+import { activePatterns, INTELLIGENCE_PATTERNS as ALL } from "../src/data/intelligence/canon/patterns";
+const allPatterns = () => ALL;
+import { DIAGNOSTIC_CHAINS } from "../src/data/intelligence/canon/chains";
+const allChains = () => DIAGNOSTIC_CHAINS;
 const emitted = new Set<string>();
 const src = await Bun.file("src/data/intelligence/engine/observe.ts").text();
 for (const m of src.matchAll(/kind:\s*"([a-z_]+)"/g)) emitted.add(m[1]!);
