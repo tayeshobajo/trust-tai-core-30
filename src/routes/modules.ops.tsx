@@ -178,10 +178,18 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   ).length;
   // Only a health word Ops actually said counts as healthy.
   const healthy = portfolio.systems.filter((system) => system.health === "healthy").length;
-  const interrupted = unavailable || connection === "interrupted";
+  // Two different truths. We could not read Ops state at all, which is a
+  // problem here. Or we read it fine and Ops simply has not pushed in a while,
+  // which is usually a quiet day in Ops, not a broken connection.
+  const interrupted = unavailable;
+  const pushLabel = lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : null;
+  const delayed = !interrupted && (connection === "delayed" || connection === "interrupted");
   const freshness = interrupted
     ? "Ops sync interrupted"
-    : opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now());
+    : delayed && pushLabel
+      ? `Ops last pushed ${pushLabel}`
+      : opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now());
+
 
 
   return (
