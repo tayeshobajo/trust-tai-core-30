@@ -34,7 +34,7 @@ import {
 
 import { engineRead } from "../engine";
 import { observeBusiness } from "../engine/observe";
-import { describeMatch, LABEL_THRESHOLD, matchPatterns } from "../canon";
+import { canonDomainsForQuestion, conciseLabel, describeMatch, matchPatterns } from "../canon";
 import { actionsForRead } from "../engine/propose";
 import type { SuiteSnapshot } from "../derive";
 import { inboundBrief } from "@/data/website/intel";
