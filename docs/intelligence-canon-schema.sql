@@ -54,58 +54,35 @@ create table if not exists public.pattern_outcomes (
 create index if not exists pattern_outcomes_org_pattern_idx
   on public.pattern_outcomes (organization_id, pattern_id, recorded_at desc);
 
+-- Privileges. The first migration pass left default REFERENCES/TRIGGER/TRUNCATE
+-- grants in place, so each grant block starts by revoking everything.
+revoke all on public.intelligence_cases from authenticated;
+revoke all on public.pattern_outcomes from authenticated;
 grant select, insert on public.intelligence_cases to authenticated;
-grant all on public.intelligence_cases to service_role;
 grant select, insert on public.pattern_outcomes to authenticated;
+grant all on public.intelligence_cases to service_role;
 grant all on public.pattern_outcomes to service_role;
+-- No anon grant: the ledger is readable only by a signed in member.
 
 alter table public.intelligence_cases enable row level security;
 alter table public.pattern_outcomes enable row level security;
 
--- Active membership only, in both directions. Nothing is updatable or
--- deletable by an app user: a changed conclusion is a new row.
+-- Active membership only, in both directions, through the canonical helper
+-- private.is_org_member(target_org uuid) rather than repeating membership
+-- table logic in policy text. Nothing is updatable or deletable by an app
+-- user: a changed conclusion is a new row.
 create policy "members read cases"
   on public.intelligence_cases for select to authenticated
-  using (
-    exists (
-      select 1 from public.organization_memberships m
-      where m.organization_id = intelligence_cases.organization_id
-        and m.user_id = auth.uid()
-        and m.status = 'active'
-    )
-  );
+  using (private.is_org_member(organization_id));
 
 create policy "members append cases"
   on public.intelligence_cases for insert to authenticated
-  with check (
-    decided_by = auth.uid()
-    and exists (
-      select 1 from public.organization_memberships m
-      where m.organization_id = intelligence_cases.organization_id
-        and m.user_id = auth.uid()
-        and m.status = 'active'
-    )
-  );
+  with check (decided_by = auth.uid() and private.is_org_member(organization_id));
 
 create policy "members read pattern outcomes"
   on public.pattern_outcomes for select to authenticated
-  using (
-    exists (
-      select 1 from public.organization_memberships m
-      where m.organization_id = pattern_outcomes.organization_id
-        and m.user_id = auth.uid()
-        and m.status = 'active'
-    )
-  );
+  using (private.is_org_member(organization_id));
 
 create policy "members append pattern outcomes"
   on public.pattern_outcomes for insert to authenticated
-  with check (
-    recorded_by = auth.uid()
-    and exists (
-      select 1 from public.organization_memberships m
-      where m.organization_id = pattern_outcomes.organization_id
-        and m.user_id = auth.uid()
-        and m.status = 'active'
-    )
-  );
+  with check (recorded_by = auth.uid() and private.is_org_member(organization_id));
