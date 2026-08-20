@@ -14,6 +14,7 @@ import {
   PULSE_FEEDBACK_LABEL,
   PULSE_FEEDBACK_MEANING,
   PULSE_SEVERITY_MEANING,
+  canOpenCase,
   type PulseFeedbackKind,
   type PulseSignal,
 } from "@/domain/pulse";
@@ -48,13 +49,24 @@ export function PulseSignalRow({
   signal,
   feedback,
   onFeedback,
+  onDecide,
+  caseRecorded,
+  deciding,
 }: {
   signal: PulseSignal;
   feedback?: PulseFeedbackKind | undefined;
   onFeedback: (kind: PulseFeedbackKind) => void;
+  /** Present only where an explicit decision can become a case. */
+  onDecide?: ((decision: string) => void | Promise<void>) | undefined;
+  caseRecorded?: boolean | undefined;
+  deciding?: boolean | undefined;
 }) {
   const [menu, setMenu] = useState(false);
   const [why, setWhy] = useState(false);
+  const [decisionOpen, setDecisionOpen] = useState(false);
+  const [decision, setDecision] = useState("");
+  const decidable = Boolean(onDecide) && canOpenCase(signal);
+
 
   return (
     <article className="border-t border-border px-5 py-4 first:border-t-0">
@@ -82,6 +94,63 @@ export function PulseSignalRow({
             <p className="mt-2 text-[12px] text-muted-foreground">
               You marked this “{PULSE_FEEDBACK_LABEL[feedback]}”. {PULSE_FEEDBACK_MEANING[feedback]}
             </p>
+          ) : null}
+
+          {decidable ? (
+            caseRecorded ? (
+              <p className="mt-3 text-[12px] text-muted-foreground">
+                Your decision on this is in the case ledger. What happens next gets checked in the
+                room that owns it.
+              </p>
+            ) : decisionOpen ? (
+              <form
+                className="mt-3 space-y-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (decision.trim().length === 0) return;
+                  void onDecide?.(decision.trim());
+                }}
+              >
+                <label htmlFor={`pulse-decision-${signal.id}`} className="tt-eyebrow">
+                  What did you decide
+                </label>
+                <textarea
+                  id={`pulse-decision-${signal.id}`}
+                  rows={2}
+                  value={decision}
+                  onChange={(event) => setDecision(event.target.value)}
+                  placeholder="Named an owner and asked for a date by Friday."
+                  className="w-full max-w-reading resize-none rounded-md border border-border bg-transparent p-2.5 text-[13px] leading-relaxed outline-none focus:border-foreground"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={deciding || decision.trim().length === 0}
+                    className="inline-flex min-h-9 items-center rounded-full bg-foreground px-4 text-[13px] font-medium text-background disabled:opacity-50"
+                  >
+                    {deciding ? "Recording" : "Record this decision"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDecisionOpen(false)}
+                    className="inline-flex min-h-9 items-center rounded-full px-3 text-[13px] text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <p className="text-[12px] text-muted-foreground">
+                  This records what you decided and the evidence it stood on. It moves no work.
+                </p>
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setDecisionOpen(true)}
+                className="mt-3 inline-flex min-h-9 items-center rounded-full border border-border px-3 text-[13px] text-foreground hover:bg-secondary"
+              >
+                I acted on this
+              </button>
+            )
           ) : null}
 
           {why ? (

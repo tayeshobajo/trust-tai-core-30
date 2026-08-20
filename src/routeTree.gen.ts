@@ -51,6 +51,7 @@ import { Route as ModulesStewardMemoryRouteImport } from './routes/modules.stewa
 import { Route as ModulesStewardTasksRouteImport } from './routes/modules.steward.tasks'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/public/intelligence.reason'
+import { Route as ApiPublicIntelligenceReconcileRouteImport } from './routes/api/public/intelligence.reconcile'
 import { Route as ApiPublicProjectsContextPacketRouteImport } from './routes/api/public/projects.context-packet'
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
 import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/public/roadmap.research'
@@ -286,6 +287,12 @@ const ApiPublicIntelligenceReasonRoute =
     path: '/api/public/intelligence/reason',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicIntelligenceReconcileRoute =
+  ApiPublicIntelligenceReconcileRouteImport.update({
+    id: '/api/public/intelligence/reconcile',
+    path: '/api/public/intelligence/reconcile',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicProjectsContextPacketRoute =
   ApiPublicProjectsContextPacketRouteImport.update({
     id: '/api/public/projects/context-packet',
@@ -449,6 +456,7 @@ export interface FileRoutesByFullPath {
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
+  '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
@@ -507,6 +515,7 @@ export interface FileRoutesByTo {
   '/modules/steward': typeof ModulesStewardIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
+  '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
@@ -573,6 +582,7 @@ export interface FileRoutesById {
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
+  '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
@@ -640,6 +650,7 @@ export interface FileRouteTypes {
     | '/modules/steward/'
     | '/api/public/comms/draft'
     | '/api/public/intelligence/reason'
+    | '/api/public/intelligence/reconcile'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
@@ -698,6 +709,7 @@ export interface FileRouteTypes {
     | '/modules/steward'
     | '/api/public/comms/draft'
     | '/api/public/intelligence/reason'
+    | '/api/public/intelligence/reconcile'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
@@ -763,6 +775,7 @@ export interface FileRouteTypes {
     | '/modules/steward/'
     | '/api/public/comms/draft'
     | '/api/public/intelligence/reason'
+    | '/api/public/intelligence/reconcile'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
@@ -803,6 +816,7 @@ export interface RootRouteChildren {
   ModulesWebsiteRoute: typeof ModulesWebsiteRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicIntelligenceReasonRoute: typeof ApiPublicIntelligenceReasonRoute
+  ApiPublicIntelligenceReconcileRoute: typeof ApiPublicIntelligenceReconcileRoute
   ApiPublicProjectsContextPacketRoute: typeof ApiPublicProjectsContextPacketRoute
   ApiPublicRoadmapAskRoute: typeof ApiPublicRoadmapAskRoute
   ApiPublicRoadmapResearchRoute: typeof ApiPublicRoadmapResearchRoute
@@ -1119,6 +1133,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicIntelligenceReasonRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/intelligence/reconcile': {
+      id: '/api/public/intelligence/reconcile'
+      path: '/api/public/intelligence/reconcile'
+      fullPath: '/api/public/intelligence/reconcile'
+      preLoaderRoute: typeof ApiPublicIntelligenceReconcileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/projects/context-packet': {
       id: '/api/public/projects/context-packet'
       path: '/api/public/projects/context-packet'
@@ -1425,6 +1446,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesWebsiteRoute: ModulesWebsiteRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicIntelligenceReasonRoute: ApiPublicIntelligenceReasonRoute,
+  ApiPublicIntelligenceReconcileRoute: ApiPublicIntelligenceReconcileRoute,
   ApiPublicProjectsContextPacketRoute: ApiPublicProjectsContextPacketRoute,
   ApiPublicRoadmapAskRoute: ApiPublicRoadmapAskRoute,
   ApiPublicRoadmapResearchRoute: ApiPublicRoadmapResearchRoute,

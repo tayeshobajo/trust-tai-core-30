@@ -34,6 +34,7 @@ import {
   weeklyTrend,
 } from "@/data/pulse/projection";
 import { pulseFeedback } from "@/data/supabase/pulse-feedback";
+import { intelligenceCanonService } from "@/data/supabase/intelligence-canon-service";
 import { projectsService } from "@/data/supabase/projects-service";
 import { unansweredRoutes } from "@/domain/route-ledger";
 import type { PulseFeedbackKind, PulseSignal } from "@/domain/pulse";
@@ -156,6 +157,49 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
       queryClient.invalidateQueries({ queryKey: ["pulse-feedback", organizationId] }),
   });
 
+  /* Cases already opened from Pulse, so a row does not ask twice. Reading this
+   * records nothing: only an explicit decision below opens a case. */
+  const cases = useQuery({
+    queryKey: ["pulse-cases", organizationId],
+    queryFn: () => intelligenceCanonService.listCases(organizationId),
+  });
+
+  const recordedCases = useMemo(() => {
+    const ids = new Set<string>();
+    for (const entry of cases.data ?? []) {
+      for (const ref of entry.evidenceRefs) if (ref.kind === "signal") ids.add(ref.id);
+    }
+    return ids;
+  }, [cases.data]);
+
+  /* Looking at a signal is not a decision. Saying what you did opens one case,
+   * against the signal and the observations the reading stood on. */
+  const decide = useMutation({
+    mutationFn: async ({ signal, decision }: { signal: PulseSignal; decision: string }) => {
+      const read = signal.patternRead;
+      if (!read) return null;
+      const at = new Date().toISOString();
+      return intelligenceCanonService.openCaseOnce({
+        id: "",
+        organizationId,
+        patternId: read.patternId,
+        patternVersion: read.patternVersion,
+        entities: signal.subject ? [signal.subject] : [],
+        evidenceRefs: [
+          { kind: "signal" as const, id: signal.id },
+          ...read.observationIds.map((id) => ({ kind: "observation" as const, id })),
+        ],
+        hypothesis: read.hypothesis,
+        humanDecision: decision,
+        decidedBy: identity.userId,
+        decidedAt: at,
+        diagnosisVerdict: "unknown",
+        createdAt: at,
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pulse-cases", organizationId] }),
+  });
+
   const lastUpdated = suite.data ? relativeAge(suite.data.readAt, new Date().toISOString()) : "-";
 
   return (
@@ -213,6 +257,9 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
                       signals={group.signals}
                       feedback={feedbackBySignal}
                       onFeedback={(signal, kind) => record.mutate({ signal, kind })}
+                      onDecide={(signal, decision) => decide.mutate({ signal, decision })}
+                      recordedCases={recordedCases}
+                      deciding={decide.isPending}
                     />
                   ))}
                 </div>

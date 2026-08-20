@@ -275,3 +275,50 @@ export interface PatternRevisionProposal {
   /** Always true. There is no automatic canon edit. */
   requiresApproval: true;
 }
+
+/* ------------------------------------------------ proposal governance */
+
+/** What a person did with a revision proposal. Final for that fingerprint. */
+export type ProposalDecisionKind = "accepted" | "rejected" | "deferred";
+
+export const PROPOSAL_DECISION_LABEL: Record<ProposalDecisionKind, string> = {
+  accepted: "Accept",
+  rejected: "Reject",
+  deferred: "Defer",
+};
+
+/**
+ * A person's answer to one revision proposal.
+ *
+ * Append only, and never an edit to canon text. Accepting authorises a future
+ * canon revision review; the pattern a room reads today is unchanged until a
+ * versioned change ships.
+ */
+export interface PatternRevisionDecision {
+  id: ID;
+  organizationId: ID;
+  patternId: ID;
+  patternVersion: number;
+  /** Content identity of the proposal this answers. */
+  proposalFingerprint: string;
+  proposalText: string;
+  outcomeRefs: ID[];
+  decision: ProposalDecisionKind;
+  note?: string;
+  decidedBy: ID;
+  decidedAt: ISODateTime;
+}
+
+/* --------------------------------------------------- experience health */
+
+/** Whether the organization is actually accumulating experience. Counts only. */
+export interface ExperienceHealth {
+  since: ISODateTime;
+  casesOpened: number;
+  casesResolved: number;
+  corrections: number;
+  patternsWithEnoughOutcomes: number;
+  proposalsAwaitingDecision: number;
+  /** Whole days, or null when nothing is open. */
+  oldestOpenCaseDays: number | null;
+}
