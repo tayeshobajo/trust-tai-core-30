@@ -73,20 +73,8 @@ create policy "members read reconciliation runs"
   on public.intelligence_reconciliation_runs for select to authenticated
   using (private.is_org_member(organization_id));
 
--- 3. Scheduling. Run no more often than hourly. The endpoint also enforces the
---    interval and the lease, so a duplicate schedule cannot double-run it.
---
--- select cron.schedule(
---   'intelligence-reconcile-hourly',
---   '7 * * * *',
---   $$
---   select net.http_post(
---     url := 'https://project--65944e34-ede5-4757-befb-870e1ff97444.lovable.app/api/public/intelligence/reconcile',
---     headers := jsonb_build_object(
---       'content-type', 'application/json',
---       'x-reconcile-secret', '<INTELLIGENCE_RECONCILE_SECRET>'
---     ),
---     body := '{}'::jsonb
---   );
---   $$
--- );
+-- 3. Scheduling now lives in docs/intelligence-reconcile-config-schema.sql,
+--    together with the service role only secret row the schedule reads. The
+--    endpoint keeps its own interval guard and lease, so a duplicate schedule
+--    cannot double-run it.
+
