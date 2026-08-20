@@ -29,11 +29,18 @@ export function PulseSignalGroup({
   signals,
   feedback,
   onFeedback,
+  onDecide,
+  recordedCases,
+  deciding,
 }: {
   severity: PulseSeverity;
   signals: PulseSignal[];
   feedback: Record<string, PulseFeedbackKind>;
   onFeedback: (signal: PulseSignal, kind: PulseFeedbackKind) => void;
+  onDecide?: (signal: PulseSignal, decision: string) => void | Promise<void>;
+  /** Signal ids that already have a case in the ledger. */
+  recordedCases?: Set<string>;
+  deciding?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const limit = DEFAULT_VISIBLE[severity];
@@ -80,6 +87,9 @@ export function PulseSignalGroup({
             signal={signal}
             feedback={feedback[signal.id]}
             onFeedback={(kind) => onFeedback(signal, kind)}
+            onDecide={onDecide ? (decision) => onDecide(signal, decision) : undefined}
+            caseRecorded={recordedCases?.has(signal.id) ?? false}
+            deciding={deciding ?? false}
           />
         ))}
       </div>
