@@ -35,6 +35,7 @@ import {
 import { engineRead } from "../engine";
 import { actionsForRead } from "../engine/propose";
 import type { SuiteSnapshot } from "../derive";
+import { inboundBrief } from "@/data/website/intel";
 import { findBlindSpots } from "./blindspots";
 import { readFactory } from "./factory";
 import { detectFriction, proposeImprovements } from "./improve";
@@ -71,6 +72,19 @@ interface TopicRule {
  * question into an answer about something else.
  */
 const TOPIC_RULES: TopicRule[] = [
+  /*
+   * Inbound first: a question about the website or what a founder said is
+   * about evidence that already exists, never about sourcing more demand.
+   */
+  {
+    topic: "inbound",
+    patterns: [
+      /\b(website|trusttai\.com|inbound|intake)\b/i,
+      /\bwhat did (they|the founder|he|she) (say|tell us)\b/i,
+      /\bcame in\b/i,
+      /\breached out\b/i,
+    ],
+  },
   /*
    * Roadmap first: "what decision in our roadmap deserves my attention" is a
    * Roadmap question, not a generic attention question, and must be read
@@ -434,6 +448,56 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
       evidence.push(...cycle.evidence);
       if (cycle.canon) {
         roadmapCanon = cycle.canon;
+      }
+      break;
+    }
+
+    case "inbound": {
+      const brief = inboundBrief({
+        organizationId: snapshot.organizationId,
+        now: snapshot.now,
+        submissions: snapshot.websiteSubmissions,
+        candidates: snapshot.candidates,
+      });
+      evidence.push(computed("Roadmap intake records on TrustTai.com"));
+
+      if (brief.total === 0) {
+        answer =
+          "Nothing has come in through the website in the last 30 days. When an intake arrives it lands here with the founder's own words intact.";
+        break;
+      }
+
+      const first = brief.companies[0];
+      answer = sentence([
+        `${brief.total} intake${brief.total === 1 ? "" : "s"} came in through TrustTai.com in the last 30 days.`,
+        brief.held > 0
+          ? `${brief.held} could not be placed with a company and ${brief.held === 1 ? "is" : "are"} waiting for you.`
+          : "",
+        brief.awaitingReview > 0
+          ? `${brief.awaitingReview} reached Scout and ${brief.awaitingReview === 1 ? "has" : "have"} not been decided yet.`
+          : "",
+        first?.stated[0] ? `${first.label} said: ${first.stated[0]}` : "",
+        "I can show what they said, what Scout verified, and what it reads into that. Scout owns the decision.",
+      ]);
+
+      const waiting =
+        brief.companies.find((company) => company.linkState !== "linked") ??
+        brief.companies.find((company) => company.prospectId && company.suggested.length > 0);
+      if (waiting) {
+        nextMove =
+          waiting.linkState !== "linked"
+            ? {
+                statement: `Open the ${waiting.label} submission and place it with the right company, or leave it as a signal.`,
+                appId: "website",
+                route: waiting.submissionRoute,
+                routeLabel: "Open the submission",
+              }
+            : {
+                statement: `Read what ${waiting.label} said and make the call in Scout.`,
+                appId: "scout",
+                route: waiting.prospectRoute ?? "/modules/scout",
+                routeLabel: "Open in Scout",
+              };
       }
       break;
     }
