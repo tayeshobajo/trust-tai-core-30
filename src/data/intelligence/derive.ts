@@ -332,6 +332,16 @@ export function contextBlocks(snapshot: SuiteSnapshot): ContextBlock[] {
     );
   }
 
+  /* Website: what arrived from TrustTai.com, by reference. */
+  for (const websiteBlock of websiteContextBlocks({
+    organizationId: snapshot.organizationId,
+    now,
+    submissions: snapshot.websiteSubmissions,
+    candidates: snapshot.candidates,
+  })) {
+    blocks.push(websiteBlock);
+  }
+
   return blocks.sort((a, b) => (a.at < b.at ? 1 : -1));
 }
 
