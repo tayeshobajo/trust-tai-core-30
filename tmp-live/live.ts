@@ -34,6 +34,7 @@ const obs = observeBusiness(snap);
 console.log("== OBSERVATIONS ==", obs.length);
 for (const o of obs) console.log(` - ${o.kind} [${o.tier}] mag=${o.magnitude ?? "-"} :: ${o.statement}`);
 const matches = matchPatterns({ observations: obs });
+const { canonDomainsForQuestion } = await import("../src/data/intelligence/canon/relevance");
 console.log("== MATCHES (floor", MATCH_FLOOR, "label", LABEL_THRESHOLD, ") ==", matches.length);
 for (const m of matches) {
   console.log(JSON.stringify({
@@ -50,12 +51,12 @@ for (const m of matches) {
 console.log("== CONDUCTOR ==");
 for (const q of ["What deserves my attention today?", "What is quietly getting worse?", "Why is delivery slow?", "Am I becoming the bottleneck?"]) {
   const a = answerQuestion({ snapshot: snap, question: q });
-  console.log("\nQ:", q);
+  console.log("\nQ:", q, "domains:", JSON.stringify(canonDomainsForQuestion(q)));
   console.log(JSON.stringify({ answer: a.answer, grounded: (a as any).grounded, nextMove: a.nextMove, evidence: a.evidence?.map((e:any)=>e.label) }, null, 1));
 }
 console.log("== PULSE ==");
 const signals = deriveSignals(snap);
-const labeled = labelSignalsWithPatterns(signals, obs);
+const labeled = labelSignalsWithPatterns(signals, matchPatterns({ observations: obs, limit: 5 }));
 console.log("signals", signals.length, "labeled", labeled.length);
 console.log(JSON.stringify(signals.map(s=>({id:s.id,sev:s.severity,app:s.appId,t:s.title})),null,1));
 console.log(JSON.stringify(labeled.map((s:any)=>({id:s.id,sev:s.severity,app:s.appId,t:s.title,pattern:s.patternLabel ?? s.pattern ?? null})),null,1));
