@@ -1,22 +1,44 @@
 /**
  * The canon, as a person meets it.
  *
- * Read only, and deliberately plain: what this looks like, what supports it,
- * what has not been checked, what else it could be, and where it belongs. A
- * match is a reading, so it is never dressed as a finding and never carries a
- * button that acts.
+ * Read only until a person acts: what this looks like, what supports it, what
+ * has not been checked, what else it could be, and where it belongs. A match is
+ * a reading, so it is never dressed as a finding and never carries a button
+ * that acts on a room.
+ *
+ * Two things may be attached to a reading: what this organization already
+ * learned about the same shape, kept clearly apart from today's evidence, and
+ * a way to say what you decided so the reading can be learned from later.
  */
 
 import { MetaPill, TTCard } from "@/components/tt/primitives";
+import { CaseDecision, type CaseDecisionDraft } from "@/components/tt/intelligence/case-decision";
 import { roomLabel } from "@/data/conductor/page-projection";
+import type { PriorExperience } from "@/data/intelligence/canon";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { CANON_DOMAIN_LABEL, type PatternMatch } from "@/domain/intelligence-canon";
 
 export interface CanonPanelProps {
   matches: PatternMatch[];
+  /** Prior cases and outcomes for these patterns, keyed by pattern id. */
+  experience?: Record<string, PriorExperience>;
+  onDecide?: (draft: CaseDecisionDraft) => void | Promise<void>;
+  onNotUseful?: (match: PatternMatch) => void | Promise<void>;
+  deciding?: boolean;
+  /** Pattern ids a case already exists for in this session. */
+  recorded?: string[];
+  notUseful?: string[];
 }
 
-export function CanonPanel({ matches }: CanonPanelProps) {
+export function CanonPanel({
+  matches,
+  experience,
+  onDecide,
+  onNotUseful,
+  deciding,
+  recorded,
+  notUseful,
+}: CanonPanelProps) {
   if (matches.length === 0) return null;
 
   return (
@@ -28,6 +50,7 @@ export function CanonPanel({ matches }: CanonPanelProps) {
           conclusions, and nothing here changes what the rooms hold.
         </p>
       </div>
+
 
       {matches.map((match) => (
         <TTCard key={match.patternId} className="p-5">
