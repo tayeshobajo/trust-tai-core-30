@@ -11,7 +11,7 @@
 import type { PatternMatch } from "@/domain/intelligence-canon";
 import type { PulseSignal } from "@/domain/pulse";
 
-import { conciseLabel } from "@/data/intelligence/canon";
+import { conciseLabel, describeMatch } from "@/data/intelligence/canon";
 
 /** The room a match would send a person to, when it has one. */
 function owningApp(match: PatternMatch): string | undefined {
@@ -21,6 +21,9 @@ function owningApp(match: PatternMatch): string | undefined {
 /**
  * At most one label per room, best match first. Signals are returned in the
  * same order they arrived: enrichment never changes what Pulse decided to show.
+ *
+ * A labelled signal also carries references back to the reading, so a person
+ * who acts on it can open a case. Carrying those references records nothing.
  */
 export function labelSignalsWithPatterns(
   signals: PulseSignal[],
@@ -41,6 +44,17 @@ export function labelSignalsWithPatterns(
     if (!match || used.has(signal.sourceApp)) return signal;
     used.add(signal.sourceApp);
     const label = conciseLabel(match);
-    return label ? { ...signal, patternLabel: label } : signal;
+    if (!label) return signal;
+    return {
+      ...signal,
+      patternLabel: label,
+      patternRead: {
+        patternId: match.patternId,
+        patternVersion: 1,
+        hypothesis: describeMatch(match),
+        observationIds: match.matched.map((entry) => entry.observationId),
+      },
+    };
   });
 }
+
