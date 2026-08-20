@@ -6,8 +6,9 @@
  * executes nothing anywhere else in the suite. Unknown stays open.
  *
  * Fail closed: without a configured shared secret the endpoint refuses. The
- * secret lives in a service role only config row in the database, so the
- * hourly job can be activated from Supabase without any deployment change.
+ * secret lives in a service role only config row in the shared Trust Tai Core
+ * database, read through the Core service role client, so the hourly job can
+ * be activated from Supabase without any deployment change.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -16,13 +17,15 @@ export const Route = createFileRoute("/api/public/intelligence/reconcile")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { trustTaiServiceRoleClient } = await import("@/lib/execution-bridge.server");
         const { authorizeReconcileRequest } = await import(
           "@/lib/intelligence-reconcile-auth.server"
         );
 
+        const core = trustTaiServiceRoleClient();
+
         const allowed = await authorizeReconcileRequest(
-          supabaseAdmin as never,
+          core as never,
           request.headers.get("x-reconcile-secret"),
         );
         if (!allowed.ok) {
@@ -33,11 +36,11 @@ export const Route = createFileRoute("/api/public/intelligence/reconcile")({
           "@/lib/intelligence-reconcile.server"
         );
 
-        const organizations = await organizationsWithCases(supabaseAdmin as never);
+        const organizations = await organizationsWithCases(core as never);
         const runs = [];
         for (const organizationId of organizations) {
           try {
-            runs.push(await reconcileOrganization(supabaseAdmin as never, organizationId));
+            runs.push(await reconcileOrganization(core as never, organizationId));
           } catch (error) {
             runs.push({
               organizationId,
