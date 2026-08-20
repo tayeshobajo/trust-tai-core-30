@@ -360,7 +360,12 @@ export function inboundBrief(input: WebsiteIntelInput): InboundBrief {
         ...submission.structured.desiredFuture,
         ...submission.structured.pains,
       ]).slice(0, 6),
-      observed: (candidate?.signals ?? []).slice(0, 6).map((signal) => signal.statement),
+      // Testimony never crosses into the observed lane: Scout marks what the
+      // founder said with a `stated_` signal id, so those stay in `stated`.
+      observed: (candidate?.signals ?? [])
+        .filter((signal) => !signal.id.startsWith("stated_"))
+        .slice(0, 6)
+        .map((signal) => signal.statement),
       inferred: candidate?.evaluation.scoreable
         ? [`ICP fit reads ${candidate.evaluation.score}/100. ${candidate.evaluation.explanation}`]
         : [],
