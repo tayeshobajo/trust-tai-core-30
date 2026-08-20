@@ -82,6 +82,12 @@ export interface PulseSignal {
   actionRoute: string;
   evidence: EvidenceRef[];
   confidence: ConfidenceLevel;
+  /**
+   * A short phrase from the Intelligence Canon, e.g. "Possible founder-held
+   * context". Present only when a known shape matched on real evidence. It
+   * enriches a signal, it never creates one.
+   */
+  patternLabel?: string;
   at: ISODateTime;
 }
 

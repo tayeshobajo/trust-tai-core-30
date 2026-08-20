@@ -71,6 +71,11 @@ export function PulseSignalRow({
             <span className="truncate normal-case tracking-normal text-foreground/70">
               {signal.entityPath}
             </span>
+            {signal.patternLabel ? (
+              <span className="rounded-full border border-border px-2 py-0.5 normal-case tracking-normal text-muted-foreground">
+                {signal.patternLabel}
+              </span>
+            ) : null}
           </p>
 
           {feedback ? (
