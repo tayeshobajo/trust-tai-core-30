@@ -130,7 +130,43 @@ export function CanonPanel({
               </ul>
             </div>
           ) : null}
+
+          {experience?.[match.patternId] ? (
+            <div className="mt-3 border-t border-border pt-3">
+              <p className="tt-eyebrow">What happened here before</p>
+              <p className="mt-1 max-w-reading text-[13px] text-muted-foreground">
+                {experience[match.patternId]!.note ??
+                  "There is a record of this shape here, but not enough of one to guide today."}
+              </p>
+              {experience[match.patternId]!.cases.length > 0 ? (
+                <ul className="mt-1 space-y-1 text-[13px] text-muted-foreground">
+                  {experience[match.patternId]!.cases.map((entry) => (
+                    <li key={entry.id}>
+                      {entry.humanDecision}
+                      {entry.correction ? ` Later corrected: ${entry.correction}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Earlier cases are memory, not evidence about today, and they do not raise how
+                strongly this reads.
+              </p>
+            </div>
+          ) : null}
+
+          {onDecide ? (
+            <CaseDecision
+              match={match}
+              {...(deciding !== undefined ? { saving: deciding } : {})}
+              recorded={(recorded ?? []).includes(match.patternId)}
+              onRecord={onDecide}
+              {...(onNotUseful ? { onNotUseful } : {})}
+              notUsefulSaved={(notUseful ?? []).includes(match.patternId)}
+            />
+          ) : null}
         </TTCard>
+
       ))}
     </section>
   );
