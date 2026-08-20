@@ -7,3 +7,5 @@ export * from "./patterns";
 export * from "./chains";
 export * from "./match";
 export * from "./cases";
+export * from "./relevance";
+

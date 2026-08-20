@@ -322,10 +322,16 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     description: "A client keeps asking where things stand.",
     mayMean: "Confidence is thinning because progress is not visible to them.",
     triggers: [
+      /*
+       * Reply debt alone is already its own pattern. This shape only earns a
+       * separate reading when the client is waiting while work is also past
+       * its date, which is what makes progress invisible to them.
+       */
       { observationKind: "reply_debt", looksFor: "Threads waiting on us", minMagnitude: 1 },
+      { observationKind: "project_delayed", looksFor: "Work past its date" },
       { observationKind: "activity_volume", looksFor: "Regular conversation", minMagnitude: 5, optional: true },
-      { observationKind: "project_delayed", looksFor: "Work past its date", optional: true },
     ],
+
     negativeIndicators: [],
     hypotheses: [
       "There is no regular update the client can rely on.",
