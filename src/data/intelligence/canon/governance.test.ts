@@ -175,3 +175,44 @@ describe("weekly experience health", () => {
     expect(health.oldestOpenCaseDays).toBeNull();
   });
 });
+
+describe("prior experience ordering", () => {
+  it("puts a pattern a person corrected ahead of a single anecdote", async () => {
+    const { experienceLedger } = await import("./experience");
+    const corrected = aCase({ id: "case-2", patternId: "delivery.ownership_ambiguity" });
+    const anecdote = aCase({ id: "case-3", patternId: "pipeline.healthy_volume_no_conversion" });
+    const outcomes: PatternOutcome[] = [
+      {
+        id: "out-a",
+        organizationId: ORG,
+        patternId: "delivery.ownership_ambiguity",
+        patternVersion: 1,
+        caseId: "case-2",
+        recommendation: "x",
+        decision: "accepted",
+        result: "failure",
+        resultBecause: "Still late.",
+        humanCorrection: "It was scope, not ownership.",
+        recordedBy: "user-1",
+        recordedAt: "2026-01-02T00:00:00.000Z",
+      },
+      {
+        id: "out-b",
+        organizationId: ORG,
+        patternId: "pipeline.healthy_volume_no_conversion",
+        patternVersion: 1,
+        caseId: "case-3",
+        recommendation: "y",
+        decision: "accepted",
+        result: "success",
+        resultBecause: "Converted.",
+        recordedBy: "user-1",
+        recordedAt: "2026-01-09T00:00:00.000Z",
+      },
+    ];
+
+    const ledger = experienceLedger({ cases: [corrected, anecdote], outcomes });
+    expect(ledger[0]?.patternId).toBe("delivery.ownership_ambiguity");
+    expect(ledger[0]?.corrections.length).toBeGreaterThan(0);
+  });
+});
