@@ -364,7 +364,9 @@ export function inboundBrief(input: WebsiteIntelInput): InboundBrief {
       inferred: candidate?.evaluation.scoreable
         ? [`ICP fit reads ${candidate.evaluation.score}/100. ${candidate.evaluation.explanation}`]
         : [],
-      suggested: candidate?.nextMove ? [candidate.nextMove.statement] : [],
+      suggested: DECIDED.has((status ?? "").toLowerCase())
+        ? []
+        : ["Make the call in Scout: qualify, ask one more question, hold, or pass."],
       researchAuthorized: submission.signals.authorizesResearch ?? null,
       scoutStatus: status,
       completeness: submission.signals.completeness ?? null,
