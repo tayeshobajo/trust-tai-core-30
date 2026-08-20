@@ -25,7 +25,7 @@ function aCase(over: Partial<IntelligenceCase> = {}): IntelligenceCase {
   return {
     id: "case-1",
     organizationId: ORG,
-    patternId: "delivery.silent_slippage",
+    patternId: "delivery.ownership_ambiguity",
     patternVersion: 1,
     entities: [{ type: "project", id: "p-1" }],
     evidenceRefs: [{ kind: "observation", id: "obs-1" }],
@@ -59,7 +59,7 @@ function anEvent(over: Partial<ActivityEvent> = {}): ActivityEvent {
 }
 
 const PROPOSAL: PatternRevisionProposal = {
-  patternId: "delivery.silent_slippage",
+  patternId: "delivery.ownership_ambiguity",
   fromVersion: 1,
   suggestion: "Say plainly that a missed date without a note is the signal.",
   outcomeRefs: ["out-1", "out-2", "out-3"],
@@ -104,7 +104,7 @@ describe("proposal governance", () => {
 
 describe("room events closing cases", () => {
   it("closes a case when the exact entity is completed after the decision", () => {
-    expect(checkableKinds("delivery.silent_slippage").length).toBeGreaterThan(0);
+    expect(checkableKinds("delivery.ownership_ambiguity").length).toBeGreaterThan(0);
     const settled = roomEventOutcomes({ cases: [aCase()], events: [anEvent()] });
     expect(settled).toHaveLength(1);
     expect(settled[0]?.caseId).toBe("case-1");
@@ -143,7 +143,7 @@ describe("weekly experience health", () => {
       {
         id: "out-1",
         organizationId: ORG,
-        patternId: "delivery.silent_slippage",
+        patternId: "delivery.ownership_ambiguity",
         patternVersion: 1,
         caseId: "case-1",
         recommendation: "x",
