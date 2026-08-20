@@ -33,6 +33,8 @@ import {
 } from "@/data/conductor/learning";
 
 import { engineRead } from "../engine";
+import { observeBusiness } from "../engine/observe";
+import { describeMatch, LABEL_THRESHOLD, matchPatterns } from "../canon";
 import { actionsForRead } from "../engine/propose";
 import type { SuiteSnapshot } from "../derive";
 import { inboundBrief } from "@/data/website/intel";
@@ -644,6 +646,24 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     now: snapshot.now,
   });
 
+  /*
+   * The canon reads the same observations the engine already made and says
+   * which known shapes they resemble. It adds no fact, changes no lane, and
+   * speaks only when the evidence carries it: the top match is voiced with its
+   * competing explanation attached, so the sentence stays a reading.
+   */
+  const patterns = matchPatterns({
+    observations: observeBusiness(snapshot),
+    ...(input.suppressed ? { suppressed: input.suppressed } : {}),
+    limit: 3,
+  });
+  const leadPattern = patterns[0];
+  if (leadPattern && leadPattern.score >= LABEL_THRESHOLD) {
+    answer = sentence([answer, describeMatch(leadPattern)]);
+  }
+
+
+
   return {
     id: `conductor:${topic}:${snapshot.now}`,
     organizationId: snapshot.organizationId,
@@ -669,6 +689,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     control: CONDUCTOR_CONTROL,
     withheld: snapshot.withheld.map((row) => ({ appId: row.appId, reason: row.reason })),
     ...(watch ? { watch } : {}),
+    ...(patterns.length > 0 ? { patterns } : {}),
     grounded,
     generatedAt: snapshot.now,
   };

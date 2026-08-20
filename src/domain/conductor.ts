@@ -27,6 +27,8 @@
 import type { EvidenceRef } from "./confidence";
 import type { ID, ISODateTime } from "./entities";
 import type { ActionProposal } from "./intelligence-engine";
+import type { PatternMatch } from "./intelligence-canon";
+
 import type { RoadmapDecision, RoadmapNote, Tier } from "./roadmap";
 
 /* ------------------------------------------------------------------ basis */
@@ -1064,8 +1066,15 @@ export interface ConductorAnswer {
   roadmapCanon?: RoadmapCanonRead;
   /** The metric to watch to find out whether the answer was any good. */
   watch?: { statement: string; vitalKey?: string };
+  /**
+   * Known shapes the evidence resembles, with what supported each one, what is
+   * missing, and what else it could be. A match is a hypothesis, never a
+   * finding, and it never changes what the rooms hold.
+   */
+  patterns?: PatternMatch[];
   /** False when no room could be read at all. */
   grounded: boolean;
+
   generatedAt: ISODateTime;
 }
 

@@ -10,6 +10,7 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 
+import { CanonPanel } from "@/components/tt/intelligence/canon-panel";
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
 import {
   CorrectAnswer,
@@ -151,6 +152,12 @@ export function ConductorConsole({
                 <Link to={answer.nextMove.route}>
                   <TTButton variant="secondary">{answer.nextMove.routeLabel}</TTButton>
                 </Link>
+              </div>
+            ) : null}
+
+            {answer.patterns && answer.patterns.length > 0 ? (
+              <div className="border-t border-[var(--tt-rule)] pt-4">
+                <CanonPanel matches={answer.patterns} />
               </div>
             ) : null}
 

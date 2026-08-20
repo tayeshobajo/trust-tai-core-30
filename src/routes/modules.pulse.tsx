@@ -19,6 +19,9 @@ import { PulseSignalGroup } from "@/components/tt/pulse/signal-group";
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { deriveSignals } from "@/data/intelligence/derive";
+import { matchPatterns } from "@/data/intelligence/canon";
+import { observeBusiness } from "@/data/intelligence/engine/observe";
+import { labelSignalsWithPatterns } from "@/data/pulse/patterns";
 import { loadSuiteSnapshot } from "@/data/intelligence/service";
 import {
   PULSE_ROOM_LABEL,
@@ -80,6 +83,8 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
       const snapshot = await loadSuiteSnapshot(organizationId);
       return {
         signals: deriveSignals(snapshot),
+        /* Enrichment only: matches may name a signal, never add one. */
+        patterns: matchPatterns({ observations: observeBusiness(snapshot), limit: 5 }),
         withheld: snapshot.withheld,
         readAt: new Date().toISOString(),
       };
@@ -100,13 +105,16 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
 
   const signals = useMemo(
     () =>
-      toPulseSignals({
-        organizationId,
-        now,
-        signals: suite.data?.signals ?? [],
-        routes: routes.data ?? [],
-        feedback: feedback.data ?? [],
-      }),
+      labelSignalsWithPatterns(
+        toPulseSignals({
+          organizationId,
+          now,
+          signals: suite.data?.signals ?? [],
+          routes: routes.data ?? [],
+          feedback: feedback.data ?? [],
+        }),
+        suite.data?.patterns ?? [],
+      ),
     [organizationId, now, suite.data, routes.data, feedback.data],
   );
 
