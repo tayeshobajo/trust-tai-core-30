@@ -48,13 +48,24 @@ export function PulseSignalRow({
   signal,
   feedback,
   onFeedback,
+  onDecide,
+  caseRecorded,
+  deciding,
 }: {
   signal: PulseSignal;
   feedback?: PulseFeedbackKind | undefined;
   onFeedback: (kind: PulseFeedbackKind) => void;
+  /** Present only where an explicit decision can become a case. */
+  onDecide?: ((decision: string) => void | Promise<void>) | undefined;
+  caseRecorded?: boolean | undefined;
+  deciding?: boolean | undefined;
 }) {
   const [menu, setMenu] = useState(false);
   const [why, setWhy] = useState(false);
+  const [decisionOpen, setDecisionOpen] = useState(false);
+  const [decision, setDecision] = useState("");
+  const decidable = Boolean(onDecide) && canOpenCase(signal);
+
 
   return (
     <article className="border-t border-border px-5 py-4 first:border-t-0">
