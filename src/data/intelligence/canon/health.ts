@@ -15,6 +15,7 @@ import {
 } from "@/domain/intelligence-canon";
 
 import { openCases } from "./experience";
+import { canReconcile } from "./outcome-checks";
 import { awaitingDecision, proposalFingerprint } from "./proposals";
 import { proposePatternRevision } from "./cases";
 
