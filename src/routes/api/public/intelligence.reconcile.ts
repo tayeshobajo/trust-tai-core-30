@@ -35,11 +35,11 @@ export const Route = createFileRoute("/api/public/intelligence/reconcile")({
           "@/lib/intelligence-reconcile.server"
         );
 
-        const organizations = await organizationsWithCases(supabaseAdmin as never);
+        const organizations = await organizationsWithCases(core as never);
         const runs = [];
         for (const organizationId of organizations) {
           try {
-            runs.push(await reconcileOrganization(supabaseAdmin as never, organizationId));
+            runs.push(await reconcileOrganization(core as never, organizationId));
           } catch (error) {
             runs.push({
               organizationId,
