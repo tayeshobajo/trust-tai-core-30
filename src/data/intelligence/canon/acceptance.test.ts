@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { activeChains } from "./chains";
+import { DIAGNOSTIC_CHAINS, chainById } from "./chains";
 import { activePatterns } from "./patterns";
 import { LABEL_THRESHOLD, MATCH_FLOOR, conciseLabel, matchPatterns } from "./match";
 import { openCase, patternStanding, proposePatternRevision, recordPatternOutcome } from "./cases";
@@ -37,7 +37,7 @@ function observationsFor(patternId: string): Observation[] {
   const pattern = activePatterns().find((row) => row.id === patternId);
   if (!pattern) throw new Error(`No pattern ${patternId}`);
   return pattern.triggers
-    .filter((trigger) => trigger.required)
+    .filter((trigger) => !trigger.optional)
     .map((trigger) =>
       observation({
         kind: trigger.observationKind,
@@ -50,7 +50,7 @@ function observationsFor(patternId: string): Observation[] {
 describe("the canon is well formed", () => {
   it("gives every pattern a required trigger, a competing explanation and an owning room", () => {
     for (const pattern of activePatterns()) {
-      expect(pattern.triggers.some((trigger) => trigger.required)).toBe(true);
+      expect(pattern.triggers.some((trigger) => !trigger.optional)).toBe(true);
       expect(pattern.competingExplanations.length).toBeGreaterThan(0);
       expect(pattern.possibleNextMoves.length).toBeGreaterThan(0);
       expect(pattern.verifyOutcomeBy.length).toBeGreaterThan(0);
@@ -64,18 +64,18 @@ describe("the canon is well formed", () => {
   });
 
   it("points every referenced chain at a chain that exists", () => {
-    const ids = new Set(activeChains().map((chain) => chain.id));
     for (const pattern of activePatterns()) {
-      if (pattern.chainId) expect(ids.has(pattern.chainId)).toBe(true);
+      if (pattern.chainId) expect(chainById(pattern.chainId)).toBeDefined();
     }
   });
 
   it("asks each chain step a question and names where to look", () => {
-    for (const chain of activeChains()) {
-      expect(chain.steps.length).toBeGreaterThan(0);
-      for (const step of chain.steps) {
+    for (const chain of DIAGNOSTIC_CHAINS) {
+      expect(chain.checks.length).toBeGreaterThan(0);
+      for (const step of chain.checks) {
         expect(step.question.length).toBeGreaterThan(0);
         expect(step.appId.length).toBeGreaterThan(0);
+        expect(step.branches.length).toBeGreaterThan(0);
       }
     }
   });
@@ -94,9 +94,10 @@ describe("the canon is well formed", () => {
           row.wouldRefute,
         ]),
       ]),
-      ...activeChains().flatMap((chain) => [
+      ...DIAGNOSTIC_CHAINS.flatMap((chain) => [
         chain.question,
-        ...chain.steps.map((step) => step.question),
+        chain.trigger,
+        ...chain.checks.map((step) => step.question),
       ]),
     ];
     expect(copy.filter((line) => line.includes("\u2014"))).toEqual([]);
@@ -144,7 +145,9 @@ describe("matching is honest", () => {
   });
 
   it("asks for the evidence it did not find instead of assuming it", () => {
-    const pattern = activePatterns().find((row) => row.triggers.filter((t) => t.required).length > 1);
+    const pattern = activePatterns().find(
+      (row) => row.triggers.filter((t) => !t.optional).length > 1,
+    );
     if (!pattern) return;
     const partial = observationsFor(pattern.id).slice(0, 1);
     const match = matchPatterns({ observations: partial }).find(
@@ -223,13 +226,17 @@ describe("Pulse enrichment stays enrichment", () => {
 });
 
 describe("learning is governed", () => {
+  const patternId = activePatterns()[0]!.id;
+  const match = matchPatterns({ observations: observationsFor(patternId) }).find(
+    (row) => row.patternId === patternId,
+  )!;
   const base = {
     organizationId: "org",
-    patternId: activePatterns()[0]!.id,
-    patternVersion: 1,
+    match,
     recommendation: "Name one owner for the rebuild.",
+    decidedAt: NOW,
     recordedBy: "user-1",
-    recordedAt: NOW,
+    now: NOW,
   };
 
   function outcome(result: PatternOutcome["result"], index: number): PatternOutcome {
@@ -244,29 +251,30 @@ describe("learning is governed", () => {
   it("records a case by reference, never by copying a room's truth", () => {
     const entry = openCase({
       organizationId: "org",
-      match: matchPatterns({ observations: observationsFor(base.patternId) })[0]!,
+      match,
       entities: [{ kind: "project", id: "p1", label: "Acme rebuild" }],
+      hypothesis: match.because,
       humanDecision: "Named an owner.",
       decidedBy: "user-1",
-      decidedAt: NOW,
+      now: NOW,
     });
-    expect(entry.patternId).toBe(base.patternId);
+    expect(entry.patternId).toBe(patternId);
     expect(entry.diagnosisVerdict).toBe("unknown");
     expect(JSON.stringify(entry)).not.toContain("transcript");
   });
 
   it("treats one result as no rule at all", () => {
-    const standing = patternStanding(base.patternId, [outcome("success", 1)]);
-    expect(standing.enoughToLearnFrom).toBe(false);
-    expect(proposePatternRevision(base.patternId, [outcome("failure", 1)])).toBeNull();
+    const standing = patternStanding(patternId, [outcome("success", 1)]);
+    expect(standing.hasLesson).toBe(false);
+    expect(proposePatternRevision(patternId, [outcome("failure", 1)])).toBeNull();
   });
 
   it("proposes a revision only after three consistent results, and never applies it", () => {
     const failures = [outcome("failure", 1), outcome("failure", 2), outcome("failure", 3)];
-    const proposal = proposePatternRevision(base.patternId, failures);
+    const proposal = proposePatternRevision(patternId, failures);
     expect(proposal).not.toBeNull();
     expect(proposal!.requiresApproval).toBe(true);
-    const pattern = activePatterns().find((row) => row.id === base.patternId)!;
+    const pattern = activePatterns().find((row) => row.id === patternId)!;
     expect(pattern.status).toBe("active");
   });
 
@@ -279,6 +287,6 @@ describe("learning is governed", () => {
       humanCorrection: "It was a scope change, not an ownership gap.",
     });
     expect(corrected.humanCorrection).toBeTruthy();
-    expect(patternStanding(base.patternId, [corrected]).correctedByPeople).toBe(1);
+    expect(patternStanding(patternId, [corrected]).corrections).toHaveLength(1);
   });
 });
