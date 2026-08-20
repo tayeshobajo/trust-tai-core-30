@@ -649,18 +649,23 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
   /*
    * The canon reads the same observations the engine already made and says
    * which known shapes they resemble. It adds no fact, changes no lane, and
-   * speaks only when the evidence carries it: the top match is voiced with its
-   * competing explanation attached, so the sentence stays a reading.
+   * speaks only when the evidence carries it: retrieval is scoped to the part
+   * of the canon the question is about, so a delivery question is never
+   * answered with a sentence about the pipeline, and the top match is voiced
+   * only when it clears the label threshold with nothing arguing against it.
    */
+  const canonDomains = canonDomainsForQuestion(question);
   const patterns = matchPatterns({
     observations: observeBusiness(snapshot),
+    ...(canonDomains ? { domains: canonDomains } : {}),
     ...(input.suppressed ? { suppressed: input.suppressed } : {}),
     limit: 3,
   });
   const leadPattern = patterns[0];
-  if (leadPattern && leadPattern.score >= LABEL_THRESHOLD) {
+  if (leadPattern && conciseLabel(leadPattern) !== null) {
     answer = sentence([answer, describeMatch(leadPattern)]);
   }
+
 
 
 
