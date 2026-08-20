@@ -22,6 +22,7 @@ const { chainById } = await import("../src/data/intelligence/canon/chains");
 const { answerQuestion } = await import("../src/data/intelligence/conductor/answer");
 const { deriveSignals } = await import("../src/data/intelligence/derive");
 const { labelSignalsWithPatterns } = await import("../src/data/pulse/patterns");
+const { toPulseSignals } = await import("../src/data/pulse/projection");
 
 const ORG = "ee683a64-e045-4226-a8ff-4ae6590d6789";
 const snap = await loadSuiteSnapshot(ORG);
@@ -55,7 +56,7 @@ for (const q of ["What deserves my attention today?", "What is quietly getting w
   console.log(JSON.stringify({ answer: a.answer, grounded: (a as any).grounded, nextMove: a.nextMove, evidence: a.evidence?.map((e:any)=>e.label) }, null, 1));
 }
 console.log("== PULSE ==");
-const signals = deriveSignals(snap);
+const signals = toPulseSignals({ organizationId: ORG, now: snap.now, signals: deriveSignals(snap), routes: [], feedback: [] });
 const labeled = labelSignalsWithPatterns(signals, matchPatterns({ observations: obs, limit: 5 }));
 console.log("signals", signals.length, "labeled", labeled.length);
 
