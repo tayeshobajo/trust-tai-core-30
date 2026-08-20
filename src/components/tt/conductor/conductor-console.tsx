@@ -10,7 +10,10 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 
-import { CanonPanel } from "@/components/tt/intelligence/canon-panel";
+import {
+  CanonPanel,
+  type CanonPanelProps,
+} from "@/components/tt/intelligence/canon-panel";
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
 import {
   CorrectAnswer,
@@ -62,6 +65,8 @@ export interface ConductorConsoleProps {
   onCorrect?: (draft: CorrectionDraft) => void | Promise<void>;
   correcting?: boolean;
   corrected?: boolean;
+  /** Everything the canon panel needs to offer, and remember, a decision. */
+  canon?: Omit<CanonPanelProps, "matches">;
 }
 
 export function ConductorConsole({
@@ -74,6 +79,7 @@ export function ConductorConsole({
   onCorrect,
   correcting,
   corrected,
+  canon,
 }: ConductorConsoleProps) {
   const [question, setQuestion] = useState(initialQuestion ?? "");
   const [showWorking, setShowWorking] = useState(false);
@@ -157,7 +163,7 @@ export function ConductorConsole({
 
             {answer.patterns && answer.patterns.length > 0 ? (
               <div className="border-t border-[var(--tt-rule)] pt-4">
-                <CanonPanel matches={answer.patterns} />
+                <CanonPanel matches={answer.patterns} {...(canon ?? {})} />
               </div>
             ) : null}
 
