@@ -18,7 +18,7 @@ interface DomainRule {
 
 const RULES: DomainRule[] = [
   {
-    domains: ["delivery", "client"],
+    domains: ["delivery"],
     patterns: [
       /\bdeliver(y|ing)?\b/i,
       /\bproject(s)?\b/i,

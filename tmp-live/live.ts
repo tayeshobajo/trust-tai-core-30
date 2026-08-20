@@ -58,5 +58,9 @@ console.log("== PULSE ==");
 const signals = deriveSignals(snap);
 const labeled = labelSignalsWithPatterns(signals, matchPatterns({ observations: obs, limit: 5 }));
 console.log("signals", signals.length, "labeled", labeled.length);
-console.log(JSON.stringify(signals.map(s=>({id:s.id,sev:s.severity,app:s.appId,t:s.title})),null,1));
-console.log(JSON.stringify(labeled.map((s:any)=>({id:s.id,sev:s.severity,app:s.appId,t:s.title,pattern:s.patternLabel ?? s.pattern ?? null})),null,1));
+
+const same = signals.every((s,i)=>labeled[i]!.id===s.id && (labeled[i] as any).severity===(s as any).severity && JSON.stringify({...labeled[i],patternLabel:undefined})===JSON.stringify({...s,patternLabel:undefined}));
+console.log("order+severity+content unchanged:", same);
+console.log(JSON.stringify(labeled.map((s:any)=>({id:s.id,sev:s.severity,room:s.sourceApp,pattern:s.patternLabel??null})),null,1));
+console.log("labels per room:", JSON.stringify(labeled.reduce((a:any,s:any)=>{if(s.patternLabel)a[s.sourceApp]=(a[s.sourceApp]??0)+1;return a;},{})));
+console.log("new signals created:", labeled.length - signals.length);
