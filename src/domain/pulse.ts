@@ -88,8 +88,29 @@ export interface PulseSignal {
    * enriches a signal, it never creates one.
    */
   patternLabel?: string;
+  /**
+   * References back to the reading behind the label, so an explicit human
+   * decision on this signal can open a case. Carrying it is not a decision:
+   * nothing is recorded until a person says what they did.
+   */
+  patternRead?: {
+    patternId: ID;
+    patternVersion: number;
+    /** The reading in one sentence, as the canon stated it. */
+    hypothesis: string;
+    observationIds: ID[];
+  };
   at: ISODateTime;
 }
+
+/** The levels where an explicit decision is worth asking for. */
+export const PULSE_DECIDABLE_SEVERITIES: PulseSeverity[] = ["act_now", "evaluate"];
+
+/** Whether this signal can become a case if a person says what they did. */
+export function canOpenCase(signal: PulseSignal): boolean {
+  return Boolean(signal.patternRead) && PULSE_DECIDABLE_SEVERITIES.includes(signal.severity);
+}
+
 
 /* -------------------------------------------------------------- feedback */
 
