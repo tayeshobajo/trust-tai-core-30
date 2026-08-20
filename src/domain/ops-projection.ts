@@ -98,8 +98,12 @@ export type OpsConnection = "live" | "synchronized" | "delayed" | "interrupted";
 
 /** Fresh enough that the projection is simply the truth, calmly stated. */
 export const OPS_SYNC_FRESH_MS = 15 * 60_000;
-/** Beyond this the projection is stale enough to warn prominently. */
-export const OPS_SYNC_DELAYED_MS = 60 * 60_000;
+/**
+ * Ops pushes when its projects change, not on a heartbeat, so a quiet night is
+ * normal. Only silence longer than a full day is worth calling a break.
+ */
+export const OPS_SYNC_DELAYED_MS = 24 * 3_600_000;
+
 
 export interface OpsConnectionInput {
   /** A direct Ops read succeeded just now. Today Core has no such read. */
