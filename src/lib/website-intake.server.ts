@@ -281,12 +281,21 @@ export async function receiveIntake(
   if (existing.error) throw new Error(existing.error.message);
   if (existing.data) {
     const row = existing.data as Record<string, unknown>;
+    const dupProspect = (row["scout_prospect_id"] as string | null) ?? null;
+    const dupLink = (row["link_state"] as "linked" | "unlinked") ?? "unlinked";
     await writeActivity(db, organizationId, {
       action: "flagged",
       summary: `A Website roadmap intake was received again and ignored as a duplicate (${body.submission_id}).`,
       submissionId: body.submission_id,
       entityId: String(row["id"]),
-      prospectId: (row["scout_prospect_id"] as string | null) ?? null,
+      prospectId: dupProspect,
+      payload: websiteEventPayload({
+        body,
+        submissionRowId: String(row["id"]),
+        prospectId: dupProspect,
+        linkState: dupLink,
+        linkReason: String(row["link_reason"] ?? "Already received."),
+      }),
     });
     return {
       accepted: true,
@@ -411,13 +420,22 @@ export async function receiveIntake(
     }) ||
     "an inbound founder";
 
+  const eventPayload = websiteEventPayload({
+    body,
+    submissionRowId,
+    prospectId,
+    linkState,
+    linkReason: outcome.because,
+    created,
+  });
+
   await writeActivity(db, organizationId, {
     action: "intake_received",
     summary: `${WEBSITE_INTAKE_LABEL}: ${who} completed the roadmap intake on TrustTai.com.`,
     submissionId: body.submission_id,
     entityId: submissionRowId,
     prospectId,
-    created,
+    payload: eventPayload,
   });
 
   await writeActivity(db, organizationId, {
@@ -428,7 +446,7 @@ export async function receiveIntake(
     submissionId: body.submission_id,
     entityId: submissionRowId,
     prospectId,
-    created,
+    payload: eventPayload,
   });
 
   return {
@@ -437,6 +455,46 @@ export async function receiveIntake(
     duplicate: false,
     link_state: linkState,
     because: outcome.because,
+  };
+}
+
+/**
+ * The canonical payload every Website lifecycle event carries.
+ *
+ * Provenance-rich and compact: enough for Pulse to prioritise and Conductor to
+ * reason without either of them re-reading the Website room, and never a copy
+ * of the conversation itself, which the submission record owns.
+ */
+export function websiteEventPayload(input: {
+  body: IntakeInput;
+  submissionRowId: string;
+  prospectId: string | null;
+  linkState: "linked" | "unlinked";
+  linkReason: string;
+  created?: boolean;
+}): Record<string, unknown> {
+  const { body } = input;
+  return {
+    source_app: WEBSITE_SOURCE_APP,
+    source_channel: WEBSITE_SOURCE_CHANNEL,
+    source_type: WEBSITE_SOURCE_TYPE,
+    source: "trusttai.com",
+    submission_id: body.submission_id,
+    submission_row_id: input.submissionRowId,
+    submitted_at: body.submitted_at,
+    scout_prospect_id: input.prospectId,
+    prospect_created: input.created === true,
+    link_state: input.linkState,
+    link_reason: input.linkReason,
+    completeness: body.signals.completeness ?? null,
+    authorizes_research: body.signals.authorizes_research ?? null,
+    frame: body.signals.frame ?? null,
+    company_name: body.company.name ?? null,
+    company_website: body.company.website ?? null,
+    person_name: body.person.name ?? null,
+    person_role: body.person.role ?? null,
+    landing_path: body.attribution.landing_path ?? null,
+    utm: body.attribution.utm ?? {},
   };
 }
 
@@ -449,10 +507,10 @@ async function writeActivity(
     submissionId: string;
     entityId: string;
     prospectId: string | null;
-    created?: boolean;
+    payload: Record<string, unknown>;
   },
 ): Promise<void> {
-  const payload = {
+  const row = {
     organization_id: organizationId,
     app_key: WEBSITE_SOURCE_APP,
     event_type: `website.${input.action}`,
@@ -461,17 +519,15 @@ async function writeActivity(
     summary: input.summary,
     source_event_key: `website:intake:${input.submissionId}:${input.action}`,
     occurred_at: new Date().toISOString(),
-    payload: {
-      source_app: WEBSITE_SOURCE_APP,
-      source_channel: WEBSITE_SOURCE_CHANNEL,
-      source_type: WEBSITE_SOURCE_TYPE,
-      submission_id: input.submissionId,
-      submission_row_id: input.entityId,
-      scout_prospect_id: input.prospectId,
-      prospect_created: input.created === true,
-    },
+    payload: input.payload,
   };
-  const { error } = await db.from("activities").insert(payload);
+  /*
+   * Idempotent by key. A retried delivery names the same happening, so the
+   * database holds the guarantee and a second row is never written.
+   */
+  const { error } = await db
+    .from("activities")
+    .upsert(row, { onConflict: "organization_id,app_key,source_event_key", ignoreDuplicates: true });
   if (error) console.error("[website] activity not recorded:", error.message);
 }
 

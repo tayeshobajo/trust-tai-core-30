@@ -36,6 +36,7 @@ export const PULSE_ROOM_LABEL: Record<string, string> = {
   steward: "Steward",
   conductor: "Conductor",
   activity: "Activity",
+  website: "Website",
 };
 
 /** The room's own verb for each attention level. Never a generic button. */
@@ -52,6 +53,11 @@ const ACTION_LABEL: Record<string, Partial<Record<PulseSeverity, string>> & { de
   ops: { act_now: "Open issue", evaluate: "Review incident", default: "Open issue" },
   steward: { act_now: "Follow up", evaluate: "Decide", default: "Open" },
   studio: { default: "Open" },
+  website: {
+    act_now: "Open the submission",
+    evaluate: "Open the submission",
+    default: "Open the submission",
+  },
   conductor: { default: "Open" },
 };
 

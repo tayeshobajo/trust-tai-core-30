@@ -16,6 +16,8 @@ import type { ExecutionProject } from "@/domain/projects";
 import { isOpenProject, projectHealth, recommendedMove } from "@/domain/projects";
 import type { ProspectCandidate } from "@/domain/scout";
 import type { MemoryBelief } from "@/domain/steward-memory";
+import type { WebsiteSubmission } from "@/domain/website";
+import { websiteContextBlocks, websiteSignals } from "@/data/website/intel";
 import { readOpsEvents } from "@/domain/ops";
 import { deriveOpsSignals, opsContextBlocks } from "./ops-signals";
 import {
@@ -58,6 +60,11 @@ export interface SuiteSnapshot {
   steward: StewardSnapshot;
   /** What the workspace has learned and a person has decided. Read-only here. */
   memory: MemoryBelief[];
+  /**
+   * Inbound intake rows the Website room owns. Read by reference only: the
+   * conversation itself is never copied into the intelligence layer.
+   */
+  websiteSubmissions: WebsiteSubmission[];
   withheld: WithheldSource[];
 }
 
@@ -76,6 +83,7 @@ export function emptySnapshot(organizationId: ID, now = new Date().toISOString()
     opsActivities: [],
     steward: emptyStewardSnapshot(),
     memory: [],
+    websiteSubmissions: [],
     withheld: [],
   };
 }
@@ -322,6 +330,16 @@ export function contextBlocks(snapshot: SuiteSnapshot): ContextBlock[] {
         at: decision.createdAt,
       }),
     );
+  }
+
+  /* Website: what arrived from TrustTai.com, by reference. */
+  for (const websiteBlock of websiteContextBlocks({
+    organizationId: snapshot.organizationId,
+    now,
+    submissions: snapshot.websiteSubmissions,
+    candidates: snapshot.candidates,
+  })) {
+    blocks.push(websiteBlock);
   }
 
   return blocks.sort((a, b) => (a.at < b.at ? 1 : -1));
@@ -597,7 +615,30 @@ export function deriveSignals(snapshot: SuiteSnapshot): Signal[] {
     });
   }
 
-  return signals
+  /*
+   * Website: inbound intake that needs a person. Only two states qualify, so
+   * arrival on its own never becomes a card. Where an inbound company would
+   * also raise Scout's generic "strong fit, unreviewed" note, the inbound
+   * framing wins and the generic one is dropped: one company, one prompt.
+   */
+  const inbound = websiteSignals({
+    organizationId: snapshot.organizationId,
+    now,
+    submissions: snapshot.websiteSubmissions,
+    candidates: snapshot.candidates,
+  });
+  const inboundSubjects = new Set(
+    inbound
+      .filter((signal) => signal.id.startsWith("website:awaiting:"))
+      .map((signal) => signal.subject?.id)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const deduped = signals.filter(
+    (signal) =>
+      !(signal.id.startsWith("scout:strongfit:") && inboundSubjects.has(signal.subject?.id ?? "")),
+  );
+
+  return [...deduped, ...inbound]
     .filter((signal) => signal.contextRefs.length > 0 || signal.evidence.length > 0)
     .sort((a, b) => b.urgency - a.urgency || (a.at < b.at ? 1 : -1));
 }

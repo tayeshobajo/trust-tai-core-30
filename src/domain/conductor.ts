@@ -830,6 +830,8 @@ export type ConductorTopic =
   | "plan"
   | "improve"
   | "roadmap"
+  /** What came in from TrustTai.com, and what the founder actually said. */
+  | "inbound"
   | "unclear";
 
 export const CONDUCTOR_TOPIC_LABEL: Record<ConductorTopic, string> = {
@@ -841,6 +843,7 @@ export const CONDUCTOR_TOPIC_LABEL: Record<ConductorTopic, string> = {
   plan: "Operating plan",
   improve: "System improvement",
   roadmap: "Roadmap sequence",
+  inbound: "What came in from the website",
   unclear: "Read of the business",
 };
 

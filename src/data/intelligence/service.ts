@@ -14,6 +14,7 @@ import { projectsService } from "@/data/supabase/projects-service";
 import { roadmapService } from "@/data/supabase/roadmap-service";
 import { scoutService } from "@/data/supabase/scout-service";
 import { supabaseActivity } from "@/data/supabase/activities";
+import { listWebsiteSubmissions } from "@/data/supabase/website-service";
 import { stewardService } from "@/data/supabase/steward-service";
 import { assertSameOrganization, type AccessContext } from "@/domain/access";
 import { assertCanAuthorizeAction } from "@/domain/action-authority";
@@ -111,6 +112,7 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     opsActivities,
     steward,
     memory,
+    websiteSubmissions,
   ] = await Promise.all([
     safe("scout", base.candidates, () => scoutService.list(organizationId)),
     safe("comms", base.relationships, () => commsService.list(organizationId)),
@@ -147,6 +149,11 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     }),
     /* Learned memory is evidence too: what a person decided is the strongest kind. */
     safe("steward", base.memory, () => stewardService.memory(organizationId)),
+    /* Website: inbound intake, read by reference. Unprovisioned reads empty. */
+    safe("website", base.websiteSubmissions, async () => {
+      const result = await listWebsiteSubmissions(organizationId);
+      return result.value;
+    }),
   ]);
 
   const withheld: WithheldSource[] = [];
@@ -162,6 +169,7 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     opsActivities,
     steward,
     memory,
+    websiteSubmissions,
   ]) {
     if (part.withheld && !withheld.some((w) => w.appId === part.withheld?.appId)) {
       withheld.push(part.withheld);
@@ -181,6 +189,7 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     opsActivities: opsActivities.value,
     steward: steward.value,
     memory: memory.value,
+    websiteSubmissions: websiteSubmissions.value,
     withheld,
   };
 }
