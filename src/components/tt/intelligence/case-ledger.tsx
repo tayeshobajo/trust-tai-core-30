@@ -10,9 +10,17 @@
 import { useState } from "react";
 
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
-import { patternById } from "@/data/intelligence/canon";
+import { decisionFor, patternById, proposalFingerprint } from "@/data/intelligence/canon";
 import type { PriorExperience } from "@/data/intelligence/canon";
-import type { IntelligenceCase, PatternOutcome } from "@/domain/intelligence-canon";
+import {
+  PROPOSAL_DECISION_LABEL,
+  type ExperienceHealth,
+  type IntelligenceCase,
+  type PatternOutcome,
+  type PatternRevisionDecision,
+  type PatternRevisionProposal,
+  type ProposalDecisionKind,
+} from "@/domain/intelligence-canon";
 
 export interface CaseLedgerProps {
   open: IntelligenceCase[];
@@ -30,6 +38,16 @@ export interface CaseLedgerProps {
   }) => void | Promise<void>;
   saving?: boolean;
   notice?: string;
+  /** Answers already given to revision proposals. */
+  proposalDecisions?: PatternRevisionDecision[];
+  onProposalDecision?: (input: {
+    proposal: PatternRevisionProposal;
+    decision: ProposalDecisionKind;
+    note?: string;
+  }) => void | Promise<void>;
+  decidingProposal?: boolean;
+  /** Seven day read of whether experience is accumulating at all. */
+  health?: ExperienceHealth;
 }
 
 function patternName(patternId: string): string {
@@ -46,6 +64,10 @@ export function CaseLedgerPanel({
   onManualOutcome,
   saving,
   notice,
+  proposalDecisions,
+  onProposalDecision,
+  decidingProposal,
+  health,
 }: CaseLedgerProps) {
   const corrections = experience.filter((row) => row.corrections.length > 0);
   const proposals = experience.filter((row) => row.proposal);
@@ -159,19 +181,49 @@ export function CaseLedgerPanel({
       {proposals.length > 0 ? (
         <TTCard className="p-4">
           <p className="tt-eyebrow">Revision proposals</p>
-          <ul className="mt-2 space-y-2 text-[13px]">
+          <ul className="mt-2 space-y-4 text-[13px]">
             {proposals.map((row) => (
-              <li key={row.patternId}>
-                <span className="text-foreground">{patternName(row.patternId)}: </span>
-                <span className="text-muted-foreground">{row.proposal!.suggestion}</span>
-              </li>
+              <ProposalRow
+                key={row.patternId}
+                name={patternName(row.patternId)}
+                proposal={row.proposal!}
+                decisions={proposalDecisions ?? []}
+                {...(onProposalDecision ? { onDecide: onProposalDecision } : {})}
+                {...(decidingProposal !== undefined ? { saving: decidingProposal } : {})}
+              />
             ))}
           </ul>
           <p className="mt-2 text-[12px] text-muted-foreground">
-            Proposals sit here until a person accepts one. No pattern text changes on its own.
+            Accepting authorises a later review of the pattern wording. It does not change any
+            pattern now, and no room behaves differently today.
           </p>
         </TTCard>
       ) : null}
+
+      {health ? (
+        <TTCard className="p-4">
+          <p className="tt-eyebrow">Last seven days</p>
+          <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2 text-[13px] sm:grid-cols-3">
+            <HealthStat label="Cases opened" value={health.casesOpened} />
+            <HealthStat label="Cases resolved" value={health.casesResolved} />
+            <HealthStat label="Corrections you wrote" value={health.corrections} />
+            <HealthStat label="Patterns with enough results" value={health.patternsWithEnoughOutcomes} />
+            <HealthStat label="Proposals awaiting you" value={health.proposalsAwaitingDecision} />
+            <HealthStat
+              label="Oldest open case"
+              value={
+                health.oldestOpenCaseDays === null
+                  ? "None open"
+                  : `${health.oldestOpenCaseDays} day${health.oldestOpenCaseDays === 1 ? "" : "s"}`
+              }
+            />
+          </dl>
+          <p className="mt-2 text-[12px] text-muted-foreground">
+            Counted from the ledger only. Zero is a truthful answer, not a bad one.
+          </p>
+        </TTCard>
+      ) : null}
+
     </section>
   );
 }
@@ -238,6 +290,81 @@ function OpenCaseRow({
             Record what happened
           </TTButton>
         )
+      ) : null}
+    </li>
+  );
+}
+
+function HealthStat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+const PROPOSAL_ORDER: ProposalDecisionKind[] = ["accepted", "rejected", "deferred"];
+
+const PROPOSAL_ANSWER: Record<ProposalDecisionKind, string> = {
+  accepted: "You accepted this for a later canon review.",
+  rejected: "You rejected this wording.",
+  deferred: "You set this aside for now.",
+};
+
+function ProposalRow({
+  name,
+  proposal,
+  decisions,
+  onDecide,
+  saving,
+}: {
+  name: string;
+  proposal: PatternRevisionProposal;
+  decisions: PatternRevisionDecision[];
+  onDecide?: CaseLedgerProps["onProposalDecision"];
+  saving?: boolean;
+}) {
+  const [note, setNote] = useState("");
+  const answered = decisionFor(proposal, decisions);
+
+  return (
+    <li>
+      <span className="text-foreground">{name}: </span>
+      <span className="text-muted-foreground">{proposal.suggestion}</span>
+      {answered ? (
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          {PROPOSAL_ANSWER[answered.decision]}
+          {answered.note ? ` ${answered.note}` : ""}
+        </p>
+      ) : onDecide ? (
+        <div className="mt-2 space-y-2">
+          <input
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Add a note, if it helps a later reviewer"
+            aria-label={`Note on the proposal for ${name}`}
+            className="w-full rounded-md border border-border bg-transparent p-2 text-[13px] outline-none focus:border-foreground"
+          />
+          <div className="flex flex-wrap gap-2">
+            {PROPOSAL_ORDER.map((kind) => (
+              <TTButton
+                key={`${proposalFingerprint(proposal)}-${kind}`}
+                variant={kind === "accepted" ? "secondary" : "quiet"}
+                disabled={saving}
+                onClick={() =>
+                  void onDecide({
+                    proposal,
+                    decision: kind,
+                    ...(note.trim().length > 0 ? { note: note.trim() } : {}),
+                  })
+                }
+              >
+                {PROPOSAL_DECISION_LABEL[kind]}
+              </TTButton>
+            ))}
+          </div>
+        </div>
       ) : null}
     </li>
   );
