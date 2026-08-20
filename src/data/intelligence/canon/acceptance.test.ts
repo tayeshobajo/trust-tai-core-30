@@ -191,6 +191,11 @@ describe("Pulse enrichment stays enrichment", () => {
   const signal: PulseSignal = {
     id: "signal:1",
     organizationId: "org",
+    category: "delivery_risk",
+    area: "delivery",
+    impact: "medium",
+    ageDays: 11,
+    actionRoute: "/modules/projects",
     title: "A project has gone quiet",
     summary: "Nothing moved for eleven days.",
     reason: "Last activity was eleven days ago.",
@@ -198,12 +203,11 @@ describe("Pulse enrichment stays enrichment", () => {
     sourceApp: "projects",
     sourceAppLabel: "Projects",
     entityPath: "Acme rebuild",
-    route: "/modules/projects",
     actionLabel: "Open Projects",
     evidence: [],
     confidence: "moderate",
     at: NOW,
-  } as PulseSignal;
+  };
 
   it("adds no signal and removes none", () => {
     const pattern = activePatterns()[0]!;
@@ -252,7 +256,7 @@ describe("learning is governed", () => {
     const entry = openCase({
       organizationId: "org",
       match,
-      entities: [{ kind: "project", id: "p1", label: "Acme rebuild" }],
+      entities: [{ type: "project", id: "p1", label: "Acme rebuild" }],
       hypothesis: match.because,
       humanDecision: "Named an owner.",
       decidedBy: "user-1",
