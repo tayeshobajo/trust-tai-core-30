@@ -337,4 +337,10 @@ export interface ExperienceHealth {
   proposalsAwaitingDecision: number;
   /** Whole days, or null when nothing is open. */
   oldestOpenCaseDays: number | null;
+  /** Open cases the scheduler could actually check against current state. */
+  casesCheckedAutomatically: number;
+  /** Of those, the ones a deterministic check settled without a person. */
+  casesResolvedAutomatically: number;
+  /** Open cases that stayed unknown after checking. Not a failure. */
+  casesUnknownAfterChecks: number;
 }
