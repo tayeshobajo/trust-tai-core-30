@@ -66,6 +66,17 @@ describe("live website acceptance", () => {
     })), null, 1));
     console.log("BRIEF", JSON.stringify(inboundBrief(input), null, 1).slice(0, 4000));
 
+    const { loadSuiteSnapshot } = await import("@/data/intelligence/service");
+    const { deriveSignals } = await import("@/data/intelligence/derive");
+    const snap = await loadSuiteSnapshot(ORG);
+    const sigs = deriveSignals(snap);
+    console.log("ALL_SIGNALS", JSON.stringify(sigs.map((s2) => ({ id: s2.id, subj: s2.subject?.id, title: s2.title, dest: s2.destination?.route })), null, 1));
+    const { answerQuestion, classifyQuestion } = await import("@/data/intelligence/conductor/answer");
+    const q = "What came in from the website and what did the founder say?";
+    console.log("TOPIC", classifyQuestion(q));
+    const ans = answerQuestion({ question: q, snapshot: snap, signals: sigs, now } as never);
+    console.log("ANSWER", JSON.stringify(ans, null, 1).slice(0, 3000));
+
     expect(subs.value.length).toBeGreaterThan(0);
   }, 60000);
 });
