@@ -152,4 +152,58 @@ export const intelligenceCanonService = {
     if (error) fail(error);
     return toOutcome(data as Row);
   },
+
+  /**
+   * Open a case only if the same decision, about the same reading, on the same
+   * evidence, is not already in the ledger.
+   *
+   * The tables are append only and hold no natural key, so idempotency is
+   * enforced here by content: a retry, a double click or a re-render resolves
+   * to the row already written instead of a second identical case.
+   */
+  async openCaseOnce(entry: IntelligenceCase): Promise<{ entry: IntelligenceCase; created: boolean }> {
+    const existing = await intelligenceCanonService.listCases(entry.organizationId);
+    const match = existing.find((row) => caseFingerprint(row) === caseFingerprint(entry));
+    if (match) return { entry: match, created: false };
+    return { entry: await intelligenceCanonService.saveCase(entry), created: true };
+  },
+
+  /** Append an outcome unless the same reading of the same case is already there. */
+  async recordOutcomeOnce(
+    entry: PatternOutcome,
+  ): Promise<{ entry: PatternOutcome; created: boolean }> {
+    const existing = await intelligenceCanonService.listOutcomes(entry.organizationId);
+    const match = existing.find((row) => outcomeFingerprint(row) === outcomeFingerprint(entry));
+    if (match) return { entry: match, created: false };
+    return { entry: await intelligenceCanonService.saveOutcome(entry), created: true };
+  },
 };
+
+/** Content identity of a case: the reading, the evidence, and the decision. */
+export function caseFingerprint(entry: IntelligenceCase): string {
+  const refs = entry.evidenceRefs
+    .map((ref) => `${ref.kind}:${ref.id}`)
+    .sort()
+    .join("|");
+  return [
+    entry.organizationId,
+    entry.patternId,
+    entry.patternVersion,
+    refs,
+    entry.humanDecision.trim(),
+    entry.correction?.trim() ?? "",
+  ].join("::");
+}
+
+/** Content identity of an outcome: which case, what result, and why. */
+export function outcomeFingerprint(entry: PatternOutcome): string {
+  return [
+    entry.organizationId,
+    entry.patternId,
+    entry.caseId ?? "",
+    entry.result,
+    entry.resultBecause.trim(),
+    entry.humanCorrection?.trim() ?? "",
+  ].join("::");
+}
+
