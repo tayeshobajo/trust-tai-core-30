@@ -191,7 +191,7 @@ describe("Pulse enrichment stays enrichment", () => {
   const signal: PulseSignal = {
     id: "signal:1",
     organizationId: "org",
-    category: "delivery_risk",
+    category: "delivery",
     area: "delivery",
     impact: "medium",
     ageDays: 11,
