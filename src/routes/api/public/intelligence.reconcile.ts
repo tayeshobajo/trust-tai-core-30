@@ -16,13 +16,15 @@ export const Route = createFileRoute("/api/public/intelligence/reconcile")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { trustTaiServiceRoleClient } = await import("@/lib/execution-bridge.server");
         const { authorizeReconcileRequest } = await import(
           "@/lib/intelligence-reconcile-auth.server"
         );
 
+        const core = trustTaiServiceRoleClient();
+
         const allowed = await authorizeReconcileRequest(
-          supabaseAdmin as never,
+          core as never,
           request.headers.get("x-reconcile-secret"),
         );
         if (!allowed.ok) {
