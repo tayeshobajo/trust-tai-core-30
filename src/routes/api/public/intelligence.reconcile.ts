@@ -6,8 +6,9 @@
  * executes nothing anywhere else in the suite. Unknown stays open.
  *
  * Fail closed: without a configured shared secret the endpoint refuses. The
- * secret lives in a service role only config row in the database, so the
- * hourly job can be activated from Supabase without any deployment change.
+ * secret lives in a service role only config row in the shared Trust Tai Core
+ * database, read through the Core service role client, so the hourly job can
+ * be activated from Supabase without any deployment change.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
