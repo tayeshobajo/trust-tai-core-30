@@ -63,6 +63,7 @@ function toCase(row: Row): IntelligenceCase {
 
 function toOutcome(row: Row): PatternOutcome {
   const hours = row["hours_to_outcome"];
+  const refs = row["source_refs"];
   return {
     id: String(row["id"]),
     organizationId: String(row["organization_id"]),
@@ -74,6 +75,10 @@ function toOutcome(row: Row): PatternOutcome {
     result: (text(row, "result") ?? "unknown") as PatternResult,
     resultBecause: String(row["result_because"] ?? ""),
     ...(typeof hours === "number" ? { hoursToOutcome: hours } : {}),
+    /* Rows written before provenance existed were all recorded by a person. */
+    resultSource: (text(row, "result_source") ?? "human") as PatternOutcome["resultSource"],
+    ...(Array.isArray(refs) ? { sourceRefs: refs.map((ref) => String(ref)) } : {}),
+    ...(text(row, "observed_at") ? { observedAt: text(row, "observed_at")! } : {}),
     ...(text(row, "human_correction") ? { humanCorrection: text(row, "human_correction")! } : {}),
     recordedBy: String(row["recorded_by"] ?? ""),
     recordedAt: String(row["recorded_at"]),
