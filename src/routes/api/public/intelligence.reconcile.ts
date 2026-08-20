@@ -5,7 +5,9 @@
  * room event has already answered, writes at most one outcome per case, and
  * executes nothing anywhere else in the suite. Unknown stays open.
  *
- * Fail closed: without a configured shared secret the endpoint refuses.
+ * Fail closed: without a configured shared secret the endpoint refuses. The
+ * secret lives in a service role only config row in the database, so the
+ * hourly job can be activated from Supabase without any deployment change.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -14,19 +16,19 @@ export const Route = createFileRoute("/api/public/intelligence/reconcile")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const secret = process.env["INTELLIGENCE_RECONCILE_SECRET"];
-        if (!secret) {
-          return Response.json(
-            { ok: false, error: "Reconciliation is not configured on this deployment." },
-            { status: 503 },
-          );
-        }
-        const presented = request.headers.get("x-reconcile-secret") ?? "";
-        if (presented.length !== secret.length || presented !== secret) {
-          return Response.json({ ok: false, error: "Not allowed." }, { status: 401 });
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { authorizeReconcileRequest } = await import(
+          "@/lib/intelligence-reconcile-auth.server"
+        );
+
+        const allowed = await authorizeReconcileRequest(
+          supabaseAdmin as never,
+          request.headers.get("x-reconcile-secret"),
+        );
+        if (!allowed.ok) {
+          return Response.json({ ok: false, error: allowed.error }, { status: allowed.status });
         }
 
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { organizationsWithCases, reconcileOrganization } = await import(
           "@/lib/intelligence-reconcile.server"
         );
