@@ -68,12 +68,15 @@ import { LearningTrailPanel } from "@/components/tt/intelligence/learning-trail"
 import { CaseLedgerPanel } from "@/components/tt/intelligence/case-ledger";
 import type { CaseDecisionDraft } from "@/components/tt/intelligence/case-decision";
 import { intelligenceCanonService } from "@/data/supabase/intelligence-canon-service";
+import { patternRevisionService } from "@/data/supabase/pattern-revision-service";
 import {
   canReconcile,
   describeMatch,
   experienceForMatches,
+  experienceHealth,
   experienceLedger,
   openCases,
+  proposalDecisionRow,
   outcomeFromReconciliation,
   reconcileCase,
   resolvedCases,
@@ -449,6 +452,33 @@ function Conductor({
     onSuccess: refreshCanon,
   });
 
+  /* Answers to revision proposals. Recorded once per proposal wording, and
+   * never applied to canon text on their own. */
+  const revisionDecisions = useQuery({
+    queryKey: ["canon-revision-decisions", identity.organizationId],
+    queryFn: () => patternRevisionService.list(identity.organizationId),
+  });
+
+  const decideProposal = useMutation({
+    mutationFn: async (input: Parameters<
+      NonNullable<Parameters<typeof CaseLedgerPanel>[0]["onProposalDecision"]>
+    >[0]) =>
+      patternRevisionService.decideOnce(
+        proposalDecisionRow({
+          organizationId: identity.organizationId,
+          proposal: input.proposal,
+          decision: input.decision,
+          ...(input.note ? { note: input.note } : {}),
+          decidedBy: identity.userId,
+          now: new Date().toISOString(),
+        }),
+      ),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["canon-revision-decisions", identity.organizationId],
+      }),
+  });
+
   /* A reading that was not worth raising goes to the correction ledger that
    * already exists, not into the case ledger. There is nothing to learn from. */
   const patternNotUseful = useMutation({
@@ -808,6 +838,17 @@ function Conductor({
                   onManualOutcome={(input) =>
                     manualOutcome.mutateAsync(input).then(() => undefined)
                   }
+                  proposalDecisions={revisionDecisions.data ?? []}
+                  onProposalDecision={(input) =>
+                    decideProposal.mutateAsync(input).then(() => undefined)
+                  }
+                  decidingProposal={decideProposal.isPending}
+                  health={experienceHealth({
+                    cases,
+                    outcomes,
+                    decisions: revisionDecisions.data ?? [],
+                    now: new Date().toISOString(),
+                  })}
                 />
                 {controlSchema.data && !controlSchema.data.ready ? null : (
                   <OutcomeLearning
