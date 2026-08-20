@@ -73,6 +73,16 @@ export function experienceHealth(input: HealthInput): ExperienceHealth {
     .filter((ms) => !Number.isNaN(ms))
     .sort((a, b) => a - b)[0];
 
+  /* Automatic work, counted from the ledger only. A case still open but
+   * checkable stayed unknown, which is an honest answer rather than a miss. */
+  const resolvedAutomatically = new Set(
+    recentOutcomes
+      .filter((row) => row.resultSource === "room_event" || row.resultSource === "current_state")
+      .map((row) => row.caseId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const unknownAfterChecks = stillOpen.filter((row) => canReconcile(row.patternId)).length;
+
   return {
     since,
     casesOpened,
@@ -81,5 +91,8 @@ export function experienceHealth(input: HealthInput): ExperienceHealth {
     patternsWithEnoughOutcomes,
     proposalsAwaitingDecision,
     oldestOpenCaseDays: oldest === undefined ? null : Math.max(0, Math.floor((nowMs - oldest) / DAY)),
+    casesCheckedAutomatically: resolvedAutomatically.size + unknownAfterChecks,
+    casesResolvedAutomatically: resolvedAutomatically.size,
+    casesUnknownAfterChecks: unknownAfterChecks,
   };
 }
