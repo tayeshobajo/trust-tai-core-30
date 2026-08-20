@@ -73,7 +73,7 @@ function submissionFrom(prospectId: string | null): WebsiteSubmission {
     attribution: {
       landingPath: body.attribution.landing_path ?? null,
       sessionId: body.attribution.session_id ?? null,
-      utm: (body.attribution.utm ?? {}) as WebsiteSubmission["attribution"]["utm"],
+      utm: { source: "linkedin", campaign: "founder-stories" },
     },
     person: {
       name: body.person.name ?? null,
