@@ -615,7 +615,30 @@ export function deriveSignals(snapshot: SuiteSnapshot): Signal[] {
     });
   }
 
-  return signals
+  /*
+   * Website: inbound intake that needs a person. Only two states qualify, so
+   * arrival on its own never becomes a card. Where an inbound company would
+   * also raise Scout's generic "strong fit, unreviewed" note, the inbound
+   * framing wins and the generic one is dropped: one company, one prompt.
+   */
+  const inbound = websiteSignals({
+    organizationId: snapshot.organizationId,
+    now,
+    submissions: snapshot.websiteSubmissions,
+    candidates: snapshot.candidates,
+  });
+  const inboundSubjects = new Set(
+    inbound
+      .filter((signal) => signal.id.startsWith("website:awaiting:"))
+      .map((signal) => signal.subject?.id)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const deduped = signals.filter(
+    (signal) =>
+      !(signal.id.startsWith("scout:strongfit:") && inboundSubjects.has(signal.subject?.id ?? "")),
+  );
+
+  return [...deduped, ...inbound]
     .filter((signal) => signal.contextRefs.length > 0 || signal.evidence.length > 0)
     .sort((a, b) => b.urgency - a.urgency || (a.at < b.at ? 1 : -1));
 }
