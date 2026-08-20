@@ -87,6 +87,34 @@ Governance is deliberate:
 - Learning never expands authority: no case, outcome or lesson can authorise an
   action or lower an approval requirement.
 
+## The capture loop
+
+A reading becomes experience only through a person:
+
+1. **Surfaced.** A match appears on a Conductor answer. Looking at it records
+   nothing at all.
+2. **Decided.** "I acted on this" opens a case with the pattern, the observation
+   ids the reading stood on, the hypothesis shown, and the decision in the
+   person's own words. "Not useful" goes to the existing Conductor correction
+   ledger instead, because there is nothing to learn from a reading that was not
+   worth raising.
+3. **Corrected.** "The reading was off" stores the person's words on the case as
+   human authored truth. `priorExperience` says it first, ahead of anything
+   worked out from results.
+4. **Reconciled.** `reconcileCase` re-reads the same observations the suite
+   already makes. The shape gone means success; the same shape still observed a
+   week after the decision means failure; anything else writes nothing.
+   Reconciliation is limited to observation kinds that clear cleanly
+   (`VERIFIABLE_KINDS`). Everything else waits for a person to record what
+   happened.
+5. **Retrieved.** When the same pattern surfaces again, the organization's own
+   cases and corrections appear in their own lane, clearly separated from
+   today's evidence, and never raise the pattern's confidence.
+
+Both tables are append only and hold no natural key, so idempotency is enforced
+by content: `caseFingerprint` and `outcomeFingerprint` make a retry, a double
+click or a re-render resolve to the row already written.
+
 ## Deliberately not built
 
 No embeddings, no vector store, no background loop, no autonomous execution, no

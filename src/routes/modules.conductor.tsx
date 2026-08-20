@@ -65,6 +65,20 @@ import {
   recordFigure,
 } from "@/data/supabase/conductor-service";
 import { LearningTrailPanel } from "@/components/tt/intelligence/learning-trail";
+import { CaseLedgerPanel } from "@/components/tt/intelligence/case-ledger";
+import type { CaseDecisionDraft } from "@/components/tt/intelligence/case-decision";
+import { intelligenceCanonService } from "@/data/supabase/intelligence-canon-service";
+import {
+  canReconcile,
+  describeMatch,
+  experienceForMatches,
+  experienceLedger,
+  openCases,
+  outcomeFromReconciliation,
+  reconcileCase,
+  resolvedCases,
+} from "@/data/intelligence/canon";
+import { observeBusiness } from "@/data/intelligence/engine/observe";
 import { ConductorHeader } from "@/components/tt/conductor/conductor-header";
 import { AskSurface } from "@/components/tt/conductor/ask-surface";
 import { RecommendationCard } from "@/components/tt/conductor/recommendation-card";
@@ -387,6 +401,118 @@ function Conductor({
     onSuccess: refreshControl,
   });
 
+  /*
+   * The case ledger: what a person decided about a reading, and what the rooms
+   * showed afterwards. Intelligence only, references and decisions, never a
+   * copy of any room's business state.
+   */
+  const canonLedger = useQuery({
+    queryKey: ["canon-ledger", identity.organizationId],
+    queryFn: async () => {
+      const [cases, outcomes] = await Promise.all([
+        intelligenceCanonService.listCases(identity.organizationId),
+        intelligenceCanonService.listOutcomes(identity.organizationId),
+      ]);
+      return { cases, outcomes };
+    },
+  });
+
+  const refreshCanon = () =>
+    queryClient.invalidateQueries({ queryKey: ["canon-ledger", identity.organizationId] });
+
+  const cases = canonLedger.data?.cases ?? [];
+  const outcomes = canonLedger.data?.outcomes ?? [];
+  const stillOpen = openCases(cases, outcomes);
+
+  /* Looking at a reading records nothing. Saying what you decided opens a case,
+   * once, on the evidence that reading stood on. */
+  const decideOnPattern = useMutation({
+    mutationFn: async (draft: CaseDecisionDraft) =>
+      intelligenceCanonService.openCaseOnce({
+        id: "",
+        organizationId: identity.organizationId,
+        patternId: draft.match.patternId,
+        patternVersion: 1,
+        entities: [],
+        evidenceRefs: draft.match.matched.map((entry) => ({
+          kind: "observation" as const,
+          id: entry.observationId,
+        })),
+        hypothesis: describeMatch(draft.match),
+        humanDecision: draft.decision,
+        decidedBy: identity.userId,
+        decidedAt: new Date().toISOString(),
+        diagnosisVerdict: draft.correction ? "incorrect" : "unknown",
+        ...(draft.correction ? { correction: draft.correction } : {}),
+        createdAt: new Date().toISOString(),
+      }),
+    onSuccess: refreshCanon,
+  });
+
+  /* A reading that was not worth raising goes to the correction ledger that
+   * already exists, not into the case ledger. There is nothing to learn from. */
+  const patternNotUseful = useMutation({
+    mutationFn: async (patternId: string) =>
+      recordCorrection({
+        organizationId: identity.organizationId,
+        correctedBy: { id: identity.userId, label: identity.name },
+        kind: "not_useful",
+        subjectKey: `pattern:${patternId}`,
+        note: "This reading was not worth raising.",
+        ...(answer ? { answerId: answer.id, topic: answer.topic } : {}),
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["conductor-ledger", identity.organizationId] }),
+  });
+
+  /* Reconciliation reads the rooms again and writes a result only where the
+   * shape has genuinely cleared, or is genuinely still there. */
+  const reconcilable = stillOpen.filter((entry) => canReconcile(entry.patternId)).length;
+
+  const checkCases = useMutation({
+    mutationFn: async () => {
+      const snapshot = await loadSuiteSnapshot(identity.organizationId);
+      const observations = observeBusiness(snapshot);
+      for (const entry of stillOpen) {
+        const reconciliation = reconcileCase({ entry, observations, now: snapshot.now });
+        if (!reconciliation) continue;
+        await intelligenceCanonService.recordOutcomeOnce({
+          id: "",
+          ...outcomeFromReconciliation({
+            entry,
+            reconciliation,
+            recordedBy: identity.userId,
+            now: snapshot.now,
+          }),
+        });
+      }
+    },
+    onSuccess: refreshCanon,
+  });
+
+  const manualOutcome = useMutation({
+    mutationFn: async (input: {
+      entry: typeof stillOpen[number];
+      result: "success" | "failure";
+      because: string;
+    }) =>
+      intelligenceCanonService.recordOutcomeOnce({
+        id: "",
+        organizationId: identity.organizationId,
+        patternId: input.entry.patternId,
+        patternVersion: input.entry.patternVersion,
+        caseId: input.entry.id,
+        recommendation: input.entry.hypothesis,
+        decision: "accepted",
+        result: input.result,
+        resultBecause: input.because,
+        ...(input.entry.correction ? { humanCorrection: input.entry.correction } : {}),
+        recordedBy: identity.userId,
+        recordedAt: new Date().toISOString(),
+      }),
+    onSuccess: refreshCanon,
+  });
+
   const checkable = observableActions(control.data?.actions ?? []).length;
   const lastChecked = lastObservedAt(control.data?.observations ?? []);
 
@@ -529,6 +655,21 @@ function Conductor({
               setLastQuestion(question);
               return ask.mutateAsync(question).then(() => undefined);
             }}
+            canon={{
+              experience: experienceForMatches({
+                matches: answer?.patterns ?? [],
+                cases,
+                outcomes,
+              }),
+              deciding: decideOnPattern.isPending,
+              recorded: cases.map((entry) => entry.patternId),
+              notUseful: (ledger.data?.corrections ?? [])
+                .filter((row) => (row.subjectKey ?? "").startsWith("pattern:"))
+                .map((row) => (row.subjectKey ?? "").slice("pattern:".length)),
+              onDecide: (draft) => decideOnPattern.mutateAsync(draft).then(() => undefined),
+              onNotUseful: (match) =>
+                patternNotUseful.mutateAsync(match.patternId).then(() => undefined),
+            }}
             correcting={correct.isPending}
             corrected={correct.isSuccess}
             onCorrect={(draft) => correct.mutateAsync(draft).then(() => undefined)}
@@ -656,6 +797,18 @@ function Conductor({
             learning={
               <div className="space-y-6">
                 {engine.trail ? <LearningTrailPanel trail={engine.trail} /> : null}
+                <CaseLedgerPanel
+                  open={stillOpen}
+                  resolved={resolvedCases(cases, outcomes)}
+                  experience={experienceLedger({ cases, outcomes })}
+                  checkable={reconcilable}
+                  checking={checkCases.isPending}
+                  onCheck={() => checkCases.mutate()}
+                  saving={manualOutcome.isPending}
+                  onManualOutcome={(input) =>
+                    manualOutcome.mutateAsync(input).then(() => undefined)
+                  }
+                />
                 {controlSchema.data && !controlSchema.data.ready ? null : (
                   <OutcomeLearning
                     reads={executionRead}
