@@ -102,7 +102,18 @@ export function experienceForMatches(input: {
   return out;
 }
 
-/** Every pattern this organization has a record for, strongest record first. */
+/**
+ * Every pattern this organization has a record for, in the order a person
+ * should read them:
+ *
+ *   1. patterns a person corrected, because their word outranks inference
+ *   2. patterns with repeated consistent outcomes, because that is a lesson
+ *   3. the most recently resolved records
+ *   4. single anecdotes last
+ *
+ * Ordering is retrieval only. Nothing here raises confidence, and none of it
+ * is evidence about today.
+ */
 export function experienceLedger(input: {
   cases: IntelligenceCase[];
   outcomes: PatternOutcome[];
@@ -111,15 +122,32 @@ export function experienceLedger(input: {
     ...input.cases.map((row) => row.patternId),
     ...input.outcomes.map((row) => row.patternId),
   ]);
+
+  const lastResolvedAt = (patternId: string): string =>
+    input.outcomes
+      .filter((row) => row.patternId === patternId)
+      .map((row) => row.recordedAt)
+      .sort()
+      .reverse()[0] ?? "";
+
+  const rank = (row: PriorExperience): number => {
+    if (row.corrections.length > 0) return 0;
+    if (row.standing.hasLesson) return 1;
+    if (row.standing.outcomes > 1) return 2;
+    return 3;
+  };
+
   return [...ids]
     .map((patternId) => priorExperience({ patternId, cases: input.cases, outcomes: input.outcomes }))
     .sort(
       (a, b) =>
-        b.corrections.length - a.corrections.length ||
+        rank(a) - rank(b) ||
         b.standing.outcomes - a.standing.outcomes ||
+        lastResolvedAt(b.patternId).localeCompare(lastResolvedAt(a.patternId)) ||
         a.patternId.localeCompare(b.patternId),
     );
 }
+
 
 /** Cases with nothing recorded against them yet. */
 export function openCases(cases: IntelligenceCase[], outcomes: PatternOutcome[]): IntelligenceCase[] {
