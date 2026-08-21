@@ -128,7 +128,7 @@ describe("evaluateOpenCase", () => {
   };
 
   it("writes nothing when the condition kind was not readable", () => {
-    const entry = openCase("promise_slippage", "2026-01-01T00:00:00.000Z");
+    const entry = openCase("commitments.promises_slipping", "2026-01-01T00:00:00.000Z");
     const result = evaluateOpenCase({
       entry,
       snapshot: { ...cleared, readableKinds: [], unreadable: ["steward"] },
@@ -137,7 +137,7 @@ describe("evaluateOpenCase", () => {
   });
 
   it("carries provenance onto the outcome it becomes", () => {
-    const entry = openCase("promise_slippage", "2026-02-01T00:00:00.000Z");
+    const entry = openCase("commitments.promises_slipping", "2026-02-01T00:00:00.000Z");
     const reconciliation = evaluateOpenCase({ entry, snapshot: cleared });
     if (!reconciliation) return;
     const outcome = outcomeFromReconciliation({

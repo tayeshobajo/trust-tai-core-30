@@ -90,7 +90,7 @@ const EMPTY_ROOMS = {
 describe("scheduled snapshot reconciliation", () => {
   it("settles an open case from current state and records provenance", async () => {
     const store: Store = {
-      cases: [caseRow("case-1", "promise_slippage")],
+      cases: [caseRow("case-1", "commitments.promises_slipping")],
       outcomes: [],
       activities: [],
       rooms: { ...EMPTY_ROOMS },
@@ -109,7 +109,7 @@ describe("scheduled snapshot reconciliation", () => {
 
   it("writes nothing when the room cannot be read", async () => {
     const store: Store = {
-      cases: [caseRow("case-1", "promise_slippage")],
+      cases: [caseRow("case-1", "commitments.promises_slipping")],
       outcomes: [],
       activities: [],
       rooms: { ...EMPTY_ROOMS },
@@ -134,7 +134,7 @@ describe("scheduled snapshot reconciliation", () => {
 
   it("does not duplicate an outcome on a retry", async () => {
     const store: Store = {
-      cases: [caseRow("case-1", "promise_slippage")],
+      cases: [caseRow("case-1", "commitments.promises_slipping")],
       outcomes: [],
       activities: [],
       rooms: { ...EMPTY_ROOMS },
