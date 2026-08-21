@@ -374,16 +374,11 @@ function Overview({
 
 function Pages({
   rows,
-  pages,
   health,
 }: {
   rows: PageRow[];
-  pages: WebsitePage[];
   health: ReturnType<typeof healthFindings>;
 }) {
-  const [openPath, setOpenPath] = useState<string | null>(null);
-  const open = rows.find((row) => row.path === openPath) ?? null;
-
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -400,7 +395,7 @@ function Pages({
         <SectionHeading
           eyebrow="Pages"
           title="Every public page"
-          description="Only measured columns are filled. A dash means the provider behind that column is not connected."
+          description="Only measured columns are filled. A dash means the source behind that column is not reporting. Open a page for the full read."
         />
         <table className="w-full text-sm">
           <thead>
@@ -420,13 +415,13 @@ function Pages({
             {rows.map((row) => (
               <tr key={row.path} className="border-b border-border/60 last:border-0">
                 <td className="py-2 pr-4">
-                  <button
-                    type="button"
+                  <Link
+                    to="/modules/website/page"
+                    search={{ path: row.path }}
                     className="text-left text-royal hover:underline"
-                    onClick={() => setOpenPath(row.path === openPath ? null : row.path)}
                   >
                     {row.title}
-                  </button>
+                  </Link>
                   <p className="font-mono text-[11px] text-muted-foreground">{row.path}</p>
                 </td>
                 <td className="py-2 pr-4 text-muted-foreground">{row.pageType.replace("_", " ")}</td>
@@ -442,10 +437,6 @@ function Pages({
           </tbody>
         </table>
       </div>
-
-      {open ? (
-        <PageDetail row={open} page={pages.find((page) => normalizePath(page.path) === open.path)} />
-      ) : null}
 
       <div className="tt-surface p-5">
         <SectionHeading eyebrow="Health" title="What the public site is telling us" />
