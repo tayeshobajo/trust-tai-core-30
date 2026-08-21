@@ -16,6 +16,7 @@ import roadmapImg from "@/assets/home/roadmap.jpg";
 import scoutImg from "@/assets/home/scout.jpg";
 import stewardImg from "@/assets/home/steward.jpg";
 import studioImg from "@/assets/home/studio.jpg";
+import websiteImg from "@/assets/home/website.jpg";
 
 export const HOME_HERO_IMAGE = heroImg;
 
