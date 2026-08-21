@@ -32,7 +32,7 @@ import { UNKNOWN, decimal, percent, seconds } from "@/data/website/format";
 import { normalizePath } from "@/data/website/url";
 import type { KnownNumber } from "@/domain/website";
 import { WEBSITE_INTAKE_LABEL } from "@/domain/website";
-import type { PageRow, ProviderReadiness, WebsitePage } from "@/domain/website-analytics";
+import type { PageRow } from "@/domain/website-analytics";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Page performance · Website · Trust Tai OS";
@@ -400,5 +400,3 @@ function shareOfViews(row: PageRow, input: WebsiteAnalyticsInput): KnownNumber {
   const total = input.pageMetrics.reduce((sum, metric) => sum + metric.views, 0);
   return total > 0 ? row.views / total : null;
 }
-
-export type { ProviderReadiness, WebsitePage };

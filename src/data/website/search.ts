@@ -228,3 +228,8 @@ function opportunity(
     reason,
   };
 }
+
+/** The queries Search Console attributed to one page, strongest first. */
+export function queriesForPath(rows: SearchMetricsDay[], path: string): QueryRow[] {
+  return queryRows(rows.filter((row) => normalizePath(row.path) === normalizePath(path)));
+}
