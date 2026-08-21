@@ -55,6 +55,8 @@ function experience(overrides: Partial<PriorExperience>): PriorExperience {
       failures: 0,
       unknown: 0,
       hasLesson: false,
+      corrections: 0,
+      guidance: null,
     },
     note: null,
     ...overrides,
@@ -66,7 +68,7 @@ describe("ranking competing readings", () => {
     const ranked = rankHypotheses({
       matches: [
         match({ patternId: "weak", score: 0.4, missingEvidence: [
-          { condition: "no owner", inspect: "the project owner field" },
+          { appId: "projects", inspect: "the project owner field", wouldConfirm: "an owner", wouldRefute: "no owner" },
         ] }),
         match({ patternId: "strong", score: 0.95 }),
       ],
@@ -90,6 +92,8 @@ describe("ranking competing readings", () => {
             failures: 0,
             unknown: 0,
             hasLesson: true,
+            corrections: 0,
+            guidance: null,
           },
         }),
       },
@@ -109,6 +113,8 @@ describe("ranking competing readings", () => {
         failures: 0,
         unknown: 0,
         hasLesson: true,
+        corrections: 0,
+        guidance: null,
       },
     });
     const ranked = rankHypotheses({
@@ -128,7 +134,7 @@ describe("ranking competing readings", () => {
             patternId: "a",
             patternName: "Delivery is slipping while replies pile up",
             score: 0.9,
-            missingEvidence: [{ condition: "capacity", inspect: "who is on this project" }],
+            missingEvidence: [{ appId: "projects", inspect: "who is on this project", wouldConfirm: "two people", wouldRefute: "one person" }],
           }),
           match({ patternId: "b", patternName: "Pipeline is unrouted", score: 0.5 }),
         ],
