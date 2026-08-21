@@ -265,12 +265,13 @@ export interface PatternOutcome {
 }
 
 /** How an outcome was established. Human recorded is the strongest. */
-export type OutcomeSource = "human" | "room_event" | "current_state";
+export type OutcomeSource = "human" | "room_event" | "current_state" | "room_state";
 
 export const OUTCOME_SOURCE_LABEL: Record<OutcomeSource, string> = {
   human: "Human recorded",
   room_event: "Room event confirmed",
   current_state: "Current state confirmed",
+  room_state: "Owning room state confirmed",
 };
 
 
