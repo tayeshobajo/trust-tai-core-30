@@ -400,7 +400,7 @@ describe("assistant referrals and source readiness", () => {
     expect(summary.unmeasured).toBe(false);
     expect(summary.rows.map((row) => row.host).sort()).toEqual([
       "chat.openai.com",
-      "www.perplexity.ai",
+      "perplexity.ai",
     ]);
   });
 
@@ -417,7 +417,7 @@ describe("assistant referrals and source readiness", () => {
       submissions: [],
     });
 
-    const analytics = readiness.find((entry) => entry.id === "analytics");
+    const analytics = readiness.find((entry) => entry.id === "ga4");
     const searchSource = readiness.find((entry) => entry.id === "search_console");
     expect(analytics?.lastSyncedAt).toBe("2026-07-04T00:00:00.000Z");
     expect(analytics?.covers).toContain("Views");
