@@ -106,7 +106,7 @@ export function discoverPages(urls: string[], origin: string): DiscoveredPage[] 
       continue;
     }
     if (parsed.protocol !== "https:" && parsed.protocol !== "http:") continue;
-    const path = normalizePath(parsed.pathname);
+    const path = normalizePath(parsed.pathname.replace(/\/{2,}/g, "/"));
     if (!isPublicPath(path)) continue;
     if (seen.has(path)) continue;
     seen.set(path, { path, url: `${new URL(origin).origin}${path === "/" ? "/" : path}` });

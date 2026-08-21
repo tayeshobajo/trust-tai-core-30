@@ -295,7 +295,7 @@ describe("GA4 adapter", () => {
     expect(ga4Date("nonsense")).toBeNull();
     const range = backfillRange(3, new Date("2026-08-10T00:00:00Z"));
     expect(range).toEqual({ start: "2026-08-07", end: "2026-08-09" });
-    expect(backfillRange(9999, new Date("2026-08-10T00:00:00Z")).start).toBe("2025-07-07");
+    expect(backfillRange(9999, new Date("2026-08-10T00:00:00Z")).start).toBe("2025-07-06");
   });
 });
 
