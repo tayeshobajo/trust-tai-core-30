@@ -82,6 +82,29 @@ export interface StateCondition {
 }
 
 /**
+ * An explicit state the owning room already recorded about one record.
+ *
+ * This is not interpretation. Each signal names a state that exists in the
+ * room's own schema, such as a project closed, a company passed, a decision
+ * declined, a promise released. Owning room truth settles a case before any
+ * elapsed time rule is allowed to speak, and an ambiguous state settles
+ * nothing at all.
+ */
+export type TerminalDisposition = "resolved" | "abandoned" | "ambiguous";
+
+export interface TerminalSignal {
+  entity: { type: string; id: string };
+  /** Observation kinds this recorded state can honestly settle. */
+  kinds: string[];
+  disposition: TerminalDisposition;
+  statement: string;
+  sourceRefs: string[];
+  /** When the room last changed the record, when the room stores it. */
+  changedAt?: string;
+  observedAt: string;
+}
+
+/**
  * The bounded business state a reconciliation may reason over.
  *
  * `readableKinds` is the honest part: a kind absent from it was not read
@@ -93,9 +116,12 @@ export interface ReconciliationSnapshot {
   now: string;
   readableKinds: string[];
   conditions: StateCondition[];
+  /** Explicit terminal or resolution states the owning rooms recorded. */
+  terminal?: TerminalSignal[];
   /** Rooms that could not be read on this pass. */
   unreadable: string[];
 }
+
 
 /** Wrap already derived observations as a snapshot, so one evaluator serves both paths. */
 export function snapshotFromObservations(input: {
