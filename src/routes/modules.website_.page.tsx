@@ -54,7 +54,7 @@ export const Route = createFileRoute("/modules/website_/page")({
     ],
   }),
   validateSearch: (search: Record<string, unknown>) => ({
-    path: normalizePath(typeof search.path === "string" ? search.path : "/"),
+    path: normalizePath(typeof search["path"] === "string" ? (search["path"] as string) : "/"),
   }),
   component: PageDetailRoute,
 });

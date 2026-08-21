@@ -22,11 +22,12 @@ export function ProviderReadinessPanel({
       <SectionHeading
         eyebrow="Sources"
         title="What is connected"
-        description={
-          compact
-            ? undefined
-            : "Each source below either reported in this window or it did not. Anything it covers stays unknown while it is quiet."
-        }
+        {...(compact
+          ? {}
+          : {
+              description:
+                "Each source below either reported in this window or it did not. Anything it covers stays unknown while it is quiet.",
+            })}
       />
       <ul className="space-y-3">
         {readiness.map((entry) => (
