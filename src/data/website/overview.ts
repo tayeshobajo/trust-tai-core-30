@@ -87,8 +87,8 @@ export function overviewObservations(input: OverviewInput): WebsiteObservation[]
   const entryPoints = input.pageRows
     .filter((row) => row.path !== "/" && (row.landingSessions ?? 0) > 0)
     .sort((a, b) => (b.landingSessions ?? 0) - (a.landingSessions ?? 0));
-  if (entryPoints.length > 0) {
-    const best = entryPoints[0];
+  const best = entryPoints[0];
+  if (best) {
     out.push({
       id: "strongest-entry",
       lane: "working",
@@ -124,13 +124,14 @@ export function overviewObservations(input: OverviewInput): WebsiteObservation[]
   const growing = input.queries
     .filter((row) => (row.change ?? 0) > 0)
     .sort((a, b) => (b.change ?? 0) - (a.change ?? 0));
-  if (growing.length > 0) {
+  const rising = growing[0];
+  if (rising) {
     out.push({
       id: "growing-demand",
       lane: "changing",
-      statement: `Search demand is growing around ${growing[0].query}.`,
+      statement: `Search demand is growing around ${rising.query}.`,
       evidence: [
-        `${growing[0].clicks} clicks from ${growing[0].impressions} impressions, up ${growing[0].change} on the earlier half of the window.`,
+        `${rising.clicks} clicks from ${rising.impressions} impressions, up ${rising.change} on the earlier half of the window.`,
       ],
     });
   }
@@ -164,12 +165,13 @@ export function overviewObservations(input: OverviewInput): WebsiteObservation[]
   /* ----------------------------------------------------------- next move */
 
   const refresh = input.contentRows.filter((row) => row.classifications.includes("needs_refresh"));
-  if (refresh.length > 0) {
+  const stale = refresh[0];
+  if (stale) {
     out.push({
       id: "refresh-first",
       lane: "next_move",
-      statement: `Refresh ${refresh[0].title} before creating another post on the same topic.`,
-      evidence: refresh[0].reasons,
+      statement: `Refresh ${stale.title} before creating another post on the same topic.`,
+      evidence: stale.reasons,
     });
   }
 

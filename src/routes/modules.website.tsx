@@ -168,6 +168,8 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
     windowDays: WINDOW_DAYS,
   };
   const metrics = overviewMetrics(overviewInput);
+  const metricAt = (index: number) =>
+    metrics[index] ?? { key: String(index), label: "", value: null, note: "" };
   const observations = overviewObservations(overviewInput);
   const submissionsProvisioned = submissions.data?.provisioned ?? true;
 
@@ -180,24 +182,24 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
         metrics={[
           {
             icon: <MousePointerClick className="size-4 text-royal" aria-hidden />,
-            value: loading ? "…" : formatKnown(metrics[0].value),
+            value: loading ? "…" : formatKnown(metricAt(0).value),
             label: "Visitors",
-            note: metrics[0].note,
+            note: metricAt(0).note,
           },
           {
             icon: <Search className="size-4 text-royal" aria-hidden />,
-            value: loading ? "…" : formatKnown(metrics[1].value),
+            value: loading ? "…" : formatKnown(metricAt(1).value),
             label: "Search clicks",
-            note: metrics[1].note,
+            note: metricAt(1).note,
           },
           {
             icon: <Inbox className="size-4 text-royal" aria-hidden />,
-            value: loading ? "…" : formatKnown(metrics[2].value),
+            value: loading ? "…" : formatKnown(metricAt(2).value),
             label: "Intake conversations",
           },
           {
             icon: <Globe className="size-4 text-royal" aria-hidden />,
-            value: loading ? "…" : formatKnown(metrics[3].value),
+            value: loading ? "…" : formatKnown(metricAt(3).value),
             label: "Qualified in Scout",
           },
         ]}

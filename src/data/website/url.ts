@@ -29,7 +29,7 @@ export function normalizePath(input: string | null | undefined): string {
     }
   }
 
-  pathname = pathname.split("#")[0].split("?")[0];
+  pathname = (pathname.split("#")[0] ?? "").split("?")[0] ?? "";
   try {
     pathname = decodeURI(pathname);
   } catch {

@@ -57,7 +57,7 @@ function add(target: Bucket, row: SearchMetricsDay) {
 function midpoint(rows: SearchMetricsDay[]): string | null {
   const dates = [...new Set(rows.map((row) => row.date))].sort();
   if (dates.length < MIN_HALF_DAYS * 2) return null;
-  return dates[Math.floor(dates.length / 2)];
+  return dates[Math.floor(dates.length / 2)] ?? null;
 }
 
 /** Every query with demand in the window, strongest first. */
@@ -146,7 +146,7 @@ export function competingPages(rows: SearchMetricsDay[]): CompetingQuery[] {
       .sort((a, b) => b.impressions - a.impressions);
     if (meaningful.length > 1) out.push({ query, paths: meaningful });
   }
-  return out.sort((a, b) => b.paths[0].impressions - a.paths[0].impressions);
+  return out.sort((a, b) => (b.paths[0]?.impressions ?? 0) - (a.paths[0]?.impressions ?? 0));
 }
 
 /** What people are finding us for, grouped by the leading word of the query. */
