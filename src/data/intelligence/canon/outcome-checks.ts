@@ -146,12 +146,37 @@ export function snapshotFromObservations(input: {
   };
 }
 
+/** Terminal signals that land on a record this case actually named. */
+function terminalForCase(
+  entry: IntelligenceCase,
+  snapshot: ReconciliationSnapshot,
+  kinds: string[],
+  decidedAt: number,
+): TerminalSignal[] {
+  if (entry.entities.length === 0) return [];
+  return (snapshot.terminal ?? []).filter((signal) => {
+    if (!signal.kinds.some((kind) => kinds.includes(kind))) return false;
+    if (signal.changedAt) {
+      const at = Date.parse(signal.changedAt);
+      if (!Number.isNaN(at) && at < decidedAt) return false;
+    }
+    return entry.entities.some(
+      (entity) => entity.type === signal.entity.type && entity.id === signal.entity.id,
+    );
+  });
+}
+
 /**
  * The single interpretation of a deterministic check.
  *
- * Success only when every checkable condition the reading rested on was read
- * confidently and is gone. Failure only when the same condition is still there
- * long after the decision. Everything else is unknown, which writes nothing.
+ * The owning room speaks first: an explicit recorded state such as closed,
+ * passed, declined or released settles the case before any elapsed time rule
+ * is consulted, and an ambiguous state settles nothing.
+ *
+ * After that, success only when every checkable condition the reading rested
+ * on was read confidently and is gone. Failure only when the same condition is
+ * still there long after the decision. Everything else is unknown, which
+ * writes nothing.
  */
 export function evaluateOpenCase(input: {
   entry: IntelligenceCase;
@@ -161,15 +186,37 @@ export function evaluateOpenCase(input: {
   const kinds = checkableKinds(entry.patternId);
   if (kinds.length === 0) return null;
 
-  /* A kind we could not read is not an absence. It is unknown. */
-  if (!kinds.every((kind) => snapshot.readableKinds.includes(kind))) return null;
-
   const decidedAt = Date.parse(entry.decidedAt);
   const nowMs = Date.parse(snapshot.now);
   if (Number.isNaN(decidedAt) || Number.isNaN(nowMs) || nowMs <= decidedAt) return null;
   const hours = Math.round((nowMs - decidedAt) / HOUR);
 
+  /* A person already wrote what happened. Nothing inferred may overwrite it. */
+  if (!entry.outcome) {
+    const terminal = terminalForCase(entry, snapshot, kinds, decidedAt);
+    if (terminal.some((signal) => signal.disposition === "ambiguous")) return null;
+    const decisive =
+      terminal.find((signal) => signal.disposition === "resolved") ??
+      terminal.find((signal) => signal.disposition === "abandoned");
+    if (decisive) {
+      return {
+        caseId: entry.id,
+        patternId: entry.patternId,
+        result: decisive.disposition === "resolved" ? "success" : "failure",
+        because: decisive.statement,
+        evidenceRefs: decisive.sourceRefs,
+        hoursToOutcome: hours,
+        observedAt: snapshot.now,
+        source: "room_state",
+      };
+    }
+  }
+
+  /* A kind we could not read is not an absence. It is unknown. */
+  if (!kinds.every((kind) => snapshot.readableKinds.includes(kind))) return null;
+
   const still = snapshot.conditions.filter((condition) => kinds.includes(condition.kind));
+
 
   if (still.length === 0) {
     return {
