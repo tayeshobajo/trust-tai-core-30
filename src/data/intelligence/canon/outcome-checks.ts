@@ -65,6 +65,8 @@ export interface Reconciliation {
   hoursToOutcome: number;
   /** When the state behind the result was read. */
   observedAt: string;
+  /** How the result was reached. Owning room state is named separately. */
+  source?: "current_state" | "room_state";
 }
 
 /**
@@ -295,7 +297,7 @@ export function outcomeFromReconciliation(input: {
     result: input.reconciliation.result,
     resultBecause: input.reconciliation.because,
     hoursToOutcome: input.reconciliation.hoursToOutcome,
-    resultSource: "current_state",
+    resultSource: input.reconciliation.source ?? "current_state",
     sourceRefs: input.reconciliation.evidenceRefs,
     observedAt: input.reconciliation.observedAt,
     ...(input.entry.correction ? { humanCorrection: input.entry.correction } : {}),
