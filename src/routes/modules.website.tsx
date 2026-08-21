@@ -544,17 +544,29 @@ function Content({ rows }: { rows: ContentRow[] }) {
 function SearchTab({
   input,
   queries,
+  referrals,
 }: {
   input: WebsiteAnalyticsInput;
   queries: ReturnType<typeof queryRows>;
+  referrals: AiReferralSummary;
 }) {
+  const assistants = (
+    <AiReferralsPanel
+      summary={referrals}
+      description="Discovery does not only happen in a search results page. These are arrivals whose referrer names an assistant we recognise. Search Console does not report assistant answers, so this is the only view we have of them."
+    />
+  );
+
   if (queries.length === 0) {
     return (
-      <EmptyState
-        title="No search data yet"
-        belongsHere="Queries, impressions, click through and position belong here once Search Console data is flowing."
-        whyItMatters="Search is how most people discover a company they have never heard of. Until it is connected this stays unknown, not zero."
-      />
+      <div className="space-y-4">
+        <EmptyState
+          title="No search data yet"
+          belongsHere="Queries, impressions, click through and position belong here once Search Console data is flowing."
+          whyItMatters="Search is how most people discover a company they have never heard of. Until it is connected this stays unknown, not zero."
+        />
+        {assistants}
+      </div>
     );
   }
 
@@ -595,6 +607,8 @@ function SearchTab({
             )}
           </div>
         ))}
+
+        {assistants}
 
         <div className="tt-surface p-5">
           <SectionHeading eyebrow="Search" title="Topics people find us for" />
