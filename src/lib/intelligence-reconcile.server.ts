@@ -172,6 +172,11 @@ export async function reconcileOrganization(
 
   const finish = async (report: ReconcileRunReport, note?: string) => {
     if (!runId) return;
+    /* The note carries how the run settled things, so an event resolution and
+     * a current state resolution stay distinguishable without a second model. */
+    const summary =
+      note ??
+      `${report.eventOutcomes ?? 0} by room event, ${report.snapshotOutcomes ?? 0} by current state`;
     await client
       .from("intelligence_reconciliation_runs")
       .update({
@@ -179,7 +184,7 @@ export async function reconcileOrganization(
         status: note ? "failed" : "done",
         outcomes_written: report.outcomesWritten,
         unknown_left_open: report.unknownLeftOpen,
-        note: note ?? null,
+        note: summary,
       })
       .eq("id", runId);
   };
