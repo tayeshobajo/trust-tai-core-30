@@ -76,7 +76,9 @@ function toOutcome(row: Row): PatternOutcome {
     resultBecause: String(row["result_because"] ?? ""),
     ...(typeof hours === "number" ? { hoursToOutcome: hours } : {}),
     /* Rows written before provenance existed were all recorded by a person. */
-    resultSource: (text(row, "result_source") ?? "human") as PatternOutcome["resultSource"],
+    resultSource: (text(row, "result_source") ?? "human") as NonNullable<
+      PatternOutcome["resultSource"]
+    >,
     ...(Array.isArray(refs) ? { sourceRefs: refs.map((ref) => String(ref)) } : {}),
     ...(text(row, "observed_at") ? { observedAt: text(row, "observed_at")! } : {}),
     ...(text(row, "human_correction") ? { humanCorrection: text(row, "human_correction")! } : {}),
