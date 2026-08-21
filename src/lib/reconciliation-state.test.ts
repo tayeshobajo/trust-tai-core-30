@@ -136,6 +136,45 @@ describe("evaluateOpenCase", () => {
     expect(result).toBeNull();
   });
 
+  it("reads a persistent condition as failure once the window has passed", () => {
+    const entry = openCase("commitments.promises_slipping", "2026-01-01T00:00:00.000Z");
+    const result = evaluateOpenCase({
+      entry,
+      snapshot: {
+        ...cleared,
+        conditions: [
+          {
+            kind: "commitment_overdue",
+            statement: "2 promises have passed the date a person set.",
+            sourceRefs: ["steward-commitment-c-1"],
+            observedAt: NOW.toISOString(),
+          },
+        ],
+      },
+    });
+    expect(result?.result).toBe("failure");
+    expect(result?.evidenceRefs).toEqual(["steward-commitment-c-1"]);
+  });
+
+  it("stays unknown while the condition is still young", () => {
+    const entry = openCase("commitments.promises_slipping", "2026-02-28T12:00:00.000Z");
+    const result = evaluateOpenCase({
+      entry,
+      snapshot: {
+        ...cleared,
+        conditions: [
+          {
+            kind: "commitment_overdue",
+            statement: "A promise is still overdue.",
+            sourceRefs: ["steward-commitment-c-1"],
+            observedAt: NOW.toISOString(),
+          },
+        ],
+      },
+    });
+    expect(result).toBeNull();
+  });
+
   it("carries provenance onto the outcome it becomes", () => {
     const entry = openCase("commitments.promises_slipping", "2026-02-01T00:00:00.000Z");
     const reconciliation = evaluateOpenCase({ entry, snapshot: cleared });
