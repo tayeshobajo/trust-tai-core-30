@@ -536,6 +536,8 @@ function Conductor({
         decision: "accepted",
         result: input.result,
         resultBecause: input.because,
+        resultSource: "human",
+        observedAt: new Date().toISOString(),
         ...(input.entry.correction ? { humanCorrection: input.entry.correction } : {}),
         recordedBy: identity.userId,
         recordedAt: new Date().toISOString(),
