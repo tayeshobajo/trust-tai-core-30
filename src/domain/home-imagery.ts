@@ -69,6 +69,11 @@ export const ROOM_FEATURES: Record<string, RoomFeature> = {
     line: "See activity and understand impact.",
     alt: "A luminous rotunda open to a circle of blue sky",
   },
+  website: {
+    image: websiteImg,
+    line: "See who arrives and what they say.",
+    alt: "A pale stone gateway arch opening onto a sunlit courtyard",
+  },
   conductor: {
     image: conductorImg,
     line: "Orchestrate decisions and actions.",
