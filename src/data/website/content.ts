@@ -41,7 +41,7 @@ interface Halves {
 function splitDate(dates: string[]): string | null {
   const unique = [...new Set(dates)].sort();
   if (unique.length < 6) return null;
-  return unique[Math.floor(unique.length / 2)];
+  return unique[Math.floor(unique.length / 2)] ?? null;
 }
 
 function halves(rows: { date: string; value: number }[], split: string | null): Halves {
@@ -107,7 +107,9 @@ export function buildContentRows(input: ContentInput): ContentRow[] {
     .filter((value): value is number => value !== null && value > 0)
     .sort((a, b) => a - b);
   const medianConversion =
-    conversionRates.length > 0 ? conversionRates[Math.floor(conversionRates.length / 2)] : null;
+    conversionRates.length > 0
+      ? (conversionRates[Math.floor(conversionRates.length / 2)] ?? null)
+      : null;
 
   return input.pageRows
     .filter((row) => CONTENT_TYPES.has(row.pageType))

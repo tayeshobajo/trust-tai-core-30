@@ -124,9 +124,9 @@ describe("page representation and joining", () => {
       submissions: [],
     });
     expect(rows).toHaveLength(1);
-    expect(rows[0].views).toBe(10);
-    expect(rows[0].clicks).toBe(5);
-    expect(rows[0].ctr).toBeCloseTo(0.05);
+    expect(rows[0]!.views).toBe(10);
+    expect(rows[0]!.clicks).toBe(5);
+    expect(rows[0]!.ctr).toBeCloseTo(0.05);
   });
 });
 
@@ -165,7 +165,7 @@ describe("missing provider data", () => {
   };
 
   it("keeps unmeasured columns unknown rather than zero", () => {
-    const row = buildPageRows(input)[0];
+    const row = buildPageRows(input)[0]!;
     expect(row.views).toBeNull();
     expect(row.clicks).toBeNull();
     expect(row.ctr).toBeNull();
@@ -224,8 +224,8 @@ describe("content performance", () => {
       searchMetrics,
       now: new Date("2026-07-20T00:00:00Z"),
     });
-    expect(rows[0].classifications).toContain("needs_refresh");
-    expect(rows[0].reasons.join(" ")).toContain("Refresh this before writing another one");
+    expect(rows[0]!.classifications).toContain("needs_refresh");
+    expect(rows[0]!.reasons.join(" ")).toContain("Refresh this before writing another one");
   });
 
   it("stays quiet when the page is too young for a decay claim", () => {
@@ -243,7 +243,7 @@ describe("content performance", () => {
       searchMetrics,
       now: new Date("2026-07-20T00:00:00Z"),
     });
-    expect(rows[0].classifications).not.toContain("needs_refresh");
+    expect(rows[0]!.classifications).not.toContain("needs_refresh");
   });
 
   it("only measures published content and never becomes an editor", () => {
@@ -278,8 +278,8 @@ describe("search intelligence", () => {
 
   it("names competing pages when two of ours share a query", () => {
     const competing = competingPages(rows);
-    expect(competing[0].query).toBe("founder bottleneck");
-    expect(competing[0].paths.map((entry) => entry.path).sort()).toEqual([
+    expect(competing[0]!.query).toBe("founder bottleneck");
+    expect(competing[0]!.paths.map((entry) => entry.path).sort()).toEqual([
       "/blog/bottleneck",
       "/blog/overwhelm",
     ]);
@@ -354,8 +354,8 @@ describe("architecture boundaries", () => {
         }),
       ],
     });
-    expect(rows[0].path).toBe("/roadmap");
-    expect(rows[0].qualified).toBe(1);
+    expect(rows[0]!.path).toBe("/roadmap");
+    expect(rows[0]!.qualified).toBe(1);
   });
 
   it("reports health findings without turning into an SEO suite", () => {
