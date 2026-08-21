@@ -330,7 +330,7 @@ export async function loadReconciliationSnapshot(
 
   if (relationshipRows.ok) {
     for (const relationship of relationships) {
-      const label = relationship.name || "This relationship";
+      const label = relationship.fullName || "This relationship";
       if (relationship.stage === "archived") {
         terminal.push({
           entity: { type: "relationship", id: relationship.id },
