@@ -41,11 +41,27 @@ export interface ProviderRunResult {
 /* ------------------------------------------------------------- credentials */
 
 function serviceAccount(): { email: string; privateKey: string } | null {
-  const email = process.env["GOOGLE_SERVICE_ACCOUNT_EMAIL"]?.trim();
   const rawKey = process.env["GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"]?.trim();
-  if (!email || !rawKey) return null;
-  return { email, privateKey: rawKey.replace(/\\n/g, "\n") };
+  let email = process.env["GOOGLE_SERVICE_ACCOUNT_EMAIL"]?.trim() ?? "";
+  if (!rawKey) return null;
+
+  // The credential value may be the PEM alone or the whole service account
+  // JSON file pasted in one piece. Both are accepted, and the JSON carries its
+  // own client_email when none was supplied separately.
+  let pem = rawKey;
+  if (rawKey.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawKey) as { private_key?: string; client_email?: string };
+      pem = (parsed.private_key ?? "").trim();
+      if (!email) email = (parsed.client_email ?? "").trim();
+    } catch {
+      return null;
+    }
+  }
+  if (!email || !pem) return null;
+  return { email, privateKey: pem.replace(/\\n/g, "\n") };
 }
+
 
 const base64url = (bytes: Uint8Array): string => {
   let binary = "";
