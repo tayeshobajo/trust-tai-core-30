@@ -1,4 +1,4 @@
--- Trust Tai OS — Website provider sync configuration and run state.
+-- Trust Tai OS. Website provider sync configuration and run state.
 --
 -- Additive and minimal. Two tables: one service role only secret and site
 -- origin, one run record per provider so the room can tell fresh from stale
