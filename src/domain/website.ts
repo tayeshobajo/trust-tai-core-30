@@ -157,6 +157,7 @@ export interface WebsiteSubmission {
  */
 export const WEBSITE_EVENT_NAMES = [
   "page_view",
+  "cta_clicked",
   "intake_view",
   "intake_started",
   "intake_answered",
@@ -164,6 +165,9 @@ export const WEBSITE_EVENT_NAMES = [
   "intake_resumed",
   "intake_submitted",
   "intake_abandoned",
+  "content_read",
+  "contact_clicked",
+  "newsletter_subscribed",
 ] as const;
 
 export type WebsiteEventName = (typeof WEBSITE_EVENT_NAMES)[number];
