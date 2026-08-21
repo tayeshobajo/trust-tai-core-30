@@ -14,8 +14,20 @@ import { EMPTY_CONTENT_INTENT, type PageMetricsDay, type SearchMetricsDay, type 
 import { buildContentRows } from "./content";
 import { healthFindings } from "./health";
 import { overviewObservations } from "./overview";
-import { buildPageRows, providerReadiness, sourceGroups, type WebsiteAnalyticsInput } from "./pages";
-import { competingPages, contentOpportunities, queryRows, strikingDistance } from "./search";
+import {
+  aiReferrals,
+  buildPageRows,
+  providerReadiness,
+  sourceGroups,
+  type WebsiteAnalyticsInput,
+} from "./pages";
+import {
+  competingPages,
+  contentOpportunities,
+  queriesForPath,
+  queryRows,
+  strikingDistance,
+} from "./search";
 import { normalizePath, samePage } from "./url";
 
 /* ---------------------------------------------------------------- fixtures */
@@ -370,5 +382,54 @@ describe("architecture boundaries", () => {
     );
     expect(findings.map((entry) => entry.id)).toContain("noindex");
     expect(JSON.stringify(findings)).not.toContain("score");
+  });
+});
+
+describe("assistant referrals and source readiness", () => {
+  it("groups only referrers we recognise and keeps the wider total separate", () => {
+    const events = [
+      event({ eventName: "page_view", path: "/", referrer: "https://chat.openai.com/" }),
+      event({ eventName: "page_view", path: "/", referrer: "https://www.perplexity.ai/search" }),
+      event({ eventName: "page_view", path: "/", referrer: "https://news.ycombinator.com/" }),
+      event({ eventName: "page_view", path: "/" }),
+    ];
+
+    const summary = aiReferrals(events, []);
+    expect(summary.visits).toBe(2);
+    expect(summary.attributableVisits).toBe(3);
+    expect(summary.unmeasured).toBe(false);
+    expect(summary.rows.map((row) => row.host).sort()).toEqual([
+      "chat.openai.com",
+      "www.perplexity.ai",
+    ]);
+  });
+
+  it("says nothing was measured when no first party events arrived", () => {
+    expect(aiReferrals([], []).unmeasured).toBe(true);
+  });
+
+  it("reports the last day each source spoke", () => {
+    const readiness = providerReadiness({
+      pages: [],
+      pageMetrics: [metric("2026-07-04", "/", 10)],
+      searchMetrics: [],
+      events: [],
+      submissions: [],
+    });
+
+    const analytics = readiness.find((entry) => entry.id === "analytics");
+    const searchSource = readiness.find((entry) => entry.id === "search_console");
+    expect(analytics?.lastSyncedAt).toBe("2026-07-04T00:00:00.000Z");
+    expect(analytics?.covers).toContain("Views");
+    expect(searchSource?.connected).toBe(false);
+    expect(searchSource?.lastSyncedAt).toBeNull();
+  });
+
+  it("narrows queries to one page", () => {
+    const rows = [
+      search("2026-07-01", "trust tai", "/", 3, 100),
+      search("2026-07-01", "trust tai pricing", "/pricing", 1, 40),
+    ];
+    expect(queriesForPath(rows, "/pricing").map((row) => row.query)).toEqual(["trust tai pricing"]);
   });
 });
