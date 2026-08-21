@@ -24,13 +24,16 @@ import {
   listWebsitePages,
 } from "@/data/supabase/website-analytics-service";
 import {
+  aiReferrals,
   buildPageRows,
   providerReadiness,
   sourceGroups,
   type WebsiteAnalyticsInput,
 } from "@/data/website/pages";
+import { AiReferralsPanel, ProviderReadinessPanel } from "@/components/tt/website/panels";
+import { decimal, percent } from "@/data/website/format";
 import { CLASSIFICATION_LABELS, buildContentRows } from "@/data/website/content";
-import { healthFindings, pageReadiness } from "@/data/website/health";
+import { healthFindings } from "@/data/website/health";
 import {
   competingPages,
   contentOpportunities,
@@ -45,11 +48,11 @@ import { laneFallback, overviewMetrics, overviewObservations } from "@/data/webs
 import { formatKnown, intakeFunnel, isQualified } from "@/data/website/projection";
 import { normalizePath } from "@/data/website/url";
 import type {
+  AiReferralSummary,
   ContentRow,
   ObservationLane,
   PageRow,
   ProviderReadiness,
-  WebsitePage,
 } from "@/domain/website-analytics";
 import { WEBSITE_INTAKE_LABEL, type WebsiteSubmission } from "@/domain/website";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -157,6 +160,10 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
   );
   const queries = useMemo(() => queryRows(input.searchMetrics), [input.searchMetrics]);
   const health = useMemo(() => healthFindings(pageRows, input.pages), [pageRows, input.pages]);
+  const referrals = useMemo(
+    () => aiReferrals(input.events, input.submissions),
+    [input.events, input.submissions],
+  );
 
   const overviewInput = {
     pageRows,
@@ -244,11 +251,14 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
           observations={observations}
           readiness={readiness}
           sources={sourceGroups(input.events, input.submissions)}
+          referrals={referrals}
         />
       ) : null}
-      {tab === "pages" ? <Pages rows={pageRows} pages={input.pages} health={health} /> : null}
+      {tab === "pages" ? <Pages rows={pageRows} health={health} /> : null}
       {tab === "content" ? <Content rows={contentRows} /> : null}
-      {tab === "search" ? <SearchTab input={input} queries={queries} /> : null}
+      {tab === "search" ? (
+        <SearchTab input={input} queries={queries} referrals={referrals} />
+      ) : null}
       {tab === "intake" ? (
         <Intake input={input} loading={loading} />
       ) : null}
@@ -270,11 +280,13 @@ function Overview({
   observations,
   readiness,
   sources,
+  referrals,
 }: {
   metrics: ReturnType<typeof overviewMetrics>;
   observations: ReturnType<typeof overviewObservations>;
   readiness: ProviderReadiness[];
   sources: { source: string; visits: number; submissions: number }[];
+  referrals: AiReferralSummary;
 }) {
   return (
     <div className="space-y-4">
@@ -892,12 +904,3 @@ function Submission({
   );
 }
 
-/* ---------------------------------------------------------------- format */
-
-function percent(value: number | null): string {
-  return value === null ? "—" : `${(value * 100).toFixed(1)}%`;
-}
-
-function decimal(value: number | null): string {
-  return value === null ? "—" : value.toFixed(1);
-}
