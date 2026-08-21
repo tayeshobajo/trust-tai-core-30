@@ -177,7 +177,7 @@ async function replaceRange(
   organizationId: string,
   provider: string,
   range: { start: string; end: string },
-  rows: Record<string, unknown>[],
+  rows: readonly unknown[],
 ): Promise<void> {
   const { error: deleteError } = await client
     .from(table)
