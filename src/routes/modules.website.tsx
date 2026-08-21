@@ -24,13 +24,16 @@ import {
   listWebsitePages,
 } from "@/data/supabase/website-analytics-service";
 import {
+  aiReferrals,
   buildPageRows,
   providerReadiness,
   sourceGroups,
   type WebsiteAnalyticsInput,
 } from "@/data/website/pages";
+import { AiReferralsPanel, ProviderReadinessPanel } from "@/components/tt/website/panels";
+import { decimal, percent } from "@/data/website/format";
 import { CLASSIFICATION_LABELS, buildContentRows } from "@/data/website/content";
-import { healthFindings, pageReadiness } from "@/data/website/health";
+import { healthFindings } from "@/data/website/health";
 import {
   competingPages,
   contentOpportunities,
@@ -45,11 +48,11 @@ import { laneFallback, overviewMetrics, overviewObservations } from "@/data/webs
 import { formatKnown, intakeFunnel, isQualified } from "@/data/website/projection";
 import { normalizePath } from "@/data/website/url";
 import type {
+  AiReferralSummary,
   ContentRow,
   ObservationLane,
   PageRow,
   ProviderReadiness,
-  WebsitePage,
 } from "@/domain/website-analytics";
 import { WEBSITE_INTAKE_LABEL, type WebsiteSubmission } from "@/domain/website";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -157,6 +160,10 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
   );
   const queries = useMemo(() => queryRows(input.searchMetrics), [input.searchMetrics]);
   const health = useMemo(() => healthFindings(pageRows, input.pages), [pageRows, input.pages]);
+  const referrals = useMemo(
+    () => aiReferrals(input.events, input.submissions),
+    [input.events, input.submissions],
+  );
 
   const overviewInput = {
     pageRows,
@@ -244,11 +251,14 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
           observations={observations}
           readiness={readiness}
           sources={sourceGroups(input.events, input.submissions)}
+          referrals={referrals}
         />
       ) : null}
-      {tab === "pages" ? <Pages rows={pageRows} pages={input.pages} health={health} /> : null}
+      {tab === "pages" ? <Pages rows={pageRows} health={health} /> : null}
       {tab === "content" ? <Content rows={contentRows} /> : null}
-      {tab === "search" ? <SearchTab input={input} queries={queries} /> : null}
+      {tab === "search" ? (
+        <SearchTab input={input} queries={queries} referrals={referrals} />
+      ) : null}
       {tab === "intake" ? (
         <Intake input={input} loading={loading} />
       ) : null}
@@ -270,11 +280,13 @@ function Overview({
   observations,
   readiness,
   sources,
+  referrals,
 }: {
   metrics: ReturnType<typeof overviewMetrics>;
   observations: ReturnType<typeof overviewObservations>;
   readiness: ProviderReadiness[];
   sources: { source: string; visits: number; submissions: number }[];
+  referrals: AiReferralSummary;
 }) {
   return (
     <div className="space-y-4">
@@ -331,7 +343,7 @@ function Overview({
           <SectionHeading
             eyebrow="Sources"
             title="Where attention comes from"
-            description="Assistant referrers are grouped under AI referrals. That is a grouping of referrers we can see, not a measure of how often a model used the site."
+            description="Referrers we can read, grouped. Arrivals with no referrer are counted as direct."
           />
           {sources.length === 0 ? (
             <p className="text-sm text-muted-foreground">No source data has been received yet.</p>
@@ -349,26 +361,11 @@ function Overview({
           )}
         </div>
 
-        <div className="tt-surface p-5">
-          <SectionHeading eyebrow="Sources" title="What is connected" />
-          <ul className="space-y-2">
-            {readiness.map((entry) => (
-              <li key={entry.id} className="text-sm">
-                <span className="text-foreground">{entry.label}</span>
-                <span
-                  className={cn(
-                    "ml-2 font-mono text-[11px] uppercase tracking-[0.12em]",
-                    entry.connected ? "text-royal" : "text-muted-foreground",
-                  )}
-                >
-                  {entry.connected ? "Connected" : "Not connected"}
-                </span>
-                <p className="text-[12px] text-muted-foreground">{entry.note}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <AiReferralsPanel summary={referrals} />
       </div>
+
+      <ProviderReadinessPanel readiness={readiness} />
+
     </div>
   );
 }
@@ -377,16 +374,11 @@ function Overview({
 
 function Pages({
   rows,
-  pages,
   health,
 }: {
   rows: PageRow[];
-  pages: WebsitePage[];
   health: ReturnType<typeof healthFindings>;
 }) {
-  const [openPath, setOpenPath] = useState<string | null>(null);
-  const open = rows.find((row) => row.path === openPath) ?? null;
-
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -403,7 +395,7 @@ function Pages({
         <SectionHeading
           eyebrow="Pages"
           title="Every public page"
-          description="Only measured columns are filled. A dash means the provider behind that column is not connected."
+          description="Only measured columns are filled. A dash means the source behind that column is not reporting. Open a page for the full read."
         />
         <table className="w-full text-sm">
           <thead>
@@ -423,13 +415,13 @@ function Pages({
             {rows.map((row) => (
               <tr key={row.path} className="border-b border-border/60 last:border-0">
                 <td className="py-2 pr-4">
-                  <button
-                    type="button"
+                  <Link
+                    to="/modules/website/page"
+                    search={{ path: row.path }}
                     className="text-left text-royal hover:underline"
-                    onClick={() => setOpenPath(row.path === openPath ? null : row.path)}
                   >
                     {row.title}
-                  </button>
+                  </Link>
                   <p className="font-mono text-[11px] text-muted-foreground">{row.path}</p>
                 </td>
                 <td className="py-2 pr-4 text-muted-foreground">{row.pageType.replace("_", " ")}</td>
@@ -445,10 +437,6 @@ function Pages({
           </tbody>
         </table>
       </div>
-
-      {open ? (
-        <PageDetail row={open} page={pages.find((page) => normalizePath(page.path) === open.path)} />
-      ) : null}
 
       <div className="tt-surface p-5">
         <SectionHeading eyebrow="Health" title="What the public site is telling us" />
@@ -475,84 +463,6 @@ function Pages({
             </li>
           ))}
         </ul>
-      </div>
-    </div>
-  );
-}
-
-function PageDetail({ row, page }: { row: PageRow; page: WebsitePage | undefined }) {
-  const groups: { title: string; entries: [string, string][] }[] = [
-    {
-      title: "Traffic",
-      entries: [
-        ["Views", formatKnown(row.views)],
-        ["Visitors", formatKnown(row.users)],
-        ["Landing sessions", formatKnown(row.landingSessions)],
-      ],
-    },
-    {
-      title: "Search",
-      entries: [
-        ["Clicks", formatKnown(row.clicks)],
-        ["Impressions", formatKnown(row.impressions)],
-        ["CTR", percent(row.ctr)],
-        ["Average position", decimal(row.averagePosition)],
-      ],
-    },
-    {
-      title: "Behaviour",
-      entries: [
-        ["Engaged sessions", formatKnown(row.engagedSessions)],
-        ["Engagement rate", percent(row.engagementRate)],
-        ["Average engagement", row.averageEngagementSeconds === null ? "—" : `${Math.round(row.averageEngagementSeconds)}s`],
-        ["Content reads", formatKnown(row.contentReads)],
-      ],
-    },
-    {
-      title: "Conversion",
-      entries: [
-        ["Intake starts", formatKnown(row.intakeStarts)],
-        ["Conversations", formatKnown(row.intakeSubmissions)],
-        ["Qualified in Scout", formatKnown(row.qualified)],
-        ["Primary next step", row.primaryCta ?? "—"],
-      ],
-    },
-  ];
-
-  return (
-    <div className="tt-surface p-5">
-      <SectionHeading eyebrow={row.path} title={row.title} />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {groups.map((group) => (
-          <div key={group.title} className="rounded-xl border border-border bg-card px-4 py-3">
-            <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
-              {group.title}
-            </p>
-            <ul className="mt-1.5 space-y-1 text-[13px]">
-              {group.entries.map(([label, value]) => (
-                <li key={label} className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="font-mono text-foreground">{value}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-        <div className="rounded-xl border border-border bg-card px-4 py-3">
-          <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
-            Health
-          </p>
-          <ul className="mt-1.5 space-y-1 text-[13px]">
-            {pageReadiness(page, row).map((field) => (
-              <li key={field.label} className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">{field.label}</span>
-                <span className="font-mono text-foreground">
-                  {field.present === null ? "—" : field.present ? "Yes" : "No"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
     </div>
   );
@@ -634,17 +544,29 @@ function Content({ rows }: { rows: ContentRow[] }) {
 function SearchTab({
   input,
   queries,
+  referrals,
 }: {
   input: WebsiteAnalyticsInput;
   queries: ReturnType<typeof queryRows>;
+  referrals: AiReferralSummary;
 }) {
+  const assistants = (
+    <AiReferralsPanel
+      summary={referrals}
+      description="Discovery does not only happen in a search results page. These are arrivals whose referrer names an assistant we recognise. Search Console does not report assistant answers, so this is the only view we have of them."
+    />
+  );
+
   if (queries.length === 0) {
     return (
-      <EmptyState
-        title="No search data yet"
-        belongsHere="Queries, impressions, click through and position belong here once Search Console data is flowing."
-        whyItMatters="Search is how most people discover a company they have never heard of. Until it is connected this stays unknown, not zero."
-      />
+      <div className="space-y-4">
+        <EmptyState
+          title="No search data yet"
+          belongsHere="Queries, impressions, click through and position belong here once Search Console data is flowing."
+          whyItMatters="Search is how most people discover a company they have never heard of. Until it is connected this stays unknown, not zero."
+        />
+        {assistants}
+      </div>
     );
   }
 
@@ -685,6 +607,8 @@ function SearchTab({
             )}
           </div>
         ))}
+
+        {assistants}
 
         <div className="tt-surface p-5">
           <SectionHeading eyebrow="Search" title="Topics people find us for" />
@@ -892,12 +816,3 @@ function Submission({
   );
 }
 
-/* ---------------------------------------------------------------- format */
-
-function percent(value: number | null): string {
-  return value === null ? "—" : `${(value * 100).toFixed(1)}%`;
-}
-
-function decimal(value: number | null): string {
-  return value === null ? "—" : value.toFixed(1);
-}

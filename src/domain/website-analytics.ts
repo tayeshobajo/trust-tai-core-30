@@ -105,7 +105,37 @@ export interface ProviderReadiness {
   /** Plain language, shown to a person. */
   note: string;
   rows: number;
+  /**
+   * The most recent moment this provider actually reported something. Null
+   * when nothing has arrived, which is not the same as a sync at zero.
+   */
+  lastSyncedAt: ISODateTime | null;
+  /** What stays unknown while this provider is silent. */
+  covers: string;
 }
+
+/**
+ * Referrals we can attribute to a named assistant. Deliberately narrow: it is
+ * a grouping of referrer hosts we recognise, never a claim about how often a
+ * model read or cited the site.
+ */
+export interface AiReferralRow {
+  host: string;
+  label: string;
+  visits: number;
+  submissions: number;
+}
+
+export interface AiReferralSummary {
+  rows: AiReferralRow[];
+  visits: number;
+  submissions: number;
+  /** Page views carrying a referrer we could read at all. */
+  attributableVisits: number;
+  /** True when no first party events have been received in the window. */
+  unmeasured: boolean;
+}
+
 
 /* ------------------------------------------------------------- joined reads */
 
