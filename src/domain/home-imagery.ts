@@ -16,6 +16,7 @@ import roadmapImg from "@/assets/home/roadmap.jpg";
 import scoutImg from "@/assets/home/scout.jpg";
 import stewardImg from "@/assets/home/steward.jpg";
 import studioImg from "@/assets/home/studio.jpg";
+import websiteImg from "@/assets/home/website.jpg";
 
 export const HOME_HERO_IMAGE = heroImg;
 
@@ -67,6 +68,11 @@ export const ROOM_FEATURES: Record<string, RoomFeature> = {
     image: pulseImg,
     line: "See activity and understand impact.",
     alt: "A luminous rotunda open to a circle of blue sky",
+  },
+  website: {
+    image: websiteImg,
+    line: "See who arrives and what they say.",
+    alt: "A pale stone gateway arch opening onto a sunlit courtyard",
   },
   conductor: {
     image: conductorImg,
