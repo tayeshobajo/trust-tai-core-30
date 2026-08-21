@@ -63,6 +63,7 @@ function toCase(row: Row): IntelligenceCase {
 
 function toOutcome(row: Row): PatternOutcome {
   const hours = row["hours_to_outcome"];
+  const refs = row["source_refs"];
   return {
     id: String(row["id"]),
     organizationId: String(row["organization_id"]),
@@ -74,6 +75,12 @@ function toOutcome(row: Row): PatternOutcome {
     result: (text(row, "result") ?? "unknown") as PatternResult,
     resultBecause: String(row["result_because"] ?? ""),
     ...(typeof hours === "number" ? { hoursToOutcome: hours } : {}),
+    /* Rows written before provenance existed were all recorded by a person. */
+    resultSource: (text(row, "result_source") ?? "human") as NonNullable<
+      PatternOutcome["resultSource"]
+    >,
+    ...(Array.isArray(refs) ? { sourceRefs: refs.map((ref) => String(ref)) } : {}),
+    ...(text(row, "observed_at") ? { observedAt: text(row, "observed_at")! } : {}),
     ...(text(row, "human_correction") ? { humanCorrection: text(row, "human_correction")! } : {}),
     recordedBy: String(row["recorded_by"] ?? ""),
     recordedAt: String(row["recorded_at"]),
@@ -131,27 +138,44 @@ export const intelligenceCanonService = {
   },
 
   async saveOutcome(entry: PatternOutcome): Promise<PatternOutcome> {
+    const base = {
+      organization_id: entry.organizationId,
+      pattern_id: entry.patternId,
+      pattern_version: entry.patternVersion,
+      case_id: entry.caseId ?? null,
+      recommendation: entry.recommendation,
+      decision: entry.decision,
+      result: entry.result,
+      result_because: entry.resultBecause,
+      hours_to_outcome: entry.hoursToOutcome ?? null,
+      human_correction: entry.humanCorrection ?? null,
+      recorded_by: entry.recordedBy,
+      recorded_at: entry.recordedAt,
+    };
+    const provenance = {
+      result_source: entry.resultSource ?? "human",
+      source_refs: entry.sourceRefs ?? [],
+      observed_at: entry.observedAt ?? entry.recordedAt,
+    };
+
+    const first = await supabase
+      .from("pattern_outcomes")
+      .insert({ ...base, ...provenance })
+      .select("*")
+      .single();
+    if (!first.error) return toOutcome(first.data as Row);
+
+    /* A database without the provenance columns still records the result. */
+    if (!/column|schema cache/i.test(first.error.message)) fail(first.error);
     const { data, error } = await supabase
       .from("pattern_outcomes")
-      .insert({
-        organization_id: entry.organizationId,
-        pattern_id: entry.patternId,
-        pattern_version: entry.patternVersion,
-        case_id: entry.caseId ?? null,
-        recommendation: entry.recommendation,
-        decision: entry.decision,
-        result: entry.result,
-        result_because: entry.resultBecause,
-        hours_to_outcome: entry.hoursToOutcome ?? null,
-        human_correction: entry.humanCorrection ?? null,
-        recorded_by: entry.recordedBy,
-        recorded_at: entry.recordedAt,
-      })
+      .insert(base)
       .select("*")
       .single();
     if (error) fail(error);
     return toOutcome(data as Row);
   },
+
 
   /**
    * Open a case only if the same decision, about the same reading, on the same

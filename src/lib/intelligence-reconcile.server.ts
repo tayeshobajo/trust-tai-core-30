@@ -16,8 +16,13 @@
 import type { ActivityEvent } from "@/domain/activity";
 import type { IntelligenceCase, PatternOutcome } from "@/domain/intelligence-canon";
 import { outcomeFromRoomEvent, roomEventOutcomes } from "@/data/intelligence/canon/room-events";
+import {
+  evaluateOpenCase,
+  outcomeFromReconciliation,
+} from "@/data/intelligence/canon/outcome-checks";
 import { openCases } from "@/data/intelligence/canon/experience";
 import { outcomeFingerprint } from "@/data/supabase/intelligence-canon-service";
+import { loadReconciliationSnapshot } from "./reconciliation-state.server";
 
 /** Never process more than this many open cases in one run. */
 export const RUN_CASE_LIMIT = 100;
@@ -30,6 +35,10 @@ export interface ReconcileRunReport {
   organizationId: string;
   casesConsidered: number;
   outcomesWritten: number;
+  /** Settled by an exact canonical room event. */
+  eventOutcomes?: number;
+  /** Settled by current canonical state through a deterministic check. */
+  snapshotOutcomes?: number;
   unknownLeftOpen: number;
   skipped?: "recent_run" | "lease_held" | "no_open_cases";
 }
@@ -163,6 +172,11 @@ export async function reconcileOrganization(
 
   const finish = async (report: ReconcileRunReport, note?: string) => {
     if (!runId) return;
+    /* The note carries how the run settled things, so an event resolution and
+     * a current state resolution stay distinguishable without a second model. */
+    const summary =
+      note ??
+      `${report.eventOutcomes ?? 0} by room event, ${report.snapshotOutcomes ?? 0} by current state`;
     await client
       .from("intelligence_reconciliation_runs")
       .update({
@@ -170,7 +184,7 @@ export async function reconcileOrganization(
         status: note ? "failed" : "done",
         outcomes_written: report.outcomesWritten,
         unknown_left_open: report.unknownLeftOpen,
-        note: note ?? null,
+        note: summary,
       })
       .eq("id", runId);
   };
@@ -188,22 +202,15 @@ export async function reconcileOrganization(
 
     const settled = roomEventOutcomes({ cases: open, events });
     const known = new Set(outcomes.map((row) => outcomeFingerprint(row)));
+    const closed = new Set<string>();
     let written = 0;
 
-    for (const event of settled) {
-      const entry = open.find((row) => row.id === event.caseId);
-      if (!entry) continue;
-      const draft = outcomeFromRoomEvent({
-        entry,
-        event,
-        recordedBy: entry.decidedBy,
-        now: now.toISOString(),
-      });
+    const write = async (draft: Omit<PatternOutcome, "id">): Promise<boolean> => {
       const fingerprint = outcomeFingerprint({ id: "", ...draft } as PatternOutcome);
-      if (known.has(fingerprint)) continue;
+      if (known.has(fingerprint)) return false;
       known.add(fingerprint);
 
-      const { error } = await client.from("pattern_outcomes").insert({
+      const base = {
         organization_id: draft.organizationId,
         pattern_id: draft.patternId,
         pattern_version: draft.patternVersion,
@@ -216,14 +223,65 @@ export async function reconcileOrganization(
         human_correction: draft.humanCorrection ?? null,
         recorded_by: draft.recordedBy,
         recorded_at: draft.recordedAt,
+      };
+      const first = await client.from("pattern_outcomes").insert({
+        ...base,
+        result_source: draft.resultSource ?? "current_state",
+        source_refs: draft.sourceRefs ?? [],
+        observed_at: draft.observedAt ?? draft.recordedAt,
       });
-      if (!error) written += 1;
+      if (!first.error) return true;
+      /* A database without the provenance columns still records the result. */
+      if (!/column|schema cache/i.test(String(first.error.message ?? ""))) return false;
+      const { error } = await client.from("pattern_outcomes").insert(base);
+      return !error;
+    };
+
+    /* 1. Exact canonical room events, exactly as before. */
+    for (const event of settled) {
+      const entry = open.find((row) => row.id === event.caseId);
+      if (!entry || closed.has(entry.id)) continue;
+      const draft = outcomeFromRoomEvent({
+        entry,
+        event,
+        recordedBy: entry.decidedBy,
+        now: now.toISOString(),
+      });
+      if (await write(draft)) {
+        written += 1;
+        closed.add(entry.id);
+      }
+    }
+
+    /* 2. Cases still open, checked against current canonical state. Unknown
+     *    writes nothing and the case simply stays open. */
+    const remaining = open.filter((entry) => !closed.has(entry.id));
+    let snapshotWritten = 0;
+    if (remaining.length > 0) {
+      const snapshot = await loadReconciliationSnapshot(client, organizationId, now);
+      for (const entry of remaining) {
+        const reconciliation = evaluateOpenCase({ entry, snapshot });
+        if (!reconciliation) continue;
+        const draft = outcomeFromReconciliation({
+          entry,
+          reconciliation,
+          recordedBy: entry.decidedBy,
+          now: now.toISOString(),
+        });
+        if (await write(draft)) {
+          written += 1;
+          snapshotWritten += 1;
+          closed.add(entry.id);
+        }
+      }
     }
 
     const report: ReconcileRunReport = {
       organizationId,
       casesConsidered: open.length,
       outcomesWritten: written,
+      eventOutcomes: written - snapshotWritten,
+      snapshotOutcomes: snapshotWritten,
       unknownLeftOpen: open.length - written,
     };
     await finish(report);

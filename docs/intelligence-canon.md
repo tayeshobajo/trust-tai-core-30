@@ -120,3 +120,29 @@ click or a re-render resolve to the row already written.
 No embeddings, no vector store, no background loop, no autonomous execution, no
 per-pattern confidence percentages, no pattern feed in Pulse, and no changes to
 the Website intake or Scout contracts.
+
+## Current state reconciliation
+
+Scheduled reconciliation now has two passes, in this order.
+
+1. Exact canonical room events, as before.
+2. For cases still open, a bounded server readable business state.
+
+The server state lives in `src/lib/reconciliation-state.server.ts`. It reads
+the same canonical room tables the suite already owns (`projects`,
+`comms_relationships`, `prospects`, `roadmaps`, `roadmap_decisions`,
+`commitments`) through the Core service role client, so no browser session is
+involved. It returns only the conditions the existing deterministic checks
+understand, plus the list of kinds it genuinely read. A room that cannot be
+read is reported as unreadable and every check depending on it answers unknown.
+
+Both the signed in Conductor flow and the scheduler call one evaluator,
+`evaluateOpenCase`, so a check has a single interpretation. Unknown writes
+nothing. Fit scoring stays out of scope, so `strong_fit_unreviewed` is never
+settled automatically.
+
+Outcomes carry provenance: `result_source` is one of human, room event or
+current state, alongside `source_refs` and `observed_at`. Apply
+`docs/intelligence-outcome-provenance.sql` to add those columns. The Case
+Ledger shows the source quietly next to each result, and the weekly health read
+counts what was checked, what resolved automatically and what stayed unknown.

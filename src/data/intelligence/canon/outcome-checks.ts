@@ -60,9 +60,116 @@ export interface Reconciliation {
   patternId: string;
   result: Exclude<PatternResult, "unknown">;
   because: string;
-  /** Observation ids the result stands on. Empty when the shape has cleared. */
+  /** Source references the result stands on. Empty when the shape has cleared. */
   evidenceRefs: string[];
   hoursToOutcome: number;
+  /** When the state behind the result was read. */
+  observedAt: string;
+}
+
+/**
+ * One condition still visible in a room right now.
+ *
+ * This is current evidence only. Nothing here comes from an earlier outcome,
+ * and prior experience never travels in this shape.
+ */
+export interface StateCondition {
+  kind: string;
+  statement: string;
+  /** Room-native references, for example `projects:state:<id>`. */
+  sourceRefs: string[];
+  observedAt: string;
+}
+
+/**
+ * The bounded business state a reconciliation may reason over.
+ *
+ * `readableKinds` is the honest part: a kind absent from it was not read
+ * confidently, so any case that depends on it stays unknown rather than being
+ * treated as cleared.
+ */
+export interface ReconciliationSnapshot {
+  organizationId: string;
+  now: string;
+  readableKinds: string[];
+  conditions: StateCondition[];
+  /** Rooms that could not be read on this pass. */
+  unreadable: string[];
+}
+
+/** Wrap already derived observations as a snapshot, so one evaluator serves both paths. */
+export function snapshotFromObservations(input: {
+  organizationId: string;
+  observations: Observation[];
+  now: string;
+  readableKinds?: string[];
+}): ReconciliationSnapshot {
+  return {
+    organizationId: input.organizationId,
+    now: input.now,
+    readableKinds: input.readableKinds ?? [...VERIFIABLE_KINDS],
+    conditions: input.observations
+      .filter((observation) => (VERIFIABLE_KINDS as readonly string[]).includes(observation.kind))
+      .map((observation) => ({
+        kind: observation.kind,
+        statement: observation.statement,
+        sourceRefs: observation.contextRefs?.length ? observation.contextRefs : [observation.id],
+        observedAt: input.now,
+      })),
+    unreadable: [],
+  };
+}
+
+/**
+ * The single interpretation of a deterministic check.
+ *
+ * Success only when every checkable condition the reading rested on was read
+ * confidently and is gone. Failure only when the same condition is still there
+ * long after the decision. Everything else is unknown, which writes nothing.
+ */
+export function evaluateOpenCase(input: {
+  entry: IntelligenceCase;
+  snapshot: ReconciliationSnapshot;
+}): Reconciliation | null {
+  const { entry, snapshot } = input;
+  const kinds = checkableKinds(entry.patternId);
+  if (kinds.length === 0) return null;
+
+  /* A kind we could not read is not an absence. It is unknown. */
+  if (!kinds.every((kind) => snapshot.readableKinds.includes(kind))) return null;
+
+  const decidedAt = Date.parse(entry.decidedAt);
+  const nowMs = Date.parse(snapshot.now);
+  if (Number.isNaN(decidedAt) || Number.isNaN(nowMs) || nowMs <= decidedAt) return null;
+  const hours = Math.round((nowMs - decidedAt) / HOUR);
+
+  const still = snapshot.conditions.filter((condition) => kinds.includes(condition.kind));
+
+  if (still.length === 0) {
+    return {
+      caseId: entry.id,
+      patternId: entry.patternId,
+      result: "success",
+      because: "The shape this reading rested on is no longer visible in the rooms that own it.",
+      evidenceRefs: [],
+      hoursToOutcome: hours,
+      observedAt: snapshot.now,
+    };
+  }
+
+  if (hours >= FAILURE_AFTER_HOURS) {
+    return {
+      caseId: entry.id,
+      patternId: entry.patternId,
+      result: "failure",
+      because: `The same shape is still being observed ${Math.round(hours / 24)} days after the decision: ${still[0]!.statement}`,
+      evidenceRefs: still.flatMap((condition) => condition.sourceRefs),
+      hoursToOutcome: hours,
+      observedAt: snapshot.now,
+    };
+  }
+
+  return null;
 }
 
 export interface ReconcileInput {
@@ -76,39 +183,14 @@ export interface ReconcileInput {
  * result is not readable yet, which is the common and correct answer.
  */
 export function reconcileCase(input: ReconcileInput): Reconciliation | null {
-  const kinds = checkableKinds(input.entry.patternId);
-  if (kinds.length === 0) return null;
-
-  const decidedAt = Date.parse(input.entry.decidedAt);
-  const nowMs = Date.parse(input.now);
-  if (Number.isNaN(decidedAt) || Number.isNaN(nowMs) || nowMs <= decidedAt) return null;
-  const hours = Math.round((nowMs - decidedAt) / HOUR);
-
-  const still = input.observations.filter((observation) => kinds.includes(observation.kind));
-
-  if (still.length === 0) {
-    return {
-      caseId: input.entry.id,
-      patternId: input.entry.patternId,
-      result: "success",
-      because: "The shape this reading rested on is no longer visible in the rooms that own it.",
-      evidenceRefs: [],
-      hoursToOutcome: hours,
-    };
-  }
-
-  if (hours >= FAILURE_AFTER_HOURS) {
-    return {
-      caseId: input.entry.id,
-      patternId: input.entry.patternId,
-      result: "failure",
-      because: `The same shape is still being observed ${Math.round(hours / 24)} days after the decision: ${still[0]!.statement}`,
-      evidenceRefs: still.map((observation) => observation.id),
-      hoursToOutcome: hours,
-    };
-  }
-
-  return null;
+  return evaluateOpenCase({
+    entry: input.entry,
+    snapshot: snapshotFromObservations({
+      organizationId: input.entry.organizationId,
+      observations: input.observations,
+      now: input.now,
+    }),
+  });
 }
 
 /** Reconcile a set of open cases. Cases with no readable result are left alone. */
@@ -121,6 +203,7 @@ export function reconcileCases(input: {
     .map((entry) => reconcileCase({ entry, observations: input.observations, now: input.now }))
     .filter((row): row is Reconciliation => row !== null);
 }
+
 
 /** The outcome row a reconciliation becomes. Never invents a decision. */
 export function outcomeFromReconciliation(input: {
@@ -139,6 +222,9 @@ export function outcomeFromReconciliation(input: {
     result: input.reconciliation.result,
     resultBecause: input.reconciliation.because,
     hoursToOutcome: input.reconciliation.hoursToOutcome,
+    resultSource: "current_state",
+    sourceRefs: input.reconciliation.evidenceRefs,
+    observedAt: input.reconciliation.observedAt,
     ...(input.entry.correction ? { humanCorrection: input.entry.correction } : {}),
     recordedBy: input.recordedBy,
     recordedAt: input.now,

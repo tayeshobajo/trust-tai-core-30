@@ -13,6 +13,7 @@ import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
 import { decisionFor, patternById, proposalFingerprint } from "@/data/intelligence/canon";
 import type { PriorExperience } from "@/data/intelligence/canon";
 import {
+  OUTCOME_SOURCE_LABEL,
   PROPOSAL_DECISION_LABEL,
   type ExperienceHealth,
   type IntelligenceCase,
@@ -132,6 +133,9 @@ export function CaseLedgerPanel({
                   <div className="flex flex-wrap items-center gap-1.5">
                     <MetaPill>{patternName(entry.patternId)}</MetaPill>
                     <MetaPill>{RESULT_LABEL[outcome.result]}</MetaPill>
+                    <MetaPill>
+                      {OUTCOME_SOURCE_LABEL[outcome.resultSource ?? "human"]}
+                    </MetaPill>
                   </div>
                   <p className="mt-1 text-foreground">{entry.humanDecision}</p>
                   <p className="mt-0.5 text-muted-foreground">{outcome.resultBecause}</p>
@@ -209,6 +213,9 @@ export function CaseLedgerPanel({
             <HealthStat label="Corrections you wrote" value={health.corrections} />
             <HealthStat label="Patterns with enough results" value={health.patternsWithEnoughOutcomes} />
             <HealthStat label="Proposals awaiting you" value={health.proposalsAwaitingDecision} />
+            <HealthStat label="Checked automatically" value={health.casesCheckedAutomatically} />
+            <HealthStat label="Resolved automatically" value={health.casesResolvedAutomatically} />
+            <HealthStat label="Still unknown after checks" value={health.casesUnknownAfterChecks} />
             <HealthStat
               label="Oldest open case"
               value={

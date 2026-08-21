@@ -252,11 +252,27 @@ export interface PatternOutcome {
   resultBecause: string;
   /** Whole hours from decision to observed outcome, when both are known. */
   hoursToOutcome?: number;
+  /** Where the result came from. Absent on older rows, which read as human. */
+  resultSource?: OutcomeSource;
+  /** Room-native references the result stands on, never copied room state. */
+  sourceRefs?: string[];
+  /** When the state or event behind the result was read. */
+  observedAt?: ISODateTime;
   /** A person's correction outranks anything inferred from the result. */
   humanCorrection?: string;
   recordedBy: ID;
   recordedAt: ISODateTime;
 }
+
+/** How an outcome was established. Human recorded is the strongest. */
+export type OutcomeSource = "human" | "room_event" | "current_state";
+
+export const OUTCOME_SOURCE_LABEL: Record<OutcomeSource, string> = {
+  human: "Human recorded",
+  room_event: "Room event confirmed",
+  current_state: "Current state confirmed",
+};
+
 
 /** Repeated evidence, never a single result, may change guidance. */
 export const PATTERN_LESSON_THRESHOLD = 3;
@@ -321,4 +337,10 @@ export interface ExperienceHealth {
   proposalsAwaitingDecision: number;
   /** Whole days, or null when nothing is open. */
   oldestOpenCaseDays: number | null;
+  /** Open cases the scheduler could actually check against current state. */
+  casesCheckedAutomatically: number;
+  /** Of those, the ones a deterministic check settled without a person. */
+  casesResolvedAutomatically: number;
+  /** Open cases that stayed unknown after checking. Not a failure. */
+  casesUnknownAfterChecks: number;
 }
