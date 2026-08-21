@@ -8,6 +8,8 @@
  */
 
 import type {
+  AiReferralRow,
+  AiReferralSummary,
   PageMetricsDay,
   PageRow,
   ProviderReadiness,
@@ -336,4 +338,71 @@ function labelFor(utmSource: string | null | undefined, referrer: string | null 
 
 export function isAiReferrer(referrer: string | null | undefined): boolean {
   return AI_HOSTS.has(referrerHost(referrer));
+}
+
+/* ------------------------------------------------------------ ai referrals */
+
+const AI_LABELS: Record<string, string> = {
+  "chat.openai.com": "ChatGPT",
+  "chatgpt.com": "ChatGPT",
+  "perplexity.ai": "Perplexity",
+  "copilot.microsoft.com": "Microsoft Copilot",
+  "gemini.google.com": "Gemini",
+  "claude.ai": "Claude",
+};
+
+/** The friendly name for a recognised assistant host. */
+export function aiReferrerLabel(host: string): string {
+  return AI_LABELS[host] ?? host;
+}
+
+/**
+ * Assistant referrals, broken out by the host we recognised.
+ *
+ * The honest boundary matters here. We can only see a referrer when the
+ * assistant sends one, so this counts arrivals we can attribute, not the times
+ * a model read or recommended the site. Everything else stays in the wider
+ * source list rather than being folded into a bigger claim.
+ */
+export function aiReferrals(
+  events: WebsiteEvent[],
+  submissions: WebsiteSubmission[],
+): AiReferralSummary {
+  const byHost = new Map<string, AiReferralRow>();
+  const ensure = (host: string) => {
+    const row = byHost.get(host) ?? {
+      host,
+      label: aiReferrerLabel(host),
+      visits: 0,
+      submissions: 0,
+    };
+    byHost.set(host, row);
+    return row;
+  };
+
+  let attributableVisits = 0;
+  for (const event of events) {
+    if (event.eventName !== "page_view") continue;
+    const host = referrerHost(event.referrer);
+    if (!host) continue;
+    attributableVisits += 1;
+    if (AI_HOSTS.has(host)) ensure(host).visits += 1;
+  }
+
+  for (const submission of submissions) {
+    const host = referrerHost(submission.attribution.entryReferrer);
+    if (host && AI_HOSTS.has(host)) ensure(host).submissions += 1;
+  }
+
+  const rows = [...byHost.values()].sort(
+    (a, b) => b.visits - a.visits || b.submissions - a.submissions || a.label.localeCompare(b.label),
+  );
+
+  return {
+    rows,
+    visits: rows.reduce((total, row) => total + row.visits, 0),
+    submissions: rows.reduce((total, row) => total + row.submissions, 0),
+    attributableVisits,
+    unmeasured: events.length === 0,
+  };
 }
