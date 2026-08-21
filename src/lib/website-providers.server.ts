@@ -234,11 +234,14 @@ export async function syncSearchConsole(
 
   const body = (await response.json()) as { rows?: SearchApiRow[] };
   const rows = searchConsoleRows(body.rows ?? [], organizationId);
-  if (rows.length > 0) {
-    const { error } = await client.from("website_search_metrics_daily").upsert(rows, {
-      onConflict: "organization_id,provider,metric_date,query,path,device,country",
-    });
-    if (error) throw new Error(error.message);
-  }
+  await replaceRange(
+    client,
+    "website_search_metrics_daily",
+    organizationId,
+    "search_console",
+    range,
+    rows,
+  );
+
   return { provider: "search_console", configured: true, rowsWritten: rows.length, range };
 }
