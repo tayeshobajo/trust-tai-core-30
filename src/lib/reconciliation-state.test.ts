@@ -155,7 +155,7 @@ describe("loadReconciliationSnapshot", () => {
 
   it("lets the owning room settle a case it has explicitly closed", () => {
     const entry = {
-      ...openCase("delivery.project_stalling", "2026-02-25T00:00:00.000Z"),
+      ...openCase("delivery.hidden_blocker", "2026-02-25T00:00:00.000Z"),
       entities: [{ type: "project" as const, id: "pr-1" }],
     };
     const result = evaluateOpenCase({
