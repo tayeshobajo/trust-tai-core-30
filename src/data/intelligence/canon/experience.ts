@@ -22,10 +22,36 @@ import {
 
 import { patternStanding, proposePatternRevision, type PatternStanding } from "./cases";
 
+/**
+ * How closely a prior case resembles the situation in front of us.
+ *
+ * The point is to stop a weak analogy being read as strong precedent. A case
+ * that matched the same pattern on entirely different evidence is worth far
+ * less than one that stood on the same facts, and a case a person corrected is
+ * worth more than either.
+ */
+export type CaseAnalogy = "same_shape" | "different_shape" | "human_corrected";
+
+/** Wording for a surface. Deliberately plain, no internal vocabulary. */
+export const CASE_ANALOGY_LABEL: Record<CaseAnalogy, string> = {
+  same_shape: "Closely similar situation",
+  different_shape: "Loosely similar situation",
+  human_corrected: "You corrected this reading before",
+};
+
+export interface PriorCase {
+  entry: IntelligenceCase;
+  analogy: CaseAnalogy;
+  /** Whether this case is worth leaning on at all. */
+  strongPrecedent: boolean;
+}
+
 export interface PriorExperience {
   patternId: ID;
   /** Cases for this pattern, newest first. References only. */
   cases: IntelligenceCase[];
+  /** The same cases, with how close the resemblance actually is. */
+  priorCases: PriorCase[];
   /** Corrections a person wrote, newest first. Human authored truth. */
   corrections: string[];
   standing: PatternStanding;
@@ -41,7 +67,38 @@ export interface ExperienceInput {
   patternId: ID;
   cases: IntelligenceCase[];
   outcomes: PatternOutcome[];
+  /**
+   * The observation kinds the current reading stands on. Without it no case
+   * can claim a close resemblance, which is the honest default.
+   */
+  shapeKinds?: string[];
   limit?: number;
+}
+
+/** Observation ids carry their kind, as `obs:<kind>:<subject>`. */
+function kindsOfCase(entry: IntelligenceCase): string[] {
+  return entry.evidenceRefs
+    .filter((ref) => ref.kind === "observation")
+    .map((ref) => ref.id.split(":")[1] ?? "")
+    .filter((kind) => kind.length > 0);
+}
+
+/** How close one prior case really is to the shape in front of us. */
+export function classifyPriorCase(entry: IntelligenceCase, shapeKinds: string[]): PriorCase {
+  if (entry.correction && entry.correction.trim().length > 0) {
+    return { entry, analogy: "human_corrected", strongPrecedent: true };
+  }
+  if (shapeKinds.length === 0) {
+    return { entry, analogy: "different_shape", strongPrecedent: false };
+  }
+  const kinds = new Set(kindsOfCase(entry));
+  const shared = shapeKinds.filter((kind) => kinds.has(kind)).length;
+  const same = shared > 0 && shared >= Math.ceil(shapeKinds.length / 2);
+  return {
+    entry,
+    analogy: same ? "same_shape" : "different_shape",
+    strongPrecedent: same,
+  };
 }
 
 function newestFirst<T extends { recordedAt?: string; createdAt?: string }>(rows: T[]): T[] {
@@ -72,9 +129,12 @@ export function priorExperience(input: ExperienceInput): PriorExperience {
     note = "This reading has held up the last few times it was acted on here.";
   }
 
+  const shown = cases.slice(0, input.limit ?? 3);
+
   return {
     patternId: input.patternId,
-    cases: cases.slice(0, input.limit ?? 3),
+    cases: shown,
+    priorCases: shown.map((entry) => classifyPriorCase(entry, input.shapeKinds ?? [])),
     corrections,
     standing,
     proposal: proposePatternRevision(input.patternId, outcomes),
@@ -94,6 +154,7 @@ export function experienceForMatches(input: {
       patternId: match.patternId,
       cases: input.cases,
       outcomes: input.outcomes,
+      shapeKinds: match.matched.map((fact) => fact.observationKind),
     });
     if (experience.cases.length > 0 || experience.standing.outcomes > 0) {
       out[match.patternId] = experience;
