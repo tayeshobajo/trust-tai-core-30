@@ -1,16 +1,17 @@
 /**
  * The Website room.
  *
- * TrustTai.com owns attention and intake. This room is the awareness surface
- * for that: what arrived, from where, how far people got, and what Scout has
- * since decided. It is read-only by architecture. Nothing here creates a
- * roadmap, a project, or a qualification.
+ * One question: is our digital presence moving Trust Tai forward, and what
+ * should we do next. Website owns attention, behaviour, intake, public site
+ * health and what published content does after it goes live. Studio creates,
+ * Scout qualifies, Conductor recommends governed action. This room is read
+ * only by architecture. Nothing here creates a roadmap or a project.
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Globe, Inbox, MousePointerClick, Sparkles } from "lucide-react";
+import { Globe, Inbox, MousePointerClick, Search, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { RoomHero } from "@/components/tt/room-hero";
@@ -18,24 +19,45 @@ import { EmptyState, MetaPill, SectionHeading } from "@/components/tt/primitives
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { listWebsiteEvents, listWebsiteSubmissions } from "@/data/supabase/website-service";
 import {
-  deviceSplit,
-  formatKnown,
-  intakeFunnel,
-  isQualified,
-  modalityUsage,
-  questionDropOff,
-  sourceToQualified,
-  topPaths,
-  topReferrers,
-  websiteHeadline,
-} from "@/data/website/projection";
-import { WEBSITE_INTAKE_LABEL, type WebsiteEvent, type WebsiteSubmission } from "@/domain/website";
+  listPageMetrics,
+  listSearchMetrics,
+  listWebsitePages,
+} from "@/data/supabase/website-analytics-service";
+import {
+  buildPageRows,
+  providerReadiness,
+  sourceGroups,
+  type WebsiteAnalyticsInput,
+} from "@/data/website/pages";
+import { CLASSIFICATION_LABELS, buildContentRows } from "@/data/website/content";
+import { healthFindings, pageReadiness } from "@/data/website/health";
+import {
+  competingPages,
+  contentOpportunities,
+  decliningQueries,
+  growingQueries,
+  highImpressionLowCtr,
+  queryRows,
+  searchTopics,
+  strikingDistance,
+} from "@/data/website/search";
+import { laneFallback, overviewMetrics, overviewObservations } from "@/data/website/overview";
+import { formatKnown, intakeFunnel, isQualified } from "@/data/website/projection";
+import { normalizePath } from "@/data/website/url";
+import type {
+  ContentRow,
+  ObservationLane,
+  PageRow,
+  ProviderReadiness,
+  WebsitePage,
+} from "@/domain/website-analytics";
+import { WEBSITE_INTAKE_LABEL, type WebsiteSubmission } from "@/domain/website";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
 
 const TITLE = "Website · Trust Tai OS";
 const DESCRIPTION =
-  "Attention and adaptive intake on TrustTai.com, and the inbound signals that reached Scout because of it.";
+  "What TrustTai.com is bringing in: attention, discovery, published content, behaviour, intake and the conversations Scout picks up.";
 
 export const Route = createFileRoute("/modules/website")({
   head: () => ({
@@ -52,14 +74,17 @@ export const Route = createFileRoute("/modules/website")({
   component: WebsiteRoute,
 });
 
-type Tab = "attention" | "funnel" | "submissions" | "sources";
+type Tab = "overview" | "pages" | "content" | "search" | "intake";
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "attention", label: "Traffic & attention" },
-  { key: "funnel", label: "Intake funnel" },
-  { key: "submissions", label: "Submissions" },
-  { key: "sources", label: "Source → qualified" },
+  { key: "overview", label: "Overview" },
+  { key: "pages", label: "Pages" },
+  { key: "content", label: "Content" },
+  { key: "search", label: "Search" },
+  { key: "intake", label: "Intake" },
 ];
+
+const WINDOW_DAYS = 30;
 
 function WebsiteRoute() {
   return (
@@ -73,69 +98,118 @@ function WebsiteRoute() {
   );
 }
 
-const WINDOW_DAYS = 30;
-
 function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
-  const [tab, setTab] = useState<Tab>("submissions");
+  const [tab, setTab] = useState<Tab>("overview");
+  const organizationId = identity.organizationId;
 
   const since = useMemo(
     () => new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString(),
     [],
   );
+  const sinceDate = since.slice(0, 10);
 
   const submissions = useQuery({
-    queryKey: ["website", "submissions", identity.organizationId],
-    queryFn: () => listWebsiteSubmissions(identity.organizationId),
+    queryKey: ["website", "submissions", organizationId],
+    queryFn: () => listWebsiteSubmissions(organizationId),
   });
   const events = useQuery({
-    queryKey: ["website", "events", identity.organizationId, since],
-    queryFn: () => listWebsiteEvents(identity.organizationId, since),
+    queryKey: ["website", "events", organizationId, since],
+    queryFn: () => listWebsiteEvents(organizationId, since),
+  });
+  const pages = useQuery({
+    queryKey: ["website", "pages", organizationId],
+    queryFn: () => listWebsitePages(organizationId),
+  });
+  const pageMetrics = useQuery({
+    queryKey: ["website", "page-metrics", organizationId, sinceDate],
+    queryFn: () => listPageMetrics(organizationId, sinceDate),
+  });
+  const searchMetrics = useQuery({
+    queryKey: ["website", "search-metrics", organizationId, sinceDate],
+    queryFn: () => listSearchMetrics(organizationId, sinceDate),
   });
 
-  const rows = submissions.data?.value ?? [];
-  const eventRows = events.data?.value ?? [];
-  const provisioned = (submissions.data?.provisioned ?? true) && (events.data?.provisioned ?? true);
-  const headline = websiteHeadline(eventRows, rows);
-  const loading = submissions.isPending || events.isPending;
+  const loading =
+    submissions.isPending || events.isPending || pages.isPending || pageMetrics.isPending;
+
+  const input: WebsiteAnalyticsInput = useMemo(
+    () => ({
+      pages: pages.data?.value ?? [],
+      pageMetrics: pageMetrics.data?.value ?? [],
+      searchMetrics: searchMetrics.data?.value ?? [],
+      events: events.data?.value ?? [],
+      submissions: submissions.data?.value ?? [],
+    }),
+    [pages.data, pageMetrics.data, searchMetrics.data, events.data, submissions.data],
+  );
+
+  const readiness = useMemo(() => providerReadiness(input), [input]);
+  const pageRows = useMemo(() => buildPageRows(input), [input]);
+  const contentRows = useMemo(
+    () =>
+      buildContentRows({
+        pageRows,
+        pages: input.pages,
+        pageMetrics: input.pageMetrics,
+        searchMetrics: input.searchMetrics,
+      }),
+    [pageRows, input],
+  );
+  const queries = useMemo(() => queryRows(input.searchMetrics), [input.searchMetrics]);
+  const health = useMemo(() => healthFindings(pageRows, input.pages), [pageRows, input.pages]);
+
+  const overviewInput = {
+    pageRows,
+    contentRows,
+    queries,
+    health,
+    submissions: input.submissions,
+    readiness,
+    windowDays: WINDOW_DAYS,
+  };
+  const metrics = overviewMetrics(overviewInput);
+  const observations = overviewObservations(overviewInput);
+  const submissionsProvisioned = submissions.data?.provisioned ?? true;
 
   return (
     <div className="space-y-6">
       <RoomHero
         eyebrow="Website"
-        title="What the website is bringing in"
-        supporting="TrustTai.com is a signal source. It owns attention and intake, hands completed conversations to Scout, and never creates delivery work on its own."
+        title="What Trust Tai is bringing in"
+        supporting="Is our digital presence moving Trust Tai forward, and what should we do next? TrustTai.com owns attention and intake, hands completed conversations to Scout, and never creates delivery work on its own."
         metrics={[
           {
             icon: <MousePointerClick className="size-4 text-royal" aria-hidden />,
-            value: loading ? "…" : formatKnown(headline.visits),
-            label: "Sessions",
-            note: `Last ${WINDOW_DAYS} days`,
+            value: loading ? "…" : formatKnown(metrics[0].value),
+            label: "Visitors",
+            note: metrics[0].note,
+          },
+          {
+            icon: <Search className="size-4 text-royal" aria-hidden />,
+            value: loading ? "…" : formatKnown(metrics[1].value),
+            label: "Search clicks",
+            note: metrics[1].note,
           },
           {
             icon: <Inbox className="size-4 text-royal" aria-hidden />,
-            value: loading ? "…" : headline.submissions,
-            label: "Intake submissions",
-          },
-          {
-            icon: <Sparkles className="size-4 text-royal" aria-hidden />,
-            value: loading ? "…" : headline.awaitingReview,
-            label: "Awaiting Scout review",
-            note: "Identity was ambiguous",
+            value: loading ? "…" : formatKnown(metrics[2].value),
+            label: "Intake conversations",
           },
           {
             icon: <Globe className="size-4 text-royal" aria-hidden />,
-            value: loading ? "…" : headline.qualified,
+            value: loading ? "…" : formatKnown(metrics[3].value),
             label: "Qualified in Scout",
           },
         ]}
       />
 
-      {provisioned ? null : (
+      {submissionsProvisioned ? null : (
         <div className="tt-surface p-5">
           <p className="text-sm text-foreground">The website signal tables are not applied yet.</p>
           <p className="mt-1 max-w-reading text-xs text-muted-foreground">
-            Apply <span className="font-mono">docs/website-signals-schema.sql</span> to the Trust
-            Tai database. Until then this room shows nothing rather than inventing numbers.
+            Apply <span className="font-mono">docs/website-signals-schema.sql</span> and{" "}
+            <span className="font-mono">docs/website-analytics-schema.sql</span> to the Trust Tai
+            database. Until then this room shows nothing rather than inventing numbers.
           </p>
         </div>
       )}
@@ -162,69 +236,511 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
         ))}
       </nav>
 
-      {tab === "attention" ? <Attention events={eventRows} /> : null}
-      {tab === "funnel" ? <Funnel events={eventRows} submissions={rows} /> : null}
-      {tab === "submissions" ? <Submissions submissions={rows} loading={loading} /> : null}
-      {tab === "sources" ? <Sources events={eventRows} submissions={rows} /> : null}
+      {tab === "overview" ? (
+        <Overview
+          metrics={metrics}
+          observations={observations}
+          readiness={readiness}
+          sources={sourceGroups(input.events, input.submissions)}
+        />
+      ) : null}
+      {tab === "pages" ? <Pages rows={pageRows} pages={input.pages} health={health} /> : null}
+      {tab === "content" ? <Content rows={contentRows} /> : null}
+      {tab === "search" ? <SearchTab input={input} queries={queries} /> : null}
+      {tab === "intake" ? (
+        <Intake input={input} loading={loading} />
+      ) : null}
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ pieces */
+/* --------------------------------------------------------------- overview */
 
-function Bare({ children }: { children: string }) {
-  return <p className="text-sm text-muted-foreground">{children}</p>;
+const LANES: { key: ObservationLane; title: string }[] = [
+  { key: "working", title: "What is working" },
+  { key: "changing", title: "What is changing" },
+  { key: "attention", title: "Needs attention" },
+  { key: "next_move", title: "Next move" },
+];
+
+function Overview({
+  metrics,
+  observations,
+  readiness,
+  sources,
+}: {
+  metrics: ReturnType<typeof overviewMetrics>;
+  observations: ReturnType<typeof overviewObservations>;
+  readiness: ProviderReadiness[];
+  sources: { source: string; visits: number; submissions: number }[];
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="tt-surface p-5">
+        <SectionHeading
+          eyebrow="Last 30 days"
+          title="The short version"
+          description="A dash means Core has not been told, which is different from zero."
+        />
+        <ol className="grid gap-3 md:grid-cols-5">
+          {metrics.map((metric) => (
+            <li key={metric.key} className="rounded-xl border border-border bg-card px-4 py-3">
+              <p className="font-mono text-[19px] leading-none text-foreground">
+                {formatKnown(metric.value)}
+              </p>
+              <p className="mt-1.5 text-[12px] text-foreground">{metric.label}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{metric.note}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {LANES.map((lane) => {
+          const rows = observations.filter((entry) => entry.lane === lane.key);
+          return (
+            <div key={lane.key} className="tt-surface p-5">
+              <SectionHeading eyebrow="Reading" title={lane.title} />
+              {rows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{laneFallback(lane.key, readiness)}</p>
+              ) : (
+                <ul className="space-y-3">
+                  {rows.map((row) => (
+                    <li key={row.id}>
+                      <p className="text-sm text-foreground">{row.statement}</p>
+                      <ul className="mt-1 space-y-0.5">
+                        {row.evidence.filter(Boolean).map((line, index) => (
+                          <li key={index} className="text-[12px] text-muted-foreground">
+                            {line}
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="tt-surface p-5">
+          <SectionHeading
+            eyebrow="Sources"
+            title="Where attention comes from"
+            description="Assistant referrers are grouped under AI referrals. That is a grouping of referrers we can see, not a measure of how often a model used the site."
+          />
+          {sources.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No source data has been received yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {sources.slice(0, 8).map((row) => (
+                <li key={row.source} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="truncate text-foreground">{row.source}</span>
+                  <span className="font-mono text-[12px] text-muted-foreground">
+                    {row.visits} visits · {row.submissions} conversations
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="tt-surface p-5">
+          <SectionHeading eyebrow="Sources" title="What is connected" />
+          <ul className="space-y-2">
+            {readiness.map((entry) => (
+              <li key={entry.id} className="text-sm">
+                <span className="text-foreground">{entry.label}</span>
+                <span
+                  className={cn(
+                    "ml-2 font-mono text-[11px] uppercase tracking-[0.12em]",
+                    entry.connected ? "text-royal" : "text-muted-foreground",
+                  )}
+                >
+                  {entry.connected ? "Connected" : "Not connected"}
+                </span>
+                <p className="text-[12px] text-muted-foreground">{entry.note}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function Attention({ events }: { events: WebsiteEvent[] }) {
-  const paths = topPaths(events);
-  const referrers = topReferrers(events);
-  const devices = deviceSplit(events);
+/* ------------------------------------------------------------------ pages */
+
+function Pages({
+  rows,
+  pages,
+  health,
+}: {
+  rows: PageRow[];
+  pages: WebsitePage[];
+  health: ReturnType<typeof healthFindings>;
+}) {
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const open = rows.find((row) => row.path === openPath) ?? null;
+
+  if (rows.length === 0) {
+    return (
+      <EmptyState
+        title="No public pages are represented yet"
+        belongsHere="Every public TrustTai.com page belongs here, with its traffic, search performance, behaviour and the conversations it produced."
+        whyItMatters="Without the page inventory the room can only describe paths a provider happened to mention."
+      />
+    );
+  }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="space-y-4">
+      <div className="tt-surface overflow-x-auto p-5">
+        <SectionHeading
+          eyebrow="Pages"
+          title="Every public page"
+          description="Only measured columns are filled. A dash means the provider behind that column is not connected."
+        />
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-[12px] text-muted-foreground">
+              <th className="py-2 pr-4 font-normal">Page</th>
+              <th className="py-2 pr-4 font-normal">Type</th>
+              <th className="py-2 pr-4 font-normal">Views</th>
+              <th className="py-2 pr-4 font-normal">Landing</th>
+              <th className="py-2 pr-4 font-normal">Clicks</th>
+              <th className="py-2 pr-4 font-normal">Impressions</th>
+              <th className="py-2 pr-4 font-normal">CTR</th>
+              <th className="py-2 pr-4 font-normal">Position</th>
+              <th className="py-2 font-normal">Conversations</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.path} className="border-b border-border/60 last:border-0">
+                <td className="py-2 pr-4">
+                  <button
+                    type="button"
+                    className="text-left text-royal hover:underline"
+                    onClick={() => setOpenPath(row.path === openPath ? null : row.path)}
+                  >
+                    {row.title}
+                  </button>
+                  <p className="font-mono text-[11px] text-muted-foreground">{row.path}</p>
+                </td>
+                <td className="py-2 pr-4 text-muted-foreground">{row.pageType.replace("_", " ")}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.views)}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.landingSessions)}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.clicks)}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.impressions)}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">{percent(row.ctr)}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">{decimal(row.averagePosition)}</td>
+                <td className="py-2 font-mono text-[12px]">{formatKnown(row.intakeSubmissions)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {open ? (
+        <PageDetail row={open} page={pages.find((page) => normalizePath(page.path) === open.path)} />
+      ) : null}
+
       <div className="tt-surface p-5">
-        <SectionHeading eyebrow="Attention" title="Top landing pages" />
-        {paths.length === 0 ? (
-          <Bare>No page-view events have been received from TrustTai.com yet.</Bare>
-        ) : (
-          <ul className="space-y-2">
-            {paths.map((entry) => (
-              <li key={entry.path} className="flex items-center justify-between gap-3 text-sm">
-                <span className="truncate font-mono text-[12px] text-foreground">{entry.path}</span>
-                <span className="font-mono text-[12px] text-muted-foreground">{entry.views}</span>
+        <SectionHeading eyebrow="Health" title="What the public site is telling us" />
+        <ul className="space-y-3">
+          {health.map((finding) => (
+            <li key={finding.id}>
+              <p className="text-sm text-foreground">
+                {finding.title}
+                <span
+                  className={cn(
+                    "ml-2 font-mono text-[11px] uppercase tracking-[0.12em]",
+                    finding.severity === "attention" ? "text-warning" : "text-muted-foreground",
+                  )}
+                >
+                  {finding.severity === "healthy" ? "Clear" : finding.severity}
+                </span>
+              </p>
+              <p className="text-[12px] text-muted-foreground">{finding.detail}</p>
+              {finding.paths.length > 0 ? (
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  {finding.paths.slice(0, 6).join(" · ")}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function PageDetail({ row, page }: { row: PageRow; page: WebsitePage | undefined }) {
+  const groups: { title: string; entries: [string, string][] }[] = [
+    {
+      title: "Traffic",
+      entries: [
+        ["Views", formatKnown(row.views)],
+        ["Visitors", formatKnown(row.users)],
+        ["Landing sessions", formatKnown(row.landingSessions)],
+      ],
+    },
+    {
+      title: "Search",
+      entries: [
+        ["Clicks", formatKnown(row.clicks)],
+        ["Impressions", formatKnown(row.impressions)],
+        ["CTR", percent(row.ctr)],
+        ["Average position", decimal(row.averagePosition)],
+      ],
+    },
+    {
+      title: "Behaviour",
+      entries: [
+        ["Engaged sessions", formatKnown(row.engagedSessions)],
+        ["Engagement rate", percent(row.engagementRate)],
+        ["Average engagement", row.averageEngagementSeconds === null ? "—" : `${Math.round(row.averageEngagementSeconds)}s`],
+        ["Content reads", formatKnown(row.contentReads)],
+      ],
+    },
+    {
+      title: "Conversion",
+      entries: [
+        ["Intake starts", formatKnown(row.intakeStarts)],
+        ["Conversations", formatKnown(row.intakeSubmissions)],
+        ["Qualified in Scout", formatKnown(row.qualified)],
+        ["Primary next step", row.primaryCta ?? "—"],
+      ],
+    },
+  ];
+
+  return (
+    <div className="tt-surface p-5">
+      <SectionHeading eyebrow={row.path} title={row.title} />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {groups.map((group) => (
+          <div key={group.title} className="rounded-xl border border-border bg-card px-4 py-3">
+            <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
+              {group.title}
+            </p>
+            <ul className="mt-1.5 space-y-1 text-[13px]">
+              {group.entries.map(([label, value]) => (
+                <li key={label} className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-mono text-foreground">{value}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        <div className="rounded-xl border border-border bg-card px-4 py-3">
+          <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
+            Health
+          </p>
+          <ul className="mt-1.5 space-y-1 text-[13px]">
+            {pageReadiness(page, row).map((field) => (
+              <li key={field.label} className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">{field.label}</span>
+                <span className="font-mono text-foreground">
+                  {field.present === null ? "—" : field.present ? "Yes" : "No"}
+                </span>
               </li>
             ))}
           </ul>
-        )}
+        </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="tt-surface p-5">
-        <SectionHeading eyebrow="Attention" title="Referrers & campaigns" />
-        {referrers.length === 0 ? (
-          <Bare>No referrer data yet.</Bare>
-        ) : (
-          <ul className="space-y-2">
-            {referrers.map((entry) => (
-              <li key={entry.referrer} className="flex items-center justify-between gap-3 text-sm">
-                <span className="truncate text-foreground">{entry.referrer}</span>
-                <span className="font-mono text-[12px] text-muted-foreground">{entry.visits}</span>
+/* ---------------------------------------------------------------- content */
+
+function Content({ rows }: { rows: ContentRow[] }) {
+  if (rows.length === 0) {
+    return (
+      <EmptyState
+        title="No published content is registered yet"
+        belongsHere="Articles and case studies appear here once the page inventory holds them, with what happened after publishing."
+        whyItMatters="Website measures published work. Studio still owns writing and approval."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {rows.map((row) => (
+        <article key={row.path} className="tt-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
+                {row.pageType.replace("_", " ")}
+                {row.publishedAt
+                  ? ` · published ${new Date(row.publishedAt).toLocaleDateString()}`
+                  : ""}
+              </p>
+              <h3 className="mt-1 text-[17px] text-foreground">{row.title}</h3>
+              <p className="font-mono text-[11px] text-muted-foreground">{row.path}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {row.classifications.map((label) => (
+                <MetaPill key={label}>{CLASSIFICATION_LABELS[label]}</MetaPill>
+              ))}
+              {row.topic ? <MetaPill>Topic · {row.topic}</MetaPill> : null}
+            </div>
+          </div>
+
+          <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 font-mono text-[12px] text-muted-foreground">
+            <span>Views {formatKnown(row.views)}</span>
+            <span>Impressions {formatKnown(row.impressions)}</span>
+            <span>Clicks {formatKnown(row.clicks)}</span>
+            <span>CTR {percent(row.ctr)}</span>
+            <span>Position {decimal(row.averagePosition)}</span>
+            <span>Engagement {percent(row.engagementRate)}</span>
+            <span>Starts {formatKnown(row.intakeStarts)}</span>
+            <span>Conversations {formatKnown(row.intakeSubmissions)}</span>
+            <span>Qualified {formatKnown(row.qualified)}</span>
+          </dl>
+
+          {row.reasons.length > 0 ? (
+            <ul className="mt-2 space-y-0.5">
+              {row.reasons.map((reason, index) => (
+                <li key={index} className="text-[12px] text-muted-foreground">
+                  {reason}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {row.intent.topic || row.intent.audience || row.intent.primaryNextStep ? (
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              Intent · {[row.intent.audience, row.intent.searchIntent, row.intent.purpose, row.intent.primaryNextStep]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------- search */
+
+function SearchTab({
+  input,
+  queries,
+}: {
+  input: WebsiteAnalyticsInput;
+  queries: ReturnType<typeof queryRows>;
+}) {
+  if (queries.length === 0) {
+    return (
+      <EmptyState
+        title="No search data yet"
+        belongsHere="Queries, impressions, click through and position belong here once Search Console data is flowing."
+        whyItMatters="Search is how most people discover a company they have never heard of. Until it is connected this stays unknown, not zero."
+      />
+    );
+  }
+
+  const opportunities = contentOpportunities(
+    input.searchMetrics,
+    input.pages.map((page) => page.path),
+  );
+  const competing = competingPages(input.searchMetrics);
+
+  const lists: { title: string; description: string; rows: typeof queries }[] = [
+    { title: "Bringing traffic", description: "The queries producing clicks today.", rows: queries.slice(0, 10) },
+    { title: "Growing", description: "More clicks in the second half of the window.", rows: growingQueries(queries).slice(0, 8) },
+    { title: "Declining", description: "Fewer clicks in the second half of the window.", rows: decliningQueries(queries).slice(0, 8) },
+    { title: "Seen, rarely clicked", description: "Real demand meeting a weak title or description.", rows: highImpressionLowCtr(queries).slice(0, 8) },
+    { title: "Positions four to twenty", description: "Close enough that a better page would move them.", rows: strikingDistance(queries).slice(0, 8) },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-2">
+        {lists.map((list) => (
+          <div key={list.title} className="tt-surface p-5">
+            <SectionHeading eyebrow="Search" title={list.title} description={list.description} />
+            {list.rows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing meets this rule in the window.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {list.rows.map((row) => (
+                  <li key={row.query} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="truncate text-foreground">{row.query}</span>
+                    <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                      {row.clicks}c · {row.impressions}i · {percent(row.ctr)} · p
+                      {decimal(row.averagePosition)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+
+        <div className="tt-surface p-5">
+          <SectionHeading eyebrow="Search" title="Topics people find us for" />
+          <ul className="space-y-1.5">
+            {searchTopics(queries).map((row) => (
+              <li key={row.topic} className="flex items-center justify-between gap-3 text-sm">
+                <span className="truncate text-foreground">{row.topic}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  {row.impressions} impressions
+                </span>
               </li>
             ))}
           </ul>
-        )}
+        </div>
       </div>
 
+      {competing.length > 0 ? (
+        <div className="tt-surface p-5">
+          <SectionHeading
+            eyebrow="Search"
+            title="Our own pages competing"
+            description="More than one of our pages shows for the same query."
+          />
+          <ul className="space-y-1.5">
+            {competing.slice(0, 8).map((row) => (
+              <li key={row.query} className="text-sm">
+                <span className="text-foreground">{row.query}</span>
+                <span className="ml-2 font-mono text-[11px] text-muted-foreground">
+                  {row.paths.map((entry) => entry.path).join(" · ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="tt-surface p-5">
-        <SectionHeading eyebrow="Attention" title="Devices" />
-        {devices.length === 0 ? (
-          <Bare>Device is only shown when the website reports it.</Bare>
+        <SectionHeading
+          eyebrow="Search"
+          title="Content opportunities"
+          description="Repeated demand meeting weak coverage. These are observations for a person. Website never creates content."
+        />
+        {opportunities.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No query in this window shows repeated demand with weak coverage.
+          </p>
         ) : (
           <ul className="space-y-2">
-            {devices.map((entry) => (
-              <li key={entry.device} className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-foreground">{entry.device}</span>
-                <span className="font-mono text-[12px] text-muted-foreground">{entry.visits}</span>
+            {opportunities.slice(0, 10).map((row) => (
+              <li key={row.query}>
+                <p className="text-sm text-foreground">{row.query}</p>
+                <p className="text-[12px] text-muted-foreground">
+                  {row.reason}
+                  {row.refreshPath ? ` Start with ${row.refreshPath}.` : ""}
+                </p>
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  {row.impressions} impressions · {percent(row.ctr)} · p{decimal(row.averagePosition)}
+                </p>
               </li>
             ))}
           </ul>
@@ -234,17 +750,18 @@ function Attention({ events }: { events: WebsiteEvent[] }) {
   );
 }
 
-function Funnel({ events, submissions }: { events: WebsiteEvent[]; submissions: WebsiteSubmission[] }) {
-  const stages = intakeFunnel(events, submissions);
-  const modality = modalityUsage(events);
-  const dropOff = questionDropOff(events);
+/* ----------------------------------------------------------------- intake */
+
+function Intake({ input, loading }: { input: WebsiteAnalyticsInput; loading: boolean }) {
+  const stages = intakeFunnel(input.events, input.submissions);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
       <div className="tt-surface p-5">
         <SectionHeading
           eyebrow="Intake"
-          title="From attention to a qualified company"
+          title="Visit, conversation, submitted, Scout, qualified"
           description="A dash means Core has not been told, which is different from zero."
         />
         <ol className="grid gap-3 md:grid-cols-5">
@@ -262,236 +779,123 @@ function Funnel({ events, submissions }: { events: WebsiteEvent[]; submissions: 
         </ol>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="tt-surface p-5">
-          <SectionHeading eyebrow="Intake" title="Text, voice and resume" />
-          <div className="flex flex-wrap gap-2">
-            <MetaPill>Text answers · {formatKnown(modality.text)}</MetaPill>
-            <MetaPill>Voice answers · {formatKnown(modality.voice)}</MetaPill>
-            <MetaPill>Resumed · {formatKnown(modality.resumed)}</MetaPill>
-          </div>
-        </div>
+      {loading ? (
+        <div className="tt-surface p-5 text-sm text-muted-foreground">Loading…</div>
+      ) : input.submissions.length === 0 ? (
+        <EmptyState
+          title="No website conversations yet"
+          belongsHere="Completed adaptive intakes from TrustTai.com land here the moment they are received."
+          whyItMatters="Verbatim answers are preserved exactly, so Scout qualifies a real conversation rather than a summary of one."
+        />
+      ) : (
+        input.submissions.map((submission) => (
+          <Submission
+            key={submission.id}
+            submission={submission}
+            open={openId === submission.id}
+            onToggle={() => setOpenId(openId === submission.id ? null : submission.id)}
+          />
+        ))
+      )}
+    </div>
+  );
+}
 
-        <div className="tt-surface p-5">
-          <SectionHeading eyebrow="Intake" title="Where people stop" />
-          {dropOff.length === 0 ? (
-            <Bare>Per-question abandonment appears once question-level events arrive.</Bare>
-          ) : (
-            <ul className="space-y-2">
-              {dropOff.slice(0, 8).map((entry) => (
-                <li key={entry.questionId} className="text-sm">
-                  <span className="text-foreground">{entry.questionText}</span>
-                  <span className="ml-2 font-mono text-[12px] text-muted-foreground">
-                    {entry.abandoned} left · {entry.answered} answered
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+function Submission({
+  submission,
+  open,
+  onToggle,
+}: {
+  submission: WebsiteSubmission;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const utm = submission.attribution.utm ?? {};
+  return (
+    <article className="tt-surface p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
+            {WEBSITE_INTAKE_LABEL}
+          </p>
+          <h3 className="mt-1 text-[17px] text-foreground">
+            {submission.company.name || submission.person.name || "Inbound founder"}
+          </h3>
+          <p className="mt-1 max-w-reading text-sm text-muted-foreground">
+            {submission.structured.desiredFuture[0] ||
+              submission.structured.goals[0] ||
+              submission.verbatim[0]?.answerText ||
+              "No summary was supplied with this submission."}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <MetaPill>{new Date(submission.submittedAt).toLocaleDateString()}</MetaPill>
+          <MetaPill>{utm.source ? `Source · ${utm.source}` : "Source · Direct"}</MetaPill>
+          {submission.attribution.landingPath ? (
+            <MetaPill>Landed on {normalizePath(submission.attribution.landingPath)}</MetaPill>
+          ) : null}
         </div>
       </div>
-    </div>
-  );
-}
 
-function Submissions({
-  submissions,
-  loading,
-}: {
-  submissions: WebsiteSubmission[];
-  loading: boolean;
-}) {
-  const [openId, setOpenId] = useState<string | null>(null);
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px]">
+        {submission.scoutProspectId ? (
+          <>
+            <span className="text-muted-foreground">
+              Scout ·{" "}
+              {isQualified(submission.scoutStatus)
+                ? "Qualified"
+                : (submission.scoutStatus ?? "In Scout")}
+            </span>
+            <Link
+              to="/modules/scout/prospects/$prospectId"
+              params={{ prospectId: submission.scoutProspectId }}
+              search={{ section: "scout" as const, fit: "all" as const }}
+              className="text-royal hover:underline"
+            >
+              Open in Scout
+            </Link>
+          </>
+        ) : (
+          <span className="text-muted-foreground">
+            Held as an unlinked signal · {submission.linkReason}
+          </span>
+        )}
+        <button type="button" className="text-royal hover:underline" onClick={onToggle}>
+          {open ? "Hide the conversation" : "Read the conversation"}
+        </button>
+        <Link
+          to="/modules/website/submissions/$submissionId"
+          params={{ submissionId: submission.id }}
+          className="inline-flex items-center rounded-lg border border-royal/30 bg-royal/8 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-royal hover:bg-royal/12"
+        >
+          Open submission
+        </Link>
+      </div>
 
-  if (loading) return <div className="tt-surface p-5 text-sm text-muted-foreground">Loading…</div>;
-  if (submissions.length === 0) {
-    return (
-      <EmptyState
-        title="No website submissions yet"
-        belongsHere="Completed adaptive intakes from TrustTai.com land here the moment they are received."
-        whyItMatters="Verbatim answers are preserved exactly, so Scout qualifies a real conversation rather than a summary of one."
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {submissions.map((submission) => {
-        const open = openId === submission.id;
-        const utm = submission.attribution.utm ?? {};
-        return (
-          <article key={submission.id} className="tt-surface p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
-                  {WEBSITE_INTAKE_LABEL}
+      {open ? (
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
+          <ol className="space-y-3">
+            {submission.verbatim.map((answer, index) => (
+              <li key={`${answer.questionId}-${index}`}>
+                <p className="text-[13px] text-foreground">{answer.questionText}</p>
+                <p className="mt-0.5 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {answer.skipped ? "Skipped." : answer.answerText}
                 </p>
-                <h3 className="mt-1 text-[17px] text-foreground">
-                  {submission.company.name || submission.person.name || "Inbound founder"}
-                </h3>
-                <p className="mt-1 max-w-reading text-sm text-muted-foreground">
-                  {submission.structured.desiredFuture[0] ||
-                    submission.structured.goals[0] ||
-                    submission.verbatim[0]?.answerText ||
-                    "No summary was supplied with this submission."}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <MetaPill>{new Date(submission.submittedAt).toLocaleDateString()}</MetaPill>
-                <MetaPill>{utm.source ? `Source · ${utm.source}` : "Source · Direct"}</MetaPill>
-                {submission.signals.completeness !== null &&
-                submission.signals.completeness !== undefined ? (
-                  <MetaPill>
-                    Completeness · {Math.round((submission.signals.completeness ?? 0) * 100)}%
-                  </MetaPill>
-                ) : null}
-                {submission.signals.frame ? <MetaPill>Frame · {submission.signals.frame}</MetaPill> : null}
-              </div>
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px]">
-              {submission.scoutProspectId ? (
-                <>
-                  <span className="text-muted-foreground">
-                    Scout ·{" "}
-                    {isQualified(submission.scoutStatus)
-                      ? "Qualified"
-                      : (submission.scoutStatus ?? "In Scout")}
-                  </span>
-                  <Link
-                    to="/modules/scout/prospects/$prospectId"
-                    params={{ prospectId: submission.scoutProspectId }}
-                    search={{ section: "scout" as const, fit: "all" as const }}
-                    className="text-royal hover:underline"
-                  >
-                    Open in Scout
-                  </Link>
-                </>
-              ) : (
-                <span className="text-muted-foreground">
-                  Held as an unlinked signal · {submission.linkReason}
-                </span>
-              )}
-              <button
-                type="button"
-                className="text-royal hover:underline"
-                onClick={() => setOpenId(open ? null : submission.id)}
-              >
-                {open ? "Hide the conversation" : "Read the conversation"}
-              </button>
-              <Link
-                to="/modules/website/submissions/$submissionId"
-                params={{ submissionId: submission.id }}
-                className="inline-flex items-center rounded-lg border border-royal/30 bg-royal/8 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-royal hover:bg-royal/12"
-              >
-                Open submission
-              </Link>
-            </div>
-
-            {open ? (
-              <div className="mt-4 space-y-4 border-t border-border pt-4">
-                <Lists submission={submission} />
-                <div>
-                  <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
-                    Verbatim
-                  </p>
-                  <ol className="mt-2 space-y-3">
-                    {submission.verbatim.map((answer, index) => (
-                      <li key={`${answer.questionId}-${index}`}>
-                        <p className="text-[13px] text-foreground">{answer.questionText}</p>
-                        <p className="mt-0.5 whitespace-pre-wrap text-sm text-muted-foreground">
-                          {answer.skipped ? "Skipped." : answer.answerText}
-                        </p>
-                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                          {answer.modality}
-                        </p>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              </div>
-            ) : null}
-          </article>
-        );
-      })}
-    </div>
-  );
-}
-
-function Lists({ submission }: { submission: WebsiteSubmission }) {
-  const groups: { label: string; values: string[] }[] = [
-    { label: "Current state", values: submission.structured.currentState },
-    { label: "Desired future", values: submission.structured.desiredFuture },
-    { label: "Pains", values: submission.structured.pains },
-    { label: "Goals", values: submission.structured.goals },
-    { label: "Constraints", values: submission.structured.constraints },
-    { label: "Existing assets", values: submission.structured.existingAssets },
-    { label: "Ideas", values: submission.structured.ideas },
-    { label: "Open questions", values: submission.structured.openQuestions },
-  ].filter((group) => group.values.length > 0);
-
-  if (groups.length === 0) return null;
-  return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {groups.map((group) => (
-        <div key={group.label} className="rounded-xl border border-border bg-card px-4 py-3">
-          <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
-            {group.label}
-          </p>
-          <ul className="mt-1.5 space-y-1 text-sm text-foreground">
-            {group.values.map((value, index) => (
-              <li key={index}>{value}</li>
+              </li>
             ))}
-          </ul>
+          </ol>
         </div>
-      ))}
-    </div>
+      ) : null}
+    </article>
   );
 }
 
-function Sources({ events, submissions }: { events: WebsiteEvent[]; submissions: WebsiteSubmission[] }) {
-  const rows = sourceToQualified(events, submissions);
-  if (rows.length === 0) {
-    return (
-      <EmptyState
-        title="No attributed sources yet"
-        belongsHere="Sources appear once website events or attributed submissions have been received."
-        whyItMatters="Attribution is what turns attention into an honest read on which campaigns produce qualified companies."
-      />
-    );
-  }
+/* ---------------------------------------------------------------- format */
 
-  return (
-    <div className="tt-surface overflow-x-auto p-5">
-      <SectionHeading
-        eyebrow="Attribution"
-        title="Source → qualified"
-        description="Only measured columns are filled. A dash means Core has not been told."
-      />
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-[12px] text-muted-foreground">
-            <th className="py-2 pr-4 font-normal">Source</th>
-            <th className="py-2 pr-4 font-normal">Campaign</th>
-            <th className="py-2 pr-4 font-normal">Visits</th>
-            <th className="py-2 pr-4 font-normal">Starts</th>
-            <th className="py-2 pr-4 font-normal">Submissions</th>
-            <th className="py-2 font-normal">Qualified</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={`${row.source}-${row.campaign ?? ""}`} className="border-b border-border/60">
-              <td className="py-2 pr-4 text-foreground">{row.source}</td>
-              <td className="py-2 pr-4 text-muted-foreground">{row.campaign ?? "—"}</td>
-              <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.visits)}</td>
-              <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.starts)}</td>
-              <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.submissions)}</td>
-              <td className="py-2 font-mono text-[12px]">{formatKnown(row.qualified)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+function percent(value: number | null): string {
+  return value === null ? "—" : `${(value * 100).toFixed(1)}%`;
+}
+
+function decimal(value: number | null): string {
+  return value === null ? "—" : value.toFixed(1);
 }
