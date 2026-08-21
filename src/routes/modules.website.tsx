@@ -22,7 +22,9 @@ import {
   listPageMetrics,
   listSearchMetrics,
   listWebsitePages,
+  listProviderSync,
 } from "@/data/supabase/website-analytics-service";
+import { withFreshness } from "@/data/website/freshness";
 import {
   aiReferrals,
   buildPageRows,
@@ -132,6 +134,11 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => listSearchMetrics(organizationId, sinceDate),
   });
 
+  const providerSync = useQuery({
+    queryKey: ["website", "provider-sync", organizationId],
+    queryFn: () => listProviderSync(organizationId),
+  });
+
   const loading =
     submissions.isPending || events.isPending || pages.isPending || pageMetrics.isPending;
 
@@ -146,7 +153,10 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
     [pages.data, pageMetrics.data, searchMetrics.data, events.data, submissions.data],
   );
 
-  const readiness = useMemo(() => providerReadiness(input), [input]);
+  const readiness = useMemo(
+    () => withFreshness(providerReadiness(input), providerSync.data?.value ?? []),
+    [input, providerSync.data],
+  );
   const pageRows = useMemo(() => buildPageRows(input), [input]);
   const contentRows = useMemo(
     () =>

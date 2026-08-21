@@ -7,6 +7,7 @@
 
 import { SectionHeading } from "@/components/tt/primitives";
 import { lastSynced } from "@/data/website/format";
+import { stateLabel } from "@/data/website/freshness";
 import type { AiReferralSummary, ProviderReadiness } from "@/domain/website-analytics";
 import { cn } from "@/lib/utils";
 
@@ -37,10 +38,12 @@ export function ProviderReadinessPanel({
               <span
                 className={cn(
                   "font-mono text-[11px] uppercase tracking-[0.12em]",
-                  entry.connected ? "text-royal" : "text-muted-foreground",
+                  entry.state === "live" || (!entry.state && entry.connected)
+                    ? "text-royal"
+                    : "text-muted-foreground",
                 )}
               >
-                {entry.connected ? "Reporting" : "No data"}
+                {entry.state ? stateLabel(entry.state) : entry.connected ? "Reporting" : "No data"}
               </span>
             </div>
             <p className="mt-1 flex flex-wrap gap-x-3 font-mono text-[11px] text-muted-foreground">
@@ -53,6 +56,11 @@ export function ProviderReadinessPanel({
                 {entry.connected ? null : (
                   <p className="text-[12px] text-muted-foreground">{entry.note}</p>
                 )}
+                {entry.lastError ? (
+                  <p className="text-[12px] text-muted-foreground">
+                    Last run reported: {entry.lastError}
+                  </p>
+                ) : null}
               </>
             )}
           </li>

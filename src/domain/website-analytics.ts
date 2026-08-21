@@ -97,6 +97,27 @@ export const WEBSITE_PROVIDERS = [
 
 export type WebsiteProviderId = (typeof WEBSITE_PROVIDERS)[number];
 
+/**
+ * How a source is doing right now. "Not configured" and "quiet" are different
+ * truths, and both are different from a zero.
+ */
+export type ProviderState =
+  | "live"
+  | "stale"
+  | "quiet"
+  | "not_configured"
+  | "failed";
+
+/** What a scheduled sync recorded the last time it ran. */
+export interface ProviderSyncRecord {
+  provider: WebsiteProviderId;
+  configured: boolean;
+  lastRunAt: ISODateTime | null;
+  lastSuccessAt: ISODateTime | null;
+  lastError: string | null;
+  rowsWritten: number;
+}
+
 export interface ProviderReadiness {
   id: WebsiteProviderId;
   label: string;
@@ -112,7 +133,14 @@ export interface ProviderReadiness {
   lastSyncedAt: ISODateTime | null;
   /** What stays unknown while this provider is silent. */
   covers: string;
+  /** Freshness, once a sync record is available. */
+  state?: ProviderState;
+  /** The last failure this provider reported, in short plain words. */
+  lastError?: string | null;
+  /** When the scheduled job last attempted this provider. */
+  lastRunAt?: ISODateTime | null;
 }
+
 
 /**
  * Referrals we can attribute to a named assistant. Deliberately narrow: it is

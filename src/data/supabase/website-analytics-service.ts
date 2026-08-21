@@ -15,9 +15,15 @@ import {
   isPageType,
   type ContentIntent,
   type PageMetricsDay,
+  type ProviderSyncRecord,
   type SearchMetricsDay,
   type WebsitePage,
+  type WebsiteProviderId,
 } from "@/domain/website-analytics";
+import { WEBSITE_PROVIDERS } from "@/domain/website-analytics";
+
+const isProviderId = (value: unknown): value is WebsiteProviderId =>
+  (WEBSITE_PROVIDERS as readonly string[]).includes(String(value));
 
 import { missingRelation, type Provisioned } from "./settings-service";
 import type { Row } from "./schema";
@@ -146,6 +152,35 @@ export async function listSearchMetrics(
     device: text(row["device"]),
     country: text(row["country"]),
   }));
+
+  return { provisioned: true, value };
+}
+
+/** What the scheduled provider syncs last recorded. Optional by design. */
+export async function listProviderSync(
+  organizationId: string,
+): Promise<Provisioned<ProviderSyncRecord[]>> {
+  const result = await supabase
+    .from("website_provider_sync")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .limit(20);
+
+  if (result.error) {
+    if (missingRelation(result.error)) return { provisioned: false, value: [] };
+    throw new Error(result.error.message);
+  }
+
+  const value = ((result.data ?? []) as Row[])
+    .filter((row) => isProviderId(row["provider"]))
+    .map((row) => ({
+      provider: row["provider"] as WebsiteProviderId,
+      configured: row["configured"] === true,
+      lastRunAt: text(row["last_run_at"]),
+      lastSuccessAt: text(row["last_success_at"]),
+      lastError: text(row["last_error"]),
+      rowsWritten: num(row["rows_written"]),
+    }));
 
   return { provisioned: true, value };
 }

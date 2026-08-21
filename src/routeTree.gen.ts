@@ -64,6 +64,7 @@ import { Route as ApiPublicStewardConversationRouteImport } from './routes/api/p
 import { Route as ApiPublicStewardInterpretRouteImport } from './routes/api/public/steward.interpret'
 import { Route as ApiPublicWebsiteEventsRouteImport } from './routes/api/public/website.events'
 import { Route as ApiPublicWebsiteIntakeRouteImport } from './routes/api/public/website.intake'
+import { Route as ApiPublicWebsiteSyncRouteImport } from './routes/api/public/website.sync'
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
 import { Route as ModulesStewardMeetingsConversationIdRouteImport } from './routes/modules.steward.meetings.$conversationId'
@@ -359,6 +360,11 @@ const ApiPublicWebsiteIntakeRoute = ApiPublicWebsiteIntakeRouteImport.update({
   path: '/api/public/website/intake',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWebsiteSyncRoute = ApiPublicWebsiteSyncRouteImport.update({
+  id: '/api/public/website/sync',
+  path: '/api/public/website/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ModulesScoutProspectsProspectIdRoute =
   ModulesScoutProspectsProspectIdRouteImport.update({
     id: '/prospects/$prospectId',
@@ -475,6 +481,7 @@ export interface FileRoutesByFullPath {
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
   '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
+  '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
@@ -535,6 +542,7 @@ export interface FileRoutesByTo {
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
   '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
+  '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
@@ -603,6 +611,7 @@ export interface FileRoutesById {
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
   '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
+  '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website_/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
@@ -672,6 +681,7 @@ export interface FileRouteTypes {
     | '/api/public/steward/interpret'
     | '/api/public/website/events'
     | '/api/public/website/intake'
+    | '/api/public/website/sync'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website/submissions/$submissionId'
@@ -732,6 +742,7 @@ export interface FileRouteTypes {
     | '/api/public/steward/interpret'
     | '/api/public/website/events'
     | '/api/public/website/intake'
+    | '/api/public/website/sync'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website/submissions/$submissionId'
@@ -799,6 +810,7 @@ export interface FileRouteTypes {
     | '/api/public/steward/interpret'
     | '/api/public/website/events'
     | '/api/public/website/intake'
+    | '/api/public/website/sync'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website_/submissions/$submissionId'
@@ -841,6 +853,7 @@ export interface RootRouteChildren {
   ApiPublicStewardInterpretRoute: typeof ApiPublicStewardInterpretRoute
   ApiPublicWebsiteEventsRoute: typeof ApiPublicWebsiteEventsRoute
   ApiPublicWebsiteIntakeRoute: typeof ApiPublicWebsiteIntakeRoute
+  ApiPublicWebsiteSyncRoute: typeof ApiPublicWebsiteSyncRoute
   ModulesWebsiteSubmissionsSubmissionIdRoute: typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   ApiInternalExecutionScoutIcpRoute: typeof ApiInternalExecutionScoutIcpRoute
   ApiInternalExecutionScoutPipelineRoute: typeof ApiInternalExecutionScoutPipelineRoute
@@ -1237,6 +1250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebsiteIntakeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/website/sync': {
+      id: '/api/public/website/sync'
+      path: '/api/public/website/sync'
+      fullPath: '/api/public/website/sync'
+      preLoaderRoute: typeof ApiPublicWebsiteSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/modules/scout/prospects/$prospectId': {
       id: '/modules/scout/prospects/$prospectId'
       path: '/prospects/$prospectId'
@@ -1479,6 +1499,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicStewardInterpretRoute: ApiPublicStewardInterpretRoute,
   ApiPublicWebsiteEventsRoute: ApiPublicWebsiteEventsRoute,
   ApiPublicWebsiteIntakeRoute: ApiPublicWebsiteIntakeRoute,
+  ApiPublicWebsiteSyncRoute: ApiPublicWebsiteSyncRoute,
   ModulesWebsiteSubmissionsSubmissionIdRoute:
     ModulesWebsiteSubmissionsSubmissionIdRoute,
   ApiInternalExecutionScoutIcpRoute: ApiInternalExecutionScoutIcpRoute,
