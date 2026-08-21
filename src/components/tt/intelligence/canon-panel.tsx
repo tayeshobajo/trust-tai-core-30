@@ -15,6 +15,8 @@ import { MetaPill, TTCard } from "@/components/tt/primitives";
 import { CaseDecision, type CaseDecisionDraft } from "@/components/tt/intelligence/case-decision";
 import { roomLabel } from "@/data/conductor/page-projection";
 import type { PriorExperience } from "@/data/intelligence/canon";
+import { CASE_ANALOGY_LABEL } from "@/data/intelligence/canon/experience";
+import { narrateRanking, rankHypotheses } from "@/data/intelligence/canon/rank";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { CANON_DOMAIN_LABEL, type PatternMatch } from "@/domain/intelligence-canon";
 
@@ -41,6 +43,18 @@ export function CanonPanel({
 }: CanonPanelProps) {
   if (matches.length === 0) return null;
 
+  /* Which reading the current evidence actually favours, and why. The order
+   * comes from today's evidence first; prior experience can only nudge it. */
+  const ranked = rankHypotheses({
+    matches,
+    ...(experience ? { experience } : {}),
+    limit: matches.length,
+  });
+  const order = new Map(ranked.map((row, index) => [row.patternId, index]));
+  const sorted = [...matches].sort(
+    (a, b) => (order.get(a.patternId) ?? 99) - (order.get(b.patternId) ?? 99),
+  );
+
   return (
     <section className="space-y-3">
       <div>
@@ -51,8 +65,13 @@ export function CanonPanel({
         </p>
       </div>
 
+      {ranked.length > 1 ? (
+        <p className="max-w-reading text-[13px] leading-relaxed text-foreground">
+          {narrateRanking(ranked)}
+        </p>
+      ) : null}
 
-      {matches.map((match) => (
+      {sorted.map((match) => (
         <TTCard key={match.patternId} className="p-5">
           <div className="flex flex-wrap items-center gap-1.5">
             <MetaPill>{CANON_DOMAIN_LABEL[match.domain]}</MetaPill>
@@ -138,11 +157,11 @@ export function CanonPanel({
                 {experience[match.patternId]!.note ??
                   "There is a record of this shape here, but not enough of one to guide today."}
               </p>
-              {experience[match.patternId]!.cases.length > 0 ? (
+              {experience[match.patternId]!.priorCases.length > 0 ? (
                 <ul className="mt-1 space-y-1 text-[13px] text-muted-foreground">
-                  {experience[match.patternId]!.cases.map((entry) => (
+                  {experience[match.patternId]!.priorCases.map(({ entry, analogy }) => (
                     <li key={entry.id}>
-                      {entry.humanDecision}
+                      {CASE_ANALOGY_LABEL[analogy]}: {entry.humanDecision}
                       {entry.correction ? ` Later corrected: ${entry.correction}` : ""}
                     </li>
                   ))}

@@ -65,6 +65,8 @@ export interface Reconciliation {
   hoursToOutcome: number;
   /** When the state behind the result was read. */
   observedAt: string;
+  /** How the result was reached. Owning room state is named separately. */
+  source?: "current_state" | "room_state";
 }
 
 /**
@@ -82,6 +84,29 @@ export interface StateCondition {
 }
 
 /**
+ * An explicit state the owning room already recorded about one record.
+ *
+ * This is not interpretation. Each signal names a state that exists in the
+ * room's own schema, such as a project closed, a company passed, a decision
+ * declined, a promise released. Owning room truth settles a case before any
+ * elapsed time rule is allowed to speak, and an ambiguous state settles
+ * nothing at all.
+ */
+export type TerminalDisposition = "resolved" | "abandoned" | "ambiguous";
+
+export interface TerminalSignal {
+  entity: { type: string; id: string };
+  /** Observation kinds this recorded state can honestly settle. */
+  kinds: string[];
+  disposition: TerminalDisposition;
+  statement: string;
+  sourceRefs: string[];
+  /** When the room last changed the record, when the room stores it. */
+  changedAt?: string;
+  observedAt: string;
+}
+
+/**
  * The bounded business state a reconciliation may reason over.
  *
  * `readableKinds` is the honest part: a kind absent from it was not read
@@ -93,9 +118,12 @@ export interface ReconciliationSnapshot {
   now: string;
   readableKinds: string[];
   conditions: StateCondition[];
+  /** Explicit terminal or resolution states the owning rooms recorded. */
+  terminal?: TerminalSignal[];
   /** Rooms that could not be read on this pass. */
   unreadable: string[];
 }
+
 
 /** Wrap already derived observations as a snapshot, so one evaluator serves both paths. */
 export function snapshotFromObservations(input: {
@@ -120,12 +148,37 @@ export function snapshotFromObservations(input: {
   };
 }
 
+/** Terminal signals that land on a record this case actually named. */
+function terminalForCase(
+  entry: IntelligenceCase,
+  snapshot: ReconciliationSnapshot,
+  kinds: string[],
+  decidedAt: number,
+): TerminalSignal[] {
+  if (entry.entities.length === 0) return [];
+  return (snapshot.terminal ?? []).filter((signal) => {
+    if (!signal.kinds.some((kind) => kinds.includes(kind))) return false;
+    if (signal.changedAt) {
+      const at = Date.parse(signal.changedAt);
+      if (!Number.isNaN(at) && at < decidedAt) return false;
+    }
+    return entry.entities.some(
+      (entity) => entity.type === signal.entity.type && entity.id === signal.entity.id,
+    );
+  });
+}
+
 /**
  * The single interpretation of a deterministic check.
  *
- * Success only when every checkable condition the reading rested on was read
- * confidently and is gone. Failure only when the same condition is still there
- * long after the decision. Everything else is unknown, which writes nothing.
+ * The owning room speaks first: an explicit recorded state such as closed,
+ * passed, declined or released settles the case before any elapsed time rule
+ * is consulted, and an ambiguous state settles nothing.
+ *
+ * After that, success only when every checkable condition the reading rested
+ * on was read confidently and is gone. Failure only when the same condition is
+ * still there long after the decision. Everything else is unknown, which
+ * writes nothing.
  */
 export function evaluateOpenCase(input: {
   entry: IntelligenceCase;
@@ -135,15 +188,37 @@ export function evaluateOpenCase(input: {
   const kinds = checkableKinds(entry.patternId);
   if (kinds.length === 0) return null;
 
-  /* A kind we could not read is not an absence. It is unknown. */
-  if (!kinds.every((kind) => snapshot.readableKinds.includes(kind))) return null;
-
   const decidedAt = Date.parse(entry.decidedAt);
   const nowMs = Date.parse(snapshot.now);
   if (Number.isNaN(decidedAt) || Number.isNaN(nowMs) || nowMs <= decidedAt) return null;
   const hours = Math.round((nowMs - decidedAt) / HOUR);
 
+  /* A person already wrote what happened. Nothing inferred may overwrite it. */
+  if (!entry.outcome) {
+    const terminal = terminalForCase(entry, snapshot, kinds, decidedAt);
+    if (terminal.some((signal) => signal.disposition === "ambiguous")) return null;
+    const decisive =
+      terminal.find((signal) => signal.disposition === "resolved") ??
+      terminal.find((signal) => signal.disposition === "abandoned");
+    if (decisive) {
+      return {
+        caseId: entry.id,
+        patternId: entry.patternId,
+        result: decisive.disposition === "resolved" ? "success" : "failure",
+        because: decisive.statement,
+        evidenceRefs: decisive.sourceRefs,
+        hoursToOutcome: hours,
+        observedAt: snapshot.now,
+        source: "room_state",
+      };
+    }
+  }
+
+  /* A kind we could not read is not an absence. It is unknown. */
+  if (!kinds.every((kind) => snapshot.readableKinds.includes(kind))) return null;
+
   const still = snapshot.conditions.filter((condition) => kinds.includes(condition.kind));
+
 
   if (still.length === 0) {
     return {
@@ -222,7 +297,7 @@ export function outcomeFromReconciliation(input: {
     result: input.reconciliation.result,
     resultBecause: input.reconciliation.because,
     hoursToOutcome: input.reconciliation.hoursToOutcome,
-    resultSource: "current_state",
+    resultSource: input.reconciliation.source ?? "current_state",
     sourceRefs: input.reconciliation.evidenceRefs,
     observedAt: input.reconciliation.observedAt,
     ...(input.entry.correction ? { humanCorrection: input.entry.correction } : {}),

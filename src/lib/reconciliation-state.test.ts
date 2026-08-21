@@ -112,11 +112,113 @@ describe("loadReconciliationSnapshot", () => {
     expect(condition?.sourceRefs).toEqual(["steward-commitment-c-1"]);
   });
 
-  it("never scores fit, so strong fit stays unknown", async () => {
-    const snapshot = await loadReconciliationSnapshot(client(EMPTY), "org-1", NOW);
+  it("reads fit only from the evaluation Scout already recorded", async () => {
+    const snapshot = await loadReconciliationSnapshot(
+      client({
+        ...EMPTY,
+        prospects: {
+          rows: [
+            {
+              id: "p-1",
+              organization_id: "org-1",
+              company_name: "Northwind",
+              status: "discovered",
+              metadata: { scout_fit: { score: 84, scoreable: true } },
+            },
+          ],
+        },
+      }),
+      "org-1",
+      NOW,
+    );
+    expect(snapshot.readableKinds).toContain("strong_fit_unreviewed");
+    const condition = snapshot.conditions.find((row) => row.kind === "strong_fit_unreviewed");
+    expect(condition?.sourceRefs).toEqual(["scout:fit:p-1"]);
+  });
+
+  it("never scores fit itself, so an unevaluated company stays unknown", async () => {
+    const snapshot = await loadReconciliationSnapshot(
+      client({
+        ...EMPTY,
+        prospects: {
+          rows: [
+            { id: "p-2", organization_id: "org-1", company_name: "Acme", status: "discovered" },
+          ],
+        },
+      }),
+      "org-1",
+      NOW,
+    );
     expect(snapshot.readableKinds).not.toContain("strong_fit_unreviewed");
+    expect(snapshot.unreadable).toContain("scout:fit");
+  });
+
+  it("lets the owning room settle a case it has explicitly closed", () => {
+    const entry = {
+      ...openCase("delivery.hidden_blocker", "2026-02-25T00:00:00.000Z"),
+      entities: [{ type: "project" as const, id: "pr-1" }],
+    };
+    const result = evaluateOpenCase({
+      entry,
+      snapshot: {
+        organizationId: "org-1",
+        now: NOW.toISOString(),
+        readableKinds: [],
+        conditions: [],
+        terminal: [
+          {
+            entity: { type: "project", id: "pr-1" },
+            kinds: ["project_delayed"],
+            disposition: "resolved",
+            statement: "Projects recorded Rebuild as delivered.",
+            sourceRefs: ["projects:state:pr-1"],
+            changedAt: "2026-02-27T00:00:00.000Z",
+            observedAt: NOW.toISOString(),
+          },
+        ],
+        unreadable: ["projects"],
+      },
+    });
+    expect(result?.result).toBe("success");
+    expect(result?.source).toBe("room_state");
+  });
+
+  it("treats an ambiguous room state as no answer at all", () => {
+    const entry = {
+      ...openCase("commitments.promises_slipping", "2026-01-01T00:00:00.000Z"),
+      entities: [{ type: "relationship" as const, id: "rel-1" }],
+    };
+    const result = evaluateOpenCase({
+      entry,
+      snapshot: {
+        organizationId: "org-1",
+        now: NOW.toISOString(),
+        readableKinds: ["commitment_overdue"],
+        conditions: [
+          {
+            kind: "commitment_overdue",
+            statement: "A promise is still overdue.",
+            sourceRefs: ["steward-commitment-c-1"],
+            observedAt: NOW.toISOString(),
+          },
+        ],
+        terminal: [
+          {
+            entity: { type: "relationship", id: "rel-1" },
+            kinds: ["commitment_overdue"],
+            disposition: "ambiguous",
+            statement: "It was moved to dormant, which does not say what happened.",
+            sourceRefs: ["comms:relationship:rel-1"],
+            observedAt: NOW.toISOString(),
+          },
+        ],
+        unreadable: [],
+      },
+    });
+    expect(result).toBeNull();
   });
 });
+
 
 describe("evaluateOpenCase", () => {
   const cleared = {

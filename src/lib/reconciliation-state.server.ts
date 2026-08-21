@@ -24,6 +24,7 @@ import { dueState } from "@/domain/comms";
 import type {
   ReconciliationSnapshot,
   StateCondition,
+  TerminalSignal,
 } from "@/data/intelligence/canon/outcome-checks";
 
 type Client = { from: (table: string) => any };
@@ -69,6 +70,7 @@ export async function loadReconciliationSnapshot(
 ): Promise<ReconciliationSnapshot> {
   const nowIso = now.toISOString();
   const conditions: StateCondition[] = [];
+  const terminal: TerminalSignal[] = [];
   const readableKinds: string[] = [];
   const unreadable: string[] = [];
 
@@ -232,8 +234,193 @@ export async function loadReconciliationSnapshot(
     unreadable.push("scout");
   }
 
-  /* `strong_fit_unreviewed` needs scoring the board does on the client, so it
-   * is deliberately absent from readableKinds and stays unknown here. */
+  /* ------------------------------------------------------------ ICP fit */
 
-  return { organizationId, now: nowIso, readableKinds, conditions, unreadable };
+  /* Fit is only readable here when Scout already persisted its own canonical
+   * evaluation. Nothing is recomputed, no page is fetched, no model is asked.
+   * One waiting company without a stored evaluation makes the whole kind
+   * unreadable, because "no strong fit is waiting" would then be a guess. */
+  if (prospectRows.ok) {
+    const waiting = prospectRows.rows.filter((row) => {
+      const status = String(row["status"] ?? "");
+      return status === "discovered" || status === "reviewing";
+    });
+    const evaluated = waiting.map((row) => ({ row, fit: canonicalFit(row) }));
+    if (evaluated.every((entry) => entry.fit !== null)) {
+      readableKinds.push("strong_fit_unreviewed");
+      const strong = evaluated.filter(
+        (entry) => entry.fit!.scoreable && entry.fit!.score >= STRONG_FIT_SCORE,
+      );
+      if (strong.length > 0) {
+        conditions.push({
+          kind: "strong_fit_unreviewed",
+          statement: `${strong.length} compan${strong.length === 1 ? "y reads" : "ies read"} as a strong ICP fit and ${strong.length === 1 ? "has" : "have"} not been reviewed.`,
+          sourceRefs: strong.map((entry) => `scout:fit:${String(entry.row["id"])}`),
+          observedAt: nowIso,
+        });
+      }
+    } else {
+      unreadable.push("scout:fit");
+    }
+  }
+
+  /* --------------------------------------- explicit owning room decisions */
+
+  if (projectRows.ok) {
+    for (const project of projects) {
+      const state = project.state;
+      const kinds = ["project_delayed", "project_blocked", "no_active_project"];
+      if (state === "delivered") {
+        terminal.push({
+          entity: { type: "project", id: project.id },
+          kinds,
+          disposition: "resolved",
+          statement: `Projects recorded ${project.name} as delivered.`,
+          sourceRefs: [`projects:state:${project.id}`],
+          ...(project.updatedAt ? { changedAt: project.updatedAt } : {}),
+          observedAt: nowIso,
+        });
+      } else if (state === "closed") {
+        terminal.push({
+          entity: { type: "project", id: project.id },
+          kinds,
+          disposition: "abandoned",
+          statement: `Projects closed ${project.name} without it being delivered.`,
+          sourceRefs: [`projects:state:${project.id}`],
+          ...(project.updatedAt ? { changedAt: project.updatedAt } : {}),
+          observedAt: nowIso,
+        });
+      }
+    }
+  }
+
+  if (prospectRows.ok) {
+    for (const row of prospectRows.rows) {
+      const id = String(row["id"]);
+      const status = String(row["status"] ?? "");
+      const name = String(row["company_name"] ?? "This company");
+      const kinds = ["strong_fit_unreviewed", "pipeline_unrouted"];
+      const changed = typeof row["updated_at"] === "string" ? String(row["updated_at"]) : undefined;
+      if (status === "passed" || status === "converted") {
+        terminal.push({
+          entity: { type: "prospect", id },
+          kinds,
+          disposition: "resolved",
+          statement:
+            status === "passed"
+              ? `Scout recorded a decision on ${name}: it was passed on.`
+              : `Scout recorded ${name} as converted.`,
+          sourceRefs: [`scout:status:${id}`],
+          ...(changed ? { changedAt: changed } : {}),
+          observedAt: nowIso,
+        });
+      } else if (status === "archived") {
+        terminal.push({
+          entity: { type: "prospect", id },
+          kinds,
+          disposition: "ambiguous",
+          statement: `${name} was archived in Scout without a recorded decision.`,
+          sourceRefs: [`scout:status:${id}`],
+          ...(changed ? { changedAt: changed } : {}),
+          observedAt: nowIso,
+        });
+      }
+    }
+  }
+
+  if (relationshipRows.ok) {
+    for (const relationship of relationships) {
+      const label = relationship.fullName || "This relationship";
+      if (relationship.stage === "archived") {
+        terminal.push({
+          entity: { type: "relationship", id: relationship.id },
+          kinds: ["reply_debt"],
+          disposition: "abandoned",
+          statement: `Comms archived ${label} rather than answering it.`,
+          sourceRefs: [`comms:relationship:${relationship.id}`],
+          observedAt: nowIso,
+        });
+      } else if (relationship.stage === "dormant") {
+        terminal.push({
+          entity: { type: "relationship", id: relationship.id },
+          kinds: ["reply_debt"],
+          disposition: "ambiguous",
+          statement: `${label} was moved to dormant, which does not say whether the reply was owed.`,
+          sourceRefs: [`comms:relationship:${relationship.id}`],
+          observedAt: nowIso,
+        });
+      }
+    }
+  }
+
+  if (decisionRows.ok) {
+    for (const decision of decisions) {
+      const kinds = ["open_decisions", "roadmap_direction_undecided"];
+      if (decision.status === "approved" || decision.status === "declined") {
+        terminal.push({
+          entity: { type: "decision", id: decision.id },
+          kinds,
+          disposition: "resolved",
+          statement: `Roadmap recorded an answer on this decision: ${decision.status}.`,
+          sourceRefs: [`roadmap:decision:${decision.id}`],
+          observedAt: nowIso,
+        });
+      } else if (decision.status === "deferred") {
+        terminal.push({
+          entity: { type: "decision", id: decision.id },
+          kinds,
+          disposition: "ambiguous",
+          statement: "This roadmap decision was deferred, which is not an answer yet.",
+          sourceRefs: [`roadmap:decision:${decision.id}`],
+          observedAt: nowIso,
+        });
+      }
+    }
+  }
+
+  if (commitmentRows.ok) {
+    for (const row of commitmentRows.rows) {
+      const id = String(row["id"]);
+      const status = String(row["status"] ?? "");
+      if (status === "kept") {
+        terminal.push({
+          entity: { type: "task", id },
+          kinds: ["commitment_overdue"],
+          disposition: "resolved",
+          statement: "Steward recorded this promise as kept.",
+          sourceRefs: [`steward-commitment-${id}`],
+          observedAt: nowIso,
+        });
+      } else if (status === "released") {
+        terminal.push({
+          entity: { type: "task", id },
+          kinds: ["commitment_overdue"],
+          disposition: "abandoned",
+          statement: "Steward recorded this promise as released rather than kept.",
+          sourceRefs: [`steward-commitment-${id}`],
+          observedAt: nowIso,
+        });
+      }
+    }
+  }
+
+  return { organizationId, now: nowIso, readableKinds, conditions, terminal, unreadable };
+}
+
+/** The strong fit line the Scout board already uses. */
+export const STRONG_FIT_SCORE = 70;
+
+/**
+ * Scout's own persisted evaluation for one company, or nothing.
+ *
+ * Only the canonical evaluation counts. A bare `fit_score` with no recorded
+ * evaluation is not treated as evidence, because it cannot say whether the
+ * company was scoreable at all.
+ */
+function canonicalFit(row: Row): { score: number; scoreable: boolean } | null {
+  const metadata = (row["metadata"] ?? {}) as Record<string, unknown>;
+  const fit = metadata["scout_fit"] as Record<string, unknown> | undefined;
+  if (!fit || typeof fit !== "object") return null;
+  if (typeof fit["score"] !== "number" || typeof fit["scoreable"] !== "boolean") return null;
+  return { score: fit["score"] as number, scoreable: fit["scoreable"] as boolean };
 }

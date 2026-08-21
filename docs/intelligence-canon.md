@@ -146,3 +146,32 @@ current state, alongside `source_refs` and `observed_at`. Apply
 `docs/intelligence-outcome-provenance.sql` to add those columns. The Case
 Ledger shows the source quietly next to each result, and the weekly health read
 counts what was checked, what resolved automatically and what stayed unknown.
+
+## Depth without wider authority
+
+Three things deepened, none of them autonomous.
+
+**Fit read server side.** The scheduled snapshot now reads ICP fit only from the
+evaluation Scout already recorded on a prospect (`metadata.scout_fit`). Nothing
+is rescored, no page is fetched, no model is asked. If any waiting company has
+no recorded evaluation, `strong_fit_unreviewed` is left out of `readableKinds`
+and Scout fit is listed in `unreadable`, so dependent cases stay unknown.
+
+**Rooms may end a case themselves.** `ReconciliationSnapshot.terminal` carries
+explicit dispositions the owning rooms recorded: a project delivered or closed,
+a prospect passed or converted, a relationship archived, a roadmap decision
+answered or deferred, a promise kept or released. The evaluator consults these
+before any elapsed time rule, so failure no longer rests on time plus
+persistence alone. `resolved` reads as success, `abandoned` as failure, and
+`ambiguous` settles nothing. A case a person already wrote an outcome on is
+never overwritten. Outcomes written this way carry `result_source =
+room_state`.
+
+**Ranked readings.** `rank.ts` orders competing patterns by what is visible
+today: evidence coverage, breadth, recency, missing evidence and contradiction.
+Prior experience may move a reading by at most `HISTORY_BAND`, so history can
+never overturn a clear difference in current evidence, and a human correction
+replaces outcome derived support with a caution. Every ranked reading publishes
+the feature values it was ordered by. Prior cases are labelled by how close the
+resemblance actually is, so a case matched on entirely different facts is not
+read as strong precedent.
