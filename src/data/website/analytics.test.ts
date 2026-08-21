@@ -231,7 +231,8 @@ describe("content performance", () => {
   it("stays quiet when the page is too young for a decay claim", () => {
     const young = [
       page({
-        ...pages[0],
+        ...pages[0]!,
+        path: pages[0]!.path,
         publishedAt: "2026-07-01T00:00:00Z",
         lastUpdatedAt: "2026-07-01T00:00:00Z",
       }),
