@@ -49,6 +49,7 @@ import { Route as ModulesStewardAgentsRouteImport } from './routes/modules.stewa
 import { Route as ModulesStewardMeetingsRouteImport } from './routes/modules.steward.meetings'
 import { Route as ModulesStewardMemoryRouteImport } from './routes/modules.steward.memory'
 import { Route as ModulesStewardTasksRouteImport } from './routes/modules.steward.tasks'
+import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/public/intelligence.reason'
 import { Route as ApiPublicIntelligenceReconcileRouteImport } from './routes/api/public/intelligence.reconcile'
@@ -276,6 +277,11 @@ const ModulesStewardTasksRoute = ModulesStewardTasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => ModulesStewardRoute,
 } as any)
+const ModulesWebsitePageRoute = ModulesWebsitePageRouteImport.update({
+  id: '/modules/website_/page',
+  path: '/modules/website/page',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCommsDraftRoute = ApiPublicCommsDraftRouteImport.update({
   id: '/api/public/comms/draft',
   path: '/api/public/comms/draft',
@@ -449,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/website/page': typeof ModulesWebsitePageRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -508,6 +515,7 @@ export interface FileRoutesByTo {
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/website/page': typeof ModulesWebsitePageRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
   '/modules/projects': typeof ModulesProjectsIndexRoute
   '/modules/roadmap': typeof ModulesRoadmapIndexRoute
@@ -575,6 +583,7 @@ export interface FileRoutesById {
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/website_/page': typeof ModulesWebsitePageRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -643,6 +652,7 @@ export interface FileRouteTypes {
     | '/modules/steward/meetings'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
+    | '/modules/website/page'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
@@ -702,6 +712,7 @@ export interface FileRouteTypes {
     | '/modules/steward/agents'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
+    | '/modules/website/page'
     | '/modules/comms'
     | '/modules/projects'
     | '/modules/roadmap'
@@ -768,6 +779,7 @@ export interface FileRouteTypes {
     | '/modules/steward/meetings'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
+    | '/modules/website_/page'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
@@ -814,6 +826,7 @@ export interface RootRouteChildren {
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
   ModulesStewardRoute: typeof ModulesStewardRouteWithChildren
   ModulesWebsiteRoute: typeof ModulesWebsiteRoute
+  ModulesWebsitePageRoute: typeof ModulesWebsitePageRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicIntelligenceReasonRoute: typeof ApiPublicIntelligenceReasonRoute
   ApiPublicIntelligenceReconcileRoute: typeof ApiPublicIntelligenceReconcileRoute
@@ -1118,6 +1131,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/modules/steward/tasks'
       preLoaderRoute: typeof ModulesStewardTasksRouteImport
       parentRoute: typeof ModulesStewardRoute
+    }
+    '/modules/website_/page': {
+      id: '/modules/website_/page'
+      path: '/modules/website/page'
+      fullPath: '/modules/website/page'
+      preLoaderRoute: typeof ModulesWebsitePageRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/comms/draft': {
       id: '/api/public/comms/draft'
@@ -1444,6 +1464,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
   ModulesStewardRoute: ModulesStewardRouteWithChildren,
   ModulesWebsiteRoute: ModulesWebsiteRoute,
+  ModulesWebsitePageRoute: ModulesWebsitePageRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicIntelligenceReasonRoute: ApiPublicIntelligenceReasonRoute,
   ApiPublicIntelligenceReconcileRoute: ApiPublicIntelligenceReconcileRoute,
