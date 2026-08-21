@@ -40,14 +40,34 @@ const AI_HOSTS = new Set<string>(AI_REFERRER_HOSTS);
 
 /* ------------------------------------------------------------- readiness */
 
+const latest = (values: (string | null | undefined)[]): string | null => {
+  let best: string | null = null;
+  for (const value of values) {
+    if (!value) continue;
+    if (!best || value > best) best = value;
+  }
+  return best;
+};
+
+/** A date only row reports at day granularity. Keep it honest as a day. */
+const dayToIso = (day: string | null): string | null =>
+  day ? new Date(`${day.slice(0, 10)}T00:00:00Z`).toISOString() : null;
+
 /** Readiness is observed, never assumed. No rows means not connected. */
 export function providerReadiness(input: WebsiteAnalyticsInput): ProviderReadiness[] {
+  const gaOn = input.pageMetrics.length > 0;
+  const searchOn = input.searchMetrics.length > 0;
+  const eventsOn = input.events.length > 0;
+  const healthKnown = input.pages.filter((page) => page.indexable !== null);
+
   return [
     {
       id: "page_inventory",
       label: "Page inventory",
       connected: input.pages.length > 0,
       rows: input.pages.length,
+      lastSyncedAt: latest(input.pages.map((page) => page.lastUpdatedAt ?? page.publishedAt)),
+      covers: "The list of public pages, their type and their intent.",
       note:
         input.pages.length > 0
           ? "Core holds the canonical list of public pages."
@@ -56,42 +76,48 @@ export function providerReadiness(input: WebsiteAnalyticsInput): ProviderReadine
     {
       id: "first_party_events",
       label: "First party website events",
-      connected: input.events.length > 0,
+      connected: eventsOn,
       rows: input.events.length,
-      note:
-        input.events.length > 0
-          ? "TrustTai.com is sending signed events."
-          : "No events received in this window.",
+      lastSyncedAt: latest(input.events.map((event) => event.occurredAt)),
+      covers: "Visits by source, intake starts, reads and the funnel between them.",
+      note: eventsOn
+        ? "TrustTai.com is sending signed events."
+        : "No events received in this window, so source mix and intake starts stay unknown.",
     },
     {
       id: "ga4",
       label: "GA4 attention and behaviour",
-      connected: input.pageMetrics.length > 0,
+      connected: gaOn,
       rows: input.pageMetrics.length,
-      note:
-        input.pageMetrics.length > 0
-          ? "Daily page metrics are flowing."
-          : "Not connected. Visitors, engagement and landing sessions stay unknown rather than zero.",
+      lastSyncedAt: dayToIso(latest(input.pageMetrics.map((row) => row.date))),
+      covers: "Views, visitors, landing sessions, engagement rate and time on page.",
+      note: gaOn
+        ? "Daily page metrics are flowing."
+        : "Not connected. Visitors, engagement and landing sessions stay unknown rather than zero.",
     },
     {
       id: "search_console",
       label: "Search Console discovery",
-      connected: input.searchMetrics.length > 0,
+      connected: searchOn,
       rows: input.searchMetrics.length,
-      note:
-        input.searchMetrics.length > 0
-          ? "Query and page level search data is flowing."
-          : "Not connected. Clicks, impressions, CTR and position stay unknown.",
+      lastSyncedAt: dayToIso(latest(input.searchMetrics.map((row) => row.date))),
+      covers: "Queries, clicks, impressions, click through rate and average position.",
+      note: searchOn
+        ? "Query and page level search data is flowing."
+        : "Not connected. Clicks, impressions, CTR and position stay unknown.",
     },
     {
       id: "site_health",
       label: "Site health",
       connected: input.pages.some((page) => page.indexable !== null || page.inSitemap !== null),
-      rows: input.pages.filter((page) => page.indexable !== null).length,
+      rows: healthKnown.length,
+      lastSyncedAt: latest(healthKnown.map((page) => page.lastUpdatedAt)),
+      covers: "Indexing, sitemap presence and canonical addresses.",
       note: "Indexing and sitemap state is read from the page inventory when the site reports it.",
     },
   ];
 }
+
 
 /* ------------------------------------------------------------ intake joins */
 
