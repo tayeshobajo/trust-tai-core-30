@@ -343,7 +343,7 @@ function Overview({
           <SectionHeading
             eyebrow="Sources"
             title="Where attention comes from"
-            description="Assistant referrers are grouped under AI referrals. That is a grouping of referrers we can see, not a measure of how often a model used the site."
+            description="Referrers we can read, grouped. Arrivals with no referrer are counted as direct."
           />
           {sources.length === 0 ? (
             <p className="text-sm text-muted-foreground">No source data has been received yet.</p>
@@ -361,26 +361,11 @@ function Overview({
           )}
         </div>
 
-        <div className="tt-surface p-5">
-          <SectionHeading eyebrow="Sources" title="What is connected" />
-          <ul className="space-y-2">
-            {readiness.map((entry) => (
-              <li key={entry.id} className="text-sm">
-                <span className="text-foreground">{entry.label}</span>
-                <span
-                  className={cn(
-                    "ml-2 font-mono text-[11px] uppercase tracking-[0.12em]",
-                    entry.connected ? "text-royal" : "text-muted-foreground",
-                  )}
-                >
-                  {entry.connected ? "Connected" : "Not connected"}
-                </span>
-                <p className="text-[12px] text-muted-foreground">{entry.note}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <AiReferralsPanel summary={referrals} />
       </div>
+
+      <ProviderReadinessPanel readiness={readiness} />
+
     </div>
   );
 }
