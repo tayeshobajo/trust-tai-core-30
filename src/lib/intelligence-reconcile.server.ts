@@ -16,8 +16,13 @@
 import type { ActivityEvent } from "@/domain/activity";
 import type { IntelligenceCase, PatternOutcome } from "@/domain/intelligence-canon";
 import { outcomeFromRoomEvent, roomEventOutcomes } from "@/data/intelligence/canon/room-events";
+import {
+  evaluateOpenCase,
+  outcomeFromReconciliation,
+} from "@/data/intelligence/canon/outcome-checks";
 import { openCases } from "@/data/intelligence/canon/experience";
 import { outcomeFingerprint } from "@/data/supabase/intelligence-canon-service";
+import { loadReconciliationSnapshot } from "./reconciliation-state.server";
 
 /** Never process more than this many open cases in one run. */
 export const RUN_CASE_LIMIT = 100;
@@ -30,6 +35,10 @@ export interface ReconcileRunReport {
   organizationId: string;
   casesConsidered: number;
   outcomesWritten: number;
+  /** Settled by an exact canonical room event. */
+  eventOutcomes?: number;
+  /** Settled by current canonical state through a deterministic check. */
+  snapshotOutcomes?: number;
   unknownLeftOpen: number;
   skipped?: "recent_run" | "lease_held" | "no_open_cases";
 }
