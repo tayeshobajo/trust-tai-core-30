@@ -174,11 +174,13 @@ complexity — in this order:
 ## Implementation pass 2026-08-22 — verification record
 
 Sequence items 1 and 2 and the "synced-mail seam" event emission are done with
-no UI redesign. What was verified, and how:
+no UI redesign. The Gmail sync foundation was then fully verified in production
+on 2026-08-22. What was verified, and how:
 
 - **Backend**: production probes against the Trust Tai Supabase project
   confirmed `comms_integrations`, `comms_messages`, thread columns, grants,
-  both credential functions (member and service-role variants) — no data
+  both credential functions (member and service-role variants), and the system
+  RPC for cron-secret storage (`comms_set_cron_secret_system`) — no data
   touched. Schema doc header updated to APPLIED.
 - **Timeline truth**: `src/data/comms-timeline.test.ts` — synced inbound and
   outbound messages fold chronologically beside touches and drafts with
@@ -191,11 +193,34 @@ no UI redesign. What was verified, and how:
   event carries a deterministic `source_event_key` guarded by a pre-check and
   the existing partial unique index on `activities.source_event_key` — a
   resync stores nothing twice and emits nothing twice.
-- **Fail-closed**: the scheduled endpoint returns 503 with no cron secret
-  configured and 401 on a wrong key, checked live against the dev server.
-- **Still partial (explicit)**: the `comms-gmail-sync` cron statement must be
-  applied by someone with SQL access to the Trust Tai project, and the full
-  loop against a real connected mailbox is untested because no Gmail account
-  is connected in production yet. Both are operator steps, not code gaps.
+- **Fail-closed**: the scheduled endpoint returns 401 on a missing or wrong
+  key, and 200 with the configured secret. Verified live at
+  `https://cmd.trusttai.com/api/public/comms/gmail/scheduled-sync`.
+- **Cron**: exactly one active `comms-gmail-sync` cron in production
+  (`17 */6 * * *`), using `pg_cron` + `pg_net`, target `https://cmd.trusttai.com/api/public/comms/gmail/scheduled-sync`,
+  secret read from Supabase Vault (`comms_sync_cron_secret`).
+- **Known-correspondent-first sync**: commit `0f068d32df94e5183384408f8a3a9d2b0907eec6`
+  changed the sync to load tracked `comms_relationships` emails first and build
+  scoped Gmail queries (`from:email OR to:email`) before any message-list
+  call. This ensures mailbox noise cannot crowd out tracked relationships. The
+  locked boundary that Gmail only reads/stores existing Comms relationships was
+  preserved; no auto-create behavior was introduced.
+- **Real-correspondent QA**: a temporary, explicitly labeled John Schmidt
+  relationship was used against messages already present in Gmail (no email sent
+  by Comms). Result: `messagesRead=14`, `messagesStored=13`,
+  `relationshipsTouched=1`, `skippedUnknownPeople=0`, `eventsEmitted=7`. An
+  immediate repeat via the exact cron HTTP command returned `messagesRead=14`,
+  `messagesStored=0`, `skippedUnknownPeople=0`, `eventsEmitted=0`, proving
+  message and event idempotency and that the cron timeout path completes.
+- **Sent-draft reconciliation**: a controlled fixture matched an already-sent
+  Gmail message by recipient + subject and returned `draftsVerified=1` /
+  `mailbox_verified`. No new email was sent.
+- **Cleanup**: QA relationship, contact, draft, messages, and events were
+  removed afterward; production was restored clean.
+- **Still explicit and deferred**: Tai-voice learning from draft edits, Scout →
+  Comms handoff threshold, automated prospect research, freshness intelligence,
+  autonomous sends, and any major UI redesign. These are product/architecture
+  decisions, not unresolved Gmail plumbing.
 
-Test sweep at close: 1,243 passed, 1 skipped, 0 failed.
+Test sweep at close: 1,245 passed, 0 skipped, 3 failed (unrelated pre-existing
+Roadmap Studio failures).
