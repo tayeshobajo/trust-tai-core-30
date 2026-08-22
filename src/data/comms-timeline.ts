@@ -107,16 +107,35 @@ export function conversationTimeline(
     });
   }
 
+  for (const message of messages) {
+    const title =
+      message.subject?.trim() ||
+      message.snippet?.trim() ||
+      (message.direction === "inbound" ? "Email from them" : "Email from us");
+    events.push({
+      id: `mail:${message.id}`,
+      kind: message.direction === "inbound" ? "they_emailed" : "we_emailed",
+      occurredAt: message.occurredAt,
+      title,
+      ...(message.subject?.trim() && message.snippet?.trim()
+        ? { body: message.snippet.trim() }
+        : {}),
+      source: "Synced from Gmail · read-only",
+      meta: "email",
+    });
+  }
+
   for (const draft of drafts) {
     if (draft.reviewState === "discarded") continue;
+    const verification = readDraftVerification(draft.rationale);
     events.push({
       id: `draft:${draft.id}`,
       kind: "draft",
       occurredAt: draft.createdAt,
       title: draft.subject?.trim() || draft.intent || "Draft prepared",
       body: draft.body,
-      source: "Prepared in Comms, not sent",
-      meta: draft.reviewState,
+      source: draftProvenanceLabel(draft.reviewState, verification),
+      meta: verification ? "mailbox_verified" : draft.reviewState,
     });
   }
 
