@@ -19,20 +19,25 @@ plus `/modules/comms/voice` and `/modules/comms/integrations`. Components in
 
 **Data model.** Live: `comms_relationships`, `comms_threads`, `comms_touches`,
 `comms_drafts`, `comms_reminders`, `comms_voice_profiles`
-(`docs/comms-v1-schema.sql`). Integration layer: `comms_messages`,
-`comms_integrations`, `comms_events`, `comms_event_targets` and thread columns
-(`docs/comms-integrations-schema.sql`; `docs/comms-v1.md` still says "has not
-been applied" while the Phase-1 Gmail code path that writes those tables is
-live — see gap 6). Access layer: `src/data/supabase/comms-service.ts`,
-`comms-schema.ts`; RLS via `private.is_org_member`.
+(`docs/comms-v1-schema.sql`, header marked APPLIED). Integration layer:
+`comms_messages`, `comms_integrations`, `comms_events`, `comms_event_targets`
+and thread columns (`docs/comms-integrations-schema.sql`, header marked
+"Phase 0 — NOT YET APPLIED"). The Gmail code path that writes those tables is
+live but the backend migration is not, so the whole track fails closed with a
+real Postgres error today — see gap 6. `comms_events` / `comms_event_targets`
+are referenced by no other code anywhere. Access layer:
+`src/data/supabase/comms-service.ts`, `comms-schema.ts`; RLS via
+`private.is_org_member`.
 
 **Integrations.** Gmail connect / candidates / sync routes under
 `src/routes/api/public/comms.gmail.*`; server logic in
 `src/lib/comms-gmail.server.ts` (660 lines); refresh-token upkeep in
 `supabase/functions/comms-gmail-refresh`. Scope is `gmail.readonly` — sending
 is impossible by construction. Refresh tokens are AES-GCM sealed
-(`comms-crypto.server.ts`), readable only by the service role. Drafting
-endpoint: `src/routes/api/public/comms.draft.ts` → `src/lib/comms-draft.server.ts`.
+(`comms-crypto.server.ts`), readable only by the service role. Sync is
+**person-invoked only**: a POST with the member's bearer token from the UI; no
+cron or scheduled pass exists anywhere. Drafting endpoint:
+`src/routes/api/public/comms.draft.ts` → `src/lib/comms-draft.server.ts`.
 
 **Agent behavior.** Drafting reasons through the shared intelligence runtime
 (`runtimeModelCaller` from `src/lib/intelligence-runtime.server.ts`), then
