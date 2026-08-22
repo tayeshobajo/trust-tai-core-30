@@ -85,20 +85,13 @@ export function roomCapabilities(room: string): CapabilityAnswer {
 }
 
 /** The permission a person must hold to approve an operation in a room. */
-export function approvalPermissionFor(
-  room: string,
-  operation: string,
-): { permission: Permission; authority: ActionAuthority } | null {
-  try {
-    const authority = actionPermission({ appId: room, operation });
-    return { permission: authority.permission, authority };
-  } catch {
-    return null;
-  }
+export function approvalPermissionFor(room: string, operation: string): Permission {
+  /* actionPermission never throws: an unmapped room falls back to org.manage. */
+  return actionPermission({ appId: room, operation });
 }
 
 /**
- * May a read recommend this operation? Only when it is executable in the
+ * May a read recommend this operation? Only when it is supported in the
  * capability registry, or when the room has no registry coverage at all (a
  * read-only room recommending a human step is fine — the person executes).
  */
@@ -111,12 +104,12 @@ export function operationIsRecommendable(room: string, operation: string): boole
 
 /** Does this operation's effect leave the suite? */
 export function operationIsExternal(room: string, operation: string): boolean {
-  const cap = ADAPTER_CAPABILITIES.find((c) => c.room === room && c.operation === operation);
-  if (cap?.external) return true;
-  return (EXTERNAL_SURFACES[room] ?? []).some((surface) => operation.includes(surface));
+  return (EXTERNAL_SURFACES[room] ?? []).some(
+    (surface) => operation === surface || operation.includes(surface),
+  );
 }
 
 /** Every room that can execute anything, for suite-wide readouts. */
 export function executableRooms(): string[] {
-  return [...new Set(ADAPTER_CAPABILITIES.filter((cap) => cap.routable).map((cap) => cap.room))];
+  return [...new Set(ADAPTER_CAPABILITIES.filter((cap) => cap.supported).map((cap) => cap.room))];
 }

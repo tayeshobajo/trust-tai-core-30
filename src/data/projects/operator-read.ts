@@ -106,7 +106,7 @@ export function operatorReadRequestFor(input: {
     evidence: operatorEvidenceFromPacket(input.packet),
     allowedOperations: capabilities.executable.map((cap) => cap.operation),
     output: "operator_read",
-    approval: { required: true, permission: "manage_content" },
+    approval: { required: true, permission: "projects.write" },
     verification: {
       kind: "acceptance_criterion",
       description:
