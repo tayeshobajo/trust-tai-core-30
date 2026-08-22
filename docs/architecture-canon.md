@@ -222,3 +222,49 @@ inferring completion. Contracts that future bridges must honor:
    sweep (local launchd while Paperclip is laptop-local; edge fn when it has a
    public URL) projects Paperclip issue status into bindings and agent state.
    Steward reads; it never claims completion Paperclip has not reported.
+
+## 11. Intelligence Runtime law
+
+**No business app may become its own isolated AI brain.** Scout, Comms, Roadmap,
+Projects, Ops, Studio, Steward and Conductor all reason through one shared
+runtime — same evidence discipline, same capability registry, same
+problem-solving protocol, same completion gate.
+
+1. **One reasoning boundary.** `src/lib/intelligence-runtime.server.ts` is the
+   only suite reasoning entry point. It sits on the transport
+   (`roadmap-research.server.ts`), provider configuration
+   (`scout-provider.server.ts`) and gateway plumbing (`ai-gateway.server.ts`).
+   Rooms never import those directly. The guard
+   (`src/lib/intelligence-runtime-boundary.test.ts`) fails CI on any new bypass;
+   pre-runtime call sites are documented exceptions with named migrations.
+2. **Retrieval before generation.** Every reasoning pass composes its bundle
+   through `src/data/intelligence/runtime/retrieval.ts`: the room's evidence,
+   human decisions, withheld rooms, canon patterns, prior experience
+   (corrections first) and the capability view. The model sees the serialized
+   bundle and nothing else.
+3. **Operator output, never chain-of-thought.** The `RuntimeRead` contract
+   (`src/domain/intelligence-runtime.ts`) separates facts, interpretations,
+   knowledge, unknowns, next steps, confidence and verification into distinct
+   fields with provenance on each. Facts cite evidence; interpretations are
+   labelled inference; confidence is capped by the evidence that exists.
+4. **The protocol is shared.** inspect → retrieve → hypothesise → test safely
+   → observe evidence → adjust → act within boundary → verify → escalate.
+   A failed attempt produces the next bounded diagnostic step; escalation
+   names exactly what is missing and who must supply it. "Couldn't complete"
+   without a next step is a contract violation.
+5. **Completion requires proof.** The gate
+   (`src/data/intelligence/runtime/verification.ts`) refuses "the action ran"
+   as completion. Claims carry test results, changed state, API responses,
+   artifacts, met acceptance criteria, downstream receipts or human
+   acceptance. A runtime, adapter or agent may never grade its own homework.
+6. **Readiness is declared and tested.** Every registered room carries a
+   code-backed manifest (`src/data/intelligence/runtime/manifest.ts`) across
+   the eight aspects: evidence grounding, retrieval, domain patterns,
+   capability awareness, safe diagnostic loop, verification, approval
+   boundary, outcome learning. Acceptance tests
+   (`src/data/intelligence/runtime/acceptance.test.ts`) enforce the floor.
+7. **Projects is the proof.** Before a milestone is executable, Projects asks
+   the runtime for an operator read (`src/domain/project-operator-read.ts`,
+   `src/data/projects/operator-read.ts`): missing context, pattern knowledge,
+   risks, dependencies, proposed acceptance criteria, capability fit and the
+   verification plan — grounded in the milestone's context packet.
