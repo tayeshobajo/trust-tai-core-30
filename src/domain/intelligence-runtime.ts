@@ -337,12 +337,32 @@ export type ReadinessAspect =
   /** Outcomes feed back into the canon so experience accumulates. */
   | "outcome_learning";
 
-export type AspectState = "available" | "partial" | "absent" | "not_required";
+/**
+ * Three honest states. There is deliberately no "partial": machinery that
+ * exists but is not wired into the room's reasoning is NOT READY, because a
+ * nice shell that cannot solve problems is exactly the failure mode this
+ * contract exists to prevent.
+ */
+export type AspectState =
+  /** The room itself provably satisfies the dimension, with code evidence. */
+  | "ready"
+  /**
+   * A named architectural equivalent elsewhere covers the dimension (for
+   * example a read-only room whose diagnostic loop lives in the runtime it
+   * calls). Requires delegatedTo and because.
+   */
+  | "delegated"
+  /** The dimension is missing. Blocks readiness. */
+  | "not_ready";
 
 export interface ReadinessAspectReport {
   state: AspectState;
   /** Where the aspect is backed, in code or configuration. */
   evidence: string;
+  /** Required when state is "delegated": what covers this dimension. */
+  delegatedTo?: string;
+  /** Required when state is "delegated": why the equivalent is real. */
+  because?: string;
 }
 
 export interface RoomReadinessManifest {
@@ -351,13 +371,30 @@ export interface RoomReadinessManifest {
   aspects: Record<ReadinessAspect, ReadinessAspectReport>;
 }
 
-/** The aspects no business room may ship without. */
+/**
+ * The floor. Every active room must account for all eight dimensions: a room
+ * with evidence, capability and verification but no reusable knowledge or no
+ * recovery loop is NOT READY. A dimension may only be delegated when the
+ * manifest names the architectural equivalent and why.
+ */
 export const REQUIRED_ASPECTS: ReadinessAspect[] = [
   "evidence_grounding",
+  "retrieval",
+  "domain_patterns",
   "capability_awareness",
+  "safe_diagnostic_loop",
   "verification",
   "approval_boundary",
+  "outcome_learning",
 ];
+
+/** A delegation is real only when it names the equivalent and the reason. */
+export function delegationIsValid(report: ReadinessAspectReport): boolean {
+  return (
+    report.state !== "delegated" ||
+    (Boolean(report.delegatedTo?.trim()) && Boolean(report.because?.trim()))
+  );
+}
 
 /** Flatten a manifest aspect record for display. */
 export function manifestAspects(

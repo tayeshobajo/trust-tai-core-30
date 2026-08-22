@@ -33,10 +33,10 @@ import type {
 } from "@/domain/roadmap-intel";
 import type { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 import {
-  callRoadmapProvider,
   extractJsonObject,
-  requireRoadmapAccess,
-} from "./roadmap-research.server";
+  runtimeModelCaller,
+  type RuntimeModelCaller,
+} from "./intelligence-runtime.server";
 
 export interface StudioStage {
   stage: "packet" | "writing" | "validating" | "complete" | "error";
@@ -226,20 +226,30 @@ function sectionsFrom(value: unknown): ArtifactSection[] {
 export async function* runStudioComposition(
   input: StudioComposeInput,
 ): AsyncGenerator<StudioStage> {
-  if (!(await requireRoadmapAccess(input.token, input.organizationId))) {
+  let callModel: RuntimeModelCaller;
+  try {
+    callModel = await runtimeModelCaller({
+      token: input.token,
+      organizationId: input.organizationId,
+      room: "studio",
+      purpose: "studio_generation",
+    });
+  } catch {
     yield { stage: "error", message: "You do not have access to this workspace." };
     return;
   }
-  yield* composeStudioDocument(input);
+  yield* composeStudioDocument(input, callModel);
 }
 
 /**
- * The composition itself, with authorization already cleared. Exported so an
- * offline acceptance harness runs the same packet, prompt and validation.
+ * The composition itself, with the model caller supplied by whoever holds
+ * authorization: the guarded entry point above, or an offline acceptance
+ * harness that runs the same packet, prompt and validation.
  */
 export async function* composeStudioDocument(
   input: Omit<StudioComposeInput, "token" | "organizationId"> &
     Partial<Pick<StudioComposeInput, "token" | "organizationId">>,
+  callModel: RuntimeModelCaller,
 ): AsyncGenerator<StudioStage> {
 
 
@@ -274,7 +284,9 @@ export async function* composeStudioDocument(
   let provider = "";
   let model = "";
   try {
-    const result = await callRoadmapProvider(instructions(), payload(packet), {
+    const result = await callModel({
+      instructions: instructions(),
+      input: payload(packet),
       webSearch: false,
       gateway: input.gateway,
       initialRunId: input.initialRunId,

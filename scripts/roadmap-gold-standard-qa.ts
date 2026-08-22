@@ -30,7 +30,15 @@ import {
   answerRoadmapQuestion,
   researchSubject,
   type RoadmapResearchResult,
-} from "../src/lib/roadmap-research.server";
+} from "../src/lib/roadmap-intelligence.server";
+import { callRoadmapProvider } from "../src/lib/roadmap-research.server";
+import type { RuntimeModelCaller } from "../src/lib/intelligence-runtime.server";
+
+const offlineCaller: RuntimeModelCaller = (call) =>
+  callRoadmapProvider(call.instructions, call.input, {
+    webSearch: call.webSearch ?? false,
+    ...(call.responseFormat ? { responseFormat: call.responseFormat } : {}),
+  });
 import { composeStudioDocument } from "../src/lib/roadmap-studio.server";
 
 const subjectLabel = process.argv[2] ?? "TeamSynerg";
@@ -53,7 +61,7 @@ for await (const stage of researchSubject({
   objective,
   ...(website ? { website } : {}),
   known: [],
-})) {
+}, offlineCaller)) {
   console.log(`  [${stage.stage}] ${stage.message}`);
   if (stage.stage === "error") process.exit(1);
   if (stage.stage === "complete") result = stage.data as RoadmapResearchResult;
@@ -203,7 +211,7 @@ for await (const stage of composeStudioDocument({
   strategy: decidedStrategy,
   milestones,
   research: researchRow,
-})) {
+}, offlineCaller)) {
   console.log(`  [${stage.stage}] ${stage.message}`);
   if (stage.stage === "error") {
     console.log(JSON.stringify(stage.data, null, 2));
@@ -232,7 +240,7 @@ for (const question of [
     subjectLabel,
     context: storedEvidence,
     research: false,
-  });
+  }, offlineCaller);
   console.log(`\nQ: ${question}`);
   console.log(JSON.stringify(answer, null, 2));
 }

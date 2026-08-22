@@ -18,8 +18,8 @@ import {
   getLovableAiGatewayRunId,
   withLovableAiGatewayRunIdHeader,
 } from "@/lib/ai-gateway.server";
-import { runRoadmapResearch } from "@/lib/roadmap-research.server";
-import { scoutProviderStatus } from "@/lib/scout-provider.server";
+import { runRoadmapResearch } from "@/lib/roadmap-intelligence.server";
+import { runtimeProviderStatus } from "@/lib/intelligence-runtime.server";
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/api/public/roadmap/research")({
   server: {
     handlers: {
       /** Configuration probe. Which provider is selected, never any key. */
-      GET: async () => Response.json(scoutProviderStatus()),
+      GET: async () => Response.json(runtimeProviderStatus()),
 
       POST: async ({ request }) => {
         const token = bearer(request);

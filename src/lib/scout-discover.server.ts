@@ -39,12 +39,13 @@ import {
   rootDomain,
   type RawDiscoveryCandidate,
 } from "@/data/scout-candidate-validation";
+import { createLovableAiGatewayRunIdFetch } from "@/lib/ai-gateway.server";
+import { CANDIDATE_SCHEMA, discoveryInstructions } from "@/lib/scout-discovery-request";
 import {
-  createLovableAiGatewayRunIdFetch,
-  LOVABLE_AIG_RUN_ID_HEADER,
-} from "@/lib/ai-gateway.server";
-import { buildDiscoveryRequestBody } from "@/lib/scout-discovery-request";
-import { selectScoutProvider } from "@/lib/scout-provider.server";
+  runtimeModelCaller,
+  runtimeProviderStatus,
+  type RuntimeModelCaller,
+} from "@/lib/intelligence-runtime.server";
 
 const DEFAULT_LIMIT = 25;
 
@@ -60,11 +61,11 @@ export interface DiscoverStage {
 
 /** The model of the provider Scout would actually use right now. */
 export function discoveryModel(): string | null {
-  return selectScoutProvider()?.model ?? null;
+  return runtimeProviderStatus().model;
 }
 
 export function discoveryConfigured(): boolean {
-  return Boolean(selectScoutProvider());
+  return runtimeProviderStatus().configured;
 }
 
 
@@ -105,8 +106,8 @@ export interface DiscoverInput {
  * show what Scout is actually doing rather than a spinner.
  */
 export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<DiscoverStage> {
-  const selected = selectScoutProvider();
-  if (!selected) {
+  const status = runtimeProviderStatus();
+  if (!status.configured) {
     yield {
       stage: "error",
       message:
@@ -116,8 +117,8 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     return;
   }
 
-  const providerName = selected.provider;
-  const model = selected.model;
+  const providerName = status.provider ?? "unknown";
+  const model = status.model ?? "unknown";
   const gateway = input.gateway ?? createLovableAiGatewayRunIdFetch(input.initialRunId);
 
 
@@ -144,6 +145,20 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     return;
   }
   const orgId = membership["organization_id"] as string;
+
+  /* All model contact flows through the runtime boundary, verified fail-closed. */
+  let callModel: RuntimeModelCaller;
+  try {
+    callModel = await runtimeModelCaller({
+      token: input.token,
+      organizationId: orgId,
+      room: "scout",
+      purpose: "discovery",
+    });
+  } catch {
+    yield { stage: "error", message: "Your account is not a member of a Trust Tai workspace." };
+    return;
+  }
 
   const query = input.query.trim();
   if (query.length < 3) {
@@ -233,76 +248,59 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
 
   yield { stage: "searching", message: "Searching market", data: { run_id: runId } };
 
-  // Streamed so a multi-minute research run never dies on a request timeout.
+  // Streamed through the runtime boundary so a multi-minute research run
+  // never dies on a request timeout. The boundary resolves when the stream
+  // completes, so the delta flag is polled to keep the mid-run "verifying"
+  // stage honest.
   let raw = "";
   try {
-    const doFetch = providerName === "lovable" ? gateway.fetch : fetch;
-    const response = await doFetch(selected.endpoint, {
-      method: "POST",
-      headers: {
-        ...selected.headers,
-        ...(providerName === "lovable" && input.initialRunId
-          ? { [LOVABLE_AIG_RUN_ID_HEADER]: input.initialRunId }
-          : {}),
-      },
-      body: JSON.stringify(
-        buildDiscoveryRequestBody({
-          model,
-          query,
-          limit,
-          icp: String(icp?.["content_markdown"] ?? ""),
-          calibration,
-        }),
+    let sawDelta = false;
+    let settled = false;
+    const pending = callModel({
+      instructions: discoveryInstructions(
+        String(icp?.["content_markdown"] ?? ""),
+        calibration,
+        limit,
       ),
+      input: `Find up to ${limit} real companies matching: ${query}`,
+      webSearch: true,
+      responseFormat: {
+        type: "json_schema",
+        name: "scout_candidates",
+        strict: true,
+        schema: CANDIDATE_SCHEMA,
+      },
+      gateway,
+      ...(input.initialRunId ? { initialRunId: input.initialRunId } : {}),
+      onDelta: () => {
+        sawDelta = true;
+      },
     });
-
-
-
-    if (!response.ok || !response.body) {
-      const detail = await response.text();
-      await failRun(`Provider rejected the request (${response.status}).`);
-      yield { stage: "error", message: `Scout's research provider refused the request (${response.status}). ${detail.slice(0, 300)}` };
-      return;
+    void pending.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    while (!settled && !sawDelta) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let searched = false;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        if (!line.startsWith("data:")) continue;
-        const payload = line.slice(5).trim();
-        if (!payload || payload === "[DONE]") continue;
-        let event: Record<string, unknown>;
-        try {
-          event = JSON.parse(payload) as Record<string, unknown>;
-        } catch {
-          continue;
-        }
-        const type = String(event["type"] ?? "");
-        if (type === "response.output_text.delta" && typeof event["delta"] === "string") {
-          if (!searched) {
-            searched = true;
-            yield { stage: "verifying", message: "Verifying companies" };
-          }
-          raw += event["delta"];
-        }
-        if (type === "response.failed" || type === "error") {
-          await failRun("The research run failed.");
-          yield { stage: "error", message: "The research run failed before returning companies." };
-          return;
-        }
-      }
+    if (sawDelta && !settled) {
+      yield { stage: "verifying", message: "Verifying companies" };
     }
+    const result = await pending;
+    raw = result.raw;
   } catch (error) {
     await failRun(String(error));
-    yield { stage: "error", message: "Scout could not reach the research provider. Nothing was changed." };
+    yield {
+      stage: "error",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Scout could not reach the research provider. Nothing was changed.",
+    };
     return;
   }
 

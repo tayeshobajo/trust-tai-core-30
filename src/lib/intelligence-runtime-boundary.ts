@@ -38,57 +38,13 @@ export interface ReasoningException {
 }
 
 /**
- * Documented pre-existing call sites, pending migration. Each is a known
- * fragment of the pre-runtime era; the guard fails if any NEW file joins them.
+ * Pre-existing reasoning bypasses, pending migration. This list is EMPTY and
+ * must stay empty: every business room reasons through the runtime boundary.
+ * A future exception is migration debt, never permission — it must name the
+ * bypass and the runtime contract that retires it, and the hardening standard
+ * treats any business-room entry here as a regression.
  */
-export const REASONING_EXCEPTIONS: ReasoningException[] = [
-  {
-    file: "src/lib/intelligence-reason.server.ts",
-    bypass: "engine reasoning endpoint assembles its own prompt via the transport",
-    migration:
-      "adopt ReasoningRequest + verifyRuntimeRead from src/data/intelligence/runtime/reason.ts",
-  },
-  {
-    file: "src/lib/steward-interpret.server.ts",
-    bypass: "steward interpretation composes its own provider call via the transport",
-    migration: "route through reasonWithRuntime with output: 'interpretation'",
-  },
-  {
-    file: "src/lib/roadmap-studio.server.ts",
-    bypass: "studio generation composes its own two-step provider calls via the transport",
-    migration: "route both steps through reasonWithRuntime (evidence packet, then expression)",
-  },
-  {
-    file: "src/lib/scout-discover.server.ts",
-    bypass: "direct provider fetch with web search and a bespoke stream parser",
-    migration: "route through reasonWithRuntime with output: 'research' and runtime retrieval",
-  },
-  {
-    file: "src/lib/comms-draft.server.ts",
-    bypass: "direct provider fetch for draft composition",
-    migration: "route through reasonWithRuntime with output: 'draft'",
-  },
-  {
-    file: "src/routes/api/public/comms.draft.ts",
-    bypass: "route handler imports provider selection for its draft shell",
-    migration: "drops away when comms-draft adopts reasonWithRuntime",
-  },
-  {
-    file: "src/routes/api/public/roadmap.ask.ts",
-    bypass: "route handler imports the transport directly",
-    migration: "route through reasonWithRuntime with output: 'interpretation'",
-  },
-  {
-    file: "src/routes/api/public/roadmap.research.ts",
-    bypass: "route handler imports the transport and provider selection directly",
-    migration: "route through reasonWithRuntime with output: 'research'",
-  },
-  {
-    file: "src/routes/api/public/scout.discover.ts",
-    bypass: "route handler imports provider selection for its discovery shell",
-    migration: "drops away when scout-discover adopts reasonWithRuntime",
-  },
-];
+export const REASONING_EXCEPTIONS: ReasoningException[] = [];
 
 /**
  * Import specifiers that signal a room is building its own AI stack.
