@@ -566,10 +566,12 @@ function SearchTab({
   input,
   queries,
   referrals,
+  readiness,
 }: {
   input: WebsiteAnalyticsInput;
   queries: ReturnType<typeof queryRows>;
   referrals: AiReferralSummary;
+  readiness: ProviderReadiness[];
 }) {
   const assistants = (
     <AiReferralsPanel
@@ -579,17 +581,24 @@ function SearchTab({
   );
 
   if (queries.length === 0) {
+    const state = stateOf(readiness, "search_console");
     return (
       <div className="space-y-4">
-        <EmptyState
-          title="No search data yet"
-          belongsHere="Queries, impressions, click through and position belong here once Search Console data is flowing."
-          whyItMatters="Search is how most people discover a company they have never heard of. Until it is connected this stays unknown, not zero."
-        />
+        <div className="tt-surface p-5">
+          <SectionHeading eyebrow="Search" title="Nothing to read yet" />
+          <p className="max-w-reading text-sm text-muted-foreground">
+            {isMeasured(state)
+              ? "Search Console is connected. Google has not returned performance rows for this window yet, so queries, clicks and positions stay blank rather than reading as zero."
+              : state === "failed"
+                ? "The last Search Console run failed, so nothing can be read for this window. The connection record on Overview holds the exact reason."
+                : "Search Console has not reported yet. Queries, clicks, click through and position stay unknown, not zero."}
+          </p>
+        </div>
         {assistants}
       </div>
     );
   }
+
 
   const opportunities = contentOpportunities(
     input.searchMetrics,
