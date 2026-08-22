@@ -414,3 +414,30 @@ export function aiReferrals(
     unmeasured: events.length === 0,
   };
 }
+
+/* ------------------------------------------------------- provider sources */
+
+const SOURCE_LABELS: Record<string, string> = {
+  "(direct)": "Direct",
+  "(none)": "Direct",
+  "(not set)": "Unknown source",
+};
+
+/**
+ * Where attention came from according to GA4, used when the site's own events
+ * are quiet. Sessions, not conversations: only intake can say that.
+ */
+export function providerSourceGroups(rows: PageMetricsDay[]): SourceGroup[] {
+  const tally = new Map<string, SourceGroup>();
+  for (const row of rows) {
+    const raw = (row.source ?? "").trim().toLowerCase();
+    const host = referrerHost(raw);
+    const label = host && AI_HOSTS.has(host)
+      ? "AI referrals"
+      : (SOURCE_LABELS[raw] ?? (raw ? raw : "Direct"));
+    const found = tally.get(label) ?? { source: label, visits: 0, submissions: 0 };
+    found.visits += row.users || row.views;
+    tally.set(label, found);
+  }
+  return [...tally.values()].sort((a, b) => b.visits - a.visits);
+}
