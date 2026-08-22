@@ -160,14 +160,40 @@ export async function syncGa4(
   }
 
   const rows = ga4PageRows(await response.json(), organizationId);
-  if (rows.length > 0) {
-    const { error } = await client.from("website_page_metrics_daily").upsert(rows, {
-      onConflict: "organization_id,provider,metric_date,path,source,medium,device,country",
-    });
-    if (error) throw new Error(error.message);
-  }
+  await replaceRange(client, "website_page_metrics_daily", organizationId, "ga4", range, rows);
   return { provider: "ga4", configured: true, rowsWritten: rows.length, range };
 }
+
+/**
+ * The daily tables are keyed by a partial expression index, which Postgres
+ * cannot match to an ON CONFLICT target. A day window is therefore rewritten
+ * wholesale: delete what the window already holds for this provider, then
+ * insert what the provider just reported. Idempotent, and never a partial mix
+ * of two runs.
+ */
+async function replaceRange(
+  client: Client,
+  table: string,
+  organizationId: string,
+  provider: string,
+  range: { start: string; end: string },
+  rows: readonly unknown[],
+): Promise<void> {
+  const { error: deleteError } = await client
+    .from(table)
+    .delete()
+    .eq("organization_id", organizationId)
+    .eq("provider", provider)
+    .gte("metric_date", range.start)
+    .lte("metric_date", range.end);
+  if (deleteError) throw new Error(deleteError.message);
+
+  for (let index = 0; index < rows.length; index += 500) {
+    const { error } = await client.from(table).insert(rows.slice(index, index + 500));
+    if (error) throw new Error(error.message);
+  }
+}
+
 
 /* ---------------------------------------------------------- Search Console */
 
@@ -208,11 +234,14 @@ export async function syncSearchConsole(
 
   const body = (await response.json()) as { rows?: SearchApiRow[] };
   const rows = searchConsoleRows(body.rows ?? [], organizationId);
-  if (rows.length > 0) {
-    const { error } = await client.from("website_search_metrics_daily").upsert(rows, {
-      onConflict: "organization_id,provider,metric_date,query,path,device,country",
-    });
-    if (error) throw new Error(error.message);
-  }
+  await replaceRange(
+    client,
+    "website_search_metrics_daily",
+    organizationId,
+    "search_console",
+    range,
+    rows,
+  );
+
   return { provider: "search_console", configured: true, rowsWritten: rows.length, range };
 }
