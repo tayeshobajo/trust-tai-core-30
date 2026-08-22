@@ -114,10 +114,13 @@ describe("sourceToQualified", () => {
 
 describe("websiteHeadline", () => {
   it("keeps sessions unknown and surfaces held submissions", () => {
-    const headline = websiteHeadline([], [
-      submission({ linkState: "unlinked", scoutProspectId: null }),
-      submission({ id: "s2", scoutStatus: "converted" }),
-    ]);
+    const headline = websiteHeadline(
+      [],
+      [
+        submission({ linkState: "unlinked", scoutProspectId: null }),
+        submission({ id: "s2", scoutStatus: "converted" }),
+      ],
+    );
     expect(headline).toEqual({ visits: null, submissions: 2, awaitingReview: 1, qualified: 1 });
   });
 });

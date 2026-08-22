@@ -151,8 +151,12 @@ const metaTags = (html: string): string[] => html.match(/<meta\b[^>]*>/gi) ?? []
 function metaContent(html: string, keys: string[]): string | null {
   const wanted = keys.map((key) => key.toLowerCase());
   for (const tag of metaTags(html)) {
-    const key = (attr(tag, "property") ?? attr(tag, "name") ?? attr(tag, "itemprop") ?? "")
-      .toLowerCase();
+    const key = (
+      attr(tag, "property") ??
+      attr(tag, "name") ??
+      attr(tag, "itemprop") ??
+      ""
+    ).toLowerCase();
     if (key && wanted.includes(key)) {
       const content = attr(tag, "content");
       if (content) return content;
@@ -180,7 +184,8 @@ function robotsIndexable(values: (string | null)[]): boolean | null {
 
 function jsonLdBlocks(html: string): Record<string, unknown>[] {
   const blocks: Record<string, unknown>[] = [];
-  const pattern = /<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  const pattern =
+    /<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(html)) !== null) {
     try {

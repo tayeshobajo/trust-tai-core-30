@@ -53,7 +53,11 @@ export function inboundLabel(submission: WebsiteSubmission): string {
   const company = submission.company.name?.trim();
   if (company) return company;
   const site = submission.company.website?.trim();
-  if (site) return site.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+  if (site)
+    return site
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/\/.*$/, "");
   const email = submission.person.email?.trim();
   if (email && email.includes("@")) return email.split("@")[1] ?? email;
   return "An inbound founder";
@@ -69,7 +73,11 @@ function sourceLine(submission: WebsiteSubmission): string {
 }
 
 function submissionEvidence(submission: WebsiteSubmission): EvidenceRef {
-  return { label: "Roadmap intake on TrustTai.com", kind: "page", url: submissionRoute(submission) };
+  return {
+    label: "Roadmap intake on TrustTai.com",
+    kind: "page",
+    url: submissionRoute(submission),
+  };
 }
 
 export interface WebsiteIntelInput {
@@ -90,16 +98,12 @@ function candidateOf(
   submission: WebsiteSubmission,
 ): ProspectCandidate | undefined {
   if (!submission.scoutProspectId) return undefined;
-  return input.candidates.find(
-    (candidate) => candidate.prospect.id === submission.scoutProspectId,
-  );
+  return input.candidates.find((candidate) => candidate.prospect.id === submission.scoutProspectId);
 }
 
 /* ---------------------------------------------------------- context blocks */
 
-function block(
-  input: Omit<ContextBlock, "stalenessDays"> & { now: string },
-): ContextBlock {
+function block(input: Omit<ContextBlock, "stalenessDays"> & { now: string }): ContextBlock {
   const { now, ...rest } = input;
   return { ...rest, stalenessDays: daysOld(rest.at, now) };
 }
@@ -117,7 +121,11 @@ export function websiteContextBlocks(input: WebsiteIntelInput): ContextBlock[] {
     const label = inboundLabel(submission);
     const candidate = candidateOf(input, submission);
     const entity: EntityRef = submission.scoutProspectId
-      ? { type: "prospect", id: submission.scoutProspectId, label: candidate?.prospect.name ?? label }
+      ? {
+          type: "prospect",
+          id: submission.scoutProspectId,
+          label: candidate?.prospect.name ?? label,
+        }
       : { type: "activity", id: submission.id, label };
     const evidence = [submissionEvidence(submission)];
 
@@ -237,7 +245,8 @@ export function websiteSignals(input: WebsiteIntelInput): Signal[] {
         evidence,
         contextRefs: [`website:link:${submission.submissionId}`],
         confidence: "high",
-        recommendedNextMove: "Open the submission and place it with the right company, or leave it as a signal.",
+        recommendedNextMove:
+          "Open the submission and place it with the right company, or leave it as a signal.",
         destination: {
           appId: "website",
           label: "Open the submission",
@@ -275,11 +284,7 @@ export function websiteSignals(input: WebsiteIntelInput): Signal[] {
 
     /* Permission given, nothing read yet. Quieter: it is preparation, not a promise. */
     const researched = (candidate?.signals.length ?? 0) > 0;
-    if (
-      submission.signals.authorizesResearch === true &&
-      !researched &&
-      UNDECIDED.has(status)
-    ) {
+    if (submission.signals.authorizesResearch === true && !researched && UNDECIDED.has(status)) {
       signals.push({
         id: `website:research-ready:${prospectId}`,
         category: "growth",
@@ -289,7 +294,8 @@ export function websiteSignals(input: WebsiteIntelInput): Signal[] {
         evidence,
         contextRefs: [`website:research:${submission.submissionId}`],
         confidence: "high",
-        recommendedNextMove: "Run the research in Scout so the decision rests on more than testimony.",
+        recommendedNextMove:
+          "Run the research in Scout so the decision rests on more than testimony.",
         destination: { appId: "scout", label: "Open in Scout", route: prospectRoute(prospectId) },
         status: "new",
         urgency: 48,
@@ -356,10 +362,12 @@ export function inboundBrief(input: WebsiteIntelInput): InboundBrief {
       ageDays: daysOld(submission.submittedAt, input.now),
       linkState: submission.linkState,
       linkReason: submission.linkReason,
-      stated: (packet?.claims.map((claim) => claim.statement) ?? [
-        ...submission.structured.desiredFuture,
-        ...submission.structured.pains,
-      ]).slice(0, 6),
+      stated: (
+        packet?.claims.map((claim) => claim.statement) ?? [
+          ...submission.structured.desiredFuture,
+          ...submission.structured.pains,
+        ]
+      ).slice(0, 6),
       // Testimony never crosses into the observed lane: Scout marks what the
       // founder said with a `stated_` signal id, so those stay in `stated`.
       observed: (candidate?.signals ?? [])
@@ -382,7 +390,8 @@ export function inboundBrief(input: WebsiteIntelInput): InboundBrief {
     total: companies.length,
     held: companies.filter((company) => company.linkState !== "linked").length,
     awaitingReview: companies.filter(
-      (company) => company.prospectId !== null && !DECIDED.has((company.scoutStatus ?? "").toLowerCase()),
+      (company) =>
+        company.prospectId !== null && !DECIDED.has((company.scoutStatus ?? "").toLowerCase()),
     ).length,
     companies: companies.sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1)),
   };

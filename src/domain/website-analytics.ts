@@ -101,12 +101,7 @@ export type WebsiteProviderId = (typeof WEBSITE_PROVIDERS)[number];
  * How a source is doing right now. "Not configured" and "quiet" are different
  * truths, and both are different from a zero.
  */
-export type ProviderState =
-  | "live"
-  | "stale"
-  | "quiet"
-  | "not_configured"
-  | "failed";
+export type ProviderState = "live" | "stale" | "quiet" | "not_configured" | "failed";
 
 /** What a scheduled sync recorded the last time it ran. */
 export interface ProviderSyncRecord {
@@ -139,8 +134,14 @@ export interface ProviderReadiness {
   lastError?: string | null;
   /** When the scheduled job last attempted this provider. */
   lastRunAt?: ISODateTime | null;
+  /**
+   * True when the capability itself exists, whether or not it has produced a
+   * row. A signed receiver that has heard nothing is quiet, not unconfigured.
+   */
+  capabilityAvailable?: boolean;
+  /** Borrow freshness from another provider when this one is derived. */
+  derivedFrom?: WebsiteProviderId;
 }
-
 
 /**
  * Referrals we can attribute to a named assistant. Deliberately narrow: it is
@@ -163,7 +164,6 @@ export interface AiReferralSummary {
   /** True when no first party events have been received in the window. */
   unmeasured: boolean;
 }
-
 
 /* ------------------------------------------------------------- joined reads */
 
@@ -199,10 +199,7 @@ export interface PageRow {
 }
 
 export type ContentClassification =
-  | "breakout"
-  | "sleeping_asset"
-  | "needs_refresh"
-  | "conversion_winner";
+  "breakout" | "sleeping_asset" | "needs_refresh" | "conversion_winner";
 
 export interface ContentRow extends PageRow {
   topic?: string | null;

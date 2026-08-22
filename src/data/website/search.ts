@@ -81,15 +81,13 @@ export function queryRows(rows: SearchMetricsDay[]): QueryRow[] {
 
   return [...whole.entries()]
     .map(([query, found]) => {
-      const topPath =
-        [...found.byPath.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      const topPath = [...found.byPath.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
       return {
         query,
         clicks: found.clicks,
         impressions: found.impressions,
         ctr: found.impressions > 0 ? found.clicks / found.impressions : 0,
-        averagePosition:
-          found.impressions > 0 ? found.positionWeighted / found.impressions : 0,
+        averagePosition: found.impressions > 0 ? found.positionWeighted / found.impressions : 0,
         change: split ? (late.get(query) ?? 0) - (early.get(query) ?? 0) : null,
         topPath,
       } satisfies QueryRow;
@@ -98,11 +96,15 @@ export function queryRows(rows: SearchMetricsDay[]): QueryRow[] {
 }
 
 export function growingQueries(rows: QueryRow[]): QueryRow[] {
-  return rows.filter((row) => (row.change ?? 0) > 0).sort((a, b) => (b.change ?? 0) - (a.change ?? 0));
+  return rows
+    .filter((row) => (row.change ?? 0) > 0)
+    .sort((a, b) => (b.change ?? 0) - (a.change ?? 0));
 }
 
 export function decliningQueries(rows: QueryRow[]): QueryRow[] {
-  return rows.filter((row) => (row.change ?? 0) < 0).sort((a, b) => (a.change ?? 0) - (b.change ?? 0));
+  return rows
+    .filter((row) => (row.change ?? 0) < 0)
+    .sort((a, b) => (a.change ?? 0) - (b.change ?? 0));
 }
 
 /** Seen often, clicked rarely. The title and description are the problem. */
@@ -150,7 +152,10 @@ export function competingPages(rows: SearchMetricsDay[]): CompetingQuery[] {
 }
 
 /** What people are finding us for, grouped by the leading word of the query. */
-export function searchTopics(rows: QueryRow[], limit = 8): { topic: string; impressions: number }[] {
+export function searchTopics(
+  rows: QueryRow[],
+  limit = 8,
+): { topic: string; impressions: number }[] {
   const tally = new Map<string, number>();
   for (const row of rows) {
     const topic = row.query.split(/\s+/).slice(0, 2).join(" ");

@@ -20,10 +20,13 @@ import { ProviderReadinessPanel } from "@/components/tt/website/panels";
 import { listWebsiteEvents, listWebsiteSubmissions } from "@/data/supabase/website-service";
 import {
   listPageMetrics,
+  listProviderSync,
   listSearchMetrics,
   listWebsitePages,
 } from "@/data/supabase/website-analytics-service";
+import { withFreshness } from "@/data/website/freshness";
 import { buildPageRows, providerReadiness, type WebsiteAnalyticsInput } from "@/data/website/pages";
+
 import { CLASSIFICATION_LABELS, buildContentRows } from "@/data/website/content";
 import { healthFindings, pageReadiness } from "@/data/website/health";
 import { queriesForPath } from "@/data/website/search";
@@ -101,6 +104,10 @@ function PageDetail({ identity }: { identity: WorkspaceIdentity }) {
     queryKey: ["website", "search-metrics", organizationId, sinceDate],
     queryFn: () => listSearchMetrics(organizationId, sinceDate),
   });
+  const providerSync = useQuery({
+    queryKey: ["website", "provider-sync", organizationId],
+    queryFn: () => listProviderSync(organizationId),
+  });
 
   const loading =
     submissions.isPending || events.isPending || pages.isPending || pageMetrics.isPending;
@@ -116,7 +123,11 @@ function PageDetail({ identity }: { identity: WorkspaceIdentity }) {
     [pages.data, pageMetrics.data, searchMetrics.data, events.data, submissions.data],
   );
 
-  const readiness = useMemo(() => providerReadiness(input), [input]);
+  const readiness = useMemo(
+    () => withFreshness(providerReadiness(input), providerSync.data?.value ?? []),
+    [input, providerSync.data],
+  );
+
   const row = useMemo(
     () => buildPageRows(input).find((entry) => entry.path === path) ?? null,
     [input, path],
@@ -138,7 +149,11 @@ function PageDetail({ identity }: { identity: WorkspaceIdentity }) {
     [input.searchMetrics, path],
   );
   const findings = useMemo(
-    () => healthFindings(row ? [row] : [], input.pages).filter((entry) => entry.paths.length === 0 || entry.paths.some((entry2) => normalizePath(entry2) === path)),
+    () =>
+      healthFindings(row ? [row] : [], input.pages).filter(
+        (entry) =>
+          entry.paths.length === 0 || entry.paths.some((entry2) => normalizePath(entry2) === path),
+      ),
     [row, input.pages, path],
   );
   const conversations = input.submissions.filter(
@@ -259,8 +274,8 @@ function PageDetail({ identity }: { identity: WorkspaceIdentity }) {
           ))}
         </div>
         <p className="mt-3 max-w-reading text-sm text-muted-foreground">
-          Last {WINDOW_DAYS} days. A dash means the source behind that figure has not told us,
-          which is different from zero.
+          Last {WINDOW_DAYS} days. A dash means the source behind that figure has not told us, which
+          is different from zero.
         </p>
       </header>
 

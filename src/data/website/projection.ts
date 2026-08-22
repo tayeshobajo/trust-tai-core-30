@@ -27,9 +27,8 @@ function countOf(events: WebsiteEvent[], name: WebsiteEvent["eventName"]): numbe
 }
 
 function sessions(events: WebsiteEvent[], name: WebsiteEvent["eventName"]): number {
-  return new Set(
-    events.filter((e) => e.eventName === name).map((e) => e.sessionId ?? e.eventKey),
-  ).size;
+  return new Set(events.filter((e) => e.eventName === name).map((e) => e.sessionId ?? e.eventKey))
+    .size;
 }
 
 /** Where traffic landed. Empty when no page views were ever received. */
@@ -210,8 +209,7 @@ export function sourceToQualified(
 
   for (const submission of submissions) {
     const utm = submission.attribution.utm ?? {};
-    const source =
-      utm.source?.trim() || hostOf(submission.attribution.entryReferrer) || "Direct";
+    const source = utm.source?.trim() || hostOf(submission.attribution.entryReferrer) || "Direct";
     const campaign = utm.campaign?.trim() || null;
     const row = ensure(source, campaign);
     row.submissions = (row.submissions ?? 0) + 1;

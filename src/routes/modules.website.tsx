@@ -24,16 +24,18 @@ import {
   listWebsitePages,
   listProviderSync,
 } from "@/data/supabase/website-analytics-service";
-import { withFreshness } from "@/data/website/freshness";
+import { freshestSyncAt, withFreshness } from "@/data/website/freshness";
 import {
   aiReferrals,
   buildPageRows,
   providerReadiness,
+  providerSourceGroups,
   sourceGroups,
   type WebsiteAnalyticsInput,
 } from "@/data/website/pages";
 import { AiReferralsPanel, ProviderReadinessPanel } from "@/components/tt/website/panels";
-import { decimal, percent } from "@/data/website/format";
+import { decimal, lastSynced, percent } from "@/data/website/format";
+
 import { CLASSIFICATION_LABELS, buildContentRows } from "@/data/website/content";
 import { healthFindings } from "@/data/website/health";
 import {
@@ -46,7 +48,14 @@ import {
   searchTopics,
   strikingDistance,
 } from "@/data/website/search";
-import { laneFallback, overviewMetrics, overviewObservations } from "@/data/website/overview";
+import {
+  isMeasured,
+  laneFallback,
+  overviewMetrics,
+  overviewObservations,
+  stateOf,
+} from "@/data/website/overview";
+
 import { formatKnown, intakeFunnel, isQualified } from "@/data/website/projection";
 import { normalizePath } from "@/data/website/url";
 import type {
@@ -257,21 +266,22 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
 
       {tab === "overview" ? (
         <Overview
-          metrics={metrics}
           observations={observations}
           readiness={readiness}
-          sources={sourceGroups(input.events, input.submissions)}
+          sources={
+            input.events.length > 0
+              ? sourceGroups(input.events, input.submissions)
+              : providerSourceGroups(input.pageMetrics)
+          }
           referrals={referrals}
         />
       ) : null}
       {tab === "pages" ? <Pages rows={pageRows} health={health} /> : null}
       {tab === "content" ? <Content rows={contentRows} /> : null}
       {tab === "search" ? (
-        <SearchTab input={input} queries={queries} referrals={referrals} />
+        <SearchTab input={input} queries={queries} referrals={referrals} readiness={readiness} />
       ) : null}
-      {tab === "intake" ? (
-        <Intake input={input} loading={loading} />
-      ) : null}
+      {tab === "intake" ? <Intake input={input} loading={loading} /> : null}
     </div>
   );
 }
@@ -280,46 +290,31 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
 
 const LANES: { key: ObservationLane; title: string }[] = [
   { key: "working", title: "What is working" },
-  { key: "changing", title: "What is changing" },
   { key: "attention", title: "Needs attention" },
   { key: "next_move", title: "Next move" },
 ];
 
 function Overview({
-  metrics,
   observations,
   readiness,
   sources,
   referrals,
 }: {
-  metrics: ReturnType<typeof overviewMetrics>;
   observations: ReturnType<typeof overviewObservations>;
   readiness: ProviderReadiness[];
   sources: { source: string; visits: number; submissions: number }[];
   referrals: AiReferralSummary;
 }) {
+  const [showSources, setShowSources] = useState(false);
+  const updated = freshestSyncAt(readiness);
+
   return (
     <div className="space-y-4">
-      <div className="tt-surface p-5">
-        <SectionHeading
-          eyebrow="Last 30 days"
-          title="The short version"
-          description="A dash means Core has not been told, which is different from zero."
-        />
-        <ol className="grid gap-3 md:grid-cols-5">
-          {metrics.map((metric) => (
-            <li key={metric.key} className="rounded-xl border border-border bg-card px-4 py-3">
-              <p className="font-mono text-[19px] leading-none text-foreground">
-                {formatKnown(metric.value)}
-              </p>
-              <p className="mt-1.5 text-[12px] text-foreground">{metric.label}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{metric.note}</p>
-            </li>
-          ))}
-        </ol>
-      </div>
+      <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+        Updated {lastSynced(updated).toLowerCase()}
+      </p>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         {LANES.map((lane) => {
           const rows = observations.filter((entry) => entry.lane === lane.key);
           return (
@@ -363,7 +358,8 @@ function Overview({
                 <li key={row.source} className="flex items-center justify-between gap-3 text-sm">
                   <span className="truncate text-foreground">{row.source}</span>
                   <span className="font-mono text-[12px] text-muted-foreground">
-                    {row.visits} visits · {row.submissions} conversations
+                    {row.visits} visits
+                    {row.submissions > 0 ? ` · ${row.submissions} conversations` : ""}
                   </span>
                 </li>
               ))}
@@ -374,21 +370,27 @@ function Overview({
         <AiReferralsPanel summary={referrals} />
       </div>
 
-      <ProviderReadinessPanel readiness={readiness} />
-
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowSources((open) => !open)}
+          className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
+        >
+          {showSources ? "Hide connection record" : "Show connection record"}
+        </button>
+        {showSources ? (
+          <div className="mt-3">
+            <ProviderReadinessPanel readiness={readiness} />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ pages */
 
-function Pages({
-  rows,
-  health,
-}: {
-  rows: PageRow[];
-  health: ReturnType<typeof healthFindings>;
-}) {
+function Pages({ rows, health }: { rows: PageRow[]; health: ReturnType<typeof healthFindings> }) {
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -413,12 +415,14 @@ function Pages({
               <th className="py-2 pr-4 font-normal">Page</th>
               <th className="py-2 pr-4 font-normal">Type</th>
               <th className="py-2 pr-4 font-normal">Views</th>
-              <th className="py-2 pr-4 font-normal">Landing</th>
+              <th className="py-2 pr-4 font-normal">Visitors</th>
               <th className="py-2 pr-4 font-normal">Clicks</th>
               <th className="py-2 pr-4 font-normal">Impressions</th>
               <th className="py-2 pr-4 font-normal">CTR</th>
               <th className="py-2 pr-4 font-normal">Position</th>
-              <th className="py-2 font-normal">Conversations</th>
+              <th className="py-2 pr-4 font-normal">Engagement</th>
+              <th className="py-2 pr-4 font-normal">Conversations</th>
+              <th className="py-2 font-normal">Health</th>
             </tr>
           </thead>
           <tbody>
@@ -434,14 +438,30 @@ function Pages({
                   </Link>
                   <p className="font-mono text-[11px] text-muted-foreground">{row.path}</p>
                 </td>
-                <td className="py-2 pr-4 text-muted-foreground">{row.pageType.replace("_", " ")}</td>
+                <td className="py-2 pr-4 text-muted-foreground">
+                  {row.pageType.replace("_", " ")}
+                </td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.views)}</td>
-                <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.landingSessions)}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.users)}</td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.clicks)}</td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.impressions)}</td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{percent(row.ctr)}</td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{decimal(row.averagePosition)}</td>
-                <td className="py-2 font-mono text-[12px]">{formatKnown(row.intakeSubmissions)}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">{percent(row.engagementRate)}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">
+                  {formatKnown(row.intakeSubmissions)}
+                </td>
+                <td className="py-2 font-mono text-[11px] text-muted-foreground">
+                  {row.unlisted
+                    ? "Not published"
+                    : row.indexable === false
+                      ? "Noindex"
+                      : row.inSitemap === false
+                        ? "Not in sitemap"
+                        : row.inSitemap === true
+                          ? "Listed"
+                          : "Unknown"}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -507,9 +527,11 @@ function Content({ rows }: { rows: ContentRow[] }) {
               <p className="font-mono text-[11px] text-muted-foreground">{row.path}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {row.classifications.length === 0 ? <MetaPill>Insufficient data</MetaPill> : null}
               {row.classifications.map((label) => (
                 <MetaPill key={label}>{CLASSIFICATION_LABELS[label]}</MetaPill>
               ))}
+
               {row.topic ? <MetaPill>Topic · {row.topic}</MetaPill> : null}
             </div>
           </div>
@@ -538,7 +560,13 @@ function Content({ rows }: { rows: ContentRow[] }) {
 
           {row.intent.topic || row.intent.audience || row.intent.primaryNextStep ? (
             <p className="mt-2 text-[12px] text-muted-foreground">
-              Intent · {[row.intent.audience, row.intent.searchIntent, row.intent.purpose, row.intent.primaryNextStep]
+              Intent ·{" "}
+              {[
+                row.intent.audience,
+                row.intent.searchIntent,
+                row.intent.purpose,
+                row.intent.primaryNextStep,
+              ]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
@@ -555,10 +583,12 @@ function SearchTab({
   input,
   queries,
   referrals,
+  readiness,
 }: {
   input: WebsiteAnalyticsInput;
   queries: ReturnType<typeof queryRows>;
   referrals: AiReferralSummary;
+  readiness: ProviderReadiness[];
 }) {
   const assistants = (
     <AiReferralsPanel
@@ -568,13 +598,19 @@ function SearchTab({
   );
 
   if (queries.length === 0) {
+    const state = stateOf(readiness, "search_console");
     return (
       <div className="space-y-4">
-        <EmptyState
-          title="No search data yet"
-          belongsHere="Queries, impressions, click through and position belong here once Search Console data is flowing."
-          whyItMatters="Search is how most people discover a company they have never heard of. Until it is connected this stays unknown, not zero."
-        />
+        <div className="tt-surface p-5">
+          <SectionHeading eyebrow="Search" title="Nothing to read yet" />
+          <p className="max-w-reading text-sm text-muted-foreground">
+            {isMeasured(state)
+              ? "Search Console is connected. Google has not returned performance rows for this window yet, so queries, clicks and positions stay blank rather than reading as zero."
+              : state === "failed"
+                ? "The last Search Console run failed, so nothing can be read for this window. The connection record on Overview holds the exact reason."
+                : "Search Console has not reported yet. Queries, clicks, click through and position stay unknown, not zero."}
+          </p>
+        </div>
         {assistants}
       </div>
     );
@@ -587,11 +623,31 @@ function SearchTab({
   const competing = competingPages(input.searchMetrics);
 
   const lists: { title: string; description: string; rows: typeof queries }[] = [
-    { title: "Bringing traffic", description: "The queries producing clicks today.", rows: queries.slice(0, 10) },
-    { title: "Growing", description: "More clicks in the second half of the window.", rows: growingQueries(queries).slice(0, 8) },
-    { title: "Declining", description: "Fewer clicks in the second half of the window.", rows: decliningQueries(queries).slice(0, 8) },
-    { title: "Seen, rarely clicked", description: "Real demand meeting a weak title or description.", rows: highImpressionLowCtr(queries).slice(0, 8) },
-    { title: "Positions four to twenty", description: "Close enough that a better page would move them.", rows: strikingDistance(queries).slice(0, 8) },
+    {
+      title: "Bringing traffic",
+      description: "The queries producing clicks today.",
+      rows: queries.slice(0, 10),
+    },
+    {
+      title: "Growing",
+      description: "More clicks in the second half of the window.",
+      rows: growingQueries(queries).slice(0, 8),
+    },
+    {
+      title: "Declining",
+      description: "Fewer clicks in the second half of the window.",
+      rows: decliningQueries(queries).slice(0, 8),
+    },
+    {
+      title: "Seen, rarely clicked",
+      description: "Real demand meeting a weak title or description.",
+      rows: highImpressionLowCtr(queries).slice(0, 8),
+    },
+    {
+      title: "Positions four to twenty",
+      description: "Close enough that a better page would move them.",
+      rows: strikingDistance(queries).slice(0, 8),
+    },
   ];
 
   return (
@@ -601,7 +657,9 @@ function SearchTab({
           <div key={list.title} className="tt-surface p-5">
             <SectionHeading eyebrow="Search" title={list.title} description={list.description} />
             {list.rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing meets this rule in the window.</p>
+              <p className="text-sm text-muted-foreground">
+                Nothing meets this rule in the window.
+              </p>
             ) : (
               <ul className="space-y-1.5">
                 {list.rows.map((row) => (
@@ -675,7 +733,8 @@ function SearchTab({
                   {row.refreshPath ? ` Start with ${row.refreshPath}.` : ""}
                 </p>
                 <p className="font-mono text-[11px] text-muted-foreground">
-                  {row.impressions} impressions · {percent(row.ctr)} · p{decimal(row.averagePosition)}
+                  {row.impressions} impressions · {percent(row.ctr)} · p
+                  {decimal(row.averagePosition)}
                 </p>
               </li>
             ))}
@@ -825,4 +884,3 @@ function Submission({
     </article>
   );
 }
-

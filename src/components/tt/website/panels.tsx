@@ -7,7 +7,7 @@
 
 import { SectionHeading } from "@/components/tt/primitives";
 import { lastSynced } from "@/data/website/format";
-import { stateLabel } from "@/data/website/freshness";
+import { stateLabel, stateNote } from "@/data/website/freshness";
 import type { AiReferralSummary, ProviderReadiness } from "@/domain/website-analytics";
 import { cn } from "@/lib/utils";
 
@@ -27,44 +27,39 @@ export function ProviderReadinessPanel({
           ? {}
           : {
               description:
-                "Each source below either reported in this window or it did not. Anything it covers stays unknown while it is quiet.",
+                "The operational record of each source. Quiet means it ran and had nothing to report.",
             })}
       />
-      <ul className="space-y-3">
-        {readiness.map((entry) => (
-          <li key={entry.id} className="border-b border-border/60 pb-3 last:border-0 last:pb-0">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <span className="text-sm text-foreground">{entry.label}</span>
-              <span
-                className={cn(
-                  "font-mono text-[11px] uppercase tracking-[0.12em]",
-                  entry.state === "live" || (!entry.state && entry.connected)
-                    ? "text-royal"
-                    : "text-muted-foreground",
-                )}
-              >
-                {entry.state ? stateLabel(entry.state) : entry.connected ? "Reporting" : "No data"}
-              </span>
-            </div>
-            <p className="mt-1 flex flex-wrap gap-x-3 font-mono text-[11px] text-muted-foreground">
-              <span>Last sync {lastSynced(entry.lastSyncedAt)}</span>
-              <span>{entry.rows} rows</span>
-            </p>
-            {compact ? null : (
-              <>
-                <p className="mt-1 text-[12px] text-muted-foreground">{entry.covers}</p>
-                {entry.connected ? null : (
-                  <p className="text-[12px] text-muted-foreground">{entry.note}</p>
-                )}
-                {entry.lastError ? (
-                  <p className="text-[12px] text-muted-foreground">
-                    Last run reported: {entry.lastError}
-                  </p>
-                ) : null}
-              </>
-            )}
-          </li>
-        ))}
+      <ul className="space-y-2">
+        {readiness.map((entry) => {
+          const state = entry.state ?? (entry.connected ? "live" : "not_configured");
+          return (
+            <li key={entry.id} className="border-b border-border/60 pb-2 last:border-0 last:pb-0">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <span className="text-sm text-foreground">{entry.label}</span>
+                <span
+                  className={cn(
+                    "font-mono text-[11px] uppercase tracking-[0.12em]",
+                    state === "live"
+                      ? "text-royal"
+                      : state === "failed"
+                        ? "text-warning"
+                        : "text-muted-foreground",
+                  )}
+                >
+                  {stateLabel(state)}
+                </span>
+              </div>
+              <p className="mt-0.5 flex flex-wrap gap-x-3 font-mono text-[11px] text-muted-foreground">
+                <span>Last sync {lastSynced(entry.lastSyncedAt)}</span>
+                <span>{entry.rows} rows</span>
+              </p>
+              {compact ? null : (
+                <p className="mt-0.5 text-[12px] text-muted-foreground">{stateNote(entry)}</p>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
