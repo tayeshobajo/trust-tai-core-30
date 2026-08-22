@@ -129,10 +129,16 @@ Flow:
    mailbox address, writes `comms_integrations`, and stores the refresh token
    sealed with AES-GCM through `comms_put_integration_secret`. Even a member
    reading that value back gets ciphertext.
-4. Read now runs one bounded pass: up to 60 messages from the last 30 days,
-   metadata and snippet only. A message is stored only when a participant
-   matches an existing `comms_relationships` email; everything else is counted
-   as skipped and dropped. Upserts key on
+4. Read now runs one bounded pass, known-correspondent-first: tracked
+   `comms_relationships` emails are loaded first, and every Gmail list query
+   is scoped to those addresses (`from:`/`to:` per address, chunked to stay
+   inside Gmail query limits), capped at 60 messages over the overlap window,
+   metadata and snippet only. Mailbox noise never enters the candidate set,
+   so it cannot crowd a known person's mail out of the cap. An empty
+   relationship list is a clean no-op — no Gmail list work at all. A message
+   is still stored only when a participant matches an existing
+   `comms_relationships` email; anything else is counted as skipped and
+   dropped. Upserts key on
    `(organization_id, provider, provider_message_id)`, so repeat passes are
    idempotent. Thread state and the response clock come from the pure
    `readThread` reading, not from Gmail.

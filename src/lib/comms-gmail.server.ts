@@ -4,6 +4,12 @@
  * What this is allowed to do: read message metadata for threads with people
  * who are already relationships in Comms, and record who spoke last.
  *
+ * How it reads: known-correspondent-first. The tracked relationship list is
+ * loaded before Gmail is touched, and every Gmail list query is scoped to
+ * those addresses (`from:`/`to:` per address, chunked). Mailbox noise never
+ * enters the candidate set, so it cannot crowd a known person's mail out of
+ * the bounded per-pass cap.
+ *
  * What it is not allowed to do, by construction:
  *  - send anything (only `gmail.readonly` is ever requested),
  *  - read mail with anyone Comms does not already track,
@@ -338,7 +344,7 @@ export interface SyncResult {
   lastSyncAt: string;
 }
 
-interface RelationshipRow {
+export interface RelationshipRow {
   id: string;
   email: string | null;
   full_name: string;
@@ -351,6 +357,72 @@ interface ConnectionRef {
 
 function clampDays(value: number): number {
   return Math.min(Math.max(value, 1), 90);
+}
+
+/* ------------------------------------- known-correspondent-first querying */
+
+/**
+ * Gmail search bounds. `q` strings are capped so the encoded URL stays well
+ * inside Gmail's limits, and each chunk holds a small number of addresses so
+ * a large relationship list degrades into more queries, never a broken one.
+ */
+const GMAIL_QUERY_CHUNK_MAX_EMAILS = 20;
+const GMAIL_QUERY_CHUNK_MAX_LENGTH = 1200;
+
+/**
+ * The reliability rule, made concrete: Gmail is asked only about people Comms
+ * already tracks. Each chunk becomes
+ * `newer_than:Nd -in:spam -in:trash (from:a OR to:a OR from:b OR to:b …)`.
+ * Gmail's `to:` operator matches To, Cc, and Bcc, so one pair per address
+ * covers both directions of the correspondence. Mailbox noise — newsletters,
+ * automation, strangers — never enters the candidate set, so it can never
+ * consume the per-pass message cap.
+ *
+ * An empty tracked set returns no queries at all: zero Gmail list work.
+ */
+export function buildKnownCorrespondentQueries(emails: string[], days: number): string[] {
+  const unique = [
+    ...new Set(emails.map((entry) => entry.trim().toLowerCase()).filter(Boolean)),
+  ];
+  if (unique.length === 0) return [];
+  const window = `newer_than:${days}d -in:spam -in:trash`;
+  const queries: string[] = [];
+  let current: string[] = [];
+  const flush = () => {
+    if (current.length > 0) {
+      queries.push(`${window} (${current.join(" OR ")})`);
+      current = [];
+    }
+  };
+  for (const email of unique) {
+    const term = `from:${email} OR to:${email}`;
+    const projected = `${window} (${[...current, term].join(" OR ")})`;
+    if (
+      current.length >= GMAIL_QUERY_CHUNK_MAX_EMAILS ||
+      projected.length > GMAIL_QUERY_CHUNK_MAX_LENGTH
+    ) {
+      flush();
+    }
+    current.push(term);
+  }
+  flush();
+  return queries;
+}
+
+/**
+ * Which tracked relationship, if any, a message belongs to. Unknown people
+ * match nothing: they are counted and dropped, never stored, never turned
+ * into relationships.
+ */
+export function findTrackedCounterpart(
+  message: Pick<NormalizedMessage, "fromEmail" | "toEmails" | "ccEmails">,
+  mailbox: string,
+  byEmail: ReadonlyMap<string, RelationshipRow>,
+): RelationshipRow | undefined {
+  const counterparts = [message.fromEmail, ...message.toEmails, ...message.ccEmails].filter(
+    (entry): entry is string => Boolean(entry) && entry !== mailbox,
+  );
+  return counterparts.map((email) => byEmail.get(email)).find(Boolean);
 }
 
 /**
@@ -549,8 +621,11 @@ async function verifySentDrafts(
 
 /**
  * One incremental pass, shared by the member-invoked read and the scheduled
- * service pass. Reads recent messages, keeps only the ones with people
- * already tracked in Comms, and stores them idempotently on
+ * service pass. Known-correspondent-first: the tracked relationship list is
+ * loaded before Gmail is touched, and every list query is scoped to those
+ * addresses, so mailbox noise can never crowd a known person's mail out of
+ * the bounded per-pass cap. Only messages with people already tracked in
+ * Comms are stored — idempotently on
  * `(organization, provider, provider_message_id)`. New inbound mail enters
  * the suite event stream once; sent drafts are reconciled against the
  * mailbox. Every Supabase call goes through the caller-supplied client, so
@@ -567,12 +642,7 @@ async function runSyncPass(input: {
   const mailbox = (connection.accountEmail ?? "").toLowerCase();
   const days = clampDays(input.backfillDays);
 
-  const list = await gmailGet<{ messages?: { id: string }[] }>(
-    `/messages?maxResults=${MAX_MESSAGES_PER_PASS}&q=${encodeURIComponent(`newer_than:${days}d -in:spam -in:trash`)}`,
-    accessToken,
-  );
-  const ids = (list.messages ?? []).map((entry) => entry.id).filter(Boolean);
-
+  // Relationships first: they define what Gmail is allowed to be asked about.
   const { data: relationshipRows, error: relationshipError } = await client
     .from("comms_relationships")
     .select("id, email, full_name")
@@ -582,6 +652,27 @@ async function runSyncPass(input: {
   ((relationshipRows ?? []) as RelationshipRow[]).forEach((row) => {
     if (row.email) byEmail.set(row.email.toLowerCase(), row);
   });
+
+  const queries = buildKnownCorrespondentQueries([...byEmail.keys()], days);
+
+  // No tracked people means no Gmail message-list work at all: a clean no-op
+  // that still records the pass on the connection row.
+  const ids: string[] = [];
+  const seenIds = new Set<string>();
+  for (const query of queries) {
+    if (ids.length >= MAX_MESSAGES_PER_PASS) break;
+    const remaining = MAX_MESSAGES_PER_PASS - ids.length;
+    const list = await gmailGet<{ messages?: { id: string }[] }>(
+      `/messages?maxResults=${remaining}&q=${encodeURIComponent(query)}`,
+      accessToken,
+    );
+    for (const entry of list.messages ?? []) {
+      if (entry.id && !seenIds.has(entry.id)) {
+        seenIds.add(entry.id);
+        ids.push(entry.id);
+      }
+    }
+  }
 
   let messagesRead = 0;
   let skippedUnknownPeople = 0;
@@ -597,10 +688,9 @@ async function runSyncPass(input: {
     const message = normalize(raw, mailbox);
     if (!message) continue;
 
-    const counterparts = [message.fromEmail, ...message.toEmails, ...message.ccEmails].filter(
-      (entry): entry is string => Boolean(entry) && entry !== mailbox,
-    );
-    const match = counterparts.map((email) => byEmail.get(email)).find(Boolean);
+    // Defense in depth: the query is already scoped, but the match still
+    // decides. An address Comms does not track is counted and dropped.
+    const match = findTrackedCounterpart(message, mailbox, byEmail);
     if (!match) {
       skippedUnknownPeople += 1;
       continue;
