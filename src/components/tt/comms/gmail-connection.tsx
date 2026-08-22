@@ -22,6 +22,7 @@ import {
 } from "@/data/supabase/comms-gmail";
 import {
   INTEGRATION_STATUS_LABEL,
+  readGmailRunSummary,
   type IntegrationConnection,
 } from "@/domain/comms-integrations";
 
@@ -117,6 +118,9 @@ export function GmailConnection({
 
   const configured = status.data?.configured ?? false;
   const connected = connection?.status === "connected";
+  // The persisted summary of the last pass — visible even when nobody has
+  // pressed "Read now" this session.
+  const lastRun = connection ? readGmailRunSummary(connection.cursor) : null;
   const busy =
     connect.isPending || exchange.isPending || readNow.isPending || disconnectAction.isPending;
 
@@ -150,6 +154,26 @@ export function GmailConnection({
             : "Needs a Google OAuth client on the server."}
         </p>
       )}
+
+      {lastRun ? (
+        <div className="space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
+          <p>
+            Last pass {new Date(lastRun.at).toLocaleString()}: read {lastRun.messagesRead} labeled,
+            stored {lastRun.messagesStored} for {lastRun.relationshipsTouched}{" "}
+            {lastRun.relationshipsTouched === 1 ? "relationship" : "relationships"}, emitted{" "}
+            {lastRun.eventsEmitted} events, verified {lastRun.draftsVerified} sent{" "}
+            {lastRun.draftsVerified === 1 ? "draft" : "drafts"}.
+          </p>
+          {lastRun.pendingPeople > 0 ? (
+            <p>
+              {lastRun.pendingPeople} labeled{" "}
+              {lastRun.pendingPeople === 1 ? "person is" : "people are"} not in Comms yet (
+              {lastRun.skippedUnknownPeople} messages held back). Review them under Add
+              relationship → Show people.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {!provisioned ? (
         <p className="text-xs text-muted-foreground">
@@ -188,8 +212,10 @@ export function GmailConnection({
       {sync ? (
         <p className="text-xs text-muted-foreground">
           Read {sync.messagesRead} labeled messages, stored {sync.messagesStored} across{" "}
-          {sync.relationshipsTouched} relationships. Left {sync.skippedUnknownPeople} alone because
-          those people are not in Comms yet — they stay reviewable from the mailbox import.
+          {sync.relationshipsTouched} relationships. Held back {sync.skippedUnknownPeople} messages
+          from {sync.pendingPeople ?? 0}{" "}
+          {(sync.pendingPeople ?? 0) === 1 ? "person" : "people"} not in Comms yet — they stay
+          reviewable from the mailbox import below.
         </p>
       ) : null}
       {notice ? <p className="text-xs text-muted-foreground">{notice}</p> : null}
