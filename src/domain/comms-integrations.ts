@@ -217,3 +217,75 @@ export interface ThreadRead {
   responseDueAt?: ISODateTime;
   messageCount: number;
 }
+
+/* -------------------------------------------------- gmail run bookkeeping */
+
+/**
+ * The persisted summary of one sync pass, stored on the connection's cursor
+ * so the status surface can tell the truth about the last read without
+ * touching the mailbox again. Counts only — never message content.
+ */
+export interface GmailRunSummary {
+  at: ISODateTime;
+  messagesRead: number;
+  messagesStored: number;
+  relationshipsTouched: number;
+  /** Labeled messages held back because the person is not in Comms yet. */
+  skippedUnknownPeople: number;
+  /** Distinct labeled correspondents not yet in Comms — the review queue. */
+  pendingPeople: number;
+  eventsEmitted: number;
+  draftsVerified: number;
+}
+
+function runCount(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? Math.floor(value)
+    : 0;
+}
+
+/** Defensive read of `cursor.last_run`; anything malformed is simply absent. */
+export function readGmailRunSummary(cursor: Record<string, unknown>): GmailRunSummary | null {
+  const raw = cursor["last_run"];
+  if (!raw || typeof raw !== "object") return null;
+  const run = raw as Record<string, unknown>;
+  if (typeof run["at"] !== "string" || run["at"].length === 0) return null;
+  return {
+    at: run["at"],
+    messagesRead: runCount(run["messages_read"]),
+    messagesStored: runCount(run["messages_stored"]),
+    relationshipsTouched: runCount(run["relationships_touched"]),
+    skippedUnknownPeople: runCount(run["skipped_unknown_people"]),
+    pendingPeople: runCount(run["pending_people"]),
+    eventsEmitted: runCount(run["events_emitted"]),
+    draftsVerified: runCount(run["drafts_verified"]),
+  };
+}
+
+/* --------------------------------------------------- relationship coverage */
+
+/**
+ * Relationship coverage: of the correspondents on labeled threads, how many
+ * are already relationships in Comms and how many still wait for a human
+ * Add-to-Comms decision. Computed over the full window before any display
+ * cap, so the count stays honest when the list is shortened.
+ */
+export interface MailboxCoverage {
+  windowDays: number;
+  correspondents: number;
+  tracked: number;
+  pending: number;
+}
+
+export function summarizeMailboxCoverage(
+  people: { alreadyTracked: boolean }[],
+  windowDays: number,
+): MailboxCoverage {
+  const tracked = people.filter((person) => person.alreadyTracked).length;
+  return {
+    windowDays,
+    correspondents: people.length,
+    tracked,
+    pending: people.length - tracked,
+  };
+}

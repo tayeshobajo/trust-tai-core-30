@@ -37,6 +37,8 @@ import { openSecret, sealSecret } from "@/lib/comms-crypto.server";
 import { readThread } from "@/data/comms-thread-state";
 import {
   GMAIL_READ_SCOPES,
+  summarizeMailboxCoverage,
+  type MailboxCoverage,
   type NormalizedMessage,
 } from "@/domain/comms-integrations";
 import { SUITE_EVENTS } from "@/domain/events";
@@ -345,6 +347,8 @@ export interface SyncResult {
   messagesStored: number;
   relationshipsTouched: number;
   skippedUnknownPeople: number;
+  /** Distinct labeled correspondents not in Comms yet — the review queue size. */
+  pendingPeople: number;
   /** Inbound messages that entered the suite event stream this pass. */
   eventsEmitted: number;
   /** Sent drafts the mailbox proved this pass. */
@@ -365,6 +369,19 @@ interface ConnectionRef {
 
 function clampDays(value: number): number {
   return Math.min(Math.max(value, 1), 90);
+}
+
+/**
+ * Every participant address except the mailbox itself, normalized and deduped.
+ * Used to count distinct labeled correspondents Comms does not track yet —
+ * people, not messages, are the review queue. Exported so the counting rule
+ * is provable without a network.
+ */
+export function counterpartAddresses(message: NormalizedMessage, mailbox: string): string[] {
+  const all = [message.fromEmail, ...message.toEmails, ...message.ccEmails]
+    .filter((email): email is string => Boolean(email))
+    .map((email) => email.toLowerCase());
+  return [...new Set(all)].filter((email) => email !== mailbox);
 }
 
 /* ---------------------------------------------------- label-gated reading */
@@ -715,6 +732,7 @@ async function runSyncPass(input: {
 
   let messagesRead = 0;
   let skippedUnknownPeople = 0;
+  const unknownPeople = new Set<string>();
   const perRelationship = new Map<string, { relationship: RelationshipRow; messages: NormalizedMessage[] }>();
   const threadSubjects = new Map<string, string | undefined>();
 
@@ -733,6 +751,7 @@ async function runSyncPass(input: {
     const match = findTrackedCounterpart(message, mailbox, byEmail);
     if (!match) {
       skippedUnknownPeople += 1;
+      for (const email of counterpartAddresses(message, mailbox)) unknownPeople.add(email);
       continue;
     }
 
@@ -860,7 +879,23 @@ async function runSyncPass(input: {
     draftsVerified += await verifySentDrafts(client, organizationId, bucket.relationship);
   }
 
-  const cursor = { last_pass_at: nowIso, backfill_days: days };
+  // The persisted ingestion summary the status surface reads back. Counts
+  // only — never content — so the card can report the last pass truthfully
+  // without touching the mailbox again.
+  const cursor = {
+    last_pass_at: nowIso,
+    backfill_days: days,
+    last_run: {
+      at: nowIso,
+      messages_read: messagesRead,
+      messages_stored: messagesStored,
+      relationships_touched: perRelationship.size,
+      skipped_unknown_people: skippedUnknownPeople,
+      pending_people: unknownPeople.size,
+      events_emitted: eventsEmitted,
+      drafts_verified: draftsVerified,
+    },
+  };
   const { error: cursorError } = await client
     .from("comms_integrations")
     .update({
@@ -879,6 +914,7 @@ async function runSyncPass(input: {
     messagesStored,
     relationshipsTouched: perRelationship.size,
     skippedUnknownPeople,
+    pendingPeople: unknownPeople.size,
     eventsEmitted,
     draftsVerified,
     lastSyncAt: nowIso,
@@ -1109,7 +1145,7 @@ export async function listMailboxCandidates(input: {
   organizationId: string;
   backfillDays?: number;
   limit?: number;
-}): Promise<{ accountEmail?: string; candidates: MailboxCandidate[] }> {
+}): Promise<{ accountEmail?: string; candidates: MailboxCandidate[]; coverage: MailboxCoverage }> {
   const client = supabaseFor(input.token);
   await requireMember(client, input.organizationId);
 
@@ -1202,6 +1238,9 @@ export async function listMailboxCandidates(input: {
     }
   }
 
+  // Coverage counts the whole labeled window, before the display cap below.
+  const coverage = summarizeMailboxCoverage([...found.values()], days);
+
   const candidates = [...found.values()]
     .sort(
       (left, right) =>
@@ -1210,5 +1249,5 @@ export async function listMailboxCandidates(input: {
     )
     .slice(0, Math.min(Math.max(input.limit ?? 12, 1), 25));
 
-  return { ...(mailbox ? { accountEmail: mailbox } : {}), candidates };
+  return { ...(mailbox ? { accountEmail: mailbox } : {}), candidates, coverage };
 }
