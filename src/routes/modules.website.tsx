@@ -48,7 +48,14 @@ import {
   searchTopics,
   strikingDistance,
 } from "@/data/website/search";
-import { laneFallback, overviewMetrics, overviewObservations } from "@/data/website/overview";
+import {
+  isMeasured,
+  laneFallback,
+  overviewMetrics,
+  overviewObservations,
+  stateOf,
+} from "@/data/website/overview";
+
 import { formatKnown, intakeFunnel, isQualified } from "@/data/website/projection";
 import { normalizePath } from "@/data/website/url";
 import type {
