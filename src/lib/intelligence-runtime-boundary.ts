@@ -68,6 +68,26 @@ export const REASONING_EXCEPTIONS: ReasoningException[] = [
     bypass: "direct provider fetch for draft composition",
     migration: "route through reasonWithRuntime with output: 'draft'",
   },
+  {
+    file: "src/routes/api/public/comms.draft.ts",
+    bypass: "route handler imports provider selection for its draft shell",
+    migration: "drops away when comms-draft adopts reasonWithRuntime",
+  },
+  {
+    file: "src/routes/api/public/roadmap.ask.ts",
+    bypass: "route handler imports the transport directly",
+    migration: "route through reasonWithRuntime with output: 'interpretation'",
+  },
+  {
+    file: "src/routes/api/public/roadmap.research.ts",
+    bypass: "route handler imports the transport and provider selection directly",
+    migration: "route through reasonWithRuntime with output: 'research'",
+  },
+  {
+    file: "src/routes/api/public/scout.discover.ts",
+    bypass: "route handler imports provider selection for its discovery shell",
+    migration: "drops away when scout-discover adopts reasonWithRuntime",
+  },
 ];
 
 /**
