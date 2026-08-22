@@ -524,7 +524,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 Add interaction
               </TTButton>
             ) : null}
-            <TTButton onClick={() => setCapturing((value) => !value)}>
+            <TTButton
+              onClick={() => {
+                setImportWarning(null);
+                setCapturing((value) => !value);
+              }}
+            >
               {capturing ? "Close" : "Add relationship"}
             </TTButton>
           </div>
@@ -544,11 +549,24 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           />
           <MailboxImport
             organizationId={identity.organizationId}
-            onImport={(input) => create.mutate(input)}
-            busy={create.isPending}
+            onImport={async (input) => {
+              await importFromMailbox.mutateAsync(input);
+            }}
+            busy={importFromMailbox.isPending}
+            busyLabel={
+              importPhase === "backfilling" ? "Bringing in labeled history…" : "Adding to Comms…"
+            }
           />
           {create.isError ? (
             <p className="text-[13px] text-destructive">{(create.error as Error).message}</p>
+          ) : null}
+          {importFromMailbox.isError ? (
+            <p className="text-[13px] text-destructive">
+              {(importFromMailbox.error as Error).message}
+            </p>
+          ) : null}
+          {importWarning ? (
+            <p className="text-[13px] text-destructive">{importWarning}</p>
           ) : null}
         </div>
       ) : null}
