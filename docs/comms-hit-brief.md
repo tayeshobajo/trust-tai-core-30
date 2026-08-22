@@ -306,3 +306,37 @@ returned `pendingPeople=1` alongside `skippedUnknownPeople=1`, and the
 fail-closed `cursor.last_run` write succeeded (both runs `ok: true`), so the
 persisted last-pass summary the Connections card reads is live in
 production.
+
+### Onboarding backfill: Add to Comms brings history with it (2026-08-22) — implemented, not yet production-verified
+
+Production QA exposed the gap: a labeled correspondent added through the
+mailbox import stored no history until the next scheduled sweep, because the
+member-facing sync was incremental and the scheduler runs on its own clock.
+The rule is now: a relationship created from a labeled candidate is not
+considered ready until a bounded labeled backfill has been attempted for
+that person.
+
+- Add to Comms composes the existing governed creation
+  (`commsService.create`, email-deduped) with one member-authorized
+  `syncGmail({ backfillDays: 30 })` pass (clamp 1–90 on both client and
+  server). No new Gmail reader, no service-role bypass: the pass runs under
+  the member's own token with RLS intact, label gate first, identity match
+  second, 60-message cap, read-only, no label mutation, no send.
+- A backfill failure after creation never rolls the relationship back; the
+  UI surfaces "Added to Comms, but Gmail history could not be imported. Try
+  sync again." and keeps the capture panel open next to the person.
+- Progress is honest: "Adding to Comms…" during creation, "Bringing in
+  labeled history…" during the backfill. On success the new relationship is
+  selected and all Comms queries invalidate, so stored history appears
+  without a reload.
+- Idempotency is structural: creation dedupes on email per organization,
+  message upserts key on `(organization_id, provider, provider_message_id)`,
+  and event emission only fires for newly stored inbound.
+
+Unit tests (`src/data/comms-onboarding.test.ts`): create-then-backfill
+ordering, backfill failure keeps the relationship with a warning, creation
+failure never reaches the backfill, already-tracked person returns the
+existing relationship with a harmless repeat backfill, and the 1–90-day
+clamp. Typecheck clean; existing `comms-gmail.server` suite (17 tests)
+unaffected. **Production verification pending**: a live Add-to-Comms run
+against the real mailbox is still required before this is marked verified.
