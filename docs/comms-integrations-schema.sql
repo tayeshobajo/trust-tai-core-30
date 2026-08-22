@@ -1,9 +1,11 @@
--- Trust Tai OS — Comms external integrations schema (Phase 0)
+-- Trust Tai OS — Comms external integrations schema
 --
--- NOT YET APPLIED. This project does not own the Trust Tai Supabase schema
--- (ref okydosoacqdnursmmenf); this file is the exact statement set to run there
--- when the integration layer is switched on. Until it is applied, Comms reads
--- these tables and reports the real error rather than inventing data.
+-- APPLIED. Verified live on the Trust Tai Supabase project
+-- (ref okydosoacqdnursmmenf) on 2026-08-22: every table, column, index and
+-- function named here answered production probes, including the service-role
+-- secret read at the bottom. This project does not own the schema, so this
+-- file remains the exact statement set of record: any change must be applied
+-- there before code relies on it.
 --
 -- Additive only. No shared core entity is duplicated: people stay in
 -- `contacts`, companies stay in `clients` / `prospects`, history stays in
@@ -295,3 +297,62 @@ revoke all on function public.comms_put_integration_secret(uuid, text) from publ
 revoke all on function public.comms_get_integration_secret(uuid) from public, anon;
 grant execute on function public.comms_put_integration_secret(uuid, text) to authenticated;
 grant execute on function public.comms_get_integration_secret(uuid) to authenticated;
+
+-- ------------------------------------- system secret read (service role only)
+-- The scheduled sync runs with no member session, so the membership-checked
+-- function above cannot serve it: auth.uid() is null under the service role.
+-- This variant is the same read with membership replaced by "only the service
+-- role may execute it at all". Already live in production (used by the
+-- comms-gmail-refresh edge function and the scheduled sweep); recorded here
+-- so this file stays the complete statement set.
+
+create or replace function public.comms_get_integration_secret_system(
+  p_integration_id uuid
+) returns text
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  v_value text;
+begin
+  select refresh_token into v_value
+  from private.comms_integration_secrets
+  where integration_id = p_integration_id;
+  return v_value;
+end;
+$$;
+
+revoke all on function public.comms_get_integration_secret_system(uuid) from public, anon, authenticated;
+grant execute on function public.comms_get_integration_secret_system(uuid) to service_role;
+
+-- --------------------------------------------------------------- scheduled sync
+-- "Help me never lose an important relationship" cannot depend on someone
+-- remembering to press "Read now". One conservative sweep every 6 hours:
+-- a short overlapping window (2 days), bounded per mailbox, and a failed
+-- mailbox keeps its last successful state and reports "Needs attention".
+-- Four passes a day is enough for a reply clock measured in hours-to-days
+-- and keeps Gmail API and worker cost negligible. Manual sync stays as the
+-- fallback.
+--
+-- Auth: COMMS_SYNC_CRON_SECRET, a project env secret the endpoint checks
+-- with a constant-time compare. It is already set in the app's server
+-- environment; paste the same value below before applying. Never commit the
+-- real value.
+--
+-- Apply against the Trust Tai Supabase project:
+
+-- select cron.schedule(
+--   'comms-gmail-sync',
+--   '17 */6 * * *',
+--   $$
+--   select net.http_post(
+--     url := 'https://cmd.trusttai.com/api/public/comms/gmail/scheduled-sync',
+--     headers := jsonb_build_object(
+--       'Content-Type', 'application/json',
+--       'X-Comms-Sync-Key', 'PASTE_COMMS_SYNC_CRON_SECRET'
+--     ),
+--     body := '{}'::jsonb
+--   );
+--   $$
+-- );
