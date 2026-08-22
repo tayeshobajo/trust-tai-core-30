@@ -433,3 +433,140 @@ describe("assistant referrals and source readiness", () => {
     expect(queriesForPath(rows, "/pricing").map((row) => row.query)).toEqual(["trust tai pricing"]);
   });
 });
+
+/* ------------------------------------------- overview correctness (v1.1) */
+
+import { overviewMetrics } from "./overview";
+import { withFreshness } from "./freshness";
+import { isOperationalPath } from "./url";
+
+const syncRecord = (
+  provider: "ga4" | "search_console" | "page_inventory",
+  rowsWritten: number,
+) => ({
+  provider,
+  configured: true,
+  lastRunAt: "2026-08-22T04:50:04Z",
+  lastSuccessAt: "2026-08-22T04:50:04Z",
+  lastError: null,
+  rowsWritten,
+});
+
+describe("overview reads only what is grounded", () => {
+  const now = Date.parse("2026-08-22T05:00:00Z");
+
+  it("drops back office and error routes from the public inventory", () => {
+    expect(isOperationalPath("/404")).toBe(true);
+    expect(isOperationalPath("/admin/users")).toBe(true);
+    expect(isOperationalPath("/insights/anything")).toBe(false);
+
+    const rows = buildPageRows({
+      pages: [page({ path: "/" })],
+      pageMetrics: [metric("2026-08-15", "/404", 40), metric("2026-08-15", "/", 5)],
+      searchMetrics: [],
+      events: [],
+      submissions: [],
+    });
+    expect(rows.map((row) => row.path)).not.toContain("/404");
+  });
+
+  it("never calls an unpublished address something that is working", () => {
+    const input = {
+      pages: [page({ path: "/" })],
+      pageMetrics: [metric("2026-08-15", "/contact", 30)],
+      searchMetrics: [],
+      events: [],
+      submissions: [],
+    };
+    const pageRows = buildPageRows(input);
+    const readiness = withFreshness(providerReadiness(input), [syncRecord("ga4", 1)], now);
+    const observations = overviewObservations({
+      pageRows,
+      contentRows: [],
+      queries: [],
+      health: [],
+      submissions: [],
+      readiness,
+      windowDays: 30,
+    });
+    expect(observations.filter((entry) => entry.lane === "working")).toHaveLength(0);
+    const attention = observations.find((entry) => entry.id === "landing-on-missing");
+    expect(attention?.lane).toBe("attention");
+    expect(attention?.evidence.join(" ")).toContain("/contact");
+  });
+
+  it("reads a successful zero row search sync as measured zero, not unknown", () => {
+    const input = {
+      pages: [page({ path: "/" })],
+      pageMetrics: [],
+      searchMetrics: [],
+      events: [],
+      submissions: [],
+    };
+    const readiness = withFreshness(
+      providerReadiness(input),
+      [syncRecord("search_console", 0), syncRecord("ga4", 0)],
+      now,
+    );
+    const metrics = overviewMetrics({
+      pageRows: buildPageRows(input),
+      contentRows: [],
+      queries: [],
+      health: [],
+      submissions: [],
+      readiness,
+      windowDays: 30,
+    });
+    const clicks = metrics.find((entry) => entry.key === "clicks");
+    expect(clicks?.value).toBe(0);
+    expect(clicks?.note).toBe("Connected, no rows returned yet");
+  });
+
+  it("keeps a provider that never reported unknown rather than zero", () => {
+    const input = {
+      pages: [page({ path: "/" })],
+      pageMetrics: [],
+      searchMetrics: [],
+      events: [],
+      submissions: [],
+    };
+    const metrics = overviewMetrics({
+      pageRows: buildPageRows(input),
+      contentRows: [],
+      queries: [],
+      health: [],
+      submissions: [],
+      readiness: providerReadiness(input),
+      windowDays: 30,
+    });
+    expect(metrics.find((entry) => entry.key === "visitors")?.value).toBeNull();
+  });
+
+  it("falls back to a baseline next move with the exact data gap", () => {
+    const input = {
+      pages: [page({ path: "/" })],
+      pageMetrics: [metric("2026-08-15", "/", 3)],
+      searchMetrics: [],
+      events: [],
+      submissions: [],
+    };
+    const readiness = withFreshness(
+      providerReadiness(input),
+      [syncRecord("ga4", 1), syncRecord("search_console", 0)],
+      now,
+    );
+    const observations = overviewObservations({
+      pageRows: buildPageRows(input),
+      contentRows: [],
+      queries: [],
+      health: [],
+      submissions: [],
+      readiness,
+      windowDays: 30,
+    });
+    const next = observations.find((entry) => entry.lane === "next_move");
+    expect(next?.id).toBe("baseline");
+    expect(next?.evidence.join(" ")).toContain("too thin to read a trend");
+    expect(next?.evidence.join(" ")).toContain("no query rows");
+  });
+});
