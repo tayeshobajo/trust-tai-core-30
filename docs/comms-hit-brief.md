@@ -162,3 +162,32 @@ complexity — in this order:
 6. **Only then** consider surface redesign, with the subtraction law as the
    gate: anything that does not help Tai reach the outcome faster, more
    confidently, or with less effort does not survive.
+
+## Implementation pass 2026-08-22 — verification record
+
+Sequence items 1 and 2 and the "synced-mail seam" event emission are done with
+no UI redesign. What was verified, and how:
+
+- **Backend**: production probes against the Trust Tai Supabase project
+  confirmed `comms_integrations`, `comms_messages`, thread columns, grants,
+  both credential functions (member and service-role variants) — no data
+  touched. Schema doc header updated to APPLIED.
+- **Timeline truth**: `src/data/comms-timeline.test.ts` — synced inbound and
+  outbound messages fold chronologically beside touches and drafts with
+  provenance, dedupe against un-synced touches on the same ref, and no
+  `comms_touches` rows are fabricated.
+- **Draft verification**: `src/domain/comms-verification.test.ts` (15 tests) —
+  matches on recipient + window + subject/fingerprint, never fabricates on
+  ambiguity or thin content, 21-day expiry, observed-mail provenance wins.
+- **Idempotency**: message storage upserts on the provider key; the inbound
+  event carries a deterministic `source_event_key` guarded by a pre-check and
+  the existing partial unique index on `activities.source_event_key` — a
+  resync stores nothing twice and emits nothing twice.
+- **Fail-closed**: the scheduled endpoint returns 503 with no cron secret
+  configured and 401 on a wrong key, checked live against the dev server.
+- **Still partial (explicit)**: the `comms-gmail-sync` cron statement must be
+  applied by someone with SQL access to the Trust Tai project, and the full
+  loop against a real connected mailbox is untested because no Gmail account
+  is connected in production yet. Both are operator steps, not code gaps.
+
+Test sweep at close: 1,243 passed, 1 skipped, 0 failed.
