@@ -132,13 +132,21 @@ Smallest set, in dependency order:
    ("context is stale, refresh the people brief"), surfaced in the next-move
    rail. Building a provider inside Comms would be wrong ownership.
 6. **(Closed 2026-08-22)** ~~The Gmail track is code-live but backend-inert.~~
-   Production probes confirmed every table, column and credential function is
-   applied; the schema doc header now says so and includes the previously
-   undocumented `comms_get_integration_secret_system`. Remaining operations
-   step, explicitly partial: the 6-hourly `comms-gmail-sync` cron statement
-   (in the schema doc) must still be run in the Trust Tai Supabase project —
-   scheduling requires SQL access this project does not have. The endpoint it
-   calls is live and fail-closed (503 unconfigured, 401 wrong key).
+   Production verification is complete: the `comms-gmail-sync` cron is applied
+   and active in the Trust Tai Supabase project (schedule `17 */6 * * *`, target
+   `https://cmd.trusttai.com/api/public/comms/gmail/scheduled-sync`, secret
+   sourced from Supabase Vault `comms_sync_cron_secret`). The endpoint is
+   fail-closed (missing key → 401, valid configured key → 200). A real Gmail
+   account (`tayeshobajo@gmail.com`) is connected. Commit
+   `0f068d32df94e5183384408f8a3a9d2b0907eec6` hardened the sync to known-
+   correspondent-first queries so mailbox noise cannot crowd out tracked
+   relationships; a controlled fixture confirmed sent-draft reconciliation;
+   immediate re-runs confirmed message/event idempotency. The read-only Gmail
+   boundary and no-auto-create-relationship rule remain locked. **Product/data
+   observation**: the live workspace currently has sparse relationship identity
+   coverage, so most real Gmail correspondents are not yet Comms relationships.
+   This is a relationship-onboarding/import product concern, not a Gmail defect;
+   Gmail must continue to store only people already tracked in Comms.
 
 ## Recommended implementation sequence
 
