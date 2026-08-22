@@ -535,9 +535,13 @@ function Content({ rows }: { rows: ContentRow[] }) {
               <p className="font-mono text-[11px] text-muted-foreground">{row.path}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {row.classifications.length === 0 ? (
+                <MetaPill>Insufficient data</MetaPill>
+              ) : null}
               {row.classifications.map((label) => (
                 <MetaPill key={label}>{CLASSIFICATION_LABELS[label]}</MetaPill>
               ))}
+
               {row.topic ? <MetaPill>Topic · {row.topic}</MetaPill> : null}
             </div>
           </div>
