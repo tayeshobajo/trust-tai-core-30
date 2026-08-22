@@ -94,7 +94,7 @@ evidence. No autonomous agents; nothing is sent.
 | --- | --- | --- |
 | Familiar chronological thread, manually updatable with notes/context | **Exists** | `src/data/comms-timeline.ts` folds touches + drafts oldest-first with per-entry provenance; `recordNote` / `editedProvenance` in `src/domain/comms-touch-record.ts`; `add-interaction.tsx`, `edit-interaction.tsx`. |
 | Matching known people to Gmail by email identity | **Exists** | Sync matches From/To/Cc counterparts against `comms_relationships.email`, lowercased (`findTrackedCounterpart` in `comms-gmail.server.ts`) — the identity layer applied after label gating; capture matches the shared `contacts` table by email then exact name (`comms-service.ts`); `listMailboxCandidates` marks `alreadyTracked`. |
-| Pulling incoming Gmail into relationship history | **Exists / Verified** | `comms_messages` upsert idempotent on `(organization_id, provider, provider_message_id)`; only genuinely new messages count as stored. Synced mail folds chronologically into the existing `conversationTimeline` with plain provenance ("Synced from Gmail · read-only") — no `comms_touches` duplication (`src/data/comms-timeline.ts`, `src/data/supabase/comms-messages.ts`). New inbound mail emits one canonical `relationship.message_received` into `activities` with a `source_event_key`, deduped by pre-check + the unique index (`emitInboundEvents` in `comms-gmail.server.ts`), so Pulse/Steward see it. Sync is scheduled (`comms-gmail-sync` cron, `17 */6 * * *` in the production Trust Tai Supabase project). Production verification on 2026-08-22 confirmed a real connected mailbox: tracked-people mail is found, stored, and emitted; a repeat sync produced zero new stores and zero new events. **Ingestion boundary hardened 2026-08-22 (implemented, production QA pending):** sync is now label-gated on the Gmail label `Trust Tai/Comms` — the label id is resolved from Gmail `/labels` and constrains every message listing, so unlabeled mail never enters the candidate set, even when it involves a known address. Labeled mail with people not yet in Comms is counted, left unstored, and surfaced for review through the existing mailbox import. A missing label fails safe with a clear status; there is no whole-mailbox fallback. |
+| Pulling incoming Gmail into relationship history | **Exists / Verified** | `comms_messages` upsert idempotent on `(organization_id, provider, provider_message_id)`; only genuinely new messages count as stored. Synced mail folds chronologically into the existing `conversationTimeline` with plain provenance ("Synced from Gmail · read-only") — no `comms_touches` duplication (`src/data/comms-timeline.ts`, `src/data/supabase/comms-messages.ts`). New inbound mail emits one canonical `relationship.message_received` into `activities` with a `source_event_key`, deduped by pre-check + the unique index (`emitInboundEvents` in `comms-gmail.server.ts`), so Pulse/Steward see it. Sync is scheduled (`comms-gmail-sync` cron, `17 */6 * * *` in the production Trust Tai Supabase project). Production verification on 2026-08-22 confirmed a real connected mailbox: tracked-people mail is found, stored, and emitted; a repeat sync produced zero new stores and zero new events. **Ingestion boundary hardened and production-verified 2026-08-22:** sync is now label-gated on the Gmail label `Trust Tai/Comms` — the label id is resolved from Gmail `/labels` and constrains every message listing, so unlabeled mail never enters the candidate set, even when it involves a known address. Labeled mail with people not yet in Comms is counted, left unstored, and surfaced for review through the existing mailbox import. A missing label fails safe with a clear status; there is no whole-mailbox fallback. |
 | Pulling Tai's sent replies into the same history | **Exists** | SENT mail is stored with outbound direction and appears in the same thread. A draft marked sent is reconciled against observed outbound mail by the deterministic matcher (`src/domain/comms-verification.ts`: direction + recipient + send window + subject or opening-words fingerprint; ambiguity never matches). A proven draft's rationale carries `verification` and the thread says "Sent — seen in the mailbox" versus "Marked as sent — not yet seen in the mailbox". |
 | Freshness/momentum monitoring, contextual not crude N-day | **Partial** | Contextual reads exist: `deriveConversationHealth` produces response cadence (`responsive/steady/slowing/unanswered`) and momentum (`warm/stable/cooling/stalled`) from actual rhythm (`src/domain/comms-health.ts`), and the next move uses per-intent rhythm days (`rhythmDaysFor`). But the shared timing read `dueState` still falls back to a flat `DORMANT_AFTER_DAYS = 45` timer (`src/domain/comms.ts`). Both live side by side; the queue tabs lean on `waitingOn`, the doc-described buckets on the timer. |
 | Scout → Comms handoff at an ICP threshold | **Missing (manual by design today)** | Handoff is person-initiated: `routeToComms` in `src/data/supabase/scout-service.ts:548` gates on `buildHandoffDraft.ready` (evidence completeness), never on score. Scoring doctrine (`src/domain/scout-fit.ts`) defines the 0–100 score; `src/data/scout/decision-state.ts` holds narrative gates `STRONG_SCORE = 68` / `WEAK_SCORE = 32` used only to phrase the decision read — no handoff threshold exists, and "60" appears nowhere. Architecture-canon handoff law already says weak evidence must not open the next room, so any threshold trigger must be an org-configurable recommendation, not an automatic room-open. |
@@ -149,7 +149,7 @@ Smallest set, in dependency order:
     coverage, so most real Gmail correspondents are not yet Comms relationships.
     This is a relationship-onboarding/import product concern, not a Gmail defect;
     Gmail must continue to store only people already tracked in Comms.
-    **Refinement 2026-08-22 (implemented, production QA pending)**: ingestion is
+    **Refinement 2026-08-22 (implemented and production-verified 2026-08-22)**: ingestion is
     now label-gated on Tai's `Trust Tai/Comms` Gmail label. The label is the
     first Gmail-side filter; identity matching against `comms_relationships`
     remains the storage-decision layer after it. Labeled-but-unknown people are
@@ -231,7 +231,7 @@ on 2026-08-22. What was verified, and how:
   autonomous sends, and any major UI redesign. These are product/architecture
   decisions, not unresolved Gmail plumbing.
 
-### Label-gated ingestion (2026-08-22) — implemented, production QA pending
+### Label-gated ingestion (2026-08-22) — implemented, verified in production 2026-08-22
 
 After Tai created the Gmail label `Trust Tai/Comms`, the ingestion boundary
 moved from address-scoped queries to label gating:
@@ -259,16 +259,25 @@ moved from address-scoped queries to label gating:
   never adds, renames, or removes Gmail labels.
 
 Unit tests prove the boundary (`findCommsLabelId` exact/folded/missing,
-`buildLabelListPath` label-first with no address terms). **Not yet verified
-in production**: the first post-deploy scheduled pass against Tai's real
-labeled threads is the acceptance check — expect `messagesRead` to reflect
-only labeled threads and `skippedUnknownPeople` to count only labeled,
-not-yet-imported people.
+`buildLabelListPath` label-first with no address terms). **Verified in
+production 2026-08-22** against the deployed endpoint
+(`https://cmd.trusttai.com/api/public/comms/gmail/scheduled-sync`) and Tai's
+real connected mailbox: negative control without the cron key returned 401;
+the authorized sweep returned 200 with `mailboxes=1, synced=1, failed=0` and
+`messagesRead=1, messagesStored=0, relationshipsTouched=0,
+skippedUnknownPeople=1, pendingPeople=1, eventsEmitted=0, draftsVerified=0`.
+Before label gating the same mailbox and window read 14 messages; the gated
+pass read exactly the 1 labeled message, and the 1 labeled-but-unknown
+correspondent was counted and left unstored for review — never auto-created.
+An immediate second authorized run returned identical counts with zero new
+stores and zero new events, confirming idempotency. The `cursor.last_run`
+write is fail-closed (a failed update throws and marks the mailbox failed);
+both runs reported `ok: true`, so the status persistence path succeeded.
 
 Test sweep at close: 1,245 passed, 0 skipped, 3 failed (unrelated pre-existing
 Roadmap Studio failures).
 
-### Coverage + status exposure (2026-08-22) — implemented, production QA pending
+### Coverage + status exposure (2026-08-22) — implemented, verified in production 2026-08-22
 
 The sparse-coverage observation from the first audit becomes a visible
 health check instead of a hidden state:
@@ -291,3 +300,9 @@ Unit tests: `readGmailRunSummary` (well-formed / absent / malformed),
 `counterpartAddresses` (participant extraction for the pending-people
 count). Test sweep at close: 1,268 passed, 3 failed (the same unrelated
 pre-existing Roadmap Studio failures).
+
+Production-verified 2026-08-22 in the same authorized sweep above: the run
+returned `pendingPeople=1` alongside `skippedUnknownPeople=1`, and the
+fail-closed `cursor.last_run` write succeeded (both runs `ok: true`), so the
+persisted last-pass summary the Connections card reads is live in
+production.
