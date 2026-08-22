@@ -257,17 +257,20 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
 
       {tab === "overview" ? (
         <Overview
-          metrics={metrics}
           observations={observations}
           readiness={readiness}
-          sources={sourceGroups(input.events, input.submissions)}
+          sources={
+            input.events.length > 0
+              ? sourceGroups(input.events, input.submissions)
+              : providerSourceGroups(input.pageMetrics)
+          }
           referrals={referrals}
         />
       ) : null}
       {tab === "pages" ? <Pages rows={pageRows} health={health} /> : null}
       {tab === "content" ? <Content rows={contentRows} /> : null}
       {tab === "search" ? (
-        <SearchTab input={input} queries={queries} referrals={referrals} />
+        <SearchTab input={input} queries={queries} referrals={referrals} readiness={readiness} />
       ) : null}
       {tab === "intake" ? (
         <Intake input={input} loading={loading} />
@@ -280,46 +283,31 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
 
 const LANES: { key: ObservationLane; title: string }[] = [
   { key: "working", title: "What is working" },
-  { key: "changing", title: "What is changing" },
   { key: "attention", title: "Needs attention" },
   { key: "next_move", title: "Next move" },
 ];
 
 function Overview({
-  metrics,
   observations,
   readiness,
   sources,
   referrals,
 }: {
-  metrics: ReturnType<typeof overviewMetrics>;
   observations: ReturnType<typeof overviewObservations>;
   readiness: ProviderReadiness[];
   sources: { source: string; visits: number; submissions: number }[];
   referrals: AiReferralSummary;
 }) {
+  const [showSources, setShowSources] = useState(false);
+  const updated = freshestSyncAt(readiness);
+
   return (
     <div className="space-y-4">
-      <div className="tt-surface p-5">
-        <SectionHeading
-          eyebrow="Last 30 days"
-          title="The short version"
-          description="A dash means Core has not been told, which is different from zero."
-        />
-        <ol className="grid gap-3 md:grid-cols-5">
-          {metrics.map((metric) => (
-            <li key={metric.key} className="rounded-xl border border-border bg-card px-4 py-3">
-              <p className="font-mono text-[19px] leading-none text-foreground">
-                {formatKnown(metric.value)}
-              </p>
-              <p className="mt-1.5 text-[12px] text-foreground">{metric.label}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{metric.note}</p>
-            </li>
-          ))}
-        </ol>
-      </div>
+      <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+        Updated {lastSynced(updated).toLowerCase()}
+      </p>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         {LANES.map((lane) => {
           const rows = observations.filter((entry) => entry.lane === lane.key);
           return (
@@ -363,7 +351,8 @@ function Overview({
                 <li key={row.source} className="flex items-center justify-between gap-3 text-sm">
                   <span className="truncate text-foreground">{row.source}</span>
                   <span className="font-mono text-[12px] text-muted-foreground">
-                    {row.visits} visits · {row.submissions} conversations
+                    {row.visits} visits
+                    {row.submissions > 0 ? ` · ${row.submissions} conversations` : ""}
                   </span>
                 </li>
               ))}
@@ -374,11 +363,24 @@ function Overview({
         <AiReferralsPanel summary={referrals} />
       </div>
 
-      <ProviderReadinessPanel readiness={readiness} />
-
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowSources((open) => !open)}
+          className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
+        >
+          {showSources ? "Hide connection record" : "Show connection record"}
+        </button>
+        {showSources ? (
+          <div className="mt-3">
+            <ProviderReadinessPanel readiness={readiness} />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
+
 
 /* ------------------------------------------------------------------ pages */
 
