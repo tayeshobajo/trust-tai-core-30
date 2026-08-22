@@ -144,6 +144,14 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
     approval_boundary: a("approval-driven by design (conductor v2)"),
     outcome_learning: a("conductor learning ledger + canon outcomes"),
   }),
+  manifest("studio", {
+    evidence_grounding: p("implementation deferred; produced content attaches to core entities"),
+    retrieval: x("implementation deferred"),
+    domain_patterns: x("implementation deferred"),
+    safe_diagnostic_loop: x("implementation deferred"),
+    verification: p("artifacts are person-reviewed before use"),
+    outcome_learning: x("implementation deferred"),
+  }),
   manifest("website", {
     evidence_grounding: a("provider sync ledger + page inventory (src/data/website)"),
     retrieval: p("freshness + signals composed per read"),

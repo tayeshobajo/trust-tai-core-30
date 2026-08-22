@@ -124,7 +124,7 @@ export function composeRetrieval(input: RetrievalInput): RetrievalBundle {
       : {};
 
   /* Human corrections outrank everything the engine inferred. */
-  const corrections = cases.filter((entry) => entry.outcome === "rejected");
+  const corrections = cases.filter((entry) => Boolean(entry.correction));
 
   const capabilities = roomCapabilities(input.room);
 
@@ -138,7 +138,7 @@ export function composeRetrieval(input: RetrievalInput): RetrievalBundle {
     ...corrections.map((entry) => ({
       kind: "human_correction" as const,
       id: entry.id,
-      label: `Corrected: ${entry.title}`,
+      label: `Corrected: ${entry.lesson ?? entry.hypothesis}`,
     })),
     ...(input.contextPacket
       ? [
@@ -188,7 +188,10 @@ export function bundleForModel(bundle: RetrievalBundle): Record<string, unknown>
         name: match.patternName,
         label: match.label,
       })),
-      corrections: bundle.corrections.map((entry) => ({ id: entry.id, title: entry.title })),
+      corrections: bundle.corrections.map((entry) => ({
+        id: entry.id,
+        lesson: entry.lesson ?? entry.hypothesis,
+      })),
     },
     capabilities: {
       executable: bundle.capabilities.executable.map((cap) => cap.operation),
