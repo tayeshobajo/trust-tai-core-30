@@ -89,10 +89,9 @@ export function nextProtocolStep(
   }
 
   /* Failed or blocked: name the next diagnostic move. */
-  const triedInspections = new Set(attempts.map((attempt) => attempt.action));
   const untried = context.inspectionsAvailable.find(
     (inspection) =>
-      !triedInspections.has(inspection.question) &&
+      !attempts.some((attempt) => attempt.action.includes(inspection.question)) &&
       !attempts.some((attempt) => attempt.evidence === inspection.id),
   );
 

@@ -31,7 +31,7 @@ function request(overrides: Partial<ReasoningRequest> = {}): ReasoningRequest {
         tier: "decided",
       },
     ],
-    allowedOperations: ["projects.update_milestone", "projects.create_task"],
+    allowedOperations: ["projects.route_work", "projects.record_blocker"],
     output: "operator_read",
     approval: { required: true },
     verification: {
@@ -115,8 +115,8 @@ describe("verifyRuntimeRead", () => {
       raw: {
         interpretations: [
           {
-            claim: "We will not launch before the copy is final.",
-            because: "stated",
+            claim: "We will launch before the copy is final.",
+            because: "the blocker looks minor",
             restsOn: ["ev:1"],
           },
           {
@@ -171,9 +171,9 @@ describe("verifyRuntimeRead", () => {
       raw: {
         nextSteps: [
           {
-            title: "Create the copy task",
+            title: "Route the copy work",
             owningRoom: "projects",
-            operation: "projects.create_task",
+            operation: "projects.route_work",
           },
         ],
       } satisfies RawRuntimeRead,
