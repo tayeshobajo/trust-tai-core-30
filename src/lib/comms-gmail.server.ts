@@ -25,6 +25,13 @@ import {
   GMAIL_READ_SCOPES,
   type NormalizedMessage,
 } from "@/domain/comms-integrations";
+import { SUITE_EVENTS } from "@/domain/events";
+import {
+  planDraftVerifications,
+  readDraftVerification,
+  type ObservedMessageLike,
+  type SentDraftLike,
+} from "@/domain/comms-verification";
 
 const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
@@ -32,6 +39,11 @@ const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
 
 /** Bounded first read. We never backfill a whole mailbox. */
 const DEFAULT_BACKFILL_DAYS = 30;
+/**
+ * The scheduled pass overlaps its own cadence (every 6 hours) several times
+ * over, so nothing is missed and idempotency absorbs the repeats.
+ */
+const SCHEDULED_BACKFILL_DAYS = 2;
 const MAX_MESSAGES_PER_PASS = 60;
 
 export interface GmailConfig {
