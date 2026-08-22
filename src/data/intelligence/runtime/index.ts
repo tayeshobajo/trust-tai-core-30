@@ -19,3 +19,4 @@ export * from "./reason";
 export * from "./protocol";
 export * from "./verification";
 export * from "./manifest";
+export * from "./prior-cases";

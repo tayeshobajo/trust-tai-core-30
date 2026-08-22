@@ -37,6 +37,7 @@ import type { WithheldSource } from "@/domain/signals";
 
 import { experienceForMatches, type PriorExperience } from "../canon/experience";
 import { matchPatterns } from "../canon/match";
+import { priorCasesForMatches, type PriorCaseRef } from "./prior-cases";
 
 export interface RetrievalBundle {
   organizationId: ID;
@@ -54,6 +55,8 @@ export interface RetrievalBundle {
   priorExperience: Record<string, PriorExperience>;
   /** Human corrections, always surfaced ahead of inference. */
   corrections: IntelligenceCase[];
+  /** Prior cases linked by shared canon patterns — never invented similarity. */
+  priorCases: PriorCaseRef[];
   /** What the asking room can really do. */
   capabilities: CapabilityAnswer;
   /** Knowledge refs handed to the read for its provenance list. */
@@ -126,6 +129,10 @@ export function composeRetrieval(input: RetrievalInput): RetrievalBundle {
   /* Human corrections outrank everything the engine inferred. */
   const corrections = cases.filter((entry) => Boolean(entry.correction));
 
+  /* "Have we solved something like this before?" — same-pattern linkage only. */
+  const priorCases =
+    patterns.length > 0 ? priorCasesForMatches({ matches: patterns, cases, outcomes }) : [];
+
   const capabilities = roomCapabilities(input.room);
 
   const knowledge: RetrievedKnowledgeRef[] = [
@@ -139,6 +146,14 @@ export function composeRetrieval(input: RetrievalInput): RetrievalBundle {
       kind: "human_correction" as const,
       id: entry.id,
       label: `Corrected: ${entry.lesson ?? entry.hypothesis}`,
+    })),
+    ...priorCases.map((ref) => ({
+      kind: "prior_case" as const,
+      id: ref.caseId,
+      label: `${ref.patternName}: seen before`,
+      note: ref.outcome
+        ? `Outcome: ${ref.outcome.result} (${ref.outcome.decision}) — ${ref.outcome.because}`
+        : "Seen before; no recorded outcome yet.",
     })),
     ...(input.contextPacket
       ? [
@@ -161,6 +176,7 @@ export function composeRetrieval(input: RetrievalInput): RetrievalBundle {
     patterns,
     priorExperience,
     corrections,
+    priorCases,
     capabilities,
     knowledge,
   };
