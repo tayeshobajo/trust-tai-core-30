@@ -138,8 +138,8 @@ export function MailboxImport({
           <p className="tt-eyebrow">Labeled in Gmail, not yet in Comms</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
             People on threads you have labeled Trust Tai/Comms in Gmail. Reads message metadata
-            only; nothing is saved until you confirm the preview. Once a person is added, their
-            labeled mail is stored from the next read on — never before.
+            only; nothing is saved until you confirm the preview. Adding a person brings in their
+            last 30 days of labeled mail right away — unlabeled mail is never read.
           </p>
         </div>
         <TTButton
