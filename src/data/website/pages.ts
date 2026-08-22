@@ -242,6 +242,9 @@ export function buildPageRows(input: WebsiteAnalyticsInput): PageRow[] {
   for (const path of ga.keys()) paths.add(path);
   for (const path of search.keys()) paths.add(path);
   for (const path of intake.submissions.keys()) paths.add(path);
+  /* Back office, sign in and error routes are not part of the public site. */
+  for (const path of [...paths]) if (isOperationalPath(path)) paths.delete(path);
+
 
   const inventory = new Map(input.pages.map((page) => [normalizePath(page.path), page]));
   const gaOn = input.pageMetrics.length > 0;
