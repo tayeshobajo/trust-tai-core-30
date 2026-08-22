@@ -19,8 +19,9 @@ import type {
 import { AI_REFERRER_HOSTS } from "@/domain/website-analytics";
 import type { KnownNumber, WebsiteEvent, WebsiteSubmission } from "@/domain/website";
 
-import { normalizePath, referrerHost } from "./url";
+import { isOperationalPath, normalizePath, referrerHost } from "./url";
 import { isQualified } from "./projection";
+
 
 export interface WebsiteAnalyticsInput {
   pages: WebsitePage[];
