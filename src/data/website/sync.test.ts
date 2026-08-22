@@ -406,3 +406,102 @@ describe("provider freshness", () => {
     ).toBe("failed");
   });
 });
+
+describe("freshness comes from the ledger", () => {
+  const now = Date.parse("2026-08-22T05:00:00Z");
+
+  it("prefers the last successful run over the age of the rows", () => {
+    const merged = withFreshness(
+      [readiness("page_inventory", true, "2025-12-22T00:00:00Z")],
+      [
+        {
+          provider: "page_inventory",
+          configured: true,
+          lastRunAt: "2026-08-22T04:20:05Z",
+          lastSuccessAt: "2026-08-22T04:20:05Z",
+          lastError: null,
+          rowsWritten: 20,
+        },
+      ],
+      now,
+    );
+    expect(merged[0]?.lastSyncedAt).toBe("2026-08-22T04:20:05Z");
+    expect(merged[0]?.state).toBe("live");
+  });
+
+  it("calls a successful zero row Search Console run quiet, not disconnected", () => {
+    const merged = withFreshness(
+      [readiness("search_console", false, null)],
+      [
+        {
+          provider: "search_console",
+          configured: true,
+          lastRunAt: "2026-08-22T04:50:04Z",
+          lastSuccessAt: "2026-08-22T04:50:04Z",
+          lastError: null,
+          rowsWritten: 0,
+        },
+      ],
+      now,
+    );
+    expect(merged[0]?.state).toBe("quiet");
+    expect(merged[0]?.lastError).toBeNull();
+  });
+
+  it("treats an available receiver with no events as quiet", () => {
+    const entry = { ...readiness("first_party_events", false, null), capabilityAvailable: true };
+    expect(providerState(entry, undefined, now)).toBe("quiet");
+    expect(providerState(readiness("first_party_events", false, null), undefined, now)).toBe(
+      "not_configured",
+    );
+  });
+
+  it("borrows freshness for a derived source", () => {
+    const entry = {
+      ...readiness("site_health", true, null),
+      derivedFrom: "page_inventory" as const,
+    };
+    const merged = withFreshness(
+      [entry],
+      [
+        {
+          provider: "page_inventory",
+          configured: true,
+          lastRunAt: "2026-08-22T04:20:05Z",
+          lastSuccessAt: "2026-08-22T04:20:05Z",
+          lastError: null,
+          rowsWritten: 20,
+        },
+      ],
+      now,
+    );
+    expect(merged[0]?.state).toBe("live");
+    expect(merged[0]?.lastSyncedAt).toBe("2026-08-22T04:20:05Z");
+  });
+
+  it("stamps the room with the freshest healthy source", () => {
+    const merged = withFreshness(
+      [readiness("ga4", true, null), readiness("search_console", false, null)],
+      [
+        {
+          provider: "ga4",
+          configured: true,
+          lastRunAt: "2026-08-22T04:35:02Z",
+          lastSuccessAt: "2026-08-22T04:35:02Z",
+          lastError: null,
+          rowsWritten: 1,
+        },
+        {
+          provider: "search_console",
+          configured: true,
+          lastRunAt: "2026-08-22T04:50:04Z",
+          lastSuccessAt: "2026-08-22T04:50:04Z",
+          lastError: null,
+          rowsWritten: 0,
+        },
+      ],
+      now,
+    );
+    expect(freshestSyncAt(merged)).toBe("2026-08-22T04:50:04Z");
+  });
+});
