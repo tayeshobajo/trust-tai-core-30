@@ -74,6 +74,7 @@ import { Route as ApiInternalExecutionScoutPipelineRouteImport } from './routes/
 import { Route as ApiInternalExecutionScoutProspectRouteImport } from './routes/api/internal/execution/scout.prospect'
 import { Route as ApiPublicCommsGmailCandidatesRouteImport } from './routes/api/public/comms.gmail.candidates'
 import { Route as ApiPublicCommsGmailConnectRouteImport } from './routes/api/public/comms.gmail.connect'
+import { Route as ApiPublicCommsGmailScheduledSyncRouteImport } from './routes/api/public/comms.gmail.scheduled-sync'
 import { Route as ApiPublicCommsGmailSyncRouteImport } from './routes/api/public/comms.gmail.sync'
 
 const IndexRoute = IndexRouteImport.update({
@@ -419,6 +420,12 @@ const ApiPublicCommsGmailConnectRoute =
     path: '/api/public/comms/gmail/connect',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCommsGmailScheduledSyncRoute =
+  ApiPublicCommsGmailScheduledSyncRouteImport.update({
+    id: '/api/public/comms/gmail/scheduled-sync',
+    path: '/api/public/comms/gmail/scheduled-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCommsGmailSyncRoute = ApiPublicCommsGmailSyncRouteImport.update({
   id: '/api/public/comms/gmail/sync',
   path: '/api/public/comms/gmail/sync',
@@ -491,6 +498,7 @@ export interface FileRoutesByFullPath {
   '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
+  '/api/public/comms/gmail/scheduled-sync': typeof ApiPublicCommsGmailScheduledSyncRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
 }
 export interface FileRoutesByTo {
@@ -552,6 +560,7 @@ export interface FileRoutesByTo {
   '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
+  '/api/public/comms/gmail/scheduled-sync': typeof ApiPublicCommsGmailScheduledSyncRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
 }
 export interface FileRoutesById {
@@ -621,6 +630,7 @@ export interface FileRoutesById {
   '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
+  '/api/public/comms/gmail/scheduled-sync': typeof ApiPublicCommsGmailScheduledSyncRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
 }
 export interface FileRouteTypes {
@@ -691,6 +701,7 @@ export interface FileRouteTypes {
     | '/api/internal/execution/scout/prospect'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
+    | '/api/public/comms/gmail/scheduled-sync'
     | '/api/public/comms/gmail/sync'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -752,6 +763,7 @@ export interface FileRouteTypes {
     | '/api/internal/execution/scout/prospect'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
+    | '/api/public/comms/gmail/scheduled-sync'
     | '/api/public/comms/gmail/sync'
   id:
     | '__root__'
@@ -820,6 +832,7 @@ export interface FileRouteTypes {
     | '/api/internal/execution/scout/prospect'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
+    | '/api/public/comms/gmail/scheduled-sync'
     | '/api/public/comms/gmail/sync'
   fileRoutesById: FileRoutesById
 }
@@ -860,6 +873,7 @@ export interface RootRouteChildren {
   ApiInternalExecutionScoutProspectRoute: typeof ApiInternalExecutionScoutProspectRoute
   ApiPublicCommsGmailCandidatesRoute: typeof ApiPublicCommsGmailCandidatesRoute
   ApiPublicCommsGmailConnectRoute: typeof ApiPublicCommsGmailConnectRoute
+  ApiPublicCommsGmailScheduledSyncRoute: typeof ApiPublicCommsGmailScheduledSyncRoute
   ApiPublicCommsGmailSyncRoute: typeof ApiPublicCommsGmailSyncRoute
 }
 
@@ -1320,6 +1334,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCommsGmailConnectRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/comms/gmail/scheduled-sync': {
+      id: '/api/public/comms/gmail/scheduled-sync'
+      path: '/api/public/comms/gmail/scheduled-sync'
+      fullPath: '/api/public/comms/gmail/scheduled-sync'
+      preLoaderRoute: typeof ApiPublicCommsGmailScheduledSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/comms/gmail/sync': {
       id: '/api/public/comms/gmail/sync'
       path: '/api/public/comms/gmail/sync'
@@ -1509,6 +1530,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiInternalExecutionScoutProspectRoute,
   ApiPublicCommsGmailCandidatesRoute: ApiPublicCommsGmailCandidatesRoute,
   ApiPublicCommsGmailConnectRoute: ApiPublicCommsGmailConnectRoute,
+  ApiPublicCommsGmailScheduledSyncRoute: ApiPublicCommsGmailScheduledSyncRoute,
   ApiPublicCommsGmailSyncRoute: ApiPublicCommsGmailSyncRoute,
 }
 export const routeTree = rootRouteImport
