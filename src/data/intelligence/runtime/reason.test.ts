@@ -171,9 +171,9 @@ describe("verifyRuntimeRead", () => {
       raw: {
         nextSteps: [
           {
-            title: "Route the copy work",
+            title: "Record the copy blocker",
             owningRoom: "projects",
-            operation: "projects.route_work",
+            operation: "projects.record_blocker",
           },
         ],
       } satisfies RawRuntimeRead,

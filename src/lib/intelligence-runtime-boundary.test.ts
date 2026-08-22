@@ -49,9 +49,13 @@ const FILES = SCAN_DIRS.flatMap(walk);
 const EXCEPTION_FILES = new Set(REASONING_EXCEPTIONS.map((entry) => entry.file));
 const CANONICAL = new Set(CANONICAL_REASONING_MODULES);
 
-/** Files allowed to trip a rule: canonical machinery or documented debt. */
+/** Files allowed to trip a rule: canonical machinery, the registry itself, or documented debt. */
 function isAllowed(file: string): boolean {
-  return CANONICAL.has(file) || EXCEPTION_FILES.has(file);
+  return (
+    CANONICAL.has(file) ||
+    EXCEPTION_FILES.has(file) ||
+    file === "src/lib/intelligence-runtime-boundary.ts"
+  );
 }
 
 describe("intelligence runtime boundary", () => {
