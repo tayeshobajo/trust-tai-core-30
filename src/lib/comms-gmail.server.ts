@@ -4,6 +4,12 @@
  * What this is allowed to do: read message metadata for threads with people
  * who are already relationships in Comms, and record who spoke last.
  *
+ * How it reads: known-correspondent-first. The tracked relationship list is
+ * loaded before Gmail is touched, and every Gmail list query is scoped to
+ * those addresses (`from:`/`to:` per address, chunked). Mailbox noise never
+ * enters the candidate set, so it cannot crowd a known person's mail out of
+ * the bounded per-pass cap.
+ *
  * What it is not allowed to do, by construction:
  *  - send anything (only `gmail.readonly` is ever requested),
  *  - read mail with anyone Comms does not already track,
