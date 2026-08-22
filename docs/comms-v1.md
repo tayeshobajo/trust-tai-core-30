@@ -129,19 +129,26 @@ Flow:
    mailbox address, writes `comms_integrations`, and stores the refresh token
    sealed with AES-GCM through `comms_put_integration_secret`. Even a member
    reading that value back gets ciphertext.
-4. Read now runs one bounded pass, known-correspondent-first: tracked
-   `comms_relationships` emails are loaded first, and every Gmail list query
-   is scoped to those addresses (`from:`/`to:` per address, chunked to stay
-   inside Gmail query limits), capped at 60 messages over the overlap window,
-   metadata and snippet only. Mailbox noise never enters the candidate set,
-   so it cannot crowd a known person's mail out of the cap. An empty
-   relationship list is a clean no-op — no Gmail list work at all. A message
-   is still stored only when a participant matches an existing
-   `comms_relationships` email; anything else is counted as skipped and
-   dropped. Upserts key on
+4. Read now runs one bounded, label-gated pass. The ingestion boundary is
+   the Gmail label `Trust Tai/Comms`: its id is resolved from Gmail's own
+   `/labels` list (matching the full nested path, never a free-text `label:`
+   search, which would split on the space and slash), and every message
+   listing is constrained by that label id plus the overlap window. Unlabeled
+   mail — promotions, newsletters, alerts, even mail with a person Comms
+   knows — never enters the candidate set. Listing is capped at 60 messages
+   over the window, metadata and snippet only. Identity is decided after
+   listing: a message is stored only when a participant matches an existing
+   `comms_relationships` email. Labeled mail with someone not yet in Comms
+   is counted and left unstored, and that person is surfaced for review
+   through the mailbox import ("Labeled in Gmail, not yet in Comms") — a
+   human Add-to-Comms decision, never an automatic one. A missing label
+   fails safe with a clear "Needs attention" status; there is no
+   whole-mailbox fallback. An empty relationship list is a clean no-op — no
+   Gmail work at all. Upserts key on
    `(organization_id, provider, provider_message_id)`, so repeat passes are
    idempotent. Thread state and the response clock come from the pure
-   `readThread` reading, not from Gmail.
+   `readThread` reading, not from Gmail. Comms never adds, renames, or
+   removes Gmail labels — labeling is Tai's act, in Gmail.
 
 Body retention is off: only snippets are stored. `comms_messages.body_text`
 exists for a later opt-in and is never written today.
