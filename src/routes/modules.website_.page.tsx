@@ -101,6 +101,10 @@ function PageDetail({ identity }: { identity: WorkspaceIdentity }) {
     queryKey: ["website", "search-metrics", organizationId, sinceDate],
     queryFn: () => listSearchMetrics(organizationId, sinceDate),
   });
+  const providerSync = useQuery({
+    queryKey: ["website", "provider-sync", organizationId],
+    queryFn: () => listProviderSync(organizationId),
+  });
 
   const loading =
     submissions.isPending || events.isPending || pages.isPending || pageMetrics.isPending;
@@ -116,7 +120,11 @@ function PageDetail({ identity }: { identity: WorkspaceIdentity }) {
     [pages.data, pageMetrics.data, searchMetrics.data, events.data, submissions.data],
   );
 
-  const readiness = useMemo(() => providerReadiness(input), [input]);
+  const readiness = useMemo(
+    () => withFreshness(providerReadiness(input), providerSync.data?.value ?? []),
+    [input, providerSync.data],
+  );
+
   const row = useMemo(
     () => buildPageRows(input).find((entry) => entry.path === path) ?? null,
     [input, path],
