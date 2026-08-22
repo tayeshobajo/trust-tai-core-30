@@ -1,18 +1,26 @@
 /**
  * Gmail, read-only (server only).
  *
- * What this is allowed to do: read message metadata for threads with people
- * who are already relationships in Comms, and record who spoke last.
+ * What this is allowed to do: read message metadata for threads Tai has
+ * explicitly labeled `Trust Tai/Comms`, and store only the ones with people
+ * who are already relationships in Comms.
  *
- * How it reads: known-correspondent-first. The tracked relationship list is
- * loaded before Gmail is touched, and every Gmail list query is scoped to
- * those addresses (`from:`/`to:` per address, chunked). Mailbox noise never
- * enters the candidate set, so it cannot crowd a known person's mail out of
- * the bounded per-pass cap.
+ * How it reads: label-gated first, identity-matched second. The label id is
+ * resolved from Gmail's own label list and constrains every message listing,
+ * so unlabeled mail — promotions, newsletters, alerts, even mail with a
+ * person Comms knows — never enters the candidate set. The tracked
+ * relationship list is then the identity layer that decides what is stored.
+ * Labeled mail with someone Comms does not track is counted and left
+ * unstored; it is surfaced for review through the mailbox import instead.
  *
  * What it is not allowed to do, by construction:
  *  - send anything (only `gmail.readonly` is ever requested),
- *  - read mail with anyone Comms does not already track,
+ *  - add, rename, or remove Gmail labels (read-only scope; no mutation call
+ *    exists here),
+ *  - read unlabeled mail, or fall back to whole-mailbox reading when the
+ *    label is missing,
+ *  - store mail with anyone Comms does not already track, or create a
+ *    relationship on its own,
  *  - let a token reach the browser (refresh tokens are sealed at rest and
  *    opened only here),
  *  - act outside the caller's own access (every Supabase read and write is
@@ -359,54 +367,67 @@ function clampDays(value: number): number {
   return Math.min(Math.max(value, 1), 90);
 }
 
-/* ------------------------------------- known-correspondent-first querying */
+/* ---------------------------------------------------- label-gated reading */
 
 /**
- * Gmail search bounds. `q` strings are capped so the encoded URL stays well
- * inside Gmail's limits, and each chunk holds a small number of addresses so
- * a large relationship list degrades into more queries, never a broken one.
+ * The ingestion boundary, named once. Tai labels a thread in Gmail; Comms
+ * reads only what carries this label. Everything unlabeled never enters the
+ * candidate set.
  */
-const GMAIL_QUERY_CHUNK_MAX_EMAILS = 20;
-const GMAIL_QUERY_CHUNK_MAX_LENGTH = 1200;
+export const COMMS_GMAIL_LABEL = "Trust Tai/Comms";
+
+/** The clear, non-destructive status when the boundary is not there. */
+export const COMMS_LABEL_MISSING_MESSAGE =
+  `The Gmail label "${COMMS_GMAIL_LABEL}" was not found in this mailbox. ` +
+  `Create that label in Gmail and apply it to the threads Comms should follow. ` +
+  `Comms never falls back to reading unlabeled mail.`;
+
+interface GmailLabel {
+  id?: string;
+  name?: string;
+}
 
 /**
- * The reliability rule, made concrete: Gmail is asked only about people Comms
- * already tracks. Each chunk becomes
- * `newer_than:Nd -in:spam -in:trash (from:a OR to:a OR from:b OR to:b …)`.
- * Gmail's `to:` operator matches To, Cc, and Bcc, so one pair per address
- * covers both directions of the correspondence. Mailbox noise — newsletters,
- * automation, strangers — never enters the candidate set, so it can never
- * consume the per-pass message cap.
- *
- * An empty tracked set returns no queries at all: zero Gmail list work.
+ * The API-native way to respect a nested label name: read the mailbox's own
+ * label list and match the full path (`Trust Tai/Comms`), never a free-text
+ * `label:` search, which splits on the space and slash. Gmail label names
+ * are case-insensitively unique, so the folded fallback can match at most
+ * one label.
  */
-export function buildKnownCorrespondentQueries(emails: string[], days: number): string[] {
-  const unique = [
-    ...new Set(emails.map((entry) => entry.trim().toLowerCase()).filter(Boolean)),
-  ];
-  if (unique.length === 0) return [];
-  const window = `newer_than:${days}d -in:spam -in:trash`;
-  const queries: string[] = [];
-  let current: string[] = [];
-  const flush = () => {
-    if (current.length > 0) {
-      queries.push(`${window} (${current.join(" OR ")})`);
-      current = [];
-    }
-  };
-  for (const email of unique) {
-    const term = `from:${email} OR to:${email}`;
-    const projected = `${window} (${[...current, term].join(" OR ")})`;
-    if (
-      current.length >= GMAIL_QUERY_CHUNK_MAX_EMAILS ||
-      projected.length > GMAIL_QUERY_CHUNK_MAX_LENGTH
-    ) {
-      flush();
-    }
-    current.push(term);
-  }
-  flush();
-  return queries;
+export function findCommsLabelId(labels: GmailLabel[]): string | null {
+  const exact = labels.find((label) => label.name === COMMS_GMAIL_LABEL);
+  const found =
+    exact ??
+    labels.find(
+      (label) => (label.name ?? "").toLowerCase() === COMMS_GMAIL_LABEL.toLowerCase(),
+    );
+  return found?.id ?? null;
+}
+
+async function resolveCommsLabelId(accessToken: string): Promise<string | null> {
+  const list = await gmailGet<{ labels?: GmailLabel[] }>("/labels", accessToken);
+  return findCommsLabelId(list.labels ?? []);
+}
+
+/**
+ * One labeled page of message ids. `labelIds` is the Gmail-native filter:
+ * the label gates first, the overlap window second. No address appears in
+ * the query at all — identity is decided after listing, by
+ * `findTrackedCounterpart`. Exported so the boundary is provable without a
+ * network.
+ */
+export function buildLabelListPath(input: {
+  labelId: string;
+  days: number;
+  maxResults: number;
+  pageToken?: string;
+}): string {
+  const query = `newer_than:${input.days}d -in:spam -in:trash`;
+  const base =
+    `/messages?maxResults=${input.maxResults}` +
+    `&labelIds=${encodeURIComponent(input.labelId)}` +
+    `&q=${encodeURIComponent(query)}`;
+  return input.pageToken ? `${base}&pageToken=${encodeURIComponent(input.pageToken)}` : base;
 }
 
 /**
@@ -621,15 +642,17 @@ async function verifySentDrafts(
 
 /**
  * One incremental pass, shared by the member-invoked read and the scheduled
- * service pass. Known-correspondent-first: the tracked relationship list is
- * loaded before Gmail is touched, and every list query is scoped to those
- * addresses, so mailbox noise can never crowd a known person's mail out of
- * the bounded per-pass cap. Only messages with people already tracked in
- * Comms are stored — idempotently on
- * `(organization, provider, provider_message_id)`. New inbound mail enters
- * the suite event stream once; sent drafts are reconciled against the
- * mailbox. Every Supabase call goes through the caller-supplied client, so
- * the member path keeps RLS and the scheduled path stays service-role.
+ * service pass. Label-gated: only threads carrying the `Trust Tai/Comms`
+ * label are listed, so unlabeled mail — noise or otherwise — never enters
+ * the candidate set or consumes the bounded per-pass cap. Identity is then
+ * decided against the tracked relationships: only messages with people
+ * already in Comms are stored — idempotently on
+ * `(organization, provider, provider_message_id)`. Labeled mail with unknown
+ * people is counted and left unstored; the mailbox import surfaces those
+ * people for a human Add-to-Comms decision. New inbound mail enters the
+ * suite event stream once; sent drafts are reconciled against the mailbox.
+ * Every Supabase call goes through the caller-supplied client, so the
+ * member path keeps RLS and the scheduled path stays service-role.
  */
 async function runSyncPass(input: {
   client: SupabaseClient;
@@ -642,7 +665,8 @@ async function runSyncPass(input: {
   const mailbox = (connection.accountEmail ?? "").toLowerCase();
   const days = clampDays(input.backfillDays);
 
-  // Relationships first: they define what Gmail is allowed to be asked about.
+  // Relationships first: they are the identity layer that decides what may
+  // be stored, and an empty tracked set stays a clean no-op.
   const { data: relationshipRows, error: relationshipError } = await client
     .from("comms_relationships")
     .select("id, email, full_name")
@@ -653,25 +677,40 @@ async function runSyncPass(input: {
     if (row.email) byEmail.set(row.email.toLowerCase(), row);
   });
 
-  const queries = buildKnownCorrespondentQueries([...byEmail.keys()], days);
-
-  // No tracked people means no Gmail message-list work at all: a clean no-op
-  // that still records the pass on the connection row.
+  // No tracked people means no Gmail work at all — not even label resolution:
+  // a clean no-op that still records the pass on the connection row.
   const ids: string[] = [];
-  const seenIds = new Set<string>();
-  for (const query of queries) {
-    if (ids.length >= MAX_MESSAGES_PER_PASS) break;
-    const remaining = MAX_MESSAGES_PER_PASS - ids.length;
-    const list = await gmailGet<{ messages?: { id: string }[] }>(
-      `/messages?maxResults=${remaining}&q=${encodeURIComponent(query)}`,
-      accessToken,
-    );
-    for (const entry of list.messages ?? []) {
-      if (entry.id && !seenIds.has(entry.id)) {
-        seenIds.add(entry.id);
-        ids.push(entry.id);
+  if (byEmail.size > 0) {
+    // The label is the ingestion boundary. If it is not there, fail safe
+    // with a clear status — never fall back to whole-mailbox reading.
+    const labelId = await resolveCommsLabelId(accessToken);
+    if (!labelId) throw new Error(COMMS_LABEL_MISSING_MESSAGE);
+
+    // Labeled mail only, bounded per pass. Pagination continues only while
+    // the cap has room; the label keeps noise out, so the cap goes to the
+    // threads Tai actually marked for Comms.
+    const seenIds = new Set<string>();
+    let pageToken: string | undefined;
+    do {
+      const remaining = MAX_MESSAGES_PER_PASS - ids.length;
+      if (remaining <= 0) break;
+      const list = await gmailGet<{ messages?: { id: string }[]; nextPageToken?: string }>(
+        buildLabelListPath({
+          labelId,
+          days,
+          maxResults: remaining,
+          ...(pageToken ? { pageToken } : {}),
+        }),
+        accessToken,
+      );
+      for (const entry of list.messages ?? []) {
+        if (entry.id && !seenIds.has(entry.id)) {
+          seenIds.add(entry.id);
+          ids.push(entry.id);
+        }
       }
-    }
+      pageToken = list.nextPageToken || undefined;
+    } while (pageToken && ids.length < MAX_MESSAGES_PER_PASS);
   }
 
   let messagesRead = 0;
@@ -688,8 +727,9 @@ async function runSyncPass(input: {
     const message = normalize(raw, mailbox);
     if (!message) continue;
 
-    // Defense in depth: the query is already scoped, but the match still
-    // decides. An address Comms does not track is counted and dropped.
+    // The label is the boundary; identity still decides. Labeled mail with
+    // someone Comms does not track is counted and left unstored — the
+    // mailbox import surfaces that person for a human decision instead.
     const match = findTrackedCounterpart(message, mailbox, byEmail);
     if (!match) {
       skippedUnknownPeople += 1;
@@ -1055,11 +1095,14 @@ export interface MailboxCandidate {
 }
 
 /**
- * People you actually correspond with, read from message metadata only.
+ * People on threads labeled `Trust Tai/Comms`, read from message metadata
+ * only — the "Labeled in Gmail, not yet in Comms" review surface.
  *
  * This stores nothing. It exists so a member can turn one real correspondent
  * into a Comms relationship without typing it out. Addresses already tracked
- * are marked, never hidden, so the list stays honest.
+ * are marked, never hidden, so the list stays honest. The same label
+ * boundary as sync applies: unlabeled mail is never read, and a missing
+ * label is a clear error, not a whole-mailbox fallback.
  */
 export async function listMailboxCandidates(input: {
   token: string;
@@ -1091,9 +1134,13 @@ export async function listMailboxCandidates(input: {
   }
   const accessToken = await refreshAccessToken(await openSecret(sealed));
 
+  // The same boundary as sync: only labeled threads are read.
+  const labelId = await resolveCommsLabelId(accessToken);
+  if (!labelId) throw new Error(COMMS_LABEL_MISSING_MESSAGE);
+
   const days = Math.min(Math.max(input.backfillDays ?? DEFAULT_BACKFILL_DAYS, 1), 90);
   const list = await gmailGet<{ messages?: { id: string }[] }>(
-    `/messages?maxResults=${MAX_MESSAGES_PER_PASS}&q=${encodeURIComponent(`newer_than:${days}d -in:spam -in:trash -category:promotions -category:social`)}`,
+    buildLabelListPath({ labelId, days, maxResults: MAX_MESSAGES_PER_PASS }),
     accessToken,
   );
   const ids = (list.messages ?? []).map((entry) => entry.id).filter(Boolean);

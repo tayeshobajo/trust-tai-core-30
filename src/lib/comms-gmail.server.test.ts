@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildKnownCorrespondentQueries,
+  buildLabelListPath,
+  COMMS_GMAIL_LABEL,
+  COMMS_LABEL_MISSING_MESSAGE,
+  findCommsLabelId,
   findTrackedCounterpart,
   parseAddress,
   type RelationshipRow,
@@ -32,54 +35,60 @@ describe("parseAddress", () => {
   });
 });
 
-describe("buildKnownCorrespondentQueries", () => {
-  it("scopes every chunk to known addresses only — noise can never enter the candidate set", () => {
-    const queries = buildKnownCorrespondentQueries(
-      ["john@example.com", "ana@example.org"],
-      2,
+describe("findCommsLabelId", () => {
+  it("matches the exact nested label name, not a partial or parent label", () => {
+    const labels = [
+      { id: "INBOX", name: "INBOX" },
+      { id: "Label_9", name: "Trust Tai" },
+      { id: "Label_42", name: "Trust Tai/Comms" },
+      { id: "Label_7", name: "Trust Tai/Comms Archive" },
+    ];
+    expect(findCommsLabelId(labels)).toBe("Label_42");
+  });
+
+  it("falls back to a case-insensitive match — Gmail label names are case-insensitively unique", () => {
+    expect(findCommsLabelId([{ id: "Label_5", name: "trust tai/comms" }])).toBe("Label_5");
+    expect(findCommsLabelId([{ id: "Label_6", name: "TRUST TAI/COMMS" }])).toBe("Label_6");
+  });
+
+  it("returns null when the label is missing — the safe no-op trigger, never a fallback", () => {
+    expect(findCommsLabelId([])).toBeNull();
+    expect(findCommsLabelId([{ id: "INBOX", name: "INBOX" }])).toBeNull();
+    expect(findCommsLabelId([{ id: "Label_1", name: "Comms" }])).toBeNull();
+  });
+
+  it("the missing-label message names the label and rules out whole-mailbox reading", () => {
+    expect(COMMS_LABEL_MISSING_MESSAGE).toContain(COMMS_GMAIL_LABEL);
+    expect(COMMS_LABEL_MISSING_MESSAGE).toContain("never falls back");
+  });
+});
+
+describe("buildLabelListPath", () => {
+  it("gates on the label id first — unlabeled mail can never enter the candidate set", () => {
+    const path = buildLabelListPath({ labelId: "Label_42", days: 2, maxResults: 60 });
+    expect(path).toContain("labelIds=Label_42");
+    const decoded = decodeURIComponent(path);
+    expect(decoded).toContain("q=newer_than:2d -in:spam -in:trash");
+    expect(decoded).toContain("maxResults=60");
+  });
+
+  it("carries no address scoping — identity is decided after listing, not by mailbox discovery", () => {
+    const decoded = decodeURIComponent(
+      buildLabelListPath({ labelId: "Label_42", days: 30, maxResults: 25 }),
     );
-    expect(queries).toHaveLength(1);
-    expect(queries[0]).toBe(
-      "newer_than:2d -in:spam -in:trash (from:john@example.com OR to:john@example.com OR from:ana@example.org OR to:ana@example.org)",
-    );
-    // Nothing in the query admits an arbitrary mailbox message.
-    expect(queries[0]).not.toMatch(/newsletter|noreply/);
+    expect(decoded).not.toMatch(/from:|to:/);
+    // And no free-text label search, which would split on the space and slash.
+    expect(decoded).not.toContain("label:");
   });
 
-  it("covers both directions: inbound FROM and outbound TO/CC (Gmail to: matches To, Cc, Bcc)", () => {
-    const [query] = buildKnownCorrespondentQueries(["tai@trust-tai.com"], 30);
-    expect(query).toContain("from:tai@trust-tai.com");
-    expect(query).toContain("to:tai@trust-tai.com");
-  });
-
-  it("keeps the overlap window and spam/trash exclusion on every chunk", () => {
-    const many = Array.from({ length: 45 }, (_, i) => `person${i}@example.com`);
-    const queries = buildKnownCorrespondentQueries(many, 2);
-    expect(queries.length).toBeGreaterThan(1);
-    for (const query of queries) {
-      expect(query.startsWith("newer_than:2d -in:spam -in:trash (")).toBe(true);
-      expect(query.length).toBeLessThanOrEqual(1200);
-    }
-    // Every address appears in exactly one chunk, in both directions.
-    const joined = queries.join(" ");
-    for (const email of many) {
-      expect(joined.split(`from:${email}`).length - 1).toBe(1);
-      expect(joined.split(`to:${email}`).length - 1).toBe(1);
-    }
-  });
-
-  it("returns no queries for an empty tracked set — zero Gmail list work", () => {
-    expect(buildKnownCorrespondentQueries([], 2)).toEqual([]);
-    expect(buildKnownCorrespondentQueries(["  ", ""], 2)).toEqual([]);
-  });
-
-  it("dedupes and normalizes addresses", () => {
-    const queries = buildKnownCorrespondentQueries(
-      ["Tai@Trust-Tai.com", "tai@trust-tai.com"],
-      2,
-    );
-    expect(queries).toHaveLength(1);
-    expect(queries[0]!.split("from:tai@trust-tai.com").length - 1).toBe(1);
+  it("carries the page token when one is given", () => {
+    const path = buildLabelListPath({
+      labelId: "Label_42",
+      days: 2,
+      maxResults: 10,
+      pageToken: "tok/abc",
+    });
+    expect(decodeURIComponent(path)).toContain("pageToken=tok/abc");
   });
 });
 

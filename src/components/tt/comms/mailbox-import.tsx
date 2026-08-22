@@ -100,9 +100,10 @@ export function MailboxImport({
     <div className="border-t border-border pt-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="tt-eyebrow">Or import from your mailbox</p>
+          <p className="tt-eyebrow">Labeled in Gmail, not yet in Comms</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Reads recent message metadata only. Nothing is saved until you confirm the preview.
+            People on threads you have labeled Trust Tai/Comms in Gmail. Reads message metadata
+            only; nothing is saved until you confirm the preview.
           </p>
         </div>
         <TTButton
@@ -187,7 +188,7 @@ export function MailboxImport({
 
       {candidates && candidates.length === 0 ? (
         <p className="mt-3 text-[13px] text-muted-foreground">
-          No recent correspondents were found in that window.
+          No labeled correspondents were found in that window.
         </p>
       ) : null}
 

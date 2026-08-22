@@ -130,9 +130,10 @@ export function GmailConnection({
       </div>
       <AmbientRule appId="comms" contextAccent={null} />
       <p className="text-sm leading-relaxed text-muted-foreground">
-        Reads threads so the queue knows who is actually waiting on a reply. Read-only: no send
-        scope is requested, so Comms cannot send even by mistake. Only messages with people already
-        in Comms are stored.
+        Reads the threads you label Trust Tai/Comms in Gmail, so the queue knows who is actually
+        waiting on a reply. Read-only: no send scope is requested, so Comms cannot send even by
+        mistake, and your labels are never changed. Only messages with people already in Comms
+        are stored.
       </p>
 
       {connection?.accountEmail ? (
@@ -186,9 +187,9 @@ export function GmailConnection({
 
       {sync ? (
         <p className="text-xs text-muted-foreground">
-          Read {sync.messagesRead} messages, stored {sync.messagesStored} across{" "}
+          Read {sync.messagesRead} labeled messages, stored {sync.messagesStored} across{" "}
           {sync.relationshipsTouched} relationships. Left {sync.skippedUnknownPeople} alone because
-          those people are not in Comms yet.
+          those people are not in Comms yet — they stay reviewable from the mailbox import.
         </p>
       ) : null}
       {notice ? <p className="text-xs text-muted-foreground">{notice}</p> : null}
