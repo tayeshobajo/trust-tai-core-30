@@ -156,14 +156,26 @@ Flow:
    pass verbatim without re-reading the mailbox. The mailbox import answers
    the companion question — of the people on labeled threads, how many are
    already in Comms versus waiting for a decision — over the full read
-    window, before its display cap. Adding a person stays explicit:
-    preview, confirm, save; only then does their labeled mail store.
+   window, before its display cap. Adding a person stays explicit:
+   preview, confirm, Add to Comms. The moment the relationship exists, one
+   member-authorized bounded backfill (30 days, clamped 1–90) runs through
+   the same label-gated sync path, so the person's existing labeled history
+   is stored against the relationship in the same action — the member never
+   needs to understand sync watermarks. If that backfill fails, the
+   relationship stays and a non-destructive warning asks to sync again;
+   nothing is rolled back. Repeats are safe: creation dedupes on email and
+   message upserts key on provider message id.
 
 Label gating and coverage were verified in production on 2026-08-22 against
 the real connected mailbox: the authorized scheduled sweep read only the
 1 labeled message in the window (14 before gating), counted 1
 labeled-but-unknown correspondent as skipped/pending without storing, and an
 immediate repeat run was fully idempotent.
+
+Onboarding backfill (Add to Comms brings history with it) was implemented on
+2026-08-22 — composition and clamp unit-tested (`src/data/comms-onboarding.*`),
+typecheck clean — but is **not yet production-verified**; a live Add-to-Comms
+run against the real mailbox is still required before marking it verified.
 
 Body retention is off: only snippets are stored. `comms_messages.body_text`
 exists for a later opt-in and is never written today.
