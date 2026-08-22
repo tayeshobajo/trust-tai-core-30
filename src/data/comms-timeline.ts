@@ -11,7 +11,9 @@
  */
 
 import type { CommsDraft, Touch } from "@/domain/comms";
+import type { StoredMailboxMessage } from "@/domain/comms-integrations";
 import { readTouchRecord, recordNote } from "@/domain/comms-touch-record";
+import { draftProvenanceLabel, readDraftVerification } from "@/domain/comms-verification";
 import type { ISODateTime } from "@/domain/entities";
 
 export type ConversationEventKind =
