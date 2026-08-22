@@ -327,9 +327,14 @@ export async function disconnect(input: {
 export interface SyncResult {
   accountEmail?: string;
   messagesRead: number;
+  /** Newly stored this pass — a resync of the same window reports 0. */
   messagesStored: number;
   relationshipsTouched: number;
   skippedUnknownPeople: number;
+  /** Inbound messages that entered the suite event stream this pass. */
+  eventsEmitted: number;
+  /** Sent drafts the mailbox proved this pass. */
+  draftsVerified: number;
   lastSyncAt: string;
 }
 
@@ -339,53 +344,229 @@ interface RelationshipRow {
   full_name: string;
 }
 
+interface ConnectionRef {
+  id: string;
+  accountEmail: string | null;
+}
+
+function clampDays(value: number): number {
+  return Math.min(Math.max(value, 1), 90);
+}
+
 /**
- * One incremental pass. Reads recent messages, keeps only the ones with people
- * already tracked in Comms, and stores them idempotently on
- * `(organization, provider, provider_message_id)`.
+ * The one suite event an inbound message produces. The key names the exact
+ * Gmail message, so a resync of the same message is a no-op even before the
+ * database's unique index is asked.
  */
-export async function syncGmail(input: {
-  token: string;
-  organizationId: string;
-  backfillDays?: number;
-}): Promise<SyncResult> {
-  const client = supabaseFor(input.token);
-  await requireMember(client, input.organizationId);
+function messageEventKey(organizationId: string, providerMessageId: string): string {
+  return `gmail:message_received:${organizationId}:${providerMessageId}`;
+}
 
-  const { data: connectionRow, error: connectionError } = await client
-    .from("comms_integrations")
-    .select("id, account_email, cursor")
-    .eq("organization_id", input.organizationId)
-    .eq("provider", "gmail")
-    .maybeSingle();
-  if (connectionError) throw new Error(connectionError.message);
-  if (!connectionRow) throw new Error("No mailbox is connected yet.");
-
-  const connection = connectionRow as { id: string; account_email: string | null; cursor: unknown };
-  const mailbox = (connection.account_email ?? "").toLowerCase();
-
-  const { data: sealed, error: sealedError } = await client.rpc(
-    "comms_get_integration_secret",
-    { p_integration_id: connection.id },
+/**
+ * Write `relationship.message_received` for newly observed inbound mail,
+ * through the same `activities` envelope every other room uses. Best-effort
+ * by design: history matters, never more than the sync itself. Fails closed —
+ * if the idempotency column is not there, nothing is guessed and nothing is
+ * written twice.
+ */
+async function emitInboundEvents(
+  client: SupabaseClient,
+  organizationId: string,
+  pending: { relationship: RelationshipRow; message: NormalizedMessage }[],
+): Promise<number> {
+  if (pending.length === 0) return 0;
+  const definition = SUITE_EVENTS.RELATIONSHIP_MESSAGE_RECEIVED;
+  const keys = pending.map((entry) =>
+    messageEventKey(organizationId, entry.message.providerMessageId),
   );
-  if (sealedError) throw new Error(sealedError.message);
-  if (!sealed || typeof sealed !== "string") {
-    throw new Error("That mailbox needs to be connected again.");
+
+  const { data: existingRows, error: readError } = await client
+    .from("activities")
+    .select("source_event_key")
+    .eq("organization_id", organizationId)
+    .eq("app_key", definition.emittedBy)
+    .in("source_event_key", keys);
+  if (readError) {
+    console.warn(`[comms-gmail] event dedupe read failed, skipping emission: ${readError.message}`);
+    return 0;
+  }
+  const seen = new Set(
+    ((existingRows ?? []) as { source_event_key: string | null }[])
+      .map((row) => row.source_event_key)
+      .filter((key): key is string => Boolean(key)),
+  );
+
+  let emitted = 0;
+  for (const { relationship, message } of pending) {
+    const key = messageEventKey(organizationId, message.providerMessageId);
+    if (seen.has(key)) continue;
+    const summary = `They wrote: ${message.subject?.trim() || message.snippet?.trim() || "a new email"}`;
+    const { error } = await client.from("activities").insert({
+      organization_id: organizationId,
+      app_key: definition.emittedBy,
+      event_type: definition.name,
+      actor_user_id: null,
+      entity_type: "relationship",
+      entity_id: relationship.id,
+      summary,
+      occurred_at: message.occurredAt,
+      source_event_key: key,
+      payload: {
+        label: relationship.full_name,
+        event: definition.name,
+        provider: "gmail",
+        direction: "inbound",
+        provider_message_id: message.providerMessageId,
+        source_event_key: key,
+        provenance: {
+          appId: definition.emittedBy,
+          actor: { type: "system", id: "comms-gmail-sync", label: "Gmail sync" },
+          observedAt: new Date().toISOString(),
+          externalRef: key,
+          confidence: "observed",
+          dedupe_key: key,
+        },
+      },
+    });
+    if (error) {
+      // 23505: the unique index says this happening is already recorded.
+      if (error.code === "23505") continue;
+      console.warn(`[comms-gmail] event write failed for ${key}: ${error.message}`);
+      continue;
+    }
+    emitted += 1;
+  }
+  return emitted;
+}
+
+/**
+ * Reconcile human-sent drafts against what the mailbox actually observed.
+ * Reads stored outbound mail for the relationship (bounded to the drafts'
+ * send windows), applies the deterministic matcher, and stamps each proven
+ * draft. The conditional update means a concurrent pass cannot double-stamp.
+ */
+async function verifySentDrafts(
+  client: SupabaseClient,
+  organizationId: string,
+  relationship: RelationshipRow,
+): Promise<number> {
+  const { data: draftRows, error: draftError } = await client
+    .from("comms_drafts")
+    .select("id, subject, body, rationale, updated_at")
+    .eq("organization_id", organizationId)
+    .eq("relationship_id", relationship.id)
+    .eq("review_state", "sent");
+  if (draftError) {
+    console.warn(`[comms-gmail] draft read failed: ${draftError.message}`);
+    return 0;
   }
 
-  let accessToken: string;
-  try {
-    accessToken = await refreshAccessToken(await openSecret(sealed));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Google refused the stored access.";
-    await client
-      .from("comms_integrations")
-      .update({ status: "revoked", last_error: message, updated_at: new Date().toISOString() })
-      .eq("id", connection.id);
-    throw new Error(message);
+  const unverified = ((draftRows ?? []) as {
+    id: string;
+    subject: string | null;
+    body: string;
+    rationale: Record<string, unknown> | null;
+    updated_at: string;
+  }[]).filter((row) => !readDraftVerification(row.rationale));
+  if (unverified.length === 0) return 0;
+
+  const earliest = unverified
+    .map((row) => new Date(row.updated_at).getTime())
+    .reduce((left, right) => Math.min(left, right), Number.POSITIVE_INFINITY);
+  if (!Number.isFinite(earliest)) return 0;
+  const windowStart = new Date(earliest - 2 * 60 * 60 * 1000).toISOString();
+
+  const { data: messageRows, error: messageError } = await client
+    .from("comms_messages")
+    .select("provider_message_id, direction, occurred_at, subject, snippet, to_emails, cc_emails")
+    .eq("organization_id", organizationId)
+    .eq("relationship_id", relationship.id)
+    .eq("provider", "gmail")
+    .eq("direction", "outbound")
+    .gte("occurred_at", windowStart)
+    .order("occurred_at", { ascending: true })
+    .limit(100);
+  if (messageError) {
+    console.warn(`[comms-gmail] message read failed: ${messageError.message}`);
+    return 0;
   }
 
-  const days = Math.min(Math.max(input.backfillDays ?? DEFAULT_BACKFILL_DAYS, 1), 90);
+  const drafts: SentDraftLike[] = unverified.map((row) => ({
+    id: row.id,
+    ...(row.subject ? { subject: row.subject } : {}),
+    body: row.body,
+    markedSentAt: row.updated_at,
+    ...(relationship.email ? { recipientEmail: relationship.email } : {}),
+  }));
+  const messages: ObservedMessageLike[] = (
+    (messageRows ?? []) as {
+      provider_message_id: string;
+      direction: string;
+      occurred_at: string;
+      subject: string | null;
+      snippet: string | null;
+      to_emails: unknown;
+      cc_emails: unknown;
+    }[]
+  ).map((row) => ({
+    providerMessageId: row.provider_message_id,
+    direction: row.direction === "outbound" ? "outbound" : "inbound",
+    occurredAt: row.occurred_at,
+    ...(row.subject ? { subject: row.subject } : {}),
+    ...(row.snippet ? { snippet: row.snippet } : {}),
+    toEmails: Array.isArray(row.to_emails) ? row.to_emails.map(String) : [],
+    ccEmails: Array.isArray(row.cc_emails) ? row.cc_emails.map(String) : [],
+  }));
+
+  const plan = planDraftVerifications(drafts, messages);
+  let verified = 0;
+  for (const entry of plan) {
+    const draft = unverified.find((row) => row.id === entry.draftId);
+    if (!draft) continue;
+    const rationale = {
+      ...(draft.rationale ?? {}),
+      verification: {
+        state: "mailbox_verified",
+        provider_message_id: entry.providerMessageId,
+        verified_at: new Date().toISOString(),
+        matched_by: entry.matchedBy,
+      },
+    };
+    const { error, count } = await client
+      .from("comms_drafts")
+      .update({ rationale, updated_at: new Date().toISOString() }, { count: "exact" })
+      .eq("id", entry.draftId)
+      .eq("review_state", "sent")
+      .is("rationale->verification", null);
+    if (error) {
+      console.warn(`[comms-gmail] draft verification write failed: ${error.message}`);
+      continue;
+    }
+    if ((count ?? 0) > 0) verified += 1;
+  }
+  return verified;
+}
+
+/**
+ * One incremental pass, shared by the member-invoked read and the scheduled
+ * service pass. Reads recent messages, keeps only the ones with people
+ * already tracked in Comms, and stores them idempotently on
+ * `(organization, provider, provider_message_id)`. New inbound mail enters
+ * the suite event stream once; sent drafts are reconciled against the
+ * mailbox. Every Supabase call goes through the caller-supplied client, so
+ * the member path keeps RLS and the scheduled path stays service-role.
+ */
+async function runSyncPass(input: {
+  client: SupabaseClient;
+  organizationId: string;
+  connection: ConnectionRef;
+  accessToken: string;
+  backfillDays: number;
+}): Promise<SyncResult> {
+  const { client, organizationId, connection, accessToken } = input;
+  const mailbox = (connection.accountEmail ?? "").toLowerCase();
+  const days = clampDays(input.backfillDays);
+
   const list = await gmailGet<{ messages?: { id: string }[] }>(
     `/messages?maxResults=${MAX_MESSAGES_PER_PASS}&q=${encodeURIComponent(`newer_than:${days}d -in:spam -in:trash`)}`,
     accessToken,
@@ -395,7 +576,7 @@ export async function syncGmail(input: {
   const { data: relationshipRows, error: relationshipError } = await client
     .from("comms_relationships")
     .select("id, email, full_name")
-    .eq("organization_id", input.organizationId);
+    .eq("organization_id", organizationId);
   if (relationshipError) throw new Error(relationshipError.message);
   const byEmail = new Map<string, RelationshipRow>();
   ((relationshipRows ?? []) as RelationshipRow[]).forEach((row) => {
@@ -403,9 +584,8 @@ export async function syncGmail(input: {
   });
 
   let messagesRead = 0;
-  let messagesStored = 0;
   let skippedUnknownPeople = 0;
-  const perRelationship = new Map<string, NormalizedMessage[]>();
+  const perRelationship = new Map<string, { relationship: RelationshipRow; messages: NormalizedMessage[] }>();
   const threadSubjects = new Map<string, string | undefined>();
 
   for (const id of ids) {
@@ -426,15 +606,37 @@ export async function syncGmail(input: {
       continue;
     }
 
-    const bucket = perRelationship.get(match.id) ?? [];
-    bucket.push(message);
+    const bucket = perRelationship.get(match.id) ?? { relationship: match, messages: [] };
+    bucket.messages.push(message);
     perRelationship.set(match.id, bucket);
     threadSubjects.set(message.providerThreadId, message.subject);
   }
 
-  const nowIso = new Date().toISOString();
+  // Which of these the vault has already stored: only genuinely new messages
+  // count as stored and only new inbound mail raises an event.
+  const candidateIds = [...perRelationship.values()].flatMap((bucket) =>
+    bucket.messages.map((message) => message.providerMessageId),
+  );
+  const existingMessageIds = new Set<string>();
+  if (candidateIds.length > 0) {
+    const { data: storedRows, error: storedError } = await client
+      .from("comms_messages")
+      .select("provider_message_id")
+      .eq("organization_id", organizationId)
+      .eq("provider", "gmail")
+      .in("provider_message_id", candidateIds);
+    if (storedError) throw new Error(storedError.message);
+    ((storedRows ?? []) as { provider_message_id: string }[]).forEach((row) =>
+      existingMessageIds.add(row.provider_message_id),
+    );
+  }
 
-  for (const [relationshipId, messages] of perRelationship) {
+  const nowIso = new Date().toISOString();
+  let messagesStored = 0;
+  const newInbound: { relationship: RelationshipRow; message: NormalizedMessage }[] = [];
+
+  for (const [relationshipId, bucket] of perRelationship) {
+    const { relationship, messages } = bucket;
     const threadIds = new Set(messages.map((message) => message.providerThreadId));
 
     for (const providerThreadId of threadIds) {
@@ -446,13 +648,13 @@ export async function syncGmail(input: {
       const { data: existingThread } = await client
         .from("comms_threads")
         .select("id")
-        .eq("organization_id", input.organizationId)
+        .eq("organization_id", organizationId)
         .eq("provider", "gmail")
         .eq("provider_thread_id", providerThreadId)
         .maybeSingle();
 
       const threadPayload = {
-        organization_id: input.organizationId,
+        organization_id: organizationId,
         relationship_id: relationshipId,
         channel: "email",
         provider: "gmail",
@@ -479,7 +681,7 @@ export async function syncGmail(input: {
       }
 
       const rows = threadMessages.map((message) => ({
-        organization_id: input.organizationId,
+        organization_id: organizationId,
         relationship_id: relationshipId,
         thread_id: threadId,
         provider: "gmail",
@@ -496,15 +698,19 @@ export async function syncGmail(input: {
         provenance: { source: "gmail", fetched_at: nowIso, mailbox },
       }));
 
-      const { error: upsertError, count } = await client
+      const { error: upsertError } = await client
         .from("comms_messages")
         .upsert(rows, {
           onConflict: "organization_id,provider,provider_message_id",
           ignoreDuplicates: false,
-          count: "exact",
         });
       if (upsertError) throw new Error(upsertError.message);
-      messagesStored += count ?? rows.length;
+
+      for (const message of threadMessages) {
+        if (existingMessageIds.has(message.providerMessageId)) continue;
+        messagesStored += 1;
+        if (message.direction === "inbound") newInbound.push({ relationship, message });
+      }
 
       await client
         .from("comms_relationships")
@@ -515,6 +721,13 @@ export async function syncGmail(input: {
         })
         .eq("id", relationshipId);
     }
+  }
+
+  const eventsEmitted = await emitInboundEvents(client, organizationId, newInbound);
+
+  let draftsVerified = 0;
+  for (const bucket of perRelationship.values()) {
+    draftsVerified += await verifySentDrafts(client, organizationId, bucket.relationship);
   }
 
   const cursor = { last_pass_at: nowIso, backfill_days: days };
@@ -536,7 +749,199 @@ export async function syncGmail(input: {
     messagesStored,
     relationshipsTouched: perRelationship.size,
     skippedUnknownPeople,
+    eventsEmitted,
+    draftsVerified,
     lastSyncAt: nowIso,
+  };
+}
+
+/**
+ * The member-invoked pass. Every read and write is made with the caller's
+ * token, so RLS and the organization boundary still hold.
+ */
+export async function syncGmail(input: {
+  token: string;
+  organizationId: string;
+  backfillDays?: number;
+}): Promise<SyncResult> {
+  const client = supabaseFor(input.token);
+  await requireMember(client, input.organizationId);
+
+  const { data: connectionRow, error: connectionError } = await client
+    .from("comms_integrations")
+    .select("id, account_email, cursor")
+    .eq("organization_id", input.organizationId)
+    .eq("provider", "gmail")
+    .maybeSingle();
+  if (connectionError) throw new Error(connectionError.message);
+  if (!connectionRow) throw new Error("No mailbox is connected yet.");
+
+  const connection = connectionRow as { id: string; account_email: string | null; cursor: unknown };
+
+  const { data: sealed, error: sealedError } = await client.rpc(
+    "comms_get_integration_secret",
+    { p_integration_id: connection.id },
+  );
+  if (sealedError) throw new Error(sealedError.message);
+  if (!sealed || typeof sealed !== "string") {
+    throw new Error("That mailbox needs to be connected again.");
+  }
+
+  let accessToken: string;
+  try {
+    accessToken = await refreshAccessToken(await openSecret(sealed));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Google refused the stored access.";
+    await client
+      .from("comms_integrations")
+      .update({ status: "revoked", last_error: message, updated_at: new Date().toISOString() })
+      .eq("id", connection.id);
+    throw new Error(message);
+  }
+
+  return runSyncPass({
+    client,
+    organizationId: input.organizationId,
+    connection: { id: connection.id, accountEmail: connection.account_email },
+    accessToken,
+    backfillDays: input.backfillDays ?? DEFAULT_BACKFILL_DAYS,
+  });
+}
+
+/* -------------------------------------------------------- scheduled sync */
+
+/** Service-role client. The sealed-token RPC it calls is granted to it alone. */
+function serviceClient(): SupabaseClient {
+  const key =
+    process.env["TRUST_TAI_SUPABASE_SERVICE_KEY"] || process.env["SUPABASE_SERVICE_ROLE_KEY"];
+  if (!key) throw new Error("Missing TRUST_TAI_SUPABASE_SERVICE_KEY.");
+  // New-format keys are opaque, not JWTs: send apikey, never a bearer of itself.
+  const opaque = key.startsWith("sb_");
+  return createClient(trustTaiSupabaseUrl(), key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    ...(opaque
+      ? {
+          global: {
+            fetch: (request: RequestInfo | URL, init?: RequestInit) => {
+              const headers = new Headers(
+                typeof Request !== "undefined" && request instanceof Request
+                  ? request.headers
+                  : undefined,
+              );
+              new Headers(init?.headers).forEach((value, name) => headers.set(name, value));
+              if (headers.get("Authorization") === `Bearer ${key}`) {
+                headers.delete("Authorization");
+              }
+              headers.set("apikey", key);
+              return fetch(request, { ...init, headers });
+            },
+          },
+        }
+      : {}),
+  });
+}
+
+export interface ScheduledMailboxResult {
+  organizationId: string;
+  accountEmail?: string;
+  ok: boolean;
+  error?: string;
+  result?: SyncResult;
+}
+
+export interface ScheduledSyncReport {
+  mailboxes: number;
+  synced: number;
+  failed: number;
+  results: ScheduledMailboxResult[];
+}
+
+/**
+ * The scheduled pass over every connected mailbox, run as the service role.
+ * Conservative by contract: a short overlapping window, bounded per pass, and
+ * a mailbox that fails is marked "Needs attention" with its last successful
+ * sync left untouched — failure never erases what was true before.
+ */
+export async function syncAllConnectedMailboxes(input?: {
+  backfillDays?: number;
+}): Promise<ScheduledSyncReport> {
+  if (!gmailAvailable()) throw new Error("Gmail is not configured on the server.");
+  const client = serviceClient();
+
+  const { data: rows, error } = await client
+    .from("comms_integrations")
+    .select("id, organization_id, account_email")
+    .eq("provider", "gmail")
+    .eq("status", "connected");
+  if (error) throw new Error(error.message);
+
+  const days = clampDays(input?.backfillDays ?? SCHEDULED_BACKFILL_DAYS);
+  const results: ScheduledMailboxResult[] = [];
+
+  for (const row of (rows ?? []) as {
+    id: string;
+    organization_id: string;
+    account_email: string | null;
+  }[]) {
+    const base: ScheduledMailboxResult = {
+      organizationId: row.organization_id,
+      ...(row.account_email ? { accountEmail: row.account_email } : {}),
+      ok: false,
+    };
+    try {
+      const { data: sealed, error: sealedError } = await client.rpc(
+        "comms_get_integration_secret_system",
+        { p_integration_id: row.id },
+      );
+      if (sealedError) throw new Error(sealedError.message);
+      if (!sealed || typeof sealed !== "string") {
+        throw new Error("That mailbox needs to be connected again.");
+      }
+
+      let accessToken: string;
+      try {
+        accessToken = await refreshAccessToken(await openSecret(sealed));
+      } catch (refreshError) {
+        const message =
+          refreshError instanceof Error ? refreshError.message : "Google refused the stored access.";
+        await client
+          .from("comms_integrations")
+          .update({ status: "revoked", last_error: message, updated_at: new Date().toISOString() })
+          .eq("id", row.id);
+        throw new Error(message);
+      }
+
+      const result = await runSyncPass({
+        client,
+        organizationId: row.organization_id,
+        connection: { id: row.id, accountEmail: row.account_email },
+        accessToken,
+        backfillDays: days,
+      });
+      results.push({ ...base, ok: true, result });
+    } catch (mailboxError) {
+      const message = mailboxError instanceof Error ? mailboxError.message : "That read failed.";
+      // Revoked is already recorded above; every other failure lands here.
+      const { data: current } = await client
+        .from("comms_integrations")
+        .select("status")
+        .eq("id", row.id)
+        .maybeSingle();
+      if ((current as { status?: string } | null)?.status !== "revoked") {
+        await client
+          .from("comms_integrations")
+          .update({ status: "error", last_error: message, updated_at: new Date().toISOString() })
+          .eq("id", row.id);
+      }
+      results.push({ ...base, error: message });
+    }
+  }
+
+  return {
+    mailboxes: results.length,
+    synced: results.filter((entry) => entry.ok).length,
+    failed: results.filter((entry) => !entry.ok).length,
+    results,
   };
 }
 
