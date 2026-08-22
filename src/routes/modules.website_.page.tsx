@@ -149,7 +149,11 @@ function PageDetail({ identity }: { identity: WorkspaceIdentity }) {
     [input.searchMetrics, path],
   );
   const findings = useMemo(
-    () => healthFindings(row ? [row] : [], input.pages).filter((entry) => entry.paths.length === 0 || entry.paths.some((entry2) => normalizePath(entry2) === path)),
+    () =>
+      healthFindings(row ? [row] : [], input.pages).filter(
+        (entry) =>
+          entry.paths.length === 0 || entry.paths.some((entry2) => normalizePath(entry2) === path),
+      ),
     [row, input.pages, path],
   );
   const conversations = input.submissions.filter(
@@ -270,8 +274,8 @@ function PageDetail({ identity }: { identity: WorkspaceIdentity }) {
           ))}
         </div>
         <p className="mt-3 max-w-reading text-sm text-muted-foreground">
-          Last {WINDOW_DAYS} days. A dash means the source behind that figure has not told us,
-          which is different from zero.
+          Last {WINDOW_DAYS} days. A dash means the source behind that figure has not told us, which
+          is different from zero.
         </p>
       </header>
 

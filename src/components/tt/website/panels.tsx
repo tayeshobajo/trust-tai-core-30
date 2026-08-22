@@ -34,10 +34,7 @@ export function ProviderReadinessPanel({
         {readiness.map((entry) => {
           const state = entry.state ?? (entry.connected ? "live" : "not_configured");
           return (
-            <li
-              key={entry.id}
-              className="border-b border-border/60 pb-2 last:border-0 last:pb-0"
-            >
+            <li key={entry.id} className="border-b border-border/60 pb-2 last:border-0 last:pb-0">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                 <span className="text-sm text-foreground">{entry.label}</span>
                 <span
@@ -67,7 +64,6 @@ export function ProviderReadinessPanel({
     </div>
   );
 }
-
 
 export function AiReferralsPanel({
   summary,

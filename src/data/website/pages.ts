@@ -22,7 +22,6 @@ import type { KnownNumber, WebsiteEvent, WebsiteSubmission } from "@/domain/webs
 import { isOperationalPath, normalizePath, referrerHost } from "./url";
 import { isQualified } from "./projection";
 
-
 export interface WebsiteAnalyticsInput {
   pages: WebsitePage[];
   pageMetrics: PageMetricsDay[];
@@ -123,8 +122,6 @@ export function providerReadiness(input: WebsiteAnalyticsInput): ProviderReadine
     },
   ];
 }
-
-
 
 /* ------------------------------------------------------------ intake joins */
 
@@ -246,7 +243,6 @@ export function buildPageRows(input: WebsiteAnalyticsInput): PageRow[] {
   /* Back office, sign in and error routes are not part of the public site. */
   for (const path of [...paths]) if (isOperationalPath(path)) paths.delete(path);
 
-
   const inventory = new Map(input.pages.map((page) => [normalizePath(page.path), page]));
   const gaOn = input.pageMetrics.length > 0;
   const searchOn = input.searchMetrics.length > 0;
@@ -333,9 +329,7 @@ export function sourceGroups(
     ).submissions += 1;
   }
 
-  return [...tally.values()].sort(
-    (a, b) => b.visits - a.visits || b.submissions - a.submissions,
-  );
+  return [...tally.values()].sort((a, b) => b.visits - a.visits || b.submissions - a.submissions);
 }
 
 function labelFor(utmSource: string | null | undefined, referrer: string | null | undefined) {
@@ -403,7 +397,8 @@ export function aiReferrals(
   }
 
   const rows = [...byHost.values()].sort(
-    (a, b) => b.visits - a.visits || b.submissions - a.submissions || a.label.localeCompare(b.label),
+    (a, b) =>
+      b.visits - a.visits || b.submissions - a.submissions || a.label.localeCompare(b.label),
   );
 
   return {
@@ -432,9 +427,8 @@ export function providerSourceGroups(rows: PageMetricsDay[]): SourceGroup[] {
   for (const row of rows) {
     const raw = (row.source ?? "").trim().toLowerCase();
     const host = referrerHost(raw);
-    const label = host && AI_HOSTS.has(host)
-      ? "AI referrals"
-      : (SOURCE_LABELS[raw] ?? (raw ? raw : "Direct"));
+    const label =
+      host && AI_HOSTS.has(host) ? "AI referrals" : (SOURCE_LABELS[raw] ?? (raw ? raw : "Direct"));
     const found = tally.get(label) ?? { source: label, visits: 0, submissions: 0 };
     found.visits += row.users || row.views;
     tally.set(label, found);

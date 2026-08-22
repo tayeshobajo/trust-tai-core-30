@@ -43,10 +43,7 @@ const sum = (values: KnownNumber[]): KnownNumber => {
 };
 
 /** The state a provider is in, falling back to what was observed. */
-export function stateOf(
-  readiness: ProviderReadiness[],
-  id: string,
-): ProviderState | "unknown" {
+export function stateOf(readiness: ProviderReadiness[], id: string): ProviderState | "unknown" {
   const entry = readiness.find((row) => row.id === id);
   if (!entry) return "unknown";
   return entry.state ?? (entry.connected ? "live" : "not_configured");
@@ -259,9 +256,12 @@ function baselineGaps(input: OverviewInput, gaOn: boolean, gscOn: boolean): stri
 
   const events = input.readiness.find((entry) => entry.id === "first_party_events");
   if (events && (events.state === "quiet" || !events.connected))
-    gaps.push("No first party site events have arrived, so source mix and intake starts are blank.");
+    gaps.push(
+      "No first party site events have arrived, so source mix and intake starts are blank.",
+    );
 
-  if (gaps.length === 0) gaps.push("Two comparable periods are needed before a change can be read.");
+  if (gaps.length === 0)
+    gaps.push("Two comparable periods are needed before a change can be read.");
   return gaps;
 }
 

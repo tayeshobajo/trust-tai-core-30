@@ -75,7 +75,6 @@ export function isOperationalPath(input: string | null | undefined): boolean {
   return OPERATIONAL_PATTERNS.some((pattern) => pattern.test(path));
 }
 
-
 /** Bare host of a referrer, or an empty string when there is not one. */
 export function referrerHost(value: string | null | undefined): string {
   const raw = (value ?? "").trim();

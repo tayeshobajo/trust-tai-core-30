@@ -281,9 +281,7 @@ function WebsiteRoom({ identity }: { identity: WorkspaceIdentity }) {
       {tab === "search" ? (
         <SearchTab input={input} queries={queries} referrals={referrals} readiness={readiness} />
       ) : null}
-      {tab === "intake" ? (
-        <Intake input={input} loading={loading} />
-      ) : null}
+      {tab === "intake" ? <Intake input={input} loading={loading} /> : null}
     </div>
   );
 }
@@ -390,16 +388,9 @@ function Overview({
   );
 }
 
-
 /* ------------------------------------------------------------------ pages */
 
-function Pages({
-  rows,
-  health,
-}: {
-  rows: PageRow[];
-  health: ReturnType<typeof healthFindings>;
-}) {
+function Pages({ rows, health }: { rows: PageRow[]; health: ReturnType<typeof healthFindings> }) {
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -447,7 +438,9 @@ function Pages({
                   </Link>
                   <p className="font-mono text-[11px] text-muted-foreground">{row.path}</p>
                 </td>
-                <td className="py-2 pr-4 text-muted-foreground">{row.pageType.replace("_", " ")}</td>
+                <td className="py-2 pr-4 text-muted-foreground">
+                  {row.pageType.replace("_", " ")}
+                </td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.views)}</td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.users)}</td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.clicks)}</td>
@@ -471,7 +464,6 @@ function Pages({
                 </td>
               </tr>
             ))}
-
           </tbody>
         </table>
       </div>
@@ -535,9 +527,7 @@ function Content({ rows }: { rows: ContentRow[] }) {
               <p className="font-mono text-[11px] text-muted-foreground">{row.path}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {row.classifications.length === 0 ? (
-                <MetaPill>Insufficient data</MetaPill>
-              ) : null}
+              {row.classifications.length === 0 ? <MetaPill>Insufficient data</MetaPill> : null}
               {row.classifications.map((label) => (
                 <MetaPill key={label}>{CLASSIFICATION_LABELS[label]}</MetaPill>
               ))}
@@ -570,7 +560,13 @@ function Content({ rows }: { rows: ContentRow[] }) {
 
           {row.intent.topic || row.intent.audience || row.intent.primaryNextStep ? (
             <p className="mt-2 text-[12px] text-muted-foreground">
-              Intent · {[row.intent.audience, row.intent.searchIntent, row.intent.purpose, row.intent.primaryNextStep]
+              Intent ·{" "}
+              {[
+                row.intent.audience,
+                row.intent.searchIntent,
+                row.intent.purpose,
+                row.intent.primaryNextStep,
+              ]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
@@ -620,7 +616,6 @@ function SearchTab({
     );
   }
 
-
   const opportunities = contentOpportunities(
     input.searchMetrics,
     input.pages.map((page) => page.path),
@@ -628,11 +623,31 @@ function SearchTab({
   const competing = competingPages(input.searchMetrics);
 
   const lists: { title: string; description: string; rows: typeof queries }[] = [
-    { title: "Bringing traffic", description: "The queries producing clicks today.", rows: queries.slice(0, 10) },
-    { title: "Growing", description: "More clicks in the second half of the window.", rows: growingQueries(queries).slice(0, 8) },
-    { title: "Declining", description: "Fewer clicks in the second half of the window.", rows: decliningQueries(queries).slice(0, 8) },
-    { title: "Seen, rarely clicked", description: "Real demand meeting a weak title or description.", rows: highImpressionLowCtr(queries).slice(0, 8) },
-    { title: "Positions four to twenty", description: "Close enough that a better page would move them.", rows: strikingDistance(queries).slice(0, 8) },
+    {
+      title: "Bringing traffic",
+      description: "The queries producing clicks today.",
+      rows: queries.slice(0, 10),
+    },
+    {
+      title: "Growing",
+      description: "More clicks in the second half of the window.",
+      rows: growingQueries(queries).slice(0, 8),
+    },
+    {
+      title: "Declining",
+      description: "Fewer clicks in the second half of the window.",
+      rows: decliningQueries(queries).slice(0, 8),
+    },
+    {
+      title: "Seen, rarely clicked",
+      description: "Real demand meeting a weak title or description.",
+      rows: highImpressionLowCtr(queries).slice(0, 8),
+    },
+    {
+      title: "Positions four to twenty",
+      description: "Close enough that a better page would move them.",
+      rows: strikingDistance(queries).slice(0, 8),
+    },
   ];
 
   return (
@@ -642,7 +657,9 @@ function SearchTab({
           <div key={list.title} className="tt-surface p-5">
             <SectionHeading eyebrow="Search" title={list.title} description={list.description} />
             {list.rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing meets this rule in the window.</p>
+              <p className="text-sm text-muted-foreground">
+                Nothing meets this rule in the window.
+              </p>
             ) : (
               <ul className="space-y-1.5">
                 {list.rows.map((row) => (
@@ -716,7 +733,8 @@ function SearchTab({
                   {row.refreshPath ? ` Start with ${row.refreshPath}.` : ""}
                 </p>
                 <p className="font-mono text-[11px] text-muted-foreground">
-                  {row.impressions} impressions · {percent(row.ctr)} · p{decimal(row.averagePosition)}
+                  {row.impressions} impressions · {percent(row.ctr)} · p
+                  {decimal(row.averagePosition)}
                 </p>
               </li>
             ))}
@@ -866,4 +884,3 @@ function Submission({
     </article>
   );
 }
-

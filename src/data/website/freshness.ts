@@ -48,7 +48,9 @@ export function providerState(
   if (record && !record.configured) return "not_configured";
   if (record?.lastError) return "failed";
 
-  const capable = Boolean(record?.configured || readiness.capabilityAvailable || readiness.connected);
+  const capable = Boolean(
+    record?.configured || readiness.capabilityAvailable || readiness.connected,
+  );
   if (!capable) return "not_configured";
 
   const last = record?.lastSuccessAt ?? readiness.lastSyncedAt ?? null;
@@ -87,9 +89,7 @@ export function stateNote(entry: ProviderReadiness): string {
     case "quiet":
       return "Connected. Nothing was returned for this window yet.";
     case "failed":
-      return entry.lastError
-        ? `The last run failed: ${entry.lastError}`
-        : "The last run failed.";
+      return entry.lastError ? `The last run failed: ${entry.lastError}` : "The last run failed.";
     default:
       return entry.note;
   }

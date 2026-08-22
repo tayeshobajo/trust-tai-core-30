@@ -9,7 +9,12 @@ import { describe, expect, it } from "vitest";
 
 import type { WebsiteEvent, WebsiteSubmission } from "@/domain/website";
 import { EMPTY_STRUCTURED } from "@/domain/website";
-import { EMPTY_CONTENT_INTENT, type PageMetricsDay, type SearchMetricsDay, type WebsitePage } from "@/domain/website-analytics";
+import {
+  EMPTY_CONTENT_INTENT,
+  type PageMetricsDay,
+  type SearchMetricsDay,
+  type WebsitePage,
+} from "@/domain/website-analytics";
 
 import { buildContentRows } from "./content";
 import { healthFindings } from "./health";
@@ -75,7 +80,9 @@ function search(
   return { date, query, path, clicks, impressions, position };
 }
 
-function event(overrides: Partial<WebsiteEvent> & { eventName: WebsiteEvent["eventName"] }): WebsiteEvent {
+function event(
+  overrides: Partial<WebsiteEvent> & { eventName: WebsiteEvent["eventName"] },
+): WebsiteEvent {
   return {
     id: Math.random().toString(36).slice(2),
     organizationId: "org",
@@ -372,10 +379,7 @@ describe("architecture boundaries", () => {
   });
 
   it("reports health findings without turning into an SEO suite", () => {
-    const pages = [
-      page({ path: "/hidden", indexable: false }),
-      page({ path: "/ok" }),
-    ];
+    const pages = [page({ path: "/hidden", indexable: false }), page({ path: "/ok" })];
     const findings = healthFindings(
       buildPageRows({ pages, pageMetrics: [], searchMetrics: [], events: [], submissions: [] }),
       pages,

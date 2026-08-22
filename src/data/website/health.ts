@@ -106,7 +106,8 @@ export function healthFindings(rows: PageRow[], pages: WebsitePage[]): HealthFin
       id: "healthy",
       severity: "healthy",
       title: "Nothing is working against us",
-      detail: "No indexing, sitemap, canonical or visibility problem is visible in what Core holds.",
+      detail:
+        "No indexing, sitemap, canonical or visibility problem is visible in what Core holds.",
       paths: [],
     });
   }
@@ -126,11 +127,23 @@ export interface ReadinessField {
 
 export function pageReadiness(page: WebsitePage | undefined, row: PageRow): ReadinessField[] {
   return [
-    { label: "Title", present: Boolean(row.title && row.title !== row.path), note: "The page states what it is." },
-    { label: "Canonical URL", present: page?.canonicalUrl ? true : null, note: "Set when the site reports one." },
+    {
+      label: "Title",
+      present: Boolean(row.title && row.title !== row.path),
+      note: "The page states what it is.",
+    },
+    {
+      label: "Canonical URL",
+      present: page?.canonicalUrl ? true : null,
+      note: "Set when the site reports one.",
+    },
     { label: "In sitemap", present: page?.inSitemap ?? null, note: "Helps search find it." },
     { label: "Indexable", present: page?.indexable ?? null, note: "Allowed into search results." },
-    { label: "Primary next step", present: page?.primaryCta ? true : null, note: "What a reader is invited to do." },
+    {
+      label: "Primary next step",
+      present: page?.primaryCta ? true : null,
+      note: "What a reader is invited to do.",
+    },
     {
       label: "Freshness",
       present: page?.lastUpdatedAt ? true : null,
