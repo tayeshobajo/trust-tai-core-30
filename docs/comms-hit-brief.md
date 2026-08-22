@@ -37,7 +37,9 @@ is impossible by construction. Refresh tokens are AES-GCM sealed
 ways over one shared core: person-invoked (member bearer token, RLS holds) and
 **scheduled** (`/api/public/comms/gmail/scheduled-sync`, service role via the
 system credential RPC, cron-secret auth, every 6 hours — cron SQL in
-`docs/comms-integrations-schema.sql`). Drafting endpoint:
+`docs/comms-integrations-schema.sql`). The production cron is active and verified:
+`comms-gmail-sync` at `17 */6 * * *`, secret sourced from Supabase Vault
+`comms_sync_cron_secret`, endpoint fail-closed (401/200). Drafting endpoint:
 `src/routes/api/public/comms.draft.ts` → `src/lib/comms-draft.server.ts`.
 
 **Agent behavior.** Drafting reasons through the shared intelligence runtime
