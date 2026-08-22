@@ -29,6 +29,7 @@ import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
+import { listRelationshipMessages } from "@/data/supabase/comms-messages";
 import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
 import { inboxEntries, inboxView, type InboxTab } from "@/data/comms-inbox";
@@ -174,6 +175,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => commsService.listDrafts(selected!.id),
   });
 
+  // Mail the sync already stored for this person. Folds into the same thread
+  // as manual touches; it is never re-written as touches.
+  const messagesQuery = useQuery({
+    queryKey: ["comms", "messages", selected?.id],
+    enabled: Boolean(selected),
+    queryFn: () => listRelationshipMessages(identity.organizationId, selected!.id),
+  });
+
   const touchesByRelationship = useMemo(() => {
     const map: Record<string, Touch[]> = {};
     for (const touch of orgTouchesQuery.data ?? []) {
@@ -196,11 +205,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
   const drafts = draftsQuery.data ?? [];
+  const selectedMessages = messagesQuery.data ?? [];
   const health = selected ? deriveConversationHealth(selected, selectedTouches) : null;
   const strength = selected ? relationshipStrength(selected, selectedTouches) : null;
   const days = useMemo(
-    () => groupByDay(conversationTimeline(selectedTouches, drafts)),
-    [selectedTouches, drafts],
+    () => groupByDay(conversationTimeline(selectedTouches, drafts, selectedMessages)),
+    [selectedTouches, drafts, selectedMessages],
   );
   const savedDraft = drafts.find((draft) => draft.reviewState !== "discarded");
 

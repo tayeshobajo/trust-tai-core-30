@@ -11,7 +11,9 @@
  */
 
 import type { CommsDraft, Touch } from "@/domain/comms";
+import type { StoredMailboxMessage } from "@/domain/comms-integrations";
 import { readTouchRecord, recordNote } from "@/domain/comms-touch-record";
+import { draftProvenanceLabel, readDraftVerification } from "@/domain/comms-verification";
 import type { ISODateTime } from "@/domain/entities";
 
 export type ConversationEventKind =
@@ -76,10 +78,16 @@ export function kindOfTouch(touch: Touch): ConversationEventKind {
   }
 }
 
-/** Touches and drafts as one ordered thread, oldest first. */
+/**
+ * Touches, synced mailbox messages, and drafts as one ordered thread, oldest
+ * first. A synced message is its own record — it is never copied into a touch
+ * — and says so in plain words, so a line an integration observed never reads
+ * as something a person typed.
+ */
 export function conversationTimeline(
   touches: Touch[],
   drafts: CommsDraft[] = [],
+  messages: StoredMailboxMessage[] = [],
 ): ConversationEvent[] {
   const events: ConversationEvent[] = [];
 
@@ -99,16 +107,35 @@ export function conversationTimeline(
     });
   }
 
+  for (const message of messages) {
+    const title =
+      message.subject?.trim() ||
+      message.snippet?.trim() ||
+      (message.direction === "inbound" ? "Email from them" : "Email from us");
+    events.push({
+      id: `mail:${message.id}`,
+      kind: message.direction === "inbound" ? "they_emailed" : "we_emailed",
+      occurredAt: message.occurredAt,
+      title,
+      ...(message.subject?.trim() && message.snippet?.trim()
+        ? { body: message.snippet.trim() }
+        : {}),
+      source: "Synced from Gmail · read-only",
+      meta: "email",
+    });
+  }
+
   for (const draft of drafts) {
     if (draft.reviewState === "discarded") continue;
+    const verification = readDraftVerification(draft.rationale);
     events.push({
       id: `draft:${draft.id}`,
       kind: "draft",
       occurredAt: draft.createdAt,
       title: draft.subject?.trim() || draft.intent || "Draft prepared",
       body: draft.body,
-      source: "Prepared in Comms, not sent",
-      meta: draft.reviewState,
+      source: draftProvenanceLabel(draft.reviewState, verification),
+      meta: verification ? "mailbox_verified" : draft.reviewState,
     });
   }
 

@@ -21,22 +21,23 @@ plus `/modules/comms/voice` and `/modules/comms/integrations`. Components in
 `comms_drafts`, `comms_reminders`, `comms_voice_profiles`
 (`docs/comms-v1-schema.sql`, header marked APPLIED). Integration layer:
 `comms_messages`, `comms_integrations`, `comms_events`, `comms_event_targets`
-and thread columns (`docs/comms-integrations-schema.sql`, header marked
-"Phase 0 — NOT YET APPLIED"). The Gmail code path that writes those tables is
-live but the backend migration is not, so the whole track fails closed with a
-real Postgres error today — see gap 6. `comms_events` / `comms_event_targets`
+and thread columns (`docs/comms-integrations-schema.sql`) — **verified APPLIED
+in production on 2026-08-22**, including the service-role credential read
+`comms_get_integration_secret_system`. `comms_events` / `comms_event_targets`
 are referenced by no other code anywhere. Access layer:
-`src/data/supabase/comms-service.ts`, `comms-schema.ts`; RLS via
-`private.is_org_member`.
+`src/data/supabase/comms-service.ts`, `comms-schema.ts`,
+`comms-messages.ts` (timeline read); RLS via `private.is_org_member`.
 
 **Integrations.** Gmail connect / candidates / sync routes under
 `src/routes/api/public/comms.gmail.*`; server logic in
 `src/lib/comms-gmail.server.ts` (660 lines); refresh-token upkeep in
 `supabase/functions/comms-gmail-refresh`. Scope is `gmail.readonly` — sending
 is impossible by construction. Refresh tokens are AES-GCM sealed
-(`comms-crypto.server.ts`), readable only by the service role. Sync is
-**person-invoked only**: a POST with the member's bearer token from the UI; no
-cron or scheduled pass exists anywhere. Drafting endpoint:
+(`comms-crypto.server.ts`), readable only by the service role. Sync runs two
+ways over one shared core: person-invoked (member bearer token, RLS holds) and
+**scheduled** (`/api/public/comms/gmail/scheduled-sync`, service role via the
+system credential RPC, cron-secret auth, every 6 hours — cron SQL in
+`docs/comms-integrations-schema.sql`). Drafting endpoint:
 `src/routes/api/public/comms.draft.ts` → `src/lib/comms-draft.server.ts`.
 
 **Agent behavior.** Drafting reasons through the shared intelligence runtime
@@ -77,9 +78,9 @@ evidence. No autonomous agents; nothing is sent.
    (`comms-interactions.ts`), the Voice DNA profile, the touch history.
    Draft edits leave no memory — the largest single leak (capability j).
 9. **Proof.** `last_touch_at` only moves on a logged touch or a synced
-   message, so coverage is honest. But "marked as sent" is a human claim never
-   reconciled with the observed sent message — attempted and verified are not
-   yet distinguished (gap 2).
+   message, so coverage is honest. "Marked as sent" (human claim) and
+   "seen in the mailbox" (observed proof) are now distinct states, reconciled
+   only by credible evidence — attempted != executed != verified holds.
 10. **Subtraction.** Candidates: the Phase-0 `comms_events` /
     `comms_event_targets` track with its deliberately empty registry, and any
     integration-panel track that cannot connect. Keep hidden until a provider
@@ -91,8 +92,8 @@ evidence. No autonomous agents; nothing is sent.
 | --- | --- | --- |
 | Familiar chronological thread, manually updatable with notes/context | **Exists** | `src/data/comms-timeline.ts` folds touches + drafts oldest-first with per-entry provenance; `recordNote` / `editedProvenance` in `src/domain/comms-touch-record.ts`; `add-interaction.tsx`, `edit-interaction.tsx`. |
 | Matching known people to Gmail by email identity | **Exists** | Sync matches From/To/Cc counterparts against `comms_relationships.email`, lowercased (`comms-gmail.server.ts:383-415`); capture matches the shared `contacts` table by email then exact name (`comms-service.ts`); `listMailboxCandidates` marks `alreadyTracked`. |
-| Pulling incoming Gmail into relationship history | **Partial** | Stored: `comms_messages` upsert idempotent on `(organization_id, provider, provider_message_id)`; thread state via `readThread`; relationship `last_touch_at` / `response_due_at` updated (`comms-gmail.server.ts:425-505`). But nothing outside the sync module ever reads `comms_messages` or `comms_threads` — verified by repo-wide search — so synced mail never appears in the timeline. Three further limits: sync is person-invoked (no schedule), it writes no `comms_touches` rows, and inbound mail emits no `RELATIONSHIP_MESSAGE_RECEIVED` suite event, so Pulse/Steward cannot see it. |
-| Pulling Tai's sent replies into the same history | **Partial** | The sync query (`newer_than:Nd -in:spam -in:trash`, line 378) has no label restriction, so SENT is included; direction is derived (`from === mailbox → outbound`, line 203) and stored. Same surfacing gap as above. A draft marked sent is never reconciled with the observed sent message. |
+| Pulling incoming Gmail into relationship history | **Exists** | `comms_messages` upsert idempotent on `(organization_id, provider, provider_message_id)`; only genuinely new messages count as stored. Synced mail folds chronologically into the existing `conversationTimeline` with plain provenance ("Synced from Gmail · read-only") — no `comms_touches` duplication (`src/data/comms-timeline.ts`, `src/data/supabase/comms-messages.ts`). New inbound mail emits one canonical `relationship.message_received` into `activities` with a `source_event_key`, deduped by pre-check + the unique index (`emitInboundEvents` in `comms-gmail.server.ts`), so Pulse/Steward see it. Sync is also scheduled (every 6 hours). Live-mailbox loop untested end to end only because no Gmail account is connected in production yet. |
+| Pulling Tai's sent replies into the same history | **Exists** | SENT mail is stored with outbound direction and appears in the same thread. A draft marked sent is reconciled against observed outbound mail by the deterministic matcher (`src/domain/comms-verification.ts`: direction + recipient + send window + subject or opening-words fingerprint; ambiguity never matches). A proven draft's rationale carries `verification` and the thread says "Sent — seen in the mailbox" versus "Marked as sent — not yet seen in the mailbox". |
 | Freshness/momentum monitoring, contextual not crude N-day | **Partial** | Contextual reads exist: `deriveConversationHealth` produces response cadence (`responsive/steady/slowing/unanswered`) and momentum (`warm/stable/cooling/stalled`) from actual rhythm (`src/domain/comms-health.ts`), and the next move uses per-intent rhythm days (`rhythmDaysFor`). But the shared timing read `dueState` still falls back to a flat `DORMANT_AFTER_DAYS = 45` timer (`src/domain/comms.ts`). Both live side by side; the queue tabs lean on `waitingOn`, the doc-described buckets on the timer. |
 | Scout → Comms handoff at an ICP threshold | **Missing (manual by design today)** | Handoff is person-initiated: `routeToComms` in `src/data/supabase/scout-service.ts:548` gates on `buildHandoffDraft.ready` (evidence completeness), never on score. Scoring doctrine (`src/domain/scout-fit.ts`) defines the 0–100 score; `src/data/scout/decision-state.ts` holds narrative gates `STRONG_SCORE = 68` / `WEAK_SCORE = 32` used only to phrase the decision read — no handoff threshold exists, and "60" appears nowhere. Architecture-canon handoff law already says weak evidence must not open the next room, so any threshold trigger must be an org-configurable recommendation, not an automatic room-open. |
 | Pre-outreach research/enrichment before drafting | **Missing in Comms** | People enrichment lives in Scout (`src/data/people/registry.ts`, `enrichment.ts`) and is unreachable from the drafting path; `integrations-panel.tsx` lists enrichment as needing "an approved enrichment provider account". `draftMessage` composes from relationship memory only. |
@@ -105,14 +106,14 @@ evidence. No autonomous agents; nothing is sent.
 
 Smallest set, in dependency order:
 
-1. **The synced-mail seam ends at the database.** `comms_messages` and
+1. **(Closed 2026-08-22)** ~~The synced-mail seam ends at the database.~~ `comms_messages` and
    `comms_threads` are written by sync and read by no one. One read path —
    folding synced messages into `conversationTimeline` with their existing
    provenance — closes capabilities c and d together. No new tables, no new
    UI concepts: the thread simply becomes complete. The same seam should emit
    the existing `RELATIONSHIP_MESSAGE_RECEIVED` suite event when inbound mail
    lands, so Pulse and Steward can see what the mailbox already knows.
-2. **Sent verification.** A draft marked sent is a claim; the actual sent
+2. **(Closed 2026-08-22)** ~~Sent verification.~~ A draft marked sent is a claim; the actual sent
    message arrives via sync but is never linked to the draft. The proof law
    (attempted != executed != verified != human accepted) needs the join by
    thread/recipient/time so the timeline can say "sent — seen in the mailbox"
@@ -130,13 +131,14 @@ Smallest set, in dependency order:
    should be a request back through the existing handoff/routing contract
    ("context is stale, refresh the people brief"), surfaced in the next-move
    rail. Building a provider inside Comms would be wrong ownership.
-6. **The Gmail track is code-live but backend-inert.**
-   `docs/comms-integrations-schema.sql` is headed "Phase 0 — NOT YET APPLIED",
-   so every sync/connect call fails closed with a real Postgres error until
-   that statement set (including the two SECURITY DEFINER credential
-   functions) is run in the Trust Tai Supabase project. Applying it is an
-   operations decision, not a redesign — but until then the integrations UI
-   promises a capability the backend cannot honour.
+6. **(Closed 2026-08-22)** ~~The Gmail track is code-live but backend-inert.~~
+   Production probes confirmed every table, column and credential function is
+   applied; the schema doc header now says so and includes the previously
+   undocumented `comms_get_integration_secret_system`. Remaining operations
+   step, explicitly partial: the 6-hourly `comms-gmail-sync` cron statement
+   (in the schema doc) must still be run in the Trust Tai Supabase project —
+   scheduling requires SQL access this project does not have. The endpoint it
+   calls is live and fail-closed (503 unconfigured, 401 wrong key).
 
 ## Recommended implementation sequence
 
@@ -160,3 +162,32 @@ complexity — in this order:
 6. **Only then** consider surface redesign, with the subtraction law as the
    gate: anything that does not help Tai reach the outcome faster, more
    confidently, or with less effort does not survive.
+
+## Implementation pass 2026-08-22 — verification record
+
+Sequence items 1 and 2 and the "synced-mail seam" event emission are done with
+no UI redesign. What was verified, and how:
+
+- **Backend**: production probes against the Trust Tai Supabase project
+  confirmed `comms_integrations`, `comms_messages`, thread columns, grants,
+  both credential functions (member and service-role variants) — no data
+  touched. Schema doc header updated to APPLIED.
+- **Timeline truth**: `src/data/comms-timeline.test.ts` — synced inbound and
+  outbound messages fold chronologically beside touches and drafts with
+  provenance, dedupe against un-synced touches on the same ref, and no
+  `comms_touches` rows are fabricated.
+- **Draft verification**: `src/domain/comms-verification.test.ts` (15 tests) —
+  matches on recipient + window + subject/fingerprint, never fabricates on
+  ambiguity or thin content, 21-day expiry, observed-mail provenance wins.
+- **Idempotency**: message storage upserts on the provider key; the inbound
+  event carries a deterministic `source_event_key` guarded by a pre-check and
+  the existing partial unique index on `activities.source_event_key` — a
+  resync stores nothing twice and emits nothing twice.
+- **Fail-closed**: the scheduled endpoint returns 503 with no cron secret
+  configured and 401 on a wrong key, checked live against the dev server.
+- **Still partial (explicit)**: the `comms-gmail-sync` cron statement must be
+  applied by someone with SQL access to the Trust Tai project, and the full
+  loop against a real connected mailbox is untested because no Gmail account
+  is connected in production yet. Both are operator steps, not code gaps.
+
+Test sweep at close: 1,243 passed, 1 skipped, 0 failed.

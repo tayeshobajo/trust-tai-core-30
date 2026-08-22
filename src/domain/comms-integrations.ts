@@ -83,6 +83,23 @@ export interface NormalizedThread {
   messages: NormalizedMessage[];
 }
 
+/**
+ * A mailbox message as Comms stored it — the row the relationship timeline
+ * reads. Provider ids stay server-side in `comms_messages`; this shape is all
+ * the UI is allowed to know.
+ */
+export interface StoredMailboxMessage {
+  id: ID;
+  organizationId: ID;
+  relationshipId: ID;
+  direction: MessageDirection;
+  fromEmail?: string;
+  fromName?: string;
+  subject?: string;
+  snippet?: string;
+  occurredAt: ISODateTime;
+}
+
 /** What one incremental sync pass returns. */
 export interface MailChangeSet {
   threads: NormalizedThread[];

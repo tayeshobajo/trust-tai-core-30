@@ -67,6 +67,10 @@ export interface GmailSyncResult {
   messagesStored: number;
   relationshipsTouched: number;
   skippedUnknownPeople: number;
+  /** Inbound messages that entered the suite event stream this pass. */
+  eventsEmitted?: number;
+  /** Sent drafts the mailbox proved this pass. */
+  draftsVerified?: number;
   lastSyncAt: string;
 }
 
