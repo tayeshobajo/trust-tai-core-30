@@ -30,9 +30,7 @@ function packet(overrides: Partial<ProjectContextPacket> = {}): ProjectContextPa
     openQuestions: [{ statement: "Who signs off the final copy?", authority: "meeting" }],
     requirements: [],
     activeBlockers: [{ reason: "Final copy not delivered", owner: "client", raisedAt: NOW }],
-    currentWork: [
-      { id: "w1", title: "Homepage build", status: "in_progress", owner: "Tai" },
-    ],
+    currentWork: [{ id: "w1", title: "Homepage build", status: "in_progress", owner: "Tai" }],
     approvedAssets: [],
     connectedSystems: [],
     meetingContext: [],

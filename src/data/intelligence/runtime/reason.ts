@@ -30,10 +30,7 @@ import {
   type RuntimeRead,
   type RuntimeVerificationRequirement,
 } from "@/domain/intelligence-runtime";
-import {
-  operationIsExternal,
-  operationIsRecommendable,
-} from "@/domain/intelligence-capabilities";
+import { operationIsExternal, operationIsRecommendable } from "@/domain/intelligence-capabilities";
 
 import { contradicts } from "../engine/verify";
 import { citableRefs, type RetrievalBundle } from "./retrieval";
@@ -110,7 +107,12 @@ export function verifyRuntimeRead(input: {
       rejected.push({ claim: statement, because: "not grounded in the packet's evidence" });
       continue;
     }
-    if (inventsNumbers(statement, cited.map((ref) => evidenceByRef.get(ref) ?? ""))) {
+    if (
+      inventsNumbers(
+        statement,
+        cited.map((ref) => evidenceByRef.get(ref) ?? ""),
+      )
+    ) {
       rejected.push({
         claim: statement,
         because: "uses a number that does not appear in the cited evidence",

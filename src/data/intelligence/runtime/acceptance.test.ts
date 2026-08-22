@@ -99,7 +99,12 @@ describe("protocol invariants", () => {
     for (const app of APP_REGISTRY) {
       const next = nextProtocolStep(
         [{ stage: "test_safely", action: `attempt in ${app.id}`, outcome: "failed" }],
-        { objective: "suite invariant probe", unknowns: [], inspectionsAvailable: [], safeTests: [] },
+        {
+          objective: "suite invariant probe",
+          unknowns: [],
+          inspectionsAvailable: [],
+          safeTests: [],
+        },
       );
       expect(["step", "verify", "escalate"]).toContain(next.kind);
       if (next.kind === "escalate") {

@@ -4,11 +4,7 @@ import type { ReasoningRequest } from "@/domain/intelligence-runtime";
 import { emptyRuntimeRead } from "@/domain/intelligence-runtime";
 
 import { composeRetrieval } from "./retrieval";
-import {
-  assembleDeterministicRead,
-  verifyRuntimeRead,
-  type RawRuntimeRead,
-} from "./reason";
+import { assembleDeterministicRead, verifyRuntimeRead, type RawRuntimeRead } from "./reason";
 
 const NOW = "2026-08-22T10:00:00.000Z";
 
@@ -130,9 +126,7 @@ describe("verifyRuntimeRead", () => {
       bundle: bundleFor(req, decided),
     });
     expect(rejected.some((row) => row.because.includes("decision"))).toBe(true);
-    expect(read.interpretations.map((row) => row.claim)).toEqual([
-      "The launch is likely to slip.",
-    ]);
+    expect(read.interpretations.map((row) => row.claim)).toEqual(["The launch is likely to slip."]);
   });
 
   it("rejects interpretations that rest on nothing in the packet", () => {

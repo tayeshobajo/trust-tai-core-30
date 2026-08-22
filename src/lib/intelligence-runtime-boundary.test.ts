@@ -106,7 +106,10 @@ describe("intelligence runtime boundary", () => {
 
   it("every documented exception still exists and names its migration", () => {
     for (const exception of REASONING_EXCEPTIONS) {
-      expect(existsSync(join(ROOT, exception.file)), `${exception.file} is gone — remove its entry`).toBe(true);
+      expect(
+        existsSync(join(ROOT, exception.file)),
+        `${exception.file} is gone — remove its entry`,
+      ).toBe(true);
       expect(exception.migration.length).toBeGreaterThan(0);
       expect(exception.bypass.length).toBeGreaterThan(0);
     }

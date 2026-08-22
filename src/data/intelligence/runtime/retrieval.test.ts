@@ -100,9 +100,7 @@ describe("composeRetrieval", () => {
       organizationId: "org-1",
       room: "projects",
       now: NOW,
-      evidence: [
-        { id: "ev:a", statement: "A is true.", owningRoom: "projects", tier: "observed" },
-      ],
+      evidence: [{ id: "ev:a", statement: "A is true.", owningRoom: "projects", tier: "observed" }],
       decided: ["B is decided."],
     });
     const refs = citableRefs(bundle);
@@ -119,7 +117,12 @@ describe("bundleForModel", () => {
       room: "projects",
       now: NOW,
       evidence: [
-        { id: "ev:a", statement: "The milestone is blocked.", owningRoom: "projects", tier: "observed" },
+        {
+          id: "ev:a",
+          statement: "The milestone is blocked.",
+          owningRoom: "projects",
+          tier: "observed",
+        },
       ],
       decided: ["We launch in September."],
       withheld: [{ appId: "ops", reason: "not_connected" }],

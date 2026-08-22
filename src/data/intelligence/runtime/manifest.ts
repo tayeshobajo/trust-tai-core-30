@@ -77,27 +77,37 @@ function manifest(
 
 export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
   manifest("home", {
-    evidence_grounding: a("engine observations with provenance (src/data/intelligence/engine/observe.ts)"),
+    evidence_grounding: a(
+      "engine observations with provenance (src/data/intelligence/engine/observe.ts)",
+    ),
     retrieval: a("engine + packet composition (src/data/intelligence/engine)"),
     domain_patterns: a("canon matches (src/data/intelligence/canon/match.ts)"),
     safe_diagnostic_loop: p("engine recommends; no retry protocol yet"),
-    verification: a("engine verify + proposal verification (src/data/intelligence/engine/verify.ts)"),
+    verification: a(
+      "engine verify + proposal verification (src/data/intelligence/engine/verify.ts)",
+    ),
     outcome_learning: a("canon cases, outcomes and revisions (src/data/intelligence/canon)"),
   }),
   manifest("scout", {
-    evidence_grounding: a("prospect fit evidence + services under RLS (src/data/supabase/scout-service.ts)"),
+    evidence_grounding: a(
+      "prospect fit evidence + services under RLS (src/data/supabase/scout-service.ts)",
+    ),
     retrieval: p("own queries; runtime retrieval adoption pending"),
     safe_diagnostic_loop: x("scout-discover bypasses the runtime (see boundary registry)"),
     verification: p("parse-level checks only; no completion gate"),
   }),
   manifest("comms", {
-    evidence_grounding: a("relationship state + handoff briefs under RLS (src/data/supabase/comms-service.ts)"),
+    evidence_grounding: a(
+      "relationship state + handoff briefs under RLS (src/data/supabase/comms-service.ts)",
+    ),
     retrieval: p("own queries; runtime retrieval adoption pending"),
     safe_diagnostic_loop: x("comms-draft bypasses the runtime (see boundary registry)"),
     verification: p("drafts are person-approved; no completion gate"),
   }),
   manifest("roadmap", {
-    evidence_grounding: a("roadmap state + decided statements (src/data/supabase/roadmap-service.ts)"),
+    evidence_grounding: a(
+      "roadmap state + decided statements (src/data/supabase/roadmap-service.ts)",
+    ),
     retrieval: p("research context composed per call; runtime retrieval adoption pending"),
     safe_diagnostic_loop: p("two-step studio flow inspects before generating"),
     verification: p("engine verify reused for reasoning; no completion gate"),
@@ -106,9 +116,13 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
   manifest("projects", {
     evidence_grounding: a("context packets (src/data/projects/context-packet.ts)"),
     retrieval: p("context packet composition; runtime retrieval adoption pending"),
-    safe_diagnostic_loop: p("operator read contract defines the loop (src/domain/project-operator-read.ts)"),
+    safe_diagnostic_loop: p(
+      "operator read contract defines the loop (src/domain/project-operator-read.ts)",
+    ),
     verification: p("operator read carries a verification plan; gate adoption pending"),
-    capability_awareness: a("paperclip bridge + adapter registry (src/lib/execution-bridge.server.ts)"),
+    capability_awareness: a(
+      "paperclip bridge + adapter registry (src/lib/execution-bridge.server.ts)",
+    ),
   }),
   manifest("ops", {
     evidence_grounding: p("ops events via projection (src/domain/ops.ts)"),
@@ -120,7 +134,9 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
     outcome_learning: x("external app"),
   }),
   manifest("steward", {
-    evidence_grounding: a("transcripts, commitments, beliefs under RLS (src/data/supabase/steward-service.ts)"),
+    evidence_grounding: a(
+      "transcripts, commitments, beliefs under RLS (src/data/supabase/steward-service.ts)",
+    ),
     retrieval: p("memory + beliefs composed per conversation; runtime adoption pending"),
     domain_patterns: p("judgment states (src/domain/steward-judgment.ts)"),
     safe_diagnostic_loop: p("conflict banners name the disagreement"),
@@ -139,7 +155,9 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
   manifest("conductor", {
     evidence_grounding: a("plan steps cite room state (src/lib/conductor-control.ts)"),
     retrieval: p("composes engine + canon per plan"),
-    safe_diagnostic_loop: a("factory execution with outcome observation (src/data/intelligence/canon/outcome-checks.ts)"),
+    safe_diagnostic_loop: a(
+      "factory execution with outcome observation (src/data/intelligence/canon/outcome-checks.ts)",
+    ),
     verification: a("approval queue + outcome observer"),
     approval_boundary: a("approval-driven by design (conductor v2)"),
     outcome_learning: a("conductor learning ledger + canon outcomes"),
