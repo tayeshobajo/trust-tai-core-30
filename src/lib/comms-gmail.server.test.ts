@@ -4,6 +4,7 @@ import {
   buildLabelListPath,
   COMMS_GMAIL_LABEL,
   COMMS_LABEL_MISSING_MESSAGE,
+  counterpartAddresses,
   findCommsLabelId,
   findTrackedCounterpart,
   parseAddress,
@@ -146,5 +147,43 @@ describe("findTrackedCounterpart", () => {
         byEmail,
       ),
     ).toBeUndefined();
+  });
+});
+
+describe("counterpartAddresses", () => {
+  const mailbox = "me@trust-tai.com";
+
+  it("collects every participant except the mailbox, deduped and normalized", () => {
+    expect(
+      counterpartAddresses(
+        {
+          providerMessageId: "m1",
+          providerThreadId: "t1",
+          direction: "inbound",
+          fromEmail: "ANA@Example.org",
+          toEmails: [mailbox, "ana@example.org"],
+          ccEmails: ["team@example.org"],
+          occurredAt: "2026-08-22T10:00:00.000Z",
+        },
+        mailbox,
+      ),
+    ).toEqual(["ana@example.org", "team@example.org"]);
+  });
+
+  it("returns nothing when the mailbox is the only participant", () => {
+    expect(
+      counterpartAddresses(
+        {
+          providerMessageId: "m2",
+          providerThreadId: "t2",
+          direction: "outbound",
+          fromEmail: mailbox,
+          toEmails: [mailbox],
+          ccEmails: [],
+          occurredAt: "2026-08-22T10:00:00.000Z",
+        },
+        mailbox,
+      ),
+    ).toEqual([]);
   });
 });
