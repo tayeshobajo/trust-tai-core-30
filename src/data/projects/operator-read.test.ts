@@ -24,12 +24,10 @@ function packet(overrides: Partial<ProjectContextPacket> = {}): ProjectContextPa
     },
     roadmap: { linked: true, roadmapId: "rm-1", milestoneId: "ms-1", milestoneName: "Launch" },
     confirmedDecisions: [
-      { id: "d1", statement: "The launch date is 2026-09-15.", authority: "project_decision" } as ProjectContextPacket["confirmedDecisions"][number],
+      { statement: "The launch date is 2026-09-15.", authority: "project_decision" },
     ],
     constraints: [],
-    openQuestions: [
-      { id: "q1", statement: "Who signs off the final copy?" } as ProjectContextPacket["openQuestions"][number],
-    ],
+    openQuestions: [{ statement: "Who signs off the final copy?", authority: "meeting" }],
     requirements: [],
     activeBlockers: [{ reason: "Final copy not delivered", owner: "client", raisedAt: NOW }],
     currentWork: [
@@ -152,7 +150,7 @@ describe("foldOperatorRead", () => {
   it("does not require clarification when the packet is grounded", () => {
     const grounded = packet({
       requirements: [
-        { id: "r1", statement: "The site must load in under two seconds." } as ProjectContextPacket["requirements"][number],
+        { statement: "The site must load in under two seconds.", authority: "project_decision" },
       ],
     });
     const folded = foldOperatorRead({
