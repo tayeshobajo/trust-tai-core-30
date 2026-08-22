@@ -45,11 +45,11 @@ describe("matchSentDraft", () => {
   });
 
   it("matches on the opening words when subjects differ or are absent", () => {
-    const noSubjectDraft = { ...DRAFT, subject: undefined };
+    const noSubjectDraft: SentDraftLike = { ...DRAFT };
+    delete noSubjectDraft.subject;
     const matched = matchSentDraft(
       noSubjectDraft,
       message({
-        subject: undefined,
         snippet: "Hi Maya, it was good to meet at the summit. I promised to send the one-pager…",
       }),
     );
@@ -89,7 +89,8 @@ describe("matchSentDraft", () => {
   });
 
   it("never matches a very short body on content alone", () => {
-    const shortDraft = { ...DRAFT, subject: undefined, body: "Thanks!" };
+    const shortDraft: SentDraftLike = { ...DRAFT, body: "Thanks!" };
+    delete shortDraft.subject;
     expect(bodyFingerprint(shortDraft.body).length).toBeLessThan(24);
     expect(
       matchSentDraft(shortDraft, message({ snippet: "Thanks! Talk soon." })),
