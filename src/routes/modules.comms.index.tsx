@@ -29,6 +29,8 @@ import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
+import { gmailSync } from "@/data/supabase/comms-gmail";
+import { addMailboxCandidateToComms, ONBOARDING_BACKFILL_DAYS } from "@/data/comms-onboarding";
 import { listRelationshipMessages } from "@/data/supabase/comms-messages";
 import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
@@ -225,6 +227,38 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       setCapturing(false);
       await refresh();
     },
+  });
+
+  /**
+   * Add to Comms from the labeled-candidate list. Creation runs exactly as a
+   * manual capture; immediately after, one member-authorized bounded backfill
+   * (30 days, label-gated, read-only) brings the person's existing labeled
+   * history in. A backfill failure never removes the relationship — it only
+   * leaves a warning asking to sync again.
+   */
+  const [importPhase, setImportPhase] = useState<"creating" | "backfilling" | null>(null);
+  const [importWarning, setImportWarning] = useState<string | null>(null);
+  const importFromMailbox = useMutation({
+    mutationFn: (input: RelationshipInput) =>
+      addMailboxCandidateToComms(input, {
+        createRelationship: async (value) => {
+          setImportPhase("creating");
+          return commsService.create(value, context);
+        },
+        backfillHistory: async () => {
+          setImportPhase("backfilling");
+          await gmailSync(identity.organizationId, ONBOARDING_BACKFILL_DAYS);
+        },
+      }),
+    onSuccess: async ({ relationship, historyWarning }) => {
+      setSelectedId(relationship.id);
+      setImportWarning(historyWarning);
+      // With history in, the panel steps aside; with a warning, it stays open
+      // so the message is seen next to the person it concerns.
+      if (!historyWarning) setCapturing(false);
+      await refresh();
+    },
+    onSettled: () => setImportPhase(null),
   });
 
   const update = useMutation({
