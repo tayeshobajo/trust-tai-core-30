@@ -109,7 +109,9 @@ Smallest set, in dependency order:
    `comms_threads` are written by sync and read by no one. One read path —
    folding synced messages into `conversationTimeline` with their existing
    provenance — closes capabilities c and d together. No new tables, no new
-   UI concepts: the thread simply becomes complete.
+   UI concepts: the thread simply becomes complete. The same seam should emit
+   the existing `RELATIONSHIP_MESSAGE_RECEIVED` suite event when inbound mail
+   lands, so Pulse and Steward can see what the mailbox already knows.
 2. **Sent verification.** A draft marked sent is a claim; the actual sent
    message arrives via sync but is never linked to the draft. The proof law
    (attempted != executed != verified != human accepted) needs the join by
@@ -128,10 +130,13 @@ Smallest set, in dependency order:
    should be a request back through the existing handoff/routing contract
    ("context is stale, refresh the people brief"), surfaced in the next-move
    rail. Building a provider inside Comms would be wrong ownership.
-6. **Schema-state drift in the docs.** `docs/comms-v1.md` says the
-   integrations schema "has not been applied" while the Phase-1 sync code that
-   depends on it is live. Confirm the applied state in the backend and correct
-   the doc so future audits can trust it.
+6. **The Gmail track is code-live but backend-inert.**
+   `docs/comms-integrations-schema.sql` is headed "Phase 0 — NOT YET APPLIED",
+   so every sync/connect call fails closed with a real Postgres error until
+   that statement set (including the two SECURITY DEFINER credential
+   functions) is run in the Trust Tai Supabase project. Applying it is an
+   operations decision, not a redesign — but until then the integrations UI
+   promises a capability the backend cannot honour.
 
 ## Recommended implementation sequence
 
