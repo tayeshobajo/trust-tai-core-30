@@ -16,7 +16,7 @@
 
 import { ADAPTER_CAPABILITIES, type AdapterCapability } from "./adapter-registry";
 import { APP_REGISTRY } from "./registry";
-import { actionPermission, type ActionAuthority } from "./action-authority";
+import { actionPermission } from "./action-authority";
 import type { Permission } from "./access";
 
 /**
@@ -59,15 +59,15 @@ export interface CapabilityAnswer {
 export function roomCapabilities(room: string): CapabilityAnswer {
   const registered = APP_REGISTRY.find((app) => app.id === room);
   const capabilities = ADAPTER_CAPABILITIES.filter((cap) => cap.room === room);
-  const executable = capabilities.filter((cap) => cap.routable);
-  const unavailable = capabilities.filter((cap) => !cap.routable);
+  const executable = capabilities.filter((cap) => cap.supported);
+  const unavailable = capabilities.filter((cap) => !cap.supported);
 
   const humanOnly: string[] = [];
   for (const cap of capabilities) {
-    if (cap.approval === "required") {
+    if (cap.requiresApproval) {
       humanOnly.push(`${cap.operation} — always needs a person's approval`);
     }
-    if (cap.external) {
+    if (operationIsExternal(room, cap.operation)) {
       humanOnly.push(`${cap.operation} — external effect; a person carries it`);
     }
   }
