@@ -205,11 +205,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
   const drafts = draftsQuery.data ?? [];
+  const selectedMessages = messagesQuery.data ?? [];
   const health = selected ? deriveConversationHealth(selected, selectedTouches) : null;
   const strength = selected ? relationshipStrength(selected, selectedTouches) : null;
   const days = useMemo(
-    () => groupByDay(conversationTimeline(selectedTouches, drafts)),
-    [selectedTouches, drafts],
+    () => groupByDay(conversationTimeline(selectedTouches, drafts, selectedMessages)),
+    [selectedTouches, drafts, selectedMessages],
   );
   const savedDraft = drafts.find((draft) => draft.reviewState !== "discarded");
 
