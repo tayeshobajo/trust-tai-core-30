@@ -78,10 +78,16 @@ export function kindOfTouch(touch: Touch): ConversationEventKind {
   }
 }
 
-/** Touches and drafts as one ordered thread, oldest first. */
+/**
+ * Touches, synced mailbox messages, and drafts as one ordered thread, oldest
+ * first. A synced message is its own record — it is never copied into a touch
+ * — and says so in plain words, so a line an integration observed never reads
+ * as something a person typed.
+ */
 export function conversationTimeline(
   touches: Touch[],
   drafts: CommsDraft[] = [],
+  messages: StoredMailboxMessage[] = [],
 ): ConversationEvent[] {
   const events: ConversationEvent[] = [];
 
