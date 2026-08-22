@@ -267,3 +267,27 @@ not-yet-imported people.
 
 Test sweep at close: 1,245 passed, 0 skipped, 3 failed (unrelated pre-existing
 Roadmap Studio failures).
+
+### Coverage + status exposure (2026-08-22) — implemented, production QA pending
+
+The sparse-coverage observation from the first audit becomes a visible
+health check instead of a hidden state:
+
+- Every sync pass persists a counts-only run summary on the connection
+  cursor (`last_run`: read, stored, relationships touched, events emitted,
+  drafts verified, `skipped_unknown_people`, and `pending_people` — distinct
+  labeled correspondents not yet in Comms). The Connections card reports the
+  last pass verbatim, so the status is visible without re-reading the
+  mailbox. Counts only; never message content.
+- The mailbox import now answers the coverage question directly — tracked
+  versus pending among labeled correspondents — computed over the full read
+  window before its display cap (`summarizeMailboxCoverage`). Adding a
+  person remains the explicit preview → confirm → save flow; once added,
+  their labeled mail stores from the next read on. No relationship is ever
+  auto-created, and Gmail stays read-only with no label mutation.
+
+Unit tests: `readGmailRunSummary` (well-formed / absent / malformed),
+`summarizeMailboxCoverage` (tracked/pending split, empty window),
+`counterpartAddresses` (participant extraction for the pending-people
+count). Test sweep at close: 1,268 passed, 3 failed (the same unrelated
+pre-existing Roadmap Studio failures).

@@ -12,7 +12,11 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { TTButton, TTField, TTInput } from "@/components/tt/primitives";
-import { gmailCandidates, type MailboxCandidate } from "@/data/supabase/comms-gmail";
+import {
+  gmailCandidates,
+  type MailboxCandidate,
+  type MailboxCoverage,
+} from "@/data/supabase/comms-gmail";
 import type { RelationshipInput } from "@/data/supabase/comms-service";
 import { listProspects } from "@/data/supabase/prospects";
 import type { Prospect } from "@/domain/entities";
@@ -63,6 +67,7 @@ export function MailboxImport({
   busy?: boolean;
 }) {
   const [candidates, setCandidates] = useState<MailboxCandidate[] | null>(null);
+  const [coverage, setCoverage] = useState<MailboxCoverage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
 
@@ -77,6 +82,7 @@ export function MailboxImport({
     onSuccess: (result) => {
       setError(null);
       setCandidates(result.candidates);
+      setCoverage(result.coverage ?? null);
     },
     onError: (failure: unknown) =>
       setError(failure instanceof Error ? failure.message : "That read failed."),
@@ -103,7 +109,8 @@ export function MailboxImport({
           <p className="tt-eyebrow">Labeled in Gmail, not yet in Comms</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
             People on threads you have labeled Trust Tai/Comms in Gmail. Reads message metadata
-            only; nothing is saved until you confirm the preview.
+            only; nothing is saved until you confirm the preview. Once a person is added, their
+            labeled mail is stored from the next read on — never before.
           </p>
         </div>
         <TTButton
@@ -117,6 +124,16 @@ export function MailboxImport({
       </div>
 
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+
+      {coverage ? (
+        <p className="mt-3 text-[13px] text-muted-foreground">
+          Coverage, last {coverage.windowDays} days: {coverage.tracked} of{" "}
+          {coverage.correspondents} labeled correspondents are already in Comms
+          {coverage.pending > 0
+            ? ` — ${coverage.pending} waiting for your decision.`
+            : "."}
+        </p>
+      ) : null}
 
       {draft ? (
         <div className="mt-4 border border-border bg-muted/30 p-5">

@@ -7,6 +7,9 @@
  */
 
 import { supabase } from "@/integrations/trust-tai/supabase";
+import type { MailboxCoverage } from "@/domain/comms-integrations";
+
+export type { MailboxCoverage };
 
 const CONNECT_URL = "/api/public/comms/gmail/connect";
 const SYNC_URL = "/api/public/comms/gmail/sync";
@@ -67,6 +70,8 @@ export interface GmailSyncResult {
   messagesStored: number;
   relationshipsTouched: number;
   skippedUnknownPeople: number;
+  /** Distinct labeled correspondents not in Comms yet. */
+  pendingPeople?: number;
   /** Inbound messages that entered the suite event stream this pass. */
   eventsEmitted?: number;
   /** Sent drafts the mailbox proved this pass. */
@@ -90,8 +95,8 @@ export interface MailboxCandidate {
 /** People you correspond with, offered as import candidates. Reads only. */
 export async function gmailCandidates(
   organizationId: string,
-): Promise<{ accountEmail?: string; candidates: MailboxCandidate[] }> {
-  return post<{ accountEmail?: string; candidates: MailboxCandidate[] }>(
+): Promise<{ accountEmail?: string; candidates: MailboxCandidate[]; coverage?: MailboxCoverage }> {
+  return post<{ accountEmail?: string; candidates: MailboxCandidate[]; coverage?: MailboxCoverage }>(
     "/api/public/comms/gmail/candidates",
     { organizationId },
   );

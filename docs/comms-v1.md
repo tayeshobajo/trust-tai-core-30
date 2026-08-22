@@ -149,6 +149,15 @@ Flow:
    idempotent. Thread state and the response clock come from the pure
    `readThread` reading, not from Gmail. Comms never adds, renames, or
    removes Gmail labels — labeling is Tai's act, in Gmail.
+5. Coverage is visible, not assumed. Every pass persists a counts-only
+   summary on the connection (`cursor.last_run`: messages read and stored,
+   events emitted, drafts verified, and `pending_people` — distinct labeled
+   correspondents not yet in Comms). The Connections card reports the last
+   pass verbatim without re-reading the mailbox. The mailbox import answers
+   the companion question — of the people on labeled threads, how many are
+   already in Comms versus waiting for a decision — over the full read
+   window, before its display cap. Adding a person stays explicit:
+   preview, confirm, save; only then does their labeled mail store.
 
 Body retention is off: only snippets are stored. `comms_messages.body_text`
 exists for a later opt-in and is never written today.
