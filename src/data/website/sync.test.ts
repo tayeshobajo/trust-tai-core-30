@@ -25,7 +25,7 @@ import {
   searchConsoleRows,
   type ProviderRunReport,
 } from "./providers";
-import { providerState, withFreshness } from "./freshness";
+import { freshestSyncAt, providerState, withFreshness } from "./freshness";
 import { syncPageInventory } from "@/lib/website-inventory.server";
 import type { ProviderReadiness } from "@/domain/website-analytics";
 
