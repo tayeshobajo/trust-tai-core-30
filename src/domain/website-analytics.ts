@@ -139,7 +139,15 @@ export interface ProviderReadiness {
   lastError?: string | null;
   /** When the scheduled job last attempted this provider. */
   lastRunAt?: ISODateTime | null;
+  /**
+   * True when the capability itself exists, whether or not it has produced a
+   * row. A signed receiver that has heard nothing is quiet, not unconfigured.
+   */
+  capabilityAvailable?: boolean;
+  /** Borrow freshness from another provider when this one is derived. */
+  derivedFrom?: WebsiteProviderId;
 }
+
 
 
 /**
