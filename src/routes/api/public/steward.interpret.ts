@@ -32,6 +32,7 @@ import {
   InterpretationUnavailableError,
 } from "@/lib/steward-interpret.server";
 import { createLovableAiGatewayRunIdFetch, getLovableAiGatewayRunId } from "@/lib/ai-gateway.server";
+import { runtimeModelCaller } from "@/lib/intelligence-runtime.server";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 
 
@@ -248,14 +249,24 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
         const gateway = createLovableAiGatewayRunIdFetch(initialRunId);
 
         try {
-          const run = await interpretConversation({
-            conversation,
-            memory: memoryWithBeliefs,
-            commitments,
-            candidates,
-            gateway,
-            initialRunId,
+          /* Interpretation reasons through the runtime boundary, fail-closed. */
+          const callModel = await runtimeModelCaller({
+            token,
+            organizationId,
+            room: "steward",
+            purpose: "meeting_interpretation",
           });
+          const run = await interpretConversation(
+            {
+              conversation,
+              memory: memoryWithBeliefs,
+              commitments,
+              candidates,
+              gateway,
+              initialRunId,
+            },
+            callModel,
+          );
           /* Continuity and conflict are proposals for a person, never writes. */
           const stateChanges = proposeStateChanges({ signals: run.signals, commitments });
           const conflicts = flagMemoryConflicts({ signals: run.signals, beliefs });
