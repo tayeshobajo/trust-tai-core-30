@@ -197,7 +197,7 @@ export function bundleForModel(bundle: RetrievalBundle): Record<string, unknown>
       executable: bundle.capabilities.executable.map((cap) => cap.operation),
       unavailable: bundle.capabilities.unavailable.map((cap) => ({
         operation: cap.operation,
-        because: cap.unavailableReason ?? "not routable",
+        because: cap.because ?? "not routable",
       })),
       externalSurfaces: bundle.capabilities.externalSurfaces,
       readOnly: bundle.capabilities.readOnly,

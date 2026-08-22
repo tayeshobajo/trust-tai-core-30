@@ -63,9 +63,9 @@ describe("composeRetrieval", () => {
       room: "pulse",
       now: NOW,
       evidence: [],
-      withheld: [{ appId: "ops", reason: "not linked" }],
+      withheld: [{ appId: "ops", reason: "not_connected" }],
     });
-    expect(bundle.withheld).toEqual([{ appId: "ops", reason: "not linked" }]);
+    expect(bundle.withheld).toEqual([{ appId: "ops", reason: "not_connected" }]);
   });
 
   it("surfaces human corrections ahead of inference", () => {
@@ -122,12 +122,12 @@ describe("bundleForModel", () => {
         { id: "ev:a", statement: "The milestone is blocked.", owningRoom: "projects", tier: "observed" },
       ],
       decided: ["We launch in September."],
-      withheld: [{ appId: "ops", reason: "not linked" }],
+      withheld: [{ appId: "ops", reason: "not_connected" }],
     });
     const packet = bundleForModel(bundle);
     expect(packet["evidence"]).toHaveLength(2);
     expect(packet["decided"]).toEqual(["We launch in September."]);
-    expect(packet["withheld"]).toEqual([{ appId: "ops", reason: "not linked" }]);
+    expect(packet["withheld"]).toEqual([{ appId: "ops", reason: "not_connected" }]);
     expect(packet["capabilities"]).toBeDefined();
     expect(JSON.stringify(packet)).not.toContain("service_role");
   });

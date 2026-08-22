@@ -24,7 +24,7 @@ function packet(overrides: Partial<ProjectContextPacket> = {}): ProjectContextPa
     },
     roadmap: { linked: true, roadmapId: "rm-1", milestoneId: "ms-1", milestoneName: "Launch" },
     confirmedDecisions: [
-      { id: "d1", statement: "The launch date is 2026-09-15." } as ProjectContextPacket["confirmedDecisions"][number],
+      { id: "d1", statement: "The launch date is 2026-09-15.", authority: "project_decision" } as ProjectContextPacket["confirmedDecisions"][number],
     ],
     constraints: [],
     openQuestions: [
