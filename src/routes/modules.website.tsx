@@ -24,16 +24,18 @@ import {
   listWebsitePages,
   listProviderSync,
 } from "@/data/supabase/website-analytics-service";
-import { withFreshness } from "@/data/website/freshness";
+import { freshestSyncAt, withFreshness } from "@/data/website/freshness";
 import {
   aiReferrals,
   buildPageRows,
   providerReadiness,
+  providerSourceGroups,
   sourceGroups,
   type WebsiteAnalyticsInput,
 } from "@/data/website/pages";
 import { AiReferralsPanel, ProviderReadinessPanel } from "@/components/tt/website/panels";
-import { decimal, percent } from "@/data/website/format";
+import { decimal, lastSynced, percent } from "@/data/website/format";
+
 import { CLASSIFICATION_LABELS, buildContentRows } from "@/data/website/content";
 import { healthFindings } from "@/data/website/health";
 import {
