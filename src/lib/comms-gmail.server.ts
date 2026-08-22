@@ -615,8 +615,11 @@ async function verifySentDrafts(
 
 /**
  * One incremental pass, shared by the member-invoked read and the scheduled
- * service pass. Reads recent messages, keeps only the ones with people
- * already tracked in Comms, and stores them idempotently on
+ * service pass. Known-correspondent-first: the tracked relationship list is
+ * loaded before Gmail is touched, and every list query is scoped to those
+ * addresses, so mailbox noise can never crowd a known person's mail out of
+ * the bounded per-pass cap. Only messages with people already tracked in
+ * Comms are stored — idempotently on
  * `(organization, provider, provider_message_id)`. New inbound mail enters
  * the suite event stream once; sent drafts are reconciled against the
  * mailbox. Every Supabase call goes through the caller-supplied client, so
@@ -633,12 +636,7 @@ async function runSyncPass(input: {
   const mailbox = (connection.accountEmail ?? "").toLowerCase();
   const days = clampDays(input.backfillDays);
 
-  const list = await gmailGet<{ messages?: { id: string }[] }>(
-    `/messages?maxResults=${MAX_MESSAGES_PER_PASS}&q=${encodeURIComponent(`newer_than:${days}d -in:spam -in:trash`)}`,
-    accessToken,
-  );
-  const ids = (list.messages ?? []).map((entry) => entry.id).filter(Boolean);
-
+  // Relationships first: they define what Gmail is allowed to be asked about.
   const { data: relationshipRows, error: relationshipError } = await client
     .from("comms_relationships")
     .select("id, email, full_name")
@@ -648,6 +646,27 @@ async function runSyncPass(input: {
   ((relationshipRows ?? []) as RelationshipRow[]).forEach((row) => {
     if (row.email) byEmail.set(row.email.toLowerCase(), row);
   });
+
+  const queries = buildKnownCorrespondentQueries([...byEmail.keys()], days);
+
+  // No tracked people means no Gmail message-list work at all: a clean no-op
+  // that still records the pass on the connection row.
+  const ids: string[] = [];
+  const seenIds = new Set<string>();
+  for (const query of queries) {
+    if (ids.length >= MAX_MESSAGES_PER_PASS) break;
+    const remaining = MAX_MESSAGES_PER_PASS - ids.length;
+    const list = await gmailGet<{ messages?: { id: string }[] }>(
+      `/messages?maxResults=${remaining}&q=${encodeURIComponent(query)}`,
+      accessToken,
+    );
+    for (const entry of list.messages ?? []) {
+      if (entry.id && !seenIds.has(entry.id)) {
+        seenIds.add(entry.id);
+        ids.push(entry.id);
+      }
+    }
+  }
 
   let messagesRead = 0;
   let skippedUnknownPeople = 0;
@@ -663,10 +682,9 @@ async function runSyncPass(input: {
     const message = normalize(raw, mailbox);
     if (!message) continue;
 
-    const counterparts = [message.fromEmail, ...message.toEmails, ...message.ccEmails].filter(
-      (entry): entry is string => Boolean(entry) && entry !== mailbox,
-    );
-    const match = counterparts.map((email) => byEmail.get(email)).find(Boolean);
+    // Defense in depth: the query is already scoped, but the match still
+    // decides. An address Comms does not track is counted and dropped.
+    const match = findTrackedCounterpart(message, mailbox, byEmail);
     if (!match) {
       skippedUnknownPeople += 1;
       continue;
