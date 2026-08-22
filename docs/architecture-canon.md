@@ -11,6 +11,78 @@ deliberately.
 
 **Operating principle: small input, deep intelligence, clear output.**
 
+## Product law — Familiar Magic (locked 2026-08-22)
+
+Permanent product doctrine. Every room, feature and agent decision is judged
+against this section first; the architecture rules below describe how, this
+section describes what deserves to exist.
+
+> Build on models people already understand. Add intelligence, judgment,
+> memory and usefulness they did not know they could expect.
+
+**The seven laws**
+
+1. **Surface law.** Familiar on the surface. Exceptional underneath.
+2. **Outcome law.** Never invent a new experience where a familiar one already
+   serves the user well. Invent only where the existing model prevents a
+   better outcome.
+3. **Intelligence law.** AI must remove effort, improve judgment, preserve
+   context or create momentum. If it only produces more text, it is not
+   intelligence.
+4. **Action law.** Every meaningful recommendation should be capable of
+   becoming an action.
+5. **Proof law.** attempted != executed != verified != human accepted.
+6. **Memory law.** Every accepted outcome should leave reusable memory behind.
+7. **Subtraction law.** Features that do not help the user reach the outcome
+   faster, more confidently, or with less cognitive effort should not survive
+   merely because we can build them.
+
+**The suite hit test.** Every app must explicitly define and pass all ten:
+
+1. **Job** — the one job it exists to perform.
+2. **Hit behavior** — the repeat behavior that makes someone naturally return.
+3. **Familiar reference** — proven interaction/product behaviors already
+   understood by users.
+4. **Magic** — what Trust Tai adds that the familiar model does not.
+5. **Intelligence** — what it must retrieve, remember, reason about and verify.
+6. **Actions** — what it can actually do, not just recommend.
+7. **Human gates** — where Tai must decide/approve.
+8. **Memory** — what should compound through use.
+9. **Proof** — how the app knows the desired outcome actually happened.
+10. **Subtraction** — what should be removed or hidden because it does not
+    serve the job.
+
+Each room's answers live in its own hit brief under `docs/` (for example
+`docs/comms-hit-brief.md`), written against the current implementation, never
+against aspiration.
+
+**Shared UX primitives.** These are suite-level patterns, not app-specific
+inventions: **Attention** (what needs me?), **Timeline** (what happened?),
+**Understanding** (what does the system think is happening?),
+**Recommendation** (what should happen next?), **Approval** (do I allow
+this?), **Work** (what is happening now?), **Evidence** (how do we know it
+worked?), **Memory** (what have we learned?). Reuse existing design-system
+patterns where possible; do not create a giant abstraction layer for its own
+sake.
+
+**Locked hit behaviors.**
+
+| Room | Hit behavior |
+| --- | --- |
+| Scout | Show me people worth knowing. |
+| Comms | Help me never lose an important relationship. |
+| Roadmap | Tell me what should happen next and why. |
+| Projects | Give it what happened. Review what it understood. Approve the work. |
+| Ops | Tell it what is wrong. Let it investigate and resolve it. |
+| Steward | Remember what we said we would do. |
+| Pulse | Tell me what changed that actually matters. |
+| Studio | Turn one thought into something worth publishing. |
+| Conductor | Help me decide what deserves my attention and what should happen next. |
+
+**Suite migration order.** Core/Foundation → Comms → Scout → Projects → Ops →
+Roadmap → Steward → Pulse → Studio → Conductor. Do not reorder without an
+explicit reason recorded in this doctrine.
+
 ## 1. Suite topology
 
 | Layer | Rooms | Owns |
