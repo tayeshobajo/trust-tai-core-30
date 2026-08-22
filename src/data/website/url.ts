@@ -46,6 +46,36 @@ export function samePage(a: string | null | undefined, b: string | null | undefi
   return normalizePath(a) === normalizePath(b);
 }
 
+/**
+ * Addresses that are not part of the public story: error pages, back office,
+ * sign in and anything private. They never count as something that is working.
+ */
+const OPERATIONAL_PATTERNS: RegExp[] = [
+  /^\/404\b/,
+  /^\/500\b/,
+  /^\/not-found\b/,
+  /^\/page-not-found\b/,
+  /^\/error\b/,
+  /^\/admin\b/,
+  /^\/wp-admin\b/,
+  /^\/wp-login\b/,
+  /^\/login\b/,
+  /^\/signin\b/,
+  /^\/sign-in\b/,
+  /^\/logout\b/,
+  /^\/auth\b/,
+  /^\/portal\b/,
+  /^\/private\b/,
+  /^\/preview\b/,
+  /^\/_/,
+];
+
+export function isOperationalPath(input: string | null | undefined): boolean {
+  const path = normalizePath(input);
+  return OPERATIONAL_PATTERNS.some((pattern) => pattern.test(path));
+}
+
+
 /** Bare host of a referrer, or an empty string when there is not one. */
 export function referrerHost(value: string | null | undefined): string {
   const raw = (value ?? "").trim();
