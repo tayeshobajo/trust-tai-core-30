@@ -424,12 +424,14 @@ function Pages({
               <th className="py-2 pr-4 font-normal">Page</th>
               <th className="py-2 pr-4 font-normal">Type</th>
               <th className="py-2 pr-4 font-normal">Views</th>
-              <th className="py-2 pr-4 font-normal">Landing</th>
+              <th className="py-2 pr-4 font-normal">Visitors</th>
               <th className="py-2 pr-4 font-normal">Clicks</th>
               <th className="py-2 pr-4 font-normal">Impressions</th>
               <th className="py-2 pr-4 font-normal">CTR</th>
               <th className="py-2 pr-4 font-normal">Position</th>
-              <th className="py-2 font-normal">Conversations</th>
+              <th className="py-2 pr-4 font-normal">Engagement</th>
+              <th className="py-2 pr-4 font-normal">Conversations</th>
+              <th className="py-2 font-normal">Health</th>
             </tr>
           </thead>
           <tbody>
@@ -447,14 +449,29 @@ function Pages({
                 </td>
                 <td className="py-2 pr-4 text-muted-foreground">{row.pageType.replace("_", " ")}</td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.views)}</td>
-                <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.landingSessions)}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.users)}</td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.clicks)}</td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{formatKnown(row.impressions)}</td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{percent(row.ctr)}</td>
                 <td className="py-2 pr-4 font-mono text-[12px]">{decimal(row.averagePosition)}</td>
-                <td className="py-2 font-mono text-[12px]">{formatKnown(row.intakeSubmissions)}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">{percent(row.engagementRate)}</td>
+                <td className="py-2 pr-4 font-mono text-[12px]">
+                  {formatKnown(row.intakeSubmissions)}
+                </td>
+                <td className="py-2 font-mono text-[11px] text-muted-foreground">
+                  {row.unlisted
+                    ? "Not published"
+                    : row.indexable === false
+                      ? "Noindex"
+                      : row.inSitemap === false
+                        ? "Not in sitemap"
+                        : row.inSitemap === true
+                          ? "Listed"
+                          : "Unknown"}
+                </td>
               </tr>
             ))}
+
           </tbody>
         </table>
       </div>
