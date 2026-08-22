@@ -7,6 +7,7 @@
  */
 
 import { supabase } from "@/integrations/trust-tai/supabase";
+import { clampBackfillDays } from "@/data/comms-onboarding";
 import type { MailboxCoverage } from "@/domain/comms-integrations";
 
 export type { MailboxCoverage };
@@ -79,8 +80,18 @@ export interface GmailSyncResult {
   lastSyncAt: string;
 }
 
-export async function gmailSync(organizationId: string): Promise<GmailSyncResult> {
-  return post<GmailSyncResult>(SYNC_URL, { organizationId });
+/**
+ * One bounded labeled pass, run as the signed-in member. `backfillDays` sets
+ * how far back the pass may look (clamped to 1–90, matching the server).
+ */
+export async function gmailSync(
+  organizationId: string,
+  backfillDays?: number,
+): Promise<GmailSyncResult> {
+  return post<GmailSyncResult>(SYNC_URL, {
+    organizationId,
+    ...(backfillDays === undefined ? {} : { backfillDays: clampBackfillDays(backfillDays) }),
+  });
 }
 
 export interface MailboxCandidate {

@@ -61,15 +61,24 @@ export function MailboxImport({
   organizationId,
   onImport,
   busy,
+  busyLabel,
 }: {
   organizationId: string;
-  onImport: (input: RelationshipInput) => void;
+  /**
+   * The Add to Comms action. Resolves once the relationship exists and its
+   * bounded labeled backfill has been attempted; rejects only when the
+   * relationship itself could not be created.
+   */
+  onImport: (input: RelationshipInput) => void | Promise<void>;
   busy?: boolean;
+  /** Progress wording while an import runs, e.g. "Bringing in labeled history…". */
+  busyLabel?: string;
 }) {
   const [candidates, setCandidates] = useState<MailboxCandidate[] | null>(null);
   const [coverage, setCoverage] = useState<MailboxCoverage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const prospectsQuery = useQuery({
     queryKey: ["scout", "prospects", organizationId],
@@ -88,18 +97,38 @@ export function MailboxImport({
       setError(failure instanceof Error ? failure.message : "That read failed."),
   });
 
-  function save() {
-    if (!draft || !draft.fullName.trim()) return;
-    onImport({
-      fullName: draft.fullName.trim(),
-      ...(draft.email.trim() ? { email: draft.email.trim().toLowerCase() } : {}),
-      ...(draft.companyName.trim() ? { companyName: draft.companyName.trim() } : {}),
-      ...(draft.note.trim() ? { note: draft.note.trim() } : {}),
-      ...(draft.prospectId ? { prospectId: draft.prospectId } : {}),
-      source: "inbound",
-      stage: "new",
-    });
-    setDraft(null);
+  async function save() {
+    if (!draft || !draft.fullName.trim() || saving) return;
+    const email = draft.email.trim().toLowerCase();
+    setSaving(true);
+    try {
+      await onImport({
+        fullName: draft.fullName.trim(),
+        ...(email ? { email } : {}),
+        ...(draft.companyName.trim() ? { companyName: draft.companyName.trim() } : {}),
+        ...(draft.note.trim() ? { note: draft.note.trim() } : {}),
+        ...(draft.prospectId ? { prospectId: draft.prospectId } : {}),
+        source: "inbound",
+        stage: "new",
+      });
+      setDraft(null);
+      // The person is tracked now, even if their history is still coming in.
+      if (email) {
+        setCandidates((previous) =>
+          previous
+            ? previous.map((candidate) =>
+                candidate.email.toLowerCase() === email
+                  ? { ...candidate, alreadyTracked: true }
+                  : candidate,
+              )
+            : previous,
+        );
+      }
+    } catch {
+      // The parent surfaces the failure; the preview stays open so nothing typed is lost.
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -109,8 +138,8 @@ export function MailboxImport({
           <p className="tt-eyebrow">Labeled in Gmail, not yet in Comms</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
             People on threads you have labeled Trust Tai/Comms in Gmail. Reads message metadata
-            only; nothing is saved until you confirm the preview. Once a person is added, their
-            labeled mail is stored from the next read on — never before.
+            only; nothing is saved until you confirm the preview. Adding a person brings in their
+            last 30 days of labeled mail right away — unlabeled mail is never read.
           </p>
         </div>
         <TTButton
@@ -193,8 +222,12 @@ export function MailboxImport({
             />
           </TTField>
           <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4">
-            <TTButton type="button" onClick={save} disabled={!draft.fullName.trim() || busy}>
-              {busy ? "Saving" : "Save relationship"}
+            <TTButton
+              type="button"
+              onClick={() => void save()}
+              disabled={!draft.fullName.trim() || busy || saving}
+            >
+              {busy || saving ? (busyLabel ?? "Saving") : "Add to Comms"}
             </TTButton>
             <TTButton type="button" variant="quiet" onClick={() => setDraft(null)}>
               Cancel
