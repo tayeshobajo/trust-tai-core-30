@@ -28,7 +28,10 @@ import {
   REGISTER_GUIDE,
   type VoiceRegister,
 } from "@/domain/voice";
-import { selectScoutProvider } from "@/lib/scout-provider.server";
+import {
+  runtimeModelCaller,
+  runtimeProviderStatus,
+} from "@/lib/intelligence-runtime.server";
 
 const REGISTERS: VoiceRegister[] = [
   "warm_intro",
@@ -159,65 +162,67 @@ export async function draftMessage(
   const metWhere = (row["met_where"] as string | null) ?? null;
   const register = request.register;
 
-  const provider = selectScoutProvider();
+  const status = runtimeProviderStatus();
   let body: string;
   let subject: string;
   let providerName = "none";
   let model = "deterministic-fallback";
 
-  if (!provider) {
+  const instructions = [
+    "You draft one short email for Tai at Trust Tai. You never send anything.",
+    "Follow this Voice DNA exactly:",
+    voiceDocument,
+    `Register: ${register}. ${REGISTER_GUIDE[register]}`,
+    "Hard rules: no em dashes, no exclamation marks, no 'just checking in' or 'touching base', no needy phrasing, no claim that is not in the evidence below, no promise of any kind.",
+    "Use at most one specific detail from the evidence. If there is no evidence, keep it plain and short.",
+    "Return JSON only: {\"subject\": string, \"body\": string}. The body must end with 'Trust,' then a new line then 'Tai'.",
+  ].join("\n\n");
+
+  const context = [
+    `Recipient: ${fullName}${row["company_name"] ? ` at ${row["company_name"]}` : ""}.`,
+    metWhere ? `Where we met: ${metWhere}.` : "We have not met in person.",
+    row["next_action"] ? `Our intended next move: ${row["next_action"]}.` : "",
+    request.purpose ? `Why we are writing: ${request.purpose}.` : "",
+    usedEvidence.length
+      ? `Evidence that may be cited:\n${usedEvidence.map((entry) => `- ${entry.label}: ${entry.value} (${entry.tier})`).join("\n")}`
+      : "No evidence on record. Do not invent any.",
+    inferred.length
+      ? `Background reads (may guide the angle, must not be stated as fact):\n${inferred.map((entry) => `- ${entry.value}`).join("\n")}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  if (!status.configured) {
     body = fallbackDraft({ firstName, register, evidence: usedEvidence, metWhere });
     subject = metWhere ? `Following ${metWhere}` : `A short note`;
   } else {
-    providerName = provider.provider;
-    model = provider.model;
-
-    const instructions = [
-      "You draft one short email for Tai at Trust Tai. You never send anything.",
-      "Follow this Voice DNA exactly:",
-      voiceDocument,
-      `Register: ${register}. ${REGISTER_GUIDE[register]}`,
-      "Hard rules: no em dashes, no exclamation marks, no 'just checking in' or 'touching base', no needy phrasing, no claim that is not in the evidence below, no promise of any kind.",
-      "Use at most one specific detail from the evidence. If there is no evidence, keep it plain and short.",
-      "Return JSON only: {\"subject\": string, \"body\": string}. The body must end with 'Trust,' then a new line then 'Tai'.",
-    ].join("\n\n");
-
-    const context = [
-      `Recipient: ${fullName}${row["company_name"] ? ` at ${row["company_name"]}` : ""}.`,
-      metWhere ? `Where we met: ${metWhere}.` : "We have not met in person.",
-      row["next_action"] ? `Our intended next move: ${row["next_action"]}.` : "",
-      request.purpose ? `Why we are writing: ${request.purpose}.` : "",
-      usedEvidence.length
-        ? `Evidence that may be cited:\n${usedEvidence.map((entry) => `- ${entry.label}: ${entry.value} (${entry.tier})`).join("\n")}`
-        : "No evidence on record. Do not invent any.",
-      inferred.length
-        ? `Background reads (may guide the angle, must not be stated as fact):\n${inferred.map((entry) => `- ${entry.value}`).join("\n")}`
-        : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const response = await fetch(provider.endpoint, {
-      method: "POST",
-      headers: provider.headers,
-      body: JSON.stringify({
-        model: provider.model,
-        instructions,
-        input: context,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`The drafting provider returned ${response.status}.`);
-    }
-
-    const payload = (await response.json()) as Record<string, unknown>;
-    const raw = extractText(payload);
-    const parsed = safeJson(raw);
-    body = String(parsed?.["body"] ?? raw ?? "").trim();
-    subject = String(parsed?.["subject"] ?? (metWhere ? `Following ${metWhere}` : "A short note"));
-    if (!body) {
+    try {
+      /* All model contact flows through the runtime boundary, fail-closed. */
+      const callModel = await runtimeModelCaller({
+        token,
+        organizationId,
+        room: "comms",
+        purpose: "draft",
+      });
+      const result = await callModel({ instructions, input: context, webSearch: false });
+      providerName = result.provider;
+      model = result.model;
+      const parsed = safeJson(result.raw);
+      body = String(parsed?.["body"] ?? result.raw ?? "").trim();
+      subject = String(
+        parsed?.["subject"] ?? (metWhere ? `Following ${metWhere}` : "A short note"),
+      );
+      if (!body) {
+        body = fallbackDraft({ firstName, register, evidence: usedEvidence, metWhere });
+        providerName = "none";
+        model = "deterministic-fallback";
+      }
+    } catch {
+      /* A provider or access failure degrades to the deterministic draft over
+         the same evidence — a blank surface or an invented draft is worse. */
       body = fallbackDraft({ firstName, register, evidence: usedEvidence, metWhere });
+      subject = metWhere ? `Following ${metWhere}` : `A short note`;
     }
   }
 
@@ -233,30 +238,6 @@ export async function draftMessage(
     provider: providerName,
     model,
   };
-}
-
-function extractText(payload: Record<string, unknown>): string {
-  if (typeof payload["output_text"] === "string") return payload["output_text"] as string;
-  const output = payload["output"];
-  if (Array.isArray(output)) {
-    for (const item of output) {
-      const content = (item as Record<string, unknown>)?.["content"];
-      if (Array.isArray(content)) {
-        for (const part of content) {
-          const value = (part as Record<string, unknown>)?.["text"];
-          if (typeof value === "string" && value.trim()) return value;
-        }
-      }
-    }
-  }
-  const choices = payload["choices"];
-  if (Array.isArray(choices)) {
-    const message = (choices[0] as Record<string, unknown>)?.["message"] as
-      | Record<string, unknown>
-      | undefined;
-    if (typeof message?.["content"] === "string") return message["content"] as string;
-  }
-  return "";
 }
 
 function safeJson(raw: string): Record<string, unknown> | null {

@@ -13,7 +13,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { runDiscovery } from "@/lib/scout-discover.server";
-import { scoutProviderStatus } from "@/lib/scout-provider.server";
+import { runtimeProviderStatus } from "@/lib/intelligence-runtime.server";
 import {
   createLovableAiGatewayRunIdFetch,
   getLovableAiGatewayResponseHeaders,
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/api/public/scout/discover")({
       // Configuration probe. Reveals which provider is selected and what it can
       // do, never a key, never any part of one.
       GET: async ({ request }) =>
-        Response.json(scoutProviderStatus(), {
+        Response.json(runtimeProviderStatus(), {
           headers: getLovableAiGatewayResponseHeaders(undefined, {
             ...(getLovableAiGatewayRunId(request)
               ? { [LOVABLE_AIG_RUN_ID_HEADER]: getLovableAiGatewayRunId(request)! }

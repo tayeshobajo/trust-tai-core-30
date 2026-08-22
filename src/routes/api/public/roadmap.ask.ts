@@ -17,7 +17,7 @@ import {
   getLovableAiGatewayRunId,
   withLovableAiGatewayRunIdHeader,
 } from "@/lib/ai-gateway.server";
-import { askRoadmap } from "@/lib/roadmap-research.server";
+import { askRoadmap } from "@/lib/roadmap-intelligence.server";
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";

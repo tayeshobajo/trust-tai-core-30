@@ -12,7 +12,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { draftMessage, parseRegister } from "@/lib/comms-draft.server";
-import { scoutProviderStatus } from "@/lib/scout-provider.server";
+import { runtimeProviderStatus } from "@/lib/intelligence-runtime.server";
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/public/comms/draft")({
     handlers: {
       /** Whether drafting is available, and on which provider. Never a key. */
       GET: async () => {
-        const status = scoutProviderStatus();
+        const status = runtimeProviderStatus();
         return Response.json({
           configured: status.configured,
           provider: status.provider,

@@ -21,7 +21,7 @@ import { roadmapIntel, type IntelContext } from "../src/data/supabase/roadmap-in
 import { roadmapService } from "../src/data/supabase/roadmap-service";
 import { supabase } from "../src/integrations/trust-tai/supabase";
 import type { ArtifactSection, StrategyItem } from "../src/domain/roadmap-intel";
-import { answerRoadmapQuestion, researchSubject } from "../src/lib/roadmap-research.server";
+import { answerRoadmapQuestion, researchSubject } from "../src/lib/roadmap-intelligence.server";
 import { composeStudioDocument } from "../src/lib/roadmap-studio.server";
 
 const companyQuery = process.argv[2] ?? "Teamsynerg";
@@ -93,7 +93,7 @@ async function collectResearch() {
     objective,
     ...(website ? { website } : {}),
     known: [],
-  })) {
+  }, offlineCaller)) {
     console.log(`  [${stage.stage}] ${stage.message}`);
     if (stage.stage === "error") throw new Error(String(stage.message));
     if (stage.stage === "complete") out = stage.data;
@@ -208,7 +208,7 @@ for await (const stage of composeStudioDocument({
   strategy: reloaded.strategy!,
   milestones: reloaded.milestones,
   research: reloaded.research,
-})) {
+}, offlineCaller)) {
   console.log(`  [${stage.stage}] ${stage.message}`);
   if (stage.stage === "error") throw new Error(JSON.stringify(stage.data));
   if (stage.stage === "complete") composed = stage.data as typeof composed;
@@ -275,7 +275,7 @@ for (const question of [
     subjectLabel,
     context: { research: stored.research, strategy: stored.strategy, milestones: stored.milestones },
     research: false,
-  });
+  }, offlineCaller);
   const saved = await roadmapIntel.saveAnswer(context, roadmapId, { ...answer, question });
   console.log(`\nQ: ${question}`);
   console.log(JSON.stringify({ ...answer, savedId: saved.id }, null, 2));

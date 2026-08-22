@@ -18,14 +18,16 @@ const provider = vi.fn(async (..._args: unknown[]) => ({
   model: "gpt-5-mini",
 }));
 
-vi.mock("./roadmap-research.server", async () => {
-  const actual = await vi.importActual<typeof import("./roadmap-research.server")>(
-    "./roadmap-research.server",
+vi.mock("./intelligence-runtime.server", async () => {
+  const actual = await vi.importActual<typeof import("./intelligence-runtime.server")>(
+    "./intelligence-runtime.server",
   );
   return {
-    extractJsonObject: actual.extractJsonObject,
-    requireRoadmapAccess: (...args: unknown[]) => access(...args),
-    callRoadmapProvider: (...args: unknown[]) => provider(...args),
+    ...actual,
+    runtimeModelCaller: async () => {
+      await access();
+      return (call: { instructions: string; input: string }) => provider(call);
+    },
   };
 });
 

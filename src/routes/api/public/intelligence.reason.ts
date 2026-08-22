@@ -18,7 +18,7 @@ import {
   getLovableAiGatewayRunId,
   withLovableAiGatewayRunIdHeader,
 } from "@/lib/ai-gateway.server";
-import { reasonOverPacket } from "@/lib/intelligence-reason.server";
+import { reasonOverPacket } from "@/lib/intelligence-runtime.server";
 import type { EvidencePacket } from "@/data/intelligence/engine/hypothesise";
 
 function bearer(request: Request): string | null {

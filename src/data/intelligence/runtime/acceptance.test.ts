@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import { APP_REGISTRY } from "@/domain/registry";
 import {
   capConfidence,
+  delegationIsValid,
   emptyRuntimeRead,
   REQUIRED_ASPECTS,
   runtimeConfidence,
@@ -35,16 +36,46 @@ describe("readiness manifest coverage", () => {
     );
   });
 
-  it("no business room is absent on a required aspect", () => {
+  it("every active room accounts for all eight readiness dimensions", () => {
+    /** Rooms honestly NOT READY, with their gaps asserted in a dedicated test. */
+    const EXPECTED_NOT_READY = ["ops"];
     for (const app of APP_REGISTRY) {
       if (app.layer === "core") continue;
+      if (EXPECTED_NOT_READY.includes(app.id)) continue;
       const check = checkRoomReadiness(app.id);
       expect(check, `room ${app.id} has no manifest`).not.toBeNull();
       expect(
         check!.missing,
-        `room ${app.id} is absent on required aspects: ${check!.missing.join(", ")}`,
+        `room ${app.id} is missing required dimensions: ${check!.missing.join(", ")}`,
       ).toEqual([]);
     }
+  });
+
+  it("every delegation names its architectural equivalent and why", () => {
+    for (const manifest of READINESS_MANIFESTS) {
+      for (const [aspect, report] of Object.entries(manifest.aspects)) {
+        if (report.state !== "delegated") continue;
+        expect(
+          delegationIsValid(report),
+          `room ${manifest.room} delegates ${aspect} without naming the equivalent and the reason`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("Ops is honestly NOT READY — the reference failure mode is not repeated", () => {
+    const check = checkRoomReadiness("ops");
+    expect(check).not.toBeNull();
+    expect(check!.ready, "Ops must not read as ready while its gaps exist").toBe(false);
+    expect(check!.missing).toEqual(
+      expect.arrayContaining([
+        "retrieval",
+        "domain_patterns",
+        "safe_diagnostic_loop",
+        "verification",
+        "outcome_learning",
+      ]),
+    );
   });
 
   it("every manifest aspect cites where it is backed", () => {
@@ -59,7 +90,7 @@ describe("readiness manifest coverage", () => {
     for (const app of APP_REGISTRY) {
       const answer = roomCapabilities(app.id);
       expect(answer.exists, `room ${app.id} is not in the registry`).toBe(true);
-      expect(manifestFor(app.id)?.aspects.capability_awareness.state).not.toBe("absent");
+      expect(manifestFor(app.id)?.aspects.capability_awareness.state).not.toBe("not_ready");
     }
   });
 });
@@ -131,12 +162,16 @@ describe("silence invariants", () => {
 });
 
 describe("required aspects are the real floor", () => {
-  it("the floor is evidence, capability, verification and the human boundary", () => {
+  it("the floor is all eight dimensions, not a convenient subset", () => {
     expect(REQUIRED_ASPECTS).toEqual([
       "evidence_grounding",
+      "retrieval",
+      "domain_patterns",
       "capability_awareness",
+      "safe_diagnostic_loop",
       "verification",
       "approval_boundary",
+      "outcome_learning",
     ]);
   });
 });

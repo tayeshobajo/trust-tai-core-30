@@ -21,7 +21,11 @@ import type {
 import { detectCandidates } from "@/data/steward/candidates";
 import { interpretationBatchSchema, toSignal } from "@/data/steward/interpretation";
 
-import { callRoadmapProvider, extractJsonObject } from "./roadmap-research.server";
+import {
+  extractJsonObject,
+  type RuntimeModelCall,
+  type RuntimeModelCaller,
+} from "./intelligence-runtime.server";
 
 export class InterpretationUnavailableError extends Error {
   constructor(message: string) {
@@ -129,7 +133,7 @@ export interface InterpretInput {
   memory: MemoryContext;
   commitments: Commitment[];
   candidates?: CandidatePassage[];
-  gateway?: Parameters<typeof callRoadmapProvider>[2]["gateway"];
+  gateway?: RuntimeModelCall["gateway"];
   initialRunId?: string | undefined;
 }
 
@@ -137,8 +141,16 @@ export interface InterpretInput {
  * Interpret one conversation. Read-only: nothing is written and nothing is
  * confirmed. A model failure throws, so the caller can say so honestly rather
  * than promoting regex output.
+ *
+ * The model caller is supplied by whoever holds authorization: the live route
+ * builds it through the runtime boundary (fail-closed membership check), an
+ * offline acceptance harness builds it from the transport. This module never
+ * touches provider machinery itself.
  */
-export async function interpretConversation(input: InterpretInput): Promise<InterpretationRun> {
+export async function interpretConversation(
+  input: InterpretInput,
+  callModel: RuntimeModelCaller,
+): Promise<InterpretationRun> {
   const candidates = input.candidates ?? detectCandidates(input.conversation);
   const signals: InterpretedSignal[] = [];
   let provider = "";
@@ -148,15 +160,13 @@ export async function interpretConversation(input: InterpretInput): Promise<Inte
     const batch = candidates.slice(index, index + BATCH_SIZE);
     let raw: string;
     try {
-      const result = await callRoadmapProvider(
-        instructions(),
-        payload(input.conversation, batch, input.memory),
-        {
-          webSearch: false,
-          gateway: input.gateway,
-          initialRunId: input.initialRunId,
-        },
-      );
+      const result = await callModel({
+        instructions: instructions(),
+        input: payload(input.conversation, batch, input.memory),
+        webSearch: false,
+        gateway: input.gateway,
+        initialRunId: input.initialRunId,
+      });
       raw = result.raw;
       provider = result.provider;
       model = result.model;
