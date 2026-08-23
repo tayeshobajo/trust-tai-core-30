@@ -58,8 +58,11 @@ import {
   type DraftGroundingSummary,
 } from "@/domain/comms-judgment";
 import {
+  ProviderCallFailedError,
+  ProviderNotConfiguredError,
   runtimeModelCaller,
   runtimeProviderStatus,
+  type RuntimeModelCaller,
 } from "@/lib/intelligence-runtime.server";
 
 const REGISTERS: VoiceRegister[] = [
@@ -73,6 +76,64 @@ const REGISTERS: VoiceRegister[] = [
 /** The calm, honest failure. Nothing is created when this is said. */
 export const DRAFT_PREPARATION_FAILED =
   "Comms couldn't prepare a trustworthy draft from the available context. Nothing was created.";
+
+/**
+ * Why drafting failed, machine-readable and safe to show a client. The calm
+ * sentence stays the same; this code is how operators and logs tell one
+ * failure from another instead of every post-grounding failure collapsing
+ * into the same shrug. Never carries secrets, provider bodies, or the model's
+ * working.
+ */
+export type DraftFailureCode =
+  /** No shared intelligence provider is configured server-side. */
+  | "provider_not_configured"
+  /** The caller is not an active member of the relationship's workspace. */
+  | "access_denied"
+  /** The provider refused or the reasoning run failed. */
+  | "provider_call_failed"
+  /** Pass one answered, but not with a readable judgment. */
+  | "judgment_unreadable"
+  /** Pass two answered, but not with a readable draft. */
+  | "writing_unreadable"
+  /** Pass two parsed, but subject or body was empty. */
+  | "empty_draft";
+
+export class DraftFailure extends Error {
+  constructor(
+    readonly code: DraftFailureCode,
+    message: string = DRAFT_PREPARATION_FAILED,
+  ) {
+    super(message);
+    this.name = "DraftFailure";
+  }
+}
+
+/** The runtime boundary refuses with a bare "forbidden"; map it honestly. */
+export function classifyDraftAccessError(error: unknown): DraftFailure | null {
+  return error instanceof Error && error.message === "forbidden"
+    ? new DraftFailure(
+        "access_denied",
+        "You don't have access to draft in this workspace. Nothing was created.",
+      )
+    : null;
+}
+
+/**
+ * Map a transport failure to a typed draft failure, logging the safe detail
+ * (the code and the provider's HTTP status — never keys, never bodies) so
+ * production logs can tell a missing key from a provider refusal.
+ */
+function toDraftFailure(error: unknown, stage: string): DraftFailure {
+  if (error instanceof ProviderNotConfiguredError) {
+    console.error(`[comms-draft] provider_not_configured during ${stage}`);
+    return new DraftFailure("provider_not_configured");
+  }
+  const status = error instanceof ProviderCallFailedError ? error.status : undefined;
+  console.error(
+    `[comms-draft] provider_call_failed during ${stage}${status ? ` (provider status ${status})` : ""}`,
+  );
+  return new DraftFailure("provider_call_failed");
+}
 
 /**
  * The honest refusal when drafting would require invention. Names the gaps
