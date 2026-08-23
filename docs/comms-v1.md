@@ -47,11 +47,37 @@ editable by owners and admins at `/modules/comms/voice`.
 
 ## Drafting boundary
 
-`src/lib/comms-draft.server.ts` composes one short message from the Voice DNA,
-the chosen register, and the relationship's recorded evidence. Only observed
-facts and human decisions may be cited; inferences may guide the angle but never
-become a claim. With no AI provider configured, Comms returns a plain
-deterministic draft rather than inventing one.
+Reason first. Write second. `src/lib/comms-draft.server.ts` does not generate
+messages: it makes a relationship-specific **communication judgment**
+(`src/domain/comms-judgment.ts`) over governed evidence — identity, stage,
+observed/decided memory, open commitments, the recent thread, the Voice DNA,
+and up to three approved/sent drafts as living voice proof — then writes the
+message that judgment requires. The judgment is persisted with the draft's
+rationale, so the reasoning a person approves is inspectable, never hidden.
+
+The laws this boundary enforces:
+
+- **Comms does not generate messages.** It judges, then writes. The structured
+  judgment (`communicationJob`, `relationshipRead`, `responseObligation`,
+  `toneAndPosture`, `nextMove`, `factsAllowed`/`factsAvoid`,
+  `voiceEvidenceUsed`) comes first; prose is written FROM it.
+- **Fail honestly.** There is no mail-merge fallback. With no provider, or no
+  trustworthy parse, drafting fails closed: "Comms couldn't prepare a
+  trustworthy draft from the available context. Nothing was created." A
+  generic draft impersonating intelligence is worse than none.
+- **Evidence is governed.** Only observed facts and human decisions may be
+  cited; inferences guide the angle but never become a claim. Voice DNA is not
+  a tone preset — real approved/sent wording is cited as voice evidence.
+- **Names are human-safe.** Salutations come from `salutationName`, which
+  understands comma formats ("Vinyard, Larry" → "Larry") and never produces
+  "Vinyard,,".
+- **Human approval remains mandatory** before anything sends, and the
+  deterministic Voice pass gates every draft.
+
+**Drafts never trap the conversation.** Close is not discard. The draft editor
+opens only by a person's choice, keyed to the relationship; closing it saves
+the work and returns to the thread, where a quiet resume affordance keeps the
+draft one click away. Discard is a separate, explicit, confirmed action.
 
 **Comms does not send.** A draft is composed, checked, approved, and marked as
 sent by a person.
