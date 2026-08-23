@@ -30,6 +30,8 @@
 import {
   callRoadmapProvider,
   extractJsonObject,
+  ProviderCallFailedError,
+  ProviderNotConfiguredError,
   requireRoadmapAccess,
 } from "@/lib/roadmap-research.server";
 import { scoutProviderStatus } from "@/lib/scout-provider.server";
@@ -120,6 +122,12 @@ export function runtimeProviderStatus(): ReturnType<typeof scoutProviderStatus> 
 
 /** JSON extraction, re-exported so rooms never import the transport. */
 export { extractJsonObject };
+
+/**
+ * Typed provider failures, re-exported so rooms classify failures through the
+ * boundary instead of importing the transport or parsing error strings.
+ */
+export { ProviderNotConfiguredError, ProviderCallFailedError };
 
 /* -------------------------------------------------- engine hypothesising */
 

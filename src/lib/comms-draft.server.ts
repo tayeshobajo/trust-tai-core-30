@@ -58,8 +58,11 @@ import {
   type DraftGroundingSummary,
 } from "@/domain/comms-judgment";
 import {
+  ProviderCallFailedError,
+  ProviderNotConfiguredError,
   runtimeModelCaller,
   runtimeProviderStatus,
+  type RuntimeModelCaller,
 } from "@/lib/intelligence-runtime.server";
 
 const REGISTERS: VoiceRegister[] = [
@@ -73,6 +76,64 @@ const REGISTERS: VoiceRegister[] = [
 /** The calm, honest failure. Nothing is created when this is said. */
 export const DRAFT_PREPARATION_FAILED =
   "Comms couldn't prepare a trustworthy draft from the available context. Nothing was created.";
+
+/**
+ * Why drafting failed, machine-readable and safe to show a client. The calm
+ * sentence stays the same; this code is how operators and logs tell one
+ * failure from another instead of every post-grounding failure collapsing
+ * into the same shrug. Never carries secrets, provider bodies, or the model's
+ * working.
+ */
+export type DraftFailureCode =
+  /** No shared intelligence provider is configured server-side. */
+  | "provider_not_configured"
+  /** The caller is not an active member of the relationship's workspace. */
+  | "access_denied"
+  /** The provider refused or the reasoning run failed. */
+  | "provider_call_failed"
+  /** Pass one answered, but not with a readable judgment. */
+  | "judgment_unreadable"
+  /** Pass two answered, but not with a readable draft. */
+  | "writing_unreadable"
+  /** Pass two parsed, but subject or body was empty. */
+  | "empty_draft";
+
+export class DraftFailure extends Error {
+  constructor(
+    readonly code: DraftFailureCode,
+    message: string = DRAFT_PREPARATION_FAILED,
+  ) {
+    super(message);
+    this.name = "DraftFailure";
+  }
+}
+
+/** The runtime boundary refuses with a bare "forbidden"; map it honestly. */
+export function classifyDraftAccessError(error: unknown): DraftFailure | null {
+  return error instanceof Error && error.message === "forbidden"
+    ? new DraftFailure(
+        "access_denied",
+        "You don't have access to draft in this workspace. Nothing was created.",
+      )
+    : null;
+}
+
+/**
+ * Map a transport failure to a typed draft failure, logging the safe detail
+ * (the code and the provider's HTTP status — never keys, never bodies) so
+ * production logs can tell a missing key from a provider refusal.
+ */
+function toDraftFailure(error: unknown, stage: string): DraftFailure {
+  if (error instanceof ProviderNotConfiguredError) {
+    console.error(`[comms-draft] provider_not_configured during ${stage}`);
+    return new DraftFailure("provider_not_configured");
+  }
+  const status = error instanceof ProviderCallFailedError ? error.status : undefined;
+  console.error(
+    `[comms-draft] provider_call_failed during ${stage}${status ? ` (provider status ${status})` : ""}`,
+  );
+  return new DraftFailure("provider_call_failed");
+}
 
 /**
  * The honest refusal when drafting would require invention. Names the gaps
@@ -302,14 +363,76 @@ Laws:
    then a new line, then 'Tai'.`;
 
 /**
+ * Strict response formats for both passes. Pinning the schema server-side is
+ * what makes a reply readable: without one the provider is asked for generic
+ * json mode, which it may refuse outright — and every refusal used to
+ * collapse into the same generic failure. Schemas follow the strict contract:
+ * every property required, no optional keys, objects closed.
+ */
+const JUDGMENT_RESPONSE_FORMAT: Record<string, unknown> = {
+  type: "json_schema",
+  name: "communication_judgment",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      whyNow: { type: "string" },
+      whatNoticed: { type: "string" },
+      intendedEffect: { type: "string" },
+      responseObligation: { type: "string" },
+      nextMove: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          ask: { type: "boolean" },
+          what: { type: "string" },
+        },
+        required: ["ask", "what"],
+      },
+      factsAllowed: { type: "array", items: { type: "string" } },
+      factsAvoid: { type: "array", items: { type: "string" } },
+      voiceEvidenceUsed: { type: "array", items: { type: "string" } },
+      learnedExamplesUsed: { type: "array", items: { type: "string" } },
+    },
+    required: [
+      "whyNow",
+      "whatNoticed",
+      "intendedEffect",
+      "responseObligation",
+      "nextMove",
+      "factsAllowed",
+      "factsAvoid",
+      "voiceEvidenceUsed",
+      "learnedExamplesUsed",
+    ],
+  },
+};
+
+const WRITE_RESPONSE_FORMAT: Record<string, unknown> = {
+  type: "json_schema",
+  name: "relationship_draft",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      subject: { type: "string" },
+      body: { type: "string" },
+    },
+    required: ["subject", "body"],
+  },
+};
+
+/**
  * Compose one draft: grounding gate first, judgment second, prose third,
  * deterministic Voice pass last. Returns the checked text, the judgment it
  * rests on, and every rule it tripped, so the reviewer sees exactly what the
  * policy saw.
  *
  * Throws draftUngroundedMessage when the evidence is below the grounding bar,
- * and DRAFT_PREPARATION_FAILED when no trustworthy draft can be produced.
- * A fabricated generic draft is never returned in either case.
+ * and a DraftFailure with a machine-readable code for every post-grounding
+ * failure. A fabricated generic draft is never returned in either case.
  */
 export async function draftMessage(
   token: string,
@@ -434,71 +557,119 @@ export async function draftMessage(
     learnedStyleExamples: voiceExamples,
   };
 
-  /* From here the provider does the work. Any failure — not configured,
-     refused, unreadable, empty — fails closed: the caller gets the calm
-     error and no draft exists. */
-  const status = runtimeProviderStatus();
-  if (!status.configured) throw new Error(DRAFT_PREPARATION_FAILED);
+  /* From here the provider does the work, through the shared runtime
+     boundary. Every post-grounding failure is typed — the person keeps the
+     calm sentence, the operator gets a machine-readable code in the response
+     and the safe detail in the server log. Fail closed in all cases: a
+     fabricated generic draft impersonates intelligence. */
+  if (!runtimeProviderStatus().configured) {
+    console.error("[comms-draft] provider_not_configured: no shared intelligence provider is set");
+    throw new DraftFailure("provider_not_configured");
+  }
 
-  let judgment: CommunicationJudgment;
-  let subject: string;
-  let body: string;
-  let providerName: string;
-  let model: string;
-
+  let callModel: RuntimeModelCaller;
   try {
-    const callModel = await runtimeModelCaller({
+    callModel = await runtimeModelCaller({
       token,
       organizationId,
       room: "comms",
       purpose: "draft",
     });
+  } catch (error) {
+    const access = classifyDraftAccessError(error);
+    if (access) throw access;
+    throw toDraftFailure(error, "the access check");
+  }
 
-    // Pass one — reason. The judgment comes before any prose.
-    const reasoned = await callModel({
+  return executeDraftPasses(callModel, {
+    evidencePacket,
+    salutation: salutation || null,
+    register,
+    usedEvidence,
+    groundingSummary,
+  });
+}
+
+export interface DraftPassInput {
+  /** The governed evidence packet both passes reason over. */
+  evidencePacket: Record<string, unknown>;
+  salutation: string | null;
+  register: VoiceRegister;
+  usedEvidence: { label: string; value: string; tier: string }[];
+  groundingSummary: DraftGroundingSummary;
+}
+
+/**
+ * Judgment first, write second, deterministic voice pass last — over the
+ * caller the runtime boundary issued. Exported so the contract is testable
+ * with a fake provider; production reaches it only through draftMessage,
+ * after the grounding gate.
+ */
+export async function executeDraftPasses(
+  callModel: RuntimeModelCaller,
+  input: DraftPassInput,
+): Promise<DraftResult> {
+  // Pass one — reason. The judgment comes before any prose.
+  let reasoned: { raw: string; provider: string; model: string };
+  try {
+    reasoned = await callModel({
       instructions: JUDGMENT_INSTRUCTIONS,
-      input: JSON.stringify(evidencePacket),
+      input: JSON.stringify(input.evidencePacket),
       webSearch: false,
+      responseFormat: JUDGMENT_RESPONSE_FORMAT,
     });
-    const parsedJudgment = parseCommunicationJudgment(safeJson(reasoned.raw));
-    if (!parsedJudgment) throw new Error("unreadable judgment");
-    judgment = parsedJudgment;
+  } catch (error) {
+    throw toDraftFailure(error, "the judgment pass");
+  }
+  const judgment = parseCommunicationJudgment(safeJson(reasoned.raw));
+  if (!judgment) {
+    console.error("[comms-draft] judgment_unreadable: pass one returned no readable judgment");
+    throw new DraftFailure("judgment_unreadable");
+  }
 
-    // Pass two — write. The prose is generated FROM the judgment, never
-    // alongside it.
-    const written = await callModel({
+  // Pass two — write. The prose is generated FROM the judgment, never
+  // alongside it.
+  let written: { raw: string; provider: string; model: string };
+  try {
+    written = await callModel({
       instructions: WRITE_INSTRUCTIONS,
       input: JSON.stringify({
         judgment,
-        salutationName: salutation || null,
-        evidence: evidencePacket,
+        salutationName: input.salutation,
+        evidence: input.evidencePacket,
       }),
       webSearch: false,
+      responseFormat: WRITE_RESPONSE_FORMAT,
     });
-    providerName = written.provider;
-    model = written.model;
-
-    const parsed = safeJson(written.raw);
-    body = String(parsed?.["body"] ?? "").trim();
-    subject = String(parsed?.["subject"] ?? "").trim();
-    if (!body || !subject) throw new Error("empty draft");
-  } catch {
-    throw new Error(DRAFT_PREPARATION_FAILED);
+  } catch (error) {
+    throw toDraftFailure(error, "the writing pass");
   }
 
-  const verdict = checkVoice(body, { register, requireSignoff: true });
+  const parsed = safeJson(written.raw);
+  if (!parsed) {
+    console.error("[comms-draft] writing_unreadable: pass two returned no readable draft");
+    throw new DraftFailure("writing_unreadable");
+  }
+  const body = String(parsed["body"] ?? "").trim();
+  const subject = String(parsed["subject"] ?? "").trim();
+  if (!body || !subject) {
+    console.error("[comms-draft] empty_draft: pass two returned an empty subject or body");
+    throw new DraftFailure("empty_draft");
+  }
+
+  const verdict = checkVoice(body, { register: input.register, requireSignoff: true });
 
   return {
     subject: subject.replace(/[!\u2014]/g, "").trim(),
     body: verdict.text,
-    register,
-    reviewState: requiresHumanReview(register, verdict) ? "needs_human_review" : "draft",
+    register: input.register,
+    reviewState: requiresHumanReview(input.register, verdict) ? "needs_human_review" : "draft",
     violations: verdict.violations,
-    usedEvidence,
+    usedEvidence: input.usedEvidence,
     judgment,
-    grounding: groundingSummary,
-    provider: providerName!,
-    model: model!,
+    grounding: input.groundingSummary,
+    provider: written.provider,
+    model: written.model,
   };
 }
 

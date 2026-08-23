@@ -73,6 +73,34 @@ export async function requireRoadmapAccess(
 
 /* --------------------------------------------------------------- provider */
 
+/**
+ * Typed provider failures. Rooms never parse provider error strings: they
+ * branch on these classes (via the runtime boundary's re-export) and map them
+ * to their own honest, calm outcomes. Messages are for server logs and
+ * operator reads — never trust them to be safe for a browser verbatim.
+ */
+export class ProviderNotConfiguredError extends Error {
+  readonly code = "provider_not_configured" as const;
+  constructor(
+    message = "No intelligence provider is configured, so the runtime cannot reason. Nothing was changed.",
+  ) {
+    super(message);
+    this.name = "ProviderNotConfiguredError";
+  }
+}
+
+export class ProviderCallFailedError extends Error {
+  readonly code = "provider_call_failed" as const;
+  constructor(
+    message: string,
+    /** The provider's HTTP status, when one exists. Never a secret. */
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = "ProviderCallFailedError";
+  }
+}
+
 export interface ProviderCallOptions {
   webSearch: boolean;
   /**
@@ -94,9 +122,7 @@ export async function callRoadmapProvider(
 ): Promise<{ raw: string; provider: string; model: string }> {
   const selected = selectScoutProvider();
   if (!selected) {
-    throw new Error(
-      "No intelligence provider is configured, so the runtime cannot reason. Nothing was changed.",
-    );
+    throw new ProviderNotConfiguredError();
   }
 
   const doFetch = options.gateway?.fetch ?? fetch;
@@ -131,8 +157,9 @@ export async function callRoadmapProvider(
 
   if (!response.ok || !response.body) {
     const detail = await response.text();
-    throw new Error(
+    throw new ProviderCallFailedError(
       `The reasoning provider refused the request (${response.status}). ${detail.slice(0, 240)}`,
+      response.status,
     );
   }
 
@@ -163,7 +190,7 @@ export async function callRoadmapProvider(
         options.onDelta?.(delta);
       }
       if (type === "response.failed" || type === "error") {
-        throw new Error("The reasoning run failed before returning anything.");
+        throw new ProviderCallFailedError("The reasoning run failed before returning anything.");
       }
     }
   }
