@@ -15,9 +15,9 @@ import type { ID } from "@/domain/entities";
 import type { AttachmentMeta, StoredMailboxMessage } from "@/domain/comms-integrations";
 
 const COLUMNS =
-  "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, to_emails, cc_emails, subject, snippet, occurred_at, provenance, attachments";
+  "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, subject, snippet, occurred_at, provenance, attachments";
 const COLUMNS_WITHOUT_ATTACHMENTS =
-  "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, to_emails, cc_emails, subject, snippet, occurred_at, provenance";
+  "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, subject, snippet, occurred_at, provenance";
 
 interface MessageRow {
   id: string;
@@ -29,8 +29,6 @@ interface MessageRow {
   direction: string;
   from_email: string | null;
   from_name: string | null;
-  to_emails: unknown;
-  cc_emails: unknown;
   subject: string | null;
   snippet: string | null;
   occurred_at: string;
@@ -40,10 +38,6 @@ interface MessageRow {
 
 function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
-}
-
-function emails(value: unknown): string[] {
-  return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
 }
 
 function attachments(value: unknown): AttachmentMeta[] | undefined {
@@ -80,8 +74,6 @@ function toMessage(row: MessageRow): StoredMailboxMessage {
     direction: row.direction === "outbound" ? "outbound" : "inbound",
     ...(text(row.from_email) ? { fromEmail: text(row.from_email)! } : {}),
     ...(text(row.from_name) ? { fromName: text(row.from_name)! } : {}),
-    toEmails: emails(row.to_emails),
-    ccEmails: emails(row.cc_emails),
     ...(text(row.subject) ? { subject: text(row.subject)! } : {}),
     ...(text(row.snippet) ? { snippet: text(row.snippet)! } : {}),
     occurredAt: row.occurred_at,
@@ -112,13 +104,15 @@ export async function listRelationshipMessages(
 
   // A schema that predates the attachments column still reads, minus files.
   if (error && /attachments/i.test(error.message)) {
-    ({ data, error } = await supabase
+    const fallback = await supabase
       .from("comms_messages")
       .select(COLUMNS_WITHOUT_ATTACHMENTS)
       .eq("organization_id", organizationId)
       .eq("relationship_id", relationshipId)
       .order("occurred_at", { ascending: true })
       .limit(limit));
+    data = fallback.data as typeof data;
+    error = fallback.error;
   }
 
   if (error) {

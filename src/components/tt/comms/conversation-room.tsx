@@ -19,7 +19,8 @@ import { initialsOf } from "@/domain/steward-accountability";
 import { HEALTH_LABEL, type ConversationHealth } from "@/domain/comms-health";
 import { SOURCE_LABEL, STAGE_LABEL, type Relationship } from "@/domain/comms";
 import { effectiveIntent, INTENT_LABEL } from "@/domain/comms-interactions";
-import { formatBytes, type AttachmentMeta } from "@/domain/comms-integrations";
+import type { AttachmentMeta } from "@/domain/comms-integrations";
+import { formatBytes } from "@/domain/comms-mime";
 import { cn } from "@/lib/utils";
 
 import { HealthDot } from "./health-marks";

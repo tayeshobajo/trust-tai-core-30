@@ -18,9 +18,9 @@ import { FileText, Loader2, Paperclip, Send, X } from "lucide-react";
 import { TTButton } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/trust-tai/supabase";
-import { commsService } from "@/data/supabase/comms-service";
+import { commsService, type CommsContext } from "@/data/supabase/comms-service";
 import { gmailSendDraft, gmailSendStatus } from "@/data/supabase/comms-gmail";
-import type { CommsContext, CommsDraft, Relationship } from "@/domain/comms";
+import type { CommsDraft, Relationship } from "@/domain/comms";
 import type { StoredMailboxMessage } from "@/domain/comms-integrations";
 import { parseRecipients, validateAttachments, formatBytes } from "@/domain/comms-mime";
 import {
