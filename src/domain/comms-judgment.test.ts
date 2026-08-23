@@ -19,6 +19,7 @@ import {
   salutationName,
   summarizeDraftGrounding,
   threadContextForJudgment,
+  unearnedAskInBody,
   writeCommunicationJudgment,
   writeDraftGrounding,
   type CommunicationJudgment,
@@ -53,10 +54,17 @@ describe("salutationName", () => {
 
 const JUDGMENT: CommunicationJudgment = {
   whyNow: "They asked about timing; a straight answer and a next step are owed.",
-  whatNoticed: "They are moving quickly and want certainty about phase two.",
+  latestHumanSignal: "They mentioned almost in passing that their team just shipped phase one.",
+  whatThisSaysAboutThem: "They are proud of the team's momentum and want a partner who keeps pace.",
+  whatDeservesAcknowledgment: "The phase one ship — name it before answering the timing question.",
+  threadToBuildOn: "Their momentum: what phase two looks like now that phase one is live.",
   intendedEffect: "That they feel heard and unhurried, with a clear way forward.",
   responseObligation: "They asked whether the proposal covers phase two.",
-  nextMove: { ask: true, what: "Offer two concrete times for a short call." },
+  askDecision: {
+    shouldAsk: true,
+    whyNatural: "They asked a question that genuinely needs a short live discussion.",
+    what: "Offer two concrete times for a short call.",
+  },
   factsAllowed: ["They asked about phase two (observed, latest inbound)."],
   factsAvoid: ["Do not claim we already scoped phase two."],
   voiceEvidenceUsed: ["Short declarative sentences", "Close with Trust, Tai"],
@@ -91,11 +99,11 @@ describe("communication judgment on the rationale", () => {
   it("refuses a judgment without its core read", () => {
     expect(parseCommunicationJudgment({})).toBeNull();
     expect(parseCommunicationJudgment({ whyNow: "Only a reason." })).toBeNull();
-    expect(parseCommunicationJudgment({ whatNoticed: "Only a read." })).toBeNull();
+    expect(parseCommunicationJudgment({ latestHumanSignal: "Only a signal." })).toBeNull();
     expect(parseCommunicationJudgment("not an object")).toBeNull();
   });
 
-  it("reads judgments persisted before the spirit-first rename", () => {
+  it("reads judgments persisted before the conversation-first rename", () => {
     const legacy = parseCommunicationJudgment({
       communicationJob: "Answer their timing question.",
       relationshipRead: "Warm and active.",
@@ -106,41 +114,166 @@ describe("communication judgment on the rationale", () => {
     });
     expect(legacy).not.toBeNull();
     expect(legacy?.whyNow).toBe("Answer their timing question.");
-    expect(legacy?.whatNoticed).toBe("Warm and active.");
+    expect(legacy?.latestHumanSignal).toBe("Warm and active.");
     expect(legacy?.intendedEffect).toBe("Direct and brief.");
+    expect(legacy?.askDecision).toEqual({
+      shouldAsk: true,
+      whyNatural: "",
+      what: "Offer two times.",
+    });
     expect(legacy?.learnedExamplesUsed).toEqual([]);
   });
 
-  it("normalizes a string nextMove and drops an empty ask", () => {
-    const parsed = parseCommunicationJudgment({
-      ...JUDGMENT,
-      nextMove: "Offer two times.",
-    });
-    expect(parsed?.nextMove).toEqual({ ask: true, what: "Offer two times." });
-    const noAsk = parseCommunicationJudgment({
-      ...JUDGMENT,
+  it("reads the pre-rename nextMove shape into the ask decision", () => {
+    const legacy = parseCommunicationJudgment({
+      whyNow: "Reply owed.",
+      whatNoticed: "They are deciding.",
       nextMove: { ask: true, what: "" },
     });
-    expect(noAsk?.nextMove).toEqual({ ask: false, what: "" });
+    expect(legacy?.askDecision).toEqual({ shouldAsk: false, whyNatural: "", what: "" });
+  });
+
+  it("drops an ask with no content and keeps whyNatural when no ask belongs", () => {
+    const parsed = parseCommunicationJudgment({
+      ...JUDGMENT,
+      askDecision: { shouldAsk: true, whyNatural: "Momentum.", what: "" },
+    });
+    expect(parsed?.askDecision.shouldAsk).toBe(false);
+    const noAsk = parseCommunicationJudgment({
+      ...JUDGMENT,
+      askDecision: {
+        shouldAsk: false,
+        whyNatural: "She gave warmth; the conversation has not earned an ask.",
+        what: "",
+      },
+    });
+    expect(noAsk?.askDecision).toEqual({
+      shouldAsk: false,
+      whyNatural: "She gave warmth; the conversation has not earned an ask.",
+      what: "",
+    });
   });
 });
 
 describe("judgmentSummaryLines", () => {
-  it("reads as why now, what I noticed, intended effect, next move", () => {
+  it("reads as why now, noticed, what it says, what to build on, and the ask", () => {
     const lines = judgmentSummaryLines(JUDGMENT);
-    expect(lines).toHaveLength(4);
+    expect(lines).toHaveLength(5);
     expect(lines[0]).toBe(`Why now: ${JUDGMENT.whyNow}`);
-    expect(lines[1]).toBe(`What I noticed: ${JUDGMENT.whatNoticed}`);
-    expect(lines[2]).toBe(`Intended effect: ${JUDGMENT.intendedEffect}`);
-    expect(lines[3]).toBe(`Next move: ${JUDGMENT.nextMove.what}`);
+    expect(lines[1]).toBe(`What I noticed: ${JUDGMENT.latestHumanSignal}`);
+    expect(lines[2]).toBe(`What it says about them: ${JUDGMENT.whatThisSaysAboutThem}`);
+    expect(lines[3]).toBe(`What to build on: ${JUDGMENT.threadToBuildOn}`);
+    expect(lines[4]).toBe(
+      `Ask: ${JUDGMENT.askDecision.what} (${JUDGMENT.askDecision.whyNatural})`,
+    );
   });
 
-  it("says plainly when there is no ask", () => {
-    const lines = judgmentSummaryLines({
+  it("says plainly when there is no ask, with the reason when one was judged", () => {
+    const noReason = judgmentSummaryLines({
       ...JUDGMENT,
-      nextMove: { ask: false, what: "" },
+      askDecision: { shouldAsk: false, whyNatural: "", what: "" },
     });
-    expect(lines[3]).toBe("No ask needed.");
+    expect(noReason.at(-1)).toBe("No ask needed.");
+
+    const withReason = judgmentSummaryLines({
+      ...JUDGMENT,
+      askDecision: {
+        shouldAsk: false,
+        whyNatural: "A warm note deserves acknowledgment, not a request for time.",
+        what: "",
+      },
+    });
+    expect(withReason.at(-1)).toBe(
+      "No ask: A warm note deserves acknowledgment, not a request for time.",
+    );
+  });
+});
+
+describe("the Brooke regression at judgment level", () => {
+  /* Brooke thanked Tai for kind words, said it was lovely to meet him,
+     enjoyed his perspective in the Mastermind, and offered to be a resource.
+     The judgment the model returns for that thread must read as generosity
+     recognized — and no ask, because nothing in her note earns one. This
+     pins the contract shape that judgment takes once parsed. */
+  const BROOKE_JUDGMENT_RAW = {
+    whyNow: "Brooke replied warmly to Tai's note after the Mastermind; a reply is owed while the thread is warm.",
+    latestHumanSignal:
+      "She offered to be a resource — meeting someone once and already thinking about how she might be useful to them.",
+    whatThisSaysAboutThem:
+      "A generous, help-first orientation; consistent with her daily work guiding business owners.",
+    whatDeservesAcknowledgment:
+      "The offer to be a resource itself, and the generosity underneath it.",
+    threadToBuildOn:
+      "Her instinct to be useful, and the work with business owners it likely comes from.",
+    intendedEffect: "That she feels specifically seen, and glad the Mastermind put them in the same room.",
+    responseObligation: "Her thanks and her kind words about the Mastermind deserve acknowledgment.",
+    askDecision: {
+      shouldAsk: false,
+      whyNatural:
+        "She gave warmth and an open door; nothing in her note suggests talking soon, so a call would feel like a funnel move, not a reply.",
+      what: "",
+    },
+    factsAllowed: [
+      "She thanked Tai for his kind words (latest inbound).",
+      "She said it was lovely to meet him and enjoyed his perspective in the Mastermind (latest inbound).",
+      "She offered to be a resource (latest inbound).",
+    ],
+    factsAvoid: ["Do not claim a shared history beyond the Mastermind meeting."],
+    voiceEvidenceUsed: ["Make them feel specifically seen", "No forced call to action"],
+    learnedExamplesUsed: [],
+  };
+
+  it("parses a generosity-first, no-ask judgment whole", () => {
+    const judgment = parseCommunicationJudgment(BROOKE_JUDGMENT_RAW);
+    expect(judgment).not.toBeNull();
+    expect(judgment?.latestHumanSignal).toContain("resource");
+    expect(judgment?.whatDeservesAcknowledgment).toContain("generosity");
+    expect(judgment?.threadToBuildOn).toContain("business owners");
+    expect(judgment?.askDecision.shouldAsk).toBe(false);
+    expect(judgment?.askDecision.whyNatural).toContain("nothing in her note");
+  });
+
+  it("summarizes the Brooke judgment as noticed, understood, build-on, no ask", () => {
+    const judgment = parseCommunicationJudgment(BROOKE_JUDGMENT_RAW);
+    const lines = judgmentSummaryLines(judgment!);
+    expect(lines.some((line) => line.startsWith("What I noticed:"))).toBe(true);
+    expect(lines.some((line) => line.startsWith("What it says about them:"))).toBe(true);
+    expect(lines.some((line) => line.startsWith("What to build on:"))).toBe(true);
+    expect(lines.at(-1)).toMatch(/^No ask: /);
+  });
+
+  it("the good class of Brooke reply passes the ask gate untouched", () => {
+    const body =
+      "Brooke,\n\nI appreciated your note. What stayed with me was your offer to be a resource.\n\n" +
+      "There's something generous about meeting someone once and already thinking about how you might be useful to them. " +
+      "Given the work you do with business owners every day, I imagine that instinct comes pretty naturally to you.\n\n" +
+      "I'm glad the Mastermind put us in the same room. I have a feeling our paths will cross again.\n\nTrust,\nTai";
+    expect(unearnedAskInBody(body)).toBeNull();
+  });
+});
+
+describe("unearnedAskInBody", () => {
+  it("catches a snuck-in call, coffee, or meeting ask", () => {
+    expect(unearnedAskInBody("Would you be open to a quick call next week?")).toBeTruthy();
+    expect(unearnedAskInBody("I would love to grab coffee sometime.")).toBeTruthy();
+    expect(unearnedAskInBody("Let me know if you want to hop on a call.")).toBeTruthy();
+    expect(unearnedAskInBody("Do you have 15 minutes to talk?")).toBeTruthy();
+    expect(unearnedAskInBody("Happy to set up a short meeting.")).toBeTruthy();
+    expect(unearnedAskInBody("We could find time to connect in September.")).toBeTruthy();
+    expect(unearnedAskInBody("Would a 15-20 minute call help?")).toBeTruthy();
+  });
+
+  it("does not flag acknowledgment, reflection, or an already-agreed plan", () => {
+    expect(
+      unearnedAskInBody(
+        "I appreciated your note. What stayed with me was your offer to be a resource.\n\nTrust,\nTai",
+      ),
+    ).toBeNull();
+    expect(unearnedAskInBody("See you Tuesday at ten, then.")).toBeNull();
+    expect(
+      unearnedAskInBody("I have a feeling our paths will cross again.\n\nTrust,\nTai"),
+    ).toBeNull();
+    expect(unearnedAskInBody("")).toBeNull();
   });
 });
 

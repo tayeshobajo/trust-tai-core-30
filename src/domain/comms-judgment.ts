@@ -10,10 +10,19 @@
  * draft carries its provenance: why it exists, what it was allowed to say,
  * what it was told never to claim, and which voice shaped it.
  *
+ * Conversation before conversion. The judgment reads the room before it
+ * considers any next step: notice the human signal in the latest message,
+ * understand what it says about the person, reflect it back so they feel
+ * recognized rather than targeted, build on the most interesting thing they
+ * offered — and only then decide whether an ask is earned. The operational
+ * law: don't look for the fastest way to the next step; look for the most
+ * human thing worth responding to. A relationship can be moving even when
+ * there is no ask.
+ *
  * A judgment is a concise product-level rationale, never hidden
- * chain-of-thought. A person can read it in four lines — why now, what I
- * noticed, intended effect, next move — and decide whether the draft
- * deserves to exist.
+ * chain-of-thought. A person can read it in a few lines — why now, what I
+ * noticed, what it says about them, what to build on, and the ask decision —
+ * and decide whether the draft deserves to exist.
  *
  * Pure and I/O-free: the server assembles and writes it, the composer reads
  * and renders it, and tests pin the rules.
@@ -21,17 +30,42 @@
 
 /* ---------------------------------------------------------- the judgment */
 
+/**
+ * Whether an ask belongs in this message at all, and why. An ask is earned
+ * by the conversation or it does not exist: "whyNatural" must name the gate
+ * condition the ask satisfies (they suggested talking, a real question needs
+ * discussion, reciprocal exploration or curiosity, it makes their life
+ * easier, the conversation arrived there). "Maintain momentum" and "stay
+ * connected" fail the gate. When shouldAsk is false, whyNatural says why no
+ * ask belongs — and the writing pass must not sneak one in.
+ */
+export interface AskDecision {
+  shouldAsk: boolean;
+  /** Why the ask feels natural to them right now — or why no ask belongs. */
+  whyNatural: string;
+  /** The proportionate ask. Empty when no ask belongs in this message. */
+  what: string;
+}
+
 export interface CommunicationJudgment {
   /** Why Tai is writing now, in one plain sentence grounded in evidence. */
   whyNow: string;
-  /** What the person is likely carrying or caring about, from evidence only. */
-  whatNoticed: string;
+  /** The human signal in their latest message: generosity, pride, curiosity,
+      care, excitement, vulnerability — what they just revealed. */
+  latestHumanSignal: string;
+  /** The quality or meaning underneath the signal — what it says about them. */
+  whatThisSaysAboutThem: string;
+  /** The specific thing to reflect back so they feel recognized, not praised. */
+  whatDeservesAcknowledgment: string;
+  /** The most interesting thread they just offered to continue. May be empty
+      when the right move is simply to close warmly. */
+  threadToBuildOn: string;
   /** What Tai wants them to feel when they finish reading. */
   intendedEffect: string;
-  /** What in their latest message actually deserves acknowledgement or answer. */
+  /** Any question or point in their latest message that plainly requires an answer. */
   responseObligation: string;
-  /** Whether there should be an ask at all; if yes, what is proportionate. */
-  nextMove: { ask: boolean; what: string };
+  /** The ask gate, decided last — after the conversation has been read. */
+  askDecision: AskDecision;
   /** Evidence the draft may reference as fact. */
   factsAllowed: string[];
   /** Inferred or unsupported claims the draft must not state. */
@@ -53,38 +87,60 @@ function text(raw: unknown): string {
   return String(raw ?? "").trim();
 }
 
+/** Read the ask decision from the current shape or the legacy nextMove. */
+function parseAskDecision(value: Record<string, unknown>): AskDecision {
+  const noAsk: AskDecision = { shouldAsk: false, whyNatural: "", what: "" };
+  const askRaw = value["askDecision"];
+  if (askRaw && typeof askRaw === "object") {
+    const ask = askRaw as Record<string, unknown>;
+    const what = text(ask["what"]);
+    return {
+      shouldAsk: ask["shouldAsk"] === true && Boolean(what),
+      whyNatural: text(ask["whyNatural"]),
+      what,
+    };
+  }
+  const moveRaw = value["nextMove"];
+  if (moveRaw && typeof moveRaw === "object") {
+    const move = moveRaw as Record<string, unknown>;
+    const what = text(move["what"]);
+    return { ...noAsk, shouldAsk: move["ask"] === true && Boolean(what), what };
+  }
+  if (typeof moveRaw === "string" && moveRaw.trim()) {
+    return { ...noAsk, shouldAsk: true, what: moveRaw.trim() };
+  }
+  return noAsk;
+}
+
 /**
  * Read a model-produced (or stored) judgment into the contract. Anything
  * that cannot be read whole returns null — a partial judgment is not a
  * judgment, and the caller fails honestly rather than drafting blind.
  *
- * Judgments persisted before the spirit-first rename still read: the legacy
- * keys (communicationJob, relationshipRead, toneAndPosture) fill whyNow,
- * whatNoticed, and intendedEffect when the new keys are absent.
+ * Judgments persisted before the conversation-first rename still read: the
+ * legacy keys (whatNoticed/relationshipRead, nextMove, communicationJob,
+ * toneAndPosture) fill latestHumanSignal, askDecision, whyNow, and
+ * intendedEffect when the new keys are absent.
  */
 export function parseCommunicationJudgment(raw: unknown): CommunicationJudgment | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
   const whyNow = text(value["whyNow"]) || text(value["communicationJob"]);
-  const whatNoticed = text(value["whatNoticed"]) || text(value["relationshipRead"]);
-  if (!whyNow || !whatNoticed) return null;
-
-  const moveRaw = value["nextMove"];
-  let nextMove: CommunicationJudgment["nextMove"] = { ask: false, what: "" };
-  if (moveRaw && typeof moveRaw === "object") {
-    const move = moveRaw as Record<string, unknown>;
-    const what = text(move["what"]);
-    nextMove = { ask: move["ask"] === true && Boolean(what), what };
-  } else if (typeof moveRaw === "string" && moveRaw.trim()) {
-    nextMove = { ask: true, what: moveRaw.trim() };
-  }
+  const latestHumanSignal =
+    text(value["latestHumanSignal"]) ||
+    text(value["whatNoticed"]) ||
+    text(value["relationshipRead"]);
+  if (!whyNow || !latestHumanSignal) return null;
 
   return {
     whyNow,
-    whatNoticed,
+    latestHumanSignal,
+    whatThisSaysAboutThem: text(value["whatThisSaysAboutThem"]),
+    whatDeservesAcknowledgment: text(value["whatDeservesAcknowledgment"]),
+    threadToBuildOn: text(value["threadToBuildOn"]),
     intendedEffect: text(value["intendedEffect"]) || text(value["toneAndPosture"]),
     responseObligation: text(value["responseObligation"]),
-    nextMove,
+    askDecision: parseAskDecision(value),
     factsAllowed: stringList(value["factsAllowed"]),
     factsAvoid: stringList(value["factsAvoid"]),
     voiceEvidenceUsed: stringList(value["voiceEvidenceUsed"]),
@@ -108,20 +164,69 @@ export function readCommunicationJudgment(
 }
 
 /**
- * The compact "Why this draft" read: four short lines a person can scan in
- * the composer — why now, what I noticed, intended effect, and the next move
- * (or an honest "No ask needed").
+ * The compact "Why this draft" read: a few short lines a person can scan in
+ * the composer — why now, what I noticed, what it says about them, what to
+ * build on, and the ask decision (or an honest "No ask" with its reason).
  */
 export function judgmentSummaryLines(judgment: CommunicationJudgment): string[] {
   const lines = [
     judgment.whyNow ? `Why now: ${judgment.whyNow}` : "",
-    judgment.whatNoticed ? `What I noticed: ${judgment.whatNoticed}` : "",
-    judgment.intendedEffect ? `Intended effect: ${judgment.intendedEffect}` : "",
+    judgment.latestHumanSignal ? `What I noticed: ${judgment.latestHumanSignal}` : "",
+    judgment.whatThisSaysAboutThem
+      ? `What it says about them: ${judgment.whatThisSaysAboutThem}`
+      : "",
+    judgment.threadToBuildOn ? `What to build on: ${judgment.threadToBuildOn}` : "",
   ].filter(Boolean);
-  lines.push(
-    judgment.nextMove.ask ? `Next move: ${judgment.nextMove.what}` : "No ask needed.",
-  );
-  return lines.slice(0, 4);
+  if (judgment.askDecision.shouldAsk) {
+    lines.push(
+      judgment.askDecision.whyNatural
+        ? `Ask: ${judgment.askDecision.what} (${judgment.askDecision.whyNatural})`
+        : `Ask: ${judgment.askDecision.what}`,
+    );
+  } else {
+    lines.push(
+      judgment.askDecision.whyNatural
+        ? `No ask: ${judgment.askDecision.whyNatural}`
+        : "No ask needed.",
+    );
+  }
+  return lines.slice(0, 5);
+}
+
+/* ------------------------------------------------------------ the ask gate */
+
+/**
+ * Phrases that constitute an ask for time — a call, a coffee, a meeting,
+ * "finding time". Used to enforce the judgment's ask decision on the written
+ * draft: when shouldAsk is false, none of these may appear. A mention of an
+ * already-agreed plan ("see you Tuesday") is acknowledgment, not an ask, and
+ * these patterns are shaped to miss it.
+ */
+const UNEARNED_ASK_PATTERNS: RegExp[] = [
+  /\bwould you be open to\b/i,
+  /\bopen to (a |an )?(quick |short )?(call|chat|coffee|meeting|catch[ -]?up)\b/i,
+  /\bhop(ping)? on (a )?(quick |short )?(call|zoom|meet)\b/i,
+  /\bgrab (a )?(coffee|call|lunch|drink)\b/i,
+  /\b(schedule|set up|book|plan) (a |an )?(quick |short )?(call|meeting|chat|coffee|catch[ -]?up)\b/i,
+  /\bfind (some )?time (to talk|to chat|to connect|to catch up|for a call|for us)\b/i,
+  /\bquick (call|chat|coffee)\b/i,
+  /\b(15|20|30|45)[ -]?(minute|min)s?\b[^.!?]*\b(call|chat|talk|coffee|meeting)\b/i,
+  /\b(call|chat|talk|coffee|meeting)\b[^.!?]*\b(15|20|30|45)[ -]?(minute|min)s?\b/i,
+  /\bdo you have (a few|15|15-20|twenty|thirty)( minutes| mins?)?\b/i,
+  /\bare you free (for|to) (a )?(call|chat|coffee|meeting)\b/i,
+  /\blove to (schedule|set up|book|grab|find time)\b/i,
+];
+
+/**
+ * The excerpt of a snuck-in ask, or null when the body honors a no-ask
+ * judgment. Deterministic: the model proposes, this decides.
+ */
+export function unearnedAskInBody(body: string): string | null {
+  for (const pattern of UNEARNED_ASK_PATTERNS) {
+    const match = body.match(pattern);
+    if (match) return match[0];
+  }
+  return null;
 }
 
 /* ---------------------------------------------------- grounding sufficiency */

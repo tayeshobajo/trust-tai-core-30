@@ -54,6 +54,7 @@ import {
   salutationName,
   summarizeDraftGrounding,
   threadContextForJudgment,
+  unearnedAskInBody,
   type CommunicationJudgment,
   type DraftGroundingSummary,
 } from "@/domain/comms-judgment";
@@ -96,7 +97,9 @@ export type DraftFailureCode =
   /** Pass two answered, but not with a readable draft. */
   | "writing_unreadable"
   /** Pass two parsed, but subject or body was empty. */
-  | "empty_draft";
+  | "empty_draft"
+  /** The judgment decided no ask; the writing pass snuck one in, twice. */
+  | "ask_gate_violated";
 
 export class DraftFailure extends Error {
   constructor(
@@ -307,19 +310,50 @@ async function loadVoiceExamples(
 }
 
 const JUDGMENT_INSTRUCTIONS = `You are the communication judgment of Trust Tai. You do NOT write the message.
-You reason over the evidence and return the judgment a draft will be written from.
+You read the conversation the way a perceptive person would, then return the
+judgment a draft will be written from.
 
-Spirit first: see the person before the transaction. Judge why Tai is writing now, what
-this person is likely carrying or caring about (from the evidence only), what Tai wants
-them to feel, and whether any next step is actually needed.
+Spirit first, the operational law: do not look for the fastest way to the next
+step. Look for the most human thing worth responding to.
+
+Reason in this order — Notice, Understand, Reflect, Build, then Decide:
+1. NOTICE the human signal in their latest message: generosity, pride, curiosity,
+   relief, excitement, care, vulnerability, ambition, humor, frustration.
+2. UNDERSTAND what that signal says about them as a person.
+3. REFLECT: name the specific thing that deserves acknowledgment, in a way that
+   would feel earned rather than flattering.
+4. BUILD: identify the most interesting thread they just offered to continue.
+5. DECIDE whether any ask belongs at all. Only now, never earlier.
+
+The ask gate. An ask is allowed ONLY when one of these is true, and whyNatural
+must say which one:
+- they explicitly suggested talking or meeting,
+- something genuinely requires live discussion,
+- there is active reciprocal exploration underway,
+- there is clear reciprocal curiosity,
+- a meeting would make their life easier right now,
+- the conversation has naturally arrived at that point.
+"Maintaining momentum", "building the relationship", and "staying connected"
+are NOT reasons — an ask whose only grounds is one of those fails the gate.
+When no condition holds, shouldAsk is false. A warm acknowledgment, a specific
+observation, a natural question, or no ask at all is often the best move. A
+relationship can be moving even when there is no ask. Never treat "would you
+be open to a call" as a default.
 
 Return strict JSON only:
 {
   "whyNow": "one plain sentence: why Tai is writing now, grounded in the evidence",
-  "whatNoticed": "what this person is likely carrying or caring about, based only on the evidence",
+  "latestHumanSignal": "the human signal in their latest message — what they just revealed, quoted or closely paraphrased",
+  "whatThisSaysAboutThem": "the quality or meaning underneath that signal",
+  "whatDeservesAcknowledgment": "the specific thing to reflect back so they feel recognized, not praised",
+  "threadToBuildOn": "the most interesting thing they just said that the reply can build on; empty when the right move is simply to close warmly",
   "intendedEffect": "what Tai wants them to feel when they finish reading",
-  "responseObligation": "what in their latest message deserves acknowledgement or answer; empty when there is no live thread",
-  "nextMove": { "ask": true|false, "what": "the proportionate ask, or empty when no ask belongs in this message" },
+  "responseObligation": "any question or point in their latest message that plainly requires an answer; empty when none",
+  "askDecision": {
+    "shouldAsk": true|false,
+    "whyNatural": "when true: why this ask would feel natural to them right now, naming the gate condition. When false: why no ask belongs",
+    "what": "the proportionate ask, small and easy to decline; empty when shouldAsk is false"
+  },
   "factsAllowed": ["evidence lines the draft may reference as fact"],
   "factsAvoid": ["claims the draft must not state — inferred, unsupported, or invented"],
   "voiceEvidenceUsed": ["the canonical relationship-voice rules that govern this draft"],
@@ -327,15 +361,23 @@ Return strict JSON only:
 }
 
 Laws:
-1. Use only the evidence provided. Never invent a fact, a name, a date, a shared history,
-   or a personal detail. When the evidence is thin, judge less — never fill gaps with guesses.
-2. Inferred reads may shape your judgment but must land in factsAvoid, never factsAllowed.
-3. Not every message needs an ask. A thoughtful acknowledgement, an answer, or a plain
-   continuation with no ask is often the right move. When an ask belongs, it is small
-   and easy to decline — spaciousness, never pressure.
-4. Ordinary email is not brand content. Roadmap language, proprietary frameworks, and
-   positioning enter only when the conversation itself calls for them.
-5. This is a product-level rationale a person will read. Concise, plain, no chain-of-thought.`;
+1. Conversation before conversion. Do not advance the relationship because
+   advancement is possible. Respond first to what the person just gave us.
+2. Make the person feel interesting, not merely praised. Generic compliments
+   fail; recognition is specific — something they revealed almost casually,
+   caught. They should feel recognized, never targeted.
+3. Use only the evidence provided. Never invent a fact, a name, a date, a
+   shared history, or a personal detail. Thin evidence means a smaller
+   judgment, never a guessed one.
+4. Inferred reads may shape your judgment but must land in factsAvoid, never
+   factsAllowed.
+5. No forced momentum. When an ask does belong, it is small and easy to
+   decline — spaciousness, never pressure.
+6. Ordinary email is not brand content. Roadmap language, proprietary
+   frameworks, and positioning enter only when the conversation itself calls
+   for them.
+7. This is a product-level rationale a person will read. Concise, plain, no
+   chain-of-thought.`;
 
 const WRITE_INSTRUCTIONS = `You write one short email for Tai at Trust Tai, FROM the communication judgment
 below. You never send anything.
@@ -343,23 +385,29 @@ below. You never send anything.
 The canonical Tai relationship voice is the baseline for every message:
 - Warm, calm, concise, human, specific. Quiet confidence, no performance.
 - Natural contractions. Short paragraphs. Everyday words.
-- See the person first: one specific, true detail from the evidence beats any compliment.
+- See the person first: reflect the human signal the judgment named, with
+  specific recognition rather than generic praise. Sometimes the most
+  spirit-first response is the shortest truthful one.
 - Create spaciousness, never pressure. No manufactured urgency.
 - No corporate language and no generic networking language.
 - No fake familiarity and no invented personalization: if it is not in the evidence, it does not exist.
-- No forced call to action. A natural question is welcome; make the ask only when the judgment names one.
+- No forced call to action. A natural question is welcome; make an ask only when the judgment names one.
 
 Laws:
 1. The judgment governs. Reference only facts in factsAllowed. Never state anything in factsAvoid.
-2. If nextMove.ask is false, make no ask. A message can simply acknowledge, answer, or continue.
-3. Hard rules: no em dashes, no exclamation marks, no 'just checking in' or 'touching base',
+2. If askDecision.shouldAsk is false, make no ask — no call, coffee, meeting,
+   "finding time", or scheduling nudge of any kind, however soft. The message
+   acknowledges, answers, reflects, or continues; that is enough.
+3. Build on threadToBuildOn when it names one. When it is empty, a clean,
+   warm close is the right shape.
+4. Hard rules: no em dashes, no exclamation marks, no 'just checking in' or 'touching base',
    no needy phrasing, no promises.
-4. Approved examples influence rhythm and texture only — they never override this baseline.
-5. Brand or website language enters only when the conversation calls for it.
-6. Short. Most messages earn 4 to 8 sentences before the signoff.
-7. Use the given salutation name only if a salutation is natural here; otherwise start plainly.
+5. Approved examples influence rhythm and texture only — they never override this baseline.
+6. Brand or website language enters only when the conversation calls for it.
+7. Short. Most messages earn 4 to 8 sentences before the signoff.
+8. Use the given salutation name only if a salutation is natural here; otherwise start plainly.
    Never guess a name.
-8. Return JSON only: {"subject": string, "body": string}. The body must end with 'Trust,',
+9. Return JSON only: {"subject": string, "body": string}. The body must end with 'Trust,',
    then a new line, then 'Tai'.`;
 
 /**
@@ -378,17 +426,21 @@ const JUDGMENT_RESPONSE_FORMAT: Record<string, unknown> = {
     additionalProperties: false,
     properties: {
       whyNow: { type: "string" },
-      whatNoticed: { type: "string" },
+      latestHumanSignal: { type: "string" },
+      whatThisSaysAboutThem: { type: "string" },
+      whatDeservesAcknowledgment: { type: "string" },
+      threadToBuildOn: { type: "string" },
       intendedEffect: { type: "string" },
       responseObligation: { type: "string" },
-      nextMove: {
+      askDecision: {
         type: "object",
         additionalProperties: false,
         properties: {
-          ask: { type: "boolean" },
+          shouldAsk: { type: "boolean" },
+          whyNatural: { type: "string" },
           what: { type: "string" },
         },
-        required: ["ask", "what"],
+        required: ["shouldAsk", "whyNatural", "what"],
       },
       factsAllowed: { type: "array", items: { type: "string" } },
       factsAvoid: { type: "array", items: { type: "string" } },
@@ -397,10 +449,13 @@ const JUDGMENT_RESPONSE_FORMAT: Record<string, unknown> = {
     },
     required: [
       "whyNow",
-      "whatNoticed",
+      "latestHumanSignal",
+      "whatThisSaysAboutThem",
+      "whatDeservesAcknowledgment",
+      "threadToBuildOn",
       "intendedEffect",
       "responseObligation",
-      "nextMove",
+      "askDecision",
       "factsAllowed",
       "factsAvoid",
       "voiceEvidenceUsed",
@@ -629,32 +684,77 @@ export async function executeDraftPasses(
 
   // Pass two — write. The prose is generated FROM the judgment, never
   // alongside it.
-  let written: { raw: string; provider: string; model: string };
-  try {
-    written = await callModel({
-      instructions: WRITE_INSTRUCTIONS,
-      input: JSON.stringify({
-        judgment,
-        salutationName: input.salutation,
-        evidence: input.evidencePacket,
-      }),
-      webSearch: false,
-      responseFormat: WRITE_RESPONSE_FORMAT,
-    });
-  } catch (error) {
-    throw toDraftFailure(error, "the writing pass");
-  }
+  const writeInput = JSON.stringify({
+    judgment,
+    salutationName: input.salutation,
+    evidence: input.evidencePacket,
+  });
 
-  const parsed = safeJson(written.raw);
-  if (!parsed) {
-    console.error("[comms-draft] writing_unreadable: pass two returned no readable draft");
-    throw new DraftFailure("writing_unreadable");
-  }
-  const body = String(parsed["body"] ?? "").trim();
-  const subject = String(parsed["subject"] ?? "").trim();
-  if (!body || !subject) {
-    console.error("[comms-draft] empty_draft: pass two returned an empty subject or body");
-    throw new DraftFailure("empty_draft");
+  const write = async (instructions: string) => {
+    try {
+      return await callModel({
+        instructions,
+        input: writeInput,
+        webSearch: false,
+        responseFormat: WRITE_RESPONSE_FORMAT,
+      });
+    } catch (error) {
+      throw toDraftFailure(error, "the writing pass");
+    }
+  };
+
+  const readWritten = (
+    written: { raw: string },
+  ): { subject: string; body: string } => {
+    const parsed = safeJson(written.raw);
+    if (!parsed) {
+      console.error("[comms-draft] writing_unreadable: pass two returned no readable draft");
+      throw new DraftFailure("writing_unreadable");
+    }
+    const subject = String(parsed["subject"] ?? "").trim();
+    const body = String(parsed["body"] ?? "").trim();
+    if (!body || !subject) {
+      console.error("[comms-draft] empty_draft: pass two returned an empty subject or body");
+      throw new DraftFailure("empty_draft");
+    }
+    return { subject, body };
+  };
+
+  const first = await write(WRITE_INSTRUCTIONS);
+  let { subject, body } = readWritten(first);
+  const provider = first.provider;
+  const model = first.model;
+
+  /* Ask-gate enforcement, deterministic. The judgment decided whether the
+     conversation earned an ask; the model is never trusted to police itself.
+     When it snuck one in anyway, correct it once in plain language — and if
+     it still cannot honor the judgment, fail honestly rather than return a
+     draft that reads the room worse than the judgment did. */
+  if (!judgment.askDecision.shouldAsk) {
+    const snuck = unearnedAskInBody(body);
+    if (snuck) {
+      console.error(
+        `[comms-draft] ask gate: writing pass snuck an ask ("${snuck}") against a no-ask judgment; rewriting once`,
+      );
+      const retry = await write(
+        `${WRITE_INSTRUCTIONS}
+
+Correction: the judgment decided NO ask belongs in this message, but the previous
+attempt asked for time ("${snuck}"). Write again with no ask of any kind — no call,
+coffee, meeting, or finding time, however softly phrased. Acknowledge, reflect, build
+on the thread, and close.`,
+      );
+      const rewritten = readWritten(retry);
+      const stillSnuck = unearnedAskInBody(rewritten.body);
+      if (stillSnuck) {
+        console.error(
+          `[comms-draft] ask_gate_violated: retry still asked ("${stillSnuck}") against a no-ask judgment`,
+        );
+        throw new DraftFailure("ask_gate_violated");
+      }
+      subject = rewritten.subject;
+      body = rewritten.body;
+    }
   }
 
   const verdict = checkVoice(body, { register: input.register, requireSignoff: true });
@@ -668,8 +768,8 @@ export async function executeDraftPasses(
     usedEvidence: input.usedEvidence,
     judgment,
     grounding: input.groundingSummary,
-    provider: written.provider,
-    model: written.model,
+    provider,
+    model,
   };
 }
 
