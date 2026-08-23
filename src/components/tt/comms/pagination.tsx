@@ -18,15 +18,18 @@ const control =
 export function CommsPagination({
   view,
   onPage,
+  label = "Relationship list pagination",
 }: {
   view: PageView<unknown>;
   onPage: (page: number) => void;
+  /** Accessible name for the nav — name the list being paged. */
+  label?: string;
 }) {
   if (view.pageCount <= 1) return null;
 
   return (
     <nav
-      aria-label="Relationship list pagination"
+      aria-label={label}
       className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2"
     >
       <p className="text-[12px] text-muted-foreground" aria-live="polite">
