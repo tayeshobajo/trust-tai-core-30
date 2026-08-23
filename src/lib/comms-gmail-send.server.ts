@@ -336,7 +336,7 @@ export async function sendDraftViaGmail(input: {
   const decision = decideSendClaim({
     reviewState: draft.review_state,
     rationale: draft.rationale,
-    updatedAt: draft.updated_at ?? undefined,
+    ...(draft.updated_at ? { updatedAt: draft.updated_at } : {}),
   });
   if (decision.kind === "replay") {
     return {

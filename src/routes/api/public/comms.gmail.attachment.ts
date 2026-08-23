@@ -58,7 +58,7 @@ export const Route = createFileRoute("/api/public/comms/gmail/attachment")({
             messageId,
             attachmentId,
           });
-          return new Response(file.bytes, {
+          return new Response(new Blob([file.bytes as BlobPart]), {
             headers: {
               "Content-Type": file.mimeType,
               "Content-Disposition": contentDisposition(file.filename),
