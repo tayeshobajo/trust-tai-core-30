@@ -384,12 +384,28 @@ already carry the classification (`relationshipSegment` in
   boundary.
 - **Sidebar glance** reads the same view state: Needs you, Needs attention,
   At risk, Quiet — the Needs-you row switches view rather than filtering.
+- **Pagination (2026-08-22):** 25 relationships per page, sliced only after
+  the full view is derived — tab counts, health counts, and search always
+  describe the whole view, never the page. View changes return to page one;
+  selection falls back to the page's first row. Priority rows (attention
+  first, then longest waiting) lead every page — Nurture is ordered by
+  intelligence, never alphabet. Shared primitives live in
+  `src/data/pagination.ts` (Scout's table re-exports them unchanged).
+- **Color language (2026-08-22):** classification and condition never share
+  a hue — Clients royal blue, Nurture soft plum (`--plum`), archived muted;
+  health stays green/amber/red/quiet gray. Row hierarchy answers who, what
+  kind, and whether anything is needed, in that order.
+- **Scale boundary:** health reads the most recent 5,000 touches, paged in
+  batches of 1,000 (PostgREST silently truncates a single `.limit()` call at
+  1,000 — fixed). Beyond the bound, health falls back to the denormalized
+  `last_touch_at` on the relationship row rather than inventing activity.
 
-Tests: `src/domain/comms-segment.test.ts` (5) and
-`src/data/comms-inbox.test.ts` (7) cover segment classification, view
-membership, cross-cutting Needs-you, ledger completeness, and graduation on
-the same record; `comms-health`, `comms-derive-health`, and
-`comms-sidebar` suites updated to the new view model (56 passed across the
+Tests: `src/domain/comms-segment.test.ts` (13) and
+`src/data/comms-inbox.test.ts` (13) cover evidence-based classification,
+view membership, cross-cutting Needs-you, ledger completeness, graduation
+and reverse-move rules, pagination bounds, full-view counts under paging,
+search-before-pagination, and priority ordering; `comms-health`,
+`comms-derive-health`, and `scout-table` suites green (64 passed across the
 affected files). Gmail behavior untouched: label gate first, identity
 match, read-only, no mutation, no send, bounded dedupe preserved.
 **Production verification pending:** open the live workspace and confirm
