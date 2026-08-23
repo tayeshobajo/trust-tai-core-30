@@ -30,6 +30,17 @@ export const TAB_LABEL: Record<InboxTab, string> = {
 
 export const TABS: InboxTab[] = ["clients", "nurture", "needs_you", "all"];
 
+/**
+ * One quiet line under the tabs saying what the current view is for.
+ * Calm and descriptive — never a metric, never a judgement.
+ */
+export const VIEW_SUMMARY: Record<InboxTab, string> = {
+  clients: "Established clients and meaningful existing relationships.",
+  nurture: "People you have deliberately chosen to develop, ordered by what needs attention.",
+  needs_you: "Anyone — client or developing — where your judgment is required now.",
+  all: "The complete relationship ledger, everyone exactly once.",
+};
+
 export interface InboxEntry {
   relationship: Relationship;
   health: ConversationHealth;
