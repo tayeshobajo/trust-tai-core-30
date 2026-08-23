@@ -18,8 +18,8 @@ import { useEffect, useMemo, useState } from "react";
 import { FileText, ImageOff } from "lucide-react";
 
 import {
-  emailNeedsCollapse,
   parseEmailHtml,
+  primaryEmailNeedsCollapse,
   splitQuotedContent,
   splitQuotedNodes,
   type EmailNode,
@@ -303,7 +303,9 @@ export function EmailBodyView({
   const [expanded, setExpanded] = useState(false);
   const [showQuoted, setShowQuoted] = useState(false);
 
-  const needsCollapse = useMemo(() => emailNeedsCollapse(text, html), [text, html]);
+  // The law: only the primary, currently visible content decides whether
+  // Show more exists — quoted history and inline images never cause a fold.
+  const needsCollapse = useMemo(() => primaryEmailNeedsCollapse(text, html), [text, html]);
 
   const inlineByCid = useMemo(() => {
     const map = new Map<string, AttachmentMeta>();
