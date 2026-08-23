@@ -279,7 +279,7 @@ describe("executeDraftPasses", () => {
     const result = await executeDraftPasses(spy, { ...BROOKE_WARM_INPUT });
     expect(seen).toHaveLength(3); // judgment, write, corrective rewrite
     expect(seen[2]).toContain("judgment decided NO ask belongs");
-    expect(result.body).not.toMatch(/call|coffee|meeting/i);
+    expect(unearnedAskInBody(result.body)).toBeNull();
     expect(result.body).toContain("offer to be a resource");
   });
 
