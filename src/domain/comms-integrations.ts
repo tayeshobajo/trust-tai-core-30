@@ -217,13 +217,8 @@ export function resolveSendMailbox<T extends SendMailboxRef>(input: {
 }): SendMailboxResolution<T> {
   const live = input.connections.filter((connection) => connection.connected);
 
-  if (input.integrationId) {
-    const found = input.connections.find((connection) => connection.id === input.integrationId);
-    return found
-      ? { kind: "resolved", connection: found, reason: "explicit" }
-      : { kind: "unknown_choice" };
-  }
-
+  // Provenance wins: a reply always goes from the mailbox that owns the
+  // thread, even when a From choice is also present.
   const owner = input.threadMailbox?.trim().toLowerCase();
   if (owner) {
     const found = live.find(
@@ -232,6 +227,13 @@ export function resolveSendMailbox<T extends SendMailboxRef>(input: {
     return found
       ? { kind: "resolved", connection: found, reason: "thread_owner" }
       : { kind: "owner_missing", mailbox: owner };
+  }
+
+  if (input.integrationId) {
+    const found = input.connections.find((connection) => connection.id === input.integrationId);
+    return found
+      ? { kind: "resolved", connection: found, reason: "explicit" }
+      : { kind: "unknown_choice" };
   }
 
   if (live.length === 0) return { kind: "none_connected" };
