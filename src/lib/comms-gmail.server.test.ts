@@ -349,7 +349,7 @@ describe("multi-mailbox connections", () => {
       {
         organizationId: "org",
         accountEmail: "tayeshobajo@gmail.com",
-        scopes: [GMAIL_READ_SCOPES[0], GMAIL_SEND_SCOPE],
+        scopes: [GMAIL_READ_SCOPES[0]!, GMAIL_SEND_SCOPE],
       },
       "user",
     );
@@ -357,7 +357,7 @@ describe("multi-mailbox connections", () => {
       {
         organizationId: "org",
         accountEmail: "tai@trusttai.com",
-        scopes: [GMAIL_READ_SCOPES[0]],
+        scopes: [GMAIL_READ_SCOPES[0]!],
       },
       "user",
     );
@@ -365,8 +365,8 @@ describe("multi-mailbox connections", () => {
     // are two rows, and an upsert matches only its own email.
     expect(first.account_email).toBe("tayeshobajo@gmail.com");
     expect(second.account_email).toBe("tai@trusttai.com");
-    expect(first.scopes).toEqual([GMAIL_READ_SCOPES[0], GMAIL_SEND_SCOPE]);
-    expect(second.scopes).toEqual([GMAIL_READ_SCOPES[0]]);
+    expect(first.scopes).toEqual([GMAIL_READ_SCOPES[0]!, GMAIL_SEND_SCOPE]);
+    expect(second.scopes).toEqual([GMAIL_READ_SCOPES[0]!]);
   });
 
   it("member actions resolve a specific mailbox by id", () => {
@@ -382,14 +382,14 @@ describe("multi-mailbox connections", () => {
     const readOnly = mailboxCapabilityOf({
       id: "a",
       account_email: "tayeshobajo@gmail.com",
-      scopes: [GMAIL_READ_SCOPES[0]],
+      scopes: [GMAIL_READ_SCOPES[0]!],
       status: "connected",
       cursor: null,
     });
     const sender = mailboxCapabilityOf({
       id: "b",
       account_email: "tai@trusttai.com",
-      scopes: [GMAIL_READ_SCOPES[0], GMAIL_SEND_SCOPE],
+      scopes: [GMAIL_READ_SCOPES[0]!, GMAIL_SEND_SCOPE],
       status: "connected",
       cursor: null,
     });
