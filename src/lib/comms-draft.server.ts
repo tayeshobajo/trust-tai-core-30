@@ -557,56 +557,104 @@ export async function draftMessage(
     learnedStyleExamples: voiceExamples,
   };
 
-  /* From here the provider does the work. Any failure — not configured,
-     refused, unreadable, empty — fails closed: the caller gets the calm
-     error and no draft exists. */
-  const status = runtimeProviderStatus();
-  if (!status.configured) throw new Error(DRAFT_PREPARATION_FAILED);
+  /* From here the provider does the work, through the shared runtime
+     boundary. Every post-grounding failure is typed — the person keeps the
+     calm sentence, the operator gets a machine-readable code in the response
+     and the safe detail in the server log. Fail closed in all cases: a
+     fabricated generic draft impersonates intelligence. */
+  if (!runtimeProviderStatus().configured) {
+    console.error("[comms-draft] provider_not_configured: no shared intelligence provider is set");
+    throw new DraftFailure("provider_not_configured");
+  }
 
-  let judgment: CommunicationJudgment;
-  let subject: string;
-  let body: string;
-  let providerName: string;
-  let model: string;
-
+  let callModel: RuntimeModelCaller;
   try {
-    const callModel = await runtimeModelCaller({
+    callModel = await runtimeModelCaller({
       token,
       organizationId,
       room: "comms",
       purpose: "draft",
     });
+  } catch (error) {
+    const access = classifyDraftAccessError(error);
+    if (access) throw access;
+    throw toDraftFailure(error, "the access check");
+  }
 
-    // Pass one — reason. The judgment comes before any prose.
-    const reasoned = await callModel({
+  return executeDraftPasses(callModel, {
+    evidencePacket,
+    salutation: salutation || null,
+    register,
+    usedEvidence,
+    groundingSummary,
+  });
+}
+
+export interface DraftPassInput {
+  /** The governed evidence packet both passes reason over. */
+  evidencePacket: Record<string, unknown>;
+  salutation: string | null;
+  register: VoiceRegister;
+  usedEvidence: { label: string; value: string; tier: string }[];
+  groundingSummary: DraftGroundingSummary;
+}
+
+/**
+ * Judgment first, write second, deterministic voice pass last — over the
+ * caller the runtime boundary issued. Exported so the contract is testable
+ * with a fake provider; production reaches it only through draftMessage,
+ * after the grounding gate.
+ */
+export async function executeDraftPasses(
+  callModel: RuntimeModelCaller,
+  input: DraftPassInput,
+): Promise<DraftResult> {
+  // Pass one — reason. The judgment comes before any prose.
+  let reasoned: { raw: string; provider: string; model: string };
+  try {
+    reasoned = await callModel({
       instructions: JUDGMENT_INSTRUCTIONS,
-      input: JSON.stringify(evidencePacket),
+      input: JSON.stringify(input.evidencePacket),
       webSearch: false,
+      responseFormat: JUDGMENT_RESPONSE_FORMAT,
     });
-    const parsedJudgment = parseCommunicationJudgment(safeJson(reasoned.raw));
-    if (!parsedJudgment) throw new Error("unreadable judgment");
-    judgment = parsedJudgment;
+  } catch (error) {
+    throw toDraftFailure(error, "the judgment pass");
+  }
+  const judgment = parseCommunicationJudgment(safeJson(reasoned.raw));
+  if (!judgment) {
+    console.error("[comms-draft] judgment_unreadable: pass one returned no readable judgment");
+    throw new DraftFailure("judgment_unreadable");
+  }
 
-    // Pass two — write. The prose is generated FROM the judgment, never
-    // alongside it.
-    const written = await callModel({
+  // Pass two — write. The prose is generated FROM the judgment, never
+  // alongside it.
+  let written: { raw: string; provider: string; model: string };
+  try {
+    written = await callModel({
       instructions: WRITE_INSTRUCTIONS,
       input: JSON.stringify({
         judgment,
-        salutationName: salutation || null,
-        evidence: evidencePacket,
+        salutationName: input.salutation,
+        evidence: input.evidencePacket,
       }),
       webSearch: false,
+      responseFormat: WRITE_RESPONSE_FORMAT,
     });
-    providerName = written.provider;
-    model = written.model;
+  } catch (error) {
+    throw toDraftFailure(error, "the writing pass");
+  }
 
-    const parsed = safeJson(written.raw);
-    body = String(parsed?.["body"] ?? "").trim();
-    subject = String(parsed?.["subject"] ?? "").trim();
-    if (!body || !subject) throw new Error("empty draft");
-  } catch {
-    throw new Error(DRAFT_PREPARATION_FAILED);
+  const parsed = safeJson(written.raw);
+  if (!parsed) {
+    console.error("[comms-draft] writing_unreadable: pass two returned no readable draft");
+    throw new DraftFailure("writing_unreadable");
+  }
+  const body = String(parsed["body"] ?? "").trim();
+  const subject = String(parsed["subject"] ?? "").trim();
+  if (!body || !subject) {
+    console.error("[comms-draft] empty_draft: pass two returned an empty subject or body");
+    throw new DraftFailure("empty_draft");
   }
 
   const verdict = checkVoice(body, { register, requireSignoff: true });
