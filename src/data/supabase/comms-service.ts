@@ -29,6 +29,7 @@ import {
 } from "@/domain/comms-touch-record";
 import {
   writeOutgoingAttachments,
+  writeOutgoingExtras,
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
 import type { EvidenceRef } from "@/domain/confidence";
@@ -653,6 +654,30 @@ export const commsService = {
       .single();
     assertOk(error);
     if (!data) throw new Error("Those files could not be saved.");
+    return toDraft(data as unknown as DraftRow);
+  },
+
+  /**
+   * Stage CC/BCC on a draft. Same contract as the staged files: the draft's
+   * rationale carries them so what the person approved is on record.
+   */
+  async setDraftExtras(
+    draft: CommsDraft,
+    extras: { cc: string[]; bcc: string[] },
+    context: CommsContext,
+  ): Promise<CommsDraft> {
+    const { data, error } = await supabase
+      .from("comms_drafts")
+      .update({
+        rationale: writeOutgoingExtras(draft.rationale, extras),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", draft.id)
+      .eq("organization_id", context.organizationId)
+      .select(DRAFT_COLUMNS)
+      .single();
+    assertOk(error);
+    if (!data) throw new Error("Those recipients could not be saved.");
     return toDraft(data as unknown as DraftRow);
   },
 
