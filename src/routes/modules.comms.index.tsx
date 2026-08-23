@@ -515,6 +515,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           settleCommitment.mutate({ commitment, status })
         }
         onGraduate={() => update.mutate({ stage: "client" })}
+        onMoveToNurture={() => update.mutate({ stage: "nurture" })}
       />
     ) : null;
 
@@ -626,12 +627,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         <aside className="tt-surface max-h-[78vh] overflow-hidden p-0 lg:sticky lg:top-20">
           <CommsInbox
             view={view}
+            page={pageView}
+            onPage={changePage}
             tab={tab}
-            onTab={setTab}
+            onTab={(next) => changeView({ tab: next })}
             query={query}
-            onQuery={setQuery}
+            onQuery={(value) => changeView({ query: value })}
             health={healthFilter}
-            onHealth={setHealthFilter}
+            onHealth={(status) => changeView({ health: status })}
             selectedId={selected?.id ?? null}
             onSelect={(id) => {
               setSelectedId(id);
