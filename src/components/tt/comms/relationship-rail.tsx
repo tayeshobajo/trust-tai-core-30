@@ -68,9 +68,11 @@ function dateLabel(value?: string): string | null {
 function WhyItMatters({
   relationship,
   onGraduate,
+  onMoveToNurture,
 }: {
   relationship: Relationship;
   onGraduate?: () => void;
+  onMoveToNurture?: () => void;
 }) {
   const intent = effectiveIntent(relationship);
   const decided = relationship.decided.find((item) => !isCommitment(item));
@@ -85,6 +87,10 @@ function WhyItMatters({
           <TTButton variant="quiet" size="sm" type="button" onClick={onGraduate}>
             Mark as client
           </TTButton>
+        ) : onMoveToNurture && canMoveToNurture(relationship) ? (
+          <TTButton variant="quiet" size="sm" type="button" onClick={onMoveToNurture}>
+            Move to Nurture
+          </TTButton>
         ) : null
       }
     >
@@ -92,12 +98,15 @@ function WhyItMatters({
         {decided?.value ??
           `${INTENT_LABEL[intent]} relationship${relationship.companyName ? ` at ${relationship.companyName}` : ""}.`}
       </p>
-      <p className="mt-1.5 text-[12px] text-muted-foreground">
-        {INTENT_RHYTHM_LABEL[intent]}
-        {segment === "nurture"
-          ? " In Nurture — a relationship Trust Tai chose to develop."
-          : ""}
+      <p className="mt-1.5 flex items-center gap-2 text-[12px] text-muted-foreground">
+        <SegmentPill segment={segment} />
+        <span>{INTENT_RHYTHM_LABEL[intent]}</span>
       </p>
+      {segment === "nurture" ? (
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          In Nurture — a relationship Trust Tai chose to develop.
+        </p>
+      ) : null}
     </RailCard>
   );
 }
