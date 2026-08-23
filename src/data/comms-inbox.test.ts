@@ -181,7 +181,7 @@ describe("pagination", () => {
   it("applies search before pagination, so results are never page-local", () => {
     const view = inboxView(many, { tab: "all", query: "Person 5", now: NOW });
     const page = inboxPage(view, 1);
-    expect(page.total).toBe(7); // Person 05, 15, 25, … 55, plus 50–59 share no prefix
+    expect(page.total).toBe(10); // Person 50–59 contain "Person 5"
     expect(page.pageCount).toBe(1);
     expect(page.rows.every((entry) => entry.relationship.fullName.includes("Person 5"))).toBe(
       true,
