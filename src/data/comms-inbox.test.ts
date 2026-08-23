@@ -45,15 +45,18 @@ const clientOwed = relationship({
   source: "in_person",
   responseDueAt: days(2),
 });
-/** A Scout handoff being developed. */
-const nurtureNew = relationship({
-  id: "n1",
-  fullName: "John Schmidt",
-  source: "scout_handoff",
-  stage: "ready_to_reach",
-  lastTouchAt: undefined,
-  createdAt: days(5),
-});
+/** A Scout handoff being developed, never touched yet. */
+const nurtureNew = (() => {
+  const entry = relationship({
+    id: "n1",
+    fullName: "John Schmidt",
+    source: "scout_handoff",
+    stage: "ready_to_reach",
+    createdAt: days(5),
+  });
+  delete (entry as Partial<Relationship>).lastTouchAt;
+  return entry;
+})();
 /** A nurture relationship whose reply is overdue. */
 const nurtureOwed = relationship({
   id: "n2",
