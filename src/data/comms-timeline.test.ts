@@ -105,9 +105,7 @@ describe("conversationTimeline with synced mail", () => {
 
 describe("conversationTimeline email body fidelity", () => {
   it("shows the full body, keeps html and inline resources, and flags blocked images", () => {
-    const events = conversationTimeline({
-      touches: [],
-      messages: [
+    const events = conversationTimeline([], [], [
         {
           id: "msg-1",
           organizationId: "org-1",
@@ -134,8 +132,7 @@ describe("conversationTimeline email body fidelity", () => {
           ],
         },
       ],
-      emails: ["riley@example.com"],
-    });
+    );
     expect(events).toHaveLength(1);
     const event = events[0]!;
     expect(event.kind).toBe("they_emailed");
@@ -146,9 +143,7 @@ describe("conversationTimeline email body fidelity", () => {
   });
 
   it("falls back to the snippet when no body was captured", () => {
-    const events = conversationTimeline({
-      touches: [],
-      messages: [
+    const events = conversationTimeline([], [], [
         {
           id: "msg-2",
           organizationId: "org-1",
@@ -158,8 +153,7 @@ describe("conversationTimeline email body fidelity", () => {
           occurredAt: "2026-08-21T10:00:00Z",
         },
       ],
-      emails: ["riley@example.com"],
-    });
+    );
     expect(events[0]!.body).toBe("Metadata-era preview");
     expect(events[0]!.htmlBody).toBeUndefined();
   });

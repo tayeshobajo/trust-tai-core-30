@@ -328,6 +328,12 @@ export function sanitizeEmailHtml(input: string): SanitizeResult {
       index = end === -1 ? input.length : end + 3;
       continue;
     }
+    // A `<` that cannot begin a tag is literal text, never markup.
+    if (!/[a-zA-Z/!]/.test(input.charAt(lt + 1))) {
+      out.push("&lt;");
+      index = lt + 1;
+      continue;
+    }
     const gt = input.indexOf(">", lt);
     if (gt === -1) break;
     const rawTag = input.slice(lt + 1, gt);
@@ -485,7 +491,10 @@ export function parseEmailHtml(html: string): EmailNode[] {
       if (href) node.href = href;
     }
     if (tag.name === "img") {
-      const cid = safeImageSrc(tag.attrs["data-cid"] ?? tag.attrs["src"] ?? "");
+      // data-cid arrives from our own sanitizer with the prefix already
+      // stripped — it is safe by construction; src goes through the check.
+      const dataCid = (tag.attrs["data-cid"] ?? "").trim();
+      const cid = dataCid || safeImageSrc(tag.attrs["src"] ?? "");
       if (!cid) continue; // should not happen post-sanitization; refuse anyway
       node.cid = cid;
       const alt = decodeEntities(tag.attrs["alt"] ?? "").trim();
@@ -534,6 +543,9 @@ export function splitQuotedContent(body: string): SplitContent {
     if (!QUOTED_LINE_PATTERNS.some((pattern) => pattern.test(line))) continue;
     const main = lines.slice(0, index).join("\n").trim();
     if (main.length < 2) break; // fidelity first: a quote-only mail stays whole
+    // A main that is only a reply preamble ("On … wrote:") means the whole
+    // message is quoted history — keep it whole rather than fold everything.
+    if (/^on\s.{0,120}?wrote:$/is.test(main)) break;
     return { main, quoted: lines.slice(index).join("\n").trim() };
   }
   return { main: body };

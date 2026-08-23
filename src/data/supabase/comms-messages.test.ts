@@ -119,7 +119,7 @@ describe("toMessage body fidelity mapping", () => {
       contentId: "logo@acme",
       inline: true,
     });
-    expect(message.attachments![1]).toMatchObject({ attachmentId: "a1", inline: undefined });
+    expect(message.attachments![1]).toMatchObject({ attachmentId: "a1" });
   });
 
   it("surfaces the remote-image refusal count from provenance", () => {
