@@ -367,7 +367,7 @@ already carry the classification (`relationshipSegment` in
 - **Entry rules locked:** a Scout discovery alone never creates a
   relationship; entry requires handoff, approved outreach, inbound contact,
   a booked meeting, or explicit Add to Comms.
-- **Laws recorded in `docs/comms-v1.md`:"** "Automation ends where
+- **Laws recorded in `docs/comms-v1.md`:** "Automation ends where
   relationship begins" and the Comms agent continuity mission ("Protect and
   develop every relationship Trust Tai has deliberately chosen to care about"),
   including the Gmail continuity rules and concrete maintenance examples:
