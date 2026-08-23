@@ -319,7 +319,7 @@ export async function draftMessage(
   const { data: relationship, error } = await supabase
     .from("comms_relationships")
     .select(
-      "id, organization_id, full_name, company_name, stage, met_where, next_action, observed, inferred, decided",
+      "id, organization_id, full_name, email, company_name, stage, met_where, next_action, observed, inferred, decided",
     )
     .eq("id", request.relationshipId)
     .maybeSingle();
