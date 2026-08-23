@@ -63,12 +63,17 @@ function attachments(value: unknown): AttachmentMeta[] | undefined {
   return out.length > 0 ? out : undefined;
 }
 
-function toMessage(row: MessageRow): StoredMailboxMessage {
+/** Exported for the focused provenance-mapping test. */
+export function toMessage(row: MessageRow): StoredMailboxMessage {
   const files = attachments(row.attachments);
   const provenance =
     row.provenance && typeof row.provenance === "object"
       ? (row.provenance as Record<string, unknown>)
       : null;
+  // Transport identity is carried in provenance and only in provenance.
+  // Synced Gmail mail and Comms-sent rows both stamp it server-side; a row
+  // without it gets no mailbox — we never infer one.
+  const mailbox = mailboxFromProvenance(row.provenance);
   return {
     id: row.id,
     organizationId: row.organization_id,
@@ -84,6 +89,7 @@ function toMessage(row: MessageRow): StoredMailboxMessage {
     occurredAt: row.occurred_at,
     ...(files ? { attachments: files } : {}),
     ...(provenance?.["source"] === "gmail-send" ? { sentViaComms: true } : {}),
+    ...(mailbox ? { mailbox } : {}),
   };
 }
 
