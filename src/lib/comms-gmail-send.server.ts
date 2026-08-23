@@ -453,7 +453,17 @@ export async function sendDraftViaGmail(input: {
   }
 
   const connectionRows = await loadGmailConnections(client, input.organizationId);
-  const refs: SendMailboxRef[] = connectionRows.map(mailboxCapabilityOf);
+  // MailboxCapability names the row id `integrationId`; the resolver's
+  // neutral ref calls it `id`. One explicit mapping keeps the boundary clean.
+  const refs: SendMailboxRef[] = connectionRows.map((row) => {
+    const capability = mailboxCapabilityOf(row);
+    return {
+      id: capability.integrationId,
+      accountEmail: capability.accountEmail,
+      connected: capability.connected,
+      canSend: capability.canSend,
+    };
+  });
   const resolution = resolveSendMailbox({
     connections: refs,
     ...(threadMailbox ? { threadMailbox } : {}),

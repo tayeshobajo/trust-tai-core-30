@@ -345,22 +345,22 @@ function mailbox(id: string, email: string, canSend: boolean, connected = true):
 
 describe("multi-mailbox connections", () => {
   it("two Gmail connection rows can coexist — connecting a second never replaces the first", () => {
-    const first = connectionRowFor({
-      organizationId: "org",
-      accountEmail: "tayeshobajo@gmail.com",
-      refreshTokenEnc: "a",
-      accessTokenEnc: "b",
-      expiresAt: "2026-01-01T00:00:00.000Z",
-      scopes: [GMAIL_READ_SCOPES[0], GMAIL_SEND_SCOPE],
-    });
-    const second = connectionRowFor({
-      organizationId: "org",
-      accountEmail: "tai@trusttai.com",
-      refreshTokenEnc: "c",
-      accessTokenEnc: "d",
-      expiresAt: "2026-01-01T00:00:00.000Z",
-      scopes: [GMAIL_READ_SCOPES[0]],
-    });
+    const first = connectionRowFor(
+      {
+        organizationId: "org",
+        accountEmail: "tayeshobajo@gmail.com",
+        scopes: [GMAIL_READ_SCOPES[0], GMAIL_SEND_SCOPE],
+      },
+      "user",
+    );
+    const second = connectionRowFor(
+      {
+        organizationId: "org",
+        accountEmail: "tai@trusttai.com",
+        scopes: [GMAIL_READ_SCOPES[0]],
+      },
+      "user",
+    );
     // Identity is (organization, provider, account_email): two account emails
     // are two rows, and an upsert matches only its own email.
     expect(first.account_email).toBe("tayeshobajo@gmail.com");
