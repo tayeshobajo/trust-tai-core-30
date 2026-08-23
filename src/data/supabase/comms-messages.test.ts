@@ -78,3 +78,56 @@ describe("toMessage mailbox provenance mapping", () => {
     expect("mailbox" in message).toBe(false);
   });
 });
+
+/* ======================================================================
+ * Message fidelity: body columns and inline resources
+ * ==================================================================== */
+
+describe("toMessage body fidelity mapping", () => {
+  it("maps body_text and body_html onto the client message", () => {
+    const message = toMessage(
+      row({
+        snippet: "A short preview…",
+        body_text: "The full body, well beyond the snippet.",
+        body_html: "<p>The full <b>body</b>.</p>",
+      }),
+    );
+    expect(message.bodyText).toBe("The full body, well beyond the snippet.");
+    expect(message.bodyHtml).toBe("<p>The full <b>body</b>.</p>");
+    expect(message.snippet).toBe("A short preview…");
+  });
+
+  it("maps inline resources with content ids, tolerating camel and snake keys", () => {
+    const message = toMessage(
+      row({
+        attachments: [
+          {
+            filename: "logo.png",
+            mime_type: "image/png",
+            size: 50,
+            attachment_id: "a2",
+            content_id: "logo@acme",
+            inline: true,
+          },
+          { filename: "old.pdf", mimeType: "application/pdf", size: 10, attachmentId: "a1" },
+        ],
+      }),
+    );
+    expect(message.attachments).toHaveLength(2);
+    expect(message.attachments![0]).toMatchObject({
+      attachmentId: "a2",
+      contentId: "logo@acme",
+      inline: true,
+    });
+    expect(message.attachments![1]).toMatchObject({ attachmentId: "a1", inline: undefined });
+  });
+
+  it("surfaces the remote-image refusal count from provenance", () => {
+    const message = toMessage(
+      row({
+        provenance: { source: "gmail", mailbox: "tai@x.com", blocked_remote_images: 3 },
+      }),
+    );
+    expect(message.blockedRemoteImages).toBe(3);
+  });
+});

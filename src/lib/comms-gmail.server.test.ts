@@ -524,3 +524,107 @@ describe("multi-mailbox connections", () => {
     expect(REDIRECT_URI_MISMATCH_MESSAGE).toContain("redirect_uri_mismatch");
   });
 });
+
+/* ======================================================================
+ * Message fidelity: enrichment counting and row construction
+ * ==================================================================== */
+
+import {
+  buildMessageRow,
+  classifySyncedMessages,
+} from "@/lib/comms-gmail.server";
+import type { NormalizedMessage } from "@/domain/comms-integrations";
+
+function syncedMessage(overrides: Partial<NormalizedMessage>): NormalizedMessage {
+  return {
+    providerMessageId: "pm-1",
+    providerThreadId: "pt-1",
+    direction: "inbound",
+    fromEmail: "riley@example.com",
+    toEmails: ["tai@trusttai.com"],
+    ccEmails: [],
+    occurredAt: "2026-08-22T10:00:00Z",
+    ...overrides,
+  };
+}
+
+describe("classifySyncedMessages — resync enriches without counting", () => {
+  it("an already-stored message is neither counted nor re-emitted", () => {
+    const existing = new Set(["pm-1"]);
+    const result = classifySyncedMessages(
+      [syncedMessage({ bodyText: "The full body, enriched on resync." })],
+      existing,
+    );
+    expect(result.newCount).toBe(0);
+    expect(result.newInbound).toEqual([]);
+  });
+
+  it("only genuinely new inbound mail raises an event", () => {
+    const result = classifySyncedMessages(
+      [
+        syncedMessage({ providerMessageId: "pm-old" }),
+        syncedMessage({ providerMessageId: "pm-new-in", direction: "inbound" }),
+        syncedMessage({ providerMessageId: "pm-new-out", direction: "outbound" }),
+      ],
+      new Set(["pm-old"]),
+    );
+    expect(result.newCount).toBe(2);
+    expect(result.newInbound.map((message) => message.providerMessageId)).toEqual(["pm-new-in"]);
+  });
+});
+
+describe("buildMessageRow — fidelity columns and inline metadata", () => {
+  it("stores body, sanitized html, and inline resources with content ids", () => {
+    const row = buildMessageRow({
+      organizationId: "org-1",
+      relationshipId: "rel-1",
+      threadId: "thread-1",
+      mailbox: "tai@trusttai.com",
+      nowIso: "2026-08-23T00:00:00Z",
+      message: syncedMessage({
+        bodyText: "Full body here.",
+        bodyHtml: "<p>Full <b>body</b> here.</p>",
+        attachments: [
+          { filename: "brief.pdf", mimeType: "application/pdf", size: 100, attachmentId: "a1" },
+        ],
+        inlineResources: [
+          {
+            filename: "logo.png",
+            mimeType: "image/png",
+            size: 50,
+            attachmentId: "a2",
+            contentId: "logo@acme",
+            inline: true,
+          },
+        ],
+        blockedRemoteImages: 2,
+      }),
+    });
+    expect(row["body_text"]).toBe("Full body here.");
+    expect(row["body_html"]).toBe("<p>Full <b>body</b> here.</p>");
+    const files = row["attachments"] as Record<string, unknown>[];
+    expect(files).toHaveLength(2);
+    expect(files[0]).toMatchObject({ filename: "brief.pdf", attachment_id: "a1" });
+    expect(files[1]).toMatchObject({
+      attachment_id: "a2",
+      content_id: "logo@acme",
+      inline: true,
+    });
+    expect((row["provenance"] as Record<string, unknown>)["blocked_remote_images"]).toBe(2);
+    expect((row["provenance"] as Record<string, unknown>)["mailbox"]).toBe("tai@trusttai.com");
+  });
+
+  it("leaves body columns null for metadata-era messages", () => {
+    const row = buildMessageRow({
+      organizationId: "org-1",
+      relationshipId: "rel-1",
+      threadId: "thread-1",
+      mailbox: "tai@trusttai.com",
+      nowIso: "2026-08-23T00:00:00Z",
+      message: syncedMessage({ snippet: "Just a preview" }),
+    });
+    expect(row["body_text"]).toBeNull();
+    expect(row["body_html"]).toBeNull();
+    expect(row["snippet"]).toBe("Just a preview");
+  });
+});
