@@ -149,7 +149,7 @@ interface ThreadRow {
  * and retries with snippets.
  */
 async function loadThread(
-  supabase: ReturnType<typeof createClient>,
+  supabase: CallerClient,
   relationshipId: string,
 ): Promise<ReturnType<typeof threadContextForJudgment>> {
   const variants = [
@@ -188,7 +188,7 @@ async function loadThread(
  * a parallel store.
  */
 async function loadVoiceExamples(
-  supabase: ReturnType<typeof createClient>,
+  supabase: CallerClient,
   organizationId: string,
 ): Promise<{ subject: string; excerpt: string }[]> {
   const { data, error } = await supabase
