@@ -168,14 +168,36 @@ export function MailboxImport({
             last 30 days of labeled mail right away — unlabeled mail is never read.
           </p>
         </div>
-        <TTButton
-          type="button"
-          variant="quiet"
-          onClick={() => read.mutate()}
-          disabled={read.isPending}
-        >
-          {read.isPending ? "Reading" : candidates ? "Read again" : "Show people"}
-        </TTButton>
+        <div className="flex items-center gap-2">
+          {mailboxes.length > 1 ? (
+            <select
+              value={activeMailboxId ?? ""}
+              onChange={(event) => {
+                // Another mailbox, another labeled world — drop the list read
+                // from the previous account so the two are never merged.
+                setMailboxId(event.target.value || null);
+                setCandidates(null);
+                setCoverage(null);
+              }}
+              aria-label="Mailbox to read"
+              className="rounded-full border border-border bg-card px-3 py-1 text-[12px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {mailboxes.map((mailbox) => (
+                <option key={mailbox.integrationId} value={mailbox.integrationId}>
+                  {mailbox.accountEmail ?? "Gmail account"}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <TTButton
+            type="button"
+            variant="quiet"
+            onClick={() => read.mutate()}
+            disabled={read.isPending}
+          >
+            {read.isPending ? "Reading" : candidates ? "Read again" : "Show people"}
+          </TTButton>
+        </div>
       </div>
 
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}

@@ -286,21 +286,26 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
    * Add to Comms from the labeled-candidate list. Creation runs exactly as a
    * manual capture; immediately after, one member-authorized bounded backfill
    * (30 days, label-gated, read-only) brings the person's existing labeled
-   * history in. A backfill failure never removes the relationship — it only
-   * leaves a warning asking to sync again.
+   * history in — from the same mailbox the candidate was discovered in. A
+   * backfill failure never removes the relationship — it only leaves a
+   * warning asking to sync again.
    */
   const [importPhase, setImportPhase] = useState<"creating" | "backfilling" | null>(null);
   const [importWarning, setImportWarning] = useState<string | null>(null);
   const importFromMailbox = useMutation({
-    mutationFn: (input: RelationshipInput) =>
-      addMailboxCandidateToComms(input, {
+    mutationFn: (input: { relationship: RelationshipInput; integrationId?: string }) =>
+      addMailboxCandidateToComms(input.relationship, {
         createRelationship: async (value) => {
           setImportPhase("creating");
           return commsService.create(value, context);
         },
         backfillHistory: async () => {
           setImportPhase("backfilling");
-          await gmailSync(identity.organizationId, ONBOARDING_BACKFILL_DAYS);
+          await gmailSync(
+            identity.organizationId,
+            ONBOARDING_BACKFILL_DAYS,
+            input.integrationId,
+          );
         },
       }),
     onSuccess: async ({ relationship, historyWarning }) => {
