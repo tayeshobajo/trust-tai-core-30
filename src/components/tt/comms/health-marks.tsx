@@ -9,6 +9,7 @@ import {
   HEALTH_LABEL,
   type ConversationHealthStatus,
 } from "@/domain/comms-health";
+import { SEGMENT_LABEL, type RelationshipSegment } from "@/domain/comms";
 import { cn } from "@/lib/utils";
 
 export const HEALTH_DOT: Record<ConversationHealthStatus, string> = {
