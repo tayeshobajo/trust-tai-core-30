@@ -298,12 +298,14 @@ Laws:
    then a new line, then 'Tai'.`;
 
 /**
- * Compose one draft: judgment first, prose second, deterministic Voice pass
- * last. Returns the checked text, the judgment it rests on, and every rule
- * it tripped, so the reviewer sees exactly what the policy saw.
+ * Compose one draft: grounding gate first, judgment second, prose third,
+ * deterministic Voice pass last. Returns the checked text, the judgment it
+ * rests on, and every rule it tripped, so the reviewer sees exactly what the
+ * policy saw.
  *
- * Throws DRAFT_PREPARATION_FAILED when no trustworthy draft can be produced.
- * A fabricated generic draft is never returned in its place.
+ * Throws draftUngroundedMessage when the evidence is below the grounding bar,
+ * and DRAFT_PREPARATION_FAILED when no trustworthy draft can be produced.
+ * A fabricated generic draft is never returned in either case.
  */
 export async function draftMessage(
   token: string,
@@ -356,34 +358,65 @@ export async function draftMessage(
     loadVoiceExamples(supabase, organizationId),
   ]);
 
+  /* The grounding gate. A real thread plus a known identity grounds a reply;
+     identity plus one real prior interaction plus a reason grounds a
+     proactive note. Below that bar the only honest outcome is no draft —
+     producing one would require inventing the reason, the facts, or the
+     relationship itself. Extra memory, commitments, and examples improve a
+     grounded draft; they are never mandatory. */
+  const grounding = assessDraftGrounding({
+    hasIdentity: Boolean(
+      fullName || String(row["email"] ?? "").trim() || String(row["company_name"] ?? "").trim(),
+    ),
+    threadHasInbound: thread.some((entry) => entry.direction === "inbound"),
+    priorInteractionCount:
+      thread.length + usedEvidence.length + (metWhere?.trim() ? 1 : 0),
+    hasReason: Boolean(
+      request.purpose?.trim() ||
+        String(row["next_action"] ?? "").trim() ||
+        commitments.length > 0,
+    ),
+  });
+  if (!grounding.grounded) throw new Error(draftUngroundedMessage(grounding.missing));
+
+  /* The evidence packet keeps its provenance explicit: the canonical
+     relationship voice is the baseline, relationship evidence is what may be
+     said, the org Voice DNA is the editable brand expression, and approved
+     examples are learned style influence — layered, never merged. */
   const evidencePacket = {
-    recipient: {
-      name: fullName || "Unknown",
-      salutationName: salutation || null,
-      company: (row["company_name"] as string | null) ?? null,
-      stage: (row["stage"] as string | null) ?? null,
-      metWhere,
+    draftKind: grounding.kind,
+    canonicalRelationshipVoice: [...TAI_RELATIONSHIP_VOICE],
+    relationshipEvidence: {
+      recipient: {
+        name: fullName || "Unknown",
+        salutationName: salutation || null,
+        company: (row["company_name"] as string | null) ?? null,
+        stage: (row["stage"] as string | null) ?? null,
+        metWhere,
+      },
+      intent: {
+        register,
+        registerGuide: REGISTER_GUIDE[register],
+        nextAction: (row["next_action"] as string | null) ?? null,
+        purpose: request.purpose?.trim() || null,
+      },
+      memory: {
+        observedAndDecided: usedEvidence.map(
+          (entry) => `${entry.label}: ${entry.value} (${entry.tier})`,
+        ),
+        inferredGuideOnly: inferred.map((entry) => entry.value),
+        openCommitments: commitments,
+      },
+      thread: thread.map((entry) => ({
+        direction: entry.direction,
+        subject: entry.subject ?? null,
+        text: entry.text,
+        at: entry.occurredAt,
+        latestFromThisSide: entry.latestForSide,
+      })),
     },
-    intent: {
-      register,
-      registerGuide: REGISTER_GUIDE[register],
-      nextAction: (row["next_action"] as string | null) ?? null,
-      purpose: request.purpose?.trim() || null,
-    },
-    memory: {
-      observedAndDecided: usedEvidence.map((entry) => `${entry.label}: ${entry.value} (${entry.tier})`),
-      inferredGuideOnly: inferred.map((entry) => entry.value),
-      openCommitments: commitments,
-    },
-    thread: thread.map((entry) => ({
-      direction: entry.direction,
-      subject: entry.subject ?? null,
-      text: entry.text,
-      at: entry.occurredAt,
-      latestFromThisSide: entry.latestForSide,
-    })),
-    voiceDna: voiceDocument,
-    approvedVoiceExamples: voiceExamples,
+    brandVoiceDna: voiceDocument,
+    learnedStyleExamples: voiceExamples,
   };
 
   /* From here the provider does the work. Any failure — not configured,
