@@ -1,10 +1,11 @@
 /**
  * The mailbox track, with its one honest control.
  *
- * Connect opens Google's own consent screen for read-only access. Read now
- * runs one bounded pass and reports exactly what it read, what it stored, and
- * what it left alone because the person is not in Comms yet. Nothing here can
- * send.
+ * Connect opens Google's own consent screen for labeled reading plus send.
+ * Read now runs one bounded pass and reports exactly what it read, what it
+ * stored, and what it left alone because the person is not in Comms yet.
+ * Nothing here sends on its own: sending happens only in the composer, when
+ * a person clicks Send, and Comms can never alter Gmail labels.
  */
 
 import { useEffect, useState } from "react";
@@ -52,7 +53,11 @@ export function GmailConnection({
     mutationFn: (input: { code: string; state: string }) =>
       gmailExchange({ organizationId, ...input }),
     onSuccess: (result) => {
-      setNotice(`Connected ${result.accountEmail}. Read-only.`);
+      setNotice(
+        result.canSend
+          ? `Connected ${result.accountEmail}. Comms reads your labeled mail and can send a draft when you click Send.`
+          : `Connected ${result.accountEmail}. Reading labeled mail only — Google did not grant send access; reconnect to approve it.`,
+      );
       void invalidate();
     },
     onError: (error: unknown) =>
@@ -135,9 +140,9 @@ export function GmailConnection({
       <AmbientRule appId="comms" contextAccent={null} />
       <p className="text-sm leading-relaxed text-muted-foreground">
         Reads the threads you label Trust Tai/Comms in Gmail, so the queue knows who is actually
-        waiting on a reply. Read-only: no send scope is requested, so Comms cannot send even by
-        mistake, and your labels are never changed. Only messages with people already in Comms
-        are stored.
+        waiting on a reply, and can send a reply only when you click Send on a draft you
+        approved. Comms never sends on its own, and it cannot change your Gmail labels. Only
+        messages with people already in Comms are stored.
       </p>
 
       {connection?.accountEmail ? (
@@ -150,7 +155,7 @@ export function GmailConnection({
       ) : (
         <p className="text-xs text-muted-foreground">
           {configured
-            ? "Ready to connect. Google will ask you for read-only access."
+            ? "Ready to connect. Google will ask you to allow reading labeled mail and sending the drafts you approve."
             : "Needs a Google OAuth client on the server."}
         </p>
       )}

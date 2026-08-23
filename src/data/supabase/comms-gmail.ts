@@ -57,8 +57,11 @@ export async function gmailExchange(input: {
   organizationId: string;
   code: string;
   state: string;
-}): Promise<{ accountEmail: string }> {
-  return post<{ accountEmail: string }>(CONNECT_URL, { action: "exchange", ...input });
+}): Promise<{ accountEmail: string; canSend?: boolean }> {
+  return post<{ accountEmail: string; canSend?: boolean }>(CONNECT_URL, {
+    action: "exchange",
+    ...input,
+  });
 }
 
 export async function gmailDisconnect(organizationId: string): Promise<void> {
