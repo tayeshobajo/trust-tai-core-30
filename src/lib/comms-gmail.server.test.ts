@@ -486,12 +486,24 @@ describe("multi-mailbox connections", () => {
     expect(resolveSendMailbox({ connections: [] })).toEqual({ kind: "none_connected" });
   });
 
-  it("production redirect is deterministic unless explicitly overridden", () => {
+  it("production redirect is the registered cmd.trusttai.com callback, always", () => {
     delete process.env["GOOGLE_OAUTH_REDIRECT_URI"];
-    const request = new Request(
+    const request = new Request("https://cmd.trusttai.com/api/public/comms/gmail/connect");
+    expect(gmailRedirectUri(request)).toBe(PRODUCTION_REDIRECT);
+    // Any other production-shaped origin still resolves to the one registered
+    // callback — Google accepts only what the OAuth client lists.
+    const apex = new Request("https://trusttai.com/api/public/comms/gmail/connect");
+    expect(gmailRedirectUri(apex)).toBe(PRODUCTION_REDIRECT);
+  });
+
+  it("a preview origin keeps its own callback unless the env var overrides it", () => {
+    delete process.env["GOOGLE_OAUTH_REDIRECT_URI"];
+    const preview = new Request(
       "https://id-preview--example.lovable.app/api/public/comms/gmail/connect",
     );
-    expect(gmailRedirectUri(request)).toBe(PRODUCTION_REDIRECT);
+    expect(gmailRedirectUri(preview)).toBe(
+      "https://id-preview--example.lovable.app/api/public/comms/gmail/connect",
+    );
   });
 
   it("an explicit redirect env var wins (development and preview flows)", () => {
