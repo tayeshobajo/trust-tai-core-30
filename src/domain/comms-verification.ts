@@ -211,7 +211,11 @@ export function draftProvenanceLabel(
   if (verification) return "Sent — seen in the mailbox";
   switch (reviewState) {
     case "sent":
-      return "Marked as sent — not yet seen in the mailbox";
+      return "Sent via Gmail — not yet seen in the mailbox";
+    case "sending":
+      return "Sending via Gmail…";
+    case "send_failed":
+      return "Send failed — the draft is kept, retry or open in Gmail";
     case "approved":
       return "Approved, waiting to be sent";
     default:

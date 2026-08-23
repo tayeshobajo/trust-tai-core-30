@@ -53,12 +53,32 @@ export interface IntegrationConnection {
   updatedAt: ISODateTime;
 }
 
-/** Read-only is the whole point in v1: no send scope is ever requested. */
+/** Read-only is the point of the first connection: sync never asks for more. */
 export const GMAIL_READ_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
+
+/**
+ * The narrowest permission that lets a person send a draft they approved.
+ * Requested only when a workspace reconnects Gmail for sending — never
+ * folded into the read-only consent silently.
+ */
+export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
 
 /* --------------------------------------------------------------- messages */
 
 export type MessageDirection = "inbound" | "outbound";
+
+/**
+ * What Comms knows about a file on a message: name, kind, size, and the
+ * provider handle that fetches the bytes on demand. Content never lives in
+ * this shape — Gmail stays the source of truth for Gmail-native files.
+ */
+export interface AttachmentMeta {
+  filename: string;
+  mimeType: string;
+  size: number;
+  /** Provider-side handle for on-demand download (Gmail attachmentId). */
+  attachmentId?: string;
+}
 
 /** One message, in Trust Tai's shape rather than any vendor's. */
 export interface NormalizedMessage {
@@ -75,6 +95,8 @@ export interface NormalizedMessage {
   bodyText?: string;
   occurredAt: ISODateTime;
   headers?: Record<string, string>;
+  /** File metadata only — bytes are fetched from the provider on demand. */
+  attachments?: AttachmentMeta[];
 }
 
 export interface NormalizedThread {
@@ -85,19 +107,26 @@ export interface NormalizedThread {
 
 /**
  * A mailbox message as Comms stored it — the row the relationship timeline
- * reads. Provider ids stay server-side in `comms_messages`; this shape is all
- * the UI is allowed to know.
+ * reads. Provider ids ride along so the room can target a reply at the right
+ * thread and fetch an attachment's bytes on demand; they are identifiers,
+ * never credentials.
  */
 export interface StoredMailboxMessage {
   id: ID;
   organizationId: ID;
   relationshipId: ID;
+  threadId?: ID;
+  providerMessageId?: string;
+  providerThreadId?: string;
   direction: MessageDirection;
   fromEmail?: string;
   fromName?: string;
   subject?: string;
   snippet?: string;
   occurredAt: ISODateTime;
+  attachments?: AttachmentMeta[];
+  /** True when Comms itself sent this message through Gmail. */
+  sentViaComms?: boolean;
 }
 
 /** What one incremental sync pass returns. */
