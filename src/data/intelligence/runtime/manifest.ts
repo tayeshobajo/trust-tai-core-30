@@ -118,16 +118,18 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
       "relationship state + handoff briefs under RLS (src/data/supabase/comms-service.ts)",
     ),
     retrieval: r(
-      "drafts reason through the runtime boundary with relationship context composed per draft (src/lib/comms-draft.server.ts)",
+      "drafts reason through the runtime boundary over governed evidence — memory, thread, commitments, Voice DNA — judgment first, prose second (src/lib/comms-draft.server.ts)",
     ),
-    domain_patterns: r("Voice DNA per register governs composition (src/lib/comms-draft.server.ts)"),
+    domain_patterns: r(
+      "Voice DNA plus approved/sent voice examples govern composition (src/lib/comms-draft.server.ts)",
+    ),
     safe_diagnostic_loop: d(
-      "drafting is one-shot composition; provider failure degrades to the deterministic draft over the same evidence",
+      "drafting is reason-then-write over governed evidence; a provider failure fails the draft honestly and nothing generic is created",
       "src/data/intelligence/runtime/protocol.ts",
-      "a draft never needs a tool-using diagnostic loop; degradation to evidence-only output is the safe recovery",
+      "a draft never needs a tool-using diagnostic loop; the honest failure mode is no draft at all, never a mail-merge fallback",
     ),
     verification: r(
-      "nothing sends without a person; the fallback draft cites only recorded evidence (src/lib/comms-draft.server.ts)",
+      "the deterministic Voice pass gates every draft and the communication judgment persists with it; nothing sends without a person (src/data/voice-policy.ts, src/lib/comms-draft.server.ts)",
     ),
     approval_boundary: r(
       "drafts are proposals; sending is always the person (src/domain/action-authority.ts)",

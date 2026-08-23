@@ -61,12 +61,18 @@ export function SendComposer({
   context,
   messages,
   onChanged,
+  onClose,
 }: {
   draft: CommsDraft;
   relationship: Relationship;
   context: CommsContext;
   messages: StoredMailboxMessage[];
   onChanged: () => void;
+  /**
+   * Close is not discard. The composer saves any unsaved edits first; when
+   * the save fails it stays open and says why, so work is never lost.
+   */
+  onClose: () => void;
 }) {
   const extras = useMemo(() => readOutgoingExtras(draft.rationale), [draft.rationale]);
   const staged = useMemo(() => readOutgoingAttachments(draft.rationale), [draft.rationale]);
