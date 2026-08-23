@@ -170,6 +170,8 @@ function IntelligenceFreshnessSettings() {
         description={`Which rooms the intelligence layer is actually reading. CURRENT means context and activity inside the last ${CURRENT_WINDOW_DAYS} days.`}
       />
 
+      <RuntimeStatusPanel />
+
       {audit.isPending ? (
         <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
           Reading every room…
