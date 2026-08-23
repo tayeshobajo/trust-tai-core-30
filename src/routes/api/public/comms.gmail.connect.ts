@@ -20,6 +20,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
+import { GMAIL_SEND_SCOPE } from "@/domain/comms-integrations";
 import { readState, signState } from "@/lib/comms-crypto.server";
 import {
   authorizeUrl,
