@@ -53,3 +53,59 @@ export function HealthPill({
     </span>
   );
 }
+
+/* ------------------------------------------------------------ segments */
+
+/**
+ * Classification marks: what kind of relationship this is. Deliberately a
+ * separate hue family from health — royal blue says "client", soft plum says
+ * "developing", and neither is ever red, amber, or green, because kind is not
+ * condition.
+ */
+export const SEGMENT_DOT: Record<RelationshipSegment, string> = {
+  client: "bg-[var(--royal)]",
+  nurture: "bg-[var(--plum)]",
+};
+
+export const SEGMENT_TEXT: Record<RelationshipSegment, string> = {
+  client: "text-[var(--royal)]",
+  nurture: "text-[var(--plum)]",
+};
+
+export function SegmentDot({
+  segment,
+  className,
+}: {
+  segment: RelationshipSegment;
+  className?: string;
+}) {
+  return (
+    <span
+      role="img"
+      aria-label={SEGMENT_LABEL[segment]}
+      title={SEGMENT_LABEL[segment]}
+      className={cn("inline-block h-1.5 w-1.5 shrink-0 rounded-full", SEGMENT_DOT[segment], className)}
+    />
+  );
+}
+
+export function SegmentPill({
+  segment,
+  className,
+}: {
+  segment: RelationshipSegment;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11px]",
+        SEGMENT_TEXT[segment],
+        className,
+      )}
+    >
+      <SegmentDot segment={segment} />
+      {segment === "client" ? "Client" : "Developing"}
+    </span>
+  );
+}
