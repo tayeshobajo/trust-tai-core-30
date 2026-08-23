@@ -82,3 +82,32 @@ export function writeOutgoingAttachments(
     })),
   };
 }
+
+/* ----------------------------------------------------- extra recipients */
+
+/**
+ * CC/BCC the person added on top of the planned recipients. Kept on the
+ * draft so what was approved is on record, and merged into the send plan at
+ * send time. Never includes the person's own mailbox — the server drops it.
+ */
+export function readOutgoingExtras(
+  rationale: Record<string, unknown> | null | undefined,
+): { cc: string[]; bcc: string[] } {
+  const raw = rationale?.["outgoing_extras"];
+  if (!raw || typeof raw !== "object") return { cc: [], bcc: [] };
+  const value = raw as Record<string, unknown>;
+  const list = (key: string): string[] =>
+    Array.isArray(value[key]) ? (value[key] as unknown[]).map(String).filter(Boolean) : [];
+  return { cc: list("cc"), bcc: list("bcc") };
+}
+
+/** Merge CC/BCC into a draft's rationale. Nothing else moves. */
+export function writeOutgoingExtras(
+  rationale: Record<string, unknown> | null | undefined,
+  extras: { cc: string[]; bcc: string[] },
+): Record<string, unknown> {
+  return {
+    ...(rationale ?? {}),
+    outgoing_extras: { cc: extras.cc, bcc: extras.bcc },
+  };
+}
