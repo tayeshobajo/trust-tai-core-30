@@ -1117,24 +1117,12 @@ async function runSyncPass(input: {
         onConflict: "organization_id,provider,provider_message_id",
         ignoreDuplicates: false,
       } as const;
-      let { error: upsertError } = await client.from("comms_messages").upsert(rows, ON_CONFLICT);
-      if (upsertError && /body_html/i.test(upsertError.message)) {
-        ({ error: upsertError } = await client.from("comms_messages").upsert(
-          rows.map(({ body_html: _dropped, ...rest }) => rest),
-          ON_CONFLICT,
-        ));
-      }
-      if (upsertError && /body_text/i.test(upsertError.message)) {
-        ({ error: upsertError } = await client.from("comms_messages").upsert(
-          rows.map(({ body_text: _dropped, ...rest }) => rest),
-          ON_CONFLICT,
-        ));
-      }
-      if (upsertError && /attachments/i.test(upsertError.message)) {
-        ({ error: upsertError } = await client.from("comms_messages").upsert(
-          rows.map(({ attachments: _dropped, ...rest }) => rest),
-          ON_CONFLICT,
-        ));
+      let currentRows: Record<string, unknown>[] = rows;
+      let { error: upsertError } = await client.from("comms_messages").upsert(currentRows, ON_CONFLICT);
+      for (const column of ["body_html", "body_text", "attachments"] as const) {
+        if (!upsertError || !new RegExp(column, "i").test(upsertError.message)) continue;
+        currentRows = currentRows.map(({ [column]: _dropped, ...rest }) => rest);
+        ({ error: upsertError } = await client.from("comms_messages").upsert(currentRows, ON_CONFLICT));
       }
       if (upsertError) throw new Error(upsertError.message);
 
