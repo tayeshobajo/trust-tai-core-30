@@ -49,6 +49,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { openSecret, sealSecret } from "@/lib/comms-crypto.server";
 import { readThread } from "@/data/comms-thread-state";
 import {
+  attachmentMetaToJson,
   GMAIL_CONNECTION_SCOPES,
   grantedGmailScopes,
   summarizeMailboxCoverage,
@@ -56,6 +57,7 @@ import {
   type MailboxCoverage,
   type NormalizedMessage,
 } from "@/domain/comms-integrations";
+import { extractEmailBody } from "@/domain/comms-email-body";
 import { SUITE_EVENTS } from "@/domain/events";
 import {
   planDraftVerifications,
@@ -1007,10 +1009,11 @@ async function runSyncPass(input: {
   const threadSubjects = new Map<string, string | undefined>();
 
   for (const id of ids) {
-    const raw = await gmailGet<GmailMessage>(
-      `/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Cc&metadataHeaders=Subject&metadataHeaders=Date`,
-      accessToken,
-    );
+    // Tracked sync reads the full message: the actual body, inline MIME
+    // images, and ordinary files — never just Gmail's preview snippet.
+    // Discovery (mailbox import) stays metadata-cheap; this pass is bounded
+    // by the label and the per-pass cap.
+    const raw = await gmailGet<GmailMessage>(`/messages/${id}?format=full`, accessToken);
     messagesRead += 1;
     const message = normalize(raw, mailbox);
     if (!message) continue;
