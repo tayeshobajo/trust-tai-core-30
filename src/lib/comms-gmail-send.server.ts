@@ -459,7 +459,7 @@ export async function sendDraftViaGmail(input: {
     const capability = mailboxCapabilityOf(row);
     return {
       id: capability.integrationId,
-      accountEmail: capability.accountEmail,
+      ...(capability.accountEmail ? { accountEmail: capability.accountEmail } : {}),
       connected: capability.connected,
       canSend: capability.canSend,
     };
