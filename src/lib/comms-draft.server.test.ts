@@ -179,6 +179,122 @@ describe("executeDraftPasses", () => {
     expect(seen).toEqual([{ type: "json_schema" }, { type: "json_schema" }]);
   });
 
+  it("Brooke's warm reply: a no-ask judgment produces a no-ask draft without a rewrite", async () => {
+    let calls = 0;
+    const spy: RuntimeModelCaller = async () => {
+      calls += 1;
+      return {
+        raw: calls === 1 ? BROOKE_WARM_JUDGMENT : BROOKE_WARM_DRAFT,
+        provider: "test",
+        model: "test-model",
+      };
+    };
+    const result = await executeDraftPasses(spy, { ...BROOKE_WARM_INPUT });
+    expect(calls).toBe(2);
+    expect(result.judgment.askDecision.shouldAsk).toBe(false);
+    expect(result.judgment.askDecision.whyNatural).toContain("nothing in her note");
+    expect(result.judgment.whatDeservesAcknowledgment).toContain("resource");
+    expect(result.body).toContain("offer to be a resource");
+    expect(result.body).not.toMatch(/call|coffee|meeting/i);
+    expect(result.body).toMatch(/Trust,\s*\n\s*Tai/);
+  });
+
+  it("earned CTA: an explicit 'let's find time to talk' passes with the ask intact", async () => {
+    const earnedJudgment = JSON.stringify({
+      ...JSON.parse(BROOKE_WARM_JUDGMENT),
+      latestHumanSignal: "She said plainly: let's find time to talk.",
+      askDecision: {
+        shouldAsk: true,
+        whyNatural: "She explicitly suggested talking.",
+        what: "Offer two concrete times for a call.",
+      },
+    });
+    const earnedDraft = JSON.stringify({
+      subject: "Re: Finding time",
+      body: "Hi Brooke,\n\nI'd like that too. Would Tuesday or Thursday morning suit you for a short call?\n\nTrust,\nTai",
+    });
+    let calls = 0;
+    const spy: RuntimeModelCaller = async () => {
+      calls += 1;
+      return {
+        raw: calls === 1 ? earnedJudgment : earnedDraft,
+        provider: "test",
+        model: "test-model",
+      };
+    };
+    const result = await executeDraftPasses(spy, { ...BROOKE_WARM_INPUT });
+    expect(calls).toBe(2); // no rewrite: the ask is earned
+    expect(result.judgment.askDecision.shouldAsk).toBe(true);
+    expect(result.body).toContain("short call");
+  });
+
+  it("earned CTA: a question requiring discussion earns an ask", async () => {
+    const questionJudgment = JSON.stringify({
+      ...JSON.parse(BROOKE_WARM_JUDGMENT),
+      responseObligation: "She asked how the engagement would work for her team.",
+      askDecision: {
+        shouldAsk: true,
+        whyNatural: "Her question about how it would work genuinely needs discussion.",
+        what: "Offer a short call to walk through it.",
+      },
+    });
+    const questionDraft = JSON.stringify({
+      subject: "Re: How it would work",
+      body: "Hi Brooke,\n\nGood question, and it deserves a real answer rather than a paragraph. Would one of Tuesday or Thursday morning work for a short call?\n\nTrust,\nTai",
+    });
+    let calls = 0;
+    const spy: RuntimeModelCaller = async () => {
+      calls += 1;
+      return {
+        raw: calls === 1 ? questionJudgment : questionDraft,
+        provider: "test",
+        model: "test-model",
+      };
+    };
+    const result = await executeDraftPasses(spy, { ...BROOKE_WARM_INPUT });
+    expect(calls).toBe(2);
+    expect(result.judgment.askDecision.shouldAsk).toBe(true);
+  });
+
+  it("rewrites once when the writing pass sneaks an ask into a no-ask judgment", async () => {
+    const sneakyDraft = JSON.stringify({
+      subject: "Re: The Mastermind",
+      body: "Brooke,\n\nI appreciated your note. Would you be open to a quick call next week to stay connected?\n\nTrust,\nTai",
+    });
+    const seen: string[] = [];
+    const spy: RuntimeModelCaller = async (request) => {
+      seen.push(request.instructions);
+      return {
+        raw:
+          seen.length === 1
+            ? BROOKE_WARM_JUDGMENT
+            : seen.length === 2
+              ? sneakyDraft
+              : BROOKE_WARM_DRAFT,
+        provider: "test",
+        model: "test-model",
+      };
+    };
+    const result = await executeDraftPasses(spy, { ...BROOKE_WARM_INPUT });
+    expect(seen).toHaveLength(3); // judgment, write, corrective rewrite
+    expect(seen[2]).toContain("judgment decided NO ask belongs");
+    expect(result.body).not.toMatch(/call|coffee|meeting/i);
+    expect(result.body).toContain("offer to be a resource");
+  });
+
+  it("types a writing pass that keeps sneaking asks as ask_gate_violated", async () => {
+    const sneakyDraft = JSON.stringify({
+      subject: "Re: The Mastermind",
+      body: "Brooke,\n\nLovely note. Would you be open to a quick call next week?\n\nTrust,\nTai",
+    });
+    const code = await failureCode(
+      executeDraftPasses(callerReturning(BROOKE_WARM_JUDGMENT, sneakyDraft), {
+        ...BROOKE_WARM_INPUT,
+      }),
+    );
+    expect(code).toBe("ask_gate_violated");
+  });
+
   it("types a missing provider as provider_not_configured", async () => {
     const code = await failureCode(
       executeDraftPasses(callerThrowing(new ProviderNotConfiguredError()), {
