@@ -34,7 +34,14 @@ import { addMailboxCandidateToComms, ONBOARDING_BACKFILL_DAYS } from "@/data/com
 import { listRelationshipMessages } from "@/data/supabase/comms-messages";
 import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
-import { inboxEntries, inboxView, type InboxTab } from "@/data/comms-inbox";
+import {
+  inboxEntries,
+  inboxPage,
+  inboxView,
+  pageSelection,
+  type InboxTab,
+  type InboxView,
+} from "@/data/comms-inbox";
 import { nextRelationshipMove } from "@/data/comms-next-move";
 import { relationshipsWorthAttention } from "@/data/comms-attention";
 import {
@@ -103,6 +110,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<InboxTab>("clients");
   const [healthFilter, setHealthFilter] = useState<ConversationHealthStatus | null>(null);
+  const [page, setPage] = useState(1);
   const [capturing, setCapturing] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
