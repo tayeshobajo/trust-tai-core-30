@@ -388,6 +388,23 @@ export function relationshipSegment(relationship: Relationship): RelationshipSeg
   return "client";
 }
 
+/**
+ * Whether "Move to Nurture" is a safe, honest action: the person sits in the
+ * client room only by contextual fallback, not by hard evidence (a linked
+ * client record, a graduated stage, or an explicit established intent).
+ * Moving sets an explicit nurture stage on the same record — nothing is
+ * copied or lost, and graduation back stays one click away. A real client is
+ * never offered the move, because their stage is evidence, not a label.
+ */
+export function canMoveToNurture(relationship: Relationship): boolean {
+  if (relationshipSegment(relationship) !== "client") return false;
+  if (relationship.clientId) return false;
+  if (ESTABLISHED_STAGES.includes(relationship.stage)) return false;
+  const intent = intentOf(relationship);
+  if (intent && ESTABLISHED_INTENTS.includes(intent)) return false;
+  return true;
+}
+
 /** Stages where silence is a problem rather than a choice. */
 export const ACTIVE_STAGES: RelationshipStage[] = [
   "new",

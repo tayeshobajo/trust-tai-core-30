@@ -18,7 +18,7 @@ import { useState } from "react";
 import { TTButton } from "@/components/tt/primitives";
 import type { NextRelationshipMove } from "@/data/comms-next-move";
 import type { Relationship } from "@/domain/comms";
-import { relationshipSegment, TIER_LABEL } from "@/domain/comms";
+import { canMoveToNurture, relationshipSegment, TIER_LABEL } from "@/domain/comms";
 import type { ConversationHealth, RelationshipStrengthRead } from "@/domain/comms-health";
 import {
   COMMITMENT_OWNER_LABEL,
