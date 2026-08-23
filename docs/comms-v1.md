@@ -47,32 +47,61 @@ editable by owners and admins at `/modules/comms/voice`.
 
 ## Drafting boundary
 
-Reason first. Write second. `src/lib/comms-draft.server.ts` does not generate
-messages: it makes a relationship-specific **communication judgment**
-(`src/domain/comms-judgment.ts`) over governed evidence — identity, stage,
-observed/decided memory, open commitments, the recent thread, the Voice DNA,
-and up to three approved/sent drafts as living voice proof — then writes the
-message that judgment requires. The judgment is persisted with the draft's
-rationale, so the reasoning a person approves is inspectable, never hidden.
+Spirit first. Reason first. Write second. `src/lib/comms-draft.server.ts` does
+not generate messages: it makes a relationship-specific **communication
+judgment** (`src/domain/comms-judgment.ts`) over governed evidence — identity,
+stage, observed/decided memory, open commitments, and the recent thread —
+then writes the message that judgment requires. The judgment is persisted
+with the draft's rationale, so the reasoning a person approves is inspectable,
+never hidden.
+
+**Tai Relationship Voice vs Brand Voice.** The canonical baseline for every
+message is Tai's relationship voice (`TAI_RELATIONSHIP_VOICE` in
+`src/domain/voice.ts`): spirit first — see the person before the transaction,
+make them feel specifically seen, create spaciousness rather than pressure —
+then warm, calm, concise, human, specific prose with natural contractions,
+short paragraphs, and no corporate language, manufactured urgency, fake
+familiarity, invented personalization, forced CTA, or em dashes. The org
+Voice DNA document is the editable **brand expression**; approved/sent
+messages and Tai's edits are **learned style influence**. Both layer on top of
+the canonical baseline — neither replaces it — and the evidence packet keeps
+the three provenances separate (`canonicalRelationshipVoice`,
+`relationshipEvidence`, `brandVoiceDna`, `learnedStyleExamples`). Website and
+content rules (roadmap language, proprietary frameworks, declarative
+headlines, positioning) never enter an ordinary email unless the actual
+conversation calls for them; personal email may ask natural questions.
 
 The laws this boundary enforces:
 
+- **Grounding gate before any model call.** `assessDraftGrounding` decides
+  whether a trustworthy draft is possible at all. A real thread plus a known
+  identity grounds a reply. A known identity plus one real prior interaction
+  plus a reason grounds a proactive note. Extra memory, commitments, Scout
+  context, and approved examples improve a grounded draft but are never
+  mandatory. Below the bar, drafting would require inventing the reason, the
+  facts, or the relationship — so Comms fails honestly and names what is
+  missing: "Comms can't draft this message without inventing a real prior
+  interaction and a reason to write now. Nothing was created."
 - **Comms does not generate messages.** It judges, then writes. The structured
-  judgment (`communicationJob`, `relationshipRead`, `responseObligation`,
-  `toneAndPosture`, `nextMove`, `factsAllowed`/`factsAvoid`,
-  `voiceEvidenceUsed`) comes first; prose is written FROM it.
+  judgment (`whyNow`, `whatNoticed`, `intendedEffect`, `responseObligation`,
+  `nextMove`, `factsAllowed`/`factsAvoid`, `voiceEvidenceUsed`,
+  `learnedExamplesUsed`) comes first; prose is written FROM it. The visible
+  rationale is four concise lines: Why now · What I noticed · Intended
+  effect · Next move, or "No ask needed."
 - **Fail honestly.** There is no mail-merge fallback. With no provider, or no
   trustworthy parse, drafting fails closed: "Comms couldn't prepare a
   trustworthy draft from the available context. Nothing was created." A
   generic draft impersonating intelligence is worse than none.
 - **Evidence is governed.** Only observed facts and human decisions may be
-  cited; inferences guide the angle but never become a claim. Voice DNA is not
-  a tone preset — real approved/sent wording is cited as voice evidence.
+  cited; inferences guide the angle but never become a claim.
 - **Names are human-safe.** Salutations come from `salutationName`, which
   understands comma formats ("Vinyard, Larry" → "Larry") and never produces
   "Vinyard,,".
 - **Human approval remains mandatory** before anything sends, and the
   deterministic Voice pass gates every draft.
+
+_Status: implemented 2026-08-23; not yet production-human-accepted — pending
+Tai's live testing of real drafts._
 
 **Drafts never trap the conversation.** Close is not discard. The draft editor
 opens only by a person's choice, keyed to the relationship; closing it saves

@@ -1,14 +1,25 @@
 /**
  * Comms drafting boundary (server only).
  *
- * Reason first. Write second. Comms does not generate messages: it makes a
- * relationship-specific communication judgment over the governed evidence —
- * identity and stage, recorded memory, the live thread, open commitments,
- * the writer's stated purpose, and the organization's Voice DNA — and then
- * writes the one message that judgment requires. The judgment is persisted
- * on the draft's rationale so every draft carries its provenance.
+ * Spirit first. Reason first. Write second. Comms does not generate messages:
+ * it makes a relationship-specific communication judgment over the governed
+ * evidence — identity and stage, recorded memory, the live thread, open
+ * commitments, and the writer's stated purpose — and then writes the one
+ * message that judgment requires. The judgment is persisted on the draft's
+ * rationale so every draft carries its provenance.
+ *
+ * Tai's canonical relationship voice (TAI_RELATIONSHIP_VOICE) is the baseline
+ * for every message. The org Voice DNA is the editable brand expression and
+ * approved/sent examples are living style proof — both influence on top of
+ * the baseline, neither replaces it. Website/brand rules enter an ordinary
+ * email only when the conversation itself calls for them.
  *
  * Laws enforced here, not left to the model:
+ *  - GROUNDING GATE: a real thread plus a known identity grounds a reply; a
+ *    known identity plus one real prior interaction plus a reason grounds a
+ *    proactive note. Below that bar drafting would mean inventing the reason,
+ *    the facts, or the relationship — Comms says what is missing and creates
+ *    nothing (assessDraftGrounding),
  *  - only observed facts and human decisions may be cited as fact;
  *    inferences may guide the angle, never appear as claims,
  *  - nothing is sent,
@@ -31,12 +42,14 @@ import { checkVoice, requiresHumanReview, type VoiceVerdict } from "@/data/voice
 import {
   DEFAULT_VOICE_DOCUMENT,
   REGISTER_GUIDE,
+  TAI_RELATIONSHIP_VOICE,
   type VoiceRegister,
 } from "@/domain/voice";
 import {
   COMMITMENT_CATEGORY,
 } from "@/domain/comms-interactions";
 import {
+  assessDraftGrounding,
   parseCommunicationJudgment,
   salutationName,
   threadContextForJudgment,
@@ -58,6 +71,17 @@ const REGISTERS: VoiceRegister[] = [
 /** The calm, honest failure. Nothing is created when this is said. */
 export const DRAFT_PREPARATION_FAILED =
   "Comms couldn't prepare a trustworthy draft from the available context. Nothing was created.";
+
+/**
+ * The honest refusal when drafting would require invention. Names the gaps
+ * in plain language so the person knows exactly what to add — a real prior
+ * interaction, a reason to write — instead of receiving a fabricated draft.
+ */
+export function draftUngroundedMessage(missing: string[]): string {
+  return `Comms can't draft this message without inventing ${missing.join(
+    " and ",
+  )}. Nothing was created.`;
+}
 
 function supabaseUrl(): string {
   return trustTaiSupabaseUrl();
@@ -220,48 +244,68 @@ async function loadVoiceExamples(
 const JUDGMENT_INSTRUCTIONS = `You are the communication judgment of Trust Tai. You do NOT write the message.
 You reason over the evidence and return the judgment a draft will be written from.
 
+Spirit first: see the person before the transaction. Judge why Tai is writing now, what
+this person is likely carrying or caring about (from the evidence only), what Tai wants
+them to feel, and whether any next step is actually needed.
+
 Return strict JSON only:
 {
-  "communicationJob": "one plain sentence: what this message needs to accomplish now",
-  "relationshipRead": "one or two sentences: the state and temperature of this relationship, grounded in the evidence",
-  "responseObligation": "what in their latest message actually deserves acknowledgement or answer; empty when there is no live thread",
-  "toneAndPosture": "how Tai should show up in this relationship, and why, in one sentence",
+  "whyNow": "one plain sentence: why Tai is writing now, grounded in the evidence",
+  "whatNoticed": "what this person is likely carrying or caring about, based only on the evidence",
+  "intendedEffect": "what Tai wants them to feel when they finish reading",
+  "responseObligation": "what in their latest message deserves acknowledgement or answer; empty when there is no live thread",
   "nextMove": { "ask": true|false, "what": "the proportionate ask, or empty when no ask belongs in this message" },
   "factsAllowed": ["evidence lines the draft may reference as fact"],
-  "factsAvoid": ["claims the draft must not state — inferred, unsupported, or unconfirmed"],
-  "voiceEvidenceUsed": ["the Voice DNA rules or approved examples that govern this draft"]
+  "factsAvoid": ["claims the draft must not state — inferred, unsupported, or invented"],
+  "voiceEvidenceUsed": ["the canonical relationship-voice rules that govern this draft"],
+  "learnedExamplesUsed": ["the approved examples that influenced the judgment; empty when none did"]
 }
 
 Laws:
-1. Use only the evidence provided. Never invent a fact, a name, a date, or a shared history.
+1. Use only the evidence provided. Never invent a fact, a name, a date, a shared history,
+   or a personal detail. When the evidence is thin, judge less — never fill gaps with guesses.
 2. Inferred reads may shape your judgment but must land in factsAvoid, never factsAllowed.
-3. A call request is only valid when the relationship and the thread support it. A thoughtful
-   acknowledgement, an answer, or a plain continuation with no ask is often the right move.
-4. This is a product-level rationale a person will read. Concise, plain, no chain-of-thought.`;
+3. Not every message needs an ask. A thoughtful acknowledgement, an answer, or a plain
+   continuation with no ask is often the right move. When an ask belongs, it is small
+   and easy to decline — spaciousness, never pressure.
+4. Ordinary email is not brand content. Roadmap language, proprietary frameworks, and
+   positioning enter only when the conversation itself calls for them.
+5. This is a product-level rationale a person will read. Concise, plain, no chain-of-thought.`;
 
 const WRITE_INSTRUCTIONS = `You write one short email for Tai at Trust Tai, FROM the communication judgment
 below. You never send anything.
 
+The canonical Tai relationship voice is the baseline for every message:
+- Warm, calm, concise, human, specific. Quiet confidence, no performance.
+- Natural contractions. Short paragraphs. Everyday words.
+- See the person first: one specific, true detail from the evidence beats any compliment.
+- Create spaciousness, never pressure. No manufactured urgency.
+- No corporate language and no generic networking language.
+- No fake familiarity and no invented personalization: if it is not in the evidence, it does not exist.
+- No forced call to action. A natural question is welcome; make the ask only when the judgment names one.
+
 Laws:
-1. Follow the Voice DNA exactly. It is evidence of how Tai actually communicates, not a tone preset.
-2. Write the message the judgment requires — its job, its obligation, its move. Nothing more.
-3. Reference only facts in factsAllowed. Never state anything in factsAvoid.
-4. If nextMove.ask is false, make no ask. A message can simply acknowledge, answer, or continue.
-5. Hard rules: no em dashes, no exclamation marks, no 'just checking in' or 'touching base',
+1. The judgment governs. Reference only facts in factsAllowed. Never state anything in factsAvoid.
+2. If nextMove.ask is false, make no ask. A message can simply acknowledge, answer, or continue.
+3. Hard rules: no em dashes, no exclamation marks, no 'just checking in' or 'touching base',
    no needy phrasing, no promises.
-6. Use at most one specific detail from the evidence. If there is no evidence, keep it plain and short.
+4. Approved examples influence rhythm and texture only — they never override this baseline.
+5. Brand or website language enters only when the conversation calls for it.
+6. Short. Most messages earn 4 to 8 sentences before the signoff.
 7. Use the given salutation name only if a salutation is natural here; otherwise start plainly.
    Never guess a name.
 8. Return JSON only: {"subject": string, "body": string}. The body must end with 'Trust,',
    then a new line, then 'Tai'.`;
 
 /**
- * Compose one draft: judgment first, prose second, deterministic Voice pass
- * last. Returns the checked text, the judgment it rests on, and every rule
- * it tripped, so the reviewer sees exactly what the policy saw.
+ * Compose one draft: grounding gate first, judgment second, prose third,
+ * deterministic Voice pass last. Returns the checked text, the judgment it
+ * rests on, and every rule it tripped, so the reviewer sees exactly what the
+ * policy saw.
  *
- * Throws DRAFT_PREPARATION_FAILED when no trustworthy draft can be produced.
- * A fabricated generic draft is never returned in its place.
+ * Throws draftUngroundedMessage when the evidence is below the grounding bar,
+ * and DRAFT_PREPARATION_FAILED when no trustworthy draft can be produced.
+ * A fabricated generic draft is never returned in either case.
  */
 export async function draftMessage(
   token: string,
@@ -275,7 +319,7 @@ export async function draftMessage(
   const { data: relationship, error } = await supabase
     .from("comms_relationships")
     .select(
-      "id, organization_id, full_name, company_name, stage, met_where, next_action, observed, inferred, decided",
+      "id, organization_id, full_name, email, company_name, stage, met_where, next_action, observed, inferred, decided",
     )
     .eq("id", request.relationshipId)
     .maybeSingle();
@@ -314,34 +358,65 @@ export async function draftMessage(
     loadVoiceExamples(supabase, organizationId),
   ]);
 
+  /* The grounding gate. A real thread plus a known identity grounds a reply;
+     identity plus one real prior interaction plus a reason grounds a
+     proactive note. Below that bar the only honest outcome is no draft —
+     producing one would require inventing the reason, the facts, or the
+     relationship itself. Extra memory, commitments, and examples improve a
+     grounded draft; they are never mandatory. */
+  const grounding = assessDraftGrounding({
+    hasIdentity: Boolean(
+      fullName || String(row["email"] ?? "").trim() || String(row["company_name"] ?? "").trim(),
+    ),
+    threadHasInbound: thread.some((entry) => entry.direction === "inbound"),
+    priorInteractionCount:
+      thread.length + usedEvidence.length + (metWhere?.trim() ? 1 : 0),
+    hasReason: Boolean(
+      request.purpose?.trim() ||
+        String(row["next_action"] ?? "").trim() ||
+        commitments.length > 0,
+    ),
+  });
+  if (!grounding.grounded) throw new Error(draftUngroundedMessage(grounding.missing));
+
+  /* The evidence packet keeps its provenance explicit: the canonical
+     relationship voice is the baseline, relationship evidence is what may be
+     said, the org Voice DNA is the editable brand expression, and approved
+     examples are learned style influence — layered, never merged. */
   const evidencePacket = {
-    recipient: {
-      name: fullName || "Unknown",
-      salutationName: salutation || null,
-      company: (row["company_name"] as string | null) ?? null,
-      stage: (row["stage"] as string | null) ?? null,
-      metWhere,
+    draftKind: grounding.kind,
+    canonicalRelationshipVoice: [...TAI_RELATIONSHIP_VOICE],
+    relationshipEvidence: {
+      recipient: {
+        name: fullName || "Unknown",
+        salutationName: salutation || null,
+        company: (row["company_name"] as string | null) ?? null,
+        stage: (row["stage"] as string | null) ?? null,
+        metWhere,
+      },
+      intent: {
+        register,
+        registerGuide: REGISTER_GUIDE[register],
+        nextAction: (row["next_action"] as string | null) ?? null,
+        purpose: request.purpose?.trim() || null,
+      },
+      memory: {
+        observedAndDecided: usedEvidence.map(
+          (entry) => `${entry.label}: ${entry.value} (${entry.tier})`,
+        ),
+        inferredGuideOnly: inferred.map((entry) => entry.value),
+        openCommitments: commitments,
+      },
+      thread: thread.map((entry) => ({
+        direction: entry.direction,
+        subject: entry.subject ?? null,
+        text: entry.text,
+        at: entry.occurredAt,
+        latestFromThisSide: entry.latestForSide,
+      })),
     },
-    intent: {
-      register,
-      registerGuide: REGISTER_GUIDE[register],
-      nextAction: (row["next_action"] as string | null) ?? null,
-      purpose: request.purpose?.trim() || null,
-    },
-    memory: {
-      observedAndDecided: usedEvidence.map((entry) => `${entry.label}: ${entry.value} (${entry.tier})`),
-      inferredGuideOnly: inferred.map((entry) => entry.value),
-      openCommitments: commitments,
-    },
-    thread: thread.map((entry) => ({
-      direction: entry.direction,
-      subject: entry.subject ?? null,
-      text: entry.text,
-      at: entry.occurredAt,
-      latestFromThisSide: entry.latestForSide,
-    })),
-    voiceDna: voiceDocument,
-    approvedVoiceExamples: voiceExamples,
+    brandVoiceDna: voiceDocument,
+    learnedStyleExamples: voiceExamples,
   };
 
   /* From here the provider does the work. Any failure — not configured,

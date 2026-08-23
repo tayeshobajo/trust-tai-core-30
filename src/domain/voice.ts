@@ -108,6 +108,30 @@ export const VOICE_RULES: Record<VoiceRuleId, VoiceRule> = {
 /** The professional email signoff. Exact, every time. */
 export const EMAIL_SIGNOFF = "Trust,\nTai";
 
+/**
+ * Tai's Relationship Voice — the canonical baseline for every message.
+ *
+ * This is deliberately distinct from Brand Voice. The Voice DNA document
+ * below is the organization's editable brand expression; website and content
+ * rules (roadmap language, proprietary frameworks, declarative headlines,
+ * positioning) belong to that surface and enter an ordinary email only when
+ * the actual conversation calls for them. Relationship email is governed by
+ * this baseline first. Approved examples and Tai's edits influence style on
+ * top of it — they never replace it.
+ */
+export const TAI_RELATIONSHIP_VOICE: readonly string[] = [
+  "Spirit first: see the person before the transaction.",
+  "Make them feel specifically seen; honor what they have built or carried when the evidence supports it.",
+  "Recognize what matters to them; create spaciousness, never pressure.",
+  "Warm, calm, concise, human, specific. Quiet confidence, no performance.",
+  "Natural contractions. Short paragraphs. Everyday words.",
+  "No corporate language and no generic networking language.",
+  "No manufactured urgency and no fake familiarity.",
+  "No invented personalization — if it is not in the evidence, it does not exist.",
+  "No forced call to action. A natural question is welcome; an ask appears only when the judgment names one.",
+  "No em dashes. Close with Trust, then Tai.",
+];
+
 /** The default Voice DNA document seeded into a new organization. */
 export const DEFAULT_VOICE_DOCUMENT = `# Tai's Voice DNA
 

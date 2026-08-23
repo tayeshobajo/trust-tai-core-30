@@ -3,13 +3,15 @@
  *
  * These tests guard the failures seen in production: a comma-formatted name
  * must never leak into a salutation, a judgment must round-trip through a
- * draft's rationale without disturbing the staged send extras, and the
- * thread a draft reasons over must name what is actually owed.
+ * draft's rationale without disturbing the staged send extras, the thread a
+ * draft reasons over must name what is actually owed, and drafting below the
+ * grounding bar must fail honestly rather than invent a reason.
  */
 
 import { describe, expect, it } from "vitest";
 
 import {
+  assessDraftGrounding,
   judgmentSummaryLines,
   parseCommunicationJudgment,
   readCommunicationJudgment,
@@ -47,14 +49,15 @@ describe("salutationName", () => {
 });
 
 const JUDGMENT: CommunicationJudgment = {
-  communicationJob: "Answer their question about timing and confirm the next step.",
-  relationshipRead: "Warm and active; they replied within a day and asked a real question.",
+  whyNow: "They asked about timing; a straight answer and a next step are owed.",
+  whatNoticed: "They are moving quickly and want certainty about phase two.",
+  intendedEffect: "That they feel heard and unhurried, with a clear way forward.",
   responseObligation: "They asked whether the proposal covers phase two.",
-  toneAndPosture: "Direct and brief; this relationship runs on short practical notes.",
   nextMove: { ask: true, what: "Offer two concrete times for a short call." },
   factsAllowed: ["They asked about phase two (observed, latest inbound)."],
   factsAvoid: ["Do not claim we already scoped phase two."],
   voiceEvidenceUsed: ["Short declarative sentences", "Close with Trust, Tai"],
+  learnedExamplesUsed: [],
 };
 
 describe("communication judgment on the rationale", () => {
@@ -84,8 +87,25 @@ describe("communication judgment on the rationale", () => {
 
   it("refuses a judgment without its core read", () => {
     expect(parseCommunicationJudgment({})).toBeNull();
-    expect(parseCommunicationJudgment({ communicationJob: "Only a job." })).toBeNull();
+    expect(parseCommunicationJudgment({ whyNow: "Only a reason." })).toBeNull();
+    expect(parseCommunicationJudgment({ whatNoticed: "Only a read." })).toBeNull();
     expect(parseCommunicationJudgment("not an object")).toBeNull();
+  });
+
+  it("reads judgments persisted before the spirit-first rename", () => {
+    const legacy = parseCommunicationJudgment({
+      communicationJob: "Answer their timing question.",
+      relationshipRead: "Warm and active.",
+      toneAndPosture: "Direct and brief.",
+      nextMove: "Offer two times.",
+      factsAllowed: ["They asked about phase two."],
+      voiceEvidenceUsed: ["Short declarative sentences"],
+    });
+    expect(legacy).not.toBeNull();
+    expect(legacy?.whyNow).toBe("Answer their timing question.");
+    expect(legacy?.whatNoticed).toBe("Warm and active.");
+    expect(legacy?.intendedEffect).toBe("Direct and brief.");
+    expect(legacy?.learnedExamplesUsed).toEqual([]);
   });
 
   it("normalizes a string nextMove and drops an empty ask", () => {
@@ -103,11 +123,13 @@ describe("communication judgment on the rationale", () => {
 });
 
 describe("judgmentSummaryLines", () => {
-  it("keeps the read to three short lines", () => {
+  it("reads as why now, what I noticed, intended effect, next move", () => {
     const lines = judgmentSummaryLines(JUDGMENT);
-    expect(lines).toHaveLength(3);
-    expect(lines[0]).toBe(JUDGMENT.communicationJob);
-    expect(lines[2]).toContain(JUDGMENT.nextMove.what);
+    expect(lines).toHaveLength(4);
+    expect(lines[0]).toBe(`Why now: ${JUDGMENT.whyNow}`);
+    expect(lines[1]).toBe(`What I noticed: ${JUDGMENT.whatNoticed}`);
+    expect(lines[2]).toBe(`Intended effect: ${JUDGMENT.intendedEffect}`);
+    expect(lines[3]).toBe(`Next move: ${JUDGMENT.nextMove.what}`);
   });
 
   it("says plainly when there is no ask", () => {
@@ -115,7 +137,74 @@ describe("judgmentSummaryLines", () => {
       ...JUDGMENT,
       nextMove: { ask: false, what: "" },
     });
-    expect(lines[2]).toBe("No ask. The message stands on its own.");
+    expect(lines[3]).toBe("No ask needed.");
+  });
+});
+
+describe("assessDraftGrounding", () => {
+  it("grounds a reply on a real thread plus a known identity, however sparse", () => {
+    const decision = assessDraftGrounding({
+      hasIdentity: true,
+      threadHasInbound: true,
+      priorInteractionCount: 1,
+      hasReason: false,
+    });
+    expect(decision.grounded).toBe(true);
+    expect(decision.kind).toBe("reply");
+    expect(decision.missing).toEqual([]);
+  });
+
+  it("grounds a proactive note on identity, one real prior interaction, and a reason", () => {
+    const decision = assessDraftGrounding({
+      hasIdentity: true,
+      threadHasInbound: false,
+      priorInteractionCount: 1,
+      hasReason: true,
+    });
+    expect(decision).toEqual({ grounded: true, kind: "proactive", missing: [] });
+  });
+
+  it("fails closed on a no-context proactive email and names both gaps", () => {
+    const decision = assessDraftGrounding({
+      hasIdentity: true,
+      threadHasInbound: false,
+      priorInteractionCount: 0,
+      hasReason: false,
+    });
+    expect(decision.grounded).toBe(false);
+    expect(decision.kind).toBeNull();
+    expect(decision.missing).toEqual(["a real prior interaction", "a reason to write now"]);
+  });
+
+  it("never drafts for a stranger: no identity means no draft", () => {
+    const decision = assessDraftGrounding({
+      hasIdentity: false,
+      threadHasInbound: true,
+      priorInteractionCount: 5,
+      hasReason: true,
+    });
+    expect(decision.grounded).toBe(false);
+    expect(decision.missing[0]).toContain("who this person is");
+  });
+
+  it("blocks fabricated personalization: interaction without a reason is not enough", () => {
+    const noReason = assessDraftGrounding({
+      hasIdentity: true,
+      threadHasInbound: false,
+      priorInteractionCount: 3,
+      hasReason: false,
+    });
+    expect(noReason.grounded).toBe(false);
+    expect(noReason.missing).toEqual(["a reason to write now"]);
+
+    const noHistory = assessDraftGrounding({
+      hasIdentity: true,
+      threadHasInbound: false,
+      priorInteractionCount: 0,
+      hasReason: true,
+    });
+    expect(noHistory.grounded).toBe(false);
+    expect(noHistory.missing).toEqual(["a real prior interaction"]);
   });
 });
 
