@@ -231,12 +231,17 @@ interface GmailHeader {
   value?: string;
 }
 
-/** One MIME part. `format=metadata` still carries names, sizes, and handles. */
+/**
+ * One MIME part. `format=metadata` carries names, sizes, and handles;
+ * `format=full` additionally carries per-part headers (Content-ID,
+ * Content-Disposition) and inline body `data` for small parts.
+ */
 export interface GmailPart {
   partId?: string;
   mimeType?: string;
   filename?: string;
-  body?: { attachmentId?: string; size?: number };
+  headers?: GmailHeader[];
+  body?: { attachmentId?: string; size?: number; data?: string };
   parts?: GmailPart[];
 }
 
@@ -322,7 +327,10 @@ function normalize(message: GmailMessage, mailbox: string): NormalizedMessage | 
   const occurredAt = message.internalDate
     ? new Date(Number(message.internalDate)).toISOString()
     : new Date().toISOString();
-  const attachments = extractAttachments(message.payload);
+  // Full-fidelity extraction: bodies, inline images, ordinary attachments.
+  // On a metadata-format payload (mailbox-import discovery) the body fields
+  // simply come back absent — discovery stays cheap by construction.
+  const extracted = extractEmailBody(message.payload);
   return {
     providerMessageId: message.id,
     providerThreadId: message.threadId,
@@ -333,8 +341,76 @@ function normalize(message: GmailMessage, mailbox: string): NormalizedMessage | 
     ccEmails: cc,
     ...(header(message, "Subject") ? { subject: header(message, "Subject")! } : {}),
     ...(message.snippet ? { snippet: message.snippet } : {}),
+    ...(extracted.bodyText ? { bodyText: extracted.bodyText } : {}),
+    ...(extracted.bodyHtml ? { bodyHtml: extracted.bodyHtml } : {}),
     occurredAt,
-    ...(attachments.length > 0 ? { attachments } : {}),
+    ...(extracted.attachments.length > 0 ? { attachments: extracted.attachments } : {}),
+    ...(extracted.inline.length > 0 ? { inlineResources: extracted.inline } : {}),
+    ...(extracted.blockedRemoteImages > 0
+      ? { blockedRemoteImages: extracted.blockedRemoteImages }
+      : {}),
+  };
+}
+
+/**
+ * Which of the synced messages are genuinely new. Only new messages count
+ * as stored and only new inbound mail raises an event — a resync enriches
+ * an existing row's body and inline metadata without counting it and
+ * without re-emitting `relationship.message_received`. Pure; tested.
+ */
+export function classifySyncedMessages(
+  messages: Pick<NormalizedMessage, "providerMessageId" | "direction">[],
+  existingIds: ReadonlySet<string>,
+): { newCount: number; newInbound: NormalizedMessage[] } {
+  const fresh = messages.filter((message) => !existingIds.has(message.providerMessageId));
+  return {
+    newCount: fresh.length,
+    newInbound: fresh.filter((message) => message.direction === "inbound") as NormalizedMessage[],
+  };
+}
+
+/**
+ * One `comms_messages` row from a normalized message. The body columns are
+ * the fidelity milestone's addition; attachments and inline resources share
+ * the jsonb column (inline entries carry `inline`/`content_id`), and the
+ * remote-image refusal count rides in provenance. Pure; tested.
+ */
+export function buildMessageRow(input: {
+  organizationId: string;
+  relationshipId: string;
+  threadId: string;
+  mailbox: string;
+  nowIso: string;
+  message: NormalizedMessage;
+}): Record<string, unknown> {
+  const { message } = input;
+  const files = [...(message.attachments ?? []), ...(message.inlineResources ?? [])];
+  return {
+    organization_id: input.organizationId,
+    relationship_id: input.relationshipId,
+    thread_id: input.threadId,
+    provider: "gmail",
+    provider_message_id: message.providerMessageId,
+    provider_thread_id: message.providerThreadId,
+    direction: message.direction,
+    from_email: message.fromEmail ?? null,
+    from_name: message.fromName ?? null,
+    to_emails: message.toEmails,
+    cc_emails: message.ccEmails,
+    subject: message.subject ?? null,
+    snippet: message.snippet ?? null,
+    body_text: message.bodyText ?? null,
+    body_html: message.bodyHtml ?? null,
+    occurred_at: message.occurredAt,
+    provenance: {
+      source: "gmail",
+      fetched_at: input.nowIso,
+      mailbox: input.mailbox,
+      ...(message.blockedRemoteImages
+        ? { blocked_remote_images: message.blockedRemoteImages }
+        : {}),
+    },
+    attachments: files.map(attachmentMetaToJson),
   };
 }
 
