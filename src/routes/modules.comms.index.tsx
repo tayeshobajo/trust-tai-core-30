@@ -156,23 +156,58 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     return map;
   }, [orgTouchesQuery.data]);
 
+  const entries = useMemo(
+    () => inboxEntries(relationships, touchesByRelationship),
+    [relationships, touchesByRelationship],
+  );
+
   const view = useMemo(
-    () =>
-      inboxView(inboxEntries(relationships, touchesByRelationship), {
-        tab,
-        query,
-        health: healthFilter,
-      }),
-    [relationships, touchesByRelationship, tab, query, healthFilter],
+    () => inboxView(entries, { tab, query, health: healthFilter }),
+    [entries, tab, query, healthFilter],
   );
 
   /**
-   * The open conversation defaults to the first person in the current view,
-   * so the room never shows someone the list is not showing.
+   * The view is always derived in full — search, filters, counts, and tabs
+   * describe the whole view — and only the rendered list is paged.
+   */
+  const pageView = useMemo(() => inboxPage(view, page), [view, page]);
+
+  /**
+   * A view change (tab, search, health filter) always returns to page one,
+   * and the open conversation falls back to the first row of that page when
+   * the person is no longer on it.
+   */
+  function changeView(next: { tab?: InboxTab; query?: string; health?: ConversationHealthStatus | null }) {
+    const nextTab = next.tab ?? tab;
+    const nextQuery = next.query ?? query;
+    const nextHealth = next.health !== undefined ? next.health : healthFilter;
+    setTab(nextTab);
+    setQuery(nextQuery);
+    setHealthFilter(nextHealth);
+    setPage(1);
+    const firstPage = inboxPage(
+      inboxView(entries, { tab: nextTab, query: nextQuery, health: nextHealth }),
+      1,
+    );
+    const keep = pageSelection(firstPage.rows, selectedId);
+    if (keep !== selectedId) setSelectedId(keep);
+  }
+
+  function changePage(next: number) {
+    const target = inboxPage(view, next);
+    setPage(target.page);
+    const keep = pageSelection(target.rows, selectedId);
+    if (keep !== selectedId) setSelectedId(keep);
+  }
+
+  /**
+   * The open conversation defaults to the first person on the current page,
+   * so the room never shows someone the list is not showing — unless the
+   * person was opened directly (from the sidebar), which always wins.
    */
   const selected: Relationship | null =
-    relationships.find((entry) => entry.id === selectedId) ??
-    [...view.priority, ...view.others][0]?.relationship ??
+    (selectedId ? relationships.find((entry) => entry.id === selectedId) : null) ??
+    relationships.find((entry) => entry.id === pageSelection(pageView.rows, null)) ??
     null;
 
   useEffect(() => {
