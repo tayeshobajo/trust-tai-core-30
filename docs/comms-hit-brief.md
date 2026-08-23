@@ -367,13 +367,14 @@ already carry the classification (`relationshipSegment` in
 - **Entry rules locked:** a Scout discovery alone never creates a
   relationship; entry requires handoff, approved outreach, inbound contact,
   a booked meeting, or explicit Add to Comms.
-- **Laws recorded in `docs/comms-v1.md`:** "Automation ends where
+- **Laws recorded in `docs/comms-v1.md`:"** "Automation ends where
   relationship begins" and the Comms agent continuity mission ("Protect and
-  develop every relationship Trust Tai has deliberately chosen to care
-  about"), including the Gmail continuity rules — same approved email, same
-  relationship, new threads attach as new conversations; `Trust Tai/Comms`
-  remains the ingestion boundary; no Gmail mutation permissions now; new
-  email identities need human confirmation before merging.
+  develop every relationship Trust Tai has deliberately chosen to care about"),
+  including the Gmail continuity rules and concrete maintenance examples:
+  multi-thread/same-approved-email must attach to the same relationship;
+  changed or secondary email identities require human confirmation before
+  merging; never auto-create a duplicate record or relax the label/read-only
+  boundary.
 - **Sidebar glance** reads the same view state: Needs you, Needs attention,
   At risk, Quiet — the Needs-you row switches view rather than filtering.
 
