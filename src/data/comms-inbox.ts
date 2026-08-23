@@ -1,26 +1,34 @@
 /**
  * Inbox state, as a pure function.
  *
- * Which tab a conversation belongs to, which ones deserve to sit at the top,
- * and what each filter would actually show. Kept out of the component so the
- * behaviour can be proved rather than eyeballed.
+ * The relationship workspace has four operating views, all reading the same
+ * derived state — never separate lists, never a pipeline:
+ *
+ *  - Clients:   established clients and meaningful existing relationships.
+ *  - Nurture:   people Trust Tai deliberately chose to develop.
+ *  - Needs you: human judgment required, across Clients and Nurture.
+ *  - All:       the complete relationship ledger, everyone exactly once.
+ *
+ * Kept out of the component so the behaviour can be proved rather than
+ * eyeballed.
  */
 
-import type { Relationship, Touch } from "@/domain/comms";
+import { relationshipSegment, type Relationship, type Touch } from "@/domain/comms";
 import type { ConversationHealth, ConversationHealthStatus } from "@/domain/comms-health";
 import { deriveConversationHealth } from "./comms-health";
+import { nextRelationshipMove } from "./comms-next-move";
 import { matchesSearch } from "./comms-queue";
 
-export type InboxTab = "all" | "needs_you" | "following_up" | "archived";
+export type InboxTab = "clients" | "nurture" | "needs_you" | "all";
 
 export const TAB_LABEL: Record<InboxTab, string> = {
-  all: "All",
+  clients: "Clients",
+  nurture: "Nurture",
   needs_you: "Needs you",
-  following_up: "Following up",
-  archived: "Archived",
+  all: "All",
 };
 
-export const TABS: InboxTab[] = ["all", "needs_you", "following_up", "archived"];
+export const TABS: InboxTab[] = ["clients", "nurture", "needs_you", "all"];
 
 export interface InboxEntry {
   relationship: Relationship;
@@ -39,23 +47,45 @@ export function inboxEntries(
   }));
 }
 
-export function tabOf(entry: InboxEntry): InboxTab {
-  if (entry.relationship.stage === "archived") return "archived";
-  if (entry.health.waitingOn === "needs_us") return "needs_you";
-  return "following_up";
+/**
+ * The one segment view a conversation belongs to, or null when archived.
+ * Archived people stay in the ledger (All) but crowd neither working room.
+ */
+export function segmentViewOf(entry: InboxEntry): "clients" | "nurture" | null {
+  if (entry.relationship.stage === "archived") return null;
+  return relationshipSegment(entry.relationship) === "client" ? "clients" : "nurture";
 }
 
-export function tabCounts(entries: InboxEntry[]): Record<InboxTab, number> {
+/**
+ * Needs you, cross-cutting Clients and Nurture. Reuses the two existing
+ * attention reads — the conversation waiting on us, and the next-move rules
+ * with real urgency — rather than inventing a parallel engine.
+ */
+export function needsYou(entry: InboxEntry, now: Date = new Date()): boolean {
+  if (entry.relationship.stage === "archived") return false;
+  if (entry.health.waitingOn === "needs_us") return true;
+  const move = nextRelationshipMove(entry.relationship, now);
+  return move.needed && move.urgency !== "when_natural";
+}
+
+function inView(entry: InboxEntry, tab: InboxTab, now: Date): boolean {
+  if (tab === "all") return true;
+  if (tab === "needs_you") return needsYou(entry, now);
+  return segmentViewOf(entry) === tab;
+}
+
+export function tabCounts(entries: InboxEntry[], now: Date = new Date()): Record<InboxTab, number> {
   const counts: Record<InboxTab, number> = {
-    all: 0,
+    clients: 0,
+    nurture: 0,
     needs_you: 0,
-    following_up: 0,
-    archived: 0,
+    all: 0,
   };
   for (const entry of entries) {
-    const tab = tabOf(entry);
-    counts[tab] += 1;
-    if (tab !== "archived") counts.all += 1;
+    counts.all += 1;
+    const segment = segmentViewOf(entry);
+    if (segment) counts[segment] += 1;
+    if (needsYou(entry, now)) counts.needs_you += 1;
   }
   return counts;
 }
@@ -106,8 +136,9 @@ export interface InboxView {
 }
 
 /**
- * What the inbox should render for the current tab, search, and health filter.
- * Priority is what is genuinely waiting; everything else is simply "others".
+ * What the inbox should render for the current view, search, and health
+ * filter. Priority is what is genuinely waiting; everything else is simply
+ * "others".
  */
 export function inboxView(
   entries: InboxEntry[],
@@ -115,15 +146,15 @@ export function inboxView(
     tab: InboxTab;
     query?: string;
     health?: ConversationHealthStatus | null;
+    now?: Date;
   },
 ): InboxView {
-  const counts = tabCounts(entries);
+  const now = options.now ?? new Date();
+  const counts = tabCounts(entries, now);
   const health = healthCounts(entries);
 
   const visible = entries.filter((entry) => {
-    if (options.tab === "all" ? entry.relationship.stage === "archived" : tabOf(entry) !== options.tab) {
-      return false;
-    }
+    if (!inView(entry, options.tab, now)) return false;
     if (options.health && entry.health.status !== options.health) return false;
     return matchesSearch(entry.relationship, options.query ?? "");
   });
