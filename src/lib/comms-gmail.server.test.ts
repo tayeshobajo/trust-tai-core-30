@@ -318,3 +318,171 @@ describe("canSendWithScopes", () => {
     expect(canSendWithScopes([])).toBe(false);
   });
 });
+
+/* ======================================================================
+ * Multi-mailbox
+ * ==================================================================== */
+
+import {
+  GMAIL_SEND_SCOPE,
+  mailboxFromProvenance,
+  resolveSendMailbox,
+  type SendMailboxRef,
+} from "@/domain/comms-integrations";
+import { pickGmailConnection } from "@/lib/comms-gmail.server";
+import { mailboxCapabilityOf } from "@/lib/comms-gmail-send.server";
+
+const PRODUCTION_REDIRECT = "https://cmd.trusttai.com/api/public/comms/gmail/connect";
+
+function mailbox(id: string, email: string, canSend: boolean, connected = true): SendMailboxRef {
+  return { id, accountEmail: email, canSend, connected };
+}
+
+describe("multi-mailbox connections", () => {
+  it("two Gmail connection rows can coexist — connecting a second never replaces the first", () => {
+    const first = connectionRowFor({
+      organizationId: "org",
+      accountEmail: "tayeshobajo@gmail.com",
+      refreshTokenEnc: "a",
+      accessTokenEnc: "b",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      scopes: [GMAIL_READONLY_SCOPE, GMAIL_SEND_SCOPE],
+    });
+    const second = connectionRowFor({
+      organizationId: "org",
+      accountEmail: "tai@trusttai.com",
+      refreshTokenEnc: "c",
+      accessTokenEnc: "d",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      scopes: [GMAIL_READONLY_SCOPE],
+    });
+    // The row carries no primary/flag field and no org-wide replacement
+    // semantics: identity is (organization, provider, account_email), so two
+    // account emails are two rows, and an upsert matches only its own email.
+    expect(first.account_email).toBe("tayeshobajo@gmail.com");
+    expect(second.account_email).toBe("tai@trusttai.com");
+    expect(first.scopes).toEqual([GMAIL_READONLY_SCOPE, GMAIL_SEND_SCOPE]);
+    expect(second.scopes).toEqual([GMAIL_READONLY_SCOPE]);
+  });
+
+  it("member actions resolve a specific mailbox by id", () => {
+    const rows = [{ id: "a" }, { id: "b" }];
+    expect(pickGmailConnection(rows, "b")).toEqual({ kind: "found", row: { id: "b" } });
+    expect(pickGmailConnection(rows, "zzz")).toEqual({ kind: "none" });
+    expect(pickGmailConnection(rows)).toEqual({ kind: "ambiguous", count: 2 });
+    expect(pickGmailConnection([{ id: "a" }])).toEqual({ kind: "found", row: { id: "a" } });
+    expect(pickGmailConnection([])).toEqual({ kind: "none" });
+  });
+
+  it("each mailbox carries its own capability from its own persisted scopes", () => {
+    const readOnly = mailboxCapabilityOf({
+      id: "a",
+      account_email: "tayeshobajo@gmail.com",
+      scopes: [GMAIL_READONLY_SCOPE],
+      status: "connected",
+      cursor: null,
+    });
+    const sender = mailboxCapabilityOf({
+      id: "b",
+      account_email: "tai@trusttai.com",
+      scopes: [GMAIL_READONLY_SCOPE, GMAIL_SEND_SCOPE],
+      status: "connected",
+      cursor: null,
+    });
+    expect(readOnly.canSend).toBe(false);
+    expect(readOnly.requiredScope).toBe(GMAIL_SEND_SCOPE);
+    expect(sender.canSend).toBe(true);
+    expect(sender.requiredScope).toBeUndefined();
+  });
+
+  it("a reply goes from the mailbox that owns the thread — provenance, not choice", () => {
+    const connections = [
+      mailbox("a", "tayeshobajo@gmail.com", true),
+      mailbox("b", "tai@trusttai.com", true),
+    ];
+    const resolution = resolveSendMailbox({
+      connections,
+      threadMailbox: "tai@trusttai.com",
+      integrationId: "a", // even an explicit choice cannot reroute a reply
+    });
+    expect(resolution).toEqual({ kind: "resolved", connection: connections[1] });
+  });
+
+  it("thread ownership is read from message provenance", () => {
+    expect(mailboxFromProvenance({ mailbox: "tai@trusttai.com", via: "send" })).toBe(
+      "tai@trusttai.com",
+    );
+    expect(mailboxFromProvenance({ mailbox: " Tai@TrustTai.com " })).toBe("tai@trusttai.com");
+    expect(mailboxFromProvenance({})).toBeUndefined();
+    expect(mailboxFromProvenance(null)).toBeUndefined();
+  });
+
+  it("a reply on a thread owned by a read-only mailbox blocks only that mailbox", () => {
+    const connections = [
+      mailbox("a", "tayeshobajo@gmail.com", false),
+      mailbox("b", "tai@trusttai.com", true),
+    ];
+    const resolution = resolveSendMailbox({
+      connections,
+      threadMailbox: "tayeshobajo@gmail.com",
+    });
+    expect(resolution).toEqual({ kind: "not_send_capable", connection: connections[0] });
+  });
+
+  it("a reply on a thread whose mailbox was disconnected is a calm blocked outcome", () => {
+    const resolution = resolveSendMailbox({
+      connections: [mailbox("b", "tai@trusttai.com", true)],
+      threadMailbox: "tayeshobajo@gmail.com",
+    });
+    expect(resolution).toEqual({ kind: "owner_missing", mailbox: "tayeshobajo@gmail.com" });
+  });
+
+  it("a new conversation needs an explicit From only when several mailboxes can send", () => {
+    const two = [
+      mailbox("a", "tayeshobajo@gmail.com", true),
+      mailbox("b", "tai@trusttai.com", true),
+    ];
+    expect(resolveSendMailbox({ connections: two })).toEqual({
+      kind: "needs_choice",
+      candidates: two,
+    });
+    // One send-capable mailbox keeps the choice invisible and automatic.
+    const one = [
+      mailbox("a", "tayeshobajo@gmail.com", false),
+      mailbox("b", "tai@trusttai.com", true),
+    ];
+    expect(resolveSendMailbox({ connections: one })).toEqual({
+      kind: "resolved",
+      connection: one[1],
+    });
+    // The explicit choice is honored for a new conversation.
+    expect(resolveSendMailbox({ connections: two, integrationId: "a" })).toEqual({
+      kind: "resolved",
+      connection: two[0],
+    });
+    // Choosing a read-only mailbox blocks only that mailbox.
+    expect(resolveSendMailbox({ connections: one, integrationId: "a" })).toEqual({
+      kind: "not_send_capable",
+      connection: one[0],
+    });
+  });
+
+  it("production redirect is deterministic unless explicitly overridden", () => {
+    const request = new Request("https://id-preview--example.lovable.app/api/public/comms/gmail/connect");
+    expect(gmailRedirectUri(request)).toBe(PRODUCTION_REDIRECT);
+  });
+
+  it("an explicit redirect env var wins (development and preview flows)", () => {
+    process.env["GOOGLE_OAUTH_REDIRECT_URI"] =
+      "https://id-preview--example.lovable.app/api/public/comms/gmail/connect";
+    const request = new Request("http://localhost:8080/api/public/comms/gmail/connect");
+    expect(gmailRedirectUri(request)).toBe(
+      "https://id-preview--example.lovable.app/api/public/comms/gmail/connect",
+    );
+  });
+
+  it("the mismatch error names the exact authorized redirect URI Google Cloud must contain", () => {
+    expect(REDIRECT_URI_MISMATCH_MESSAGE).toContain(PRODUCTION_REDIRECT);
+    expect(REDIRECT_URI_MISMATCH_MESSAGE).toContain("redirect_uri_mismatch");
+  });
+});
