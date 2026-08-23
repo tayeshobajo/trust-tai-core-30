@@ -42,6 +42,13 @@
   --color-ink: var(--ink);
   --color-paper: var(--paper);
   --color-royal: var(--royal);
+  --color-plum: var(--plum);
+  /* Segment classification washes — derived from the segment hues so the
+     Client vs Developing surface treatment cannot drift from the tokens. */
+  --color-royal-wash: var(--royal-wash);
+  --color-royal-wash-strong: var(--royal-wash-strong);
+  --color-plum-wash: var(--plum-wash);
+  --color-plum-wash-strong: var(--plum-wash-strong);
   --color-rule: var(--rule);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -83,6 +90,12 @@
   --royal: oklch(0.49 0.185 264);
   /* Plum: the Nurture classification hue — soft violet, never a health color. */
   --plum: oklch(0.52 0.09 310);
+  /* Segment surface washes: ~6% resting tint, ~13% selected tint. Strong
+     enough to read at peripheral vision, quiet enough to stay premium. */
+  --royal-wash: color-mix(in oklab, var(--royal) 6%, transparent);
+  --royal-wash-strong: color-mix(in oklab, var(--royal) 13%, transparent);
+  --plum-wash: color-mix(in oklab, var(--plum) 7%, transparent);
+  --plum-wash-strong: color-mix(in oklab, var(--plum) 14%, transparent);
   --rule: oklch(0.906 0.016 250);
   --success: oklch(0.46 0.098 152);
   --warning: oklch(0.58 0.117 76);
