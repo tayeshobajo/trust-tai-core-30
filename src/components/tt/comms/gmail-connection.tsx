@@ -22,6 +22,7 @@ import {
   type GmailSyncResult,
 } from "@/data/supabase/comms-gmail";
 import {
+  GMAIL_SEND_SCOPE,
   INTEGRATION_STATUS_LABEL,
   readGmailRunSummary,
   type IntegrationConnection,
@@ -123,6 +124,9 @@ export function GmailConnection({
 
   const configured = status.data?.configured ?? false;
   const connected = connection?.status === "connected";
+  // Whether the persisted grant includes send. An older read-only connection
+  // stays fully functional for reading; reconnecting upgrades the grant.
+  const canSend = connection?.scopes.includes(GMAIL_SEND_SCOPE) ?? false;
   // The persisted summary of the last pass — visible even when nobody has
   // pressed "Read now" this session.
   const lastRun = connection ? readGmailRunSummary(connection.cursor) : null;
@@ -151,6 +155,11 @@ export function GmailConnection({
           {connection.lastSyncAt
             ? ` · last read ${new Date(connection.lastSyncAt).toLocaleString()}`
             : " · not read yet"}
+          {connected
+            ? canSend
+              ? " · can send drafts you approve"
+              : " · read-only grant"
+            : ""}
         </p>
       ) : (
         <p className="text-xs text-muted-foreground">
