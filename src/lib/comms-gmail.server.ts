@@ -51,7 +51,7 @@ import {
 
 const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
-const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
+export const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
 
 /** Bounded first read. We never backfill a whole mailbox. */
 const DEFAULT_BACKFILL_DAYS = 30;
@@ -148,7 +148,7 @@ export async function exchangeCode(input: {
   };
 }
 
-async function refreshAccessToken(refreshToken: string): Promise<string> {
+export async function refreshAccessToken(refreshToken: string): Promise<string> {
   const config = gmailConfig();
   if (!config) throw new Error("Gmail is not configured on the server.");
   const payload = await tokenRequest({
@@ -168,15 +168,24 @@ interface GmailHeader {
   value?: string;
 }
 
+/** One MIME part. `format=metadata` still carries names, sizes, and handles. */
+export interface GmailPart {
+  partId?: string;
+  mimeType?: string;
+  filename?: string;
+  body?: { attachmentId?: string; size?: number };
+  parts?: GmailPart[];
+}
+
 interface GmailMessage {
   id?: string;
   threadId?: string;
   snippet?: string;
   internalDate?: string;
-  payload?: { headers?: GmailHeader[] };
+  payload?: GmailPart & { headers?: GmailHeader[] };
 }
 
-async function gmailGet<T>(path: string, accessToken: string): Promise<T> {
+export async function gmailGet<T>(path: string, accessToken: string): Promise<T> {
   const response = await fetch(`${GMAIL_API}${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -237,6 +246,9 @@ function normalize(message: GmailMessage, mailbox: string): NormalizedMessage | 
     ...(message.snippet ? { snippet: message.snippet } : {}),
     occurredAt,
   };
+  const attachments = extractAttachments(message.payload);
+  if (attachments.length > 0) normalized.attachments = attachments;
+  return normalized;
 }
 
 /* ------------------------------------------------------------- Supabase IO */
