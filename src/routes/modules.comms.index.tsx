@@ -477,7 +477,9 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           subject: draft.subject,
           body: draft.body,
           reviewState: draft.reviewState,
-          rationale: { violations: draft.violations },
+          rationale: draft.judgment
+            ? writeCommunicationJudgment({ violations: draft.violations }, draft.judgment)
+            : { violations: draft.violations },
           evidence: draft.usedEvidence.map((entry) => ({
             label: `${entry.label} (${entry.tier})`,
             kind: entry.tier === "decided" ? "human" : "computed",
