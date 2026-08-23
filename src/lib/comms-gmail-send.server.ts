@@ -905,8 +905,10 @@ export async function downloadMailboxAttachment(input: {
 
   return {
     bytes,
-    filename: typeof target["filename"] === "string" ? target["filename"] : "attachment",
-    mimeType:
-      typeof target["mime_type"] === "string" ? target["mime_type"] : "application/octet-stream",
+    filename: target.filename,
+    mimeType: target.mimeType,
+    // Only the stored row may declare a resource inline; the caller can
+    // request inline delivery, but an ordinary file never becomes one.
+    inline: target.inline === true && target.mimeType.startsWith("image/"),
   };
 }
