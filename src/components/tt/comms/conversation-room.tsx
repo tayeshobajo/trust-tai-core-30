@@ -96,14 +96,22 @@ export function ConversationEvent({
         >
           {event.title}
         </p>
-        {event.body ? (
-          <p className="mt-1 line-clamp-[12] whitespace-pre-wrap text-[13px] text-muted-foreground">
+        {isEmail && organizationId && event.messageId ? (
+          <EmailBodyView
+            organizationId={organizationId}
+            messageId={event.messageId}
+            text={event.body}
+            html={event.htmlBody}
+            inline={(event.attachments ?? []).filter((file) => file.inline)}
+          />
+        ) : event.body ? (
+          <p className="mt-1 whitespace-pre-wrap break-words text-[13px] text-muted-foreground">
             {event.body}
           </p>
         ) : null}
-        {event.attachments?.length ? (
+        {chips.length ? (
           <ul className="mt-2 flex flex-wrap gap-1.5">
-            {event.attachments.map((file) => {
+            {chips.map((file) => {
               const downloadable = Boolean(event.messageId && file.attachmentId);
               return (
                 <li key={`${file.filename}:${file.size}`}>
