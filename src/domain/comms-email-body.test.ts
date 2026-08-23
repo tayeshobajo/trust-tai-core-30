@@ -14,6 +14,7 @@ import {
   extractEmailBody,
   htmlToPlainText,
   parseEmailHtml,
+  primaryEmailNeedsCollapse,
   sanitizeEmailHtml,
   splitQuotedContent,
   splitQuotedNodes,
