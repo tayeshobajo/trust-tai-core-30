@@ -11,13 +11,28 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { draftMessage, parseRegister } from "@/lib/comms-draft.server";
+import {
+  DraftFailure,
+  draftMessage,
+  parseRegister,
+  type DraftFailureCode,
+} from "@/lib/comms-draft.server";
 import { runtimeProviderStatus } from "@/lib/intelligence-runtime.server";
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
   return header.startsWith("Bearer ") ? header.slice(7).trim() || null : null;
 }
+
+/** Where each typed draft failure belongs on the wire. */
+const DRAFT_FAILURE_STATUS: Record<DraftFailureCode, number> = {
+  provider_not_configured: 503,
+  access_denied: 403,
+  provider_call_failed: 502,
+  judgment_unreadable: 502,
+  writing_unreadable: 502,
+  empty_draft: 502,
+};
 
 export const Route = createFileRoute("/api/public/comms/draft")({
   server: {
