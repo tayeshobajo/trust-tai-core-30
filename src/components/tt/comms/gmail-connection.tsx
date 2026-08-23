@@ -196,6 +196,13 @@ export function GmailConnection({
         </p>
       ) : null}
 
+      {connected && !canSend ? (
+        <p className="text-xs text-muted-foreground">
+          This connection was granted read-only access, so Send stays off. Reconnect to approve
+          sending — Google keeps your existing reading access, and reading stays exactly as it is.
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap gap-2 pt-1">
         {connected ? (
           <>
@@ -205,6 +212,17 @@ export function GmailConnection({
             >
               {readNow.isPending ? "Reading…" : "Read now"}
             </TTButton>
+            {!canSend ? (
+              <TTButton
+                variant="quiet"
+                onClick={() => connect.mutate()}
+                disabled={busy}
+              >
+                {connect.isPending || exchange.isPending
+                  ? "Reconnecting…"
+                  : "Reconnect with send access"}
+              </TTButton>
+            ) : null}
             <TTButton
               variant="quiet"
               onClick={() => disconnectAction.mutate()}
