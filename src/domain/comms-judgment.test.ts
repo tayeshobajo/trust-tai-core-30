@@ -15,9 +15,12 @@ import {
   judgmentSummaryLines,
   parseCommunicationJudgment,
   readCommunicationJudgment,
+  readDraftGrounding,
   salutationName,
+  summarizeDraftGrounding,
   threadContextForJudgment,
   writeCommunicationJudgment,
+  writeDraftGrounding,
   type CommunicationJudgment,
 } from "./comms-judgment";
 import { readOutgoingExtras, writeOutgoingExtras } from "./comms-outgoing";
