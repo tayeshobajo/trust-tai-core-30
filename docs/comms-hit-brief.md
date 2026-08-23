@@ -350,11 +350,18 @@ established clients. No schema migration was needed — `stage` + `source`
 already carry the classification (`relationshipSegment` in
 `src/domain/comms.ts`).
 
-- **Classification (derived, conservative):** graduated stages
-  (`meeting_set`/`opportunity`/`client`) → Clients; explicit `nurture`
-  stage → Nurture; `scout_handoff` origin → Nurture until it graduates;
-  `manual`/`in_person`/`inbound` → Clients. Legacy rows keep their room by
-  these rules; no data was reclassified by guessing from weak signals.
+- **Classification (derived, evidence-first — refined 2026-08-22):** the
+  segment follows current relationship reality, not the door the person
+  entered through. Established evidence (linked `client_id`, graduated
+  stage, explicit established intent) → Clients; development evidence
+  (`nurture` stage, `prospect` intent, `prospect_id`, `scout_handoff`
+  origin, early stage `new`/`researching`/`ready_to_reach`/`reached_out`) →
+  Nurture; contextual stages (`in_conversation`, `dormant`) follow the
+  evidence; a legacy row with no development evidence falls back to Clients
+  so nobody vanishes. Worked rule: prospect + `new` + met in person →
+  Nurture. No data was reclassified by guessing from weak signals; the
+  reverse move ("Move to Nurture") is offered only when the client
+  classification rests on contextual fallback (`canMoveToNurture`).
 - **Views:** Clients is the default; Nurture is prioritized by the existing
   health/next-move ordering; Needs you cross-cuts both segments using
   `health.waitingOn === "needs_us"` plus `nextRelationshipMove` urgency —
