@@ -72,6 +72,33 @@ export const SEGMENT_TEXT: Record<RelationshipSegment, string> = {
   nurture: "text-[var(--plum)]",
 };
 
+/**
+ * Canonical segment surfaces. Every place a row or card carries a
+ * classification reads from these records, so the treatment cannot drift:
+ * a quiet wash on the surface, a restrained classification edge on the
+ * left, and a tinted avatar. Selected state keeps the same segment family
+ * — a stronger wash plus a ring of the same hue — never a generic blue.
+ */
+export const SEGMENT_SURFACE: Record<RelationshipSegment, string> = {
+  client: "bg-royal-wash hover:bg-royal-wash-strong",
+  nurture: "bg-plum-wash hover:bg-plum-wash-strong",
+};
+
+export const SEGMENT_SURFACE_SELECTED: Record<RelationshipSegment, string> = {
+  client: "bg-royal-wash-strong ring-1 ring-inset ring-royal/50",
+  nurture: "bg-plum-wash-strong ring-1 ring-inset ring-plum/50",
+};
+
+export const SEGMENT_EDGE: Record<RelationshipSegment, string> = {
+  client: "border-l-royal",
+  nurture: "border-l-plum",
+};
+
+export const SEGMENT_AVATAR: Record<RelationshipSegment, string> = {
+  client: "bg-royal-wash-strong text-royal",
+  nurture: "bg-plum-wash-strong text-plum",
+};
+
 export function SegmentDot({
   segment,
   className,
