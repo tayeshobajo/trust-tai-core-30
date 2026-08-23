@@ -1,5 +1,5 @@
 /**
- * Gmail, read-only (server only).
+ * Gmail, label-gated read plus human-approved send (server only).
  *
  * What this is allowed to do: read message metadata for threads Tai has
  * explicitly labeled `Trust Tai/Comms`, and store only the ones with people
@@ -13,10 +13,16 @@
  * Labeled mail with someone Comms does not track is counted and left
  * unstored; it is surfaced for review through the mailbox import instead.
  *
+ * How it sends: it doesn't, from this module. Consent asks for
+ * `gmail.readonly` plus `gmail.send`, and the granted set is persisted
+ * exactly as Google reports it. Sending lives in the separate send path
+ * (`comms-gmail-send.server.ts`) and runs only when a person clicks Send on
+ * an approved draft.
+ *
  * What it is not allowed to do, by construction:
- *  - send anything (only `gmail.readonly` is ever requested),
- *  - add, rename, or remove Gmail labels (read-only scope; no mutation call
- *    exists here),
+ *  - send anything on its own (no send call exists here),
+ *  - add, rename, or remove Gmail labels (`gmail.modify` is never
+ *    requested; no mutation call exists here),
  *  - read unlabeled mail, or fall back to whole-mailbox reading when the
  *    label is missing,
  *  - store mail with anyone Comms does not already track, or create a
@@ -36,7 +42,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { openSecret, sealSecret } from "@/lib/comms-crypto.server";
 import { readThread } from "@/data/comms-thread-state";
 import {
-  GMAIL_READ_SCOPES,
+  GMAIL_CONNECTION_SCOPES,
+  grantedGmailScopes,
   summarizeMailboxCoverage,
   type AttachmentMeta,
   type MailboxCoverage,
@@ -87,6 +94,12 @@ export function gmailRedirectUri(request: Request): string {
   return `${url.origin}/api/public/comms/gmail/connect`;
 }
 
+/**
+ * Google's consent URL. Requests label-gated reading plus send, with
+ * `prompt=consent` and `include_granted_scopes=true` so reconnecting a
+ * read-only connection cleanly upgrades the grant without dropping what
+ * was already allowed. `gmail.modify` is never in the request.
+ */
 export function authorizeUrl(input: { redirectUri: string; state: string }): string {
   const config = gmailConfig();
   if (!config) throw new Error("Gmail is not configured on the server.");
@@ -94,7 +107,7 @@ export function authorizeUrl(input: { redirectUri: string; state: string }): str
     client_id: config.clientId,
     redirect_uri: input.redirectUri,
     response_type: "code",
-    scope: [...GMAIL_READ_SCOPES, "openid", "email"].join(" "),
+    scope: [...GMAIL_CONNECTION_SCOPES, "openid", "email"].join(" "),
     access_type: "offline",
     include_granted_scopes: "true",
     prompt: "consent",
@@ -107,6 +120,8 @@ interface TokenResponse {
   access_token?: string;
   refresh_token?: string;
   expires_in?: number;
+  /** Space-delimited set Google actually granted on this consent. */
+  scope?: string;
   error?: string;
   error_description?: string;
 }
@@ -127,7 +142,13 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenResponse
 export async function exchangeCode(input: {
   code: string;
   redirectUri: string;
-}): Promise<{ accessToken: string; refreshToken: string; expiresAt: string }> {
+}): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
+  /** The Gmail scopes Google actually granted, persisted to the connection row. */
+  grantedScopes: string[];
+}> {
   const config = gmailConfig();
   if (!config) throw new Error("Gmail is not configured on the server.");
   const payload = await tokenRequest({
@@ -146,6 +167,7 @@ export async function exchangeCode(input: {
     accessToken: payload.access_token,
     refreshToken: payload.refresh_token,
     expiresAt: new Date(Date.now() + (payload.expires_in ?? 3600) * 1000).toISOString(),
+    grantedScopes: grantedGmailScopes(payload.scope),
   };
 }
 
@@ -306,6 +328,27 @@ export async function requireMember(
   return user.user.id;
 }
 
+/**
+ * The row written to `comms_integrations`. `scopes` is the granted set
+ * exactly as Google reported it — never rewritten to read-only, so the
+ * send-capability check can tell whether send is actually available.
+ */
+export function connectionRowFor(
+  input: { organizationId: string; accountEmail: string; scopes: string[] },
+  userId: string,
+) {
+  return {
+    organization_id: input.organizationId,
+    provider: "gmail",
+    status: "connected",
+    account_email: input.accountEmail,
+    scopes: [...input.scopes],
+    last_error: null,
+    connected_by: userId,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 /** Store the connection row plus the sealed refresh token. */
 export async function saveConnection(input: {
   token: string;
@@ -314,6 +357,8 @@ export async function saveConnection(input: {
   refreshToken: string;
   accessToken: string;
   expiresAt: string;
+  /** The scopes Google granted on this consent — persisted as-is. */
+  scopes: string[];
 }): Promise<{ integrationId: string }> {
   const client = supabaseFor(input.token);
   const userId = await requireMember(client, input.organizationId);
@@ -326,16 +371,14 @@ export async function saveConnection(input: {
     .eq("account_email", input.accountEmail)
     .maybeSingle();
 
-  const row = {
-    organization_id: input.organizationId,
-    provider: "gmail",
-    status: "connected",
-    account_email: input.accountEmail,
-    scopes: GMAIL_READ_SCOPES,
-    last_error: null,
-    connected_by: userId,
-    updated_at: new Date().toISOString(),
-  };
+  const row = connectionRowFor(
+    {
+      organizationId: input.organizationId,
+      accountEmail: input.accountEmail,
+      scopes: input.scopes,
+    },
+    userId,
+  );
 
   let integrationId = (existing as { id?: string } | null)?.id;
   if (integrationId) {

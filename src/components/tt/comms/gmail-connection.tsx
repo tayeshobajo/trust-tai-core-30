@@ -1,10 +1,11 @@
 /**
  * The mailbox track, with its one honest control.
  *
- * Connect opens Google's own consent screen for read-only access. Read now
- * runs one bounded pass and reports exactly what it read, what it stored, and
- * what it left alone because the person is not in Comms yet. Nothing here can
- * send.
+ * Connect opens Google's own consent screen for labeled reading plus send.
+ * Read now runs one bounded pass and reports exactly what it read, what it
+ * stored, and what it left alone because the person is not in Comms yet.
+ * Nothing here sends on its own: sending happens only in the composer, when
+ * a person clicks Send, and Comms can never alter Gmail labels.
  */
 
 import { useEffect, useState } from "react";
@@ -21,6 +22,7 @@ import {
   type GmailSyncResult,
 } from "@/data/supabase/comms-gmail";
 import {
+  GMAIL_SEND_SCOPE,
   INTEGRATION_STATUS_LABEL,
   readGmailRunSummary,
   type IntegrationConnection,
@@ -52,7 +54,11 @@ export function GmailConnection({
     mutationFn: (input: { code: string; state: string }) =>
       gmailExchange({ organizationId, ...input }),
     onSuccess: (result) => {
-      setNotice(`Connected ${result.accountEmail}. Read-only.`);
+      setNotice(
+        result.canSend
+          ? `Connected ${result.accountEmail}. Comms reads your labeled mail and can send a draft when you click Send.`
+          : `Connected ${result.accountEmail}. Reading labeled mail only — Google did not grant send access; reconnect to approve it.`,
+      );
       void invalidate();
     },
     onError: (error: unknown) =>
@@ -118,6 +124,9 @@ export function GmailConnection({
 
   const configured = status.data?.configured ?? false;
   const connected = connection?.status === "connected";
+  // Whether the persisted grant includes send. An older read-only connection
+  // stays fully functional for reading; reconnecting upgrades the grant.
+  const canSend = connection?.scopes.includes(GMAIL_SEND_SCOPE) ?? false;
   // The persisted summary of the last pass — visible even when nobody has
   // pressed "Read now" this session.
   const lastRun = connection ? readGmailRunSummary(connection.cursor) : null;
@@ -135,9 +144,9 @@ export function GmailConnection({
       <AmbientRule appId="comms" contextAccent={null} />
       <p className="text-sm leading-relaxed text-muted-foreground">
         Reads the threads you label Trust Tai/Comms in Gmail, so the queue knows who is actually
-        waiting on a reply. Read-only: no send scope is requested, so Comms cannot send even by
-        mistake, and your labels are never changed. Only messages with people already in Comms
-        are stored.
+        waiting on a reply, and can send a reply only when you click Send on a draft you
+        approved. Comms never sends on its own, and it cannot change your Gmail labels. Only
+        messages with people already in Comms are stored.
       </p>
 
       {connection?.accountEmail ? (
@@ -146,11 +155,16 @@ export function GmailConnection({
           {connection.lastSyncAt
             ? ` · last read ${new Date(connection.lastSyncAt).toLocaleString()}`
             : " · not read yet"}
+          {connected
+            ? canSend
+              ? " · can send drafts you approve"
+              : " · read-only grant"
+            : ""}
         </p>
       ) : (
         <p className="text-xs text-muted-foreground">
           {configured
-            ? "Ready to connect. Google will ask you for read-only access."
+            ? "Ready to connect. Google will ask you to allow reading labeled mail and sending the drafts you approve."
             : "Needs a Google OAuth client on the server."}
         </p>
       )}
@@ -182,6 +196,13 @@ export function GmailConnection({
         </p>
       ) : null}
 
+      {connected && !canSend ? (
+        <p className="text-xs text-muted-foreground">
+          This connection was granted read-only access, so Send stays off. Reconnect to approve
+          sending — Google keeps your existing reading access, and reading stays exactly as it is.
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap gap-2 pt-1">
         {connected ? (
           <>
@@ -191,6 +212,17 @@ export function GmailConnection({
             >
               {readNow.isPending ? "Reading…" : "Read now"}
             </TTButton>
+            {!canSend ? (
+              <TTButton
+                variant="quiet"
+                onClick={() => connect.mutate()}
+                disabled={busy}
+              >
+                {connect.isPending || exchange.isPending
+                  ? "Reconnecting…"
+                  : "Reconnect with send access"}
+              </TTButton>
+            ) : null}
             <TTButton
               variant="quiet"
               onClick={() => disconnectAction.mutate()}

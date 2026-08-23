@@ -12,12 +12,15 @@
  *          the browser back into Comms, which completes the exchange while
  *          signed in.
  *
- * Only `gmail.readonly` is ever requested. No token is ever returned to the
- * browser.
+ * Consent requests `gmail.readonly` plus `gmail.send` (never `gmail.modify`):
+ * reading stays label-gated, and sending runs only through the explicit
+ * human-send path. The granted scopes are persisted exactly as Google
+ * reports them. No token is ever returned to the browser.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 
+import { GMAIL_SEND_SCOPE } from "@/domain/comms-integrations";
 import { readState, signState } from "@/lib/comms-crypto.server";
 import {
   authorizeUrl,
@@ -133,8 +136,13 @@ export const Route = createFileRoute("/api/public/comms/gmail/connect")({
               refreshToken: tokens.refreshToken,
               accessToken: tokens.accessToken,
               expiresAt: tokens.expiresAt,
+              scopes: tokens.grantedScopes,
             });
-            return Response.json({ connected: true, accountEmail });
+            return Response.json({
+              connected: true,
+              accountEmail,
+              canSend: tokens.grantedScopes.includes(GMAIL_SEND_SCOPE),
+            });
           }
 
           if (action === "disconnect") {

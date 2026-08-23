@@ -53,15 +53,38 @@ export interface IntegrationConnection {
   updatedAt: ISODateTime;
 }
 
-/** Read-only is the point of the first connection: sync never asks for more. */
+/**
+ * Reading stays label-gated on `Trust Tai/Comms` no matter what else is
+ * granted: this scope is the entire read surface, and sync never asks for
+ * more.
+ */
 export const GMAIL_READ_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 
 /**
  * The narrowest permission that lets a person send a draft they approved.
- * Requested only when a workspace reconnects Gmail for sending — never
- * folded into the read-only consent silently.
+ * Requested on the same consent screen as reading, so the boundary stays
+ * explicit: Comms can send only when a human clicks Send. `gmail.modify`
+ * is never requested — Comms cannot alter Gmail labels, by construction.
  */
 export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
+
+/** Every Gmail scope a Comms connection may request or persist. */
+export const GMAIL_CONNECTION_SCOPES = [...GMAIL_READ_SCOPES, GMAIL_SEND_SCOPE];
+
+/**
+ * The scopes to persist from a Google token response. Google reports the
+ * actually granted set as a space-delimited `scope` field; we keep only the
+ * Gmail scopes Comms understands, so a capability check can trust the row.
+ * A missing field falls back to read-only — send stays blocked unless the
+ * grant is explicit. Never widened beyond what Google returned.
+ */
+export function grantedGmailScopes(scopeField: unknown): string[] {
+  if (typeof scopeField !== "string" || scopeField.trim().length === 0) {
+    return [...GMAIL_READ_SCOPES];
+  }
+  const granted = new Set(scopeField.split(/\s+/).filter(Boolean));
+  return GMAIL_CONNECTION_SCOPES.filter((scope) => granted.has(scope));
+}
 
 /* --------------------------------------------------------------- messages */
 

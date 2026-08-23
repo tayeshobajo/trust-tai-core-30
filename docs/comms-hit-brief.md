@@ -30,9 +30,11 @@ are referenced by no other code anywhere. Access layer:
 
 **Integrations.** Gmail connect / candidates / sync routes under
 `src/routes/api/public/comms.gmail.*`; server logic in
-`src/lib/comms-gmail.server.ts` (660 lines); refresh-token upkeep in
-`supabase/functions/comms-gmail-refresh`. Scope is `gmail.readonly` — sending
-is impossible by construction. Refresh tokens are AES-GCM sealed
+`src/lib/comms-gmail.server.ts`; refresh-token upkeep in
+`supabase/functions/comms-gmail-refresh`. Consent requests
+`gmail.readonly` plus `gmail.send` (never `gmail.modify`), and the granted
+set persists on the connection row — reading stays label-gated, and sending
+runs only through the human-click send path. Refresh tokens are AES-GCM sealed
 (`comms-crypto.server.ts`), readable only by the service role. Sync runs two
 ways over one shared core: person-invoked (member bearer token, RLS holds) and
 **scheduled** (`/api/public/comms/gmail/scheduled-sync`, service role via the
@@ -100,7 +102,7 @@ evidence. No autonomous agents; nothing is sent.
 | Scout → Comms handoff at an ICP threshold | **Missing (manual by design today)** | Handoff is person-initiated: `routeToComms` in `src/data/supabase/scout-service.ts:548` gates on `buildHandoffDraft.ready` (evidence completeness), never on score. Scoring doctrine (`src/domain/scout-fit.ts`) defines the 0–100 score; `src/data/scout/decision-state.ts` holds narrative gates `STRONG_SCORE = 68` / `WEAK_SCORE = 32` used only to phrase the decision read — no handoff threshold exists, and "60" appears nowhere. Architecture-canon handoff law already says weak evidence must not open the next room, so any threshold trigger must be an org-configurable recommendation, not an automatic room-open. |
 | Pre-outreach research/enrichment before drafting | **Missing in Comms** | People enrichment lives in Scout (`src/data/people/registry.ts`, `enrichment.ts`) and is unreachable from the drafting path; `integrations-panel.tsx` lists enrichment as needing "an approved enrichment provider account". `draftMessage` composes from relationship memory only. |
 | Drafting in Tai's voice using voice/canon/memory assets | **Exists** | Per-org `comms_voice_profiles` (editable at `/modules/comms/voice`), deterministic enforcement in `src/data/voice-policy.ts`, runtime reasoning in `src/lib/comms-draft.server.ts` citing observed facts and human decisions only. |
-| Approval before external send | **Exists** | Review states `draft → needs_human_review → approved → sent`; blocking violations prevent approval; Comms structurally cannot send (`gmail.readonly` only; no send path in code). |
+| Approval before external send | **Exists** | Review states `draft → needs_human_review → approved → sent`; blocking violations prevent approval. The Gmail send path runs only on a human Send click and only when the persisted grant includes `gmail.send`; a blocked outcome names the missing scope and leaves the draft untouched. Ready for re-consent; real sending not yet production-verified. |
 | Learning from Tai's edits to drafts | **Missing** | The only draft mutation is review-state change (`comms-service.ts` "That draft could not be updated"); no diff capture, no voice calibration feedback, no append-only record of what Tai changed. Interaction edits have provenance; draft edits have none. |
 | Provenance — why Comms recommends a follow-up | **Exists** | `reasonsToReconnect` returns `ReasonCode` + `reasonText` + `EvidenceRef[]` per reason; `nextRelationshipMove` carries evidence; handoff memory items keep their evidence lanes. An empty reason list is a valid answer by design. |
 
@@ -143,8 +145,8 @@ Smallest set, in dependency order:
    `0f068d32df94e5183384408f8a3a9d2b0907eec6` hardened the sync to known-
    correspondent-first queries so mailbox noise cannot crowd out tracked
     relationships; a controlled fixture confirmed sent-draft reconciliation;
-    immediate re-runs confirmed message/event idempotency. The read-only Gmail
-    boundary and no-auto-create-relationship rule remain locked. **Product/data
+    immediate re-runs confirmed message/event idempotency. The label-gated
+    read boundary and no-auto-create-relationship rule remain locked. **Product/data
     observation**: the live workspace currently has sparse relationship identity
     coverage, so most real Gmail correspondents are not yet Comms relationships.
     This is a relationship-onboarding/import product concern, not a Gmail defect;
@@ -407,6 +409,33 @@ and reverse-move rules, pagination bounds, full-view counts under paging,
 search-before-pagination, and priority ordering; `comms-health`,
 `comms-derive-health`, and `scout-table` suites green (64 passed across the
 affected files). Gmail behavior untouched: label gate first, identity
-match, read-only, no mutation, no send, bounded dedupe preserved.
+match, read-only reading, no mutation, bounded dedupe preserved.
 **Production verification pending:** open the live workspace and confirm
 existing relationships land in the expected rooms.
+
+### Permission checkpoint: `gmail.send` requested (2026-08-22) — ready for re-consent; real sending not yet production-verified
+
+The OAuth consent now asks for `gmail.readonly` plus exactly
+`https://www.googleapis.com/auth/gmail.send` — never `gmail.modify`
+(`authorizeUrl` in `src/lib/comms-gmail.server.ts`; scope constants and the
+`grantedGmailScopes` parser in `src/domain/comms-integrations.ts`).
+Reconnecting an existing read-only connection is clean: `prompt=consent`
+with `include_granted_scopes=true` keeps prior grants while adding send,
+and the "Google returned no refresh token" error is unchanged. The granted
+set Google returns is persisted verbatim (filtered to the scopes Comms
+understands) on `comms_integrations.scopes` via `connectionRowFor` —
+nothing rewrites the row back to read-only. The capability check
+(`sendCapability` / `canSendWithScopes` in
+`src/lib/comms-gmail-send.server.ts`) already reads that persisted grant,
+and the composer enables real Send only when `gmail.send` is present —
+unchanged, now locked by tests. The connection UI tells the truth: labeled
+reading, send only on an explicit Send click, labels never touched; a
+connected read-only grant shows a "Reconnect with send access" affordance.
+Label-gated reading is unchanged. Tests: 11 new in
+`src/lib/comms-gmail.server.test.ts` covering the authorize URL scope set
+(includes send, excludes modify) and reconnect recipe, grant parsing,
+scope persistence, and capability gating; the existing label-gated read
+suite stays green. **Manual step after publishing:** Tai opens Comms →
+Connections, clicks "Reconnect with send access", approves the send scope
+on Google's consent screen, then sends one real reply and confirms it
+lands in Gmail's Sent mail. Only then is sending production-verified.
