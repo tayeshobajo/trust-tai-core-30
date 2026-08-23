@@ -379,16 +379,29 @@ export const commsService = {
   /**
    * Recent touches across the organization, so the inbox can read the health of
    * every conversation without opening each one. Read-only and bounded.
+   *
+   * PostgREST answers at most one page (1000 rows) per request, so a single
+   * `.limit()` call silently truncates at 1000 no matter what is asked. This
+   * walks pages of 1000 up to the bound, newest first. Beyond the bound,
+   * quieter relationships degrade gracefully: health falls back to the
+   * denormalized `last_touch_at` on the relationship row rather than lying.
    */
-  async listRecentTouches(organizationId: ID, limit = 1000): Promise<Touch[]> {
-    const { data, error } = await supabase
-      .from("comms_touches")
-      .select(TOUCH_COLUMNS)
-      .eq("organization_id", organizationId)
-      .order("occurred_at", { ascending: false })
-      .limit(limit);
-    assertOk(error);
-    return ((data ?? []) as unknown as TouchRow[]).map(toTouch);
+  async listRecentTouches(organizationId: ID, limit = 5000): Promise<Touch[]> {
+    const pageSize = 1000;
+    const touches: Touch[] = [];
+    for (let from = 0; from < limit; from += pageSize) {
+      const { data, error } = await supabase
+        .from("comms_touches")
+        .select(TOUCH_COLUMNS)
+        .eq("organization_id", organizationId)
+        .order("occurred_at", { ascending: false })
+        .range(from, Math.min(from + pageSize, limit) - 1);
+      assertOk(error);
+      const rows = ((data ?? []) as unknown as TouchRow[]).map(toTouch);
+      touches.push(...rows);
+      if (rows.length < pageSize) break;
+    }
+    return touches;
   },
 
   /**
