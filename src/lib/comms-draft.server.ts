@@ -1,16 +1,21 @@
 /**
  * Comms drafting boundary (server only).
  *
- * A draft is composed, never improvised: the organization's Voice DNA, the
- * relationship's recorded evidence, and the chosen register go in; one short
- * message comes back. The deterministic Voice policy then decides whether a
- * person may approve it.
+ * Reason first. Write second. Comms does not generate messages: it makes a
+ * relationship-specific communication judgment over the governed evidence —
+ * identity and stage, recorded memory, the live thread, open commitments,
+ * the writer's stated purpose, and the organization's Voice DNA — and then
+ * writes the one message that judgment requires. The judgment is persisted
+ * on the draft's rationale so every draft carries its provenance.
  *
- * Rules enforced here, not left to the model:
- *  - only observed facts and human decisions may be cited,
+ * Laws enforced here, not left to the model:
+ *  - only observed facts and human decisions may be cited as fact;
+ *    inferences may guide the angle, never appear as claims,
  *  - nothing is sent,
  *  - a sensitive register is always held for human review,
- *  - with no provider configured, Comms says so rather than inventing a draft.
+ *  - FAIL CLOSED: with no provider, a failed call, or an unreadable result,
+ *    Comms says so and creates nothing. There is no mail-merge fallback —
+ *    a fabricated generic draft impersonates intelligence.
  *
  * Every read is made with the CALLER'S token, so RLS and the organization
  * boundary still apply. No service-role key is used.
@@ -29,6 +34,15 @@ import {
   type VoiceRegister,
 } from "@/domain/voice";
 import {
+  COMMITMENT_CATEGORY,
+} from "@/domain/comms-interactions";
+import {
+  parseCommunicationJudgment,
+  salutationName,
+  threadContextForJudgment,
+  type CommunicationJudgment,
+} from "@/domain/comms-judgment";
+import {
   runtimeModelCaller,
   runtimeProviderStatus,
 } from "@/lib/intelligence-runtime.server";
@@ -41,17 +55,27 @@ const REGISTERS: VoiceRegister[] = [
   "sensitive",
 ];
 
+/** The calm, honest failure. Nothing is created when this is said. */
+export const DRAFT_PREPARATION_FAILED =
+  "Comms couldn't prepare a trustworthy draft from the available context. Nothing was created.";
+
 function supabaseUrl(): string {
-  return (
-    trustTaiSupabaseUrl()
-  );
+  return trustTaiSupabaseUrl();
 }
 
 function supabaseKey(): string {
-  return (
-    trustTaiSupabaseKey()
-  );
+  return trustTaiSupabaseKey();
 }
+
+/** The caller-scoped client. Every read runs as the caller, so RLS applies. */
+function callerClient(token: string) {
+  return createClient(supabaseUrl(), supabaseKey(), {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+}
+
+type CallerClient = ReturnType<typeof callerClient>;
 
 export interface DraftRequest {
   relationshipId: string;
@@ -68,6 +92,8 @@ export interface DraftResult {
   violations: VoiceVerdict["violations"];
   /** The evidence lines the draft was allowed to draw on. */
   usedEvidence: { label: string; value: string; tier: string }[];
+  /** The communication judgment the prose was written from. */
+  judgment: CommunicationJudgment;
   provider: string;
   model: string;
 }
@@ -80,6 +106,10 @@ interface MemoryRow {
   label?: unknown;
   value?: unknown;
   tier?: unknown;
+  category?: unknown;
+  status?: unknown;
+  owner?: unknown;
+  due?: unknown;
 }
 
 function memoryLines(value: unknown, tier: string): { label: string; value: string; tier: string }[] {
@@ -94,35 +124,150 @@ function memoryLines(value: unknown, tier: string): { label: string; value: stri
     .filter((entry) => entry.value.length > 0);
 }
 
-function fallbackDraft(input: {
-  firstName: string;
-  register: VoiceRegister;
-  evidence: { label: string; value: string; tier: string }[];
-  metWhere?: string | null;
-}): string {
-  const detail = input.evidence[0]?.value;
-  const opening =
-    input.register === "reconnect"
-      ? `${input.firstName}, it has been a while.`
-      : input.metWhere
-        ? `${input.firstName}, good to meet you at ${input.metWhere}.`
-        : `${input.firstName}, hello.`;
-  const middle = detail ? `\n\n${detail}` : "";
-  return `${opening}${middle}\n\nWould a short call next week be useful?`;
+/** Open promises on record: decided memory carrying the commitment category. */
+function openCommitmentLines(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry): entry is MemoryRow => Boolean(entry) && typeof entry === "object")
+    .filter(
+      (entry) =>
+        entry.category === COMMITMENT_CATEGORY &&
+        (entry.status === undefined || entry.status === "open"),
+    )
+    .map((entry) => {
+      const text = String(entry.value ?? "").trim();
+      if (!text) return "";
+      const owner = entry.owner === "them" ? "they owe" : "we owe";
+      const due = typeof entry.due === "string" && entry.due ? `, due ${entry.due}` : "";
+      return `${text} (${owner}${due})`;
+    })
+    .filter(Boolean);
+}
+
+interface ThreadRow {
+  direction?: unknown;
+  subject?: unknown;
+  snippet?: unknown;
+  body_text?: unknown;
+  occurred_at?: unknown;
 }
 
 /**
- * Compose one draft. Returns the checked text plus every rule it tripped, so
- * the reviewer sees exactly what the policy saw.
+ * The recent conversation for this relationship, read with the caller's
+ * token. Drafting blind to the thread is the failure this removes. The
+ * message-fidelity columns are preferred; an older schema sheds body_text
+ * and retries with snippets.
+ */
+async function loadThread(
+  supabase: CallerClient,
+  relationshipId: string,
+): Promise<ReturnType<typeof threadContextForJudgment>> {
+  const variants = [
+    "direction, subject, body_text, snippet, occurred_at",
+    "direction, subject, snippet, occurred_at",
+  ];
+  for (const columns of variants) {
+    const { data, error } = await supabase
+      .from("comms_messages")
+      .select(columns)
+      .eq("relationship_id", relationshipId)
+      .order("occurred_at", { ascending: true })
+      .limit(40);
+    if (error) continue;
+    const rows = ((data ?? []) as unknown as ThreadRow[])
+      .filter((row) => row.direction === "inbound" || row.direction === "outbound")
+      .map((row) => ({
+        direction: row.direction as "inbound" | "outbound",
+        ...(typeof row.subject === "string" && row.subject.trim()
+          ? { subject: row.subject }
+          : {}),
+        ...(typeof row.snippet === "string" ? { snippet: row.snippet } : {}),
+        ...(typeof row.body_text === "string" ? { bodyText: row.body_text } : {}),
+        occurredAt: String(row.occurred_at ?? ""),
+      }))
+      .filter((row) => row.occurredAt);
+    return threadContextForJudgment(rows);
+  }
+  return [];
+}
+
+/**
+ * Voice evidence from how Tai actually communicated: the drafts a person
+ * approved or sent, newest first. Real wording outranks style labels — this
+ * is the Voice DNA's living proof, reused from the drafts table rather than
+ * a parallel store.
+ */
+async function loadVoiceExamples(
+  supabase: CallerClient,
+  organizationId: string,
+): Promise<{ subject: string; excerpt: string }[]> {
+  const { data, error } = await supabase
+    .from("comms_drafts")
+    .select("subject, body, created_at")
+    .eq("organization_id", organizationId)
+    .in("review_state", ["approved", "sent"])
+    .order("created_at", { ascending: false })
+    .limit(3);
+  if (error) return [];
+  return ((data ?? []) as { subject?: unknown; body?: unknown }[])
+    .map((row) => ({
+      subject: String(row.subject ?? "").trim(),
+      excerpt: String(row.body ?? "").replace(/\s+/g, " ").trim().slice(0, 400),
+    }))
+    .filter((row) => row.excerpt.length > 0);
+}
+
+const JUDGMENT_INSTRUCTIONS = `You are the communication judgment of Trust Tai. You do NOT write the message.
+You reason over the evidence and return the judgment a draft will be written from.
+
+Return strict JSON only:
+{
+  "communicationJob": "one plain sentence: what this message needs to accomplish now",
+  "relationshipRead": "one or two sentences: the state and temperature of this relationship, grounded in the evidence",
+  "responseObligation": "what in their latest message actually deserves acknowledgement or answer; empty when there is no live thread",
+  "toneAndPosture": "how Tai should show up in this relationship, and why, in one sentence",
+  "nextMove": { "ask": true|false, "what": "the proportionate ask, or empty when no ask belongs in this message" },
+  "factsAllowed": ["evidence lines the draft may reference as fact"],
+  "factsAvoid": ["claims the draft must not state — inferred, unsupported, or unconfirmed"],
+  "voiceEvidenceUsed": ["the Voice DNA rules or approved examples that govern this draft"]
+}
+
+Laws:
+1. Use only the evidence provided. Never invent a fact, a name, a date, or a shared history.
+2. Inferred reads may shape your judgment but must land in factsAvoid, never factsAllowed.
+3. A call request is only valid when the relationship and the thread support it. A thoughtful
+   acknowledgement, an answer, or a plain continuation with no ask is often the right move.
+4. This is a product-level rationale a person will read. Concise, plain, no chain-of-thought.`;
+
+const WRITE_INSTRUCTIONS = `You write one short email for Tai at Trust Tai, FROM the communication judgment
+below. You never send anything.
+
+Laws:
+1. Follow the Voice DNA exactly. It is evidence of how Tai actually communicates, not a tone preset.
+2. Write the message the judgment requires — its job, its obligation, its move. Nothing more.
+3. Reference only facts in factsAllowed. Never state anything in factsAvoid.
+4. If nextMove.ask is false, make no ask. A message can simply acknowledge, answer, or continue.
+5. Hard rules: no em dashes, no exclamation marks, no 'just checking in' or 'touching base',
+   no needy phrasing, no promises.
+6. Use at most one specific detail from the evidence. If there is no evidence, keep it plain and short.
+7. Use the given salutation name only if a salutation is natural here; otherwise start plainly.
+   Never guess a name.
+8. Return JSON only: {"subject": string, "body": string}. The body must end with 'Trust,',
+   then a new line, then 'Tai'.`;
+
+/**
+ * Compose one draft: judgment first, prose second, deterministic Voice pass
+ * last. Returns the checked text, the judgment it rests on, and every rule
+ * it tripped, so the reviewer sees exactly what the policy saw.
+ *
+ * Throws DRAFT_PREPARATION_FAILED when no trustworthy draft can be produced.
+ * A fabricated generic draft is never returned in its place.
  */
 export async function draftMessage(
   token: string,
   request: DraftRequest,
 ): Promise<DraftResult> {
-  const supabase = createClient(supabaseUrl(), supabaseKey(), {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
+  const supabase = callerClient(token);
 
   const { data: user, error: userError } = await supabase.auth.getUser();
   if (userError || !user?.user) throw new Error("Sign in to draft a message.");
@@ -156,74 +301,99 @@ export async function draftMessage(
     ...memoryLines(row["decided"], "decided"),
   ];
   const inferred = memoryLines(row["inferred"], "inferred");
+  const commitments = openCommitmentLines(row["decided"]);
 
-  const fullName = String(row["full_name"] ?? "there");
-  const firstName = fullName.split(/\s+/)[0] ?? fullName;
+  const fullName = String(row["full_name"] ?? "").trim();
+  const salutation = salutationName(fullName);
   const metWhere = (row["met_where"] as string | null) ?? null;
   const register = request.register;
 
+  // The governed evidence packet both passes reason over.
+  const [thread, voiceExamples] = await Promise.all([
+    loadThread(supabase, request.relationshipId),
+    loadVoiceExamples(supabase, organizationId),
+  ]);
+
+  const evidencePacket = {
+    recipient: {
+      name: fullName || "Unknown",
+      salutationName: salutation || null,
+      company: (row["company_name"] as string | null) ?? null,
+      stage: (row["stage"] as string | null) ?? null,
+      metWhere,
+    },
+    intent: {
+      register,
+      registerGuide: REGISTER_GUIDE[register],
+      nextAction: (row["next_action"] as string | null) ?? null,
+      purpose: request.purpose?.trim() || null,
+    },
+    memory: {
+      observedAndDecided: usedEvidence.map((entry) => `${entry.label}: ${entry.value} (${entry.tier})`),
+      inferredGuideOnly: inferred.map((entry) => entry.value),
+      openCommitments: commitments,
+    },
+    thread: thread.map((entry) => ({
+      direction: entry.direction,
+      subject: entry.subject ?? null,
+      text: entry.text,
+      at: entry.occurredAt,
+      latestFromThisSide: entry.latestForSide,
+    })),
+    voiceDna: voiceDocument,
+    approvedVoiceExamples: voiceExamples,
+  };
+
+  /* From here the provider does the work. Any failure — not configured,
+     refused, unreadable, empty — fails closed: the caller gets the calm
+     error and no draft exists. */
   const status = runtimeProviderStatus();
-  let body: string;
+  if (!status.configured) throw new Error(DRAFT_PREPARATION_FAILED);
+
+  let judgment: CommunicationJudgment;
   let subject: string;
-  let providerName = "none";
-  let model = "deterministic-fallback";
+  let body: string;
+  let providerName: string;
+  let model: string;
 
-  const instructions = [
-    "You draft one short email for Tai at Trust Tai. You never send anything.",
-    "Follow this Voice DNA exactly:",
-    voiceDocument,
-    `Register: ${register}. ${REGISTER_GUIDE[register]}`,
-    "Hard rules: no em dashes, no exclamation marks, no 'just checking in' or 'touching base', no needy phrasing, no claim that is not in the evidence below, no promise of any kind.",
-    "Use at most one specific detail from the evidence. If there is no evidence, keep it plain and short.",
-    "Return JSON only: {\"subject\": string, \"body\": string}. The body must end with 'Trust,' then a new line then 'Tai'.",
-  ].join("\n\n");
+  try {
+    const callModel = await runtimeModelCaller({
+      token,
+      organizationId,
+      room: "comms",
+      purpose: "draft",
+    });
 
-  const context = [
-    `Recipient: ${fullName}${row["company_name"] ? ` at ${row["company_name"]}` : ""}.`,
-    metWhere ? `Where we met: ${metWhere}.` : "We have not met in person.",
-    row["next_action"] ? `Our intended next move: ${row["next_action"]}.` : "",
-    request.purpose ? `Why we are writing: ${request.purpose}.` : "",
-    usedEvidence.length
-      ? `Evidence that may be cited:\n${usedEvidence.map((entry) => `- ${entry.label}: ${entry.value} (${entry.tier})`).join("\n")}`
-      : "No evidence on record. Do not invent any.",
-    inferred.length
-      ? `Background reads (may guide the angle, must not be stated as fact):\n${inferred.map((entry) => `- ${entry.value}`).join("\n")}`
-      : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+    // Pass one — reason. The judgment comes before any prose.
+    const reasoned = await callModel({
+      instructions: JUDGMENT_INSTRUCTIONS,
+      input: JSON.stringify(evidencePacket),
+      webSearch: false,
+    });
+    const parsedJudgment = parseCommunicationJudgment(safeJson(reasoned.raw));
+    if (!parsedJudgment) throw new Error("unreadable judgment");
+    judgment = parsedJudgment;
 
-  if (!status.configured) {
-    body = fallbackDraft({ firstName, register, evidence: usedEvidence, metWhere });
-    subject = metWhere ? `Following ${metWhere}` : `A short note`;
-  } else {
-    try {
-      /* All model contact flows through the runtime boundary, fail-closed. */
-      const callModel = await runtimeModelCaller({
-        token,
-        organizationId,
-        room: "comms",
-        purpose: "draft",
-      });
-      const result = await callModel({ instructions, input: context, webSearch: false });
-      providerName = result.provider;
-      model = result.model;
-      const parsed = safeJson(result.raw);
-      body = String(parsed?.["body"] ?? result.raw ?? "").trim();
-      subject = String(
-        parsed?.["subject"] ?? (metWhere ? `Following ${metWhere}` : "A short note"),
-      );
-      if (!body) {
-        body = fallbackDraft({ firstName, register, evidence: usedEvidence, metWhere });
-        providerName = "none";
-        model = "deterministic-fallback";
-      }
-    } catch {
-      /* A provider or access failure degrades to the deterministic draft over
-         the same evidence — a blank surface or an invented draft is worse. */
-      body = fallbackDraft({ firstName, register, evidence: usedEvidence, metWhere });
-      subject = metWhere ? `Following ${metWhere}` : `A short note`;
-    }
+    // Pass two — write. The prose is generated FROM the judgment, never
+    // alongside it.
+    const written = await callModel({
+      instructions: WRITE_INSTRUCTIONS,
+      input: JSON.stringify({
+        judgment,
+        salutationName: salutation || null,
+        evidence: evidencePacket,
+      }),
+      webSearch: false,
+    });
+    providerName = written.provider;
+    model = written.model;
+
+    const parsed = safeJson(written.raw);
+    body = String(parsed?.["body"] ?? "").trim();
+    subject = String(parsed?.["subject"] ?? "").trim();
+    if (!body || !subject) throw new Error("empty draft");
+  } catch {
+    throw new Error(DRAFT_PREPARATION_FAILED);
   }
 
   const verdict = checkVoice(body, { register, requireSignoff: true });
@@ -235,8 +405,9 @@ export async function draftMessage(
     reviewState: requiresHumanReview(register, verdict) ? "needs_human_review" : "draft",
     violations: verdict.violations,
     usedEvidence,
-    provider: providerName,
-    model,
+    judgment,
+    provider: providerName!,
+    model: model!,
   };
 }
 

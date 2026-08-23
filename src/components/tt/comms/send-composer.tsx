@@ -34,6 +34,7 @@ import {
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
 import { readDraftSend } from "@/domain/comms-send";
+import { judgmentSummaryLines, readCommunicationJudgment } from "@/domain/comms-judgment";
 
 type SendThreadChoice = { mode: "reply"; providerThreadId: string } | { mode: "new" };
 
@@ -61,16 +62,23 @@ export function SendComposer({
   context,
   messages,
   onChanged,
+  onClose,
 }: {
   draft: CommsDraft;
   relationship: Relationship;
   context: CommsContext;
   messages: StoredMailboxMessage[];
   onChanged: () => void;
+  /**
+   * Close is not discard. The composer saves any unsaved edits first; when
+   * the save fails it stays open and says why, so work is never lost.
+   */
+  onClose: () => void;
 }) {
   const extras = useMemo(() => readOutgoingExtras(draft.rationale), [draft.rationale]);
   const staged = useMemo(() => readOutgoingAttachments(draft.rationale), [draft.rationale]);
   const sendRecord = useMemo(() => readDraftSend(draft.rationale), [draft.rationale]);
+  const judgment = useMemo(() => readCommunicationJudgment(draft.rationale), [draft.rationale]);
 
   const [subject, setSubject] = useState(draft.subject ?? "");
   const [body, setBody] = useState(draft.body);
@@ -185,6 +193,34 @@ export function SendComposer({
     }
   }
 
+  /**
+   * Close is not discard. Unsaved edits are saved first; when that save
+   * fails the composer stays open and names the error rather than losing
+   * work. The draft itself always survives closing.
+   */
+  async function handleClose() {
+    if (sending || busy !== null) return;
+    setBusy("save");
+    setError(null);
+    setNotice(null);
+    const ok = await saveEdits();
+    setBusy(null);
+    if (!ok) return;
+    onChanged();
+    onClose();
+  }
+
+  // Escape closes the editor through the same non-destructive path — it can
+  // never discard a draft.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") void handleClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, sending, subject, body, ccText, bccText]);
+
   async function handleFiles(list: FileList | null) {
     if (!list || list.length === 0) return;
     const files = [...list];
@@ -284,10 +320,38 @@ export function SendComposer({
     >
       <div className="flex items-center justify-between gap-3">
         <p className="tt-eyebrow">This draft</p>
-        <p className="text-[11px] text-muted-foreground">
-          What you see is exactly what is sent — Comms never adds a hidden signature.
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="hidden text-[11px] text-muted-foreground sm:block">
+            What you see is exactly what is sent — Comms never adds a hidden signature.
+          </p>
+          <button
+            type="button"
+            onClick={() => void handleClose()}
+            disabled={sending || busy !== null}
+            aria-label="Close draft and return to the conversation"
+            title="Close and keep this draft"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          >
+            <X className="h-3 w-3" aria-hidden />
+            Close
+          </button>
+        </div>
       </div>
+
+      {/* Why this draft exists: the judgment it was written from, kept with
+          the draft so the reasoning is inspectable, never hidden. */}
+      {judgment ? (
+        <div className="rounded-lg border border-border bg-card px-3 py-2">
+          <p className="tt-eyebrow">Why this draft</p>
+          <div className="mt-1 space-y-0.5">
+            {judgmentSummaryLines(judgment).map((line) => (
+              <p key={line} className="text-[12px] leading-snug text-muted-foreground">
+                {line}
+              </p>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-3">
         <EditorField label={`To · ${relationship.email ?? relationship.fullName}`}>

@@ -63,6 +63,10 @@ import { RelationshipExport } from "@/components/tt/comms/relationship-export";
 import type { ConversationHealthStatus } from "@/domain/comms-health";
 import type { MemoryItem, Relationship, Touch } from "@/domain/comms";
 import {
+  writeCommunicationJudgment,
+  type CommunicationJudgment,
+} from "@/domain/comms-judgment";
+import {
   COMMITMENT_CATEGORY,
   interactionDefinition,
   manualProvenance,
@@ -101,6 +105,8 @@ interface DraftPreview {
   reviewState: "draft" | "needs_human_review";
   violations: { ruleId: string; severity: "block" | "flag"; excerpt: string; because: string }[];
   usedEvidence: { label: string; value: string; tier: string }[];
+  /** The communication judgment the draft was written from, when one exists. */
+  judgment?: CommunicationJudgment | null;
 }
 
 function CommsRoute() {
@@ -121,6 +127,15 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [contextOpen, setContextOpen] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  /**
+   * Whether the draft editor is open is a person's choice, never a derived
+   * fact: an existing draft must not trap the thread. Keyed by
+   * relationship AND draft, so switching people can never leak one person's
+   * draft state into another's room. Close is not discard — closing here
+   * only returns to the conversation; the draft stays on record.
+   */
+  const [openDraftKey, setOpenDraftKey] = useState<string | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [interacting, setInteracting] = useState(false);
   const [editingTouchId, setEditingTouchId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -268,6 +283,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     [selectedTouches, drafts, selectedMessages],
   );
   const savedDraft = drafts.find((draft) => draft.reviewState !== "discarded");
+  /** The open editor is this relationship's draft AND a person's choice. */
+  const activeDraft =
+    selected && savedDraft && COMPOSER_STATES.has(savedDraft.reviewState) ? savedDraft : null;
+  const draftKey = selected && activeDraft ? `${selected.id}:${activeDraft.id}` : null;
+  const editorOpen = draftKey !== null && openDraftKey === draftKey;
 
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: ["comms"] });
@@ -457,7 +477,9 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           subject: draft.subject,
           body: draft.body,
           reviewState: draft.reviewState,
-          rationale: { violations: draft.violations },
+          rationale: draft.judgment
+            ? writeCommunicationJudgment({ violations: draft.violations }, draft.judgment)
+            : { violations: draft.violations },
           evidence: draft.usedEvidence.map((entry) => ({
             label: `${entry.label} (${entry.tier})`,
             kind: entry.tier === "decided" ? "human" : "computed",
@@ -466,6 +488,20 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         context,
       ),
     onSuccess: refresh,
+  });
+
+  /**
+   * Discard is the only destructive act on a draft, and it is always a
+   * separate, explicit, confirmed choice — never a side effect of closing.
+   */
+  const discardDraft = useMutation({
+    mutationFn: (draft: NonNullable<typeof activeDraft>) =>
+      commsService.setDraftState(draft, "discarded", selected!, context),
+    onSuccess: async () => {
+      setConfirmDiscard(false);
+      setOpenDraftKey(null);
+      await refresh();
+    },
   });
 
   /**
@@ -489,7 +525,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       if (!response.ok) {
         throw new Error(String(payload["error"] ?? "That draft could not be prepared."));
       }
-      await saveDraft.mutateAsync(payload as unknown as DraftPreview);
+      const saved = await saveDraft.mutateAsync(payload as unknown as DraftPreview);
+      // A freshly prepared draft opens for review; an existing one never
+      // forces the editor open on its own.
+      setConfirmDiscard(false);
+      setOpenDraftKey(`${selected.id}:${saved.id}`);
     } catch (error) {
       setDraftError(
         error instanceof Error ? error.message : "That draft could not be prepared.",
@@ -734,23 +774,83 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 </div>
               ) : null}
 
-              {savedDraft && COMPOSER_STATES.has(savedDraft.reviewState) ? (
+              {activeDraft && editorOpen ? (
                 <SendComposer
-                  draft={savedDraft}
+                  draft={activeDraft}
                   relationship={selected}
                   context={context}
                   messages={selectedMessages}
                   onChanged={refresh}
+                  onClose={() => setOpenDraftKey(null)}
                 />
               ) : (
-                <ReplyRecordBar
-                  drafting={drafting}
-                  busy={recordInteraction.isPending || saveDraft.isPending}
-                  error={draftError}
-                  purposeHint={move?.needed ? move.action : null}
-                  onPrepareDraft={(register, purpose) => void compose(register, purpose)}
-                  onRecordInteraction={() => setInteracting(true)}
-                />
+                <>
+                  {/* A draft exists but the editor is closed: the thread stays
+                      readable, and this quiet strip is the way back in. The
+                      draft is never discarded by closing — only by the
+                      explicit, confirmed choice here. */}
+                  {activeDraft ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-cloud/40 px-4 py-2 sm:px-5">
+                      <p className="min-w-0 truncate text-[12px] text-muted-foreground">
+                        <span className="font-medium text-foreground">Draft saved</span>
+                        {activeDraft.subject?.trim() ? ` · ${activeDraft.subject.trim()}` : ""}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        {confirmDiscard ? (
+                          <>
+                            <span className="text-[12px] text-muted-foreground">
+                              Discard this draft? This cannot be undone.
+                            </span>
+                            <TTButton
+                              variant="quiet"
+                              size="sm"
+                              type="button"
+                              disabled={discardDraft.isPending}
+                              onClick={() => discardDraft.mutate(activeDraft)}
+                            >
+                              {discardDraft.isPending ? "Discarding…" : "Confirm discard"}
+                            </TTButton>
+                            <TTButton
+                              variant="quiet"
+                              size="sm"
+                              type="button"
+                              onClick={() => setConfirmDiscard(false)}
+                            >
+                              Keep it
+                            </TTButton>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDiscard(true)}
+                            className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            Discard
+                          </button>
+                        )}
+                        <TTButton
+                          variant="quiet"
+                          size="sm"
+                          type="button"
+                          onClick={() => {
+                            setConfirmDiscard(false);
+                            setOpenDraftKey(draftKey);
+                          }}
+                        >
+                          Resume draft
+                        </TTButton>
+                      </div>
+                    </div>
+                  ) : null}
+                  <ReplyRecordBar
+                    drafting={drafting}
+                    busy={recordInteraction.isPending || saveDraft.isPending}
+                    error={draftError}
+                    purposeHint={move?.needed ? move.action : null}
+                    onPrepareDraft={(register, purpose) => void compose(register, purpose)}
+                    onRecordInteraction={() => setInteracting(true)}
+                  />
+                </>
               )}
             </ConversationRoom>
           ) : (
