@@ -491,6 +491,20 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   /**
+   * Discard is the only destructive act on a draft, and it is always a
+   * separate, explicit, confirmed choice — never a side effect of closing.
+   */
+  const discardDraft = useMutation({
+    mutationFn: (draft: NonNullable<typeof activeDraft>) =>
+      commsService.setDraftState(draft, "discarded", selected!, context),
+    onSuccess: async () => {
+      setConfirmDiscard(false);
+      setOpenDraftKey(null);
+      await refresh();
+    },
+  });
+
+  /**
    * Composing produces a draft that lands inline in the thread. It is never
    * sent: a person reads it there and decides what happens next.
    */
@@ -511,7 +525,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       if (!response.ok) {
         throw new Error(String(payload["error"] ?? "That draft could not be prepared."));
       }
-      await saveDraft.mutateAsync(payload as unknown as DraftPreview);
+      const saved = await saveDraft.mutateAsync(payload as unknown as DraftPreview);
+      // A freshly prepared draft opens for review; an existing one never
+      // forces the editor open on its own.
+      setConfirmDiscard(false);
+      setOpenDraftKey(`${selected.id}:${saved.id}`);
     } catch (error) {
       setDraftError(
         error instanceof Error ? error.message : "That draft could not be prepared.",
