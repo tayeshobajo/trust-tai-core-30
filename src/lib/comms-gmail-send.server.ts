@@ -49,6 +49,8 @@ import {
   type OutgoingAttachment,
 } from "@/domain/comms-mime";
 import {
+  attachmentMetaFromJson,
+  attachmentMetaToJson,
   GMAIL_SEND_SCOPE,
   mailboxFromProvenance,
   resolveSendMailbox,
@@ -747,11 +749,13 @@ export async function sendDraftViaGmail(input: {
       subject,
       snippet: draft.body.replace(/\s+/g, " ").trim().slice(0, 180),
       occurred_at: sentAt,
-      attachments: staged.map((file): AttachmentMeta => ({
-        filename: file.filename,
-        mimeType: file.mimeType,
-        size: file.size,
-      })),
+      attachments: staged.map((file) =>
+        attachmentMetaToJson({
+          filename: file.filename,
+          mimeType: file.mimeType,
+          size: file.size,
+        }),
+      ),
       provenance: {
         source: "gmail-send",
         mailbox,
@@ -813,6 +817,12 @@ export interface DownloadedAttachment {
   bytes: Uint8Array;
   filename: string;
   mimeType: string;
+  /**
+   * True when the stored metadata marks this resource as an inline MIME
+   * image (Content-ID). The route serves those `inline` so the timeline can
+   * render them in place; ordinary files stay downloads.
+   */
+  inline: boolean;
 }
 
 /**
@@ -851,10 +861,10 @@ export async function downloadMailboxAttachment(input: {
   };
   if (!message.provider_message_id) throw new Error("That message has no mailbox copy.");
 
-  const attachments = Array.isArray(message.attachments)
-    ? (message.attachments as Record<string, unknown>[])
-    : [];
-  const target = attachments.find((entry) => entry["attachment_id"] === input.attachmentId);
+  const attachments = (Array.isArray(message.attachments) ? message.attachments : [])
+    .map((entry) => attachmentMetaFromJson(entry))
+    .filter((entry): entry is AttachmentMeta => entry !== null);
+  const target = attachments.find((entry) => entry.attachmentId === input.attachmentId);
   if (!target) throw new Error("That file is not part of this message.");
 
   const connections = await loadGmailConnections(client, input.organizationId);
@@ -895,8 +905,10 @@ export async function downloadMailboxAttachment(input: {
 
   return {
     bytes,
-    filename: typeof target["filename"] === "string" ? target["filename"] : "attachment",
-    mimeType:
-      typeof target["mime_type"] === "string" ? target["mime_type"] : "application/octet-stream",
+    filename: target.filename,
+    mimeType: target.mimeType,
+    // Only the stored row may declare a resource inline; the caller can
+    // request inline delivery, but an ordinary file never becomes one.
+    inline: target.inline === true && target.mimeType.startsWith("image/"),
   };
 }

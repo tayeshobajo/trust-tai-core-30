@@ -23,6 +23,7 @@ import type { AttachmentMeta } from "@/domain/comms-integrations";
 import { formatBytes } from "@/domain/comms-mime";
 import { cn } from "@/lib/utils";
 
+import { EmailBodyView, fileAttachments } from "./email-body";
 import { HealthDot } from "./health-marks";
 
 function timeOf(value: string): string {
@@ -46,12 +47,15 @@ const KIND_TONE: Record<EventShape["kind"], string> = {
 
 export function ConversationEvent({
   event,
+  organizationId,
   onEdit,
   onRetract,
   onRestore,
   onDownloadAttachment,
 }: {
   event: EventShape;
+  /** The workspace — the access handle for inline images in email bodies. */
+  organizationId?: string;
   onEdit?: (touchId: string) => void;
   onRetract?: (touchId: string) => void;
   onRestore?: (touchId: string) => void;
@@ -59,6 +63,10 @@ export function ConversationEvent({
 }) {
   const side = eventSide(event.kind);
   const touchId = event.touchId;
+  // A synced email shows the actual message — full body, inline images in
+  // place, quoted history behind a toggle — never a clamped snippet.
+  const isEmail = Boolean(event.messageId) && (event.kind === "we_emailed" || event.kind === "they_emailed");
+  const chips = fileAttachments(event.attachments);
 
   return (
     <li
@@ -88,14 +96,22 @@ export function ConversationEvent({
         >
           {event.title}
         </p>
-        {event.body ? (
-          <p className="mt-1 line-clamp-[12] whitespace-pre-wrap text-[13px] text-muted-foreground">
+        {isEmail && organizationId && event.messageId ? (
+          <EmailBodyView
+            organizationId={organizationId}
+            messageId={event.messageId}
+            {...(event.body ? { text: event.body } : {})}
+            {...(event.htmlBody ? { html: event.htmlBody } : {})}
+            inline={(event.attachments ?? []).filter((file) => file.inline)}
+          />
+        ) : event.body ? (
+          <p className="mt-1 whitespace-pre-wrap break-words text-[13px] text-muted-foreground">
             {event.body}
           </p>
         ) : null}
-        {event.attachments?.length ? (
+        {chips.length ? (
           <ul className="mt-2 flex flex-wrap gap-1.5">
-            {event.attachments.map((file) => {
+            {chips.map((file) => {
               const downloadable = Boolean(event.messageId && file.attachmentId);
               return (
                 <li key={`${file.filename}:${file.size}`}>
@@ -163,6 +179,7 @@ export function ConversationRoom({
   relationship,
   days,
   health,
+  organizationId,
   onViewProfile,
   onOpenContext,
   onAddInteraction,
@@ -176,6 +193,8 @@ export function ConversationRoom({
   relationship: Relationship;
   days: ConversationDay[];
   health: ConversationHealth;
+  /** The workspace — resolves inline images and attachment downloads. */
+  organizationId?: string;
   onViewProfile: () => void;
   onOpenContext?: () => void;
   onAddInteraction?: () => void;
@@ -286,6 +305,7 @@ export function ConversationRoom({
                   <ConversationEvent
                     key={event.id}
                     event={event}
+                    {...(organizationId ? { organizationId } : {})}
                     {...(onEditTouch ? { onEdit: onEditTouch } : {})}
                     {...(onRetractTouch ? { onRetract: onRetractTouch } : {})}
                     {...(onRestoreTouch ? { onRestore: onRestoreTouch } : {})}

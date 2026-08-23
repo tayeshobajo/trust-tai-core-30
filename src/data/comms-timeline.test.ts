@@ -98,3 +98,63 @@ describe("conversationTimeline with synced mail", () => {
     expect(event?.meta).toBe("mailbox_verified");
   });
 });
+
+/* ======================================================================
+ * Message fidelity: full body over snippet on the timeline
+ * ==================================================================== */
+
+describe("conversationTimeline email body fidelity", () => {
+  it("shows the full body, keeps html and inline resources, and flags blocked images", () => {
+    const events = conversationTimeline([], [], [
+        {
+          id: "msg-1",
+          organizationId: "org-1",
+          relationshipId: "rel-1",
+          providerMessageId: "pm-1",
+          direction: "inbound",
+          fromEmail: "riley@example.com",
+          subject: "Proposal",
+          snippet: "A short preview…",
+          bodyText: "The full body text, well beyond the snippet.",
+          bodyHtml: "<p>The full <b>body</b> text.</p>",
+          blockedRemoteImages: 2,
+          occurredAt: "2026-08-22T10:00:00Z",
+          attachments: [
+            { filename: "brief.pdf", mimeType: "application/pdf", size: 100, attachmentId: "a1" },
+            {
+              filename: "logo.png",
+              mimeType: "image/png",
+              size: 50,
+              attachmentId: "a2",
+              contentId: "logo@acme",
+              inline: true,
+            },
+          ],
+        },
+      ],
+    );
+    expect(events).toHaveLength(1);
+    const event = events[0]!;
+    expect(event.kind).toBe("they_emailed");
+    expect(event.body).toBe("The full body text, well beyond the snippet.");
+    expect(event.htmlBody).toBe("<p>The full <b>body</b> text.</p>");
+    expect(event.blockedRemoteImages).toBe(2);
+    expect(event.attachments).toHaveLength(2);
+  });
+
+  it("falls back to the snippet when no body was captured", () => {
+    const events = conversationTimeline([], [], [
+        {
+          id: "msg-2",
+          organizationId: "org-1",
+          relationshipId: "rel-1",
+          direction: "outbound",
+          snippet: "Metadata-era preview",
+          occurredAt: "2026-08-21T10:00:00Z",
+        },
+      ],
+    );
+    expect(events[0]!.body).toBe("Metadata-era preview");
+    expect(events[0]!.htmlBody).toBeUndefined();
+  });
+});
