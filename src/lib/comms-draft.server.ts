@@ -52,8 +52,10 @@ import {
   assessDraftGrounding,
   parseCommunicationJudgment,
   salutationName,
+  summarizeDraftGrounding,
   threadContextForJudgment,
   type CommunicationJudgment,
+  type DraftGroundingSummary,
 } from "@/domain/comms-judgment";
 import {
   runtimeModelCaller,
@@ -118,6 +120,8 @@ export interface DraftResult {
   usedEvidence: { label: string; value: string; tier: string }[];
   /** The communication judgment the prose was written from. */
   judgment: CommunicationJudgment;
+  /** What the draft stands on, and what would sharpen it. Shown before send. */
+  grounding: DraftGroundingSummary;
   provider: string;
   model: string;
 }
@@ -379,6 +383,17 @@ export async function draftMessage(
   });
   if (!grounding.grounded) throw new Error(draftUngroundedMessage(grounding.missing));
 
+  /* The grounding confidence a person sees before sending: what the draft
+     stands on, and what would sharpen it. Persisted with the rationale. */
+  const groundingSummary = summarizeDraftGrounding({
+    kind: grounding.kind ?? "proactive",
+    threadCount: thread.length,
+    recordedFactCount: usedEvidence.length,
+    openCommitmentCount: commitments.length,
+    voiceExampleCount: voiceExamples.length,
+    hasPurpose: Boolean(request.purpose?.trim()),
+  });
+
   /* The evidence packet keeps its provenance explicit: the canonical
      relationship voice is the baseline, relationship evidence is what may be
      said, the org Voice DNA is the editable brand expression, and approved
@@ -481,6 +496,7 @@ export async function draftMessage(
     violations: verdict.violations,
     usedEvidence,
     judgment,
+    grounding: groundingSummary,
     provider: providerName!,
     model: model!,
   };
