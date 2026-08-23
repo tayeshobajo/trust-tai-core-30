@@ -43,11 +43,16 @@ export const Route = createFileRoute("/api/public/comms/gmail/sync")({
         if (!organizationId) {
           return Response.json({ error: "A workspace is required." }, { status: 400 });
         }
+        const integrationId =
+          typeof body["integrationId"] === "string" && body["integrationId"].trim()
+            ? body["integrationId"].trim()
+            : undefined;
 
         try {
           const result = await syncGmail({
             token,
             organizationId,
+            ...(integrationId ? { integrationId } : {}),
             ...(typeof body["backfillDays"] === "number"
               ? { backfillDays: body["backfillDays"] }
               : {}),

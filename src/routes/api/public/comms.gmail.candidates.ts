@@ -42,9 +42,17 @@ export const Route = createFileRoute("/api/public/comms/gmail/candidates")({
         if (!organizationId) {
           return Response.json({ error: "A workspace is required." }, { status: 400 });
         }
+        const integrationId =
+          typeof body["integrationId"] === "string" && body["integrationId"].trim()
+            ? body["integrationId"].trim()
+            : undefined;
 
         try {
-          const result = await listMailboxCandidates({ token, organizationId });
+          const result = await listMailboxCandidates({
+            token,
+            organizationId,
+            ...(integrationId ? { integrationId } : {}),
+          });
           return Response.json(result);
         } catch (error) {
           const message = error instanceof Error ? error.message : "That read failed.";

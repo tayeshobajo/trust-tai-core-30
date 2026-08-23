@@ -6,9 +6,12 @@
  * the recipients, the files. Comms never appends a hidden signature or
  * rewrites a word at send time; what is on screen is what leaves.
  *
- * The boundary holds here too: Gmail's send permission is requested only
- * when the workspace chooses to grant it. Until then the composer explains,
- * calmly, why the Send button is quiet — and everything else still works.
+ * Mailboxes own transport identity: a reply leaves from the mailbox that
+ * owns the conversation, and a new conversation shows a From choice only
+ * when more than one mailbox can send. The boundary holds here too: Gmail's
+ * send permission is requested only when the workspace chooses to grant it.
+ * Until then the composer explains, calmly, why the Send button is quiet —
+ * and everything else still works.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -89,21 +92,30 @@ export function SendComposer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.id]);
 
-  /** The threads this relationship already has, newest first. */
+  /**
+   * The threads this relationship already has, newest first, each with the
+   * mailbox that owns it. Ownership comes from stored provenance — a reply
+   * always leaves from the mailbox the conversation lives in.
+   */
   const threads = useMemo(() => {
-    const seen = new Map<string, string>();
+    const seen = new Map<string, { at: string; mailbox?: string }>();
     for (const message of messages) {
       if (!message.providerThreadId) continue;
       const current = seen.get(message.providerThreadId);
-      if (!current || message.occurredAt > current) {
-        seen.set(message.providerThreadId, message.occurredAt);
+      if (!current || message.occurredAt > current.at) {
+        seen.set(message.providerThreadId, {
+          at: message.occurredAt,
+          ...(message.mailbox ? { mailbox: message.mailbox } : {}),
+        });
       }
     }
-    return [...seen.entries()].sort((a, b) => (a[1] < b[1] ? 1 : -1)).map(([id]) => id);
+    return [...seen.entries()]
+      .sort((a, b) => (a[1].at < b[1].at ? 1 : -1))
+      .map(([id, meta]) => ({ id, ...(meta.mailbox ? { mailbox: meta.mailbox } : {}) }));
   }, [messages]);
 
   const [threadChoice, setThreadChoice] = useState<SendThreadChoice>(
-    threads.length > 0 ? { mode: "reply", providerThreadId: threads[0]! } : { mode: "new" },
+    threads.length > 0 ? { mode: "reply", providerThreadId: threads[0]!.id } : { mode: "new" },
   );
 
   const capability = useQuery({
@@ -115,6 +127,34 @@ export function SendComposer({
 
   const sending = draft.reviewState === "sending";
   const failed = draft.reviewState === "send_failed";
+
+  /** Connected mailboxes that hold the send grant, in connection order. */
+  const sendCapable = useMemo(
+    () => (capability.data?.mailboxes ?? []).filter((mailbox) => mailbox.canSend),
+    [capability.data],
+  );
+
+  /** The mailbox that owns the thread being replied to, if known. */
+  const replyOwner = useMemo(() => {
+    if (threadChoice.mode !== "reply") return undefined;
+    return threads.find((thread) => thread.id === threadChoice.providerThreadId)?.mailbox;
+  }, [threadChoice, threads]);
+
+  /** Whether the reply's owning mailbox can send (undefined = unknown). */
+  const replyOwnerCapability = useMemo(() => {
+    if (!replyOwner) return undefined;
+    return (capability.data?.mailboxes ?? []).find(
+      (mailbox) => mailbox.accountEmail === replyOwner,
+    );
+  }, [capability.data, replyOwner]);
+
+  // The sender choice for a NEW conversation. Shown only when more than one
+  // mailbox can send; with exactly one, the choice is automatic and invisible.
+  const [fromMailboxId, setFromMailboxId] = useState<string | null>(null);
+  const effectiveFromId =
+    sendCapable.length === 1
+      ? sendCapable[0]!.integrationId
+      : (fromMailboxId ?? sendCapable[0]?.integrationId ?? null);
 
   async function saveEdits(): Promise<boolean> {
     const cc = parseRecipients(ccText);
@@ -209,10 +249,18 @@ export function SendComposer({
       return;
     }
     try {
-      const outcome = await gmailSendDraft(context.organizationId, draft.id, threadChoice);
+      const outcome = await gmailSendDraft(
+        context.organizationId,
+        draft.id,
+        threadChoice,
+        // A reply always leaves from its owning mailbox; the choice below
+        // applies only when this draft opens a new conversation.
+        threadChoice.mode === "new" ? (effectiveFromId ?? undefined) : undefined,
+      );
       if (outcome.state === "blocked") {
         setError(
-          "Gmail needs send permission before Comms can send for you. Reconnect Google with send access when you're ready.",
+          outcome.error ??
+            "Gmail needs send permission before Comms can send for you. Reconnect Google with send access when you're ready.",
         );
       } else if (outcome.state === "failed") {
         setError(outcome.error ?? "That send failed. The draft is kept — you can try again.");
@@ -330,34 +378,69 @@ export function SendComposer({
 
       {/* Thread choice: continue the conversation, or open a new one. */}
       {threads.length > 0 ? (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="tt-eyebrow">Conversation</p>
+            {(
+              [
+                {
+                  value: "reply",
+                  label: "Reply in the ongoing thread",
+                  target: { mode: "reply", providerThreadId: threads[0]!.id } as SendThreadChoice,
+                },
+                {
+                  value: "new",
+                  label: "Start a new thread",
+                  target: { mode: "new" } as SendThreadChoice,
+                },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={threadChoice.mode === option.value}
+                onClick={() => setThreadChoice(option.target)}
+                disabled={sending}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  threadChoice.mode === option.value
+                    ? "border-royal/40 bg-royal/8 text-royal"
+                    : "border-border bg-card text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          {threadChoice.mode === "reply" && replyOwner ? (
+            <p className="text-[12px] text-muted-foreground">
+              Replies in this conversation send from {replyOwner}.
+              {replyOwnerCapability && !replyOwnerCapability.canSend
+                ? " That mailbox has read-only access — reconnect it with send access under Connections to reply here."
+                : ""}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* From: a real choice only when more than one mailbox can send. With
+          one, the sender is automatic and stays invisible. */}
+      {threadChoice.mode === "new" && sendCapable.length > 1 ? (
         <div className="flex flex-wrap items-center gap-3">
-          <p className="tt-eyebrow">Conversation</p>
-          {(
-            [
-              {
-                value: "reply",
-                label: "Reply in the ongoing thread",
-                target: { mode: "reply", providerThreadId: threads[0]! } as SendThreadChoice,
-              },
-              { value: "new", label: "Start a new thread", target: { mode: "new" } as SendThreadChoice },
-            ] as const
-          ).map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={threadChoice.mode === option.value}
-              onClick={() => setThreadChoice(option.target)}
-              disabled={sending}
-              className={cn(
-                "rounded-full border px-3 py-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                threadChoice.mode === option.value
-                  ? "border-royal/40 bg-royal/8 text-royal"
-                  : "border-border bg-card text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
+          <p className="tt-eyebrow">From</p>
+          <select
+            value={effectiveFromId ?? ""}
+            onChange={(event) => setFromMailboxId(event.target.value || null)}
+            disabled={sending}
+            aria-label="Send from mailbox"
+            className="rounded-full border border-border bg-card px-3 py-1 text-[12px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {sendCapable.map((mailbox) => (
+              <option key={mailbox.integrationId} value={mailbox.integrationId}>
+                {mailbox.accountEmail ?? "Gmail account"}
+              </option>
+            ))}
+          </select>
         </div>
       ) : null}
 
@@ -383,9 +466,9 @@ export function SendComposer({
             <p>Connect Gmail in Settings to send from here. Drafts work either way.</p>
           ) : capability.data && !capability.data.canSend ? (
             <p>
-              Gmail can read this mailbox but can't send yet. Sending needs Google's send
-              permission — reconnect Google with send access when you're ready. Until then, drafts
-              and history work as always.
+              No connected mailbox can send yet. Sending needs Google's send permission —
+              reconnect a mailbox with send access when you're ready. Until then, drafts and
+              history work as always.
             </p>
           ) : (
             <p>Sending is always your click. Comms never sends on its own.</p>

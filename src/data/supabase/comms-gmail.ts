@@ -4,6 +4,11 @@
  * The client never sees a Google credential. It asks our own server for a
  * consent URL, hands back the code Google returned, and asks for a read pass.
  * Every call carries the signed-in member's Supabase token.
+ *
+ * A workspace may connect several Gmail mailboxes. Mailbox-scoped actions
+ * (sync, candidates, disconnect, send) name their mailbox with
+ * `integrationId`; with exactly one connected mailbox it may be omitted and
+ * the server resolves it.
  */
 
 import { supabase } from "@/integrations/trust-tai/supabase";
@@ -64,11 +69,17 @@ export async function gmailExchange(input: {
   });
 }
 
-export async function gmailDisconnect(organizationId: string): Promise<void> {
-  await post(CONNECT_URL, { action: "disconnect", organizationId });
+/** Disconnect ONE mailbox. The others stay connected. */
+export async function gmailDisconnect(
+  organizationId: string,
+  integrationId: string,
+): Promise<void> {
+  await post(CONNECT_URL, { action: "disconnect", organizationId, integrationId });
 }
 
 export interface GmailSyncResult {
+  /** The connection row this pass ran against — the mailbox's identity. */
+  integrationId?: string;
   accountEmail?: string;
   messagesRead: number;
   messagesStored: number;
@@ -84,15 +95,19 @@ export interface GmailSyncResult {
 }
 
 /**
- * One bounded labeled pass, run as the signed-in member. `backfillDays` sets
- * how far back the pass may look (clamped to 1–90, matching the server).
+ * One bounded labeled pass over ONE mailbox, run as the signed-in member.
+ * `backfillDays` sets how far back the pass may look (clamped to 1–90,
+ * matching the server). `integrationId` names the mailbox; with exactly one
+ * connected it may be omitted.
  */
 export async function gmailSync(
   organizationId: string,
   backfillDays?: number,
+  integrationId?: string,
 ): Promise<GmailSyncResult> {
   return post<GmailSyncResult>(SYNC_URL, {
     organizationId,
+    ...(integrationId ? { integrationId } : {}),
     ...(backfillDays === undefined ? {} : { backfillDays: clampBackfillDays(backfillDays) }),
   });
 }
@@ -106,14 +121,26 @@ export interface MailboxCandidate {
   alreadyTracked: boolean;
 }
 
-/** People you correspond with, offered as import candidates. Reads only. */
+export interface MailboxCandidatesResult {
+  /** The mailbox these candidates were read from. */
+  integrationId: string;
+  accountEmail?: string;
+  candidates: MailboxCandidate[];
+  coverage?: MailboxCoverage;
+}
+
+/**
+ * People ONE mailbox corresponds with, offered as import candidates. Reads
+ * only; each mailbox is gated on its own Trust Tai/Comms label.
+ */
 export async function gmailCandidates(
   organizationId: string,
-): Promise<{ accountEmail?: string; candidates: MailboxCandidate[]; coverage?: MailboxCoverage }> {
-  return post<{ accountEmail?: string; candidates: MailboxCandidate[]; coverage?: MailboxCoverage }>(
-    "/api/public/comms/gmail/candidates",
-    { organizationId },
-  );
+  integrationId?: string,
+): Promise<MailboxCandidatesResult> {
+  return post<MailboxCandidatesResult>("/api/public/comms/gmail/candidates", {
+    organizationId,
+    ...(integrationId ? { integrationId } : {}),
+  });
 }
 
 /* ------------------------------------------------------------------ send */
@@ -121,15 +148,26 @@ export async function gmailCandidates(
 const SEND_URL = "/api/public/comms/gmail/send";
 const ATTACHMENT_URL = "/api/public/comms/gmail/attachment";
 
-export interface GmailSendCapability {
-  connected: boolean;
-  /** False while the stored grant is read-only; the composer stays calm. */
-  canSend: boolean;
+/** What ONE connected mailbox may do. */
+export interface GmailMailboxCapability {
+  integrationId: string;
   accountEmail?: string;
+  connected: boolean;
+  canSend: boolean;
   requiredScope?: string;
 }
 
-/** What the connected mailbox may do. Drives the composer's Send affordance. */
+export interface GmailSendCapability {
+  connected: boolean;
+  /** True when at least one connected mailbox holds the send grant. */
+  canSend: boolean;
+  accountEmail?: string;
+  requiredScope?: string;
+  /** Every connected Gmail account, one capability each. */
+  mailboxes: GmailMailboxCapability[];
+}
+
+/** What the connected mailboxes may do. Drives the composer's Send affordance. */
 export async function gmailSendStatus(organizationId: string): Promise<GmailSendCapability> {
   const response = await fetch(`${SEND_URL}?organizationId=${encodeURIComponent(organizationId)}`, {
     headers: { Authorization: `Bearer ${await token()}` },
@@ -154,12 +192,14 @@ export interface GmailSendOutcome {
 /**
  * Send one draft through Gmail. Human-triggered only; idempotent per draft —
  * a double click or a retry replays the recorded outcome instead of sending
- * a second message.
+ * a second message. Replies always leave from the mailbox that owns the
+ * conversation; `integrationId` is the sender choice for a new conversation.
  */
 export async function gmailSendDraft(
   organizationId: string,
   draftId: string,
   threadTarget?: { mode: "reply"; providerThreadId: string } | { mode: "new" },
+  integrationId?: string,
 ): Promise<GmailSendOutcome> {
   const response = await fetch(SEND_URL, {
     method: "POST",
@@ -167,7 +207,12 @@ export async function gmailSendDraft(
       "Content-Type": "application/json",
       Authorization: `Bearer ${await token()}`,
     },
-    body: JSON.stringify({ organizationId, draftId, ...(threadTarget ? { threadTarget } : {}) }),
+    body: JSON.stringify({
+      organizationId,
+      draftId,
+      ...(threadTarget ? { threadTarget } : {}),
+      ...(integrationId ? { integrationId } : {}),
+    }),
   });
   const payload = (await response.json()) as Record<string, unknown>;
   // The permission checkpoint arrives as 403 with a structured outcome.
@@ -181,8 +226,9 @@ export async function gmailSendDraft(
 }
 
 /**
- * Open one incoming attachment. Bytes come from Gmail on demand, proxied by
- * our server under the member's own access; nothing is stored in Trust Tai.
+ * Open one incoming attachment. Bytes come from the mailbox that observed the
+ * message, on demand, proxied by our server under the member's own access;
+ * nothing is stored in Trust Tai.
  */
 export async function gmailDownloadAttachment(input: {
   organizationId: string;
