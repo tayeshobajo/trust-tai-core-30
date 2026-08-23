@@ -57,6 +57,7 @@ import {
   DRAFT_ATTACHMENT_BUCKET,
   MAX_ATTACHMENTS_PER_MESSAGE,
   readOutgoingAttachments,
+  readOutgoingExtras,
   writeOutgoingAttachments,
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
