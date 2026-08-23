@@ -141,6 +141,68 @@ export function importEmptyMessage(view: ImportView, query: string): string {
     : "No one from this labeled window is in Comms yet.";
 }
 
+/* ------------------------------------------------------- draft building */
+
+/** One person awaiting a human Add-to-Comms decision, single or bulk. */
+export interface ImportDraft {
+  fullName: string;
+  email: string;
+  companyName: string;
+  note: string;
+  prospectId: string;
+  suggestedProspectId: string;
+}
+
+function hostOf(email: string): string {
+  return (email.split("@")[1] ?? "").toLowerCase().replace(/^www\./, "");
+}
+
+function companyGuess(email: string): string {
+  const base = hostOf(email).split(".")[0] ?? "";
+  return base ? base.charAt(0).toUpperCase() + base.slice(1) : "";
+}
+
+/**
+ * The starting draft for one candidate. The Scout prospect match is a
+ * suggestion from the email domain — never a silent link; the human can
+ * change or clear it before anything is created. Shared by the single
+ * Preview flow and the bulk review, so one person is described one way.
+ */
+export function buildImportDraft(
+  candidate: MailboxCandidate,
+  prospects: { id: string; name: string; domain: string }[],
+): ImportDraft {
+  const host = hostOf(candidate.email);
+  const match = host
+    ? prospects.find((prospect) => {
+        const domain = prospect.domain.toLowerCase();
+        return domain === host || host.endsWith(`.${domain}`) || domain.endsWith(`.${host}`);
+      })
+    : undefined;
+  return {
+    fullName: candidate.name || candidate.email,
+    email: candidate.email,
+    companyName: match?.name ?? companyGuess(candidate.email),
+    note: candidate.lastSubject ? `Last thread: ${candidate.lastSubject}` : "",
+    prospectId: match?.id ?? "",
+    suggestedProspectId: match?.id ?? "",
+  };
+}
+
+/** A confirmed draft becomes the same governed input a manual capture sends. */
+export function draftToRelationshipInput(draft: ImportDraft): RelationshipInput {
+  const email = draft.email.trim().toLowerCase();
+  return {
+    fullName: draft.fullName.trim(),
+    ...(email ? { email } : {}),
+    ...(draft.companyName.trim() ? { companyName: draft.companyName.trim() } : {}),
+    ...(draft.note.trim() ? { note: draft.note.trim() } : {}),
+    ...(draft.prospectId ? { prospectId: draft.prospectId } : {}),
+    source: "inbound",
+    stage: "new",
+  };
+}
+
 /* ------------------------------------------------------------- bulk add */
 
 export interface BulkImportFailure {
