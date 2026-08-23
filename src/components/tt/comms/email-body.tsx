@@ -109,7 +109,7 @@ function InlineImage({
       <img
         src={url}
         alt={resource.filename}
-        className="h-auto max-w-full rounded-md border border-border"
+        className="h-auto max-h-[440px] w-auto max-w-full rounded-md border border-border object-contain"
         loading="lazy"
       />
     </a>

@@ -575,9 +575,18 @@ export function splitQuotedNodes(nodes: EmailNode[]): { main: EmailNode[]; quote
 
 /* ------------------------------------------------------- collapse rule */
 
-/** Collapse affordance threshold — long mail starts folded, never clamped. */
+/**
+ * Collapse affordance threshold — long mail starts folded, never clamped.
+ *
+ * The measure is meaningful text only. Inline images and other non-text
+ * resources never push an email behind Show more: a short note with a large
+ * image renders whole. Blank structural lines (layout divs, empty breaks)
+ * do not count as lines — only lines carrying actual words do.
+ */
 export function emailNeedsCollapse(bodyText: string | undefined, bodyHtml: string | undefined): boolean {
   const basis = bodyText ?? (bodyHtml ? htmlToPlainText(bodyHtml) : "");
-  if (!basis) return false;
-  return basis.length > 1200 || basis.split("\n").length > 18;
+  const text = basis.trim();
+  if (!text) return false;
+  const meaningfulLines = text.split("\n").filter((line) => line.trim().length > 0);
+  return text.length > 1200 || meaningfulLines.length > 18;
 }

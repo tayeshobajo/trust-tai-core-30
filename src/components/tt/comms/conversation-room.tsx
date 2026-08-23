@@ -5,6 +5,11 @@
  * left, ours on the right, calls, meetings, notes and suggestions inline where
  * they happened. Each event says what it was, when it was, and, when it
  * matters, who put it on the record.
+ *
+ * Inbox finds the person; conversation owns the room. The header stays
+ * compact — who this is, how it stands, and the few actions that matter —
+ * and relationship intelligence lives one click away in the context drawer,
+ * never as a permanent tax on reading width.
  */
 
 import { FileText } from "lucide-react";
@@ -17,7 +22,7 @@ import {
 } from "@/data/comms-timeline";
 import { initialsOf } from "@/domain/steward-accountability";
 import { HEALTH_LABEL, type ConversationHealth } from "@/domain/comms-health";
-import { SOURCE_LABEL, STAGE_LABEL, type Relationship } from "@/domain/comms";
+import { STAGE_LABEL, type Relationship } from "@/domain/comms";
 import { effectiveIntent, INTENT_LABEL } from "@/domain/comms-interactions";
 import type { AttachmentMeta } from "@/domain/comms-integrations";
 import { formatBytes } from "@/domain/comms-mime";
@@ -78,7 +83,7 @@ export function ConversationEvent({
       <div
         className={cn(
           "rounded-2xl border px-3.5 py-2.5",
-          side === "center" ? "w-full max-w-[88%] rounded-lg" : "max-w-[78%]",
+          side === "center" ? "w-full max-w-[92%] rounded-lg" : "max-w-[85%]",
           side === "us" ? "rounded-br-md" : side === "them" ? "rounded-bl-md" : "",
           KIND_TONE[event.kind],
           event.retracted ? "opacity-70" : "",
@@ -205,19 +210,20 @@ export function ConversationRoom({
   onDownloadAttachment?: (event: EventShape, attachment: AttachmentMeta) => void;
   children?: React.ReactNode;
 }) {
+  // One quiet row: what this relationship is for, where it stands, how the
+  // conversation is doing. Provenance and the rest live in the context drawer.
   const chips = [
     INTENT_LABEL[effectiveIntent(relationship)],
     STAGE_LABEL[relationship.stage],
-    SOURCE_LABEL[relationship.source],
   ];
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-border px-4 py-3 sm:px-5">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-4 py-2.5 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <span
             aria-hidden
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-secondary font-mono text-[12px] text-muted-foreground"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary font-mono text-[12px] text-muted-foreground"
           >
             {initialsOf(relationship.fullName)}
           </span>
@@ -230,23 +236,23 @@ export function ConversationRoom({
                 .filter(Boolean)
                 .join(" · ") || "Nothing else on record yet."}
             </p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <div className="mt-1 flex flex-nowrap items-center gap-1.5 overflow-hidden">
               {chips.map((chip) => (
                 <span
                   key={chip}
-                  className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
+                  className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
                 >
                   {chip}
                 </span>
               ))}
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
                 <HealthDot status={health.status} />
                 {HEALTH_LABEL[health.status]}
               </span>
             </div>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {onAddInteraction ? (
             <button
               type="button"
@@ -269,7 +275,7 @@ export function ConversationRoom({
             <button
               type="button"
               onClick={onOpenContext}
-              className="rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:hidden"
+              className="rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Context
             </button>
@@ -284,40 +290,44 @@ export function ConversationRoom({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
-        {days.length === 0 ? (
-          <p className="py-10 text-center text-[13px] text-muted-foreground">
-            Nothing is on the record yet. Add an interaction that already happened, or prepare the
-            first message below.
-          </p>
-        ) : (
-          days.map((day) => (
-            <section key={day.key} className="space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="h-px flex-1 bg-border" />
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  {day.label}
-                </span>
-                <span className="h-px flex-1 bg-border" />
-              </div>
-              <ul className="space-y-2.5">
-                {day.events.map((event) => (
-                  <ConversationEvent
-                    key={event.id}
-                    event={event}
-                    {...(organizationId ? { organizationId } : {})}
-                    {...(onEditTouch ? { onEdit: onEditTouch } : {})}
-                    {...(onRetractTouch ? { onRetract: onRetractTouch } : {})}
-                    {...(onRestoreTouch ? { onRestore: onRestoreTouch } : {})}
-                    {...(onDownloadAttachment
-                      ? { onDownloadAttachment: onDownloadAttachment }
-                      : {})}
-                  />
-                ))}
-              </ul>
-            </section>
-          ))
-        )}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+        {/* The thread gets the room the third rail released, held to a
+            readable column rather than stretched edge to edge. */}
+        <div className="mx-auto w-full max-w-[880px] space-y-6">
+          {days.length === 0 ? (
+            <p className="py-10 text-center text-[13px] text-muted-foreground">
+              Nothing is on the record yet. Add an interaction that already happened, or prepare the
+              first message below.
+            </p>
+          ) : (
+            days.map((day) => (
+              <section key={day.key} className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                    {day.label}
+                  </span>
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+                <ul className="space-y-2.5">
+                  {day.events.map((event) => (
+                    <ConversationEvent
+                      key={event.id}
+                      event={event}
+                      {...(organizationId ? { organizationId } : {})}
+                      {...(onEditTouch ? { onEdit: onEditTouch } : {})}
+                      {...(onRetractTouch ? { onRetract: onRetractTouch } : {})}
+                      {...(onRestoreTouch ? { onRestore: onRestoreTouch } : {})}
+                      {...(onDownloadAttachment
+                        ? { onDownloadAttachment: onDownloadAttachment }
+                        : {})}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))
+          )}
+        </div>
       </div>
 
       {children}
