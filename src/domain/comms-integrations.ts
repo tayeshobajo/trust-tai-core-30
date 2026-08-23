@@ -161,12 +161,18 @@ export interface NormalizedMessage {
   ccEmails: string[];
   subject?: string;
   snippet?: string;
-  /** Stored only when the organization has opted into body retention. */
+  /** The full readable body — never the snippet, never truncated. */
   bodyText?: string;
+  /** Sanitized HTML, present when the mail carried an HTML part. */
+  bodyHtml?: string;
   occurredAt: ISODateTime;
   headers?: Record<string, string>;
-  /** File metadata only — bytes are fetched from the provider on demand. */
+  /** Ordinary files — metadata only; bytes are fetched on demand. */
   attachments?: AttachmentMeta[];
+  /** Inline MIME images (cid resources), rendered in place, never chips. */
+  inlineResources?: AttachmentMeta[];
+  /** Remote images the sanitizer refused. Counted, never silently dropped. */
+  blockedRemoteImages?: number;
 }
 
 export interface NormalizedThread {
@@ -193,8 +199,19 @@ export interface StoredMailboxMessage {
   fromName?: string;
   subject?: string;
   snippet?: string;
+  /** The full readable body, when the sync could enrich it. */
+  bodyText?: string;
+  /** Sanitized HTML for in-place rendering, when stored. */
+  bodyHtml?: string;
   occurredAt: ISODateTime;
+  /**
+   * Ordinary files AND inline MIME resources — inline entries carry
+   * `inline: true` plus a `contentId`; chips filter them out, the body
+   * renderer resolves them.
+   */
   attachments?: AttachmentMeta[];
+  /** Remote images refused at ingest, surfaced by the timeline. */
+  blockedRemoteImages?: number;
   /** True when Comms itself sent this message through Gmail. */
   sentViaComms?: boolean;
   /**
