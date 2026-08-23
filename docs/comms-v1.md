@@ -171,9 +171,14 @@ has deliberately chosen to care about.*
   to that relationship; a new Gmail thread from the same approved email is
   a new conversation under the same relationship, never a new person.
 - `Trust Tai/Comms` remains the Gmail ingestion boundary — label gate
-  first, identity match second, read-only, no label mutation, no send.
-- Future automation may recommend or prepare Gmail-native filters and
-  continuity mechanisms, but no Gmail mutation permissions are granted now.
+  first, identity match second; reading never mutates labels.
+- Sending is a separate, explicit act: a reply leaves only when a person
+  clicks Send on an approved draft, over the `gmail.send` grant. Comms
+  never sends on its own, and `gmail.modify` is never requested — labels
+  stay Tai's alone.
+- Automation may recommend or prepare Gmail-native filters and continuity
+  mechanisms, but no Gmail mutation permissions are granted; applying them
+  stays Tai's act, in Gmail.
 - A changed or new email identity requires human confirmation before
   merging into a relationship.
 
@@ -252,10 +257,11 @@ deliberately empty until an approved source exists.
 and the new thread columns. It has not been applied; until it is,
 `/modules/comms/integrations` reports every track as not connected. Refresh
 tokens live in `private.comms_integration_secrets`, readable only by the
-service role, and Gmail is requested read-only so sending stays impossible by
-construction.
+service role. Consent requests `gmail.readonly` plus `gmail.send` — never
+`gmail.modify` — and the granted set is persisted on the connection row, so
+the send capability check tells the truth.
 
-## Gmail track (Phase 1, read-only)
+## Gmail track (labeled read + human-approved send)
 
 Credentials live on the server only: `GOOGLE_OAUTH_CLIENT_ID`,
 `GOOGLE_OAUTH_CLIENT_SECRET`, plus `COMMS_TOKEN_ENC_KEY` and
@@ -269,8 +275,13 @@ Registered redirect URI (exact match required by Google):
 Flow:
 
 1. A member clicks Connect. The server signs a state (organization + return
-   path + issue time) and returns Google's consent URL. Scope requested:
-   `gmail.readonly` only, so Comms cannot send.
+   path + issue time) and returns Google's consent URL. Scopes requested:
+   `gmail.readonly` plus `gmail.send`, with `prompt=consent` and
+   `include_granted_scopes=true` so reconnecting an older read-only
+   connection upgrades the grant cleanly without dropping what was already
+   allowed. `gmail.modify` is never requested — Comms cannot change labels
+   by construction. The scopes Google actually grants are persisted on
+   `comms_integrations.scopes` exactly as reported.
 2. Google calls back to `/api/public/comms/gmail/connect`. That callback has no
    Trust Tai session, so it touches no data: it verifies the signed state and
    bounces the browser back to `/modules/comms/integrations` with the code.
@@ -320,6 +331,22 @@ the real connected mailbox: the authorized scheduled sweep read only the
 1 labeled message in the window (14 before gating), counted 1
 labeled-but-unknown correspondent as skipped/pending without storing, and an
 immediate repeat run was fully idempotent.
+
+### Send path (ready for re-consent; real sending not yet production-verified)
+
+Replies leave through a deterministic state machine (`draft → approved →
+sending → sent → mailbox_verified`; `src/domain/comms-send.ts`,
+`src/lib/comms-gmail-send.server.ts`). A human click on Send is the only
+trigger — there is no autonomous sender. The composer enables Send only when
+the persisted grant includes `gmail.send`; an older read-only connection
+shows a calm "Reconnect with send access" affordance instead. Idempotency
+keys on `send:{draftId}`; a failed Gmail call lands in retryable
+`send_failed` with the draft and its staged files intact, and threading
+headers (`In-Reply-To` / `References`) keep the reply in its conversation.
+As of 2026-08-22 the app is **ready for the Gmail send re-consent and
+production test**: publish, reconnect Google once to grant `gmail.send`,
+then send one real reply and confirm it lands in Gmail's Sent mail. Until
+that run, real sending is **not production-verified**.
 
 Onboarding backfill (Add to Comms brings history with it) was implemented on
 2026-08-22 — composition and clamp unit-tested (`src/data/comms-onboarding.*`),
