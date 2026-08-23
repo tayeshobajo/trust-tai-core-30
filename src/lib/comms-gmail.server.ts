@@ -38,6 +38,7 @@ import { readThread } from "@/data/comms-thread-state";
 import {
   GMAIL_READ_SCOPES,
   summarizeMailboxCoverage,
+  type AttachmentMeta,
   type MailboxCoverage,
   type NormalizedMessage,
 } from "@/domain/comms-integrations";
@@ -884,12 +885,21 @@ async function runSyncPass(input: {
         attachments: message.attachments ?? [],
       }));
 
-      const { error: upsertError } = await client
+      // The attachments column is the newest addition to comms_messages; a
+      // schema that predates it degrades to metadata-free storage, never a
+      // failed pass.
+      let { error: upsertError } = await client
         .from("comms_messages")
         .upsert(rows, {
           onConflict: "organization_id,provider,provider_message_id",
           ignoreDuplicates: false,
         });
+      if (upsertError && /attachments/i.test(upsertError.message)) {
+        ({ error: upsertError } = await client.from("comms_messages").upsert(
+          rows.map(({ attachments: _dropped, ...rest }) => rest),
+          { onConflict: "organization_id,provider,provider_message_id", ignoreDuplicates: false },
+        ));
+      }
       if (upsertError) throw new Error(upsertError.message);
 
       for (const message of threadMessages) {
