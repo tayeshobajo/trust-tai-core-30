@@ -484,12 +484,24 @@ export async function sendDraftViaGmail(input: {
     throw new Error("A new conversation needs a subject before it can be sent.");
   }
 
+  // CC/BCC the person staged on the draft are part of what was approved.
+  // Our own mailbox is never a recipient, even if it was typed in.
+  const extras = readOutgoingExtras(draft.rationale);
+  const notSelf = (email: string) => email.trim().toLowerCase() !== mailbox;
+  cc = [...new Set([...cc, ...extras.cc].map((email) => email.trim().toLowerCase()))].filter(
+    (email) => email && notSelf(email) && !to.includes(email),
+  );
+  const bcc = [...new Set(extras.bcc.map((email) => email.trim().toLowerCase()))].filter(
+    (email) => email && notSelf(email) && !to.includes(email) && !cc.includes(email),
+  );
+
   const messageId = deterministicMessageId(draft.id);
   const raw = encodeRawEmail(
     buildMimeMessage({
       from: mailbox,
       to,
       cc,
+      ...(bcc.length > 0 ? { bcc } : {}),
       subject,
       bodyText: draft.body,
       messageId,
