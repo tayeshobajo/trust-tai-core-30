@@ -352,6 +352,31 @@ describe("emailNeedsCollapse", () => {
     expect(emailNeedsCollapse("A short note.", undefined)).toBe(false);
     expect(emailNeedsCollapse(undefined, undefined)).toBe(false);
   });
+
+  it("never collapses an email because of inline images", () => {
+    const img = `<img src="cid:hero@att" alt="" width="1200" height="900">`;
+    // An image that is the whole message.
+    expect(emailNeedsCollapse(undefined, `<div>${img}</div>`)).toBe(false);
+    // A short note carrying a large inline image shows whole by default.
+    expect(
+      emailNeedsCollapse(undefined, `<p>Here is the mockup we discussed.</p><div>${img}</div>`),
+    ).toBe(false);
+    expect(emailNeedsCollapse("Here is the mockup we discussed.", `<p>note</p>${img}`)).toBe(false);
+  });
+
+  it("ignores blank structural lines from layout markup", () => {
+    const scaffolding = "<div><br></div>".repeat(30);
+    expect(emailNeedsCollapse(undefined, `${scaffolding}<p>Short note.</p>${scaffolding}`)).toBe(
+      false,
+    );
+  });
+
+  it("still folds genuinely long prose", () => {
+    const prose = Array.from({ length: 25 }, (_, i) => `Line ${i} with a few real words.`).join(
+      "\n",
+    );
+    expect(emailNeedsCollapse(prose, undefined)).toBe(true);
+  });
 });
 
 describe("extractEmailBody — remote image privacy", () => {

@@ -1,9 +1,10 @@
 /**
  * Comms, the relationship room.
  *
- * Relationships on the left, the relationship itself in the middle, and its
- * intelligence on the right. Reading a relationship should feel like
- * continuing a conversation, not administering a record.
+ * Relationships on the left, the relationship itself owning the rest.
+ * Intelligence appears when called, in an overlay context drawer — never a
+ * permanent third column taxing the reading width. Reading a relationship
+ * should feel like continuing a conversation, not administering a record.
  *
  * Comms remembers what happened, holds what was promised, and only suggests
  * outreach when there is a real reason. Every write goes to Supabase under the
@@ -13,6 +14,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { X } from "lucide-react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
@@ -217,22 +219,20 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     if (!selectedId && selected) setSelectedId(selected.id);
   }, [selected, selectedId]);
 
-  // The context drawer is a small-screen affordance: Escape closes it, and it
-  // never lingers once the rail has room to sit beside the conversation again.
+  // Relationship context is an overlay drawer at every size — the room grid
+  // keeps only inbox + conversation. Escape closes it, focus returns to the
+  // control that opened it, and the drawer always reflects the currently
+  // selected relationship because the rail derives from `selected`.
   useEffect(() => {
     if (!contextOpen) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") setContextOpen(false);
     }
-    const wide = window.matchMedia("(min-width: 1280px)");
-    function onWide(event: MediaQueryListEvent) {
-      if (event.matches) setContextOpen(false);
-    }
     window.addEventListener("keydown", onKey);
-    wide.addEventListener("change", onWide);
     return () => {
       window.removeEventListener("keydown", onKey);
-      wide.removeEventListener("change", onWide);
+      previous?.focus();
     };
   }, [contextOpen]);
 
@@ -648,7 +648,9 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(520px,1fr)_300px] 2xl:grid-cols-[340px_minmax(520px,1fr)_320px]">
+      {/* Inbox finds the person; conversation owns the room. Intelligence
+          appears when called — context is an overlay drawer, never a column. */}
+      <div className="mt-5 grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
         <aside className="tt-surface max-h-[78vh] overflow-hidden p-0 lg:sticky lg:top-20">
           <CommsInbox
             view={view}
@@ -765,25 +767,20 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           )}
         </main>
 
-        <aside className="tt-surface hidden max-h-[78vh] flex-col overflow-hidden p-0 xl:sticky xl:top-20 xl:flex">
-          {rail ?? (
-            <p className="p-4 text-[13px] text-muted-foreground">
-              Open a conversation to see why it matters.
-            </p>
-          )}
-        </aside>
       </div>
 
       {/*
-        Below xl the rail becomes a drawer so the conversation column stays the
-        dominant thing on screen. Escape closes it; the scrim is a real button.
+        Relationship intelligence lives in an overlay drawer at every size, so
+        the conversation keeps the full width it is owed. Escape closes it,
+        the scrim is a real button, and switching relationships re-derives the
+        rail in place — context can never go stale.
       */}
       {contextOpen && rail ? (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Conversation context"
-          className="fixed inset-0 z-50 flex justify-end bg-foreground/25 backdrop-blur-sm xl:hidden"
+          aria-label="Relationship context"
+          className="fixed inset-0 z-50 flex justify-end bg-foreground/25 backdrop-blur-sm"
         >
           <button
             type="button"
@@ -791,14 +788,17 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             className="flex-1"
             onClick={() => setContextOpen(false)}
           />
-          <div className="tt-rise flex h-full w-[min(380px,92vw)] flex-col overflow-y-auto border-l border-border bg-card">
+          <div className="tt-rise flex h-full w-[min(400px,92vw)] flex-col overflow-y-auto border-l border-border bg-card">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3">
-              <p className="tt-eyebrow">Context</p>
+              <p className="tt-eyebrow">Relationship context</p>
               <button
                 type="button"
+                autoFocus
                 onClick={() => setContextOpen(false)}
-                className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Close relationship context"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
+                <X className="h-3 w-3" aria-hidden />
                 Close
               </button>
             </div>
