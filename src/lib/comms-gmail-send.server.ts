@@ -817,6 +817,12 @@ export interface DownloadedAttachment {
   bytes: Uint8Array;
   filename: string;
   mimeType: string;
+  /**
+   * True when the stored metadata marks this resource as an inline MIME
+   * image (Content-ID). The route serves those `inline` so the timeline can
+   * render them in place; ordinary files stay downloads.
+   */
+  inline: boolean;
 }
 
 /**
@@ -855,10 +861,10 @@ export async function downloadMailboxAttachment(input: {
   };
   if (!message.provider_message_id) throw new Error("That message has no mailbox copy.");
 
-  const attachments = Array.isArray(message.attachments)
-    ? (message.attachments as Record<string, unknown>[])
-    : [];
-  const target = attachments.find((entry) => entry["attachment_id"] === input.attachmentId);
+  const attachments = (Array.isArray(message.attachments) ? message.attachments : [])
+    .map((entry) => attachmentMetaFromJson(entry))
+    .filter((entry): entry is AttachmentMeta => entry !== null);
+  const target = attachments.find((entry) => entry.attachmentId === input.attachmentId);
   if (!target) throw new Error("That file is not part of this message.");
 
   const connections = await loadGmailConnections(client, input.organizationId);
