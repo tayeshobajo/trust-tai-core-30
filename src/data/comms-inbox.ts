@@ -18,6 +18,7 @@ import type { ConversationHealth, ConversationHealthStatus } from "@/domain/comm
 import { deriveConversationHealth } from "./comms-health";
 import { nextRelationshipMove } from "./comms-next-move";
 import { matchesSearch } from "./comms-queue";
+import { paginate, type PageView } from "./pagination";
 
 export type InboxTab = "clients" | "nurture" | "needs_you" | "all";
 
