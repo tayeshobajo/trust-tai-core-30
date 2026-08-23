@@ -379,6 +379,67 @@ describe("emailNeedsCollapse", () => {
   });
 });
 
+describe("primaryEmailNeedsCollapse — only visible primary content may fold", () => {
+  it("HTML: short note + inline image with a very long gmail_quote does not collapse", () => {
+    const img = `<img src="cid:hero@att" alt="" width="1600" height="1200">`;
+    const quotedHistory = `<div class="gmail_quote"><p>${"Earlier thread words. ".repeat(
+      400,
+    )}</p></div>`;
+    const html = `<p>Here is the mockup.</p><p>Thoughts?</p><div>${img}</div>${quotedHistory}`;
+    expect(primaryEmailNeedsCollapse(undefined, html)).toBe(false);
+    // The quoted history still exists behind its own affordance.
+    const { quoted } = splitQuotedNodes(parseEmailHtml(html));
+    expect(quoted).toHaveLength(1);
+  });
+
+  it("plain text: short reply with >2000 chars of quoted history does not collapse", () => {
+    const quotedHistory = `On Tue, Aug 18, 2026 at 2:14 PM Riley <riley@x.com> wrote:\n> ${"history ".repeat(
+      300,
+    )}`;
+    const body = `Sounds good — see you Thursday.\n\n${quotedHistory}`;
+    expect(quotedHistory.length).toBeGreaterThan(2000);
+    expect(primaryEmailNeedsCollapse(body, undefined)).toBe(false);
+    expect(splitQuotedContent(body).quoted).toContain("history");
+  });
+
+  it("image-only primary with long quoted history does not collapse", () => {
+    const img = `<img src="cid:only@att" alt="" width="2000" height="1500">`;
+    const quotedHistory = `<blockquote><p>${"Quoted prose. ".repeat(300)}</p></blockquote>`;
+    const html = `<div>${img}</div>${quotedHistory}`;
+    expect(primaryEmailNeedsCollapse(undefined, html)).toBe(false);
+    const { quoted } = splitQuotedNodes(parseEmailHtml(html));
+    expect(quoted).toHaveLength(1);
+  });
+
+  it("genuinely long primary prose before the quote still collapses", () => {
+    const prose = Array.from({ length: 25 }, (_, i) => `Line ${i} with a few real words.`).join(
+      "\n",
+    );
+    const body = `${prose}\n\nOn Tue, someone wrote:\n> old stuff`;
+    expect(primaryEmailNeedsCollapse(body, undefined)).toBe(true);
+    const html = `<p>${"word ".repeat(400)}</p><div class="gmail_quote"><p>quoted</p></div>`;
+    expect(primaryEmailNeedsCollapse(undefined, html)).toBe(true);
+  });
+
+  it("image-only and short-note-plus-image primaries never collapse", () => {
+    const img = `<img src="cid:hero@att" alt="Mockup v3 final" width="1200" height="900">`;
+    // Alt text is metadata, not prose — it must not count.
+    expect(primaryEmailNeedsCollapse(undefined, `<div>${img}</div>`)).toBe(false);
+    expect(
+      primaryEmailNeedsCollapse(undefined, `<p>Here is the mockup we discussed.</p><div>${img}</div>`),
+    ).toBe(false);
+  });
+
+  it("a signature that is part of the visible primary counts as visible text", () => {
+    // No signature parser: genuinely visible long primary text (e.g. a long
+    // signature block) may fold — acceptable and expected.
+    const signature = Array.from({ length: 25 }, (_, i) => `Legal disclaimer line ${i}.`).join(
+      "\n",
+    );
+    expect(primaryEmailNeedsCollapse(`Hi there.\n\n${signature}`, undefined)).toBe(true);
+  });
+});
+
 describe("extractEmailBody — remote image privacy", () => {
   it("blocks remote images during extraction and counts them on the message", () => {
     const result = extractEmailBody({
