@@ -67,6 +67,16 @@ function supabaseKey(): string {
   return trustTaiSupabaseKey();
 }
 
+/** The caller-scoped client. Every read runs as the caller, so RLS applies. */
+function callerClient(token: string) {
+  return createClient(supabaseUrl(), supabaseKey(), {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+}
+
+type CallerClient = ReturnType<typeof callerClient>;
+
 export interface DraftRequest {
   relationshipId: string;
   register: VoiceRegister;
@@ -257,10 +267,7 @@ export async function draftMessage(
   token: string,
   request: DraftRequest,
 ): Promise<DraftResult> {
-  const supabase = createClient(supabaseUrl(), supabaseKey(), {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
+  const supabase = callerClient(token);
 
   const { data: user, error: userError } = await supabase.auth.getUser();
   if (userError || !user?.user) throw new Error("Sign in to draft a message.");
