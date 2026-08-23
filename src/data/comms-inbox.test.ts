@@ -10,7 +10,15 @@ import { describe, expect, it } from "vitest";
 
 import type { Relationship } from "@/domain/comms";
 
-import { inboxEntries, inboxView, needsYou, segmentViewOf } from "./comms-inbox";
+import {
+  inboxEntries,
+  inboxPage,
+  inboxView,
+  needsYou,
+  pageSelection,
+  RELATIONSHIPS_PER_PAGE,
+  segmentViewOf,
+} from "./comms-inbox";
 
 const NOW = new Date("2026-08-22T12:00:00.000Z");
 
