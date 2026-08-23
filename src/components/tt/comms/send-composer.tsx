@@ -34,7 +34,19 @@ import {
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
 import { readDraftSend } from "@/domain/comms-send";
-import { judgmentSummaryLines, readCommunicationJudgment } from "@/domain/comms-judgment";
+import {
+  judgmentSummaryLines,
+  readCommunicationJudgment,
+  readDraftGrounding,
+  type GroundingLevel,
+} from "@/domain/comms-judgment";
+
+/** How firmly the draft stands on evidence, in one calm word pair. */
+const GROUNDING_LEVEL_LABEL: Record<GroundingLevel, string> = {
+  strong: "Well grounded",
+  grounded: "Grounded",
+  thin: "Thin grounding",
+};
 
 type SendThreadChoice = { mode: "reply"; providerThreadId: string } | { mode: "new" };
 
@@ -79,6 +91,7 @@ export function SendComposer({
   const staged = useMemo(() => readOutgoingAttachments(draft.rationale), [draft.rationale]);
   const sendRecord = useMemo(() => readDraftSend(draft.rationale), [draft.rationale]);
   const judgment = useMemo(() => readCommunicationJudgment(draft.rationale), [draft.rationale]);
+  const grounding = useMemo(() => readDraftGrounding(draft.rationale), [draft.rationale]);
 
   const [subject, setSubject] = useState(draft.subject ?? "");
   const [body, setBody] = useState(draft.body);
