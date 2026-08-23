@@ -101,6 +101,53 @@ export interface AttachmentMeta {
   size: number;
   /** Provider-side handle for on-demand download (Gmail attachmentId). */
   attachmentId?: string;
+  /**
+   * Present only on inline MIME resources (cid images): the Content-ID the
+   * body's `cid:` references resolve against. Ordinary files never carry it.
+   */
+  contentId?: string;
+  /** True on inline MIME images — rendered in place, never a chip. */
+  inline?: boolean;
+}
+
+/**
+ * Attachment metadata as the `comms_messages.attachments` jsonb stores it:
+ * snake keys. Rows written before this convention hold camel keys, so the
+ * reader accepts both and the writer always emits snake. Pure; tested.
+ */
+export function attachmentMetaToJson(meta: AttachmentMeta): Record<string, unknown> {
+  return {
+    filename: meta.filename,
+    mime_type: meta.mimeType,
+    size: meta.size,
+    ...(meta.attachmentId ? { attachment_id: meta.attachmentId } : {}),
+    ...(meta.contentId ? { content_id: meta.contentId } : {}),
+    ...(meta.inline ? { inline: true } : {}),
+  };
+}
+
+/** Tolerant inverse of `attachmentMetaToJson` — accepts camel or snake keys. */
+export function attachmentMetaFromJson(raw: unknown): AttachmentMeta | null {
+  if (!raw || typeof raw !== "object") return null;
+  const entry = raw as Record<string, unknown>;
+  const filename =
+    typeof entry["filename"] === "string" && entry["filename"].trim().length > 0
+      ? entry["filename"].trim()
+      : null;
+  if (!filename) return null;
+  const text = (value: unknown) =>
+    typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+  const mimeType = text(entry["mime_type"]) ?? text(entry["mimeType"]);
+  const attachmentId = text(entry["attachment_id"]) ?? text(entry["attachmentId"]);
+  const contentId = text(entry["content_id"]) ?? text(entry["contentId"]);
+  return {
+    filename,
+    mimeType: mimeType ?? "application/octet-stream",
+    size: typeof entry["size"] === "number" ? entry["size"] : 0,
+    ...(attachmentId ? { attachmentId } : {}),
+    ...(contentId ? { contentId } : {}),
+    ...(entry["inline"] === true ? { inline: true } : {}),
+  };
 }
 
 /** One message, in Trust Tai's shape rather than any vendor's. */
