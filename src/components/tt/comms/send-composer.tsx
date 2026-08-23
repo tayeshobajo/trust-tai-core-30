@@ -366,6 +366,41 @@ export function SendComposer({
         </div>
       ) : null}
 
+      {/* What the draft stands on. Before anything sends, a person sees the
+          evidence used and, when grounding is thin, what would sharpen it. */}
+      {grounding ? (
+        <div className="rounded-lg border border-border bg-card px-3 py-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="tt-eyebrow">Grounding</p>
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+              {GROUNDING_LEVEL_LABEL[grounding.level]}
+            </span>
+          </div>
+          <ul className="mt-1 space-y-0.5">
+            {grounding.basis.map((line) => (
+              <li
+                key={line}
+                className="flex gap-1.5 text-[12px] leading-snug text-muted-foreground"
+              >
+                <span aria-hidden className="text-border">
+                  ·
+                </span>
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+          {grounding.wouldStrengthen.length > 0 ? (
+            <div className="mt-1.5 space-y-0.5 border-t border-border/60 pt-1.5">
+              {grounding.wouldStrengthen.map((line) => (
+                <p key={line} className="text-[11px] leading-snug text-muted-foreground/80">
+                  Would strengthen: {line}
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="grid gap-3">
         <EditorField label={`To · ${relationship.email ?? relationship.fullName}`}>
           <input
