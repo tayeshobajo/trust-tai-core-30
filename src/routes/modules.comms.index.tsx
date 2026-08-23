@@ -64,7 +64,9 @@ import type { ConversationHealthStatus } from "@/domain/comms-health";
 import type { MemoryItem, Relationship, Touch } from "@/domain/comms";
 import {
   writeCommunicationJudgment,
+  writeDraftGrounding,
   type CommunicationJudgment,
+  type DraftGroundingSummary,
 } from "@/domain/comms-judgment";
 import {
   COMMITMENT_CATEGORY,
@@ -107,6 +109,8 @@ interface DraftPreview {
   usedEvidence: { label: string; value: string; tier: string }[];
   /** The communication judgment the draft was written from, when one exists. */
   judgment?: CommunicationJudgment | null;
+  /** What the draft stands on, and what would sharpen it. Shown before send. */
+  grounding?: DraftGroundingSummary | null;
 }
 
 function CommsRoute() {
@@ -478,7 +482,10 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           body: draft.body,
           reviewState: draft.reviewState,
           rationale: draft.judgment
-            ? writeCommunicationJudgment({ violations: draft.violations }, draft.judgment)
+            ? writeDraftGrounding(
+                writeCommunicationJudgment({ violations: draft.violations }, draft.judgment),
+                draft.grounding,
+              )
             : { violations: draft.violations },
           evidence: draft.usedEvidence.map((entry) => ({
             label: `${entry.label} (${entry.tier})`,

@@ -174,6 +174,100 @@ export function assessDraftGrounding(input: DraftGroundingInput): DraftGrounding
   return { grounded: true, kind: "proactive", missing: [] };
 }
 
+/* --------------------------------------------------- grounding confidence */
+
+export type GroundingLevel = "strong" | "grounded" | "thin";
+
+/**
+ * The plain-language account of what a draft stands on, persisted with the
+ * draft so the composer can show it before anything sends. Basis names the
+ * evidence used; wouldStrengthen names what is missing without blocking —
+ * the gate already decided the draft may exist, this says how firmly.
+ */
+export interface DraftGroundingSummary {
+  kind: DraftKind;
+  level: GroundingLevel;
+  /** What the draft stands on, in plain language. */
+  basis: string[];
+  /** What would sharpen the next draft. Empty when nothing obvious is missing. */
+  wouldStrengthen: string[];
+}
+
+export interface DraftGroundingFacts {
+  kind: DraftKind;
+  threadCount: number;
+  /** Observed + decided memory lines. */
+  recordedFactCount: number;
+  openCommitmentCount: number;
+  voiceExampleCount: number;
+  hasPurpose: boolean;
+}
+
+function plural(count: number, singular: string): string {
+  return count === 1 ? `${count} ${singular}` : `${count} ${singular}s`;
+}
+
+export function summarizeDraftGrounding(facts: DraftGroundingFacts): DraftGroundingSummary {
+  const basis: string[] = [];
+  if (facts.kind === "reply") basis.push("Their latest message is in the thread");
+  if (facts.threadCount > 0) {
+    basis.push(`Live thread · ${plural(facts.threadCount, "message")}`);
+  }
+  if (facts.recordedFactCount > 0) {
+    basis.push(`${plural(facts.recordedFactCount, "recorded fact")} from memory`);
+  }
+  if (facts.openCommitmentCount > 0) {
+    basis.push(`${plural(facts.openCommitmentCount, "open commitment")} on record`);
+  }
+  if (facts.voiceExampleCount > 0) {
+    basis.push(`${plural(facts.voiceExampleCount, "approved draft")} as style reference`);
+  }
+  if (facts.hasPurpose) basis.push("Your stated reason for writing");
+
+  const wouldStrengthen: string[] = [];
+  if (facts.recordedFactCount === 0) {
+    wouldStrengthen.push("Record what you know about them, even one note sharpens the draft");
+  }
+  if (facts.voiceExampleCount === 0) {
+    wouldStrengthen.push("Approve or send a draft so the voice learns from real wording");
+  }
+
+  /* A reply on a real thread is never thin: answering what they actually
+     wrote is adequate grounding by itself. Proactive notes earn their level
+     from supporting signals alone. */
+  const level: GroundingLevel =
+    basis.length >= 4 ? "strong" : basis.length >= 3 || facts.kind === "reply" ? "grounded" : "thin";
+  return { kind: facts.kind, level, basis, wouldStrengthen };
+}
+
+const GROUNDING_KEY = "draft_grounding";
+
+/** Merge the grounding summary into a draft's rationale. Nothing else moves. */
+export function writeDraftGrounding(
+  rationale: Record<string, unknown> | null | undefined,
+  grounding: DraftGroundingSummary | null | undefined,
+): Record<string, unknown> {
+  if (!grounding) return { ...(rationale ?? {}) };
+  return { ...(rationale ?? {}), [GROUNDING_KEY]: grounding };
+}
+
+/** The grounding summary a draft was prepared with, when one is on record. */
+export function readDraftGrounding(
+  rationale: Record<string, unknown> | null | undefined,
+): DraftGroundingSummary | null {
+  const raw = rationale?.[GROUNDING_KEY];
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const kindRaw = value["kind"];
+  const levelRaw = value["level"];
+  const kind = kindRaw === "reply" || kindRaw === "proactive" ? kindRaw : null;
+  const level =
+    levelRaw === "strong" || levelRaw === "grounded" || levelRaw === "thin" ? levelRaw : null;
+  const basis = stringList(value["basis"]);
+  if (!kind || !level || basis.length === 0) return null;
+  return { kind, level, basis, wouldStrengthen: stringList(value["wouldStrengthen"]) };
+}
+
 /* --------------------------------------------------------- name handling */
 
 /**

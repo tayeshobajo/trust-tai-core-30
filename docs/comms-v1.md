@@ -97,6 +97,12 @@ The laws this boundary enforces:
 - **Names are human-safe.** Salutations come from `salutationName`, which
   understands comma formats ("Vinyard, Larry" → "Larry") and never produces
   "Vinyard,,".
+- **Grounding is visible before send.** Every prepared draft persists a
+  `summarizeDraftGrounding` summary (`draft_grounding` on the rationale) and
+  the composer shows it: a calm level (Well grounded / Grounded / Thin
+  grounding), the plain-language basis (thread, memory, commitments, approved
+  examples, stated reason), and — when thin — what would sharpen the next
+  draft. A reply on a real thread is never called thin.
 - **Human approval remains mandatory** before anything sends, and the
   deterministic Voice pass gates every draft.
 

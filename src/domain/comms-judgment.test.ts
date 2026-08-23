@@ -15,9 +15,12 @@ import {
   judgmentSummaryLines,
   parseCommunicationJudgment,
   readCommunicationJudgment,
+  readDraftGrounding,
   salutationName,
+  summarizeDraftGrounding,
   threadContextForJudgment,
   writeCommunicationJudgment,
+  writeDraftGrounding,
   type CommunicationJudgment,
 } from "./comms-judgment";
 import { readOutgoingExtras, writeOutgoingExtras } from "./comms-outgoing";
@@ -205,6 +208,71 @@ describe("assessDraftGrounding", () => {
     });
     expect(noHistory.grounded).toBe(false);
     expect(noHistory.missing).toEqual(["a real prior interaction"]);
+  });
+});
+
+describe("summarizeDraftGrounding", () => {
+  it("never calls a reply on a real thread thin, even with nothing else", () => {
+    const summary = summarizeDraftGrounding({
+      kind: "reply",
+      threadCount: 1,
+      recordedFactCount: 0,
+      openCommitmentCount: 0,
+      voiceExampleCount: 0,
+      hasPurpose: false,
+    });
+    expect(summary.level).toBe("grounded");
+    expect(summary.basis[0]).toBe("Their latest message is in the thread");
+    expect(summary.basis).toHaveLength(2);
+    expect(summary.wouldStrengthen).toHaveLength(2);
+  });
+
+  it("marks a bare proactive note thin and names what would sharpen it", () => {
+    const summary = summarizeDraftGrounding({
+      kind: "proactive",
+      threadCount: 0,
+      recordedFactCount: 0,
+      openCommitmentCount: 0,
+      voiceExampleCount: 0,
+      hasPurpose: true,
+    });
+    expect(summary.level).toBe("thin");
+    expect(summary.basis).toEqual(["Your stated reason for writing"]);
+    expect(summary.wouldStrengthen[0]).toContain("Record what you know about them");
+  });
+
+  it("reads strong when memory, commitments, examples, and purpose all support", () => {
+    const summary = summarizeDraftGrounding({
+      kind: "proactive",
+      threadCount: 3,
+      recordedFactCount: 2,
+      openCommitmentCount: 1,
+      voiceExampleCount: 2,
+      hasPurpose: true,
+    });
+    expect(summary.level).toBe("strong");
+    expect(summary.basis).toHaveLength(5);
+    expect(summary.wouldStrengthen).toEqual([]);
+  });
+
+  it("round-trips through the draft rationale and refuses noise", () => {
+    const summary = summarizeDraftGrounding({
+      kind: "reply",
+      threadCount: 4,
+      recordedFactCount: 1,
+      openCommitmentCount: 0,
+      voiceExampleCount: 1,
+      hasPurpose: false,
+    });
+    const rationale = writeDraftGrounding({ violations: [] }, summary);
+    expect(readDraftGrounding(rationale)).toEqual(summary);
+    expect(rationale["violations"]).toEqual([]);
+    // A null summary leaves the rationale untouched.
+    expect(writeDraftGrounding({ a: 1 }, null)).toEqual({ a: 1 });
+    expect(readDraftGrounding(null)).toBeNull();
+    expect(readDraftGrounding({})).toBeNull();
+    expect(readDraftGrounding({ draft_grounding: { kind: "reply" } })).toBeNull();
+    expect(readDraftGrounding({ draft_grounding: "noise" })).toBeNull();
   });
 });
 
