@@ -83,11 +83,38 @@ The laws this boundary enforces:
   missing: "Comms can't draft this message without inventing a real prior
   interaction and a reason to write now. Nothing was created."
 - **Comms does not generate messages.** It judges, then writes. The structured
-  judgment (`whyNow`, `whatNoticed`, `intendedEffect`, `responseObligation`,
-  `nextMove`, `factsAllowed`/`factsAvoid`, `voiceEvidenceUsed`,
-  `learnedExamplesUsed`) comes first; prose is written FROM it. The visible
-  rationale is four concise lines: Why now · What I noticed · Intended
-  effect · Next move, or "No ask needed."
+  judgment (`whyNow`, `latestHumanSignal`, `whatThisSaysAboutThem`,
+  `whatDeservesAcknowledgment`, `threadToBuildOn`, `intendedEffect`,
+  `responseObligation`, `askDecision`, `factsAllowed`/`factsAvoid`,
+  `voiceEvidenceUsed`, `learnedExamplesUsed`) comes first; prose is written
+  FROM it. The visible rationale is a few concise lines: Why now · What I
+  noticed · What it says about them · What to build on · Ask (with its
+  reason), or "No ask" with the reason no ask belongs.
+- **Conversation before conversion.** The judgment reads the room in order —
+  Notice the human signal in the latest message (generosity, pride,
+  curiosity, care, excitement, frustration), Understand what it says about
+  the person, Reflect it back so they feel recognized rather than targeted,
+  Build on the most interesting thread they offered — and only then Decide
+  whether an ask belongs. Do not advance the relationship because advancement
+  is possible; respond first to what the person just gave. Make the person
+  feel interesting, not merely praised: specific recognition of something
+  they revealed almost casually, never a generic compliment. The operational
+  law: don't look for the fastest way to the next step; look for the most
+  human thing worth responding to. A relationship can be moving even when
+  there is no ask.
+- **The ask gate.** An ask must be earned by the conversation. `askDecision`
+  is allowed only when one of these is true, and `whyNatural` must name
+  which: they explicitly suggested talking; something genuinely requires live
+  discussion; active reciprocal exploration; clear reciprocal curiosity; a
+  meeting makes their life easier right now; the conversation has naturally
+  arrived there. "Maintain momentum", "build the relationship", and "stay
+  connected" fail the gate — the default is often no ask. Enforcement is
+  deterministic, not prompt-only: when `shouldAsk` is false,
+  `unearnedAskInBody` scans the written draft for a snuck-in call/coffee/
+  meeting ask, the writing pass is corrected once in plain language, and if
+  it still cannot honor the judgment the draft fails closed
+  (`ask_gate_violated`). No forced momentum: "would you be open to a call" is
+  never a fallback.
 - **Fail honestly.** There is no mail-merge fallback. With no provider, or no
   trustworthy parse, drafting fails closed: "Comms couldn't prepare a
   trustworthy draft from the available context. Nothing was created." A
