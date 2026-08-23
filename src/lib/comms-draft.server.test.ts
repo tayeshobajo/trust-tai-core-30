@@ -22,6 +22,7 @@ import {
   ProviderNotConfiguredError,
   type RuntimeModelCaller,
 } from "./intelligence-runtime.server";
+import { unearnedAskInBody } from "@/domain/comms-judgment";
 
 /* The Brooke Siler production case at contract level: a known identity and a
    real inbound thread pass the grounding gate (pinned in
@@ -195,7 +196,7 @@ describe("executeDraftPasses", () => {
     expect(result.judgment.askDecision.whyNatural).toContain("nothing in her note");
     expect(result.judgment.whatDeservesAcknowledgment).toContain("resource");
     expect(result.body).toContain("offer to be a resource");
-    expect(result.body).not.toMatch(/call|coffee|meeting/i);
+    expect(unearnedAskInBody(result.body)).toBeNull();
     expect(result.body).toMatch(/Trust,\s*\n\s*Tai/);
   });
 
