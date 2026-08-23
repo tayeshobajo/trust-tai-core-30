@@ -5,10 +5,10 @@
  *  - A human sends. Every call arrives with a signed-in member's token; every
  *    read and write is made with that token, so RLS and the organization
  *    boundary hold. There is no autonomous sender here or anywhere else.
- *  - Sending needs one scope the first connection never asked for:
- *    `gmail.send`. When the stored grant does not include it, the answer is a
- *    calm `blocked` outcome naming the scope — the draft is untouched, never
- *    half-claimed.
+ *  - Sending needs the `gmail.send` scope, requested on the same consent
+ *    screen as reading. When the stored grant does not include it — an older
+ *    read-only connection, or send declined — the answer is a calm `blocked`
+ *    outcome naming the scope; the draft is untouched, never half-claimed.
  *  - attempted != executed != verified. Gmail accepting the message moves the
  *    draft to `sent` and writes the outbound message row so the timeline
  *    shows it immediately; `mailbox_verified` still belongs to the normal
