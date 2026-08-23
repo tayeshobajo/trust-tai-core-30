@@ -10,7 +10,15 @@ import { describe, expect, it } from "vitest";
 
 import type { Relationship } from "@/domain/comms";
 
-import { inboxEntries, inboxView, needsYou, segmentViewOf } from "./comms-inbox";
+import {
+  inboxEntries,
+  inboxPage,
+  inboxView,
+  needsYou,
+  pageSelection,
+  RELATIONSHIPS_PER_PAGE,
+  segmentViewOf,
+} from "./comms-inbox";
 
 const NOW = new Date("2026-08-22T12:00:00.000Z");
 
@@ -124,5 +132,83 @@ describe("operating views", () => {
     expect(needsYou(entries.find((entry) => entry.relationship.id === "c2")!, NOW)).toBe(true);
     expect(needsYou(entries.find((entry) => entry.relationship.id === "n2")!, NOW)).toBe(true);
     expect(needsYou(entries.find((entry) => entry.relationship.id === "a1")!, NOW)).toBe(false);
+  });
+});
+
+describe("pagination", () => {
+  /** Sixty calm client relationships, none needing attention. */
+  const many = inboxEntries(
+    Array.from({ length: 60 }, (_, index) =>
+      relationship({
+        id: `p${index + 1}`,
+        fullName: `Person ${String(index + 1).padStart(2, "0")}`,
+        stage: "client",
+      }),
+    ),
+    {},
+    NOW,
+  );
+
+  it("pages the view at a fixed 25 per page", () => {
+    expect(RELATIONSHIPS_PER_PAGE).toBe(25);
+    const view = inboxView(many, { tab: "all", now: NOW });
+    const first = inboxPage(view, 1);
+    expect(first.rows).toHaveLength(25);
+    expect(first.from).toBe(1);
+    expect(first.to).toBe(25);
+    expect(first.pageCount).toBe(3);
+    const last = inboxPage(view, 3);
+    expect(last.rows).toHaveLength(10);
+    expect(last.from).toBe(51);
+    expect(last.to).toBe(60);
+  });
+
+  it("clamps an out-of-range page to the last available page", () => {
+    const view = inboxView(many, { tab: "all", now: NOW });
+    expect(inboxPage(view, 99).page).toBe(3);
+    expect(inboxPage(view, 0).page).toBe(1);
+  });
+
+  it("keeps counts full-view while only the page is sliced", () => {
+    const view = inboxView(many, { tab: "all", now: NOW });
+    const page = inboxPage(view, 2);
+    expect(page.rows).toHaveLength(25);
+    expect(page.total).toBe(60);
+    expect(view.tabCounts.all).toBe(60);
+    expect(view.tabCounts.clients).toBe(60);
+  });
+
+  it("applies search before pagination, so results are never page-local", () => {
+    const view = inboxView(many, { tab: "all", query: "Person 5", now: NOW });
+    const page = inboxPage(view, 1);
+    expect(page.total).toBe(10); // Person 50–59 contain "Person 5"
+    expect(page.pageCount).toBe(1);
+    expect(page.rows.every((entry) => entry.relationship.fullName.includes("Person 5"))).toBe(
+      true,
+    );
+  });
+
+  it("keeps priority rows at the front of page one, not alphabet", () => {
+    const owed = relationship({
+      id: "zz-owed",
+      fullName: "Zach Last",
+      stage: "client",
+      responseDueAt: days(6),
+    });
+    const view = inboxView(inboxEntries([...many.map((entry) => entry.relationship), owed], {}, NOW), {
+      tab: "all",
+      now: NOW,
+    });
+    const first = inboxPage(view, 1);
+    expect(first.rows[0]!.relationship.id).toBe("zz-owed");
+  });
+
+  it("selection falls back to the page's first row, or null when empty", () => {
+    const view = inboxView(many, { tab: "all", now: NOW });
+    const first = inboxPage(view, 1);
+    const onPage = first.rows[3]!.relationship.id;
+    expect(pageSelection(first.rows, onPage)).toBe(onPage);
+    expect(pageSelection(first.rows, "not-here")).toBe(first.rows[0]!.relationship.id);
+    expect(pageSelection([], "not-here")).toBeNull();
   });
 });

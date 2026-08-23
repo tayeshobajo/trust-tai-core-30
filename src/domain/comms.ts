@@ -12,6 +12,7 @@
 
 import type { EvidenceRef } from "./confidence";
 import type { ID, ISODateTime } from "./entities";
+import { intentOf, type RelationshipIntent } from "./comms-interactions";
 
 /* -------------------------------------------------------------- lifecycle */
 
@@ -323,13 +324,85 @@ export const SEGMENT_LABEL: Record<RelationshipSegment, string> = {
 };
 
 /** Stages that prove a relationship has become established work. */
-const ESTABLISHED_STAGES: RelationshipStage[] = ["meeting_set", "opportunity", "client"];
+export const ESTABLISHED_STAGES: readonly RelationshipStage[] = [
+  "meeting_set",
+  "opportunity",
+  "client",
+];
 
+/**
+ * Early lifecycle stages are development evidence, whatever the origin: a
+ * person who is new, being researched, or freshly reached out to is someone
+ * we are developing, not an established relationship — even when we met them
+ * in person or they wrote to us first.
+ */
+export const EARLY_STAGES: readonly RelationshipStage[] = [
+  "new",
+  "researching",
+  "ready_to_reach",
+  "reached_out",
+];
+
+/**
+ * Explicit intents that describe an established relationship rather than a
+ * development target. Only an intent a human actually set counts; a display
+ * fallback never classifies anyone.
+ */
+const ESTABLISHED_INTENTS: readonly RelationshipIntent[] = [
+  "active_client",
+  "past_client",
+  "partner",
+  "referral",
+  "community",
+  "vendor",
+  "personal",
+];
+
+/**
+ * Which operating room a relationship belongs to, derived — never stored.
+ *
+ * Classification follows current relationship reality, not the door the
+ * person entered through. Established evidence (a linked client record, a
+ * graduated stage, an explicit established intent) wins first; development
+ * evidence (explicit nurture, prospect intent, Scout provenance, an early
+ * stage) comes next; and the safe fallback keeps legacy established/manual
+ * rows visible in Clients rather than letting anyone vanish.
+ */
 export function relationshipSegment(relationship: Relationship): RelationshipSegment {
+  // Established evidence wins: a real client stays a client even when the row
+  // still carries Scout provenance or an early stage.
+  if (relationship.clientId) return "client";
   if (ESTABLISHED_STAGES.includes(relationship.stage)) return "client";
+  const intent = intentOf(relationship);
+  if (intent && ESTABLISHED_INTENTS.includes(intent)) return "client";
+
+  // Development evidence: deliberately chosen to develop, not yet established.
   if (relationship.stage === "nurture") return "nurture";
+  if (intent === "prospect") return "nurture";
+  if (relationship.prospectId) return "nurture";
   if (relationship.source === "scout_handoff") return "nurture";
+  if (EARLY_STAGES.includes(relationship.stage)) return "nurture";
+
+  // Safe fallback: `in_conversation` and `dormant` are contextual, so a legacy
+  // row with no development evidence stays visible in the client room.
   return "client";
+}
+
+/**
+ * Whether "Move to Nurture" is a safe, honest action: the person sits in the
+ * client room only by contextual fallback, not by hard evidence (a linked
+ * client record, a graduated stage, or an explicit established intent).
+ * Moving sets an explicit nurture stage on the same record — nothing is
+ * copied or lost, and graduation back stays one click away. A real client is
+ * never offered the move, because their stage is evidence, not a label.
+ */
+export function canMoveToNurture(relationship: Relationship): boolean {
+  if (relationshipSegment(relationship) !== "client") return false;
+  if (relationship.clientId) return false;
+  if (ESTABLISHED_STAGES.includes(relationship.stage)) return false;
+  const intent = intentOf(relationship);
+  if (intent && ESTABLISHED_INTENTS.includes(intent)) return false;
+  return true;
 }
 
 /** Stages where silence is a problem rather than a choice. */

@@ -350,11 +350,18 @@ established clients. No schema migration was needed — `stage` + `source`
 already carry the classification (`relationshipSegment` in
 `src/domain/comms.ts`).
 
-- **Classification (derived, conservative):** graduated stages
-  (`meeting_set`/`opportunity`/`client`) → Clients; explicit `nurture`
-  stage → Nurture; `scout_handoff` origin → Nurture until it graduates;
-  `manual`/`in_person`/`inbound` → Clients. Legacy rows keep their room by
-  these rules; no data was reclassified by guessing from weak signals.
+- **Classification (derived, evidence-first — refined 2026-08-22):** the
+  segment follows current relationship reality, not the door the person
+  entered through. Established evidence (linked `client_id`, graduated
+  stage, explicit established intent) → Clients; development evidence
+  (`nurture` stage, `prospect` intent, `prospect_id`, `scout_handoff`
+  origin, early stage `new`/`researching`/`ready_to_reach`/`reached_out`) →
+  Nurture; contextual stages (`in_conversation`, `dormant`) follow the
+  evidence; a legacy row with no development evidence falls back to Clients
+  so nobody vanishes. Worked rule: prospect + `new` + met in person →
+  Nurture. No data was reclassified by guessing from weak signals; the
+  reverse move ("Move to Nurture") is offered only when the client
+  classification rests on contextual fallback (`canMoveToNurture`).
 - **Views:** Clients is the default; Nurture is prioritized by the existing
   health/next-move ordering; Needs you cross-cuts both segments using
   `health.waitingOn === "needs_us"` plus `nextRelationshipMove` urgency —
@@ -377,12 +384,28 @@ already carry the classification (`relationshipSegment` in
   boundary.
 - **Sidebar glance** reads the same view state: Needs you, Needs attention,
   At risk, Quiet — the Needs-you row switches view rather than filtering.
+- **Pagination (2026-08-22):** 25 relationships per page, sliced only after
+  the full view is derived — tab counts, health counts, and search always
+  describe the whole view, never the page. View changes return to page one;
+  selection falls back to the page's first row. Priority rows (attention
+  first, then longest waiting) lead every page — Nurture is ordered by
+  intelligence, never alphabet. Shared primitives live in
+  `src/data/pagination.ts` (Scout's table re-exports them unchanged).
+- **Color language (2026-08-22):** classification and condition never share
+  a hue — Clients royal blue, Nurture soft plum (`--plum`), archived muted;
+  health stays green/amber/red/quiet gray. Row hierarchy answers who, what
+  kind, and whether anything is needed, in that order.
+- **Scale boundary:** health reads the most recent 5,000 touches, paged in
+  batches of 1,000 (PostgREST silently truncates a single `.limit()` call at
+  1,000 — fixed). Beyond the bound, health falls back to the denormalized
+  `last_touch_at` on the relationship row rather than inventing activity.
 
-Tests: `src/domain/comms-segment.test.ts` (5) and
-`src/data/comms-inbox.test.ts` (7) cover segment classification, view
-membership, cross-cutting Needs-you, ledger completeness, and graduation on
-the same record; `comms-health`, `comms-derive-health`, and
-`comms-sidebar` suites updated to the new view model (56 passed across the
+Tests: `src/domain/comms-segment.test.ts` (13) and
+`src/data/comms-inbox.test.ts` (13) cover evidence-based classification,
+view membership, cross-cutting Needs-you, ledger completeness, graduation
+and reverse-move rules, pagination bounds, full-view counts under paging,
+search-before-pagination, and priority ordering; `comms-health`,
+`comms-derive-health`, and `scout-table` suites green (64 passed across the
 affected files). Gmail behavior untouched: label gate first, identity
 match, read-only, no mutation, no send, bounded dedupe preserved.
 **Production verification pending:** open the live workspace and confirm

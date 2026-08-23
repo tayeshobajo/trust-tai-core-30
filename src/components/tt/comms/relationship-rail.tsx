@@ -18,7 +18,7 @@ import { useState } from "react";
 import { TTButton } from "@/components/tt/primitives";
 import type { NextRelationshipMove } from "@/data/comms-next-move";
 import type { Relationship } from "@/domain/comms";
-import { relationshipSegment, TIER_LABEL } from "@/domain/comms";
+import { canMoveToNurture, relationshipSegment, TIER_LABEL } from "@/domain/comms";
 import type { ConversationHealth, RelationshipStrengthRead } from "@/domain/comms-health";
 import {
   COMMITMENT_OWNER_LABEL,
@@ -31,6 +31,7 @@ import {
 } from "@/domain/comms-interactions";
 
 import { ConversationHealthCard, RelationshipStrength } from "./conversation-context";
+import { SegmentPill } from "./health-marks";
 
 function RailCard({
   letter,
@@ -68,9 +69,11 @@ function dateLabel(value?: string): string | null {
 function WhyItMatters({
   relationship,
   onGraduate,
+  onMoveToNurture,
 }: {
   relationship: Relationship;
   onGraduate?: () => void;
+  onMoveToNurture?: () => void;
 }) {
   const intent = effectiveIntent(relationship);
   const decided = relationship.decided.find((item) => !isCommitment(item));
@@ -85,6 +88,10 @@ function WhyItMatters({
           <TTButton variant="quiet" size="sm" type="button" onClick={onGraduate}>
             Mark as client
           </TTButton>
+        ) : onMoveToNurture && canMoveToNurture(relationship) ? (
+          <TTButton variant="quiet" size="sm" type="button" onClick={onMoveToNurture}>
+            Move to Nurture
+          </TTButton>
         ) : null
       }
     >
@@ -92,12 +99,15 @@ function WhyItMatters({
         {decided?.value ??
           `${INTENT_LABEL[intent]} relationship${relationship.companyName ? ` at ${relationship.companyName}` : ""}.`}
       </p>
-      <p className="mt-1.5 text-[12px] text-muted-foreground">
-        {INTENT_RHYTHM_LABEL[intent]}
-        {segment === "nurture"
-          ? " In Nurture — a relationship Trust Tai chose to develop."
-          : ""}
+      <p className="mt-1.5 flex items-center gap-2 text-[12px] text-muted-foreground">
+        <SegmentPill segment={segment} />
+        <span>{INTENT_RHYTHM_LABEL[intent]}</span>
       </p>
+      {segment === "nurture" ? (
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          In Nurture — a relationship Trust Tai chose to develop.
+        </p>
+      ) : null}
     </RailCard>
   );
 }
@@ -302,6 +312,7 @@ export function RelationshipRail({
   onNotNeeded,
   onSettleCommitment,
   onGraduate,
+  onMoveToNurture,
 }: {
   relationship: Relationship;
   health: ConversationHealth;
@@ -317,10 +328,20 @@ export function RelationshipRail({
    * promise, memory, and Scout provenance stays exactly where it is.
    */
   onGraduate?: () => void;
+  /**
+   * Clients → Nurture, offered only when the client classification rests on
+   * contextual fallback rather than hard evidence (`canMoveToNurture`). Same
+   * record, same history — only the stage becomes an explicit `nurture`.
+   */
+  onMoveToNurture?: () => void;
 }) {
   return (
     <div className="space-y-3">
-      <WhyItMatters relationship={relationship} {...(onGraduate ? { onGraduate } : {})} />
+      <WhyItMatters
+        relationship={relationship}
+        {...(onGraduate ? { onGraduate } : {})}
+        {...(onMoveToNurture ? { onMoveToNurture } : {})}
+      />
       <WhatWeKnow relationship={relationship} {...(onRemember ? { onRemember } : {})} />
       <NextMoveCard
         move={move}

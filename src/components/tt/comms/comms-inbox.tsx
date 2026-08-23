@@ -1,24 +1,30 @@
 /**
  * The inbox.
  *
- * A list of conversations, not a table of records. Each row says who, what was
- * last said, how long ago, and one quiet mark for how the thread is moving.
+ * A list of conversations, not a table of records. Each row answers three
+ * questions in two seconds: who this is, what kind of relationship it is,
+ * and whether anything is needed. Health marks stay distinct from
+ * classification marks — kind is never condition.
  */
 
 import { HEALTH_LABEL, type ConversationHealthStatus } from "@/domain/comms-health";
+import { relationshipSegment } from "@/domain/comms";
 import {
   sinceLabel,
   TAB_LABEL,
   TABS,
+  VIEW_SUMMARY,
   type InboxEntry,
   type InboxTab,
   type InboxView,
 } from "@/data/comms-inbox";
+import type { PageView } from "@/data/pagination";
 import { initialsOf } from "@/domain/steward-accountability";
 import { TTInput } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
 
-import { HealthDot } from "./health-marks";
+import { HealthDot, SegmentPill } from "./health-marks";
+import { CommsPagination } from "./pagination";
 
 const HEALTH_FILTERS: ConversationHealthStatus[] = [
   "healthy",
@@ -26,6 +32,14 @@ const HEALTH_FILTERS: ConversationHealthStatus[] = [
   "at_risk",
   "quiet",
 ];
+
+/** View-aware words for an empty room. */
+const EMPTY_COPY: Record<InboxTab, string> = {
+  clients: "No established relationships here yet. When someone graduates from Nurture, they arrive here.",
+  nurture: "No one is being developed right now. A Scout handoff or an approved outreach lands here.",
+  needs_you: "Nothing needs your judgment right now.",
+  all: "No conversations yet. Add the last person you met and Comms carries it from there.",
+};
 
 export function ConversationListItem({
   entry,
@@ -37,6 +51,7 @@ export function ConversationListItem({
   onSelect: () => void;
 }) {
   const { relationship, health } = entry;
+  const segment = relationshipSegment(relationship);
   const snippet =
     relationship.nextAction?.trim() ||
     health.reasons[0] ||
@@ -62,6 +77,7 @@ export function ConversationListItem({
           {initialsOf(relationship.fullName)}
         </span>
         <span className="min-w-0 flex-1">
+          {/* Who, and how long it has been. */}
           <span className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate text-sm text-foreground">
               {relationship.fullName}
@@ -75,13 +91,18 @@ export function ConversationListItem({
               {relationship.companyName}
             </span>
           ) : null}
-          <span className="mt-1 block truncate text-[12px] text-muted-foreground/90">{snippet}</span>
-          <span className="mt-1.5 flex items-center gap-1.5">
-            <HealthDot status={health.status} />
-            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-              {HEALTH_LABEL[health.status]}
+          {/* What kind of relationship, and how the conversation is doing. */}
+          <span className="mt-1.5 flex items-center gap-2">
+            <SegmentPill segment={segment} />
+            <span className="inline-flex items-center gap-1.5">
+              <HealthDot status={health.status} />
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                {HEALTH_LABEL[health.status]}
+              </span>
             </span>
           </span>
+          {/* Why this row matters right now. */}
+          <span className="mt-1 block truncate text-[12px] text-muted-foreground/90">{snippet}</span>
         </span>
       </button>
     </li>
@@ -120,8 +141,14 @@ function Section({
   );
 }
 
+function isPriority(entry: InboxEntry): boolean {
+  return entry.health.status === "at_risk" || entry.health.status === "needs_attention";
+}
+
 export function CommsInbox({
   view,
+  page,
+  onPage,
   tab,
   onTab,
   query,
@@ -133,6 +160,9 @@ export function CommsInbox({
   empty,
 }: {
   view: InboxView;
+  /** The current page of the view — the only rows rendered below. */
+  page: PageView<InboxEntry>;
+  onPage: (page: number) => void;
   tab: InboxTab;
   onTab: (tab: InboxTab) => void;
   query: string;
@@ -143,6 +173,10 @@ export function CommsInbox({
   onSelect: (id: string) => void;
   empty: boolean;
 }) {
+  const filtered = Boolean(query.trim() || health);
+  const priorityRows = page.rows.filter(isPriority);
+  const otherRows = page.rows.filter((entry) => !isPriority(entry));
+
   return (
     <div className="flex h-full flex-col">
       <div className="space-y-3 border-b border-border p-3">
@@ -183,6 +217,9 @@ export function CommsInbox({
           ))}
         </nav>
 
+        {/* What this view is for, in one calm line. */}
+        <p className="text-[12px] text-muted-foreground">{VIEW_SUMMARY[tab]}</p>
+
         <TTInput
           className="h-9"
           value={query}
@@ -219,29 +256,29 @@ export function CommsInbox({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {view.priority.length === 0 && view.others.length === 0 ? (
+        {page.rows.length === 0 ? (
           <p className="p-4 text-[13px] text-muted-foreground">
-            {empty
-              ? "No conversations yet. Add the last person you met and Comms carries it from there."
-              : "Nothing here right now."}
+            {empty ? EMPTY_COPY.all : filtered ? "Nothing matches this search or filter." : EMPTY_COPY[tab]}
           </p>
         ) : (
           <>
             <Section
               title="Priority"
-              entries={view.priority}
+              entries={priorityRows}
               selectedId={selectedId}
               onSelect={onSelect}
             />
             <Section
               title="Others"
-              entries={view.others}
+              entries={otherRows}
               selectedId={selectedId}
               onSelect={onSelect}
             />
           </>
         )}
       </div>
+
+      <CommsPagination view={page} onPage={onPage} />
     </div>
   );
 }

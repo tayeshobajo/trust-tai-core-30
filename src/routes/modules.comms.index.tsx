@@ -34,7 +34,13 @@ import { addMailboxCandidateToComms, ONBOARDING_BACKFILL_DAYS } from "@/data/com
 import { listRelationshipMessages } from "@/data/supabase/comms-messages";
 import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
-import { inboxEntries, inboxView, type InboxTab } from "@/data/comms-inbox";
+import {
+  inboxEntries,
+  inboxPage,
+  inboxView,
+  pageSelection,
+  type InboxTab,
+} from "@/data/comms-inbox";
 import { nextRelationshipMove } from "@/data/comms-next-move";
 import { relationshipsWorthAttention } from "@/data/comms-attention";
 import {
@@ -103,6 +109,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<InboxTab>("clients");
   const [healthFilter, setHealthFilter] = useState<ConversationHealthStatus | null>(null);
+  const [page, setPage] = useState(1);
   const [capturing, setCapturing] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
@@ -148,23 +155,58 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     return map;
   }, [orgTouchesQuery.data]);
 
+  const entries = useMemo(
+    () => inboxEntries(relationships, touchesByRelationship),
+    [relationships, touchesByRelationship],
+  );
+
   const view = useMemo(
-    () =>
-      inboxView(inboxEntries(relationships, touchesByRelationship), {
-        tab,
-        query,
-        health: healthFilter,
-      }),
-    [relationships, touchesByRelationship, tab, query, healthFilter],
+    () => inboxView(entries, { tab, query, health: healthFilter }),
+    [entries, tab, query, healthFilter],
   );
 
   /**
-   * The open conversation defaults to the first person in the current view,
-   * so the room never shows someone the list is not showing.
+   * The view is always derived in full — search, filters, counts, and tabs
+   * describe the whole view — and only the rendered list is paged.
+   */
+  const pageView = useMemo(() => inboxPage(view, page), [view, page]);
+
+  /**
+   * A view change (tab, search, health filter) always returns to page one,
+   * and the open conversation falls back to the first row of that page when
+   * the person is no longer on it.
+   */
+  function changeView(next: { tab?: InboxTab; query?: string; health?: ConversationHealthStatus | null }) {
+    const nextTab = next.tab ?? tab;
+    const nextQuery = next.query ?? query;
+    const nextHealth = next.health !== undefined ? next.health : healthFilter;
+    setTab(nextTab);
+    setQuery(nextQuery);
+    setHealthFilter(nextHealth);
+    setPage(1);
+    const firstPage = inboxPage(
+      inboxView(entries, { tab: nextTab, query: nextQuery, health: nextHealth }),
+      1,
+    );
+    const keep = pageSelection(firstPage.rows, selectedId);
+    if (keep !== selectedId) setSelectedId(keep);
+  }
+
+  function changePage(next: number) {
+    const target = inboxPage(view, next);
+    setPage(target.page);
+    const keep = pageSelection(target.rows, selectedId);
+    if (keep !== selectedId) setSelectedId(keep);
+  }
+
+  /**
+   * The open conversation defaults to the first person on the current page,
+   * so the room never shows someone the list is not showing — unless the
+   * person was opened directly (from the sidebar), which always wins.
    */
   const selected: Relationship | null =
-    relationships.find((entry) => entry.id === selectedId) ??
-    [...view.priority, ...view.others][0]?.relationship ??
+    (selectedId ? relationships.find((entry) => entry.id === selectedId) : null) ??
+    relationships.find((entry) => entry.id === pageSelection(pageView.rows, null)) ??
     null;
 
   useEffect(() => {
@@ -472,6 +514,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           settleCommitment.mutate({ commitment, status })
         }
         onGraduate={() => update.mutate({ stage: "client" })}
+        onMoveToNurture={() => update.mutate({ stage: "nurture" })}
       />
     ) : null;
 
@@ -483,8 +526,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           view={view}
           health={healthFilter}
           tab={tab}
-          onHealth={setHealthFilter}
-          onTab={setTab}
+          onHealth={(status) => changeView({ health: status })}
+          onTab={(next) => changeView({ tab: next })}
           onAdd={() => setCapturing(true)}
           attention={attentionSplit.shown}
           setAside={attentionSplit.set_aside}
@@ -583,12 +626,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         <aside className="tt-surface max-h-[78vh] overflow-hidden p-0 lg:sticky lg:top-20">
           <CommsInbox
             view={view}
+            page={pageView}
+            onPage={changePage}
             tab={tab}
-            onTab={setTab}
+            onTab={(next) => changeView({ tab: next })}
             query={query}
-            onQuery={setQuery}
+            onQuery={(value) => changeView({ query: value })}
             health={healthFilter}
-            onHealth={setHealthFilter}
+            onHealth={(status) => changeView({ health: status })}
             selectedId={selected?.id ?? null}
             onSelect={(id) => {
               setSelectedId(id);
