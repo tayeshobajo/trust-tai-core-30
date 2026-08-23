@@ -23,6 +23,7 @@ import type { AttachmentMeta } from "@/domain/comms-integrations";
 import { formatBytes } from "@/domain/comms-mime";
 import { cn } from "@/lib/utils";
 
+import { EmailBodyView, fileAttachments } from "./email-body";
 import { HealthDot } from "./health-marks";
 
 function timeOf(value: string): string {
@@ -46,12 +47,15 @@ const KIND_TONE: Record<EventShape["kind"], string> = {
 
 export function ConversationEvent({
   event,
+  organizationId,
   onEdit,
   onRetract,
   onRestore,
   onDownloadAttachment,
 }: {
   event: EventShape;
+  /** The workspace — the access handle for inline images in email bodies. */
+  organizationId?: string;
   onEdit?: (touchId: string) => void;
   onRetract?: (touchId: string) => void;
   onRestore?: (touchId: string) => void;
@@ -59,6 +63,10 @@ export function ConversationEvent({
 }) {
   const side = eventSide(event.kind);
   const touchId = event.touchId;
+  // A synced email shows the actual message — full body, inline images in
+  // place, quoted history behind a toggle — never a clamped snippet.
+  const isEmail = Boolean(event.messageId) && (event.kind === "we_emailed" || event.kind === "they_emailed");
+  const chips = fileAttachments(event.attachments);
 
   return (
     <li
