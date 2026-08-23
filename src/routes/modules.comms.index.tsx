@@ -609,8 +609,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           />
           <MailboxImport
             organizationId={identity.organizationId}
-            onImport={async (input) => {
-              await importFromMailbox.mutateAsync(input);
+            onImport={async (input, integrationId) => {
+              await importFromMailbox.mutateAsync({
+                relationship: input,
+                ...(integrationId ? { integrationId } : {}),
+              });
             }}
             busy={importFromMailbox.isPending}
             busyLabel={
