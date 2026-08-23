@@ -127,6 +127,15 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [contextOpen, setContextOpen] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  /**
+   * Whether the draft editor is open is a person's choice, never a derived
+   * fact: an existing draft must not trap the thread. Keyed by
+   * relationship AND draft, so switching people can never leak one person's
+   * draft state into another's room. Close is not discard — closing here
+   * only returns to the conversation; the draft stays on record.
+   */
+  const [openDraftKey, setOpenDraftKey] = useState<string | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [interacting, setInteracting] = useState(false);
   const [editingTouchId, setEditingTouchId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -274,6 +283,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     [selectedTouches, drafts, selectedMessages],
   );
   const savedDraft = drafts.find((draft) => draft.reviewState !== "discarded");
+  /** The open editor is this relationship's draft AND a person's choice. */
+  const activeDraft =
+    selected && savedDraft && COMPOSER_STATES.has(savedDraft.reviewState) ? savedDraft : null;
+  const draftKey = selected && activeDraft ? `${selected.id}:${activeDraft.id}` : null;
+  const editorOpen = draftKey !== null && openDraftKey === draftKey;
 
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: ["comms"] });
