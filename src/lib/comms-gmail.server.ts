@@ -1102,46 +1102,49 @@ async function runSyncPass(input: {
         threadId = (data as { id: string }).id;
       }
 
-      const rows = threadMessages.map((message) => ({
-        organization_id: organizationId,
-        relationship_id: relationshipId,
-        thread_id: threadId,
-        provider: "gmail",
-        provider_message_id: message.providerMessageId,
-        provider_thread_id: message.providerThreadId,
-        direction: message.direction,
-        from_email: message.fromEmail ?? null,
-        from_name: message.fromName ?? null,
-        to_emails: message.toEmails,
-        cc_emails: message.ccEmails,
-        subject: message.subject ?? null,
-        snippet: message.snippet ?? null,
-        occurred_at: message.occurredAt,
-        provenance: { source: "gmail", fetched_at: nowIso, mailbox },
-        attachments: message.attachments ?? [],
-      }));
+      // Upsert keyed on provider message id: a resync of an already-stored
+      // message ENRICHES the same row with body and inline metadata instead
+      // of duplicating it. Existing snippet-only rows gain their bodies on
+      // the next pass.
+      const rows = threadMessages.map((message) =>
+        buildMessageRow({ organizationId, relationshipId, threadId, mailbox, nowIso, message }),
+      );
 
-      // The attachments column is the newest addition to comms_messages; a
-      // schema that predates it degrades to metadata-free storage, never a
-      // failed pass.
-      let { error: upsertError } = await client
-        .from("comms_messages")
-        .upsert(rows, {
-          onConflict: "organization_id,provider,provider_message_id",
-          ignoreDuplicates: false,
-        });
+      // Graceful degradation for schemas that predate the newer columns,
+      // newest first: body_html, then body_text, then attachments. A pass
+      // degrades what it stores; it never fails for a missing column.
+      const ON_CONFLICT = {
+        onConflict: "organization_id,provider,provider_message_id",
+        ignoreDuplicates: false,
+      } as const;
+      let { error: upsertError } = await client.from("comms_messages").upsert(rows, ON_CONFLICT);
+      if (upsertError && /body_html/i.test(upsertError.message)) {
+        ({ error: upsertError } = await client.from("comms_messages").upsert(
+          rows.map(({ body_html: _dropped, ...rest }) => rest),
+          ON_CONFLICT,
+        ));
+      }
+      if (upsertError && /body_text/i.test(upsertError.message)) {
+        ({ error: upsertError } = await client.from("comms_messages").upsert(
+          rows.map(({ body_text: _dropped, ...rest }) => rest),
+          ON_CONFLICT,
+        ));
+      }
       if (upsertError && /attachments/i.test(upsertError.message)) {
         ({ error: upsertError } = await client.from("comms_messages").upsert(
           rows.map(({ attachments: _dropped, ...rest }) => rest),
-          { onConflict: "organization_id,provider,provider_message_id", ignoreDuplicates: false },
+          ON_CONFLICT,
         ));
       }
       if (upsertError) throw new Error(upsertError.message);
 
-      for (const message of threadMessages) {
-        if (existingMessageIds.has(message.providerMessageId)) continue;
-        messagesStored += 1;
-        if (message.direction === "inbound") newInbound.push({ relationship, message });
+      // Counting is separate from writing: only genuinely new messages count
+      // as stored and only new inbound mail raises an event. Enrichment of
+      // an existing message is neither.
+      const classified = classifySyncedMessages(threadMessages, existingMessageIds);
+      messagesStored += classified.newCount;
+      for (const message of classified.newInbound) {
+        newInbound.push({ relationship, message });
       }
 
       await client
