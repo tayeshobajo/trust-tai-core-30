@@ -680,6 +680,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               relationship={selected}
               days={days}
               health={health}
+              organizationId={context.organizationId}
               onViewProfile={() => setProfileOpen((value) => !value)}
               onOpenContext={() => setContextOpen(true)}
               onAddInteraction={() => setInteracting(true)}
