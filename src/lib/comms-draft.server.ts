@@ -363,6 +363,68 @@ Laws:
    then a new line, then 'Tai'.`;
 
 /**
+ * Strict response formats for both passes. Pinning the schema server-side is
+ * what makes a reply readable: without one the provider is asked for generic
+ * json mode, which it may refuse outright — and every refusal used to
+ * collapse into the same generic failure. Schemas follow the strict contract:
+ * every property required, no optional keys, objects closed.
+ */
+const JUDGMENT_RESPONSE_FORMAT: Record<string, unknown> = {
+  type: "json_schema",
+  name: "communication_judgment",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      whyNow: { type: "string" },
+      whatNoticed: { type: "string" },
+      intendedEffect: { type: "string" },
+      responseObligation: { type: "string" },
+      nextMove: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          ask: { type: "boolean" },
+          what: { type: "string" },
+        },
+        required: ["ask", "what"],
+      },
+      factsAllowed: { type: "array", items: { type: "string" } },
+      factsAvoid: { type: "array", items: { type: "string" } },
+      voiceEvidenceUsed: { type: "array", items: { type: "string" } },
+      learnedExamplesUsed: { type: "array", items: { type: "string" } },
+    },
+    required: [
+      "whyNow",
+      "whatNoticed",
+      "intendedEffect",
+      "responseObligation",
+      "nextMove",
+      "factsAllowed",
+      "factsAvoid",
+      "voiceEvidenceUsed",
+      "learnedExamplesUsed",
+    ],
+  },
+};
+
+const WRITE_RESPONSE_FORMAT: Record<string, unknown> = {
+  type: "json_schema",
+  name: "relationship_draft",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      subject: { type: "string" },
+      body: { type: "string" },
+    },
+    required: ["subject", "body"],
+  },
+};
+
+/**
  * Compose one draft: grounding gate first, judgment second, prose third,
  * deterministic Voice pass last. Returns the checked text, the judgment it
  * rests on, and every rule it tripped, so the reviewer sees exactly what the
