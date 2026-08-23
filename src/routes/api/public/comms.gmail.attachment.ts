@@ -6,6 +6,12 @@
  * Tai storage. The handler authenticates the caller, then proves the exact
  * attachment id belongs to a message row in the caller's own organization
  * before any byte leaves Google.
+ *
+ * The same path serves inline MIME images: when the stored message metadata
+ * marks the resource `inline` (a Content-ID image), the response is served
+ * with an inline disposition so the timeline can render it in place. The
+ * caller can ask, but only the stored row may declare a resource inline —
+ * and no token or raw Gmail URL ever reaches the browser.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -61,8 +67,12 @@ export const Route = createFileRoute("/api/public/comms/gmail/attachment")({
           return new Response(new Blob([file.bytes as BlobPart]), {
             headers: {
               "Content-Type": file.mimeType,
-              "Content-Disposition": contentDisposition(file.filename),
-              "Cache-Control": "private, no-store",
+              "Content-Disposition": file.inline
+                ? "inline"
+                : contentDisposition(file.filename),
+              // Inline images are re-requested as the person scrolls; files
+              // are never cached. Either way, nothing leaves this browser.
+              "Cache-Control": file.inline ? "private, max-age=3600" : "private, no-store",
             },
           });
         } catch (error) {
