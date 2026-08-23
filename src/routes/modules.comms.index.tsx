@@ -40,7 +40,6 @@ import {
   inboxView,
   pageSelection,
   type InboxTab,
-  type InboxView,
 } from "@/data/comms-inbox";
 import { nextRelationshipMove } from "@/data/comms-next-move";
 import { relationshipsWorthAttention } from "@/data/comms-attention";
@@ -527,8 +526,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           view={view}
           health={healthFilter}
           tab={tab}
-          onHealth={setHealthFilter}
-          onTab={setTab}
+          onHealth={(status) => changeView({ health: status })}
+          onTab={(next) => changeView({ tab: next })}
           onAdd={() => setCapturing(true)}
           attention={attentionSplit.shown}
           setAside={attentionSplit.set_aside}
