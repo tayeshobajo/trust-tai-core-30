@@ -44,6 +44,19 @@ system credential RPC, cron-secret auth, every 6 hours — cron SQL in
 `comms_sync_cron_secret`, endpoint fail-closed (401/200). Drafting endpoint:
 `src/routes/api/public/comms.draft.ts` → `src/lib/comms-draft.server.ts`.
 
+**Multi-mailbox.** Mailboxes own transport identity. Relationships own
+memory. A member may connect more than one Gmail mailbox; every synced
+message and every Comms-sent row stamps `provenance.mailbox`, so one
+relationship may hold conversations from multiple connected Trust Tai
+mailboxes (one person, one memory, many conversations). Replies stay with
+the mailbox that owns the Gmail thread — provenance wins, an explicit From
+choice applies only to new conversations, and a missing `gmail.send` grant
+blocks only the owning/selected mailbox, never silently rerouting. The
+production OAuth callback is exactly
+`https://cmd.trusttai.com/api/public/comms/gmail/connect`; preview/dev
+resolves its own origin callback or the `GOOGLE_OAUTH_REDIRECT_URI`
+override.
+
 **Agent behavior.** Drafting reasons through the shared intelligence runtime
 (`runtimeModelCaller` from `src/lib/intelligence-runtime.server.ts`), then
 passes the deterministic Voice DNA checker (`src/data/voice-policy.ts`,
