@@ -31,6 +31,7 @@ import {
 } from "@/domain/comms-interactions";
 
 import { ConversationHealthCard, RelationshipStrength } from "./conversation-context";
+import { SegmentPill } from "./health-marks";
 
 function RailCard({
   letter,
@@ -311,6 +312,7 @@ export function RelationshipRail({
   onNotNeeded,
   onSettleCommitment,
   onGraduate,
+  onMoveToNurture,
 }: {
   relationship: Relationship;
   health: ConversationHealth;
@@ -326,10 +328,20 @@ export function RelationshipRail({
    * promise, memory, and Scout provenance stays exactly where it is.
    */
   onGraduate?: () => void;
+  /**
+   * Clients → Nurture, offered only when the client classification rests on
+   * contextual fallback rather than hard evidence (`canMoveToNurture`). Same
+   * record, same history — only the stage becomes an explicit `nurture`.
+   */
+  onMoveToNurture?: () => void;
 }) {
   return (
     <div className="space-y-3">
-      <WhyItMatters relationship={relationship} {...(onGraduate ? { onGraduate } : {})} />
+      <WhyItMatters
+        relationship={relationship}
+        {...(onGraduate ? { onGraduate } : {})}
+        {...(onMoveToNurture ? { onMoveToNurture } : {})}
+      />
       <WhatWeKnow relationship={relationship} {...(onRemember ? { onRemember } : {})} />
       <NextMoveCard
         move={move}
