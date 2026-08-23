@@ -191,9 +191,10 @@ export interface SendMailboxRef {
 
 /**
  * Which mailbox a human-approved send goes from. The law:
- *  - an explicit From choice always wins;
- *  - a reply stays with the mailbox that owns the conversation — never a
- *    different connected account;
+ *  - thread ownership wins for replies: a reply always goes from the mailbox
+ *    that owns the conversation (provenance), never a different connected
+ *    account — an explicit From choice cannot reroute a reply;
+ *  - an explicit From choice applies only to new conversations;
  *  - a brand-new message uses the one send-capable mailbox automatically,
  *    and only asks when more than one could send.
  * Scope is not decided here: a resolved mailbox whose grant lacks

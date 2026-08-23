@@ -12,14 +12,19 @@
 
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ID } from "@/domain/entities";
-import type { AttachmentMeta, StoredMailboxMessage } from "@/domain/comms-integrations";
+import {
+  mailboxFromProvenance,
+  type AttachmentMeta,
+  type StoredMailboxMessage,
+} from "@/domain/comms-integrations";
 
 const COLUMNS =
   "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, subject, snippet, occurred_at, provenance, attachments";
 const COLUMNS_WITHOUT_ATTACHMENTS =
   "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, subject, snippet, occurred_at, provenance";
 
-interface MessageRow {
+/** Exported for the focused provenance-mapping test. */
+export interface MessageRow {
   id: string;
   organization_id: string;
   relationship_id: string;
@@ -58,12 +63,17 @@ function attachments(value: unknown): AttachmentMeta[] | undefined {
   return out.length > 0 ? out : undefined;
 }
 
-function toMessage(row: MessageRow): StoredMailboxMessage {
+/** Exported for the focused provenance-mapping test. */
+export function toMessage(row: MessageRow): StoredMailboxMessage {
   const files = attachments(row.attachments);
   const provenance =
     row.provenance && typeof row.provenance === "object"
       ? (row.provenance as Record<string, unknown>)
       : null;
+  // Transport identity is carried in provenance and only in provenance.
+  // Synced Gmail mail and Comms-sent rows both stamp it server-side; a row
+  // without it gets no mailbox — we never infer one.
+  const mailbox = mailboxFromProvenance(row.provenance);
   return {
     id: row.id,
     organizationId: row.organization_id,
@@ -79,6 +89,7 @@ function toMessage(row: MessageRow): StoredMailboxMessage {
     occurredAt: row.occurred_at,
     ...(files ? { attachments: files } : {}),
     ...(provenance?.["source"] === "gmail-send" ? { sentViaComms: true } : {}),
+    ...(mailbox ? { mailbox } : {}),
   };
 }
 

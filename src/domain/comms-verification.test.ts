@@ -153,7 +153,7 @@ describe("draftProvenanceLabel", () => {
 
   it("distinguishes claim from proof", () => {
     expect(draftProvenanceLabel("sent", stamp)).toBe("Sent — seen in the mailbox");
-    expect(draftProvenanceLabel("sent", null)).toBe("Marked as sent — not yet seen in the mailbox");
+    expect(draftProvenanceLabel("sent", null)).toBe("Sent via Gmail — not yet seen in the mailbox");
     expect(draftProvenanceLabel("approved", null)).toBe("Approved, waiting to be sent");
     expect(draftProvenanceLabel("draft", null)).toBe("Prepared in Comms, not sent");
   });

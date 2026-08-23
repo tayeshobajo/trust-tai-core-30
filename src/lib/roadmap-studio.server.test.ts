@@ -24,9 +24,17 @@ vi.mock("./intelligence-runtime.server", async () => {
   );
   return {
     ...actual,
+    // Mirrors the real contract: the guarded caller factory throws when the
+    // member lacks workspace access, and the returned caller takes one call
+    // object ({ instructions, input, webSearch, ... }). The provider double
+    // keeps the positional (instructions, input, options) shape so the
+    // assertions below can inspect exactly what would be sent to the model.
     runtimeModelCaller: async () => {
-      await access();
-      return (call: { instructions: string; input: string }) => provider(call);
+      if (!(await access())) {
+        throw new Error("You do not have access to this workspace.");
+      }
+      return (call: { instructions: string; input: string; webSearch?: boolean }) =>
+        provider(call.instructions, call.input, { webSearch: call.webSearch ?? false });
     },
   };
 });

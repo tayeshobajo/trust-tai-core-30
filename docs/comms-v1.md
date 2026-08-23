@@ -267,6 +267,22 @@ Credentials live on the server only: `GOOGLE_OAUTH_CLIENT_ID`,
 `GOOGLE_OAUTH_CLIENT_SECRET`, plus `COMMS_TOKEN_ENC_KEY` and
 `COMMS_OAUTH_STATE_SECRET`. The browser never sees any of them.
 
+### Multi-mailbox
+
+Mailboxes own transport identity. Relationships own memory.
+
+A member can connect more than one Gmail mailbox. Every synced message and
+every Comms-sent row stamps `provenance.mailbox` with the mailbox that
+observed or sent it, so one relationship may hold conversations from multiple
+connected Trust Tai mailboxes — one person, one memory, many conversations.
+Replies always stay with the mailbox that owns the Gmail thread (provenance,
+never a guess, and never an explicit From choice); a brand-new outbound
+message only offers a From selector when more than one connected mailbox can
+send — with a single send-capable mailbox the choice is automatic and
+invisible. A mailbox whose grant lacks `gmail.send` blocks only that mailbox,
+naming it; a send is never silently rerouted to another account. Each
+mailbox keeps the same `Trust Tai/Comms` label as its read boundary.
+
 Registered redirect URI (exact match required by Google):
 
 - production: `https://cmd.trusttai.com/api/public/comms/gmail/connect` — the
