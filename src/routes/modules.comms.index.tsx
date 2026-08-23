@@ -30,7 +30,7 @@ import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
-import { gmailSync } from "@/data/supabase/comms-gmail";
+import { gmailDownloadAttachment, gmailSync } from "@/data/supabase/comms-gmail";
 import { addMailboxCandidateToComms, ONBOARDING_BACKFILL_DAYS } from "@/data/comms-onboarding";
 import { listRelationshipMessages } from "@/data/supabase/comms-messages";
 import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
@@ -665,6 +665,15 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               onEditTouch={(touchId) => setEditingTouchId(touchId)}
               onRetractTouch={(touchId) => setEditingTouchId(touchId)}
               onRestoreTouch={(touchId) => retractTouch.mutate({ touchId, restore: true })}
+              onDownloadAttachment={(event, file) => {
+                if (!event.messageId || !file.attachmentId) return;
+                void gmailDownloadAttachment({
+                  organizationId: context.organizationId,
+                  messageId: event.messageId,
+                  attachmentId: file.attachmentId,
+                  filename: file.filename,
+                });
+              }}
             >
               {profileOpen ? (
                 <div className="border-t border-border bg-secondary/30 px-5 py-4">
