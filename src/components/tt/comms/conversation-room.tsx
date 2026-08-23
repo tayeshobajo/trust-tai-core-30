@@ -100,9 +100,11 @@ export function ConversationEvent({
           <EmailBodyView
             organizationId={organizationId}
             messageId={event.messageId}
-            text={event.body}
-            html={event.htmlBody}
-            inline={(event.attachments ?? []).filter((file) => file.inline)}
+            {...(event.body ? { text: event.body } : {})}
+            {...(event.htmlBody ? { html: event.htmlBody } : {})}
+            {...(chips.length !== (event.attachments ?? []).length
+              ? { inline: (event.attachments ?? []).filter((file) => file.inline) }
+              : {})}
           />
         ) : event.body ? (
           <p className="mt-1 whitespace-pre-wrap break-words text-[13px] text-muted-foreground">
