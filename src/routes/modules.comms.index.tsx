@@ -774,23 +774,83 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 </div>
               ) : null}
 
-              {savedDraft && COMPOSER_STATES.has(savedDraft.reviewState) ? (
+              {activeDraft && editorOpen ? (
                 <SendComposer
-                  draft={savedDraft}
+                  draft={activeDraft}
                   relationship={selected}
                   context={context}
                   messages={selectedMessages}
                   onChanged={refresh}
+                  onClose={() => setOpenDraftKey(null)}
                 />
               ) : (
-                <ReplyRecordBar
-                  drafting={drafting}
-                  busy={recordInteraction.isPending || saveDraft.isPending}
-                  error={draftError}
-                  purposeHint={move?.needed ? move.action : null}
-                  onPrepareDraft={(register, purpose) => void compose(register, purpose)}
-                  onRecordInteraction={() => setInteracting(true)}
-                />
+                <>
+                  {/* A draft exists but the editor is closed: the thread stays
+                      readable, and this quiet strip is the way back in. The
+                      draft is never discarded by closing — only by the
+                      explicit, confirmed choice here. */}
+                  {activeDraft ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-cloud/40 px-4 py-2 sm:px-5">
+                      <p className="min-w-0 truncate text-[12px] text-muted-foreground">
+                        <span className="font-medium text-foreground">Draft saved</span>
+                        {activeDraft.subject?.trim() ? ` · ${activeDraft.subject.trim()}` : ""}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        {confirmDiscard ? (
+                          <>
+                            <span className="text-[12px] text-muted-foreground">
+                              Discard this draft? This cannot be undone.
+                            </span>
+                            <TTButton
+                              variant="quiet"
+                              size="sm"
+                              type="button"
+                              disabled={discardDraft.isPending}
+                              onClick={() => discardDraft.mutate(activeDraft)}
+                            >
+                              {discardDraft.isPending ? "Discarding…" : "Confirm discard"}
+                            </TTButton>
+                            <TTButton
+                              variant="quiet"
+                              size="sm"
+                              type="button"
+                              onClick={() => setConfirmDiscard(false)}
+                            >
+                              Keep it
+                            </TTButton>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDiscard(true)}
+                            className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            Discard
+                          </button>
+                        )}
+                        <TTButton
+                          variant="quiet"
+                          size="sm"
+                          type="button"
+                          onClick={() => {
+                            setConfirmDiscard(false);
+                            setOpenDraftKey(draftKey);
+                          }}
+                        >
+                          Resume draft
+                        </TTButton>
+                      </div>
+                    </div>
+                  ) : null}
+                  <ReplyRecordBar
+                    drafting={drafting}
+                    busy={recordInteraction.isPending || saveDraft.isPending}
+                    error={draftError}
+                    purposeHint={move?.needed ? move.action : null}
+                    onPrepareDraft={(register, purpose) => void compose(register, purpose)}
+                    onRecordInteraction={() => setInteracting(true)}
+                  />
+                </>
               )}
             </ConversationRoom>
           ) : (
