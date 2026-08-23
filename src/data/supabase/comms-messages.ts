@@ -96,14 +96,6 @@ export async function listRelationshipMessages(
   relationshipId: ID,
   limit = 200,
 ): Promise<StoredMailboxMessage[]> {
-  const base = () =>
-    supabase
-      .from("comms_messages")
-      .eq("organization_id", organizationId)
-      .eq("relationship_id", relationshipId)
-      .order("occurred_at", { ascending: true })
-      .limit(limit);
-
   let { data, error } = await supabase
     .from("comms_messages")
     .select(COLUMNS)
@@ -122,7 +114,6 @@ export async function listRelationshipMessages(
       .order("occurred_at", { ascending: true })
       .limit(limit));
   }
-  void base;
 
   if (error) {
     if (notProvisioned(error.message)) return [];
