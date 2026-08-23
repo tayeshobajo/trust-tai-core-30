@@ -204,17 +204,16 @@ describe("bulk import", () => {
   it("a retry revisits only the failed people and never duplicates a success", async () => {
     // The governed creation path dedupes on email; model it so any repeat
     // would throw, proving the retry never re-asks for someone already in.
+    // b@x.com fails exactly once — its first attempt — then succeeds on retry.
     const created = new Set<string>();
+    const attempts = new Map<string, number>();
     const importOne = async (input: RelationshipInput) => {
       const email = input.email!;
       if (created.has(email)) throw new Error("duplicate");
-      if (email === "b@x.com" && created.size === 0) {
-        // b fails only while a is not yet created — i.e. on the first pass.
-      } else {
-        created.add(email);
-        return;
-      }
-      throw new Error("boom");
+      const attempt = (attempts.get(email) ?? 0) + 1;
+      attempts.set(email, attempt);
+      if (email === "b@x.com" && attempt === 1) throw new Error("boom");
+      created.add(email);
     };
 
     const first = await importCandidatesInOrder(
