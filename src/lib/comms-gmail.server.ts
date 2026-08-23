@@ -1,6 +1,13 @@
 /**
  * Gmail, label-gated read plus human-approved send (server only).
  *
+ * Multi-mailbox law: mailboxes own transport identity; relationships own
+ * memory. A workspace may connect several Gmail accounts — each is one row
+ * in `comms_integrations`, keyed by account email, each independently
+ * gated on the exact `Trust Tai/Comms` label in its own mailbox. All of
+ * them feed the same relationships: the counterpart's email is the identity
+ * that decides what is stored, never which mailbox observed it.
+ *
  * What this is allowed to do: read message metadata for threads Tai has
  * explicitly labeled `Trust Tai/Comms`, and store only the ones with people
  * who are already relationships in Comms.
@@ -86,12 +93,40 @@ export function gmailAvailable(): boolean {
   return gmailConfig() !== null;
 }
 
-/** The exact callback registered in Google Cloud, derived from this request. */
+/**
+ * The one production callback. This is the exact Authorized redirect URI
+ * Google Cloud must list; production never derives it from the request
+ * origin, so a request arriving via any production host lands on the same
+ * registered address.
+ */
+export const GMAIL_PRODUCTION_REDIRECT_URI =
+  "https://cmd.trusttai.com/api/public/comms/gmail/connect";
+
+/** The copy shown when Google answers redirect_uri_mismatch. */
+export const REDIRECT_URI_MISMATCH_MESSAGE =
+  "Google rejected the callback address (redirect_uri_mismatch). In Google Cloud Console " +
+  "→ APIs & Services → Credentials → the OAuth 2.0 client, add exactly this Authorized " +
+  `redirect URI: ${GMAIL_PRODUCTION_REDIRECT_URI} — then connect again.`;
+
+/** localhost and Lovable preview/dev hosts may derive the callback locally. */
+function isPreviewOrigin(origin: string): boolean {
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  const host = origin.replace(/^https?:\/\//, "");
+  return host.startsWith("id-preview--") || host.endsWith("-dev.lovable.app");
+}
+
+/**
+ * The callback used for consent and exchange. `GOOGLE_OAUTH_REDIRECT_URI`
+ * wins when explicitly configured; preview/dev origins keep their
+ * request-derived callback so local work stays possible; everything else is
+ * production and gets the registered production callback, deterministically.
+ */
 export function gmailRedirectUri(request: Request): string {
   const configured = process.env["GOOGLE_OAUTH_REDIRECT_URI"];
   if (configured) return configured;
-  const url = new URL(request.url);
-  return `${url.origin}/api/public/comms/gmail/connect`;
+  const origin = new URL(request.url).origin;
+  if (isPreviewOrigin(origin)) return `${origin}/api/public/comms/gmail/connect`;
+  return GMAIL_PRODUCTION_REDIRECT_URI;
 }
 
 /**
@@ -134,6 +169,11 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenResponse
   });
   const payload = (await response.json()) as TokenResponse;
   if (!response.ok || payload.error) {
+    // A callback mismatch is actionable only in Google Cloud; name the exact
+    // URI that must be registered instead of relaying Google's bare code.
+    if (payload.error === "redirect_uri_mismatch") {
+      throw new Error(REDIRECT_URI_MISMATCH_MESSAGE);
+    }
     throw new Error(payload.error_description || payload.error || "Google refused that request.");
   }
   return payload;
@@ -404,18 +444,92 @@ export async function saveConnection(input: {
   return { integrationId: integrationId! };
 }
 
+/**
+ * Disconnect one mailbox — the specific connection row, never "the Gmail
+ * connection": with several mailboxes connected, the others stay live.
+ */
 export async function disconnect(input: {
   token: string;
   organizationId: string;
+  integrationId: string;
 }): Promise<void> {
   const client = supabaseFor(input.token);
   await requireMember(client, input.organizationId);
-  const { error } = await client
+  const { data, error } = await client
     .from("comms_integrations")
     .delete()
+    .eq("id", input.integrationId)
     .eq("organization_id", input.organizationId)
-    .eq("provider", "gmail");
+    .eq("provider", "gmail")
+    .select("id");
   if (error) throw new Error(error.message);
+  if (!data || (data as unknown[]).length === 0) {
+    throw new Error("That mailbox is not connected.");
+  }
+}
+
+/* -------------------------------------------------- connection resolution */
+
+/**
+ * Which of a workspace's Gmail connections a member action targets. With
+ * one mailbox the answer is automatic; with several, an explicit
+ * `integrationId` is required — an action never guesses between mailboxes.
+ * Pure; tested.
+ */
+export type ConnectionPick<T> =
+  | { kind: "found"; row: T }
+  | { kind: "none" }
+  | { kind: "ambiguous"; count: number };
+
+export function pickGmailConnection<T extends { id: string }>(
+  rows: T[],
+  integrationId?: string,
+): ConnectionPick<T> {
+  if (integrationId) {
+    const found = rows.find((row) => row.id === integrationId);
+    return found ? { kind: "found", row: found } : { kind: "none" };
+  }
+  if (rows.length === 0) return { kind: "none" };
+  if (rows.length === 1) return { kind: "found", row: rows[0]! };
+  return { kind: "ambiguous", count: rows.length };
+}
+
+export interface GmailConnectionRow {
+  id: string;
+  account_email: string | null;
+  scopes: unknown;
+  status: string;
+  cursor: unknown;
+}
+
+/** Every Gmail connection in the workspace, read under the caller's access. */
+export async function loadGmailConnections(
+  client: SupabaseClient,
+  organizationId: string,
+): Promise<GmailConnectionRow[]> {
+  const { data, error } = await client
+    .from("comms_integrations")
+    .select("id, account_email, scopes, status, cursor")
+    .eq("organization_id", organizationId)
+    .eq("provider", "gmail")
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as GmailConnectionRow[];
+}
+
+/** Resolve the one mailbox a member action targets, or fail with guidance. */
+export function requireGmailConnection<T extends { id: string }>(
+  rows: T[],
+  integrationId?: string,
+): T {
+  const pick = pickGmailConnection(rows, integrationId);
+  if (pick.kind === "found") return pick.row;
+  if (pick.kind === "ambiguous") {
+    throw new Error("More than one mailbox is connected — choose which one this is for.");
+  }
+  throw new Error(
+    integrationId ? "That mailbox is not connected." : "No mailbox is connected yet.",
+  );
 }
 
 /* ------------------------------------------------------------------- sync */
@@ -1012,27 +1126,24 @@ async function runSyncPass(input: {
 }
 
 /**
- * The member-invoked pass. Every read and write is made with the caller's
- * token, so RLS and the organization boundary still hold.
+ * The member-invoked pass over ONE mailbox. Every read and write is made
+ * with the caller's token, so RLS and the organization boundary still hold.
+ * With several mailboxes connected, `integrationId` names the one to read;
+ * with exactly one, it may be omitted.
  */
 export async function syncGmail(input: {
   token: string;
   organizationId: string;
+  integrationId?: string;
   backfillDays?: number;
 }): Promise<SyncResult> {
   const client = supabaseFor(input.token);
   await requireMember(client, input.organizationId);
 
-  const { data: connectionRow, error: connectionError } = await client
-    .from("comms_integrations")
-    .select("id, account_email, cursor")
-    .eq("organization_id", input.organizationId)
-    .eq("provider", "gmail")
-    .maybeSingle();
-  if (connectionError) throw new Error(connectionError.message);
-  if (!connectionRow) throw new Error("No mailbox is connected yet.");
-
-  const connection = connectionRow as { id: string; account_email: string | null; cursor: unknown };
+  const connection = requireGmailConnection(
+    await loadGmailConnections(client, input.organizationId),
+    input.integrationId,
+  );
 
   const { data: sealed, error: sealedError } = await client.rpc(
     "comms_get_integration_secret",
@@ -1221,8 +1332,11 @@ export interface MailboxCandidate {
 }
 
 /**
- * People on threads labeled `Trust Tai/Comms`, read from message metadata
- * only — the "Labeled in Gmail, not yet in Comms" review surface.
+ * People on threads labeled `Trust Tai/Comms` in ONE mailbox, read from
+ * message metadata only — the "Labeled in Gmail, not yet in Comms" review
+ * surface. Candidate discovery is per mailbox: each connected account is
+ * gated on its own label and its own labeled window, and unlabeled mail
+ * from any mailbox is never read or merged in.
  *
  * This stores nothing. It exists so a member can turn one real correspondent
  * into a Comms relationship without typing it out. Addresses already tracked
@@ -1233,21 +1347,22 @@ export interface MailboxCandidate {
 export async function listMailboxCandidates(input: {
   token: string;
   organizationId: string;
+  integrationId?: string;
   backfillDays?: number;
   limit?: number;
-}): Promise<{ accountEmail?: string; candidates: MailboxCandidate[]; coverage: MailboxCoverage }> {
+}): Promise<{
+  integrationId: string;
+  accountEmail?: string;
+  candidates: MailboxCandidate[];
+  coverage: MailboxCoverage;
+}> {
   const client = supabaseFor(input.token);
   await requireMember(client, input.organizationId);
 
-  const { data: connectionRow, error: connectionError } = await client
-    .from("comms_integrations")
-    .select("id, account_email")
-    .eq("organization_id", input.organizationId)
-    .eq("provider", "gmail")
-    .maybeSingle();
-  if (connectionError) throw new Error(connectionError.message);
-  if (!connectionRow) throw new Error("No mailbox is connected yet.");
-  const connection = connectionRow as { id: string; account_email: string | null };
+  const connection = requireGmailConnection(
+    await loadGmailConnections(client, input.organizationId),
+    input.integrationId,
+  );
   const mailbox = (connection.account_email ?? "").toLowerCase();
 
   const { data: sealed, error: sealedError } = await client.rpc(
@@ -1339,5 +1454,10 @@ export async function listMailboxCandidates(input: {
     )
     .slice(0, Math.min(Math.max(input.limit ?? 12, 1), 25));
 
-  return { ...(mailbox ? { accountEmail: mailbox } : {}), candidates, coverage };
+  return {
+    integrationId: connection.id,
+    ...(mailbox ? { accountEmail: mailbox } : {}),
+    candidates,
+    coverage,
+  };
 }

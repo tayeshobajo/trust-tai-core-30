@@ -9,6 +9,10 @@
  *    screen as reading. When the stored grant does not include it — an older
  *    read-only connection, or send declined — the answer is a calm `blocked`
  *    outcome naming the scope; the draft is untouched, never half-claimed.
+ *  - Mailboxes own transport identity. A reply leaves from the same mailbox
+ *    that owns the conversation (provenance, never a guess); a new
+ *    conversation uses the caller's choice, or the only send-capable
+ *    mailbox. A read-only mailbox blocks only its own sends.
  *  - attempted != executed != verified. Gmail accepting the message moves the
  *    draft to `sent` and writes the outbound message row so the timeline
  *    shows it immediately; `mailbox_verified` still belongs to the normal
@@ -28,9 +32,11 @@ import { openSecret } from "@/lib/comms-crypto.server";
 import {
   GMAIL_API,
   gmailGet,
+  loadGmailConnections,
   refreshAccessToken,
   requireMember,
   supabaseFor,
+  type GmailConnectionRow,
 } from "@/lib/comms-gmail.server";
 import {
   buildMimeMessage,
@@ -42,7 +48,13 @@ import {
   validateAttachments,
   type OutgoingAttachment,
 } from "@/domain/comms-mime";
-import { GMAIL_SEND_SCOPE, type AttachmentMeta } from "@/domain/comms-integrations";
+import {
+  GMAIL_SEND_SCOPE,
+  mailboxFromProvenance,
+  resolveSendMailbox,
+  type AttachmentMeta,
+  type SendMailboxRef,
+} from "@/domain/comms-integrations";
 import {
   decideSendClaim,
   readDraftSend,
@@ -64,13 +76,29 @@ import {
 
 /* ------------------------------------------------------------- capability */
 
-export interface SendCapability {
+/** What ONE connected mailbox may do. */
+export interface MailboxCapability {
+  integrationId: string;
+  accountEmail?: string;
+  /** The connection row's status is `connected`. */
   connected: boolean;
   /** True only when the stored grant already includes `gmail.send`. */
   canSend: boolean;
-  accountEmail?: string;
-  /** Present when a reconnect must grant it before any send can happen. */
+  /** Present when a reconnect must grant it before this mailbox can send. */
   requiredScope?: string;
+}
+
+export interface SendCapability {
+  /** True when at least one mailbox is connected. */
+  connected: boolean;
+  /** True when at least one connected mailbox holds the send grant. */
+  canSend: boolean;
+  /** The first connected mailbox, for single-mailbox display. */
+  accountEmail?: string;
+  /** Present when no connected mailbox may send yet. */
+  requiredScope?: string;
+  /** Every connected Gmail account, one capability each. */
+  mailboxes: MailboxCapability[];
 }
 
 /** Whether a stored scope list already permits sending. Pure; tested. */
@@ -78,9 +106,24 @@ export function canSendWithScopes(scopes: unknown): boolean {
   return Array.isArray(scopes) && scopes.includes(GMAIL_SEND_SCOPE);
 }
 
+/** One connection row read as a capability. Pure; tested. */
+export function mailboxCapabilityOf(row: GmailConnectionRow): MailboxCapability {
+  const connected = row.status === "connected";
+  const canSend = connected && canSendWithScopes(row.scopes);
+  const accountEmail = row.account_email?.trim().toLowerCase();
+  return {
+    integrationId: row.id,
+    ...(accountEmail ? { accountEmail } : {}),
+    connected,
+    canSend,
+    ...(canSend ? {} : { requiredScope: GMAIL_SEND_SCOPE }),
+  };
+}
+
 /**
- * What this workspace's Gmail connection can do. Reads the integration row
- * under the caller's own access; never touches Google.
+ * What this workspace's Gmail connections can do — every mailbox, each with
+ * its own send capability. Reads the integration rows under the caller's own
+ * access; never touches Google.
  */
 export async function sendCapability(input: {
   token: string;
@@ -89,22 +132,17 @@ export async function sendCapability(input: {
   const client = supabaseFor(input.token);
   await requireMember(client, input.organizationId);
 
-  const { data: row, error } = await client
-    .from("comms_integrations")
-    .select("account_email, scopes, status")
-    .eq("organization_id", input.organizationId)
-    .eq("provider", "gmail")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!row) return { connected: false, canSend: false };
-
-  const connection = row as { account_email: string | null; scopes: unknown; status: string };
-  const canSend = connection.status === "connected" && canSendWithScopes(connection.scopes);
+  const mailboxes = (await loadGmailConnections(client, input.organizationId)).map(
+    mailboxCapabilityOf,
+  );
+  const live = mailboxes.filter((mailbox) => mailbox.connected);
+  const capable = live.filter((mailbox) => mailbox.canSend);
   return {
-    connected: true,
-    canSend,
-    ...(connection.account_email ? { accountEmail: connection.account_email } : {}),
-    ...(canSend ? {} : { requiredScope: GMAIL_SEND_SCOPE }),
+    connected: live.length > 0,
+    canSend: capable.length > 0,
+    ...(live[0]?.accountEmail ? { accountEmail: live[0].accountEmail } : {}),
+    ...(live.length > 0 && capable.length === 0 ? { requiredScope: GMAIL_SEND_SCOPE } : {}),
+    mailboxes,
   };
 }
 
@@ -317,6 +355,11 @@ export async function sendDraftViaGmail(input: {
   organizationId: string;
   draftId: string;
   threadTarget?: SendThreadTarget;
+  /**
+   * The member's explicit mailbox choice for a new conversation. Ignored
+   * for replies — the owning mailbox always sends its own conversation.
+   */
+  integrationId?: string;
 }): Promise<SendOutcome> {
   const client = supabaseFor(input.token);
   await requireMember(client, input.organizationId);
@@ -371,31 +414,97 @@ export async function sendDraftViaGmail(input: {
   }
   const recipient = relationship.email.toLowerCase();
 
-  const { data: connectionRow, error: connectionError } = await client
-    .from("comms_integrations")
-    .select("id, account_email, scopes, status")
-    .eq("organization_id", input.organizationId)
-    .eq("provider", "gmail")
-    .maybeSingle();
-  if (connectionError) throw new Error(connectionError.message);
-  if (!connectionRow) throw new Error("No mailbox is connected yet.");
-  const connection = connectionRow as {
-    id: string;
-    account_email: string | null;
-    scopes: unknown;
-    status: string;
-  };
-  const mailbox = (connection.account_email ?? "").toLowerCase();
-  if (!mailbox) throw new Error("The connected mailbox address is not on record.");
+  // Thread target first: which conversation this joins decides which mailbox
+  // sends. The caller's explicit choice wins; otherwise the relationship's
+  // most recent tracked thread is the reply, and with no tracked thread the
+  // message opens a new conversation.
+  let target: SendThreadTarget = input.threadTarget ?? { mode: "new" };
+  if (!input.threadTarget) {
+    const { data: threadRow } = await client
+      .from("comms_threads")
+      .select("provider_thread_id")
+      .eq("organization_id", input.organizationId)
+      .eq("relationship_id", relationship.id)
+      .eq("provider", "gmail")
+      .order("last_message_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const providerThreadId = (threadRow as { provider_thread_id?: string } | null)
+      ?.provider_thread_id;
+    if (providerThreadId) target = { mode: "reply", providerThreadId };
+  }
 
-  // The permission checkpoint, enforced before any claim: a read-only grant
-  // can never send, so the draft is left exactly as it was.
-  if (!canSendWithScopes(connection.scopes)) {
+  // The reply-from rule: a reply goes from the same mailbox that owns the
+  // conversation. Ownership is provenance, not guesswork — both the sync and
+  // the send path stamp the observing mailbox on every message row.
+  let threadMailbox: string | undefined;
+  if (target.mode === "reply") {
+    const { data: provenanceRows } = await client
+      .from("comms_messages")
+      .select("provenance")
+      .eq("organization_id", input.organizationId)
+      .eq("provider", "gmail")
+      .eq("provider_thread_id", target.providerThreadId)
+      .order("occurred_at", { ascending: false })
+      .limit(5);
+    threadMailbox = ((provenanceRows ?? []) as { provenance: unknown }[])
+      .map((row) => mailboxFromProvenance(row.provenance))
+      .find((entry): entry is string => Boolean(entry));
+  }
+
+  const connectionRows = await loadGmailConnections(client, input.organizationId);
+  // MailboxCapability names the row id `integrationId`; the resolver's
+  // neutral ref calls it `id`. One explicit mapping keeps the boundary clean.
+  const refs: SendMailboxRef[] = connectionRows.map((row) => {
+    const capability = mailboxCapabilityOf(row);
+    return {
+      id: capability.integrationId,
+      ...(capability.accountEmail ? { accountEmail: capability.accountEmail } : {}),
+      connected: capability.connected,
+      canSend: capability.canSend,
+    };
+  });
+  const resolution = resolveSendMailbox({
+    connections: refs,
+    ...(threadMailbox ? { threadMailbox } : {}),
+    ...(input.integrationId ? { integrationId: input.integrationId } : {}),
+  });
+
+  if (resolution.kind === "unknown_choice") throw new Error("That mailbox is not connected.");
+  if (resolution.kind === "none_connected") throw new Error("No mailbox is connected yet.");
+  if (resolution.kind === "needs_choice") {
+    throw new Error("More than one mailbox can send — choose which account sends this.");
+  }
+  if (resolution.kind === "owner_missing") {
+    return {
+      draftId: draft.id,
+      state: "blocked",
+      error: `This conversation belongs to ${resolution.mailbox}, which is not connected. Reconnect that mailbox under Connections to reply in this thread.`,
+    };
+  }
+  if (resolution.kind === "none_send_capable") {
     return {
       draftId: draft.id,
       state: "blocked",
       error:
         "This Gmail connection was granted read-only access. Reconnect Gmail and grant send access to send from Comms.",
+      requiredScope: GMAIL_SEND_SCOPE,
+    };
+  }
+
+  const connection = connectionRows.find((row) => row.id === resolution.connection.id);
+  if (!connection) throw new Error("That mailbox is not connected.");
+  const mailbox = (connection.account_email ?? "").toLowerCase();
+  if (!mailbox) throw new Error("The connected mailbox address is not on record.");
+
+  // The permission checkpoint, enforced before any claim: a read-only grant
+  // can never send, so the draft is left exactly as it was. Only the chosen
+  // mailbox is blocked — other mailboxes stay fully usable.
+  if (!canSendWithScopes(connection.scopes)) {
+    return {
+      draftId: draft.id,
+      state: "blocked",
+      error: `The mailbox ${mailbox} was granted read-only access. Reconnect it with send access to send from it.`,
       requiredScope: GMAIL_SEND_SCOPE,
     };
   }
@@ -437,25 +546,6 @@ export async function sendDraftViaGmail(input: {
     throw new Error("That mailbox needs to be connected again.");
   }
   const accessToken = await refreshAccessToken(await openSecret(sealed));
-
-  // Thread target: the caller's explicit choice wins; otherwise the
-  // relationship's most recent tracked thread is the reply, and with no
-  // tracked thread the message opens a new conversation.
-  let target: SendThreadTarget = input.threadTarget ?? { mode: "new" };
-  if (!input.threadTarget) {
-    const { data: threadRow } = await client
-      .from("comms_threads")
-      .select("provider_thread_id")
-      .eq("organization_id", input.organizationId)
-      .eq("relationship_id", relationship.id)
-      .eq("provider", "gmail")
-      .order("last_message_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const providerThreadId = (threadRow as { provider_thread_id?: string } | null)
-      ?.provider_thread_id;
-    if (providerThreadId) target = { mode: "reply", providerThreadId };
-  }
 
   let to = [recipient];
   let cc: string[] = [];
@@ -730,6 +820,10 @@ export interface DownloadedAttachment {
  * the source of truth — nothing is copied into Trust Tai storage. The
  * message row (read under the caller's token, so RLS holds) must actually
  * carry this attachment id; a made-up id never reaches Gmail.
+ *
+ * The read goes to the mailbox that observed the message — provenance on the
+ * row names it, so a workspace with several mailboxes never asks the wrong
+ * account for a message it never saw.
  */
 export async function downloadMailboxAttachment(input: {
   token: string;
@@ -742,7 +836,7 @@ export async function downloadMailboxAttachment(input: {
 
   const { data: messageRow, error: messageError } = await client
     .from("comms_messages")
-    .select("id, provider_message_id, attachments")
+    .select("id, provider_message_id, attachments, provenance")
     .eq("id", input.messageId)
     .eq("organization_id", input.organizationId)
     .eq("provider", "gmail")
@@ -753,6 +847,7 @@ export async function downloadMailboxAttachment(input: {
     id: string;
     provider_message_id: string | null;
     attachments: unknown;
+    provenance: unknown;
   };
   if (!message.provider_message_id) throw new Error("That message has no mailbox copy.");
 
@@ -762,17 +857,23 @@ export async function downloadMailboxAttachment(input: {
   const target = attachments.find((entry) => entry["attachment_id"] === input.attachmentId);
   if (!target) throw new Error("That file is not part of this message.");
 
-  const { data: connectionRow, error: connectionError } = await client
-    .from("comms_integrations")
-    .select("id")
-    .eq("organization_id", input.organizationId)
-    .eq("provider", "gmail")
-    .maybeSingle();
-  if (connectionError) throw new Error(connectionError.message);
-  if (!connectionRow) throw new Error("No mailbox is connected yet.");
+  const connections = await loadGmailConnections(client, input.organizationId);
+  const observedBy = mailboxFromProvenance(message.provenance);
+  const connection = observedBy
+    ? connections.find((row) => row.account_email?.toLowerCase() === observedBy)
+    : connections.length === 1
+      ? connections[0]
+      : undefined;
+  if (!connection) {
+    throw new Error(
+      observedBy
+        ? `The mailbox ${observedBy} that holds this file is not connected. Reconnect it under Connections to open this file.`
+        : "The mailbox that holds this file could not be determined. Reconnect the mailbox under Connections.",
+    );
+  }
 
   const { data: sealed, error: sealedError } = await client.rpc("comms_get_integration_secret", {
-    p_integration_id: (connectionRow as { id: string }).id,
+    p_integration_id: connection.id,
   });
   if (sealedError) throw new Error(sealedError.message);
   if (!sealed || typeof sealed !== "string") {

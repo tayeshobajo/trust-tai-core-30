@@ -81,7 +81,7 @@ export function IntegrationsPanel({
       <div className="grid gap-4 md:grid-cols-2">
         <GmailConnection
           organizationId={organizationId}
-          connection={statusFor(connections, "gmail")}
+          connections={connections.filter((connection) => connection.provider === "gmail")}
           provisioned={provisioned}
         />
         {TRACKS.map((track) => {

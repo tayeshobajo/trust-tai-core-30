@@ -6,6 +6,10 @@
  * imported until you choose a person, and every import is confirmed in a
  * preview first: name, email, company, and the Scout prospect it belongs to.
  * The match is a suggestion, never a silent link.
+ *
+ * Candidate discovery is per mailbox: each connected Gmail account reads only
+ * its own Trust Tai/Comms labeled threads, and with several connected the
+ * reader chooses which mailbox to look in.
  */
 
 import { useMemo, useState } from "react";
@@ -14,6 +18,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { TTButton, TTField, TTInput } from "@/components/tt/primitives";
 import {
   gmailCandidates,
+  gmailSendStatus,
   type MailboxCandidate,
   type MailboxCoverage,
 } from "@/data/supabase/comms-gmail";
@@ -67,9 +72,10 @@ export function MailboxImport({
   /**
    * The Add to Comms action. Resolves once the relationship exists and its
    * bounded labeled backfill has been attempted; rejects only when the
-   * relationship itself could not be created.
+   * relationship itself could not be created. The second argument names the
+   * mailbox the candidate came from, so the backfill reads that account.
    */
-  onImport: (input: RelationshipInput) => void | Promise<void>;
+  onImport: (input: RelationshipInput, integrationId?: string) => void | Promise<void>;
   busy?: boolean;
   /** Progress wording while an import runs, e.g. "Bringing in labeled history…". */
   busyLabel?: string;
@@ -80,6 +86,22 @@ export function MailboxImport({
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Which mailboxes are connected — discovery runs against one at a time.
+  const mailboxesQuery = useQuery({
+    queryKey: ["comms", "gmail-send-status", organizationId],
+    queryFn: () => gmailSendStatus(organizationId),
+    staleTime: 60_000,
+    retry: false,
+  });
+  const mailboxes = useMemo(
+    () => (mailboxesQuery.data?.mailboxes ?? []).filter((mailbox) => mailbox.connected),
+    [mailboxesQuery.data],
+  );
+  const [mailboxId, setMailboxId] = useState<string | null>(null);
+  // The mailbox the current candidate list was read from. Defaults to the
+  // only mailbox when there is one, so the control stays invisible.
+  const activeMailboxId = mailboxId ?? mailboxes[0]?.integrationId ?? null;
+
   const prospectsQuery = useQuery({
     queryKey: ["scout", "prospects", organizationId],
     queryFn: () => listProspects(organizationId),
@@ -87,9 +109,10 @@ export function MailboxImport({
   const prospects = useMemo(() => prospectsQuery.data ?? [], [prospectsQuery.data]);
 
   const read = useMutation({
-    mutationFn: () => gmailCandidates(organizationId),
+    mutationFn: () => gmailCandidates(organizationId, activeMailboxId ?? undefined),
     onSuccess: (result) => {
       setError(null);
+      setMailboxId(result.integrationId);
       setCandidates(result.candidates);
       setCoverage(result.coverage ?? null);
     },
@@ -102,15 +125,18 @@ export function MailboxImport({
     const email = draft.email.trim().toLowerCase();
     setSaving(true);
     try {
-      await onImport({
-        fullName: draft.fullName.trim(),
-        ...(email ? { email } : {}),
-        ...(draft.companyName.trim() ? { companyName: draft.companyName.trim() } : {}),
-        ...(draft.note.trim() ? { note: draft.note.trim() } : {}),
-        ...(draft.prospectId ? { prospectId: draft.prospectId } : {}),
-        source: "inbound",
-        stage: "new",
-      });
+      await onImport(
+        {
+          fullName: draft.fullName.trim(),
+          ...(email ? { email } : {}),
+          ...(draft.companyName.trim() ? { companyName: draft.companyName.trim() } : {}),
+          ...(draft.note.trim() ? { note: draft.note.trim() } : {}),
+          ...(draft.prospectId ? { prospectId: draft.prospectId } : {}),
+          source: "inbound",
+          stage: "new",
+        },
+        activeMailboxId ?? undefined,
+      );
       setDraft(null);
       // The person is tracked now, even if their history is still coming in.
       if (email) {
@@ -142,14 +168,36 @@ export function MailboxImport({
             last 30 days of labeled mail right away — unlabeled mail is never read.
           </p>
         </div>
-        <TTButton
-          type="button"
-          variant="quiet"
-          onClick={() => read.mutate()}
-          disabled={read.isPending}
-        >
-          {read.isPending ? "Reading" : candidates ? "Read again" : "Show people"}
-        </TTButton>
+        <div className="flex items-center gap-2">
+          {mailboxes.length > 1 ? (
+            <select
+              value={activeMailboxId ?? ""}
+              onChange={(event) => {
+                // Another mailbox, another labeled world — drop the list read
+                // from the previous account so the two are never merged.
+                setMailboxId(event.target.value || null);
+                setCandidates(null);
+                setCoverage(null);
+              }}
+              aria-label="Mailbox to read"
+              className="rounded-full border border-border bg-card px-3 py-1 text-[12px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {mailboxes.map((mailbox) => (
+                <option key={mailbox.integrationId} value={mailbox.integrationId}>
+                  {mailbox.accountEmail ?? "Gmail account"}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <TTButton
+            type="button"
+            variant="quiet"
+            onClick={() => read.mutate()}
+            disabled={read.isPending}
+          >
+            {read.isPending ? "Reading" : candidates ? "Read again" : "Show people"}
+          </TTButton>
+        </div>
       </div>
 
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}

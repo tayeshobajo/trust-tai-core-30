@@ -1,52 +1,45 @@
 /**
  * Gmail send (raw HTTP).
  *
- * Explicit human sends only: the browser posts a draft id, the server does
- * the claiming, building, and sending. This path bypasses site auth, so the
- * handler authenticates every request itself and every read and write is
- * made with the caller's token — RLS and the organization boundary hold.
+ *  GET   — what each connected mailbox may do, one capability per account,
+ *          so the composer can offer a From choice only when one is real.
+ *  POST  — send one approved draft. Human-triggered only: this is the hand
+ *          on the door, and the server enforces everything else — membership,
+ *          the send-scope checkpoint per mailbox, the reply-from rule (a
+ *          reply leaves from the mailbox that owns the conversation),
+ *          idempotent claim, bounded MIME, sentinel timeline row.
  *
- * GET answers what the connection can do (`canSend` is false while the grant
- * is read-only), so the composer can show a calm permission state instead of
- * a dead button. Nothing here ever sends without a person clicking Send.
+ * The permission checkpoint is a calm 403 with a structured `blocked`
+ * outcome, not a stack trace: a read-only grant simply cannot send.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { gmailAvailable } from "@/lib/comms-gmail.server";
 import { sendCapability, sendDraftViaGmail } from "@/lib/comms-gmail-send.server";
-import type { SendThreadTarget } from "@/domain/comms-send";
+import { gmailAvailable } from "@/lib/comms-gmail.server";
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
   return header.startsWith("Bearer ") ? header.slice(7).trim() || null : null;
 }
 
-function readThreadTarget(raw: unknown): SendThreadTarget | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
-  const value = raw as Record<string, unknown>;
-  if (value["mode"] === "reply" && typeof value["providerThreadId"] === "string") {
-    return { mode: "reply", providerThreadId: value["providerThreadId"] };
-  }
-  if (value["mode"] === "new") return { mode: "new" };
-  return undefined;
-}
-
 export const Route = createFileRoute("/api/public/comms/gmail/send")({
   server: {
     handlers: {
-      /** What this workspace's Gmail connection may do. Never a credential. */
       GET: async ({ request }) => {
         const token = bearer(request);
         if (!token) {
-          return Response.json({ error: "Sign in to check sending." }, { status: 401 });
+          return Response.json({ error: "Sign in to check send access." }, { status: 401 });
+        }
+        if (!gmailAvailable()) {
+          return Response.json(
+            { error: "Gmail is not configured on the server yet." },
+            { status: 400 },
+          );
         }
         const organizationId = new URL(request.url).searchParams.get("organizationId") ?? "";
         if (!organizationId) {
           return Response.json({ error: "A workspace is required." }, { status: 400 });
-        }
-        if (!gmailAvailable()) {
-          return Response.json({ connected: false, canSend: false });
         }
         try {
           return Response.json(await sendCapability({ token, organizationId }));
@@ -56,7 +49,6 @@ export const Route = createFileRoute("/api/public/comms/gmail/send")({
         }
       },
 
-      /** Send one draft. Idempotent per draft; a retry replays, never doubles. */
       POST: async ({ request }) => {
         const token = bearer(request);
         if (!token) {
@@ -75,28 +67,43 @@ export const Route = createFileRoute("/api/public/comms/gmail/send")({
         } catch {
           body = {};
         }
+
         const organizationId =
           typeof body["organizationId"] === "string" ? body["organizationId"] : "";
         const draftId = typeof body["draftId"] === "string" ? body["draftId"] : "";
+        const integrationId =
+          typeof body["integrationId"] === "string" && body["integrationId"].trim()
+            ? body["integrationId"].trim()
+            : undefined;
         if (!organizationId || !draftId) {
-          return Response.json({ error: "A workspace and a draft are required." }, { status: 400 });
+          return Response.json(
+            { error: "A workspace and a draft are required." },
+            { status: 400 },
+          );
         }
+
+        const rawTarget = body["threadTarget"];
+        const threadTarget =
+          rawTarget && typeof rawTarget === "object"
+            ? (rawTarget as { mode?: unknown; providerThreadId?: unknown }).mode === "reply" &&
+              typeof (rawTarget as { providerThreadId?: unknown }).providerThreadId === "string"
+              ? {
+                  mode: "reply" as const,
+                  providerThreadId: (rawTarget as { providerThreadId: string }).providerThreadId,
+                }
+              : { mode: "new" as const }
+            : undefined;
 
         try {
           const outcome = await sendDraftViaGmail({
             token,
             organizationId,
             draftId,
-            ...(readThreadTarget(body["threadTarget"])
-              ? { threadTarget: readThreadTarget(body["threadTarget"])! }
-              : {}),
+            ...(threadTarget ? { threadTarget } : {}),
+            ...(integrationId ? { integrationId } : {}),
           });
-          // A permission checkpoint is its own status so the client can show
-          // the reconnect path instead of a generic failure.
-          if (outcome.state === "blocked") {
-            return Response.json(outcome, { status: 403 });
-          }
-          return Response.json(outcome);
+          // The checkpoint is a first-class answer, not an exception.
+          return Response.json(outcome, { status: outcome.state === "blocked" ? 403 : 200 });
         } catch (error) {
           const message = error instanceof Error ? error.message : "That send failed.";
           return Response.json({ error: message }, { status: 400 });

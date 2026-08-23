@@ -150,6 +150,99 @@ export interface StoredMailboxMessage {
   attachments?: AttachmentMeta[];
   /** True when Comms itself sent this message through Gmail. */
   sentViaComms?: boolean;
+  /**
+   * Which connected mailbox observed or sent this message. Mailboxes own
+   * transport identity; relationships own memory — several mailboxes can
+   * feed one relationship, and this is how a reply stays with the mailbox
+   * the conversation belongs to.
+   */
+  mailbox?: string;
+}
+
+/**
+ * The connected mailbox a stored message belongs to, from its provenance.
+ * Both writers stamp it: sync (`source: "gmail"`) and the send path
+ * (`source: "gmail-send"`). Absent on rows older than the stamp, never
+ * guessed. Pure; tested.
+ */
+export function mailboxFromProvenance(provenance: unknown): string | null {
+  if (!provenance || typeof provenance !== "object") return null;
+  const value = (provenance as Record<string, unknown>)["mailbox"];
+  if (typeof value !== "string") return null;
+  const mailbox = value.trim().toLowerCase();
+  return mailbox.includes("@") ? mailbox : null;
+}
+
+/* ------------------------------------------------- multi-mailbox sending */
+
+/**
+ * One connected mailbox as the send path sees it. A workspace may connect
+ * several Gmail accounts; each is a transport identity, never a separate
+ * relationship.
+ */
+export interface SendMailboxRef {
+  id: ID;
+  accountEmail?: string;
+  /** The connection row's status is `connected`. */
+  connected: boolean;
+  /** The persisted grant includes `gmail.send`. */
+  canSend: boolean;
+}
+
+/**
+ * Which mailbox a human-approved send goes from. The law:
+ *  - an explicit From choice always wins;
+ *  - a reply stays with the mailbox that owns the conversation — never a
+ *    different connected account;
+ *  - a brand-new message uses the one send-capable mailbox automatically,
+ *    and only asks when more than one could send.
+ * Scope is not decided here: a resolved mailbox whose grant lacks
+ * `gmail.send` is still resolved, and the caller blocks it — naming that
+ * mailbox, and only that mailbox. Pure; tested.
+ */
+export type SendMailboxResolution<T extends SendMailboxRef> =
+  | { kind: "resolved"; connection: T; reason: "explicit" | "thread_owner" | "only_send_capable" }
+  | { kind: "unknown_choice" }
+  | { kind: "owner_missing"; mailbox: string }
+  | { kind: "needs_choice"; options: T[] }
+  | { kind: "none_connected" }
+  | { kind: "none_send_capable"; connections: T[] };
+
+export function resolveSendMailbox<T extends SendMailboxRef>(input: {
+  connections: T[];
+  /** The mailbox that owns the thread being replied to, when known. */
+  threadMailbox?: string;
+  /** An explicit From choice (a connection id). */
+  integrationId?: string;
+}): SendMailboxResolution<T> {
+  const live = input.connections.filter((connection) => connection.connected);
+
+  // Provenance wins: a reply always goes from the mailbox that owns the
+  // thread, even when a From choice is also present.
+  const owner = input.threadMailbox?.trim().toLowerCase();
+  if (owner) {
+    const found = live.find(
+      (connection) => (connection.accountEmail ?? "").trim().toLowerCase() === owner,
+    );
+    return found
+      ? { kind: "resolved", connection: found, reason: "thread_owner" }
+      : { kind: "owner_missing", mailbox: owner };
+  }
+
+  if (input.integrationId) {
+    const found = input.connections.find((connection) => connection.id === input.integrationId);
+    return found
+      ? { kind: "resolved", connection: found, reason: "explicit" }
+      : { kind: "unknown_choice" };
+  }
+
+  if (live.length === 0) return { kind: "none_connected" };
+  const capable = live.filter((connection) => connection.canSend);
+  if (capable.length === 1) {
+    return { kind: "resolved", connection: capable[0]!, reason: "only_send_capable" };
+  }
+  if (capable.length > 1) return { kind: "needs_choice", options: capable };
+  return { kind: "none_send_capable", connections: live };
 }
 
 /** What one incremental sync pass returns. */

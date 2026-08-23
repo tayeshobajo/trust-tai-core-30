@@ -269,8 +269,12 @@ Credentials live on the server only: `GOOGLE_OAUTH_CLIENT_ID`,
 
 Registered redirect URI (exact match required by Google):
 
-- preview: `https://id-preview--65944e34-ede5-4757-befb-870e1ff97444.lovable.app/api/public/comms/gmail/connect`
-- production: `https://project--65944e34-ede5-4757-befb-870e1ff97444.lovable.app/api/public/comms/gmail/connect`
+- production: `https://cmd.trusttai.com/api/public/comms/gmail/connect` — the
+  deterministic constant (`GMAIL_PRODUCTION_REDIRECT_URI`); every
+  production-shaped request resolves to it.
+- preview/development: the request origin's own callback, or set
+  `GOOGLE_OAUTH_REDIRECT_URI` to override. Any preview URI used must also be
+  listed in the Google OAuth client.
 
 Flow:
 
