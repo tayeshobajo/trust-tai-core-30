@@ -63,6 +63,10 @@ import { RelationshipExport } from "@/components/tt/comms/relationship-export";
 import type { ConversationHealthStatus } from "@/domain/comms-health";
 import type { MemoryItem, Relationship, Touch } from "@/domain/comms";
 import {
+  writeCommunicationJudgment,
+  type CommunicationJudgment,
+} from "@/domain/comms-judgment";
+import {
   COMMITMENT_CATEGORY,
   interactionDefinition,
   manualProvenance,
@@ -101,6 +105,8 @@ interface DraftPreview {
   reviewState: "draft" | "needs_human_review";
   violations: { ruleId: string; severity: "block" | "flag"; excerpt: string; because: string }[];
   usedEvidence: { label: string; value: string; tier: string }[];
+  /** The communication judgment the draft was written from, when one exists. */
+  judgment?: CommunicationJudgment | null;
 }
 
 function CommsRoute() {
