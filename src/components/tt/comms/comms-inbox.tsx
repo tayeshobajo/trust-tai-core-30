@@ -23,7 +23,14 @@ import { initialsOf } from "@/domain/steward-accountability";
 import { TTInput } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
 
-import { HealthDot, SegmentPill } from "./health-marks";
+import {
+  HealthDot,
+  SegmentPill,
+  SEGMENT_AVATAR,
+  SEGMENT_EDGE,
+  SEGMENT_SURFACE,
+  SEGMENT_SURFACE_SELECTED,
+} from "./health-marks";
 import { CommsPagination } from "./pagination";
 
 const HEALTH_FILTERS: ConversationHealthStatus[] = [
@@ -65,14 +72,16 @@ export function ConversationListItem({
         aria-current={active ? "true" : undefined}
         className={cn(
           "flex w-full items-start gap-3 border-b border-border/70 border-l-2 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-          active
-            ? "border-l-royal bg-cloud"
-            : "border-l-transparent hover:bg-cloud/50",
+          SEGMENT_EDGE[segment],
+          active ? SEGMENT_SURFACE_SELECTED[segment] : SEGMENT_SURFACE[segment],
         )}
       >
         <span
           aria-hidden
-          className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary font-mono text-[11px] tracking-[0.08em] text-muted-foreground"
+          className={cn(
+            "mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full font-mono text-[11px] tracking-[0.08em]",
+            SEGMENT_AVATAR[segment],
+          )}
         >
           {initialsOf(relationship.fullName)}
         </span>
