@@ -211,8 +211,9 @@ export function MailboxImport({
           input: draftToRelationshipInput(entry),
         })),
         {
-          importOne: (input, integrationId) =>
-            onImport(input, integrationId, { keepOpen: true }),
+          importOne: async (input, integrationId) => {
+            await onImport(input, integrationId, { keepOpen: true });
+          },
           ...(activeMailboxId ? { integrationId: activeMailboxId } : {}),
           onProgress: (done, total) => setBulkProgress({ done, total }),
         },

@@ -157,7 +157,7 @@ function draft(email: string): { email: string; input: RelationshipInput } {
 
 describe("bulk import", () => {
   it("calls the governed import once per person, with the same mailbox", async () => {
-    const calls: { email?: string; integrationId?: string }[] = [];
+    const calls: { email: string | undefined; integrationId: string | undefined }[] = [];
     const outcome = await importCandidatesInOrder(
       [draft("a@x.com"), draft("b@x.com"), draft("c@x.com")],
       {
