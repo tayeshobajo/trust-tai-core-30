@@ -38,6 +38,7 @@ import { readThread } from "@/data/comms-thread-state";
 import {
   GMAIL_READ_SCOPES,
   summarizeMailboxCoverage,
+  type AttachmentMeta,
   type MailboxCoverage,
   type NormalizedMessage,
 } from "@/domain/comms-integrations";
@@ -51,7 +52,7 @@ import {
 
 const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
-const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
+export const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
 
 /** Bounded first read. We never backfill a whole mailbox. */
 const DEFAULT_BACKFILL_DAYS = 30;
@@ -148,7 +149,7 @@ export async function exchangeCode(input: {
   };
 }
 
-async function refreshAccessToken(refreshToken: string): Promise<string> {
+export async function refreshAccessToken(refreshToken: string): Promise<string> {
   const config = gmailConfig();
   if (!config) throw new Error("Gmail is not configured on the server.");
   const payload = await tokenRequest({
@@ -168,15 +169,24 @@ interface GmailHeader {
   value?: string;
 }
 
+/** One MIME part. `format=metadata` still carries names, sizes, and handles. */
+export interface GmailPart {
+  partId?: string;
+  mimeType?: string;
+  filename?: string;
+  body?: { attachmentId?: string; size?: number };
+  parts?: GmailPart[];
+}
+
 interface GmailMessage {
   id?: string;
   threadId?: string;
   snippet?: string;
   internalDate?: string;
-  payload?: { headers?: GmailHeader[] };
+  payload?: GmailPart & { headers?: GmailHeader[] };
 }
 
-async function gmailGet<T>(path: string, accessToken: string): Promise<T> {
+export async function gmailGet<T>(path: string, accessToken: string): Promise<T> {
   const response = await fetch(`${GMAIL_API}${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -217,6 +227,31 @@ function addressList(raw: string | undefined): string[] {
     .filter((entry): entry is string => Boolean(entry));
 }
 
+/**
+ * Attachment metadata from a message's MIME tree, without the bytes. A part
+ * with a filename is a file; containers (`multipart/*`) are walked; an
+ * unnamed body part is the message itself, not a file. Gmail stays the source
+ * of truth for the bytes — Comms keeps the handle and fetches on demand.
+ */
+export function extractAttachments(payload: GmailMessage["payload"]): AttachmentMeta[] {
+  const found: AttachmentMeta[] = [];
+  const walk = (part: GmailPart | undefined) => {
+    if (!part) return;
+    const filename = part.filename?.trim();
+    if (filename && (part.body?.attachmentId || (part.body?.size ?? 0) > 0)) {
+      found.push({
+        filename,
+        mimeType: part.mimeType?.trim() || "application/octet-stream",
+        size: part.body?.size ?? 0,
+        ...(part.body?.attachmentId ? { attachmentId: part.body.attachmentId } : {}),
+      });
+    }
+    for (const child of part.parts ?? []) walk(child);
+  };
+  walk(payload);
+  return found;
+}
+
 function normalize(message: GmailMessage, mailbox: string): NormalizedMessage | null {
   if (!message.id || !message.threadId) return null;
   const from = parseAddress(header(message, "From"));
@@ -225,6 +260,7 @@ function normalize(message: GmailMessage, mailbox: string): NormalizedMessage | 
   const occurredAt = message.internalDate
     ? new Date(Number(message.internalDate)).toISOString()
     : new Date().toISOString();
+  const attachments = extractAttachments(message.payload);
   return {
     providerMessageId: message.id,
     providerThreadId: message.threadId,
@@ -236,12 +272,13 @@ function normalize(message: GmailMessage, mailbox: string): NormalizedMessage | 
     ...(header(message, "Subject") ? { subject: header(message, "Subject")! } : {}),
     ...(message.snippet ? { snippet: message.snippet } : {}),
     occurredAt,
+    ...(attachments.length > 0 ? { attachments } : {}),
   };
 }
 
 /* ------------------------------------------------------------- Supabase IO */
 
-function supabaseFor(token: string): SupabaseClient {
+export function supabaseFor(token: string): SupabaseClient {
   const url =
     trustTaiSupabaseUrl();
   const key =
@@ -252,7 +289,7 @@ function supabaseFor(token: string): SupabaseClient {
   });
 }
 
-async function requireMember(
+export async function requireMember(
   client: SupabaseClient,
   organizationId: string,
 ): Promise<string> {
@@ -555,7 +592,7 @@ async function emitInboundEvents(
  * send windows), applies the deterministic matcher, and stamps each proven
  * draft. The conditional update means a concurrent pass cannot double-stamp.
  */
-async function verifySentDrafts(
+export async function verifySentDrafts(
   client: SupabaseClient,
   organizationId: string,
   relationship: RelationshipRow,
@@ -845,14 +882,24 @@ async function runSyncPass(input: {
         snippet: message.snippet ?? null,
         occurred_at: message.occurredAt,
         provenance: { source: "gmail", fetched_at: nowIso, mailbox },
+        attachments: message.attachments ?? [],
       }));
 
-      const { error: upsertError } = await client
+      // The attachments column is the newest addition to comms_messages; a
+      // schema that predates it degrades to metadata-free storage, never a
+      // failed pass.
+      let { error: upsertError } = await client
         .from("comms_messages")
         .upsert(rows, {
           onConflict: "organization_id,provider,provider_message_id",
           ignoreDuplicates: false,
         });
+      if (upsertError && /attachments/i.test(upsertError.message)) {
+        ({ error: upsertError } = await client.from("comms_messages").upsert(
+          rows.map(({ attachments: _dropped, ...rest }) => rest),
+          { onConflict: "organization_id,provider,provider_message_id", ignoreDuplicates: false },
+        ));
+      }
       if (upsertError) throw new Error(upsertError.message);
 
       for (const message of threadMessages) {

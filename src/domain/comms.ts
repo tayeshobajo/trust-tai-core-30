@@ -176,13 +176,29 @@ export interface Touch {
 
 /* ----------------------------------------------------------------- drafts */
 
-export type DraftReviewState = "draft" | "needs_human_review" | "approved" | "sent" | "discarded";
+/**
+ * The draft's place in the human loop. `sending` and `send_failed` belong to
+ * the Gmail send path: a send attempt claims the draft (`sending`), and a
+ * refusal never reads as sent (`send_failed`, retryable). `sent` means Gmail
+ * accepted the message or a person marked it sent — the mailbox still has
+ * the last word through verification.
+ */
+export type DraftReviewState =
+  | "draft"
+  | "needs_human_review"
+  | "approved"
+  | "sending"
+  | "sent"
+  | "send_failed"
+  | "discarded";
 
 export const REVIEW_STATE_LABEL: Record<DraftReviewState, string> = {
   draft: "Draft",
   needs_human_review: "Needs human review",
   approved: "Approved",
-  sent: "Marked as sent",
+  sending: "Sending",
+  sent: "Sent",
+  send_failed: "Send failed",
   discarded: "Discarded",
 };
 

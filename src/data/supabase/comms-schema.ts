@@ -42,7 +42,9 @@ const REVIEW_STATES: DraftReviewState[] = [
   "draft",
   "needs_human_review",
   "approved",
+  "sending",
   "sent",
+  "send_failed",
   "discarded",
 ];
 
