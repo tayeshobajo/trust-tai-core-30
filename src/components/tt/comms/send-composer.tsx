@@ -78,6 +78,7 @@ export function SendComposer({
   const extras = useMemo(() => readOutgoingExtras(draft.rationale), [draft.rationale]);
   const staged = useMemo(() => readOutgoingAttachments(draft.rationale), [draft.rationale]);
   const sendRecord = useMemo(() => readDraftSend(draft.rationale), [draft.rationale]);
+  const judgment = useMemo(() => readCommunicationJudgment(draft.rationale), [draft.rationale]);
 
   const [subject, setSubject] = useState(draft.subject ?? "");
   const [body, setBody] = useState(draft.body);
@@ -319,10 +320,38 @@ export function SendComposer({
     >
       <div className="flex items-center justify-between gap-3">
         <p className="tt-eyebrow">This draft</p>
-        <p className="text-[11px] text-muted-foreground">
-          What you see is exactly what is sent — Comms never adds a hidden signature.
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="hidden text-[11px] text-muted-foreground sm:block">
+            What you see is exactly what is sent — Comms never adds a hidden signature.
+          </p>
+          <button
+            type="button"
+            onClick={() => void handleClose()}
+            disabled={sending || busy !== null}
+            aria-label="Close draft and return to the conversation"
+            title="Close and keep this draft"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          >
+            <X className="h-3 w-3" aria-hidden />
+            Close
+          </button>
+        </div>
       </div>
+
+      {/* Why this draft exists: the judgment it was written from, kept with
+          the draft so the reasoning is inspectable, never hidden. */}
+      {judgment ? (
+        <div className="rounded-lg border border-border bg-card px-3 py-2">
+          <p className="tt-eyebrow">Why this draft</p>
+          <div className="mt-1 space-y-0.5">
+            {judgmentSummaryLines(judgment).map((line) => (
+              <p key={line} className="text-[12px] leading-snug text-muted-foreground">
+                {line}
+              </p>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-3">
         <EditorField label={`To · ${relationship.email ?? relationship.fullName}`}>
