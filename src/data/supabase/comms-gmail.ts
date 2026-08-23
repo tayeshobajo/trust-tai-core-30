@@ -229,6 +229,41 @@ export async function gmailSendDraft(
 }
 
 /**
+ * Fetch one inline MIME image for in-place rendering. Same authenticated
+ * proxy as attachment downloads — the server proves the message and the
+ * resource belong together and to the caller's workspace, and only stored
+ * metadata may declare a resource inline. Returns an object URL; the caller
+ * revokes it. No Google credential or raw Gmail URL ever reaches the
+ * browser.
+ */
+export async function gmailFetchInlineImage(input: {
+  organizationId: string;
+  messageId: string;
+  attachmentId: string;
+}): Promise<string> {
+  const response = await fetch(ATTACHMENT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${await token()}`,
+    },
+    body: JSON.stringify({
+      organizationId: input.organizationId,
+      messageId: input.messageId,
+      attachmentId: input.attachmentId,
+      inline: true,
+    }),
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    throw new Error(
+      typeof payload["error"] === "string" ? payload["error"] : "That image could not be loaded.",
+    );
+  }
+  return URL.createObjectURL(await response.blob());
+}
+
+/**
  * Open one incoming attachment. Bytes come from the mailbox that observed the
  * message, on demand, proxied by our server under the member's own access;
  * nothing is stored in Trust Tai.
