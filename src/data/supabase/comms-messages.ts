@@ -15,9 +15,9 @@ import type { ID } from "@/domain/entities";
 import type { AttachmentMeta, StoredMailboxMessage } from "@/domain/comms-integrations";
 
 const COLUMNS =
-  "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, to_emails, cc_emails, subject, snippet, occurred_at, attachments";
+  "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, to_emails, cc_emails, subject, snippet, occurred_at, provenance, attachments";
 const COLUMNS_WITHOUT_ATTACHMENTS =
-  "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, to_emails, cc_emails, subject, snippet, occurred_at";
+  "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, to_emails, cc_emails, subject, snippet, occurred_at, provenance";
 
 interface MessageRow {
   id: string;
@@ -34,6 +34,7 @@ interface MessageRow {
   subject: string | null;
   snippet: string | null;
   occurred_at: string;
+  provenance?: unknown;
   attachments?: unknown;
 }
 
@@ -65,6 +66,10 @@ function attachments(value: unknown): AttachmentMeta[] | undefined {
 
 function toMessage(row: MessageRow): StoredMailboxMessage {
   const files = attachments(row.attachments);
+  const provenance =
+    row.provenance && typeof row.provenance === "object"
+      ? (row.provenance as Record<string, unknown>)
+      : null;
   return {
     id: row.id,
     organizationId: row.organization_id,
@@ -81,6 +86,7 @@ function toMessage(row: MessageRow): StoredMailboxMessage {
     ...(text(row.snippet) ? { snippet: text(row.snippet)! } : {}),
     occurredAt: row.occurred_at,
     ...(files ? { attachments: files } : {}),
+    ...(provenance?.["source"] === "gmail-send" ? { sentViaComms: true } : {}),
   };
 }
 
