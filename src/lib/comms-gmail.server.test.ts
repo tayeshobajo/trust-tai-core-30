@@ -324,13 +324,13 @@ describe("canSendWithScopes", () => {
  * ==================================================================== */
 
 import {
+  GMAIL_READ_SCOPES,
   GMAIL_SEND_SCOPE,
   mailboxFromProvenance,
   resolveSendMailbox,
   type SendMailboxRef,
 } from "@/domain/comms-integrations";
 import {
-  GMAIL_READONLY_SCOPE,
   gmailRedirectUri,
   pickGmailConnection,
   REDIRECT_URI_MISMATCH_MESSAGE,
@@ -351,7 +351,7 @@ describe("multi-mailbox connections", () => {
       refreshTokenEnc: "a",
       accessTokenEnc: "b",
       expiresAt: "2026-01-01T00:00:00.000Z",
-      scopes: [GMAIL_READONLY_SCOPE, GMAIL_SEND_SCOPE],
+      scopes: [GMAIL_READ_SCOPES[0], GMAIL_SEND_SCOPE],
     });
     const second = connectionRowFor({
       organizationId: "org",
@@ -359,14 +359,14 @@ describe("multi-mailbox connections", () => {
       refreshTokenEnc: "c",
       accessTokenEnc: "d",
       expiresAt: "2026-01-01T00:00:00.000Z",
-      scopes: [GMAIL_READONLY_SCOPE],
+      scopes: [GMAIL_READ_SCOPES[0]],
     });
     // Identity is (organization, provider, account_email): two account emails
     // are two rows, and an upsert matches only its own email.
     expect(first.account_email).toBe("tayeshobajo@gmail.com");
     expect(second.account_email).toBe("tai@trusttai.com");
-    expect(first.scopes).toEqual([GMAIL_READONLY_SCOPE, GMAIL_SEND_SCOPE]);
-    expect(second.scopes).toEqual([GMAIL_READONLY_SCOPE]);
+    expect(first.scopes).toEqual([GMAIL_READ_SCOPES[0], GMAIL_SEND_SCOPE]);
+    expect(second.scopes).toEqual([GMAIL_READ_SCOPES[0]]);
   });
 
   it("member actions resolve a specific mailbox by id", () => {
@@ -382,15 +382,14 @@ describe("multi-mailbox connections", () => {
     const readOnly = mailboxCapabilityOf({
       id: "a",
       account_email: "tayeshobajo@gmail.com",
-      scopes: [GMAIL_READONLY_SCOPE],
+      scopes: [GMAIL_READ_SCOPES[0]],
       status: "connected",
       cursor: null,
     });
     const sender = mailboxCapabilityOf({
       id: "b",
-      accountEmail: "tai@trusttai.com",
       account_email: "tai@trusttai.com",
-      scopes: [GMAIL_READONLY_SCOPE, GMAIL_SEND_SCOPE],
+      scopes: [GMAIL_READ_SCOPES[0], GMAIL_SEND_SCOPE],
       status: "connected",
       cursor: null,
     });
