@@ -43,7 +43,6 @@ import { openSecret, sealSecret } from "@/lib/comms-crypto.server";
 import { readThread } from "@/data/comms-thread-state";
 import {
   GMAIL_CONNECTION_SCOPES,
-  GMAIL_SEND_SCOPE,
   grantedGmailScopes,
   summarizeMailboxCoverage,
   type AttachmentMeta,
