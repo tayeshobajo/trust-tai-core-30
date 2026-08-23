@@ -29,7 +29,7 @@ export const TAB_LABEL: Record<InboxTab, string> = {
   all: "All",
 };
 
-export const TABS: InboxTab[] = ["clients", "nurture", "needs_you", "all"];
+export const TABS: InboxTab[] = ["all", "clients", "nurture", "needs_you"];
 
 /**
  * One quiet line under the tabs saying what the current view is for.

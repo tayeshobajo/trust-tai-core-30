@@ -107,7 +107,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<InboxTab>("clients");
+  const [tab, setTab] = useState<InboxTab>("all");
   const [healthFilter, setHealthFilter] = useState<ConversationHealthStatus | null>(null);
   const [page, setPage] = useState(1);
   const [capturing, setCapturing] = useState(false);
