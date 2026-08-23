@@ -34,6 +34,7 @@ import {
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
 import { readDraftSend } from "@/domain/comms-send";
+import { judgmentSummaryLines, readCommunicationJudgment } from "@/domain/comms-judgment";
 
 type SendThreadChoice = { mode: "reply"; providerThreadId: string } | { mode: "new" };
 
@@ -190,6 +191,34 @@ export function SendComposer({
       onChanged();
     }
   }
+
+  /**
+   * Close is not discard. Unsaved edits are saved first; when that save
+   * fails the composer stays open and names the error rather than losing
+   * work. The draft itself always survives closing.
+   */
+  async function handleClose() {
+    if (sending || busy !== null) return;
+    setBusy("save");
+    setError(null);
+    setNotice(null);
+    const ok = await saveEdits();
+    setBusy(null);
+    if (!ok) return;
+    onChanged();
+    onClose();
+  }
+
+  // Escape closes the editor through the same non-destructive path — it can
+  // never discard a draft.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") void handleClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, sending, subject, body, ccText, bccText]);
 
   async function handleFiles(list: FileList | null) {
     if (!list || list.length === 0) return;
