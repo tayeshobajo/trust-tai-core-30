@@ -110,7 +110,7 @@ export async function listRelationshipMessages(
       .eq("organization_id", organizationId)
       .eq("relationship_id", relationshipId)
       .order("occurred_at", { ascending: true })
-      .limit(limit));
+      .limit(limit);
     data = fallback.data as typeof data;
     error = fallback.error;
   }
