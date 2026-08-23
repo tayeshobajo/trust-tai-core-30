@@ -431,8 +431,8 @@ const WRITE_RESPONSE_FORMAT: Record<string, unknown> = {
  * policy saw.
  *
  * Throws draftUngroundedMessage when the evidence is below the grounding bar,
- * and DRAFT_PREPARATION_FAILED when no trustworthy draft can be produced.
- * A fabricated generic draft is never returned in either case.
+ * and a DraftFailure with a machine-readable code for every post-grounding
+ * failure. A fabricated generic draft is never returned in either case.
  */
 export async function draftMessage(
   token: string,

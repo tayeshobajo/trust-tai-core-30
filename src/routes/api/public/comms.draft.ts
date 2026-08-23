@@ -60,6 +60,15 @@ export const Route = createFileRoute("/api/public/comms/draft")({
           });
           return Response.json(result);
         } catch (error) {
+          /* Typed post-grounding failures: the person keeps the calm sentence
+             and gets a machine-readable code; the status tells an operator
+             which side of the provider boundary broke. */
+          if (error instanceof DraftFailure) {
+            return Response.json(
+              { error: error.message, code: error.code },
+              { status: DRAFT_FAILURE_STATUS[error.code] },
+            );
+          }
           const message =
             error instanceof Error ? error.message : "That draft could not be prepared.";
           return Response.json({ error: message }, { status: 400 });
