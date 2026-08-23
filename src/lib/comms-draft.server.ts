@@ -684,32 +684,77 @@ export async function executeDraftPasses(
 
   // Pass two — write. The prose is generated FROM the judgment, never
   // alongside it.
-  let written: { raw: string; provider: string; model: string };
-  try {
-    written = await callModel({
-      instructions: WRITE_INSTRUCTIONS,
-      input: JSON.stringify({
-        judgment,
-        salutationName: input.salutation,
-        evidence: input.evidencePacket,
-      }),
-      webSearch: false,
-      responseFormat: WRITE_RESPONSE_FORMAT,
-    });
-  } catch (error) {
-    throw toDraftFailure(error, "the writing pass");
-  }
+  const writeInput = JSON.stringify({
+    judgment,
+    salutationName: input.salutation,
+    evidence: input.evidencePacket,
+  });
 
-  const parsed = safeJson(written.raw);
-  if (!parsed) {
-    console.error("[comms-draft] writing_unreadable: pass two returned no readable draft");
-    throw new DraftFailure("writing_unreadable");
-  }
-  const body = String(parsed["body"] ?? "").trim();
-  const subject = String(parsed["subject"] ?? "").trim();
-  if (!body || !subject) {
-    console.error("[comms-draft] empty_draft: pass two returned an empty subject or body");
-    throw new DraftFailure("empty_draft");
+  const write = async (instructions: string) => {
+    try {
+      return await callModel({
+        instructions,
+        input: writeInput,
+        webSearch: false,
+        responseFormat: WRITE_RESPONSE_FORMAT,
+      });
+    } catch (error) {
+      throw toDraftFailure(error, "the writing pass");
+    }
+  };
+
+  const readWritten = (
+    written: { raw: string },
+  ): { subject: string; body: string } => {
+    const parsed = safeJson(written.raw);
+    if (!parsed) {
+      console.error("[comms-draft] writing_unreadable: pass two returned no readable draft");
+      throw new DraftFailure("writing_unreadable");
+    }
+    const subject = String(parsed["subject"] ?? "").trim();
+    const body = String(parsed["body"] ?? "").trim();
+    if (!body || !subject) {
+      console.error("[comms-draft] empty_draft: pass two returned an empty subject or body");
+      throw new DraftFailure("empty_draft");
+    }
+    return { subject, body };
+  };
+
+  const first = await write(WRITE_INSTRUCTIONS);
+  let { subject, body } = readWritten(first);
+  const provider = first.provider;
+  const model = first.model;
+
+  /* Ask-gate enforcement, deterministic. The judgment decided whether the
+     conversation earned an ask; the model is never trusted to police itself.
+     When it snuck one in anyway, correct it once in plain language — and if
+     it still cannot honor the judgment, fail honestly rather than return a
+     draft that reads the room worse than the judgment did. */
+  if (!judgment.askDecision.shouldAsk) {
+    const snuck = unearnedAskInBody(body);
+    if (snuck) {
+      console.error(
+        `[comms-draft] ask gate: writing pass snuck an ask ("${snuck}") against a no-ask judgment; rewriting once`,
+      );
+      const retry = await write(
+        `${WRITE_INSTRUCTIONS}
+
+Correction: the judgment decided NO ask belongs in this message, but the previous
+attempt asked for time ("${snuck}"). Write again with no ask of any kind — no call,
+coffee, meeting, or finding time, however softly phrased. Acknowledge, reflect, build
+on the thread, and close.`,
+      );
+      const rewritten = readWritten(retry);
+      const stillSnuck = unearnedAskInBody(rewritten.body);
+      if (stillSnuck) {
+        console.error(
+          `[comms-draft] ask_gate_violated: retry still asked ("${stillSnuck}") against a no-ask judgment`,
+        );
+        throw new DraftFailure("ask_gate_violated");
+      }
+      subject = rewritten.subject;
+      body = rewritten.body;
+    }
   }
 
   const verdict = checkVoice(body, { register: input.register, requireSignoff: true });
