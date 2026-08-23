@@ -85,16 +85,65 @@ of Scout/outbound prospects can never crowd the established-client room.
 - **All**: the complete relationship ledger, everyone exactly once,
   archived included.
 
-Segment classification is derived, never stored, and conservative so legacy
-rows never vanish or masquerade (`relationshipSegment` in
-`src/domain/comms.ts`):
+Segment classification is derived, never stored, and follows current
+relationship reality rather than the door the person entered through
+(`relationshipSegment` in `src/domain/comms.ts`). Established evidence wins
+first, development evidence second, and a safe fallback keeps legacy rows
+visible:
 
-1. A graduated stage (`meeting_set`, `opportunity`, `client`) always means
-   Clients, whatever the origin.
-2. An explicit `nurture` stage means Nurture, whatever the origin.
-3. `scout_handoff` origin stays Nurture until it graduates — a handoff is a
-   decision to develop someone, not proof of an established relationship.
-4. Everything else (`manual`, `in_person`, `inbound`) defaults to Clients.
+1. **Established evidence → Clients.** A linked client record (`client_id`),
+   a graduated stage (`meeting_set`, `opportunity`, `client`), or an
+   explicit established intent (`active_client`, `past_client`, `partner`,
+   `referral`, `community`, `vendor`, `personal`) — whatever the origin, and
+   even when the row still carries Scout provenance or an early stage.
+2. **Development evidence → Nurture.** An explicit `nurture` stage, an
+   explicit `prospect` intent, a linked prospect (`prospect_id`), a
+   `scout_handoff` origin, or an early lifecycle stage (`new`, `researching`,
+   `ready_to_reach`, `reached_out`). Source alone never decides, but an
+   early stage does: `new` + `in_person` (met at an event, early days) is
+   Nurture, and so is `new` + `inbound` with no client evidence.
+3. **Contextual stages.** `in_conversation` and `dormant` follow the
+   evidence: prospect/Scout/early evidence keeps them in Nurture, client
+   evidence puts them in Clients. A conversation alone never makes someone
+   a client.
+4. **Safe fallback → Clients.** A legacy `manual`/`in_person`/`inbound` row
+   at a contextual stage with no development evidence stays in the client
+   room rather than vanishing.
+
+Worked examples: Lorena is a prospect, stage `new`, met in person → Nurture.
+A Scout handoff in active conversation (`in_conversation`, `prospect_id`
+set) → Nurture. The same person once marked as client (stage `client`) →
+Clients, same record, same history. A dormant relationship with a
+`client_id` → Clients; a dormant Scout handoff → Nurture.
+
+**Moving between rooms.** Nurture → Clients is "Mark as client" (stage
+becomes `client`). Clients → Nurture is "Move to Nurture", offered only when
+the client classification rests on contextual fallback — never when a linked
+client record, a graduated stage, or an explicit established intent says
+otherwise (`canMoveToNurture`). Both are stage changes on the same record;
+nothing is ever copied, migrated, or re-created.
+
+**Pagination.** Each view renders 25 relationships per page
+(`RELATIONSHIPS_PER_PAGE` in `src/data/comms-inbox.ts`), sliced only after
+the full view is derived: tab counts, health counts, and search always
+describe the whole view, never the page on screen. Changing tab, search, or
+health filter returns to page one; changing page falls selection back to the
+page's first row when the open conversation is not on it. Priority rows
+(attention first, then longest waiting) lead every page — Nurture is ordered
+by intelligence, never alphabet.
+
+**Scale boundary.** Health reads use the organization's most recent 5,000
+touches (paged in batches of 1,000, newest first). Beyond that bound, quieter
+relationships degrade gracefully: health falls back to the denormalized
+`last_touch_at` on the relationship row rather than inventing activity. The
+honest next step past that scale is server-side per-view queries, not a
+larger client cap.
+
+**Color language.** Classification and condition never share a hue.
+Classification: Clients royal blue, Nurture soft plum (`--plum`), archived
+muted. Health stays green / amber / red / quiet gray. A row answers who this
+is, what kind of relationship it is, and whether anything is needed — in
+that order, in about two seconds.
 
 **Entry rules.** A Scout discovery alone never creates a Comms relationship.
 A person enters Comms only through an intentional event: approved outreach,
