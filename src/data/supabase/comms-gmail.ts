@@ -131,7 +131,10 @@ export interface MailboxCandidatesResult {
 
 /**
  * People ONE mailbox corresponds with, offered as import candidates. Reads
- * only; each mailbox is gated on its own Trust Tai/Comms label.
+ * only; each mailbox is gated on its own Trust Tai/Comms label. The window
+ * is bounded (at most 60 labeled messages, up to 90 days back) but every
+ * correspondent discovered inside it is returned — the UI pages, filters,
+ * and searches the full discovered set, so counts are always truthful.
  */
 export async function gmailCandidates(
   organizationId: string,

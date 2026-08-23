@@ -1343,13 +1343,18 @@ export interface MailboxCandidate {
  * are marked, never hidden, so the list stays honest. The same label
  * boundary as sync applies: unlabeled mail is never read, and a missing
  * label is a clear error, not a whole-mailbox fallback.
+ *
+ * The window stays bounded — at most MAX_MESSAGES_PER_PASS labeled messages,
+ * at most 90 days back — but every correspondent discovered inside that
+ * window is returned. There is no display cap: the review surface pages the
+ * full discovered set, so counts and ranges are always truthful about what
+ * the window actually contained.
  */
 export async function listMailboxCandidates(input: {
   token: string;
   organizationId: string;
   integrationId?: string;
   backfillDays?: number;
-  limit?: number;
 }): Promise<{
   integrationId: string;
   accountEmail?: string;
@@ -1443,16 +1448,15 @@ export async function listMailboxCandidates(input: {
     }
   }
 
-  // Coverage counts the whole labeled window, before the display cap below.
+  // Coverage and the list describe the same thing: everyone discovered in
+  // the bounded labeled window. No display cap — the UI pages this set.
   const coverage = summarizeMailboxCoverage([...found.values()], days);
 
-  const candidates = [...found.values()]
-    .sort(
-      (left, right) =>
-        right.messageCount - left.messageCount ||
-        right.lastMessageAt.localeCompare(left.lastMessageAt),
-    )
-    .slice(0, Math.min(Math.max(input.limit ?? 12, 1), 25));
+  const candidates = [...found.values()].sort(
+    (left, right) =>
+      right.messageCount - left.messageCount ||
+      right.lastMessageAt.localeCompare(left.lastMessageAt),
+  );
 
   return {
     integrationId: connection.id,

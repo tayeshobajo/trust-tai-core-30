@@ -293,7 +293,16 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [importPhase, setImportPhase] = useState<"creating" | "backfilling" | null>(null);
   const [importWarning, setImportWarning] = useState<string | null>(null);
   const importFromMailbox = useMutation({
-    mutationFn: (input: { relationship: RelationshipInput; integrationId?: string }) =>
+    mutationFn: (input: {
+      relationship: RelationshipInput;
+      integrationId?: string;
+      /**
+       * Bulk imports set keepOpen: the capture panel must stay where it is
+       * while several people are added one after another — no selection
+       * jump, no panel close, one quiet refresh per person.
+       */
+      keepOpen?: boolean;
+    }) =>
       addMailboxCandidateToComms(input.relationship, {
         createRelationship: async (value) => {
           setImportPhase("creating");
@@ -308,7 +317,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           );
         },
       }),
-    onSuccess: async ({ relationship, historyWarning }) => {
+    onSuccess: async ({ relationship, historyWarning }, variables) => {
+      if (variables.keepOpen) {
+        await refresh();
+        return;
+      }
       setSelectedId(relationship.id);
       setImportWarning(historyWarning);
       // With history in, the panel steps aside; with a warning, it stays open
@@ -609,10 +622,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           />
           <MailboxImport
             organizationId={identity.organizationId}
-            onImport={async (input, integrationId) => {
+            onImport={async (input, integrationId, options) => {
               await importFromMailbox.mutateAsync({
                 relationship: input,
                 ...(integrationId ? { integrationId } : {}),
+                ...(options?.keepOpen ? { keepOpen: true } : {}),
               });
             }}
             busy={importFromMailbox.isPending}
