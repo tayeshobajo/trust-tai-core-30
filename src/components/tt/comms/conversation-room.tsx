@@ -7,6 +7,8 @@
  * matters, who put it on the record.
  */
 
+import { FileText } from "lucide-react";
+
 import {
   EVENT_LABEL,
   eventSide,
@@ -17,6 +19,7 @@ import { initialsOf } from "@/domain/steward-accountability";
 import { HEALTH_LABEL, type ConversationHealth } from "@/domain/comms-health";
 import { SOURCE_LABEL, STAGE_LABEL, type Relationship } from "@/domain/comms";
 import { effectiveIntent, INTENT_LABEL } from "@/domain/comms-interactions";
+import { formatBytes, type AttachmentMeta } from "@/domain/comms-integrations";
 import { cn } from "@/lib/utils";
 
 import { HealthDot } from "./health-marks";
@@ -45,11 +48,13 @@ export function ConversationEvent({
   onEdit,
   onRetract,
   onRestore,
+  onDownloadAttachment,
 }: {
   event: EventShape;
   onEdit?: (touchId: string) => void;
   onRetract?: (touchId: string) => void;
   onRestore?: (touchId: string) => void;
+  onDownloadAttachment?: (event: EventShape, attachment: AttachmentMeta) => void;
 }) {
   const side = eventSide(event.kind);
   const touchId = event.touchId;
@@ -86,6 +91,33 @@ export function ConversationEvent({
           <p className="mt-1 line-clamp-[12] whitespace-pre-wrap text-[13px] text-muted-foreground">
             {event.body}
           </p>
+        ) : null}
+        {event.attachments?.length ? (
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {event.attachments.map((file) => {
+              const downloadable = Boolean(event.messageId && file.attachmentId);
+              return (
+                <li key={`${file.filename}:${file.size}`}>
+                  <button
+                    type="button"
+                    disabled={!downloadable || !onDownloadAttachment}
+                    onClick={() => onDownloadAttachment?.(event, file)}
+                    title={downloadable ? "Open from Gmail" : `${file.filename} · ${formatBytes(file.size)}`}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground",
+                      downloadable && onDownloadAttachment
+                        ? "transition-colors hover:border-royal/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        : "cursor-default",
+                    )}
+                  >
+                    <FileText className="h-3 w-3" aria-hidden />
+                    <span className="max-w-[180px] truncate">{file.filename}</span>
+                    <span className="text-[10px] opacity-70">{formatBytes(file.size)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         ) : null}
         {event.source ? (
           <p className="mt-1.5 text-[11px] text-muted-foreground">{event.source}</p>
@@ -137,6 +169,7 @@ export function ConversationRoom({
   onEditTouch,
   onRetractTouch,
   onRestoreTouch,
+  onDownloadAttachment,
   children,
 }: {
   relationship: Relationship;
@@ -149,6 +182,7 @@ export function ConversationRoom({
   onEditTouch?: (touchId: string) => void;
   onRetractTouch?: (touchId: string) => void;
   onRestoreTouch?: (touchId: string) => void;
+  onDownloadAttachment?: (event: EventShape, attachment: AttachmentMeta) => void;
   children?: React.ReactNode;
 }) {
   const chips = [
@@ -254,6 +288,9 @@ export function ConversationRoom({
                     {...(onEditTouch ? { onEdit: onEditTouch } : {})}
                     {...(onRetractTouch ? { onRetract: onRetractTouch } : {})}
                     {...(onRestoreTouch ? { onRestore: onRestoreTouch } : {})}
+                    {...(onDownloadAttachment
+                      ? { onDownloadAttachment: onDownloadAttachment }
+                      : {})}
                   />
                 ))}
               </ul>
