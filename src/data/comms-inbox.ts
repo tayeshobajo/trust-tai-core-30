@@ -185,6 +185,35 @@ export function inboxView(
   };
 }
 
+/* ----------------------------------------------------------- pagination */
+
+/**
+ * Fixed page size for the relationship list. Deliberately not a preference:
+ * one calm rhythm that scales to hundreds or thousands of relationships
+ * without ever becoming a wall of rows.
+ */
+export const RELATIONSHIPS_PER_PAGE = 25;
+
+/**
+ * The current page of a view. The view is always derived in full first —
+ * search, filters, counts, and tab totals describe the whole view — and only
+ * then is the rendered list sliced. Priority rows lead, exactly as sorted.
+ */
+export function inboxPage(view: InboxView, page: number): PageView<InboxEntry> {
+  return paginate([...view.priority, ...view.others], page, RELATIONSHIPS_PER_PAGE);
+}
+
+/**
+ * Which relationship should be selected for a page: the current selection
+ * when it is on the page, otherwise the page's first row, otherwise nothing.
+ */
+export function pageSelection(rows: InboxEntry[], selectedId: string | null): string | null {
+  if (selectedId && rows.some((entry) => entry.relationship.id === selectedId)) {
+    return selectedId;
+  }
+  return rows[0]?.relationship.id ?? null;
+}
+
 export function sinceLabel(value?: string): string {
   if (!value) return "No activity";
   const days = Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000);
