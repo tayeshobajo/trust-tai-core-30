@@ -158,7 +158,7 @@ describe("sidebar glance and driver read the same derived state", () => {
     expect(byKey['needs_attention']).toBe(view.healthCounts.needs_attention);
     expect(byKey['at_risk']).toBe(view.healthCounts.at_risk);
     expect(byKey['quiet']).toBe(view.healthCounts.quiet);
-    expect(byKey['following_up']).toBe(view.tabCounts.following_up);
+    expect(byKey['needs_you']).toBe(view.tabCounts.needs_you);
     const health = Object.values(view.healthCounts).reduce((sum, n) => sum + n, 0);
     expect(health).toBe(relationships.length);
   });

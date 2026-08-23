@@ -65,6 +65,67 @@ idempotent per prospect: a second handoff of the same prospect returns the
 relationship already open rather than a duplicate, enforced both by the receiver
 and by a unique index on `(organization_id, prospect_id)`.
 
+## Operating views (Clients / Nurture / Needs you / All)
+
+One `comms_relationships` record per person, one continuous history, four
+calm reads of the same derived state — never a pipeline, never a second
+prospect or client copy. Scout finds people worth knowing; Comms makes sure
+the right relationships actually go somewhere. The views exist so hundreds
+of Scout/outbound prospects can never crowd the established-client room.
+
+- **Clients** (default): established clients and meaningful existing
+  relationships. Kept deliberately calm and small.
+- **Nurture**: people Trust Tai has deliberately chosen to develop after a
+  Scout handoff or approved outreach. Prioritized by attention, next move,
+  and recency — never a giant undifferentiated list.
+- **Needs you**: cross-cutting. Anyone in Clients or Nurture where human
+  judgment is required — a reply owed, a promise open, a real reason with
+  urgency. It reuses the existing conversation-health and next-move reads;
+  there is no parallel rules engine.
+- **All**: the complete relationship ledger, everyone exactly once,
+  archived included.
+
+Segment classification is derived, never stored, and conservative so legacy
+rows never vanish or masquerade (`relationshipSegment` in
+`src/domain/comms.ts`):
+
+1. A graduated stage (`meeting_set`, `opportunity`, `client`) always means
+   Clients, whatever the origin.
+2. An explicit `nurture` stage means Nurture, whatever the origin.
+3. `scout_handoff` origin stays Nurture until it graduates — a handoff is a
+   decision to develop someone, not proof of an established relationship.
+4. Everything else (`manual`, `in_person`, `inbound`) defaults to Clients.
+
+**Entry rules.** A Scout discovery alone never creates a Comms relationship.
+A person enters Comms only through an intentional event: approved outreach,
+a Scout handoff for relationship development, inbound contact, a booked
+meeting, or an explicit Add to Comms. The Scout → Comms handoff receiver is
+the only handoff path.
+
+**Graduation.** Nurture → Clients is a stage change on the same record
+("Mark as client" in the rail): every email thread, Scout provenance,
+interaction, promise, learning, draft, health read, and memory stays
+exactly where it is. Nothing is copied, migrated, or re-created.
+
+**Automation ends where relationship begins.** When someone replies
+meaningfully they stop being an outbound target and become a real
+conversation — held by the same record, read by the same health and
+next-move logic as any client.
+
+**Comms agent continuity mission** (standing responsibility for the future
+Paperclip Comms agent): *Protect and develop every relationship Trust Tai
+has deliberately chosen to care about.* Gmail continuity rules:
+
+- Once a person is approved into Comms, their known email identity belongs
+  to that relationship; a new Gmail thread from the same approved email is
+  a new conversation under the same relationship, never a new person.
+- `Trust Tai/Comms` remains the Gmail ingestion boundary — label gate
+  first, identity match second, read-only, no label mutation, no send.
+- Future automation may recommend or prepare Gmail-native filters and
+  continuity mechanisms, but no Gmail mutation permissions are granted now.
+- A changed or new email identity requires human confirmation before
+  merging into a relationship.
+
 ## Capture
 
 Adding someone you met takes a name. Where you met and one thing worth

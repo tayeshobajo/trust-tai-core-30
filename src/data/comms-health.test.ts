@@ -4,7 +4,7 @@ import type { Relationship, Touch } from "@/domain/comms";
 
 import { conversationHealth, relationshipStrength, responseCadence } from "./comms-health";
 import { conversationTimeline, groupByDay } from "./comms-timeline";
-import { inboxEntries, inboxView, tabOf } from "./comms-inbox";
+import { inboxEntries, inboxView, needsYou, segmentViewOf } from "./comms-inbox";
 
 const NOW = new Date("2026-08-17T12:00:00.000Z");
 
@@ -264,16 +264,26 @@ describe("inbox state", () => {
     NOW,
   );
 
-  it("puts a conversation in exactly one tab", () => {
-    expect(tabOf(entries[0]!)).toBe("following_up");
-    expect(tabOf(entries[1]!)).toBe("needs_you");
-    expect(tabOf(entries[2]!)).toBe("archived");
+  it("places each conversation in its one segment room", () => {
+    expect(segmentViewOf(entries[0]!)).toBe("clients");
+    expect(segmentViewOf(entries[1]!)).toBe("clients");
+    expect(segmentViewOf(entries[2]!)).toBeNull();
   });
 
-  it("counts tabs without letting archived inflate All", () => {
-    const view = inboxView(entries, { tab: "all" });
-    expect(view.tabCounts.all).toBe(2);
-    expect(view.tabCounts.archived).toBe(1);
+  it("All is the complete ledger: everyone exactly once, archived included", () => {
+    const view = inboxView(entries, { tab: "all", now: NOW });
+    expect(view.tabCounts.all).toBe(3);
+    const ids = [...view.priority, ...view.others].map((entry) => entry.relationship.id);
+    expect(new Set(ids).size).toBe(3);
+  });
+
+  it("Needs you crosses segments and rests on existing attention logic", () => {
+    expect(needsYou(entries[1]!, NOW)).toBe(true);
+    expect(needsYou(entries[2]!, NOW)).toBe(false);
+    const view = inboxView(entries, { tab: "needs_you", now: NOW });
+    const ids = [...view.priority, ...view.others].map((entry) => entry.relationship.id);
+    expect(ids).toContain("r2");
+    expect(ids).not.toContain("r3");
   });
 
   it("lifts conversations needing attention into Priority", () => {

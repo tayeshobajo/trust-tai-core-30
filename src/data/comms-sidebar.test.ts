@@ -7,7 +7,7 @@ function view(partial: Partial<InboxView["tabCounts"]>, health: Partial<InboxVie
   return {
     priority: [],
     others: [],
-    tabCounts: { all: 0, needs_you: 0, following_up: 0, archived: 0, ...partial },
+    tabCounts: { all: 0, clients: 0, nurture: 0, needs_you: 0, ...partial },
     healthCounts: { healthy: 0, needs_attention: 0, at_risk: 0, quiet: 0, ...health },
   };
 }
@@ -19,14 +19,15 @@ describe("commsDriver", () => {
     );
   });
 
-  it("keeps conversations warm when someone is waiting on us", () => {
-    const driver = commsDriver(view({ all: 2, needs_you: 1 }));
-    expect(driver.statement).toBe("Keep conversations warm.");
-    expect(driver.detail).toContain("1 conversation");
+  it("names the people waiting across Clients and Nurture", () => {
+    const driver = commsDriver(view({ all: 2, clients: 1, nurture: 1, needs_you: 1 }));
+    expect(driver.statement).toBe("People are waiting on you.");
+    expect(driver.detail).toContain("1 relationship");
+    expect(driver.focus).toBe("needs_you");
   });
 
   it("says nothing is waiting when the inbox is calm", () => {
-    expect(commsDriver(view({ all: 2, following_up: 2 })).statement).toBe(
+    expect(commsDriver(view({ all: 2, clients: 2 })).statement).toBe(
       "Nothing is waiting on you.",
     );
   });

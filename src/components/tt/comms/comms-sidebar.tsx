@@ -18,17 +18,17 @@ import { cn } from "@/lib/utils";
 import { HealthDot } from "./health-marks";
 
 /**
- * What the glance shows. Three of these are derived health reads; "following_up"
- * is the inbox tab for conversations moving on their own rhythm, so selecting it
- * switches tab rather than filtering by health.
+ * What the glance shows. Three are derived health reads; "needs_you" is the
+ * cross-cutting attention view, so selecting it switches view rather than
+ * filtering by health.
  */
-export type GlanceKey = ConversationHealthStatus | "following_up";
+export type GlanceKey = ConversationHealthStatus | "needs_you";
 
-const GLANCE: GlanceKey[] = ["needs_attention", "following_up", "at_risk", "quiet"];
+const GLANCE: GlanceKey[] = ["needs_you", "needs_attention", "at_risk", "quiet"];
 
 const GLANCE_LABEL: Record<GlanceKey, string> = {
+  needs_you: "Needs you",
   needs_attention: "Needs attention",
-  following_up: "Following up",
   at_risk: HEALTH_LABEL.at_risk,
   quiet: HEALTH_LABEL.quiet,
   healthy: HEALTH_LABEL.healthy,
@@ -39,8 +39,7 @@ export function glanceRows(view: InboxView): { key: GlanceKey; label: string; co
   return GLANCE.map((key) => ({
     key,
     label: GLANCE_LABEL[key],
-    count:
-      key === "following_up" ? view.tabCounts.following_up : view.healthCounts[key],
+    count: key === "needs_you" ? view.tabCounts.needs_you : view.healthCounts[key],
   }));
 }
 
@@ -75,7 +74,7 @@ export function SidebarStatusCard({
                     : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
                 )}
               >
-                <HealthDot status={row.key === "following_up" ? "healthy" : row.key} />
+                <HealthDot status={row.key === "needs_you" ? "needs_attention" : row.key} />
                 <span className="flex-1 truncate">{row.label}</span>
                 <span className="font-mono text-[11px] tabular-nums text-foreground/80">
                   {row.count}
@@ -135,7 +134,7 @@ export function commsDriver(view: InboxView): {
   const needsYou = view.tabCounts.needs_you;
   const atRisk = view.healthCounts.at_risk;
   const quiet = view.healthCounts.quiet;
-  const followingUp = view.tabCounts.following_up;
+  const kept = view.tabCounts.clients + view.tabCounts.nurture;
   const plural = (n: number) => (n === 1 ? "" : "s");
 
   if (atRisk > 0) {
@@ -148,9 +147,9 @@ export function commsDriver(view: InboxView): {
   }
   if (needsYou > 0) {
     return {
-      statement: "Keep conversations warm.",
-      detail: `${needsYou} conversation${plural(needsYou)} waiting on you.`,
-      focus: "needs_attention",
+      statement: "People are waiting on you.",
+      detail: `${needsYou} relationship${plural(needsYou)} across Clients and Nurture need${needsYou === 1 ? "s" : ""} your reply or a decision.`,
+      focus: "needs_you",
       count: needsYou,
     };
   }
@@ -165,9 +164,9 @@ export function commsDriver(view: InboxView): {
   if (view.tabCounts.all > 0) {
     return {
       statement: "Nothing is waiting on you.",
-      detail: `${followingUp} conversation${plural(followingUp)} moving on their own rhythm.`,
-      focus: "following_up",
-      count: followingUp,
+      detail: `${kept} relationship${plural(kept)} kept warm across Clients and Nurture.`,
+      focus: null,
+      count: kept,
     };
   }
   return {
@@ -208,13 +207,12 @@ export function CommsSidebarPanels({
   onOpenRelationship?: (id: string) => void;
 }) {
   const driver = commsDriver(view);
-  const active: GlanceKey | null =
-    health ?? (tab === "following_up" ? "following_up" : null);
+  const active: GlanceKey | null = health ?? (tab === "needs_you" ? "needs_you" : null);
 
   function select(key: GlanceKey) {
-    if (key === "following_up") {
+    if (key === "needs_you") {
       onHealth(null);
-      onTab?.(tab === "following_up" ? "all" : "following_up");
+      onTab?.(tab === "needs_you" ? "clients" : "needs_you");
       return;
     }
     onTab?.("all");

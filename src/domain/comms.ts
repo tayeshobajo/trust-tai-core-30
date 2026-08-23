@@ -297,6 +297,41 @@ export function dueState(relationship: Relationship, now: Date = new Date()): Du
   return "clear";
 }
 
+/* --------------------------------------------------------------- segments */
+
+/**
+ * Operating segment: which room of the relationship workspace a person
+ * belongs to. Derived from the same record, never stored — one person, one
+ * relationship memory, many conversations. The segment moves only when a
+ * person changes the stage.
+ *
+ * Classification is deliberately conservative so legacy rows never vanish
+ * or masquerade:
+ *  - A graduated stage (meeting set, opportunity, client) always means the
+ *    client room, whatever the origin. Graduation updates this same record.
+ *  - An explicit nurture stage means nurture, whatever the origin.
+ *  - Scout/outbound origin stays nurture until it graduates — a handoff is a
+ *    decision to develop someone, not proof of an established relationship.
+ *  - Everything else — met in person, added by hand, they reached out — is
+ *    an established relationship and belongs with clients.
+ */
+export type RelationshipSegment = "client" | "nurture";
+
+export const SEGMENT_LABEL: Record<RelationshipSegment, string> = {
+  client: "Clients",
+  nurture: "Nurture",
+};
+
+/** Stages that prove a relationship has become established work. */
+const ESTABLISHED_STAGES: RelationshipStage[] = ["meeting_set", "opportunity", "client"];
+
+export function relationshipSegment(relationship: Relationship): RelationshipSegment {
+  if (ESTABLISHED_STAGES.includes(relationship.stage)) return "client";
+  if (relationship.stage === "nurture") return "nurture";
+  if (relationship.source === "scout_handoff") return "nurture";
+  return "client";
+}
+
 /** Stages where silence is a problem rather than a choice. */
 export const ACTIVE_STAGES: RelationshipStage[] = [
   "new",

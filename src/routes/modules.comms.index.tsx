@@ -101,7 +101,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<InboxTab>("all");
+  const [tab, setTab] = useState<InboxTab>("clients");
   const [healthFilter, setHealthFilter] = useState<ConversationHealthStatus | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -137,8 +137,35 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   const relationships = useMemo(() => relationshipsQuery.data ?? [], [relationshipsQuery.data]);
+
+  const touchesByRelationship = useMemo(() => {
+    const map: Record<string, Touch[]> = {};
+    for (const touch of orgTouchesQuery.data ?? []) {
+      const list = map[touch.relationshipId] ?? [];
+      list.push(touch);
+      map[touch.relationshipId] = list;
+    }
+    return map;
+  }, [orgTouchesQuery.data]);
+
+  const view = useMemo(
+    () =>
+      inboxView(inboxEntries(relationships, touchesByRelationship), {
+        tab,
+        query,
+        health: healthFilter,
+      }),
+    [relationships, touchesByRelationship, tab, query, healthFilter],
+  );
+
+  /**
+   * The open conversation defaults to the first person in the current view,
+   * so the room never shows someone the list is not showing.
+   */
   const selected: Relationship | null =
-    relationships.find((entry) => entry.id === selectedId) ?? relationships[0] ?? null;
+    relationships.find((entry) => entry.id === selectedId) ??
+    [...view.priority, ...view.others][0]?.relationship ??
+    null;
 
   useEffect(() => {
     if (!selectedId && selected) setSelectedId(selected.id);
@@ -184,26 +211,6 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     enabled: Boolean(selected),
     queryFn: () => listRelationshipMessages(identity.organizationId, selected!.id),
   });
-
-  const touchesByRelationship = useMemo(() => {
-    const map: Record<string, Touch[]> = {};
-    for (const touch of orgTouchesQuery.data ?? []) {
-      const list = map[touch.relationshipId] ?? [];
-      list.push(touch);
-      map[touch.relationshipId] = list;
-    }
-    return map;
-  }, [orgTouchesQuery.data]);
-
-  const view = useMemo(
-    () =>
-      inboxView(inboxEntries(relationships, touchesByRelationship), {
-        tab,
-        query,
-        health: healthFilter,
-      }),
-    [relationships, touchesByRelationship, tab, query, healthFilter],
-  );
 
   const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
   const drafts = draftsQuery.data ?? [];
@@ -464,6 +471,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         onSettleCommitment={(commitment, status) =>
           settleCommitment.mutate({ commitment, status })
         }
+        onGraduate={() => update.mutate({ stage: "client" })}
       />
     ) : null;
 

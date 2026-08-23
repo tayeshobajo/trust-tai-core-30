@@ -153,7 +153,7 @@ export function CommsInbox({
             onClick={() => {
               onHealth(null);
               onQuery("");
-              onTab("all");
+              onTab("clients");
             }}
             className="rounded-md border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >

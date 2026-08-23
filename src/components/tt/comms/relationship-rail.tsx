@@ -18,7 +18,7 @@ import { useState } from "react";
 import { TTButton } from "@/components/tt/primitives";
 import type { NextRelationshipMove } from "@/data/comms-next-move";
 import type { Relationship } from "@/domain/comms";
-import { TIER_LABEL } from "@/domain/comms";
+import { relationshipSegment, TIER_LABEL } from "@/domain/comms";
 import type { ConversationHealth, RelationshipStrengthRead } from "@/domain/comms-health";
 import {
   COMMITMENT_OWNER_LABEL,
@@ -65,18 +65,38 @@ function dateLabel(value?: string): string | null {
 
 /* -------------------------------------------------------- A. why it matters */
 
-function WhyItMatters({ relationship }: { relationship: Relationship }) {
+function WhyItMatters({
+  relationship,
+  onGraduate,
+}: {
+  relationship: Relationship;
+  onGraduate?: () => void;
+}) {
   const intent = effectiveIntent(relationship);
   const decided = relationship.decided.find((item) => !isCommitment(item));
+  const segment = relationshipSegment(relationship);
 
   return (
-    <RailCard letter="A." title="Why this relationship matters">
+    <RailCard
+      letter="A."
+      title="Why this relationship matters"
+      action={
+        segment === "nurture" && onGraduate ? (
+          <TTButton variant="quiet" size="sm" type="button" onClick={onGraduate}>
+            Mark as client
+          </TTButton>
+        ) : null
+      }
+    >
       <p className="text-[13px] text-foreground">
         {decided?.value ??
           `${INTENT_LABEL[intent]} relationship${relationship.companyName ? ` at ${relationship.companyName}` : ""}.`}
       </p>
       <p className="mt-1.5 text-[12px] text-muted-foreground">
         {INTENT_RHYTHM_LABEL[intent]}
+        {segment === "nurture"
+          ? " In Nurture — a relationship Trust Tai chose to develop."
+          : ""}
       </p>
     </RailCard>
   );
@@ -281,6 +301,7 @@ export function RelationshipRail({
   onRemindLater,
   onNotNeeded,
   onSettleCommitment,
+  onGraduate,
 }: {
   relationship: Relationship;
   health: ConversationHealth;
@@ -291,10 +312,15 @@ export function RelationshipRail({
   onRemindLater?: () => void;
   onNotNeeded?: () => void;
   onSettleCommitment?: (commitment: Commitment, status: "kept" | "released") => void;
+  /**
+   * Nurture → Clients. A stage change on the same record: every thread,
+   * promise, memory, and Scout provenance stays exactly where it is.
+   */
+  onGraduate?: () => void;
 }) {
   return (
     <div className="space-y-3">
-      <WhyItMatters relationship={relationship} />
+      <WhyItMatters relationship={relationship} {...(onGraduate ? { onGraduate } : {})} />
       <WhatWeKnow relationship={relationship} {...(onRemember ? { onRemember } : {})} />
       <NextMoveCard
         move={move}
