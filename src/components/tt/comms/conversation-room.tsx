@@ -179,6 +179,7 @@ export function ConversationRoom({
   relationship,
   days,
   health,
+  organizationId,
   onViewProfile,
   onOpenContext,
   onAddInteraction,
@@ -192,6 +193,8 @@ export function ConversationRoom({
   relationship: Relationship;
   days: ConversationDay[];
   health: ConversationHealth;
+  /** The workspace — resolves inline images and attachment downloads. */
+  organizationId?: string;
   onViewProfile: () => void;
   onOpenContext?: () => void;
   onAddInteraction?: () => void;
@@ -302,6 +305,7 @@ export function ConversationRoom({
                   <ConversationEvent
                     key={event.id}
                     event={event}
+                    {...(organizationId ? { organizationId } : {})}
                     {...(onEditTouch ? { onEdit: onEditTouch } : {})}
                     {...(onRetractTouch ? { onRetract: onRetractTouch } : {})}
                     {...(onRestoreTouch ? { onRestore: onRestoreTouch } : {})}
