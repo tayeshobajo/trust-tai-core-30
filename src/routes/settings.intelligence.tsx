@@ -32,6 +32,69 @@ const TONE: Record<FreshnessStatus, string> = {
   missing: "border-border bg-muted text-muted-foreground",
 };
 
+/** The secret-free shape of /api/public/intelligence/status. */
+interface RuntimeStatusPayload {
+  configured: boolean;
+  provider: "openai" | "lovable" | null;
+  model: string | null;
+  capabilities: { webSearch: boolean; structuredOutput: boolean; streaming: boolean };
+  checkedAt: string;
+}
+
+/**
+ * Reasoning provider readiness, server-derived. One provider serves every
+ * room — Comms, Scout, Roadmap, Steward, Studio, Conductor — so this is the
+ * first thing to check when any room's reasoning fails.
+ */
+function RuntimeStatusPanel() {
+  const status = useQuery({
+    queryKey: ["settings", "intelligence-runtime-status"],
+    queryFn: async (): Promise<RuntimeStatusPayload> => {
+      const response = await fetch("/api/public/intelligence/status", { cache: "no-store" });
+      if (!response.ok) throw new Error("The runtime status probe failed.");
+      return (await response.json()) as RuntimeStatusPayload;
+    },
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const chip =
+    status.isPending || !status.data
+      ? { label: "checking…", tone: TONE.missing }
+      : status.data.configured
+        ? { label: "operational", tone: TONE.current }
+        : { label: "not configured", tone: TONE.partial };
+
+  return (
+    <section aria-label="Reasoning provider" className="mb-6 rounded-xl border border-border p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-[15px] font-medium text-foreground">Reasoning provider</span>
+        <span
+          className={cn(
+            "rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]",
+            chip.tone,
+          )}
+        >
+          {chip.label}
+        </span>
+        {status.data?.provider ? (
+          <span className="ml-auto font-mono text-[11px] text-muted-foreground">
+            {status.data.provider} · {status.data.model ?? "—"} · checked{" "}
+            {stamp(status.data.checkedAt)}
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-2 text-[13px] text-muted-foreground">
+        {status.error
+          ? "The status probe itself failed, so provider health cannot be confirmed from here."
+          : status.data?.configured
+            ? "One provider serves every room's reasoning — Comms drafts, Scout reads, Roadmap and Studio generation, Steward and Conductor."
+            : "No reasoning provider is configured, so drafting and reads fail closed. Add OPENAI_API_KEY, or rely on LOVABLE_API_KEY, in the deployment's server environment (Settings → Secrets)."}
+      </p>
+    </section>
+  );
+}
+
 function stamp(value: string | null): string {
   if (!value) return "—";
   const date = new Date(value);

@@ -157,6 +157,19 @@ describe("assessDraftGrounding", () => {
     expect(decision.missing).toEqual([]);
   });
 
+  it("regression: Brooke's case — known identity plus a real inbound thread passes grounding", () => {
+    /* Production: Brooke Siler has a real inbound Gmail thread and a known
+       identity (full name and email on the relationship). The gate must
+       pass; the failure lived after grounding, at the provider boundary. */
+    const decision = assessDraftGrounding({
+      hasIdentity: true,
+      threadHasInbound: true,
+      priorInteractionCount: 1,
+      hasReason: true,
+    });
+    expect(decision).toEqual({ grounded: true, kind: "reply", missing: [] });
+  });
+
   it("grounds a proactive note on identity, one real prior interaction, and a reason", () => {
     const decision = assessDraftGrounding({
       hasIdentity: true,
