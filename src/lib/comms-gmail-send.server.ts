@@ -49,6 +49,8 @@ import {
   type OutgoingAttachment,
 } from "@/domain/comms-mime";
 import {
+  attachmentMetaFromJson,
+  attachmentMetaToJson,
   GMAIL_SEND_SCOPE,
   mailboxFromProvenance,
   resolveSendMailbox,
@@ -747,11 +749,13 @@ export async function sendDraftViaGmail(input: {
       subject,
       snippet: draft.body.replace(/\s+/g, " ").trim().slice(0, 180),
       occurred_at: sentAt,
-      attachments: staged.map((file): AttachmentMeta => ({
-        filename: file.filename,
-        mimeType: file.mimeType,
-        size: file.size,
-      })),
+      attachments: staged.map((file) =>
+        attachmentMetaToJson({
+          filename: file.filename,
+          mimeType: file.mimeType,
+          size: file.size,
+        }),
+      ),
       provenance: {
         source: "gmail-send",
         mailbox,
