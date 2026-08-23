@@ -77,7 +77,7 @@ describe("conversationTimeline with synced mail", () => {
 
   it("shows a sent draft as a claim until the mailbox proves it", () => {
     const [event] = conversationTimeline([], [DRAFT], []);
-    expect(event?.source).toBe("Marked as sent — not yet seen in the mailbox");
+    expect(event?.source).toBe("Sent via Gmail — not yet seen in the mailbox");
     expect(event?.meta).toBe("sent");
   });
 
