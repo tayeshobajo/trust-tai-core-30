@@ -576,17 +576,94 @@ export function splitQuotedNodes(nodes: EmailNode[]): { main: EmailNode[]; quote
 /* ------------------------------------------------------- collapse rule */
 
 /**
- * Collapse affordance threshold — long mail starts folded, never clamped.
- *
- * The measure is meaningful text only. Inline images and other non-text
- * resources never push an email behind Show more: a short note with a large
- * image renders whole. Blank structural lines (layout divs, empty breaks)
- * do not count as lines — only lines carrying actual words do.
+ * The shared fold threshold: long mail starts folded, never clamped. The
+ * measure is meaningful text only — blank structural lines (layout divs,
+ * empty breaks) do not count as lines; only lines carrying actual words do.
  */
-export function emailNeedsCollapse(bodyText: string | undefined, bodyHtml: string | undefined): boolean {
-  const basis = bodyText ?? (bodyHtml ? htmlToPlainText(bodyHtml) : "");
+function textNeedsCollapse(basis: string): boolean {
   const text = basis.trim();
   if (!text) return false;
   const meaningfulLines = text.split("\n").filter((line) => line.trim().length > 0);
   return text.length > 1200 || meaningfulLines.length > 18;
+}
+
+/**
+ * Collapse check over a whole stored body. Inline images and other non-text
+ * resources never push an email behind Show more: a short note with a large
+ * image renders whole.
+ *
+ * Prefer `primaryEmailNeedsCollapse` for rendering — this measures the
+ * unsplit body and exists for callers that genuinely need the whole-body
+ * measure.
+ */
+export function emailNeedsCollapse(bodyText: string | undefined, bodyHtml: string | undefined): boolean {
+  const basis = bodyText ?? (bodyHtml ? htmlToPlainText(bodyHtml) : "");
+  return textNeedsCollapse(basis);
+}
+
+/** Tags that separate readable lines when flattening a node tree to text. */
+const TEXT_LINE_BOUNDARY_TAGS = new Set([
+  "p",
+  "div",
+  "br",
+  "hr",
+  "li",
+  "ul",
+  "ol",
+  "blockquote",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "pre",
+  "table",
+  "tr",
+]);
+
+/**
+ * The readable text of a node tree. Inline images contribute zero — not
+ * their alt, not their filename — because an image is not prose, and image
+ * metadata must never push an email behind Show more. Block boundaries
+ * become line breaks so the meaningful-line rule applies to HTML the same
+ * way it applies to plain text.
+ */
+export function emailNodesToText(nodes: EmailNode[]): string {
+  const parts: string[] = [];
+  const walk = (list: EmailNode[]): void => {
+    for (const node of list) {
+      if (node.type === "text") {
+        parts.push(node.text);
+        continue;
+      }
+      if (node.tag === "img") continue;
+      const boundary = TEXT_LINE_BOUNDARY_TAGS.has(node.tag);
+      if (boundary) parts.push("\n");
+      walk(node.children);
+      if (boundary) parts.push("\n");
+    }
+  };
+  walk(nodes);
+  return parts.join("");
+}
+
+/**
+ * The collapse law for rendering: only the primary content currently visible
+ * to the reader decides whether Show more exists.
+ *
+ * Quoted history is split away FIRST and never counts — a short reply atop
+ * a long thread shows whole, with quoted history behind its own independent
+ * Show quoted text affordance. Inline images contribute zero text, so an
+ * image-led note never folds. Genuinely long primary prose still folds with
+ * Show more / Show less.
+ */
+export function primaryEmailNeedsCollapse(
+  bodyText: string | undefined,
+  bodyHtml: string | undefined,
+): boolean {
+  if (bodyHtml) {
+    const { main } = splitQuotedNodes(parseEmailHtml(bodyHtml));
+    return textNeedsCollapse(emailNodesToText(main));
+  }
+  if (!bodyText) return false;
+  return textNeedsCollapse(splitQuotedContent(bodyText).main);
 }
