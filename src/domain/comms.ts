@@ -12,6 +12,7 @@
 
 import type { EvidenceRef } from "./confidence";
 import type { ID, ISODateTime } from "./entities";
+import { intentOf, type RelationshipIntent } from "./comms-interactions";
 
 /* -------------------------------------------------------------- lifecycle */
 
