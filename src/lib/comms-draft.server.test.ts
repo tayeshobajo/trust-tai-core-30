@@ -29,10 +29,17 @@ import {
    configured provider returns a valid judgment and draft. */
 const VALID_JUDGMENT = JSON.stringify({
   whyNow: "Brooke wrote in today; a straight answer is owed while the thread is warm.",
-  whatNoticed: "She is deciding whether to move forward and wants a clear next step.",
+  latestHumanSignal: "She is deciding whether to move forward and asked directly about timing.",
+  whatThisSaysAboutThem: "She is ready to act and values a clear, unhurried answer.",
+  whatDeservesAcknowledgment: "Her direct question deserves a direct answer first.",
+  threadToBuildOn: "What starting next month would need to be true.",
   intendedEffect: "That she feels heard and has one easy thing to say yes to.",
   responseObligation: "She asked whether we can start next month.",
-  nextMove: { ask: true, what: "Offer a short call with two concrete times." },
+  askDecision: {
+    shouldAsk: true,
+    whyNatural: "Her timing question genuinely requires a short live discussion.",
+    what: "Offer a short call with two concrete times.",
+  },
   factsAllowed: ["She asked about starting next month (latest inbound)."],
   factsAvoid: ["Do not promise a start date we have not agreed."],
   voiceEvidenceUsed: ["Short declarative sentences"],
@@ -58,6 +65,61 @@ const BROOKE_INPUT: DraftPassInput = {
   groundingSummary: {
     kind: "reply",
     level: "strong",
+    basis: ["A real thread, with the latest word from Brooke"],
+    wouldStrengthen: [],
+  },
+};
+
+/* The conversation-first Brooke case: she replied warmly, thanked Tai for his
+   words about the Mastermind, said it was lovely to meet him, and offered to
+   be a resource. The right judgment recognizes the generosity and asks for
+   nothing — a call pushed here would be a funnel move, not a reply. */
+const BROOKE_WARM_JUDGMENT = JSON.stringify({
+  whyNow: "Brooke replied warmly after the Mastermind; a reply is owed while the thread is warm.",
+  latestHumanSignal:
+    "She offered to be a resource — meeting someone once and already thinking about how she might be useful.",
+  whatThisSaysAboutThem:
+    "A generous, help-first orientation, consistent with her work guiding business owners.",
+  whatDeservesAcknowledgment: "The offer to be a resource, and the generosity underneath it.",
+  threadToBuildOn: "Her instinct to be useful and the work it comes from.",
+  intendedEffect: "That she feels specifically seen and glad the Mastermind put them in the same room.",
+  responseObligation: "Her thanks and kind words deserve acknowledgment.",
+  askDecision: {
+    shouldAsk: false,
+    whyNatural:
+      "She gave warmth and an open door; nothing in her note suggests talking soon, so an ask would feel like a funnel move.",
+    what: "",
+  },
+  factsAllowed: ["She offered to be a resource (latest inbound)."],
+  factsAvoid: ["Do not claim a shared history beyond the Mastermind."],
+  voiceEvidenceUsed: ["Make them feel specifically seen", "No forced call to action"],
+  learnedExamplesUsed: [],
+});
+
+const BROOKE_WARM_DRAFT = JSON.stringify({
+  subject: "Re: The Mastermind",
+  body: "Brooke,\n\nI appreciated your note. What stayed with me was your offer to be a resource.\n\nThere's something generous about meeting someone once and already thinking about how you might be useful to them. Given the work you do with business owners every day, I imagine that instinct comes pretty naturally to you.\n\nI'm glad the Mastermind put us in the same room. I have a feeling our paths will cross again.\n\nTrust,\nTai",
+});
+
+const BROOKE_WARM_INPUT: DraftPassInput = {
+  evidencePacket: {
+    draftKind: "reply",
+    relationshipEvidence: {
+      recipient: { name: "Brooke Siler", salutationName: "Brooke" },
+      thread: [
+        {
+          direction: "inbound",
+          text: "Tai, thank you for your kind words. It was lovely to meet you, and I enjoyed your perspective in the Mastermind. Please consider me a resource.",
+        },
+      ],
+    },
+  },
+  salutation: "Brooke",
+  register: "follow_up",
+  usedEvidence: [],
+  groundingSummary: {
+    kind: "reply",
+    level: "grounded",
     basis: ["A real thread, with the latest word from Brooke"],
     wouldStrengthen: [],
   },
