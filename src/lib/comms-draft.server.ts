@@ -657,19 +657,19 @@ export async function executeDraftPasses(
     throw new DraftFailure("empty_draft");
   }
 
-  const verdict = checkVoice(body, { register, requireSignoff: true });
+  const verdict = checkVoice(body, { register: input.register, requireSignoff: true });
 
   return {
     subject: subject.replace(/[!\u2014]/g, "").trim(),
     body: verdict.text,
-    register,
-    reviewState: requiresHumanReview(register, verdict) ? "needs_human_review" : "draft",
+    register: input.register,
+    reviewState: requiresHumanReview(input.register, verdict) ? "needs_human_review" : "draft",
     violations: verdict.violations,
-    usedEvidence,
+    usedEvidence: input.usedEvidence,
     judgment,
-    grounding: groundingSummary,
-    provider: providerName!,
-    model: model!,
+    grounding: input.groundingSummary,
+    provider: written.provider,
+    model: written.model,
   };
 }
 
