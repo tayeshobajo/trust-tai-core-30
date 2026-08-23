@@ -340,3 +340,49 @@ existing relationship with a harmless repeat backfill, and the 1–90-day
 clamp. Typecheck clean; existing `comms-gmail.server` suite (17 tests)
 unaffected. **Production verification pending**: a live Add-to-Comms run
 against the real mailbox is still required before this is marked verified.
+
+### Operating views: Clients / Nurture / Needs you / All (2026-08-22) — implemented, not yet production-verified
+
+The calm-client-room problem is now solved structurally rather than by
+discipline: four operating views inside the existing Relationships
+experience read one derived state, so Scout/outbound volume can never crowd
+established clients. No schema migration was needed — `stage` + `source`
+already carry the classification (`relationshipSegment` in
+`src/domain/comms.ts`).
+
+- **Classification (derived, conservative):** graduated stages
+  (`meeting_set`/`opportunity`/`client`) → Clients; explicit `nurture`
+  stage → Nurture; `scout_handoff` origin → Nurture until it graduates;
+  `manual`/`in_person`/`inbound` → Clients. Legacy rows keep their room by
+  these rules; no data was reclassified by guessing from weak signals.
+- **Views:** Clients is the default; Nurture is prioritized by the existing
+  health/next-move ordering; Needs you cross-cuts both segments using
+  `health.waitingOn === "needs_us"` plus `nextRelationshipMove` urgency —
+  no parallel rules engine; All is the complete ledger, everyone exactly
+  once, archived included (archived crowds no working room).
+- **Graduation:** "Mark as client" in the rail runs the existing
+  person-initiated stage change on the same record and emits the existing
+  `relationship.stage_changed` event. Threads, Scout provenance, promises,
+  drafts, health, and memory are untouched by construction.
+- **Entry rules locked:** a Scout discovery alone never creates a
+  relationship; entry requires handoff, approved outreach, inbound contact,
+  a booked meeting, or explicit Add to Comms.
+- **Laws recorded in `docs/comms-v1.md`:** "Automation ends where
+  relationship begins" and the Comms agent continuity mission ("Protect and
+  develop every relationship Trust Tai has deliberately chosen to care
+  about"), including the Gmail continuity rules — same approved email, same
+  relationship, new threads attach as new conversations; `Trust Tai/Comms`
+  remains the ingestion boundary; no Gmail mutation permissions now; new
+  email identities need human confirmation before merging.
+- **Sidebar glance** reads the same view state: Needs you, Needs attention,
+  At risk, Quiet — the Needs-you row switches view rather than filtering.
+
+Tests: `src/domain/comms-segment.test.ts` (5) and
+`src/data/comms-inbox.test.ts` (7) cover segment classification, view
+membership, cross-cutting Needs-you, ledger completeness, and graduation on
+the same record; `comms-health`, `comms-derive-health`, and
+`comms-sidebar` suites updated to the new view model (56 passed across the
+affected files). Gmail behavior untouched: label gate first, identity
+match, read-only, no mutation, no send, bounded dedupe preserved.
+**Production verification pending:** open the live workspace and confirm
+existing relationships land in the expected rooms.
