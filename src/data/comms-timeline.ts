@@ -53,7 +53,12 @@ export interface ConversationEvent {
   kind: ConversationEventKind;
   occurredAt: ISODateTime;
   title: string;
+  /** For email events: the full readable body, never a silent truncation. */
   body?: string;
+  /** Sanitized email HTML, when the message carried layout worth keeping. */
+  htmlBody?: string;
+  /** Remote images refused at ingest — surfaced, never silently dropped. */
+  blockedRemoteImages?: number;
   /** Where this came from, in plain words. Never a vendor id. */
   source?: string;
   meta?: string;
@@ -118,15 +123,29 @@ export function conversationTimeline(
       message.subject?.trim() ||
       message.snippet?.trim() ||
       (message.direction === "inbound" ? "Email from them" : "Email from us");
+    // The timeline shows the actual email: full body first, Gmail's preview
+    // snippet only when the body has not been enriched yet (an old row one
+    // resync away from fidelity, or a metadata-era schema).
+    const body = message.bodyText?.trim() || message.snippet?.trim() || undefined;
+    const provenance = message.sentViaComms
+      ? "Sent from Comms via Gmail"
+      : "Synced from Gmail · read-only";
+    const source = message.blockedRemoteImages
+      ? `${provenance} · ${message.blockedRemoteImages} remote ${
+          message.blockedRemoteImages === 1 ? "image" : "images"
+        } blocked`
+      : provenance;
     events.push({
       id: `mail:${message.id}`,
       kind: message.direction === "inbound" ? "they_emailed" : "we_emailed",
       occurredAt: message.occurredAt,
       title,
-      ...(message.subject?.trim() && message.snippet?.trim()
-        ? { body: message.snippet.trim() }
+      ...(body ? { body } : {}),
+      ...(message.bodyHtml ? { htmlBody: message.bodyHtml } : {}),
+      ...(message.blockedRemoteImages
+        ? { blockedRemoteImages: message.blockedRemoteImages }
         : {}),
-      source: message.sentViaComms ? "Sent from Comms via Gmail" : "Synced from Gmail · read-only",
+      source,
       meta: "email",
       ...(message.attachments?.length ? { attachments: message.attachments } : {}),
       messageId: message.id,
