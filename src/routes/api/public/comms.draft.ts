@@ -32,6 +32,7 @@ const DRAFT_FAILURE_STATUS: Record<DraftFailureCode, number> = {
   judgment_unreadable: 502,
   writing_unreadable: 502,
   empty_draft: 502,
+  ask_gate_violated: 502,
 };
 
 export const Route = createFileRoute("/api/public/comms/draft")({

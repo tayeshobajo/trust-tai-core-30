@@ -768,8 +768,8 @@ on the thread, and close.`,
     usedEvidence: input.usedEvidence,
     judgment,
     grounding: input.groundingSummary,
-    provider: written.provider,
-    model: written.model,
+    provider,
+    model,
   };
 }
 
