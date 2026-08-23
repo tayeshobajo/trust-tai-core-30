@@ -11,9 +11,11 @@
  */
 
 import type { CommsDraft, Touch } from "@/domain/comms";
-import type { StoredMailboxMessage } from "@/domain/comms-integrations";
+import type { AttachmentMeta, StoredMailboxMessage } from "@/domain/comms-integrations";
 import { readTouchRecord, recordNote } from "@/domain/comms-touch-record";
 import { draftProvenanceLabel, readDraftVerification } from "@/domain/comms-verification";
+import { readDraftSend } from "@/domain/comms-send";
+import { readOutgoingAttachments } from "@/domain/comms-outgoing";
 import type { ISODateTime } from "@/domain/entities";
 
 export type ConversationEventKind =
@@ -59,6 +61,10 @@ export interface ConversationEvent {
   touchId?: string;
   /** Withdrawn entries stay visible, marked, never deleted. */
   retracted?: boolean;
+  /** Files on the message. Gmail-native ones download on demand. */
+  attachments?: AttachmentMeta[];
+  /** The comms_messages row behind a synced email — the download handle. */
+  messageId?: string;
 }
 
 export function kindOfTouch(touch: Touch): ConversationEventKind {
@@ -120,14 +126,20 @@ export function conversationTimeline(
       ...(message.subject?.trim() && message.snippet?.trim()
         ? { body: message.snippet.trim() }
         : {}),
-      source: "Synced from Gmail · read-only",
+      source: message.sentViaComms ? "Sent from Comms via Gmail" : "Synced from Gmail · read-only",
       meta: "email",
+      ...(message.attachments?.length ? { attachments: message.attachments } : {}),
+      messageId: message.id,
     });
   }
 
   for (const draft of drafts) {
     if (draft.reviewState === "discarded") continue;
     const verification = readDraftVerification(draft.rationale);
+    // Files the person staged, or files a send carried — whichever is true now.
+    const send = readDraftSend(draft.rationale);
+    const staged = readOutgoingAttachments(draft.rationale);
+    const files = staged.length > 0 ? staged : (send?.attachments ?? []);
     events.push({
       id: `draft:${draft.id}`,
       kind: "draft",
@@ -136,6 +148,7 @@ export function conversationTimeline(
       body: draft.body,
       source: draftProvenanceLabel(draft.reviewState, verification),
       meta: verification ? "mailbox_verified" : draft.reviewState,
+      ...(files.length > 0 ? { attachments: files } : {}),
     });
   }
 

@@ -22,6 +22,7 @@ import { CommsInbox } from "@/components/tt/comms/comms-inbox";
 import { CommsSidebarPanels } from "@/components/tt/comms/comms-sidebar";
 import { ConversationRoom } from "@/components/tt/comms/conversation-room";
 import { ReplyRecordBar } from "@/components/tt/comms/reply-record";
+import { SendComposer } from "@/components/tt/comms/send-composer";
 import { RelationshipRail } from "@/components/tt/comms/relationship-rail";
 import { AddInteraction, type InteractionSubmission } from "@/components/tt/comms/add-interaction";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
@@ -29,7 +30,7 @@ import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
-import { gmailSync } from "@/data/supabase/comms-gmail";
+import { gmailDownloadAttachment, gmailSync } from "@/data/supabase/comms-gmail";
 import { addMailboxCandidateToComms, ONBOARDING_BACKFILL_DAYS } from "@/data/comms-onboarding";
 import { listRelationshipMessages } from "@/data/supabase/comms-messages";
 import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
@@ -68,6 +69,9 @@ import {
 import type { VoiceRegister } from "@/domain/voice";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+
+/** States in which the composer replaces the prepare bar: a draft is in hand. */
+const COMPOSER_STATES = new Set(["draft", "needs_human_review", "approved", "sending", "send_failed"]);
 
 const TITLE = "Comms · relationships kept warm · Trust Tai OS";
 const DESCRIPTION =
@@ -661,6 +665,15 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               onEditTouch={(touchId) => setEditingTouchId(touchId)}
               onRetractTouch={(touchId) => setEditingTouchId(touchId)}
               onRestoreTouch={(touchId) => retractTouch.mutate({ touchId, restore: true })}
+              onDownloadAttachment={(event, file) => {
+                if (!event.messageId || !file.attachmentId) return;
+                void gmailDownloadAttachment({
+                  organizationId: context.organizationId,
+                  messageId: event.messageId,
+                  attachmentId: file.attachmentId,
+                  filename: file.filename,
+                });
+              }}
             >
               {profileOpen ? (
                 <div className="border-t border-border bg-secondary/30 px-5 py-4">
@@ -696,14 +709,24 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 </div>
               ) : null}
 
-              <ReplyRecordBar
-                drafting={drafting}
-                busy={recordInteraction.isPending || saveDraft.isPending}
-                error={draftError}
-                purposeHint={move?.needed ? move.action : null}
-                onPrepareDraft={(register, purpose) => void compose(register, purpose)}
-                onRecordInteraction={() => setInteracting(true)}
-              />
+              {savedDraft && COMPOSER_STATES.has(savedDraft.reviewState) ? (
+                <SendComposer
+                  draft={savedDraft}
+                  relationship={selected}
+                  context={context}
+                  messages={selectedMessages}
+                  onChanged={refresh}
+                />
+              ) : (
+                <ReplyRecordBar
+                  drafting={drafting}
+                  busy={recordInteraction.isPending || saveDraft.isPending}
+                  error={draftError}
+                  purposeHint={move?.needed ? move.action : null}
+                  onPrepareDraft={(register, purpose) => void compose(register, purpose)}
+                  onRecordInteraction={() => setInteracting(true)}
+                />
+              )}
             </ConversationRoom>
           ) : (
             <div className="p-8">

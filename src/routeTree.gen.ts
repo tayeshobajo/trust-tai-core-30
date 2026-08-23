@@ -72,9 +72,11 @@ import { Route as ModulesWebsiteSubmissionsSubmissionIdRouteImport } from './rou
 import { Route as ApiInternalExecutionScoutIcpRouteImport } from './routes/api/internal/execution/scout.icp'
 import { Route as ApiInternalExecutionScoutPipelineRouteImport } from './routes/api/internal/execution/scout.pipeline'
 import { Route as ApiInternalExecutionScoutProspectRouteImport } from './routes/api/internal/execution/scout.prospect'
+import { Route as ApiPublicCommsGmailAttachmentRouteImport } from './routes/api/public/comms.gmail.attachment'
 import { Route as ApiPublicCommsGmailCandidatesRouteImport } from './routes/api/public/comms.gmail.candidates'
 import { Route as ApiPublicCommsGmailConnectRouteImport } from './routes/api/public/comms.gmail.connect'
 import { Route as ApiPublicCommsGmailScheduledSyncRouteImport } from './routes/api/public/comms.gmail.scheduled-sync'
+import { Route as ApiPublicCommsGmailSendRouteImport } from './routes/api/public/comms.gmail.send'
 import { Route as ApiPublicCommsGmailSyncRouteImport } from './routes/api/public/comms.gmail.sync'
 
 const IndexRoute = IndexRouteImport.update({
@@ -408,6 +410,12 @@ const ApiInternalExecutionScoutProspectRoute =
     path: '/api/internal/execution/scout/prospect',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCommsGmailAttachmentRoute =
+  ApiPublicCommsGmailAttachmentRouteImport.update({
+    id: '/api/public/comms/gmail/attachment',
+    path: '/api/public/comms/gmail/attachment',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCommsGmailCandidatesRoute =
   ApiPublicCommsGmailCandidatesRouteImport.update({
     id: '/api/public/comms/gmail/candidates',
@@ -426,6 +434,11 @@ const ApiPublicCommsGmailScheduledSyncRoute =
     path: '/api/public/comms/gmail/scheduled-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCommsGmailSendRoute = ApiPublicCommsGmailSendRouteImport.update({
+  id: '/api/public/comms/gmail/send',
+  path: '/api/public/comms/gmail/send',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCommsGmailSyncRoute = ApiPublicCommsGmailSyncRouteImport.update({
   id: '/api/public/comms/gmail/sync',
   path: '/api/public/comms/gmail/sync',
@@ -496,9 +509,11 @@ export interface FileRoutesByFullPath {
   '/api/internal/execution/scout/icp': typeof ApiInternalExecutionScoutIcpRoute
   '/api/internal/execution/scout/pipeline': typeof ApiInternalExecutionScoutPipelineRoute
   '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
+  '/api/public/comms/gmail/attachment': typeof ApiPublicCommsGmailAttachmentRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/scheduled-sync': typeof ApiPublicCommsGmailScheduledSyncRoute
+  '/api/public/comms/gmail/send': typeof ApiPublicCommsGmailSendRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
 }
 export interface FileRoutesByTo {
@@ -558,9 +573,11 @@ export interface FileRoutesByTo {
   '/api/internal/execution/scout/icp': typeof ApiInternalExecutionScoutIcpRoute
   '/api/internal/execution/scout/pipeline': typeof ApiInternalExecutionScoutPipelineRoute
   '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
+  '/api/public/comms/gmail/attachment': typeof ApiPublicCommsGmailAttachmentRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/scheduled-sync': typeof ApiPublicCommsGmailScheduledSyncRoute
+  '/api/public/comms/gmail/send': typeof ApiPublicCommsGmailSendRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
 }
 export interface FileRoutesById {
@@ -628,9 +645,11 @@ export interface FileRoutesById {
   '/api/internal/execution/scout/icp': typeof ApiInternalExecutionScoutIcpRoute
   '/api/internal/execution/scout/pipeline': typeof ApiInternalExecutionScoutPipelineRoute
   '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
+  '/api/public/comms/gmail/attachment': typeof ApiPublicCommsGmailAttachmentRoute
   '/api/public/comms/gmail/candidates': typeof ApiPublicCommsGmailCandidatesRoute
   '/api/public/comms/gmail/connect': typeof ApiPublicCommsGmailConnectRoute
   '/api/public/comms/gmail/scheduled-sync': typeof ApiPublicCommsGmailScheduledSyncRoute
+  '/api/public/comms/gmail/send': typeof ApiPublicCommsGmailSendRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
 }
 export interface FileRouteTypes {
@@ -699,9 +718,11 @@ export interface FileRouteTypes {
     | '/api/internal/execution/scout/icp'
     | '/api/internal/execution/scout/pipeline'
     | '/api/internal/execution/scout/prospect'
+    | '/api/public/comms/gmail/attachment'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/scheduled-sync'
+    | '/api/public/comms/gmail/send'
     | '/api/public/comms/gmail/sync'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -761,9 +782,11 @@ export interface FileRouteTypes {
     | '/api/internal/execution/scout/icp'
     | '/api/internal/execution/scout/pipeline'
     | '/api/internal/execution/scout/prospect'
+    | '/api/public/comms/gmail/attachment'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/scheduled-sync'
+    | '/api/public/comms/gmail/send'
     | '/api/public/comms/gmail/sync'
   id:
     | '__root__'
@@ -830,9 +853,11 @@ export interface FileRouteTypes {
     | '/api/internal/execution/scout/icp'
     | '/api/internal/execution/scout/pipeline'
     | '/api/internal/execution/scout/prospect'
+    | '/api/public/comms/gmail/attachment'
     | '/api/public/comms/gmail/candidates'
     | '/api/public/comms/gmail/connect'
     | '/api/public/comms/gmail/scheduled-sync'
+    | '/api/public/comms/gmail/send'
     | '/api/public/comms/gmail/sync'
   fileRoutesById: FileRoutesById
 }
@@ -871,9 +896,11 @@ export interface RootRouteChildren {
   ApiInternalExecutionScoutIcpRoute: typeof ApiInternalExecutionScoutIcpRoute
   ApiInternalExecutionScoutPipelineRoute: typeof ApiInternalExecutionScoutPipelineRoute
   ApiInternalExecutionScoutProspectRoute: typeof ApiInternalExecutionScoutProspectRoute
+  ApiPublicCommsGmailAttachmentRoute: typeof ApiPublicCommsGmailAttachmentRoute
   ApiPublicCommsGmailCandidatesRoute: typeof ApiPublicCommsGmailCandidatesRoute
   ApiPublicCommsGmailConnectRoute: typeof ApiPublicCommsGmailConnectRoute
   ApiPublicCommsGmailScheduledSyncRoute: typeof ApiPublicCommsGmailScheduledSyncRoute
+  ApiPublicCommsGmailSendRoute: typeof ApiPublicCommsGmailSendRoute
   ApiPublicCommsGmailSyncRoute: typeof ApiPublicCommsGmailSyncRoute
 }
 
@@ -1320,6 +1347,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInternalExecutionScoutProspectRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/comms/gmail/attachment': {
+      id: '/api/public/comms/gmail/attachment'
+      path: '/api/public/comms/gmail/attachment'
+      fullPath: '/api/public/comms/gmail/attachment'
+      preLoaderRoute: typeof ApiPublicCommsGmailAttachmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/comms/gmail/candidates': {
       id: '/api/public/comms/gmail/candidates'
       path: '/api/public/comms/gmail/candidates'
@@ -1339,6 +1373,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/comms/gmail/scheduled-sync'
       fullPath: '/api/public/comms/gmail/scheduled-sync'
       preLoaderRoute: typeof ApiPublicCommsGmailScheduledSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/comms/gmail/send': {
+      id: '/api/public/comms/gmail/send'
+      path: '/api/public/comms/gmail/send'
+      fullPath: '/api/public/comms/gmail/send'
+      preLoaderRoute: typeof ApiPublicCommsGmailSendRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/comms/gmail/sync': {
@@ -1528,9 +1569,11 @@ const rootRouteChildren: RootRouteChildren = {
     ApiInternalExecutionScoutPipelineRoute,
   ApiInternalExecutionScoutProspectRoute:
     ApiInternalExecutionScoutProspectRoute,
+  ApiPublicCommsGmailAttachmentRoute: ApiPublicCommsGmailAttachmentRoute,
   ApiPublicCommsGmailCandidatesRoute: ApiPublicCommsGmailCandidatesRoute,
   ApiPublicCommsGmailConnectRoute: ApiPublicCommsGmailConnectRoute,
   ApiPublicCommsGmailScheduledSyncRoute: ApiPublicCommsGmailScheduledSyncRoute,
+  ApiPublicCommsGmailSendRoute: ApiPublicCommsGmailSendRoute,
   ApiPublicCommsGmailSyncRoute: ApiPublicCommsGmailSyncRoute,
 }
 export const routeTree = rootRouteImport

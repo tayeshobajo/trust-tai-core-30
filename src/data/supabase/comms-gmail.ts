@@ -112,3 +112,106 @@ export async function gmailCandidates(
     { organizationId },
   );
 }
+
+/* ------------------------------------------------------------------ send */
+
+const SEND_URL = "/api/public/comms/gmail/send";
+const ATTACHMENT_URL = "/api/public/comms/gmail/attachment";
+
+export interface GmailSendCapability {
+  connected: boolean;
+  /** False while the stored grant is read-only; the composer stays calm. */
+  canSend: boolean;
+  accountEmail?: string;
+  requiredScope?: string;
+}
+
+/** What the connected mailbox may do. Drives the composer's Send affordance. */
+export async function gmailSendStatus(organizationId: string): Promise<GmailSendCapability> {
+  const response = await fetch(`${SEND_URL}?organizationId=${encodeURIComponent(organizationId)}`, {
+    headers: { Authorization: `Bearer ${await token()}` },
+  });
+  const payload = (await response.json()) as Record<string, unknown>;
+  if (!response.ok) {
+    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That check failed.");
+  }
+  return payload as unknown as GmailSendCapability;
+}
+
+export interface GmailSendOutcome {
+  draftId: string;
+  state: "sent" | "sending" | "failed" | "blocked";
+  replayed?: boolean;
+  providerMessageId?: string;
+  providerThreadId?: string;
+  error?: string;
+  requiredScope?: string;
+}
+
+/**
+ * Send one draft through Gmail. Human-triggered only; idempotent per draft —
+ * a double click or a retry replays the recorded outcome instead of sending
+ * a second message.
+ */
+export async function gmailSendDraft(
+  organizationId: string,
+  draftId: string,
+  threadTarget?: { mode: "reply"; providerThreadId: string } | { mode: "new" },
+): Promise<GmailSendOutcome> {
+  const response = await fetch(SEND_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${await token()}`,
+    },
+    body: JSON.stringify({ organizationId, draftId, ...(threadTarget ? { threadTarget } : {}) }),
+  });
+  const payload = (await response.json()) as Record<string, unknown>;
+  // The permission checkpoint arrives as 403 with a structured outcome.
+  if (!response.ok && response.status !== 403) {
+    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That send failed.");
+  }
+  if (!response.ok && typeof payload["state"] !== "string") {
+    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That send failed.");
+  }
+  return payload as unknown as GmailSendOutcome;
+}
+
+/**
+ * Open one incoming attachment. Bytes come from Gmail on demand, proxied by
+ * our server under the member's own access; nothing is stored in Trust Tai.
+ */
+export async function gmailDownloadAttachment(input: {
+  organizationId: string;
+  messageId: string;
+  attachmentId: string;
+  filename: string;
+}): Promise<void> {
+  const response = await fetch(ATTACHMENT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${await token()}`,
+    },
+    body: JSON.stringify({
+      organizationId: input.organizationId,
+      messageId: input.messageId,
+      attachmentId: input.attachmentId,
+    }),
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    throw new Error(
+      typeof payload["error"] === "string" ? payload["error"] : "That file could not be opened.",
+    );
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = input.filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}

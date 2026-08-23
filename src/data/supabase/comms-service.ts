@@ -27,6 +27,11 @@ import {
   restoredProvenance,
   retractedProvenance,
 } from "@/domain/comms-touch-record";
+import {
+  writeOutgoingAttachments,
+  writeOutgoingExtras,
+  type OutgoingAttachmentRef,
+} from "@/domain/comms-outgoing";
 import type { EvidenceRef } from "@/domain/confidence";
 import type { VoiceRegister } from "@/domain/voice";
 
@@ -600,6 +605,79 @@ export const commsService = {
       .single();
     assertOk(error);
     if (!data) throw new Error("That draft could not be saved.");
+    return toDraft(data as unknown as DraftRow);
+  },
+
+  /**
+   * Edit a draft's wording. The draft stays a draft; its history, evidence,
+   * and send record are untouched. Content edits are quiet on purpose — the
+   * state changes are what the record narrates.
+   */
+  async updateDraftContent(
+    draft: CommsDraft,
+    patch: { subject?: string | null; body?: string },
+    context: CommsContext,
+  ): Promise<CommsDraft> {
+    const payload: Row = { updated_at: new Date().toISOString() };
+    if (patch.subject !== undefined) payload["subject"] = patch.subject?.trim() || null;
+    if (patch.body !== undefined) payload["body"] = patch.body;
+    const { data, error } = await supabase
+      .from("comms_drafts")
+      .update(payload)
+      .eq("id", draft.id)
+      .eq("organization_id", context.organizationId)
+      .select(DRAFT_COLUMNS)
+      .single();
+    assertOk(error);
+    if (!data) throw new Error("That draft could not be updated.");
+    return toDraft(data as unknown as DraftRow);
+  },
+
+  /**
+   * Stage or unstage files on a draft. The rationale carries metadata and the
+   * storage path only; the bytes live in the private draft-attachment bucket.
+   */
+  async setDraftAttachments(
+    draft: CommsDraft,
+    attachments: OutgoingAttachmentRef[],
+    context: CommsContext,
+  ): Promise<CommsDraft> {
+    const { data, error } = await supabase
+      .from("comms_drafts")
+      .update({
+        rationale: writeOutgoingAttachments(draft.rationale, attachments),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", draft.id)
+      .eq("organization_id", context.organizationId)
+      .select(DRAFT_COLUMNS)
+      .single();
+    assertOk(error);
+    if (!data) throw new Error("Those files could not be saved.");
+    return toDraft(data as unknown as DraftRow);
+  },
+
+  /**
+   * Stage CC/BCC on a draft. Same contract as the staged files: the draft's
+   * rationale carries them so what the person approved is on record.
+   */
+  async setDraftExtras(
+    draft: CommsDraft,
+    extras: { cc: string[]; bcc: string[] },
+    context: CommsContext,
+  ): Promise<CommsDraft> {
+    const { data, error } = await supabase
+      .from("comms_drafts")
+      .update({
+        rationale: writeOutgoingExtras(draft.rationale, extras),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", draft.id)
+      .eq("organization_id", context.organizationId)
+      .select(DRAFT_COLUMNS)
+      .single();
+    assertOk(error);
+    if (!data) throw new Error("Those recipients could not be saved.");
     return toDraft(data as unknown as DraftRow);
   },
 
