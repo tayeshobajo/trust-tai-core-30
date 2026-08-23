@@ -12,14 +12,19 @@
 
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { ID } from "@/domain/entities";
-import type { AttachmentMeta, StoredMailboxMessage } from "@/domain/comms-integrations";
+import {
+  mailboxFromProvenance,
+  type AttachmentMeta,
+  type StoredMailboxMessage,
+} from "@/domain/comms-integrations";
 
 const COLUMNS =
   "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, subject, snippet, occurred_at, provenance, attachments";
 const COLUMNS_WITHOUT_ATTACHMENTS =
   "id, organization_id, relationship_id, thread_id, provider_message_id, provider_thread_id, direction, from_email, from_name, subject, snippet, occurred_at, provenance";
 
-interface MessageRow {
+/** Exported for the focused provenance-mapping test. */
+export interface MessageRow {
   id: string;
   organization_id: string;
   relationship_id: string;
