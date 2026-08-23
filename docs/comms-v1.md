@@ -114,7 +114,9 @@ next-move logic as any client.
 
 **Comms agent continuity mission** (standing responsibility for the future
 Paperclip Comms agent): *Protect and develop every relationship Trust Tai
-has deliberately chosen to care about.* Gmail continuity rules:
+has deliberately chosen to care about.*
+
+### Gmail continuity rules
 
 - Once a person is approved into Comms, their known email identity belongs
   to that relationship; a new Gmail thread from the same approved email is
@@ -125,6 +127,43 @@ has deliberately chosen to care about.* Gmail continuity rules:
   continuity mechanisms, but no Gmail mutation permissions are granted now.
 - A changed or new email identity requires human confirmation before
   merging into a relationship.
+
+### Continuity examples (maintenance reference)
+
+**Multi-thread, same approved email.**
+Tai adds `jane@acme.co` to Comms from a Gmail thread labeled `Trust Tai/Comms`.
+A month later, a different Gmail thread with Jane arrives, also labeled
+`Trust Tai/Comms`, about a new topic. The sync must store the second thread under
+Jane's existing relationship (`comms_relationships` row), not create a new
+relationship or contact. Both threads appear in her conversation history; the
+new topic is simply a new thread under the same person.
+
+**Same approved email, new conversation.**
+`jane@acme.co` is already in Comms. A fresh labeled inbound message from
+`jane@acme.co` appears in Gmail. The message is stored as a new message under
+Jane's existing relationship and thread. No human confirmation is needed because
+the From address is already an approved identity for that relationship.
+
+**Changed/new email identity — requires human confirmation.**
+A labeled Gmail thread arrives from `jane.smith@acme.co`, but the existing
+relationship for Jane is tied to `jane@acme.co`. Even if the display name or
+domain matches, the new address is not yet approved for that relationship. Comms
+must surface the new email for human review (e.g., "Jane also emailed from
+jane.smith@acme.co — merge into the existing relationship?"). Until confirmed,
+the message is treated as pending/unknown, not stored under the original
+relationship, and no new relationship is auto-created. After confirmation, the
+new address becomes an approved identity on the same relationship and future
+messages from it attach automatically.
+
+**What must never happen.**
+- Auto-creating a second relationship, contact, or duplicate record because the
+  same person appears on a new thread.
+- Treating a changed or secondary email as the same identity without human
+  confirmation.
+- Auto-merging two people who share a company or display name but are not the
+  same individual.
+- Reading or storing unlabeled Gmail, or adding/removing Gmail labels, to make
+  continuity "work."
 
 ## Capture
 
