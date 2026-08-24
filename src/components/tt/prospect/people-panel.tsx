@@ -229,7 +229,7 @@ export function PeoplePanel({
           aria-label="People on record"
         >
           {people.length > 0 ? (
-            <ul id="scout-people-role" className="space-y-4">
+            <ul id="scout-people-role" tabIndex={-1} className="space-y-4 focus:outline-none">
               {people.map((person) => (
                 <PersonRow
                   key={person.id}
