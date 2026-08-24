@@ -173,3 +173,35 @@ Existing rows keep their stored `metadata.scout_fit` until someone clicks
 **Re-research website**, which rescores under v2 with `research_version: 3`
 provenance. Qualify still sets `qualified` only; nothing becomes
 `ready_for_comms` automatically.
+
+## Relationship development doctrine (locked)
+
+Scout finds, Comms develops, Roadmap builds. These laws govern the whole loop:
+
+- **60% fit triggers research, not outreach.** Crossing the ICP line makes a
+  company a candidate for deeper relationship-development research — nothing
+  more. It never sends, never creates a Comms relationship, and never approves
+  outreach.
+- **The actionable Worth Knowing queue is people, not anonymous companies.**
+  60%+ fit AND a traceable founder/decision maker is required. A strong-fit
+  company with no person on record sits quietly as "Needs a person" — visible,
+  never presented as ready.
+- **The goal is to earn the next natural exchange, not a meeting.**
+- **Text is a protected personal channel.** It is recommended only on explicit
+  text-route evidence (a number they shared, a prior SMS conversation, an
+  explicit text preference) — never from having met, an introduction, or a
+  found phone number. Phone numbers are never inferred or scraped.
+- **Deeper research is governed and bounded.** When eligibility is newly
+  reached, Scout prepares a Relationship Development Brief (why now · what
+  caught our attention · best way in · a useful bridge) from public
+  professional evidence only. It re-runs only when eligibility is new,
+  evidence moved, the brief is stale (30 days), or a person explicitly
+  refreshes. Provenance (prepared at, evidence at, version) travels with the
+  brief so the UI can say what was researched and when.
+- **Roadmap is recognized from needs THEY revealed** — counterparty-authored
+  words only, quoted history stripped. Our own copy can never manufacture a
+  signal, and nothing is ever auto-created or pitched.
+
+Implementation: `src/data/relationship-development.ts` (compute),
+`src/data/supabase/scout-service.ts` (`prepareRelationshipDevelopment`),
+`src/components/tt/scout/worth-knowing.tsx` (membership gate).

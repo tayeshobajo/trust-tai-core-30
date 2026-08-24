@@ -93,6 +93,24 @@ export interface RelationshipResearchEligibility {
 
 export type RelationshipChannel = "email" | "linkedin" | "text";
 
+/**
+ * The only evidence that can ever open the text channel. Text is a protected
+ * personal channel: a number exchanged for direct contact, a prior SMS
+ * conversation, or an explicit stated preference. Meeting someone, being
+ * introduced, or finding a phone number on the web is never evidence, and a
+ * phone number is never inferred or scraped.
+ */
+export type TextChannelEvidence =
+  | "exchanged_direct_number"
+  | "prior_sms_conversation"
+  | "explicit_text_preference";
+
+export const TEXT_CHANNEL_EVIDENCE_LABEL: Record<TextChannelEvidence, string> = {
+  exchanged_direct_number: "They shared a direct number",
+  prior_sms_conversation: "You have texted before",
+  explicit_text_preference: "They asked to be texted",
+};
+
 export const RELATIONSHIP_CHANNEL_LABEL: Record<RelationshipChannel, string> = {
   email: "Email",
   linkedin: "LinkedIn",
@@ -233,6 +251,30 @@ export const DEVELOPMENT_STAGE_LABEL: Record<DevelopmentStage, string> = {
   developing: "Developing",
 };
 
+/* ------------------------------------------------- preparation (research) */
+
+/**
+ * The governed state of deeper relationship-development research on one
+ * prospect. Sixty percent ICP fit plus a traceable decision maker makes a
+ * brief worth preparing; the work is research only. It never sends, never
+ * creates a Comms relationship, and never approves outreach.
+ */
+export type RelationshipResearchState = "research_needed" | "prepared" | "not_eligible";
+
+export interface RelationshipResearchMarker {
+  state: RelationshipResearchState;
+  /** Why the marker is in this state, in plain language. */
+  because: string;
+  version: number;
+  /** When the prospect first became eligible. Carried forward across refreshes. */
+  eligibleSince?: ISODateTime;
+  preparedAt?: ISODateTime;
+  /** The evidence timestamp the brief was built from; a mismatch means refresh. */
+  evidenceAt?: ISODateTime;
+  /** The calm brief, when prepared. Never a research-report dump. */
+  brief?: RelationshipDevelopmentBrief;
+}
+
 /* -------------------------------------------------------------- watch state */
 
 /** A person's own pacing decision on the prospect record. */
@@ -242,4 +284,6 @@ export interface RelationshipDevelopmentMarker {
   watch: WatchState | null;
   by?: string;
   at?: ISODateTime;
+  /** The prepared/needed/not-eligible research state, when it exists. */
+  research?: RelationshipResearchMarker;
 }

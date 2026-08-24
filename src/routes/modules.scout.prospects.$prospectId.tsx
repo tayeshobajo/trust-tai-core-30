@@ -277,6 +277,17 @@ function CompanyDetail({
     onSuccess: refresh,
   });
 
+  // The governed deeper-research action. Idempotent: a current brief is left
+  // untouched, a stale or missing one is prepared from stored public evidence.
+  const prepareBrief = useMutation({
+    mutationFn: (force: boolean | undefined) =>
+      scoutService.prepareRelationshipDevelopment(
+        { prospectId, ...(force !== undefined ? { force } : {}) },
+        { organizationId, userId },
+      ),
+    onSuccess: refresh,
+  });
+
   const addPerson = useMutation({
     mutationFn: (form: ManualPersonForm) =>
       peopleService.addManual(
@@ -290,12 +301,20 @@ function CompanyDetail({
         },
         { organizationId, userId },
       ),
-    onSuccess: refresh,
+    // A newly added founder can make the company newly eligible — prepare the
+    // brief if so (research only; a current brief is never re-run).
+    onSuccess: () => {
+      prepareBrief.mutate(undefined);
+      refresh();
+    },
   });
 
   const confirmEmail = useMutation({
     mutationFn: (person: Person) => peopleService.confirmEmail(person, { organizationId, userId }),
-    onSuccess: refresh,
+    onSuccess: () => {
+      prepareBrief.mutate(undefined);
+      refresh();
+    },
   });
 
   const routeToComms = useMutation({
@@ -337,6 +356,7 @@ function CompanyDetail({
     ingest.error ??
     addPerson.error ??
     confirmEmail.error ??
+    prepareBrief.error ??
     routeToComms.error ??
     addNote.error ??
     saved.error) as Error | null;
@@ -349,6 +369,7 @@ function CompanyDetail({
     ingest.isPending ||
     addPerson.isPending ||
     confirmEmail.isPending ||
+    prepareBrief.isPending ||
     routeToComms.isPending ||
     addNote.isPending;
 
@@ -639,7 +660,12 @@ function CompanyDetail({
                   total={derived.allSignals.length}
                   onViewAll={() => void goToTab("signals")}
                 />
-                <RelationshipOpportunityCard candidate={candidate} people={peopleRows} />
+                <RelationshipOpportunityCard
+                  candidate={candidate}
+                  people={peopleRows}
+                  onPrepareBrief={(force) => prepareBrief.mutate(force)}
+                  preparing={prepareBrief.isPending}
+                />
                 <IcpAlignmentCard
                   view={derived.factors}
                   onViewAnalysis={() => void goToTab("icp")}

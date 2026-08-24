@@ -9,11 +9,13 @@
 
 import { useMemo } from "react";
 
+import { TTButton } from "@/components/tt/primitives";
 import {
   bestEntryPerson,
   buildRelationshipBrief,
   computeRelationshipOpportunity,
   opportunityPeople,
+  planRelationshipPreparation,
   recommendChannel,
   relationshipResearchEligible,
 } from "@/data/relationship-development";
@@ -35,12 +37,24 @@ const STATE_TONE: Record<string, string> = {
   not_appropriate: "border-border bg-card text-muted-foreground",
 };
 
+function formatDay(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "recently"
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 export function RelationshipOpportunityCard({
   candidate,
   people,
+  onPrepareBrief,
+  preparing = false,
 }: {
   candidate: ProspectCandidate;
   people: Person[];
+  /** The governed deeper-research action; absent means this surface is read-only. */
+  onPrepareBrief?: ((force?: boolean) => void) | undefined;
+  preparing?: boolean;
 }) {
   const read = useMemo(() => {
     const intel = candidate.intel ?? EMPTY_INTEL;
@@ -53,10 +67,12 @@ export function RelationshipOpportunityCard({
       opportunity.state === "ready" || opportunity.state === "watching"
         ? buildRelationshipBrief({ candidate, intel, people })
         : null;
-    return { opportunity, eligibility, entry, channel, brief };
+    const research = candidate.development?.research;
+    const preparation = planRelationshipPreparation({ candidate, people });
+    return { opportunity, eligibility, entry, channel, brief, research, preparation };
   }, [candidate, people]);
 
-  const { opportunity, eligibility, channel, brief } = read;
+  const { opportunity, eligibility, channel, brief, research, preparation } = read;
 
   return (
     <Panel
@@ -76,6 +92,35 @@ export function RelationshipOpportunityCard({
     >
       <div className="space-y-5">
         <p className="text-[13px] text-muted-foreground">{eligibility.because}</p>
+
+        {eligibility.eligible ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-4">
+            <p className="text-[12px] text-muted-foreground">
+              {research?.state === "prepared" && research.preparedAt
+                ? `Brief prepared ${formatDay(research.preparedAt)}${
+                    research.evidenceAt ? ` from evidence read ${formatDay(research.evidenceAt)}` : ""
+                  }. Research only — nothing has been sent and no relationship was created.${
+                    preparation.action === "refresh" ? ` ${preparation.because}` : ""
+                  }`
+                : "The deeper brief has not been prepared from the stored evidence yet."}
+            </p>
+            {onPrepareBrief ? (
+              <TTButton
+                variant="secondary"
+                size="sm"
+                disabled={preparing}
+                onClick={() => onPrepareBrief(research?.state === "prepared" ? true : undefined)}
+              >
+                {preparing
+                  ? "Preparing…"
+                  : research?.state === "prepared"
+                    ? "Refresh the brief"
+                    : "Prepare the brief"}
+              </TTButton>
+            ) : null}
+          </div>
+        ) : null}
+
 
         {opportunity.factors.length > 0 ? (
           <ul className="grid gap-2 sm:grid-cols-2">

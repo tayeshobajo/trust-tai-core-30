@@ -1,13 +1,16 @@
 /**
  * Worth knowing, Scout's relationship opportunity queue.
  *
- * One calm list of the companies where evidence says a real relationship
+ * One calm list of the PEOPLE where evidence says a real relationship
  * opportunity may exist. Every row answers, in order: who this is, why now,
  * what genuinely caught our attention, the best way in, and a useful bridge.
  *
- * This is not a leaderboard. Fit decides whether a company belongs here at
- * all (60%+ against the ICP); the opportunity read decides the order. Rows a
- * person set aside stay set aside until they say otherwise.
+ * This is not a leaderboard, and the actionable queue is never anonymous
+ * companies: 60%+ ICP fit makes a company a candidate for deeper research,
+ * and a traceable founder or decision maker makes a person eligible to be
+ * considered here. Strong-fit companies with no person on record yet sit
+ * quietly below as "needs a person" — visible, never presented as ready.
+ * Rows a person set aside stay set aside until they say otherwise.
  */
 
 import { Link } from "@tanstack/react-router";
@@ -23,7 +26,9 @@ import {
   recommendChannel,
   opportunityPeople,
   bestEntryPerson,
+  worthKnowingMembership,
   worthKnowingSort,
+  type WorthKnowingMembership,
 } from "@/data/relationship-development";
 import type { ScoutLinkSearch } from "@/components/tt/scout/company-table";
 import { paginate } from "@/data/scout-table";
@@ -32,6 +37,7 @@ import {
   RELATIONSHIP_CHANNEL_LABEL,
   RELATIONSHIP_OPPORTUNITY_LABEL,
   type RelationshipOpportunity,
+  type RelationshipResearchMarker,
 } from "@/domain/relationship-development";
 import type { ProspectCandidate } from "@/domain/scout";
 import { EMPTY_INTEL } from "@/domain/scout-intel";
@@ -41,9 +47,10 @@ import type { WorkspaceIdentity } from "@/lib/workspace";
 interface WorthKnowingEntry {
   candidate: ProspectCandidate;
   opportunity: RelationshipOpportunity;
-  eligible: boolean;
+  membership: WorthKnowingMembership;
   eligibleBecause: string;
   watch: "watching" | "not_now" | null;
+  research?: RelationshipResearchMarker;
 }
 
 const STATE_TONE: Record<RelationshipOpportunity["state"], string> = {
@@ -57,14 +64,21 @@ function buildEntry(candidate: ProspectCandidate): WorthKnowingEntry {
   const intel = candidate.intel ?? EMPTY_INTEL;
   const opportunity = computeRelationshipOpportunity({ candidate, intel });
   const eligibility = relationshipResearchEligible(candidate, opportunityPeople(intel));
-  const watch = candidate.development?.watch ?? null;
   return {
     candidate,
     opportunity,
-    eligible: eligibility.eligible,
+    membership: worthKnowingMembership(candidate),
     eligibleBecause: eligibility.because,
-    watch,
+    watch: candidate.development?.watch ?? null,
+    ...(candidate.development?.research ? { research: candidate.development.research } : {}),
   };
+}
+
+function formatDay(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "recently"
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export function WorthKnowingQueue({
@@ -98,46 +112,42 @@ export function WorthKnowingQueue({
       queryClient.invalidateQueries({ queryKey: ["scout", "prospects", identity.organizationId] }),
   });
 
-  const entries = useMemo(() => {
-    // Only strong-fit, actively researched companies belong on this surface.
-    const eligible = candidates
-      .filter(
-        (candidate) =>
-          candidate.prospect.status !== "passed" &&
-          candidate.prospect.status !== "archived" &&
-          candidate.evaluation.scoreable &&
-          candidate.evaluation.score >= 60,
-      )
-      .map(buildEntry);
-    const watching = eligible.filter((entry) => entry.watch !== "not_now");
-    return [...watching].sort((a, b) =>
+  const { entries, needsPerson, setAside } = useMemo(() => {
+    // The actionable queue is people: 60%+ fit AND a traceable founder or
+    // decision maker. Fit alone never puts an anonymous company here.
+    const actionable: WorthKnowingEntry[] = [];
+    const waitingOnPerson: WorthKnowingEntry[] = [];
+    let aside = 0;
+    for (const candidate of candidates) {
+      if (worthKnowingMembership(candidate) === "outside") continue;
+      const entry = buildEntry(candidate);
+      if (entry.watch === "not_now") {
+        aside += 1;
+      } else if (entry.membership === "actionable") {
+        actionable.push(entry);
+      } else {
+        waitingOnPerson.push(entry);
+      }
+    }
+    actionable.sort((a, b) =>
       worthKnowingSort(
         { opportunity: a.opportunity, fitScore: a.candidate.evaluation.score },
         { opportunity: b.opportunity, fitScore: b.candidate.evaluation.score },
       ),
     );
+    waitingOnPerson.sort((a, b) => b.candidate.evaluation.score - a.candidate.evaluation.score);
+    return { entries: actionable, needsPerson: waitingOnPerson, setAside: aside };
   }, [candidates]);
-
-  const setAside = useMemo(
-    () =>
-      candidates.filter(
-        (candidate) =>
-          candidate.evaluation.scoreable &&
-          candidate.evaluation.score >= 60 &&
-          candidate.development?.watch === "not_now",
-      ).length,
-    [candidates],
-  );
 
   useEffect(() => setPage(1), [entries.length, pageSize]);
   const view = paginate(entries, page, pageSize);
 
-  if (entries.length === 0) {
+  if (entries.length === 0 && needsPerson.length === 0) {
     return (
       <EmptyState
         title="No relationship opportunities yet"
-        belongsHere="Companies that reach 60% ICP fit appear here with an honest read on whether there is a timely reason to enter their world."
-        whyItMatters="Fit alone never creates an opportunity. A real person, a socially appropriate route, and something real to notice all have to line up first."
+        belongsHere="People at strong-fit companies appear here — 60%+ ICP fit, plus a founder or decision maker with a real way in on record."
+        whyItMatters="Fit alone never creates an opportunity, and a company with no person is never treated as ready. A real person, a socially appropriate route, and something real to notice all have to line up first."
       />
     );
   }
@@ -147,7 +157,7 @@ export function WorthKnowingQueue({
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-[13px] text-muted-foreground">
           People worth knowing, ordered by whether there is a legitimate, timely reason to act.
-          Fit decides who belongs here; evidence decides the order.
+          Fit decides who is considered; a traceable person decides who appears.
         </p>
       </div>
 
@@ -171,6 +181,49 @@ export function WorthKnowingQueue({
 
       <ScoutPagination view={view} pageSize={pageSize} onPage={setPage} onPageSize={setPageSize} />
 
+      {needsPerson.length > 0 ? (
+        <div className="rounded-xl border border-border bg-card/60 p-4">
+          <p className="text-[13px] font-medium text-foreground">Needs a person</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Strong-fit companies we cannot honestly develop a relationship with yet — no founder or
+            decision maker with a way in is on record. Find the person first; the opportunity read
+            follows.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {needsPerson.map((entry) => (
+              <li
+                key={entry.candidate.prospect.id}
+                className="flex flex-wrap items-center justify-between gap-2 text-[13px]"
+              >
+                <span className="flex min-w-0 flex-wrap items-center gap-2">
+                  <Link
+                    to="/modules/scout/prospects/$prospectId"
+                    params={{ prospectId: entry.candidate.prospect.id }}
+                    search={linkSearch}
+                    className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {entry.candidate.prospect.name}
+                  </Link>
+                  <MetaPill>{entry.candidate.evaluation.score}% fit</MetaPill>
+                  <span className="text-[12px] text-muted-foreground">
+                    {entry.eligibleBecause}
+                  </span>
+                </span>
+                <TTButton asChild variant="quiet" size="sm">
+                  <Link
+                    to="/modules/scout/prospects/$prospectId"
+                    params={{ prospectId: entry.candidate.prospect.id }}
+                    search={linkSearch}
+                  >
+                    Find the person
+                  </Link>
+                </TTButton>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {setAside > 0 ? (
         <p className="text-xs text-muted-foreground">
           {setAside} strong-fit {setAside === 1 ? "company is" : "companies are"} set aside for now.
@@ -192,7 +245,7 @@ function WorthKnowingRow({
   onWatch: (watch: "watching" | "not_now" | null) => void;
   busy: boolean;
 }) {
-  const { candidate, opportunity } = entry;
+  const { candidate, opportunity, research } = entry;
   const intel = candidate.intel ?? EMPTY_INTEL;
   const people = opportunityPeople(intel);
   const entryPerson = bestEntryPerson(people);
@@ -232,6 +285,11 @@ function WorthKnowingRow({
             {entry.watch === "watching" ? <MetaPill>Worth watching</MetaPill> : null}
           </div>
           <p className="mt-1.5 text-[13px] text-muted-foreground">{opportunity.headline}</p>
+          <p className="mt-1 text-[12px] text-muted-foreground/80">
+            {research?.state === "prepared" && research.preparedAt
+              ? `Brief prepared ${formatDay(research.preparedAt)} from the stored public evidence. Nothing has been sent.`
+              : "Research needed — the deeper brief has not been prepared for this person yet."}
+          </p>
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
