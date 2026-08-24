@@ -64,7 +64,8 @@ function legacyDiscoveryRow(): FakeRow {
 }
 
 beforeEach(() => {
-  db.reset();
+  db.tables["contacts"] = [];
+  db.tables["activities"] = [];
 });
 
 describe("contacts metadata round trip", () => {
