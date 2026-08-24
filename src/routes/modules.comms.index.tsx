@@ -774,7 +774,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                   <p className="mt-2 text-[13px] text-muted-foreground">{roadmapSignal.because}</p>
                   <ul className="mt-2 space-y-1">
                     {roadmapSignal.needs.map((need) => (
-                      <li key={need.key} className="text-[13px] text-foreground">
+                      <li key={need.kind} className="text-[13px] text-foreground">
                         <span className="font-medium">{need.label}</span>
                         <span className="text-muted-foreground"> — {need.evidence}</span>
                       </li>

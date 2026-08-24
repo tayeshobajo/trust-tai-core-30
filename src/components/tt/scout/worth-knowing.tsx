@@ -256,14 +256,14 @@ function WorthKnowingRow({
             </TTButton>
           ) : null}
           <TTButton
-            variant="ghost"
+            variant="quiet"
             size="sm"
             disabled={busy}
             onClick={() => onWatch(entry.watch === "watching" ? null : "watching")}
           >
             {entry.watch === "watching" ? "Watching" : "Watch"}
           </TTButton>
-          <TTButton variant="ghost" size="sm" disabled={busy} onClick={() => onWatch("not_now")}>
+          <TTButton variant="quiet" size="sm" disabled={busy} onClick={() => onWatch("not_now")}>
             Not now
           </TTButton>
         </div>

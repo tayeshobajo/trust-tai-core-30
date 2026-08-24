@@ -333,7 +333,7 @@ export const scoutService = {
     });
     await supabaseActivity.record({
       organizationId: context.organizationId,
-      name: "prospect.relationship_watch",
+      name: "prospect.decided",
       subject: { type: "prospect", id: input.prospectId, label: input.companyName },
       summary:
         input.watch === "watching"
