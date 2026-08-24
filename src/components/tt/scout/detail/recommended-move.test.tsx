@@ -290,3 +290,69 @@ describe("prepare research feedback", () => {
     expect(props.onPrepareBrief).toHaveBeenCalledWith(false);
   });
 });
+
+/* --------------------------------- G · confirm feedback ------------------ */
+
+describe("confirm this address feedback", () => {
+  it("shows a pending state on the exact blocker being confirmed", () => {
+    const { rerender, props } = renderCard();
+    fireEvent.click(screen.getByRole("button", { name: "Resolve 2 blockers" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm this address" }));
+    expect(props.onConfirmEmail).toHaveBeenCalledWith(expect.objectContaining({ id: "person-1" }));
+
+    rerender(<RecommendedNextMoveCard {...props} confirmingEmailId="person-1" />);
+    const pending = screen.getByRole("button", { name: "Confirming…" });
+    expect(pending.hasAttribute("disabled")).toBe(true);
+    // The other blocker's action is untouched by this person's pending state.
+    expect(screen.getByRole("button", { name: "Refresh the company read" })).toBeTruthy();
+  });
+
+  it("acknowledges a saved confirmation in place while the read catches up", () => {
+    const { rerender, props } = renderCard();
+    fireEvent.click(screen.getByRole("button", { name: "Resolve 2 blockers" }));
+    rerender(<RecommendedNextMoveCard {...props} confirmedEmailId="person-1" />);
+
+    expect(screen.getByText(/Address confirmed/)).toBeTruthy();
+    // The blocker is still counted until the refreshed read clears it.
+    expect(screen.getByText("0 of 2 resolved")).toBeTruthy();
+  });
+
+  it("the acknowledgement leaves with the blocker once the read clears", () => {
+    const { rerender, props } = renderCard();
+    fireEvent.click(screen.getByRole("button", { name: "Resolve 2 blockers" }));
+    rerender(<RecommendedNextMoveCard {...props} confirmedEmailId="person-1" />);
+    expect(screen.getByText(/Address confirmed/)).toBeTruthy();
+
+    rerender(
+      <RecommendedNextMoveCard
+        {...props}
+        move={readyMove}
+        blockers={[]}
+        firstMessageReady
+        confirmedEmailId="person-1"
+      />,
+    );
+    expect(screen.queryByText(/Address confirmed/)).toBeNull();
+    expect(screen.getByText(/Carry Dozen Bakery into Comms/)).toBeTruthy();
+  });
+
+  it("surfaces the exact failure next to its blocker with a working retry", () => {
+    const { rerender, props } = renderCard();
+    fireEvent.click(screen.getByRole("button", { name: "Resolve 2 blockers" }));
+    rerender(
+      <RecommendedNextMoveCard
+        {...props}
+        confirmEmailError={{ personId: "person-1", message: "That change could not be saved." }}
+      />,
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("That change could not be saved.");
+    // The blocker did not clear — a failed click changes nothing silently.
+    expect(screen.getByText(EMAIL_BLOCKER.message)).toBeTruthy();
+    expect(screen.getByText("0 of 2 resolved")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(props.onConfirmEmail).toHaveBeenCalledWith(expect.objectContaining({ id: "person-1" }));
+  });
+});

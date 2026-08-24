@@ -378,13 +378,14 @@ function CompanyDetail({
   const notes = allEvents.filter((event) => event.name === "prospect.commented");
   const peopleRows = people.data ?? [];
 
+  // The confirm failure surfaces inline next to its blocker, where the click
+  // happened — not as a detached page-level banner.
   const error = (research.error ??
     setResearchConsent.error ??
     setStatus.error ??
     recordDecision.error ??
     ingest.error ??
     addPerson.error ??
-    confirmEmail.error ??
     routeToComms.error ??
     setWatch.error ??
     addNote.error ??
@@ -749,7 +750,21 @@ function CompanyDetail({
                   prepareError={prepareErrorMessage}
                   firstMessageReady={firstMessageDraft.ready}
                   routingFirstMessage={routeToComms.isPending}
-                  confirmingEmail={confirmEmail.isPending}
+                  confirmingEmailId={
+                    confirmEmail.isPending ? (confirmEmail.variables?.id ?? null) : null
+                  }
+                  confirmedEmailId={confirmEmail.data?.id ?? null}
+                  confirmEmailError={
+                    confirmEmail.error
+                      ? {
+                          personId: confirmEmail.variables?.id ?? "",
+                          message:
+                            confirmEmail.error instanceof Error
+                              ? confirmEmail.error.message
+                              : "That confirmation could not be saved. Retry when you are ready.",
+                        }
+                      : null
+                  }
                   researchPending={research.isPending}
                   onPrimary={onRecommendedPrimary}
                   onPrepareFirstMessage={prepareFirstMessage}
@@ -757,7 +772,10 @@ function CompanyDetail({
                   onPrepareBrief={(force) =>
                     prepareBrief.mutate(force ? { force: true } : {})
                   }
-                  onConfirmEmail={(person) => confirmEmail.mutate(person)}
+                  onConfirmEmail={(person) => {
+                    confirmEmail.reset();
+                    confirmEmail.mutate(person);
+                  }}
                   onRunResearch={() => startResearch()}
                   onOpenPeople={resolveHandoffBlockers}
                   onSeeResearch={() =>

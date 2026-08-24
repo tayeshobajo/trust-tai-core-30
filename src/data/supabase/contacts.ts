@@ -63,10 +63,33 @@ function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
-function peopleMeta(row: ContactRow): Row {
-  const metadata = (row.metadata ?? {}) as Row;
+/**
+ * Where people-owned fields live inside `metadata`. Rows written by the
+ * discovery pipeline nest them under `people`; rows written by the app keep
+ * them at the root. Reads and writes must resolve the same location for a
+ * record — otherwise a confirmation lands where the next read never looks.
+ */
+function peopleMetaOf(metadata: Row): Row {
   const nested = metadata["people"];
-  return nested && typeof nested === "object" ? (nested as Row) : metadata;
+  return nested && typeof nested === "object" && !Array.isArray(nested)
+    ? (nested as Row)
+    : metadata;
+}
+
+function peopleMeta(row: ContactRow): Row {
+  return peopleMetaOf((row.metadata ?? {}) as Row);
+}
+
+/**
+ * Merge people-owned fields into the same location `peopleMetaOf` reads,
+ * leaving every unrelated key — root or nested — exactly as it was.
+ */
+function mergePeopleMeta(metadata: Row, patch: Row): Row {
+  const nested = metadata["people"];
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    return { ...metadata, people: { ...(nested as Row), ...patch } };
+  }
+  return { ...metadata, ...patch };
 }
 
 export function toPerson(row: ContactRow): Person {
@@ -215,19 +238,23 @@ export async function updateContact(id: ID, patch: ContactPatch, userId: ID): Pr
   }
 
   const row = current.data as unknown as ContactRow;
-  const meta = { ...((row.metadata ?? {}) as Row) };
   const at = new Date().toISOString();
 
-  if (patch.seniority) meta["seniority"] = patch.seniority;
+  // People-owned fields merge into the same metadata location the next read
+  // resolves — nested for discovery-written records, root otherwise.
+  const peoplePatch: Row = {};
+  if (patch.seniority) peoplePatch["seniority"] = patch.seniority;
   if (patch.emailStatus) {
-    meta["email_status"] = patch.emailStatus;
-    meta["email_checked_at"] = at;
-    meta["email_checked_by"] = patch.emailCheckedBy ?? "human";
+    peoplePatch["email_status"] = patch.emailStatus;
+    peoplePatch["email_checked_at"] = at;
+    peoplePatch["email_checked_by"] = patch.emailCheckedBy ?? "human";
   }
-  if (patch.confidence) meta["confidence"] = patch.confidence;
-  if (patch.linkedinUrl !== undefined) meta["linkedin_url"] = patch.linkedinUrl;
-  meta["last_edited_by"] = userId;
-  meta["last_edited_at"] = at;
+  if (patch.confidence) peoplePatch["confidence"] = patch.confidence;
+  if (patch.linkedinUrl !== undefined) peoplePatch["linkedin_url"] = patch.linkedinUrl;
+  peoplePatch["last_edited_by"] = userId;
+  peoplePatch["last_edited_at"] = at;
+
+  const meta = mergePeopleMeta((row.metadata ?? {}) as Row, peoplePatch);
 
   const payload: Row = {
     ...(patch.fullName ? { full_name: patch.fullName } : {}),
