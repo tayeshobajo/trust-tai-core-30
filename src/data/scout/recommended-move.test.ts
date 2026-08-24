@@ -111,9 +111,9 @@ describe("find the person first", () => {
   it("fit 82 with no traceable person never offers a first message", () => {
     const move = buildRecommendedNextMove({ candidate: candidate({ score: 82 }), now: NOW });
     expect(move.state).toBe("find_person");
-    expect(move.label).toBe("Find the person first");
+    expect(move.label).toBe("Find the founder");
     expect(move.primary.kind).toBe("find_person");
-    expect(move.primary.label).toBe("Find the person");
+    expect(move.primary.label).toBe("Find the founder");
     expect(move.primary.kind).not.toBe("prepare_first_message");
   });
 });
@@ -541,8 +541,20 @@ describe("the person stage distinguishes the real missing step", () => {
   });
 
   it("7 · a ready brief is Prepare first message on the First message stage", () => {
+    const people = [
+      {
+        id: "rec-1",
+        fullName: "Claire Meneely",
+        roleTitle: "Founder",
+        seniority: "founder",
+        email: "claire@example.com",
+        emailStatus: "verified",
+        confidence: "human_confirmed",
+      },
+    ] as unknown as Person[];
     const move = buildRecommendedNextMove({
       candidate: readyCandidate(),
+      people,
       now: NOW,
       firstMessage: { ready: true, blockers: [] },
     });
