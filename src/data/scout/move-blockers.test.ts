@@ -76,7 +76,7 @@ describe("buildMoveBlockers", () => {
       coverage: full,
     });
     expect(blockers.length).toBeGreaterThan(0);
-    expect(blockers.every((blocker) => block.action.kind === "open_people")).toBe(true);
+    expect(blockers.every((blocker) => blocker.action.kind === "open_people")).toBe(true);
     const roleRow = blockers.find((blocker) => blocker.key.startsWith("no_role"));
     expect(roleRow?.person?.id).toBe("person-1");
   });
