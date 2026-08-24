@@ -1,1339 +1,851 @@
 /**
- * One company, read as a candidate.
+ * Scout, company detail.
  *
- * The page is organized around one recommended next move, one clear reason,
- * and one primary action. Overview keeps the summary, the move and the
- * handoff; Signals, Research, People and History carry the underlying
- * evidence. Nothing here sends anything.
+ * One question leads this page: does this company deserve our attention, and
+ * why? The Overview answers it in a curated way; the deeper tabs hold the
+ * exhaustive evidence. Nothing here executes on its own.
  */
 
-import { useEffect, useMemo, useRef, useState, type Ref } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  createFileRoute,
-  Link,
-  useNavigate,
-  useParams,
-  useSearch,
-} from "@tanstack/react-router";
-import { ArrowLeft, CircleAlert } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { toast } from "sonner";
 
-import { RecommendedNextMoveCard } from "@/components/tt/scout/detail/recommended-move";
+
+import { AppShell } from "@/components/tt/app-shell";
+import { EmptyState, TTButton } from "@/components/tt/primitives";
+import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
+import { InboundSourceCard } from "@/components/tt/scout/inbound-source";
 import {
-  DetailSection,
-  Empty,
-  FactorIcon,
-  SectionLink,
-  StrengthPill,
-  relativeTime,
-} from "@/components/tt/scout/detail/parts";
-import { type ICPFactorStatus } from "@/data/scout/icp-factors";
-import { SectionLabel, TTButton, ToneDot } from "@/components/tt/primitives";
+  InboundOriginRail,
+  StatedPanel,
+  StatedTranscript,
+} from "@/components/tt/scout/inbound";
 import {
-  ActivityNote,
-  BeforeAfter,
-  ComparisonCard,
-  ConfirmAction,
-  ConfidenceChip,
-  EvidenceLink,
-  FitLight,
-  HandoffPanel,
-  NextMovePanel,
-  OpportunityCard,
-  Panel,
-  SignalRow,
-  TierTag,
-  WhyWeThink,
-} from "@/components/tt/prospect/panel";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "@/components/ui/sonner";
-import { resolveContact } from "@/data/people/enrichment";
-import { buildActivitySummary } from "@/data/scout/activity";
-import { buildHandoff, buildHandoffBlockers } from "@/data/comms-handoff";
-import { estimateRelationshipReadiness } from "@/data/comms-onboarding";
+  EvidenceReviewPanel,
+  TaiDecisionStatePanel,
+} from "@/components/tt/scout/detail/research";
 import {
-  buildNextMove,
-  buildResearchCoverage,
-  type NextMove,
-} from "@/data/prospect-modules";
+  DecisionStatePanel,
+  type DecisionCommit,
+} from "@/components/tt/scout/detail/decision-state";
+import { buildDecisionState } from "@/data/scout/decision-state";
 import {
-  computeFactorStatus,
-  deriveFitConfidence,
-  deriveModuleConfidence,
-} from "@/data/scout-confidence";
-import { buildMoveBlockers } from "@/data/scout/move-blockers";
+  contradictions,
+  evidenceCoverage,
+  evidenceThemes,
+  lastResearchedAt,
+  scoutRead,
+} from "@/data/scout/research-brief";
+import type { ProspectCandidate } from "@/domain/scout";
+import { researchPermission } from "@/data/scout/research-consent";
+import {
+  planResearchRun,
+  researchLifecycle,
+  type ResearchRunPlan,
+} from "@/data/scout/research-run";
+import { inboundToldUs } from "@/data/scout/inbound";
+import {
+  ContradictionsPanel,
+  CoverageStrip,
+  EvidenceLanes,
+  ResearchHeader,
+  ResearchSources,
+  RerunPanel,
+  ScoutReadPanel,
+} from "@/components/tt/scout/detail/research-brief";
+import {
+  hasResearchWorkspace,
+  reviewStatedEvidence,
+  scoutConductorAsk,
+  taiDecisionState,
+  type DecisionActionKey,
+} from "@/data/scout/research-workspace";
+
+import { WorkspaceGate } from "@/components/tt/workspace-gate";
+import { HandoffPanel } from "@/components/tt/prospect/handoff";
+import { PeoplePanel, type ManualPersonForm } from "@/components/tt/prospect/people-panel";
+import {
+  RecommendedNextMoveCard,
+} from "@/components/tt/scout/detail/recommended-move";
+import { CompanyHero, DetailUtilityRow } from "@/components/tt/scout/detail/hero";
+import {
+  IcpAlignmentCard,
+  KeySignalsCard,
+  RecentActivityCard,
+  ScoutSummaryCard,
+  SimilarCompaniesCard,
+} from "@/components/tt/scout/detail/overview";
+import {
+  AtAGlanceCard,
+  NotesPreviewCard,
+  TopReasonsCard,
+} from "@/components/tt/scout/detail/rail";
+import {
+  ActivityTab,
+  DetailTabs,
+  IcpAnalysisTab,
+  NotesTab,
+  SignalsTab,
+  parseDetailTab,
+  type DetailTab,
+} from "@/components/tt/scout/detail/tabs";
+import { buildPersonPlan } from "@/data/person-priority";
+import { composeProspectPage } from "@/data/prospect-modules";
+import { buildHandoffDraft, developmentFromBrief } from "@/data/comms-handoff";
+import { buildRelationshipBrief } from "@/data/relationship-development";
+import { buildScoutCompanySummary } from "@/data/scout/company-summary";
+import { readIcpFactors } from "@/data/scout/icp-factors";
 import {
   buildRecommendedNextMove,
-  type RecommendedNextMove,
   type RecommendedMoveAction,
 } from "@/data/scout/recommended-move";
-import {
-  PREVIEW_WATCH,
-  prepareRelationshipDevelopment,
-  watchRelationshipDevelopment,
-} from "@/data/relationship-development";
-import { buildStatedView } from "@/data/stated";
-import { buildTopSignals } from "@/data/scout/top-signals";
-import { activityRepository } from "@/data/supabase/activities";
-import { icpRepository } from "@/data/supabase/icp";
+import { similarCompanies } from "@/data/scout/similar-companies";
+import { rankScoutSignals, topScoutSignals } from "@/data/scout/top-signals";
+import { availablePeopleProviders, peopleProviderInfo } from "@/data/people/registry";
 import { peopleService } from "@/data/supabase/people-service";
-import { supabaseProspectModules } from "@/data/supabase/prospect-modules";
-import { createScoutProvider } from "@/lib/scout-provider";
-import { runScoutResearch } from "@/lib/scout-discovery";
-import { normalizeWebsite } from "@/lib/website-url";
-import {
-  EmptyIntel,
-  ScoutHeader,
-  WorkspaceContextGate,
-  scoutQueryKeys,
-  useIntelQuery,
-  useProspectList,
-  useScoutWorkspace,
-} from "@/components/tt/scout-workspace";
+import { scoutService } from "@/data/supabase/scout-service";
+import type { HandoffDraft } from "@/domain/comms-handoff";
 import type { Person } from "@/domain/people";
-import type { ProspectActivity, ResearchRun } from "@/domain/prospect-modules";
-import type { WatchState } from "@/domain/relationship-development";
-import type { ProspectCandidate } from "@/domain/scout";
+import type { FitLight } from "@/domain/scout-fit";
+import type { WorkspaceIdentity } from "@/lib/workspace";
+
+const TITLE = "Company · Scout · Trust Tai OS";
+const DESCRIPTION =
+  "Does this company deserve our attention, and why? ICP alignment, dated signals, people, and the bounded next step.";
+
+type Section = "scout" | "qualified" | "research" | "worth_knowing";
+type Fit = "all" | FitLight;
+
+function parseSection(value: unknown): Section {
+  return value === "qualified" || value === "research" || value === "worth_knowing"
+    ? value
+    : "scout";
+}
+
+function parseFit(value: unknown): Fit {
+  return value === "green" || value === "yellow" || value === "red" || value === "neutral"
+    ? value
+    : "all";
+}
 
 export const Route = createFileRoute("/modules/scout/prospects/$prospectId")({
   validateSearch: (search: Record<string, unknown>) => ({
-    tab:
-      typeof search.tab === "string" && search.tab !== "overview"
-        ? search.tab
-        : undefined,
-    // Other rooms link here carrying the board's return context; accepted and
-    // ignored so those links stay valid.
-    section: typeof search.section === "string" ? search.section : undefined,
-    fit: typeof search.fit === "string" ? search.fit : undefined,
+    section: parseSection(search["section"]),
+    fit: parseFit(search["fit"]),
+    ...(parseDetailTab(search["tab"]) === "overview"
+      ? {}
+      : { tab: parseDetailTab(search["tab"]) }),
   }),
-  component: ProspectDetailRoute,
+  head: () => ({
+    meta: [
+      { title: TITLE },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:title", content: TITLE },
+      { property: "og:description", content: DESCRIPTION },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
+  component: ProspectRoute,
 });
 
-function ProspectDetailRoute() {
-  const { prospectId } = useParams({ from: "/modules/scout/prospects/$prospectId" });
+function ProspectRoute() {
+  const { prospectId } = Route.useParams();
+  const search = Route.useSearch();
   return (
-    <WorkspaceContextGate>
-      {({ organizationId, role }) => (
-        <ProspectDetailPage prospectId={prospectId} organizationId={organizationId} role={role} />
+    <WorkspaceGate appId="scout">
+      {(identity) => (
+        <CompanyDetail
+          identity={identity}
+          prospectId={prospectId}
+          section={search.section}
+          fit={search.fit}
+          tab={search.tab ?? "overview"}
+        />
       )}
-    </WorkspaceContextGate>
+    </WorkspaceGate>
   );
 }
 
-function ProspectDetailPage({
+function CompanyDetail({
+  identity,
   prospectId,
-  organizationId,
-  role,
+  section,
+  fit,
+  tab,
 }: {
+  identity: WorkspaceIdentity;
   prospectId: string;
-  organizationId: string;
-  role: ReturnType<typeof useScoutWorkspace>["role"];
+  section: Section;
+  fit: Fit;
+  tab: DetailTab;
 }) {
-  const navigate = useNavigate();
+  const { organizationId, userId } = identity;
   const queryClient = useQueryClient();
-  const { tab } = useSearch({ from: "/modules/scout/prospects/$prospectId" });
-  const provider = useMemo(() => createScoutProvider(organizationId), [organizationId]);
+  const navigate = useNavigate();
+  const backSearch = { section, fit };
 
-  const prospectList = useProspectList(provider, organizationId);
-  const intelQuery = useIntelQuery(organizationId, prospectId);
-  const icpQuery = useQuery({
-    queryKey: scoutQueryKeys.icp(organizationId),
-    queryFn: () => icpRepository.get(organizationId),
-  });
-  const activityQuery = useQuery({
-    queryKey: scoutQueryKeys.activities(organizationId, prospectId),
-    queryFn: () => activityRepository.list(prospectId),
-  });
-  const modulesQuery = useQuery({
-    queryKey: scoutQueryKeys.modules(organizationId, prospectId),
-    queryFn: () => supabaseProspectModules.get(prospectId),
-  });
-
-  const [statusBusy, setStatusBusy] = useState(false);
-  const [researchBusy, setResearchBusy] = useState(false);
-  const [researchFailed, setResearchFailed] = useState(false);
-  const [prepareBusy, setPrepareBusy] = useState(false);
-  const [prepareError, setPrepareError] = useState<string | null>(null);
-  const [routingFirstMessage, setRoutingFirstMessage] = useState(false);
-  const [confirmingPersonId, setConfirmingPersonId] = useState<string | null>(null);
-  const blockerSectionRef = useRef<HTMLElement | null>(null);
-
-  const candidate = useMemo(() => {
-    const base = prospectList.data?.find((entry) => entry.prospect.id === prospectId);
-    return base ? { ...base, intel: intelQuery.data ?? base.intel } : undefined;
-  }, [prospectList.data, intelQuery.data, prospectId]);
-
-  const status = candidate?.prospect.status ?? "discovered";
-  const people = useMemo(() => candidate?.intel?.people ?? [], [candidate]);
-  const activities = activityQuery.data ?? [];
-  const modules = modulesQuery.data;
-  const researchRuns = modules?.history ?? [];
-  const latestRun = researchRuns[researchRuns.length - 1] ?? null;
-  const previousRun = researchRuns.length > 1 ? researchRuns[researchRuns.length - 2]! : null;
-  const coverage = useMemo(
-    () =>
-      candidate
-        ? buildResearchCoverage({
-            candidate,
-            activities,
-            researchRun: latestRun,
-            icp: icpQuery.data ?? null,
-            intel: intelQuery.data,
-            modules,
-          })
-        : null,
-    [candidate, activities, latestRun, icpQuery.data, intelQuery.data, modules],
-  );
-
-  const draft = useMemo(() => {
-    if (!candidate || !coverage) return null;
-    return buildHandoff({
-      candidate,
-      people,
-      coverage,
-      fitConfidence: deriveFitConfidence({ coverage, evaluation: candidate.evaluation }),
-      development: candidate.development?.research
-        ? { research: candidate.development.research }
-        : undefined,
-    });
-  }, [candidate, people, coverage]);
-
-  const handoffBlockers = useMemo(() => {
-    if (!candidate || !coverage) return [];
-    return buildHandoffBlockers({ candidate, people, coverage });
-  }, [candidate, people, coverage]);
-
-  const move: RecommendedNextMove | null = useMemo(() => {
-    if (!candidate) return null;
-    return buildRecommendedNextMove({
-      candidate,
-      people,
-      ...(draft
-        ? {
-            firstMessage: {
-              ready: draft.ready,
-              blockers: handoffBlockers.map((blocker) => blocker.message),
-            },
-          }
-        : {}),
-    });
-  }, [candidate, people, draft, handoffBlockers]);
-
-  const moveBlockers = useMemo(
-    () => (candidate && coverage ? buildMoveBlockers({ candidate, people, coverage }) : []),
-    [candidate, people, coverage],
-  );
-
-  const nextMove: NextMove | null = useMemo(() => {
-    if (!candidate || !coverage) return null;
-    return buildNextMove({
-      status,
-      evaluation: candidate.evaluation,
-      coverage,
-      development: candidate.development,
-      intel: candidate.intel,
-    });
-  }, [candidate, coverage, status]);
-
-  const topSignals = useMemo(() => {
-    if (!candidate || !coverage) return [];
-    return buildTopSignals({
-      candidate,
-      coverage,
-      intel: intelQuery.data,
-      development: candidate.development,
-      researchRun: latestRun,
-    });
-  }, [candidate, coverage, intelQuery.data, latestRun]);
-
-  const summary = useMemo(
-    () => (candidate && coverage ? buildActivitySummary({ candidate, activities, coverage }) : null),
-    [candidate, activities, coverage],
-  );
-  const statedView = useMemo(() => buildStatedView(candidate), [candidate]);
-  const decisionMakers = useMemo(
-    () => people.filter((person) => person.decisionMakerLikelihood === "high"),
-    [people],
-  );
-  const primaryContact = useMemo(
-    () => resolveContact(people).person ?? people[0] ?? null,
-    [people],
-  );
-  const fitConfidence = useMemo(
-    () => (candidate && coverage ? deriveFitConfidence({ coverage, evaluation: candidate.evaluation }) : null),
-    [candidate, coverage],
-  );
-  const moveConfidence = useMemo(
-    () =>
-      candidate && coverage
-        ? deriveModuleConfidence("next_move", {
-            coverage,
-            icp: icpQuery.data ?? null,
-            intel: intelQuery.data,
-          })
-        : null,
-    [candidate, coverage, icpQuery.data, intelQuery.data],
-  );
-
-  const busy =
-    statusBusy ||
-    prepareBusy ||
-    researchBusy ||
-    routingFirstMessage ||
-    confirmingPersonId !== null;
-
-  const invalidate = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: scoutQueryKeys.all }),
-      queryClient.invalidateQueries({ queryKey: ["comms"] }),
-    ]);
-  };
-
-  const changeTab = (next: string) => {
-    void navigate({
+  const goToTab = (next: DetailTab) =>
+    navigate({
       to: "/modules/scout/prospects/$prospectId",
       params: { prospectId },
-      search: next === "overview" ? {} : { tab: next },
-      replace: true,
+      search: { section, fit, ...(next === "overview" ? {} : { tab: next }) },
+    });
+
+  const icp = useQuery({
+    queryKey: ["scout", "icp", organizationId],
+    queryFn: () => scoutService.icp(organizationId),
+  });
+
+  const saved = useQuery({
+    queryKey: ["scout", "prospects", organizationId],
+    queryFn: () => scoutService.list(organizationId),
+  });
+
+  const events = useQuery({
+    queryKey: ["scout", "activity", organizationId, prospectId],
+    queryFn: () => scoutService.activity(organizationId, prospectId, 60),
+  });
+
+  const people = useQuery({
+    queryKey: ["scout", "people", organizationId, prospectId],
+    queryFn: () => peopleService.list(organizationId, prospectId),
+  });
+
+  const providers = useQuery({
+    queryKey: ["scout", "people-providers"],
+    queryFn: async () => await availablePeopleProviders(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] }),
+      queryClient.invalidateQueries({ queryKey: ["scout", "activity", organizationId, prospectId] }),
+      queryClient.invalidateQueries({ queryKey: ["scout", "people", organizationId, prospectId] }),
+    ]);
+
+  const board = saved.data ?? [];
+  const candidate = board.find((c) => c.prospect.id === prospectId) ?? null;
+
+  // A run is always planned first: the plan decides what gets re-read and what
+  // is preserved, and the service refuses a plan that permission does not allow.
+  const research = useMutation({
+    mutationFn: (input: { candidate: ProspectCandidate; plan: ResearchRunPlan }) =>
+      scoutService.runResearch(input, { organizationId, userId }),
+    onSuccess: refresh,
+  });
+
+  const setResearchConsent = useMutation({
+    mutationFn: (decision: "granted" | "withheld") => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      return scoutService.setResearchConsent(
+        {
+          prospectId,
+          companyName: candidate.prospect.name,
+          decision,
+          actorLabel: identity.name,
+        },
+        { organizationId, userId },
+      );
+    },
+    onSuccess: refresh,
+  });
+
+  const setStatus = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "qualified" | "passed" }) =>
+      scoutService.setStatus(id, status, { organizationId, userId }),
+    onSuccess: refresh,
+  });
+
+  const recordDecision = useMutation({
+    mutationFn: (commit: DecisionCommit) => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      return scoutService.recordDecision(
+        {
+          prospectId,
+          companyName: candidate.prospect.name,
+          move: commit.move,
+          note: commit.note,
+          previousStatus: candidate.prospect.status,
+        },
+        { organizationId, userId },
+      );
+    },
+    onSuccess: refresh,
+  });
+
+  const ingest = useMutation({
+    mutationFn: (providerId: string) => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      return peopleService.ingest(providerId, candidate, { organizationId, userId });
+    },
+    onSuccess: refresh,
+  });
+
+  // The governed deeper-research action. Idempotent: a current brief is left
+  // untouched, a stale or missing one is prepared from stored public evidence.
+  const prepareBrief = useMutation({
+    mutationFn: (input: { force?: boolean; quiet?: boolean }) =>
+      scoutService.prepareRelationshipDevelopment(
+        { prospectId, ...(input.force !== undefined ? { force: input.force } : {}) },
+        { organizationId, userId },
+      ),
+    onSuccess: async (_result, input) => {
+      await refresh();
+      if (!input?.quiet) {
+        toast.success("Research ready", {
+          description: "The relationship research has been refreshed from stored public evidence.",
+        });
+      }
+    },
+  });
+
+  const addPerson = useMutation({
+    mutationFn: (form: ManualPersonForm) =>
+      peopleService.addManual(
+        {
+          prospectId,
+          fullName: form.fullName,
+          roleTitle: form.roleTitle || undefined,
+          seniority: form.seniority,
+          email: form.email || undefined,
+          linkedinUrl: form.linkedinUrl || undefined,
+        },
+        { organizationId, userId },
+      ),
+    // A newly added founder can make the company newly eligible — prepare the
+    // brief if so (research only; a current brief is never re-run).
+    onSuccess: () => {
+      prepareBrief.mutate({ quiet: true });
+      refresh();
+    },
+  });
+
+  const confirmEmail = useMutation({
+    mutationFn: (person: Person) => peopleService.confirmEmail(person, { organizationId, userId }),
+    onSuccess: () => {
+      prepareBrief.mutate({ quiet: true });
+      refresh();
+    },
+  });
+
+  const routeToComms = useMutation({
+    mutationFn: (draft: HandoffDraft) =>
+      scoutService.routeToComms(draft, { organizationId, userId }),
+    onSuccess: refresh,
+  });
+
+  // A person's pacing decision: worth watching, or not for now. Reversible,
+  // recorded on the prospect and in the shared activity stream.
+  const setWatch = useMutation({
+    mutationFn: (watch: "watching" | "not_now" | null) => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      return scoutService.setWatch(
+        { prospectId, companyName: candidate.prospect.name, watch },
+        { organizationId, userId },
+      );
+    },
+    onSuccess: refresh,
+  });
+
+  const addNote = useMutation({
+    mutationFn: (body: string) => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      return scoutService.addNote(
+        { prospectId, companyName: candidate.prospect.name, body },
+        { organizationId, userId },
+      );
+    },
+    onSuccess: refresh,
+  });
+
+  const derived = useMemo(() => {
+    if (!candidate) return null;
+    return {
+      summary: buildScoutCompanySummary(candidate),
+      factors: readIcpFactors(candidate.evaluation),
+      allSignals: rankScoutSignals(candidate),
+      keySignals: topScoutSignals(candidate, 4),
+      similar: similarCompanies(candidate, board),
+    };
+  }, [candidate, board]);
+
+  const allEvents = events.data ?? [];
+  const notes = allEvents.filter((event) => event.name === "prospect.commented");
+  const peopleRows = people.data ?? [];
+
+  const error = (research.error ??
+    setResearchConsent.error ??
+    setStatus.error ??
+    recordDecision.error ??
+    ingest.error ??
+    addPerson.error ??
+    confirmEmail.error ??
+    routeToComms.error ??
+    setWatch.error ??
+    addNote.error ??
+    saved.error) as Error | null;
+  const prepareErrorMessage = prepareBrief.error
+    ? prepareBrief.error instanceof Error
+      ? prepareBrief.error.message
+      : "Scout could not prepare the research. Retry when you are ready."
+    : null;
+
+  const busy =
+    research.isPending ||
+    setResearchConsent.isPending ||
+    setStatus.isPending ||
+    recordDecision.isPending ||
+    ingest.isPending ||
+    addPerson.isPending ||
+    confirmEmail.isPending ||
+    prepareBrief.isPending ||
+    routeToComms.isPending ||
+    setWatch.isPending ||
+    addNote.isPending;
+
+  if (saved.isPending) {
+    return (
+      <AppShell identity={identity}>
+        <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+          Opening this company…
+        </p>
+      </AppShell>
+    );
+  }
+
+  if (!candidate || !derived) {
+    return (
+      <AppShell identity={identity}>
+        <EmptyState
+          title="That company is not on your board"
+          belongsHere="Companies are scoped to your organization. This one may have been removed, or it belongs to another workspace."
+          whyItMatters="Scout never shows records outside the organization you are signed in to."
+          action={
+            <TTButton asChild variant="secondary">
+              <Link to="/modules/scout" search={backSearch}>
+                Back to Scout
+              </Link>
+            </TTButton>
+          }
+        />
+      </AppShell>
+    );
+  }
+
+  const { prospect, evaluation } = candidate;
+  const ordered = board.filter((c) => c.prospect.status !== "archived");
+  const position = ordered.findIndex((c) => c.prospect.id === prospectId);
+  const prevCandidate = position > 0 ? ordered[position - 1] : undefined;
+  const nextCandidate = position >= 0 ? ordered[position + 1] : undefined;
+
+  const plan = buildPersonPlan(peopleRows);
+  const composition = composeProspectPage({ candidate, activeIcpVersion: icp.data?.version ?? null });
+
+  const review = reviewStatedEvidence(candidate);
+  const permission = researchPermission(candidate);
+  const coverage = evidenceCoverage(candidate, review.observed);
+  const conflicts = contradictions(review);
+  const themes = evidenceThemes(candidate, review);
+  const brief = scoutRead({
+    review,
+    coverage,
+    conflicts,
+    permissionState: permission.state,
+  });
+  const lifecycle = researchLifecycle({
+    coverage,
+    permission,
+    observedCount: review.observed.length,
+    contradictions: conflicts.length,
+    lastResearchedAt: lastResearchedAt(candidate),
+    running: research.isPending,
+  });
+  const state = lifecycle.state;
+  const decision = taiDecisionState({
+    candidate,
+    review,
+    peopleCount: peopleRows.length,
+    events: allEvents,
+    canResearch: permission.canResearch,
+    researchBecause: permission.because,
+  });
+  const workspace = { review, decision, ask: scoutConductorAsk(candidate, decision) };
+
+  // The Tai Decision State: one suggested move, bounded human actions, and the
+  // record of everything already settled here.
+  const decisionState = buildDecisionState({
+    candidate,
+    review,
+    read: brief,
+    conflicts,
+    permission,
+    coverage,
+    events: allEvents,
+  });
+
+  /** Start a controlled pass. `force` refreshes areas that are still fresh. */
+  const startResearch = (force = false) => {
+    const plan = force
+      ? planResearchRun({
+          coverage,
+          permission,
+          lastResearchedAt: lastResearchedAt(candidate),
+          force: true,
+        })
+      : lifecycle.plan;
+    if (!plan.allowed) return;
+    research.mutate({ candidate, plan });
+  };
+
+  // The one canonical decision surface: the recommended next move, computed
+  // from the eligibility read, the governed brief, and the pacing decision.
+  const recommendedMove = buildRecommendedNextMove({ candidate, people: peopleRows });
+
+  // The handoff draft behind "Prepare first message": the stored governed
+  // brief travels as provenance, with canonical prospect/person IDs intact.
+  const storedBrief =
+    candidate.development?.research?.state === "prepared"
+      ? candidate.development.research.brief
+      : undefined;
+  const firstMessageDevelopment =
+    developmentFromBrief(storedBrief) ??
+    developmentFromBrief(buildRelationshipBrief({ candidate, people: peopleRows }));
+  const firstMessageDraft = buildHandoffDraft({
+    candidate,
+    people: peopleRows,
+    coverage: composition.coverage,
+    fitConfidence: composition.confidence,
+    ...(firstMessageDevelopment ? { development: firstMessageDevelopment } : {}),
+  });
+
+  const onRecommendedPrimary = (kind: RecommendedMoveAction) => {
+    switch (kind) {
+      case "open_in_comms":
+        void navigate({ to: "/modules/comms" });
+        break;
+      case "find_person":
+        void goToTab("people");
+        break;
+      case "prepare_research":
+        prepareBrief.mutate(
+          recommendedMove.prepareForce ? { force: true } : {},
+        );
+        break;
+      case "research_company":
+        startResearch();
+        break;
+      case "prepare_first_message":
+      case "none":
+        break;
+    }
+  };
+
+  // "Prepare first message" is the explicit Scout → Comms transition: the
+  // brief is carried across, and the person reviews the draft there.
+  const prepareFirstMessage = () => {
+    if (!firstMessageDraft.ready) return;
+    routeToComms.mutate(firstMessageDraft, {
+      onSuccess: () => void navigate({ to: "/modules/comms" }),
     });
   };
 
-  /** The governed prepare-brief action behind the recommended move. */
-  const prepareBrief = async (force: boolean) => {
-    if (!candidate || prepareBusy) return;
-    setPrepareBusy(true);
-    setPrepareError(null);
-    try {
-      await prepareRelationshipDevelopment({
-        candidate,
-        organizationId,
-        force,
-      });
-      await invalidate();
-      toast.success("Research ready", {
-        description: "The relationship brief has been refreshed.",
-      });
-    } catch (error) {
-      setPrepareError(error instanceof Error ? error.message : "Research could not be prepared.");
-    } finally {
-      setPrepareBusy(false);
-    }
-  };
-
-  /** The governed company research pass behind coverage blockers. */
-  const runResearch = async () => {
-    if (!candidate || researchBusy) return;
-    setResearchBusy(true);
-    setResearchFailed(false);
-    try {
-      const normalized = normalizeWebsite(
-        candidate.prospect.websiteUrl ?? `https://${candidate.prospect.domain}`,
-      );
-      await runScoutResearch(provider, organizationId, normalized, {});
-      await invalidate();
-    } catch {
-      setResearchFailed(true);
-    } finally {
-      setResearchBusy(false);
-    }
-  };
-
-  /** Hand the approved brief to Comms, then open the new relationship there. */
-  const prepareFirstMessage = async () => {
-    if (!candidate || !draft || !draft.ready || routingFirstMessage) return;
-    setRoutingFirstMessage(true);
-    try {
-      const staged = await carryToComms();
-      if (!staged) return;
-      const readiness = estimateRelationshipReadiness({
-        relationship: staged.relationship,
-        onboarding: staged.onboarding,
-      });
-      toast.success(
-        readiness === "developing" ? "History is in place" : "Relationship created",
-        {
-          description:
-            readiness === "developing"
-              ? "Recent labeled mail was carried over. Comms is preparing the first message for your review."
-              : "Comms is preparing the first message for your review. Nothing is sent automatically.",
-        },
-      );
-      await navigate({
-        to: "/modules/comms",
-        search: { relationship: staged.relationship.id },
-      });
-    } finally {
-      setRoutingFirstMessage(false);
-    }
-  };
-
-  /** The canonical place for people work: the People tab, focused on it. */
+  // A blocked handoff is never a dead end: move to the canonical People area
+  // and put keyboard focus on the reachability blockers.
   const resolveHandoffBlockers = () => {
-    if (tab === "people") {
-      blockerSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-      blockerSectionRef.current?.focus({ preventScroll: true });
-      return;
-    }
-    changeTab("people");
+    void goToTab("people");
+    window.setTimeout(() => {
+      const target = document.getElementById("scout-people-blockers");
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      target?.focus({ preventScroll: true });
+    }, 80);
   };
 
-  // Once the People tab is mounted, bring the blocker area into view.
-  useEffect(() => {
-    if (tab !== "people") return;
-    const id = window.setTimeout(() => {
-      blockerSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-    }, 150);
-    return () => window.clearTimeout(id);
-  }, [tab]);
-
-  /** The page's one fallback surface, kept for the non-prepare states. */
-  const runPrimary = async (kind: RecommendedMoveAction) => {
-    if (!candidate) return;
-    if (kind === "open_in_comms") {
-      await navigate({
-        to: "/modules/comms",
-        search: { q: candidate.prospect.name },
-      });
-    }
-  };
-
-  const setWatch = async (watch: WatchState | null) => {
-    if (!candidate) return;
-    try {
-      await watchRelationshipDevelopment({
-        organizationId,
-        prospectId: candidate.prospect.id,
-        watch,
-        ...(candidate.development?.research ? { research: candidate.development.research } : {}),
-      });
-      await invalidate();
-    } catch (error) {
-      toast.error("Pacing was not saved", {
-        description: error instanceof Error ? error.message : "Please try again.",
-      });
+  const onDecisionAction = (key: DecisionActionKey) => {
+    switch (key) {
+      case "review_evidence":
+        document
+          .getElementById("scout-evidence-review")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        break;
+      case "run_research":
+        startResearch();
+        break;
+      case "find_people":
+      case "route_to_comms":
+        void goToTab("people");
+        break;
+      case "sequence_in_roadmap":
+        void goToTab("overview");
+        break;
+      case "ask_question":
+        void goToTab("notes");
+        break;
+      case "qualify":
+        setStatus.mutate({ id: prospect.id, status: "qualified" });
+        break;
+      case "pass":
+        setStatus.mutate({ id: prospect.id, status: "passed" });
+        break;
+      default:
+        break;
     }
   };
 
-  const qualify = async () => {
-    if (!candidate || !draft || !draft.ready) return;
-    setStatusBusy(true);
-    try {
-      await provider.setStatus(candidate.prospect.id, "ready_for_comms", {
-        organizationId,
-        userId: previewUserId(),
-      });
-      await invalidate();
-      toast.success("Qualified", { description: "The company is ready for Comms." });
-    } catch (error) {
-      toast.error("Qualify failed", {
-        description: error instanceof Error ? error.message : "Please try again.",
-      });
-    } finally {
-      setStatusBusy(false);
-    }
-  };
-
-  const pass = async () => {
-    if (!candidate) return;
-    setStatusBusy(true);
-    try {
-      await provider.setStatus(candidate.prospect.id, "passed", {
-        organizationId,
-        userId: previewUserId(),
-      });
-      await invalidate();
-      toast.success("Passed", { description: "The company stays in the record as passed." });
-      await navigate({ to: "/modules/scout" });
-    } catch (error) {
-      toast.error("Pass failed", {
-        description: error instanceof Error ? error.message : "Please try again.",
-      });
-    } finally {
-      setStatusBusy(false);
-    }
-  };
-
-  const confirmEmail = async (personId: string) => {
-    if (!candidate || confirmingPersonId) return;
-    const person = people.find((entry) => entry.id === personId);
-    if (!person) return;
-    setConfirmingPersonId(personId);
-    try {
-      await peopleService.confirmEmail(person, {
-        organizationId,
-        userId: previewUserId(),
-      });
-      await invalidate();
-      toast.success("Address confirmed", {
-        description: "The email is now treated as verified.",
-      });
-    } catch (error) {
-      toast.error("Could not confirm the address", {
-        description: error instanceof Error ? error.message : "Please try again.",
-      });
-    } finally {
-      setConfirmingPersonId(null);
-    }
-  };
-
-  const carryToComms = async () => {
-    if (!candidate || !draft || !draft.ready) return null;
-    setStatusBusy(true);
-    try {
-      const staged = await stageRelationship(candidate, draft, organizationId);
-      await invalidate();
-      return staged;
-    } catch (error) {
-      toast.error("Handoff failed", {
-        description: error instanceof Error ? error.message : "Please try again.",
-      });
-      return null;
-    } finally {
-      setStatusBusy(false);
-    }
-  };
-
-  if (prospectList.isPending) {
-    return (
-      <main className="min-h-dvh bg-background">
-        <div className="mx-auto max-w-[1280px] space-y-6 px-6 py-8">
-          <div className="h-8 w-48 animate-pulse rounded-md bg-secondary" />
-          <div className="h-[300px] animate-pulse rounded-xl bg-card" />
-        </div>
-      </main>
-    );
-  }
-
-  if (!candidate || !coverage || !summary || !move || !nextMove || !draft) {
-    return (
-      <main className="min-h-dvh bg-background">
-        <div className="mx-auto max-w-[720px] px-6 py-24 text-center">
-          <h1 className="text-xl font-semibold text-foreground">This company is not on record</h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            It may have been removed, or the link is stale. The board holds everything Scout
-            knows about.
-          </p>
-          <div className="mt-6">
-            <Link
-              to="/modules/scout"
-              className="inline-flex items-center gap-2 text-sm font-medium text-royal underline-offset-4 hover:underline"
-            >
-              <ArrowLeft className="size-4" aria-hidden />
-              Back to the board
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  const evaluation = candidate.evaluation;
-  const researchRead = latestRun?.read ?? null;
-  const plan = draft.plan;
-  const showQualify = status === "discovered";
-  const showCarry = status === "discovered";
-  const showStatusAdjust = status === "qualified" || status === "ready_for_comms";
-  const blockerCount = handoffBlockers.length;
 
   return (
-    <main className="min-h-dvh bg-background">
-      <div className="mx-auto max-w-[1280px] space-y-6 px-6 pb-16 pt-8">
-        <ScoutHeader
-          crumbs={[
-            { label: "Scout", to: "/modules/scout" },
-            { label: candidate.prospect.name },
-          ]}
-          title={candidate.prospect.name}
-          lede={draft.summary.whyItFits}
-          badges={
-            <>
-              <span className="tt-chip">{domainOf(candidate)}</span>
-              {draft.research.state === "ready" && plan ? (
-                <span className="tt-chip border-royal/25 bg-royal/8 text-royal">
-                  {plan === "deepen_relationship" ? "Deepen the relationship" : "Begin a conversation"}
-                </span>
-              ) : null}
-              {draft.research.state !== "ready" ? (
-                <span className="tt-chip">Brief {draft.research.state.replace(/_/g, " ")}</span>
-              ) : null}
-              <FitLight light={evaluation.light} />
-            </>
+    <AppShell identity={identity}>
+      <div className="space-y-6">
+        <DetailUtilityRow
+          companyName={prospect.name}
+          backSearch={backSearch}
+          previous={
+            prevCandidate
+              ? { id: prevCandidate.prospect.id, name: prevCandidate.prospect.name }
+              : null
           }
-          meta={`${evaluation.scoreable ? `ICP fit ${evaluation.score}` : "Not scored"} · Last checked ${relativeTime(candidate.lastCheckedAt)}`}
-          actions={
-            <>
-              <TTButton
-                variant="secondary"
-                size="sm"
-                pending={researchBusy}
-                pendingLabel="Reading the public pages…"
-                disabled={busy}
-                onClick={() => void runResearch()}
-              >
-                Research again
-              </TTButton>
-              {status !== "passed" ? (
-                <ConfirmAction
-                  label="Pass"
-                  confirmLabel="Confirm pass"
-                  description="The company stays in the record as passed, with its evidence intact."
-                  onConfirm={() => void pass()}
-                  disabled={busy}
-                />
-              ) : null}
-              {showStatusAdjust ? (
-                <TTButton
-                  variant="quiet"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() =>
-                    void provider
-                      .setStatus(candidate.prospect.id, "discovered", {
-                        organizationId,
-                        userId: previewUserId(),
-                      })
-                      .then(invalidate)
-                  }
-                >
-                  Move back to discovered
-                </TTButton>
-              ) : null}
-            </>
+          next={
+            nextCandidate
+              ? { id: nextCandidate.prospect.id, name: nextCandidate.prospect.name }
+              : null
           }
         />
 
-        {intelQuery.isError ? (
-          <EmptyIntel
-            message="The deeper read could not be loaded. The board summary still stands; retry to fetch signals, opportunities, and people."
-            onRetry={() => void intelQuery.refetch()}
-          />
-        ) : null}
-
-        {researchFailed ? (
+        {research.isPending ? (
           <div
-            role="alert"
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3"
+            role="status"
+            aria-live="polite"
+            className="tt-surface flex items-center gap-3 p-4 text-sm text-muted-foreground"
           >
-            <p className="text-sm text-foreground">
-              Research did not complete. Nothing was changed.
-            </p>
-            <TTButton
-              variant="secondary"
-              size="sm"
-              pending={researchBusy}
-              pendingLabel="Reading the public pages…"
-              disabled={busy}
-              onClick={() => void runResearch()}
-            >
-              Retry
-            </TTButton>
+            <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-royal" />
+            Re-reading the public pages on {prospect.domain}. This takes a few moments.
           </div>
         ) : null}
 
-        <Tabs
-          value={tab ?? "overview"}
-          onValueChange={changeTab}
-          className="space-y-6"
-        >
-          <TabsList className="h-auto flex-wrap justify-start gap-1 rounded-xl border border-border bg-card p-1">
-            <TabsTrigger value="overview" className="rounded-lg px-3 py-2 text-[13px]">
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="signals" className="rounded-lg px-3 py-2 text-[13px]">
-              Signals
-            </TabsTrigger>
-            <TabsTrigger value="research" className="rounded-lg px-3 py-2 text-[13px]">
-              Research
-            </TabsTrigger>
-            <TabsTrigger value="people" className="rounded-lg px-3 py-2 text-[13px]">
-              People
-            </TabsTrigger>
-            <TabsTrigger value="history" className="rounded-lg px-3 py-2 text-[13px]">
-              History
-            </TabsTrigger>
-          </TabsList>
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error.message}
+          </p>
+        ) : null}
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <CompanyHero candidate={candidate} summary={derived.summary} />
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
+          <div className="min-w-0 space-y-6">
+            <DetailTabs
+              active={tab}
+              counts={{
+                signals: derived.allSignals.length,
+                notes: notes.length,
+                people: peopleRows.length,
+              }}
+              showResearch={hasResearchWorkspace(candidate)}
+              onChange={(next) => void goToTab(next)}
+            />
+
+            {tab === "research" ? (
               <div className="space-y-6">
-                <Panel
-                  eyebrow="Summary"
-                  title="What matters right now"
-                  emphasis="secondary"
-                >
-                  <ul className="space-y-3">
-                    {summary.bullets.map((bullet, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <ToneDot
-                          tone={
-                            index === 0
-                              ? "navy"
-                              : index === 1
-                                ? "royal"
-                                : index === 2
-                                  ? "warning"
-                                  : "neutral"
-                          }
-                          className="mt-[7px]"
-                        />
-                        <p className="max-w-reading text-sm leading-6 text-foreground">{bullet}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </Panel>
+                <ResearchHeader
+                  companyName={prospect.name}
+                  toldUs={candidate.stated ? inboundToldUs(candidate.stated) : null}
+                  permission={permission}
+                  state={state}
+                  researchedAt={lastResearchedAt(candidate)}
+                  onRunResearch={() => startResearch()}
+                  onResolveConsent={(decisionValue) => setResearchConsent.mutate(decisionValue)}
+                  busy={busy}
+                />
+                <CoverageStrip
+                  areas={coverage.areas}
+                  checkedCount={coverage.checkedCount}
+                  total={coverage.total}
+                />
+                <RerunPanel
+                  plan={lifecycle.plan}
+                  onRun={() => startResearch()}
+                  onForce={() => startResearch(true)}
+                  busy={busy}
+                />
+                <ContradictionsPanel conflicts={conflicts} />
+                <EvidenceLanes themes={themes} observed={review.observed} />
+                <ResearchSources observed={review.observed} />
+                <ScoutReadPanel read={brief} />
+                <DecisionStatePanel
+                  companyName={prospect.name}
+                  state={decisionState}
+                  toldUs={candidate.stated ? inboundToldUs(candidate.stated) : null}
+                  submissionHref={
+                    candidate.stated?.submissionRowId
+                      ? `/modules/website/submissions/${candidate.stated.submissionRowId}`
+                      : null
+                  }
+                  onCommit={(commit) => recordDecision.mutate(commit)}
+                  busy={busy}
+                />
+                <TaiDecisionStatePanel
+                  decision={workspace.decision}
+                  conductorSearch={workspace.ask}
+                  onAction={onDecisionAction}
+                  busy={busy}
+                />
+                <div id="scout-evidence-review">
+                  <EvidenceReviewPanel review={workspace.review} />
+                </div>
+                {candidate.stated ? <StatedTranscript packet={candidate.stated} /> : null}
+              </div>
+            ) : null}
+
+
+            {tab === "overview" ? (
+              <div className="space-y-6">
+                {candidate.stated ? (
+                  <>
+                    <InboundOriginRail
+                      packet={candidate.stated}
+                      channel={
+                        [
+                          candidate.stated.attribution.utmSource,
+                          candidate.stated.attribution.utmCampaign,
+                        ]
+                          .filter((part): part is string => Boolean(part && part.trim()))
+                          .join(" · ") || "Direct"
+                      }
+                    />
+                    <StatedPanel packet={candidate.stated} />
+                    <StatedTranscript packet={candidate.stated} />
+                  </>
+                ) : null}
+                <InboundSourceCard organizationId={organizationId} prospectId={prospectId} />
+                <ScoutSummaryCard
+                  summary={derived.summary}
+                  onViewRationale={() => void goToTab("icp")}
+                />
 
                 <RecommendedNextMoveCard
-                  move={move}
+                  move={recommendedMove}
                   candidate={candidate}
-                  blockers={moveBlockers}
+                  people={peopleRows}
                   busy={busy}
-                  preparingBrief={prepareBusy}
-                  prepareError={prepareError}
-                  firstMessageReady={draft.ready}
-                  routingFirstMessage={routingFirstMessage}
-                  confirmingEmail={confirmingPersonId !== null}
-                  researchPending={researchBusy}
-                  confidenceLevel={moveConfidence?.level}
-                  onPrimary={(kind) => void runPrimary(kind)}
-                  onPrepareFirstMessage={() => void prepareFirstMessage()}
-                  onPrepareBrief={(force) => void prepareBrief(force)}
-                  onConfirmEmail={(person) => void confirmEmail(person.id)}
-                  onRunResearch={() => void runResearch()}
-                  onOpenPeople={resolveHandoffBlockers}
-                  onWatch={(watch) => void setWatch(watch)}
-                  onSeeResearch={() => changeTab("research")}
-                />
-
-                <NextMovePanel
-                  move={nextMove}
-                  busy={statusBusy}
-                  canResearch={Boolean(candidate.prospect.websiteUrl || candidate.prospect.domain)}
-                  onQualify={() => void qualify()}
-                  onPass={() => void pass()}
-                  onResearch={() => void runResearch()}
-                />
-
-                <Panel
-                  eyebrow="Handoff"
-                  title="Ready for Comms"
-                  aside={
-                    <WhyWeThink
-                      confidence={{
-                        level: "moderate",
-                        because: draft.planReason,
-                        evidence: draft.evidence,
-                      }}
-                    />
+                  preparingBrief={prepareBrief.isPending}
+                  prepareError={prepareErrorMessage}
+                  firstMessageReady={firstMessageDraft.ready}
+                  firstMessageBlockers={firstMessageDraft.blockers.length}
+                  routingFirstMessage={routeToComms.isPending}
+                  onPrimary={onRecommendedPrimary}
+                  onPrepareFirstMessage={prepareFirstMessage}
+                  onWatch={(watch) => setWatch.mutate(watch)}
+                  onPrepareBrief={(force) =>
+                    prepareBrief.mutate(force ? { force: true } : {})
                   }
-                  emphasis="secondary"
-                >
-                  <HandoffPanel
-                    draft={draft}
-                    busy={statusBusy}
-                    onQualify={() => void qualify()}
-                    onCarry={() => void carryToComms()}
-                    onResolveBlockers={resolveHandoffBlockers}
-                    showQualify={showQualify}
-                    showCarry={showCarry}
-                  />
-                </Panel>
-              </div>
-
-              <div className="space-y-6">
-                <Panel
-                  eyebrow="Activity"
-                  title="What has happened"
-                  emphasis="tertiary"
-                  aside={<TierTag tier="utility" />}
-                >
-                  {activities.length > 0 ? (
-                    <ul className="space-y-3">
-                      {activities.slice(0, 6).map((entry) => (
-                        <ActivityNote key={entry.id} activity={entry} />
-                      ))}
-                    </ul>
-                  ) : (
-                    <Empty>No recorded activity yet. Qualifying, passing and researching all write here.</Empty>
-                  )}
-                </Panel>
-
-                <Panel
-                  eyebrow="Top signals"
-                  title={`${topSignals.length} signal${topSignals.length === 1 ? "" : "s"}`}
-                  emphasis="tertiary"
-                  aside={<TierTag tier="utility" />}
-                >
-                  {topSignals.length > 0 ? (
-                    <ul className="space-y-2.5">
-                      {topSignals.slice(0, 4).map((signal) => (
-                        <SignalRow
-                          key={signal.id}
-                          signal={signal}
-                          compact
-                          onOpen={
-                            signal.kind === "people"
-                              ? () => changeTab("people")
-                              : () => changeTab("signals")
-                          }
-                        />
-                      ))}
-                    </ul>
-                  ) : (
-                    <Empty>
-                      Nothing stands out yet. When research finds buying signals or a digital gap,
-                      the strongest few appear here.
-                    </Empty>
-                  )}
-                  <div className="mt-4 border-t border-border pt-3">
-                    <SectionLink onClick={() => changeTab("signals")}>Open signals</SectionLink>
-                  </div>
-                </Panel>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="signals" className="space-y-6">
-            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-              <DetailSection title="All signals" emphasis="lead">
-                {topSignals.length > 0 ? (
-                  <ul className="space-y-3">
-                    {topSignals.map((signal) => (
-                      <li
-                        key={signal.id}
-                        className="rounded-xl border border-border bg-card p-4"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <StrengthPill strength={signal.strength} />
-                          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                            {signal.kind.replace(/_/g, " ")}
-                          </span>
-                        </div>
-                        <p className="mt-3 max-w-reading text-sm leading-6 text-foreground">
-                          {signal.statement}
-                        </p>
-                        <p className="mt-2 text-[13px] text-muted-foreground">{signal.whyItMatters}</p>
-                        <div className="mt-3 flex flex-wrap items-center gap-3">
-                          {signal.sourceUrl ? <EvidenceLink url={signal.sourceUrl} /> : null}
-                          <span className="font-mono text-[11px] text-muted-foreground">
-                            {relativeTime(signal.observedAt)}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <Empty>
-                    No signals are on record yet. Run research to read the public pages; anything
-                    dated or useful lands here.
-                  </Empty>
-                )}
-              </DetailSection>
-
-              <div className="space-y-6">
-                <DetailSection
-                  title="Digital opportunities"
-                  meta={`${intelQuery.data?.opportunities.length ?? 0} observed`}
-                  emphasis="quiet"
-                >
-                  {intelQuery.data && intelQuery.data.opportunities.length > 0 ? (
-                    <ul className="space-y-3">
-                      {intelQuery.data.opportunities.slice(0, 4).map((opportunity) => (
-                        <OpportunityCard key={opportunity.id} opportunity={opportunity} compact />
-                      ))}
-                    </ul>
-                  ) : (
-                    <Empty>No website gaps stand out in the current read.</Empty>
-                  )}
-                </DetailSection>
-
-                <DetailSection title="Buying signals" emphasis="quiet">
-                  {intelQuery.data && intelQuery.data.buyingSignals.length > 0 ? (
-                    <ul className="space-y-2.5">
-                      {intelQuery.data.buyingSignals.map((signal, index) => (
-                        <li
-                          key={`${signal.statement}-${index}`}
-                          className="rounded-lg border border-border bg-card px-3 py-2 text-[13px] text-foreground"
-                        >
-                          {signal.statement}
-                          <span className="mt-1 block font-mono text-[11px] text-muted-foreground">
-                            {relativeTime(signal.observedAt)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <Empty>No dated buying signals on record.</Empty>
-                  )}
-                </DetailSection>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="research" className="space-y-6">
-            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-              <div className="space-y-6">
-                {statedView ? (
-                  <DetailSection
-                    title="What they told us"
-                    meta={statedView.prelude}
-                    emphasis="lead"
-                  >
-                    <ul className="space-y-4">
-                      {statedView.entries.map((entry, index) => (
-                        <li
-                          key={index}
-                          className="rounded-xl border border-royal/25 bg-royal/8 p-4"
-                        >
-                          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-royal">
-                            {entry.topic}
-                          </p>
-                          <p className="mt-2 max-w-reading text-sm leading-6 text-foreground">
-                            {entry.quote}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  </DetailSection>
-                ) : null}
-
-                <DetailSection title="The read" emphasis={statedView ? "normal" : "lead"}>
-                  {researchRead ? (
-                    <div className="space-y-5">
-                      <div className="space-y-2">
-                        <SectionLabel>Observed</SectionLabel>
-                        <p className="max-w-reading text-sm leading-6 text-foreground">
-                          {researchRead.whatTheyDo || "No observation on record."}
-                        </p>
-                        <p className="text-[13px] text-muted-foreground">
-                          {researchRead.businessModel || "Business model not recorded."}
-                        </p>
-                      </div>
-
-                      {researchRead.whoTheyHelp.length > 0 || researchRead.offerings.length > 0 ? (
-                        <BeforeAfter
-                          before={
-                            <div className="space-y-2">
-                              <SectionLabel>Who they help</SectionLabel>
-                              <ul className="space-y-1 text-[13px] text-foreground">
-                                {researchRead.whoTheyHelp.map((item, index) => (
-                                  <li key={index}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          }
-                          after={
-                            <div className="space-y-2">
-                              <SectionLabel>What they sell</SectionLabel>
-                              <ul className="space-y-1 text-[13px] text-foreground">
-                                {researchRead.offerings.map((item, index) => (
-                                  <li key={index}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          }
-                        />
-                      ) : null}
-
-                      {researchRead.notes.length > 0 ? (
-                        <div className="space-y-2 border-t border-border pt-4">
-                          <SectionLabel>Notes</SectionLabel>
-                          <ul className="space-y-1.5 text-[13px] text-muted-foreground">
-                            {researchRead.notes.map((note, index) => (
-                              <li key={index}>{note}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <Empty>
-                      No structured read yet. Run research to read the public pages and write one.
-                    </Empty>
-                  )}
-                </DetailSection>
-
-                {previousRun && latestRun ? (
-                  <DetailSection title="What changed" emphasis="normal">
-                    <ComparisonCard before={previousRun} after={latestRun} />
-                  </DetailSection>
-                ) : null}
-              </div>
-
-              <div className="space-y-6">
-                <DetailSection title="Sources" emphasis="quiet">
-                  {latestRun && latestRun.pages.length > 0 ? (
-                    <ul className="space-y-2">
-                      {latestRun.pages.map((page) => (
-                        <li
-                          key={page.url}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2"
-                        >
-                          <EvidenceLink url={page.url} label={page.title || page.url} />
-                          <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-                            {relativeTime(page.fetchedAt)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <Empty>No pages are on record for this read.</Empty>
-                  )}
-                </DetailSection>
-
-                <DetailSection title="Coverage" emphasis="quiet">
-                  <p className="text-sm text-foreground">
-                    {latestRun
-                      ? `${latestRun.pages.length} page${latestRun.pages.length === 1 ? "" : "s"} read · ${relativeTime(latestRun.finishedAt)}`
-                      : "No completed research pass."}
-                  </p>
-                  <p className="mt-1 text-[13px] text-muted-foreground">
-                    {coverage.thin
-                      ? "Coverage is thin — the brief rests on partial reading."
-                      : "Coverage is sufficient for the current read."}
-                  </p>
-                  <div className="mt-3 border-t border-border pt-3">
-                    <TTButton
-                      variant="secondary"
-                      size="sm"
-                      pending={researchBusy}
-                      pendingLabel="Reading the public pages…"
-                      disabled={busy}
-                      onClick={() => void runResearch()}
-                    >
-                      Research again
-                    </TTButton>
-                  </div>
-                </DetailSection>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="people" className="space-y-6">
-            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-              <div className="space-y-6">
-                <BlockersSection
-                  ref={blockerSectionRef}
-                  draftBlockers={draft.blockers}
-                  busy={busy}
-                  verifyingPersonId={confirmingPersonId}
-                  onVerify={(personId) => void confirmEmail(personId)}
-                  people={people}
+                  onResolveBlockers={resolveHandoffBlockers}
+                  onSeeResearch={() =>
+                    void goToTab(hasResearchWorkspace(candidate) ? "research" : "icp")
+                  }
                 />
 
-                <DetailSection title="People" meta={`${people.length} on record`} emphasis="lead">
-                  {people.length > 0 ? (
-                    <ul className="space-y-4">
-                      {people.map((person) => {
-                        const isPrimary = primaryContact?.id === person.id;
-                        const isDecisionMaker = person.decisionMakerLikelihood === "high";
-                        const enriched = Boolean(person.email);
-                        return (
-                          <li
-                            key={person.id}
-                            className="rounded-xl border border-border bg-card p-4"
-                          >
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-[15px] font-semibold text-foreground">
-                                  {person.fullName}
-                                </p>
-                                <p className="text-[13px] text-muted-foreground">
-                                  {person.roleTitle || "Role not recorded"}
-                                </p>
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                  {isPrimary ? (
-                                    <span className="tt-chip border-navy/25 bg-navy/8 text-navy">
-                                      Suggested contact
-                                    </span>
-                                  ) : null}
-                                  {isDecisionMaker ? <span className="tt-chip">Decision maker</span> : null}
-                                  {enriched ? <span className="tt-chip">Enriched</span> : null}
-                                </div>
-                              </div>
-                              <ConfidenceChip level={person.confidence} />
-                            </div>
-
-                            <div className="mt-4 space-y-1.5 border-t border-border pt-3 text-[13px]">
-                              <p className="text-foreground">
-                                Email ·{" "}
-                                {person.email ? (
-                                  <>
-                                    {person.email}{" "}
-                                    <span className="text-muted-foreground">
-                                      ({person.emailStatus ?? "unknown"})
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-muted-foreground">Not on record</span>
-                                )}
-                              </p>
-                              {person.phone ? (
-                                <p className="text-muted-foreground">Phone · {person.phone}</p>
-                              ) : null}
-                              {person.linkedinUrl ? (
-                                <EvidenceLink url={person.linkedinUrl} label="LinkedIn profile" />
-                              ) : null}
-                            </div>
-
-                            {person.sourceUrl ? (
-                              <div className="mt-3">
-                                <EvidenceLink url={person.sourceUrl} label="Where this person was found" />
-                              </div>
-                            ) : null}
-
-                            {person.email && person.emailStatus === "found" && role !== "viewer" ? (
-                              <div className="mt-4 border-t border-border pt-3">
-                                <TTButton
-                                  variant="secondary"
-                                  size="sm"
-                                  pending={confirmingPersonId === person.id}
-                                  pendingLabel="Confirming…"
-                                  disabled={busy}
-                                  onClick={() => void confirmEmail(person.id)}
-                                >
-                                  Confirm this address is real
-                                </TTButton>
-                                <p className="mt-2 text-[12px] text-muted-foreground">
-                                  Confirmation is a human decision. It marks the address verified;
-                                  nothing is sent.
-                                </p>
-                              </div>
-                            ) : null}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <Empty>
-                      No people are on record. Research reads the public pages for founders and
-                      decision makers; anyone credible lands here.
-                    </Empty>
-                  )}
-                </DetailSection>
+                <KeySignalsCard
+                  signals={derived.keySignals}
+                  total={derived.allSignals.length}
+                  onViewAll={() => void goToTab("signals")}
+                />
+                <IcpAlignmentCard
+                  view={derived.factors}
+                  onViewAnalysis={() => void goToTab("icp")}
+                />
+                <RecentActivityCard
+                  events={allEvents}
+                  onViewAll={() => void goToTab("activity")}
+                />
+                <SimilarCompaniesCard companies={derived.similar} linkSearch={backSearch} />
               </div>
+            ) : null}
 
+            {tab === "signals" ? <SignalsTab signals={derived.allSignals} /> : null}
+
+            {tab === "icp" ? (
+              <IcpAnalysisTab
+                view={derived.factors}
+                explanation={derived.summary.summary}
+                icpVersion={icp.data?.version ?? null}
+              />
+            ) : null}
+
+            {tab === "people" ? (
               <div className="space-y-6">
-                <DetailSection title="Decision makers" emphasis="quiet">
-                  {decisionMakers.length > 0 ? (
-                    <ul className="space-y-2">
-                      {decisionMakers.map((person) => (
-                        <li
-                          key={person.id}
-                          className="rounded-lg border border-border bg-card px-3 py-2 text-[13px] text-foreground"
-                        >
-                          {person.fullName}
-                          <span className="block text-[12px] text-muted-foreground">
-                            {person.roleTitle || "Role not recorded"}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <Empty>No founder or decision maker is on record yet.</Empty>
-                  )}
-                </DetailSection>
-
-                <DetailSection title="Contact readiness" emphasis="quiet">
-                  <p className="text-sm text-foreground">
-                    {draft.ready
-                      ? "The handoff is clear: a credible person, a reachable address, and enough research."
-                      : `${blockerCount} thing${blockerCount === 1 ? "" : "s"} still stand between this company and a safe handoff.`}
-                  </p>
-                  {!draft.ready ? (
-                    <div className="mt-3">
-                      <TTButton
-                        variant="secondary"
-                        size="sm"
-                        disabled={busy}
-                        onClick={resolveHandoffBlockers}
-                      >
-                        Resolve {blockerCount} blocker{blockerCount === 1 ? "" : "s"}
-                      </TTButton>
-                    </div>
-                  ) : null}
-                </DetailSection>
+                <PeoplePanel
+                  criteria={evaluation.criteria.filter((c) => c.key === "decision_maker")}
+                  people={peopleRows}
+                  providers={peopleProviderInfo()}
+                  availableProviders={providers.data ?? []}
+                  onIngest={(providerId) => ingest.mutate(providerId)}
+                  onAddManual={(form) => addPerson.mutate(form)}
+                  onConfirmEmail={(person) => confirmEmail.mutate(person)}
+                  busy={busy}
+                  note={ingest.data?.note}
+                  plan={plan}
+                />
+                <HandoffPanel
+                  candidate={candidate}
+                  coverage={composition.coverage}
+                  people={peopleRows}
+                  fitConfidence={composition.confidence}
+                  onRoute={(draft) => routeToComms.mutate(draft)}
+                  onResolveBlockers={resolveHandoffBlockers}
+                  routed={prospect.status === "ready_for_comms"}
+                  busy={busy}
+                  routing={routeToComms.isPending}
+                />
               </div>
-            </div>
-          </TabsContent>
+            ) : null}
 
-          <TabsContent value="history" className="space-y-6">
-            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-              <DetailSection title="Research passes" meta={`${researchRuns.length} completed`} emphasis="lead">
-                {researchRuns.length > 0 ? (
-                  <ul className="space-y-3">
-                    {[...researchRuns].reverse().map((run) => (
-                      <ResearchRunRow key={run.id} run={run} />
-                    ))}
-                  </ul>
-                ) : (
-                  <Empty>No research passes yet. The first one writes the read, the sources and the score.</Empty>
-                )}
-              </DetailSection>
+            {tab === "notes" ? (
+              <NotesTab
+                notes={notes}
+                onAdd={(body) => addNote.mutate(body)}
+                busy={addNote.isPending}
+              />
+            ) : null}
 
-              <DetailSection title="Activity" meta={`${activities.length} entries`} emphasis="quiet">
-                {activities.length > 0 ? (
-                  <ul className="space-y-3">
-                    {activities.map((entry) => (
-                      <ActivityNote key={entry.id} activity={entry} />
-                    ))}
-                  </ul>
-                ) : (
-                  <Empty>Nothing recorded yet.</Empty>
-                )}
-              </DetailSection>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </main>
-  );
-}
-
-/**
- * What still stands between this company and a safe handoff, with the exact
- * action that clears each item where the action is available in place.
- */
-const BlockersSection = ({
-  ref,
-  draftBlockers,
-  people,
-  busy,
-  verifyingPersonId,
-  onVerify,
-}: {
-  ref: Ref<HTMLElement | null>;
-  draftBlockers: string[];
-  people: Person[];
-  busy: boolean;
-  verifyingPersonId: string | null;
-  onVerify: (personId: string) => void;
-}) => {
-  const peopleByEmailFragment = (blocker: string) =>
-    people.find(
-      (person) =>
-        person.email &&
-        person.emailStatus === "found" &&
-        blocker.includes(person.email),
-    ) ?? null;
-
-  return (
-    <section
-      ref={ref}
-      id="handoff-blockers"
-      tabIndex={-1}
-      aria-label="Handoff blockers"
-      className="tt-level-secondary scroll-mt-6 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-royal/40"
-    >
-      <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
-        <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
-          What is in the way
-        </h2>
-        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-          {draftBlockers.length === 0 ? "Clear" : `${draftBlockers.length} open`}
-        </span>
-      </header>
-      <div className="px-5 pb-5 pt-4">
-        {draftBlockers.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border bg-surface-tertiary px-4 py-5 text-[13px] text-muted-foreground">
-            Nothing is in the way. The handoff to Comms is clear.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {draftBlockers.map((blocker, index) => {
-              const person = peopleByEmailFragment(blocker);
-              return (
-                <li
-                  key={index}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning/8 px-3 py-2"
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <CircleAlert aria-hidden className="size-4 shrink-0 text-warning" />
-                    <p className="text-[13px] text-foreground">{blocker}</p>
-                  </div>
-                  {person ? (
-                    <TTButton
-                      variant="secondary"
-                      size="sm"
-                      pending={verifyingPersonId === person.id}
-                      pendingLabel="Confirming…"
-                      disabled={busy}
-                      onClick={() => onVerify(person.id)}
-                    >
-                      Confirm this address is real
-                    </TTButton>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-    </section>
-  );
-};
-
-function ResearchRunRow({ run }: { run: ResearchRun }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <li className="rounded-xl border border-border bg-card p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <FactorIcon status={factorStatusOf(run)} />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground">
-              {run.pages.length} page{run.pages.length === 1 ? "" : "s"} read
-            </p>
-            <p className="font-mono text-[11px] text-muted-foreground">
-              {relativeTime(run.finishedAt)}
-              {typeof run.score === "number" ? ` · Score ${run.score}` : ""}
-            </p>
+            {tab === "activity" ? <ActivityTab events={allEvents} /> : null}
           </div>
+
+          <aside className="space-y-5">
+            <AtAGlanceCard candidate={candidate} />
+            <TopReasonsCard reasons={derived.summary.topReasons} />
+            <NotesPreviewCard
+              notes={notes}
+              onAdd={() => void goToTab("notes")}
+              onViewAll={() => void goToTab("notes")}
+            />
+            <div className="flex flex-col gap-2">
+              <TTButton
+                variant="secondary"
+                className="h-10 justify-center text-[13px]"
+                disabled={busy || prospect.status === "qualified"}
+                onClick={() => setStatus.mutate({ id: prospect.id, status: "qualified" })}
+              >
+                Qualify this company
+              </TTButton>
+              <TTButton
+                variant="quiet"
+                className="h-10 justify-center text-[13px]"
+                disabled={busy || prospect.status === "passed"}
+                onClick={() => setStatus.mutate({ id: prospect.id, status: "passed" })}
+              >
+                Pass for now
+              </TTButton>
+              <SequenceInRoadmap
+                subject={{ kind: "prospect", id: prospect.id, label: prospect.name }}
+                objective={`Move ${prospect.name} from where they stand today to a working Trust Tai engagement.`}
+                context={{ organizationId, userId, userLabel: identity.name }}
+              />
+            </div>
+          </aside>
         </div>
-        <TTButton variant="quiet" size="sm" onClick={() => setOpen((value) => !value)}>
-          {open ? "Hide detail" : "See detail"}
-        </TTButton>
       </div>
-      {open ? (
-        <div className="mt-4 space-y-3 border-t border-border pt-4">
-          <p className="text-[13px] text-foreground">{run.read.whatTheyDo || "No observation recorded."}</p>
-          {run.pages.length > 0 ? (
-            <ul className="space-y-1.5">
-              {run.pages.map((page) => (
-                <li key={page.url}>
-                  <EvidenceLink url={page.url} label={page.title || page.url} />
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
-    </li>
+    </AppShell>
   );
-}
-
-function factorStatusOf(run: ResearchRun): ICPFactorStatus {
-  return computeFactorStatus(run) === "partial" ? "partial" : computeFactorStatus(run);
-}
-
-function domainOf(candidate: ProspectCandidate): string {
-  return candidate.prospect.domain || candidate.prospect.websiteUrl || "No website on record";
-}
-
-function previewUserId(): string {
-  return PREVIEW_WATCH.userId;
-}
-
-/** Carry the approved brief across, creating the Comms relationship in place. */
-async function stageRelationship(
-  candidate: ProspectCandidate,
-  draft: ReturnType<typeof buildHandoff>,
-  organizationId: string,
-) {
-  const { stageRelationshipHandoff } = await import("@/data/comms-handoff");
-  return stageRelationshipHandoff({
-    candidate,
-    draft,
-    organizationId,
-    userId: previewUserId(),
-  });
 }
