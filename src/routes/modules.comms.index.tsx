@@ -287,6 +287,26 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     () => groupByDay(conversationTimeline(selectedTouches, drafts, selectedMessages)),
     [selectedTouches, drafts, selectedMessages],
   );
+
+  /**
+   * Roadmap is recognized from revealed need, never forced. This read runs
+   * over what the conversation and interactions actually said; it recommends
+   * nothing and creates nothing. Tai decides whether to propose a roadmap.
+   */
+  const roadmapSignal = useMemo(() => {
+    if (!selected) return null;
+    const texts = [
+      ...selectedMessages.map((message) => ({
+        text: [message.subject ?? "", message.bodyText ?? message.snippet ?? ""].join("\n"),
+        source: message.direction === "inbound" ? "Their email" : "Our email",
+      })),
+      ...selectedTouches.map((touch) => ({
+        text: [touch.summary, touch.body ?? ""].join("\n"),
+        source: touch.direction === "inbound" ? "Their words" : "Logged interaction",
+      })),
+    ];
+    return detectRoadmapOpportunity(texts);
+  }, [selected, selectedMessages, selectedTouches]);
   const savedDraft = drafts.find((draft) => draft.reviewState !== "discarded");
   /** The open editor is this relationship's draft AND a person's choice. */
   const activeDraft =
