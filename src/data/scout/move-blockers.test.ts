@@ -91,6 +91,28 @@ describe("buildMoveBlockers", () => {
     const verified = { ...claire, emailStatus: "verified" } as unknown as Person;
     expect(buildMoveBlockers({ candidate: candidate(), people: [verified], coverage: full })).toEqual([]);
   });
+
+  it("a confirmed address clears its blocker and progress increments", () => {
+    const before = buildMoveBlockers({ candidate: candidate(), people: [claire], coverage: thin });
+    expect(before.some((blocker) => blocker.action.kind === "confirm_email")).toBe(true);
+    expect(blockerProgress(before.length, before.length).resolved).toBe(0);
+
+    // The click succeeded: the governed state changed, and the re-read
+    // recomputes the flow without anyone touching the page.
+    const verified = {
+      ...claire,
+      emailStatus: "verified",
+      confidence: "human_confirmed",
+    } as unknown as Person;
+    const after = buildMoveBlockers({ candidate: candidate(), people: [verified], coverage: thin });
+    expect(after.some((blocker) => blocker.action.kind === "confirm_email")).toBe(false);
+    expect(after.length).toBe(before.length - 1);
+    expect(blockerProgress(before.length, after.length)).toEqual({
+      resolved: 1,
+      total: 2,
+      done: false,
+    });
+  });
 });
 
 describe("blockerProgress", () => {
