@@ -15,6 +15,9 @@
  *    first" — drafting never skips the governed research step.
  *  - A ready brief with no dated signal is "worth knowing — no urgency".
  *    Urgency is never manufactured.
+ *  - A blocked first message never instructs outreach: the headline names
+ *    the gate ("verify the way in first"), and the one action is resolving
+ *    the blockers — never "prepare a message" that cannot honestly be sent.
  *  - Once a company is in Comms, Scout stops behaving like outbound.
  *  - Text is a protected channel: it can never be recommended here, because
  *    Scout holds no explicit text-route evidence and none is ever inferred.
@@ -59,6 +62,7 @@ export type RecommendedMoveAction =
   | "find_person"
   | "prepare_research"
   | "prepare_first_message"
+  | "resolve_blockers"
   | "research_company"
   | "none";
 
@@ -81,6 +85,11 @@ export interface RecommendedNextMove {
   /** The one primary action. "none" means the page offers no relationship move. */
   primary: { kind: RecommendedMoveAction; label: string };
   /**
+   * True when the move is a first message whose handoff is still gated. The
+   * headline then names the gate, and the primary action is resolve_blockers.
+   */
+  blocked: boolean;
+  /**
    * True when the prepare-research action should force a fresh read (the
    * stored brief is ungrounded). Otherwise the governed planner decides.
    */
@@ -98,6 +107,20 @@ const CHANNEL_MOVE: Record<string, (name: string) => string> = {
   linkedin: (name) => `Start on LinkedIn with ${name}`,
 };
 
+/**
+ * The headline when the first message is still gated. It names the gate,
+ * never instructs outreach. Email calls the gate by its name; any other
+ * route speaks about the person instead.
+ */
+function blockedHeadline(channel: ChannelRecommendation | null, name: string): string {
+  if (channel?.channel === "email") return "Email looks like the right way in — verify it first";
+  return `${name.split(/\s+/)[0]} is worth knowing — verify the way in first`;
+}
+
+function blockerLabel(count: number): string {
+  return `Resolve ${count} blocker${count === 1 ? "" : "s"}`;
+}
+
 function personRef(
   person: { fullName: string; roleTitle?: string } | null,
 ): RecommendedNextMove["person"] {
@@ -109,10 +132,11 @@ function personRef(
 }
 
 function base(
-  partial: Omit<RecommendedNextMove, "prepareForce" | "watch" | "whyNow" | "evidence"> &
-    Partial<Pick<RecommendedNextMove, "prepareForce" | "watch" | "whyNow" | "evidence">>,
+  partial: Omit<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence"> &
+    Partial<Pick<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence">>,
 ): RecommendedNextMove {
   return {
+    blocked: false,
     prepareForce: false,
     watch: null,
     whyNow: null,
@@ -125,11 +149,18 @@ function base(
  * The one recommended next move for a company, derived from the eligibility
  * read, the governed preparation plan, and the stored brief. The same stored
  * evidence always produces the same move.
+ *
+ * `firstMessage` is the readiness read of the handoff draft behind "Prepare
+ * first message". When it says the way in is gated, the move names the gate
+ * instead of instructing outreach. Omitting it preserves the historical
+ * read: an unexamined handoff is treated as open.
  */
 export function buildRecommendedNextMove(input: {
   candidate: ProspectCandidate;
   people?: Person[];
   now?: Date;
+  /** Readiness of the handoff behind "Prepare first message". */
+  firstMessage?: { ready: boolean; blockers: string[] };
 }): RecommendedNextMove {
   const { candidate } = input;
   const intel = candidate.intel ?? EMPTY_INTEL;
@@ -284,12 +315,54 @@ export function buildRecommendedNextMove(input: {
     ...(input.now ? { now: input.now } : {}),
   });
   const name = entry!.fullName;
-  const headline = channel
-    ? (CHANNEL_MOVE[channel.channel] ?? ((n: string) => `Reach out to ${n}`))(name)
-    : `Reach out to ${name}`;
   const notice =
     brief?.whatTaiCanNotice ?? intel.opportunities[0]?.statement ?? candidate.signals[0]?.statement ?? null;
-  const evidence = brief?.evidenceUsed ?? [];
+
+  // Concise supporting evidence — facts, not another prose interpretation:
+  // the fit, the person, what was noticed, the way in, and the urgency read.
+  const evidence: EvidenceRef[] = [
+    { label: `ICP fit ${evaluation.score}%`, kind: "computed" },
+    {
+      label: `${name} identified${entry!.roleTitle ? ` as ${entry!.roleTitle}` : " as a decision maker"}`,
+      kind: "computed",
+    },
+  ];
+  if (notice) evidence.push({ label: notice, kind: "computed" });
+  if (channel?.channel === "email") {
+    evidence.push({
+      label: entry!.emailVerified
+        ? "Business email verified"
+        : "Business email found but unverified",
+      kind: "computed",
+    });
+  }
+  if (!opportunity.whyNow) {
+    evidence.push({ label: "No dated signal on record", kind: "computed" });
+  }
+  for (const item of brief?.evidenceUsed ?? []) {
+    if (!evidence.some((existing) => existing.label === item.label)) evidence.push(item);
+  }
+
+  // Readiness of the handoff behind the first message. A gated way in never
+  // reads as "start outreach" — the move names the gate and the one action
+  // is resolving what stands in the way.
+  const firstMessage = input.firstMessage;
+  const blocked = Boolean(firstMessage && !firstMessage.ready);
+  const blockers = firstMessage?.blockers ?? [];
+  const blockerSentence =
+    blockers.length > 0 ? ` Still in the way: ${blockers.join(" ")}` : "";
+  const resolution =
+    blockers.length > 0
+      ? ` Clear ${blockers.length === 1 ? "it" : blockers.length === 2 ? "both" : `all ${blockers.length}`} and the first message opens up.`
+      : "";
+  const primary = blocked
+    ? { kind: "resolve_blockers" as const, label: blockerLabel(blockers.length) }
+    : { kind: "prepare_first_message" as const, label: "Prepare first message" };
+  const headline = blocked
+    ? blockedHeadline(channel, name)
+    : channel
+      ? (CHANNEL_MOVE[channel.channel] ?? ((n: string) => `Reach out to ${n}`))(name)
+      : `Reach out to ${name}`;
 
   // A real dated signal: worth knowing now, with the signal cited.
   if (opportunity.whyNow) {
@@ -299,13 +372,14 @@ export function buildRecommendedNextMove(input: {
       headline,
       reason: `${opportunity.whyNow} — a real, dated reason to reach out.${
         channel ? ` ${channel.reason}` : ""
-      } Keep it useful; the goal is the next natural exchange, not a meeting.`,
+      }${blocked ? `${blockerSentence}${resolution}` : " Keep it useful; the goal is the next natural exchange, not a meeting."}`,
       person: personRef(entry),
       channel,
-      primary: { kind: "prepare_first_message", label: "Prepare first message" },
+      primary,
+      blocked,
       watch,
       whyNow: opportunity.whyNow,
-      evidence,
+      evidence: evidence.slice(0, 5),
     });
   }
 
@@ -316,11 +390,16 @@ export function buildRecommendedNextMove(input: {
     headline,
     reason: `${name} is a credible person with a useful opening${
       notice ? ` — ${notice}` : ""
-    }.${channel ? ` ${channel.reason}` : ""} Nothing is time-sensitive, so keep the first message light and useful: earn the next exchange, not a call.`,
+    }.${channel ? ` ${channel.reason}` : ""}${
+      blocked
+        ? `${blockerSentence}${resolution}`
+        : " Nothing is time-sensitive, so keep the first message light and useful: earn the next exchange, not a call."
+    }`,
     person: personRef(entry),
     channel,
-    primary: { kind: "prepare_first_message", label: "Prepare first message" },
+    primary,
+    blocked,
     watch,
-    evidence,
+    evidence: evidence.slice(0, 5),
   });
 }

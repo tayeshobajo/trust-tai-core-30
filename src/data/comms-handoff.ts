@@ -170,6 +170,88 @@ export interface HandoffInput {
   development?: HandoffDevelopment;
 }
 
+/**
+ * What can stand between a company and a safe handoff, as structured facts.
+ * The draft's plain-language `blockers` are derived from these, so the list a
+ * person reads and the list a guided flow acts on can never drift apart.
+ */
+export type HandoffBlockerKind =
+  | "no_decision_maker"
+  | "no_person"
+  | "no_role"
+  | "no_email"
+  | "email_unverified"
+  | "not_scored"
+  | "thin_coverage";
+
+export interface HandoffBlocker {
+  kind: HandoffBlockerKind;
+  /** Exactly the sentence shown in the draft's blocker list. */
+  message: string;
+  /** The person this blocker is about, when there is one. */
+  personId?: string;
+}
+
+/** The blockers of a handoff, in the same order the draft has always listed them. */
+export function buildHandoffBlockers(input: {
+  candidate: ProspectCandidate;
+  people: Person[];
+  coverage: ResearchCoverage;
+}): HandoffBlocker[] {
+  const { candidate, people, coverage } = input;
+  const { evaluation } = candidate;
+  const targets = selectTargets(people);
+  const person = chooseContact(people);
+
+  const blockers: HandoffBlocker[] = [];
+  if (targets.length === 0) {
+    blockers.push({
+      kind: people.length > 0 ? "no_decision_maker" : "no_person",
+      message:
+        people.length > 0
+          ? "Nobody on record is a founder or decision maker."
+          : "No named person is on record to address.",
+    });
+  }
+  if (!person) {
+    blockers.push({ kind: "no_person", message: "No named person is on record to address." });
+  }
+  if (person && !person.roleTitle) {
+    blockers.push({
+      kind: "no_role",
+      message: `No role is recorded for ${person.fullName}.`,
+      personId: person.id,
+    });
+  }
+  if (person && !person.email) {
+    blockers.push({
+      kind: "no_email",
+      message: `No business email is on record for ${person.fullName}.`,
+      personId: person.id,
+    });
+  }
+  if (person?.email && person.emailStatus !== "verified") {
+    blockers.push({
+      kind: "email_unverified",
+      message: `${person.email} is ${person.emailStatus === "found" ? "unverified" : person.emailStatus}, so it cannot be treated as reachable.`,
+      personId: person.id,
+    });
+  }
+  if (!evaluation.scoreable) {
+    blockers.push({
+      kind: "not_scored",
+      message: "The company has never been researched against the ICP.",
+    });
+  }
+  if (coverage.thin) {
+    blockers.push({
+      kind: "thin_coverage",
+      message: "Research coverage is thin, so the brief rests on partial reading.",
+    });
+  }
+  return blockers;
+}
+
 export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
   const { candidate, people, coverage, fitConfidence } = input;
   const { prospect, evaluation } = candidate;
@@ -221,24 +303,10 @@ export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
     );
   }
 
-  const blockers: string[] = [];
-  if (targets.length === 0) {
-    blockers.push(
-      people.length > 0
-        ? "Nobody on record is a founder or decision maker."
-        : "No named person is on record to address.",
-    );
-  }
-  if (!person) blockers.push("No named person is on record to address.");
-  if (person && !person.roleTitle) blockers.push(`No role is recorded for ${person.fullName}.`);
-  if (person && !person.email) blockers.push(`No business email is on record for ${person.fullName}.`);
-  if (person?.email && person.emailStatus !== "verified") {
-    blockers.push(
-      `${person.email} is ${person.emailStatus === "found" ? "unverified" : person.emailStatus}, so it cannot be treated as reachable.`,
-    );
-  }
-  if (!evaluation.scoreable) blockers.push("The company has never been researched against the ICP.");
-  if (coverage.thin) blockers.push("Research coverage is thin, so the brief rests on partial reading.");
+  // One source of truth: the structured blockers, read here as plain language.
+  const blockers = buildHandoffBlockers({ candidate, people, coverage }).map(
+    (blocker) => blocker.message,
+  );
 
   const confidence: ConfidenceRead = {
     level: blockers.length === 0 ? fitConfidence.level : coverage.thin ? "low" : "moderate",
