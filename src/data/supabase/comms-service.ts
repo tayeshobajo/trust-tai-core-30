@@ -422,6 +422,13 @@ export const commsService = {
       body?: string | undefined;
       occurredAt?: string;
       followUpDueAt?: string | null;
+      /**
+       * A person explicitly recorded this capture as the counterparty's own
+       * words (a quote from a call, a pasted note from them). Only then may
+       * counterparty-only reads — like Roadmap recognition — treat an
+       * otherwise-outbound interaction as their evidence.
+       */
+      theirWords?: boolean;
     },
     context: CommsContext,
   ): Promise<Touch> {
@@ -436,7 +443,12 @@ export const commsService = {
         occurred_at: occurredAt,
         summary: input.summary.trim(),
         body: input.body?.trim() || null,
-        provenance: { app_key: "comms", actor: context.userId, logged_at: occurredAt },
+        provenance: {
+          app_key: "comms",
+          actor: context.userId,
+          logged_at: occurredAt,
+          ...(input.theirWords ? { their_words: true } : {}),
+        },
         logged_by: context.userId,
       })
       .select(TOUCH_COLUMNS)

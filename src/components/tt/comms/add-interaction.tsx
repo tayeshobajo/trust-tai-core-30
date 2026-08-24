@@ -32,6 +32,12 @@ export interface InteractionSubmission {
   occurredAt: string;
   /** Only the suggestions a person actually confirmed. */
   confirmed: DerivedSuggestion[];
+  /**
+   * The person explicitly recorded this capture as the counterparty's own
+   * words (a quote from a call, a note they wrote). Only then may
+   * counterparty-only reads treat the capture as their evidence.
+   */
+  theirWords?: boolean;
 }
 
 function localDateTimeValue(date: Date): string {
@@ -63,6 +69,7 @@ export function AddInteraction({
   const [when, setWhen] = useState(() => localDateTimeValue(new Date()));
   const [step, setStep] = useState<"capture" | "confirm">("capture");
   const [ticked, setTicked] = useState<Record<string, boolean>>({});
+  const [theirWords, setTheirWords] = useState(false);
 
   const definition = interactionDefinition(type);
   const derived = useMemo(
@@ -88,6 +95,7 @@ export function AddInteraction({
       ...(definition.narrative ? { body: text } : {}),
       occurredAt: Number.isNaN(Date.parse(occurredAt)) ? new Date().toISOString() : occurredAt,
       confirmed: confirmedList,
+      ...(definition.narrative && theirWords ? { theirWords: true } : {}),
     });
   }
 
@@ -175,6 +183,26 @@ export function AddInteraction({
                   capture is kept with it.
                 </p>
               </div>
+
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border bg-card p-2.5">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={theirWords}
+                  onChange={(event) => setTheirWords(event.target.checked)}
+                />
+                <span>
+                  <span className="block text-[13px] text-foreground">
+                    These are {personName}&rsquo;s own words
+                  </span>
+                  <span className="mt-0.5 block text-[12px] text-muted-foreground">
+                    Tick this when the capture quotes what they actually said. Reads that only
+                    ever listen to the other person — like recognizing a need they revealed —
+                    will treat it as their voice, not yours.
+                  </span>
+                </span>
+              </label>
+
 
               <div>
                 <p className="tt-eyebrow">What Comms thinks it found</p>

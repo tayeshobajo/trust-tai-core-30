@@ -60,6 +60,17 @@ export async function listProspects(organizationId: ID): Promise<Prospect[]> {
   return ((data ?? []) as unknown as ProspectRow[]).map(toProspect);
 }
 
+/** The stored row for one prospect, when a caller needs metadata or evidence. */
+export async function getProspectRow(id: ID): Promise<ProspectRow | null> {
+  const { data, error } = await supabase
+    .from("prospects")
+    .select(SELECT_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as unknown as ProspectRow | null) ?? null;
+}
+
 export async function getProspect(id: ID): Promise<Prospect | null> {
   const { data, error } = await supabase
     .from("prospects")

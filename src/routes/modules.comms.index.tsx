@@ -29,7 +29,7 @@ import { RelationshipRail } from "@/components/tt/comms/relationship-rail";
 import { AddInteraction, type InteractionSubmission } from "@/components/tt/comms/add-interaction";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
-import { detectRoadmapOpportunity } from "@/data/relationship-development";
+import { counterpartyEvidence, detectRoadmapOpportunity } from "@/data/relationship-development";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
@@ -289,23 +289,17 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   );
 
   /**
-   * Roadmap is recognized from revealed need, never forced. This read runs
-   * over what the conversation and interactions actually said; it recommends
-   * nothing and creates nothing. Tai decides whether to propose a roadmap.
+   * Roadmap is recognized only from needs THEY revealed, never forced. This
+   * read runs over counterparty-authored evidence alone — inbound mail with
+   * quoted history stripped, and interactions a person recorded as their
+   * words. Our own copy, drafts, and notes can never manufacture a signal.
+   * It recommends nothing and creates nothing. Tai decides.
    */
   const roadmapSignal = useMemo(() => {
     if (!selected) return null;
-    const texts = [
-      ...selectedMessages.map((message) => ({
-        text: [message.subject ?? "", message.bodyText ?? message.snippet ?? ""].join("\n"),
-        source: message.direction === "inbound" ? "Their email" : "Our email",
-      })),
-      ...selectedTouches.map((touch) => ({
-        text: [touch.summary, touch.body ?? ""].join("\n"),
-        source: touch.direction === "inbound" ? "Their words" : "Logged interaction",
-      })),
-    ];
-    return detectRoadmapOpportunity(texts);
+    return detectRoadmapOpportunity(
+      counterpartyEvidence({ messages: selectedMessages, touches: selectedTouches }),
+    );
   }, [selected, selectedMessages, selectedTouches]);
   const savedDraft = drafts.find((draft) => draft.reviewState !== "discarded");
   /** The open editor is this relationship's draft AND a person's choice. */
@@ -407,6 +401,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           summary: `${submission.summary} · ${provenance.label}`,
           body: submission.body,
           occurredAt: submission.occurredAt,
+          ...(submission.theirWords ? { theirWords: true } : {}),
         },
         context,
       );

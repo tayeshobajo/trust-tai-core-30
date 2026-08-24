@@ -9,12 +9,25 @@
  *
  * Laws enforced here:
  *  - Absence is unknown, never a negative.
- *  - Text is a protected channel: never recommended from a phone number alone.
+ *  - 60% ICP fit triggers deeper research, never outreach — and the actionable
+ *    queue additionally requires a traceable founder or decision maker.
+ *  - Text is a protected channel: recommended only on explicit text-route
+ *    evidence, never from having met, an introduction, or a found number.
  *  - A brief with nothing real to notice fails closed.
- *  - Roadmap is recognized from revealed need, never forced.
+ *  - Roadmap is recognized only from needs THEY revealed — counterparty words
+ *    alone, with quoted history stripped, never from language Trust Tai
+ *    introduced.
  */
 
 import type { EvidenceRef } from "@/domain/confidence";
+import type { Touch } from "@/domain/comms";
+import type { StoredMailboxMessage } from "@/domain/comms-integrations";
+import {
+  emailNodesToText,
+  parseEmailHtml,
+  splitQuotedContent,
+  splitQuotedNodes,
+} from "@/domain/comms-email-body";
 import type { Person } from "@/domain/people";
 import {
   OPPORTUNITY_FACTOR_LABEL,
@@ -30,6 +43,8 @@ import {
   type RelationshipOpportunity,
   type RelationshipOpportunityState,
   type RelationshipResearchEligibility,
+  type RelationshipResearchMarker,
+  type TextChannelEvidence,
   type RoadmapNeed,
   type RoadmapNeedKind,
   type RoadmapOpportunitySignal,
@@ -393,24 +408,33 @@ export interface ChannelInput {
   person: OpportunityPerson | null;
   /** Where the opening signal actually came from. */
   signalOrigin?: "linkedin" | "web" | "intake" | "unknown";
-  /** Tai has met this person, or numbers were exchanged, or an introduction was made. */
-  priorRelationship?: boolean;
+  /**
+   * The only thing that can ever open the text channel: explicit evidence of
+   * a legitimate personal text route — a number they shared for direct
+   * contact, a prior SMS conversation, or an explicit text preference.
+   * Meeting in person, being introduced, or a phone number found somewhere is
+   * never text evidence, and a phone number is never inferred or scraped.
+   */
+  textEvidence?: TextChannelEvidence;
 }
+
+const TEXT_EVIDENCE_REASON: Record<TextChannelEvidence, string> = {
+  exchanged_direct_number: "They shared a direct number for reaching them, so a short personal text is natural.",
+  prior_sms_conversation: "You have texted before, so continuing on that thread is the natural step.",
+  explicit_text_preference: "They asked to be texted, so text is the channel they chose.",
+};
 
 /**
  * Channels are not interchangeable. Email is the default professional route;
- * LinkedIn when the opening was LinkedIn-native; text is protected and only
- * ever follows existing relationship evidence, never a found phone number.
+ * LinkedIn when the opening was LinkedIn-native; text is protected and opens
+ * only on explicit text-route evidence — never from having met, an
+ * introduction, or a found phone number.
  */
 export function recommendChannel(input: ChannelInput): ChannelRecommendation | null {
   const { person } = input;
 
-  if (input.priorRelationship) {
-    return {
-      channel: "text",
-      reason:
-        "There is existing relationship evidence here — a meeting, an introduction, or exchanged numbers — so a personal channel is appropriate.",
-    };
+  if (input.textEvidence) {
+    return { channel: "text", reason: TEXT_EVIDENCE_REASON[input.textEvidence] };
   }
 
   if (input.signalOrigin === "linkedin" && person?.linkedinUrl) {
@@ -496,7 +520,8 @@ export function suggestProofOfCare(candidate: ProspectCandidate, intel?: ScoutIn
 export interface BriefInput extends OpportunityInput {
   people?: Person[];
   signalOrigin?: ChannelInput["signalOrigin"];
-  priorRelationship?: boolean;
+  /** Explicit text-route evidence, when a person recorded it. See ChannelInput. */
+  textEvidence?: TextChannelEvidence;
 }
 
 /**
@@ -515,7 +540,7 @@ export function buildRelationshipBrief(input: BriefInput): RelationshipDevelopme
   const channel = recommendChannel({
     person: entry,
     ...(input.signalOrigin ? { signalOrigin: input.signalOrigin } : {}),
-    ...(input.priorRelationship ? { priorRelationship: input.priorRelationship } : {}),
+    ...(input.textEvidence ? { textEvidence: input.textEvidence } : {}),
   });
 
   const whatTaiCanNotice =
@@ -582,37 +607,71 @@ export function buildRelationshipBrief(input: BriefInput): RelationshipDevelopme
 
 /* -------------------------------------------------------- roadmap recognition */
 
-const NEED_PATTERNS: [RoadmapNeedKind, RegExp][] = [
-  [
-    "competing_priorities",
-    /competing priorities|pulled in (too )?many|everything at once|too many things (at once|competing)|can'?t prioritise|can'?t prioritize/i,
-  ],
-  [
-    "founder_bottleneck",
-    /bottleneck|everything (runs|goes|comes) through (me|the founder|him|her)|can'?t delegate|founder.{0,24}(approval|sign.?off|bottleneck)|decisions wait on me/i,
-  ],
-  [
-    "unclear_sequencing",
-    /what (comes|to do) first|don'?t know (what|where) to (start|do first)|sequenc|in what order|where to begin|what order/i,
-  ],
-  [
-    "growth_outpacing_systems",
-    /outgrow|outpac|growing faster than|systems can'?t keep up|scaling (pains|issues)|held together with/i,
-  ],
-  [
-    "disconnected_tools",
-    /disconnected|siloed|tools don'?t talk|spreadsheets everywhere|manual handoffs?|patchwork|duct.?tape/i,
-  ],
-  [
-    "unclear_next_build",
-    /what to build next|next (build|phase) (is|isn'?t) (clear|unclear)|unclear what to build|no clear next step (for|on) the (product|platform|site)/i,
-  ],
+/**
+ * Need patterns are deliberately specific: each can only mean a real
+ * operational tangle. Generic language — "growth", "next steps", "roadmap",
+ * "stay connected", ordinary greetings, or Trust Tai's own vocabulary — never
+ * matches, and detection only ever runs on counterparty-authored evidence
+ * (see `counterpartyEvidence`).
+ */
+const NEED_PATTERNS: { kind: RoadmapNeedKind; pattern: RegExp }[] = [
+  {
+    kind: "competing_priorities",
+    pattern:
+      /competing priorities|pulled in (too )?many|everything at once|too many things (at once|competing)|can'?t prioritise|can'?t prioritize/i,
+  },
+  {
+    kind: "founder_bottleneck",
+    pattern:
+      /bottleneck|everything (runs|goes|comes) through (me|the founder|him|her)|can'?t delegate|founder.{0,24}(approval|sign.?off|bottleneck)|decisions wait on me/i,
+  },
+  {
+    kind: "unclear_sequencing",
+    pattern:
+      /what (comes|to do) first|don'?t know (what|where) to (start|do first)|sequenc|in what order|where to begin|what order/i,
+  },
+  {
+    kind: "growth_outpacing_systems",
+    pattern:
+      /outgrow|outpac|growing faster than|systems can'?t keep up|scaling (pains|issues)|held together with/i,
+  },
+  {
+    kind: "disconnected_tools",
+    pattern:
+      /disconnected|siloed|tools don'?t talk|spreadsheets everywhere|manual handoffs?|patchwork|duct.?tape/i,
+  },
+  {
+    kind: "unclear_next_build",
+    pattern:
+      /what to build next|next (build|phase) (is|isn'?t) (clear|unclear)|unclear what to build|no clear next step (for|on) the (product|platform|site)/i,
+  },
 ];
 
 /**
- * Recognize a Roadmap opportunity from what the conversation or research
- * actually revealed. Pure: it detects and explains, and it never creates a
- * roadmap or inserts a pitch anywhere.
+ * The tightest honest excerpt: the sentence the match actually lives in, not
+ * the whole message. A person reading the panel should see their words, not a
+ * wall of surrounding email.
+ */
+function needExcerpt(text: string, matched: string): string {
+  const clamp = (value: string): string =>
+    value.length > 200 ? `${value.slice(0, 197)}…` : value;
+  const at = text.indexOf(matched);
+  if (at === -1) return clamp(text.trim());
+  const sentences = text.split(/(?<=[.!?])\s+|\n+/);
+  let offset = 0;
+  for (const sentence of sentences) {
+    const end = offset + sentence.length;
+    if (at >= offset && at <= end) return clamp(sentence.trim());
+    offset = end + 1;
+  }
+  return clamp(text.trim());
+}
+
+/**
+ * Recognize a Roadmap opportunity from what the COUNTERPARTY actually
+ * revealed. The caller is responsible for passing only their words (see
+ * `counterpartyEvidence`); this function never creates a roadmap, never
+ * inserts a pitch, and never nudges anyone. Tai decides.
  */
 export function detectRoadmapOpportunity(
   texts: { text: string; source?: string }[],
@@ -621,14 +680,14 @@ export function detectRoadmapOpportunity(
   for (const entry of texts) {
     const text = entry.text?.trim();
     if (!text) continue;
-    for (const [kind, pattern] of NEED_PATTERNS) {
+    for (const { kind, pattern } of NEED_PATTERNS) {
       if (needs.some((need) => need.kind === kind)) continue;
       const match = pattern.exec(text);
       if (!match) continue;
       needs.push({
         kind,
         label: ROADMAP_NEED_LABEL[kind],
-        evidence: text.length > 220 ? `${text.slice(0, 217)}…` : text,
+        evidence: needExcerpt(text, match[0]),
         ...(entry.source ? { source: entry.source } : {}),
       });
     }
@@ -639,7 +698,7 @@ export function detectRoadmapOpportunity(
       emerging: false,
       needs: [],
       because:
-        "Nothing in the conversation or research reveals a concrete need a strategic map would answer.",
+        "Nothing they have actually said reveals a concrete need a strategic map would answer.",
       confidence: "low",
     };
   }
@@ -647,27 +706,264 @@ export function detectRoadmapOpportunity(
   return {
     emerging: true,
     needs,
-    because: `The conversation revealed ${needs
+    because: `They revealed ${needs
       .map((need) => need.label.toLowerCase())
       .join(
         ", ",
-      )} — the kind of tangle a sequenced roadmap genuinely helps with. Tai decides whether to propose one.`,
+      )} in their own words — the kind of tangle a sequenced roadmap genuinely helps with. Tai decides whether to propose one.`,
     confidence: needs.length >= 3 ? "high" : needs.length === 2 ? "moderate" : "low",
   };
+}
+
+/* ------------------------------------------- counterparty-only evidence */
+
+type CounterpartyMessage = Pick<
+  StoredMailboxMessage,
+  "direction" | "subject" | "snippet" | "bodyText" | "bodyHtml"
+>;
+type CounterpartyTouch = Pick<Touch, "direction" | "summary" | "body" | "provenance">;
+
+/**
+ * Their words from one inbound email, with quoted history and signatures
+ * stripped first — an inbound reply quoting our own earlier email must never
+ * read our language back as their need. Reuses the one shared quoted-content
+ * logic; there is no second parser.
+ */
+function counterpartyEmailText(message: CounterpartyMessage): string {
+  if (message.bodyHtml) {
+    const { main } = splitQuotedNodes(parseEmailHtml(message.bodyHtml));
+    const text = emailNodesToText(main).trim();
+    if (text) return text;
+  }
+  if (message.bodyText) return splitQuotedContent(message.bodyText).main;
+  return message.snippet ?? "";
+}
+
+/**
+ * The only words Roadmap recognition may ever read:
+ *  - INBOUND email/SMS: subject plus quoted-stripped body.
+ *  - INBOUND recorded interactions (a call where they spoke, a text from
+ *    them).
+ *  - Interactions a person explicitly marked as their quoted words.
+ * Outbound mail, our drafts, our notes, our hypotheses, and anything the
+ * system generated are excluded — our own language can never manufacture a
+ * Roadmap signal.
+ */
+export function counterpartyEvidence(input: {
+  messages?: CounterpartyMessage[];
+  touches?: CounterpartyTouch[];
+}): { text: string; source?: string }[] {
+  const texts: { text: string; source?: string }[] = [];
+
+  for (const message of input.messages ?? []) {
+    if (message.direction !== "inbound") continue;
+    const body = counterpartyEmailText(message);
+    const text = [message.subject ?? "", body]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join("\n");
+    if (text) texts.push({ text, source: "Their email" });
+  }
+
+  for (const touch of input.touches ?? []) {
+    const theirWords =
+      touch.direction === "inbound" || touch.provenance?.["their_words"] === true;
+    if (!theirWords) continue;
+    const text = [touch.summary, touch.body ?? ""]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join("\n");
+    if (!text) continue;
+    texts.push({
+      text,
+      source:
+        touch.direction === "inbound"
+          ? "Their words"
+          : "Their words, recorded by a person here",
+    });
+  }
+
+  return texts;
+}
+
+/* ---------------------------------------------------- preparation planning */
+
+/**
+ * Briefs carry a version so a future read can tell what it is looking at,
+ * and a staleness window so an old brief is refreshed rather than trusted
+ * forever. Automatic preparation stays bounded: it runs when eligibility is
+ * newly reached, when the underlying evidence moved, or when the brief went
+ * stale — never on every render.
+ */
+export const RELATIONSHIP_BRIEF_VERSION = 1;
+export const RELATIONSHIP_BRIEF_STALE_DAYS = 30;
+
+/** The timestamp of the evidence a brief would be built from right now. */
+export function relationshipEvidenceAt(candidate: ProspectCandidate): string | undefined {
+  return candidate.intel?.collectedAt ?? candidate.lastCheckedAt;
+}
+
+export interface RelationshipPreparationPlan {
+  /** What should happen next. "none" means the stored marker is already right. */
+  action: "prepare" | "refresh" | "mark_ineligible" | "none";
+  eligible: boolean;
+  because: string;
+}
+
+/**
+ * Decide whether deeper relationship-development research should be prepared
+ * for this prospect. The gate is the full eligibility read — 60% fit AND a
+ * traceable founder/decision maker — and the output is research only. It
+ * never sends, never creates a Comms relationship, and never approves
+ * outreach.
+ */
+export function planRelationshipPreparation(input: {
+  candidate: ProspectCandidate;
+  people?: Person[];
+  now?: Date;
+  force?: boolean;
+}): RelationshipPreparationPlan {
+  const { candidate } = input;
+  const intel = candidate.intel ?? EMPTY_INTEL;
+  const people = opportunityPeople(intel, input.people ?? []);
+  const eligibility = relationshipResearchEligible(candidate, people);
+  const marker = candidate.development?.research;
+
+  if (!eligibility.eligible) {
+    return marker && marker.state !== "not_eligible"
+      ? { action: "mark_ineligible", eligible: false, because: eligibility.because }
+      : { action: "none", eligible: false, because: eligibility.because };
+  }
+
+  if (input.force) {
+    return {
+      action: marker?.state === "prepared" ? "refresh" : "prepare",
+      eligible: true,
+      because: "A person here asked for a fresh read.",
+    };
+  }
+
+  if (!marker || marker.state !== "prepared" || !marker.brief) {
+    return { action: "prepare", eligible: true, because: eligibility.because };
+  }
+
+  const evidenceAt = relationshipEvidenceAt(candidate);
+  if (evidenceAt && evidenceAt !== marker.evidenceAt) {
+    return {
+      action: "refresh",
+      eligible: true,
+      because: "The underlying evidence moved on since this brief was prepared.",
+    };
+  }
+
+  const age = daysSince(marker.preparedAt, input.now ?? new Date());
+  if (age !== null && age > RELATIONSHIP_BRIEF_STALE_DAYS) {
+    return {
+      action: "refresh",
+      eligible: true,
+      because: `This brief is ${age} days old; a fresh read would sharpen it.`,
+    };
+  }
+
+  return { action: "none", eligible: true, because: "The prepared brief is current." };
+}
+
+/* -------------------------------------------------- worth-knowing membership */
+
+export type WorthKnowingMembership = "actionable" | "needs_person" | "outside";
+
+/**
+ * Where a candidate belongs in Worth Knowing. The actionable queue is people,
+ * never anonymous companies: 60%+ fit AND a traceable founder or decision
+ * maker. A strong-fit company with no person on record yet is kept quietly as
+ * "needs a person" — visible, but never presented as ready for relationship
+ * development.
+ */
+export function worthKnowingMembership(
+  candidate: ProspectCandidate,
+  people: Person[] = [],
+): WorthKnowingMembership {
+  const { evaluation, prospect } = candidate;
+  if (prospect.status === "passed" || prospect.status === "archived") return "outside";
+  if (!evaluation.scoreable || evaluation.score < RELATIONSHIP_RESEARCH_FIT_THRESHOLD) {
+    return "outside";
+  }
+  const intel = candidate.intel ?? EMPTY_INTEL;
+  const eligibility = relationshipResearchEligible(candidate, opportunityPeople(intel, people));
+  return eligibility.eligible ? "actionable" : "needs_person";
 }
 
 /* -------------------------------------------------------------- watch state */
 
 type Row = Record<string, unknown>;
 
-/** Read the person's pacing decision off the prospect metadata. */
+function readResearchMarker(block: Row): RelationshipResearchMarker | undefined {
+  const raw = block["research"];
+  if (!raw || typeof raw !== "object") return undefined;
+  const marker = raw as Row;
+  const state = marker["state"];
+  if (state !== "research_needed" && state !== "prepared" && state !== "not_eligible") {
+    return undefined;
+  }
+  return {
+    state,
+    because: typeof marker["because"] === "string" ? marker["because"] : "",
+    version: typeof marker["version"] === "number" ? marker["version"] : 0,
+    ...(typeof marker["eligible_since"] === "string"
+      ? { eligibleSince: marker["eligible_since"] }
+      : {}),
+    ...(typeof marker["prepared_at"] === "string" ? { preparedAt: marker["prepared_at"] } : {}),
+    ...(typeof marker["evidence_at"] === "string" ? { evidenceAt: marker["evidence_at"] } : {}),
+    ...(marker["brief"] && typeof marker["brief"] === "object"
+      ? { brief: marker["brief"] as RelationshipDevelopmentBrief }
+      : {}),
+  };
+}
+
+/**
+ * Read the relationship-development state off the prospect metadata: the
+ * person's pacing decision and the governed research marker, side by side.
+ */
 export function readRelationshipDevelopment(metadata: unknown): RelationshipDevelopmentMarker {
   const meta = (metadata && typeof metadata === "object" ? metadata : {}) as Row;
   const block = (meta["relationship_development"] ?? {}) as Row;
   const watch = block["watch"];
+  const research = readResearchMarker(block);
   return {
     watch: watch === "watching" || watch === "not_now" ? watch : null,
     ...(typeof block["by"] === "string" ? { by: block["by"] } : {}),
     ...(typeof block["at"] === "string" ? { at: block["at"] } : {}),
+    ...(research ? { research } : {}),
+  };
+}
+
+/**
+ * The storage shape of a marker: the UI reads camelCase, the row stores
+ * snake_case. Kept in one place so writers and readers never drift.
+ */
+export function researchMarkerToRow(marker: RelationshipResearchMarker): Row {
+  return {
+    state: marker.state,
+    because: marker.because,
+    version: marker.version,
+    ...(marker.eligibleSince ? { eligible_since: marker.eligibleSince } : {}),
+    ...(marker.preparedAt ? { prepared_at: marker.preparedAt } : {}),
+    ...(marker.evidenceAt ? { evidence_at: marker.evidenceAt } : {}),
+    ...(marker.brief ? { brief: marker.brief as unknown as Row } : {}),
+  };
+}
+
+/**
+ * Serialize the whole relationship-development block for a metadata patch,
+ * preserving whichever parts (watch, research) are present. The stored
+ * metadata merge is shallow, so writers must always write the full block —
+ * never one piece of it — or the sibling piece would be silently dropped.
+ */
+export function relationshipDevelopmentRow(marker: RelationshipDevelopmentMarker): Row {
+  return {
+    watch: marker.watch,
+    ...(marker.by ? { by: marker.by } : {}),
+    ...(marker.at ? { at: marker.at } : {}),
+    ...(marker.research ? { research: researchMarkerToRow(marker.research) } : {}),
   };
 }

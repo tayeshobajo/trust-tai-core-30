@@ -26,7 +26,15 @@ import {
 import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
 import { inboundOrigin, withInboundOrigin } from "@/data/scout/inbound";
 import { readResearchConsent } from "@/data/scout/research-consent";
-import { readRelationshipDevelopment } from "@/data/relationship-development";
+import {
+  buildRelationshipBrief,
+  planRelationshipPreparation,
+  readRelationshipDevelopment,
+  relationshipDevelopmentRow,
+  relationshipEvidenceAt,
+  RELATIONSHIP_BRIEF_VERSION,
+} from "@/data/relationship-development";
+import type { RelationshipResearchMarker } from "@/domain/relationship-development";
 import type { DecisionMoveKey } from "@/data/scout/decision-state";
 
 import { areasCovered, mergeObservedRows, type ResearchRunPlan } from "@/data/scout/research-run";
@@ -39,9 +47,11 @@ import { supabaseActivity } from "./activities";
 import { emitSuiteEvent } from "@/data/events/suite-events";
 import { fetchCompanyIdentity } from "./company-identity";
 import { getCurrentIcp, type IcpProfile } from "./icp";
+import { peopleService } from "./people-service";
 import {
   SCOUT_LIVE_SOURCE,
   findProspectRowByWebsite,
+  getProspectRow,
   insertPreviewProspect,
   listProspectRows,
   normalizeWebsiteUrl,
@@ -109,7 +119,7 @@ function toCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandi
   const development = readRelationshipDevelopment(row.metadata);
   return {
     ...(consent ? { ...candidate, researchConsent: consent } : candidate),
-    ...(development.watch ? { development } : {}),
+    ...(development.watch || development.research ? { development } : {}),
   };
 }
 
@@ -333,8 +343,17 @@ export const scoutService = {
     context: ScoutContext,
   ) {
     const at = new Date().toISOString();
+    // The stored metadata merge is shallow, so the whole block is rewritten
+    // with the research marker preserved — a pacing decision must never
+    // silently drop a prepared brief.
+    const row = await getProspectRow(input.prospectId);
     await saveProspectMetadataPatch(input.prospectId, {
-      relationship_development: { watch: input.watch, by: context.userId, at },
+      relationship_development: relationshipDevelopmentRow({
+        ...readRelationshipDevelopment(row?.metadata),
+        watch: input.watch,
+        by: context.userId,
+        at,
+      }),
     });
     await supabaseActivity.record({
       organizationId: context.organizationId,
@@ -356,6 +375,84 @@ export const scoutService = {
       occurredAt: at,
     });
     return { watch: input.watch, at };
+  },
+
+  /**
+   * Prepare the deeper relationship-development brief for one prospect from
+   * the evidence already stored on it.
+   *
+   * The gate is the full eligibility read: 60% ICP fit AND a traceable
+   * founder or decision maker. The work runs when eligibility is newly
+   * reached, when the underlying evidence moved, when the brief went stale,
+   * or when a person explicitly asks — never on every render. This is
+   * research only: it never sends, never creates a Comms relationship, never
+   * marks ready-for-comms, and never approves outreach.
+   */
+  async prepareRelationshipDevelopment(
+    input: { prospectId: ID; force?: boolean },
+    context: ScoutContext,
+  ): Promise<RelationshipResearchMarker> {
+    const [row, icp, people] = await Promise.all([
+      getProspectRow(input.prospectId),
+      getCurrentIcp(context.organizationId),
+      peopleService.list(context.organizationId, input.prospectId),
+    ]);
+    if (!row) throw new Error("That company is no longer on your board.");
+
+    const candidate = toCandidate(row, icp?.version ?? null);
+    const existing = candidate.development?.research;
+    const plan = planRelationshipPreparation({ candidate, people, force: input.force });
+    if (plan.action === "none" && existing) return existing;
+
+    const at = new Date().toISOString();
+    const evidenceAt = relationshipEvidenceAt(candidate);
+    const marker: RelationshipResearchMarker = plan.eligible
+      ? {
+          state: "prepared",
+          because: plan.because,
+          version: RELATIONSHIP_BRIEF_VERSION,
+          eligibleSince: existing?.eligibleSince ?? at,
+          preparedAt: at,
+          ...(evidenceAt ? { evidenceAt } : {}),
+          brief: buildRelationshipBrief({ candidate, people }),
+        }
+      : {
+          state: "not_eligible",
+          because: plan.because,
+          version: RELATIONSHIP_BRIEF_VERSION,
+          ...(existing?.eligibleSince ? { eligibleSince: existing.eligibleSince } : {}),
+        };
+
+    await saveProspectMetadataPatch(input.prospectId, {
+      relationship_development: relationshipDevelopmentRow({
+        ...readRelationshipDevelopment(row.metadata),
+        research: marker,
+      }),
+    });
+
+    if (marker.state === "prepared") {
+      await supabaseActivity.record({
+        organizationId: context.organizationId,
+        name: "prospect.relationship_brief_prepared",
+        subject: { type: "prospect", id: input.prospectId, label: candidate.prospect.name },
+        summary: `${candidate.prospect.name} became eligible for deeper relationship research, so a brief was prepared from the stored public evidence. Nothing was sent.`,
+        payload: {
+          action: plan.action,
+          eligible_since: marker.eligibleSince ?? null,
+          evidence_at: marker.evidenceAt ?? null,
+          brief_version: marker.version,
+        },
+        provenance: {
+          appId: "scout",
+          actor: { type: "user", id: context.userId },
+          observedAt: at,
+          confidence: "observed",
+        },
+        occurredAt: at,
+      });
+    }
+
+    return marker;
   },
 
   /** Is live market discovery connected? */
@@ -544,6 +641,21 @@ export const scoutService = {
       },
       occurredAt,
     });
+
+    // When a research pass newly crosses the eligibility line (60% fit AND a
+    // traceable founder or decision maker), the deeper brief is prepared from
+    // the evidence just gathered. Research only: nothing is sent and no
+    // relationship is created. Idempotent against the stored marker, and a
+    // failure here never fails the research run — the explicit Prepare action
+    // on the company page remains available.
+    try {
+      await this.prepareRelationshipDevelopment(
+        { prospectId: row.id },
+        { organizationId: request.organizationId, userId: request.userId },
+      );
+    } catch {
+      // Best-effort automatic preparation; the governed manual action remains.
+    }
 
     return {
       request,
