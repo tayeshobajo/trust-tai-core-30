@@ -39,7 +39,9 @@ export function RecommendedNextMoveCard({
   prepareError,
   firstMessageReady,
   routingFirstMessage = false,
-  confirmingEmail = false,
+  confirmingEmailId = null,
+  confirmedEmailId = null,
+  confirmEmailError = null,
   researchPending = false,
   confidenceLevel,
   onPrimary,
@@ -64,8 +66,12 @@ export function RecommendedNextMoveCard({
   firstMessageReady: boolean;
   /** True while the approved brief is being carried into Comms. */
   routingFirstMessage?: boolean;
-  /** True while an address confirmation is being recorded. */
-  confirmingEmail?: boolean;
+  /** The person whose address confirmation is being recorded. */
+  confirmingEmailId?: string | null;
+  /** The person whose confirmation just saved, while the read catches up. */
+  confirmedEmailId?: string | null;
+  /** Inline failure for the confirm action, bound to the person it concerns. */
+  confirmEmailError?: { personId: string; message: string } | null;
   /** True while the governed company research pass is running. */
   researchPending?: boolean;
   /** How sure the underlying read is, shown quietly inside "Why this move". */
@@ -84,6 +90,7 @@ export function RecommendedNextMoveCard({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [flow, setFlow] = useState<{ total: number } | null>(null);
+  const [confirmedIds, setConfirmedIds] = useState<ReadonlySet<string>>(new Set());
   const canAct = move.primary.kind !== "none";
   const progress = blockerProgress(flow?.total ?? blockers.length, blockers.length);
 
@@ -91,7 +98,33 @@ export function RecommendedNextMoveCard({
   useEffect(() => {
     setConfirming(false);
     setFlow(null);
+    setConfirmedIds(new Set());
   }, [candidate.prospect.id]);
+
+  // A saved confirmation is acknowledged in place until the refreshed read
+  // clears the blocker — a click that changed governed state never looks
+  // like nothing happened.
+  useEffect(() => {
+    if (!confirmedEmailId) return;
+    setConfirmedIds((prev) =>
+      prev.has(confirmedEmailId) ? prev : new Set(prev).add(confirmedEmailId),
+    );
+  }, [confirmedEmailId]);
+
+  // Once the re-read no longer lists a person as blocked, the acknowledgement
+  // has done its job and leaves with the blocker.
+  useEffect(() => {
+    setConfirmedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const stillBlocked = new Set(
+        blockers
+          .map((blocker) => blocker.person?.id)
+          .filter((id): id is string => Boolean(id)),
+      );
+      const next = new Set([...prev].filter((id) => stillBlocked.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [blockers]);
 
   // The final blocker clears through the evidence, not through a click: once
   // the move offers the first message, the flow hands over to it directly.
@@ -326,34 +359,81 @@ export function RecommendedNextMoveCard({
 
             {blockers.length > 0 ? (
               <ul className="mt-3 space-y-3">
-                {blockers.map((blocker) => (
-                  <li
-                    key={blocker.key}
-                    className="rounded-lg border border-border bg-background p-3"
-                  >
-                    <p className="text-[13px] font-medium text-foreground">{blocker.message}</p>
-                    <p className="mt-1 text-[13px] text-muted-foreground">{blocker.detail}</p>
-                    <div className="mt-2">
-                      <TTButton
-                        variant="secondary"
-                        size="sm"
-                        pending={
-                          (blocker.action.kind === "confirm_email" && confirmingEmail) ||
-                          (blocker.action.kind === "run_research" && researchPending)
-                        }
-                        pendingLabel={
-                          blocker.action.kind === "confirm_email"
-                            ? "Confirming…"
-                            : "Reading the public pages…"
-                        }
-                        disabled={busy}
-                        onClick={() => runBlockerAction(blocker)}
-                      >
-                        {blocker.action.label}
-                      </TTButton>
-                    </div>
-                  </li>
-                ))}
+                {blockers.map((blocker) => {
+                  const personId = blocker.person?.id;
+                  const acknowledged =
+                    blocker.action.kind === "confirm_email" &&
+                    personId !== undefined &&
+                    confirmedIds.has(personId);
+                  const failure =
+                    blocker.action.kind === "confirm_email" &&
+                    personId !== undefined &&
+                    confirmEmailError?.personId === personId
+                      ? confirmEmailError
+                      : null;
+                  return (
+                    <li
+                      key={blocker.key}
+                      className="rounded-lg border border-border bg-background p-3"
+                    >
+                      <p className="text-[13px] font-medium text-foreground">{blocker.message}</p>
+                      <p className="mt-1 text-[13px] text-muted-foreground">{blocker.detail}</p>
+                      <div className="mt-2">
+                        {acknowledged ? (
+                          <p
+                            role="status"
+                            aria-live="polite"
+                            className="inline-flex items-center rounded-lg border border-success/25 bg-success/8 px-3 py-1.5 text-[13px] font-medium text-success"
+                          >
+                            Address confirmed — refreshing the read.
+                          </p>
+                        ) : (
+                          <TTButton
+                            variant="secondary"
+                            size="sm"
+                            pending={
+                              (blocker.action.kind === "confirm_email" &&
+                                confirmingEmailId === personId) ||
+                              (blocker.action.kind === "run_research" && researchPending)
+                            }
+                            pendingLabel={
+                              blocker.action.kind === "confirm_email"
+                                ? "Confirming…"
+                                : "Reading the public pages…"
+                            }
+                            disabled={busy}
+                            onClick={() => runBlockerAction(blocker)}
+                          >
+                            {blocker.action.label}
+                          </TTButton>
+                        )}
+                      </div>
+                      {failure ? (
+                        <div
+                          role="alert"
+                          className="mt-2 rounded-lg border border-destructive/30 bg-destructive/8 p-3"
+                        >
+                          <p className="text-[13px] font-medium text-foreground">
+                            The confirmation was not saved.
+                          </p>
+                          <p className="mt-1 text-[13px] text-muted-foreground">
+                            {failure.message}
+                          </p>
+                          <div className="mt-2">
+                            <TTButton
+                              variant="secondary"
+                              size="sm"
+                              disabled={busy}
+                              onClick={() => runBlockerAction(blocker)}
+                            >
+                              Retry
+                            </TTButton>
+                          </div>
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className="mt-3 text-[13px] text-muted-foreground">
