@@ -90,8 +90,8 @@ export const Route = createFileRoute("/modules/comms/")({
   // A Scout handoff lands here carrying the relationship it just opened, so
   // Comms opens on exactly that person — never on whoever sorted first.
   validateSearch: (search: Record<string, unknown>): { relationship?: string } => ({
-    ...(typeof search.relationship === "string" && search.relationship
-      ? { relationship: search.relationship }
+    ...(typeof search["relationship"] === "string" && search["relationship"]
+      ? { relationship: search["relationship"] as string }
       : {}),
   }),
   head: () => ({
