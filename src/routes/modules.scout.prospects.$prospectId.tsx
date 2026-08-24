@@ -522,22 +522,47 @@ function CompanyDetail({
     ...(firstMessageDevelopment ? { development: firstMessageDevelopment } : {}),
   });
 
+  // The guided flow behind "Resolve N blockers": the same structured blockers
+  // the handoff draft lists, each carrying its own governed next action.
+  // Built before the move so the move can name the governed confirmation when
+  // a lone unverified address is the only thing in the way.
+  const moveBlockers = buildMoveBlockers({
+    candidate,
+    people: peopleRows,
+    coverage: composition.coverage,
+  });
+  const confirmEmailBlocker =
+    firstMessageDraft.blockers.length === 1
+      ? moveBlockers.find(
+          (blocker) => blocker.action.kind === "confirm_email" && blocker.person,
+        )
+      : undefined;
+
   // The one canonical decision surface: the recommended next move, computed
   // from the eligibility read, the governed brief, the pacing decision, and
   // the same handoff readiness that governs the Scout → Comms transition.
   const recommendedMove = buildRecommendedNextMove({
     candidate,
     people: peopleRows,
-    firstMessage: { ready: firstMessageDraft.ready, blockers: firstMessageDraft.blockers },
+    firstMessage: {
+      ready: firstMessageDraft.ready,
+      blockers: firstMessageDraft.blockers,
+      ...(confirmEmailBlocker?.person
+        ? { confirmEmailPersonId: confirmEmailBlocker.person.id }
+        : {}),
+    },
   });
 
-  // The guided flow behind "Resolve N blockers": the same structured blockers
-  // the handoff draft lists, each carrying its own governed next action.
-  const moveBlockers = buildMoveBlockers({
-    candidate,
-    people: peopleRows,
-    coverage: composition.coverage,
-  });
+  // Moves that route to the canonical People area put keyboard focus on the
+  // exact section that resolves them — never a generic tab switch.
+  const focusPeopleSection = (id: string) => {
+    void goToTab("people");
+    window.setTimeout(() => {
+      const target = document.getElementById(id);
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      target?.focus({ preventScroll: true });
+    }, 80);
+  };
 
   const onRecommendedPrimary = (kind: RecommendedMoveAction) => {
     switch (kind) {
@@ -545,7 +570,13 @@ function CompanyDetail({
         void navigate({ to: "/modules/comms" });
         break;
       case "find_person":
-        void goToTab("people");
+        focusPeopleSection("scout-people-discovery");
+        break;
+      case "find_contact_route":
+        focusPeopleSection("scout-people-blockers");
+        break;
+      case "confirm_decision_maker":
+        focusPeopleSection("scout-people-role");
         break;
       case "prepare_research":
         prepareBrief.mutate(
@@ -555,6 +586,8 @@ function CompanyDetail({
       case "research_company":
         startResearch();
         break;
+      case "confirm_email":
+      case "resolve_blockers":
       case "prepare_first_message":
       case "none":
         break;
