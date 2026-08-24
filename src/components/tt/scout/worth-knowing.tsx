@@ -26,6 +26,7 @@ import {
   readRelationshipDevelopment,
   worthKnowingSort,
 } from "@/data/relationship-development";
+import type { ScoutLinkSearch } from "@/components/tt/scout/company-table";
 import { paginate } from "@/data/scout-table";
 import { scoutService } from "@/data/supabase/scout-service";
 import {
@@ -74,7 +75,7 @@ export function WorthKnowingQueue({
 }: {
   candidates: ProspectCandidate[];
   identity: WorkspaceIdentity;
-  linkSearch: { section: string; fit: string };
+  linkSearch: ScoutLinkSearch;
 }) {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -188,7 +189,7 @@ function WorthKnowingRow({
   busy,
 }: {
   entry: WorthKnowingEntry;
-  linkSearch: { section: string; fit: string };
+  linkSearch: ScoutLinkSearch;
   onWatch: (watch: "watching" | "not_now" | null) => void;
   busy: boolean;
 }) {
