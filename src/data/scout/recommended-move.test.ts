@@ -285,6 +285,71 @@ describe("watching is reversible pacing, not a dead end", () => {
   });
 });
 
+/* ------------------------- 8b · handoff readiness gates the recommendation */
+
+describe("the canonical handoff readiness governs the move", () => {
+  const BLOCKERS = [
+    "claire@example.com is unverified, so it cannot be treated as reachable.",
+    "Research coverage is thin, so the brief rests on partial reading.",
+  ];
+
+  it("ready=false with 2 blockers yields the blocked headline and Resolve 2 blockers", () => {
+    const move = buildRecommendedNextMove({
+      candidate: readyCandidate(),
+      now: NOW,
+      firstMessage: { ready: false, blockers: BLOCKERS },
+    });
+    expect(move.blocked).toBe(true);
+    expect(move.headline).toBe("Email looks like the right way in — verify it first");
+    expect(move.primary.kind).toBe("resolve_blockers");
+    expect(move.primary.label).toBe("Resolve 2 blockers");
+    expect(move.primary.kind).not.toBe("prepare_first_message");
+    expect(move.reason).toContain(BLOCKERS[0]);
+    expect(move.reason).toContain(BLOCKERS[1]);
+  });
+
+  it("a single blocker is named in the singular", () => {
+    const move = buildRecommendedNextMove({
+      candidate: readyCandidate(),
+      now: NOW,
+      firstMessage: { ready: false, blockers: [BLOCKERS[0]!] },
+    });
+    expect(move.primary.kind).toBe("resolve_blockers");
+    expect(move.primary.label).toBe("Resolve 1 blocker");
+  });
+
+  it("ready=true yields the normal channel headline and Prepare first message", () => {
+    const move = buildRecommendedNextMove({
+      candidate: readyCandidate(),
+      now: NOW,
+      firstMessage: { ready: true, blockers: [] },
+    });
+    expect(move.blocked).toBe(false);
+    expect(move.headline).toBe("Start with email to Claire Meneely");
+    expect(move.primary.kind).toBe("prepare_first_message");
+    expect(move.primary.label).toBe("Prepare first message");
+  });
+
+  it("a blocked non-email route speaks about the person, never instructs outreach", () => {
+    const withLinkedIn: ScoutIntel = {
+      ...intelWithPerson,
+      people: [{ ...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" }],
+    } as unknown as ScoutIntel;
+    const move = buildRecommendedNextMove({
+      candidate: candidate({
+        score: 86,
+        intel: withLinkedIn,
+        development: { watch: null, research: preparedMarker() },
+      }),
+      now: NOW,
+      firstMessage: { ready: false, blockers: BLOCKERS },
+    });
+    expect(move.blocked).toBe(true);
+    expect(move.headline).toBe("Claire is worth knowing — verify the way in first");
+    expect(move.primary.kind).toBe("resolve_blockers");
+  });
+});
+
 /* ------------------------------------ 8 · one canonical path, no duplicates */
 
 describe("one canonical decision surface", () => {
