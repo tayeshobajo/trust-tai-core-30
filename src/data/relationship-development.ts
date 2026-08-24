@@ -448,7 +448,9 @@ export function recommendChannel(input: ChannelInput): ChannelRecommendation | n
   if (person?.email) {
     return {
       channel: "email",
-      reason: `A legitimate business email is on record for ${person.fullName} and there is something worth saying.`,
+      reason: person.emailVerified
+        ? `A verified business email is on record for ${person.fullName} and there is something worth saying.`
+        : `Email appears to be the likely professional route for ${person.fullName}, but the address is not verified yet, so it is not safely reachable.`,
     };
   }
 

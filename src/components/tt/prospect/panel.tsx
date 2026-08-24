@@ -50,12 +50,12 @@ export function Panel({
   return (
     <section
       className={cn(
-        "tt-rise rounded-xl border bg-card",
+        "tt-rise rounded-xl",
         emphasis === "primary"
-          ? "border-royal/30 p-6 shadow-[0_1px_0_0_hsl(var(--royal)/0.08)]"
+          ? "tt-level-primary p-6"
           : emphasis === "quiet"
-            ? "border-dashed border-border/70 p-5 opacity-80 transition-opacity hover:opacity-100"
-            : "border-border p-6",
+            ? "tt-level-tertiary p-5"
+            : "tt-level-secondary p-6",
         className,
       )}
     >
@@ -83,7 +83,7 @@ export function RailCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-5">
+    <section className="tt-level-tertiary rounded-xl p-5">
       <p className="tt-eyebrow">{title}</p>
       <div className="mt-3">{children}</div>
     </section>

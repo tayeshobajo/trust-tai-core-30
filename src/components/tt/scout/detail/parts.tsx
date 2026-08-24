@@ -29,8 +29,12 @@ export function DetailSection({
   return (
     <section
       className={cn(
-        "rounded-xl border bg-card",
-        emphasis === "lead" ? "border-royal/20 shadow-[0_18px_50px_-32px_oklch(0.36_0.11_262_/_0.5)]" : "border-border",
+        "rounded-xl",
+        emphasis === "lead"
+          ? "tt-level-primary"
+          : emphasis === "quiet"
+            ? "tt-level-tertiary"
+            : "tt-level-secondary",
         className,
       )}
     >
@@ -40,7 +44,7 @@ export function DetailSection({
             className={cn(
               "truncate text-foreground",
               emphasis === "lead"
-                ? "text-[17px] font-semibold tracking-tight"
+                ? "text-[18px] font-semibold tracking-tight"
                 : emphasis === "quiet"
                   ? "text-[14px] font-medium"
                   : "text-[15px] font-semibold tracking-tight",
@@ -74,7 +78,7 @@ export function SectionLink({ children, onClick }: { children: ReactNode; onClic
 
 export function Empty({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-lg border border-dashed border-border bg-cloud px-4 py-5 text-[13px] text-muted-foreground">
+    <p className="rounded-lg border border-dashed border-border bg-surface-tertiary px-4 py-5 text-[13px] text-muted-foreground">
       {children}
     </p>
   );

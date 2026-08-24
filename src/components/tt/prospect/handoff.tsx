@@ -33,8 +33,10 @@ export function HandoffPanel({
   people,
   fitConfidence,
   onRoute,
+  onResolveBlockers,
   routed,
   busy,
+  routing = false,
   emphasis,
 }: {
   candidate: ProspectCandidate;
@@ -42,9 +44,13 @@ export function HandoffPanel({
   people: Person[];
   fitConfidence: ConfidenceRead;
   onRoute: (draft: HandoffDraft) => void;
+  /** Moves the person to the canonical People blocker area. */
+  onResolveBlockers?: (() => void) | undefined;
   /** True once this company has already been carried across to Comms. */
   routed: boolean;
   busy?: boolean | undefined;
+  /** True while the explicit handoff mutation is running. */
+  routing?: boolean | undefined;
   emphasis?: ModuleEmphasis | undefined;
 }) {
   const [open, setOpen] = useState(false);
@@ -210,9 +216,28 @@ export function HandoffPanel({
         ) : null}
 
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-          <TTButton disabled={!draft.ready || busy || routed} onClick={() => onRoute(draft)}>
-            {routed ? "Carried to Comms" : "Carry to Comms"}
-          </TTButton>
+          {routed ? (
+            <p className="text-[13px] text-muted-foreground">
+              Carried to Comms. The relationship continues there.
+            </p>
+          ) : draft.ready ? (
+            <TTButton
+              pending={routing}
+              pendingLabel="Carrying to Comms…"
+              disabled={busy}
+              onClick={() => onRoute(draft)}
+            >
+              Carry to Comms
+            </TTButton>
+          ) : (
+            <TTButton
+              variant="secondary"
+              disabled={busy}
+              onClick={() => onResolveBlockers?.()}
+            >
+              Resolve {draft.blockers.length} blocker{draft.blockers.length === 1 ? "" : "s"}
+            </TTButton>
+          )}
           <p className="text-[13px] text-muted-foreground">
             The brief travels with its provenance. Nothing is sent automatically.
           </p>

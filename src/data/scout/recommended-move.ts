@@ -316,7 +316,7 @@ export function buildRecommendedNextMove(input: {
     headline,
     reason: `${name} is a credible person with a useful opening${
       notice ? ` — ${notice}` : ""
-    }. Nothing is time-sensitive, so keep the first message light and useful: earn the next exchange, not a call.`,
+    }.${channel ? ` ${channel.reason}` : ""} Nothing is time-sensitive, so keep the first message light and useful: earn the next exchange, not a call.`,
     person: personRef(entry),
     channel,
     primary: { kind: "prepare_first_message", label: "Prepare first message" },
