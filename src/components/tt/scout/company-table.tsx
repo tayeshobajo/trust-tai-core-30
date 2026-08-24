@@ -18,7 +18,10 @@ import type { ProspectStatus } from "@/domain/entities";
 import type { FitLight } from "@/domain/scout-fit";
 import { cn } from "@/lib/utils";
 
-export type ScoutLinkSearch = { section: "scout" | "qualified" | "research"; fit: "all" | FitLight };
+export type ScoutLinkSearch = {
+  section: "scout" | "worth_knowing" | "qualified" | "research";
+  fit: "all" | FitLight;
+};
 
 const STATUS_TONE: Record<ProspectStatus, string> = {
   discovered: "border-border bg-secondary text-muted-foreground",
