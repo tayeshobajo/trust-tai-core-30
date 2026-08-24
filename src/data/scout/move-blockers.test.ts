@@ -17,6 +17,7 @@ const claire = {
   id: "person-1",
   fullName: "Claire Meneely",
   roleTitle: "Founder",
+  seniority: "founder",
   email: "claire@dozen.example",
   emailStatus: "found",
   confidence: "asserted_by_provider",
@@ -63,6 +64,7 @@ describe("buildMoveBlockers", () => {
   it("people gaps deep-link into the People workspace", () => {
     const withoutEmail = {
       ...claire,
+      seniority: "staff",
       email: undefined,
       emailStatus: "unknown",
       roleTitle: undefined,

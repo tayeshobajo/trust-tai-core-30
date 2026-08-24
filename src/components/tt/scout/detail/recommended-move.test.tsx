@@ -41,6 +41,7 @@ const claire = {
   id: "person-1",
   fullName: "Claire Meneely",
   roleTitle: "Founder",
+  seniority: "founder",
   email: "claire@example.com",
   emailStatus: "found",
   confidence: "asserted_by_provider",
