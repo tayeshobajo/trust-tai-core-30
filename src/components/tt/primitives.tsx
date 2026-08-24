@@ -30,10 +30,10 @@ export const ttButtonVariants = cva(
 
 type TTButtonProps = ComponentProps<"button"> &
   VariantProps<typeof ttButtonVariants> & {
-    asChild?: boolean;
+    asChild?: boolean | undefined;
     /** Shared working state: spinner plus an explicit, human-readable label. */
-    pending?: boolean;
-    pendingLabel?: string;
+    pending?: boolean | undefined;
+    pendingLabel?: string | undefined;
   };
 
 export function TTButton({
