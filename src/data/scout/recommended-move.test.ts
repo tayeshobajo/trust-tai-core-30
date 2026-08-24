@@ -17,6 +17,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import type { Person } from "@/domain/people";
 import type {
   RelationshipDevelopmentBrief,
   RelationshipResearchMarker,
