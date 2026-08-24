@@ -703,8 +703,15 @@ export const scoutService = {
    * Route a prepared brief to Comms. The brief is stored on the prospect with
    * full provenance and the company moves to `ready_for_comms`. Nothing is
    * sent: Comms opens the conversation, a person still writes it.
+   *
+   * Returns the relationship the handoff opened (or the one already carried
+   * across) so the caller can land Tai on exactly that person in Comms —
+   * never on whoever happened to sort first.
    */
-  async routeToComms(draft: HandoffDraft, context: ScoutContext): Promise<HandoffRecord> {
+  async routeToComms(
+    draft: HandoffDraft,
+    context: ScoutContext,
+  ): Promise<{ record: HandoffRecord; relationshipId: ID }> {
     if (!draft.ready) {
       throw new Error("This brief is not ready for Comms yet. Clear what is missing first.");
     }
@@ -736,12 +743,12 @@ export const scoutService = {
     // Open the relationship in Comms with the brief's context intact. If Comms
     // is not provisioned in this backend, the handoff still stands in Scout.
     const { receiveScoutHandoff } = await import("./comms-handoff-receiver");
-    await receiveScoutHandoff(draft, {
+    const relationship = await receiveScoutHandoff(draft, {
       organizationId: context.organizationId,
       userId: context.userId,
     });
 
-    return record;
+    return { record, relationshipId: relationship.id };
   },
 
   /** Manual ICP fit override. Always available, never automatic. */

@@ -595,11 +595,14 @@ function CompanyDetail({
   };
 
   // "Prepare first message" is the explicit Scout → Comms transition: the
-  // brief is carried across, and the person reviews the draft there.
+  // brief is carried across, and the person reviews the draft there. Comms
+  // opens on exactly the relationship the handoff opened — never on whoever
+  // happened to sort first.
   const prepareFirstMessage = () => {
     if (!firstMessageDraft.ready) return;
     routeToComms.mutate(firstMessageDraft, {
-      onSuccess: () => void navigate({ to: "/modules/comms" }),
+      onSuccess: ({ relationshipId }) =>
+        void navigate({ to: "/modules/comms", search: { relationship: relationshipId } }),
     });
   };
 

@@ -87,6 +87,13 @@ const DESCRIPTION =
   "Trust Tai's relationship room: what happened, what was promised, what needs attention, and the next thoughtful move.";
 
 export const Route = createFileRoute("/modules/comms/")({
+  // A Scout handoff lands here carrying the relationship it just opened, so
+  // Comms opens on exactly that person — never on whoever sorted first.
+  validateSearch: (search: Record<string, unknown>): { relationship?: string } => ({
+    ...(typeof search["relationship"] === "string" && search["relationship"]
+      ? { relationship: search["relationship"] as string }
+      : {}),
+  }),
   head: () => ({
     meta: [
       { title: TITLE },
@@ -123,6 +130,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const context = { organizationId: identity.organizationId, userId: identity.userId };
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const deepLink = Route.useSearch();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<InboxTab>("all");
   const [healthFilter, setHealthFilter] = useState<ConversationHealthStatus | null>(null);
@@ -238,6 +246,12 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   useEffect(() => {
     if (!selectedId && selected) setSelectedId(selected.id);
   }, [selected, selectedId]);
+
+  // A deep link — above all a Scout handoff — names the relationship to open
+  // on. It seeds the selection once; a person's own clicks always win after.
+  useEffect(() => {
+    if (deepLink.relationship) setSelectedId(deepLink.relationship);
+  }, [deepLink.relationship]);
 
   // Relationship context is an overlay drawer at every size — the room grid
   // keeps only inbox + conversation. Escape closes it, focus returns to the
