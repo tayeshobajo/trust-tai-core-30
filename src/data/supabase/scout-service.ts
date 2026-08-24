@@ -314,6 +314,44 @@ export const scoutService = {
     return { move: input.move, at, note };
   },
 
+  /**
+   * Record a person's pacing decision on a relationship opportunity: worth
+   * watching, or not for now. Stored on the prospect's metadata and in the
+   * shared activity stream. It changes no status and routes nothing.
+   */
+  async setWatch(
+    input: {
+      prospectId: ID;
+      companyName: string;
+      watch: "watching" | "not_now" | null;
+    },
+    context: ScoutContext,
+  ) {
+    const at = new Date().toISOString();
+    await saveProspectMetadataPatch(input.prospectId, {
+      relationship_development: { watch: input.watch, by: context.userId, at },
+    });
+    await supabaseActivity.record({
+      organizationId: context.organizationId,
+      name: "prospect.relationship_watch",
+      subject: { type: "prospect", id: input.prospectId, label: input.companyName },
+      summary:
+        input.watch === "watching"
+          ? `${input.companyName} marked worth watching.`
+          : input.watch === "not_now"
+            ? `${input.companyName} set aside for now.`
+            : `Watch decision cleared for ${input.companyName}.`,
+      payload: { relationship_watch: input.watch },
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: context.userId },
+        observedAt: at,
+        confidence: "observed",
+      },
+      occurredAt: at,
+    });
+    return { watch: input.watch, at };
+  },
 
   /** Is live market discovery connected? */
   async discoveryStatus() {
