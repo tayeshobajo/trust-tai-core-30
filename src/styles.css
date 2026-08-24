@@ -38,6 +38,12 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
+  --color-surface-primary: var(--surface-primary);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --shadow-decision: var(--shadow-decision);
+  --shadow-card: var(--shadow-card);
+  --shadow-action: var(--shadow-action);
 
   --color-ink: var(--ink);
   --color-paper: var(--paper);
@@ -120,7 +126,7 @@
   --secondary: oklch(0.962 0.02 250);
   --secondary-foreground: var(--ink);
   --muted: oklch(0.962 0.02 250);
-  --muted-foreground: oklch(0.545 0.03 262);
+  --muted-foreground: oklch(0.46 0.035 262);
   --accent: var(--royal);
   --accent-foreground: oklch(1 0 0);
   --destructive: var(--danger);
@@ -143,6 +149,20 @@
     0 1px 0 oklch(1 0 0 / 0.6) inset, 0 8px 24px -14px oklch(0.17 0.055 268 / 0.16);
   --shadow-tt-md:
     0 1px 0 oklch(1 0 0 / 0.65) inset, 0 18px 50px -26px oklch(0.17 0.055 268 / 0.22);
+
+  /* Four-level working hierarchy: canvas → decision → evidence → utility. */
+  --surface-primary: var(--card);
+  --surface-secondary: var(--card);
+  --surface-tertiary: var(--cloud);
+  --surface-primary-border: color-mix(in oklab, var(--royal) 34%, var(--border));
+  --surface-secondary-border: var(--border);
+  --surface-tertiary-border: color-mix(in oklab, var(--border) 72%, var(--background));
+  --shadow-decision:
+    0 26px 70px -44px color-mix(in oklab, var(--royal) 42%, transparent),
+    0 2px 8px -5px color-mix(in oklab, var(--ink) 18%, transparent);
+  --shadow-card: 0 14px 34px -30px color-mix(in oklab, var(--ink) 32%, transparent);
+  --shadow-action: 0 10px 24px -16px color-mix(in oklab, var(--royal) 55%, transparent);
+
 
   /*
    * Per-app ambient accents. Atmosphere only — never status, never a control
@@ -236,10 +256,37 @@
   line-height: 1.08;
 }
 
+/* Level B — the primary decision surface on a page. */
+@utility tt-level-primary {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--royal) 4.5%, var(--surface-primary)) 0%,
+      var(--surface-primary) 170px
+    );
+  border: 1px solid var(--surface-primary-border);
+  box-shadow: var(--shadow-decision);
+}
+
+/* Level C — clear evidence and working cards. */
+@utility tt-level-secondary {
+  background-color: var(--surface-secondary);
+  border: 1px solid var(--surface-secondary-border);
+  box-shadow: var(--shadow-card);
+}
+
+/* Level D — quiet utility surfaces, rails, filters and previews. */
+@utility tt-level-tertiary {
+  background-color: var(--surface-tertiary);
+  border: 1px solid var(--surface-tertiary-border);
+  box-shadow: none;
+}
+
 @utility tt-surface {
-  background-color: var(--card);
-  border: 1px solid var(--border);
+  background-color: var(--surface-secondary);
+  border: 1px solid var(--surface-secondary-border);
   border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
 }
 
 @utility tt-rise {
@@ -254,5 +301,14 @@
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes tt-progress-indeterminate {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(360%);
   }
 }

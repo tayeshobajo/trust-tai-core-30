@@ -240,33 +240,40 @@ export function PeoplePanel({
           </p>
         )}
 
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-          {reachable
-            ? "A named decision maker with a verified address is on record."
-            : "No verified business email is on record yet."}
-        </p>
+        <section
+          id="scout-people-blockers"
+          tabIndex={-1}
+          className="scroll-mt-24 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-4"
+          aria-label="Blockers to resolve"
+        >
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            {reachable
+              ? "A named decision maker with a verified address is on record."
+              : "No verified business email is on record yet."}
+          </p>
 
-        <div className="flex flex-wrap gap-2">
-          {providers
-            .filter((provider) => provider.approved && provider.kind !== "manual")
-            .map((provider) => {
-              const ready = availableProviders.includes(provider.id);
-              return (
-                <TTButton
-                  key={provider.id}
-                  variant="secondary"
-                  size="sm"
-                  disabled={busy || !ready}
-                  title={ready ? provider.description : `${provider.label} is not connected yet.`}
-                  onClick={() => onIngest(provider.id)}
-                >
-                  {ready ? `Ingest from ${provider.label}` : `${provider.label} · not connected`}
-                </TTButton>
-              );
-            })}
-        </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {providers
+              .filter((provider) => provider.approved && provider.kind !== "manual")
+              .map((provider) => {
+                const ready = availableProviders.includes(provider.id);
+                return (
+                  <TTButton
+                    key={provider.id}
+                    variant="secondary"
+                    size="sm"
+                    disabled={busy || !ready}
+                    title={ready ? provider.description : `${provider.label} is not connected yet.`}
+                    onClick={() => onIngest(provider.id)}
+                  >
+                    {ready ? `Ingest from ${provider.label}` : `${provider.label} · not connected`}
+                  </TTButton>
+                );
+              })}
+          </div>
 
-        {note ? <p className="text-[13px] text-muted-foreground">{note}</p> : null}
+          {note ? <p className="mt-4 text-[13px] text-muted-foreground">{note}</p> : null}
+        </section>
 
         <Disclosure summary="Add a person by hand">
           <form className="space-y-3" onSubmit={submit}>

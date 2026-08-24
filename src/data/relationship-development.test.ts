@@ -333,6 +333,13 @@ describe("channel recommendation protects text", () => {
     expect(read?.channel).toBe("linkedin");
   });
 
+  it("an unverified email is the likely route, not a safely reachable one", () => {
+    const read = recommendChannel({ person: person({ emailVerified: false }) });
+    expect(read?.channel).toBe("email");
+    expect(read?.reason).toContain("not verified yet");
+    expect(read?.reason).toContain("not safely reachable");
+  });
+
   it("explicit prior SMS conversation may open text", () => {
     const read = recommendChannel({
       person: person(),

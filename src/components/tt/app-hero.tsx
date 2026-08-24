@@ -30,7 +30,7 @@ export function AppHero({
   return (
     <header
       className={cn(
-        "tt-rise overflow-hidden rounded-2xl border border-border bg-card",
+        "tt-rise tt-level-secondary overflow-hidden rounded-2xl",
         className,
       )}
     >

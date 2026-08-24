@@ -174,7 +174,7 @@ export function CompanyHero({
     .join(" · ");
 
   return (
-    <section className="tt-rise overflow-hidden rounded-2xl border border-border bg-card">
+    <section className="tt-rise tt-level-secondary overflow-hidden rounded-2xl">
       <div
         aria-hidden
         className="h-[3px] w-full"

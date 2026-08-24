@@ -9,6 +9,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { toast } from "sonner";
+
 
 import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState, TTButton } from "@/components/tt/primitives";
@@ -286,12 +288,19 @@ function CompanyDetail({
   // The governed deeper-research action. Idempotent: a current brief is left
   // untouched, a stale or missing one is prepared from stored public evidence.
   const prepareBrief = useMutation({
-    mutationFn: (force: boolean | undefined) =>
+    mutationFn: (input: { force?: boolean; quiet?: boolean }) =>
       scoutService.prepareRelationshipDevelopment(
-        { prospectId, ...(force !== undefined ? { force } : {}) },
+        { prospectId, ...(input.force !== undefined ? { force: input.force } : {}) },
         { organizationId, userId },
       ),
-    onSuccess: refresh,
+    onSuccess: async (_result, input) => {
+      await refresh();
+      if (!input?.quiet) {
+        toast.success("Research ready", {
+          description: "The relationship research has been refreshed from stored public evidence.",
+        });
+      }
+    },
   });
 
   const addPerson = useMutation({
@@ -310,7 +319,7 @@ function CompanyDetail({
     // A newly added founder can make the company newly eligible — prepare the
     // brief if so (research only; a current brief is never re-run).
     onSuccess: () => {
-      prepareBrief.mutate(undefined);
+      prepareBrief.mutate({ quiet: true });
       refresh();
     },
   });
@@ -318,7 +327,7 @@ function CompanyDetail({
   const confirmEmail = useMutation({
     mutationFn: (person: Person) => peopleService.confirmEmail(person, { organizationId, userId }),
     onSuccess: () => {
-      prepareBrief.mutate(undefined);
+      prepareBrief.mutate({ quiet: true });
       refresh();
     },
   });
@@ -375,11 +384,15 @@ function CompanyDetail({
     ingest.error ??
     addPerson.error ??
     confirmEmail.error ??
-    prepareBrief.error ??
     routeToComms.error ??
     setWatch.error ??
     addNote.error ??
     saved.error) as Error | null;
+  const prepareErrorMessage = prepareBrief.error
+    ? prepareBrief.error instanceof Error
+      ? prepareBrief.error.message
+      : "Scout could not prepare the research. Retry when you are ready."
+    : null;
 
   const busy =
     research.isPending ||
@@ -518,7 +531,9 @@ function CompanyDetail({
         void goToTab("people");
         break;
       case "prepare_research":
-        prepareBrief.mutate(recommendedMove.prepareForce ? true : undefined);
+        prepareBrief.mutate(
+          recommendedMove.prepareForce ? { force: true } : {},
+        );
         break;
       case "research_company":
         startResearch();
@@ -536,6 +551,17 @@ function CompanyDetail({
     routeToComms.mutate(firstMessageDraft, {
       onSuccess: () => void navigate({ to: "/modules/comms" }),
     });
+  };
+
+  // A blocked handoff is never a dead end: move to the canonical People area
+  // and put keyboard focus on the reachability blockers.
+  const resolveHandoffBlockers = () => {
+    void goToTab("people");
+    window.setTimeout(() => {
+      const target = document.getElementById("scout-people-blockers");
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      target?.focus({ preventScroll: true });
+    }, 80);
   };
 
   const onDecisionAction = (key: DecisionActionKey) => {
@@ -704,11 +730,17 @@ function CompanyDetail({
                   people={peopleRows}
                   busy={busy}
                   preparingBrief={prepareBrief.isPending}
+                  prepareError={prepareErrorMessage}
                   firstMessageReady={firstMessageDraft.ready}
+                  firstMessageBlockers={firstMessageDraft.blockers.length}
+                  routingFirstMessage={routeToComms.isPending}
                   onPrimary={onRecommendedPrimary}
                   onPrepareFirstMessage={prepareFirstMessage}
                   onWatch={(watch) => setWatch.mutate(watch)}
-                  onPrepareBrief={(force) => prepareBrief.mutate(force)}
+                  onPrepareBrief={(force) =>
+                    prepareBrief.mutate(force ? { force: true } : {})
+                  }
+                  onResolveBlockers={resolveHandoffBlockers}
                   onSeeResearch={() =>
                     void goToTab(hasResearchWorkspace(candidate) ? "research" : "icp")
                   }
@@ -761,8 +793,10 @@ function CompanyDetail({
                   people={peopleRows}
                   fitConfidence={composition.confidence}
                   onRoute={(draft) => routeToComms.mutate(draft)}
+                  onResolveBlockers={resolveHandoffBlockers}
                   routed={prospect.status === "ready_for_comms"}
                   busy={busy}
+                  routing={routeToComms.isPending}
                 />
               </div>
             ) : null}

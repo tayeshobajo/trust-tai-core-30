@@ -1,5 +1,6 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 
 import { AmbientDot, AmbientRule, AmbientSurface } from "@/components/tt/ambient";
@@ -9,14 +10,14 @@ import type { LifecycleStatus } from "@/domain/entities";
 /* ---------------------------------- Button --------------------------------- */
 
 export const ttButtonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors duration-200 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors duration-200 disabled:pointer-events-none disabled:opacity-60 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        primary: "bg-primary text-primary-foreground hover:bg-primary/90",
+        primary: "bg-royal text-primary-foreground shadow-action hover:bg-royal/90",
         secondary: "border border-border bg-card text-foreground hover:bg-secondary",
         quiet: "text-muted-foreground hover:text-foreground",
-        signal: "bg-royal text-primary-foreground hover:bg-royal/90",
+        signal: "bg-royal text-primary-foreground shadow-action hover:bg-royal/90",
       },
       size: {
         default: "h-11 px-5",
@@ -27,15 +28,44 @@ export const ttButtonVariants = cva(
   },
 );
 
+type TTButtonProps = ComponentProps<"button"> &
+  VariantProps<typeof ttButtonVariants> & {
+    asChild?: boolean | undefined;
+    /** Shared working state: spinner plus an explicit, human-readable label. */
+    pending?: boolean | undefined;
+    pendingLabel?: string | undefined;
+  };
+
 export function TTButton({
   className,
   variant,
   size,
   asChild,
+  pending = false,
+  pendingLabel,
+  children,
+  disabled,
   ...props
-}: ComponentProps<"button"> & VariantProps<typeof ttButtonVariants> & { asChild?: boolean }) {
+}: TTButtonProps) {
   const Comp = asChild ? Slot : "button";
-  return <Comp className={cn(ttButtonVariants({ variant, size }), className)} {...props} />;
+  return (
+    <Comp
+      className={cn(ttButtonVariants({ variant, size }), className)}
+      disabled={disabled || pending}
+      aria-busy={pending || undefined}
+      data-pending={pending || undefined}
+      {...props}
+    >
+      {pending && !asChild ? (
+        <>
+          <Loader2 aria-hidden className="animate-spin" />
+          <span>{pendingLabel ?? children}</span>
+        </>
+      ) : (
+        children
+      )}
+    </Comp>
+  );
 }
 
 /* ---------------------------------- Input ---------------------------------- */
@@ -180,7 +210,7 @@ export function PageHeader({
 }) {
   if (appId) {
     return (
-      <header className="tt-rise overflow-hidden rounded-2xl border border-border bg-card">
+      <header className="tt-rise tt-level-secondary overflow-hidden rounded-2xl">
         <AmbientRule appId={appId} contextAccent={contextAccent} />
         <AmbientSurface
           appId={appId}
