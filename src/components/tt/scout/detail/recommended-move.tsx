@@ -3,45 +3,58 @@
  *
  * The move itself is computed in `data/scout/recommended-move.ts`; this card
  * only makes the state unmistakable and carries the explicit human action.
- * Nothing sends automatically. When the first message is blocked, the card
- * leads to the blocker instead of presenting a dead button.
+ * One move, one clear reason, one primary action — the card ends shortly
+ * after its action row, and "Why this move" holds concise supporting
+ * evidence, never a second prose interpretation.
+ *
+ * When the first message is gated, the one action opens a guided flow: each
+ * blocker with its own next step, honest progress as each clears, and an
+ * automatic continuation to the first message once the way in is clear.
+ * Nothing sends automatically.
  */
 
 import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-import { Panel, WhyWeThink } from "@/components/tt/prospect/panel";
+import { ConfidenceChip, Panel } from "@/components/tt/prospect/panel";
 import { TTButton } from "@/components/tt/primitives";
+import {
+  advanceAfterBlockers,
+  blockerProgress,
+  type MoveBlocker,
+} from "@/data/scout/move-blockers";
 import type { RecommendedMoveAction, RecommendedNextMove } from "@/data/scout/recommended-move";
+import type { ConfidenceLevel } from "@/domain/confidence";
 import type { Person } from "@/domain/people";
 import type { WatchState } from "@/domain/relationship-development";
 import type { ProspectCandidate } from "@/domain/scout";
 import { cn } from "@/lib/utils";
 
-function blockerLabel(count: number): string {
-  return `Resolve ${count} blocker${count === 1 ? "" : "s"}`;
-}
-
 export function RecommendedNextMoveCard({
   move,
   candidate,
-  people: _people,
+  blockers = [],
   busy,
   preparingBrief,
   prepareError,
   firstMessageReady,
-  firstMessageBlockers = 0,
   routingFirstMessage = false,
+  confirmingEmail = false,
+  researchPending = false,
+  confidenceLevel,
   onPrimary,
   onPrepareFirstMessage,
   onPrepareBrief,
-  onResolveBlockers,
+  onConfirmEmail,
+  onRunResearch,
+  onOpenPeople,
   onWatch,
   onSeeResearch,
 }: {
   move: RecommendedNextMove;
   candidate: ProspectCandidate;
-  people: Person[];
+  /** The live blockers between this company and a safe first message. */
+  blockers?: MoveBlocker[];
   busy?: boolean;
   /** True while governed relationship research is being prepared. */
   preparingBrief?: boolean;
@@ -49,41 +62,79 @@ export function RecommendedNextMoveCard({
   prepareError?: string | null;
   /** Whether the handoff behind "Prepare first message" is safe today. */
   firstMessageReady: boolean;
-  /** The truthful number of blockers between this company and Comms. */
-  firstMessageBlockers?: number;
   /** True while the approved brief is being carried into Comms. */
   routingFirstMessage?: boolean;
+  /** True while an address confirmation is being recorded. */
+  confirmingEmail?: boolean;
+  /** True while the governed company research pass is running. */
+  researchPending?: boolean;
+  /** How sure the underlying read is, shown quietly inside "Why this move". */
+  confidenceLevel?: ConfidenceLevel | undefined;
   onPrimary: (kind: RecommendedMoveAction) => void;
   onPrepareFirstMessage: () => void;
   onPrepareBrief: (force: boolean) => void;
-  onResolveBlockers: () => void;
+  /** The governed confirmation that a found address is real. */
+  onConfirmEmail: (person: Person) => void;
+  /** The governed company research pass. */
+  onRunResearch: () => void;
+  /** Moves to the canonical People area and focuses the blocker section. */
+  onOpenPeople: () => void;
   onWatch: (watch: WatchState | null) => void;
   onSeeResearch: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [flow, setFlow] = useState<{ total: number } | null>(null);
   const canAct = move.primary.kind !== "none";
-  const blockedFirstMessage =
-    move.primary.kind === "prepare_first_message" && !firstMessageReady;
-  const primaryLabel = blockedFirstMessage
-    ? blockerLabel(firstMessageBlockers)
-    : move.primary.label;
+  const progress = blockerProgress(flow?.total ?? blockers.length, blockers.length);
 
+  // A different company restarts the decision surface.
   useEffect(() => {
     setConfirming(false);
-  }, [candidate.prospect.id, move.state, move.primary.kind]);
+    setFlow(null);
+  }, [candidate.prospect.id]);
+
+  // The final blocker clears through the evidence, not through a click: once
+  // the move offers the first message, the flow hands over to it directly.
+  useEffect(() => {
+    if (
+      advanceAfterBlockers({
+        flowOpen: flow !== null,
+        firstMessageReady,
+        primaryKind: move.primary.kind,
+      })
+    ) {
+      setFlow(null);
+      setConfirming(true);
+    }
+  }, [flow, firstMessageReady, move.primary.kind]);
 
   const runPrimary = () => {
     if (move.primary.kind === "prepare_research") {
-      setConfirming(false);
       onPrepareBrief(move.prepareForce);
       return;
     }
     if (move.primary.kind === "prepare_first_message") {
-      setConfirming(true);
+      if (firstMessageReady) setConfirming(true);
+      else setFlow({ total: Math.max(blockers.length, 1) });
       return;
     }
-    setConfirming(false);
+    if (move.primary.kind === "resolve_blockers") {
+      setFlow({ total: Math.max(blockers.length, 1) });
+      return;
+    }
     onPrimary(move.primary.kind);
+  };
+
+  const runBlockerAction = (blocker: MoveBlocker) => {
+    if (blocker.action.kind === "confirm_email" && blocker.person) {
+      onConfirmEmail(blocker.person);
+      return;
+    }
+    if (blocker.action.kind === "run_research") {
+      onRunResearch();
+      return;
+    }
+    onOpenPeople();
   };
 
   return (
@@ -177,14 +228,17 @@ export function RecommendedNextMoveCard({
         {move.evidence.length > 0 ? (
           <details className="group rounded-xl border border-border bg-surface-tertiary px-4 py-3">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              See why
-              <ChevronDown
-                aria-hidden
-                className="size-4 text-muted-foreground transition-transform group-open:rotate-180"
-              />
+              Why this move
+              <span className="flex items-center gap-2">
+                {confidenceLevel ? <ConfidenceChip level={confidenceLevel} /> : null}
+                <ChevronDown
+                  aria-hidden
+                  className="size-4 text-muted-foreground transition-transform group-open:rotate-180"
+                />
+              </span>
             </summary>
             <ul className="mt-3 space-y-2 border-t border-border pt-3">
-              {move.evidence.slice(0, 4).map((item, index) => (
+              {move.evidence.map((item, index) => (
                 <li key={`${item.label}-${index}`} className="text-[13px] text-muted-foreground">
                   {item.url ? (
                     <a
@@ -212,7 +266,7 @@ export function RecommendedNextMoveCard({
               disabled={busy || (preparingBrief && move.primary.kind !== "prepare_research")}
               onClick={runPrimary}
             >
-              {primaryLabel}
+              {move.primary.label}
             </TTButton>
           ) : null}
 
@@ -249,80 +303,107 @@ export function RecommendedNextMoveCard({
           ) : null}
 
           <TTButton variant="quiet" size="sm" onClick={onSeeResearch}>
-            See the evidence
+            Open research
           </TTButton>
         </div>
 
-        {confirming && move.primary.kind === "prepare_first_message" ? (
-          <div className="rounded-xl border border-royal/25 bg-royal/8 p-4">
-            {firstMessageReady ? (
-              <>
-                <p className="text-sm font-medium text-foreground">
-                  Carry {candidate.prospect.name} into Comms?
-                </p>
-                <p className="mt-1 text-[13px] text-muted-foreground">
-                  Comms will prepare the first message for your review. Nothing is sent
-                  automatically, and sending is always your click.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <TTButton
-                    size="sm"
-                    pending={routingFirstMessage}
-                    pendingLabel="Carrying to Comms…"
-                    disabled={busy}
-                    onClick={() => {
-                      setConfirming(false);
-                      onPrepareFirstMessage();
-                    }}
+        {flow ? (
+          <div
+            role="region"
+            aria-label="Resolve the way in"
+            className="rounded-xl border border-royal/25 bg-royal/8 p-4"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-medium text-foreground">Resolve the way in</p>
+              <p
+                role="status"
+                aria-live="polite"
+                className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
+              >
+                {progress.resolved} of {progress.total} resolved
+              </p>
+            </div>
+
+            {blockers.length > 0 ? (
+              <ul className="mt-3 space-y-3">
+                {blockers.map((blocker) => (
+                  <li
+                    key={blocker.key}
+                    className="rounded-lg border border-border bg-background p-3"
                   >
-                    Prepare first message
-                  </TTButton>
-                  <TTButton
-                    variant="quiet"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => setConfirming(false)}
-                  >
-                    Stay in Scout
-                  </TTButton>
-                </div>
-              </>
+                    <p className="text-[13px] font-medium text-foreground">{blocker.message}</p>
+                    <p className="mt-1 text-[13px] text-muted-foreground">{blocker.detail}</p>
+                    <div className="mt-2">
+                      <TTButton
+                        variant="secondary"
+                        size="sm"
+                        pending={
+                          (blocker.action.kind === "confirm_email" && confirmingEmail) ||
+                          (blocker.action.kind === "run_research" && researchPending)
+                        }
+                        pendingLabel={
+                          blocker.action.kind === "confirm_email"
+                            ? "Confirming…"
+                            : "Reading the public pages…"
+                        }
+                        disabled={busy}
+                        onClick={() => runBlockerAction(blocker)}
+                      >
+                        {blocker.action.label}
+                      </TTButton>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             ) : (
-              <>
-                <p className="text-sm font-medium text-foreground">
-                  Resolve {firstMessageBlockers} blocker{firstMessageBlockers === 1 ? "" : "s"}{" "}
-                  first.
-                </p>
-                <p className="mt-1 text-[13px] text-muted-foreground">
-                  Scout will take you to People and focus the exact area to fix. The handoff stays
-                  closed until the evidence is safe.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <TTButton
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => {
-                      setConfirming(false);
-                      onResolveBlockers();
-                    }}
-                  >
-                    Open People blockers
-                  </TTButton>
-                  <TTButton
-                    variant="quiet"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => setConfirming(false)}
-                  >
-                    Stay on Overview
-                  </TTButton>
-                </div>
-              </>
+              <p className="mt-3 text-[13px] text-muted-foreground">
+                The way in is clear. The recommendation above has the next move.
+              </p>
             )}
+
+            <div className="mt-4">
+              <TTButton variant="quiet" size="sm" disabled={busy} onClick={() => setFlow(null)}>
+                Back to the recommendation
+              </TTButton>
+            </div>
           </div>
         ) : null}
 
-        <WhyWeThink confidence={{ level: "moderate", because: move.reason, evidence: move.evidence }} />
+        {confirming &&
+        move.primary.kind === "prepare_first_message" &&
+        firstMessageReady ? (
+          <div className="rounded-xl border border-royal/25 bg-royal/8 p-4">
+            <p className="text-sm font-medium text-foreground">
+              Carry {candidate.prospect.name} into Comms?
+            </p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              Comms will prepare the first message for your review. Nothing is sent
+              automatically, and sending is always your click.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <TTButton
+                size="sm"
+                pending={routingFirstMessage}
+                pendingLabel="Carrying to Comms…"
+                disabled={busy}
+                onClick={() => {
+                  setConfirming(false);
+                  onPrepareFirstMessage();
+                }}
+              >
+                Prepare first message
+              </TTButton>
+              <TTButton
+                variant="quiet"
+                size="sm"
+                disabled={busy}
+                onClick={() => setConfirming(false)}
+              >
+                Stay in Scout
+              </TTButton>
+            </div>
+          </div>
+        ) : null}
       </div>
     </Panel>
   );

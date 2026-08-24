@@ -10,6 +10,16 @@
  * All colors use oklch. Never hardcode colors in components.
  */
 
+/* Indeterminate progress: one royal bar sweeping a quiet track. */
+@keyframes tt-progress-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(420%);
+  }
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
