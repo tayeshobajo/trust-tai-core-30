@@ -106,11 +106,13 @@ const TITLE = "Company · Scout · Trust Tai OS";
 const DESCRIPTION =
   "Does this company deserve our attention, and why? ICP alignment, dated signals, people, and the bounded next step.";
 
-type Section = "scout" | "qualified" | "research";
+type Section = "scout" | "qualified" | "research" | "worth_knowing";
 type Fit = "all" | FitLight;
 
 function parseSection(value: unknown): Section {
-  return value === "qualified" || value === "research" ? value : "scout";
+  return value === "qualified" || value === "research" || value === "worth_knowing"
+    ? value
+    : "scout";
 }
 
 function parseFit(value: unknown): Fit {
