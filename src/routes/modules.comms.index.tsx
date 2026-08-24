@@ -29,6 +29,7 @@ import { RelationshipRail } from "@/components/tt/comms/relationship-rail";
 import { AddInteraction, type InteractionSubmission } from "@/components/tt/comms/add-interaction";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
+import { detectRoadmapOpportunity } from "@/data/relationship-development";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
