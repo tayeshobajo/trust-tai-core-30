@@ -57,3 +57,21 @@ Scout can close itself and which need a person or a connected provider.
 Every scored pass — discovery *and* website research — is written to
 `prospect_evaluations`, so fit over time is auditable rather than only visible
 as the latest number on the row.
+
+## Relationship development reads
+
+Scout's intelligence layer feeds a governed relationship-development read
+(`src/data/relationship-development.ts`), held to the locked doctrine in
+`docs/scout-v1.md`:
+
+- 60% fit triggers deeper research, never outreach. Eligibility additionally
+  requires a traceable founder or decision maker; a company with no person is
+  never presented as ready for relationship development.
+- Eligibility prepares a Relationship Development Brief — research only, from
+  public professional evidence, bounded and idempotent
+  (`planRelationshipPreparation`), with provenance and freshness stored on the
+  prospect's `metadata.relationship_development.research` marker.
+- Text is protected: recommended only on explicit text-route evidence, never
+  from meeting someone, an introduction, or a found number.
+- Roadmap recognition elsewhere in the suite reads counterparty-authored
+  evidence only; our own language can never manufacture a signal.

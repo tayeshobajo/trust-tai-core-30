@@ -467,3 +467,25 @@ exists for a later opt-in and is never written today.
 Requires `docs/comms-integrations-schema.sql` to be applied in the Trust Tai
 Supabase project, including the two SECURITY DEFINER credential functions at
 the end of that file.
+
+## Roadmap recognition listens to them, never to us
+
+The Roadmap opportunity read in the conversation room runs on
+counterparty-authored evidence alone (`counterpartyEvidence` in
+`src/data/relationship-development.ts`):
+
+- INBOUND email/SMS, with quoted reply history and signatures stripped by the
+  one shared quoted-content logic — an inbound reply quoting our earlier email
+  can never read our language back as their need.
+- INBOUND recorded interactions, and captures a person explicitly marked as
+  "their own words" (`provenance.their_words`); our notes and hypotheses are
+  excluded by default.
+- Outbound mail, drafts, suggestions, and system-generated text are excluded
+  always. Generic warmth ("growth", "next steps", "stay connected") never
+  matches; only specific operational tangles do, and the panel shows their
+  exact sentence, not a wall of email.
+
+The read never auto-creates a Roadmap, never inserts a pitch, and never adds
+a CTA. Tai decides. The goal of any outreach remains to earn the next natural
+exchange, not a meeting. Text stays a protected channel everywhere: Comms
+recommends it only on explicit text-route evidence.
