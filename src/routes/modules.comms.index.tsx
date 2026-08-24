@@ -87,6 +87,13 @@ const DESCRIPTION =
   "Trust Tai's relationship room: what happened, what was promised, what needs attention, and the next thoughtful move.";
 
 export const Route = createFileRoute("/modules/comms/")({
+  // A Scout handoff lands here carrying the relationship it just opened, so
+  // Comms opens on exactly that person — never on whoever sorted first.
+  validateSearch: (search: Record<string, unknown>): { relationship?: string } => ({
+    ...(typeof search.relationship === "string" && search.relationship
+      ? { relationship: search.relationship }
+      : {}),
+  }),
   head: () => ({
     meta: [
       { title: TITLE },
