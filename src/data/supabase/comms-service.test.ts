@@ -197,6 +197,65 @@ describe("scout handoff", () => {
     const fact = relationship.observed.find((item) => item.label === "Booking flow");
     expect(fact?.evidence[0]?.label).toBe("northbeam.example/book");
   });
+
+  it("carries the canonical ids across: organization, prospect, and person", async () => {
+    const relationship = await receiveScoutHandoff(handoffDraft(), CONTEXT);
+    expect(relationship.prospectId).toBe("prospect-1");
+    expect(relationship.contactId).toBe("person-1");
+    expect(db.tables["comms_relationships"]![0]!["organization_id"]).toBe("org-1");
+  });
+
+  it("carries the relationship-development brief intact as provenance", async () => {
+    const relationship = await receiveScoutHandoff(
+      handoffDraft({
+        development: {
+          whyNow: "They announced a wholesale expansion on August 12.",
+          bestChannel: "email",
+          channelReason: "A verified business email is on record.",
+          bridgeIdeas: [
+            {
+              label: "Booking flow teardown",
+              idea: "Send a two-minute read on their mobile booking path.",
+              why: "It gives before it asks.",
+            },
+          ],
+          firstMovePosture: "Open with the booking observation; no ask.",
+        },
+      }),
+      CONTEXT,
+    );
+    const handoff = relationship.metadata["scout_handoff"] as Record<string, unknown>;
+    expect(handoff["prospect_id"]).toBe("prospect-1");
+    expect(handoff["intent"]).toBe("introduce");
+    expect(handoff["development"]).toEqual({
+      why_now: "They announced a wholesale expansion on August 12.",
+      best_channel: "email",
+      channel_reason: "A verified business email is on record.",
+      bridge_ideas: [
+        {
+          label: "Booking flow teardown",
+          idea: "Send a two-minute read on their mobile booking path.",
+          why: "It gives before it asks.",
+        },
+      ],
+      first_move_posture: "Open with the booking observation; no ask.",
+    });
+  });
+
+  it("hands over a relationship Comms can open on, with the intent as its next move", async () => {
+    const relationship = await receiveScoutHandoff(handoffDraft(), CONTEXT);
+    // The first-message composer reasons from this record: the intent and the
+    // named contact are the next move, and the brief's context sits in the
+    // separated memory tiers the draft grounding reads.
+    expect(relationship.nextAction).toContain("Open a conversation");
+    expect(relationship.nextAction).toContain("Ada Rowe");
+    // The id the handoff returns is in the room Comms opens on — a deep link
+    // to it can never land on a record the list cannot show.
+    const listed = await commsService.list("org-1");
+    expect(listed.map((entry) => entry.id)).toContain(relationship.id);
+    // Nothing sends: a handoff is a brief and a stage, never a touch.
+    expect(db.tables["comms_touches"] ?? []).toHaveLength(0);
+  });
 });
 
 describe("touch logging", () => {

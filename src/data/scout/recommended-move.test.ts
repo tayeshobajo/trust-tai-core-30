@@ -563,6 +563,52 @@ describe("the person stage distinguishes the real missing step", () => {
     expect(move.progress.find((s) => s.key === "first_message")?.state).toBe("current");
   });
 
+  it("9 · the final blocker clearing advances the move to Prepare first message on its own", () => {
+    const people = (emailStatus: string, confidence: string) =>
+      [
+        {
+          id: "rec-9",
+          fullName: "Claire Meneely",
+          roleTitle: "Founder",
+          seniority: "founder",
+          email: "claire@example.com",
+          emailStatus,
+          confidence,
+        },
+      ] as unknown as Person[];
+
+    // Before: the lone unverified address is the only thing in the way, and
+    // the one action is the governed confirmation — never the first message.
+    const before = buildRecommendedNextMove({
+      candidate: readyCandidate(),
+      people: people("found", "observed"),
+      now: NOW,
+      firstMessage: {
+        ready: false,
+        blockers: ["claire@example.com is unverified, so it cannot be treated as reachable."],
+        confirmEmailPersonId: "rec-9",
+      },
+    });
+    expect(before.state).toBe("verify_route");
+    expect(before.primary.kind).toBe("confirm_email");
+    expect(before.blocked).toBe(true);
+
+    // After: the same inputs one confirmation later. Nothing else changed —
+    // the recommendation advances on the recomputed readiness alone, with no
+    // manual refresh and no rediscovery.
+    const after = buildRecommendedNextMove({
+      candidate: readyCandidate(),
+      people: people("verified", "human_confirmed"),
+      now: NOW,
+      firstMessage: { ready: true, blockers: [] },
+    });
+    expect(after.state).toBe("no_urgency");
+    expect(after.blocked).toBeFalsy();
+    expect(after.headline).toBe("Start with email to Claire Meneely");
+    expect(after.primary).toEqual({ kind: "prepare_first_message", label: "Prepare first message" });
+    expect(after.progress.find((s) => s.key === "first_message")?.state).toBe("current");
+  });
+
   it("8 · in Comms, every stage is complete and the move is Open in Comms", () => {
     const move = buildRecommendedNextMove({
       candidate: candidate({
