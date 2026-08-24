@@ -37,7 +37,7 @@ const thin = { thin: true } as ResearchCoverage;
 describe("buildMoveBlockers", () => {
   it("an unverified email gets the inline confirm action, bound to its person", () => {
     const blockers = buildMoveBlockers({ candidate: candidate(), people: [claire], coverage: full });
-    const email = blockers.find((blocker) => block.key.startsWith("email_unverified"));
+    const email = blockers.find((blocker) => blocker.key.startsWith("email_unverified"));
     expect(email).toBeDefined();
     expect(email!.action.kind).toBe("confirm_email");
     expect(email!.action.label).toBe("Confirm this address");
@@ -47,7 +47,7 @@ describe("buildMoveBlockers", () => {
 
   it("thin or missing research gets the inline governed research pass", () => {
     const thinBlockers = buildMoveBlockers({ candidate: candidate(), people: [claire], coverage: thin });
-    const coverageRow = thinBlockers.find((blocker) => block.key === "thin_coverage");
+    const coverageRow = thinBlockers.find((blocker) => blocker.key === "thin_coverage");
     expect(coverageRow!.action.kind).toBe("run_research");
     expect(coverageRow!.action.label).toBe("Refresh the company read");
 
@@ -56,7 +56,7 @@ describe("buildMoveBlockers", () => {
       people: [claire],
       coverage: full,
     });
-    const scoreRow = unscored.find((blocker) => block.key === "not_scored");
+    const scoreRow = unscored.find((blocker) => blocker.key === "not_scored");
     expect(scoreRow!.action.kind).toBe("run_research");
     expect(scoreRow!.action.label).toBe("Research this company");
   });
@@ -77,14 +77,14 @@ describe("buildMoveBlockers", () => {
     });
     expect(blockers.length).toBeGreaterThan(0);
     expect(blockers.every((blocker) => block.action.kind === "open_people")).toBe(true);
-    const roleRow = blockers.find((blocker) => block.key.startsWith("no_role"));
+    const roleRow = blockers.find((blocker) => blocker.key.startsWith("no_role"));
     expect(roleRow?.person?.id).toBe("person-1");
   });
 
   it("keys are stable and unique across several blockers", () => {
     const blockers = buildMoveBlockers({ candidate: candidate(), people: [claire], coverage: thin });
     expect(blockers.length).toBeGreaterThan(1);
-    expect(new Set(blockers.map((blocker) => block.key)).size).toBe(blockers.length);
+    expect(new Set(blockers.map((blocker) => blocker.key)).size).toBe(blockers.length);
   });
 
   it("a clear handoff means no flow", () => {

@@ -164,7 +164,7 @@ describe("one move, one clear reason", () => {
     expect(screen.getByText("Claire Meneely identified as Founder")).toBeTruthy();
     expect(screen.getByText("Business email found but unverified")).toBeTruthy();
     expect(screen.getByText("No dated signal on record")).toBeTruthy();
-    expect(screen.getByText("moderate")).toBeTruthy();
+    expect(screen.getByText(/moderate/i)).toBeTruthy();
   });
 });
 
