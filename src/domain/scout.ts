@@ -12,6 +12,7 @@ import type { ID, Prospect } from "./entities";
 import type { ScoutFitEvaluation } from "./scout-fit";
 import type { ResearchRun } from "./prospect-modules";
 import type { ScoutIntel } from "./scout-intel";
+import type { RelationshipDevelopmentMarker } from "./relationship-development";
 import type { FounderSignalPacket } from "./stated";
 
 import type { CompanyIdentity } from "@/lib/company-identity";
@@ -101,6 +102,8 @@ export interface ProspectCandidate {
   stated?: FounderSignalPacket;
   /** A person's own decision about researching them, when the intake never asked. */
   researchConsent?: ResearchConsentRecord;
+  /** A person's pacing decision on developing this relationship (watch / not now). */
+  development?: RelationshipDevelopmentMarker;
 }
 
 
