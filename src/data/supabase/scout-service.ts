@@ -743,12 +743,12 @@ export const scoutService = {
     // Open the relationship in Comms with the brief's context intact. If Comms
     // is not provisioned in this backend, the handoff still stands in Scout.
     const { receiveScoutHandoff } = await import("./comms-handoff-receiver");
-    await receiveScoutHandoff(draft, {
+    const relationship = await receiveScoutHandoff(draft, {
       organizationId: context.organizationId,
       userId: context.userId,
     });
 
-    return record;
+    return { record, relationshipId: relationship.id };
   },
 
   /** Manual ICP fit override. Always available, never automatic. */
