@@ -34,15 +34,21 @@ import {
 
 /* ------------------------------------------------------------------ fixtures */
 
-const person = (over: Partial<OpportunityPerson> = {}): OpportunityPerson => ({
-  fullName: "Jordan Meyer",
-  roleTitle: "Founder",
-  email: "jordan@example.com",
-  decisionMaker: true,
-  confirmed: true,
-  emailVerified: true,
-  ...over,
-});
+const person = (over: Record<string, unknown> = {}): OpportunityPerson => {
+  const base: Record<string, unknown> = {
+    fullName: "Jordan Meyer",
+    roleTitle: "Founder",
+    email: "jordan@example.com",
+    decisionMaker: true,
+    confirmed: true,
+    emailVerified: true,
+  };
+  for (const [key, value] of Object.entries(over)) {
+    if (value === undefined) delete base[key];
+    else base[key] = value;
+  }
+  return base as unknown as OpportunityPerson;
+};
 
 const candidate = (over: {
   score?: number;

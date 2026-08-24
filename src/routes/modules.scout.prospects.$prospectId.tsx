@@ -280,8 +280,11 @@ function CompanyDetail({
   // The governed deeper-research action. Idempotent: a current brief is left
   // untouched, a stale or missing one is prepared from stored public evidence.
   const prepareBrief = useMutation({
-    mutationFn: (force?: boolean) =>
-      scoutService.prepareRelationshipDevelopment({ prospectId, force }, { organizationId, userId }),
+    mutationFn: (force: boolean | undefined) =>
+      scoutService.prepareRelationshipDevelopment(
+        { prospectId, ...(force !== undefined ? { force } : {}) },
+        { organizationId, userId },
+      ),
     onSuccess: refresh,
   });
 
@@ -301,7 +304,7 @@ function CompanyDetail({
     // A newly added founder can make the company newly eligible — prepare the
     // brief if so (research only; a current brief is never re-run).
     onSuccess: () => {
-      prepareBrief.mutate();
+      prepareBrief.mutate(undefined);
       refresh();
     },
   });
@@ -309,7 +312,7 @@ function CompanyDetail({
   const confirmEmail = useMutation({
     mutationFn: (person: Person) => peopleService.confirmEmail(person, { organizationId, userId }),
     onSuccess: () => {
-      prepareBrief.mutate();
+      prepareBrief.mutate(undefined);
       refresh();
     },
   });
