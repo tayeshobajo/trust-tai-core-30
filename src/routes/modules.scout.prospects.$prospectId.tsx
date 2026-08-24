@@ -647,6 +647,23 @@ function CompanyDetail({
                   summary={derived.summary}
                   onViewRationale={() => void goToTab("icp")}
                 />
+
+                <RecommendedNextMoveCard
+                  move={recommendedMove}
+                  candidate={candidate}
+                  people={peopleRows}
+                  busy={busy}
+                  preparingBrief={prepareBrief.isPending}
+                  firstMessageReady={firstMessageDraft.ready}
+                  onPrimary={onRecommendedPrimary}
+                  onPrepareFirstMessage={prepareFirstMessage}
+                  onWatch={(watch) => setWatch.mutate(watch)}
+                  onPrepareBrief={(force) => prepareBrief.mutate(force)}
+                  onSeeResearch={() =>
+                    void goToTab(hasResearchWorkspace(candidate) ? "research" : "icp")
+                  }
+                />
+
                 <KeySignalsCard
                   signals={derived.keySignals}
                   total={derived.allSignals.length}
@@ -728,8 +745,7 @@ function CompanyDetail({
           <aside className="space-y-5">
             <AtAGlanceCard candidate={candidate} />
             <TopReasonsCard reasons={derived.summary.topReasons} />
-            <NextStepsCard steps={steps} onSelect={onStep} busy={busy} />
-            <NotesPreviewCard
+                <NotesPreviewCard
               notes={notes}
               onAdd={() => void goToTab("notes")}
               onViewAll={() => void goToTab("notes")}
