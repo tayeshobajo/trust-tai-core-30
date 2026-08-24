@@ -768,6 +768,25 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 });
               }}
             >
+              {roadmapSignal?.emerging ? (
+                <div className="border-t border-border bg-violet-50/60 px-5 py-4">
+                  <p className="tt-eyebrow text-violet-700">Roadmap opportunity emerging</p>
+                  <p className="mt-2 text-[13px] text-muted-foreground">{roadmapSignal.because}</p>
+                  <ul className="mt-2 space-y-1">
+                    {roadmapSignal.needs.map((need) => (
+                      <li key={need.key} className="text-[13px] text-foreground">
+                        <span className="font-medium">{need.label}</span>
+                        <span className="text-muted-foreground"> — {need.evidence}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-[12px] text-muted-foreground">
+                    Recognition, not a pitch. Whether to propose a roadmap stays your call, in the
+                    conversation.
+                  </p>
+                </div>
+              ) : null}
+
               {profileOpen ? (
                 <div className="border-t border-border bg-secondary/30 px-5 py-4">
                   <p className="tt-eyebrow">Profile</p>
