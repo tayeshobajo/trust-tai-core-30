@@ -62,6 +62,7 @@ import {
 
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { HandoffPanel } from "@/components/tt/prospect/handoff";
+import { RelationshipOpportunityCard } from "@/components/tt/prospect/relationship-opportunity";
 import { PeoplePanel, type ManualPersonForm } from "@/components/tt/prospect/people-panel";
 import { CompanyHero, DetailUtilityRow } from "@/components/tt/scout/detail/hero";
 import {
@@ -636,6 +637,7 @@ function CompanyDetail({
                   total={derived.allSignals.length}
                   onViewAll={() => void goToTab("signals")}
                 />
+                <RelationshipOpportunityCard candidate={candidate} people={peopleRows} />
                 <IcpAlignmentCard
                   view={derived.factors}
                   onViewAnalysis={() => void goToTab("icp")}
