@@ -155,6 +155,16 @@ export function RecommendedNextMoveCard({
       setFlow({ total: Math.max(blockers.length, 1) });
       return;
     }
+    if (move.primary.kind === "confirm_email") {
+      // The one action IS the governed confirmation: act on the person the
+      // lone unverified-address blocker concerns, with the same pending and
+      // acknowledgement feedback the guided flow gives.
+      const blocker = blockers.find(
+        (entry) => entry.action.kind === "confirm_email" && entry.person,
+      );
+      if (blocker?.person) onConfirmEmail(blocker.person);
+      return;
+    }
     onPrimary(move.primary.kind);
   };
 
@@ -179,6 +189,8 @@ export function RecommendedNextMoveCard({
       className={cn(preparingBrief && "ring-1 ring-royal/25")}
     >
       <div className="space-y-5">
+        <ProgressStrip stages={move.progress} />
+
         {preparingBrief ? (
           <div
             role="status"
