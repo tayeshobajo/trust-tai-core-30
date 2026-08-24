@@ -309,7 +309,7 @@ function WorthKnowingRow({
                 params={{ prospectId: candidate.prospect.id }}
                 search={linkSearch}
               >
-                Prepare introduction
+                Prepare first message
               </Link>
             </TTButton>
           ) : null}
