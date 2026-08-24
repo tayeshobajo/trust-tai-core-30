@@ -305,9 +305,7 @@ export function RecommendedNextMoveCard({
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-5">
           {canAct ? (
-            move.primary.kind === "confirm_email" &&
-            confirmedIds.size > 0 &&
-            !blockers.some((entry) => entry.action.kind === "confirm_email") ? (
+            move.primary.kind === "confirm_email" && confirmedIds.size > 0 ? (
               <p
                 role="status"
                 aria-live="polite"
