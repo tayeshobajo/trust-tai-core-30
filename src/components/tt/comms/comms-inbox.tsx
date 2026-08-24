@@ -19,6 +19,8 @@ import {
   type InboxView,
 } from "@/data/comms-inbox";
 import type { PageView } from "@/data/pagination";
+import { developmentStage } from "@/data/relationship-stage";
+import { DEVELOPMENT_STAGE_LABEL } from "@/domain/relationship-development";
 import { initialsOf } from "@/domain/steward-accountability";
 import { TTInput } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
@@ -59,6 +61,10 @@ export function ConversationListItem({
 }) {
   const { relationship, health } = entry;
   const segment = relationshipSegment(relationship);
+  // Developing relationships carry their human-facing state. One record, one
+  // memory — this is a read of the same lifecycle, not a second pipeline.
+  const development =
+    segment === "nurture" ? developmentStage(relationship, []) : null;
   const snippet =
     relationship.nextAction?.trim() ||
     health.reasons[0] ||
@@ -101,8 +107,13 @@ export function ConversationListItem({
             </span>
           ) : null}
           {/* What kind of relationship, and how the conversation is doing. */}
-          <span className="mt-1.5 flex items-center gap-2">
+          <span className="mt-1.5 flex flex-wrap items-center gap-2">
             <SegmentPill segment={segment} />
+            {development ? (
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-violet-700">
+                {DEVELOPMENT_STAGE_LABEL[development.stage]}
+              </span>
+            ) : null}
             <span className="inline-flex items-center gap-1.5">
               <HealthDot status={health.status} />
               <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
