@@ -23,7 +23,6 @@ import {
   recommendChannel,
   opportunityPeople,
   bestEntryPerson,
-  readRelationshipDevelopment,
   worthKnowingSort,
 } from "@/data/relationship-development";
 import type { ScoutLinkSearch } from "@/components/tt/scout/company-table";
