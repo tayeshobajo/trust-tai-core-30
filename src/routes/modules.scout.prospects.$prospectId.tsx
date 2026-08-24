@@ -91,6 +91,7 @@ import {
   type DetailTab,
 } from "@/components/tt/scout/detail/tabs";
 import { buildPersonPlan } from "@/data/person-priority";
+import { buildMoveBlockers } from "@/data/scout/move-blockers";
 import { composeProspectPage } from "@/data/prospect-modules";
 import { buildHandoffDraft, developmentFromBrief } from "@/data/comms-handoff";
 import { buildRelationshipBrief } from "@/data/relationship-development";
