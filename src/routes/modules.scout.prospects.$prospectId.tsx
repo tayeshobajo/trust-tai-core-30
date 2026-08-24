@@ -505,6 +505,14 @@ function CompanyDetail({
   // from the eligibility read, the governed brief, and the pacing decision.
   const recommendedMove = buildRecommendedNextMove({ candidate, people: peopleRows });
 
+  // The guided flow behind "Resolve N blockers": the same structured blockers
+  // the handoff draft lists, each carrying its own governed next action.
+  const moveBlockers = buildMoveBlockers({
+    candidate,
+    people: peopleRows,
+    coverage: composition.coverage,
+  });
+
   // The handoff draft behind "Prepare first message": the stored governed
   // brief travels as provenance, with canonical prospect/person IDs intact.
   const storedBrief =
@@ -727,20 +735,23 @@ function CompanyDetail({
                 <RecommendedNextMoveCard
                   move={recommendedMove}
                   candidate={candidate}
-                  people={peopleRows}
+                  blockers={moveBlockers}
                   busy={busy}
                   preparingBrief={prepareBrief.isPending}
                   prepareError={prepareErrorMessage}
                   firstMessageReady={firstMessageDraft.ready}
-                  firstMessageBlockers={firstMessageDraft.blockers.length}
                   routingFirstMessage={routeToComms.isPending}
+                  confirmingEmail={confirmEmail.isPending}
+                  researchPending={research.isPending}
                   onPrimary={onRecommendedPrimary}
                   onPrepareFirstMessage={prepareFirstMessage}
                   onWatch={(watch) => setWatch.mutate(watch)}
                   onPrepareBrief={(force) =>
                     prepareBrief.mutate(force ? { force: true } : {})
                   }
-                  onResolveBlockers={resolveHandoffBlockers}
+                  onConfirmEmail={(person) => confirmEmail.mutate(person)}
+                  onRunResearch={() => startResearch()}
+                  onOpenPeople={resolveHandoffBlockers}
                   onSeeResearch={() =>
                     void goToTab(hasResearchWorkspace(candidate) ? "research" : "icp")
                   }
