@@ -28,12 +28,10 @@ function activityBullet(activities: ActivityEvent[]): string | null {
 }
 
 function coverageBullet(coverage: ResearchCoverage): string | null {
-  if (coverage.researched) {
-    return coverage.staleDays !== null && coverage.staleDays > 30
-      ? `Research is ${coverage.staleDays} days old — a refresh would sharpen the read.`
-      : null;
+  if (coverage.percent === null) {
+    return "No deep research yet — the fit read rests on what Scout observed at intake.";
   }
-  return "No deep research yet — the fit read rests on what Scout observed at intake.";
+  return coverage.thin ? coverage.note : null;
 }
 
 export function buildActivitySummary(input: {

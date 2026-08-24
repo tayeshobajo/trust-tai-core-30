@@ -101,6 +101,10 @@ export const Route = createFileRoute("/modules/scout/prospects/$prospectId")({
       typeof search.tab === "string" && search.tab !== "overview"
         ? search.tab
         : undefined,
+    // Other rooms link here carrying the board's return context; accepted and
+    // ignored so those links stay valid.
+    section: typeof search.section === "string" ? search.section : undefined,
+    fit: typeof search.fit === "string" ? search.fit : undefined,
   }),
   component: ProspectDetailRoute,
 });
