@@ -23,6 +23,7 @@ import type { HandoffBlocker } from "@/data/comms-handoff";
 import { buildMoveBlockers, type MoveBlocker } from "@/data/scout/move-blockers";
 import { buildRecommendedNextMove } from "@/data/scout/recommended-move";
 import type { Person } from "@/domain/people";
+import type { ResearchCoverage } from "@/domain/prospect-modules";
 import type { ProspectCandidate } from "@/domain/scout";
 import { EMPTY_INTEL, type ScoutIntel } from "@/domain/scout-intel";
 import type {
@@ -106,6 +107,7 @@ const COVERAGE_BLOCKER: HandoffBlocker = {
   message: "Research coverage is thin, so the brief rests on partial reading.",
 };
 const BOTH = [EMAIL_BLOCKER, COVERAGE_BLOCKER];
+const THIN_COVERAGE = { thin: true } as ResearchCoverage;
 
 const blockedMove = buildRecommendedNextMove({
   candidate,
@@ -194,7 +196,7 @@ describe("the guided blocker flow", () => {
     expect(props.onConfirmEmail).toHaveBeenCalledWith(
       expect.objectContaining({ id: "person-1" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Run a fresh research pass" }));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh the company read" }));
     expect(props.onRunResearch).toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Back to the recommendation" }));
@@ -202,9 +204,11 @@ describe("the guided blocker flow", () => {
   });
 
   it("counts what has cleared as blockers resolve", () => {
+    const verified = { ...claire, emailStatus: "verified" } as unknown as Person;
     const oneLeft: MoveBlocker[] = buildMoveBlockers({
-      blockers: [COVERAGE_BLOCKER],
-      people: [claire],
+      candidate,
+      people: [verified],
+      coverage: THIN_COVERAGE,
     });
     const { rerender, props } = renderCard();
     fireEvent.click(screen.getByRole("button", { name: "Resolve 2 blockers" }));
