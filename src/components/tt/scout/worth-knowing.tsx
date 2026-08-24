@@ -58,7 +58,7 @@ function buildEntry(candidate: ProspectCandidate): WorthKnowingEntry {
   const intel = candidate.intel ?? EMPTY_INTEL;
   const opportunity = computeRelationshipOpportunity({ candidate, intel });
   const eligibility = relationshipResearchEligible(candidate, opportunityPeople(intel));
-  const watch = readRelationshipDevelopment(candidate.prospect.metadata).watch;
+  const watch = candidate.development?.watch ?? null;
   return {
     candidate,
     opportunity,
@@ -125,7 +125,7 @@ export function WorthKnowingQueue({
         (candidate) =>
           candidate.evaluation.scoreable &&
           candidate.evaluation.score >= 60 &&
-          readRelationshipDevelopment(candidate.prospect.metadata).watch === "not_now",
+          candidate.development?.watch === "not_now",
       ).length,
     [candidates],
   );
