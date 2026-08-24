@@ -29,6 +29,7 @@ import { RelationshipRail } from "@/components/tt/comms/relationship-rail";
 import { AddInteraction, type InteractionSubmission } from "@/components/tt/comms/add-interaction";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
+import { detectRoadmapOpportunity } from "@/data/relationship-development";
 import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
@@ -286,6 +287,26 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     () => groupByDay(conversationTimeline(selectedTouches, drafts, selectedMessages)),
     [selectedTouches, drafts, selectedMessages],
   );
+
+  /**
+   * Roadmap is recognized from revealed need, never forced. This read runs
+   * over what the conversation and interactions actually said; it recommends
+   * nothing and creates nothing. Tai decides whether to propose a roadmap.
+   */
+  const roadmapSignal = useMemo(() => {
+    if (!selected) return null;
+    const texts = [
+      ...selectedMessages.map((message) => ({
+        text: [message.subject ?? "", message.bodyText ?? message.snippet ?? ""].join("\n"),
+        source: message.direction === "inbound" ? "Their email" : "Our email",
+      })),
+      ...selectedTouches.map((touch) => ({
+        text: [touch.summary, touch.body ?? ""].join("\n"),
+        source: touch.direction === "inbound" ? "Their words" : "Logged interaction",
+      })),
+    ];
+    return detectRoadmapOpportunity(texts);
+  }, [selected, selectedMessages, selectedTouches]);
   const savedDraft = drafts.find((draft) => draft.reviewState !== "discarded");
   /** The open editor is this relationship's draft AND a person's choice. */
   const activeDraft =
@@ -747,6 +768,25 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 });
               }}
             >
+              {roadmapSignal?.emerging ? (
+                <div className="border-t border-border bg-violet-50/60 px-5 py-4">
+                  <p className="tt-eyebrow text-violet-700">Roadmap opportunity emerging</p>
+                  <p className="mt-2 text-[13px] text-muted-foreground">{roadmapSignal.because}</p>
+                  <ul className="mt-2 space-y-1">
+                    {roadmapSignal.needs.map((need) => (
+                      <li key={need.kind} className="text-[13px] text-foreground">
+                        <span className="font-medium">{need.label}</span>
+                        <span className="text-muted-foreground"> — {need.evidence}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-[12px] text-muted-foreground">
+                    Recognition, not a pitch. Whether to propose a roadmap stays your call, in the
+                    conversation.
+                  </p>
+                </div>
+              ) : null}
+
               {profileOpen ? (
                 <div className="border-t border-border bg-secondary/30 px-5 py-4">
                   <p className="tt-eyebrow">Profile</p>

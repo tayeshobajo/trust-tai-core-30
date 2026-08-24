@@ -52,6 +52,22 @@ export interface HandoffContextItem {
   evidence: EvidenceRef[];
 }
 
+/**
+ * The relationship-development read that travels with the handoff: how to
+ * enter this person's world, and what a useful bridge could be. Provenance
+ * for Comms, never a script.
+ */
+export interface HandoffDevelopment {
+  /** Why this person, why now. */
+  whyNow?: string;
+  bestChannel?: "email" | "linkedin" | "text";
+  channelReason?: string;
+  /** A genuinely useful thing to give before asking for anything. */
+  bridgeIdeas: { label: string; idea: string; why: string }[];
+  /** The suggested soft-introduction posture. Never a CTA by default. */
+  firstMovePosture: string;
+}
+
 export interface HandoffDraft {
   prospectId: ID;
   companyName: string;
@@ -64,6 +80,8 @@ export interface HandoffDraft {
   intentBecause: string;
   requiredContext: HandoffContextItem[];
   confidence: ConfidenceRead;
+  /** The relationship-development read, when one was prepared. */
+  development?: HandoffDevelopment;
   /** What stops this from being handed over. Empty means ready. */
   blockers: string[];
   ready: boolean;

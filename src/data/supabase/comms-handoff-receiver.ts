@@ -95,6 +95,18 @@ export async function receiveScoutHandoff(
           intent: draft.intent,
           confidence: draft.confidence.level,
           generated_at: draft.generatedAt,
+          // The relationship-development read travels across as provenance.
+          ...(draft.development
+            ? {
+                development: {
+                  why_now: draft.development.whyNow ?? null,
+                  best_channel: draft.development.bestChannel ?? null,
+                  channel_reason: draft.development.channelReason ?? null,
+                  bridge_ideas: draft.development.bridgeIdeas,
+                  first_move_posture: draft.development.firstMovePosture,
+                },
+              }
+            : {}),
         },
       },
     },

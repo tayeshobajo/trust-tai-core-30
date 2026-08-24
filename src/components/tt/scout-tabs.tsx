@@ -3,10 +3,11 @@ import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 
 /** Single source of truth for Scout's local sections. */
-export type ScoutSection = "scout" | "qualified" | "research" | "settings";
+export type ScoutSection = "scout" | "worth_knowing" | "qualified" | "research" | "settings";
 
 const BOARD_SECTIONS: { key: Exclude<ScoutSection, "settings">; label: string }[] = [
   { key: "scout", label: "Scout" },
+  { key: "worth_knowing", label: "Worth knowing" },
   { key: "qualified", label: "Qualified" },
   { key: "research", label: "Review" },
 ];

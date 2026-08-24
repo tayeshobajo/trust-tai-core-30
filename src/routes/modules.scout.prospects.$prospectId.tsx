@@ -62,6 +62,7 @@ import {
 
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { HandoffPanel } from "@/components/tt/prospect/handoff";
+import { RelationshipOpportunityCard } from "@/components/tt/prospect/relationship-opportunity";
 import { PeoplePanel, type ManualPersonForm } from "@/components/tt/prospect/people-panel";
 import { CompanyHero, DetailUtilityRow } from "@/components/tt/scout/detail/hero";
 import {
@@ -105,11 +106,13 @@ const TITLE = "Company · Scout · Trust Tai OS";
 const DESCRIPTION =
   "Does this company deserve our attention, and why? ICP alignment, dated signals, people, and the bounded next step.";
 
-type Section = "scout" | "qualified" | "research";
+type Section = "scout" | "qualified" | "research" | "worth_knowing";
 type Fit = "all" | FitLight;
 
 function parseSection(value: unknown): Section {
-  return value === "qualified" || value === "research" ? value : "scout";
+  return value === "qualified" || value === "research" || value === "worth_knowing"
+    ? value
+    : "scout";
 }
 
 function parseFit(value: unknown): Fit {
@@ -636,6 +639,7 @@ function CompanyDetail({
                   total={derived.allSignals.length}
                   onViewAll={() => void goToTab("signals")}
                 />
+                <RelationshipOpportunityCard candidate={candidate} people={peopleRows} />
                 <IcpAlignmentCard
                   view={derived.factors}
                   onViewAnalysis={() => void goToTab("icp")}

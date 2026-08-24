@@ -10,6 +10,7 @@ import type { ConfidenceRead, EvidenceRef } from "@/domain/confidence";
 import type {
   HandoffContact,
   HandoffContextItem,
+  HandoffDevelopment,
   HandoffDraft,
   HandoffIntent,
   HandoffTarget,
@@ -141,6 +142,8 @@ export interface HandoffInput {
   coverage: ResearchCoverage;
   /** Confidence in the underlying fit read, carried straight from the page. */
   fitConfidence: ConfidenceRead;
+  /** The relationship-development read to carry across, when one was prepared. */
+  development?: HandoffDevelopment;
 }
 
 export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
@@ -243,6 +246,7 @@ export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
     intentBecause: because,
     requiredContext,
     confidence,
+    ...(input.development ? { development: input.development } : {}),
     blockers,
     ready: blockers.length === 0,
     generatedAt: new Date().toISOString(),

@@ -26,6 +26,7 @@ import {
 import { PREVIEW_CANDIDATES, rankPreviewCandidates } from "@/data/scout-source";
 import { inboundOrigin, withInboundOrigin } from "@/data/scout/inbound";
 import { readResearchConsent } from "@/data/scout/research-consent";
+import { readRelationshipDevelopment } from "@/data/relationship-development";
 import type { DecisionMoveKey } from "@/data/scout/decision-state";
 
 import { areasCovered, mergeObservedRows, type ResearchRunPlan } from "@/data/scout/research-run";
@@ -105,7 +106,11 @@ function toCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandi
   const base = baseCandidate(row, icpVersion);
   const candidate = origin ? withInboundOrigin(base, origin) : base;
   const consent = readResearchConsent(row.metadata);
-  return consent ? { ...candidate, researchConsent: consent } : candidate;
+  const development = readRelationshipDevelopment(row.metadata);
+  return {
+    ...(consent ? { ...candidate, researchConsent: consent } : candidate),
+    ...(development.watch ? { development } : {}),
+  };
 }
 
 function baseCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandidate {
@@ -314,6 +319,44 @@ export const scoutService = {
     return { move: input.move, at, note };
   },
 
+  /**
+   * Record a person's pacing decision on a relationship opportunity: worth
+   * watching, or not for now. Stored on the prospect's metadata and in the
+   * shared activity stream. It changes no status and routes nothing.
+   */
+  async setWatch(
+    input: {
+      prospectId: ID;
+      companyName: string;
+      watch: "watching" | "not_now" | null;
+    },
+    context: ScoutContext,
+  ) {
+    const at = new Date().toISOString();
+    await saveProspectMetadataPatch(input.prospectId, {
+      relationship_development: { watch: input.watch, by: context.userId, at },
+    });
+    await supabaseActivity.record({
+      organizationId: context.organizationId,
+      name: "prospect.decided",
+      subject: { type: "prospect", id: input.prospectId, label: input.companyName },
+      summary:
+        input.watch === "watching"
+          ? `${input.companyName} marked worth watching.`
+          : input.watch === "not_now"
+            ? `${input.companyName} set aside for now.`
+            : `Watch decision cleared for ${input.companyName}.`,
+      payload: { relationship_watch: input.watch },
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: context.userId },
+        observedAt: at,
+        confidence: "observed",
+      },
+      occurredAt: at,
+    });
+    return { watch: input.watch, at };
+  },
 
   /** Is live market discovery connected? */
   async discoveryStatus() {

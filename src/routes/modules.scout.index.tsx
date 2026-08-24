@@ -12,6 +12,7 @@ import { ScoutCompanyTable } from "@/components/tt/scout/company-table";
 import { ScoutPagination } from "@/components/tt/scout/pagination";
 import { ScoutSidebar } from "@/components/tt/scout/sidebar";
 import { ScoutSupportRail } from "@/components/tt/scout/support-rail";
+import { WorthKnowingQueue } from "@/components/tt/scout/worth-knowing";
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { scoutService } from "@/data/supabase/scout-service";
@@ -37,10 +38,12 @@ const TITLE = "Scout · Trust Tai OS";
 const DESCRIPTION =
   "Source real companies from a plain-English target, rank them against the active ICP, and see the evidence behind every read.";
 
-type Tab = "scout" | "qualified" | "research";
+type Tab = "scout" | "worth_knowing" | "qualified" | "research";
 
 function parseSection(value: unknown): Tab {
-  return value === "qualified" || value === "research" ? value : "scout";
+  return value === "worth_knowing" || value === "qualified" || value === "research"
+    ? value
+    : "scout";
 }
 
 function parseFit(value: unknown): FitFilter {
@@ -402,6 +405,12 @@ function Scout({
             <DiscoveryRuns runs={runs.data ?? []} />
             <ResearchHistory candidates={all} linkSearch={{ section: tab, fit: filter }} />
           </>
+        ) : tab === "worth_knowing" ? (
+          <WorthKnowingQueue
+            candidates={all}
+            identity={identity}
+            linkSearch={{ section: tab, fit: filter }}
+          />
         ) : (
           <section className="space-y-3">
             {/* 4, Search + compact filters. */}

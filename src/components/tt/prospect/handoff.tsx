@@ -9,10 +9,16 @@
 import { useMemo, useState } from "react";
 
 import { buildHandoffDraft } from "@/data/comms-handoff";
+import { buildRelationshipBrief } from "@/data/relationship-development";
 import type { ConfidenceRead } from "@/domain/confidence";
-import { HANDOFF_INTENT_LABEL, type HandoffDraft } from "@/domain/comms-handoff";
+import {
+  HANDOFF_INTENT_LABEL,
+  type HandoffDevelopment,
+  type HandoffDraft,
+} from "@/domain/comms-handoff";
 import { EMAIL_STATUS_LABEL, type Person } from "@/domain/people";
 import type { ModuleEmphasis, ResearchCoverage } from "@/domain/prospect-modules";
+import { RELATIONSHIP_CHANNEL_LABEL } from "@/domain/relationship-development";
 import type { ProspectCandidate } from "@/domain/scout";
 import { TTButton } from "@/components/tt/primitives";
 import { cn } from "@/lib/utils";
@@ -42,9 +48,33 @@ export function HandoffPanel({
   emphasis?: ModuleEmphasis | undefined;
 }) {
   const [open, setOpen] = useState(false);
+  // The relationship-development read travels with the brief as provenance:
+  // how to enter this person's world, and what a useful bridge could be.
+  const development = useMemo<HandoffDevelopment | undefined>(() => {
+    const brief = buildRelationshipBrief({ candidate, people });
+    if (!brief.grounded) return undefined;
+    return {
+      ...(brief.whyNow ? { whyNow: brief.whyNow } : {}),
+      ...(brief.bestChannel ? { bestChannel: brief.bestChannel } : {}),
+      ...(brief.channelReason ? { channelReason: brief.channelReason } : {}),
+      bridgeIdeas: brief.bridgeIdeas.map((idea) => ({
+        label: idea.label,
+        idea: idea.idea,
+        why: idea.why,
+      })),
+      firstMovePosture: brief.firstMovePosture,
+    };
+  }, [candidate, people]);
   const draft = useMemo(
-    () => buildHandoffDraft({ candidate, people, coverage, fitConfidence }),
-    [candidate, people, coverage, fitConfidence],
+    () =>
+      buildHandoffDraft({
+        candidate,
+        people,
+        coverage,
+        fitConfidence,
+        ...(development ? { development } : {}),
+      }),
+    [candidate, people, coverage, fitConfidence, development],
   );
 
   return (
@@ -120,6 +150,35 @@ export function HandoffPanel({
             <p className="mt-1 text-[13px] text-muted-foreground">{draft.intentBecause}</p>
           </div>
         </div>
+
+        {draft.development ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {draft.development.bestChannel ? (
+              <div className="rounded-lg border border-border bg-background p-4">
+                <p className="tt-eyebrow">Best way in</p>
+                <p className="mt-1.5 text-[13px] text-foreground">
+                  {RELATIONSHIP_CHANNEL_LABEL[draft.development.bestChannel]}
+                </p>
+                {draft.development.channelReason ? (
+                  <p className="mt-0.5 text-[13px] text-muted-foreground">
+                    {draft.development.channelReason}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {draft.development.bridgeIdeas.length > 0 ? (
+              <div className="rounded-lg border border-border bg-background p-4">
+                <p className="tt-eyebrow">A useful bridge</p>
+                <p className="mt-1.5 text-[13px] text-foreground">
+                  {draft.development.bridgeIdeas[0]!.label}: {draft.development.bridgeIdeas[0]!.idea}
+                </p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  {draft.development.bridgeIdeas[0]!.why}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div>
           <button
