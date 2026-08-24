@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from "react";
 
-import { buildHandoffDraft } from "@/data/comms-handoff";
+import { buildHandoffDraft, developmentFromBrief } from "@/data/comms-handoff";
 import { buildRelationshipBrief } from "@/data/relationship-development";
 import type { ConfidenceRead } from "@/domain/confidence";
 import {

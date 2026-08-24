@@ -23,9 +23,33 @@ import {
   type Person,
 } from "@/domain/people";
 import type { ResearchCoverage } from "@/domain/prospect-modules";
+import type { RelationshipDevelopmentBrief } from "@/domain/relationship-development";
 import type { ProspectCandidate } from "@/domain/scout";
 
 import { criterionEvidence } from "./prospect-modules";
+
+/**
+ * The relationship-development read that travels with a handoff, mapped from
+ * the governed brief. One canonical mapping, so the Scout page and the Comms
+ * brief can never drift into two versions of the same judgment. An ungrounded
+ * brief carries nothing.
+ */
+export function developmentFromBrief(
+  brief: RelationshipDevelopmentBrief | undefined,
+): HandoffDevelopment | undefined {
+  if (!brief || !brief.grounded) return undefined;
+  return {
+    ...(brief.whyNow ? { whyNow: brief.whyNow } : {}),
+    ...(brief.bestChannel ? { bestChannel: brief.bestChannel } : {}),
+    ...(brief.channelReason ? { channelReason: brief.channelReason } : {}),
+    bridgeIdeas: brief.bridgeIdeas.map((idea) => ({
+      label: idea.label,
+      idea: idea.idea,
+      why: idea.why,
+    })),
+    firstMovePosture: brief.firstMovePosture,
+  };
+}
 
 /** The person Comms should address: verified first, then most senior. */
 export function chooseContact(people: Person[]): Person | null {
