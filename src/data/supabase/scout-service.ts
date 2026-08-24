@@ -105,7 +105,11 @@ function toCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandi
   const base = baseCandidate(row, icpVersion);
   const candidate = origin ? withInboundOrigin(base, origin) : base;
   const consent = readResearchConsent(row.metadata);
-  return consent ? { ...candidate, researchConsent: consent } : candidate;
+  const development = readRelationshipDevelopment(row.metadata);
+  return {
+    ...(consent ? { ...candidate, researchConsent: consent } : candidate),
+    ...(development.watch ? { development } : {}),
+  };
 }
 
 function baseCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandidate {
