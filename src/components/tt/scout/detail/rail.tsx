@@ -6,8 +6,6 @@
 
 import type { ActivityEvent } from "@/domain/activity";
 import type { ProspectCandidate } from "@/domain/scout";
-import type { ScoutNextStep } from "@/data/scout/next-steps";
-import { cn } from "@/lib/utils";
 
 import { DetailSection, Empty, SectionLink, relativeTime } from "./parts";
 
@@ -94,43 +92,6 @@ export function TopReasonsCard({ reasons }: { reasons: string[] }) {
           ))}
         </ul>
       )}
-    </DetailSection>
-  );
-}
-
-export function NextStepsCard({
-  steps,
-  onSelect,
-  busy,
-}: {
-  steps: ScoutNextStep[];
-  onSelect: (step: ScoutNextStep) => void;
-  busy: boolean;
-}) {
-  return (
-    <DetailSection title="Potential next steps" emphasis="quiet">
-      <ul className="space-y-1">
-        {steps.map((step) => (
-          <li key={step.key}>
-            <button
-              type="button"
-              disabled={!step.available || busy}
-              onClick={() => onSelect(step)}
-              className={cn(
-                "w-full rounded-lg px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                step.available && !busy
-                  ? "hover:bg-cloud"
-                  : "cursor-not-allowed opacity-60",
-              )}
-            >
-              <span className="block text-[13px] font-medium text-foreground">{step.label}</span>
-              <span className="block text-[12px] text-muted-foreground">
-                {step.available ? step.description : step.unavailableReason ?? "Not available yet."}
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
     </DetailSection>
   );
 }
