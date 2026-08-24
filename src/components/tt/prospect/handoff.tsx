@@ -50,21 +50,10 @@ export function HandoffPanel({
   const [open, setOpen] = useState(false);
   // The relationship-development read travels with the brief as provenance:
   // how to enter this person's world, and what a useful bridge could be.
-  const development = useMemo<HandoffDevelopment | undefined>(() => {
-    const brief = buildRelationshipBrief({ candidate, people });
-    if (!brief.grounded) return undefined;
-    return {
-      ...(brief.whyNow ? { whyNow: brief.whyNow } : {}),
-      ...(brief.bestChannel ? { bestChannel: brief.bestChannel } : {}),
-      ...(brief.channelReason ? { channelReason: brief.channelReason } : {}),
-      bridgeIdeas: brief.bridgeIdeas.map((idea) => ({
-        label: idea.label,
-        idea: idea.idea,
-        why: idea.why,
-      })),
-      firstMovePosture: brief.firstMovePosture,
-    };
-  }, [candidate, people]);
+  const development = useMemo<HandoffDevelopment | undefined>(
+    () => developmentFromBrief(buildRelationshipBrief({ candidate, people })),
+    [candidate, people],
+  );
   const draft = useMemo(
     () =>
       buildHandoffDraft({
