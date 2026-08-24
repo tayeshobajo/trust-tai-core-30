@@ -79,6 +79,12 @@ export interface OpportunityPerson {
   confirmed: boolean;
   /** Email a person has verified, not merely found. */
   emailVerified: boolean;
+  /**
+   * The governed People record behind this person, when one exists. Only
+   * records carry it — discovered intel people are evidence, not records, and
+   * governed actions (like confirming an address) act on records only.
+   */
+  recordId?: string;
 }
 
 function fromDiscovered(intel: ScoutIntel): OpportunityPerson[] {
@@ -104,16 +110,64 @@ export function fromPersonRecords(people: Person[]): OpportunityPerson[] {
       person.seniority === "founder" || person.seniority === "owner" || person.seniority === "exec",
     confirmed: person.confidence === "human_confirmed" || person.confidence === "observed",
     emailVerified: person.emailStatus === "verified",
+    recordId: person.id,
   }));
 }
 
+/** Two people are the same identity by email first, then by exact name. */
+function sameIdentity(a: OpportunityPerson, b: OpportunityPerson): boolean {
+  if (a.email && b.email && a.email.trim().toLowerCase() === b.email.trim().toLowerCase()) {
+    return true;
+  }
+  const name = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
+  return name(a.fullName) === name(b.fullName);
+}
+
 /**
- * The people this read runs on: confirmed records when they exist, discovered
- * intel people otherwise. The two never blend into duplicates; the stronger
- * source wins outright.
+ * Merge a discovered intel person into the People record for the same
+ * identity. The record's confirmed truth is never overridden by a discovery
+ * inference; discovered evidence only fills gaps (a role, a route) and can
+ * strengthen claims the record itself has not confirmed.
+ */
+function mergePersonIdentity(
+  record: OpportunityPerson,
+  discovered: OpportunityPerson,
+): OpportunityPerson {
+  const roleTitle = record.roleTitle ?? discovered.roleTitle;
+  const email = record.email ?? discovered.email;
+  const linkedinUrl = record.linkedinUrl ?? discovered.linkedinUrl;
+  return {
+    fullName: record.fullName,
+    ...(roleTitle ? { roleTitle } : {}),
+    ...(email ? { email } : {}),
+    ...(linkedinUrl ? { linkedinUrl } : {}),
+    decisionMaker: record.decisionMaker || (discovered.decisionMaker && !record.confirmed),
+    confirmed: record.confirmed || discovered.confirmed,
+    emailVerified: record.emailVerified,
+    ...(record.recordId ? { recordId: record.recordId } : {}),
+  };
+}
+
+/**
+ * The people this read runs on: governed People records reconciled with
+ * discovered intel people by identity. Matched identities merge — never into
+ * duplicates — and an unmatched discovered founder still counts: a person
+ * Scout's evidence already identifies is never hidden just because an
+ * unrelated People row exists.
  */
 export function opportunityPeople(intel: ScoutIntel, people: Person[] = []): OpportunityPerson[] {
-  return people.length > 0 ? fromPersonRecords(people) : fromDiscovered(intel);
+  const records = fromPersonRecords(people);
+  const discovered = fromDiscovered(intel);
+  if (records.length === 0) return discovered;
+  if (discovered.length === 0) return records;
+  const merged = records.map((record) => {
+    const match = discovered.find((person) => sameIdentity(record, person));
+    return match ? mergePersonIdentity(record, match) : record;
+  });
+  const unmatched = discovered.filter(
+    (person) => !records.some((record) => sameIdentity(record, person)),
+  );
+  return [...merged, ...unmatched];
 }
 
 /** The best person to enter through: a confirmed decision maker with a route. */

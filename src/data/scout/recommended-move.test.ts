@@ -17,6 +17,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import type { Person } from "@/domain/people";
 import type {
   RelationshipDevelopmentBrief,
   RelationshipResearchMarker,
@@ -110,9 +111,9 @@ describe("find the person first", () => {
   it("fit 82 with no traceable person never offers a first message", () => {
     const move = buildRecommendedNextMove({ candidate: candidate({ score: 82 }), now: NOW });
     expect(move.state).toBe("find_person");
-    expect(move.label).toBe("Find the person first");
+    expect(move.label).toBe("Find the founder");
     expect(move.primary.kind).toBe("find_person");
-    expect(move.primary.label).toBe("Find the person");
+    expect(move.primary.label).toBe("Find the founder");
     expect(move.primary.kind).not.toBe("prepare_first_message");
   });
 });
@@ -384,5 +385,196 @@ describe("one canonical decision surface", () => {
     });
     expect(move.state).toBe("not_ready");
     expect(move.primary.kind).toBe("none");
+  });
+});
+
+/* ------------------------- the Person stage names the real missing step */
+
+describe("the person stage distinguishes the real missing step", () => {
+  const discovered = (over: Record<string, unknown>) =>
+    ({
+      ...EMPTY_INTEL,
+      collectedAt: "2026-08-19T00:00:00.000Z",
+      people: [
+        {
+          fullName: "Sara Warren",
+          roleTitle: "Founder",
+          sourceUrl: "https://acme.example/about",
+          ...over,
+        },
+      ],
+    }) as unknown as ScoutIntel;
+
+  it("1 · 77% fit with nobody on record is Find the founder", () => {
+    const move = buildRecommendedNextMove({ candidate: candidate({ score: 77 }), now: NOW });
+    expect(move.state).toBe("find_person");
+    expect(move.label).toBe("Find the founder");
+    expect(move.headline).toBe("Find the founder or decision maker");
+    expect(move.primary.kind).toBe("find_person");
+    expect(move.primary.label).toBe("Find the founder");
+    expect(move.progress.find((s) => s.key === "match")?.state).toBe("complete");
+    expect(move.progress.find((s) => s.key === "person")?.state).toBe("current");
+  });
+
+  it("2 · a discovered founder with no route is Find a way in, never Find the person", () => {
+    const move = buildRecommendedNextMove({
+      candidate: candidate({ score: 77, intel: discovered({ decisionMakerLikelihood: "high" }) }),
+      now: NOW,
+    });
+    expect(move.state).toBe("find_route");
+    expect(move.label).toBe("Find a way in");
+    expect(move.headline).toBe("Find a way to reach Sara Warren");
+    expect(move.primary.kind).toBe("find_contact_route");
+    expect(move.primary.label).toBe("Find contact route");
+  });
+
+  it("2b · a People record never hides a discovered founder", () => {
+    const people = [
+      {
+        id: "rec-1",
+        fullName: "Jordan Ellis",
+        roleTitle: "Office Manager",
+        seniority: "operations",
+        confidence: "asserted_by_provider",
+        emailStatus: "none",
+      },
+    ] as unknown as Person[];
+    const move = buildRecommendedNextMove({
+      candidate: candidate({
+        score: 77,
+        intel: discovered({ decisionMakerLikelihood: "high" }),
+      }),
+      people,
+      now: NOW,
+    });
+    expect(move.state).toBe("find_route");
+    expect(move.headline).toBe("Find a way to reach Sara Warren");
+  });
+
+  it("3 · a named person with a route but no established decision role is Confirm who decides", () => {
+    const move = buildRecommendedNextMove({
+      candidate: candidate({
+        score: 77,
+        intel: discovered({
+          decisionMakerLikelihood: "low",
+          linkedinUrl: "https://linkedin.com/in/sara",
+        }),
+      }),
+      now: NOW,
+    });
+    expect(move.state).toBe("confirm_decider");
+    expect(move.label).toBe("Confirm who decides");
+    expect(move.headline).toBe("Confirm whether Sara Warren is the right person");
+    expect(move.primary.kind).toBe("confirm_decision_maker");
+    expect(move.primary.label).toBe("Confirm decision maker");
+  });
+
+  it("4 · a founder with a LinkedIn route proceeds to research, never Find the person", () => {
+    const move = buildRecommendedNextMove({
+      candidate: candidate({
+        score: 77,
+        intel: discovered({
+          decisionMakerLikelihood: "high",
+          linkedinUrl: "https://linkedin.com/in/sara",
+        }),
+      }),
+      now: NOW,
+    });
+    expect(move.state).toBe("research_first");
+    expect(move.primary.kind).toBe("prepare_research");
+    expect(move.headline).toBe("Understand Sara before writing");
+  });
+
+  it("5 · a founder with an unverified email is Verify the way in, with the confirmation as the one action", () => {
+    const people = [
+      {
+        id: "rec-9",
+        fullName: "Sara Warren",
+        roleTitle: "Founder",
+        seniority: "founder",
+        email: "sara@acme.example",
+        emailStatus: "found",
+        confidence: "observed",
+      },
+    ] as unknown as Person[];
+    const move = buildRecommendedNextMove({
+      candidate: candidate({ score: 77 }),
+      people,
+      now: NOW,
+      firstMessage: {
+        ready: false,
+        blockers: ["sara@acme.example is unverified, so it cannot be treated as reachable."],
+        confirmEmailPersonId: "rec-9",
+      },
+    });
+    expect(move.state).toBe("verify_route");
+    expect(move.headline).toBe("Verify the way in");
+    expect(move.primary.kind).toBe("confirm_email");
+    expect(move.primary.label).toBe("Confirm this address");
+    expect(move.primary.kind).not.toBe("prepare_first_message");
+    expect(move.blocked).toBe(true);
+  });
+
+  it("6 · a verified route with a missing brief is Prepare research", () => {
+    const people = [
+      {
+        id: "rec-9",
+        fullName: "Sara Warren",
+        roleTitle: "Founder",
+        seniority: "founder",
+        email: "sara@acme.example",
+        emailStatus: "verified",
+        confidence: "human_confirmed",
+      },
+    ] as unknown as Person[];
+    const move = buildRecommendedNextMove({
+      candidate: candidate({ score: 77 }),
+      people,
+      now: NOW,
+      firstMessage: { ready: false, blockers: ["The brief is missing."] },
+    });
+    expect(move.state).toBe("research_first");
+    expect(move.headline).toBe("Understand Sara before writing");
+    expect(move.primary.kind).toBe("prepare_research");
+    expect(move.progress.find((s) => s.key === "person")?.state).toBe("complete");
+    expect(move.progress.find((s) => s.key === "research")?.state).toBe("current");
+  });
+
+  it("7 · a ready brief is Prepare first message on the First message stage", () => {
+    const people = [
+      {
+        id: "rec-1",
+        fullName: "Claire Meneely",
+        roleTitle: "Founder",
+        seniority: "founder",
+        email: "claire@example.com",
+        emailStatus: "verified",
+        confidence: "human_confirmed",
+      },
+    ] as unknown as Person[];
+    const move = buildRecommendedNextMove({
+      candidate: readyCandidate(),
+      people,
+      now: NOW,
+      firstMessage: { ready: true, blockers: [] },
+    });
+    expect(move.state).toBe("no_urgency");
+    expect(move.primary.kind).toBe("prepare_first_message");
+    expect(move.progress.find((s) => s.key === "first_message")?.state).toBe("current");
+  });
+
+  it("8 · in Comms, every stage is complete and the move is Open in Comms", () => {
+    const move = buildRecommendedNextMove({
+      candidate: candidate({
+        score: 90,
+        status: "ready_for_comms",
+        intel: intelWithPerson,
+        development: { watch: null, research: preparedMarker() },
+      }),
+      now: NOW,
+    });
+    expect(move.state).toBe("in_comms");
+    expect(move.primary.kind).toBe("open_in_comms");
+    expect(move.progress.every((s) => s.state === "complete")).toBe(true);
   });
 });

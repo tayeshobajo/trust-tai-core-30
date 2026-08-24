@@ -222,23 +222,30 @@ export function PeoplePanel({
           </div>
         ) : null}
 
-        {people.length > 0 ? (
-          <ul className="space-y-4">
-            {people.map((person) => (
-              <PersonRow
-                key={person.id}
-                person={person}
-                onConfirmEmail={onConfirmEmail}
-                busy={busy}
-              />
-            ))}
-          </ul>
-        ) : (
-          <p className="text-[13px] text-muted-foreground">
-            No people are on record for this company yet. Ingest from an approved source, or
-            add the person you already know.
-          </p>
-        )}
+        <section
+          id="scout-people-discovery"
+          tabIndex={-1}
+          className="scroll-mt-24 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-4"
+          aria-label="People on record"
+        >
+          {people.length > 0 ? (
+            <ul id="scout-people-role" tabIndex={-1} className="space-y-4 focus:outline-none">
+              {people.map((person) => (
+                <PersonRow
+                  key={person.id}
+                  person={person}
+                  onConfirmEmail={onConfirmEmail}
+                  busy={busy}
+                />
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[13px] text-muted-foreground">
+              No people are on record for this company yet. Ingest from an approved source, or
+              add the person you already know.
+            </p>
+          )}
+        </section>
 
         <section
           id="scout-people-blockers"

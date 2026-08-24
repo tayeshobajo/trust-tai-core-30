@@ -155,6 +155,16 @@ export function RecommendedNextMoveCard({
       setFlow({ total: Math.max(blockers.length, 1) });
       return;
     }
+    if (move.primary.kind === "confirm_email") {
+      // The one action IS the governed confirmation: act on the person the
+      // lone unverified-address blocker concerns, with the same pending and
+      // acknowledgement feedback the guided flow gives.
+      const blocker = blockers.find(
+        (entry) => entry.action.kind === "confirm_email" && entry.person,
+      );
+      if (blocker?.person) onConfirmEmail(blocker.person);
+      return;
+    }
     onPrimary(move.primary.kind);
   };
 
@@ -179,6 +189,8 @@ export function RecommendedNextMoveCard({
       className={cn(preparingBrief && "ring-1 ring-royal/25")}
     >
       <div className="space-y-5">
+        <ProgressStrip stages={move.progress} />
+
         {preparingBrief ? (
           <div
             role="status"
@@ -293,14 +305,37 @@ export function RecommendedNextMoveCard({
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-5">
           {canAct ? (
-            <TTButton
-              pending={preparingBrief && move.primary.kind === "prepare_research"}
-              pendingLabel="Preparing relationship research…"
-              disabled={busy || (preparingBrief && move.primary.kind !== "prepare_research")}
-              onClick={runPrimary}
-            >
-              {move.primary.label}
-            </TTButton>
+            move.primary.kind === "confirm_email" && confirmedIds.size > 0 ? (
+              <p
+                role="status"
+                aria-live="polite"
+                className="inline-flex items-center rounded-lg border border-success/25 bg-success/8 px-3 py-2 text-sm font-medium text-success"
+              >
+                Address confirmed — refreshing the read.
+              </p>
+            ) : (
+              <TTButton
+                pending={
+                  (preparingBrief && move.primary.kind === "prepare_research") ||
+                  (move.primary.kind === "confirm_email" && confirmingEmailId !== null)
+                }
+                pendingLabel={
+                  move.primary.kind === "confirm_email"
+                    ? "Confirming…"
+                    : "Preparing relationship research…"
+                }
+                disabled={busy || (preparingBrief && move.primary.kind !== "prepare_research")}
+                onClick={runPrimary}
+              >
+                {move.primary.label}
+              </TTButton>
+            )
+          ) : null}
+
+          {move.primary.kind === "confirm_email" && confirmEmailError ? (
+            <p role="alert" className="text-[13px] text-destructive">
+              {confirmEmailError.message}
+            </p>
           ) : null}
 
           {move.state === "no_urgency" || move.state === "act_now" ? (
@@ -486,6 +521,47 @@ export function RecommendedNextMoveCard({
         ) : null}
       </div>
     </Panel>
+  );
+}
+
+/**
+ * The quiet "where am I" strip: Match → Person → Research → First message.
+ * Completed, current, upcoming — never a wizard, never interactive.
+ */
+function ProgressStrip({ stages }: { stages: RecommendedNextMove["progress"] }) {
+  return (
+    <ol
+      aria-label="Where this relationship stands"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1.5"
+    >
+      {stages.map((stage, index) => (
+        <li key={stage.key} className="flex items-center gap-2">
+          {index > 0 ? (
+            <span aria-hidden className="h-px w-4 bg-border" />
+          ) : null}
+          <span
+            aria-current={stage.state === "current" ? "step" : undefined}
+            className={cn(
+              "inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em]",
+              stage.state === "complete" && "text-success",
+              stage.state === "current" && "font-medium text-foreground",
+              stage.state === "upcoming" && "text-muted-foreground/60",
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                "size-1.5 rounded-full",
+                stage.state === "complete" && "bg-success",
+                stage.state === "current" && "bg-royal",
+                stage.state === "upcoming" && "bg-border",
+              )}
+            />
+            {stage.label}
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
