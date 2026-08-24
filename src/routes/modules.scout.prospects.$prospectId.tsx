@@ -488,6 +488,56 @@ function CompanyDetail({
     research.mutate({ candidate, plan });
   };
 
+  // The one canonical decision surface: the recommended next move, computed
+  // from the eligibility read, the governed brief, and the pacing decision.
+  const recommendedMove = buildRecommendedNextMove({ candidate, people: peopleRows });
+
+  // The handoff draft behind "Prepare first message": the stored governed
+  // brief travels as provenance, with canonical prospect/person IDs intact.
+  const storedBrief =
+    candidate.development?.research?.state === "prepared"
+      ? candidate.development.research.brief
+      : undefined;
+  const firstMessageDevelopment =
+    developmentFromBrief(storedBrief) ??
+    developmentFromBrief(buildRelationshipBrief({ candidate, people: peopleRows }));
+  const firstMessageDraft = buildHandoffDraft({
+    candidate,
+    people: peopleRows,
+    coverage: composition.coverage,
+    fitConfidence: composition.confidence,
+    ...(firstMessageDevelopment ? { development: firstMessageDevelopment } : {}),
+  });
+
+  const onRecommendedPrimary = (kind: RecommendedMoveAction) => {
+    switch (kind) {
+      case "open_in_comms":
+        void navigate({ to: "/modules/comms" });
+        break;
+      case "find_person":
+        void goToTab("people");
+        break;
+      case "prepare_research":
+        prepareBrief.mutate(recommendedMove.prepareForce ? true : undefined);
+        break;
+      case "research_company":
+        startResearch();
+        break;
+      case "prepare_first_message":
+      case "none":
+        break;
+    }
+  };
+
+  // "Prepare first message" is the explicit Scout → Comms transition: the
+  // brief is carried across, and the person reviews the draft there.
+  const prepareFirstMessage = () => {
+    if (!firstMessageDraft.ready) return;
+    routeToComms.mutate(firstMessageDraft, {
+      onSuccess: () => void navigate({ to: "/modules/comms" }),
+    });
+  };
+
   const onDecisionAction = (key: DecisionActionKey) => {
     switch (key) {
       case "review_evidence":
@@ -669,12 +719,6 @@ function CompanyDetail({
                   total={derived.allSignals.length}
                   onViewAll={() => void goToTab("signals")}
                 />
-                <RelationshipOpportunityCard
-                  candidate={candidate}
-                  people={peopleRows}
-                  onPrepareBrief={(force) => prepareBrief.mutate(force)}
-                  preparing={prepareBrief.isPending}
-                />
                 <IcpAlignmentCard
                   view={derived.factors}
                   onViewAnalysis={() => void goToTab("icp")}
@@ -683,14 +727,6 @@ function CompanyDetail({
                   events={allEvents}
                   onViewAll={() => void goToTab("activity")}
                 />
-                {hasResearchWorkspace(candidate) ? null : (
-                  <DecisionStatePanel
-                    companyName={prospect.name}
-                    state={decisionState}
-                    onCommit={(commit) => recordDecision.mutate(commit)}
-                    busy={busy}
-                  />
-                )}
                 <SimilarCompaniesCard companies={derived.similar} linkSearch={backSearch} />
               </div>
             ) : null}
@@ -745,7 +781,7 @@ function CompanyDetail({
           <aside className="space-y-5">
             <AtAGlanceCard candidate={candidate} />
             <TopReasonsCard reasons={derived.summary.topReasons} />
-                <NotesPreviewCard
+            <NotesPreviewCard
               notes={notes}
               onAdd={() => void goToTab("notes")}
               onViewAll={() => void goToTab("notes")}
