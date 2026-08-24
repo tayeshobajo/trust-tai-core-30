@@ -30,6 +30,9 @@ export type ActivityAction =
   | "question_drafted"
   /** Scout: a person marked a company as worth exploring in Roadmap. */
   | "roadmap_intent"
+  /** Scout: deeper relationship research was prepared for a newly eligible
+   *  prospect. Research only — nothing was sent and no relationship created. */
+  | "relationship_brief_prepared"
 
   /* --- Settings: identity, membership and application access --- */
   | "invited"

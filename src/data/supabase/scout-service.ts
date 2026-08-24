@@ -401,7 +401,11 @@ export const scoutService = {
 
     const candidate = toCandidate(row, icp?.version ?? null);
     const existing = candidate.development?.research;
-    const plan = planRelationshipPreparation({ candidate, people, force: input.force });
+    const plan = planRelationshipPreparation({
+      candidate,
+      people,
+      ...(input.force !== undefined ? { force: input.force } : {}),
+    });
     if (plan.action === "none" && existing) return existing;
 
     const at = new Date().toISOString();
