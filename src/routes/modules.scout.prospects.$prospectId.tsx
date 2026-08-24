@@ -502,20 +502,10 @@ function CompanyDetail({
     research.mutate({ candidate, plan });
   };
 
-  // The one canonical decision surface: the recommended next move, computed
-  // from the eligibility read, the governed brief, and the pacing decision.
-  const recommendedMove = buildRecommendedNextMove({ candidate, people: peopleRows });
-
-  // The guided flow behind "Resolve N blockers": the same structured blockers
-  // the handoff draft lists, each carrying its own governed next action.
-  const moveBlockers = buildMoveBlockers({
-    candidate,
-    people: peopleRows,
-    coverage: composition.coverage,
-  });
-
   // The handoff draft behind "Prepare first message": the stored governed
   // brief travels as provenance, with canonical prospect/person IDs intact.
+  // Built first because it is the canonical readiness read — the recommended
+  // move below must never recommend outreach this draft would block.
   const storedBrief =
     candidate.development?.research?.state === "prepared"
       ? candidate.development.research.brief
@@ -529,6 +519,23 @@ function CompanyDetail({
     coverage: composition.coverage,
     fitConfidence: composition.confidence,
     ...(firstMessageDevelopment ? { development: firstMessageDevelopment } : {}),
+  });
+
+  // The one canonical decision surface: the recommended next move, computed
+  // from the eligibility read, the governed brief, the pacing decision, and
+  // the same handoff readiness that governs the Scout → Comms transition.
+  const recommendedMove = buildRecommendedNextMove({
+    candidate,
+    people: peopleRows,
+    firstMessage: { ready: firstMessageDraft.ready, blockers: firstMessageDraft.blockers },
+  });
+
+  // The guided flow behind "Resolve N blockers": the same structured blockers
+  // the handoff draft lists, each carrying its own governed next action.
+  const moveBlockers = buildMoveBlockers({
+    candidate,
+    people: peopleRows,
+    coverage: composition.coverage,
   });
 
   const onRecommendedPrimary = (kind: RecommendedMoveAction) => {
