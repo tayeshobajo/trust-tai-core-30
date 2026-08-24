@@ -205,3 +205,49 @@ Scout finds, Comms develops, Roadmap builds. These laws govern the whole loop:
 Implementation: `src/data/relationship-development.ts` (compute),
 `src/data/supabase/scout-service.ts` (`prepareRelationshipDevelopment`),
 `src/components/tt/scout/worth-knowing.tsx` (membership gate).
+
+## One recommended next move (locked)
+
+Scout behaves like a trusted advisor, not an analytics dashboard. The company
+page has exactly one canonical decision surface: the **Recommended next move**
+card at the top of the overview. One move, one clear reason, one primary
+action. Everything else on the page is evidence for that card, never a
+competing answer.
+
+The move is computed by `buildRecommendedNextMove`
+(`src/data/scout/recommended-move.ts`) from the eligibility read, the
+governed brief, and the person's pacing decision. Six states:
+
+| State | Headline posture | Primary action |
+| --- | --- | --- |
+| `in_comms` | Relationship developing in Comms | Open in Comms |
+| `find_person` | Find the person first | Find the person |
+| `research_first` | Understand them first | Prepare research |
+| `no_urgency` | Worth knowing — no urgency | Prepare first message |
+| `act_now` | Worth knowing now | Prepare first message |
+| `not_ready` | Keep learning about this company | Research / none |
+
+Laws:
+
+- **No person, no first message.** Strong fit without a traceable
+  founder/decision maker resolves to "Find the person first" — the drafting
+  action is never offered.
+- **The brief gates drafting.** A traceable person without a current governed
+  brief resolves to "Understand them first." Drafting can never skip the
+  governed research step.
+- **Urgency is never manufactured.** A ready brief without a dated why-now is
+  "Worth knowing — no urgency"; only real dated evidence produces "now".
+- **Once in Comms, Scout stops behaving like outbound.** The move becomes
+  "Open in Comms"; no first-message CTA remains in Scout.
+- **Watch is a reversible pacing state, not a dead-end.** Watching companies
+  keep their recommended move visible and can be resumed at any time.
+- **"Prepare first message" is the explicit Scout → Comms transition.** It
+  carries the governed brief and canonical prospect/person IDs across,
+  confirms before handing over, and opens Comms where a person reviews the
+  draft. Nothing is sent; sending is always Tai's click.
+
+Duplicate decision surfaces were consolidated into this card: the overview no
+longer carries a separate relationship-opportunity panel or a second
+decision-state panel, and the right rail's "Potential next steps" list was
+removed. The rail now holds quiet context only (At a glance, Top reasons,
+Notes).

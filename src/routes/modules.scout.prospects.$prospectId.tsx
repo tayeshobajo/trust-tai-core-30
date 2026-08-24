@@ -62,8 +62,10 @@ import {
 
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { HandoffPanel } from "@/components/tt/prospect/handoff";
-import { RelationshipOpportunityCard } from "@/components/tt/prospect/relationship-opportunity";
 import { PeoplePanel, type ManualPersonForm } from "@/components/tt/prospect/people-panel";
+import {
+  RecommendedNextMoveCard,
+} from "@/components/tt/scout/detail/recommended-move";
 import { CompanyHero, DetailUtilityRow } from "@/components/tt/scout/detail/hero";
 import {
   IcpAlignmentCard,
@@ -74,7 +76,6 @@ import {
 } from "@/components/tt/scout/detail/overview";
 import {
   AtAGlanceCard,
-  NextStepsCard,
   NotesPreviewCard,
   TopReasonsCard,
 } from "@/components/tt/scout/detail/rail";
@@ -89,9 +90,14 @@ import {
 } from "@/components/tt/scout/detail/tabs";
 import { buildPersonPlan } from "@/data/person-priority";
 import { composeProspectPage } from "@/data/prospect-modules";
+import { buildHandoffDraft, developmentFromBrief } from "@/data/comms-handoff";
+import { buildRelationshipBrief } from "@/data/relationship-development";
 import { buildScoutCompanySummary } from "@/data/scout/company-summary";
 import { readIcpFactors } from "@/data/scout/icp-factors";
-import { scoutNextSteps, type ScoutNextStep } from "@/data/scout/next-steps";
+import {
+  buildRecommendedNextMove,
+  type RecommendedMoveAction,
+} from "@/data/scout/recommended-move";
 import { similarCompanies } from "@/data/scout/similar-companies";
 import { rankScoutSignals, topScoutSignals } from "@/data/scout/top-signals";
 import { availablePeopleProviders, peopleProviderInfo } from "@/data/people/registry";
@@ -323,6 +329,19 @@ function CompanyDetail({
     onSuccess: refresh,
   });
 
+  // A person's pacing decision: worth watching, or not for now. Reversible,
+  // recorded on the prospect and in the shared activity stream.
+  const setWatch = useMutation({
+    mutationFn: (watch: "watching" | "not_now" | null) => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      return scoutService.setWatch(
+        { prospectId, companyName: candidate.prospect.name, watch },
+        { organizationId, userId },
+      );
+    },
+    onSuccess: refresh,
+  });
+
   const addNote = useMutation({
     mutationFn: (body: string) => {
       if (!candidate) throw new Error("That company is no longer on your board.");
@@ -358,6 +377,7 @@ function CompanyDetail({
     confirmEmail.error ??
     prepareBrief.error ??
     routeToComms.error ??
+    setWatch.error ??
     addNote.error ??
     saved.error) as Error | null;
 
@@ -371,6 +391,7 @@ function CompanyDetail({
     confirmEmail.isPending ||
     prepareBrief.isPending ||
     routeToComms.isPending ||
+    setWatch.isPending ||
     addNote.isPending;
 
   if (saved.isPending) {
@@ -407,35 +428,6 @@ function CompanyDetail({
   const position = ordered.findIndex((c) => c.prospect.id === prospectId);
   const prevCandidate = position > 0 ? ordered[position - 1] : undefined;
   const nextCandidate = position >= 0 ? ordered[position + 1] : undefined;
-
-  const steps = scoutNextSteps({
-    candidate,
-    peopleCount: peopleRows.length,
-    providerAvailable: (providers.data ?? []).length > 0,
-  });
-
-  const onStep = (step: ScoutNextStep) => {
-    if (!step.available) return;
-    switch (step.key) {
-      case "research_leadership":
-        void goToTab("people");
-        break;
-      case "rerun_research":
-        // Consent is a gate, not a hint: an inbound company that never granted
-        // research is never read, whichever surface asks for it.
-        startResearch();
-        break;
-      case "prepare_comms_handoff":
-        void goToTab("people");
-        break;
-      case "add_note":
-        void goToTab("notes");
-        break;
-      case "track_signals":
-        void goToTab("signals");
-        break;
-    }
-  };
 
   const plan = buildPersonPlan(peopleRows);
   const composition = composeProspectPage({ candidate, activeIcpVersion: icp.data?.version ?? null });
@@ -494,6 +486,56 @@ function CompanyDetail({
       : lifecycle.plan;
     if (!plan.allowed) return;
     research.mutate({ candidate, plan });
+  };
+
+  // The one canonical decision surface: the recommended next move, computed
+  // from the eligibility read, the governed brief, and the pacing decision.
+  const recommendedMove = buildRecommendedNextMove({ candidate, people: peopleRows });
+
+  // The handoff draft behind "Prepare first message": the stored governed
+  // brief travels as provenance, with canonical prospect/person IDs intact.
+  const storedBrief =
+    candidate.development?.research?.state === "prepared"
+      ? candidate.development.research.brief
+      : undefined;
+  const firstMessageDevelopment =
+    developmentFromBrief(storedBrief) ??
+    developmentFromBrief(buildRelationshipBrief({ candidate, people: peopleRows }));
+  const firstMessageDraft = buildHandoffDraft({
+    candidate,
+    people: peopleRows,
+    coverage: composition.coverage,
+    fitConfidence: composition.confidence,
+    ...(firstMessageDevelopment ? { development: firstMessageDevelopment } : {}),
+  });
+
+  const onRecommendedPrimary = (kind: RecommendedMoveAction) => {
+    switch (kind) {
+      case "open_in_comms":
+        void navigate({ to: "/modules/comms" });
+        break;
+      case "find_person":
+        void goToTab("people");
+        break;
+      case "prepare_research":
+        prepareBrief.mutate(recommendedMove.prepareForce ? true : undefined);
+        break;
+      case "research_company":
+        startResearch();
+        break;
+      case "prepare_first_message":
+      case "none":
+        break;
+    }
+  };
+
+  // "Prepare first message" is the explicit Scout → Comms transition: the
+  // brief is carried across, and the person reviews the draft there.
+  const prepareFirstMessage = () => {
+    if (!firstMessageDraft.ready) return;
+    routeToComms.mutate(firstMessageDraft, {
+      onSuccess: () => void navigate({ to: "/modules/comms" }),
+    });
   };
 
   const onDecisionAction = (key: DecisionActionKey) => {
@@ -655,16 +697,27 @@ function CompanyDetail({
                   summary={derived.summary}
                   onViewRationale={() => void goToTab("icp")}
                 />
+
+                <RecommendedNextMoveCard
+                  move={recommendedMove}
+                  candidate={candidate}
+                  people={peopleRows}
+                  busy={busy}
+                  preparingBrief={prepareBrief.isPending}
+                  firstMessageReady={firstMessageDraft.ready}
+                  onPrimary={onRecommendedPrimary}
+                  onPrepareFirstMessage={prepareFirstMessage}
+                  onWatch={(watch) => setWatch.mutate(watch)}
+                  onPrepareBrief={(force) => prepareBrief.mutate(force)}
+                  onSeeResearch={() =>
+                    void goToTab(hasResearchWorkspace(candidate) ? "research" : "icp")
+                  }
+                />
+
                 <KeySignalsCard
                   signals={derived.keySignals}
                   total={derived.allSignals.length}
                   onViewAll={() => void goToTab("signals")}
-                />
-                <RelationshipOpportunityCard
-                  candidate={candidate}
-                  people={peopleRows}
-                  onPrepareBrief={(force) => prepareBrief.mutate(force)}
-                  preparing={prepareBrief.isPending}
                 />
                 <IcpAlignmentCard
                   view={derived.factors}
@@ -674,14 +727,6 @@ function CompanyDetail({
                   events={allEvents}
                   onViewAll={() => void goToTab("activity")}
                 />
-                {hasResearchWorkspace(candidate) ? null : (
-                  <DecisionStatePanel
-                    companyName={prospect.name}
-                    state={decisionState}
-                    onCommit={(commit) => recordDecision.mutate(commit)}
-                    busy={busy}
-                  />
-                )}
                 <SimilarCompaniesCard companies={derived.similar} linkSearch={backSearch} />
               </div>
             ) : null}
@@ -736,7 +781,6 @@ function CompanyDetail({
           <aside className="space-y-5">
             <AtAGlanceCard candidate={candidate} />
             <TopReasonsCard reasons={derived.summary.topReasons} />
-            <NextStepsCard steps={steps} onSelect={onStep} busy={busy} />
             <NotesPreviewCard
               notes={notes}
               onAdd={() => void goToTab("notes")}
