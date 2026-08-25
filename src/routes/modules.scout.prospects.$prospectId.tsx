@@ -11,20 +11,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
 
-
 import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState, TTButton } from "@/components/tt/primitives";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { InboundSourceCard } from "@/components/tt/scout/inbound-source";
-import {
-  InboundOriginRail,
-  StatedPanel,
-  StatedTranscript,
-} from "@/components/tt/scout/inbound";
-import {
-  EvidenceReviewPanel,
-  TaiDecisionStatePanel,
-} from "@/components/tt/scout/detail/research";
+import { InboundOriginRail, StatedPanel, StatedTranscript } from "@/components/tt/scout/inbound";
+import { EvidenceReviewPanel, TaiDecisionStatePanel } from "@/components/tt/scout/detail/research";
 import {
   DecisionStatePanel,
   type DecisionCommit,
@@ -65,9 +57,7 @@ import {
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { HandoffPanel } from "@/components/tt/prospect/handoff";
 import { PeoplePanel, type ManualPersonForm } from "@/components/tt/prospect/people-panel";
-import {
-  RecommendedNextMoveCard,
-} from "@/components/tt/scout/detail/recommended-move";
+import { RecommendedNextMoveCard } from "@/components/tt/scout/detail/recommended-move";
 import { CompanyHero, DetailUtilityRow } from "@/components/tt/scout/detail/hero";
 import {
   IcpAlignmentCard,
@@ -76,11 +66,7 @@ import {
   ScoutSummaryCard,
   SimilarCompaniesCard,
 } from "@/components/tt/scout/detail/overview";
-import {
-  AtAGlanceCard,
-  NotesPreviewCard,
-  TopReasonsCard,
-} from "@/components/tt/scout/detail/rail";
+import { AtAGlanceCard, NotesPreviewCard, TopReasonsCard } from "@/components/tt/scout/detail/rail";
 import {
   ActivityTab,
   DetailTabs,
@@ -107,7 +93,7 @@ import { availablePeopleProviders, peopleProviderInfo } from "@/data/people/regi
 import { peopleService } from "@/data/supabase/people-service";
 import { scoutService } from "@/data/supabase/scout-service";
 import type { HandoffDraft } from "@/domain/comms-handoff";
-import type { Person } from "@/domain/people";
+import { isDecisionMaker, isReachable, type Person } from "@/domain/people";
 import type { FitLight } from "@/domain/scout-fit";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -134,9 +120,7 @@ export const Route = createFileRoute("/modules/scout/prospects/$prospectId")({
   validateSearch: (search: Record<string, unknown>) => ({
     section: parseSection(search["section"]),
     fit: parseFit(search["fit"]),
-    ...(parseDetailTab(search["tab"]) === "overview"
-      ? {}
-      : { tab: parseDetailTab(search["tab"]) }),
+    ...(parseDetailTab(search["tab"]) === "overview" ? {} : { tab: parseDetailTab(search["tab"]) }),
   }),
   head: () => ({
     meta: [
@@ -224,7 +208,9 @@ function CompanyDetail({
   const refresh = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ["scout", "prospects", organizationId] }),
-      queryClient.invalidateQueries({ queryKey: ["scout", "activity", organizationId, prospectId] }),
+      queryClient.invalidateQueries({
+        queryKey: ["scout", "activity", organizationId, prospectId],
+      }),
       queryClient.invalidateQueries({ queryKey: ["scout", "people", organizationId, prospectId] }),
     ]);
 
@@ -330,6 +316,34 @@ function CompanyDetail({
     onSuccess: () => {
       prepareBrief.mutate({ quiet: true });
       refresh();
+    },
+  });
+
+  const lookupLinkedin = useMutation({
+    mutationFn: (person: Person) =>
+      peopleService.lookupLinkedinCandidates({
+        organizationId,
+        fullName: person.fullName,
+        ...(candidate?.prospect.name ? { companyName: candidate.prospect.name } : {}),
+        ...(candidate?.prospect.domain ? { companyDomain: candidate.prospect.domain } : {}),
+        ...(person.roleTitle ? { roleTitle: person.roleTitle } : {}),
+      }),
+  });
+
+  const confirmLinkedin = useMutation({
+    mutationFn: ({
+      person,
+      candidateMatch,
+    }: {
+      person: Person;
+      candidateMatch: NonNullable<
+        Awaited<ReturnType<typeof peopleService.lookupLinkedinCandidates>>[number]
+      >;
+    }) => peopleService.confirmLinkedinRoute(person, candidateMatch, { organizationId, userId }),
+    onSuccess: async () => {
+      lookupLinkedin.reset();
+      prepareBrief.mutate({ quiet: true });
+      await refresh();
     },
   });
 
@@ -445,7 +459,23 @@ function CompanyDetail({
   const nextCandidate = position >= 0 ? ordered[position + 1] : undefined;
 
   const plan = buildPersonPlan(peopleRows);
-  const composition = composeProspectPage({ candidate, activeIcpVersion: icp.data?.version ?? null });
+  const lookupTarget =
+    peopleRows.find(
+      (person) =>
+        isDecisionMaker(person) &&
+        !isReachable(person) &&
+        (!lookupLinkedin.variables || lookupLinkedin.variables.id === person.id),
+    ) ??
+    (plan.primary
+      ? (peopleRows.find(
+          (person) =>
+            person.id === plan.primary?.personId && isDecisionMaker(person) && !isReachable(person),
+        ) ?? null)
+      : null);
+  const composition = composeProspectPage({
+    candidate,
+    activeIcpVersion: icp.data?.version ?? null,
+  });
 
   const review = reviewStatedEvidence(candidate);
   const permission = researchPermission(candidate);
@@ -533,9 +563,7 @@ function CompanyDetail({
   });
   const confirmEmailBlocker =
     firstMessageDraft.blockers.length === 1
-      ? moveBlockers.find(
-          (blocker) => blocker.action.kind === "confirm_email" && blocker.person,
-        )
+      ? moveBlockers.find((blocker) => blocker.action.kind === "confirm_email" && blocker.person)
       : undefined;
 
   // The one canonical decision surface: the recommended next move, computed
@@ -573,15 +601,13 @@ function CompanyDetail({
         focusPeopleSection("scout-people-discovery");
         break;
       case "find_contact_route":
-        focusPeopleSection("scout-people-blockers");
+        focusPeopleSection("scout-people-linki-lookup");
         break;
       case "confirm_decision_maker":
         focusPeopleSection("scout-people-role");
         break;
       case "prepare_research":
-        prepareBrief.mutate(
-          recommendedMove.prepareForce ? { force: true } : {},
-        );
+        prepareBrief.mutate(recommendedMove.prepareForce ? { force: true } : {});
         break;
       case "research_company":
         startResearch();
@@ -647,7 +673,6 @@ function CompanyDetail({
         break;
     }
   };
-
 
   return (
     <AppShell identity={identity}>
@@ -751,7 +776,6 @@ function CompanyDetail({
               </div>
             ) : null}
 
-
             {tab === "overview" ? (
               <div className="space-y-6">
                 {candidate.stated ? (
@@ -805,9 +829,7 @@ function CompanyDetail({
                   onPrimary={onRecommendedPrimary}
                   onPrepareFirstMessage={prepareFirstMessage}
                   onWatch={(watch) => setWatch.mutate(watch)}
-                  onPrepareBrief={(force) =>
-                    prepareBrief.mutate(force ? { force: true } : {})
-                  }
+                  onPrepareBrief={(force) => prepareBrief.mutate(force ? { force: true } : {})}
                   onConfirmEmail={(person) => {
                     confirmEmail.reset();
                     confirmEmail.mutate(person);
@@ -828,10 +850,7 @@ function CompanyDetail({
                   view={derived.factors}
                   onViewAnalysis={() => void goToTab("icp")}
                 />
-                <RecentActivityCard
-                  events={allEvents}
-                  onViewAll={() => void goToTab("activity")}
-                />
+                <RecentActivityCard events={allEvents} onViewAll={() => void goToTab("activity")} />
                 <SimilarCompaniesCard companies={derived.similar} linkSearch={backSearch} />
               </div>
             ) : null}
@@ -856,9 +875,37 @@ function CompanyDetail({
                   onIngest={(providerId) => ingest.mutate(providerId)}
                   onAddManual={(form) => addPerson.mutate(form)}
                   onConfirmEmail={(person) => confirmEmail.mutate(person)}
-                  busy={busy}
+                  onConfirmLinkedin={(person, candidateMatch) => {
+                    if (!candidateMatch) {
+                      if (!person.linkedinUrl) return;
+                      confirmLinkedin.mutate({
+                        person,
+                        candidateMatch: {
+                          linkedinUrl: person.linkedinUrl,
+                          fullName: person.fullName,
+                          headline: null,
+                          location: null,
+                          degree: null,
+                        },
+                      });
+                      return;
+                    }
+                    confirmLinkedin.mutate({ person, candidateMatch });
+                  }}
+                  onLookupLinkedin={(person) => lookupLinkedin.mutate(person)}
+                  busy={busy || lookupLinkedin.isPending || confirmLinkedin.isPending}
                   note={ingest.data?.note}
                   plan={plan}
+                  lookupTarget={lookupTarget}
+                  lookupCandidates={lookupLinkedin.data ?? []}
+                  lookupPending={lookupLinkedin.isPending}
+                  lookupError={
+                    lookupLinkedin.error
+                      ? lookupLinkedin.error instanceof Error
+                        ? lookupLinkedin.error.message
+                        : "LinkedIn route search failed. Retry when you are ready."
+                      : null
+                  }
                 />
                 <HandoffPanel
                   candidate={candidate}

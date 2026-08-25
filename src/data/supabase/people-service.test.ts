@@ -10,7 +10,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { PeopleProvider, PersonDraft } from "@/domain/people";
+import { isReachable, type PeopleProvider, type PersonDraft } from "@/domain/people";
 import type { ProspectCandidate } from "@/domain/scout";
 
 import { createFakeSupabase, type FakeRow } from "./fake-supabase";
@@ -295,6 +295,67 @@ describe("email status and human confirmation", () => {
       CONTEXT,
     );
     await expect(peopleService.confirmEmail(person, CONTEXT)).rejects.toThrow(/no address/i);
+  });
+});
+
+describe("linkedin route confirmation", () => {
+  it("stamps the human-confirmed LinkedIn route with full provenance", async () => {
+    const person = await peopleService.addManual(
+      { prospectId: PROSPECT_ID, fullName: "Ada Rowe", roleTitle: "Founder" },
+      CONTEXT,
+    );
+    expect(person.linkedinConfirmed).toBeFalsy();
+    expect(isReachable(person)).toBe(false);
+
+    const confirmed = await peopleService.confirmLinkedinRoute(
+      person,
+      {
+        linkedinUrl: "https://www.linkedin.com/in/ada-rowe-example/",
+        fullName: "Ada Rowe",
+        headline: "Founder at Northbeam",
+        location: "Nashville",
+        degree: null,
+      },
+      CONTEXT,
+    );
+
+    expect(confirmed.linkedinUrl).toBe("https://www.linkedin.com/in/ada-rowe-example/");
+    expect(confirmed.linkedinConfirmed).toBe(true);
+    expect(confirmed.linkedinProvider).toBe("linki");
+    expect(confirmed.linkedinConfidence).toBe("confirmed");
+    expect(confirmed.linkedinCheckedAt).toBeTruthy();
+    expect(confirmed.confidence).toBe("human_confirmed");
+    expect(isReachable(confirmed)).toBe(true);
+    expect(
+      activities().some(
+        (event) =>
+          event["event_type"] === "contact.updated" &&
+          String(event["summary"]).includes("LinkedIn route was confirmed"),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not let a later lookup overwrite the human confirmation path", async () => {
+    const person = await peopleService.addManual(
+      { prospectId: PROSPECT_ID, fullName: "Ada Rowe", roleTitle: "Founder" },
+      CONTEXT,
+    );
+    const confirmed = await peopleService.confirmLinkedinRoute(
+      person,
+      {
+        linkedinUrl: "https://www.linkedin.com/in/ada-rowe-example/",
+        fullName: "Ada Rowe",
+        headline: null,
+        location: null,
+        degree: null,
+      },
+      CONTEXT,
+    );
+
+    const row = (db.tables["contacts"] ?? []).find((r) => r["id"] === confirmed.id);
+    const storedMeta = meta(row as FakeRow);
+    expect(storedMeta["linkedin_confirmed"]).toBe(true);
+    expect(storedMeta["linkedin_provider"]).toBe("linki");
   });
 });
 

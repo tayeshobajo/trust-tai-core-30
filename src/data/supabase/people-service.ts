@@ -21,6 +21,7 @@ import {
 } from "@/domain/people";
 import type { ProspectCandidate } from "@/domain/scout";
 import { getPeopleProvider } from "@/data/people/registry";
+import { supabase } from "@/integrations/trust-tai/supabase";
 
 import { supabaseActivity } from "./activities";
 import { insertContact, listProspectContacts, updateContact, type ContactPatch } from "./contacts";
@@ -87,6 +88,24 @@ export interface IngestResult {
   skipped: number;
   /** Nothing was found, or the source is approved but not wired yet. */
   note?: string;
+}
+
+const LINKI_LOOKUP_ENDPOINT = "/api/public/linki/lookup";
+
+export interface LinkiLookupInput {
+  fullName: string;
+  companyName?: string | undefined;
+  companyDomain?: string | undefined;
+  roleTitle?: string | undefined;
+  organizationId: ID;
+}
+
+export interface LinkiLookupCandidate {
+  linkedinUrl: string;
+  fullName: string;
+  headline: string | null;
+  location: string | null;
+  degree: string | null;
 }
 
 export const peopleService = {
@@ -266,6 +285,79 @@ export const peopleService = {
       updated,
       `${updated.fullName}'s business email was confirmed by a Trust Tai member.`,
       { confirmed_by: "human" },
+    );
+    return updated;
+  },
+
+  /** Browser -> Trust Tai server -> Linki. The internal secret never leaves the server. */
+  async lookupLinkedinCandidates(input: LinkiLookupInput): Promise<LinkiLookupCandidate[]> {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) {
+      throw new Error("Your session has expired. Sign in again to search LinkedIn routes.");
+    }
+
+    const response = await fetch(LINKI_LOOKUP_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        organization_id: input.organizationId,
+        full_name: input.fullName,
+        ...(input.companyName ? { company_name: input.companyName } : {}),
+        ...(input.companyDomain ? { company_domain: input.companyDomain } : {}),
+        ...(input.roleTitle ? { role_title: input.roleTitle } : {}),
+      }),
+    });
+
+    let payload: { error?: string; candidates?: unknown } = {};
+    try {
+      payload = (await response.json()) as { error?: string; candidates?: unknown };
+    } catch {
+      payload = {};
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        payload.error ||
+          (response.status === 401
+            ? "Your session has expired. Sign in again to search LinkedIn routes."
+            : "LinkedIn route search failed. Nothing was changed."),
+      );
+    }
+
+    return Array.isArray(payload.candidates) ? (payload.candidates as LinkiLookupCandidate[]) : [];
+  },
+
+  /** A human confirms which LinkedIn profile is the legitimate route. */
+  async confirmLinkedinRoute(
+    person: Person,
+    match: LinkiLookupCandidate,
+    context: PeopleContext,
+  ): Promise<Person> {
+    const updated = await updateContact(
+      person.id,
+      {
+        linkedinUrl: match.linkedinUrl,
+        linkedinConfirmed: true,
+        linkedinProvider: "linki",
+        linkedinConfidence: "confirmed",
+        confidence: "human_confirmed",
+      },
+      context.userId,
+    );
+    await record(
+      context,
+      "updated",
+      updated,
+      `${updated.fullName}'s LinkedIn route was confirmed by a Trust Tai member.`,
+      {
+        confirmed_by: "human",
+        linkedin_provider: "linki",
+        linkedin_url: match.linkedinUrl,
+      },
     );
     return updated;
   },

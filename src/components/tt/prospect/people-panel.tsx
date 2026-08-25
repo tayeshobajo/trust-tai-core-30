@@ -13,6 +13,7 @@ import {
   CONFIDENCE_LABEL,
   EMAIL_STATUS_LABEL,
   SENIORITY_LABEL,
+  isReachable,
   isCommsReady,
   isDecisionMaker,
   type Person,
@@ -21,6 +22,7 @@ import {
 } from "@/domain/people";
 import type { FitCriterion } from "@/domain/scout-fit";
 import type { PersonPlan } from "@/domain/scout-intel";
+import type { LinkiLookupCandidate } from "@/data/supabase/people-service";
 import { cn } from "@/lib/utils";
 
 import { CriterionRow, Disclosure, Panel, TierTag } from "./panel";
@@ -86,10 +88,12 @@ function checkedAgo(iso: string): string {
 function PersonRow({
   person,
   onConfirmEmail,
+  onConfirmLinkedin,
   busy,
 }: {
   person: Person;
   onConfirmEmail: (person: Person) => void;
+  onConfirmLinkedin?: ((person: Person) => void) | undefined;
   busy?: boolean | undefined;
 }) {
   return (
@@ -136,14 +140,23 @@ function PersonRow({
           </a>
         ) : null}
         {person.linkedinUrl ? (
-          <a
-            href={person.linkedinUrl}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground underline decoration-border underline-offset-4 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            profile link
-          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={person.linkedinUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground underline decoration-border underline-offset-4 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {person.linkedinConfirmed ? "confirmed LinkedIn route" : "LinkedIn link on record"}
+            </a>
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              {person.linkedinCheckedAt
+                ? `checked ${checkedAgo(person.linkedinCheckedAt)}`
+                : person.linkedinConfirmed
+                  ? "confirmed"
+                  : "unconfirmed"}
+            </span>
+          </div>
         ) : null}
         <PersonProvenance person={person} />
       </div>
@@ -159,6 +172,18 @@ function PersonRow({
           Confirm this address
         </TTButton>
       ) : null}
+
+      {person.linkedinUrl && !person.linkedinConfirmed && onConfirmLinkedin ? (
+        <TTButton
+          variant="quiet"
+          size="sm"
+          className="mt-2 -ml-3"
+          disabled={busy}
+          onClick={() => onConfirmLinkedin(person)}
+        >
+          Confirm this LinkedIn route
+        </TTButton>
+      ) : null}
     </li>
   );
 }
@@ -171,9 +196,15 @@ export function PeoplePanel({
   onIngest,
   onAddManual,
   onConfirmEmail,
+  onConfirmLinkedin,
+  onLookupLinkedin,
   busy,
   note,
   plan,
+  lookupTarget,
+  lookupCandidates,
+  lookupPending,
+  lookupError,
 }: {
   criteria: FitCriterion[];
   people: Person[];
@@ -182,13 +213,19 @@ export function PeoplePanel({
   onIngest: (providerId: string) => void;
   onAddManual: (form: ManualPersonForm) => void;
   onConfirmEmail: (person: Person) => void;
+  onConfirmLinkedin?: ((person: Person, candidate?: LinkiLookupCandidate) => void) | undefined;
+  onLookupLinkedin?: ((person: Person) => void) | undefined;
   busy?: boolean | undefined;
   note?: string | undefined;
   /** Who to approach first, and why. Computed, never provider-ordered. */
   plan?: PersonPlan | undefined;
+  lookupTarget?: Person | null | undefined;
+  lookupCandidates?: LinkiLookupCandidate[] | undefined;
+  lookupPending?: boolean | undefined;
+  lookupError?: string | null | undefined;
 }) {
   const [form, setForm] = useState<ManualPersonForm>(EMPTY_FORM);
-  const reachable = people.some((person) => isCommsReady(person));
+  const reachable = people.some((person) => isReachable(person));
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -216,9 +253,7 @@ export function PeoplePanel({
             <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {plan.primary.routeNote}
             </p>
-            {plan.gap ? (
-              <p className="mt-2 text-[13px] text-muted-foreground">{plan.gap}</p>
-            ) : null}
+            {plan.gap ? <p className="mt-2 text-[13px] text-muted-foreground">{plan.gap}</p> : null}
           </div>
         ) : null}
 
@@ -235,14 +270,17 @@ export function PeoplePanel({
                   key={person.id}
                   person={person}
                   onConfirmEmail={onConfirmEmail}
+                  onConfirmLinkedin={
+                    onConfirmLinkedin ? (target) => onConfirmLinkedin(target) : undefined
+                  }
                   busy={busy}
                 />
               ))}
             </ul>
           ) : (
             <p className="text-[13px] text-muted-foreground">
-              No people are on record for this company yet. Ingest from an approved source, or
-              add the person you already know.
+              No people are on record for this company yet. Ingest from an approved source, or add
+              the person you already know.
             </p>
           )}
         </section>
@@ -255,8 +293,8 @@ export function PeoplePanel({
         >
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             {reachable
-              ? "A named decision maker with a verified address is on record."
-              : "No verified business email is on record yet."}
+              ? "A named decision maker with a legitimate route is on record."
+              : "No confirmed email or LinkedIn route is on record yet."}
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -280,6 +318,75 @@ export function PeoplePanel({
           </div>
 
           {note ? <p className="mt-4 text-[13px] text-muted-foreground">{note}</p> : null}
+
+          {lookupTarget && onLookupLinkedin ? (
+            <div
+              id="scout-people-linki-lookup"
+              tabIndex={-1}
+              className="mt-4 scroll-mt-24 rounded-lg border border-border bg-surface-tertiary px-4 py-4 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-4"
+            >
+              <p className="tt-eyebrow">Linki route search</p>
+              <p className="mt-1 text-[13px] text-foreground">
+                Search LinkedIn for {lookupTarget.fullName}
+                {lookupTarget.roleTitle ? `, ${lookupTarget.roleTitle}` : ""}.
+              </p>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                This only suggests candidates. A human still confirms the real profile before it
+                becomes a route.
+              </p>
+              <div className="mt-3">
+                <TTButton
+                  size="sm"
+                  disabled={busy || lookupPending}
+                  onClick={() => onLookupLinkedin(lookupTarget)}
+                >
+                  {lookupPending ? "Searching LinkedIn…" : "Find contact route"}
+                </TTButton>
+              </div>
+
+              {lookupError ? (
+                <p className="mt-3 text-[13px] text-destructive">{lookupError}</p>
+              ) : null}
+
+              {lookupCandidates && lookupCandidates.length > 0 ? (
+                <ul className="mt-4 space-y-3">
+                  {lookupCandidates.map((candidate) => (
+                    <li
+                      key={candidate.linkedinUrl}
+                      className="rounded-lg border border-border bg-background px-4 py-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-medium text-foreground">
+                            {candidate.fullName}
+                          </p>
+                          {candidate.headline ? (
+                            <p className="text-[13px] text-muted-foreground">
+                              {candidate.headline}
+                            </p>
+                          ) : null}
+                          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                            {candidate.location ?? "Location unknown"}
+                            {candidate.degree ? ` · ${candidate.degree}` : ""}
+                          </p>
+                        </div>
+                        {onConfirmLinkedin ? (
+                          <TTButton
+                            size="sm"
+                            variant="secondary"
+                            disabled={busy}
+                            onClick={() => onConfirmLinkedin(lookupTarget, candidate)}
+                          >
+                            Confirm this profile
+                          </TTButton>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <Disclosure summary="Add a person by hand">
