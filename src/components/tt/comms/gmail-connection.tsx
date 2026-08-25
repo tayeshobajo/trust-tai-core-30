@@ -139,10 +139,10 @@ export function GmailConnection({
       </div>
       <AmbientRule appId="comms" contextAccent={null} />
       <p className="text-sm leading-relaxed text-muted-foreground">
-        Reads the threads you label Trust Tai/Comms in each connected Gmail account, so the queue
-        knows who is actually waiting on a reply, and can send a reply only when you click Send on
-        a draft you approved. Comms never sends on its own, and it cannot change your Gmail labels.
-        Only messages with people already in Comms are stored.
+        Label someone <span className="text-foreground">Trust Tai/Comms</span> in Gmail. Comms
+        picks them up automatically — the label is your approval to bring that person in, and
+        their labeled history comes with them. Unlabeled mail stays invisible to Comms. Nothing is
+        ever sent on its own, and Comms cannot change your Gmail labels.
       </p>
 
       {connections.length === 0 ? (
@@ -192,12 +192,21 @@ export function GmailConnection({
       {sync ? (
         <p className="text-xs text-muted-foreground">
           {sync.accountEmail ? `${sync.accountEmail}: ` : ""}read {sync.messagesRead} labeled
-          messages, stored {sync.messagesStored} across {sync.relationshipsTouched} relationships.
-          Held back {sync.skippedUnknownPeople} messages from {sync.pendingPeople ?? 0}{" "}
-          {(sync.pendingPeople ?? 0) === 1 ? "person" : "people"} not in Comms yet — they stay
-          reviewable from the mailbox import below.
+          messages, stored {sync.messagesStored} across {sync.relationshipsTouched} relationships
+          {(sync.peopleAdded ?? 0) > 0
+            ? `, added ${sync.peopleAdded} newly labeled ${
+                sync.peopleAdded === 1 ? "person" : "people"
+              } to Comms`
+            : ""}
+          .
+          {(sync.pendingPeople ?? 0) > 0
+            ? ` ${sync.pendingPeople} labeled ${
+                (sync.pendingPeople ?? 0) === 1 ? "message needs" : "messages need"
+              } your decision below.`
+            : ""}
         </p>
       ) : null}
+
       {notice ? <p className="text-xs text-muted-foreground">{notice}</p> : null}
       {failure ? <p className="text-xs text-destructive">{failure}</p> : null}
     </TTCard>
