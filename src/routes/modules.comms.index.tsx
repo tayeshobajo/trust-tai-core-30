@@ -335,55 +335,15 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
-  /**
-   * Add to Comms from the labeled-candidate list. Creation runs exactly as a
-   * manual capture; immediately after, one member-authorized bounded backfill
-   * (30 days, label-gated, read-only) brings the person's existing labeled
-   * history in — from the same mailbox the candidate was discovered in. A
-   * backfill failure never removes the relationship — it only leaves a
-   * warning asking to sync again.
+  /*
+   * There is no mailbox import queue any more. Applying the exact
+   * Trust Tai/Comms Gmail label IS the approval: the scheduled pass creates
+   * the canonical person and their relationship, and brings the labeled
+   * history with them. Only ambiguity or a failed create asks for a human,
+   * and that lives on Connections.
    */
-  const [importPhase, setImportPhase] = useState<"creating" | "backfilling" | null>(null);
-  const [importWarning, setImportWarning] = useState<string | null>(null);
-  const importFromMailbox = useMutation({
-    mutationFn: (input: {
-      relationship: RelationshipInput;
-      integrationId?: string;
-      /**
-       * Bulk imports set keepOpen: the capture panel must stay where it is
-       * while several people are added one after another — no selection
-       * jump, no panel close, one quiet refresh per person.
-       */
-      keepOpen?: boolean;
-    }) =>
-      addMailboxCandidateToComms(input.relationship, {
-        createRelationship: async (value) => {
-          setImportPhase("creating");
-          return commsService.create(value, context);
-        },
-        backfillHistory: async () => {
-          setImportPhase("backfilling");
-          await gmailSync(
-            identity.organizationId,
-            ONBOARDING_BACKFILL_DAYS,
-            input.integrationId,
-          );
-        },
-      }),
-    onSuccess: async ({ relationship, historyWarning }, variables) => {
-      if (variables.keepOpen) {
-        await refresh();
-        return;
-      }
-      setSelectedId(relationship.id);
-      setImportWarning(historyWarning);
-      // With history in, the panel steps aside; with a warning, it stays open
-      // so the message is seen next to the person it concerns.
-      if (!historyWarning) setCapturing(false);
-      await refresh();
-    },
-    onSettled: () => setImportPhase(null),
-  });
+
+
 
   const update = useMutation({
     mutationFn: (input: Parameters<typeof commsService.update>[1]) =>
