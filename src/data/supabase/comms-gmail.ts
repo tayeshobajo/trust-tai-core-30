@@ -85,6 +85,7 @@ export interface GmailSyncResult {
   messagesStored: number;
   relationshipsTouched: number;
   skippedUnknownPeople: number;
+  peopleAdded?: number;
   /** Distinct labeled correspondents not in Comms yet. */
   pendingPeople?: number;
   /** Inbound messages that entered the suite event stream this pass. */

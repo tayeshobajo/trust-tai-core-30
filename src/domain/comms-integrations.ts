@@ -442,7 +442,9 @@ export interface GmailRunSummary {
   relationshipsTouched: number;
   /** Labeled messages held back because the person is not in Comms yet. */
   skippedUnknownPeople: number;
-  /** Distinct labeled correspondents not yet in Comms — the review queue. */
+  /** People the Gmail label itself approved into Comms on this pass. */
+  peopleAdded: number;
+  /** Labeled messages awaiting a human decision — ambiguity or a failed create. */
   pendingPeople: number;
   eventsEmitted: number;
   draftsVerified: number;
@@ -466,6 +468,7 @@ export function readGmailRunSummary(cursor: Record<string, unknown>): GmailRunSu
     messagesStored: runCount(run["messages_stored"]),
     relationshipsTouched: runCount(run["relationships_touched"]),
     skippedUnknownPeople: runCount(run["skipped_unknown_people"]),
+    peopleAdded: runCount(run["people_added"]),
     pendingPeople: runCount(run["pending_people"]),
     eventsEmitted: runCount(run["events_emitted"]),
     draftsVerified: runCount(run["drafts_verified"]),
