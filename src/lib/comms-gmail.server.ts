@@ -1206,7 +1206,6 @@ async function runSyncPass(input: {
     } while (pageToken && ids.length < MAX_MESSAGES_PER_PASS);
   }
 
-
   let messagesRead = 0;
   let skippedUnknownPeople = 0;
   let peopleAdded = 0;
@@ -1215,15 +1214,40 @@ async function runSyncPass(input: {
   const perRelationship = new Map<string, { relationship: RelationshipRow; messages: NormalizedMessage[] }>();
   const threadSubjects = new Map<string, string | undefined>();
 
+  // Discovery: the labeled messages themselves, read in full.
+  const labelMessages: GmailMessage[] = [];
   for (const id of ids) {
     // Tracked sync reads the full message: the actual body, inline MIME
     // images, and ordinary files — never just Gmail's preview snippet.
     // Discovery (mailbox import) stays metadata-cheap; this pass is bounded
     // by the label and the per-pass cap.
-    const raw = await gmailGet<GmailMessage>(`/messages/${id}?format=full`, accessToken);
+    labelMessages.push(await gmailGet<GmailMessage>(`/messages/${id}?format=full`, accessToken));
+  }
+
+  // Continuity: conversations already approved through the label gate stay
+  // in scope, so a later reply that Gmail did not stamp with the custom
+  // label is still read — through the thread endpoint, for approved thread
+  // ids only, capped and ordered by recency.
+  const { count: mailboxCount } = await client
+    .from("comms_integrations")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .eq("provider", "gmail");
+  const approvedThreadIds = mailbox
+    ? await loadApprovedThreadIds({
+        client,
+        organizationId,
+        mailbox,
+        soleMailbox: (mailboxCount ?? 1) <= 1,
+      })
+    : [];
+  const refresh = await fetchApprovedThreads({ threadIds: approvedThreadIds, accessToken });
+
+  for (const raw of mergeFetchedMessages(labelMessages, refresh.messages)) {
     messagesRead += 1;
     const message = normalize(raw, mailbox);
     if (!message) continue;
+
 
     // The label is the approval. A labeled message with someone Comms
     // already tracks maps to that relationship; a labeled message with
