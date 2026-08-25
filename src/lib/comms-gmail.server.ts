@@ -8,9 +8,9 @@
  * them feed the same relationships: the counterpart's email is the identity
  * that decides what is stored, never which mailbox observed it.
  *
- * What this is allowed to do: read message metadata for threads Tai has
- * explicitly labeled `Trust Tai/Comms`, and store only the ones with people
- * who are already relationships in Comms.
+ * What this is allowed to do: read message metadata for conversations Tai
+ * has explicitly labeled `Trust Tai/Comms`, and store only the ones with
+ * people who are already relationships in Comms.
  *
  * How it reads: label-gated first, identity-matched second. The label id is
  * resolved from Gmail's own label list and constrains every message listing,
@@ -19,6 +19,15 @@
  * relationship list is then the identity layer that decides what is stored.
  * Labeled mail with someone Comms does not track is counted and left
  * unstored; it is surfaced for review through the mailbox import instead.
+ *
+ * Approved-thread continuity: applying the exact label to a conversation is
+ * approval to keep following THAT conversation. Once a thread has been seen
+ * through the label gate and stored in `comms_threads`, later replies inside
+ * that same `provider_thread_id` are read through Gmail's thread endpoint
+ * even when the individual reply does not itself carry the label — Tai never
+ * re-labels every future reply. Scope widens to previously approved thread
+ * ids only: never by sender, never to a new unlabeled conversation, never to
+ * the whole mailbox, and only a labeled message may introduce a new person.
  *
  * How it sends: it doesn't, from this module. Consent asks for
  * `gmail.readonly` plus `gmail.send`, and the granted set is persisted
@@ -30,8 +39,9 @@
  *  - send anything on its own (no send call exists here),
  *  - add, rename, or remove Gmail labels (`gmail.modify` is never
  *    requested; no mutation call exists here),
- *  - read unlabeled mail, or fall back to whole-mailbox reading when the
- *    label is missing,
+ *  - read unlabeled mail outside an already-approved conversation, or fall
+ *    back to whole-mailbox reading when the label is missing,
+
  *  - store mail with anyone Comms does not already track, or create a
  *    relationship on its own,
  *  - let a token reach the browser (refresh tokens are sealed at rest and
@@ -744,6 +754,200 @@ export function findTrackedCounterpart(
   );
   return counterparts.map((email) => byEmail.get(email)).find(Boolean);
 }
+/* ------------------------------------------- approved-thread continuity */
+
+/**
+ * Applying `Trust Tai/Comms` to a Gmail conversation is approval to keep
+ * following THAT conversation — Tai never re-labels every future reply.
+ *
+ * Discovery stays exactly as strict: only messages carrying the exact label
+ * can introduce a new thread. Once such a thread has been stored in
+ * `comms_threads` with `provider = gmail`, its `provider_thread_id` is an
+ * approved watched conversation, and later replies inside it are read
+ * through Gmail's own thread endpoint even when the individual reply does
+ * not carry the label. Nothing else widens: no sender scan, no unlabeled
+ * new thread, no whole-mailbox read.
+ */
+export const MAX_APPROVED_THREADS_PER_PASS = 25;
+
+/** How many recent stored messages are inspected to order approved threads. */
+export const APPROVED_THREAD_LOOKBACK_MESSAGES = 300;
+
+/** The narrow, API-native read of ONE approved conversation. */
+export function buildThreadFetchPath(threadId: string): string {
+  return `/threads/${encodeURIComponent(threadId)}?format=full`;
+}
+
+/** One stored message, reduced to what thread selection needs. */
+export interface ObservedThreadRef {
+  providerThreadId: string;
+  /** The mailbox that observed it, from message provenance. */
+  mailbox: string | null;
+  occurredAt: string;
+}
+
+/**
+ * Which approved conversations this mailbox refreshes on this pass.
+ *
+ * Mailbox identity is preserved: a thread is refreshed through the account
+ * that actually observed it. Legacy rows that predate mailbox provenance
+ * carry no mailbox; they are only claimed when this is the workspace's sole
+ * connected mailbox, so a second account can never read another's thread.
+ * Ordering is deterministic — most recently active first — and capped, so
+ * the pass never becomes a whole-history scan. Pure; tested.
+ */
+export function selectApprovedThreadIds(input: {
+  observed: ObservedThreadRef[];
+  mailbox: string;
+  approved: ReadonlySet<string>;
+  soleMailbox: boolean;
+  cap?: number;
+}): string[] {
+  const mailbox = input.mailbox.toLowerCase();
+  const cap = Math.max(0, input.cap ?? MAX_APPROVED_THREADS_PER_PASS);
+  const owned = input.observed.filter((row) => {
+    if (!row.providerThreadId) return false;
+    if (!input.approved.has(row.providerThreadId)) return false;
+    const observedBy = row.mailbox?.toLowerCase() ?? null;
+    if (observedBy) return observedBy === mailbox;
+    return input.soleMailbox;
+  });
+  owned.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  for (const row of owned) {
+    if (seen.has(row.providerThreadId)) continue;
+    seen.add(row.providerThreadId);
+    ordered.push(row.providerThreadId);
+    if (ordered.length >= cap) break;
+  }
+  return ordered;
+}
+
+/**
+ * Label discovery and approved-thread refresh describe overlapping sets:
+ * a labeled reply appears in both. Dedupe by Gmail message id so the same
+ * message is normalized, stored, counted, and evented exactly once.
+ * Pure; tested.
+ */
+export function mergeFetchedMessages<T extends { id?: string }>(
+  labelMessages: T[],
+  threadMessages: T[],
+): T[] {
+  const merged: T[] = [];
+  const seen = new Set<string>();
+  for (const message of [...labelMessages, ...threadMessages]) {
+    if (!message.id) continue;
+    if (seen.has(message.id)) continue;
+    seen.add(message.id);
+    merged.push(message);
+  }
+  return merged;
+}
+
+/**
+ * The approved conversations for this mailbox, read under the caller's own
+ * access. Two bounded queries: the recent stored messages that name the
+ * observing mailbox, and the thread rows that prove those conversations
+ * were approved through the label gate.
+ */
+async function loadApprovedThreadIds(input: {
+  client: SupabaseClient;
+  organizationId: string;
+  mailbox: string;
+  soleMailbox: boolean;
+}): Promise<string[]> {
+  const { client, organizationId } = input;
+
+  const { data: threadRows, error: threadError } = await client
+    .from("comms_threads")
+    .select("provider_thread_id, last_message_at")
+    .eq("organization_id", organizationId)
+    .eq("provider", "gmail")
+    .not("provider_thread_id", "is", null)
+    .order("last_message_at", { ascending: false })
+    .limit(APPROVED_THREAD_LOOKBACK_MESSAGES);
+  if (threadError) {
+    console.warn(`[comms-gmail] approved thread read failed: ${threadError.message}`);
+    return [];
+  }
+  const approved = new Set(
+    ((threadRows ?? []) as { provider_thread_id: string | null }[])
+      .map((row) => row.provider_thread_id)
+      .filter((value): value is string => Boolean(value)),
+  );
+  if (approved.size === 0) return [];
+
+  const { data: messageRows, error: messageError } = await client
+    .from("comms_messages")
+    .select("provider_thread_id, occurred_at, provenance")
+    .eq("organization_id", organizationId)
+    .eq("provider", "gmail")
+    .order("occurred_at", { ascending: false })
+    .limit(APPROVED_THREAD_LOOKBACK_MESSAGES);
+  if (messageError) {
+    console.warn(`[comms-gmail] approved thread provenance read failed: ${messageError.message}`);
+    return [];
+  }
+
+  const observed: ObservedThreadRef[] = (
+    (messageRows ?? []) as {
+      provider_thread_id: string | null;
+      occurred_at: string | null;
+      provenance: unknown;
+    }[]
+  )
+    .filter((row) => Boolean(row.provider_thread_id))
+    .map((row) => {
+      const provenance =
+        row.provenance && typeof row.provenance === "object"
+          ? (row.provenance as Record<string, unknown>)
+          : {};
+      const observedBy = typeof provenance["mailbox"] === "string" ? provenance["mailbox"] : null;
+      return {
+        providerThreadId: row.provider_thread_id!,
+        mailbox: observedBy,
+        occurredAt: row.occurred_at ?? "",
+      };
+    });
+
+  return selectApprovedThreadIds({
+    observed,
+    mailbox: input.mailbox,
+    approved,
+    soleMailbox: input.soleMailbox,
+  });
+}
+
+/**
+ * Read the approved conversations, one narrow thread call each. A thread
+ * Gmail no longer has (404) or refuses is skipped, counted, and never
+ * poisons the rest of the mailbox pass.
+ */
+async function fetchApprovedThreads(input: {
+  threadIds: string[];
+  accessToken: string;
+}): Promise<{ messages: GmailMessage[]; refreshed: number; missing: number }> {
+  const messages: GmailMessage[] = [];
+  let refreshed = 0;
+  let missing = 0;
+  for (const threadId of input.threadIds) {
+    try {
+      const thread = await gmailGet<{ messages?: GmailMessage[] }>(
+        buildThreadFetchPath(threadId),
+        input.accessToken,
+      );
+      refreshed += 1;
+      for (const message of thread.messages ?? []) messages.push(message);
+    } catch (error) {
+      missing += 1;
+      const detail = error instanceof Error ? error.message : "unknown";
+      console.warn(`[comms-gmail] approved thread ${threadId} could not be refreshed: ${detail}`);
+    }
+  }
+  return { messages, refreshed, missing };
+}
+
 
 /**
  * The one suite event an inbound message produces. The key names the exact
@@ -941,9 +1145,12 @@ export async function verifySentDrafts(
 
 /**
  * One incremental pass, shared by the member-invoked read and the scheduled
- * service pass. Label-gated: only threads carrying the `Trust Tai/Comms`
- * label are listed, so unlabeled mail — noise or otherwise — never enters
- * the candidate set or consumes the bounded per-pass cap. Identity is then
+ * service pass. Label-gated for discovery: only conversations carrying the
+ * `Trust Tai/Comms` label are listed, so unlabeled mail — noise or otherwise
+ * — never enters the candidate set or consumes the bounded per-pass cap.
+ * Already-approved conversations are then refreshed by thread id, so a later
+ * reply Gmail did not stamp with the label still arrives. Identity is then
+
  * decided against the tracked relationships: only messages with people
  * already in Comms are stored — idempotently on
  * `(organization, provider, provider_message_id)`. Labeled mail with unknown
@@ -1012,7 +1219,6 @@ async function runSyncPass(input: {
     } while (pageToken && ids.length < MAX_MESSAGES_PER_PASS);
   }
 
-
   let messagesRead = 0;
   let skippedUnknownPeople = 0;
   let peopleAdded = 0;
@@ -1021,15 +1227,47 @@ async function runSyncPass(input: {
   const perRelationship = new Map<string, { relationship: RelationshipRow; messages: NormalizedMessage[] }>();
   const threadSubjects = new Map<string, string | undefined>();
 
+  // Discovery: the labeled messages themselves, read in full.
+  const labelMessages: GmailMessage[] = [];
   for (const id of ids) {
     // Tracked sync reads the full message: the actual body, inline MIME
     // images, and ordinary files — never just Gmail's preview snippet.
     // Discovery (mailbox import) stays metadata-cheap; this pass is bounded
     // by the label and the per-pass cap.
-    const raw = await gmailGet<GmailMessage>(`/messages/${id}?format=full`, accessToken);
+    labelMessages.push(await gmailGet<GmailMessage>(`/messages/${id}?format=full`, accessToken));
+  }
+
+  // Continuity: conversations already approved through the label gate stay
+  // in scope, so a later reply that Gmail did not stamp with the custom
+  // label is still read — through the thread endpoint, for approved thread
+  // ids only, capped and ordered by recency.
+  const { count: mailboxCount } = await client
+    .from("comms_integrations")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .eq("provider", "gmail");
+  const approvedThreadIds = mailbox
+    ? await loadApprovedThreadIds({
+        client,
+        organizationId,
+        mailbox,
+        soleMailbox: (mailboxCount ?? 1) <= 1,
+      })
+    : [];
+  const refresh = await fetchApprovedThreads({ threadIds: approvedThreadIds, accessToken });
+
+  // Only a message that itself carried the label may bring a NEW person
+  // into Comms. Continuity keeps an approved conversation flowing; it never
+  // becomes a second, quieter intake path.
+  const labelDiscoveredIds = new Set(
+    labelMessages.map((entry) => entry.id).filter((id): id is string => Boolean(id)),
+  );
+
+  for (const raw of mergeFetchedMessages(labelMessages, refresh.messages)) {
     messagesRead += 1;
     const message = normalize(raw, mailbox);
     if (!message) continue;
+
 
     // The label is the approval. A labeled message with someone Comms
     // already tracks maps to that relationship; a labeled message with
@@ -1038,7 +1276,12 @@ async function runSyncPass(input: {
     // failed — becomes a visible exception.
     let match = findTrackedCounterpart(message, mailbox, byEmail);
     if (!match) {
+      if (!labelDiscoveredIds.has(message.providerMessageId)) {
+        skippedUnknownPeople += 1;
+        continue;
+      }
       const counterpart = resolveIntakeCounterpart(message, mailbox);
+
       if (counterpart.kind === "none") {
         skippedUnknownPeople += 1;
         continue;
@@ -1256,6 +1499,10 @@ async function runSyncPass(input: {
       pending_people: exceptions.length,
       events_emitted: eventsEmitted,
       drafts_verified: draftsVerified,
+      approved_threads_watched: approvedThreadIds.length,
+      approved_threads_refreshed: refresh.refreshed,
+      approved_threads_unavailable: refresh.missing,
+
     },
     intake_exceptions: exceptions.map(intakeExceptionToJson),
   };
