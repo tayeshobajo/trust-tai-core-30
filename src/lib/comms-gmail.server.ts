@@ -58,6 +58,14 @@ import {
   type NormalizedMessage,
 } from "@/domain/comms-integrations";
 import { extractEmailBody } from "@/domain/comms-email-body";
+import {
+  intakeExceptionToJson,
+  mergeIntakeExceptions,
+  readIntakeExceptions,
+  resolveIntakeCounterpart,
+  type IntakeException,
+} from "@/domain/comms-intake";
+import { ensureLabeledRelationship } from "@/lib/comms-intake.server";
 import { SUITE_EVENTS } from "@/domain/events";
 import {
   planDraftVerifications,
@@ -619,7 +627,9 @@ export interface SyncResult {
   messagesStored: number;
   relationshipsTouched: number;
   skippedUnknownPeople: number;
-  /** Distinct labeled correspondents not in Comms yet — the review queue size. */
+  /** People the label itself approved into Comms this pass. */
+  peopleAdded: number;
+  /** Labeled messages awaiting a human decision — ambiguity or a failed create. */
   pendingPeople: number;
   /** Inbound messages that entered the suite event stream this pass. */
   eventsEmitted: number;
