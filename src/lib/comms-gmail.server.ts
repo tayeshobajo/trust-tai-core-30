@@ -1486,6 +1486,10 @@ async function runSyncPass(input: {
       pending_people: exceptions.length,
       events_emitted: eventsEmitted,
       drafts_verified: draftsVerified,
+      approved_threads_watched: approvedThreadIds.length,
+      approved_threads_refreshed: refresh.refreshed,
+      approved_threads_unavailable: refresh.missing,
+
     },
     intake_exceptions: exceptions.map(intakeExceptionToJson),
   };
