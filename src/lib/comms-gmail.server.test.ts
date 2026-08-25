@@ -628,3 +628,139 @@ describe("buildMessageRow — fidelity columns and inline metadata", () => {
     expect(row["snippet"]).toBe("Just a preview");
   });
 });
+
+/* --------------------------------------------- approved-thread continuity */
+
+import {
+  buildThreadFetchPath,
+  MAX_APPROVED_THREADS_PER_PASS,
+  mergeFetchedMessages,
+  selectApprovedThreadIds,
+  type ObservedThreadRef,
+} from "@/lib/comms-gmail.server";
+
+const MAILBOX = "tai@trusttai.com";
+
+function observed(
+  providerThreadId: string,
+  occurredAt: string,
+  mailbox: string | null = MAILBOX,
+): ObservedThreadRef {
+  return { providerThreadId, mailbox, occurredAt };
+}
+
+describe("approved-thread continuity — the label approves the conversation", () => {
+  it("A: a thread discovered through the label becomes an approved watched conversation", () => {
+    // The discovery pass stored thread-1; it is now approved for refresh.
+    const ids = selectApprovedThreadIds({
+      observed: [observed("thread-1", "2026-08-20T10:00:00Z")],
+      mailbox: MAILBOX,
+      approved: new Set(["thread-1"]),
+      soleMailbox: true,
+    });
+    expect(ids).toEqual(["thread-1"]);
+  });
+
+  it("B: a later reply is reachable because the approved thread id is refreshed by thread, not by label", () => {
+    const ids = selectApprovedThreadIds({
+      observed: [observed("thread-1", "2026-08-20T10:00:00Z")],
+      mailbox: MAILBOX,
+      approved: new Set(["thread-1"]),
+      soleMailbox: true,
+    });
+    // Gmail's own thread endpoint — no label filter anywhere in the path.
+    expect(buildThreadFetchPath(ids[0]!)).toBe("/threads/thread-1?format=full");
+    expect(buildThreadFetchPath("thread-1")).not.toContain("labelIds");
+  });
+
+  it("C: a new unlabeled thread from the same known correspondent is not watched", () => {
+    const ids = selectApprovedThreadIds({
+      // thread-2 was never approved through the label gate.
+      observed: [observed("thread-1", "2026-08-20T10:00:00Z"), observed("thread-2", "2026-08-21T10:00:00Z")],
+      mailbox: MAILBOX,
+      approved: new Set(["thread-1"]),
+      soleMailbox: true,
+    });
+    expect(ids).toEqual(["thread-1"]);
+  });
+
+  it("D: unrelated unlabeled mail is never watched", () => {
+    const ids = selectApprovedThreadIds({
+      observed: [observed("newsletter-thread", "2026-08-22T10:00:00Z")],
+      mailbox: MAILBOX,
+      approved: new Set(["thread-1"]),
+      soleMailbox: true,
+    });
+    expect(ids).toEqual([]);
+  });
+
+  it("E/F: a reply appearing in both discovery and refresh is fetched once", () => {
+    const merged = mergeFetchedMessages(
+      [{ id: "m-1" }, { id: "m-2" }],
+      [{ id: "m-2" }, { id: "m-3" }, { id: "m-3" }],
+    );
+    expect(merged.map((entry) => entry.id)).toEqual(["m-1", "m-2", "m-3"]);
+  });
+
+  it("F: re-selecting the same approved threads is deterministic and deduped", () => {
+    const input = {
+      observed: [
+        observed("thread-1", "2026-08-20T10:00:00Z"),
+        observed("thread-1", "2026-08-21T10:00:00Z"),
+        observed("thread-2", "2026-08-19T10:00:00Z"),
+      ],
+      mailbox: MAILBOX,
+      approved: new Set(["thread-1", "thread-2"]),
+      soleMailbox: true,
+    };
+    expect(selectApprovedThreadIds(input)).toEqual(["thread-1", "thread-2"]);
+    expect(selectApprovedThreadIds(input)).toEqual(selectApprovedThreadIds(input));
+  });
+
+  it("G: a mailbox never refreshes a conversation another mailbox observed", () => {
+    const ids = selectApprovedThreadIds({
+      observed: [
+        observed("thread-mine", "2026-08-20T10:00:00Z"),
+        observed("thread-theirs", "2026-08-21T10:00:00Z", "other@trusttai.com"),
+      ],
+      mailbox: MAILBOX,
+      approved: new Set(["thread-mine", "thread-theirs"]),
+      soleMailbox: false,
+    });
+    expect(ids).toEqual(["thread-mine"]);
+  });
+
+  it("G: legacy threads without mailbox provenance are claimed only by a sole mailbox", () => {
+    const legacy = [observed("thread-legacy", "2026-08-20T10:00:00Z", null)];
+    expect(
+      selectApprovedThreadIds({
+        observed: legacy,
+        mailbox: MAILBOX,
+        approved: new Set(["thread-legacy"]),
+        soleMailbox: true,
+      }),
+    ).toEqual(["thread-legacy"]);
+    expect(
+      selectApprovedThreadIds({
+        observed: legacy,
+        mailbox: MAILBOX,
+        approved: new Set(["thread-legacy"]),
+        soleMailbox: false,
+      }),
+    ).toEqual([]);
+  });
+
+  it("bounds the work: most recent first, capped, never a whole-history scan", () => {
+    const many = Array.from({ length: 60 }, (_, index) =>
+      observed(`thread-${index}`, `2026-08-${String((index % 28) + 1).padStart(2, "0")}T00:00:00Z`),
+    );
+    const ids = selectApprovedThreadIds({
+      observed: many,
+      mailbox: MAILBOX,
+      approved: new Set(many.map((entry) => entry.providerThreadId)),
+      soleMailbox: true,
+    });
+    expect(ids).toHaveLength(MAX_APPROVED_THREADS_PER_PASS);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
