@@ -697,31 +697,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             busy={create.isPending}
             onCancel={() => setCapturing(false)}
           />
-          <MailboxImport
-            organizationId={identity.organizationId}
-            onImport={async (input, integrationId, options) => {
-              await importFromMailbox.mutateAsync({
-                relationship: input,
-                ...(integrationId ? { integrationId } : {}),
-                ...(options?.keepOpen ? { keepOpen: true } : {}),
-              });
-            }}
-            busy={importFromMailbox.isPending}
-            busyLabel={
-              importPhase === "backfilling" ? "Bringing in labeled history…" : "Adding to Comms…"
-            }
-          />
+          <p className="text-[13px] text-muted-foreground">
+            Or label them <span className="text-foreground">Trust Tai/Comms</span> in Gmail — Comms
+            brings that person in on its own, with their labeled history.
+          </p>
           {create.isError ? (
             <p className="text-[13px] text-destructive">{(create.error as Error).message}</p>
           ) : null}
-          {importFromMailbox.isError ? (
-            <p className="text-[13px] text-destructive">
-              {(importFromMailbox.error as Error).message}
-            </p>
-          ) : null}
-          {importWarning ? (
-            <p className="text-[13px] text-destructive">{importWarning}</p>
-          ) : null}
+
         </div>
       ) : null}
 
