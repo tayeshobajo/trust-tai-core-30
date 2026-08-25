@@ -239,6 +239,8 @@ function MailboxRow({
   // when nobody has pressed "Read now" this session.
   const lastRun = readGmailRunSummary(connection.cursor);
 
+  const exceptions = readIntakeExceptions(connection.cursor);
+
   return (
     <li className="space-y-2 border-t border-border pt-3">
       <div className="flex items-start justify-between gap-3">
@@ -247,26 +249,56 @@ function MailboxRow({
             {connection.accountEmail ?? "Gmail account"}
           </p>
           <p className="text-xs text-muted-foreground">
-            {INTEGRATION_STATUS_LABEL[connection.status]}
+            {connected ? "Watching Trust Tai/Comms" : INTEGRATION_STATUS_LABEL[connection.status]}
             {connected ? (canSend ? " · can send" : " · read-only grant") : ""}
             {connection.lastSyncAt
-              ? ` · last read ${new Date(connection.lastSyncAt).toLocaleString()}`
-              : " · not read yet"}
+              ? ` · last checked ${new Date(connection.lastSyncAt).toLocaleString()}`
+              : " · not checked yet"}
           </p>
         </div>
       </div>
 
+      {connected ? (
+        <p className="text-xs text-muted-foreground">
+          New labeled people are added to Comms automatically, every few hours.
+        </p>
+      ) : null}
+
       {lastRun ? (
         <p className="text-xs text-muted-foreground">
           Last pass {new Date(lastRun.at).toLocaleString()}: read {lastRun.messagesRead} labeled,
-          stored {lastRun.messagesStored}, emitted {lastRun.eventsEmitted} events, verified{" "}
-          {lastRun.draftsVerified} sent.
-          {lastRun.pendingPeople > 0
-            ? ` ${lastRun.pendingPeople} labeled ${
-                lastRun.pendingPeople === 1 ? "person is" : "people are"
-              } not in Comms yet (${lastRun.skippedUnknownPeople} held back).`
+          stored {lastRun.messagesStored}
+          {lastRun.peopleAdded > 0
+            ? `, added ${lastRun.peopleAdded} ${lastRun.peopleAdded === 1 ? "person" : "people"}`
             : ""}
+          , emitted {lastRun.eventsEmitted} events, verified {lastRun.draftsVerified} sent.
         </p>
+      ) : null}
+
+      {exceptions.length > 0 ? (
+        <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+          <p className="text-xs font-medium text-foreground">
+            Needs your decision ({exceptions.length})
+          </p>
+          <ul className="space-y-2">
+            {exceptions.slice(0, 5).map((exception) => (
+              <li key={exception.providerMessageId} className="text-xs text-muted-foreground">
+                <span className="text-foreground">
+                  {exception.subject?.trim() || "A labeled thread"}
+                </span>{" "}
+                — {exception.emails.join(", ")}.{" "}
+                {exception.reason === "ambiguous_thread"
+                  ? "More than one person is on this labeled thread, so Comms did not guess who it belongs to. Label the individual thread with that person, or add them by hand."
+                  : `${exception.detail ?? "That relationship could not be created."} Sync now to try again.`}
+              </li>
+            ))}
+          </ul>
+          {exceptions.length > 5 ? (
+            <p className="text-xs text-muted-foreground">
+              …and {exceptions.length - 5} more.
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {connected && !canSend ? (
@@ -282,8 +314,8 @@ function MailboxRow({
 
       <div className="flex flex-wrap gap-2">
         {connected ? (
-          <TTButton onClick={onReadNow} disabled={busy}>
-            {reading ? "Reading…" : "Read now"}
+          <TTButton variant="quiet" onClick={onReadNow} disabled={busy}>
+            {reading ? "Checking…" : "Sync now (optional)"}
           </TTButton>
         ) : null}
         {!canSend ? (
@@ -298,3 +330,4 @@ function MailboxRow({
     </li>
   );
 }
+
