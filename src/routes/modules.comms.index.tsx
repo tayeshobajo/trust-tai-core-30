@@ -19,7 +19,6 @@ import { X } from "lucide-react";
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { CaptureForm } from "@/components/tt/comms/capture-form";
-import { MailboxImport } from "@/components/tt/comms/mailbox-import";
 import { CommsInbox } from "@/components/tt/comms/comms-inbox";
 import { CommsSidebarPanels } from "@/components/tt/comms/comms-sidebar";
 import { ConversationRoom } from "@/components/tt/comms/conversation-room";
@@ -34,7 +33,6 @@ import { EmptyState, PageHeader, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService, type RelationshipInput } from "@/data/supabase/comms-service";
 import { gmailDownloadAttachment, gmailSync } from "@/data/supabase/comms-gmail";
-import { addMailboxCandidateToComms, ONBOARDING_BACKFILL_DAYS } from "@/data/comms-onboarding";
 import { listRelationshipMessages } from "@/data/supabase/comms-messages";
 import { deriveConversationHealth, relationshipStrength } from "@/data/comms-health";
 import { conversationTimeline, groupByDay } from "@/data/comms-timeline";
@@ -335,55 +333,15 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
-  /**
-   * Add to Comms from the labeled-candidate list. Creation runs exactly as a
-   * manual capture; immediately after, one member-authorized bounded backfill
-   * (30 days, label-gated, read-only) brings the person's existing labeled
-   * history in — from the same mailbox the candidate was discovered in. A
-   * backfill failure never removes the relationship — it only leaves a
-   * warning asking to sync again.
+  /*
+   * There is no mailbox import queue any more. Applying the exact
+   * Trust Tai/Comms Gmail label IS the approval: the scheduled pass creates
+   * the canonical person and their relationship, and brings the labeled
+   * history with them. Only ambiguity or a failed create asks for a human,
+   * and that lives on Connections.
    */
-  const [importPhase, setImportPhase] = useState<"creating" | "backfilling" | null>(null);
-  const [importWarning, setImportWarning] = useState<string | null>(null);
-  const importFromMailbox = useMutation({
-    mutationFn: (input: {
-      relationship: RelationshipInput;
-      integrationId?: string;
-      /**
-       * Bulk imports set keepOpen: the capture panel must stay where it is
-       * while several people are added one after another — no selection
-       * jump, no panel close, one quiet refresh per person.
-       */
-      keepOpen?: boolean;
-    }) =>
-      addMailboxCandidateToComms(input.relationship, {
-        createRelationship: async (value) => {
-          setImportPhase("creating");
-          return commsService.create(value, context);
-        },
-        backfillHistory: async () => {
-          setImportPhase("backfilling");
-          await gmailSync(
-            identity.organizationId,
-            ONBOARDING_BACKFILL_DAYS,
-            input.integrationId,
-          );
-        },
-      }),
-    onSuccess: async ({ relationship, historyWarning }, variables) => {
-      if (variables.keepOpen) {
-        await refresh();
-        return;
-      }
-      setSelectedId(relationship.id);
-      setImportWarning(historyWarning);
-      // With history in, the panel steps aside; with a warning, it stays open
-      // so the message is seen next to the person it concerns.
-      if (!historyWarning) setCapturing(false);
-      await refresh();
-    },
-    onSettled: () => setImportPhase(null),
-  });
+
+
 
   const update = useMutation({
     mutationFn: (input: Parameters<typeof commsService.update>[1]) =>
@@ -675,10 +633,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               </TTButton>
             ) : null}
             <TTButton
-              onClick={() => {
-                setImportWarning(null);
-                setCapturing((value) => !value);
-              }}
+              onClick={() => setCapturing((value) => !value)}
             >
               {capturing ? "Close" : "Add relationship"}
             </TTButton>
@@ -697,31 +652,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             busy={create.isPending}
             onCancel={() => setCapturing(false)}
           />
-          <MailboxImport
-            organizationId={identity.organizationId}
-            onImport={async (input, integrationId, options) => {
-              await importFromMailbox.mutateAsync({
-                relationship: input,
-                ...(integrationId ? { integrationId } : {}),
-                ...(options?.keepOpen ? { keepOpen: true } : {}),
-              });
-            }}
-            busy={importFromMailbox.isPending}
-            busyLabel={
-              importPhase === "backfilling" ? "Bringing in labeled history…" : "Adding to Comms…"
-            }
-          />
+          <p className="text-[13px] text-muted-foreground">
+            Or label them <span className="text-foreground">Trust Tai/Comms</span> in Gmail — Comms
+            brings that person in on its own, with their labeled history.
+          </p>
           {create.isError ? (
             <p className="text-[13px] text-destructive">{(create.error as Error).message}</p>
           ) : null}
-          {importFromMailbox.isError ? (
-            <p className="text-[13px] text-destructive">
-              {(importFromMailbox.error as Error).message}
-            </p>
-          ) : null}
-          {importWarning ? (
-            <p className="text-[13px] text-destructive">{importWarning}</p>
-          ) : null}
+
         </div>
       ) : null}
 

@@ -58,6 +58,14 @@ import {
   type NormalizedMessage,
 } from "@/domain/comms-integrations";
 import { extractEmailBody } from "@/domain/comms-email-body";
+import {
+  intakeExceptionToJson,
+  mergeIntakeExceptions,
+  readIntakeExceptions,
+  resolveIntakeCounterpart,
+  type IntakeException,
+} from "@/domain/comms-intake";
+import { ensureLabeledRelationship } from "@/lib/comms-intake.server";
 import { SUITE_EVENTS } from "@/domain/events";
 import {
   planDraftVerifications,
@@ -619,7 +627,9 @@ export interface SyncResult {
   messagesStored: number;
   relationshipsTouched: number;
   skippedUnknownPeople: number;
-  /** Distinct labeled correspondents not in Comms yet — the review queue size. */
+  /** People the label itself approved into Comms this pass. */
+  peopleAdded: number;
+  /** Labeled messages awaiting a human decision — ambiguity or a failed create. */
   pendingPeople: number;
   /** Inbound messages that entered the suite event stream this pass. */
   eventsEmitted: number;
@@ -966,12 +976,12 @@ async function runSyncPass(input: {
     if (row.email) byEmail.set(row.email.toLowerCase(), row);
   });
 
-  // No tracked people means no Gmail work at all — not even label resolution:
-  // a clean no-op that still records the pass on the connection row.
+  // The label is the ingestion boundary AND the approval, so a workspace with
+  // no relationships yet is still read: the first labeled correspondent is
+  // exactly how Comms starts. If the label is absent, fail safe with a clear
+  // status — never fall back to whole-mailbox reading.
   const ids: string[] = [];
-  if (byEmail.size > 0) {
-    // The label is the ingestion boundary. If it is not there, fail safe
-    // with a clear status — never fall back to whole-mailbox reading.
+  {
     const labelId = await resolveCommsLabelId(accessToken);
     if (!labelId) throw new Error(COMMS_LABEL_MISSING_MESSAGE);
 
@@ -1002,9 +1012,12 @@ async function runSyncPass(input: {
     } while (pageToken && ids.length < MAX_MESSAGES_PER_PASS);
   }
 
+
   let messagesRead = 0;
   let skippedUnknownPeople = 0;
-  const unknownPeople = new Set<string>();
+  let peopleAdded = 0;
+  const resolvedExceptions = new Set<string>();
+  const freshExceptions: IntakeException[] = [];
   const perRelationship = new Map<string, { relationship: RelationshipRow; messages: NormalizedMessage[] }>();
   const threadSubjects = new Map<string, string | undefined>();
 
@@ -1018,14 +1031,68 @@ async function runSyncPass(input: {
     const message = normalize(raw, mailbox);
     if (!message) continue;
 
-    // The label is the boundary; identity still decides. Labeled mail with
-    // someone Comms does not track is counted and left unstored — the
-    // mailbox import surfaces that person for a human decision instead.
-    const match = findTrackedCounterpart(message, mailbox, byEmail);
+    // The label is the approval. A labeled message with someone Comms
+    // already tracks maps to that relationship; a labeled message with
+    // someone new brings them in through the canonical create path. Only a
+    // thread whose counterpart cannot be resolved safely — or a create that
+    // failed — becomes a visible exception.
+    let match = findTrackedCounterpart(message, mailbox, byEmail);
     if (!match) {
-      skippedUnknownPeople += 1;
-      for (const email of counterpartAddresses(message, mailbox)) unknownPeople.add(email);
-      continue;
+      const counterpart = resolveIntakeCounterpart(message, mailbox);
+      if (counterpart.kind === "none") {
+        skippedUnknownPeople += 1;
+        continue;
+      }
+      if (counterpart.kind === "ambiguous") {
+        skippedUnknownPeople += 1;
+        freshExceptions.push({
+          reason: "ambiguous_thread",
+          providerMessageId: message.providerMessageId,
+          providerThreadId: message.providerThreadId,
+          emails: counterpart.emails,
+          ...(message.subject ? { subject: message.subject } : {}),
+          occurredAt: message.occurredAt,
+          observedAt: new Date().toISOString(),
+          retryable: false,
+          detail: "More than one person is on this labeled thread, so Comms did not guess.",
+        });
+        continue;
+      }
+      try {
+        const outcome = await ensureLabeledRelationship(client, {
+          organizationId,
+          email: counterpart.email,
+          ...(counterpart.name ? { name: counterpart.name } : {}),
+          mailbox,
+          providerThreadId: message.providerThreadId,
+          providerMessageId: message.providerMessageId,
+          occurredAt: message.occurredAt,
+        });
+        if (outcome.created) peopleAdded += 1;
+        match = {
+          id: outcome.relationshipId,
+          email: outcome.email,
+          full_name: outcome.fullName,
+        };
+        byEmail.set(outcome.email, match);
+        resolvedExceptions.add(message.providerMessageId);
+      } catch (intakeError) {
+        // Never a silent loss: the person stays visible, with a retry.
+        skippedUnknownPeople += 1;
+        freshExceptions.push({
+          reason: "create_failed",
+          providerMessageId: message.providerMessageId,
+          providerThreadId: message.providerThreadId,
+          emails: [counterpart.email],
+          ...(message.subject ? { subject: message.subject } : {}),
+          occurredAt: message.occurredAt,
+          observedAt: new Date().toISOString(),
+          retryable: true,
+          detail:
+            intakeError instanceof Error ? intakeError.message : "That relationship could not be created.",
+        });
+        continue;
+      }
     }
 
     const bucket = perRelationship.get(match.id) ?? { relationship: match, messages: [] };
@@ -1033,6 +1100,7 @@ async function runSyncPass(input: {
     perRelationship.set(match.id, bucket);
     threadSubjects.set(message.providerThreadId, message.subject);
   }
+
 
   // Which of these the vault has already stored: only genuinely new messages
   // count as stored and only new inbound mail raises an event.
@@ -1153,6 +1221,25 @@ async function runSyncPass(input: {
     draftsVerified += await verifySentDrafts(client, organizationId, bucket.relationship);
   }
 
+  // Exceptions carry across passes: an unresolved ambiguity stays visible,
+  // a person who came in this pass leaves the queue, and a repeated sync of
+  // the same message replaces rather than duplicates its entry.
+  const { data: cursorRow } = await client
+    .from("comms_integrations")
+    .select("cursor")
+    .eq("id", connection.id)
+    .maybeSingle();
+  const priorCursor =
+    (cursorRow as { cursor?: unknown } | null)?.cursor &&
+    typeof (cursorRow as { cursor?: unknown }).cursor === "object"
+      ? ((cursorRow as { cursor: Record<string, unknown> }).cursor)
+      : {};
+  const exceptions = mergeIntakeExceptions(
+    readIntakeExceptions(priorCursor),
+    freshExceptions,
+    resolvedExceptions,
+  );
+
   // The persisted ingestion summary the status surface reads back. Counts
   // only — never content — so the card can report the last pass truthfully
   // without touching the mailbox again.
@@ -1165,10 +1252,12 @@ async function runSyncPass(input: {
       messages_stored: messagesStored,
       relationships_touched: perRelationship.size,
       skipped_unknown_people: skippedUnknownPeople,
-      pending_people: unknownPeople.size,
+      people_added: peopleAdded,
+      pending_people: exceptions.length,
       events_emitted: eventsEmitted,
       drafts_verified: draftsVerified,
     },
+    intake_exceptions: exceptions.map(intakeExceptionToJson),
   };
   const { error: cursorError } = await client
     .from("comms_integrations")
@@ -1188,12 +1277,14 @@ async function runSyncPass(input: {
     messagesStored,
     relationshipsTouched: perRelationship.size,
     skippedUnknownPeople,
-    pendingPeople: unknownPeople.size,
+    peopleAdded,
+    pendingPeople: exceptions.length,
     eventsEmitted,
     draftsVerified,
     lastSyncAt: nowIso,
   };
 }
+
 
 /**
  * The member-invoked pass over ONE mailbox. Every read and write is made

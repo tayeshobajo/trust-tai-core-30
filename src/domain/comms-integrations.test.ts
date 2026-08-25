@@ -26,6 +26,8 @@ describe("readGmailRunSummary", () => {
       messagesStored: 13,
       relationshipsTouched: 1,
       skippedUnknownPeople: 5,
+      peopleAdded: 0,
+
       pendingPeople: 2,
       eventsEmitted: 7,
       draftsVerified: 1,

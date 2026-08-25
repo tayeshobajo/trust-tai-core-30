@@ -397,48 +397,67 @@ Flow:
    mailbox address, writes `comms_integrations`, and stores the refresh token
    sealed with AES-GCM through `comms_put_integration_secret`. Even a member
    reading that value back gets ciphertext.
-4. Read now runs one bounded, label-gated pass. The ingestion boundary is
-   the Gmail label `Trust Tai/Comms`: its id is resolved from Gmail's own
-   `/labels` list (matching the full nested path, never a free-text `label:`
-   search, which would split on the space and slash), and every message
-   listing is constrained by that label id plus the overlap window. Unlabeled
-   mail — promotions, newsletters, alerts, even mail with a person Comms
-   knows — never enters the candidate set. Listing is capped at 60 messages
-   over the window, metadata and snippet only. Identity is decided after
-   listing: a message is stored only when a participant matches an existing
-   `comms_relationships` email. Labeled mail with someone not yet in Comms
-   is counted and left unstored, and that person is surfaced for review
-   through the mailbox import ("Labeled in Gmail, not yet in Comms") — a
-   human Add-to-Comms decision, never an automatic one. A missing label
-   fails safe with a clear "Needs attention" status; there is no
-   whole-mailbox fallback. An empty relationship list is a clean no-op — no
-   Gmail work at all. Upserts key on
+4. A pass is bounded and label-gated. The ingestion boundary is the Gmail
+   label `Trust Tai/Comms`: its id is resolved from Gmail's own `/labels`
+   list (matching the full nested path, never a free-text `label:` search,
+   which would split on the space and slash), and every message listing is
+   constrained by that label id plus the overlap window. Unlabeled mail —
+   promotions, newsletters, alerts, even mail with a person Comms knows —
+   never enters Comms at all. Listing is capped at 60 messages over the
+   window. A missing label fails safe with a clear "Needs attention" status;
+   there is no whole-mailbox fallback. Upserts key on
    `(organization_id, provider, provider_message_id)`, so repeat passes are
    idempotent. Thread state and the response clock come from the pure
    `readThread` reading, not from Gmail. Comms never adds, renames, or
    removes Gmail labels — labeling is Tai's act, in Gmail.
+
+### Doctrine — the label is the approval
+
+**Applying the exact `Trust Tai/Comms` Gmail label is the human approval to
+bring that correspondent into Comms. Normal intake after that is automatic;
+only ambiguity or failure asks Tai to intervene.**
+
+What follows from that, and is enforced in code:
+
+- A labeled message whose counterpart Comms already tracks attaches to that
+  relationship. No duplicate person, no duplicate relationship.
+- A labeled message whose counterpart is unknown brings that person in
+  automatically, through the canonical path: one shared `contacts` row
+  (matched by normalized email first, created only when absent), then one
+  `comms_relationships` row for that person, then the labeled history within
+  the same bounded window. There is no Gmail-specific people table.
+  (`src/lib/comms-intake.server.ts`.)
+- There is no second approval. No import queue, no "Show people", no
+  checkbox selection, no per-person "Add to Comms" for a correspondent the
+  label already approved. That surface has been retired.
+- Intake infers a person and nothing else. No organization, no client, no
+  lifecycle promotion — the relationship starts where governed rules start it.
+- Provenance is kept: the Gmail label, the mailbox identity, the first
+  observed thread and message, and their timestamps live on
+  `metadata.gmail_intake`, and one `relationship.created` activity carries a
+  dedupe key naming the person.
+- Ambiguity fails closed, not open. A labeled outbound thread with more than
+  one human recipient — or a create that failed — is recorded on
+  `cursor.intake_exceptions` (capped, deduped by message id) and surfaced on
+  Connections as "Needs your decision", retryable, never guessed at and never
+  silently dropped. `resolveIntakeCounterpart` (`src/domain/comms-intake.ts`)
+  makes that call; machine addresses are never people.
+- Reading is proactive. The 6-hourly scheduled sweep is the normal path;
+  "Sync now" is an optional recovery action, and the connection reads
+  "Watching Trust Tai/Comms · last checked …".
 5. Coverage is visible, not assumed. Every pass persists a counts-only
    summary on the connection (`cursor.last_run`: messages read and stored,
-   events emitted, drafts verified, and `pending_people` — distinct labeled
-   correspondents not yet in Comms). The Connections card reports the last
-   pass verbatim without re-reading the mailbox. The mailbox import answers
-   the companion question — of the people on labeled threads, how many are
-   already in Comms versus waiting for a decision — over the full read
-   window, before its display cap. Adding a person stays explicit:
-   preview, confirm, Add to Comms. The moment the relationship exists, one
-   member-authorized bounded backfill (30 days, clamped 1–90) runs through
-   the same label-gated sync path, so the person's existing labeled history
-   is stored against the relationship in the same action — the member never
-   needs to understand sync watermarks. If that backfill fails, the
-   relationship stays and a non-destructive warning asks to sync again;
-   nothing is rolled back. Repeats are safe: creation dedupes on email and
-   message upserts key on provider message id.
+   people added, events emitted, drafts verified, and `pending_people` — the
+   exceptions still awaiting a decision). The Connections card reports the
+   last pass verbatim without re-reading the mailbox.
 
 Label gating and coverage were verified in production on 2026-08-22 against
 the real connected mailbox: the authorized scheduled sweep read only the
-1 labeled message in the window (14 before gating), counted 1
-labeled-but-unknown correspondent as skipped/pending without storing, and an
-immediate repeat run was fully idempotent.
+1 labeled message in the window (14 before gating) and an immediate repeat
+run was fully idempotent. Automatic label-as-approval intake is
+implementation- and test-verified as of this change; production verification
+of an unknown labeled correspondent is still pending.
+
 
 ### Send path (ready for re-consent; real sending not yet production-verified)
 

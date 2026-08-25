@@ -100,7 +100,8 @@ const candidate = {
 
 const EMAIL_BLOCKER: HandoffBlocker = {
   kind: "email_unverified",
-  message: "claire@example.com is unverified, so it cannot be treated as reachable.",
+  message:
+    "claire@example.com is unverified, and no confirmed LinkedIn route stands in for it.",
   personId: "person-1",
 };
 const COVERAGE_BLOCKER: HandoffBlocker = {
