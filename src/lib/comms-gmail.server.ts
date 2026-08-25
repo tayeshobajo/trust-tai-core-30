@@ -1243,6 +1243,13 @@ async function runSyncPass(input: {
     : [];
   const refresh = await fetchApprovedThreads({ threadIds: approvedThreadIds, accessToken });
 
+  // Only a message that itself carried the label may bring a NEW person
+  // into Comms. Continuity keeps an approved conversation flowing; it never
+  // becomes a second, quieter intake path.
+  const labelDiscoveredIds = new Set(
+    labelMessages.map((entry) => entry.id).filter((id): id is string => Boolean(id)),
+  );
+
   for (const raw of mergeFetchedMessages(labelMessages, refresh.messages)) {
     messagesRead += 1;
     const message = normalize(raw, mailbox);
@@ -1256,7 +1263,12 @@ async function runSyncPass(input: {
     // failed — becomes a visible exception.
     let match = findTrackedCounterpart(message, mailbox, byEmail);
     if (!match) {
+      if (!labelDiscoveredIds.has(message.providerMessageId)) {
+        skippedUnknownPeople += 1;
+        continue;
+      }
       const counterpart = resolveIntakeCounterpart(message, mailbox);
+
       if (counterpart.kind === "none") {
         skippedUnknownPeople += 1;
         continue;
