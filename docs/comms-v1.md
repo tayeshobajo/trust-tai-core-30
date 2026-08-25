@@ -411,11 +411,40 @@ Flow:
    `readThread` reading, not from Gmail. Comms never adds, renames, or
    removes Gmail labels — labeling is Tai's act, in Gmail.
 
-### Doctrine — the label is the approval
+### Doctrine — the label approves the conversation
 
 **Applying the exact `Trust Tai/Comms` Gmail label is the human approval to
-bring that correspondent into Comms. Normal intake after that is automatic;
-only ambiguity or failure asks Tai to intervene.**
+bring that correspondent into Comms, and to keep following that conversation.
+Tai never re-labels a reply. Normal intake after that is automatic; only
+ambiguity or failure asks Tai to intervene.**
+
+#### Approved-thread continuity
+
+Gmail applies a custom label to the messages present when Tai labels the
+conversation; a later reply can arrive without it. Discovery therefore stays
+label-gated, and continuity is separate:
+
+- A conversation first seen through the exact label and stored in
+  `comms_threads` (`provider = gmail`, `provider_thread_id`) is an approved
+  watched conversation.
+- Every pass, after label discovery, those approved thread ids are re-read
+  through Gmail's own thread endpoint (`/threads/{id}?format=full`), so a new
+  reply inside them is ingested whether or not it carries the label.
+- Scope widens to previously approved `provider_thread_id` values only. No
+  sender scan, no new unlabeled conversation, no whole-mailbox read, and only
+  a message that itself carried the label may introduce a new person.
+- Mailbox identity holds: a thread is refreshed through the account whose
+  message provenance observed it. Legacy rows with no mailbox provenance are
+  claimed only when the workspace has a single connected mailbox.
+- Bounded and deterministic: the most recently active approved threads first,
+  capped per pass (`MAX_APPROVED_THREADS_PER_PASS`). A thread Gmail no longer
+  has (404) is skipped and counted in
+  `cursor.last_run.approved_threads_unavailable`; it never fails the mailbox.
+- One message, once: discovery and refresh are deduped by Gmail message id,
+  upserts key on `(organization_id, provider, provider_message_id)`, and
+  `relationship.message_received` is emitted for genuinely new inbound mail
+  only.
+
 
 What follows from that, and is enforced in code:
 
