@@ -1145,9 +1145,12 @@ export async function verifySentDrafts(
 
 /**
  * One incremental pass, shared by the member-invoked read and the scheduled
- * service pass. Label-gated: only threads carrying the `Trust Tai/Comms`
- * label are listed, so unlabeled mail — noise or otherwise — never enters
- * the candidate set or consumes the bounded per-pass cap. Identity is then
+ * service pass. Label-gated for discovery: only conversations carrying the
+ * `Trust Tai/Comms` label are listed, so unlabeled mail — noise or otherwise
+ * — never enters the candidate set or consumes the bounded per-pass cap.
+ * Already-approved conversations are then refreshed by thread id, so a later
+ * reply Gmail did not stamp with the label still arrives. Identity is then
+
  * decided against the tracked relationships: only messages with people
  * already in Comms are stored — idempotently on
  * `(organization, provider, provider_message_id)`. Labeled mail with unknown
