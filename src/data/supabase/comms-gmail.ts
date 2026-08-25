@@ -12,10 +12,15 @@
  */
 
 import { supabase } from "@/integrations/trust-tai/supabase";
-import { clampBackfillDays } from "@/data/comms-onboarding";
 import type { MailboxCoverage } from "@/domain/comms-integrations";
 
 export type { MailboxCoverage };
+
+/** How far back a member-invoked pass may look, bounded to what Gmail allows. */
+function clampBackfillDays(days: number): number {
+  if (!Number.isFinite(days)) return 30;
+  return Math.min(90, Math.max(1, Math.round(days)));
+}
 
 const CONNECT_URL = "/api/public/comms/gmail/connect";
 const SYNC_URL = "/api/public/comms/gmail/sync";
