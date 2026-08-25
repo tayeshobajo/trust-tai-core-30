@@ -1004,7 +1004,9 @@ async function runSyncPass(input: {
 
   let messagesRead = 0;
   let skippedUnknownPeople = 0;
-  const unknownPeople = new Set<string>();
+  let peopleAdded = 0;
+  const resolvedExceptions = new Set<string>();
+  const freshExceptions: IntakeException[] = [];
   const perRelationship = new Map<string, { relationship: RelationshipRow; messages: NormalizedMessage[] }>();
   const threadSubjects = new Map<string, string | undefined>();
 
@@ -1018,14 +1020,68 @@ async function runSyncPass(input: {
     const message = normalize(raw, mailbox);
     if (!message) continue;
 
-    // The label is the boundary; identity still decides. Labeled mail with
-    // someone Comms does not track is counted and left unstored — the
-    // mailbox import surfaces that person for a human decision instead.
-    const match = findTrackedCounterpart(message, mailbox, byEmail);
+    // The label is the approval. A labeled message with someone Comms
+    // already tracks maps to that relationship; a labeled message with
+    // someone new brings them in through the canonical create path. Only a
+    // thread whose counterpart cannot be resolved safely — or a create that
+    // failed — becomes a visible exception.
+    let match = findTrackedCounterpart(message, mailbox, byEmail);
     if (!match) {
-      skippedUnknownPeople += 1;
-      for (const email of counterpartAddresses(message, mailbox)) unknownPeople.add(email);
-      continue;
+      const counterpart = resolveIntakeCounterpart(message, mailbox);
+      if (counterpart.kind === "none") {
+        skippedUnknownPeople += 1;
+        continue;
+      }
+      if (counterpart.kind === "ambiguous") {
+        skippedUnknownPeople += 1;
+        freshExceptions.push({
+          reason: "ambiguous_thread",
+          providerMessageId: message.providerMessageId,
+          providerThreadId: message.providerThreadId,
+          emails: counterpart.emails,
+          ...(message.subject ? { subject: message.subject } : {}),
+          occurredAt: message.occurredAt,
+          observedAt: new Date().toISOString(),
+          retryable: false,
+          detail: "More than one person is on this labeled thread, so Comms did not guess.",
+        });
+        continue;
+      }
+      try {
+        const outcome = await ensureLabeledRelationship(client, {
+          organizationId,
+          email: counterpart.email,
+          ...(counterpart.name ? { name: counterpart.name } : {}),
+          mailbox,
+          providerThreadId: message.providerThreadId,
+          providerMessageId: message.providerMessageId,
+          occurredAt: message.occurredAt,
+        });
+        if (outcome.created) peopleAdded += 1;
+        match = {
+          id: outcome.relationshipId,
+          email: outcome.email,
+          full_name: outcome.fullName,
+        };
+        byEmail.set(outcome.email, match);
+        resolvedExceptions.add(message.providerMessageId);
+      } catch (intakeError) {
+        // Never a silent loss: the person stays visible, with a retry.
+        skippedUnknownPeople += 1;
+        freshExceptions.push({
+          reason: "create_failed",
+          providerMessageId: message.providerMessageId,
+          providerThreadId: message.providerThreadId,
+          emails: [counterpart.email],
+          ...(message.subject ? { subject: message.subject } : {}),
+          occurredAt: message.occurredAt,
+          observedAt: new Date().toISOString(),
+          retryable: true,
+          detail:
+            intakeError instanceof Error ? intakeError.message : "That relationship could not be created.",
+        });
+        continue;
+      }
     }
 
     const bucket = perRelationship.get(match.id) ?? { relationship: match, messages: [] };
@@ -1033,6 +1089,7 @@ async function runSyncPass(input: {
     perRelationship.set(match.id, bucket);
     threadSubjects.set(message.providerThreadId, message.subject);
   }
+
 
   // Which of these the vault has already stored: only genuinely new messages
   // count as stored and only new inbound mail raises an event.
