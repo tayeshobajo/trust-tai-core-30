@@ -8,9 +8,9 @@
  * them feed the same relationships: the counterpart's email is the identity
  * that decides what is stored, never which mailbox observed it.
  *
- * What this is allowed to do: read message metadata for threads Tai has
- * explicitly labeled `Trust Tai/Comms`, and store only the ones with people
- * who are already relationships in Comms.
+ * What this is allowed to do: read message metadata for conversations Tai
+ * has explicitly labeled `Trust Tai/Comms`, and store only the ones with
+ * people who are already relationships in Comms.
  *
  * How it reads: label-gated first, identity-matched second. The label id is
  * resolved from Gmail's own label list and constrains every message listing,
@@ -19,6 +19,15 @@
  * relationship list is then the identity layer that decides what is stored.
  * Labeled mail with someone Comms does not track is counted and left
  * unstored; it is surfaced for review through the mailbox import instead.
+ *
+ * Approved-thread continuity: applying the exact label to a conversation is
+ * approval to keep following THAT conversation. Once a thread has been seen
+ * through the label gate and stored in `comms_threads`, later replies inside
+ * that same `provider_thread_id` are read through Gmail's thread endpoint
+ * even when the individual reply does not itself carry the label — Tai never
+ * re-labels every future reply. Scope widens to previously approved thread
+ * ids only: never by sender, never to a new unlabeled conversation, never to
+ * the whole mailbox, and only a labeled message may introduce a new person.
  *
  * How it sends: it doesn't, from this module. Consent asks for
  * `gmail.readonly` plus `gmail.send`, and the granted set is persisted
@@ -30,8 +39,9 @@
  *  - send anything on its own (no send call exists here),
  *  - add, rename, or remove Gmail labels (`gmail.modify` is never
  *    requested; no mutation call exists here),
- *  - read unlabeled mail, or fall back to whole-mailbox reading when the
- *    label is missing,
+ *  - read unlabeled mail outside an already-approved conversation, or fall
+ *    back to whole-mailbox reading when the label is missing,
+
  *  - store mail with anyone Comms does not already track, or create a
  *    relationship on its own,
  *  - let a token reach the browser (refresh tokens are sealed at rest and
