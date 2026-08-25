@@ -1211,6 +1211,25 @@ async function runSyncPass(input: {
     draftsVerified += await verifySentDrafts(client, organizationId, bucket.relationship);
   }
 
+  // Exceptions carry across passes: an unresolved ambiguity stays visible,
+  // a person who came in this pass leaves the queue, and a repeated sync of
+  // the same message replaces rather than duplicates its entry.
+  const { data: cursorRow } = await client
+    .from("comms_integrations")
+    .select("cursor")
+    .eq("id", connection.id)
+    .maybeSingle();
+  const priorCursor =
+    (cursorRow as { cursor?: unknown } | null)?.cursor &&
+    typeof (cursorRow as { cursor?: unknown }).cursor === "object"
+      ? ((cursorRow as { cursor: Record<string, unknown> }).cursor)
+      : {};
+  const exceptions = mergeIntakeExceptions(
+    readIntakeExceptions(priorCursor),
+    freshExceptions,
+    resolvedExceptions,
+  );
+
   // The persisted ingestion summary the status surface reads back. Counts
   // only — never content — so the card can report the last pass truthfully
   // without touching the mailbox again.
@@ -1223,10 +1242,12 @@ async function runSyncPass(input: {
       messages_stored: messagesStored,
       relationships_touched: perRelationship.size,
       skipped_unknown_people: skippedUnknownPeople,
-      pending_people: unknownPeople.size,
+      people_added: peopleAdded,
+      pending_people: exceptions.length,
       events_emitted: eventsEmitted,
       drafts_verified: draftsVerified,
     },
+    intake_exceptions: exceptions.map(intakeExceptionToJson),
   };
   const { error: cursorError } = await client
     .from("comms_integrations")
@@ -1246,12 +1267,14 @@ async function runSyncPass(input: {
     messagesStored,
     relationshipsTouched: perRelationship.size,
     skippedUnknownPeople,
-    pendingPeople: unknownPeople.size,
+    peopleAdded,
+    pendingPeople: exceptions.length,
     eventsEmitted,
     draftsVerified,
     lastSyncAt: nowIso,
   };
 }
+
 
 /**
  * The member-invoked pass over ONE mailbox. Every read and write is made
