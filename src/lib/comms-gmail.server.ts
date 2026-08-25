@@ -966,12 +966,12 @@ async function runSyncPass(input: {
     if (row.email) byEmail.set(row.email.toLowerCase(), row);
   });
 
-  // No tracked people means no Gmail work at all — not even label resolution:
-  // a clean no-op that still records the pass on the connection row.
+  // The label is the ingestion boundary AND the approval, so a workspace with
+  // no relationships yet is still read: the first labeled correspondent is
+  // exactly how Comms starts. If the label is absent, fail safe with a clear
+  // status — never fall back to whole-mailbox reading.
   const ids: string[] = [];
-  if (byEmail.size > 0) {
-    // The label is the ingestion boundary. If it is not there, fail safe
-    // with a clear status — never fall back to whole-mailbox reading.
+  {
     const labelId = await resolveCommsLabelId(accessToken);
     if (!labelId) throw new Error(COMMS_LABEL_MISSING_MESSAGE);
 
@@ -1001,6 +1001,7 @@ async function runSyncPass(input: {
       pageToken = list.nextPageToken || undefined;
     } while (pageToken && ids.length < MAX_MESSAGES_PER_PASS);
   }
+
 
   let messagesRead = 0;
   let skippedUnknownPeople = 0;
