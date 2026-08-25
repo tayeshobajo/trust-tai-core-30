@@ -121,6 +121,15 @@ export function toPerson(row: ContactRow): Person {
     confidence:
       confidence && CONFIDENCES.includes(confidence) ? confidence : "asserted_by_provider",
     ...(text(meta["linkedin_url"]) ? { linkedinUrl: text(meta["linkedin_url"])! } : {}),
+    ...(meta["linkedin_confirmed"] !== undefined && meta["linkedin_confirmed"] !== null
+      ? { linkedinConfirmed: meta["linkedin_confirmed"] === "true" || meta["linkedin_confirmed"] === true }
+      : {}),
+    ...(text(meta["linkedin_checked_at"]) ? { linkedinCheckedAt: text(meta["linkedin_checked_at"])! } : {}),
+    ...(text(meta["linkedin_provider"]) ? { linkedinProvider: text(meta["linkedin_provider"])! } : {}),
+    ...(text(meta["linkedin_external_id"]) ? { linkedinExternalId: text(meta["linkedin_external_id"])! } : {}),
+    ...(text(meta["linkedin_route_confidence"])
+      ? { linkedinConfidence: text(meta["linkedin_route_confidence"]) as NonNullable<Person["linkedinConfidence"]> }
+      : {}),
     ...(row.phone ? { phone: row.phone } : {}),
     ...(text(meta["email_checked_at"]) ? { emailCheckedAt: text(meta["email_checked_at"])! } : {}),
     ...(text(meta["email_checked_by"]) ? { emailCheckedBy: text(meta["email_checked_by"])! } : {}),
@@ -227,6 +236,16 @@ export interface ContactPatch {
   emailStatus?: EmailStatus | undefined;
   confidence?: PersonConfidence | undefined;
   linkedinUrl?: string | undefined;
+  /**
+   * LinkedIn route confirmation (integration brief §12). Setting
+   * `linkedinConfirmed: true` is the human identity gate — what turns a
+   * stored LinkedIn URL into a legitimate route. Stamps
+   * `linkedin_checked_at` on every write, like email confirmations do.
+   */
+  linkedinConfirmed?: boolean | undefined;
+  linkedinProvider?: string | undefined;
+  linkedinExternalId?: string | undefined;
+  linkedinConfidence?: Person["linkedinConfidence"] | undefined;
   phone?: string | undefined;
 }
 
@@ -251,6 +270,14 @@ export async function updateContact(id: ID, patch: ContactPatch, userId: ID): Pr
   }
   if (patch.confidence) peoplePatch["confidence"] = patch.confidence;
   if (patch.linkedinUrl !== undefined) peoplePatch["linkedin_url"] = patch.linkedinUrl;
+  if (patch.linkedinConfirmed !== undefined) {
+    peoplePatch["linkedin_confirmed"] = patch.linkedinConfirmed;
+    peoplePatch["linkedin_checked_at"] = at;
+    if (patch.linkedinConfirmed) peoplePatch["linkedin_route_confidence"] = "confirmed";
+  }
+  if (patch.linkedinProvider !== undefined) peoplePatch["linkedin_provider"] = patch.linkedinProvider;
+  if (patch.linkedinExternalId !== undefined) peoplePatch["linkedin_external_id"] = patch.linkedinExternalId;
+  if (patch.linkedinConfidence !== undefined) peoplePatch["linkedin_route_confidence"] = patch.linkedinConfidence;
   peoplePatch["last_edited_by"] = userId;
   peoplePatch["last_edited_at"] = at;
 

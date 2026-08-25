@@ -88,6 +88,18 @@ export interface Person {
   emailCheckedBy?: string;
   confidence: PersonConfidence;
   linkedinUrl?: string;
+  /**
+   * LinkedIn route provenance. `linkedinUrl` alone is a link a provider
+   * returned or a human pasted — not a confirmed route. A route is only
+   * confirmed through the human identity gate (integration brief §12),
+   * which stamps these fields.
+   */
+  linkedinConfirmed?: boolean;
+  linkedinCheckedAt?: ISODateTime;
+  /** "linki" when the route was found via the approved transport. */
+  linkedinProvider?: string;
+  linkedinExternalId?: string;
+  linkedinConfidence?: "confirmed" | "likely_requires_approval" | "ambiguous" | "not_found";
   phone?: string;
   /** Id of the provider that produced this record, or "manual". */
   sourceId: string;
@@ -166,14 +178,27 @@ export interface PeopleProvider extends PeopleProviderInfo {
   verifyEmail?(email: string): Promise<EmailVerification>;
 }
 
-/** Email states that are safe to send to. Nothing else is reachable. */
+/**
+ * Canonical reachability (brief §3): a verified email is one route, not the
+ * definition of reachability. A person is reachable through ANY confirmed
+ * legitimate professional route — verified email or confirmed LinkedIn.
+ * An unverified email or a merely-stored LinkedIn URL is never reachable.
+ */
 export function isReachable(person: Person): boolean {
-  return person.emailStatus === "verified";
+  return (
+    person.emailStatus === "verified" ||
+    (person.linkedinConfirmed === true && Boolean(person.linkedinUrl))
+  );
 }
 
 /** A contact is ready for Comms only when all of this is true. */
 export function isCommsReady(person: Person): boolean {
-  return Boolean(person.fullName && person.roleTitle && person.emailStatus === "verified");
+  return Boolean(
+    person.fullName &&
+      person.roleTitle &&
+      (person.emailStatus === "verified" ||
+        (person.linkedinConfirmed === true && Boolean(person.linkedinUrl))),
+  );
 }
 
 export function isDecisionMaker(person: Person): boolean {

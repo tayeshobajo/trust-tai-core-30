@@ -57,6 +57,7 @@ export function chooseContact(people: Person[]): Person | null {
     const score = (person: Person) =>
       (isCommsReady(person) ? 4 : 0) +
       (person.emailStatus === "verified" ? 2 : person.email ? 1 : 0) +
+      (person.linkedinConfirmed === true && person.linkedinUrl ? 2 : 0) +
       (isDecisionMaker(person) ? 2 : 0) +
       (person.confidence === "human_confirmed" ? 1 : 0);
     return score(b) - score(a);
@@ -72,7 +73,12 @@ function toHandoffContact(person: Person): HandoffContact {
     ...(person.email ? { email: person.email } : {}),
     emailStatus: person.emailStatus,
     ...(person.emailCheckedAt ? { emailCheckedAt: person.emailCheckedAt } : {}),
-    reachable: person.emailStatus === "verified",
+    ...(person.linkedinUrl ? { linkedinUrl: person.linkedinUrl } : {}),
+    ...(person.linkedinConfirmed ? { linkedinConfirmed: person.linkedinConfirmed } : {}),
+    // Canonical reachability: verified email OR confirmed LinkedIn (brief §3).
+    reachable:
+      person.emailStatus === "verified" ||
+      (person.linkedinConfirmed === true && Boolean(person.linkedinUrl)),
   };
 }
 
@@ -89,11 +95,15 @@ export function selectTargets(people: Person[]): HandoffTarget[] {
 
   return ranked.map((person, index) => {
     const role = person.roleTitle ?? SENIORITY_LABEL[person.seniority];
-    const blocker = !person.email
-      ? "No business email is on record."
-      : person.emailStatus !== "verified"
-        ? `${EMAIL_STATUS_LABEL[person.emailStatus]} · nobody has confirmed this address.`
-        : undefined;
+    const emailReachable = person.emailStatus === "verified";
+    const linkedinReachable = person.linkedinConfirmed === true && Boolean(person.linkedinUrl);
+    const blocker = !emailReachable && !linkedinReachable
+      ? !person.email
+        ? person.linkedinUrl
+          ? "A LinkedIn URL is stored but unconfirmed. Confirm the route to make this person reachable."
+          : "No business email is on record."
+        : `${EMAIL_STATUS_LABEL[person.emailStatus]} · nobody has confirmed this address.`
+      : undefined;
 
     return {
       ...toHandoffContact(person),
@@ -108,6 +118,7 @@ function weight(person: Person): number {
   return (
     (isCommsReady(person) ? 8 : 0) +
     (person.emailStatus === "verified" ? 4 : person.email ? 2 : 0) +
+    (person.linkedinConfirmed === true && person.linkedinUrl ? 3 : 0) +
     (person.seniority === "founder" || person.seniority === "owner" ? 2 : 0) +
     (person.confidence === "human_confirmed" ? 1 : 0)
   );
@@ -224,18 +235,28 @@ export function buildHandoffBlockers(input: {
     });
   }
   if (person && !person.email) {
-    blockers.push({
-      kind: "no_email",
-      message: `No business email is on record for ${person.fullName}.`,
-      personId: person.id,
-    });
+    // A confirmed LinkedIn route satisfies reachability on its own — the email
+    // blocker only stands when no route of any kind exists (brief §3).
+    const linkedinReachable = person.linkedinConfirmed === true && Boolean(person.linkedinUrl);
+    if (!linkedinReachable) {
+      blockers.push({
+        kind: "no_email",
+        message: person.linkedinUrl
+          ? `No business email is on record for ${person.fullName}, and the stored LinkedIn URL is unconfirmed.`
+          : `No business email is on record for ${person.fullName}.`,
+        personId: person.id,
+      });
+    }
   }
   if (person?.email && person.emailStatus !== "verified") {
-    blockers.push({
-      kind: "email_unverified",
-      message: `${person.email} is ${person.emailStatus === "found" ? "unverified" : person.emailStatus}, so it cannot be treated as reachable.`,
-      personId: person.id,
-    });
+    const linkedinReachable = person.linkedinConfirmed === true && Boolean(person.linkedinUrl);
+    if (!linkedinReachable) {
+      blockers.push({
+        kind: "email_unverified",
+        message: `${person.email} is ${person.emailStatus === "found" ? "unverified" : person.emailStatus}, and no confirmed LinkedIn route stands in for it.`,
+        personId: person.id,
+      });
+    }
   }
   if (!evaluation.scoreable) {
     blockers.push({

@@ -178,3 +178,114 @@ describe("buildHandoffDraft", () => {
     expect(draft.requiredContext.length).toBeGreaterThan(0);
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * Canonical reachability — verified email OR confirmed LinkedIn (brief §3)
+ * ------------------------------------------------------------------ */
+
+const FOUNDER_LINKEDIN_CONFIRMED = person({
+  fullName: "Isaac Meek",
+  roleTitle: "Co-founder",
+  seniority: "founder",
+  linkedinUrl: "https://www.linkedin.com/in/isaac-meek/",
+  linkedinConfirmed: true,
+  linkedinProvider: "linki",
+  linkedinConfidence: "confirmed",
+});
+
+const FOUNDER_LINKEDIN_STORED_ONLY = person({
+  fullName: "Nora Vale",
+  roleTitle: "Founder",
+  seniority: "founder",
+  linkedinUrl: "https://www.linkedin.com/in/nora-vale/",
+});
+
+describe("canonical reachability (LinkedIn route)", () => {
+  it("treats a confirmed LinkedIn route as reachable with no email at all", () => {
+    const [target] = selectTargets([FOUNDER_LINKEDIN_CONFIRMED]);
+
+    expect(target?.rank).toBe("primary");
+    expect(target?.reachable).toBe(true);
+    expect(target?.blocker).toBeUndefined();
+    expect(target?.linkedinConfirmed).toBe(true);
+  });
+
+  it("never treats a merely-stored LinkedIn URL as reachable", () => {
+    const [target] = selectTargets([FOUNDER_LINKEDIN_STORED_ONLY]);
+
+    expect(target?.reachable).toBe(false);
+    expect(target?.blocker).toMatch(/unconfirmed/i);
+    expect(target?.rank).toBe("alternate");
+  });
+
+  it("prefers the verified-email founder, but ranks confirmed-LinkedIn above unconfirmed", () => {
+    const targets = selectTargets([FOUNDER_VERIFIED, FOUNDER_LINKEDIN_CONFIRMED, FOUNDER_UNVERIFIED]);
+
+    expect(targets[0]?.fullName).toBe("Ada Rowe"); // verified email still wins
+    expect(targets[1]?.fullName).toBe("Isaac Meek"); // LinkedIn-confirmed beats unverified email
+    expect(targets[2]?.fullName).toBe("Jon Mears");
+  });
+
+  const CANDIDATE = {
+    prospect: {
+      id: "prospect-2",
+      organizationId: "org-1",
+      name: "Meek & Co",
+      websiteUrl: "https://meek.example",
+      status: "qualified",
+      source: "scout_live_website",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    signals: [],
+    fit: { whyItFits: "Booking flow", strongestSignal: "", missingInputs: [] },
+    evaluation: {
+      score: 77,
+      light: "green",
+      scoreable: true,
+      criteria: [],
+      explanation: "Meets the core ICP criteria.",
+      strongestSignal: "Live booking flow",
+      evaluatorVersion: "trust-tai-icp-v3",
+      icpVersion: null,
+      evaluatedAt: new Date().toISOString(),
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
+
+  const COVERAGE = {
+    pages: 6,
+    checked: [
+      { key: "team", label: "Team page", reached: true },
+      { key: "contact", label: "Contact page", reached: true },
+    ],
+    percent: 80,
+    note: "Team and contact pages were reached.",
+    thin: false,
+  };
+
+  it("a confirmed LinkedIn route clears the no_email and email_unverified blockers", () => {
+    const draft = buildHandoffDraft({
+      candidate: CANDIDATE,
+      people: [FOUNDER_LINKEDIN_CONFIRMED],
+      coverage: COVERAGE,
+      fitConfidence: { level: "high" as const, because: "Strong fit.", evidence: [] },
+    } as Parameters<typeof buildHandoffDraft>[0]);
+
+    expect(draft.ready).toBe(true);
+    expect(draft.blockers.join(" ")).not.toMatch(/no business email|unverified/i);
+    expect(draft.contact?.fullName).toBe("Isaac Meek");
+  });
+
+  it("handoff blocker language names the unconfirmed LinkedIn URL explicitly", () => {
+    const draft = buildHandoffDraft({
+      candidate: CANDIDATE,
+      people: [FOUNDER_LINKEDIN_STORED_ONLY],
+      coverage: COVERAGE,
+      fitConfidence: { level: "high" as const, because: "Strong fit.", evidence: [] },
+    } as Parameters<typeof buildHandoffDraft>[0]);
+
+    expect(draft.ready).toBe(false);
+    expect(draft.blockers.join(" ")).toMatch(/unconfirmed/i);
+  });
+});
