@@ -633,10 +633,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
               </TTButton>
             ) : null}
             <TTButton
-              onClick={() => {
-                setImportWarning(null);
-                setCapturing((value) => !value);
-              }}
+              onClick={() => setCapturing((value) => !value)}
             >
               {capturing ? "Close" : "Add relationship"}
             </TTButton>

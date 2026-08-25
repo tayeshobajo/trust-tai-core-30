@@ -21,6 +21,7 @@ import {
   gmailSync,
   type GmailSyncResult,
 } from "@/data/supabase/comms-gmail";
+import { readIntakeExceptions, type IntakeException } from "@/domain/comms-intake";
 import {
   GMAIL_SEND_SCOPE,
   INTEGRATION_STATUS_LABEL,
@@ -281,7 +282,7 @@ function MailboxRow({
             Needs your decision ({exceptions.length})
           </p>
           <ul className="space-y-2">
-            {exceptions.slice(0, 5).map((exception) => (
+            {exceptions.slice(0, 5).map((exception: IntakeException) => (
               <li key={exception.providerMessageId} className="text-xs text-muted-foreground">
                 <span className="text-foreground">
                   {exception.subject?.trim() || "A labeled thread"}
