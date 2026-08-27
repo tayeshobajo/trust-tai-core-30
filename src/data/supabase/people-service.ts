@@ -97,6 +97,7 @@ export interface LinkiLookupInput {
   companyName?: string | undefined;
   companyDomain?: string | undefined;
   roleTitle?: string | undefined;
+  location?: string | undefined;
   organizationId: ID;
 }
 
@@ -106,6 +107,16 @@ export interface LinkiLookupCandidate {
   headline: string | null;
   location: string | null;
   degree: string | null;
+  company: string | null;
+  /** Ranking evidence, display-only: "Why this may be the person." */
+  why: string[];
+  score: number;
+}
+
+export interface LinkiLookupResult {
+  candidates: LinkiLookupCandidate[];
+  /** Non-null when nothing cleared the confidence bar (fail-closed). */
+  noMatchReason: string | null;
 }
 
 export const peopleService = {
@@ -290,7 +301,7 @@ export const peopleService = {
   },
 
   /** Browser -> Trust Tai server -> Linki. The internal secret never leaves the server. */
-  async lookupLinkedinCandidates(input: LinkiLookupInput): Promise<LinkiLookupCandidate[]> {
+  async lookupLinkedinCandidates(input: LinkiLookupInput): Promise<LinkiLookupResult> {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
     if (!token) {
@@ -309,12 +320,21 @@ export const peopleService = {
         ...(input.companyName ? { company_name: input.companyName } : {}),
         ...(input.companyDomain ? { company_domain: input.companyDomain } : {}),
         ...(input.roleTitle ? { role_title: input.roleTitle } : {}),
+        ...(input.location ? { location: input.location } : {}),
       }),
     });
 
-    let payload: { error?: string; candidates?: unknown } = {};
+    let payload: {
+      error?: string;
+      candidates?: unknown;
+      no_match_reason?: unknown;
+    } = {};
     try {
-      payload = (await response.json()) as { error?: string; candidates?: unknown };
+      payload = (await response.json()) as {
+        error?: string;
+        candidates?: unknown;
+        no_match_reason?: unknown;
+      };
     } catch {
       payload = {};
     }
@@ -328,7 +348,16 @@ export const peopleService = {
       );
     }
 
-    return Array.isArray(payload.candidates) ? (payload.candidates as LinkiLookupCandidate[]) : [];
+    const noMatchReason =
+      typeof payload.no_match_reason === "string" && payload.no_match_reason.trim()
+        ? payload.no_match_reason
+        : null;
+    return {
+      candidates: Array.isArray(payload.candidates)
+        ? (payload.candidates as LinkiLookupCandidate[])
+        : [],
+      noMatchReason,
+    };
   },
 
   /** A human confirms which LinkedIn profile is the legitimate route. */

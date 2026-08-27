@@ -10,7 +10,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { linkiFindPerson, linkiStatus } from "@/lib/linki-provider.server";
+import { linkiFindPerson, linkiStatus, rankCandidates } from "@/lib/linki-provider.server";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 
 function bearer(request: Request): string | null {
@@ -63,6 +63,8 @@ export const Route = createFileRoute("/api/public/linki/lookup")({
           typeof body["company_domain"] === "string" ? body["company_domain"].trim() : undefined;
         const roleTitle =
           typeof body["role_title"] === "string" ? body["role_title"].trim() : undefined;
+        const personLocation =
+          typeof body["location"] === "string" ? body["location"].trim() : undefined;
         const organizationId =
           typeof body["organization_id"] === "string" ? body["organization_id"] : undefined;
 
@@ -98,8 +100,22 @@ export const Route = createFileRoute("/api/public/linki/lookup")({
             ...(companyName ? { companyName } : {}),
             ...(companyDomain ? { companyDomain } : {}),
             ...(roleTitle ? { roleTitle } : {}),
+            ...(personLocation ? { location: personLocation } : {}),
           });
-          return json({ candidates });
+          // Rank BEFORE display. Company/title/location/domain are evidence
+          // here, never search tokens. Fail-closed: nobody clears the bar →
+          // empty list + explicit reason. A human still confirms identity.
+          const { ranked, noMatchReason } = rankCandidates(
+            {
+              fullName,
+              ...(companyName ? { companyName } : {}),
+              ...(companyDomain ? { companyDomain } : {}),
+              ...(roleTitle ? { roleTitle } : {}),
+              ...(personLocation ? { location: personLocation } : {}),
+            },
+            candidates,
+          );
+          return json({ candidates: ranked, no_match_reason: noMatchReason });
         } catch (error) {
           return json(
             {

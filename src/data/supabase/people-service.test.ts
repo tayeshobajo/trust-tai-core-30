@@ -315,6 +315,9 @@ describe("linkedin route confirmation", () => {
         headline: "Founder at Northbeam",
         location: "Nashville",
         degree: null,
+        company: null,
+        why: ["Company match: Northbeam"],
+        score: 3,
       },
       CONTEXT,
     );
@@ -348,6 +351,9 @@ describe("linkedin route confirmation", () => {
         headline: null,
         location: null,
         degree: null,
+        company: null,
+        why: [],
+        score: 0,
       },
       CONTEXT,
     );

@@ -205,6 +205,7 @@ export function PeoplePanel({
   lookupCandidates,
   lookupPending,
   lookupError,
+  lookupNoMatchReason,
 }: {
   criteria: FitCriterion[];
   people: Person[];
@@ -223,6 +224,8 @@ export function PeoplePanel({
   lookupCandidates?: LinkiLookupCandidate[] | undefined;
   lookupPending?: boolean | undefined;
   lookupError?: string | null | undefined;
+  /** Fail-closed signal: no candidate cleared the confidence bar. */
+  lookupNoMatchReason?: string | null | undefined;
 }) {
   const [form, setForm] = useState<ManualPersonForm>(EMPTY_FORM);
   const reachable = people.some((person) => isReachable(person));
@@ -348,9 +351,15 @@ export function PeoplePanel({
                 <p className="mt-3 text-[13px] text-destructive">{lookupError}</p>
               ) : null}
 
+              {lookupNoMatchReason ? (
+                <p className="mt-3 rounded-lg border border-border bg-background px-4 py-3 text-[13px] text-foreground">
+                  {lookupNoMatchReason}
+                </p>
+              ) : null}
+
               {lookupCandidates && lookupCandidates.length > 0 ? (
                 <ul className="mt-4 space-y-3">
-                  {lookupCandidates.map((candidate) => (
+                  {lookupCandidates.map((candidate, index) => (
                     <li
                       key={candidate.linkedinUrl}
                       className="rounded-lg border border-border bg-background px-4 py-3"
@@ -359,16 +368,46 @@ export function PeoplePanel({
                         <div className="min-w-0">
                           <p className="text-[13px] font-medium text-foreground">
                             {candidate.fullName}
+                            {index === 0 ? (
+                              <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.14em] text-royal">
+                                best match
+                              </span>
+                            ) : null}
+                            {candidate.degree ? (
+                              <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                                {candidate.degree}
+                              </span>
+                            ) : null}
                           </p>
                           {candidate.headline ? (
                             <p className="text-[13px] text-muted-foreground">
                               {candidate.headline}
                             </p>
                           ) : null}
+                          {candidate.company ? (
+                            <p className="text-[13px] text-muted-foreground">
+                              Current company: {candidate.company}
+                            </p>
+                          ) : null}
                           <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                             {candidate.location ?? "Location unknown"}
-                            {candidate.degree ? ` · ${candidate.degree}` : ""}
                           </p>
+                          <a
+                            href={candidate.linkedinUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 block break-all text-[12px] text-royal underline"
+                          >
+                            {candidate.linkedinUrl}
+                          </a>
+                          {candidate.why && candidate.why.length > 0 ? (
+                            <p className="mt-2 text-[12px] text-muted-foreground">
+                              <span className="font-medium text-foreground">
+                                Why this may be the person:
+                              </span>{" "}
+                              {candidate.why.join(" · ")}
+                            </p>
+                          ) : null}
                         </div>
                         {onConfirmLinkedin ? (
                           <TTButton

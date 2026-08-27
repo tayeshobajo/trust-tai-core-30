@@ -90,7 +90,7 @@ import {
 import { similarCompanies } from "@/data/scout/similar-companies";
 import { rankScoutSignals, topScoutSignals } from "@/data/scout/top-signals";
 import { availablePeopleProviders, peopleProviderInfo } from "@/data/people/registry";
-import { peopleService } from "@/data/supabase/people-service";
+import { peopleService, type LinkiLookupCandidate } from "@/data/supabase/people-service";
 import { scoutService } from "@/data/supabase/scout-service";
 import type { HandoffDraft } from "@/domain/comms-handoff";
 import { isDecisionMaker, isReachable, type Person } from "@/domain/people";
@@ -336,9 +336,7 @@ function CompanyDetail({
       candidateMatch,
     }: {
       person: Person;
-      candidateMatch: NonNullable<
-        Awaited<ReturnType<typeof peopleService.lookupLinkedinCandidates>>[number]
-      >;
+      candidateMatch: LinkiLookupCandidate;
     }) => peopleService.confirmLinkedinRoute(person, candidateMatch, { organizationId, userId }),
     onSuccess: async () => {
       lookupLinkedin.reset();
@@ -886,6 +884,9 @@ function CompanyDetail({
                           headline: null,
                           location: null,
                           degree: null,
+                          company: null,
+                          why: [],
+                          score: 0,
                         },
                       });
                       return;
@@ -897,8 +898,9 @@ function CompanyDetail({
                   note={ingest.data?.note}
                   plan={plan}
                   lookupTarget={lookupTarget}
-                  lookupCandidates={lookupLinkedin.data ?? []}
+                  lookupCandidates={lookupLinkedin.data?.candidates ?? []}
                   lookupPending={lookupLinkedin.isPending}
+                  lookupNoMatchReason={lookupLinkedin.data?.noMatchReason ?? null}
                   lookupError={
                     lookupLinkedin.error
                       ? lookupLinkedin.error instanceof Error
