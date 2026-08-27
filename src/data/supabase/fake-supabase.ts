@@ -16,6 +16,9 @@ interface Filter {
   value: unknown;
   /** `in` filters match any value in the list, as PostgREST does. */
   anyOf?: unknown[];
+  /** Range filters: inclusive lower / exclusive upper bound (string compare). */
+  gte?: unknown;
+  lt?: unknown;
 }
 
 class Query implements PromiseLike<{ data: unknown; error: null }> {
@@ -34,6 +37,16 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
 
   eq(column: string, value: unknown): Query {
     this.filters.push({ column, value });
+    return this;
+  }
+
+  gte(column: string, value: unknown): Query {
+    this.filters.push({ column, value: null, gte: value });
+    return this;
+  }
+
+  lt(column: string, value: unknown): Query {
+    this.filters.push({ column, value: null, lt: value });
     return this;
   }
 
@@ -58,11 +71,13 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
 
   private matched(): FakeRow[] {
     let rows = this.rows.filter((row) =>
-      this.filters.every((filter) =>
-        filter.anyOf
-          ? filter.anyOf.includes(row[filter.column])
-          : row[filter.column] === filter.value,
-      ),
+      this.filters.every((filter) => {
+        if (filter.anyOf) return filter.anyOf.includes(row[filter.column]);
+        if (filter.gte !== undefined)
+          return String(row[filter.column] ?? "") >= String(filter.gte);
+        if (filter.lt !== undefined) return String(row[filter.column] ?? "") < String(filter.lt);
+        return row[filter.column] === filter.value;
+      }),
     );
     if (this.orderBy) {
       const { column, ascending } = this.orderBy;

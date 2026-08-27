@@ -35,6 +35,7 @@ import { Route as SettingsOwnershipRouteImport } from './routes/settings.ownersh
 import { Route as SettingsPeopleRouteImport } from './routes/settings.people'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
+import { Route as ApiLinkiExecuteRouteImport } from './routes/api/linki/execute'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
@@ -210,6 +211,11 @@ const SettingsSecurityRoute = SettingsSecurityRouteImport.update({
   id: '/security',
   path: '/security',
   getParentRoute: () => SettingsRoute,
+} as any)
+const ApiLinkiExecuteRoute = ApiLinkiExecuteRouteImport.update({
+  id: '/api/linki/execute',
+  path: '/api/linki/execute',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
   id: '/',
@@ -485,6 +491,7 @@ export interface FileRoutesByFullPath {
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
+  '/api/linki/execute': typeof ApiLinkiExecuteRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -552,6 +559,7 @@ export interface FileRoutesByTo {
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings': typeof SettingsIndexRoute
+  '/api/linki/execute': typeof ApiLinkiExecuteRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -625,6 +633,7 @@ export interface FileRoutesById {
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
+  '/api/linki/execute': typeof ApiLinkiExecuteRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -700,6 +709,7 @@ export interface FileRouteTypes {
     | '/settings/profile'
     | '/settings/security'
     | '/settings/'
+    | '/api/linki/execute'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -767,6 +777,7 @@ export interface FileRouteTypes {
     | '/settings/profile'
     | '/settings/security'
     | '/settings'
+    | '/api/linki/execute'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -839,6 +850,7 @@ export interface FileRouteTypes {
     | '/settings/profile'
     | '/settings/security'
     | '/settings/'
+    | '/api/linki/execute'
     | '/modules/comms/integrations'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -901,6 +913,7 @@ export interface RootRouteChildren {
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
   ModulesStewardRoute: typeof ModulesStewardRouteWithChildren
   ModulesWebsiteRoute: typeof ModulesWebsiteRoute
+  ApiLinkiExecuteRoute: typeof ApiLinkiExecuteRoute
   ModulesWebsitePageRoute: typeof ModulesWebsitePageRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicIntelligenceReasonRoute: typeof ApiPublicIntelligenceReasonRoute
@@ -1114,6 +1127,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/security'
       preLoaderRoute: typeof SettingsSecurityRouteImport
       parentRoute: typeof SettingsRoute
+    }
+    '/api/linki/execute': {
+      id: '/api/linki/execute'
+      path: '/api/linki/execute'
+      fullPath: '/api/linki/execute'
+      preLoaderRoute: typeof ApiLinkiExecuteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/modules/comms/': {
       id: '/modules/comms/'
@@ -1587,6 +1607,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
   ModulesStewardRoute: ModulesStewardRouteWithChildren,
   ModulesWebsiteRoute: ModulesWebsiteRoute,
+  ApiLinkiExecuteRoute: ApiLinkiExecuteRoute,
   ModulesWebsitePageRoute: ModulesWebsitePageRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicIntelligenceReasonRoute: ApiPublicIntelligenceReasonRoute,

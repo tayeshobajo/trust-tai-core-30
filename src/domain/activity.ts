@@ -90,7 +90,7 @@ export type ActivityAction =
  * governance history only. This is a naming scope, never a licence to create a
  * parallel entity store.
  */
-export type ActivityScope = EntityType | "ops" | "studio" | "conductor" | "website";
+export type ActivityScope = EntityType | "ops" | "studio" | "conductor" | "website" | "linki";
 
 /** Event name is always `scope.action`, e.g. "project.status_changed". */
 export type ActivityName = `${ActivityScope}.${ActivityAction}`;
