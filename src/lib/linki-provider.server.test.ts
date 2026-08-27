@@ -164,6 +164,35 @@ describe("rankCandidates (P1.10: evidence ranking + fail closed)", () => {
     );
     expect(ranked).toHaveLength(1);
   });
+
+  it("rejects near-surname false positives even when role evidence matches", () => {
+    const { ranked, noMatchReason } = rankCandidates(
+      { fullName: "Jonathan Mull", companyName: "Mull IT", roleTitle: "Founder & CEO" },
+      [
+        mk({
+          fullName: "Jonathan Muller",
+          headline: "CEO / Co-Founder @ Gaffos.com | Leadership, Start-ups",
+        }),
+      ],
+    );
+    expect(ranked).toHaveLength(0);
+    expect(noMatchReason).toBe(NO_CONFIDENT_MATCH_REASON);
+  });
+
+  it("rejects fabricated no-match cases that share only one name token", () => {
+    const { ranked, noMatchReason } = rankCandidates(
+      { fullName: "Zephram Holloway", companyName: "Imaginary Systems", roleTitle: "Founder" },
+      [
+        mk({
+          fullName: "Zephram Carroll",
+          headline: "Founder & Tech Lead at Syzlix Software Solutions",
+          company: "Syzlix Software Solutions",
+        }),
+      ],
+    );
+    expect(ranked).toHaveLength(0);
+    expect(noMatchReason).toBe(NO_CONFIDENT_MATCH_REASON);
+  });
 });
 
 describe("linkiFindPerson", () => {

@@ -138,6 +138,22 @@ function nameSimilarity(a: string, b: string): number {
   return shared / Math.max(ta.length, tb.length);
 }
 
+/**
+ * Human identity gate for multi-part names: the visible first and last name
+ * must agree before company/title evidence can help. This blocks false
+ * positives like "Jonathan Muller" for "Jonathan Mull" and fabricated names
+ * that share only one token.
+ */
+function hasStrongHumanNameMatch(a: string, b: string): boolean {
+  const split = (v: string) =>
+    normalizeName(v).toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= 2);
+  const ta = split(a);
+  const tb = split(b);
+  if (ta.length === 0 || tb.length === 0) return false;
+  if (ta.length === 1 || tb.length === 1) return ta[0] === tb[0];
+  return ta[0] === tb[0] && ta[ta.length - 1] === tb[tb.length - 1];
+}
+
 /** Evidence overlap between a candidate's card text and one reference field. */
 function overlap(haystackTokens: string[], reference: string[]): string[] {
   const ref = new Set(reference);
@@ -178,7 +194,9 @@ export function rankCandidates(
   const ranked: RankedLinkiCandidate[] = [];
   for (const candidate of candidates) {
     const similarity = nameSimilarity(person.fullName, candidate.fullName);
-    if (similarity < 0.5) continue; // wrong-person shield: name must fuzzy-match
+    if (similarity < 0.5 || !hasStrongHumanNameMatch(person.fullName, candidate.fullName)) {
+      continue; // wrong-person shield: first/last human name must still agree
+    }
 
     const cardCompany = companyTokens(candidate.company);
     const cardHeadline = tokenize(candidate.headline);
