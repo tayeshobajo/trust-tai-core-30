@@ -49,6 +49,65 @@ export interface LinkiStatus {
 
 type Env = Record<string, string | undefined>;
 
+/** Response envelope of Linki's POST /api/tt/enrich — mirrors lib/linkedin/profile-lite.ts. */
+export interface ProfileLite {
+  url: string;
+  full_name?: string | null;
+  headline?: string | null;
+  company?: string | null;
+  title?: string | null;
+  location?: string | null;
+}
+
+/** Strict /in/ profile URL — same shape the Linki adapter enforces. */
+const LINKEDIN_PROFILE_URL = /^https:\/\/www\.linkedin\.com\/in\/[^/]+\/?$/;
+
+/**
+ * Shared transport to Linki: path selection (local dev keeps the legacy
+ * un-prefixed routes; anything else goes through the hardened /api/tt/
+ * adapter), headers, and per-call timeout. Returns the parsed JSON body —
+ * status mapping is left to each caller because lookup and enrich disagree
+ * on what failure means (lookup throws, enrich fails soft).
+ */
+async function linkiPost(
+  path: string,
+  body: unknown,
+  config: { baseUrl: string; apiKey: string },
+  timeoutMs: number,
+): Promise<unknown> {
+  const local = ["localhost", "127.0.0.1", "::1"].includes(
+    new URL(config.baseUrl).hostname,
+  );
+  const route = local ? path.replace(/^\/api\/tt\//, "/api/") : path;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${config.baseUrl}${route}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-secret": config.apiKey,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    if (response.status === 503) {
+      throw new Error("Linki reports the LinkedIn session needs re-authentication.");
+    }
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("Linki rejected the internal secret (LINKI_API_KEY mismatch).");
+    }
+    if (!response.ok) {
+      throw new Error(`Linki ${route} failed (${response.status}).`);
+    }
+    return (await response.json()) as unknown;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Never logged, never returned to the browser. */
 function linkiConfig(env: Env): { baseUrl: string; apiKey: string } | null {
   const baseUrl = (env["LINKI_BASE_URL"] ?? "http://127.0.0.1:3456").replace(/\/+$/, "");
@@ -239,6 +298,52 @@ export function rankCandidates(
 }
 
 /**
+ * Enrich up to 5 LinkedIn profile URLs via Linki's POST /api/tt/enrich.
+ * Strict /in/ validation happens here too — never trust the caller. Each
+ * returned profile mirrors Linki's envelope; per-entry failures simply drop
+ * that entry (partial success is the contract).
+ */
+export async function linkiEnrichProfiles(
+  input: { urls: string[] },
+  env: Env = process.env,
+): Promise<ProfileLite[]> {
+  const config = linkiConfig(env);
+  if (!config) return [];
+
+  const urls = [...new Set(input.urls)].filter((u) => LINKEDIN_PROFILE_URL.test(u)).slice(0, 5);
+  if (urls.length === 0) return [];
+
+  const payload = (await linkiPost(
+    "/api/tt/enrich",
+    { urls },
+    config,
+    120_000,
+  )) as { profiles?: unknown };
+
+  const raw = Array.isArray(payload.profiles) ? payload.profiles : [];
+  return raw.flatMap((entry): ProfileLite[] => {
+    if (!entry || typeof entry !== "object") return [];
+    const record = entry as Record<string, unknown>;
+    const url = typeof record["url"] === "string" ? record["url"] : null;
+    if (!url || !LINKEDIN_PROFILE_URL.test(url)) return [];
+    const str = (v: unknown) =>
+      typeof v === "string" && v.trim() ? v.trim() : undefined;
+    const profile: ProfileLite = { url };
+    const full_name = str(record["full_name"]);
+    const headline = str(record["headline"]);
+    const company = str(record["company"]);
+    const title = str(record["title"]);
+    const location = str(record["location"]);
+    if (full_name !== undefined) profile.full_name = full_name;
+    if (headline !== undefined) profile.headline = headline;
+    if (company !== undefined) profile.company = company;
+    if (title !== undefined) profile.title = title;
+    if (location !== undefined) profile.location = location;
+    return [profile];
+  });
+}
+
+/**
  * Find candidate LinkedIn routes for one person. Read-only: one Linki lookup,
  * no writes anywhere. Throws only on transport failure so the caller can say
  * "route search failed" instead of silently pretending there are no routes.
@@ -253,48 +358,86 @@ export async function linkiFindPerson(
   const keywords = buildLookupKeywords(input);
   if (keywords.length < 2) return [];
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 60_000);
-  try {
-    const response = await fetch(`${config.baseUrl}/api/lookup`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-secret": config.apiKey,
-      },
-      body: JSON.stringify({ keywords }),
-      signal: controller.signal,
-    });
+  const payload = (await linkiPost(
+    "/api/tt/lookup",
+    { keywords, pages: 3 },
+    config,
+    120_000,
+  )) as { candidates?: unknown };
+  const raw = Array.isArray(payload.candidates) ? payload.candidates : [];
+  const candidates = raw.flatMap((entry): LinkiCandidate[] => {
+    if (!entry || typeof entry !== "object") return [];
+    const record = entry as Record<string, unknown>;
+    const url = typeof record["linkedin_url"] === "string" ? record["linkedin_url"] : null;
+    const name = typeof record["full_name"] === "string" ? record["full_name"].trim() : null;
+    // Same guarantee the Linki route makes: a candidate has a URL and a name.
+    if (!url || !LINKEDIN_PROFILE_URL.test(url) || !name) return [];
+    return [{
+      linkedinUrl: url,
+      fullName: name,
+      headline: typeof record["headline"] === "string" && record["headline"].trim() ? record["headline"].trim() : null,
+      location: typeof record["location"] === "string" && record["location"].trim() ? record["location"].trim() : null,
+      degree: typeof record["degree"] === "string" && record["degree"].trim() ? record["degree"].trim() : null,
+      company: typeof record["company"] === "string" && record["company"].trim() ? record["company"].trim() : null,
+    }];
+  });
 
-    if (response.status === 503) {
-      throw new Error("Linki reports the LinkedIn session needs re-authentication.");
-    }
-    if (response.status === 401 || response.status === 403) {
-      throw new Error("Linki rejected the internal secret (LINKI_API_KEY mismatch).");
-    }
-    if (!response.ok) {
-      throw new Error(`Linki lookup failed (${response.status}).`);
-    }
+  // Fast path: a confident hit already exists — never spend profile visits.
+  const fast = rankCandidates(input, candidates);
+  if (fast.ranked.length > 0) return candidates;
 
-    const payload = (await response.json()) as { candidates?: unknown };
-    const raw = Array.isArray(payload.candidates) ? payload.candidates : [];
-    return raw.flatMap((entry): LinkiCandidate[] => {
-      if (!entry || typeof entry !== "object") return [];
-      const record = entry as Record<string, unknown>;
-      const url = typeof record["linkedin_url"] === "string" ? record["linkedin_url"] : null;
-      const name = typeof record["full_name"] === "string" ? record["full_name"].trim() : null;
-      // Same guarantee the Linki route makes: a candidate has a URL and a name.
-      if (!url || !/^https:\/\/www\.linkedin\.com\/in\/[^/]+\/?$/.test(url) || !name) return [];
-      return [{
-        linkedinUrl: url,
-        fullName: name,
-        headline: typeof record["headline"] === "string" && record["headline"].trim() ? record["headline"].trim() : null,
-        location: typeof record["location"] === "string" && record["location"].trim() ? record["location"].trim() : null,
-        degree: typeof record["degree"] === "string" && record["degree"].trim() ? record["degree"].trim() : null,
-        company: typeof record["company"] === "string" && record["company"].trim() ? record["company"].trim() : null,
-      }];
-    });
-  } finally {
-    clearTimeout(timer);
+  // Enriched path: shortlist the most name-plausible candidates and pull
+  // their profile cards, then re-rank on the enriched evidence. The
+  // shortlist reuses nameSimilarity — the same identity anchor
+  // rankCandidates shields on — so enrichment targets exactly the people
+  // the shield would let through.
+  const shortlist = [...candidates]
+    .sort(
+      (a, b) =>
+        nameSimilarity(input.fullName, b.fullName) -
+        nameSimilarity(input.fullName, a.fullName),
+    )
+    .slice(0, 5);
+
+  let enriched = candidates;
+  if (shortlist.length > 0) {
+    try {
+      const profiles = await linkiEnrichProfiles(
+        { urls: shortlist.map((c) => c.linkedinUrl) },
+        env,
+      );
+      const byUrl = new Map(profiles.map((p) => [p.url, p]));
+      enriched = candidates.map((c) => {
+        const p = byUrl.get(c.linkedinUrl);
+        if (!p) return c;
+        const merge = (
+          original: string | null,
+          next: string | null | undefined,
+        ): string | null =>
+          typeof next === "string" && next.trim() ? next.trim() : original;
+        const merged: LinkiCandidate = {
+          ...c,
+          linkedinUrl: c.linkedinUrl, // enriched values win, identity (URL) never changes
+          fullName: p.full_name?.trim() || c.fullName,
+          headline: merge(c.headline, p.headline ?? p.title),
+          company: merge(c.company, p.company),
+          location: merge(c.location, p.location),
+        };
+        return merged;
+      });
+    } catch (error) {
+      // Enrichment is additive evidence, never a hard dependency: without
+      // it we return exactly today's behavior (ranked, likely empty).
+      console.warn(
+        `[linki] enrich failed for "${input.fullName}"; falling back to unenriched ranking`,
+        error,
+      );
+    }
   }
+
+  // Return the enriched set when it yields a confident card; otherwise
+  // fall back to today's exact behavior (the unenriched candidates —
+  // callers rank them and get the same empty result as before).
+  const reRanked = rankCandidates(input, enriched);
+  return reRanked.ranked.length > 0 ? enriched : candidates;
 }
