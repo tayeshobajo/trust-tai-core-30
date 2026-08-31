@@ -49,10 +49,22 @@ export interface MemberProfile {
   jobTitle: string | null;
   role: WorkspaceRole;
   status: "active" | "deactivated" | "invited" | string;
-  lastActiveAt: string | null;
+  /**
+   * When Supabase Auth last saw this person sign in. Authoritative, read
+   * server-side from auth.users — never mirrored into a workspace column.
+   */
+  lastSignInAt: string | null;
+  /** When the sign-in account itself was created. */
+  accountCreatedAt: string | null;
+  /**
+   * In-app activity, which is a different truth from signing in. Only set
+   * when the workspace genuinely records it; never a sign-in timestamp.
+   */
+  lastActivityAt: string | null;
   /** Per-app overrides recorded for this person. Empty means "role default". */
   access: Record<string, AppAccessLevel>;
 }
+
 
 function nameOf(row: Row, email: string): string {
   const candidate =
