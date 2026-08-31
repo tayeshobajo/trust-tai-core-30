@@ -711,7 +711,17 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           },
         ).catch(() => null);
 
-        return Response.json({ ok: true, userId, email, role, action: "create_user" });
+        return Response.json({
+          ok: true,
+          userId,
+          email,
+          role,
+          name: fullName || null,
+          /* True when this call finished an earlier attempt rather than
+             creating a second account. */
+          adopted,
+          action: "create_user",
+        });
       },
     },
   },
