@@ -723,6 +723,8 @@ export async function createMemberWithPassword(input: {
   role: WorkspaceRole;
   access: Record<string, AppAccessLevel>;
   actorUserId: string;
+  /** How this person should be named in the workspace. */
+  fullName?: string;
 }): Promise<AdminPasswordResult> {
   const email = input.email.trim().toLowerCase();
   const outcome = await callAdminPassword({
@@ -733,6 +735,7 @@ export async function createMemberWithPassword(input: {
     confirmation: input.confirmation,
     role: input.role,
     access: input.access,
+    ...(input.fullName?.trim() ? { fullName: input.fullName.trim() } : {}),
   });
 
   if (outcome.ok) {
