@@ -877,11 +877,22 @@ function MemberAccessPanel({
   return (
 
     <div className="tt-surface p-6">
+      {canManage ? (
+        <div className="mb-6">
+          <MemberIdentityEditor
+            organizationId={organizationId}
+            actorUserId={actorUserId}
+            member={member}
+          />
+        </div>
+      ) : null}
+
       <SectionHeading
         eyebrow="Access"
         title={`What ${member.name} can reach`}
         description="Visibility and authority are separate. Hidden rooms never appear in their navigation."
       />
+
 
       <div className="space-y-2">
         {APP_REGISTRY.map((app) => {
