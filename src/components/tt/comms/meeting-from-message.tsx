@@ -72,7 +72,7 @@ export function MeetingFromMessage({
           Plan a meeting
         </TTButton>
         {planned ? (
-          <TTButton asChild variant="ghost" size="sm">
+          <TTButton asChild variant="quiet" size="sm">
             <Link to="/modules/comms/plan">See it on the plan →</Link>
           </TTButton>
         ) : null}
@@ -108,7 +108,7 @@ export function MeetingFromMessage({
         <TTButton size="sm" disabled={plan.isPending} onClick={() => plan.mutate()}>
           {plan.isPending ? "Saving…" : "Add to plan"}
         </TTButton>
-        <TTButton variant="ghost" size="sm" onClick={() => setOpen(false)}>
+        <TTButton variant="quiet" size="sm" onClick={() => setOpen(false)}>
           Cancel
         </TTButton>
       </div>

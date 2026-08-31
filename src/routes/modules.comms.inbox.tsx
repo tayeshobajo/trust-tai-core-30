@@ -377,7 +377,7 @@ function MessageCard({
             >
               {reply.isPending ? "Sending…" : "Send reply"}
             </TTButton>
-            <TTButton variant="ghost" size="sm" onClick={() => setOpen(false)}>
+            <TTButton variant="quiet" size="sm" onClick={() => setOpen(false)}>
               Cancel
             </TTButton>
           </div>
