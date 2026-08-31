@@ -259,6 +259,7 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
 
           <ThreadView
             row={selected}
+            identity={identity}
             messages={selected ? (messages.data?.[selected.relationship.id] ?? []) : []}
             busy={close.isPending}
             onToggleClosed={(closed) => {
