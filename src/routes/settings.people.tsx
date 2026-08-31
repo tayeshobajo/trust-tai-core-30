@@ -797,7 +797,9 @@ function MemberAccessPanel({
   onLevel: (appId: string, appName: string, level: AppAccessLevel) => void;
   onStatus: (status: "active" | "deactivated") => void;
 }) {
+  const [resetOpen, setResetOpen] = useState(false);
   return (
+
     <div className="tt-surface p-6">
       <SectionHeading
         eyebrow="Access"
