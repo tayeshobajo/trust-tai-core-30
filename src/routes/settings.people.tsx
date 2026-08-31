@@ -988,6 +988,81 @@ function MemberAccessPanel({
 
 }
 
+/**
+ * Who this person is, in plain words.
+ *
+ * Access is meaningless if nobody can tell whose access it is, so naming sits
+ * above the permission grid rather than hidden in a separate screen.
+ */
+function MemberIdentityEditor({
+  organizationId,
+  actorUserId,
+  member,
+}: {
+  organizationId: string;
+  actorUserId: string;
+  member: MemberProfile;
+}) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState(member.name === member.email ? "" : member.name);
+  const [title, setTitle] = useState(member.jobTitle ?? "");
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const outcome = await saveMemberIdentity({
+        organizationId,
+        userId: member.userId,
+        email: member.email,
+        fullName: name.trim(),
+        jobTitle: title.trim(),
+        actorUserId,
+      });
+      if (!outcome.ok) throw new Error(outcome.because ?? "That name could not be saved.");
+    },
+    onSuccess: () => {
+      toast.success("Saved", { description: `${name.trim() || member.email} is updated.` });
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-secondary/30 p-4">
+      <p className="tt-eyebrow">Who this is</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {member.email || "No email address is recorded for this account."}
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <TTField label="Full name">
+          <TTInput
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Sarah Whitfield"
+          />
+        </TTField>
+        <TTField label="Job title">
+          <TTInput
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Head of Operations"
+          />
+        </TTField>
+      </div>
+      <div className="mt-3">
+        <TTButton
+          variant="secondary"
+          disabled={save.isPending}
+          onClick={() => save.mutate()}
+        >
+          {save.isPending ? "Saving…" : "Save name"}
+        </TTButton>
+      </div>
+    </div>
+  );
+}
+
+
+
 function InvitePanel({
   organizationId,
   organizationName,
