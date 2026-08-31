@@ -25,7 +25,9 @@ function tabClass(active: boolean) {
 
 const TABS: { to: string; section: CommsSection; label: string }[] = [
   { to: "/modules/comms", section: "relationships", label: "Relationships" },
+  { to: "/modules/comms/dashboard", section: "dashboard", label: "Dashboard" },
   { to: "/modules/comms/to-scout", section: "to_scout", label: "Save to Scout" },
+
   { to: "/modules/comms/voice", section: "voice", label: "Voice DNA" },
   { to: "/modules/comms/integrations", section: "integrations", label: "Connections" },
 ];
