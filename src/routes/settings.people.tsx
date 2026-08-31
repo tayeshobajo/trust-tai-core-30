@@ -19,6 +19,7 @@ import { PermissionSummary } from "@/components/tt/settings/permission-summary";
 import { useSettingsIdentity } from "@/components/tt/settings/shell";
 import {
   cancelInvitation,
+  createMemberWithPassword,
   deliverInvitationEmail,
   inviteMembers,
   listInvitationAudit,
@@ -27,12 +28,14 @@ import {
   parseEmails,
   readOrganizationApps,
   resendInvitation,
+  resetMemberPassword,
   setMemberAppAccess,
   setMemberRole,
   setMemberStatus,
   type MemberProfile,
 } from "@/data/supabase/settings-service";
 import { ROLE_LABEL, normalizeRole, type WorkspaceRole } from "@/domain/access";
+import { PASSWORD_HELP, validatePassword } from "@/domain/admin-password";
 import { MEMBERSHIP_ROLES } from "@/data/supabase/schema";
 import {
   APP_ACCESS_DESCRIPTION,
@@ -585,6 +588,8 @@ function PeopleSettings() {
 
       {selected ? (
         <MemberAccessPanel
+          organizationId={identity.organizationId}
+          actorUserId={identity.userId}
           member={selected}
           orgEnabled={orgEnabled}
           canManage={identity.canManage}
@@ -766,11 +771,14 @@ const LIFECYCLE_LABEL: Record<string, string> = {
   created: "Created",
   resent: "Resent",
   emailed: "Emailed",
+  password_reset: "Password set",
   cancelled: "Cancelled",
   other: "Recorded",
 };
 
 function MemberAccessPanel({
+  organizationId,
+  actorUserId,
   member,
   orgEnabled,
   canManage,
@@ -779,6 +787,8 @@ function MemberAccessPanel({
   onLevel,
   onStatus,
 }: {
+  organizationId: string;
+  actorUserId: string;
   member: MemberProfile;
   orgEnabled: Record<string, boolean>;
   canManage: boolean;
@@ -787,7 +797,9 @@ function MemberAccessPanel({
   onLevel: (appId: string, appName: string, level: AppAccessLevel) => void;
   onStatus: (status: "active" | "deactivated") => void;
 }) {
+  const [resetOpen, setResetOpen] = useState(false);
   return (
+
     <div className="tt-surface p-6">
       <SectionHeading
         eyebrow="Access"
@@ -853,23 +865,40 @@ function MemberAccessPanel({
         </ul>
       </div>
 
-      {canManage && !isSelf ? (
+      {canManage ? (
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <TTButton
-            variant="secondary"
-            onClick={() => onStatus(member.status === "active" ? "deactivated" : "active")}
-          >
-            {member.status === "active"
-              ? `Deactivate ${member.name}`
-              : `Reactivate ${member.name}`}
+          {isSelf ? null : (
+            <TTButton
+              variant="secondary"
+              onClick={() => onStatus(member.status === "active" ? "deactivated" : "active")}
+            >
+              {member.status === "active"
+                ? `Deactivate ${member.name}`
+                : `Reactivate ${member.name}`}
+            </TTButton>
+          )}
+          <TTButton variant="secondary" onClick={() => setResetOpen(true)}>
+            Set new password
           </TTButton>
           <span className="text-xs text-muted-foreground">
-            A deactivated person keeps their history and loses every room immediately.
+            {isSelf
+              ? "Setting a password here changes your own sign-in credential immediately."
+              : "A deactivated person keeps their history and loses every room immediately."}
           </span>
         </div>
       ) : null}
+
+      {resetOpen ? (
+        <ResetPasswordDialog
+          organizationId={organizationId}
+          actorUserId={actorUserId}
+          member={member}
+          onClose={() => setResetOpen(false)}
+        />
+      ) : null}
     </div>
   );
+
 }
 
 function InvitePanel({
@@ -893,6 +922,14 @@ function InvitePanel({
   const [sent, setSent] = useState<number | null>(null);
   const [delivered, setDelivered] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [mode, setMode] = useState<"email" | "password">("email");
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [created, setCreated] = useState<{
+    email: string;
+    role: WorkspaceRole;
+    rooms: string[];
+  } | null>(null);
 
   const parsed = parseEmails(emails);
 
@@ -945,6 +982,45 @@ function InvitePanel({
     },
   });
 
+  /* Direct provisioning. One email, one auth user, the same canonical
+     membership the invitation path produces. The password is held only until
+     the request completes. */
+  const createUser = useMutation({
+    mutationFn: async () => {
+      const email = parsed.valid[0];
+      if (!email) throw new Error("Enter the email address for this person.");
+      if (parsed.valid.length > 1) {
+        throw new Error("Create one user at a time when setting a password.");
+      }
+      const check = validatePassword(password, confirmation);
+      if (!check.ok) throw new Error(check.because);
+      const outcome = await createMemberWithPassword({
+        organizationId,
+        email,
+        password,
+        confirmation,
+        role,
+        access: overrides,
+        actorUserId,
+      });
+      if (!outcome.ok) throw new Error(outcome.because ?? "That user could not be created.");
+      return { email };
+    },
+    onSuccess: ({ email }) => {
+      setPassword("");
+      setConfirmation("");
+      setEmails("");
+      setCreated({
+        email,
+        role,
+        rooms: APP_REGISTRY.filter(
+          (app) => (overrides[app.id] ?? roleDefaultAccess(role, app.id)) !== "hidden",
+        ).map((app) => app.name),
+      });
+      onDone();
+    },
+  });
+
   return (
     <div className="tt-surface p-6">
       <SectionHeading
@@ -984,6 +1060,62 @@ function InvitePanel({
           </TTSelect>
         </TTField>
       </div>
+
+      <fieldset className="mt-5">
+        <legend className="tt-eyebrow mb-2">How they get in</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(
+            [
+              {
+                value: "email",
+                label: "Send invite email",
+                hint: "They set their own password from the invitation.",
+              },
+              {
+                value: "password",
+                label: "Set temporary password",
+                hint: "You create the account now and hand the password over yourself.",
+              },
+            ] as const
+          ).map((choice) => (
+            <label
+              key={choice.value}
+              className={cn(
+                "flex items-start gap-3 rounded-xl border px-4 py-3",
+                mode === choice.value ? "border-royal bg-secondary/40" : "border-border",
+              )}
+            >
+              <input
+                type="radio"
+                name="onboarding-mode"
+                className="mt-1 size-4 accent-royal"
+                checked={mode === choice.value}
+                onChange={() => {
+                  setMode(choice.value);
+                  setCreated(null);
+                  setSent(null);
+                }}
+              />
+              <span className="min-w-0">
+                <span className="block text-sm text-foreground">{choice.label}</span>
+                <span className="block text-xs text-muted-foreground">{choice.hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {mode === "password" ? (
+        <div className="mt-5">
+          <PasswordFields
+            idPrefix="provision"
+            password={password}
+            confirmation={confirmation}
+            onPassword={setPassword}
+            onConfirmation={setConfirmation}
+          />
+        </div>
+      ) : null}
 
       <p className="tt-eyebrow mt-5 mb-2">Application access</p>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -1041,7 +1173,7 @@ function InvitePanel({
         })}
       </div>
 
-      <div className="mt-6 rounded-xl border border-border">
+      <div className={cn("mt-6 rounded-xl border border-border", mode === "password" && "hidden")}>
         <div className="flex flex-wrap items-center gap-3 px-4 py-3">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-foreground">Email preview</p>
@@ -1086,14 +1218,23 @@ function InvitePanel({
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
 
-        <TTButton
-          onClick={() => invite.mutate()}
-          disabled={parsed.valid.length === 0 || invite.isPending}
-        >
-          {invite.isPending
-            ? "Sending…"
-            : `Send ${parsed.valid.length || ""} invitation${parsed.valid.length === 1 ? "" : "s"}`.trim()}
-        </TTButton>
+        {mode === "password" ? (
+          <TTButton
+            onClick={() => createUser.mutate()}
+            disabled={parsed.valid.length === 0 || createUser.isPending}
+          >
+            {createUser.isPending ? "Creating…" : "Create user"}
+          </TTButton>
+        ) : (
+          <TTButton
+            onClick={() => invite.mutate()}
+            disabled={parsed.valid.length === 0 || invite.isPending}
+          >
+            {invite.isPending
+              ? "Sending…"
+              : `Send ${parsed.valid.length || ""} invitation${parsed.valid.length === 1 ? "" : "s"}`.trim()}
+          </TTButton>
+        )}
         {parsed.invalid.length > 0 ? (
           <span className="text-xs text-warning">
             Not a valid address: {parsed.invalid.join(", ")}
@@ -1105,11 +1246,185 @@ function InvitePanel({
             {delivered ? ` ${delivered}` : ""}
           </span>
         ) : null}
-        {invite.error ? (
+        {invite.error || createUser.error ? (
           <span className="text-sm text-destructive" role="alert">
-            {(invite.error as Error).message}
+            {((invite.error ?? createUser.error) as Error).message}
           </span>
         ) : null}
+      </div>
+
+      {created ? (
+        <div
+          className="mt-4 rounded-xl border border-border bg-secondary/40 p-4 text-sm text-foreground"
+          role="status"
+        >
+          <p className="font-medium">User created</p>
+          <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+            <li>
+              <span className="text-foreground">{created.email}</span> can sign in now.
+            </li>
+            <li>Role applied: {ROLE_LABEL[created.role]}.</li>
+            <li>
+              Rooms: {created.rooms.length > 0 ? created.rooms.join(", ") : "None yet"}.
+            </li>
+            <li>A temporary password was set.</li>
+          </ul>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Share the password through a secure channel. Trust Tai does not keep a copy, so it
+            cannot be shown again.
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------- password controls */
+
+/**
+ * Password entry, shared by direct provisioning and reset. The value lives in
+ * component state for the length of the form and is never persisted, logged or
+ * echoed back after submission.
+ */
+function PasswordFields({
+  password,
+  confirmation,
+  onPassword,
+  onConfirmation,
+  idPrefix,
+}: {
+  password: string;
+  confirmation: string;
+  onPassword: (value: string) => void;
+  onConfirmation: (value: string) => void;
+  idPrefix: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="grid gap-5 sm:grid-cols-2">
+      <TTField label="Temporary password" hint={PASSWORD_HELP}>
+        <TTInput
+          id={`${idPrefix}-password`}
+          type={visible ? "text" : "password"}
+          autoComplete="new-password"
+          value={password}
+          onChange={(event) => onPassword(event.target.value)}
+        />
+      </TTField>
+      <TTField label="Confirm password" hint="Type it a second time so a typo cannot lock them out.">
+        <TTInput
+          id={`${idPrefix}-confirm`}
+          type={visible ? "text" : "password"}
+          autoComplete="new-password"
+          value={confirmation}
+          onChange={(event) => onConfirmation(event.target.value)}
+        />
+      </TTField>
+      <button
+        type="button"
+        className="justify-self-start text-[13px] text-royal hover:underline"
+        onClick={() => setVisible((value) => !value)}
+      >
+        {visible ? "Hide password" : "Show password"}
+      </button>
+    </div>
+  );
+}
+
+/** Set a new sign-in password for someone who is already a member. */
+function ResetPasswordDialog({
+  organizationId,
+  actorUserId,
+  member,
+  onClose,
+}: {
+  organizationId: string;
+  actorUserId: string;
+  member: MemberProfile;
+  onClose: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const reset = useMutation({
+    mutationFn: async () => {
+      const check = validatePassword(password, confirmation);
+      if (!check.ok) throw new Error(check.because);
+      const outcome = await resetMemberPassword({
+        organizationId,
+        userId: member.userId,
+        email: member.email,
+        password,
+        confirmation,
+        actorUserId,
+      });
+      if (!outcome.ok) throw new Error(outcome.because ?? "That password could not be set.");
+      return outcome;
+    },
+    onSuccess: () => {
+      /* The plaintext leaves memory the moment the change lands. */
+      setPassword("");
+      setConfirmation("");
+      setDone(true);
+      setNote(null);
+    },
+    onError: (error: Error) => setNote(error.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Set a new password for ${member.name}`}
+        className="tt-surface w-full max-w-xl p-6"
+      >
+        <SectionHeading
+          eyebrow="Sign-in"
+          title={`Set a new password for ${member.name}`}
+          description={`This immediately changes how ${member.email} signs in. Their current password stops working at once.`}
+        />
+
+        {done ? (
+          <div className="rounded-xl border border-border bg-secondary/40 p-4 text-sm text-foreground">
+            <p>New password set for {member.email}.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Share it through a secure channel. It is not stored anywhere in Trust Tai and cannot
+              be shown again.
+            </p>
+          </div>
+        ) : (
+          <PasswordFields
+            idPrefix={`reset-${member.userId}`}
+            password={password}
+            confirmation={confirmation}
+            onPassword={setPassword}
+            onConfirmation={setConfirmation}
+          />
+        )}
+
+        {note ? (
+          <p className="mt-4 text-sm text-destructive" role="alert">
+            {note}
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          {done ? (
+            <TTButton onClick={onClose}>Done</TTButton>
+          ) : (
+            <>
+              <TTButton onClick={() => reset.mutate()} disabled={reset.isPending}>
+                {reset.isPending ? "Setting…" : "Set new password"}
+              </TTButton>
+              <TTButton variant="secondary" onClick={onClose}>
+                Cancel
+              </TTButton>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

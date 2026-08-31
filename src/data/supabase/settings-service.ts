@@ -429,13 +429,15 @@ export const INVITATION_EVENTS = [
   "user.invite_resent",
   "user.invite_cancelled",
   "user.invite_emailed",
+  "user.created_with_password",
+  "user.password_reset",
 ] as const;
 
 export interface InvitationAuditEntry {
   id: string;
   at: string;
   event: string;
-  lifecycle: "created" | "resent" | "cancelled" | "emailed" | "other";
+  lifecycle: "created" | "resent" | "cancelled" | "emailed" | "password_reset" | "other";
   email: string;
   summary: string;
   actorUserId: string | null;
@@ -447,6 +449,8 @@ function lifecycleOf(event: string): InvitationAuditEntry["lifecycle"] {
   if (event === "user.invite_resent") return "resent";
   if (event === "user.invite_cancelled") return "cancelled";
   if (event === "user.invite_emailed") return "emailed";
+  if (event === "user.created_with_password") return "created";
+  if (event === "user.password_reset") return "password_reset";
   return "other";
 }
 
@@ -555,6 +559,110 @@ export async function deliverInvitationEmail(input: {
   return outcome;
 }
 
+/* ------------------------------------------------- admin-managed passwords */
+
+/**
+ * Provision a workspace user directly, or set a new password for one who
+ * already exists. The browser never holds a service key: it calls the governed
+ * server endpoint with the caller's own session, and the endpoint verifies
+ * authority before Supabase Auth is touched.
+ *
+ * The plaintext password lives in this call and nowhere else. It is never put
+ * into an activity payload, storage, or a log line — only the fact that the
+ * action happened, by whom, for whom, and when.
+ */
+export interface AdminPasswordResult {
+  ok: boolean;
+  because?: string;
+  userId?: string;
+  /** True when creation failed because that email already signs in somewhere. */
+  existing?: boolean;
+}
+
+async function callAdminPassword(body: Record<string, unknown>): Promise<AdminPasswordResult> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return { ok: false, because: "Sign in again to manage workspace passwords." };
+  try {
+    const response = await fetch("/api/public/settings/admin-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const parsed = (await response.json().catch(() => null)) as AdminPasswordResult | null;
+    if (parsed && typeof parsed.ok === "boolean") return parsed;
+    return { ok: false, because: "That change could not be completed." };
+  } catch {
+    return { ok: false, because: "That change could not be completed." };
+  }
+}
+
+export async function createMemberWithPassword(input: {
+  organizationId: string;
+  email: string;
+  password: string;
+  confirmation: string;
+  role: WorkspaceRole;
+  access: Record<string, AppAccessLevel>;
+  actorUserId: string;
+}): Promise<AdminPasswordResult> {
+  const email = input.email.trim().toLowerCase();
+  const outcome = await callAdminPassword({
+    action: "create_user",
+    organizationId: input.organizationId,
+    email,
+    password: input.password,
+    confirmation: input.confirmation,
+    role: input.role,
+    access: input.access,
+  });
+
+  if (outcome.ok) {
+    await audit({
+      organizationId: input.organizationId,
+      actorUserId: input.actorUserId,
+      name: "user.created_with_password",
+      subject: { type: "user", id: outcome.userId ?? email, label: email },
+      summary: `${email} was created as ${input.role} with a temporary password.`,
+      payload: {
+        role: input.role,
+        app_access: input.access,
+        onboarding: "temporary_password",
+        lifecycle: "created",
+      },
+    });
+  }
+  return outcome;
+}
+
+export async function resetMemberPassword(input: {
+  organizationId: string;
+  userId: string;
+  email: string;
+  password: string;
+  confirmation: string;
+  actorUserId: string;
+}): Promise<AdminPasswordResult> {
+  const outcome = await callAdminPassword({
+    action: "reset_password",
+    organizationId: input.organizationId,
+    userId: input.userId,
+    password: input.password,
+    confirmation: input.confirmation,
+  });
+
+  if (outcome.ok) {
+    await audit({
+      organizationId: input.organizationId,
+      actorUserId: input.actorUserId,
+      name: "user.password_reset",
+      subject: { type: "user", id: input.userId, label: input.email },
+      summary: `An admin set a new sign-in password for ${input.email}.`,
+      payload: { lifecycle: "password_reset", target_user_id: input.userId },
+    });
+  }
+  return outcome;
+}
 
 
 /* ------------------------------------------------------------------ profile */
