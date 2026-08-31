@@ -276,21 +276,9 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           if (ids.length === 0) return Response.json({ ok: true, people: [] });
 
           const list = `(${ids.map((id) => `"${id}"`).join(",")})`;
-          const profiles = await fetch(
-            `${supabaseUrl()}/rest/v1/profiles?id=in.${encodeURIComponent(list)}&select=id,email,full_name,display_name,job_title,avatar_url`,
-            { headers: { apikey: secret, Authorization: `Bearer ${secret}` } },
-          );
-          const rows = (await profiles.json().catch(() => null)) as
-            | {
-                id: string;
-                email: string | null;
-                full_name: string | null;
-                display_name: string | null;
-                job_title: string | null;
-                avatar_url: string | null;
-              }[]
-            | null;
-          const byId = new Map((rows ?? []).map((row) => [row.id, row]));
+          const rows = await readProfiles(`id=in.${encodeURIComponent(list)}`, secret);
+          const byId = new Map(rows.map((row) => [String(row["id"]), row]));
+
 
           /* Supabase Auth is the authority for a person's sign-in identity:
              the address they actually sign in with, when the account was
