@@ -329,7 +329,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
              History in `activities` is untouched: nothing is rewritten. */
           const memberEmails = new Set(
             ids
-              .map((id) => (authById.get(id)?.email ?? byId.get(id)?.email ?? "").toLowerCase())
+              .map((id) => (authById.get(id)?.email ?? byId.get(id)?.["email"] ?? "").toLowerCase())
               .filter(Boolean),
           );
           const pending = await restGet<{ id: string; email: string }[]>(
