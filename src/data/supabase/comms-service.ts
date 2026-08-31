@@ -134,7 +134,10 @@ export interface RelationshipPatch {
   followUpDueAt?: string | null;
   email?: string | null;
   companyName?: string | null;
+  /** The whole metadata object, already merged by the caller. */
+  metadata?: Record<string, unknown>;
 }
+
 
 export const commsService = {
   /** Every relationship in the organization. The queue does its own grouping. */
@@ -257,7 +260,9 @@ export const commsService = {
     if (patch.followUpDueAt !== undefined) payload["follow_up_due_at"] = patch.followUpDueAt;
     if (patch.email !== undefined) payload["email"] = patch.email;
     if (patch.companyName !== undefined) payload["company_name"] = patch.companyName;
+    if (patch.metadata !== undefined) payload["metadata"] = patch.metadata;
     payload["updated_at"] = new Date().toISOString();
+
 
     const { data, error } = await supabase
       .from("comms_relationships")

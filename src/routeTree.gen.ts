@@ -37,6 +37,7 @@ import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
 import { Route as ApiLinkiExecuteRouteImport } from './routes/api/linki/execute'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
+import { Route as ModulesCommsDashboardRouteImport } from './routes/modules.comms.dashboard'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsToScoutRouteImport } from './routes/modules.comms.to-scout'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
@@ -222,6 +223,11 @@ const ApiLinkiExecuteRoute = ApiLinkiExecuteRouteImport.update({
 const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => ModulesCommsRoute,
+} as any)
+const ModulesCommsDashboardRoute = ModulesCommsDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
 const ModulesCommsIntegrationsRoute =
@@ -505,6 +511,7 @@ export interface FileRoutesByFullPath {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -575,6 +582,7 @@ export interface FileRoutesByTo {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -651,6 +659,7 @@ export interface FileRoutesById {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -729,6 +738,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings/'
     | '/api/linki/execute'
+    | '/modules/comms/dashboard'
     | '/modules/comms/integrations'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
@@ -799,6 +809,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings'
     | '/api/linki/execute'
+    | '/modules/comms/dashboard'
     | '/modules/comms/integrations'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
@@ -874,6 +885,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings/'
     | '/api/linki/execute'
+    | '/modules/comms/dashboard'
     | '/modules/comms/integrations'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
@@ -1166,6 +1178,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/modules/comms/'
       preLoaderRoute: typeof ModulesCommsIndexRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
+    '/modules/comms/dashboard': {
+      id: '/modules/comms/dashboard'
+      path: '/dashboard'
+      fullPath: '/modules/comms/dashboard'
+      preLoaderRoute: typeof ModulesCommsDashboardRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
     '/modules/comms/integrations': {
@@ -1536,6 +1555,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 )
 
 interface ModulesCommsRouteChildren {
+  ModulesCommsDashboardRoute: typeof ModulesCommsDashboardRoute
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsToScoutRoute: typeof ModulesCommsToScoutRoute
   ModulesCommsVoiceRoute: typeof ModulesCommsVoiceRoute
@@ -1543,6 +1563,7 @@ interface ModulesCommsRouteChildren {
 }
 
 const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
+  ModulesCommsDashboardRoute: ModulesCommsDashboardRoute,
   ModulesCommsIntegrationsRoute: ModulesCommsIntegrationsRoute,
   ModulesCommsToScoutRoute: ModulesCommsToScoutRoute,
   ModulesCommsVoiceRoute: ModulesCommsVoiceRoute,
