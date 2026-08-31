@@ -548,6 +548,8 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
         /* ------------------------------------------------- create a new user */
         const email = input.email.trim().toLowerCase();
 
+        const fullName = (input.fullName ?? "").trim();
+
         const created = await fetch(`${supabaseUrl()}/auth/v1/admin/users`, {
           method: "POST",
           headers: {
@@ -561,6 +563,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
             /* Deliberate: temporary-password onboarding must not send the person
                through an email confirmation they were never told to expect. */
             email_confirm: true,
+            ...(fullName ? { user_metadata: { full_name: fullName } } : {}),
           }),
         });
         const createdBody = (await created.json().catch(() => null)) as {
@@ -570,44 +573,77 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           message?: string;
         } | null;
 
-        if (!created.ok || !createdBody?.id) {
-          const because = humanAuthError({
-            status: created.status,
-            code: createdBody?.error_code ?? null,
-            message: createdBody?.msg ?? createdBody?.message ?? null,
-          });
-          return Response.json(
-            {
-              ok: false,
-              because,
-              existing:
-                (createdBody?.error_code ?? "").toLowerCase() === "email_exists" ||
-                /already/i.test(createdBody?.msg ?? createdBody?.message ?? ""),
-            },
-            { status: created.status === 422 ? 409 : 502 },
-          );
+        let userId = createdBody?.id ?? null;
+        let adopted = false;
+
+        if (!created.ok || !userId) {
+          const existing =
+            (createdBody?.error_code ?? "").toLowerCase() === "email_exists" ||
+            /already/i.test(createdBody?.msg ?? createdBody?.message ?? "");
+
+          /* Idempotency. A retry — a double click, a lost response, a second
+             attempt after a timeout — must land on the same person, never on a
+             second account. If that address already signs in AND is already a
+             member of THIS workspace, this is that retry: finish the same
+             provisioning against the same user id. If the address exists but
+             belongs to nobody here, it is somebody else's account and an admin
+             of this workspace may not take it over. */
+          if (existing) {
+            const known = (await readProfiles(`email=eq.${encodeURIComponent(email)}`, secret))[0];
+            const candidate = known?.["id"] ? String(known["id"]) : null;
+            if (candidate) {
+              const alreadyMember = await restGet<{ user_id: string }[]>(
+                `organization_memberships?organization_id=eq.${input.organizationId}&user_id=eq.${candidate}&select=user_id`,
+                token,
+                key,
+              );
+              if (alreadyMember?.[0]) {
+                userId = candidate;
+                adopted = true;
+              }
+            }
+          }
+
+          if (!userId) {
+            return Response.json(
+              {
+                ok: false,
+                because: humanAuthError({
+                  status: created.status,
+                  code: createdBody?.error_code ?? null,
+                  message: createdBody?.msg ?? createdBody?.message ?? null,
+                }),
+                existing,
+              },
+              { status: created.status === 422 ? 409 : 502 },
+            );
+          }
         }
 
-        const userId = createdBody.id;
         const role = normalizeRole(input.role);
         const now = new Date().toISOString();
 
         /* Canonical identity: the same profile + membership rows every other
-           person in this workspace has. No parallel local-user model. */
-        await serviceWrite(
+           person in this workspace has. No parallel local-user model, and the
+           human name is persisted before this call can report success. */
+        const profileWrite = await serviceWriteTolerant(
           "profiles?on_conflict=id",
           secret,
-          [
-            {
-              id: userId,
-              email,
-              ...(input.fullName?.trim()
-                ? { full_name: input.fullName.trim(), display_name: input.fullName.trim() }
-                : {}),
-              updated_at: now,
-            },
-          ],
+          {
+            id: userId,
+            email,
+            ...(fullName ? { full_name: fullName } : {}),
+            updated_at: now,
+          },
+          fullName ? ["id", "full_name"] : ["id"],
         );
+        if (!profileWrite.ok) {
+          return refused(
+            502,
+            "The sign-in account exists but their name could not be saved. Open them in People & access and save the name again.",
+          );
+        }
+
 
         const memberWrite = await serviceWrite(
           "organization_memberships?on_conflict=organization_id,user_id",
