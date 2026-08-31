@@ -15,6 +15,8 @@ import {
   PersonChip,
   TTSelect,
 } from "@/components/tt/settings/pieces";
+import { AccessOverview } from "@/components/tt/settings/access-overview";
+import { RoleAccessMatrix } from "@/components/tt/settings/role-access-matrix";
 import { PermissionSummary } from "@/components/tt/settings/permission-summary";
 import { useSettingsIdentity } from "@/components/tt/settings/shell";
 import {
@@ -113,6 +115,8 @@ function PeopleSettings() {
   const [bulkRole, setBulkRole] = useState<WorkspaceRole>("member");
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkNote, setBulkNote] = useState<string | null>(null);
+  const [resendAllBusy, setResendAllBusy] = useState(false);
+  const [resendAllNote, setResendAllNote] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({
     key: "name",
     direction: "asc",
@@ -324,7 +328,15 @@ function PeopleSettings() {
 
   return (
     <>
+      <AccessOverview
+        members={members.data ?? []}
+        pendingInvitations={pendingInvitations}
+        invitationsProvisioned={invitations.data?.provisioned !== false}
+        isPending={members.isPending}
+      />
+
       <div className="tt-surface p-6">
+
         <SectionHeading
           eyebrow="Workspace"
           title="People &amp; access"
@@ -617,10 +629,65 @@ function PeopleSettings() {
       ) : null}
 
       <div className="tt-surface p-6">
-        <SectionHeading
-          title="Pending invitations"
-          description="People invited but not yet signed in. An invitation grants nothing until it is accepted."
-        />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionHeading
+            title="Pending invitations"
+            description="People invited but not yet signed in. An invitation grants nothing until it is accepted."
+          />
+          {identity.canManage && pendingInvitations.length > 0 ? (
+            <button
+              type="button"
+              disabled={resendAllBusy}
+              className="shrink-0 rounded-lg border border-border px-3 py-2 text-[13px] text-foreground transition-colors hover:bg-secondary disabled:opacity-60"
+              onClick={() => {
+                void (async () => {
+                  setResendAllBusy(true);
+                  setResendAllNote(null);
+                  let sent = 0;
+                  let failed = 0;
+                  for (const invitation of pendingInvitations) {
+                    try {
+                      await resendInvitation({
+                        organizationId: identity.organizationId,
+                        invitationId: invitation.id,
+                        email: invitation.email,
+                        actorUserId: identity.userId,
+                      });
+                      const result = await deliverInvitationEmail({
+                        organizationId: identity.organizationId,
+                        invitationId: invitation.id,
+                        email: invitation.email,
+                        actorUserId: identity.userId,
+                      });
+                      setDeliveryById((previous) => ({ ...previous, [invitation.id]: result }));
+                      if (result.delivered) sent += 1;
+                      else failed += 1;
+                    } catch {
+                      failed += 1;
+                    }
+                  }
+                  setResendAllBusy(false);
+                  setResendAllNote(
+                    failed === 0
+                      ? `Sent again to ${sent} ${sent === 1 ? "person" : "people"}.`
+                      : `Sent again to ${sent}; ${failed} could not be emailed.`,
+                  );
+                  refresh();
+                })();
+              }}
+            >
+              {resendAllBusy
+                ? "Sending…"
+                : `Send all ${pendingInvitations.length} again`}
+            </button>
+          ) : null}
+        </div>
+        {resendAllNote ? (
+          <p className="mb-3 text-xs text-muted-foreground" role="status">
+            {resendAllNote}
+          </p>
+        ) : null}
+
         {invitations.data?.provisioned === false ? (
           <NotProvisioned what="Invitations" file="docs/settings-schema.sql" />
         ) : pendingInvitations.length === 0 ? (
@@ -706,6 +773,15 @@ function PeopleSettings() {
           );
         })}
       </div>
+
+      {identity.canManage ? (
+        <RoleAccessMatrix
+          organizationId={identity.organizationId}
+          actorUserId={identity.userId}
+          canManage={identity.canManage}
+          orgEnabled={orgEnabled}
+        />
+      ) : null}
 
       {identity.canManage ? <InvitationAudit query={invitationAudit} /> : null}
 
