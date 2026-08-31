@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { usePresence } from "@/hooks/use-presence";
+
+
 import { APP_REGISTRY, type AppRegistration } from "@/domain/registry";
 import { initialsOf } from "@/domain/steward-accountability";
 import { cn } from "@/lib/utils";
