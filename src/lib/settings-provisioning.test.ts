@@ -20,19 +20,19 @@ const ORG = "org-1";
 const CALLER = "caller-1";
 const NEW_USER = "user-new-1";
 
-type Handler = (request: Request) => Promise<Response> | Response;
+type Handler = (context: { request: Request }) => Promise<Response> | Response;
 
 function post(body: unknown): Promise<Response> {
   const handlers = (Route as unknown as { options: { server: { handlers: { POST: Handler } } } })
     .options.server.handlers;
   return Promise.resolve(
-    handlers.POST(
-      new Request("https://cmd.trusttai.com/api/public/settings/admin-password", {
+    handlers.POST({
+      request: new Request("https://cmd.trusttai.com/api/public/settings/admin-password", {
         method: "POST",
         headers: { authorization: "Bearer caller-token", "content-type": "application/json" },
         body: JSON.stringify(body),
       }),
-    ),
+    }),
   ) as Promise<Response>;
 }
 
