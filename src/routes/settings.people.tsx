@@ -1079,6 +1079,7 @@ function InvitePanel({
         role,
         access: overrides,
         actorUserId,
+        fullName,
       });
       if (!outcome.ok) throw new Error(outcome.because ?? "That user could not be created.");
       return { email };
@@ -1087,6 +1088,7 @@ function InvitePanel({
       setPassword("");
       setConfirmation("");
       setEmails("");
+      setFullName("");
       setCreated({
         email,
         role,
