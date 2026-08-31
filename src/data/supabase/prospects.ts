@@ -336,3 +336,59 @@ export async function saveProspectMetadataPatch(id: ID, patch: Row): Promise<voi
   const { error } = await supabase.from("prospects").update({ metadata }).eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+/** Source marker for a company Scout learned about through a conversation. */
+export const COMMS_RELATIONSHIP_SOURCE = "comms_relationship";
+
+export interface RelationshipProspectInput {
+  organizationId: ID;
+  userId: ID;
+  companyName: string;
+  /** Optional: a conversation can name a company before we know its site. */
+  websiteUrl?: string | undefined;
+  relationshipId: ID;
+  personName: string;
+  roleTitle?: string | undefined;
+  /** What this person does for the company, in a member's words. */
+  role?: string | undefined;
+}
+
+/**
+ * Write a Scout prospect that came out of a Comms conversation. Provenance is
+ * explicit: a person entered this from a relationship, nothing was sourced.
+ */
+export async function insertRelationshipProspect(
+  input: RelationshipProspectInput,
+): Promise<Prospect> {
+  const at = new Date().toISOString();
+  const payload = {
+    organization_id: input.organizationId,
+    company_name: input.companyName.trim(),
+    website_url: input.websiteUrl ? normalizeWebsiteUrl(input.websiteUrl) : null,
+    status: "discovered",
+    source: COMMS_RELATIONSHIP_SOURCE,
+    observed: [],
+    inferred: {},
+    suggested: {},
+    provenance: {
+      app_key: "comms",
+      source_kind: "comms_relationship",
+      note: "Entered by a Trust Tai member from a Comms relationship. No sourcing or research was performed.",
+      relationship_id: input.relationshipId,
+      person_name: input.personName,
+      role_title: input.roleTitle ?? null,
+      role: input.role ?? null,
+      observed_at: at,
+    },
+    created_by: input.userId,
+  };
+
+  const { data, error } = await supabase
+    .from("prospects")
+    .insert(payload)
+    .select(SELECT_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("That company could not be saved to Scout.");
+  return toProspect(data as unknown as ProspectRow);
+}

@@ -57,6 +57,14 @@ import {
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { HandoffPanel } from "@/components/tt/prospect/handoff";
 import { PeoplePanel, type ManualPersonForm } from "@/components/tt/prospect/people-panel";
+import { ProspectPersonCard } from "@/components/tt/scout/detail/person-card";
+import { ConversationTab } from "@/components/tt/scout/detail/conversation";
+import { listProspectConversations } from "@/data/scout/conversation";
+import {
+  saveProspectPerson,
+  type ProspectPersonIdentity,
+  type SavedProspectPerson,
+} from "@/data/scout/person-card";
 import { RecommendedNextMoveCard } from "@/components/tt/scout/detail/recommended-move";
 import { CompanyHero, DetailUtilityRow } from "@/components/tt/scout/detail/hero";
 import {
@@ -373,6 +381,42 @@ function CompanyDetail({
       );
     },
     onSuccess: refresh,
+  });
+
+  // The conversation, read from Comms. Scout never writes it.
+  const conversations = useQuery({
+    queryKey: ["scout", "conversation", organizationId, prospectId],
+    queryFn: () => listProspectConversations(organizationId, prospectId),
+  });
+
+  // Confirming the Person card is a human act, so it also prepares the first
+  // message in Comms with exactly that name, title and company.
+  const savePerson = useMutation({
+    mutationFn: ({
+      person,
+      identity,
+    }: {
+      person: Person;
+      identity: ProspectPersonIdentity;
+    }): Promise<SavedProspectPerson> => {
+      if (!candidate) throw new Error("That company is no longer on your board.");
+      const development = developmentFromBrief(
+        buildRelationshipBrief({ candidate, people: people.data ?? [] }),
+      );
+      return saveProspectPerson({
+        organizationId,
+        userId,
+        prospectId,
+        companyName: candidate.prospect.name,
+        person,
+        identity,
+        ...(development ? { development } : {}),
+      });
+    },
+    onSuccess: async () => {
+      await conversations.refetch();
+      await refresh();
+    },
   });
 
   const derived = useMemo(() => {
@@ -863,8 +907,26 @@ function CompanyDetail({
               />
             ) : null}
 
+            {tab === "conversation" ? (
+              <ConversationTab
+                conversations={conversations.data ?? []}
+                loading={conversations.isLoading}
+                companyName={prospect.name}
+              />
+            ) : null}
+
             {tab === "people" ? (
               <div className="space-y-6">
+                <ProspectPersonCard
+                  people={peopleRows}
+                  companyName={prospect.name}
+                  saving={savePerson.isPending}
+                  saved={savePerson.data ?? null}
+                  error={
+                    savePerson.error instanceof Error ? savePerson.error.message : null
+                  }
+                  onSave={(person, identity) => savePerson.mutate({ person, identity })}
+                />
                 <PeoplePanel
                   criteria={evaluation.criteria.filter((c) => c.key === "decision_maker")}
                   people={peopleRows}
