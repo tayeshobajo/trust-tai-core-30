@@ -14,6 +14,7 @@ import { toast } from "sonner";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
+import { ScoutConversationLink } from "@/components/tt/comms/scout-link";
 import { PageHeader, TTButton, TTInput } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { commsService } from "@/data/supabase/comms-service";
@@ -238,6 +239,9 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
                       <span className="truncate text-[13px] text-muted-foreground">
                         {previewOf(row)}
                       </span>
+                      <span className="flex flex-wrap items-center gap-2">
+                        <ScoutConversationLink relationship={row.relationship} />
+                      </span>
                       {row.closedAt ? (
                         <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                           Closed
@@ -301,6 +305,8 @@ function ThreadView({
             {row.closedAt ? ` · closed ${whenLabel(row.closedAt)} ago` : ""}
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        <ScoutConversationLink relationship={row.relationship} />
         <TTButton
           variant="secondary"
           size="sm"
@@ -313,6 +319,7 @@ function ThreadView({
               ? "Reopen conversation"
               : "Mark conversation closed"}
         </TTButton>
+        </div>
       </header>
 
       <div className="max-h-[60vh] space-y-3 overflow-y-auto p-4">
