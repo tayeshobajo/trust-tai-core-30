@@ -644,6 +644,21 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           );
         }
 
+        /* A retry against an account this workspace already owns: make the
+           password the operator just typed the live one, so the two attempts
+           cannot disagree about what was handed over. */
+        if (adopted) {
+          await fetch(`${supabaseUrl()}/auth/v1/admin/users/${userId}`, {
+            method: "PUT",
+            headers: {
+              apikey: secret,
+              Authorization: `Bearer ${secret}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ password: input.password }),
+          }).catch(() => null);
+        }
+
 
         const memberWrite = await serviceWrite(
           "organization_memberships?on_conflict=organization_id,user_id",
