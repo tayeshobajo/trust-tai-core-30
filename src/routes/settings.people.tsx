@@ -1123,6 +1123,20 @@ function InvitePanel({
             placeholder="sarah@company.com"
           />
         </TTField>
+        <TTField
+          label="Full name"
+          hint={
+            mode === "password"
+              ? "How this person appears in People & access."
+              : "Recorded when you create the account with a temporary password."
+          }
+        >
+          <TTInput
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            placeholder="Sarah Whitfield"
+          />
+        </TTField>
         <TTField label="Role">
           <TTSelect
             value={role}
