@@ -96,8 +96,12 @@ function fakeSupabase() {
       }
       const userFilter = url.searchParams.get("user_id")?.replace("eq.", "");
       if (userFilter === CALLER) return json([{ role: "owner", status: "active" }]);
-      const row = userFilter ? memberships.get(userFilter) : null;
-      return json(row ? [row] : []);
+      if (userFilter) {
+        const row = memberships.get(userFilter);
+        return json(row ? [row] : []);
+      }
+      /* The whole workspace, as the directory reads it. */
+      return json([...memberships.values()]);
     }
 
     if (path === "/rest/v1/profiles") {
