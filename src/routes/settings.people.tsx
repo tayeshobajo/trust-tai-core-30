@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
@@ -31,6 +32,7 @@ import {
   readOrganizationApps,
   resendInvitation,
   resetMemberPassword,
+  saveMemberIdentity,
   setMemberAppAccess,
   setMemberRole,
   setMemberStatus,
@@ -877,11 +879,22 @@ function MemberAccessPanel({
   return (
 
     <div className="tt-surface p-6">
+      {canManage ? (
+        <div className="mb-6">
+          <MemberIdentityEditor
+            organizationId={organizationId}
+            actorUserId={actorUserId}
+            member={member}
+          />
+        </div>
+      ) : null}
+
       <SectionHeading
         eyebrow="Access"
         title={`What ${member.name} can reach`}
         description="Visibility and authority are separate. Hidden rooms never appear in their navigation."
       />
+
 
       <div className="space-y-2">
         {APP_REGISTRY.map((app) => {
@@ -977,6 +990,81 @@ function MemberAccessPanel({
 
 }
 
+/**
+ * Who this person is, in plain words.
+ *
+ * Access is meaningless if nobody can tell whose access it is, so naming sits
+ * above the permission grid rather than hidden in a separate screen.
+ */
+function MemberIdentityEditor({
+  organizationId,
+  actorUserId,
+  member,
+}: {
+  organizationId: string;
+  actorUserId: string;
+  member: MemberProfile;
+}) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState(member.name === member.email ? "" : member.name);
+  const [title, setTitle] = useState(member.jobTitle ?? "");
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const outcome = await saveMemberIdentity({
+        organizationId,
+        userId: member.userId,
+        email: member.email,
+        fullName: name.trim(),
+        jobTitle: title.trim(),
+        actorUserId,
+      });
+      if (!outcome.ok) throw new Error(outcome.because ?? "That name could not be saved.");
+    },
+    onSuccess: () => {
+      toast.success("Saved", { description: `${name.trim() || member.email} is updated.` });
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-secondary/30 p-4">
+      <p className="tt-eyebrow">Who this is</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {member.email || "No email address is recorded for this account."}
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <TTField label="Full name">
+          <TTInput
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Sarah Whitfield"
+          />
+        </TTField>
+        <TTField label="Job title">
+          <TTInput
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Head of Operations"
+          />
+        </TTField>
+      </div>
+      <div className="mt-3">
+        <TTButton
+          variant="secondary"
+          disabled={save.isPending}
+          onClick={() => save.mutate()}
+        >
+          {save.isPending ? "Saving…" : "Save name"}
+        </TTButton>
+      </div>
+    </div>
+  );
+}
+
+
+
 function InvitePanel({
   organizationId,
   organizationName,
@@ -993,6 +1081,7 @@ function InvitePanel({
   onDelivery?: (invitationId: string, result: { delivered: boolean; because: string }) => void;
 }) {
   const [emails, setEmails] = useState("");
+  const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<WorkspaceRole>("member");
   const [overrides, setOverrides] = useState<Record<string, AppAccessLevel>>({});
   const [sent, setSent] = useState<number | null>(null);
@@ -1078,6 +1167,7 @@ function InvitePanel({
         role,
         access: overrides,
         actorUserId,
+        fullName,
       });
       if (!outcome.ok) throw new Error(outcome.because ?? "That user could not be created.");
       return { email };
@@ -1086,6 +1176,7 @@ function InvitePanel({
       setPassword("");
       setConfirmation("");
       setEmails("");
+      setFullName("");
       setCreated({
         email,
         role,
@@ -1118,6 +1209,20 @@ function InvitePanel({
               setEmails(event.target.value);
             }}
             placeholder="sarah@company.com"
+          />
+        </TTField>
+        <TTField
+          label="Full name"
+          hint={
+            mode === "password"
+              ? "How this person appears in People & access."
+              : "Recorded when you create the account with a temporary password."
+          }
+        >
+          <TTInput
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            placeholder="Sarah Whitfield"
           />
         </TTField>
         <TTField label="Role">

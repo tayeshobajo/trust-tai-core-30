@@ -156,6 +156,18 @@ export async function ensureRelationshipPerson(input: {
     person = await updateContact(contact.id, contactPatch, input.userId);
   }
 
+  // The other direction: a person Scout already holds carries their company
+  // back onto the conversation, so their Comms messages land on the Scout
+  // company profile without anyone re-entering anything.
+  if (!relationship.prospect_id && person.prospectId) {
+    const { error } = await supabase
+      .from("comms_relationships")
+      .update({ prospect_id: person.prospectId, updated_at: new Date().toISOString() })
+      .eq("id", relationship.id)
+      .eq("organization_id", input.organizationId);
+    if (!error) relationship.prospect_id = person.prospectId;
+  }
+
   return {
     relationshipId: relationship.id,
     contactId: contact.id,

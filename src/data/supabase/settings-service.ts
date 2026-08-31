@@ -65,6 +65,61 @@ function nameOf(row: Row, email: string): string {
   return email.split("@")[0] ?? "Member";
 }
 
+/**
+ * Names and emails for everyone in the workspace, read server-side.
+ *
+ * A signed-in person can only read their own profile row, so the list would
+ * otherwise show blanks for everybody else. The governed endpoint verifies the
+ * caller is an active owner or admin of this organization before it answers,
+ * and it returns identity only — never a credential.
+ */
+export interface DirectoryPerson {
+  userId: string;
+  email: string;
+  name: string;
+  jobTitle: string | null;
+  avatarUrl: string | null;
+}
+
+export async function readMemberDirectory(
+  organizationId: string,
+): Promise<Map<string, DirectoryPerson>> {
+  const outcome = (await callAdminPassword({ action: "directory", organizationId })) as
+    | (AdminPasswordResult & { people?: DirectoryPerson[] })
+    | null;
+  const people = outcome?.ok ? (outcome.people ?? []) : [];
+  return new Map(people.map((person) => [person.userId, person]));
+}
+
+/** A human naming another person in the workspace. Owner/admin only. */
+export async function saveMemberIdentity(input: {
+  organizationId: string;
+  userId: string;
+  email: string;
+  fullName: string;
+  jobTitle?: string;
+  actorUserId: string;
+}): Promise<AdminPasswordResult> {
+  const outcome = await callAdminPassword({
+    action: "set_identity",
+    organizationId: input.organizationId,
+    userId: input.userId,
+    fullName: input.fullName,
+    jobTitle: input.jobTitle ?? "",
+  });
+  if (outcome.ok) {
+    await audit({
+      organizationId: input.organizationId,
+      actorUserId: input.actorUserId,
+      name: "user.identity_updated",
+      subject: { type: "user", id: input.userId, label: input.email || input.fullName },
+      summary: `${input.email || input.userId} is now named ${input.fullName}.`,
+      payload: { lifecycle: "other", full_name: input.fullName },
+    });
+  }
+  return outcome;
+}
+
 export async function listMembers(organizationId: string): Promise<MemberProfile[]> {
   const memberships = await supabase
     .from("organization_memberships")
@@ -83,18 +138,23 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
   );
 
   const overrides = await readMemberAccess(organizationId);
+  const directory = await readMemberDirectory(organizationId).catch(
+    () => new Map<string, DirectoryPerson>(),
+  );
 
   return rows
     .map((row) => {
       const userId = String(row["user_id"]);
       const profile = byId.get(userId) ?? {};
-      const email = String(profile["email"] ?? "");
+      const known = directory.get(userId);
+      const email = String(profile["email"] ?? "") || (known?.email ?? "");
+      const derived = nameOf(profile, email);
       return {
         userId,
         email,
-        name: nameOf(profile, email),
-        avatarUrl: (profile["avatar_url"] as string | null) ?? null,
-        jobTitle: (profile["job_title"] as string | null) ?? null,
+        name: known?.name || derived || email || "Unnamed person",
+        avatarUrl: (profile["avatar_url"] as string | null) ?? known?.avatarUrl ?? null,
+        jobTitle: (profile["job_title"] as string | null) ?? known?.jobTitle ?? null,
         role: normalizeRole(row["role"] as string | null),
         status: String(row["status"] ?? "active"),
         lastActiveAt: (row["last_active_at"] as string | null) ?? null,
@@ -663,6 +723,8 @@ export async function createMemberWithPassword(input: {
   role: WorkspaceRole;
   access: Record<string, AppAccessLevel>;
   actorUserId: string;
+  /** How this person should be named in the workspace. */
+  fullName?: string;
 }): Promise<AdminPasswordResult> {
   const email = input.email.trim().toLowerCase();
   const outcome = await callAdminPassword({
@@ -673,6 +735,7 @@ export async function createMemberWithPassword(input: {
     confirmation: input.confirmation,
     role: input.role,
     access: input.access,
+    ...(input.fullName?.trim() ? { fullName: input.fullName.trim() } : {}),
   });
 
   if (outcome.ok) {
