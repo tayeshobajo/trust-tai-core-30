@@ -239,16 +239,19 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
                       <span className="truncate text-[13px] text-muted-foreground">
                         {previewOf(row)}
                       </span>
-                      <span className="flex flex-wrap items-center gap-2">
-                        <ScoutConversationLink relationship={row.relationship} />
-                      </span>
                       {row.closedAt ? (
                         <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                           Closed
                         </span>
                       ) : null}
                     </button>
+                    {row.relationship.prospectId ? (
+                      <div className="px-4 pb-3">
+                        <ScoutConversationLink relationship={row.relationship} />
+                      </div>
+                    ) : null}
                   </li>
+
                 ))
               )}
             </ul>
