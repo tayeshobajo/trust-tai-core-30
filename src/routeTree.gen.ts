@@ -38,6 +38,7 @@ import { Route as SettingsSecurityRouteImport } from './routes/settings.security
 import { Route as ApiLinkiExecuteRouteImport } from './routes/api/linki/execute'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsDashboardRouteImport } from './routes/modules.comms.dashboard'
+import { Route as ModulesCommsInboxRouteImport } from './routes/modules.comms.inbox'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsPlanRouteImport } from './routes/modules.comms.plan'
 import { Route as ModulesCommsToScoutRouteImport } from './routes/modules.comms.to-scout'
@@ -229,6 +230,11 @@ const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
 const ModulesCommsDashboardRoute = ModulesCommsDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => ModulesCommsRoute,
+} as any)
+const ModulesCommsInboxRoute = ModulesCommsInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
 const ModulesCommsIntegrationsRoute =
@@ -518,6 +524,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
+  '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
@@ -590,6 +597,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
+  '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
@@ -668,6 +676,7 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
+  '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
@@ -748,6 +757,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/api/linki/execute'
     | '/modules/comms/dashboard'
+    | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/to-scout'
@@ -820,6 +830,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/linki/execute'
     | '/modules/comms/dashboard'
+    | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/to-scout'
@@ -897,6 +908,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/api/linki/execute'
     | '/modules/comms/dashboard'
+    | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/to-scout'
@@ -1197,6 +1209,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/modules/comms/dashboard'
       preLoaderRoute: typeof ModulesCommsDashboardRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
+    '/modules/comms/inbox': {
+      id: '/modules/comms/inbox'
+      path: '/inbox'
+      fullPath: '/modules/comms/inbox'
+      preLoaderRoute: typeof ModulesCommsInboxRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
     '/modules/comms/integrations': {
@@ -1575,6 +1594,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 interface ModulesCommsRouteChildren {
   ModulesCommsDashboardRoute: typeof ModulesCommsDashboardRoute
+  ModulesCommsInboxRoute: typeof ModulesCommsInboxRoute
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsPlanRoute: typeof ModulesCommsPlanRoute
   ModulesCommsToScoutRoute: typeof ModulesCommsToScoutRoute
@@ -1584,6 +1604,7 @@ interface ModulesCommsRouteChildren {
 
 const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
   ModulesCommsDashboardRoute: ModulesCommsDashboardRoute,
+  ModulesCommsInboxRoute: ModulesCommsInboxRoute,
   ModulesCommsIntegrationsRoute: ModulesCommsIntegrationsRoute,
   ModulesCommsPlanRoute: ModulesCommsPlanRoute,
   ModulesCommsToScoutRoute: ModulesCommsToScoutRoute,

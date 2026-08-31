@@ -14,6 +14,7 @@ import { toast } from "sonner";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
+import { MeetingFromMessage } from "@/components/tt/comms/meeting-from-message";
 import { ScoutConversationLink } from "@/components/tt/comms/scout-link";
 import { PageHeader, TTButton, TTInput } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -259,6 +260,7 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
 
           <ThreadView
             row={selected}
+            identity={identity}
             messages={selected ? (messages.data?.[selected.relationship.id] ?? []) : []}
             busy={close.isPending}
             onToggleClosed={(closed) => {
@@ -273,11 +275,13 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
 
 function ThreadView({
   row,
+  identity,
   messages,
   busy,
   onToggleClosed,
 }: {
   row: ConversationRow | null;
+  identity: WorkspaceIdentity;
   messages: StoredMailboxMessage[];
   busy: boolean;
   onToggleClosed: (closed: boolean) => void;
@@ -308,20 +312,27 @@ function ThreadView({
             {row.closedAt ? ` · closed ${whenLabel(row.closedAt)} ago` : ""}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-        <ScoutConversationLink relationship={row.relationship} />
-        <TTButton
-          variant="secondary"
-          size="sm"
-          disabled={busy}
-          onClick={() => onToggleClosed(!row.closedAt)}
-        >
-          {busy
-            ? "Saving…"
-            : row.closedAt
-              ? "Reopen conversation"
-              : "Mark conversation closed"}
-        </TTButton>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ScoutConversationLink relationship={row.relationship} />
+            <TTButton
+              variant="secondary"
+              size="sm"
+              disabled={busy}
+              onClick={() => onToggleClosed(!row.closedAt)}
+            >
+              {busy
+                ? "Saving…"
+                : row.closedAt
+                  ? "Reopen conversation"
+                  : "Mark conversation closed"}
+            </TTButton>
+          </div>
+          <MeetingFromMessage
+            relationship={row.relationship}
+            message={row.lastMessage}
+            identity={identity}
+          />
         </div>
       </header>
 
