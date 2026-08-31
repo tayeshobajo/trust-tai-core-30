@@ -14,8 +14,15 @@ import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { accessContext, type AccessContext } from "@/domain/access";
-import { visibleApps, type AppAccessDecision } from "@/domain/app-access";
-import { readMemberAccess, readOrganizationApps } from "@/data/supabase/settings-service";
+import { visibleApps, type AppAccessDecision, type AppAccessLevel } from "@/domain/app-access";
+import { effectiveOverrides, type RoleAccessMap } from "@/domain/role-access";
+import { APP_REGISTRY } from "@/domain/registry";
+import {
+  readMemberAccess,
+  readOrganizationApps,
+  readRoleAppAccess,
+} from "@/data/supabase/settings-service";
+
 import { clearRoomAuthority, setRoomAuthority } from "@/lib/room-authority";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import {
