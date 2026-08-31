@@ -19,6 +19,7 @@ import { PermissionSummary } from "@/components/tt/settings/permission-summary";
 import { useSettingsIdentity } from "@/components/tt/settings/shell";
 import {
   cancelInvitation,
+  createMemberWithPassword,
   deliverInvitationEmail,
   inviteMembers,
   listInvitationAudit,
@@ -27,12 +28,14 @@ import {
   parseEmails,
   readOrganizationApps,
   resendInvitation,
+  resetMemberPassword,
   setMemberAppAccess,
   setMemberRole,
   setMemberStatus,
   type MemberProfile,
 } from "@/data/supabase/settings-service";
 import { ROLE_LABEL, normalizeRole, type WorkspaceRole } from "@/domain/access";
+import { PASSWORD_HELP, validatePassword } from "@/domain/admin-password";
 import { MEMBERSHIP_ROLES } from "@/data/supabase/schema";
 import {
   APP_ACCESS_DESCRIPTION,
@@ -585,6 +588,8 @@ function PeopleSettings() {
 
       {selected ? (
         <MemberAccessPanel
+          organizationId={identity.organizationId}
+          actorUserId={identity.userId}
           member={selected}
           orgEnabled={orgEnabled}
           canManage={identity.canManage}
@@ -766,11 +771,14 @@ const LIFECYCLE_LABEL: Record<string, string> = {
   created: "Created",
   resent: "Resent",
   emailed: "Emailed",
+  password_reset: "Password set",
   cancelled: "Cancelled",
   other: "Recorded",
 };
 
 function MemberAccessPanel({
+  organizationId,
+  actorUserId,
   member,
   orgEnabled,
   canManage,
@@ -779,6 +787,8 @@ function MemberAccessPanel({
   onLevel,
   onStatus,
 }: {
+  organizationId: string;
+  actorUserId: string;
   member: MemberProfile;
   orgEnabled: Record<string, boolean>;
   canManage: boolean;
