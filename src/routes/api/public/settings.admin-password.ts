@@ -400,28 +400,22 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           }
 
           /* Snapshot who this was before anything is removed, so the history
-             stays readable even after the credential is gone. */
-          const snapshotProfile = await fetch(
-            `${supabaseUrl()}/rest/v1/profiles?id=eq.${input.userId}&select=email,full_name,display_name,job_title`,
-            { headers: { apikey: secret, Authorization: `Bearer ${secret}` } },
-          ).catch(() => null);
-          const profileRow = ((await snapshotProfile?.json().catch(() => null)) as
-            | {
-                email: string | null;
-                full_name: string | null;
-                display_name: string | null;
-                job_title: string | null;
-              }[]
-            | null)?.[0];
+             stays readable even after the credential is gone. The address is
+             the immutable evidence; the human name is added when known. */
+          const profileRow = (await readProfiles(`id=eq.${input.userId}`, secret))[0];
           const authLook = await fetch(`${supabaseUrl()}/auth/v1/admin/users/${input.userId}`, {
             headers: { apikey: secret, Authorization: `Bearer ${secret}` },
           }).catch(() => null);
           const authRow = (await authLook?.json().catch(() => null)) as {
             email?: string | null;
+            user_metadata?: { full_name?: string | null } | null;
           } | null;
-          const address = (authRow?.email ?? profileRow?.email ?? "").toLowerCase();
+          const address = (authRow?.email ?? profileRow?.["email"] ?? "").toLowerCase();
           const label =
-            (profileRow?.display_name || profileRow?.full_name || address || "A workspace member").trim();
+            displayNameOf(profileRow, authRow?.user_metadata?.full_name ?? null, address) ||
+            address ||
+            "A workspace member";
+
           const removedAt = new Date().toISOString();
 
           await serviceWrite("activities", secret, [
