@@ -58,7 +58,31 @@ const IdentityBody = z.object({
   jobTitle: z.string().max(200).optional(),
 });
 
-const Body = z.discriminatedUnion("action", [CreateBody, ResetBody, DirectoryBody, IdentityBody]);
+/**
+ * Take someone out of the workspace.
+ *
+ *   revoke          they lose access; the sign-in account, their profile and
+ *                   every record they ever touched stay exactly as they are.
+ *   delete_account  the sign-in account is deleted too, so the address can be
+ *                   provisioned again from scratch. Their identity is written
+ *                   into the append-only activity history first, and no work
+ *                   record (contacts, prospects, messages, decisions) is
+ *                   deleted — only the credential.
+ */
+const RemoveBody = z.object({
+  action: z.literal("remove_member"),
+  organizationId: z.string().min(1).max(64),
+  userId: z.string().min(1).max(64),
+  mode: z.enum(["revoke", "delete_account"]).default("revoke"),
+});
+
+const Body = z.discriminatedUnion("action", [
+  CreateBody,
+  ResetBody,
+  DirectoryBody,
+  IdentityBody,
+  RemoveBody,
+]);
 
 const PROJECT_REF = "okydosoacqdnursmmenf";
 
@@ -291,6 +315,104 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           });
         }
 
+
+        /* ---------------------------------------- take someone out, keep the work */
+        if (input.action === "remove_member") {
+          if (input.userId === caller.id) {
+            return refused(400, "You cannot remove your own access from this workspace.");
+          }
+          const target = await restGet<{ role: string }[]>(
+            `organization_memberships?organization_id=eq.${input.organizationId}&user_id=eq.${input.userId}&select=role`,
+            token,
+            key,
+          );
+          if (!target?.[0]) {
+            return refused(403, "That person is not a member of this workspace.");
+          }
+          if (normalizeRole(target[0].role) === "owner" && normalizeRole(membership?.role ?? "") !== "owner") {
+            return refused(403, "Only an owner can remove another owner.");
+          }
+
+          /* Snapshot who this was before anything is removed, so the history
+             stays readable even after the credential is gone. */
+          const snapshotProfile = await fetch(
+            `${supabaseUrl()}/rest/v1/profiles?id=eq.${input.userId}&select=email,full_name,display_name,job_title`,
+            { headers: { apikey: secret, Authorization: `Bearer ${secret}` } },
+          ).catch(() => null);
+          const profileRow = ((await snapshotProfile?.json().catch(() => null)) as
+            | {
+                email: string | null;
+                full_name: string | null;
+                display_name: string | null;
+                job_title: string | null;
+              }[]
+            | null)?.[0];
+          const authLook = await fetch(`${supabaseUrl()}/auth/v1/admin/users/${input.userId}`, {
+            headers: { apikey: secret, Authorization: `Bearer ${secret}` },
+          }).catch(() => null);
+          const authRow = (await authLook?.json().catch(() => null)) as {
+            email?: string | null;
+          } | null;
+          const address = (authRow?.email ?? profileRow?.email ?? "").toLowerCase();
+          const label =
+            (profileRow?.display_name || profileRow?.full_name || address || "A workspace member").trim();
+          const removedAt = new Date().toISOString();
+
+          await serviceWrite("activities", secret, [
+            {
+              organization_id: input.organizationId,
+              actor_user_id: caller.id,
+              event_type:
+                input.mode === "delete_account" ? "user.account_deleted" : "user.access_revoked",
+              summary:
+                input.mode === "delete_account"
+                  ? `${label} was removed from the workspace and their sign-in account was deleted. Their records were kept.`
+                  : `${label} was removed from the workspace. Their sign-in account and records were kept.`,
+              occurred_at: removedAt,
+              payload: {
+                lifecycle: input.mode === "delete_account" ? "account_deleted" : "access_revoked",
+                label: address || label,
+                removed_user_id: input.userId,
+                name: label,
+                email: address || null,
+                job_title: profileRow?.job_title ?? null,
+                role: normalizeRole(target[0].role),
+              },
+            },
+          ]);
+
+          /* Access first, in every case. */
+          for (const path of [
+            `member_app_access?organization_id=eq.${input.organizationId}&user_id=eq.${input.userId}`,
+            `organization_memberships?organization_id=eq.${input.organizationId}&user_id=eq.${input.userId}`,
+          ]) {
+            await fetch(`${supabaseUrl()}/rest/v1/${path}`, {
+              method: "DELETE",
+              headers: { apikey: secret, Authorization: `Bearer ${secret}` },
+            }).catch(() => null);
+          }
+
+          if (input.mode === "delete_account") {
+            const deleted = await fetch(`${supabaseUrl()}/auth/v1/admin/users/${input.userId}`, {
+              method: "DELETE",
+              headers: { apikey: secret, Authorization: `Bearer ${secret}` },
+            }).catch(() => null);
+            if (deleted && !deleted.ok && deleted.status !== 404) {
+              return refused(
+                502,
+                "Their workspace access was removed, but the sign-in account could not be deleted.",
+              );
+            }
+          }
+
+          return Response.json({
+            ok: true,
+            action: "remove_member",
+            mode: input.mode,
+            userId: input.userId,
+            email: address || null,
+          });
+        }
 
         /* ------------------------------------------------ name someone plainly */
         if (input.action === "set_identity") {
