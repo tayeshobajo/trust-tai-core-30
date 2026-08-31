@@ -2,7 +2,13 @@ import { Link } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
 
-export type CommsSection = "relationships" | "to_scout" | "voice" | "integrations";
+export type CommsSection =
+  | "relationships"
+  | "dashboard"
+  | "to_scout"
+  | "voice"
+  | "integrations";
+
 
 /**
  * Underline tabs, mockup geometry: 40px rows, a 2px royal rule under the
