@@ -435,7 +435,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
                 removed_user_id: input.userId,
                 name: label,
                 email: address || null,
-                job_title: profileRow?.job_title ?? null,
+                job_title: profileRow?.["job_title"] ?? null,
                 role: normalizeRole(target[0].role),
               },
             },
