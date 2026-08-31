@@ -1047,6 +1047,130 @@ function MemberAccessPanel({
 }
 
 /**
+ * Removing a person, without losing what they did.
+ *
+ * Two honest outcomes, said in the words that matter to the person deciding:
+ * end their access and keep the account, or delete the sign-in account so the
+ * same address can be set up again. Neither deletes their work — contacts,
+ * prospects, conversations, decisions and history all stay, and who they were
+ * is written into the workspace history before anything is removed.
+ */
+function RemoveMemberDialog({
+  organizationId,
+  member,
+  onClose,
+}: {
+  organizationId: string;
+  member: MemberProfile;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [mode, setMode] = useState<"revoke" | "delete_account">("revoke");
+  const [confirmation, setConfirmation] = useState("");
+  const address = member.email || member.name;
+  const needsTyping = mode === "delete_account";
+  const ready = !needsTyping || confirmation.trim().toLowerCase() === address.toLowerCase();
+
+  const remove = useMutation({
+    mutationFn: async () => {
+      const outcome = await removeMember({ organizationId, userId: member.userId, mode });
+      if (!outcome.ok) throw new Error(outcome.because ?? "That person could not be removed.");
+    },
+    onSuccess: () => {
+      toast.success(
+        mode === "delete_account" ? "Account deleted" : "Access removed",
+        {
+          description:
+            mode === "delete_account"
+              ? `${address} can be created again from scratch. Their records were kept.`
+              : `${member.name} no longer has access. Their account and records were kept.`,
+        },
+      );
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+      void queryClient.invalidateQueries({ queryKey: ["workspace"] });
+      onClose();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4">
+      <div className="tt-surface w-full max-w-lg p-6">
+        <SectionHeading
+          eyebrow="Remove"
+          title={`Remove ${member.name}`}
+          description="Their work stays in the workspace either way. Only their access, and optionally their sign-in account, is removed."
+        />
+
+        <div className="mt-4 space-y-2">
+          {(
+            [
+              {
+                value: "revoke" as const,
+                title: "Remove their access",
+                detail:
+                  "They lose every room immediately. Their sign-in account and all their records stay, and you can add them back later.",
+              },
+              {
+                value: "delete_account" as const,
+                title: "Remove access and delete the sign-in account",
+                detail: `Deletes the credential for ${address} so you can create that person again from scratch. Contacts, prospects, conversations and history are kept.`,
+              },
+            ]
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setMode(option.value)}
+              className={cn(
+                "w-full rounded-xl border px-4 py-3 text-left transition-colors",
+                mode === option.value
+                  ? "border-foreground/30 bg-secondary/60"
+                  : "border-border hover:bg-secondary/30",
+              )}
+            >
+              <p className="text-sm font-medium text-foreground">{option.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{option.detail}</p>
+            </button>
+          ))}
+        </div>
+
+        {needsTyping ? (
+          <div className="mt-4">
+            <TTField
+              label={`Type ${address} to confirm`}
+              hint="Deleting a sign-in account cannot be undone. Their records are not deleted."
+            >
+              <TTInput
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.target.value)}
+                placeholder={address}
+              />
+            </TTField>
+          </div>
+        ) : null}
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <TTButton
+            onClick={() => remove.mutate()}
+            disabled={!ready || remove.isPending}
+          >
+            {remove.isPending
+              ? "Removing..."
+              : mode === "delete_account"
+                ? "Remove and delete account"
+                : "Remove access"}
+          </TTButton>
+          <TTButton variant="secondary" onClick={onClose}>
+            Cancel
+          </TTButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Who this person is, in plain words.
  *
  * Access is meaningless if nobody can tell whose access it is, so naming sits
