@@ -154,19 +154,30 @@ export function useWorkspace(): WorkspaceState {
       const role = membership.role ?? "member";
       const membershipActive = !membership.status || membership.status === "active";
 
-      /* App switches and per-person overrides are optional persistence: until
-         the Settings tables exist, role templates alone decide visibility. */
-      const [organizationApps, memberAccess] = await Promise.all([
+      /* App switches, role defaults and per-person overrides are optional
+         persistence: until the Settings tables exist, role templates alone
+         decide visibility. A person's own override always wins over the
+         role-level default beneath it. */
+      const [organizationApps, memberAccess, roleAccess] = await Promise.all([
         readOrganizationApps(organization.id).catch(() => ({ provisioned: false, value: {} })),
         readMemberAccess(organization.id).catch(() => ({ provisioned: false, value: {} })),
+        readRoleAppAccess(organization.id).catch(() => ({ provisioned: false, value: {} })),
       ]);
 
       const apps = visibleApps({
         role,
         membershipActive,
         organization: { enabled: organizationApps.value },
-        overrides: (memberAccess.value as Record<string, Record<string, string>>)[userId] ?? {},
+        overrides: effectiveOverrides({
+          role,
+          appIds: APP_REGISTRY.map((app) => app.id),
+          roleAccess: roleAccess.value as RoleAccessMap,
+          memberAccess: (memberAccess.value as Record<string, Record<string, AppAccessLevel>>)[
+            userId
+          ],
+        }),
       });
+
 
       /* Publish authority once, so room services can refuse a write that this
          person's access does not carry. Visibility alone is not authority. */
