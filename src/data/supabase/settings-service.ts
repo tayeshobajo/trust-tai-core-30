@@ -140,6 +140,28 @@ export async function saveMemberIdentity(input: {
   return outcome;
 }
 
+/**
+ * Take someone out of the workspace.
+ *
+ * "revoke" ends their access and keeps everything else. "delete_account" also
+ * deletes the sign-in credential so the address can be provisioned again — the
+ * person's records (contacts, prospects, messages, decisions, history) are
+ * never deleted either way, and who they were is written into the append-only
+ * history before the credential goes.
+ */
+export async function removeMember(input: {
+  organizationId: string;
+  userId: string;
+  mode: "revoke" | "delete_account";
+}): Promise<AdminPasswordResult> {
+  return callAdminPassword({
+    action: "remove_member",
+    organizationId: input.organizationId,
+    userId: input.userId,
+    mode: input.mode,
+  });
+}
+
 export async function listMembers(organizationId: string): Promise<MemberProfile[]> {
   const memberships = await supabase
     .from("organization_memberships")
