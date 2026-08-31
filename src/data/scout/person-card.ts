@@ -136,6 +136,20 @@ export async function prepareFirstMessageDraft(input: {
     );
   }
 
+  // A conversation that started in Comms is claimed by this company here, so
+  // every message on it lands on the Scout profile of the right person.
+  if (relationship.prospectId !== input.prospectId) {
+    await supabase
+      .from("comms_relationships")
+      .update({
+        prospect_id: input.prospectId,
+        contact_id: input.person.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", relationship.id)
+      .eq("organization_id", input.organizationId);
+  }
+
   const drafts = await commsService.listDrafts(relationship.id);
   const prepared = drafts.find((draft) => draft.rationale["kind"] === FIRST_MESSAGE_KIND);
   if (prepared) return { relationshipId: relationship.id, draft: prepared, created: false };
