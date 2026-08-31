@@ -496,9 +496,15 @@ function PeopleSettings() {
                         name={member.name}
                         email={member.email}
                         avatarUrl={member.avatarUrl}
-                        supporting={member.jobTitle ?? member.email}
+                        supporting={[
+                          member.email || "No email on file",
+                          member.jobTitle ?? "",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       />
                     </td>
+
                     <td className="px-4 py-3">
                       {selectable ? (
                         <TTSelect
