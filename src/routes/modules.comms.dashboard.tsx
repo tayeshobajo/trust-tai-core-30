@@ -274,11 +274,13 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
 
 function ThreadView({
   row,
+  identity,
   messages,
   busy,
   onToggleClosed,
 }: {
   row: ConversationRow | null;
+  identity: WorkspaceIdentity;
   messages: StoredMailboxMessage[];
   busy: boolean;
   onToggleClosed: (closed: boolean) => void;
