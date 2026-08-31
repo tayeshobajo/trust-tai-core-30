@@ -324,7 +324,15 @@ function PeopleSettings() {
 
   return (
     <>
+      <AccessOverview
+        members={members.data ?? []}
+        pendingInvitations={pendingInvitations}
+        invitationsProvisioned={invitations.data?.provisioned !== false}
+        isPending={members.isPending}
+      />
+
       <div className="tt-surface p-6">
+
         <SectionHeading
           eyebrow="Workspace"
           title="People &amp; access"
