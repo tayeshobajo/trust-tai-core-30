@@ -993,6 +993,7 @@ function InvitePanel({
   onDelivery?: (invitationId: string, result: { delivered: boolean; because: string }) => void;
 }) {
   const [emails, setEmails] = useState("");
+  const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<WorkspaceRole>("member");
   const [overrides, setOverrides] = useState<Record<string, AppAccessLevel>>({});
   const [sent, setSent] = useState<number | null>(null);
