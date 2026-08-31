@@ -1143,3 +1143,154 @@ function InvitePanel({
     </div>
   );
 }
+
+/* ------------------------------------------------------- password controls */
+
+/**
+ * Password entry, shared by direct provisioning and reset. The value lives in
+ * component state for the length of the form and is never persisted, logged or
+ * echoed back after submission.
+ */
+function PasswordFields({
+  password,
+  confirmation,
+  onPassword,
+  onConfirmation,
+  idPrefix,
+}: {
+  password: string;
+  confirmation: string;
+  onPassword: (value: string) => void;
+  onConfirmation: (value: string) => void;
+  idPrefix: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="grid gap-5 sm:grid-cols-2">
+      <TTField label="Temporary password" hint={PASSWORD_HELP}>
+        <TTInput
+          id={`${idPrefix}-password`}
+          type={visible ? "text" : "password"}
+          autoComplete="new-password"
+          value={password}
+          onChange={(event) => onPassword(event.target.value)}
+        />
+      </TTField>
+      <TTField label="Confirm password" hint="Type it a second time so a typo cannot lock them out.">
+        <TTInput
+          id={`${idPrefix}-confirm`}
+          type={visible ? "text" : "password"}
+          autoComplete="new-password"
+          value={confirmation}
+          onChange={(event) => onConfirmation(event.target.value)}
+        />
+      </TTField>
+      <button
+        type="button"
+        className="justify-self-start text-[13px] text-royal hover:underline"
+        onClick={() => setVisible((value) => !value)}
+      >
+        {visible ? "Hide password" : "Show password"}
+      </button>
+    </div>
+  );
+}
+
+/** Set a new sign-in password for someone who is already a member. */
+function ResetPasswordDialog({
+  organizationId,
+  actorUserId,
+  member,
+  onClose,
+}: {
+  organizationId: string;
+  actorUserId: string;
+  member: MemberProfile;
+  onClose: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const reset = useMutation({
+    mutationFn: async () => {
+      const check = validatePassword(password, confirmation);
+      if (!check.ok) throw new Error(check.because);
+      const outcome = await resetMemberPassword({
+        organizationId,
+        userId: member.userId,
+        email: member.email,
+        password,
+        confirmation,
+        actorUserId,
+      });
+      if (!outcome.ok) throw new Error(outcome.because ?? "That password could not be set.");
+      return outcome;
+    },
+    onSuccess: () => {
+      /* The plaintext leaves memory the moment the change lands. */
+      setPassword("");
+      setConfirmation("");
+      setDone(true);
+      setNote(null);
+    },
+    onError: (error: Error) => setNote(error.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Set a new password for ${member.name}`}
+        className="tt-surface w-full max-w-xl p-6"
+      >
+        <SectionHeading
+          eyebrow="Sign-in"
+          title={`Set a new password for ${member.name}`}
+          description={`This immediately changes how ${member.email} signs in. Their current password stops working at once.`}
+        />
+
+        {done ? (
+          <div className="rounded-xl border border-border bg-secondary/40 p-4 text-sm text-foreground">
+            <p>New password set for {member.email}.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Share it through a secure channel. It is not stored anywhere in Trust Tai and cannot
+              be shown again.
+            </p>
+          </div>
+        ) : (
+          <PasswordFields
+            idPrefix={`reset-${member.userId}`}
+            password={password}
+            confirmation={confirmation}
+            onPassword={setPassword}
+            onConfirmation={setConfirmation}
+          />
+        )}
+
+        {note ? (
+          <p className="mt-4 text-sm text-destructive" role="alert">
+            {note}
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          {done ? (
+            <TTButton onClick={onClose}>Done</TTButton>
+          ) : (
+            <>
+              <TTButton onClick={() => reset.mutate()} disabled={reset.isPending}>
+                {reset.isPending ? "Setting…" : "Set new password"}
+              </TTButton>
+              <TTButton variant="secondary" onClick={onClose}>
+                Cancel
+              </TTButton>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
