@@ -66,7 +66,7 @@ function whenText(value: string | null): string {
   return date.toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
-type SortKey = "name" | "role" | "rooms" | "lastSignIn" | "status";
+type SortKey = "name" | "role" | "rooms" | "lastSignIn" | "lastActivity" | "status";
 
 /** A sortable, explainable column header. Presentation only. */
 function SortHeader({
@@ -128,7 +128,7 @@ function PeopleSettings() {
     setSort((current) =>
       current.key === key
         ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
-        : { key, direction: key === "lastSignIn" ? "desc" : "asc" },
+        : { key, direction: key === "lastSignIn" || key === "lastActivity" ? "desc" : "asc" },
     );
   };
 
@@ -241,6 +241,12 @@ function PeopleSettings() {
           return direction * ROLE_LABEL[a.member.role].localeCompare(ROLE_LABEL[b.member.role]);
         case "rooms":
           return direction * (a.rooms - b.rooms);
+        case "lastActivity":
+          return (
+            direction *
+            ((a.member.lastActivityAt ? Date.parse(a.member.lastActivityAt) : 0) -
+              (b.member.lastActivityAt ? Date.parse(b.member.lastActivityAt) : 0))
+          );
         case "lastSignIn":
           return (
             direction *
@@ -479,6 +485,13 @@ function PeopleSettings() {
                   hint="Read from Supabase Auth. This is when they last signed in, not general app activity."
                 />
                 <SortHeader
+                  label="Last activity"
+                  sortKey="lastActivity"
+                  sort={sort}
+                  onSort={toggleSort}
+                  hint="The last time this person opened a room in the workspace. Different from signing in."
+                />
+                <SortHeader
                   label="Status"
                   sortKey="status"
                   sort={sort}
@@ -548,6 +561,14 @@ function PeopleSettings() {
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {whenText(member.lastSignInAt)}
                     </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {member.lastActivityAt
+                        ? new Date(member.lastActivityAt).toLocaleDateString(undefined, {
+                            dateStyle: "medium",
+                          })
+                        : "No room opened yet"}
+                      {member.lastActivityApp ? ` · ${member.lastActivityApp}` : ""}
+                    </td>
                     <td className="px-4 py-3">
                       <Health tone={member.status === "active" ? "good" : "neutral"}>
                         {member.status === "active" ? "Active" : "Deactivated"}
@@ -570,7 +591,7 @@ function PeopleSettings() {
               {!members.isPending && rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={identity.canManage ? 7 : 6}
+                    colSpan={identity.canManage ? 8 : 7}
                     className="px-4 py-8 text-center text-sm text-muted-foreground"
                   >
                     No one matches that search.
