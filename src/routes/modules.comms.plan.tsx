@@ -232,7 +232,7 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
                       />
                       {plan.relationship.followUpDueAt ? (
                         <TTButton
-                          variant="ghost"
+                          variant="quiet"
                           size="sm"
                           disabled={setFollowUp.isPending}
                           onClick={() => setFollowUp.mutate({ plan, date: "" })}
@@ -302,7 +302,7 @@ function Calendar({
     <div className="rounded-xl border border-border p-4">
       <header className="flex items-center justify-between">
         <TTButton
-          variant="ghost"
+          variant="quiet"
           size="sm"
           onClick={() => onMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
           aria-label="Previous month"
@@ -313,7 +313,7 @@ function Calendar({
           {month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
         </h3>
         <TTButton
-          variant="ghost"
+          variant="quiet"
           size="sm"
           onClick={() => onMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
           aria-label="Next month"

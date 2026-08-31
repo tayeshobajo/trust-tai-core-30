@@ -29,7 +29,7 @@ export function ScoutConversationLink({
     <Link
       to="/modules/scout/prospects/$prospectId"
       params={{ prospectId }}
-      search={{ tab: "conversation" }}
+      search={(prev) => ({ ...prev, tab: "conversation" as const })}
       onClick={(event) => event.stopPropagation()}
       className={cn(
         "inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:border-[var(--royal)] hover:text-foreground",
