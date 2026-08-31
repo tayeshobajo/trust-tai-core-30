@@ -103,13 +103,13 @@ export const Route = createFileRoute("/api/public/settings/invite-email")({
           `organizations?id=eq.${organizationId}&select=name`,
           token,
         );
-        const profiles = await restGet<{ display_name: string | null; full_name: string | null }[]>(
-          `profiles?id=eq.${user.id}&select=display_name,full_name`,
+        const profiles = await restGet<{ preferred_name: string | null; full_name: string | null }[]>(
+          `profiles?id=eq.${user.id}&select=full_name,preferred_name`,
           token,
         );
         const invitedByName =
-          profiles?.[0]?.display_name ??
           profiles?.[0]?.full_name ??
+          profiles?.[0]?.preferred_name ??
           user.email ??
           "A workspace admin";
 

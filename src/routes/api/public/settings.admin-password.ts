@@ -139,6 +139,83 @@ async function serviceWrite(
   return { ok: response.ok, status: response.status, body: parsed };
 }
 
+/**
+ * The exact profile columns this project reads. `profiles` is owned outside
+ * this repository, so a column we merely *hope* exists must never be able to
+ * take a whole identity write down with it: one unknown column used to make
+ * PostgREST refuse the entire row, which is how a person could be created with
+ * an email and no name at all.
+ */
+const PROFILE_COLUMNS = ["id", "email", "full_name", "preferred_name", "job_title", "avatar_url"];
+
+/** Column named by a PostgREST schema-cache complaint, if that is the failure. */
+function missingColumn(body: unknown): string | null {
+  const parsed = body as { code?: string; message?: string } | null;
+  const message = parsed?.message ?? "";
+  if (parsed?.code !== "PGRST204" && !/column/i.test(message)) return null;
+  const match = message.match(/'([^']+)' column/) ?? message.match(/column "([^"]+)"/);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Write identity rows, dropping any optional column this deployment does not
+ * have and retrying. A column in `required` is never dropped: if the database
+ * refuses that, the caller must hear about it.
+ */
+async function serviceWriteTolerant(
+  path: string,
+  key: string,
+  row: Record<string, unknown>,
+  required: string[],
+): Promise<{ ok: boolean; status: number; body: unknown }> {
+  const current = { ...row };
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const result = await serviceWrite(path, key, [current]);
+    if (result.ok) return result;
+    const missing = missingColumn(result.body);
+    if (!missing || required.includes(missing) || !(missing in current)) return result;
+    delete current[missing];
+  }
+  return serviceWrite(path, key, [current]);
+}
+
+/**
+ * Read profile rows as the service role, narrowing the projection if the
+ * deployment lacks one of the optional display columns.
+ */
+async function readProfiles(
+  filter: string,
+  key: string,
+): Promise<Record<string, string | null>[]> {
+  for (const columns of [PROFILE_COLUMNS, ["id", "email", "full_name"]]) {
+    const response = await fetch(
+      `${supabaseUrl()}/rest/v1/profiles?${filter}&select=${columns.join(",")}`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    ).catch(() => null);
+    if (response?.ok) {
+      return ((await response.json().catch(() => null)) as Record<string, string | null>[]) ?? [];
+    }
+  }
+  return [];
+}
+
+/** How a person is named, in the one order the whole product agrees on. */
+function displayNameOf(
+  profile: Record<string, string | null> | undefined,
+  authName: string | null,
+  email: string,
+): string {
+  const candidate = (
+    profile?.["full_name"] ||
+    profile?.["preferred_name"] ||
+    authName ||
+    ""
+  ).trim();
+  if (candidate) return candidate;
+  return (email.split("@")[0] ?? "").trim();
+}
+
+
 export const Route = createFileRoute("/api/public/settings/admin-password")({
   server: {
     handlers: {
@@ -199,21 +276,9 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           if (ids.length === 0) return Response.json({ ok: true, people: [] });
 
           const list = `(${ids.map((id) => `"${id}"`).join(",")})`;
-          const profiles = await fetch(
-            `${supabaseUrl()}/rest/v1/profiles?id=in.${encodeURIComponent(list)}&select=id,email,full_name,display_name,job_title,avatar_url`,
-            { headers: { apikey: secret, Authorization: `Bearer ${secret}` } },
-          );
-          const rows = (await profiles.json().catch(() => null)) as
-            | {
-                id: string;
-                email: string | null;
-                full_name: string | null;
-                display_name: string | null;
-                job_title: string | null;
-                avatar_url: string | null;
-              }[]
-            | null;
-          const byId = new Map((rows ?? []).map((row) => [row.id, row]));
+          const rows = await readProfiles(`id=in.${encodeURIComponent(list)}`, secret);
+          const byId = new Map(rows.map((row) => [String(row["id"]), row]));
+
 
           /* Supabase Auth is the authority for a person's sign-in identity:
              the address they actually sign in with, when the account was
@@ -264,7 +329,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
              History in `activities` is untouched: nothing is rewritten. */
           const memberEmails = new Set(
             ids
-              .map((id) => (authById.get(id)?.email ?? byId.get(id)?.email ?? "").toLowerCase())
+              .map((id) => (authById.get(id)?.email ?? byId.get(id)?.["email"] ?? "").toLowerCase())
               .filter(Boolean),
           );
           const pending = await restGet<{ id: string; email: string }[]>(
@@ -300,13 +365,14 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
             people: ids.map((id) => {
               const row = byId.get(id);
               const auth = authById.get(id);
+              /* Auth first: it is the address that actually signs in. */
+              const email = (auth?.email ?? row?.["email"] ?? "") || "";
               return {
                 userId: id,
-                /* Auth first: it is the address that actually signs in. */
-                email: auth?.email ?? row?.email ?? "",
-                name: (row?.display_name || row?.full_name || auth?.name || "").trim(),
-                jobTitle: row?.job_title ?? null,
-                avatarUrl: row?.avatar_url ?? null,
+                email,
+                name: displayNameOf(row, auth?.name ?? null, email),
+                jobTitle: row?.["job_title"] ?? null,
+                avatarUrl: row?.["avatar_url"] ?? null,
                 lastSignInAt: auth?.lastSignInAt ?? null,
                 createdAt: auth?.createdAt ?? null,
                 emailConfirmedAt: auth?.emailConfirmedAt ?? null,
@@ -334,28 +400,22 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           }
 
           /* Snapshot who this was before anything is removed, so the history
-             stays readable even after the credential is gone. */
-          const snapshotProfile = await fetch(
-            `${supabaseUrl()}/rest/v1/profiles?id=eq.${input.userId}&select=email,full_name,display_name,job_title`,
-            { headers: { apikey: secret, Authorization: `Bearer ${secret}` } },
-          ).catch(() => null);
-          const profileRow = ((await snapshotProfile?.json().catch(() => null)) as
-            | {
-                email: string | null;
-                full_name: string | null;
-                display_name: string | null;
-                job_title: string | null;
-              }[]
-            | null)?.[0];
+             stays readable even after the credential is gone. The address is
+             the immutable evidence; the human name is added when known. */
+          const profileRow = (await readProfiles(`id=eq.${input.userId}`, secret))[0];
           const authLook = await fetch(`${supabaseUrl()}/auth/v1/admin/users/${input.userId}`, {
             headers: { apikey: secret, Authorization: `Bearer ${secret}` },
           }).catch(() => null);
           const authRow = (await authLook?.json().catch(() => null)) as {
             email?: string | null;
+            user_metadata?: { full_name?: string | null } | null;
           } | null;
-          const address = (authRow?.email ?? profileRow?.email ?? "").toLowerCase();
+          const address = (authRow?.email ?? profileRow?.["email"] ?? "").toLowerCase();
           const label =
-            (profileRow?.display_name || profileRow?.full_name || address || "A workspace member").trim();
+            displayNameOf(profileRow, authRow?.user_metadata?.full_name ?? null, address) ||
+            address ||
+            "A workspace member";
+
           const removedAt = new Date().toISOString();
 
           await serviceWrite("activities", secret, [
@@ -375,7 +435,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
                 removed_user_id: input.userId,
                 name: label,
                 email: address || null,
-                job_title: profileRow?.job_title ?? null,
+                job_title: profileRow?.["job_title"] ?? null,
                 role: normalizeRole(target[0].role),
               },
             },
@@ -427,15 +487,18 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
 
           const fullName = input.fullName.trim();
           const jobTitle = (input.jobTitle ?? "").trim();
-          const written = await serviceWrite("profiles?on_conflict=id", secret, [
+          /* The same canonical profiles row every other surface reads. */
+          const written = await serviceWriteTolerant(
+            "profiles?on_conflict=id",
+            secret,
             {
               id: input.userId,
               full_name: fullName || null,
-              display_name: fullName || null,
               job_title: jobTitle || null,
               updated_at: new Date().toISOString(),
             },
-          ]);
+            ["id", "full_name"],
+          );
           if (!written.ok) return refused(502, "That name could not be saved.");
           return Response.json({ ok: true, userId: input.userId, action: "set_identity" });
         }
@@ -485,6 +548,8 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
         /* ------------------------------------------------- create a new user */
         const email = input.email.trim().toLowerCase();
 
+        const fullName = (input.fullName ?? "").trim();
+
         const created = await fetch(`${supabaseUrl()}/auth/v1/admin/users`, {
           method: "POST",
           headers: {
@@ -498,6 +563,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
             /* Deliberate: temporary-password onboarding must not send the person
                through an email confirmation they were never told to expect. */
             email_confirm: true,
+            ...(fullName ? { user_metadata: { full_name: fullName } } : {}),
           }),
         });
         const createdBody = (await created.json().catch(() => null)) as {
@@ -507,44 +573,92 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           message?: string;
         } | null;
 
-        if (!created.ok || !createdBody?.id) {
-          const because = humanAuthError({
-            status: created.status,
-            code: createdBody?.error_code ?? null,
-            message: createdBody?.msg ?? createdBody?.message ?? null,
-          });
-          return Response.json(
-            {
-              ok: false,
-              because,
-              existing:
-                (createdBody?.error_code ?? "").toLowerCase() === "email_exists" ||
-                /already/i.test(createdBody?.msg ?? createdBody?.message ?? ""),
-            },
-            { status: created.status === 422 ? 409 : 502 },
-          );
+        let userId = createdBody?.id ?? null;
+        let adopted = false;
+
+        if (!created.ok || !userId) {
+          const existing =
+            (createdBody?.error_code ?? "").toLowerCase() === "email_exists" ||
+            /already/i.test(createdBody?.msg ?? createdBody?.message ?? "");
+
+          /* Idempotency. A retry — a double click, a lost response, a second
+             attempt after a timeout — must land on the same person, never on a
+             second account. If that address already signs in AND is already a
+             member of THIS workspace, this is that retry: finish the same
+             provisioning against the same user id. If the address exists but
+             belongs to nobody here, it is somebody else's account and an admin
+             of this workspace may not take it over. */
+          if (existing) {
+            const known = (await readProfiles(`email=eq.${encodeURIComponent(email)}`, secret))[0];
+            const candidate = known?.["id"] ? String(known["id"]) : null;
+            if (candidate) {
+              const alreadyMember = await restGet<{ user_id: string }[]>(
+                `organization_memberships?organization_id=eq.${input.organizationId}&user_id=eq.${candidate}&select=user_id`,
+                token,
+                key,
+              );
+              if (alreadyMember?.[0]) {
+                userId = candidate;
+                adopted = true;
+              }
+            }
+          }
+
+          if (!userId) {
+            return Response.json(
+              {
+                ok: false,
+                because: humanAuthError({
+                  status: created.status,
+                  code: createdBody?.error_code ?? null,
+                  message: createdBody?.msg ?? createdBody?.message ?? null,
+                }),
+                existing,
+              },
+              { status: created.status === 422 ? 409 : 502 },
+            );
+          }
         }
 
-        const userId = createdBody.id;
         const role = normalizeRole(input.role);
         const now = new Date().toISOString();
 
         /* Canonical identity: the same profile + membership rows every other
-           person in this workspace has. No parallel local-user model. */
-        await serviceWrite(
+           person in this workspace has. No parallel local-user model, and the
+           human name is persisted before this call can report success. */
+        const profileWrite = await serviceWriteTolerant(
           "profiles?on_conflict=id",
           secret,
-          [
-            {
-              id: userId,
-              email,
-              ...(input.fullName?.trim()
-                ? { full_name: input.fullName.trim(), display_name: input.fullName.trim() }
-                : {}),
-              updated_at: now,
-            },
-          ],
+          {
+            id: userId,
+            email,
+            ...(fullName ? { full_name: fullName } : {}),
+            updated_at: now,
+          },
+          fullName ? ["id", "full_name"] : ["id"],
         );
+        if (!profileWrite.ok) {
+          return refused(
+            502,
+            "The sign-in account exists but their name could not be saved. Open them in People & access and save the name again.",
+          );
+        }
+
+        /* A retry against an account this workspace already owns: make the
+           password the operator just typed the live one, so the two attempts
+           cannot disagree about what was handed over. */
+        if (adopted) {
+          await fetch(`${supabaseUrl()}/auth/v1/admin/users/${userId}`, {
+            method: "PUT",
+            headers: {
+              apikey: secret,
+              Authorization: `Bearer ${secret}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ password: input.password }),
+          }).catch(() => null);
+        }
+
 
         const memberWrite = await serviceWrite(
           "organization_memberships?on_conflict=organization_id,user_id",
@@ -597,7 +711,17 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           },
         ).catch(() => null);
 
-        return Response.json({ ok: true, userId, email, role, action: "create_user" });
+        return Response.json({
+          ok: true,
+          userId,
+          email,
+          role,
+          name: fullName || null,
+          /* True when this call finished an earlier attempt rather than
+             creating a second account. */
+          adopted,
+          action: "create_user",
+        });
       },
     },
   },

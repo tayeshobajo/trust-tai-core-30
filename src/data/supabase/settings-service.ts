@@ -23,7 +23,7 @@ import { normalizeAccessLevel, type AppAccessLevel } from "@/domain/app-access";
 import { normalizeRole, type WorkspaceRole } from "@/domain/access";
 
 import { supabaseActivity } from "./activities";
-import { writeTolerant, type Row } from "./schema";
+import { isMissingColumn, writeTolerant, type Row } from "./schema";
 
 /** A relation the deployment has not created yet. Read as "not provisioned". */
 export function missingRelation(error: PostgrestError | null): boolean {
@@ -70,9 +70,9 @@ export interface MemberProfile {
 
 function nameOf(row: Row, email: string): string {
   const candidate =
-    (row["display_name"] as string | null) ??
     (row["full_name"] as string | null) ??
     (row["preferred_name"] as string | null) ??
+    (row["display_name"] as string | null) ??
     null;
   const value = (candidate ?? "").trim();
   if (value) return value;
@@ -201,6 +201,9 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
       return {
         userId,
         email,
+        /* A canonical email is always enough to name somebody: the local part
+           is a real, stable label. "Unnamed person" is reserved for a record
+           with neither a name nor an address. */
         name: known?.name || derived || email || "Unnamed person",
         avatarUrl: (profile["avatar_url"] as string | null) ?? known?.avatarUrl ?? null,
         jobTitle: (profile["job_title"] as string | null) ?? known?.jobTitle ?? null,
@@ -511,10 +514,16 @@ export async function inviteMembers(input: {
   role: WorkspaceRole;
   access: Record<string, AppAccessLevel>;
   actorUserId: string;
+  /** How this person should be named once they accept. Single invite only. */
+  fullName?: string;
 }): Promise<InvitationRef[]> {
   if (input.emails.length === 0) return [];
   const now = new Date();
   const expires = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  /* A name only belongs to one person, so it is carried only when a single
+     address is being invited. */
+  const fullName =
+    input.emails.length === 1 ? (input.fullName ?? "").trim() : "";
 
   const rows = input.emails.map((email) => ({
     organization_id: input.organizationId,
@@ -526,25 +535,44 @@ export async function inviteMembers(input: {
     created_at: now.toISOString(),
     last_sent_at: now.toISOString(),
     expires_at: expires,
+    ...(fullName ? { full_name: fullName } : {}),
   }));
 
-  const { data, error } = await supabase
+  /* The name column is optional in this deployment: if it is not there the
+     invitation still goes out, and the name is preserved in history so the
+     same identity can be resolved on acceptance. */
+  let result = await supabase
     .from("organization_invitations")
     .upsert(rows, { onConflict: "organization_id,email" })
     .select("id, email");
-  if (error) throw new Error(error.message);
+  if (result.error && isMissingColumn(result.error) === "full_name") {
+    result = await supabase
+      .from("organization_invitations")
+      .upsert(
+        rows.map(({ full_name: _dropped, ...rest }) => rest),
+        { onConflict: "organization_id,email" },
+      )
+      .select("id, email");
+  }
+  if (result.error) throw new Error(result.error.message);
 
   for (const email of input.emails) {
     await audit({
       organizationId: input.organizationId,
       actorUserId: input.actorUserId,
       name: "user.invited",
-      subject: { type: "user", id: email, label: email },
-      summary: `${email} was invited as ${input.role}.`,
-      payload: { role: input.role, app_access: input.access, lifecycle: "created" },
+      subject: { type: "user", id: email, label: fullName || email },
+      summary: `${fullName ? `${fullName} (${email})` : email} was invited as ${input.role}.`,
+      payload: {
+        role: input.role,
+        app_access: input.access,
+        lifecycle: "created",
+        full_name: fullName || null,
+        email,
+      },
     });
   }
-  return ((data ?? []) as Row[]).map((row) => ({
+  return ((result.data ?? []) as Row[]).map((row) => ({
     id: String(row["id"]),
     email: String(row["email"] ?? ""),
   }));
@@ -759,6 +787,10 @@ export interface AdminPasswordResult {
   userId?: string;
   /** True when creation failed because that email already signs in somewhere. */
   existing?: boolean;
+  /** How the person is named, as persisted. */
+  name?: string | null;
+  /** True when the call completed an earlier attempt instead of creating anew. */
+  adopted?: boolean;
 }
 
 async function callAdminPassword(body: Record<string, unknown>): Promise<AdminPasswordResult> {
@@ -802,18 +834,24 @@ export async function createMemberWithPassword(input: {
     ...(input.fullName?.trim() ? { fullName: input.fullName.trim() } : {}),
   });
 
-  if (outcome.ok) {
+  /* History records the creation once. A retry that lands on the same person
+     (`adopted`) is not a second provisioning and must not read like one. The
+     human name is used when known; the address stays as immutable evidence. */
+  if (outcome.ok && !outcome.adopted) {
+    const person = (outcome.name ?? input.fullName ?? "").trim();
     await audit({
       organizationId: input.organizationId,
       actorUserId: input.actorUserId,
       name: "user.created_with_password",
-      subject: { type: "user", id: outcome.userId ?? email, label: email },
-      summary: `${email} was created as ${input.role} with a temporary password.`,
+      subject: { type: "user", id: outcome.userId ?? email, label: person || email },
+      summary: `${person ? `${person} (${email})` : email} was created as ${input.role} with a temporary password.`,
       payload: {
         role: input.role,
         app_access: input.access,
         onboarding: "temporary_password",
         lifecycle: "created",
+        full_name: person || null,
+        email,
       },
     });
   }

@@ -1303,6 +1303,7 @@ function InvitePanel({
         role,
         access: overrides,
         actorUserId,
+        fullName,
       }),
     onSuccess: async (created) => {
       setSent(created.length);
