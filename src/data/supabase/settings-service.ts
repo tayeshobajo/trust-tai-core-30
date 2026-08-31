@@ -70,9 +70,9 @@ export interface MemberProfile {
 
 function nameOf(row: Row, email: string): string {
   const candidate =
-    (row["display_name"] as string | null) ??
     (row["full_name"] as string | null) ??
     (row["preferred_name"] as string | null) ??
+    (row["display_name"] as string | null) ??
     null;
   const value = (candidate ?? "").trim();
   if (value) return value;
@@ -201,6 +201,9 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
       return {
         userId,
         email,
+        /* A canonical email is always enough to name somebody: the local part
+           is a real, stable label. "Unnamed person" is reserved for a record
+           with neither a name nor an address. */
         name: known?.name || derived || email || "Unnamed person",
         avatarUrl: (profile["avatar_url"] as string | null) ?? known?.avatarUrl ?? null,
         jobTitle: (profile["job_title"] as string | null) ?? known?.jobTitle ?? null,
@@ -759,6 +762,10 @@ export interface AdminPasswordResult {
   userId?: string;
   /** True when creation failed because that email already signs in somewhere. */
   existing?: boolean;
+  /** How the person is named, as persisted. */
+  name?: string | null;
+  /** True when the call completed an earlier attempt instead of creating anew. */
+  adopted?: boolean;
 }
 
 async function callAdminPassword(body: Record<string, unknown>): Promise<AdminPasswordResult> {
@@ -802,18 +809,24 @@ export async function createMemberWithPassword(input: {
     ...(input.fullName?.trim() ? { fullName: input.fullName.trim() } : {}),
   });
 
-  if (outcome.ok) {
+  /* History records the creation once. A retry that lands on the same person
+     (`adopted`) is not a second provisioning and must not read like one. The
+     human name is used when known; the address stays as immutable evidence. */
+  if (outcome.ok && !outcome.adopted) {
+    const person = (outcome.name ?? input.fullName ?? "").trim();
     await audit({
       organizationId: input.organizationId,
       actorUserId: input.actorUserId,
       name: "user.created_with_password",
-      subject: { type: "user", id: outcome.userId ?? email, label: email },
-      summary: `${email} was created as ${input.role} with a temporary password.`,
+      subject: { type: "user", id: outcome.userId ?? email, label: person || email },
+      summary: `${person ? `${person} (${email})` : email} was created as ${input.role} with a temporary password.`,
       payload: {
         role: input.role,
         app_access: input.access,
         onboarding: "temporary_password",
         lifecycle: "created",
+        full_name: person || null,
+        email,
       },
     });
   }
