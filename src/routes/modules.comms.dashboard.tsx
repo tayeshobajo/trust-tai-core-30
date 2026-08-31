@@ -311,20 +311,27 @@ function ThreadView({
             {row.closedAt ? ` · closed ${whenLabel(row.closedAt)} ago` : ""}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-        <ScoutConversationLink relationship={row.relationship} />
-        <TTButton
-          variant="secondary"
-          size="sm"
-          disabled={busy}
-          onClick={() => onToggleClosed(!row.closedAt)}
-        >
-          {busy
-            ? "Saving…"
-            : row.closedAt
-              ? "Reopen conversation"
-              : "Mark conversation closed"}
-        </TTButton>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ScoutConversationLink relationship={row.relationship} />
+            <TTButton
+              variant="secondary"
+              size="sm"
+              disabled={busy}
+              onClick={() => onToggleClosed(!row.closedAt)}
+            >
+              {busy
+                ? "Saving…"
+                : row.closedAt
+                  ? "Reopen conversation"
+                  : "Mark conversation closed"}
+            </TTButton>
+          </div>
+          <MeetingFromMessage
+            relationship={row.relationship}
+            message={row.lastMessage}
+            identity={identity}
+          />
         </div>
       </header>
 
