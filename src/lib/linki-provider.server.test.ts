@@ -439,4 +439,105 @@ describe("linkiEnrichProfiles", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
+
+  it("includes search_name in the body when searchName is provided (nav-first)", async () => {
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ profiles: [] }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await linkiEnrichProfiles(
+      {
+        urls: ["https://www.linkedin.com/in/david-andrews-0868a2132/"],
+        searchName: "David Andrews",
+      },
+      ENV_TT,
+    );
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      urls: string[];
+      search_name?: string;
+    };
+    expect(body.urls).toEqual(["https://www.linkedin.com/in/david-andrews-0868a2132/"]);
+    expect(body.search_name).toBe("David Andrews");
+    vi.unstubAllGlobals();
+  });
+
+  it("omits search_name when searchName is absent (legacy contract unchanged)", async () => {
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ profiles: [] }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await linkiEnrichProfiles(
+      { urls: ["https://www.linkedin.com/in/david-andrews-0868a2132/"] },
+      ENV_TT,
+    );
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    expect(body["urls"]).toEqual(["https://www.linkedin.com/in/david-andrews-0868a2132/"]);
+    expect("search_name" in body).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it("merges partial profiles when Linki reports stopped_reason (fail-soft, informational)", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            profiles: [
+              {
+                url: "https://www.linkedin.com/in/david-andrews-0868a2132/",
+                full_name: "David Andrews",
+                headline: "Owner at D'Andrews Bakery & Cafe",
+                company: "D'Andrews Bakery & Cafe",
+                title: "Owner",
+                location: "Nashville, Tennessee",
+              },
+            ],
+            stopped_reason: "risk_wall",
+          }),
+          { status: 200 },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const profiles = await linkiEnrichProfiles(
+      { urls: ["https://www.linkedin.com/in/david-andrews-0868a2132/"], searchName: "David Andrews" },
+      ENV_TT,
+    );
+    // Partial profiles still flow through — stopped_reason never throws.
+    expect(profiles).toHaveLength(1);
+    expect(profiles[0]?.full_name).toBe("David Andrews");
+    expect(info).toHaveBeenCalled();
+    info.mockRestore();
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("linkiFindPerson — nav-first searchName passthrough", () => {
+  const SHORTLIST = [
+    { linkedin_url: "https://www.linkedin.com/in/david-andrews-0868a2132/", full_name: "David Andrews", headline: null, location: null, degree: null, company: null },
+    { linkedin_url: "https://www.linkedin.com/in/david-andrews-1/", full_name: "David Andrews", headline: null, location: null, degree: null, company: null },
+  ];
+
+  it("sends the person's fullName as search_name on the enrich call", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(async () =>
+        new Response(JSON.stringify({ candidates: SHORTLIST }), { status: 200 }))
+      .mockImplementationOnce(async () =>
+        new Response(JSON.stringify({ profiles: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await linkiFindPerson({ fullName: "David Andrews", companyName: "D'Andrews Bakery" }, ENV_TT);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const enrichCall = fetchMock.mock.calls[1];
+    expect(String(enrichCall?.[0])).toContain("/api/tt/enrich");
+    const enrichBody = JSON.parse(String(enrichCall?.[1]?.body)) as {
+      urls: string[];
+      search_name?: string;
+    };
+    expect(enrichBody.search_name).toBe("David Andrews");
+    // Shortlist stays at ≤5 — Linki enforces its own cap of 3 nav-first.
+    expect(enrichBody.urls.length).toBeLessThanOrEqual(5);
+    vi.unstubAllGlobals();
+  });
 });

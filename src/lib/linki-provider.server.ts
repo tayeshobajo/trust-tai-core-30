@@ -302,9 +302,16 @@ export function rankCandidates(
  * Strict /in/ validation happens here too — never trust the caller. Each
  * returned profile mirrors Linki's envelope; per-entry failures simply drop
  * that entry (partial success is the contract).
+ *
+ * `searchName` (optional) switches Linki to nav-first enrichment (2026-08-31
+ * account-safety refactor): instead of cold /in/ deep-links, Linki runs one
+ * name search and clicks into each candidate's profile — natural navigation,
+ * hard-capped at 3 profile visits on Linki's side (Linki enforces its own
+ * cap; we keep sending up to 5 and accept the false negatives). Transport
+ * only — no ranking or identity logic here.
  */
 export async function linkiEnrichProfiles(
-  input: { urls: string[] },
+  input: { urls: string[]; searchName?: string },
   env: Env = process.env,
 ): Promise<ProfileLite[]> {
   const config = linkiConfig(env);
@@ -315,10 +322,17 @@ export async function linkiEnrichProfiles(
 
   const payload = (await linkiPost(
     "/api/tt/enrich",
-    { urls },
+    { urls, ...(input.searchName ? { search_name: input.searchName } : {}) },
     config,
     120_000,
-  )) as { profiles?: unknown };
+  )) as { profiles?: unknown; stopped_reason?: unknown };
+
+  // Informational (2026-08-31 nav-first refactor): Linki may stop enrichment
+  // early on a LinkedIn risk wall, returning partial profiles — partials still
+  // merge (fail-soft contract); we only surface the reason, never throw on it.
+  if (payload.stopped_reason && typeof payload.stopped_reason === "string") {
+    console.info(`[linki] enrich stopped early (${payload.stopped_reason}); merging partial profiles`);
+  }
 
   const raw = Array.isArray(payload.profiles) ? payload.profiles : [];
   return raw.flatMap((entry): ProfileLite[] => {
@@ -403,7 +417,7 @@ export async function linkiFindPerson(
   if (shortlist.length > 0) {
     try {
       const profiles = await linkiEnrichProfiles(
-        { urls: shortlist.map((c) => c.linkedinUrl) },
+        { urls: shortlist.map((c) => c.linkedinUrl), searchName: input.fullName },
         env,
       );
       const byUrl = new Map(profiles.map((p) => [p.url, p]));
