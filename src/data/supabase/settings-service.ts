@@ -91,7 +91,13 @@ export interface DirectoryPerson {
   name: string;
   jobTitle: string | null;
   avatarUrl: string | null;
+  /** From auth.users.last_sign_in_at. Null means never signed in. */
+  lastSignInAt: string | null;
+  /** From auth.users.created_at. */
+  createdAt: string | null;
+  emailConfirmedAt: string | null;
 }
+
 
 export async function readMemberDirectory(
   organizationId: string,
