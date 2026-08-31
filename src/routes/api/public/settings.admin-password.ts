@@ -487,15 +487,18 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
 
           const fullName = input.fullName.trim();
           const jobTitle = (input.jobTitle ?? "").trim();
-          const written = await serviceWrite("profiles?on_conflict=id", secret, [
+          /* The same canonical profiles row every other surface reads. */
+          const written = await serviceWriteTolerant(
+            "profiles?on_conflict=id",
+            secret,
             {
               id: input.userId,
               full_name: fullName || null,
-              display_name: fullName || null,
               job_title: jobTitle || null,
               updated_at: new Date().toISOString(),
             },
-          ]);
+            ["id", "full_name"],
+          );
           if (!written.ok) return refused(502, "That name could not be saved.");
           return Response.json({ ok: true, userId: input.userId, action: "set_identity" });
         }
