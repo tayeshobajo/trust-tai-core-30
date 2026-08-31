@@ -31,6 +31,7 @@ import {
   parseEmails,
   readOrganizationApps,
   resendInvitation,
+  removeMember,
   resetMemberPassword,
   saveMemberIdentity,
   setMemberAppAccess,
@@ -917,6 +918,7 @@ function MemberAccessPanel({
   onStatus: (status: "active" | "deactivated") => void;
 }) {
   const [resetOpen, setResetOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
   return (
 
     <div className="tt-surface p-6">
@@ -1010,12 +1012,25 @@ function MemberAccessPanel({
           <TTButton variant="secondary" onClick={() => setResetOpen(true)}>
             Set new password
           </TTButton>
+          {isSelf ? null : (
+            <TTButton variant="secondary" onClick={() => setRemoveOpen(true)}>
+              Remove {member.name}
+            </TTButton>
+          )}
           <span className="text-xs text-muted-foreground">
             {isSelf
               ? "Setting a password here changes your own sign-in credential immediately."
               : "A deactivated person keeps their history and loses every room immediately."}
           </span>
         </div>
+      ) : null}
+
+      {removeOpen ? (
+        <RemoveMemberDialog
+          organizationId={organizationId}
+          member={member}
+          onClose={() => setRemoveOpen(false)}
+        />
       ) : null}
 
       {resetOpen ? (
