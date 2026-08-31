@@ -15,6 +15,8 @@ import {
   PersonChip,
   TTSelect,
 } from "@/components/tt/settings/pieces";
+import { AccessOverview } from "@/components/tt/settings/access-overview";
+import { RoleAccessMatrix } from "@/components/tt/settings/role-access-matrix";
 import { PermissionSummary } from "@/components/tt/settings/permission-summary";
 import { useSettingsIdentity } from "@/components/tt/settings/shell";
 import {
@@ -113,6 +115,8 @@ function PeopleSettings() {
   const [bulkRole, setBulkRole] = useState<WorkspaceRole>("member");
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkNote, setBulkNote] = useState<string | null>(null);
+  const [resendAllBusy, setResendAllBusy] = useState(false);
+  const [resendAllNote, setResendAllNote] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({
     key: "name",
     direction: "asc",
@@ -634,7 +638,7 @@ function PeopleSettings() {
             <button
               type="button"
               disabled={resendAllBusy}
-              className="tt-button-secondary shrink-0 disabled:opacity-60"
+              className="shrink-0 rounded-lg border border-border px-3 py-2 text-[13px] text-foreground transition-colors hover:bg-secondary disabled:opacity-60"
               onClick={() => {
                 void (async () => {
                   setResendAllBusy(true);
@@ -769,6 +773,15 @@ function PeopleSettings() {
           );
         })}
       </div>
+
+      {identity.canManage ? (
+        <RoleAccessMatrix
+          organizationId={identity.organizationId}
+          actorUserId={identity.userId}
+          canManage={identity.canManage}
+          orgEnabled={orgEnabled}
+        />
+      ) : null}
 
       {identity.canManage ? <InvitationAudit query={invitationAudit} /> : null}
 
