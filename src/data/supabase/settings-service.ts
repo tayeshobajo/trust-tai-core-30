@@ -514,10 +514,16 @@ export async function inviteMembers(input: {
   role: WorkspaceRole;
   access: Record<string, AppAccessLevel>;
   actorUserId: string;
+  /** How this person should be named once they accept. Single invite only. */
+  fullName?: string;
 }): Promise<InvitationRef[]> {
   if (input.emails.length === 0) return [];
   const now = new Date();
   const expires = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  /* A name only belongs to one person, so it is carried only when a single
+     address is being invited. */
+  const fullName =
+    input.emails.length === 1 ? (input.fullName ?? "").trim() : "";
 
   const rows = input.emails.map((email) => ({
     organization_id: input.organizationId,
@@ -529,25 +535,44 @@ export async function inviteMembers(input: {
     created_at: now.toISOString(),
     last_sent_at: now.toISOString(),
     expires_at: expires,
+    ...(fullName ? { full_name: fullName } : {}),
   }));
 
-  const { data, error } = await supabase
+  /* The name column is optional in this deployment: if it is not there the
+     invitation still goes out, and the name is preserved in history so the
+     same identity can be resolved on acceptance. */
+  let result = await supabase
     .from("organization_invitations")
     .upsert(rows, { onConflict: "organization_id,email" })
     .select("id, email");
-  if (error) throw new Error(error.message);
+  if (result.error && isMissingColumn(result.error) === "full_name") {
+    result = await supabase
+      .from("organization_invitations")
+      .upsert(
+        rows.map(({ full_name: _dropped, ...rest }) => rest),
+        { onConflict: "organization_id,email" },
+      )
+      .select("id, email");
+  }
+  if (result.error) throw new Error(result.error.message);
 
   for (const email of input.emails) {
     await audit({
       organizationId: input.organizationId,
       actorUserId: input.actorUserId,
       name: "user.invited",
-      subject: { type: "user", id: email, label: email },
-      summary: `${email} was invited as ${input.role}.`,
-      payload: { role: input.role, app_access: input.access, lifecycle: "created" },
+      subject: { type: "user", id: email, label: fullName || email },
+      summary: `${fullName ? `${fullName} (${email})` : email} was invited as ${input.role}.`,
+      payload: {
+        role: input.role,
+        app_access: input.access,
+        lifecycle: "created",
+        full_name: fullName || null,
+        email,
+      },
     });
   }
-  return ((data ?? []) as Row[]).map((row) => ({
+  return ((result.data ?? []) as Row[]).map((row) => ({
     id: String(row["id"]),
     email: String(row["email"] ?? ""),
   }));
