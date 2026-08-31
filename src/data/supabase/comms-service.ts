@@ -134,7 +134,10 @@ export interface RelationshipPatch {
   followUpDueAt?: string | null;
   email?: string | null;
   companyName?: string | null;
+  /** The whole metadata object, already merged by the caller. */
+  metadata?: Record<string, unknown>;
 }
+
 
 export const commsService = {
   /** Every relationship in the organization. The queue does its own grouping. */
