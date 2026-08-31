@@ -49,10 +49,22 @@ export interface MemberProfile {
   jobTitle: string | null;
   role: WorkspaceRole;
   status: "active" | "deactivated" | "invited" | string;
-  lastActiveAt: string | null;
+  /**
+   * When Supabase Auth last saw this person sign in. Authoritative, read
+   * server-side from auth.users — never mirrored into a workspace column.
+   */
+  lastSignInAt: string | null;
+  /** When the sign-in account itself was created. */
+  accountCreatedAt: string | null;
+  /**
+   * In-app activity, which is a different truth from signing in. Only set
+   * when the workspace genuinely records it; never a sign-in timestamp.
+   */
+  lastActivityAt: string | null;
   /** Per-app overrides recorded for this person. Empty means "role default". */
   access: Record<string, AppAccessLevel>;
 }
+
 
 function nameOf(row: Row, email: string): string {
   const candidate =
@@ -79,7 +91,13 @@ export interface DirectoryPerson {
   name: string;
   jobTitle: string | null;
   avatarUrl: string | null;
+  /** From auth.users.last_sign_in_at. Null means never signed in. */
+  lastSignInAt: string | null;
+  /** From auth.users.created_at. */
+  createdAt: string | null;
+  emailConfirmedAt: string | null;
 }
+
 
 export async function readMemberDirectory(
   organizationId: string,
@@ -147,7 +165,8 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
       const userId = String(row["user_id"]);
       const profile = byId.get(userId) ?? {};
       const known = directory.get(userId);
-      const email = String(profile["email"] ?? "") || (known?.email ?? "");
+      /* Auth is the authority for the address a person signs in with. */
+      const email = (known?.email ?? "") || String(profile["email"] ?? "");
       const derived = nameOf(profile, email);
       return {
         userId,
@@ -157,11 +176,15 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
         jobTitle: (profile["job_title"] as string | null) ?? known?.jobTitle ?? null,
         role: normalizeRole(row["role"] as string | null),
         status: String(row["status"] ?? "active"),
-        lastActiveAt: (row["last_active_at"] as string | null) ?? null,
+        lastSignInAt: known?.lastSignInAt ?? null,
+        accountCreatedAt: known?.createdAt ?? null,
+        /* Only real product activity, if the deployment records any. */
+        lastActivityAt: (row["last_activity_at"] as string | null) ?? null,
         access: overrides.value[userId] ?? {},
       } satisfies MemberProfile;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
+
 }
 
 /* --------------------------------------------------------------- app state */

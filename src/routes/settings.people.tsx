@@ -60,13 +60,13 @@ export const Route = createFileRoute("/settings/people")({
 
 
 function whenText(value: string | null): string {
-  if (!value) return "No activity recorded";
+  if (!value) return "Never signed in";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "No activity recorded";
+  if (Number.isNaN(date.getTime())) return "Never signed in";
   return date.toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
-type SortKey = "name" | "role" | "rooms" | "lastActive" | "status";
+type SortKey = "name" | "role" | "rooms" | "lastSignIn" | "status";
 
 /** A sortable, explainable column header. Presentation only. */
 function SortHeader({
@@ -128,7 +128,7 @@ function PeopleSettings() {
     setSort((current) =>
       current.key === key
         ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
-        : { key, direction: key === "lastActive" ? "desc" : "asc" },
+        : { key, direction: key === "lastSignIn" ? "desc" : "asc" },
     );
   };
 
@@ -147,8 +147,16 @@ function PeopleSettings() {
   });
 
   const pendingInvitations = useMemo(
-    () => (invitations.data?.value ?? []).filter((row) => row.status === "pending"),
-    [invitations.data?.value],
+    () => {
+      /* An invited address that is already a real member is not a live invite. */
+      const memberEmails = new Set(
+        (members.data ?? []).map((member) => member.email.toLowerCase()).filter(Boolean),
+      );
+      return (invitations.data?.value ?? []).filter(
+        (row) => row.status === "pending" && !memberEmails.has(row.email.toLowerCase()),
+      );
+    },
+    [invitations.data?.value, members.data],
   );
 
   const orgEnabled = apps.data?.value ?? {};
@@ -233,11 +241,11 @@ function PeopleSettings() {
           return direction * ROLE_LABEL[a.member.role].localeCompare(ROLE_LABEL[b.member.role]);
         case "rooms":
           return direction * (a.rooms - b.rooms);
-        case "lastActive":
+        case "lastSignIn":
           return (
             direction *
-            ((a.member.lastActiveAt ? Date.parse(a.member.lastActiveAt) : 0) -
-              (b.member.lastActiveAt ? Date.parse(b.member.lastActiveAt) : 0))
+            ((a.member.lastSignInAt ? Date.parse(a.member.lastSignInAt) : 0) -
+              (b.member.lastSignInAt ? Date.parse(b.member.lastSignInAt) : 0))
           );
         case "status":
           return direction * a.member.status.localeCompare(b.member.status);
@@ -463,7 +471,13 @@ function PeopleSettings() {
                   onSort={toggleSort}
                   hint="How many rooms this person can actually see, after the organization switches and their overrides."
                 />
-                <SortHeader label="Last active" sortKey="lastActive" sort={sort} onSort={toggleSort} />
+                <SortHeader
+                  label="Last sign-in"
+                  sortKey="lastSignIn"
+                  sort={sort}
+                  onSort={toggleSort}
+                  hint="Read from Supabase Auth. This is when they last signed in, not general app activity."
+                />
                 <SortHeader
                   label="Status"
                   sortKey="status"
@@ -532,7 +546,7 @@ function PeopleSettings() {
                       {rooms === 0 ? "No rooms" : `${rooms} of ${APP_REGISTRY.length}`}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {whenText(member.lastActiveAt)}
+                      {whenText(member.lastSignInAt)}
                     </td>
                     <td className="px-4 py-3">
                       <Health tone={member.status === "active" ? "good" : "neutral"}>

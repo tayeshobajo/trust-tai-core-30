@@ -22,19 +22,20 @@ export const SIGN_IN_LABEL: Record<SignInState, string> = {
   no_access: "No access",
 };
 
-/** Sign-in state for one person, from membership status and last activity. */
+/** Sign-in state for one person, from membership status and Supabase Auth. */
 export function signInStateOf(
-  member: Pick<MemberProfile, "status" | "lastActiveAt">,
+  member: Pick<MemberProfile, "status" | "lastSignInAt">,
   now: number = Date.now(),
 ): SignInState {
   if (member.status !== "active") return "no_access";
-  const at = member.lastActiveAt ? Date.parse(member.lastActiveAt) : Number.NaN;
+  const at = member.lastSignInAt ? Date.parse(member.lastSignInAt) : Number.NaN;
   if (Number.isNaN(at)) return "never";
   const age = now - at;
   if (age <= 7 * DAY) return "recent";
   if (age <= 30 * DAY) return "quiet";
   return "dormant";
 }
+
 
 const TONE: Record<SignInState, "good" | "caution" | "risk" | "neutral"> = {
   recent: "good",
@@ -45,15 +46,16 @@ const TONE: Record<SignInState, "good" | "caution" | "risk" | "neutral"> = {
 };
 
 function whenText(value: string | null): string {
-  if (!value) return "No activity recorded";
+  if (!value) return "Never signed in";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "No activity recorded";
+  if (Number.isNaN(date.getTime())) return "Never signed in";
   const days = Math.floor((Date.now() - date.getTime()) / DAY);
   const stamp = date.toLocaleDateString(undefined, { dateStyle: "medium" });
   if (days <= 0) return `Today · ${stamp}`;
   if (days === 1) return `Yesterday · ${stamp}`;
   return `${days} days ago · ${stamp}`;
 }
+
 
 export function AccessOverview({
   members,
@@ -80,9 +82,9 @@ export function AccessOverview({
       <div className="mb-4 flex flex-wrap items-baseline gap-2">
         <h2 className="font-serif text-[19px] text-foreground">Workspace at a glance</h2>
         <InfoTip label="How these numbers are decided">
-          Counted from live membership rows and pending invitations. &ldquo;Signed in
-          recently&rdquo; means activity in the last 7 days, &ldquo;quiet&rdquo; within 30, and
-          &ldquo;dormant&rdquo; beyond that.
+          Counted from live membership rows, Supabase Auth sign-in records, and
+          pending invitations. &ldquo;Signed in recently&rdquo; means a sign-in in the last 7
+          days, &ldquo;quiet&rdquo; within 30, and &ldquo;dormant&rdquo; beyond that.
         </InfoTip>
       </div>
 
@@ -100,7 +102,7 @@ export function AccessOverview({
         <SummaryCard
           label="Dormant"
           value={isPending ? "…" : String(count("dormant"))}
-          supporting="No activity in over 30 days"
+          supporting="No sign-in in over 30 days"
         />
         <SummaryCard
           label="Pending invites"
@@ -125,7 +127,7 @@ export function AccessOverview({
               <th className="tt-eyebrow px-4 py-2 font-normal">Person</th>
               <th className="tt-eyebrow px-4 py-2 font-normal">Role</th>
               <th className="tt-eyebrow px-4 py-2 font-normal">Sign-in</th>
-              <th className="tt-eyebrow px-4 py-2 font-normal">Last activity</th>
+              <th className="tt-eyebrow px-4 py-2 font-normal">Last sign-in</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -158,7 +160,7 @@ export function AccessOverview({
                     <Health tone={TONE[state]}>{SIGN_IN_LABEL[state]}</Health>
                   </td>
                   <td className="px-4 py-3 text-[13px] text-muted-foreground">
-                    {whenText(member.lastActiveAt)}
+                    {whenText(member.lastSignInAt)}
                   </td>
                 </tr>
               ))

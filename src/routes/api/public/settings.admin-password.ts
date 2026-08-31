@@ -189,45 +189,108 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
                 avatar_url: string | null;
               }[]
             | null;
-
-          /* Emails that never reached a profile row still identify the person,
-             so Auth is the fallback rather than a blank name. */
           const byId = new Map((rows ?? []).map((row) => [row.id, row]));
-          const missing = ids.filter((id) => !byId.get(id)?.email);
-          for (const id of missing.slice(0, 50)) {
-            const authUser = await fetch(`${supabaseUrl()}/auth/v1/admin/users/${id}`, {
-              headers: { apikey: secret, Authorization: `Bearer ${secret}` },
-            });
-            if (!authUser.ok) continue;
-            const body = (await authUser.json().catch(() => null)) as {
-              email?: string;
-              user_metadata?: { full_name?: string };
-            } | null;
-            const current = byId.get(id);
-            byId.set(id, {
-              id,
-              email: body?.email ?? current?.email ?? null,
-              full_name: current?.full_name ?? null,
-              display_name: current?.display_name ?? null,
-              job_title: current?.job_title ?? null,
-              avatar_url: current?.avatar_url ?? null,
-            });
+
+          /* Supabase Auth is the authority for a person's sign-in identity:
+             the address they actually sign in with, when the account was
+             created, and when they last signed in. profiles only enriches
+             how that person is displayed. No column mirrors this. */
+          type AuthFacts = {
+            email: string | null;
+            lastSignInAt: string | null;
+            createdAt: string | null;
+            emailConfirmedAt: string | null;
+            name: string | null;
+          };
+          const authById = new Map<string, AuthFacts>();
+          const bounded = ids.slice(0, 200);
+          for (let index = 0; index < bounded.length; index += 10) {
+            const batch = bounded.slice(index, index + 10);
+            const facts = await Promise.all(
+              batch.map(async (id) => {
+                const response = await fetch(`${supabaseUrl()}/auth/v1/admin/users/${id}`, {
+                  headers: { apikey: secret, Authorization: `Bearer ${secret}` },
+                }).catch(() => null);
+                if (!response?.ok) return [id, null] as const;
+                const body = (await response.json().catch(() => null)) as {
+                  email?: string | null;
+                  last_sign_in_at?: string | null;
+                  created_at?: string | null;
+                  email_confirmed_at?: string | null;
+                  user_metadata?: { full_name?: string | null } | null;
+                } | null;
+                return [
+                  id,
+                  {
+                    email: body?.email ?? null,
+                    lastSignInAt: body?.last_sign_in_at ?? null,
+                    createdAt: body?.created_at ?? null,
+                    emailConfirmedAt: body?.email_confirmed_at ?? null,
+                    name: body?.user_metadata?.full_name ?? null,
+                  } satisfies AuthFacts,
+                ] as const;
+              }),
+            );
+            for (const [id, fact] of facts) if (fact) authById.set(id, fact);
+          }
+
+          /* An invitation is onboarding workflow state, not identity. Once the
+             invited address signs in as a real member, the invitation is
+             satisfied — it must not keep counting as a live pending invite.
+             History in `activities` is untouched: nothing is rewritten. */
+          const memberEmails = new Set(
+            ids
+              .map((id) => (authById.get(id)?.email ?? byId.get(id)?.email ?? "").toLowerCase())
+              .filter(Boolean),
+          );
+          const pending = await restGet<{ id: string; email: string }[]>(
+            `organization_invitations?organization_id=eq.${input.organizationId}&status=eq.pending&select=id,email`,
+            token,
+            key,
+          );
+          const satisfied = (pending ?? []).filter((row) =>
+            memberEmails.has((row.email ?? "").toLowerCase()),
+          );
+          if (satisfied.length > 0) {
+            const idList = `(${satisfied.map((row) => `"${row.id}"`).join(",")})`;
+            await fetch(
+              `${supabaseUrl()}/rest/v1/organization_invitations?id=in.${encodeURIComponent(idList)}&status=eq.pending`,
+              {
+                method: "PATCH",
+                headers: {
+                  apikey: secret,
+                  Authorization: `Bearer ${secret}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  status: "accepted",
+                  accepted_at: new Date().toISOString(),
+                }),
+              },
+            ).catch(() => null);
           }
 
           return Response.json({
             ok: true,
+            reconciledInvitations: satisfied.length,
             people: ids.map((id) => {
               const row = byId.get(id);
+              const auth = authById.get(id);
               return {
                 userId: id,
-                email: row?.email ?? "",
-                name: (row?.display_name || row?.full_name || "").trim(),
+                /* Auth first: it is the address that actually signs in. */
+                email: auth?.email ?? row?.email ?? "",
+                name: (row?.display_name || row?.full_name || auth?.name || "").trim(),
                 jobTitle: row?.job_title ?? null,
                 avatarUrl: row?.avatar_url ?? null,
+                lastSignInAt: auth?.lastSignInAt ?? null,
+                createdAt: auth?.createdAt ?? null,
+                emailConfirmedAt: auth?.emailConfirmedAt ?? null,
               };
             }),
           });
         }
+
 
         /* ------------------------------------------------ name someone plainly */
         if (input.action === "set_identity") {
