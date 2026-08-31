@@ -365,13 +365,14 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
             people: ids.map((id) => {
               const row = byId.get(id);
               const auth = authById.get(id);
+              /* Auth first: it is the address that actually signs in. */
+              const email = (auth?.email ?? row?.["email"] ?? "") || "";
               return {
                 userId: id,
-                /* Auth first: it is the address that actually signs in. */
-                email: auth?.email ?? row?.email ?? "",
-                name: (row?.display_name || row?.full_name || auth?.name || "").trim(),
-                jobTitle: row?.job_title ?? null,
-                avatarUrl: row?.avatar_url ?? null,
+                email,
+                name: displayNameOf(row, auth?.name ?? null, email),
+                jobTitle: row?.["job_title"] ?? null,
+                avatarUrl: row?.["avatar_url"] ?? null,
                 lastSignInAt: auth?.lastSignInAt ?? null,
                 createdAt: auth?.createdAt ?? null,
                 emailConfirmedAt: auth?.emailConfirmedAt ?? null,
