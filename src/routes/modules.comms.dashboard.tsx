@@ -14,6 +14,7 @@ import { toast } from "sonner";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { CommsTabs } from "@/components/tt/comms/comms-tabs";
+import { MeetingFromMessage } from "@/components/tt/comms/meeting-from-message";
 import { ScoutConversationLink } from "@/components/tt/comms/scout-link";
 import { PageHeader, TTButton, TTInput } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
