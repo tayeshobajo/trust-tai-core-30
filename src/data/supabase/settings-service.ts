@@ -165,7 +165,8 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
       const userId = String(row["user_id"]);
       const profile = byId.get(userId) ?? {};
       const known = directory.get(userId);
-      const email = String(profile["email"] ?? "") || (known?.email ?? "");
+      /* Auth is the authority for the address a person signs in with. */
+      const email = (known?.email ?? "") || String(profile["email"] ?? "");
       const derived = nameOf(profile, email);
       return {
         userId,
@@ -175,11 +176,15 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
         jobTitle: (profile["job_title"] as string | null) ?? known?.jobTitle ?? null,
         role: normalizeRole(row["role"] as string | null),
         status: String(row["status"] ?? "active"),
-        lastActiveAt: (row["last_active_at"] as string | null) ?? null,
+        lastSignInAt: known?.lastSignInAt ?? null,
+        accountCreatedAt: known?.createdAt ?? null,
+        /* Only real product activity, if the deployment records any. */
+        lastActivityAt: (row["last_activity_at"] as string | null) ?? null,
         access: overrides.value[userId] ?? {},
       } satisfies MemberProfile;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
+
 }
 
 /* --------------------------------------------------------------- app state */
