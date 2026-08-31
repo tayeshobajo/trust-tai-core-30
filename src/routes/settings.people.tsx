@@ -865,23 +865,40 @@ function MemberAccessPanel({
         </ul>
       </div>
 
-      {canManage && !isSelf ? (
+      {canManage ? (
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <TTButton
-            variant="secondary"
-            onClick={() => onStatus(member.status === "active" ? "deactivated" : "active")}
-          >
-            {member.status === "active"
-              ? `Deactivate ${member.name}`
-              : `Reactivate ${member.name}`}
+          {isSelf ? null : (
+            <TTButton
+              variant="secondary"
+              onClick={() => onStatus(member.status === "active" ? "deactivated" : "active")}
+            >
+              {member.status === "active"
+                ? `Deactivate ${member.name}`
+                : `Reactivate ${member.name}`}
+            </TTButton>
+          )}
+          <TTButton variant="secondary" onClick={() => setResetOpen(true)}>
+            Set new password
           </TTButton>
           <span className="text-xs text-muted-foreground">
-            A deactivated person keeps their history and loses every room immediately.
+            {isSelf
+              ? "Setting a password here changes your own sign-in credential immediately."
+              : "A deactivated person keeps their history and loses every room immediately."}
           </span>
         </div>
       ) : null}
+
+      {resetOpen ? (
+        <ResetPasswordDialog
+          organizationId={organizationId}
+          actorUserId={actorUserId}
+          member={member}
+          onClose={() => setResetOpen(false)}
+        />
+      ) : null}
     </div>
   );
+
 }
 
 function InvitePanel({
