@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 export type CommsSection =
   | "relationships"
+  | "inbox"
   | "dashboard"
   | "plan"
   | "to_scout"
