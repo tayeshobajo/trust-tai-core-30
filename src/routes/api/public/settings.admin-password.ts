@@ -139,6 +139,83 @@ async function serviceWrite(
   return { ok: response.ok, status: response.status, body: parsed };
 }
 
+/**
+ * The exact profile columns this project reads. `profiles` is owned outside
+ * this repository, so a column we merely *hope* exists must never be able to
+ * take a whole identity write down with it: one unknown column used to make
+ * PostgREST refuse the entire row, which is how a person could be created with
+ * an email and no name at all.
+ */
+const PROFILE_COLUMNS = ["id", "email", "full_name", "preferred_name", "job_title", "avatar_url"];
+
+/** Column named by a PostgREST schema-cache complaint, if that is the failure. */
+function missingColumn(body: unknown): string | null {
+  const parsed = body as { code?: string; message?: string } | null;
+  const message = parsed?.message ?? "";
+  if (parsed?.code !== "PGRST204" && !/column/i.test(message)) return null;
+  const match = message.match(/'([^']+)' column/) ?? message.match(/column "([^"]+)"/);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Write identity rows, dropping any optional column this deployment does not
+ * have and retrying. A column in `required` is never dropped: if the database
+ * refuses that, the caller must hear about it.
+ */
+async function serviceWriteTolerant(
+  path: string,
+  key: string,
+  row: Record<string, unknown>,
+  required: string[],
+): Promise<{ ok: boolean; status: number; body: unknown }> {
+  const current = { ...row };
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const result = await serviceWrite(path, key, [current]);
+    if (result.ok) return result;
+    const missing = missingColumn(result.body);
+    if (!missing || required.includes(missing) || !(missing in current)) return result;
+    delete current[missing];
+  }
+  return serviceWrite(path, key, [current]);
+}
+
+/**
+ * Read profile rows as the service role, narrowing the projection if the
+ * deployment lacks one of the optional display columns.
+ */
+async function readProfiles(
+  filter: string,
+  key: string,
+): Promise<Record<string, string | null>[]> {
+  for (const columns of [PROFILE_COLUMNS, ["id", "email", "full_name"]]) {
+    const response = await fetch(
+      `${supabaseUrl()}/rest/v1/profiles?${filter}&select=${columns.join(",")}`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    ).catch(() => null);
+    if (response?.ok) {
+      return ((await response.json().catch(() => null)) as Record<string, string | null>[]) ?? [];
+    }
+  }
+  return [];
+}
+
+/** How a person is named, in the one order the whole product agrees on. */
+function displayNameOf(
+  profile: Record<string, string | null> | undefined,
+  authName: string | null,
+  email: string,
+): string {
+  const candidate = (
+    profile?.["full_name"] ||
+    profile?.["preferred_name"] ||
+    authName ||
+    ""
+  ).trim();
+  if (candidate) return candidate;
+  return (email.split("@")[0] ?? "").trim();
+}
+
+
 export const Route = createFileRoute("/api/public/settings/admin-password")({
   server: {
     handlers: {
