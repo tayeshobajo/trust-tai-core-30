@@ -82,9 +82,9 @@ export function AccessOverview({
       <div className="mb-4 flex flex-wrap items-baseline gap-2">
         <h2 className="font-serif text-[19px] text-foreground">Workspace at a glance</h2>
         <InfoTip label="How these numbers are decided">
-          Counted from live membership rows and pending invitations. &ldquo;Signed in
-          recently&rdquo; means activity in the last 7 days, &ldquo;quiet&rdquo; within 30, and
-          &ldquo;dormant&rdquo; beyond that.
+          Counted from live membership rows, Supabase Auth sign-in records, and
+          pending invitations. &ldquo;Signed in recently&rdquo; means a sign-in in the last 7
+          days, &ldquo;quiet&rdquo; within 30, and &ldquo;dormant&rdquo; beyond that.
         </InfoTip>
       </div>
 
@@ -102,7 +102,7 @@ export function AccessOverview({
         <SummaryCard
           label="Dormant"
           value={isPending ? "…" : String(count("dormant"))}
-          supporting="No activity in over 30 days"
+          supporting="No sign-in in over 30 days"
         />
         <SummaryCard
           label="Pending invites"
@@ -127,7 +127,7 @@ export function AccessOverview({
               <th className="tt-eyebrow px-4 py-2 font-normal">Person</th>
               <th className="tt-eyebrow px-4 py-2 font-normal">Role</th>
               <th className="tt-eyebrow px-4 py-2 font-normal">Sign-in</th>
-              <th className="tt-eyebrow px-4 py-2 font-normal">Last activity</th>
+              <th className="tt-eyebrow px-4 py-2 font-normal">Last sign-in</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -160,7 +160,7 @@ export function AccessOverview({
                     <Health tone={TONE[state]}>{SIGN_IN_LABEL[state]}</Health>
                   </td>
                   <td className="px-4 py-3 text-[13px] text-muted-foreground">
-                    {whenText(member.lastActiveAt)}
+                    {whenText(member.lastSignInAt)}
                   </td>
                 </tr>
               ))
