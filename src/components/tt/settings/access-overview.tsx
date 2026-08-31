@@ -145,7 +145,7 @@ export function AccessOverview({
               states.map(({ member, state }) => (
                 <tr key={member.userId}>
                   <td className="px-4 py-3">
-                    <PersonChip name={member.name} email={member.email} src={member.avatarUrl} />
+                    <PersonChip name={member.name} email={member.email} avatarUrl={member.avatarUrl} />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{ROLE_LABEL[member.role]}</td>
                   <td className="px-4 py-3">
