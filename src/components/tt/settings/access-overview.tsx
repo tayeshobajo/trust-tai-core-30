@@ -22,19 +22,20 @@ export const SIGN_IN_LABEL: Record<SignInState, string> = {
   no_access: "No access",
 };
 
-/** Sign-in state for one person, from membership status and last activity. */
+/** Sign-in state for one person, from membership status and Supabase Auth. */
 export function signInStateOf(
-  member: Pick<MemberProfile, "status" | "lastActiveAt">,
+  member: Pick<MemberProfile, "status" | "lastSignInAt">,
   now: number = Date.now(),
 ): SignInState {
   if (member.status !== "active") return "no_access";
-  const at = member.lastActiveAt ? Date.parse(member.lastActiveAt) : Number.NaN;
+  const at = member.lastSignInAt ? Date.parse(member.lastSignInAt) : Number.NaN;
   if (Number.isNaN(at)) return "never";
   const age = now - at;
   if (age <= 7 * DAY) return "recent";
   if (age <= 30 * DAY) return "quiet";
   return "dormant";
 }
+
 
 const TONE: Record<SignInState, "good" | "caution" | "risk" | "neutral"> = {
   recent: "good",
