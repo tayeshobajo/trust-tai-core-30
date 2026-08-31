@@ -43,7 +43,22 @@ const ResetBody = z.object({
   confirmation: z.string().min(1).max(256),
 });
 
-const Body = z.discriminatedUnion("action", [CreateBody, ResetBody]);
+/** Who is in this workspace, by name and email. No credential is ever read. */
+const DirectoryBody = z.object({
+  action: z.literal("directory"),
+  organizationId: z.string().min(1).max(64),
+});
+
+/** A human edit to how someone is named in this workspace. */
+const IdentityBody = z.object({
+  action: z.literal("set_identity"),
+  organizationId: z.string().min(1).max(64),
+  userId: z.string().min(1).max(64),
+  fullName: z.string().max(200),
+  jobTitle: z.string().max(200).optional(),
+});
+
+const Body = z.discriminatedUnion("action", [CreateBody, ResetBody, DirectoryBody, IdentityBody]);
 
 const PROJECT_REF = "okydosoacqdnursmmenf";
 
