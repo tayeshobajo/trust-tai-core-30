@@ -207,6 +207,64 @@ export async function setMemberAppAccess(input: {
   });
 }
 
+/* -------------------------------------------------------- role app access */
+
+/**
+ * Per-role room defaults for the whole organization. Absent table means the
+ * product falls back to role templates alone, and says so plainly.
+ */
+export async function readRoleAppAccess(
+  organizationId: string,
+): Promise<Provisioned<Record<string, Record<string, AppAccessLevel>>>> {
+  const result = await supabase
+    .from("organization_role_app_access")
+    .select("role, app_key, access_level")
+    .eq("organization_id", organizationId);
+  if (result.error) {
+    if (missingRelation(result.error)) return notProvisioned({});
+    throw new Error(result.error.message);
+  }
+  const map: Record<string, Record<string, AppAccessLevel>> = {};
+  for (const row of (result.data ?? []) as Row[]) {
+    const role = normalizeRole(row["role"] as string | null);
+    map[role] = map[role] ?? {};
+    map[role]![String(row["app_key"])] = normalizeAccessLevel(row["access_level"] as string);
+  }
+  return { provisioned: true, value: map };
+}
+
+export async function setRoleAppAccess(input: {
+  organizationId: string;
+  role: WorkspaceRole;
+  appId: string;
+  appName: string;
+  level: AppAccessLevel;
+  actorUserId: string;
+}): Promise<void> {
+  const { error } = await supabase.from("organization_role_app_access").upsert(
+    {
+      organization_id: input.organizationId,
+      role: input.role,
+      app_key: input.appId,
+      access_level: input.level,
+      updated_by: input.actorUserId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "organization_id,role,app_key" },
+  );
+  if (error) throw new Error(error.message);
+
+  await audit({
+    organizationId: input.organizationId,
+    actorUserId: input.actorUserId,
+    name: "role.access_changed",
+    subject: { type: "role", id: input.role, label: input.role },
+    summary: `${input.role} access to ${input.appName} was set to ${input.level}.`,
+    payload: { role: input.role, app_key: input.appId, access_level: input.level },
+  });
+}
+
+
 export async function setMemberRole(input: {
   organizationId: string;
   userId: string;
