@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
 
-export type CommsSection = "relationships" | "voice" | "integrations";
+export type CommsSection = "relationships" | "to_scout" | "voice" | "integrations";
 
 /**
  * Underline tabs, mockup geometry: 40px rows, a 2px royal rule under the
@@ -19,6 +19,7 @@ function tabClass(active: boolean) {
 
 const TABS: { to: string; section: CommsSection; label: string }[] = [
   { to: "/modules/comms", section: "relationships", label: "Relationships" },
+  { to: "/modules/comms/to-scout", section: "to_scout", label: "Save to Scout" },
   { to: "/modules/comms/voice", section: "voice", label: "Voice DNA" },
   { to: "/modules/comms/integrations", section: "integrations", label: "Connections" },
 ];

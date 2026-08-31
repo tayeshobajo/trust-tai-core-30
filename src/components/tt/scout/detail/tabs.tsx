@@ -23,6 +23,7 @@ export const DETAIL_TABS = [
   "signals",
   "icp",
   "people",
+  "conversation",
   "notes",
   "activity",
 ] as const;
@@ -50,6 +51,7 @@ export function DetailTabs({
     { key: "signals", label: counts.signals > 0 ? `Signals (${counts.signals})` : "Signals" },
     { key: "icp", label: "ICP Analysis" },
     { key: "people", label: counts.people > 0 ? `People (${counts.people})` : "People" },
+    { key: "conversation", label: "Conversation" },
     { key: "notes", label: counts.notes > 0 ? `Notes (${counts.notes})` : "Notes" },
     { key: "activity", label: "Activity" },
   ];
