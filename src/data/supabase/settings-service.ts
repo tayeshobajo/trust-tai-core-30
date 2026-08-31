@@ -603,13 +603,22 @@ export const INVITATION_EVENTS = [
   "user.invite_emailed",
   "user.created_with_password",
   "user.password_reset",
+  "user.access_revoked",
+  "user.account_deleted",
 ] as const;
 
 export interface InvitationAuditEntry {
   id: string;
   at: string;
   event: string;
-  lifecycle: "created" | "resent" | "cancelled" | "emailed" | "password_reset" | "other";
+  lifecycle:
+    | "created"
+    | "resent"
+    | "cancelled"
+    | "emailed"
+    | "password_reset"
+    | "removed"
+    | "other";
   email: string;
   summary: string;
   actorUserId: string | null;
@@ -623,6 +632,7 @@ function lifecycleOf(event: string): InvitationAuditEntry["lifecycle"] {
   if (event === "user.invite_emailed") return "emailed";
   if (event === "user.created_with_password") return "created";
   if (event === "user.password_reset") return "password_reset";
+  if (event === "user.access_revoked" || event === "user.account_deleted") return "removed";
   return "other";
 }
 
