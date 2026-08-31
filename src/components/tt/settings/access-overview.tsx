@@ -46,15 +46,16 @@ const TONE: Record<SignInState, "good" | "caution" | "risk" | "neutral"> = {
 };
 
 function whenText(value: string | null): string {
-  if (!value) return "No activity recorded";
+  if (!value) return "Never signed in";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "No activity recorded";
+  if (Number.isNaN(date.getTime())) return "Never signed in";
   const days = Math.floor((Date.now() - date.getTime()) / DAY);
   const stamp = date.toLocaleDateString(undefined, { dateStyle: "medium" });
   if (days <= 0) return `Today · ${stamp}`;
   if (days === 1) return `Yesterday · ${stamp}`;
   return `${days} days ago · ${stamp}`;
 }
+
 
 export function AccessOverview({
   members,
