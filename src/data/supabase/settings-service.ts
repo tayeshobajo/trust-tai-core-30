@@ -61,6 +61,8 @@ export interface MemberProfile {
    * when the workspace genuinely records it; never a sign-in timestamp.
    */
   lastActivityAt: string | null;
+  /** The room they were last seen working in, when presence is recorded. */
+  lastActivityApp: string | null;
   /** Per-app overrides recorded for this person. Empty means "role default". */
   access: Record<string, AppAccessLevel>;
 }
@@ -159,6 +161,12 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
   const directory = await readMemberDirectory(organizationId).catch(
     () => new Map<string, DirectoryPerson>(),
   );
+  /* In-app presence is a separate truth from signing in. */
+  const { readMemberPresence } = await import("./member-activity");
+  const presence = await readMemberPresence(organizationId).catch(() => ({
+    provisioned: false,
+    value: new Map<string, { userId: string; lastActivityAt: string; appKey: string }>(),
+  }));
 
   return rows
     .map((row) => {
@@ -179,7 +187,8 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
         lastSignInAt: known?.lastSignInAt ?? null,
         accountCreatedAt: known?.createdAt ?? null,
         /* Only real product activity, if the deployment records any. */
-        lastActivityAt: (row["last_activity_at"] as string | null) ?? null,
+        lastActivityAt: presence.value.get(userId)?.lastActivityAt ?? null,
+        lastActivityApp: presence.value.get(userId)?.appKey ?? null,
         access: overrides.value[userId] ?? {},
       } satisfies MemberProfile;
     })
