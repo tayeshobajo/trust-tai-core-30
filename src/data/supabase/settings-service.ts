@@ -23,7 +23,7 @@ import { normalizeAccessLevel, type AppAccessLevel } from "@/domain/app-access";
 import { normalizeRole, type WorkspaceRole } from "@/domain/access";
 
 import { supabaseActivity } from "./activities";
-import { writeTolerant, type Row } from "./schema";
+import { isMissingColumn, writeTolerant, type Row } from "./schema";
 
 /** A relation the deployment has not created yet. Read as "not provisioned". */
 export function missingRelation(error: PostgrestError | null): boolean {
