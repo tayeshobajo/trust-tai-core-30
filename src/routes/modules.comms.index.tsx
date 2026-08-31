@@ -25,6 +25,8 @@ import { ConversationRoom } from "@/components/tt/comms/conversation-room";
 import { ReplyRecordBar } from "@/components/tt/comms/reply-record";
 import { SendComposer } from "@/components/tt/comms/send-composer";
 import { RelationshipRail } from "@/components/tt/comms/relationship-rail";
+import { RelationshipPersonCard } from "@/components/tt/comms/relationship-person";
+
 import { AddInteraction, type InteractionSubmission } from "@/components/tt/comms/add-interaction";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
 import { roadmapHandoffReadiness } from "@/data/comms-roadmap-handoff";
@@ -736,11 +738,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
               {profileOpen ? (
                 <div className="border-t border-border bg-secondary/30 px-5 py-4">
-                  <p className="tt-eyebrow">Profile</p>
-                  <p className="mt-2 text-[13px] text-muted-foreground">
+                  <RelationshipPersonCard
+                    organizationId={context.organizationId}
+                    userId={context.userId}
+                    relationshipId={selected.id}
+                  />
+                  <p className="mt-3 text-[13px] text-muted-foreground">
                     {[
                       selected.email,
-                      selected.companyName,
                       selected.metWhere ? `Met at ${selected.metWhere}` : null,
                       selected.metAt
                         ? `Met ${new Date(selected.metAt).toLocaleDateString()}`
@@ -749,6 +754,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                       .filter(Boolean)
                       .join(" · ") || "Nothing else on record yet."}
                   </p>
+
                   <div className="mt-3">
                     <TTButton
                       variant="quiet"

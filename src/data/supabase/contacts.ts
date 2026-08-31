@@ -247,7 +247,16 @@ export interface ContactPatch {
   linkedinExternalId?: string | undefined;
   linkedinConfidence?: Person["linkedinConfidence"] | undefined;
   phone?: string | undefined;
+  /**
+   * Where this person works, as Comms and Scout both read it. The shared
+   * table has no company column, so it lives beside the other people-owned
+   * fields in `metadata`.
+   */
+  companyName?: string | undefined;
+  /** Links this person to a Scout prospect profile. Never unset silently. */
+  prospectId?: ID | undefined;
 }
+
 
 /** Patch one person, merging into the existing metadata rather than replacing. */
 export async function updateContact(id: ID, patch: ContactPatch, userId: ID): Promise<Person> {
@@ -278,6 +287,9 @@ export async function updateContact(id: ID, patch: ContactPatch, userId: ID): Pr
   if (patch.linkedinProvider !== undefined) peoplePatch["linkedin_provider"] = patch.linkedinProvider;
   if (patch.linkedinExternalId !== undefined) peoplePatch["linkedin_external_id"] = patch.linkedinExternalId;
   if (patch.linkedinConfidence !== undefined) peoplePatch["linkedin_route_confidence"] = patch.linkedinConfidence;
+  if (patch.companyName !== undefined) peoplePatch["company_name"] = patch.companyName;
+  if (patch.prospectId !== undefined) peoplePatch["prospect_id"] = patch.prospectId;
+
   peoplePatch["last_edited_by"] = userId;
   peoplePatch["last_edited_at"] = at;
 
