@@ -57,6 +57,16 @@ function whenText(value: string | null): string {
 }
 
 
+/** In-app presence, said plainly. Never a sign-in timestamp. */
+function activityText(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "No room opened yet";
+  const days = Math.floor((Date.now() - date.getTime()) / DAY);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return `${days} days ago`;
+}
+
 export function AccessOverview({
   members,
   pendingInvitations,
@@ -121,25 +131,26 @@ export function AccessOverview({
 
       <h3 className="tt-eyebrow mt-6 mb-2">Sign-in status</h3>
       <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full min-w-[560px] text-left text-sm">
+        <table className="w-full min-w-[680px] text-left text-sm">
           <thead>
             <tr className="border-b border-border bg-secondary/50">
               <th className="tt-eyebrow px-4 py-2 font-normal">Person</th>
               <th className="tt-eyebrow px-4 py-2 font-normal">Role</th>
               <th className="tt-eyebrow px-4 py-2 font-normal">Sign-in</th>
               <th className="tt-eyebrow px-4 py-2 font-normal">Last sign-in</th>
+              <th className="tt-eyebrow px-4 py-2 font-normal">Last activity</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {isPending ? (
               <tr>
-                <td className="px-4 py-3 text-muted-foreground" colSpan={4}>
+                <td className="px-4 py-3 text-muted-foreground" colSpan={5}>
                   Reading members…
                 </td>
               </tr>
             ) : states.length === 0 ? (
               <tr>
-                <td className="px-4 py-3 text-muted-foreground" colSpan={4}>
+                <td className="px-4 py-3 text-muted-foreground" colSpan={5}>
                   No members yet.
                 </td>
               </tr>
@@ -161,6 +172,13 @@ export function AccessOverview({
                   </td>
                   <td className="px-4 py-3 text-[13px] text-muted-foreground">
                     {whenText(member.lastSignInAt)}
+                  </td>
+                  <td className="px-4 py-3 text-[13px] text-muted-foreground">
+                    {member.lastActivityAt
+                      ? `${activityText(member.lastActivityAt)}${
+                          member.lastActivityApp ? ` · ${member.lastActivityApp}` : ""
+                        }`
+                      : "No room opened yet"}
                   </td>
                 </tr>
               ))

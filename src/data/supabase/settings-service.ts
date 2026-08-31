@@ -61,6 +61,8 @@ export interface MemberProfile {
    * when the workspace genuinely records it; never a sign-in timestamp.
    */
   lastActivityAt: string | null;
+  /** The room they were last seen working in, when presence is recorded. */
+  lastActivityApp: string | null;
   /** Per-app overrides recorded for this person. Empty means "role default". */
   access: Record<string, AppAccessLevel>;
 }
@@ -138,6 +140,28 @@ export async function saveMemberIdentity(input: {
   return outcome;
 }
 
+/**
+ * Take someone out of the workspace.
+ *
+ * "revoke" ends their access and keeps everything else. "delete_account" also
+ * deletes the sign-in credential so the address can be provisioned again — the
+ * person's records (contacts, prospects, messages, decisions, history) are
+ * never deleted either way, and who they were is written into the append-only
+ * history before the credential goes.
+ */
+export async function removeMember(input: {
+  organizationId: string;
+  userId: string;
+  mode: "revoke" | "delete_account";
+}): Promise<AdminPasswordResult> {
+  return callAdminPassword({
+    action: "remove_member",
+    organizationId: input.organizationId,
+    userId: input.userId,
+    mode: input.mode,
+  });
+}
+
 export async function listMembers(organizationId: string): Promise<MemberProfile[]> {
   const memberships = await supabase
     .from("organization_memberships")
@@ -159,6 +183,12 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
   const directory = await readMemberDirectory(organizationId).catch(
     () => new Map<string, DirectoryPerson>(),
   );
+  /* In-app presence is a separate truth from signing in. */
+  const { readMemberPresence } = await import("./member-activity");
+  const presence = await readMemberPresence(organizationId).catch(() => ({
+    provisioned: false,
+    value: new Map<string, { userId: string; lastActivityAt: string; appKey: string }>(),
+  }));
 
   return rows
     .map((row) => {
@@ -179,7 +209,8 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
         lastSignInAt: known?.lastSignInAt ?? null,
         accountCreatedAt: known?.createdAt ?? null,
         /* Only real product activity, if the deployment records any. */
-        lastActivityAt: (row["last_activity_at"] as string | null) ?? null,
+        lastActivityAt: presence.value.get(userId)?.lastActivityAt ?? null,
+        lastActivityApp: presence.value.get(userId)?.appKey ?? null,
         access: overrides.value[userId] ?? {},
       } satisfies MemberProfile;
     })
@@ -572,13 +603,22 @@ export const INVITATION_EVENTS = [
   "user.invite_emailed",
   "user.created_with_password",
   "user.password_reset",
+  "user.access_revoked",
+  "user.account_deleted",
 ] as const;
 
 export interface InvitationAuditEntry {
   id: string;
   at: string;
   event: string;
-  lifecycle: "created" | "resent" | "cancelled" | "emailed" | "password_reset" | "other";
+  lifecycle:
+    | "created"
+    | "resent"
+    | "cancelled"
+    | "emailed"
+    | "password_reset"
+    | "removed"
+    | "other";
   email: string;
   summary: string;
   actorUserId: string | null;
@@ -592,6 +632,7 @@ function lifecycleOf(event: string): InvitationAuditEntry["lifecycle"] {
   if (event === "user.invite_emailed") return "emailed";
   if (event === "user.created_with_password") return "created";
   if (event === "user.password_reset") return "password_reset";
+  if (event === "user.access_revoked" || event === "user.account_deleted") return "removed";
   return "other";
 }
 

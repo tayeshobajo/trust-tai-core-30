@@ -31,6 +31,7 @@ import {
   parseEmails,
   readOrganizationApps,
   resendInvitation,
+  removeMember,
   resetMemberPassword,
   saveMemberIdentity,
   setMemberAppAccess,
@@ -66,7 +67,7 @@ function whenText(value: string | null): string {
   return date.toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
-type SortKey = "name" | "role" | "rooms" | "lastSignIn" | "status";
+type SortKey = "name" | "role" | "rooms" | "lastSignIn" | "lastActivity" | "status";
 
 /** A sortable, explainable column header. Presentation only. */
 function SortHeader({
@@ -128,7 +129,7 @@ function PeopleSettings() {
     setSort((current) =>
       current.key === key
         ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
-        : { key, direction: key === "lastSignIn" ? "desc" : "asc" },
+        : { key, direction: key === "lastSignIn" || key === "lastActivity" ? "desc" : "asc" },
     );
   };
 
@@ -241,6 +242,12 @@ function PeopleSettings() {
           return direction * ROLE_LABEL[a.member.role].localeCompare(ROLE_LABEL[b.member.role]);
         case "rooms":
           return direction * (a.rooms - b.rooms);
+        case "lastActivity":
+          return (
+            direction *
+            ((a.member.lastActivityAt ? Date.parse(a.member.lastActivityAt) : 0) -
+              (b.member.lastActivityAt ? Date.parse(b.member.lastActivityAt) : 0))
+          );
         case "lastSignIn":
           return (
             direction *
@@ -479,6 +486,13 @@ function PeopleSettings() {
                   hint="Read from Supabase Auth. This is when they last signed in, not general app activity."
                 />
                 <SortHeader
+                  label="Last activity"
+                  sortKey="lastActivity"
+                  sort={sort}
+                  onSort={toggleSort}
+                  hint="The last time this person opened a room in the workspace. Different from signing in."
+                />
+                <SortHeader
                   label="Status"
                   sortKey="status"
                   sort={sort}
@@ -548,6 +562,14 @@ function PeopleSettings() {
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {whenText(member.lastSignInAt)}
                     </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {member.lastActivityAt
+                        ? new Date(member.lastActivityAt).toLocaleDateString(undefined, {
+                            dateStyle: "medium",
+                          })
+                        : "No room opened yet"}
+                      {member.lastActivityApp ? ` · ${member.lastActivityApp}` : ""}
+                    </td>
                     <td className="px-4 py-3">
                       <Health tone={member.status === "active" ? "good" : "neutral"}>
                         {member.status === "active" ? "Active" : "Deactivated"}
@@ -570,7 +592,7 @@ function PeopleSettings() {
               {!members.isPending && rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={identity.canManage ? 7 : 6}
+                    colSpan={identity.canManage ? 8 : 7}
                     className="px-4 py-8 text-center text-sm text-muted-foreground"
                   >
                     No one matches that search.
@@ -896,6 +918,7 @@ function MemberAccessPanel({
   onStatus: (status: "active" | "deactivated") => void;
 }) {
   const [resetOpen, setResetOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
   return (
 
     <div className="tt-surface p-6">
@@ -989,12 +1012,25 @@ function MemberAccessPanel({
           <TTButton variant="secondary" onClick={() => setResetOpen(true)}>
             Set new password
           </TTButton>
+          {isSelf ? null : (
+            <TTButton variant="secondary" onClick={() => setRemoveOpen(true)}>
+              Remove {member.name}
+            </TTButton>
+          )}
           <span className="text-xs text-muted-foreground">
             {isSelf
               ? "Setting a password here changes your own sign-in credential immediately."
               : "A deactivated person keeps their history and loses every room immediately."}
           </span>
         </div>
+      ) : null}
+
+      {removeOpen ? (
+        <RemoveMemberDialog
+          organizationId={organizationId}
+          member={member}
+          onClose={() => setRemoveOpen(false)}
+        />
       ) : null}
 
       {resetOpen ? (
@@ -1008,6 +1044,130 @@ function MemberAccessPanel({
     </div>
   );
 
+}
+
+/**
+ * Removing a person, without losing what they did.
+ *
+ * Two honest outcomes, said in the words that matter to the person deciding:
+ * end their access and keep the account, or delete the sign-in account so the
+ * same address can be set up again. Neither deletes their work — contacts,
+ * prospects, conversations, decisions and history all stay, and who they were
+ * is written into the workspace history before anything is removed.
+ */
+function RemoveMemberDialog({
+  organizationId,
+  member,
+  onClose,
+}: {
+  organizationId: string;
+  member: MemberProfile;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [mode, setMode] = useState<"revoke" | "delete_account">("revoke");
+  const [confirmation, setConfirmation] = useState("");
+  const address = member.email || member.name;
+  const needsTyping = mode === "delete_account";
+  const ready = !needsTyping || confirmation.trim().toLowerCase() === address.toLowerCase();
+
+  const remove = useMutation({
+    mutationFn: async () => {
+      const outcome = await removeMember({ organizationId, userId: member.userId, mode });
+      if (!outcome.ok) throw new Error(outcome.because ?? "That person could not be removed.");
+    },
+    onSuccess: () => {
+      toast.success(
+        mode === "delete_account" ? "Account deleted" : "Access removed",
+        {
+          description:
+            mode === "delete_account"
+              ? `${address} can be created again from scratch. Their records were kept.`
+              : `${member.name} no longer has access. Their account and records were kept.`,
+        },
+      );
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+      void queryClient.invalidateQueries({ queryKey: ["workspace"] });
+      onClose();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4">
+      <div className="tt-surface w-full max-w-lg p-6">
+        <SectionHeading
+          eyebrow="Remove"
+          title={`Remove ${member.name}`}
+          description="Their work stays in the workspace either way. Only their access, and optionally their sign-in account, is removed."
+        />
+
+        <div className="mt-4 space-y-2">
+          {(
+            [
+              {
+                value: "revoke" as const,
+                title: "Remove their access",
+                detail:
+                  "They lose every room immediately. Their sign-in account and all their records stay, and you can add them back later.",
+              },
+              {
+                value: "delete_account" as const,
+                title: "Remove access and delete the sign-in account",
+                detail: `Deletes the credential for ${address} so you can create that person again from scratch. Contacts, prospects, conversations and history are kept.`,
+              },
+            ]
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setMode(option.value)}
+              className={cn(
+                "w-full rounded-xl border px-4 py-3 text-left transition-colors",
+                mode === option.value
+                  ? "border-foreground/30 bg-secondary/60"
+                  : "border-border hover:bg-secondary/30",
+              )}
+            >
+              <p className="text-sm font-medium text-foreground">{option.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{option.detail}</p>
+            </button>
+          ))}
+        </div>
+
+        {needsTyping ? (
+          <div className="mt-4">
+            <TTField
+              label={`Type ${address} to confirm`}
+              hint="Deleting a sign-in account cannot be undone. Their records are not deleted."
+            >
+              <TTInput
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.target.value)}
+                placeholder={address}
+              />
+            </TTField>
+          </div>
+        ) : null}
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <TTButton
+            onClick={() => remove.mutate()}
+            disabled={!ready || remove.isPending}
+          >
+            {remove.isPending
+              ? "Removing..."
+              : mode === "delete_account"
+                ? "Remove and delete account"
+                : "Remove access"}
+          </TTButton>
+          <TTButton variant="secondary" onClick={onClose}>
+            Cancel
+          </TTButton>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /**
