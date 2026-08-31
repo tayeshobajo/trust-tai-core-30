@@ -127,15 +127,17 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
         if (!parsed.success) return refused(400, "That request was not understood.");
         const input = parsed.data;
 
-        const password = validatePassword(input.password, input.confirmation);
-        if (!password.ok) return refused(400, password.because);
+        if (input.action === "create_user" || input.action === "reset_password") {
+          const password = validatePassword(input.password, input.confirmation);
+          if (!password.ok) return refused(400, password.because);
+        }
 
         const key = publishableKey();
         const secret = serviceKey();
         if (!secret) {
           return refused(
             503,
-            "Password management is not configured on this deployment. The invitation email path still works.",
+            "Workspace identity management is not configured on this deployment. The invitation email path still works.",
           );
         }
 
