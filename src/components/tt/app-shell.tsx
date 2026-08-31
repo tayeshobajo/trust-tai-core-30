@@ -126,6 +126,17 @@ export function AppShell({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  /* Presence: which room this person is actually working in, recorded once
+     per room per few minutes. Never blocks and never gates anything. */
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const currentApp = APP_REGISTRY.find((app) => isCurrent(pathname, app.route));
+  usePresence({
+    organizationId: identity?.organizationId,
+    userId: identity?.userId,
+    appKey: currentApp?.id ?? (pathname.startsWith("/settings") ? "settings" : null),
+  });
+
+
   async function handleSignOut() {
     await signOut(queryClient);
     void navigate({ to: "/auth", search: { redirect: "/" }, replace: true });
