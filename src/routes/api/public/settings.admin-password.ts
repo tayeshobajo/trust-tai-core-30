@@ -349,7 +349,16 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
         await serviceWrite(
           "profiles?on_conflict=id",
           secret,
-          [{ id: userId, email, updated_at: now }],
+          [
+            {
+              id: userId,
+              email,
+              ...(input.fullName?.trim()
+                ? { full_name: input.fullName.trim(), display_name: input.fullName.trim() }
+                : {}),
+              updated_at: now,
+            },
+          ],
         );
 
         const memberWrite = await serviceWrite(
