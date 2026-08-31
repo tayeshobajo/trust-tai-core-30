@@ -625,10 +625,65 @@ function PeopleSettings() {
       ) : null}
 
       <div className="tt-surface p-6">
-        <SectionHeading
-          title="Pending invitations"
-          description="People invited but not yet signed in. An invitation grants nothing until it is accepted."
-        />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionHeading
+            title="Pending invitations"
+            description="People invited but not yet signed in. An invitation grants nothing until it is accepted."
+          />
+          {identity.canManage && pendingInvitations.length > 0 ? (
+            <button
+              type="button"
+              disabled={resendAllBusy}
+              className="tt-button-secondary shrink-0 disabled:opacity-60"
+              onClick={() => {
+                void (async () => {
+                  setResendAllBusy(true);
+                  setResendAllNote(null);
+                  let sent = 0;
+                  let failed = 0;
+                  for (const invitation of pendingInvitations) {
+                    try {
+                      await resendInvitation({
+                        organizationId: identity.organizationId,
+                        invitationId: invitation.id,
+                        email: invitation.email,
+                        actorUserId: identity.userId,
+                      });
+                      const result = await deliverInvitationEmail({
+                        organizationId: identity.organizationId,
+                        invitationId: invitation.id,
+                        email: invitation.email,
+                        actorUserId: identity.userId,
+                      });
+                      setDeliveryById((previous) => ({ ...previous, [invitation.id]: result }));
+                      if (result.delivered) sent += 1;
+                      else failed += 1;
+                    } catch {
+                      failed += 1;
+                    }
+                  }
+                  setResendAllBusy(false);
+                  setResendAllNote(
+                    failed === 0
+                      ? `Sent again to ${sent} ${sent === 1 ? "person" : "people"}.`
+                      : `Sent again to ${sent}; ${failed} could not be emailed.`,
+                  );
+                  refresh();
+                })();
+              }}
+            >
+              {resendAllBusy
+                ? "Sending…"
+                : `Send all ${pendingInvitations.length} again`}
+            </button>
+          ) : null}
+        </div>
+        {resendAllNote ? (
+          <p className="mb-3 text-xs text-muted-foreground" role="status">
+            {resendAllNote}
+          </p>
+        ) : null}
+
         {invitations.data?.provisioned === false ? (
           <NotProvisioned what="Invitations" file="docs/settings-schema.sql" />
         ) : pendingInvitations.length === 0 ? (
