@@ -197,3 +197,43 @@ alter table public.profiles add column if not exists locale text;
 alter table public.organizations add column if not exists website_url text;
 alter table public.organizations add column if not exists logo_url text;
 alter table public.organizations add column if not exists timezone text;
+
+/* ---------------------------------------- organization_role_app_access */
+-- Per-role room defaults. A grant here can never exceed what the role's
+-- permissions already carry; the application clamps to the role ceiling and
+-- a per-person member_app_access row still wins over this default.
+
+create table if not exists public.organization_role_app_access (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  role text not null,
+  app_key text not null,
+  -- hidden | view | work | manage
+  access_level text not null default 'hidden',
+  updated_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint organization_role_app_access_level_check
+    check (access_level in ('hidden', 'view', 'work', 'manage'))
+);
+
+create unique index if not exists organization_role_app_access_key_idx
+  on public.organization_role_app_access (organization_id, role, app_key);
+
+revoke all on public.organization_role_app_access from anon;
+revoke all on public.organization_role_app_access from authenticated;
+grant select, insert, update, delete on public.organization_role_app_access to authenticated;
+grant all on public.organization_role_app_access to service_role;
+
+alter table public.organization_role_app_access enable row level security;
+
+drop policy if exists organization_role_app_access_select on public.organization_role_app_access;
+create policy organization_role_app_access_select
+  on public.organization_role_app_access for select to authenticated
+  using (private.is_org_member(organization_id));
+
+drop policy if exists organization_role_app_access_write on public.organization_role_app_access;
+create policy organization_role_app_access_write
+  on public.organization_role_app_access for all to authenticated
+  using (private.is_org_admin(organization_id))
+  with check (private.is_org_admin(organization_id));
