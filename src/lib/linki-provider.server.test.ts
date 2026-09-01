@@ -251,6 +251,26 @@ describe("linkiFindPerson", () => {
     vi.unstubAllGlobals();
   });
 
+  it("translates LinkedIn redirect walls into a human account-risk message", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error:
+                "page.goto: net::ERR_TOO_MANY_REDIRECTS at https://www.linkedin.com/search/results/all/?keywords=Sara%20Warren&origin=GLOBAL_SEARCH_HEADER",
+            }),
+            { status: 500 },
+          ),
+      ),
+    );
+    await expect(linkiFindPerson({ fullName: "Sara Warren" }, ENV_TT)).rejects.toThrow(
+      /temporarily blocked this session/i,
+    );
+    vi.unstubAllGlobals();
+  });
+
   it("returns [] without calling Linki when unconfigured", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

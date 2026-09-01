@@ -93,14 +93,32 @@ async function linkiPost(
       signal: controller.signal,
     });
 
+    let payload: { error?: unknown } | null = null;
+    try {
+      payload = (await response.clone().json()) as { error?: unknown };
+    } catch {
+      payload = null;
+    }
+    const remoteError =
+      typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim() : null;
+
     if (response.status === 503) {
       throw new Error("Linki reports the LinkedIn session needs re-authentication.");
     }
     if (response.status === 401 || response.status === 403) {
       throw new Error("Linki rejected the internal secret (LINKI_API_KEY mismatch).");
     }
+    if (
+      remoteError &&
+      (/ERR_TOO_MANY_REDIRECTS/i.test(remoteError) ||
+        /authwall|checkpoint|re-authentication/i.test(remoteError))
+    ) {
+      throw new Error(
+        "LinkedIn temporarily blocked this session from its current network. Nothing was changed.",
+      );
+    }
     if (!response.ok) {
-      throw new Error(`Linki ${route} failed (${response.status}).`);
+      throw new Error(remoteError ?? `Linki ${route} failed (${response.status}).`);
     }
     return (await response.json()) as unknown;
   } finally {
