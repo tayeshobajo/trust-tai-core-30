@@ -342,7 +342,7 @@ const NUMERIC = /\b\d[\d,.]*\s?(%|percent|k|m|bn|billion|million|x)?\b|[$£€]\
 function normalizeVoice(text: string): string {
   // No em dashes, ever. They are the tell of generated copy.
   return text
-    .replace(/\s*[, –]\s*/g, ", ")
+    .replace(/\s*[\u2014\u2013]\s*/g, ", ")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
