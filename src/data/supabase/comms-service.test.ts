@@ -424,7 +424,7 @@ describe("drafts never send themselves", () => {
 
   it("blocks fabricated familiarity, invented promises, filler, and em dashes", () => {
     const verdict = checkVoice(
-      "As always, great catching up. I guarantee we will double your bookings and leverage our bandwidth.",
+      "As always, great catching up \u2014 I guarantee we will double your bookings and leverage our bandwidth.",
       { register: "warm_intro" },
     );
     const rules = verdict.violations.map((entry) => entry.ruleId);

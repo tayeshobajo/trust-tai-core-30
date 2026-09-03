@@ -253,10 +253,10 @@ describe("validateSections", () => {
 
   it("strips em dashes rather than shipping them", () => {
     const result = validateSections(
-      [section({ body: ["They serve regional operators, and it shows."] })],
+      [section({ body: ["They serve regional operators \u2014 and it shows."] })],
       packet,
     );
-    expect(result.sections[0]?.body.join(" ")).not.toContain(", ");
+    expect(result.sections[0]?.body.join(" ")).not.toContain("\u2014");
   });
 
   it("says a page is not ready instead of writing around the gap", () => {

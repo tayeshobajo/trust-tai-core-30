@@ -120,11 +120,11 @@ describe("reasons to reconnect", () => {
 
 describe("voice policy", () => {
   it("repairs em dashes rather than accepting them", () => {
-    const verdict = checkVoice("Good to meet you, the site looks sharp.", {
+    const verdict = checkVoice("Good to meet you \u2014 the site looks sharp.", {
       register: "follow_up",
       requireSignoff: false,
     });
-    expect(verdict.text).not.toContain(", ");
+    expect(verdict.text).not.toContain("\u2014");
   });
 
   it("blocks a generic check-in", () => {

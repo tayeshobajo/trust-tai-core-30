@@ -21,8 +21,8 @@ export const LOGO_ASPECT = BRAND_LOGO.naturalWidth / BRAND_LOGO.naturalHeight;
 
 /** Font families, in the order the shell declares them. */
 export const BRAND_FONTS = {
-  display: "Cormorant Garamond",
-  sans: "Inter",
+  display: "Sora",
+  sans: "Manrope",
   mono: "JetBrains Mono",
 } as const;
 
