@@ -1,4 +1,4 @@
-# Steward — Judgment
+# Steward. Judgment
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Judgment answers one human question: **what deserves this person's attention now
 
 It is not a priority algorithm, a task dashboard, a score, a kanban, a
 notification centre or a surveillance system. A person can have twelve open
-commitments and still have exactly one thing worth surfacing — and Steward must
+commitments and still have exactly one thing worth surfacing, and Steward must
 be able to conclude that *nothing* needs them right now. That is a correct and
 valuable answer, not an empty state.
 
@@ -34,29 +34,29 @@ canonical schema. No DDL was written or applied.
 
 `src/domain/steward-judgment.ts`
 
-- `JudgmentState` — the only five states.
-- `AttentionItem` — person, state, headline, `whyNow`, canonical `refs`
+- `JudgmentState`, the only five states.
+- `AttentionItem`, person, state, headline, `whyNow`, canonical `refs`
   (`commitmentId`, `projectId`, `conversationId`, `relationshipId`,
   `decisionId`, `activityId`, `opsChainKey`), evidence, `sourceApps`,
   optional `nextMove`, optional `waitingOn` / `beneficiary`, `changedAt`,
   truth `tier`, `destination`, deterministic `order`, and a `patternKey` so
   dismissals can be counted honestly.
-- `JudgmentRead` — one person's whole answer: `headline`, capped `items`,
+- `JudgmentRead`, one person's whole answer: `headline`, capped `items`,
   quiet `waiting`, `deferred` count, and `watching` notes.
 
 Optional fields stay unset rather than guessed. Ambiguity is left unresolved.
 
 ## The five states
 
-1. **Needs you** — someone is held up by this person's move.
-2. **Waiting** — correctly waiting on someone else; usually nothing to do.
-3. **Newly unblocked** — a recorded blocker changed state, so the work can move.
-4. **Promise at risk** — a date a person actually set has passed or is upon them.
-5. **Nothing needs you** — nothing earned an interruption.
+1. **Needs you**, someone is held up by this person's move.
+2. **Waiting**, correctly waiting on someone else; usually nothing to do.
+3. **Newly unblocked**, a recorded blocker changed state, so the work can move.
+4. **Promise at risk**, a date a person actually set has passed or is upon them.
+5. **Nothing needs you**, nothing earned an interruption.
 
 ## Derivation rules
 
-`src/data/steward/judgment.ts` — pure functions, deterministic, no model calls.
+`src/data/steward/judgment.ts`, pure functions, deterministic, no model calls.
 
 **Needs you**
 - An open commitment the viewer carries that was promised to a named person.
@@ -84,7 +84,7 @@ Optional fields stay unset rather than guessed. Ambiguity is left unresolved.
 **Nothing needs you**
 - Emitted whenever no item survives the filter.
 
-Ordering is `STATE_STRENGTH` then age of the change then id — the same input
+Ordering is `STATE_STRENGTH` then age of the change then id, the same input
 always yields the same sequence. At most `MAX_ATTENTION_ITEMS` (3) may
 interrupt; anything beyond that is reported as a `deferred` count.
 
@@ -112,8 +112,7 @@ canonical truth always outranks a remembered belief.
 
 ## Today UX
 
-`/modules/steward` is now the Judgment surface. One dominant answer first —
-"One thing needs you." / "Nothing needs you right now." — then at most three
+`/modules/steward` is now the Judgment surface. One dominant answer first, "One thing needs you." / "Nothing needs you right now.", then at most three
 items, each with a "Why now" line, progressive disclosure into evidence, a link
 to the conversation, and a link to the owning room for execution. Correctly
 waiting work sits quietly beneath, or appears as "what Steward is watching"

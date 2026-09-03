@@ -1,5 +1,5 @@
 /**
- * Visual regression — static half.
+ * Visual regression, static half.
  *
  * These checks run without a browser and guard the things a screenshot diff is
  * bad at explaining: the logo lockup's geometry, the declared type hierarchy,
@@ -57,7 +57,7 @@ describe("typography hierarchy", () => {
   });
 
   it("binds each type role to its family", () => {
-    // Display headings are serif, eyebrows are mono — enforced by utilities.
+    // Display headings are serif, eyebrows are mono, enforced by utilities.
     expect(styles).toMatch(/@utility tt-display[\s\S]*?font-family: var\(--font-display\)/);
     expect(styles).toMatch(/@utility tt-eyebrow[\s\S]*?font-family: var\(--font-mono\)/);
     expect(styles).toMatch(/body\s*\{[\s\S]*?font-family: var\(--font-sans\)/);

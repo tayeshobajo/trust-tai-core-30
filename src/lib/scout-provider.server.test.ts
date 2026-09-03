@@ -71,9 +71,9 @@ describe("discovery request", () => {
 function mockedProviderStream(payload: unknown): string {
   const text = JSON.stringify(payload);
   return text
-    .match(/.{1,40}/g)!
-    .map((chunk) => `data: ${JSON.stringify({ type: "response.output_text.delta", delta: chunk })}\n`)
-    .join("") + "data: [DONE]\n";
+.match(/.{1,40}/g)!
+.map((chunk) => `data: ${JSON.stringify({ type: "response.output_text.delta", delta: chunk })}\n`)
+.join("") + "data: [DONE]\n";
 }
 
 function parseStream(sse: string): string {
@@ -115,11 +115,11 @@ describe("mocked provider success path", () => {
           ],
         },
       },
-      // duplicate root domain (www + path) — must be de-duped, not rejected
+      // duplicate root domain (www + path), must be de-duped, not rejected
       { company_name: "Nashville Managed IT (dup)", website: "http://nashvillemanagedit.com/about", source_urls: ["https://x.com"], observed_evidence: [], icp_fit: {} },
-      // evidence-free — must be rejected
+      // evidence-free, must be rejected
       { company_name: "No Evidence Co", website: "https://noevidence.com", source_urls: [], observed_evidence: [], icp_fit: {} },
-      // malformed website — must be rejected
+      // malformed website, must be rejected
       { company_name: "Broken", website: "not a url", source_urls: ["https://x.com"], observed_evidence: [], icp_fit: {} },
     ],
   };

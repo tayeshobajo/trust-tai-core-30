@@ -104,7 +104,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const provisioned = data?.projection.provisioned !== false;
   const lastSyncedAt = useMemo(() => {
     const stamps = (data?.projection.rows ?? []).map((row) => row.lastSyncedAt).sort();
-    return stamps.length > 0 ? stamps[stamps.length - 1]! : null;
+    return stamps.length > 0 ? stamps[stamps.length - 1]!: null;
   }, [data]);
   // The projection only governs connection health once Ops has actually
   // pushed something. Before that, the activity stream read is the only
@@ -115,8 +115,8 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
     lastSyncedAt === null
       ? projectionOk && !isError
         ? "synchronized"
-        : "interrupted"
-      : opsConnectionState({
+: "interrupted"
+: opsConnectionState({
           lastSyncedAt,
           projectionReadOk: projectionOk && !isError,
           now: dataUpdatedAt || Date.now(),
@@ -156,8 +156,8 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
     const result = await launchOps({
       accessToken: session.session?.access_token ?? null,
       organizationId: identity.organizationId,
-      ...(canonicalProjectId ? { canonicalProjectId } : {}),
-      ...(targetPath ? { targetPath } : {}),
+...(canonicalProjectId ? { canonicalProjectId }: {}),
+...(targetPath ? { targetPath }: {}),
       returnContext: "ops-room",
     });
     setBusy(false);
@@ -171,7 +171,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   }
 
   const attention = portfolio.attention;
-  const lastSuccessAt = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
+  const lastSuccessAt = dataUpdatedAt ? new Date(dataUpdatedAt): null;
   const openIncidents = sumKnown(portfolio.systems, (system) => system.openIssues);
   const needsAttention = portfolio.systems.filter(
     (system) => system.needsAttention === true || system.health === "incident" || system.health === "attention",
@@ -182,13 +182,13 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   // problem here. Or we read it fine and Ops simply has not pushed in a while,
   // which is usually a quiet day in Ops, not a broken connection.
   const interrupted = unavailable;
-  const pushLabel = lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : null;
+  const pushLabel = lastSyncedAt ? new Date(lastSyncedAt).toLocaleString(): null;
   const delayed = !interrupted && (connection === "delayed" || connection === "interrupted");
   const freshness = interrupted
     ? "Ops sync interrupted"
-    : delayed && pushLabel
+: delayed && pushLabel
       ? `Ops last pushed ${pushLabel}`
-      : opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now());
+: opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now());
 
 
 
@@ -201,7 +201,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
         actions={
           <>
             <TTButton disabled={busy} onClick={() => void open()}>
-              {busy ? "Opening Ops…" : "Open Ops ↗"}
+              {busy ? "Opening Ops…": "Open Ops ↗"}
             </TTButton>
             <TTButton variant="secondary" disabled={busy} onClick={() => void open("/projects/new")}>
               Create in Ops
@@ -210,19 +210,19 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
         }
         metrics={[
           {
-            value: isLoading ? "…" : unavailable ? "—" : portfolio.systems.length,
+            value: isLoading ? "…": unavailable ? ", ": portfolio.systems.length,
             label: "Managed systems",
           },
           {
-            value: isLoading ? "…" : unavailable ? "—" : needsAttention,
+            value: isLoading ? "…": unavailable ? ", ": needsAttention,
             label: "Needs attention",
           },
           {
-            value: isLoading || unavailable ? "—" : (openIncidents ?? "—"),
+            value: isLoading || unavailable ? ", ": (openIncidents ?? ", "),
             label: "Open incidents",
           },
           {
-            value: isLoading || unavailable ? "—" : healthy,
+            value: isLoading || unavailable ? ", ": healthy,
             label: "Healthy",
           },
         ]}
@@ -236,7 +236,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
               <span role="alert" className="text-[13px] text-destructive">
                 {OPS_LAUNCH_MESSAGE[failure]}
               </span>
-            ) : null}
+            ): null}
           </div>
         }
       />
@@ -247,12 +247,12 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           className="rounded-xl border border-destructive/30 bg-destructive/10 p-4"
         >
           <p className="text-[15px] text-destructive">
-            {provisioned ? "Ops sync interrupted" : "Ops projection not provisioned"}
+            {provisioned ? "Ops sync interrupted": "Ops projection not provisioned"}
           </p>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {lastSuccessAt
-              ? `Trust Tai OS could not read current Ops state just now. The last successful sync was ${lastSuccessAt.toLocaleString()}${lastSyncedAt ? `, and Ops last pushed its projects ${new Date(lastSyncedAt).toLocaleString()}` : ""}, so everything below is that snapshot and may have moved on in Ops.`
-              : "Trust Tai OS has not completed a single successful read of the Ops stream in this session, so nothing below can be trusted as current."}
+              ? `Trust Tai OS could not read current Ops state just now. The last successful sync was ${lastSuccessAt.toLocaleString()}${lastSyncedAt ? `, and Ops last pushed its projects ${new Date(lastSyncedAt).toLocaleString()}`: ""}, so everything below is that snapshot and may have moved on in Ops.`
+: "Trust Tai OS has not completed a single successful read of the Ops stream in this session, so nothing below can be trusted as current."}
           </p>
           <p className="mt-1 text-[13px] text-muted-foreground">
             Retrying re-reads the shared activity stream. It does not change anything in Ops, and
@@ -264,10 +264,10 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
             disabled={isFetching}
             onClick={() => void refetch()}
           >
-            {isFetching ? "Retrying…" : "Retry sync"}
+            {isFetching ? "Retrying…": "Retry sync"}
           </TTButton>
         </div>
-      ) : delayed ? (
+      ): delayed ? (
         <div className="rounded-xl border border-border bg-card/60 p-4">
           <p className="text-[15px] text-foreground">Ops has been quiet</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
@@ -279,10 +279,10 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
             disabled={isFetching}
             onClick={() => void refetch()}
           >
-            {isFetching ? "Checking…" : "Check again"}
+            {isFetching ? "Checking…": "Check again"}
           </TTButton>
         </div>
-      ) : null}
+      ): null}
 
 
       <section>
@@ -293,11 +293,11 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
         />
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Reading the Ops stream.</p>
-        ) : attention.length === 0 ? (
+        ): attention.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
             Everything currently managed in Ops is healthy.
           </p>
-        ) : (
+        ): (
           <div className="space-y-3">
             {attention.map((item) => (
               <TTCard key={item.key} className="p-4">
@@ -341,17 +341,17 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           </div>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Reading the Ops stream.</p>
-          ) : systems.length === 0 ? (
+          ): systems.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
               {unavailable
                 ? provisioned
                   ? "Trust Tai OS could not read the Ops projection just now, so nothing can be listed honestly."
-                  : "The Ops projection is not provisioned in this workspace yet."
-                : portfolio.systems.length === 0
+: "The Ops projection is not provisioned in this workspace yet."
+: portfolio.systems.length === 0
                   ? "Ops has not synchronized any projects into Trust Tai OS yet. Open Ops once from here and its projects will appear."
-                  : "No system matches these filters."}
+: "No system matches these filters."}
             </p>
-          ) : (
+          ): (
             <div className="space-y-3">
               {pageView.items.map((system) => (
                 <OpsSystemRow key={system.key} system={system} onOpen={openSystem} busy={busy} />
@@ -372,7 +372,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           <p className="rounded-xl border border-dashed border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
             Nothing has moved in Ops yet.
           </p>
-        ) : (
+        ): (
           <ol className="space-y-2">
             {portfolio.recentlyMoved.map((event) => (
               <li
@@ -416,9 +416,9 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
             <Link to="/settings/integrations" className="underline underline-offset-4">
               Settings, Integrations
             </Link>
-            .
+.
           </p>
-        ) : null}
+        ): null}
       </section>
     </div>
   );

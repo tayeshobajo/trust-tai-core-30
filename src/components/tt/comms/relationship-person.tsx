@@ -1,7 +1,7 @@
 /**
  * The person behind the conversation.
  *
- * Name, title, company — read from the shared people record, editable in
+ * Name, title, company, read from the shared people record, editable in
  * place, and written back to Comms, People and the Scout prospect profile in
  * one move. Nothing here is invented: a blank company stays blank.
  */
@@ -58,7 +58,7 @@ export function RelationshipPersonCard({
       await queryClient.invalidateQueries({ queryKey: ["comms", "relationships"] });
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : "That could not be saved."),
+      toast.error(error instanceof Error ? error.message: "That could not be saved."),
   });
 
   return (
@@ -71,18 +71,18 @@ export function RelationshipPersonCard({
             onClick={() => setEditing((value) => !value)}
             className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {editing ? "Cancel" : "Edit"}
+            {editing ? "Cancel": "Edit"}
           </button>
-        ) : null}
+        ): null}
       </div>
 
       {query.isLoading ? (
         <p className="mt-2 text-[13px] text-muted-foreground">Opening their record…</p>
-      ) : query.isError ? (
+      ): query.isError ? (
         <p className="mt-2 text-[13px] text-destructive">
-          {query.error instanceof Error ? query.error.message : "That record could not be read."}
+          {query.error instanceof Error ? query.error.message: "That record could not be read."}
         </p>
-      ) : editing ? (
+      ): editing ? (
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
           <TTInput
             className="h-9"
@@ -107,11 +107,11 @@ export function RelationshipPersonCard({
           />
           <div className="sm:col-span-3">
             <TTButton disabled={save.isPending || !fullName.trim()} onClick={() => save.mutate()}>
-              {save.isPending ? "Saving…" : "Save"}
+              {save.isPending ? "Saving…": "Save"}
             </TTButton>
           </div>
         </div>
-      ) : (
+      ): (
         <>
           <p className="mt-2 text-[13px] text-foreground">{identity?.fullName}</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
@@ -119,7 +119,7 @@ export function RelationshipPersonCard({
               "No title or company on record yet."}
           </p>
           <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-            {query.data?.prospectId ? "Shared with Scout" : "Shared people record"}
+            {query.data?.prospectId ? "Shared with Scout": "Shared people record"}
           </p>
         </>
       )}

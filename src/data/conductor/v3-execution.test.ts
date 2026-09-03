@@ -1,5 +1,5 @@
 /**
- * Conductor V3 verification — factory execution coverage and learning.
+ * Conductor V3 verification, factory execution coverage and learning.
  *
  * Two things are proved here.
  *
@@ -11,7 +11,7 @@
  *    confidence, a person's correction outranks inference, and no lesson ever
  *    grants permission.
  *
- * Only the outermost IO is replaced — the real adapters, real registry and
+ * Only the outermost IO is replaced, the real adapters, real registry and
  * real learning rules run.
  */
 
@@ -133,7 +133,7 @@ function action(overrides: Partial<ControlledAction>): ControlledAction {
     sourceEventKey: "conductor.action:org-v3:scout:scout.start_discovery_run:brief",
     status: "approved",
     createdAt: NOW,
-    ...overrides,
+...overrides,
   } as ControlledAction;
 }
 
@@ -152,7 +152,7 @@ function observation(overrides: Partial<ActionObservation>): ActionObservation {
     outcomeStatus: "measured",
     measuredAt: NOW,
     provenance: { appId: "conductor", actor: { type: "system", id: "obs" }, observedAt: NOW },
-    ...overrides,
+...overrides,
   } as ActionObservation;
 }
 
@@ -487,7 +487,7 @@ describe("learning rules", () => {
   it("recalls only relevant lessons, not the whole history", () => {
     const records: LearningRecord[] = [
       {
-        ...(distillLearning({
+...(distillLearning({
           organizationId: ORG,
           scope,
           scopeLabel: "Scout discovery",
@@ -496,7 +496,7 @@ describe("learning rules", () => {
         })!),
       },
       {
-        ...(distillLearning({
+...(distillLearning({
           organizationId: ORG,
           scope: { owningApp: "comms", operation: "comms.draft_reply" },
           scopeLabel: "Comms drafts",

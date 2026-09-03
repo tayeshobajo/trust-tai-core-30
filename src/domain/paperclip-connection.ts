@@ -62,9 +62,9 @@ export function paperclipConnection(input: {
   now?: number;
 }): PaperclipConnection {
   const now = input.now ?? Date.now();
-  const parsed = input.lastSuccessAt ? new Date(input.lastSuccessAt).getTime() : NaN;
-  const ageMs = Number.isFinite(parsed) ? Math.max(0, now - parsed) : null;
-  const ageLabel = ageMs === null ? null : formatAge(ageMs);
+  const parsed = input.lastSuccessAt ? new Date(input.lastSuccessAt).getTime(): NaN;
+  const ageMs = Number.isFinite(parsed) ? Math.max(0, now - parsed): null;
+  const ageLabel = ageMs === null ? null: formatAge(ageMs);
 
   if (input.liveReachable) {
     return {
@@ -110,7 +110,7 @@ export function paperclipConnection(input: {
 
   return {
     mode: "interrupted",
-    freshness: ageMs === null ? "never" : "stale",
+    freshness: ageMs === null ? "never": "stale",
     label: "Paperclip · interrupted",
     ageMs,
     ageLabel,
@@ -119,12 +119,12 @@ export function paperclipConnection(input: {
     helper:
       ageLabel === null
         ? "Paperclip sync interrupted. No successful reconciliation has been recorded yet, so agent state may be outdated."
-        : `Paperclip sync interrupted. Agent state may be outdated · last successful sync ${ageLabel}.`,
+: `Paperclip sync interrupted. Agent state may be outdated · last successful sync ${ageLabel}.`,
     metricsKnown: false,
   };
 }
 
 /** Never render an unknown count as a fact. Zero only when zero is proven. */
 export function metricText(value: number | null | undefined): string {
-  return typeof value === "number" ? String(value) : "—";
+  return typeof value === "number" ? String(value): ", ";
 }

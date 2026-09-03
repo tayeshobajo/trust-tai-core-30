@@ -106,7 +106,7 @@ export const GOAL_HORIZON_DAYS: Record<GoalHorizon, number> = {
  * One thing the business has decided to achieve.
  *
  * Always `decided`: an intent is a human commitment, never something the
- * Conductor worked out. Without a target value it is still a valid intent 
+ * Conductor worked out. Without a target value it is still a valid intent
  * it simply cannot be decomposed, and says so.
  */
 export interface BusinessIntent {
@@ -995,7 +995,7 @@ export interface ConductorActionGraph {
   /** The question or intent this graph serves. */
   purpose: string;
   steps: ConductorActionStep[];
-  /** True whenever any step is consequential — i.e. always gated. */
+  /** True whenever any step is consequential, i.e. always gated. */
   requiresApproval: boolean;
   /** Rooms touched, so a reader can see the blast radius at a glance. */
   owningApps: string[];
@@ -1052,7 +1052,7 @@ export interface ConductorAnswer {
   learning: LearningState;
   /**
    * What the outcome ledger already knows about the rooms this answer touches,
-   * each sentence carrying how strongly it is held. Bounded and relevant 
+   * each sentence carrying how strongly it is held. Bounded and relevant
    * never the whole history, and never a source of authority.
    */
   priorLearning: string[];

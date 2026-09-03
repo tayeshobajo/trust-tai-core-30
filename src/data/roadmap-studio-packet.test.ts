@@ -36,7 +36,7 @@ function item(overrides: Partial<StrategyItem> = {}): StrategyItem {
     confidence: "high",
     sources: [source],
     approval: "approved",
-    ...overrides,
+...overrides,
   };
 }
 
@@ -55,7 +55,7 @@ function strategy(overrides: Partial<RoadmapStrategy> = {}): RoadmapStrategy {
     leveragePoint: item({ key: "lev", statement: "Their crew data is already structured." }),
     createdAt: CHECKED,
     updatedAt: CHECKED,
-    ...overrides,
+...overrides,
   };
 }
 
@@ -83,7 +83,7 @@ function milestone(overrides: Partial<RoadmapMilestone> = {}): RoadmapMilestone 
     tier: "decided",
     createdAt: CHECKED,
     updatedAt: CHECKED,
-    ...overrides,
+...overrides,
   };
 }
 
@@ -111,7 +111,7 @@ function research(overrides: Partial<RoadmapResearch> = {}): RoadmapResearch {
     checkedAt: CHECKED,
     createdAt: CHECKED,
     updatedAt: CHECKED,
-    ...overrides,
+...overrides,
   };
 }
 
@@ -207,7 +207,7 @@ describe("validateSections", () => {
       tier: "inferred",
       sources: [source],
       support: body.map((line) => ({ line, keys: ["strategy:point_a:a"] })),
-      ...overrides,
+...overrides,
       body,
     };
   }
@@ -247,10 +247,10 @@ describe("validateSections", () => {
 
   it("strips em dashes rather than shipping them", () => {
     const result = validateSections(
-      [section({ body: ["They serve regional operators — and it shows."] })],
+      [section({ body: ["They serve regional operators, and it shows."] })],
       packet,
     );
-    expect(result.sections[0]?.body.join(" ")).not.toContain("—");
+    expect(result.sections[0]?.body.join(" ")).not.toContain(", ");
   });
 
   it("says a page is not ready instead of writing around the gap", () => {

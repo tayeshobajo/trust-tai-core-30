@@ -1,4 +1,4 @@
-# Trust Tai OS — architecture canon
+# Trust Tai OS, architecture canon
 
 The source of truth for any future work in this codebase, human or AI. Short on purpose.
 If a change contradicts this document, the change is wrong until this document is changed
@@ -11,7 +11,7 @@ deliberately.
 
 **Operating principle: small input, deep intelligence, clear output.**
 
-## Product law — Familiar Magic (locked 2026-08-22)
+## Product law. Familiar Magic (locked 2026-08-22)
 
 Permanent product doctrine. Every room, feature and agent decision is judged
 against this section first; the architecture rules below describe how, this
@@ -39,17 +39,17 @@ section describes what deserves to exist.
 
 **The suite hit test.** Every app must explicitly define and pass all ten:
 
-1. **Job** — the one job it exists to perform.
-2. **Hit behavior** — the repeat behavior that makes someone naturally return.
-3. **Familiar reference** — proven interaction/product behaviors already
+1. **Job**, the one job it exists to perform.
+2. **Hit behavior**, the repeat behavior that makes someone naturally return.
+3. **Familiar reference**, proven interaction/product behaviors already
    understood by users.
-4. **Magic** — what Trust Tai adds that the familiar model does not.
-5. **Intelligence** — what it must retrieve, remember, reason about and verify.
-6. **Actions** — what it can actually do, not just recommend.
-7. **Human gates** — where Tai must decide/approve.
-8. **Memory** — what should compound through use.
-9. **Proof** — how the app knows the desired outcome actually happened.
-10. **Subtraction** — what should be removed or hidden because it does not
+4. **Magic**, what Trust Tai adds that the familiar model does not.
+5. **Intelligence**, what it must retrieve, remember, reason about and verify.
+6. **Actions**, what it can actually do, not just recommend.
+7. **Human gates**, where Tai must decide/approve.
+8. **Memory**, what should compound through use.
+9. **Proof**, how the app knows the desired outcome actually happened.
+10. **Subtraction**, what should be removed or hidden because it does not
     serve the job.
 
 Each room's answers live in its own hit brief under `docs/` (for example
@@ -97,12 +97,12 @@ cosmetic: only `business` rooms may own domain truth.
 
 ## 2. Module ownership boundaries
 
-- **Scout** — prospects, fit evidence, discovery of companies and decision-makers.
-- **Comms** — relationships, conversations, threads, replies, promises to people.
-- **Roadmap** — Point A → Point B strategy, milestones, sequencing, roadmap decisions.
-- **Projects** — execution, ownership, delivery state, blockers.
-- **Ops** — websites, technical health, maintenance (external app, SSO room in shell).
-- **Studio** — content and produced assets.
+- **Scout**, prospects, fit evidence, discovery of companies and decision-makers.
+- **Comms**, relationships, conversations, threads, replies, promises to people.
+- **Roadmap**. Point A → Point B strategy, milestones, sequencing, roadmap decisions.
+- **Projects**, execution, ownership, delivery state, blockers.
+- **Ops**, websites, technical health, maintenance (external app, SSO room in shell).
+- **Studio**, content and produced assets.
 
 No other module may claim these. Reading them is always allowed; owning them is not.
 
@@ -215,7 +215,7 @@ A route is a request. Three additions keep it honest end to end:
   Only a person with `projects.write`, giving a reason, may withdraw.
 - **Silence is reported, not blamed.** A request unanswered for
   `UNANSWERED_AFTER_DAYS` (3) surfaces on Pulse with its evidence and a link
-  back to the owning project — the only room that can withdraw or chase.
+  back to the owning project, the only room that can withdraw or chase.
 - **Notification is best effort and recorded.** Projects tells the receiving
   room through `/api/public/routing/notify`, which forwards references only to
   a server-configured inbox (`OPS_ROUTING_INBOX_URL` /
@@ -233,7 +233,7 @@ app. It holds no business truth of its own and writes none: it reads the same
 authorized suite snapshot the intelligence engine reads, through existing data
 boundaries and organization scoping.
 
-- **It never invents.** Every number carries a basis — observed, decided,
+- **It never invents.** Every number carries a basis, observed, decided,
   derived or unknown. A metric with no instrumentation is reported as a blind
   spot, never estimated. A goal with no decided target is refused, not guessed.
 - **Human-decided truth is never overwritten.** Decided values outrank derived
@@ -268,8 +268,7 @@ Approval is permission, never execution.
 - **Nothing is done until the owning room says so.** Routing means handed over.
   Completion is reported by the receiving room; it is never inferred, and the
   Conductor's own words are constrained accordingly.
-- **Failure is recorded, not swallowed.** Every hand-over writes a receipt —
-  routed, refused or failed — and a governance event in the shared stream.
+- **Failure is recorded, not swallowed.** Every hand-over writes a receipt, routed, refused or failed, and a governance event in the shared stream.
 
 ## 10. Paperclip bridge law (external execution handoff)
 
@@ -279,7 +278,7 @@ inferring completion. Contracts that future bridges must honor:
 
 1. **`source_entity_id` is a UUID.** The `execution_bindings.source_entity_id`
    column is Postgres `uuid`. Callers (`assignPaperclipTask`) pass the Trust Tai
-   source entity's real id — a task key, milestone id, or generated UUID. Never
+   source entity's real id, a task key, milestone id, or generated UUID. Never
    a free-form string key (`"my-task-1"` fails with
    `invalid input syntax for type uuid` at insert).
 2. **Idempotency keys are structured**: `trusttai:task:<orgId>:<sourceEntityId>`.
@@ -299,7 +298,7 @@ inferring completion. Contracts that future bridges must honor:
 
 **No business app may become its own isolated AI brain.** Scout, Comms, Roadmap,
 Projects, Ops, Studio, Steward and Conductor all reason through one shared
-runtime — same evidence discipline, same capability registry, same
+runtime, same evidence discipline, same capability registry, same
 problem-solving protocol, same completion gate.
 
 1. **One reasoning boundary.** `src/lib/intelligence-runtime.server.ts` is the
@@ -339,4 +338,4 @@ problem-solving protocol, same completion gate.
    the runtime for an operator read (`src/domain/project-operator-read.ts`,
    `src/data/projects/operator-read.ts`): missing context, pattern knowledge,
    risks, dependencies, proposed acceptance criteria, capability fit and the
-   verification plan — grounded in the milestone's context packet.
+   verification plan, grounded in the milestone's context packet.

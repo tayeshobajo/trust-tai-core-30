@@ -1,7 +1,7 @@
 /**
  * The Comms plan.
  *
- * One honest answer to "what happens next with this person?" — built only
+ * One honest answer to "what happens next with this person?", built only
  * from things a human already recorded: a meeting that is set, a promise that
  * is open, a reply that is owed, a follow-up someone dated.
  *
@@ -49,7 +49,7 @@ export interface PersonPlan {
 function time(value: string | null | undefined): number {
   if (!value) return Number.POSITIVE_INFINITY;
   const at = new Date(value).getTime();
-  return Number.isNaN(at) ? Number.POSITIVE_INFINITY : at;
+  return Number.isNaN(at) ? Number.POSITIVE_INFINITY: at;
 }
 
 function isPast(value: string | null | undefined, now: Date): boolean {
@@ -79,14 +79,14 @@ export function planItemsFor(relationship: Relationship, now: Date = new Date())
     if (commitment.status !== "open") continue;
     const meeting = looksLikeMeeting(commitment.text);
     items.push({
-      ...base,
+...base,
       id: `${relationship.id}:commitment:${commitment.text.slice(0, 40)}`,
-      kind: meeting ? "meeting" : "commitment",
+      kind: meeting ? "meeting": "commitment",
       title: commitment.text,
       reason:
         commitment.owner === "them"
           ? "They said they would do this."
-          : "You said you would do this.",
+: "You said you would do this.",
       dueAt: commitment.due ?? null,
       overdue: isPast(commitment.due ?? null, now),
     });
@@ -94,7 +94,7 @@ export function planItemsFor(relationship: Relationship, now: Date = new Date())
 
   if (relationship.stage === "meeting_set" && !items.some((item) => item.kind === "meeting")) {
     items.push({
-      ...base,
+...base,
       id: `${relationship.id}:meeting-set`,
       kind: "meeting",
       title: `Meeting set with ${relationship.fullName}`,
@@ -106,7 +106,7 @@ export function planItemsFor(relationship: Relationship, now: Date = new Date())
 
   if (relationship.responseDueAt) {
     items.push({
-      ...base,
+...base,
       id: `${relationship.id}:reply`,
       kind: "reply_due",
       title: `Reply to ${relationship.fullName}`,
@@ -118,7 +118,7 @@ export function planItemsFor(relationship: Relationship, now: Date = new Date())
 
   if (relationship.followUpDueAt) {
     items.push({
-      ...base,
+...base,
       id: `${relationship.id}:follow-up`,
       kind: "follow_up",
       title: relationship.nextAction?.trim() || `Follow up with ${relationship.fullName}`,
@@ -128,7 +128,7 @@ export function planItemsFor(relationship: Relationship, now: Date = new Date())
     });
   } else if (relationship.nextAction?.trim()) {
     items.push({
-      ...base,
+...base,
       id: `${relationship.id}:next-action`,
       kind: "next_action",
       title: relationship.nextAction.trim(),
@@ -144,7 +144,7 @@ export function planItemsFor(relationship: Relationship, now: Date = new Date())
 /** One plan per person, people with the soonest work first. */
 export function buildPlan(relationships: Relationship[], now: Date = new Date()): PersonPlan[] {
   return relationships
-    .map((relationship) => {
+.map((relationship) => {
       const items = planItemsFor(relationship, now);
       return {
         relationship,
@@ -153,8 +153,8 @@ export function buildPlan(relationships: Relationship[], now: Date = new Date())
         overdueCount: items.filter((item) => item.overdue).length,
       } satisfies PersonPlan;
     })
-    .filter((plan) => plan.items.length > 0)
-    .sort((a, b) => {
+.filter((plan) => plan.items.length > 0)
+.sort((a, b) => {
       if (a.overdueCount !== b.overdueCount) return b.overdueCount - a.overdueCount;
       return time(a.nextAt) - time(b.nextAt);
     });
@@ -184,7 +184,7 @@ export function inScope(item: PlanItem, scope: PlanScope, now: Date = new Date()
 /* ---------------------------------------------------------------- calendar */
 
 export function dayKey(value: Date | string): string {
-  const date = typeof value === "string" ? new Date(value) : value;
+  const date = typeof value === "string" ? new Date(value): value;
   if (Number.isNaN(date.getTime())) return "";
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");

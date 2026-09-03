@@ -171,7 +171,7 @@ async function request<T>(path: string, init: PaperclipRequestOptions = {}): Pro
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(url, { ...init, headers });
+  const response = await fetch(url, {...init, headers });
   return parseResponse<T>(response);
 }
 
@@ -184,9 +184,9 @@ async function requestFirstMatch<T>(
     try {
       return await request<T>(path, init);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message: String(error);
       if (!message.includes("404")) throw error;
-      lastError = error instanceof Error ? error : new Error(message);
+      lastError = error instanceof Error ? error: new Error(message);
     }
   }
   throw lastError ?? new Error("No matching Paperclip API route responded.");
@@ -265,14 +265,14 @@ export const paperclipClient = {
   /** Set agent paused state. Returns the updated agent.
    *
    * Paperclip models pause as agent *status* ("paused" in AGENT_STATUSES), not a
-   * boolean — `{ paused: true }` is silently ignored. Resume restores "active";
+   * boolean, `{ paused: true }` is silently ignored. Resume restores "active";
    * callers that want to preserve a prior non-paused status must pass it through
    * resumeStatus.
    */
   setAgentPaused(agentId: string, paused: boolean, resumeStatus = "active") {
     return request<PaperclipAgent>(`/api/agents/${agentId}`, {
       method: "PATCH",
-      body: JSON.stringify({ status: paused ? "paused" : resumeStatus }),
+      body: JSON.stringify({ status: paused ? "paused": resumeStatus }),
     });
   },
 
@@ -299,7 +299,7 @@ export const paperclipClient = {
     try {
       return await request<Record<string, unknown>[]>(`/api/companies/${companyId}/approvals`);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
+      const msg = error instanceof Error ? error.message: String(error);
       if (msg.includes("404") || msg.includes("not found")) return [];
       throw error;
     }

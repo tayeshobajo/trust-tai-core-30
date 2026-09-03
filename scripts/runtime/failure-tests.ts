@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * §25 Failure tests — prove honest behavior, not just happy paths.
+ * §25 Failure tests, prove honest behavior, not just happy paths.
  * Each test expects a SPECIFIC refusal/honest-state, not a crash.
  */
 import { readFileSync, existsSync } from "fs";
@@ -24,8 +24,8 @@ const ORG = "ee683a64-e045-4226-a8ff-4ae6590d6789";
 const P = "97184a93-72e3-4570-8876-93923fea7199";
 let pass = 0, fail = 0;
 const t = (name: string, ok: boolean, detail: string) => {
-  if (ok) { pass++; console.log(`  ✓ ${name} — ${detail}`); }
-  else { fail++; console.log(`  ✗ ${name} — ${detail}`); }
+  if (ok) { pass++; console.log(`  ✓ ${name}, ${detail}`); }
+  else { fail++; console.log(`  ✗ ${name}, ${detail}`); }
 };
 
 const { createClient } = await import("@supabase/supabase-js");
@@ -51,11 +51,11 @@ t("ChatGPT URL stays import_needs_upload", syncStateFor("chatgpt") === "import_n
 
 // 3. Cross-org source → inaccessible (packet loader scopes by org)
 {
-  // Packet loader scopes every read by organization_id — verify the fixture
+  // Packet loader scopes every read by organization_id, verify the fixture
   // project is invisible under a foreign org id.
   const { data: foreign } = await sb.from("projects").select("id")
-    .eq("organization_id", "00000000-0000-0000-0000-000000000001")
-    .eq("id", P).maybeSingle();
+.eq("organization_id", "00000000-0000-0000-0000-000000000001")
+.eq("id", P).maybeSingle();
   t("Cross-org source → inaccessible", foreign === null, "org-scoped read of fixture project under foreign org returns nothing");
 }
 
@@ -135,4 +135,4 @@ t("ChatGPT URL stays import_needs_upload", syncStateFor("chatgpt") === "import_n
 }
 
 console.log(`\nFAILURE TESTS: ${pass} pass, ${fail} fail`);
-process.exit(fail > 0 ? 1 : 0);
+process.exit(fail > 0 ? 1: 0);

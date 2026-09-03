@@ -180,7 +180,7 @@ export interface Touch {
  * The draft's place in the human loop. `sending` and `send_failed` belong to
  * the Gmail send path: a send attempt claims the draft (`sending`), and a
  * refusal never reads as sent (`send_failed`, retryable). `sent` means Gmail
- * accepted the message or a person marked it sent — the mailbox still has
+ * accepted the message or a person marked it sent, the mailbox still has
  * the last word through verification.
  */
 export type DraftReviewState =
@@ -275,7 +275,7 @@ const DAY = 86_400_000;
 
 export function daysBetween(from: ISODateTime, to: ISODateTime | Date): number {
   const a = new Date(from).getTime();
-  const b = to instanceof Date ? to.getTime() : new Date(to).getTime();
+  const b = to instanceof Date ? to.getTime(): new Date(to).getTime();
   if (Number.isNaN(a) || Number.isNaN(b)) return 0;
   return Math.floor((b - a) / DAY);
 }
@@ -294,10 +294,10 @@ function startOfDay(date: Date): number {
  */
 export function dueState(relationship: Relationship, now: Date = new Date()): DueState {
   const due = [relationship.responseDueAt, relationship.followUpDueAt]
-    .filter((value): value is string => Boolean(value))
-    .map((value) => new Date(value).getTime())
-    .filter((value) => !Number.isNaN(value))
-    .sort((a, b) => a - b)[0];
+.filter((value): value is string => Boolean(value))
+.map((value) => new Date(value).getTime())
+.filter((value) => !Number.isNaN(value))
+.sort((a, b) => a - b)[0];
 
   if (due !== undefined) {
     const today = startOfDay(now);
@@ -318,7 +318,7 @@ export function dueState(relationship: Relationship, now: Date = new Date()): Du
 
 /**
  * Operating segment: which room of the relationship workspace a person
- * belongs to. Derived from the same record, never stored — one person, one
+ * belongs to. Derived from the same record, never stored, one person, one
  * relationship memory, many conversations. The segment moves only when a
  * person changes the stage.
  *
@@ -327,9 +327,9 @@ export function dueState(relationship: Relationship, now: Date = new Date()): Du
  *  - A graduated stage (meeting set, opportunity, client) always means the
  *    client room, whatever the origin. Graduation updates this same record.
  *  - An explicit nurture stage means nurture, whatever the origin.
- *  - Scout/outbound origin stays nurture until it graduates — a handoff is a
+ *  - Scout/outbound origin stays nurture until it graduates, a handoff is a
  *    decision to develop someone, not proof of an established relationship.
- *  - Everything else — met in person, added by hand, they reached out — is
+ *  - Everything else, met in person, added by hand, they reached out, is
  *    an established relationship and belongs with clients.
  */
 export type RelationshipSegment = "client" | "nurture";
@@ -349,7 +349,7 @@ export const ESTABLISHED_STAGES: readonly RelationshipStage[] = [
 /**
  * Early lifecycle stages are development evidence, whatever the origin: a
  * person who is new, being researched, or freshly reached out to is someone
- * we are developing, not an established relationship — even when we met them
+ * we are developing, not an established relationship, even when we met them
  * in person or they wrote to us first.
  */
 export const EARLY_STAGES: readonly RelationshipStage[] = [
@@ -375,7 +375,7 @@ const ESTABLISHED_INTENTS: readonly RelationshipIntent[] = [
 ];
 
 /**
- * Which operating room a relationship belongs to, derived — never stored.
+ * Which operating room a relationship belongs to, derived, never stored.
  *
  * Classification follows current relationship reality, not the door the
  * person entered through. Established evidence (a linked client record, a
@@ -408,7 +408,7 @@ export function relationshipSegment(relationship: Relationship): RelationshipSeg
  * Whether "Move to Nurture" is a safe, honest action: the person sits in the
  * client room only by contextual fallback, not by hard evidence (a linked
  * client record, a graduated stage, or an explicit established intent).
- * Moving sets an explicit nurture stage on the same record — nothing is
+ * Moving sets an explicit nurture stage on the same record, nothing is
  * copied or lost, and graduation back stays one click away. A real client is
  * never offered the move, because their stage is evidence, not a label.
  */

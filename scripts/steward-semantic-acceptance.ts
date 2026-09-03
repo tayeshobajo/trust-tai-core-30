@@ -49,7 +49,7 @@ console.log(dispositionCounts(run.signals));
 const reviewable = reviewableSignals(run.signals);
 for (const s of reviewable) {
   console.log(
-    `\n[${s.disposition}|${s.confidence}|${s.truthTier}] ${s.at} owner=${s.ownerName ?? "—"} due="${s.dueText ?? "—"}"`,
+    `\n[${s.disposition}|${s.confidence}|${s.truthTier}] ${s.at} owner=${s.ownerName ?? ", "} due="${s.dueText ?? ", "}"`,
   );
   console.log("  meaning:", s.normalizedMeaning);
   console.log("  why:", s.rationale);
@@ -94,7 +94,7 @@ console.log(
 /* The same shape of work, seen in the required number of distinct conversations. */
 const repeated = Array.from({ length: RECURRING_PATTERN_THRESHOLD }, (_, index) =>
   observations.map((observation) => ({
-    ...observation,
+...observation,
     conversationId: `rehearsal-conversation-${index}`,
   })),
 ).flat();

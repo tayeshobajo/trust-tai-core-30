@@ -255,9 +255,9 @@ export function observationFingerprint(input: {
     input.truth,
     input.outcomeStatus,
     input.metricKey ?? "-",
-    ...input.evidence.map((item) => item.label).sort(),
+...input.evidence.map((item) => item.label).sort(),
   ].join("|");
-  /* djb2 — small, stable, and readable in a row id. Not a security hash. */
+  /* djb2, small, stable, and readable in a row id. Not a security hash. */
   let hash = 5381;
   for (let index = 0; index < material.length; index += 1) {
     hash = ((hash << 5) + hash + material.charCodeAt(index)) >>> 0;

@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — brand contract.
+ * Trust Tai OS, brand contract.
  *
  * The single machine-readable description of the brand surface: the official
  * logo lockup, the typography hierarchy, and the colour tokens every room
@@ -37,7 +37,7 @@ export const TYPE_SCALE = [
   { role: "eyebrow", family: "mono", min: 9, max: 12 },
 ] as const;
 
-/** Colour tokens that must exist in :root, with their canonical oklch values. */
+/** Colour tokens that must exist in:root, with their canonical oklch values. */
 export const COLOR_TOKENS: Record<string, string> = {
   "--ink": "oklch(0.19 0.048 266)",
   "--paper": "oklch(1 0 0)",
@@ -54,7 +54,7 @@ export const COLOR_TOKENS: Record<string, string> = {
   "--card": "oklch(1 0 0)",
 };
 
-/** Per-room ambient accents. Atmosphere only — never status or control colour. */
+/** Per-room ambient accents. Atmosphere only, never status or control colour. */
 export const AMBIENT_TOKENS: Record<string, string> = {
   "--tt-app-home": "#1d54c1",
   "--tt-app-scout": "#2aafc8",

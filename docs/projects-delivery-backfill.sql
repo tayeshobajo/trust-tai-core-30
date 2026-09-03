@@ -1,4 +1,4 @@
--- Trust Tai OS — Projects delivery backfill.
+-- Trust Tai OS. Projects delivery backfill.
 --
 -- Run AFTER docs/projects-delivery-schema.sql, against project okydosoacqdnursmmenf.
 -- Idempotent: safe to run more than once.
@@ -12,7 +12,7 @@
 --   metadata->>'blocked_because'  → an open blocker, when the project is blocked
 --
 -- Roadmap truth is untouched: nothing here writes to roadmap_* tables.
--- Files are deliberately not backfilled — a file row without a real object in the
+-- Files are deliberately not backfilled, a file row without a real object in the
 -- private `project-files` bucket would break Open and Download. Upload real files
 -- from the Files tab instead.
 

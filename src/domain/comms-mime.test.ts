@@ -79,7 +79,7 @@ describe("replyRecipients", () => {
     });
     expect(result.to).toEqual(["dana@x.com"]);
     expect(result.cc).toEqual(["lee@y.com", "sam@z.com"]);
-    expect([...result.to, ...result.cc]).not.toContain("tai@trust-tai.com");
+    expect([...result.to,...result.cc]).not.toContain("tai@trust-tai.com");
   });
 
   it("keeps the person we answer in To, everyone else in Cc, once", () => {
@@ -119,7 +119,7 @@ describe("replySubject", () => {
 });
 
 describe("deterministicMessageId", () => {
-  it("is stable per draft — a retried send is recognizable", () => {
+  it("is stable per draft, a retried send is recognizable", () => {
     expect(deterministicMessageId("draft-1")).toBe(deterministicMessageId("draft-1"));
     expect(deterministicMessageId("draft-1")).toContain("draft-1");
     expect(deterministicMessageId("draft-1")).not.toBe(deterministicMessageId("draft-2"));
@@ -203,7 +203,7 @@ describe("encodeRawEmail", () => {
       from: "tai@trust-tai.com",
       to: ["dana@x.com"],
       subject: "Grüße aus Nashville",
-      bodyText: "Line one\nLine two — with unicode ✓",
+      bodyText: "Line one\nLine two, with unicode ✓",
     });
     const encoded = encodeRawEmail(raw);
     expect(encoded).not.toMatch(/[+/=]/);

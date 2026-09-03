@@ -21,7 +21,7 @@ describe("linki provider config", () => {
   });
 
   it("is disabled when LINKI_ENABLED=false, even with a key", () => {
-    expect(linkiStatus({ ...ENV, LINKI_ENABLED: "false" }).configured).toBe(false);
+    expect(linkiStatus({...ENV, LINKI_ENABLED: "false" }).configured).toBe(false);
   });
 
   it("exposes the base URL but never the key", () => {
@@ -85,7 +85,7 @@ describe("rankCandidates (P1.10: evidence ranking + fail closed)", () => {
     location: null,
     degree: null,
     company: null,
-    ...over,
+...over,
   });
 
   it("ranks the candidate with more evidence on top", () => {
@@ -97,7 +97,7 @@ describe("rankCandidates (P1.10: evidence ranking + fail closed)", () => {
     });
     const weak = mk({
       linkedinUrl: "https://www.linkedin.com/in/weak/",
-      headline: "Consultant — New England Biolabs alum",
+      headline: "Consultant. New England Biolabs alum",
       location: null,
       company: null,
     });
@@ -205,9 +205,9 @@ describe("linkiFindPerson", () => {
         JSON.stringify({
           candidates: [
             { linkedin_url: "https://www.linkedin.com/in/isaac-meek/", full_name: "Isaac Meek", headline: "Co-founder · Acme", location: null, degree: null, company: null },
-            { linkedin_url: "https://www.linkedin.com/in/isaac-meek/detail/", full_name: "Sub-route" }, // sub-path — rejected
-            { linkedin_url: "https://example.com/in/x/", full_name: "Wrong host" }, // not linkedin.com — rejected
-            { linkedin_url: "https://www.linkedin.com/in/no-name/" }, // no name — rejected
+            { linkedin_url: "https://www.linkedin.com/in/isaac-meek/detail/", full_name: "Sub-route" }, // sub-path, rejected
+            { linkedin_url: "https://example.com/in/x/", full_name: "Wrong host" }, // not linkedin.com, rejected
+            { linkedin_url: "https://www.linkedin.com/in/no-name/" }, // no name, rejected
             "garbage",
           ],
         }),
@@ -280,7 +280,7 @@ describe("linkiFindPerson", () => {
   });
 });
 
-describe("linkiFindPerson — pages param (enrichment pipeline)", () => {
+describe("linkiFindPerson, pages param (enrichment pipeline)", () => {
   it("sends pages: 3 in the lookup body", async () => {
     const fetchMock = vi.fn(
       async (_input: RequestInfo | URL, _init?: RequestInit) =>
@@ -298,7 +298,7 @@ describe("linkiFindPerson — pages param (enrichment pipeline)", () => {
   });
 });
 
-describe("linkiFindPerson — enrichment flow", () => {
+describe("linkiFindPerson, enrichment flow", () => {
   const BAKERY_PERSON = {
     fullName: "David Andrews",
     companyName: "D'Andrews Bakery & Cafe",
@@ -306,8 +306,7 @@ describe("linkiFindPerson — enrichment flow", () => {
   };
 
   // Name-shielded shortlist: all pass the first/last-name shield on "David
-  // Andrews", but none carries search-snippet evidence above the 1.5 bar —
-  // exactly the live false-negative the enrichment pipeline exists to fix.
+  // Andrews", but none carries search-snippet evidence above the 1.5 bar, // exactly the live false-negative the enrichment pipeline exists to fix.
   const SHORTLIST = [
     { linkedin_url: "https://www.linkedin.com/in/david-andrews-0868a2132/", full_name: "David Andrews", headline: null, location: null, degree: null, company: null },
     { linkedin_url: "https://www.linkedin.com/in/david-andrews-1/", full_name: "David Andrews", headline: null, location: null, degree: null, company: null },
@@ -365,9 +364,9 @@ describe("linkiFindPerson — enrichment flow", () => {
 
   it("enrich merge produces a confident card for the bakery owner over a name-shielded shortlist", async () => {
     const fetchMock = vi
-      .fn()
-      .mockImplementationOnce(async () => lookupResponse())
-      .mockImplementationOnce(async () => enrichResponse());
+.fn()
+.mockImplementationOnce(async () => lookupResponse())
+.mockImplementationOnce(async () => enrichResponse());
     vi.stubGlobal("fetch", fetchMock);
 
     const candidates = await linkiFindPerson(BAKERY_PERSON, ENV_TT);
@@ -390,12 +389,12 @@ describe("linkiFindPerson — enrichment flow", () => {
     vi.unstubAllGlobals();
   });
 
-  it("falls back to unenriched (empty confident result) when enrich fails — no throw", async () => {
+  it("falls back to unenriched (empty confident result) when enrich fails, no throw", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const fetchMock = vi
-      .fn()
-      .mockImplementationOnce(async () => lookupResponse())
-      .mockImplementationOnce(async () => new Response("{}", { status: 500 }));
+.fn()
+.mockImplementationOnce(async () => lookupResponse())
+.mockImplementationOnce(async () => new Response("{}", { status: 500 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const candidates = await linkiFindPerson(BAKERY_PERSON, ENV_TT);
@@ -524,7 +523,7 @@ describe("linkiEnrichProfiles", () => {
       { urls: ["https://www.linkedin.com/in/david-andrews-0868a2132/"], searchName: "David Andrews" },
       ENV_TT,
     );
-    // Partial profiles still flow through — stopped_reason never throws.
+    // Partial profiles still flow through, stopped_reason never throws.
     expect(profiles).toHaveLength(1);
     expect(profiles[0]?.full_name).toBe("David Andrews");
     expect(info).toHaveBeenCalled();
@@ -533,7 +532,7 @@ describe("linkiEnrichProfiles", () => {
   });
 });
 
-describe("linkiFindPerson — nav-first searchName passthrough", () => {
+describe("linkiFindPerson, nav-first searchName passthrough", () => {
   const SHORTLIST = [
     { linkedin_url: "https://www.linkedin.com/in/david-andrews-0868a2132/", full_name: "David Andrews", headline: null, location: null, degree: null, company: null },
     { linkedin_url: "https://www.linkedin.com/in/david-andrews-1/", full_name: "David Andrews", headline: null, location: null, degree: null, company: null },
@@ -541,10 +540,10 @@ describe("linkiFindPerson — nav-first searchName passthrough", () => {
 
   it("sends the person's fullName as search_name on the enrich call", async () => {
     const fetchMock = vi
-      .fn()
-      .mockImplementationOnce(async () =>
+.fn()
+.mockImplementationOnce(async () =>
         new Response(JSON.stringify({ candidates: SHORTLIST }), { status: 200 }))
-      .mockImplementationOnce(async () =>
+.mockImplementationOnce(async () =>
         new Response(JSON.stringify({ profiles: [] }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     await linkiFindPerson({ fullName: "David Andrews", companyName: "D'Andrews Bakery" }, ENV_TT);
@@ -556,7 +555,7 @@ describe("linkiFindPerson — nav-first searchName passthrough", () => {
       search_name?: string;
     };
     expect(enrichBody.search_name).toBe("David Andrews");
-    // Shortlist stays at ≤5 — Linki enforces its own cap of 3 nav-first.
+    // Shortlist stays at ≤5. Linki enforces its own cap of 3 nav-first.
     expect(enrichBody.urls.length).toBeLessThanOrEqual(5);
     vi.unstubAllGlobals();
   });

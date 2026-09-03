@@ -1,7 +1,7 @@
 /**
  * The email itself, rendered faithfully.
  *
- * Comms shows the actual meaningful email a person sent or received — full
+ * Comms shows the actual meaningful email a person sent or received, full
  * body, inline images in place, quoted history behind an explicit toggle,
  * and never a silent clamp: long mail starts folded with a visible
  * Show more / Show less.
@@ -9,7 +9,7 @@
  * Rendering never touches raw HTML: the stored HTML was sanitized at ingest
  * and is parsed here into a small node tree that becomes ordinary
  * components. Inline images load through the authenticated attachment
- * proxy as object URLs — no Google credential or raw Gmail URL ever reaches
+ * proxy as object URLs, no Google credential or raw Gmail URL ever reaches
  * the browser. Remote images were refused at ingest and are simply absent,
  * with the refusal count surfaced in the event's provenance line.
  */
@@ -60,7 +60,7 @@ function InlineImage({
       messageId,
       attachmentId: resource.attachmentId,
     })
-      .then((created) => {
+.then((created) => {
         if (cancelled) {
           URL.revokeObjectURL(created);
           return;
@@ -68,7 +68,7 @@ function InlineImage({
         objectUrl = created;
         setUrl(created);
       })
-      .catch(() => {
+.catch(() => {
         if (!cancelled) setFailed(true);
       });
     return () => {
@@ -86,7 +86,7 @@ function InlineImage({
         <span className="max-w-[180px] truncate">{resource.filename}</span>
         {resource.size > 0 ? (
           <span className="text-[10px] opacity-70">{formatBytes(resource.size)}</span>
-        ) : null}
+        ): null}
       </span>
     );
   }
@@ -143,7 +143,7 @@ function renderNode(node: EmailNode, key: string, ctx: RenderContext): React.Rea
         >
           {children}
         </a>
-      ) : (
+      ): (
         <span key={key}>{children}</span>
       );
     case "b":
@@ -284,7 +284,7 @@ const COLLAPSED_HEIGHT = "max-h-[16rem]";
 
 /**
  * One email's body: full fidelity, quoted history behind a toggle, long
- * mail folded with an explicit affordance — never a silent clamp.
+ * mail folded with an explicit affordance, never a silent clamp.
  */
 export function EmailBodyView({
   organizationId,
@@ -294,7 +294,7 @@ export function EmailBodyView({
   inline = [],
 }: {
   organizationId: string;
-  /** The comms_messages row id — the access handle for inline images. */
+  /** The comms_messages row id, the access handle for inline images. */
   messageId: string;
   text?: string;
   html?: string;
@@ -304,7 +304,7 @@ export function EmailBodyView({
   const [showQuoted, setShowQuoted] = useState(false);
 
   // The law: only the primary, currently visible content decides whether
-  // Show more exists — quoted history and inline images never cause a fold.
+  // Show more exists, quoted history and inline images never cause a fold.
   const needsCollapse = useMemo(() => primaryEmailNeedsCollapse(text, html), [text, html]);
 
   const inlineByCid = useMemo(() => {
@@ -340,25 +340,25 @@ export function EmailBodyView({
       (!parsed || !parsed.referenced.has(resource.contentId.toLowerCase())),
   );
 
-  const hasQuoted = parsed ? parsed.quoted.length > 0 : Boolean(textSplit?.quoted);
+  const hasQuoted = parsed ? parsed.quoted.length > 0: Boolean(textSplit?.quoted);
 
   return (
     <div className="mt-1 text-[13px] leading-relaxed text-foreground/90">
-      <div className={cn("relative", !expanded && needsCollapse ? `${COLLAPSED_HEIGHT} overflow-hidden` : "")}>
+      <div className={cn("relative", !expanded && needsCollapse ? `${COLLAPSED_HEIGHT} overflow-hidden`: "")}>
         {parsed ? (
           <div className="whitespace-pre-wrap break-words">
             {parsed.main.map((node, index) => renderNode(node, `m${index}`, ctx))}
           </div>
-        ) : textSplit ? (
+        ): textSplit ? (
           <p className="whitespace-pre-wrap break-words">{textSplit.main}</p>
-        ) : null}
+        ): null}
 
         {!expanded && needsCollapse ? (
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent"
           />
-        ) : null}
+        ): null}
       </div>
 
       {unreferenced.map((resource) =>
@@ -369,7 +369,7 @@ export function EmailBodyView({
             messageId={messageId}
             resource={resource}
           />
-        ) : null,
+        ): null,
       )}
 
       <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
@@ -380,9 +380,9 @@ export function EmailBodyView({
             aria-expanded={expanded}
             className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {expanded ? "Show less" : "Show more"}
+            {expanded ? "Show less": "Show more"}
           </button>
-        ) : null}
+        ): null}
         {hasQuoted ? (
           <button
             type="button"
@@ -390,9 +390,9 @@ export function EmailBodyView({
             aria-expanded={showQuoted}
             className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {showQuoted ? "Hide quoted text" : "Show quoted text"}
+            {showQuoted ? "Hide quoted text": "Show quoted text"}
           </button>
-        ) : null}
+        ): null}
       </div>
 
       {showQuoted && parsed && parsed.quoted.length > 0 ? (
@@ -401,12 +401,12 @@ export function EmailBodyView({
             {parsed.quoted.map((node, index) => renderNode(node, `q${index}`, ctx))}
           </div>
         </div>
-      ) : null}
+      ): null}
       {showQuoted && textSplit?.quoted ? (
         <p className="mt-2 whitespace-pre-wrap break-words border-l-2 border-border pl-3 text-muted-foreground">
           {textSplit.quoted}
         </p>
-      ) : null}
+      ): null}
     </div>
   );
 }

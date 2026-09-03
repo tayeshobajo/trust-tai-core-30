@@ -2,7 +2,7 @@
  * The mailbox track: every connected Gmail account, one compact row each.
  *
  * Mailboxes own transport identity; relationships own memory. Several
- * mailboxes can be connected at once — each reads only the threads labeled
+ * mailboxes can be connected at once, each reads only the threads labeled
  * Trust Tai/Comms in its own account, and each sends only when a person
  * clicks Send on a draft they approved. Connecting another account never
  * replaces an existing one; disconnecting one leaves the others live.
@@ -54,17 +54,17 @@ export function GmailConnection({
 
   const exchange = useMutation({
     mutationFn: (input: { code: string; state: string }) =>
-      gmailExchange({ organizationId, ...input }),
+      gmailExchange({ organizationId,...input }),
     onSuccess: (result) => {
       setNotice(
         result.canSend
           ? `Connected ${result.accountEmail}. Comms reads its labeled mail and can send a draft when you click Send.`
-          : `Connected ${result.accountEmail}. Reading labeled mail only — Google did not grant send access; reconnect to approve it.`,
+: `Connected ${result.accountEmail}. Reading labeled mail only. Google did not grant send access; reconnect to approve it.`,
       );
       void invalidate();
     },
     onError: (error: unknown) =>
-      setFailure(error instanceof Error ? error.message : "That connection failed."),
+      setFailure(error instanceof Error ? error.message: "That connection failed."),
   });
 
   // Google sends the browser back here with a code. Complete the exchange
@@ -87,7 +87,7 @@ export function GmailConnection({
     window.history.replaceState(
       {},
       "",
-      `${window.location.pathname}${query ? `?${query}` : ""}`,
+      `${window.location.pathname}${query ? `?${query}`: ""}`,
     );
     // Runs once per callback landing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,7 +99,7 @@ export function GmailConnection({
       window.location.href = url;
     },
     onError: (error: unknown) =>
-      setFailure(error instanceof Error ? error.message : "That connection could not start."),
+      setFailure(error instanceof Error ? error.message: "That connection could not start."),
   });
 
   const disconnectAction = useMutation({
@@ -110,7 +110,7 @@ export function GmailConnection({
       void invalidate();
     },
     onError: (error: unknown) =>
-      setFailure(error instanceof Error ? error.message : "That disconnect failed."),
+      setFailure(error instanceof Error ? error.message: "That disconnect failed."),
   });
 
   const readNow = useMutation({
@@ -121,7 +121,7 @@ export function GmailConnection({
       void invalidate();
     },
     onError: (error: unknown) =>
-      setFailure(error instanceof Error ? error.message : "That read failed."),
+      setFailure(error instanceof Error ? error.message: "That read failed."),
   });
 
   const configured = status.data?.configured ?? false;
@@ -135,13 +135,13 @@ export function GmailConnection({
         <MetaPill>
           {connections.length > 0
             ? `${connections.length} connected`
-            : INTEGRATION_STATUS_LABEL.disconnected}
+: INTEGRATION_STATUS_LABEL.disconnected}
         </MetaPill>
       </div>
       <AmbientRule appId="comms" contextAccent={null} />
       <p className="text-sm leading-relaxed text-muted-foreground">
         Label someone <span className="text-foreground">Trust Tai/Comms</span> in Gmail. Comms
-        picks them up automatically — the label is your approval to bring that person in, and
+        picks them up automatically, the label is your approval to bring that person in, and
         their labeled history comes with them. Unlabeled mail stays invisible to Comms. Nothing is
         ever sent on its own, and Comms cannot change your Gmail labels.
       </p>
@@ -150,9 +150,9 @@ export function GmailConnection({
         <p className="text-xs text-muted-foreground">
           {configured
             ? "Ready to connect. Google will ask you to allow reading labeled mail and sending the drafts you approve."
-            : "Needs a Google OAuth client on the server."}
+: "Needs a Google OAuth client on the server."}
         </p>
-      ) : (
+      ): (
         <ul className="space-y-3">
           {connections.map((connection) => (
             <MailboxRow
@@ -174,42 +174,42 @@ export function GmailConnection({
           The integration tables are not in the workspace yet, so connecting is held until the
           schema is applied.
         </p>
-      ) : null}
+      ): null}
 
       <div className="flex flex-wrap gap-2 pt-1">
         <TTButton
-          variant={connections.length > 0 ? "quiet" : "primary"}
+          variant={connections.length > 0 ? "quiet": "primary"}
           onClick={() => connect.mutate()}
           disabled={!configured || !provisioned || busy}
         >
           {connect.isPending || exchange.isPending
             ? "Connecting…"
-            : connections.length > 0
+: connections.length > 0
               ? "+ Connect another Gmail account"
-              : "Connect Gmail"}
+: "Connect Gmail"}
         </TTButton>
       </div>
 
       {sync ? (
         <p className="text-xs text-muted-foreground">
-          {sync.accountEmail ? `${sync.accountEmail}: ` : ""}read {sync.messagesRead} labeled
+          {sync.accountEmail ? `${sync.accountEmail}: `: ""}read {sync.messagesRead} labeled
           messages, stored {sync.messagesStored} across {sync.relationshipsTouched} relationships
           {(sync.peopleAdded ?? 0) > 0
             ? `, added ${sync.peopleAdded} newly labeled ${
-                sync.peopleAdded === 1 ? "person" : "people"
+                sync.peopleAdded === 1 ? "person": "people"
               } to Comms`
-            : ""}
-          .
+: ""}
+.
           {(sync.pendingPeople ?? 0) > 0
             ? ` ${sync.pendingPeople} labeled ${
-                (sync.pendingPeople ?? 0) === 1 ? "message needs" : "messages need"
+                (sync.pendingPeople ?? 0) === 1 ? "message needs": "messages need"
               } your decision below.`
-            : ""}
+: ""}
         </p>
-      ) : null}
+      ): null}
 
-      {notice ? <p className="text-xs text-muted-foreground">{notice}</p> : null}
-      {failure ? <p className="text-xs text-destructive">{failure}</p> : null}
+      {notice ? <p className="text-xs text-muted-foreground">{notice}</p>: null}
+      {failure ? <p className="text-xs text-destructive">{failure}</p>: null}
     </TTCard>
   );
 }
@@ -236,7 +236,7 @@ function MailboxRow({
   // Whether the persisted grant includes send. An older read-only connection
   // stays fully functional for reading; reconnecting upgrades the grant.
   const canSend = connection.scopes.includes(GMAIL_SEND_SCOPE);
-  // The persisted summary of the last pass on this mailbox — visible even
+  // The persisted summary of the last pass on this mailbox, visible even
   // when nobody has pressed "Read now" this session.
   const lastRun = readGmailRunSummary(connection.cursor);
 
@@ -250,11 +250,11 @@ function MailboxRow({
             {connection.accountEmail ?? "Gmail account"}
           </p>
           <p className="text-xs text-muted-foreground">
-            {connected ? "Watching Trust Tai/Comms" : INTEGRATION_STATUS_LABEL[connection.status]}
-            {connected ? (canSend ? " · can send" : " · read-only grant") : ""}
+            {connected ? "Watching Trust Tai/Comms": INTEGRATION_STATUS_LABEL[connection.status]}
+            {connected ? (canSend ? " · can send": " · read-only grant"): ""}
             {connection.lastSyncAt
               ? ` · last checked ${new Date(connection.lastSyncAt).toLocaleString()}`
-              : " · not checked yet"}
+: " · not checked yet"}
           </p>
         </div>
       </div>
@@ -263,18 +263,18 @@ function MailboxRow({
         <p className="text-xs text-muted-foreground">
           New labeled people are added to Comms automatically, every few hours.
         </p>
-      ) : null}
+      ): null}
 
       {lastRun ? (
         <p className="text-xs text-muted-foreground">
           Last pass {new Date(lastRun.at).toLocaleString()}: read {lastRun.messagesRead} labeled,
           stored {lastRun.messagesStored}
           {lastRun.peopleAdded > 0
-            ? `, added ${lastRun.peopleAdded} ${lastRun.peopleAdded === 1 ? "person" : "people"}`
-            : ""}
-          , emitted {lastRun.eventsEmitted} events, verified {lastRun.draftsVerified} sent.
+            ? `, added ${lastRun.peopleAdded} ${lastRun.peopleAdded === 1 ? "person": "people"}`
+: ""}
+, emitted {lastRun.eventsEmitted} events, verified {lastRun.draftsVerified} sent.
         </p>
-      ) : null}
+      ): null}
 
       {exceptions.length > 0 ? (
         <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
@@ -287,10 +287,10 @@ function MailboxRow({
                 <span className="text-foreground">
                   {exception.subject?.trim() || "A labeled thread"}
                 </span>{" "}
-                — {exception.emails.join(", ")}.{" "}
+                {exception.emails.join(", ")}.{" "}
                 {exception.reason === "ambiguous_thread"
                   ? "More than one person is on this labeled thread, so Comms did not guess who it belongs to. Label the individual thread with that person, or add them by hand."
-                  : `${exception.detail ?? "That relationship could not be created."} Sync now to try again.`}
+: `${exception.detail ?? "That relationship could not be created."} Sync now to try again.`}
               </li>
             ))}
           </ul>
@@ -298,32 +298,32 @@ function MailboxRow({
             <p className="text-xs text-muted-foreground">
               …and {exceptions.length - 5} more.
             </p>
-          ) : null}
+          ): null}
         </div>
-      ) : null}
+      ): null}
 
       {connected && !canSend ? (
         <p className="text-xs text-muted-foreground">
           This mailbox was granted read-only access, so Send stays off for it. Reconnect to approve
-          sending — Google keeps the existing reading access.
+          sending. Google keeps the existing reading access.
         </p>
-      ) : null}
+      ): null}
 
       {connection.lastError ? (
         <p className="text-xs text-destructive">{connection.lastError}</p>
-      ) : null}
+      ): null}
 
       <div className="flex flex-wrap gap-2">
         {connected ? (
           <TTButton variant="quiet" onClick={onReadNow} disabled={busy}>
-            {reading ? "Checking…" : "Sync now (optional)"}
+            {reading ? "Checking…": "Sync now (optional)"}
           </TTButton>
-        ) : null}
+        ): null}
         {!canSend ? (
           <TTButton variant="quiet" onClick={onReconnect} disabled={busy}>
-            {connecting ? "Reconnecting…" : "Reconnect with send access"}
+            {connecting ? "Reconnecting…": "Reconnect with send access"}
           </TTButton>
-        ) : null}
+        ): null}
         <TTButton variant="quiet" onClick={onDisconnect} disabled={busy}>
           Disconnect
         </TTButton>

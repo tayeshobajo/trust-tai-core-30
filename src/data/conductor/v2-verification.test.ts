@@ -1,5 +1,5 @@
 /**
- * Conductor V2 verification pass — three-branch controlled plan.
+ * Conductor V2 verification pass, three-branch controlled plan.
  *
  * Unlike `orchestrator.test.ts` (pure rules, stub adapters), this exercises the
  * REAL room adapters (`ROOM_ADAPTERS`) and the real governance event vocabulary,
@@ -40,7 +40,7 @@ vi.mock("@/data/supabase/conductor-control-service", () => ({
       const id = key(action.organizationId, action.sourceEventKey);
       const existing = actionRows.get(id);
       // upsert on (organization_id, source_event_key): never a second row
-      const merged = existing ? { ...existing } : action;
+      const merged = existing ? {...existing }: action;
       actionRows.set(id, merged);
       return merged;
     }),
@@ -120,7 +120,7 @@ function graph(): ConductorActionGraph {
     generatedAt: NOW,
     steps: [
       {
-        ...base,
+...base,
         id: "branch-comms",
         owningApp: "comms",
         operation: "comms.draft_reply",
@@ -135,7 +135,7 @@ function graph(): ConductorActionGraph {
         expectedSignal: "A draft exists in Comms.",
       },
       {
-        ...base,
+...base,
         id: "branch-projects",
         owningApp: "projects",
         operation: "projects.record_blocker",
@@ -150,7 +150,7 @@ function graph(): ConductorActionGraph {
         expectedSignal: "The project shows a blocker.",
       },
       {
-        ...base,
+...base,
         id: "branch-held",
         owningApp: "comms",
         operation: "comms.draft_reply",
@@ -182,7 +182,7 @@ async function runPass() {
     [
       { actionId: "action:branch-comms", kind: "approve" },
       { actionId: "action:branch-projects", kind: "approve" },
-      { actionId: "action:branch-held", kind: "hold", reason: "Too early — one reply is enough." },
+      { actionId: "action:branch-held", kind: "hold", reason: "Too early, one reply is enough." },
     ],
     owner,
     actor,
@@ -198,7 +198,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("Conductor V2 — three-branch controlled plan", () => {
+describe("Conductor V2, three-branch controlled plan", () => {
   it("1. a cross-room plan produces three governed actions", async () => {
     const proposed = await publishProposedActions(
       buildControlledActions({ organizationId: ORG, graph: graph(), now: NOW }),
@@ -226,7 +226,7 @@ describe("Conductor V2 — three-branch controlled plan", () => {
       "adapter:comms.draft",
       "adapter:projects.blocker",
     ]);
-    // The Projects adapter records a blocker only — nothing else.
+    // The Projects adapter records a blocker only, nothing else.
     const patch = (projectUpdate.mock.calls as unknown as unknown[][])[0]![1] as object;
     expect(Object.keys(patch)).toEqual(["blockedBecause"]);
   });
@@ -236,11 +236,11 @@ describe("Conductor V2 — three-branch controlled plan", () => {
     const held = byId(actions, "action:branch-held");
     expect(held.status).toBe("held");
     expect(held.approval?.kind).toBe("hold");
-    expect(held.approval?.reason).toBe("Too early — one reply is enough.");
+    expect(held.approval?.reason).toBe("Too early, one reply is enough.");
 
     const stored = (await loadControl(ORG)).find((a) => a.id === held.id)!;
     expect(stored.status).toBe("held");
-    expect(stored.approval?.reason).toBe("Too early — one reply is enough.");
+    expect(stored.approval?.reason).toBe("Too early, one reply is enough.");
     // Only the approved Comms branch produced a draft.
     expect(saveDraft).toHaveBeenCalledTimes(1);
     expect(receiptRows.size).toBe(2);
@@ -306,7 +306,7 @@ describe("Conductor V2 — three-branch controlled plan", () => {
 
     const held = byId(await loadControl(ORG), "action:branch-held");
     expect(held.status).toBe("held");
-    expect(held.approval?.reason).toBe("Too early — one reply is enough.");
+    expect(held.approval?.reason).toBe("Too early, one reply is enough.");
     expect(first.outcomes).toHaveLength(2);
   });
 });

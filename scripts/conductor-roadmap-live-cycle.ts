@@ -1,5 +1,5 @@
 /**
- * Conductor V3.2 live roadmap operating cycle — DEVELOPMENT/QA ONLY.
+ * Conductor V3.2 live roadmap operating cycle. DEVELOPMENT/QA ONLY.
  *
  * Signs in as the dedicated headless test account, reads the real Roadmap
  * canon under RLS, asks the real reasoning path a roadmap-attention question,
@@ -33,23 +33,23 @@ import { accessContext, can } from "../src/domain/access";
 
 function log(label: string, value?: unknown) {
   if (value === undefined) console.log(`\n=== ${label}`);
-  else console.log(`${label}: ${typeof value === "string" ? value : JSON.stringify(value, null, 2)}`);
+  else console.log(`${label}: ${typeof value === "string" ? value: JSON.stringify(value, null, 2)}`);
 }
 
 const email = process.env["TEST_USER"];
 const password = process.env["TEST_PASS"];
 if (!email || !password) throw new Error("TEST_USER / TEST_PASS required.");
 
-log("STEP 1 — headless sign-in");
+log("STEP 1, headless sign-in");
 const signIn = await supabase.auth.signInWithPassword({ email, password });
 if (signIn.error || !signIn.data.user) throw new Error(`sign-in failed: ${signIn.error?.message}`);
 log("user", signIn.data.user.email ?? signIn.data.user.id);
 
-log("STEP 2 — membership + capabilities");
+log("STEP 2, membership + capabilities");
 const memberships = await supabase
-  .from("organization_memberships")
-  .select("organization_id, role, status")
-  .eq("status", "active");
+.from("organization_memberships")
+.select("organization_id, role, status")
+.eq("status", "active");
 if (memberships.error || !memberships.data?.length) {
   throw new Error(`no active membership under RLS: ${memberships.error?.message ?? "none"}`);
 }
@@ -59,7 +59,7 @@ const membership = {
   data:
     (preferred
       ? memberships.data.find((row) => String((row as Record<string, unknown>)["organization_id"]) === preferred)
-      : undefined) ?? memberships.data[0],
+: undefined) ?? memberships.data[0],
 };
 const organizationId = String((membership.data as Record<string, unknown>)["organization_id"]);
 const role = String((membership.data as Record<string, unknown>)["role"]);
@@ -68,7 +68,7 @@ const access = accessContext({ userId: signIn.data.user.id, organizationId, role
 log("roadmap.write", can(access, "roadmap.write" as never));
 log("conductor.approve", can(access, "conductor.approve" as never));
 
-log("STEP 3 — real roadmap canon");
+log("STEP 3, real roadmap canon");
 const roadmaps = await roadmapService.list(organizationId);
 log("roadmaps", roadmaps.map((r) => ({ id: r.id, title: r.title, subject: r.subjectLabel, status: r.status })));
 const target =
@@ -99,7 +99,7 @@ log("openDecisions", detail.decisions.filter((d) => d.status === "open").map((d)
 })));
 log("canon narrative", describeRoadmapCanon(canon));
 
-log("STEP 4/5/6/7 — real reasoning path");
+log("STEP 4/5/6/7, real reasoning path");
 const [snapshot, icp, intents, figures, corrections, actionsBefore, receiptsBefore, learningBefore, observationsBefore] =
   await Promise.all([
     loadSuiteSnapshot(organizationId),
@@ -133,7 +133,7 @@ const answer = answerQuestion({
         contentMarkdown: icp.contentMarkdown,
         updatedAt: icp.updatedAt,
       }
-    : null,
+: null,
   intents,
   figures,
   corrections,
@@ -148,7 +148,7 @@ log("roadmapCanon", answer.roadmapCanon ?? null);
 log("actionGraph ops", (answer.actionGraph?.actions ?? []).map((a) => ({ app: a.owningApp, op: a.operation, requiresApproval: a.requiresApproval })));
 log("inputResolutions", (answer as Record<string, unknown>)["inputResolutions"] ?? null);
 
-log("STEP 11 — related follow-up");
+log("STEP 11, related follow-up");
 const followUp = answerQuestion({
   snapshot,
   question: "What is blocking progress on that roadmap decision?",
@@ -163,12 +163,12 @@ log("follow-up answer", followUp.answer);
 log("follow-up proposedActions", followUp.proposedActions.map((a) => ({ app: a.owningApp, op: a.operation, title: a.title })));
 log("follow-up actionGraph ops", (followUp.actionGraph?.actions ?? []).map((a) => ({ app: a.owningApp, op: a.operation })));
 
-log("STEP 12 — cross-org closure");
+log("STEP 12, cross-org closure");
 const foreign = await supabase
-  .from("roadmaps")
-  .select("id, organization_id")
-  .neq("organization_id", organizationId)
-  .limit(5);
+.from("roadmaps")
+.select("id, organization_id")
+.neq("organization_id", organizationId)
+.limit(5);
 log("foreign roadmaps visible", { count: foreign.data?.length ?? 0, error: foreign.error?.message ?? null });
 
 log("POST-STATE");

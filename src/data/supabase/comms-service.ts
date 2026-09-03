@@ -143,10 +143,10 @@ export const commsService = {
   /** Every relationship in the organization. The queue does its own grouping. */
   async list(organizationId: ID): Promise<Relationship[]> {
     const { data, error } = await supabase
-      .from("comms_relationships")
-      .select(RELATIONSHIP_COLUMNS)
-      .eq("organization_id", organizationId)
-      .order("updated_at", { ascending: false });
+.from("comms_relationships")
+.select(RELATIONSHIP_COLUMNS)
+.eq("organization_id", organizationId)
+.order("updated_at", { ascending: false });
     assertOk(error);
     return ((data ?? []) as unknown as RelationshipRow[]).map(toRelationship);
   },
@@ -166,12 +166,12 @@ export const commsService = {
     const email = input.email?.trim().toLowerCase() || null;
     if (email) {
       const { data: existing, error: existingError } = await supabase
-        .from("comms_relationships")
-        .select(RELATIONSHIP_COLUMNS)
-        .eq("organization_id", context.organizationId)
-        .eq("email", email)
-        .limit(1)
-        .maybeSingle();
+.from("comms_relationships")
+.select(RELATIONSHIP_COLUMNS)
+.eq("organization_id", context.organizationId)
+.eq("email", email)
+.limit(1)
+.maybeSingle();
       assertOk(existingError);
       if (existing) return toRelationship(existing as unknown as RelationshipRow);
     }
@@ -213,7 +213,7 @@ export const commsService = {
       stage: input.stage ?? "new",
       source: input.source,
       owner_user_id: context.userId,
-      met_at: input.metAt ?? (input.source === "in_person" ? at : null),
+      met_at: input.metAt ?? (input.source === "in_person" ? at: null),
       met_where: input.metWhere?.trim() || null,
       next_action: input.nextAction?.trim() || null,
       contact_id: contactId,
@@ -226,10 +226,10 @@ export const commsService = {
     };
 
     const { data, error } = await supabase
-      .from("comms_relationships")
-      .insert(payload)
-      .select(RELATIONSHIP_COLUMNS)
-      .single();
+.from("comms_relationships")
+.insert(payload)
+.select(RELATIONSHIP_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That relationship could not be saved.");
 
@@ -239,7 +239,7 @@ export const commsService = {
       "RELATIONSHIP_CREATED",
       { id: relationship.id, label: relationship.fullName },
       `relationship.created:${relationship.id}`,
-      `${relationship.fullName}${relationship.companyName ? ` (${relationship.companyName})` : ""} was added to Comms${relationship.metWhere ? `, met at ${relationship.metWhere}` : ""}.`,
+      `${relationship.fullName}${relationship.companyName ? ` (${relationship.companyName})`: ""} was added to Comms${relationship.metWhere ? `, met at ${relationship.metWhere}`: ""}.`,
       {
         source: relationship.source,
         contact_id: contactId,
@@ -265,12 +265,12 @@ export const commsService = {
 
 
     const { data, error } = await supabase
-      .from("comms_relationships")
-      .update(payload)
-      .eq("id", id)
-      .eq("organization_id", context.organizationId)
-      .select(RELATIONSHIP_COLUMNS)
-      .single();
+.from("comms_relationships")
+.update(payload)
+.eq("id", id)
+.eq("organization_id", context.organizationId)
+.select(RELATIONSHIP_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That relationship could not be updated.");
 
@@ -296,23 +296,23 @@ export const commsService = {
     context: CommsContext,
   ): Promise<Relationship> {
     const at = new Date().toISOString();
-    const next: MemoryItem = { ...item, at };
+    const next: MemoryItem = {...item, at };
     const column =
-      item.tier === "observed" ? "observed" : item.tier === "inferred" ? "inferred" : "decided";
+      item.tier === "observed" ? "observed": item.tier === "inferred" ? "inferred": "decided";
     const existing =
       item.tier === "observed"
         ? relationship.observed
-        : item.tier === "inferred"
+: item.tier === "inferred"
           ? relationship.inferred
-          : relationship.decided;
+: relationship.decided;
 
     const { data, error } = await supabase
-      .from("comms_relationships")
-      .update({ [column]: memoryPayload([...existing, next]), updated_at: at })
-      .eq("id", relationship.id)
-      .eq("organization_id", context.organizationId)
-      .select(RELATIONSHIP_COLUMNS)
-      .single();
+.from("comms_relationships")
+.update({ [column]: memoryPayload([...existing, next]), updated_at: at })
+.eq("id", relationship.id)
+.eq("organization_id", context.organizationId)
+.select(RELATIONSHIP_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That note could not be saved.");
     return toRelationship(data as unknown as RelationshipRow);
@@ -330,21 +330,21 @@ export const commsService = {
   ): Promise<Relationship> {
     const settle = (items: MemoryItem[]) =>
       items.map((item) =>
-        item.at === commitment.at && item.value === commitment.text ? { ...item, status } : item,
+        item.at === commitment.at && item.value === commitment.text ? {...item, status }: item,
       );
     const at = new Date().toISOString();
 
     const { data, error } = await supabase
-      .from("comms_relationships")
-      .update({
+.from("comms_relationships")
+.update({
         decided: memoryPayload(settle(relationship.decided)),
         observed: memoryPayload(settle(relationship.observed)),
         updated_at: at,
       })
-      .eq("id", relationship.id)
-      .eq("organization_id", context.organizationId)
-      .select(RELATIONSHIP_COLUMNS)
-      .single();
+.eq("id", relationship.id)
+.eq("organization_id", context.organizationId)
+.select(RELATIONSHIP_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That promise could not be updated.");
     return toRelationship(data as unknown as RelationshipRow);
@@ -360,15 +360,15 @@ export const commsService = {
     context: CommsContext,
   ): Promise<Relationship> {
     const { data, error } = await supabase
-      .from("comms_relationships")
-      .update({
-        metadata: { ...relationship.metadata, intent },
+.from("comms_relationships")
+.update({
+        metadata: {...relationship.metadata, intent },
         updated_at: new Date().toISOString(),
       })
-      .eq("id", relationship.id)
-      .eq("organization_id", context.organizationId)
-      .select(RELATIONSHIP_COLUMNS)
-      .single();
+.eq("id", relationship.id)
+.eq("organization_id", context.organizationId)
+.select(RELATIONSHIP_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That relationship type could not be saved.");
     return toRelationship(data as unknown as RelationshipRow);
@@ -378,10 +378,10 @@ export const commsService = {
 
   async listTouches(relationshipId: ID): Promise<Touch[]> {
     const { data, error } = await supabase
-      .from("comms_touches")
-      .select(TOUCH_COLUMNS)
-      .eq("relationship_id", relationshipId)
-      .order("occurred_at", { ascending: false });
+.from("comms_touches")
+.select(TOUCH_COLUMNS)
+.eq("relationship_id", relationshipId)
+.order("occurred_at", { ascending: false });
     assertOk(error);
     return ((data ?? []) as unknown as TouchRow[]).map(toTouch);
   },
@@ -401,11 +401,11 @@ export const commsService = {
     const touches: Touch[] = [];
     for (let from = 0; from < limit; from += pageSize) {
       const { data, error } = await supabase
-        .from("comms_touches")
-        .select(TOUCH_COLUMNS)
-        .eq("organization_id", organizationId)
-        .order("occurred_at", { ascending: false })
-        .range(from, Math.min(from + pageSize, limit) - 1);
+.from("comms_touches")
+.select(TOUCH_COLUMNS)
+.eq("organization_id", organizationId)
+.order("occurred_at", { ascending: false })
+.range(from, Math.min(from + pageSize, limit) - 1);
       assertOk(error);
       const rows = ((data ?? []) as unknown as TouchRow[]).map(toTouch);
       touches.push(...rows);
@@ -430,7 +430,7 @@ export const commsService = {
       /**
        * A person explicitly recorded this capture as the counterparty's own
        * words (a quote from a call, a pasted note from them). Only then may
-       * counterparty-only reads — like Roadmap recognition — treat an
+       * counterparty-only reads, like Roadmap recognition, treat an
        * otherwise-outbound interaction as their evidence.
        */
       theirWords?: boolean;
@@ -439,8 +439,8 @@ export const commsService = {
   ): Promise<Touch> {
     const occurredAt = input.occurredAt ?? new Date().toISOString();
     const { data, error } = await supabase
-      .from("comms_touches")
-      .insert({
+.from("comms_touches")
+.insert({
         organization_id: context.organizationId,
         relationship_id: input.relationship.id,
         channel: input.channel,
@@ -452,12 +452,12 @@ export const commsService = {
           app_key: "comms",
           actor: context.userId,
           logged_at: occurredAt,
-          ...(input.theirWords ? { their_words: true } : {}),
+...(input.theirWords ? { their_words: true }: {}),
         },
         logged_by: context.userId,
       })
-      .select(TOUCH_COLUMNS)
-      .single();
+.select(TOUCH_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That touch could not be logged.");
 
@@ -469,16 +469,16 @@ export const commsService = {
       if (input.followUpDueAt !== undefined) patch["follow_up_due_at"] = input.followUpDueAt;
     }
     await supabase
-      .from("comms_relationships")
-      .update(patch)
-      .eq("id", input.relationship.id)
-      .eq("organization_id", context.organizationId);
+.from("comms_relationships")
+.update(patch)
+.eq("id", input.relationship.id)
+.eq("organization_id", context.organizationId);
 
     await record(
       context,
       "conversation.updated",
       { id: input.relationship.id, label: input.relationship.fullName },
-      `${input.direction === "inbound" ? "Heard from" : "Wrote to"} ${input.relationship.fullName}: ${input.summary.trim()}`,
+      `${input.direction === "inbound" ? "Heard from": "Wrote to"} ${input.relationship.fullName}: ${input.summary.trim()}`,
       { channel: input.channel, direction: input.direction },
     );
 
@@ -506,19 +506,19 @@ export const commsService = {
       previousBody: input.touch.body ?? null,
       occurredAt: input.touch.occurredAt,
       at,
-      ...(input.editedBy ? { by: input.editedBy } : {}),
+...(input.editedBy ? { by: input.editedBy }: {}),
     });
 
     const patch: Row = { summary: input.summary.trim(), provenance };
     if (input.body !== undefined) patch["body"] = input.body?.trim() || null;
 
     const { data, error } = await supabase
-      .from("comms_touches")
-      .update(patch)
-      .eq("id", input.touch.id)
-      .eq("organization_id", context.organizationId)
-      .select(TOUCH_COLUMNS)
-      .single();
+.from("comms_touches")
+.update(patch)
+.eq("id", input.touch.id)
+.eq("organization_id", context.organizationId)
+.select(TOUCH_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That interaction could not be edited.");
 
@@ -550,19 +550,19 @@ export const commsService = {
     const at = new Date().toISOString();
     const provenance = input.restore
       ? restoredProvenance(input.touch.provenance, { at })
-      : retractedProvenance(input.touch.provenance, {
+: retractedProvenance(input.touch.provenance, {
           at,
-          ...(input.retractedBy ? { by: input.retractedBy } : {}),
-          ...(input.because ? { because: input.because } : {}),
+...(input.retractedBy ? { by: input.retractedBy }: {}),
+...(input.because ? { because: input.because }: {}),
         });
 
     const { data, error } = await supabase
-      .from("comms_touches")
-      .update({ provenance })
-      .eq("id", input.touch.id)
-      .eq("organization_id", context.organizationId)
-      .select(TOUCH_COLUMNS)
-      .single();
+.from("comms_touches")
+.update({ provenance })
+.eq("id", input.touch.id)
+.eq("organization_id", context.organizationId)
+.select(TOUCH_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That interaction could not be updated.");
 
@@ -572,8 +572,8 @@ export const commsService = {
       { id: input.relationship.id, label: input.relationship.fullName },
       input.restore
         ? `Restored a retracted interaction with ${input.relationship.fullName}.`
-        : `Retracted an interaction with ${input.relationship.fullName}.`,
-      { touchId: input.touch.id, kind: input.restore ? "restore" : "retract" },
+: `Retracted an interaction with ${input.relationship.fullName}.`,
+      { touchId: input.touch.id, kind: input.restore ? "restore": "retract" },
     );
 
     return toTouch(data as unknown as TouchRow);
@@ -583,10 +583,10 @@ export const commsService = {
 
   async listDrafts(relationshipId: ID): Promise<CommsDraft[]> {
     const { data, error } = await supabase
-      .from("comms_drafts")
-      .select(DRAFT_COLUMNS)
-      .eq("relationship_id", relationshipId)
-      .order("created_at", { ascending: false });
+.from("comms_drafts")
+.select(DRAFT_COLUMNS)
+.eq("relationship_id", relationshipId)
+.order("created_at", { ascending: false });
     assertOk(error);
     return ((data ?? []) as unknown as DraftRow[]).map(toDraft);
   },
@@ -605,8 +605,8 @@ export const commsService = {
     context: CommsContext,
   ): Promise<CommsDraft> {
     const { data, error } = await supabase
-      .from("comms_drafts")
-      .insert({
+.from("comms_drafts")
+.insert({
         organization_id: context.organizationId,
         relationship_id: input.relationship.id,
         intent: input.intent,
@@ -618,8 +618,8 @@ export const commsService = {
         evidence: input.evidence,
         created_by: context.userId,
       })
-      .select(DRAFT_COLUMNS)
-      .single();
+.select(DRAFT_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That draft could not be saved.");
     return toDraft(data as unknown as DraftRow);
@@ -627,7 +627,7 @@ export const commsService = {
 
   /**
    * Edit a draft's wording. The draft stays a draft; its history, evidence,
-   * and send record are untouched. Content edits are quiet on purpose — the
+   * and send record are untouched. Content edits are quiet on purpose, the
    * state changes are what the record narrates.
    */
   async updateDraftContent(
@@ -639,12 +639,12 @@ export const commsService = {
     if (patch.subject !== undefined) payload["subject"] = patch.subject?.trim() || null;
     if (patch.body !== undefined) payload["body"] = patch.body;
     const { data, error } = await supabase
-      .from("comms_drafts")
-      .update(payload)
-      .eq("id", draft.id)
-      .eq("organization_id", context.organizationId)
-      .select(DRAFT_COLUMNS)
-      .single();
+.from("comms_drafts")
+.update(payload)
+.eq("id", draft.id)
+.eq("organization_id", context.organizationId)
+.select(DRAFT_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That draft could not be updated.");
     return toDraft(data as unknown as DraftRow);
@@ -660,15 +660,15 @@ export const commsService = {
     context: CommsContext,
   ): Promise<CommsDraft> {
     const { data, error } = await supabase
-      .from("comms_drafts")
-      .update({
+.from("comms_drafts")
+.update({
         rationale: writeOutgoingAttachments(draft.rationale, attachments),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", draft.id)
-      .eq("organization_id", context.organizationId)
-      .select(DRAFT_COLUMNS)
-      .single();
+.eq("id", draft.id)
+.eq("organization_id", context.organizationId)
+.select(DRAFT_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("Those files could not be saved.");
     return toDraft(data as unknown as DraftRow);
@@ -684,15 +684,15 @@ export const commsService = {
     context: CommsContext,
   ): Promise<CommsDraft> {
     const { data, error } = await supabase
-      .from("comms_drafts")
-      .update({
+.from("comms_drafts")
+.update({
         rationale: writeOutgoingExtras(draft.rationale, extras),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", draft.id)
-      .eq("organization_id", context.organizationId)
-      .select(DRAFT_COLUMNS)
-      .single();
+.eq("id", draft.id)
+.eq("organization_id", context.organizationId)
+.select(DRAFT_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("Those recipients could not be saved.");
     return toDraft(data as unknown as DraftRow);
@@ -705,12 +705,12 @@ export const commsService = {
     context: CommsContext,
   ): Promise<CommsDraft> {
     const { data, error } = await supabase
-      .from("comms_drafts")
-      .update({ review_state: reviewState, updated_at: new Date().toISOString() })
-      .eq("id", draft.id)
-      .eq("organization_id", context.organizationId)
-      .select(DRAFT_COLUMNS)
-      .single();
+.from("comms_drafts")
+.update({ review_state: reviewState, updated_at: new Date().toISOString() })
+.eq("id", draft.id)
+.eq("organization_id", context.organizationId)
+.select(DRAFT_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That draft could not be updated.");
 
@@ -728,11 +728,11 @@ export const commsService = {
 
   async listReminders(organizationId: ID): Promise<Reminder[]> {
     const { data, error } = await supabase
-      .from("comms_reminders")
-      .select(REMINDER_COLUMNS)
-      .eq("organization_id", organizationId)
-      .eq("state", "pending")
-      .order("due_at", { ascending: true });
+.from("comms_reminders")
+.select(REMINDER_COLUMNS)
+.eq("organization_id", organizationId)
+.eq("state", "pending")
+.order("due_at", { ascending: true });
     assertOk(error);
     return ((data ?? []) as unknown as ReminderRow[]).map(toReminder);
   },
@@ -748,8 +748,8 @@ export const commsService = {
     context: CommsContext,
   ): Promise<Reminder> {
     const { data, error } = await supabase
-      .from("comms_reminders")
-      .insert({
+.from("comms_reminders")
+.insert({
         organization_id: context.organizationId,
         relationship_id: input.relationship.id,
         reason_code: input.reasonCode,
@@ -759,8 +759,8 @@ export const commsService = {
         state: "pending",
         created_by: context.userId,
       })
-      .select(REMINDER_COLUMNS)
-      .single();
+.select(REMINDER_COLUMNS)
+.single();
     assertOk(error);
     if (!data) throw new Error("That reminder could not be saved.");
     return toReminder(data as unknown as ReminderRow);
@@ -772,10 +772,10 @@ export const commsService = {
     context: CommsContext,
   ): Promise<void> {
     const { error } = await supabase
-      .from("comms_reminders")
-      .update({ state, updated_at: new Date().toISOString() })
-      .eq("id", reminder.id)
-      .eq("organization_id", context.organizationId);
+.from("comms_reminders")
+.update({ state, updated_at: new Date().toISOString() })
+.eq("id", reminder.id)
+.eq("organization_id", context.organizationId);
     assertOk(error);
   },
 };

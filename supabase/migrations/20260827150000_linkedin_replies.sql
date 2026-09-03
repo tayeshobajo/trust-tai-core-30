@@ -2,7 +2,7 @@
 --
 -- One person. One memory. Many channels. Linki observes raw LinkedIn replies
 -- (transport); Core resolves the sender onto the ONE canonical contact and the
--- ONE Comms relationship. There is no Linki-side identity here — only a
+-- ONE Comms relationship. There is no Linki-side identity here, only a
 -- resolution ledger whose success state points at canonical rows.
 --
 -- Governing laws (linki-integration brief + P3 contract doc):
@@ -28,7 +28,7 @@ create table if not exists public.linkedin_replies (
     external_thread_ref text not null,
     external_message_ref text not null,
 
-    -- Sender, as observed on the wire. Provenance only — NEVER identity.
+    -- Sender, as observed on the wire. Provenance only. NEVER identity.
     sender_linkedin_url text,
     sender_external_id text,
     sender_name text,

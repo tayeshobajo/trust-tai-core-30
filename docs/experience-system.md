@@ -1,4 +1,4 @@
-# Trust Tai OS — Experience System
+# Trust Tai OS. Experience System
 
 This document sets the experience philosophy every Trust Tai internal app inherits.
 It sits **under** the Trust Tai Brand Guideline and the simplicity law:
@@ -8,14 +8,14 @@ It sits **under** the Trust Tai Brand Guideline and the simplicity law:
 Nothing here may override brand tokens, voice, or restraint. Where this document
 and the brand system disagree, the brand system wins.
 
-We borrow a small number of ideas from game design — orientation, worldbuilding,
-progression, feedback, curiosity, agency — because they are how people stay
+We borrow a small number of ideas from game design, orientation, worldbuilding,
+progression, feedback, curiosity, agency, because they are how people stay
 oriented inside a system over time. We do not borrow game *mechanics*. No XP,
 coins, streaks, leaderboards, badges, confetti, or pressure loops. Ever.
 
 ---
 
-## 1. Worldbuilding — one world, many rooms
+## 1. Worldbuilding, one world, many rooms
 
 Trust Tai OS is one place. Each registered app is a **room** in it, not a
 separate product with its own brand.
@@ -26,7 +26,7 @@ separate product with its own brand.
   `src/domain/app-imagery.ts` and rendered by `AppArtwork`.
 - Cards in the suite are **portals**: framed artwork, the room's name, its
   status, and an explicit "Enter {Room}" affordance.
-- Artwork is atmosphere. It lives in its own frame beside copy — never as
+- Artwork is atmosphere. It lives in its own frame beside copy, never as
   wallpaper behind dense text, never at the cost of contrast.
 
 ## 2. Daily return loop
@@ -40,7 +40,7 @@ is the one next move.*
 - Anything the system worked out rather than observed is labelled
   (`Inferred by intelligence`). Approved human decisions are never dressed up as
   system facts.
-- Last visit is remembered locally (`useLastVisit`) — this is orientation, not
+- Last visit is remembered locally (`useLastVisit`), this is orientation, not
   analytics or attendance tracking.
 
 ## 3. Progression
@@ -78,7 +78,7 @@ Curiosity is environmental storytelling, not notification pressure.
 The person is the one with judgement; the system prepares the ground.
 
 - The intelligence prompt stays near the top of Home as the command doorway into
-  the ecosystem — one input, deep retrieval, clear output.
+  the ecosystem, one input, deep retrieval, clear output.
 - Decisions are separated from information and always come first.
 - Every alert carries an owner and a next action. The system never decides on
   the user's behalf without saying so.

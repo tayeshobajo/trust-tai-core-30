@@ -7,8 +7,7 @@
  * matters, who put it on the record.
  *
  * Inbox finds the person; conversation owns the room. The header stays
- * compact — who this is, how it stands, and the few actions that matter —
- * and relationship intelligence lives one click away in the context drawer,
+ * compact, who this is, how it stands, and the few actions that matter, * and relationship intelligence lives one click away in the context drawer,
  * never as a permanent tax on reading width.
  */
 
@@ -59,7 +58,7 @@ export function ConversationEvent({
   onDownloadAttachment,
 }: {
   event: EventShape;
-  /** The workspace — the access handle for inline images in email bodies. */
+  /** The workspace, the access handle for inline images in email bodies. */
   organizationId?: string;
   onEdit?: (touchId: string) => void;
   onRetract?: (touchId: string) => void;
@@ -68,8 +67,8 @@ export function ConversationEvent({
 }) {
   const side = eventSide(event.kind);
   const touchId = event.touchId;
-  // A synced email shows the actual message — full body, inline images in
-  // place, quoted history behind a toggle — never a clamped snippet.
+  // A synced email shows the actual message, full body, inline images in
+  // place, quoted history behind a toggle, never a clamped snippet.
   const isEmail = Boolean(event.messageId) && (event.kind === "we_emailed" || event.kind === "they_emailed");
   const chips = fileAttachments(event.attachments);
 
@@ -77,26 +76,26 @@ export function ConversationEvent({
     <li
       className={cn(
         "flex",
-        side === "us" ? "justify-end" : side === "them" ? "justify-start" : "justify-center",
+        side === "us" ? "justify-end": side === "them" ? "justify-start": "justify-center",
       )}
     >
       <div
         className={cn(
           "rounded-2xl border px-3.5 py-2.5",
-          side === "center" ? "w-full max-w-[92%] rounded-lg" : "max-w-[85%]",
-          side === "us" ? "rounded-br-md" : side === "them" ? "rounded-bl-md" : "",
+          side === "center" ? "w-full max-w-[92%] rounded-lg": "max-w-[85%]",
+          side === "us" ? "rounded-br-md": side === "them" ? "rounded-bl-md": "",
           KIND_TONE[event.kind],
-          event.retracted ? "opacity-70" : "",
+          event.retracted ? "opacity-70": "",
         )}
       >
         <p className="tt-eyebrow">
           {EVENT_LABEL[event.kind]}
-          {timeOf(event.occurredAt) ? ` · ${timeOf(event.occurredAt)}` : ""}
+          {timeOf(event.occurredAt) ? ` · ${timeOf(event.occurredAt)}`: ""}
         </p>
         <p
           className={cn(
             "mt-1 whitespace-pre-wrap text-[13px] text-foreground",
-            event.retracted ? "line-through decoration-muted-foreground/60" : "",
+            event.retracted ? "line-through decoration-muted-foreground/60": "",
           )}
         >
           {event.title}
@@ -105,15 +104,15 @@ export function ConversationEvent({
           <EmailBodyView
             organizationId={organizationId}
             messageId={event.messageId}
-            {...(event.body ? { text: event.body } : {})}
-            {...(event.htmlBody ? { html: event.htmlBody } : {})}
+            {...(event.body ? { text: event.body }: {})}
+            {...(event.htmlBody ? { html: event.htmlBody }: {})}
             inline={(event.attachments ?? []).filter((file) => file.inline)}
           />
-        ) : event.body ? (
+        ): event.body ? (
           <p className="mt-1 whitespace-pre-wrap break-words text-[13px] text-muted-foreground">
             {event.body}
           </p>
-        ) : null}
+        ): null}
         {chips.length ? (
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {chips.map((file) => {
@@ -124,12 +123,12 @@ export function ConversationEvent({
                     type="button"
                     disabled={!downloadable || !onDownloadAttachment}
                     onClick={() => onDownloadAttachment?.(event, file)}
-                    title={downloadable ? "Open from Gmail" : `${file.filename} · ${formatBytes(file.size)}`}
+                    title={downloadable ? "Open from Gmail": `${file.filename} · ${formatBytes(file.size)}`}
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground",
                       downloadable && onDownloadAttachment
                         ? "transition-colors hover:border-royal/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        : "cursor-default",
+: "cursor-default",
                     )}
                   >
                     <FileText className="h-3 w-3" aria-hidden />
@@ -140,10 +139,10 @@ export function ConversationEvent({
               );
             })}
           </ul>
-        ) : null}
+        ): null}
         {event.source ? (
           <p className="mt-1.5 text-[11px] text-muted-foreground">{event.source}</p>
-        ) : null}
+        ): null}
         {touchId && (onEdit || onRetract || onRestore) ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {!event.retracted && onEdit ? (
@@ -154,7 +153,7 @@ export function ConversationEvent({
               >
                 Edit
               </button>
-            ) : null}
+            ): null}
             {!event.retracted && onRetract ? (
               <button
                 type="button"
@@ -163,7 +162,7 @@ export function ConversationEvent({
               >
                 Retract
               </button>
-            ) : null}
+            ): null}
             {event.retracted && onRestore ? (
               <button
                 type="button"
@@ -172,9 +171,9 @@ export function ConversationEvent({
               >
                 Restore
               </button>
-            ) : null}
+            ): null}
           </div>
-        ) : null}
+        ): null}
       </div>
     </li>
   );
@@ -198,7 +197,7 @@ export function ConversationRoom({
   relationship: Relationship;
   days: ConversationDay[];
   health: ConversationHealth;
-  /** The workspace — resolves inline images and attachment downloads. */
+  /** The workspace, resolves inline images and attachment downloads. */
   organizationId?: string;
   onViewProfile: () => void;
   onOpenContext?: () => void;
@@ -233,8 +232,8 @@ export function ConversationRoom({
             </h1>
             <p className="truncate text-[12px] text-muted-foreground">
               {[relationship.companyName, relationship.email, relationship.metWhere]
-                .filter(Boolean)
-                .join(" · ") || "Nothing else on record yet."}
+.filter(Boolean)
+.join(" · ") || "Nothing else on record yet."}
             </p>
             <div className="mt-1 flex flex-nowrap items-center gap-1.5 overflow-hidden">
               {chips.map((chip) => (
@@ -261,7 +260,7 @@ export function ConversationRoom({
             >
               + Add interaction
             </button>
-          ) : null}
+          ): null}
           {onExportSummary ? (
             <button
               type="button"
@@ -270,7 +269,7 @@ export function ConversationRoom({
             >
               Export summary
             </button>
-          ) : null}
+          ): null}
           {onOpenContext ? (
             <button
               type="button"
@@ -279,7 +278,7 @@ export function ConversationRoom({
             >
               Context
             </button>
-          ) : null}
+          ): null}
           <button
             type="button"
             onClick={onViewProfile}
@@ -299,7 +298,7 @@ export function ConversationRoom({
               Nothing is on the record yet. Add an interaction that already happened, or prepare the
               first message below.
             </p>
-          ) : (
+          ): (
             days.map((day) => (
               <section key={day.key} className="space-y-3">
                 <div className="flex items-center gap-3">
@@ -314,13 +313,13 @@ export function ConversationRoom({
                     <ConversationEvent
                       key={event.id}
                       event={event}
-                      {...(organizationId ? { organizationId } : {})}
-                      {...(onEditTouch ? { onEdit: onEditTouch } : {})}
-                      {...(onRetractTouch ? { onRetract: onRetractTouch } : {})}
-                      {...(onRestoreTouch ? { onRestore: onRestoreTouch } : {})}
+                      {...(organizationId ? { organizationId }: {})}
+                      {...(onEditTouch ? { onEdit: onEditTouch }: {})}
+                      {...(onRetractTouch ? { onRetract: onRetractTouch }: {})}
+                      {...(onRestoreTouch ? { onRestore: onRestoreTouch }: {})}
                       {...(onDownloadAttachment
                         ? { onDownloadAttachment: onDownloadAttachment }
-                        : {})}
+: {})}
                     />
                   ))}
                 </ul>

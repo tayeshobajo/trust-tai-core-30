@@ -1,14 +1,13 @@
 /**
  * The recommended next move, proved state by state:
  *
- *  1. 82% fit with no person is "Find the person first" — never a message.
- *  2. A person with a missing or stale brief is "Understand them first" —
- *     drafting never skips the governed research step.
- *  3. A ready brief with no dated signal is "Worth knowing — no urgency".
+ *  1. 82% fit with no person is "Find the person first", never a message.
+ *  2. A person with a missing or stale brief is "Understand them first", *     drafting never skips the governed research step.
+ *  3. A ready brief with no dated signal is "Worth knowing, no urgency".
  *     Urgency is never manufactured.
  *  4. A ready brief with a real dated signal is "Worth knowing now", and the
  *     signal is cited.
- *  5. A company already in Comms is "Open in Comms" — Scout stops behaving
+ *  5. A company already in Comms is "Open in Comms". Scout stops behaving
  *     like outbound and offers no first-message CTA.
  *  6. Text is protected: no text-route evidence, no text recommendation.
  *  7. Watching is a reversible pacing state that preserves the move.
@@ -38,7 +37,7 @@ const claire = {
 };
 
 const intelWithPerson: ScoutIntel = {
-  ...EMPTY_INTEL,
+...EMPTY_INTEL,
   collectedAt: "2026-08-19T00:00:00.000Z",
   people: [claire],
 } as unknown as ScoutIntel;
@@ -67,7 +66,7 @@ const preparedMarker = (over: Record<string, unknown> = {}): RelationshipResearc
     preparedAt: "2026-08-21T00:00:00.000Z",
     evidenceAt: "2026-08-19T00:00:00.000Z",
     brief: preparedBrief,
-    ...over,
+...over,
   }) as RelationshipResearchMarker;
 
 const candidate = (over: {
@@ -94,7 +93,7 @@ const candidate = (over: {
     intel: over.intel ?? EMPTY_INTEL,
     signals: [],
     fit: { whyItFits: "A strong ICP match." },
-    ...(over.development ? { development: over.development } : {}),
+...(over.development ? { development: over.development }: {}),
     lastCheckedAt: "2026-08-19T00:00:00.000Z",
   }) as unknown as ProspectCandidate;
 
@@ -147,7 +146,7 @@ describe("understand them first", () => {
   });
 
   it("an ungrounded brief fails closed into a forced fresh read", () => {
-    const ungrounded = preparedMarker({ brief: { ...preparedBrief, grounded: false } });
+    const ungrounded = preparedMarker({ brief: {...preparedBrief, grounded: false } });
     const move = buildRecommendedNextMove({
       candidate: candidate({
         score: 86,
@@ -164,11 +163,11 @@ describe("understand them first", () => {
 
 /* --------------------------------- 3 · ready, with no dated reason to act */
 
-describe("worth knowing — no urgency", () => {
+describe("worth knowing, no urgency", () => {
   it("fit 86 with a ready brief and no dated signal allows the first message", () => {
     const move = buildRecommendedNextMove({ candidate: readyCandidate(), now: NOW });
     expect(move.state).toBe("no_urgency");
-    expect(move.label).toBe("Worth knowing — no urgency");
+    expect(move.label).toBe("Worth knowing, no urgency");
     expect(move.headline).toBe("Start with email to Claire Meneely");
     expect(move.primary.kind).toBe("prepare_first_message");
     expect(move.primary.label).toBe("Prepare first message");
@@ -182,7 +181,7 @@ describe("worth knowing — no urgency", () => {
 describe("worth knowing now", () => {
   it("a dated signal is cited as the reason to act", () => {
     const intel: ScoutIntel = {
-      ...intelWithPerson,
+...intelWithPerson,
       buyingSignals: [
         {
           statement: "They opened a second location in Franklin",
@@ -232,8 +231,8 @@ describe("relationship developing in Comms", () => {
 describe("text is a protected channel", () => {
   it("never recommends text without explicit text-route evidence", () => {
     const withLinkedIn: ScoutIntel = {
-      ...intelWithPerson,
-      people: [{ ...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" }],
+...intelWithPerson,
+      people: [{...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" }],
     } as unknown as ScoutIntel;
     const moves = [
       buildRecommendedNextMove({ candidate: readyCandidate(), now: NOW }),
@@ -301,7 +300,7 @@ describe("the canonical handoff readiness governs the move", () => {
       firstMessage: { ready: false, blockers: BLOCKERS },
     });
     expect(move.blocked).toBe(true);
-    expect(move.headline).toBe("Email looks like the right way in — verify it first");
+    expect(move.headline).toBe("Email looks like the right way in, verify it first");
     expect(move.primary.kind).toBe("resolve_blockers");
     expect(move.primary.label).toBe("Resolve 2 blockers");
     expect(move.primary.kind).not.toBe("prepare_first_message");
@@ -333,8 +332,8 @@ describe("the canonical handoff readiness governs the move", () => {
 
   it("a blocked non-email route speaks about the person, never instructs outreach", () => {
     const withLinkedIn: ScoutIntel = {
-      ...intelWithPerson,
-      people: [{ ...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" }],
+...intelWithPerson,
+      people: [{...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" }],
     } as unknown as ScoutIntel;
     const move = buildRecommendedNextMove({
       candidate: candidate({
@@ -346,7 +345,7 @@ describe("the canonical handoff readiness governs the move", () => {
       firstMessage: { ready: false, blockers: BLOCKERS },
     });
     expect(move.blocked).toBe(true);
-    expect(move.headline).toBe("Claire is worth knowing — verify the way in first");
+    expect(move.headline).toBe("Claire is worth knowing, verify the way in first");
     expect(move.primary.kind).toBe("resolve_blockers");
   });
 });
@@ -393,14 +392,14 @@ describe("one canonical decision surface", () => {
 describe("the person stage distinguishes the real missing step", () => {
   const discovered = (over: Record<string, unknown>) =>
     ({
-      ...EMPTY_INTEL,
+...EMPTY_INTEL,
       collectedAt: "2026-08-19T00:00:00.000Z",
       people: [
         {
           fullName: "Sara Warren",
           roleTitle: "Founder",
           sourceUrl: "https://acme.example/about",
-          ...over,
+...over,
         },
       ],
     }) as unknown as ScoutIntel;
@@ -578,7 +577,7 @@ describe("the person stage distinguishes the real missing step", () => {
       ] as unknown as Person[];
 
     // Before: the lone unverified address is the only thing in the way, and
-    // the one action is the governed confirmation — never the first message.
+    // the one action is the governed confirmation, never the first message.
     const before = buildRecommendedNextMove({
       candidate: readyCandidate(),
       people: people("found", "observed"),
@@ -593,8 +592,7 @@ describe("the person stage distinguishes the real missing step", () => {
     expect(before.primary.kind).toBe("confirm_email");
     expect(before.blocked).toBe(true);
 
-    // After: the same inputs one confirmation later. Nothing else changed —
-    // the recommendation advances on the recomputed readiness alone, with no
+    // After: the same inputs one confirmation later. Nothing else changed, // the recommendation advances on the recomputed readiness alone, with no
     // manual refresh and no rediscovery.
     const after = buildRecommendedNextMove({
       candidate: readyCandidate(),

@@ -114,12 +114,12 @@ function previewEvaluation(icpVersion: number | null, at: string) {
 function toCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandidate {
   const origin = inboundOrigin({ source: row.source, metadata: row.metadata });
   const base = baseCandidate(row, icpVersion);
-  const candidate = origin ? withInboundOrigin(base, origin) : base;
+  const candidate = origin ? withInboundOrigin(base, origin): base;
   const consent = readResearchConsent(row.metadata);
   const development = readRelationshipDevelopment(row.metadata);
   return {
-    ...(consent ? { ...candidate, researchConsent: consent } : candidate),
-    ...(development.watch || development.research ? { development } : {}),
+...(consent ? {...candidate, researchConsent: consent }: candidate),
+...(development.watch || development.research ? { development }: {}),
   };
 }
 
@@ -133,7 +133,7 @@ function baseCandidate(row: ProspectRow, icpVersion: number | null): ProspectCan
     prospect,
     // An inbound company has told us things but we have observed nothing yet,
     // so it must never borrow the preview demo's evidence.
-    ...(inbound ? { signals: [], fit: { whyItFits: "", recommendation: "" } } : previewEvidence(prospect.domain)),
+...(inbound ? { signals: [], fit: { whyItFits: "", recommendation: "" } }: previewEvidence(prospect.domain)),
     source: PREVIEW_SOURCE,
     evaluation: previewEvaluation(icpVersion, lastCheckedAt),
     lastCheckedAt,
@@ -144,7 +144,7 @@ function mergePreview(prospect: Prospect, icpVersion: number | null): ProspectCa
   const lastCheckedAt = prospect.updatedAt ?? prospect.createdAt;
   return {
     prospect,
-    ...previewEvidence(prospect.domain),
+...previewEvidence(prospect.domain),
     source: PREVIEW_SOURCE,
     evaluation: previewEvaluation(icpVersion, lastCheckedAt),
     lastCheckedAt,
@@ -248,7 +248,7 @@ export const scoutService = {
       summary:
         input.decision === "granted"
           ? `Public research authorised for ${input.companyName} by a person here, because the intake never asked.`
-          : `Public research withheld for ${input.companyName} by a person here.`,
+: `Public research withheld for ${input.companyName} by a person here.`,
       payload: { scout_research_consent: record },
       provenance: {
         appId: "scout",
@@ -300,9 +300,9 @@ export const scoutService = {
     const name =
       input.move === "ask_question"
         ? "prospect.question_drafted"
-        : input.move === "explore_roadmap"
+: input.move === "explore_roadmap"
           ? "prospect.roadmap_intent"
-          : "prospect.decided";
+: "prospect.decided";
 
     const summary = DECISION_SUMMARY[input.move](input.companyName);
 
@@ -310,7 +310,7 @@ export const scoutService = {
       organizationId: context.organizationId,
       name,
       subject: { type: "prospect", id: input.prospectId, label: input.companyName },
-      summary: note ? `${summary} Reason given: ${note}` : summary,
+      summary: note ? `${summary} Reason given: ${note}`: summary,
       payload: {
         scout_decision_move: input.move,
         previous_status: input.previousStatus,
@@ -344,12 +344,12 @@ export const scoutService = {
   ) {
     const at = new Date().toISOString();
     // The stored metadata merge is shallow, so the whole block is rewritten
-    // with the research marker preserved — a pacing decision must never
+    // with the research marker preserved, a pacing decision must never
     // silently drop a prepared brief.
     const row = await getProspectRow(input.prospectId);
     await saveProspectMetadataPatch(input.prospectId, {
       relationship_development: relationshipDevelopmentRow({
-        ...readRelationshipDevelopment(row?.metadata),
+...readRelationshipDevelopment(row?.metadata),
         watch: input.watch,
         by: context.userId,
         at,
@@ -362,9 +362,9 @@ export const scoutService = {
       summary:
         input.watch === "watching"
           ? `${input.companyName} marked worth watching.`
-          : input.watch === "not_now"
+: input.watch === "not_now"
             ? `${input.companyName} set aside for now.`
-            : `Watch decision cleared for ${input.companyName}.`,
+: `Watch decision cleared for ${input.companyName}.`,
       payload: { relationship_watch: input.watch },
       provenance: {
         appId: "scout",
@@ -384,7 +384,7 @@ export const scoutService = {
    * The gate is the full eligibility read: 60% ICP fit AND a traceable
    * founder or decision maker. The work runs when eligibility is newly
    * reached, when the underlying evidence moved, when the brief went stale,
-   * or when a person explicitly asks — never on every render. This is
+   * or when a person explicitly asks, never on every render. This is
    * research only: it never sends, never creates a Comms relationship, never
    * marks ready-for-comms, and never approves outreach.
    */
@@ -404,7 +404,7 @@ export const scoutService = {
     const plan = planRelationshipPreparation({
       candidate,
       people,
-      ...(input.force !== undefined ? { force: input.force } : {}),
+...(input.force !== undefined ? { force: input.force }: {}),
     });
     if (plan.action === "none" && existing) return existing;
 
@@ -417,19 +417,19 @@ export const scoutService = {
           version: RELATIONSHIP_BRIEF_VERSION,
           eligibleSince: existing?.eligibleSince ?? at,
           preparedAt: at,
-          ...(evidenceAt ? { evidenceAt } : {}),
+...(evidenceAt ? { evidenceAt }: {}),
           brief: buildRelationshipBrief({ candidate, people }),
         }
-      : {
+: {
           state: "not_eligible",
           because: plan.because,
           version: RELATIONSHIP_BRIEF_VERSION,
-          ...(existing?.eligibleSince ? { eligibleSince: existing.eligibleSince } : {}),
+...(existing?.eligibleSince ? { eligibleSince: existing.eligibleSince }: {}),
         };
 
     await saveProspectMetadataPatch(input.prospectId, {
       relationship_development: relationshipDevelopmentRow({
-        ...readRelationshipDevelopment(row.metadata),
+...readRelationshipDevelopment(row.metadata),
         research: marker,
       }),
     });
@@ -519,7 +519,7 @@ export const scoutService = {
         })),
         inferred: { why_it_fits: candidate.fit.whyItFits, confidence: "inferred" },
         suggested: { recommendation: candidate.fit.recommendation },
-        ...(icp ? { icpVersion: icp.version } : {}),
+...(icp ? { icpVersion: icp.version }: {}),
       });
       saved.push(created);
     }
@@ -528,7 +528,7 @@ export const scoutService = {
       request,
       candidates: saved.map((prospect) => mergePreview(prospect, icp?.version ?? null)),
       source: {
-        ...PREVIEW_SOURCE,
+...PREVIEW_SOURCE,
         note: "A fixed in-memory set, saved to your workspace. No external service was searched and no AI scoring was applied.",
       },
       generatedAt: new Date().toISOString(),
@@ -560,7 +560,7 @@ export const scoutService = {
     // new pass did not reach are preserved, and the founder's stated packet and
     // the research consent decision live in metadata, which is merged, never
     // replaced.
-    const priorObserved = Array.isArray(existing?.observed) ? (existing.observed as unknown[]) : [];
+    const priorObserved = Array.isArray(existing?.observed) ? (existing.observed as unknown[]): [];
     const merge = mergeObservedRows({
       previous: priorObserved,
       incoming: payload.observed ?? [],
@@ -591,8 +591,8 @@ export const scoutService = {
       fitScore: evaluation.score,
       metadata: {
         scout_fit: evaluation,
-        ...(identity ? { identity } : {}),
-        ...(intelFromResearch(payload) ? { scout_intel: intelFromResearch(payload) } : {}),
+...(identity ? { identity }: {}),
+...(intelFromResearch(payload) ? { scout_intel: intelFromResearch(payload) }: {}),
         research_history: appendResearchRun(
           existing?.metadata,
           runFromEvaluation(evaluation, evaluation.evaluatedAt),
@@ -650,7 +650,7 @@ export const scoutService = {
     // traceable founder or decision maker), the deeper brief is prepared from
     // the evidence just gathered. Research only: nothing is sent and no
     // relationship is created. Idempotent against the stored marker, and a
-    // failure here never fails the research run — the explicit Prepare action
+    // failure here never fails the research run, the explicit Prepare action
     // on the company page remains available.
     try {
       await this.prepareRelationshipDevelopment(
@@ -705,8 +705,7 @@ export const scoutService = {
    * sent: Comms opens the conversation, a person still writes it.
    *
    * Returns the relationship the handoff opened (or the one already carried
-   * across) so the caller can land Tai on exactly that person in Comms —
-   * never on whoever happened to sort first.
+   * across) so the caller can land Tai on exactly that person in Comms, * never on whoever happened to sort first.
    */
   async routeToComms(
     draft: HandoffDraft,
@@ -795,7 +794,7 @@ export const scoutService = {
         summary:
           prospect.status === "passed"
             ? `${prospect.name} was passed by Scout.`
-            : `${prospect.name} moved to ${prospect.status.replace(/_/g, " ")}.`,
+: `${prospect.name} moved to ${prospect.status.replace(/_/g, " ")}.`,
         payload: { status: prospect.status, domain: prospect.domain },
         provenance: {
           appId: "scout",

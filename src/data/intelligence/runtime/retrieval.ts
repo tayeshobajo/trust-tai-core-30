@@ -1,10 +1,10 @@
 /**
- * Retrieval composition — what the runtime knows before it reasons.
+ * Retrieval composition, what the runtime knows before it reasons.
  *
  * One composition point for every room: the caller assembles sources under
  * RLS (its own services, the intelligence service, the context packet), and
  * this module normalizes them into a single bundle with provenance on every
- * item. The bundle is what the reasoning stage may see — all of it, and
+ * item. The bundle is what the reasoning stage may see, all of it, and
  * nothing beyond it.
  *
  * Sources composed here:
@@ -55,7 +55,7 @@ export interface RetrievalBundle {
   priorExperience: Record<string, PriorExperience>;
   /** Human corrections, always surfaced ahead of inference. */
   corrections: IntelligenceCase[];
-  /** Prior cases linked by shared canon patterns — never invented similarity. */
+  /** Prior cases linked by shared canon patterns, never invented similarity. */
   priorCases: PriorCaseRef[];
   /** What the asking room can really do. */
   capabilities: CapabilityAnswer;
@@ -70,7 +70,7 @@ export interface RetrievalInput {
   evidence: RuntimeEvidenceInput[];
   decided?: string[];
   withheld?: WithheldSource[];
-  /** Engine observations, when the caller has them — canon matches run on these. */
+  /** Engine observations, when the caller has them, canon matches run on these. */
   observations?: Observation[];
   /** Restrict canon matching to these domains. */
   canonDomains?: CanonDomain[];
@@ -87,7 +87,7 @@ export function composeRetrieval(input: RetrievalInput): RetrievalBundle {
   const decided = input.decided ?? [];
   const withheld = (input.withheld ?? []).map((row) => ({ appId: row.appId, reason: row.reason }));
 
-  /* Decided statements are also evidence — the strongest kind. */
+  /* Decided statements are also evidence, the strongest kind. */
   const decidedEvidence: RuntimeEvidenceInput[] = decided.map((statement, index) => ({
     id: `decided:${index}`,
     statement,
@@ -102,60 +102,60 @@ export function composeRetrieval(input: RetrievalInput): RetrievalBundle {
       statement,
       owningRoom: input.room,
       tier: "observed",
-      ...(input.contextPacket ? { label: `Context packet — ${input.contextPacket.title}` } : {}),
+...(input.contextPacket ? { label: `Context packet, ${input.contextPacket.title}` }: {}),
     }),
   );
 
-  const evidence = [...input.evidence, ...packetEvidence, ...decidedEvidence];
+  const evidence = [...input.evidence,...packetEvidence,...decidedEvidence];
 
   const observations = input.observations ?? [];
   const patterns =
     observations.length > 0
       ? matchPatterns({
           observations,
-          ...(input.canonDomains ? { domains: input.canonDomains } : {}),
-          ...(input.suppressed ? { suppressed: input.suppressed } : {}),
+...(input.canonDomains ? { domains: input.canonDomains }: {}),
+...(input.suppressed ? { suppressed: input.suppressed }: {}),
           limit: 5,
         })
-      : [];
+: [];
 
   const cases = input.cases ?? [];
   const outcomes = input.outcomes ?? [];
   const priorExperience =
     patterns.length > 0 && cases.length > 0
       ? experienceForMatches({ matches: patterns, cases, outcomes })
-      : {};
+: {};
 
   /* Human corrections outrank everything the engine inferred. */
   const corrections = cases.filter((entry) => Boolean(entry.correction));
 
-  /* "Have we solved something like this before?" — same-pattern linkage only. */
+  /* "Have we solved something like this before?", same-pattern linkage only. */
   const priorCases =
-    patterns.length > 0 ? priorCasesForMatches({ matches: patterns, cases, outcomes }) : [];
+    patterns.length > 0 ? priorCasesForMatches({ matches: patterns, cases, outcomes }): [];
 
   const capabilities = roomCapabilities(input.room);
 
   const knowledge: RetrievedKnowledgeRef[] = [
-    ...patterns.map((match) => ({
+...patterns.map((match) => ({
       kind: "canon_pattern" as const,
       id: match.patternId,
       label: match.patternName,
       note: match.label,
     })),
-    ...corrections.map((entry) => ({
+...corrections.map((entry) => ({
       kind: "human_correction" as const,
       id: entry.id,
       label: `Corrected: ${entry.lesson ?? entry.hypothesis}`,
     })),
-    ...priorCases.map((ref) => ({
+...priorCases.map((ref) => ({
       kind: "prior_case" as const,
       id: ref.caseId,
       label: `${ref.patternName}: seen before`,
       note: ref.outcome
-        ? `Outcome: ${ref.outcome.result} (${ref.outcome.decision}) — ${ref.outcome.because}`
-        : "Seen before; no recorded outcome yet.",
+        ? `Outcome: ${ref.outcome.result} (${ref.outcome.decision}), ${ref.outcome.because}`
+: "Seen before; no recorded outcome yet.",
     })),
-    ...(input.contextPacket
+...(input.contextPacket
       ? [
           {
             kind: "context_packet" as const,
@@ -163,7 +163,7 @@ export function composeRetrieval(input: RetrievalInput): RetrievalBundle {
             label: input.contextPacket.title,
           },
         ]
-      : []),
+: []),
   ];
 
   return {
@@ -194,7 +194,7 @@ export function bundleForModel(bundle: RetrievalBundle): Record<string, unknown>
       statement: item.statement,
       owningRoom: item.owningRoom,
       tier: item.tier,
-      ...(item.label ? { label: item.label } : {}),
+...(item.label ? { label: item.label }: {}),
     })),
     decided: bundle.decided,
     withheld: bundle.withheld,

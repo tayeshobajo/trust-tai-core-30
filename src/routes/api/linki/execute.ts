@@ -1,5 +1,5 @@
 /**
- * Governed LinkedIn action execution endpoint — SERVER ONLY.
+ * Governed LinkedIn action execution endpoint. SERVER ONLY.
  *
  * This is the single HTTP surface for the P2 execution plumbing. The browser
  * reaches it only with a valid Supabase session, the action must already be
@@ -8,7 +8,7 @@
  * was sent.
  *
  * Idempotency contract: POST /api/linki/execute with an action id whose row
- * is executing/executed/verified returns the EXISTING receipt — a double
+ * is executing/executed/verified returns the EXISTING receipt, a double
  * click, a retried request, or a crashed client can never double-send.
  */
 
@@ -23,7 +23,7 @@ import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backen
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
-  return header.startsWith("Bearer ") ? header.slice(7).trim() || null : null;
+  return header.startsWith("Bearer ") ? header.slice(7).trim() || null: null;
 }
 
 function clientFor(token: string): SupabaseClient {
@@ -56,12 +56,12 @@ export const Route = createFileRoute("/api/linki/execute")({
         } catch {
           body = {};
         }
-        const actionId = typeof body["action_id"] === "string" ? body["action_id"].trim() : "";
+        const actionId = typeof body["action_id"] === "string" ? body["action_id"].trim(): "";
         if (!actionId) {
           return json({ error: "action_id is required." }, 400);
         }
 
-        // Session auth: a real, signed-in user — never a service key.
+        // Session auth: a real, signed-in user, never a service key.
         const supabase = clientFor(token);
         const { data: userData, error: userError } = await supabase.auth.getUser(token);
         const user = userData?.user;
@@ -74,9 +74,9 @@ export const Route = createFileRoute("/api/linki/execute")({
 
         // Active workspace membership, same gate as every governed route.
         const { data: memberships } = await supabase
-          .from("organization_memberships")
-          .select("organization_id, status")
-          .eq("user_id", user.id);
+.from("organization_memberships")
+.select("organization_id, status")
+.eq("user_id", user.id);
         const active = (memberships ?? []).filter((m) => (m["status"] ?? "active") === "active");
         if (active.length === 0) {
           return json({ error: "Your account is not a member of this Trust Tai workspace." }, 403);
@@ -85,10 +85,10 @@ export const Route = createFileRoute("/api/linki/execute")({
         // Resolve the action's organization, then require the caller to be a
         // member of THAT organization (not just any).
         const { data: actionLookup, error: actionError } = await supabase
-          .from("approved_linkedin_actions")
-          .select("id, organization_id")
-          .eq("id", actionId)
-          .maybeSingle();
+.from("approved_linkedin_actions")
+.select("id, organization_id")
+.eq("id", actionId)
+.maybeSingle();
         if (actionError || !actionLookup) {
           return json({ error: "That LinkedIn action does not exist." }, 404);
         }

@@ -128,7 +128,7 @@ export function ResearchHeader({
             <>
               They told us: <span className="text-foreground">{toldUs}</span>
             </>
-          ) : (
+          ): (
             "They completed the intake but did not state where they want to get to."
           )}
         </p>
@@ -136,7 +136,7 @@ export function ResearchHeader({
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <MetaPill>{RESEARCH_PERMISSION_LABEL[permission.state]}</MetaPill>
           <MetaPill>
-            {researchedAt ? `Last researched ${relativeTime(researchedAt)}` : "Never researched"}
+            {researchedAt ? `Last researched ${relativeTime(researchedAt)}`: "Never researched"}
           </MetaPill>
         </div>
         <p className="mt-2 max-w-reading text-[13px] text-muted-foreground">
@@ -149,7 +149,7 @@ export function ResearchHeader({
             disabled={busy || !permission.canResearch || state === "running"}
             onClick={onRunResearch}
           >
-            {state === "running" ? "Running research…" : "Run research"}
+            {state === "running" ? "Running research…": "Run research"}
           </TTButton>
           {permission.state === "unknown" ? (
             <>
@@ -170,7 +170,7 @@ export function ResearchHeader({
                 Do not research them
               </TTButton>
             </>
-          ) : null}
+          ): null}
         </div>
         {!permission.canResearch ? (
           <p className="mt-2 flex items-start gap-2 text-[13px] text-muted-foreground">
@@ -178,9 +178,9 @@ export function ResearchHeader({
             Run research is disabled.{" "}
             {permission.state === "withheld"
               ? "They said no, and that answer stands until they change it."
-              : "Nobody has decided whether researching them is appropriate."}
+: "Nobody has decided whether researching them is appropriate."}
           </p>
-        ) : null}
+        ): null}
       </div>
     </InboundWash>
   );
@@ -215,14 +215,14 @@ export function CoverageStrip({
               <span
                 className={cn(
                   "ml-auto font-mono text-[10px] uppercase tracking-[0.12em]",
-                  area.checked ? "text-emerald-700" : "text-muted-foreground",
+                  area.checked ? "text-emerald-700": "text-muted-foreground",
                 )}
               >
-                {area.checked ? "Checked" : "Not checked"}
+                {area.checked ? "Checked": "Not checked"}
               </span>
             </div>
             <p className="mt-1 text-[12px] text-muted-foreground">
-              {area.checked ? (area.evidence?.statement ?? "Read from a public page.") : area.looksFor}
+              {area.checked ? (area.evidence?.statement ?? "Read from a public page."): area.looksFor}
             </p>
           </li>
         ))}
@@ -252,7 +252,7 @@ export function AuditTrail({ audit }: { audit: EvidenceAudit }) {
                 {relativeTime(audit.observedAt)}{" "}
                 <span className="text-muted-foreground">({audit.observedAt})</span>
               </>
-            ) : (
+            ): (
               "Not recorded"
             )}
           </dd>
@@ -270,7 +270,7 @@ export function AuditTrail({ audit }: { audit: EvidenceAudit }) {
                 {audit.title}
                 <ExternalLink aria-hidden className="size-3" />
               </a>
-            ) : (
+            ): (
               audit.title
             )}
           </dd>
@@ -319,13 +319,13 @@ export function RerunPanel({
           </p>
           {plan.targets.length === 0 ? (
             <p className="mt-1.5 text-[13px] text-muted-foreground">Nothing is missing or stale.</p>
-          ) : (
+          ): (
             <ul className="mt-1.5 space-y-1">
               {plan.targets.map((target) => (
                 <li key={target.key} className="text-[13px] text-foreground">
                   {target.label}{" "}
                   <span className="text-muted-foreground">
-                    — {target.reason === "never_checked" ? "never checked" : "older than 30 days"}
+                    {target.reason === "never_checked" ? "never checked": "older than 30 days"}
                   </span>
                 </li>
               ))}
@@ -342,7 +342,7 @@ export function RerunPanel({
             ))}
             {plan.preservedAreas.length > 0 ? (
               <li className="text-foreground">Fresh areas: {plan.preservedAreas.join(", ")}</li>
-            ) : null}
+            ): null}
           </ul>
         </div>
       </div>
@@ -361,7 +361,7 @@ export function RerunPanel({
       </div>
       {plan.blockedBecause ? (
         <p className="mt-2 text-[13px] text-muted-foreground">{plan.blockedBecause}</p>
-      ) : null}
+      ): null}
     </div>
   );
 }
@@ -382,7 +382,7 @@ function SignalLine({ signal }: { signal: ScoutSignal }) {
           source
           <ExternalLink aria-hidden className="size-3" />
         </a>
-      ) : null}
+      ): null}
       <AuditTrail audit={auditForSignal(signal)} />
     </li>
   );
@@ -425,7 +425,7 @@ export function EvidenceLanes({
                 <ProvenancePill klass="stated" />
                 {theme.stated.length === 0 ? (
                   <p className="mt-1.5 text-[13px] text-muted-foreground">Not stated.</p>
-                ) : (
+                ): (
                   <ul className="mt-1.5 space-y-1.5">
                     {theme.stated.map((statement, index) => (
                       <li key={index} className="flex items-start gap-2 text-[14px] text-foreground">
@@ -441,7 +441,7 @@ export function EvidenceLanes({
                 <ProvenancePill klass="observed" />
                 {theme.observed.length === 0 ? (
                   <p className="mt-1.5 text-[13px] text-muted-foreground">Not yet observed.</p>
-                ) : (
+                ): (
                   <ul className="mt-1.5 space-y-1.5">
                     {theme.observed.map((signal) => (
                       <SignalLine key={signal.id} signal={signal} />
@@ -456,11 +456,11 @@ export function EvidenceLanes({
                   <p className="mt-1.5 text-[13px] text-muted-foreground">
                     No inference: there is not enough evidence to interpret.
                   </p>
-                ) : (
+                ): (
                   <ul className="mt-1.5 space-y-1.5">
                     {theme.inferred.map((read, index) => (
                       <li key={index} className="text-[13px] text-muted-foreground">
-                        <span className="text-foreground">{read.statement}</span> — {read.because}{" "}
+                        <span className="text-foreground">{read.statement}</span>, {read.because}{" "}
                         <span className="font-mono text-[10px] uppercase tracking-[0.12em]">
                           {read.confidence} confidence
                         </span>
@@ -477,11 +477,11 @@ export function EvidenceLanes({
                   <p className="mt-1.5 text-[13px] text-muted-foreground">
                     No suggestion. Nothing here is waiting on a move.
                   </p>
-                ) : (
+                ): (
                   <ul className="mt-1.5 space-y-1.5">
                     {theme.suggested.map((move, index) => (
                       <li key={index} className="text-[13px] text-muted-foreground">
-                        <span className="text-foreground">{move.statement}</span> — {move.because}
+                        <span className="text-foreground">{move.statement}</span>, {move.because}
                         <AuditTrail audit={auditForSuggested(move, observed)} />
                       </li>
                     ))}
@@ -504,7 +504,7 @@ export function ContradictionsPanel({ conflicts }: { conflicts: Contradiction[] 
     <div className="tt-surface border-l-2 border-l-amber-500/60 p-5">
       <SectionHeading
         eyebrow="Something does not line up"
-        title={`${conflicts.length} mismatch${conflicts.length === 1 ? "" : "es"} between what they said and what we read`}
+        title={`${conflicts.length} mismatch${conflicts.length === 1 ? "": "es"} between what they said and what we read`}
         description="A mismatch is a question, not a verdict. Ask before concluding anything."
       />
       <ul className="space-y-3">
@@ -530,7 +530,7 @@ export function ContradictionsPanel({ conflicts }: { conflicts: Contradiction[] 
                   >
                     source
                   </a>
-                ) : null}
+                ): null}
               </p>
             </div>
             <p className="mt-3 text-[13px] text-muted-foreground">{conflict.note}</p>
@@ -552,7 +552,7 @@ export function ResearchSources({ observed }: { observed: ScoutSignal[] }) {
         title={
           observed.length === 0
             ? "No public evidence has been read"
-            : `${observed.length} observation${observed.length === 1 ? "" : "s"} on file`
+: `${observed.length} observation${observed.length === 1 ? "": "s"} on file`
         }
         description="Every observation keeps what it was read from and when."
       />
@@ -560,7 +560,7 @@ export function ResearchSources({ observed }: { observed: ScoutSignal[] }) {
         <p className="text-[13px] text-muted-foreground">
           Nothing to show. Run research once permission is settled.
         </p>
-      ) : (
+      ): (
         <>
           <button
             type="button"
@@ -568,7 +568,7 @@ export function ResearchSources({ observed }: { observed: ScoutSignal[] }) {
             aria-expanded={open}
             className="inline-flex items-center gap-1.5 text-[13px] text-royal hover:underline"
           >
-            {open ? "Hide the evidence" : "Show the evidence"}
+            {open ? "Hide the evidence": "Show the evidence"}
             <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} aria-hidden />
           </button>
           {open ? (
@@ -589,13 +589,13 @@ export function ResearchSources({ observed }: { observed: ScoutSignal[] }) {
                         View source
                         <ExternalLink aria-hidden className="size-3" />
                       </a>
-                    ) : null}
+                    ): null}
                   </p>
                   <AuditTrail audit={auditForSignal(signal)} />
                 </li>
               ))}
             </ul>
-          ) : null}
+          ): null}
         </>
       )}
     </div>
@@ -612,7 +612,7 @@ function ReadList({ title, items, empty }: { title: string; items: string[]; emp
       </p>
       {items.length === 0 ? (
         <p className="mt-1.5 text-[13px] text-muted-foreground">{empty}</p>
-      ) : (
+      ): (
         <ul className="mt-1.5 space-y-1.5">
           {items.map((item, index) => (
             <li key={index} className="text-[13px] text-foreground">

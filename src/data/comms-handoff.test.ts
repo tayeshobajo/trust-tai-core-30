@@ -30,7 +30,7 @@ function person(overrides: Partial<Person> & { fullName: string }): Person {
     },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    ...overrides,
+...overrides,
   } as Person;
 }
 
@@ -180,7 +180,7 @@ describe("buildHandoffDraft", () => {
 });
 
 /* ------------------------------------------------------------------ *
- * Canonical reachability — verified email OR confirmed LinkedIn (brief §3)
+ * Canonical reachability, verified email OR confirmed LinkedIn (brief §3)
  * ------------------------------------------------------------------ */
 
 const FOUNDER_LINKEDIN_CONFIRMED = person({

@@ -1,5 +1,5 @@
 /**
- * Linki reachability provider — server only.
+ * Linki reachability provider, server only.
  *
  * Trust Tai never talks to LinkedIn. It talks to Linki, the approved
  * transport, over the local/private HTTP API (`POST /api/lookup`). Credentials
@@ -13,7 +13,7 @@
  *   - Fail closed: unavailable Linki means "no route found", never a scrape
  *     fallback and never invented candidates.
  *   - Results are CANDIDATES. A candidate becomes canonical only through the
- *     human identity confirmation step (brief §12) — nothing here writes to
+ *     human identity confirmation step (brief §12), nothing here writes to
  *     contacts.
  *
  * Matching doctrine (P1.10 fix, 2026-08-26): the NAME is the only search
@@ -49,7 +49,7 @@ export interface LinkiStatus {
 
 type Env = Record<string, string | undefined>;
 
-/** Response envelope of Linki's POST /api/tt/enrich — mirrors lib/linkedin/profile-lite.ts. */
+/** Response envelope of Linki's POST /api/tt/enrich, mirrors lib/linkedin/profile-lite.ts. */
 export interface ProfileLite {
   url: string;
   full_name?: string | null;
@@ -59,14 +59,13 @@ export interface ProfileLite {
   location?: string | null;
 }
 
-/** Strict /in/ profile URL — same shape the Linki adapter enforces. */
+/** Strict /in/ profile URL, same shape the Linki adapter enforces. */
 const LINKEDIN_PROFILE_URL = /^https:\/\/www\.linkedin\.com\/in\/[^/]+\/?$/;
 
 /**
  * Shared transport to Linki: path selection (local dev keeps the legacy
  * un-prefixed routes; anything else goes through the hardened /api/tt/
- * adapter), headers, and per-call timeout. Returns the parsed JSON body —
- * status mapping is left to each caller because lookup and enrich disagree
+ * adapter), headers, and per-call timeout. Returns the parsed JSON body, * status mapping is left to each caller because lookup and enrich disagree
  * on what failure means (lookup throws, enrich fails soft).
  */
 async function linkiPost(
@@ -78,7 +77,7 @@ async function linkiPost(
   const local = ["localhost", "127.0.0.1", "::1"].includes(
     new URL(config.baseUrl).hostname,
   );
-  const route = local ? path.replace(/^\/api\/tt\//, "/api/") : path;
+  const route = local ? path.replace(/^\/api\/tt\//, "/api/"): path;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -100,7 +99,7 @@ async function linkiPost(
       payload = null;
     }
     const remoteError =
-      typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim() : null;
+      typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim(): null;
 
     if (response.status === 503) {
       throw new Error("Linki reports the LinkedIn session needs re-authentication.");
@@ -149,7 +148,7 @@ export function linkiStatus(env: Env = process.env): LinkiStatus {
  *   - NFKC first (compatibility composition: full-width → ASCII, ligatures →
  *     plain letters, etc.)
  *   - every Unicode dash/hyphen variant → ASCII hyphen (NFKC maps U+2011 to
- *     U+2010, another non-ASCII hyphen — so all variants are collapsed AFTER
+ *     U+2010, another non-ASCII hyphen, so all variants are collapsed AFTER
  *     normalization; LinkedIn search treats them differently from "-")
  *   - collapse all whitespace runs to single spaces
  * This is the P1.10 fix: keyword pollution (company/title/location glued to
@@ -157,15 +156,15 @@ export function linkiStatus(env: Env = process.env): LinkiStatus {
  */
 export function normalizeName(raw: string): string {
   return raw
-    .normalize("NFKC")
-    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212\uFE58\uFE63\uFF0D]/g, "-")
-    .replace(/\s+/g, " ")
-    .trim();
+.normalize("NFKC")
+.replace(/[\u2010\u2011\u2012\u2013\u2014\u2212\uFE58\uFE63\uFF0D]/g, "-")
+.replace(/\s+/g, " ")
+.trim();
 }
 
 /**
  * The keyword string sent to Linki: NAME ONLY, normalized. Company, title,
- * location, and domain are never search tokens — they are ranking evidence in
+ * location, and domain are never search tokens, they are ranking evidence in
  * rankCandidates() below.
  */
 export function buildLookupKeywords(input: LinkiLookupInput): string {
@@ -201,7 +200,7 @@ function companyTokens(value: string | null | undefined): string[] {
 
 /**
  * Name similarity in [0,1]: 1 when the token sets are identical (order
- * ignored), scaled by overlap otherwise. Hyphens are separators — LinkedIn
+ * ignored), scaled by overlap otherwise. Hyphens are separators. LinkedIn
  * normalizes "Anne-Marie" and "Anne Marie" the same way in profile URLs.
  */
 function nameSimilarity(a: string, b: string): number {
@@ -247,15 +246,15 @@ export const NO_CONFIDENT_MATCH_REASON = "No confident LinkedIn match found";
  *   +1.5 per matched role-title token (title vs headline)
  *   +0.75 per matched location token
  *   +0.5 per matched domain root (acme.com → "acme") anywhere on the card
- *   + name similarity × 1.0 (identity anchor — a very different name can
+ *   + name similarity × 1.0 (identity anchor, a very different name can
  *     never rank top on evidence alone)
  *
  * FAIL CLOSED: a candidate must (a) fuzzy-match the name (similarity ≥ 0.5)
- * AND (b) score ≥ 1.5 to be offered — strictly above the 1.0 a perfect name
+ * AND (b) score ≥ 1.5 to be offered, strictly above the 1.0 a perfect name
  * match alone earns, so at least one real piece of evidence (company, role,
  * location, or domain) is required. Otherwise the result is an empty list
  * with the explicit no-match reason. Nothing is ever auto-picked, and ranking
- * is display-order only — a human still confirms identity.
+ * is display-order only, a human still confirms identity.
  */
 export function rankCandidates(
   person: LinkiLookupInput,
@@ -266,7 +265,7 @@ export function rankCandidates(
   const locationRef = tokenize(person.location);
   const domainRoot = person.companyDomain
     ? (person.companyDomain.toLowerCase().replace(/^www\./, "").split(".")[0] ?? "")
-    : "";
+: "";
 
   const ranked: RankedLinkiCandidate[] = [];
   for (const candidate of candidates) {
@@ -278,12 +277,12 @@ export function rankCandidates(
     const cardCompany = companyTokens(candidate.company);
     const cardHeadline = tokenize(candidate.headline);
     const cardLocation = tokenize(candidate.location);
-    const cardAll = [...cardHeadline, ...cardCompany, ...cardLocation];
+    const cardAll = [...cardHeadline,...cardCompany,...cardLocation];
 
     const why: string[] = [];
     let score = similarity; // identity anchor
 
-    const companyHits = overlap(cardCompany.length ? cardCompany : cardHeadline, companyRef);
+    const companyHits = overlap(cardCompany.length ? cardCompany: cardHeadline, companyRef);
     if (companyHits.length > 0) {
       score += companyHits.length * 2;
       why.push(`Company match: ${companyHits.join(", ")}`);
@@ -305,7 +304,7 @@ export function rankCandidates(
 
     if (score < 1.5) continue; // below threshold → name alone is never enough
 
-    ranked.push({ ...candidate, score: Math.round(score * 100) / 100, why, nameSimilarity: similarity });
+    ranked.push({...candidate, score: Math.round(score * 100) / 100, why, nameSimilarity: similarity });
   }
 
   ranked.sort((a, b) => b.score - a.score);
@@ -317,16 +316,16 @@ export function rankCandidates(
 
 /**
  * Enrich up to 5 LinkedIn profile URLs via Linki's POST /api/tt/enrich.
- * Strict /in/ validation happens here too — never trust the caller. Each
+ * Strict /in/ validation happens here too, never trust the caller. Each
  * returned profile mirrors Linki's envelope; per-entry failures simply drop
  * that entry (partial success is the contract).
  *
  * `searchName` (optional) switches Linki to nav-first enrichment (2026-08-31
  * account-safety refactor): instead of cold /in/ deep-links, Linki runs one
- * name search and clicks into each candidate's profile — natural navigation,
+ * name search and clicks into each candidate's profile, natural navigation,
  * hard-capped at 3 profile visits on Linki's side (Linki enforces its own
  * cap; we keep sending up to 5 and accept the false negatives). Transport
- * only — no ranking or identity logic here.
+ * only, no ranking or identity logic here.
  */
 export async function linkiEnrichProfiles(
   input: { urls: string[]; searchName?: string },
@@ -340,26 +339,26 @@ export async function linkiEnrichProfiles(
 
   const payload = (await linkiPost(
     "/api/tt/enrich",
-    { urls, ...(input.searchName ? { search_name: input.searchName } : {}) },
+    { urls,...(input.searchName ? { search_name: input.searchName }: {}) },
     config,
     120_000,
   )) as { profiles?: unknown; stopped_reason?: unknown };
 
   // Informational (2026-08-31 nav-first refactor): Linki may stop enrichment
-  // early on a LinkedIn risk wall, returning partial profiles — partials still
+  // early on a LinkedIn risk wall, returning partial profiles, partials still
   // merge (fail-soft contract); we only surface the reason, never throw on it.
   if (payload.stopped_reason && typeof payload.stopped_reason === "string") {
     console.info(`[linki] enrich stopped early (${payload.stopped_reason}); merging partial profiles`);
   }
 
-  const raw = Array.isArray(payload.profiles) ? payload.profiles : [];
+  const raw = Array.isArray(payload.profiles) ? payload.profiles: [];
   return raw.flatMap((entry): ProfileLite[] => {
     if (!entry || typeof entry !== "object") return [];
     const record = entry as Record<string, unknown>;
-    const url = typeof record["url"] === "string" ? record["url"] : null;
+    const url = typeof record["url"] === "string" ? record["url"]: null;
     if (!url || !LINKEDIN_PROFILE_URL.test(url)) return [];
     const str = (v: unknown) =>
-      typeof v === "string" && v.trim() ? v.trim() : undefined;
+      typeof v === "string" && v.trim() ? v.trim(): undefined;
     const profile: ProfileLite = { url };
     const full_name = str(record["full_name"]);
     const headline = str(record["headline"]);
@@ -396,40 +395,40 @@ export async function linkiFindPerson(
     config,
     120_000,
   )) as { candidates?: unknown };
-  const raw = Array.isArray(payload.candidates) ? payload.candidates : [];
+  const raw = Array.isArray(payload.candidates) ? payload.candidates: [];
   const candidates = raw.flatMap((entry): LinkiCandidate[] => {
     if (!entry || typeof entry !== "object") return [];
     const record = entry as Record<string, unknown>;
-    const url = typeof record["linkedin_url"] === "string" ? record["linkedin_url"] : null;
-    const name = typeof record["full_name"] === "string" ? record["full_name"].trim() : null;
+    const url = typeof record["linkedin_url"] === "string" ? record["linkedin_url"]: null;
+    const name = typeof record["full_name"] === "string" ? record["full_name"].trim(): null;
     // Same guarantee the Linki route makes: a candidate has a URL and a name.
     if (!url || !LINKEDIN_PROFILE_URL.test(url) || !name) return [];
     return [{
       linkedinUrl: url,
       fullName: name,
-      headline: typeof record["headline"] === "string" && record["headline"].trim() ? record["headline"].trim() : null,
-      location: typeof record["location"] === "string" && record["location"].trim() ? record["location"].trim() : null,
-      degree: typeof record["degree"] === "string" && record["degree"].trim() ? record["degree"].trim() : null,
-      company: typeof record["company"] === "string" && record["company"].trim() ? record["company"].trim() : null,
+      headline: typeof record["headline"] === "string" && record["headline"].trim() ? record["headline"].trim(): null,
+      location: typeof record["location"] === "string" && record["location"].trim() ? record["location"].trim(): null,
+      degree: typeof record["degree"] === "string" && record["degree"].trim() ? record["degree"].trim(): null,
+      company: typeof record["company"] === "string" && record["company"].trim() ? record["company"].trim(): null,
     }];
   });
 
-  // Fast path: a confident hit already exists — never spend profile visits.
+  // Fast path: a confident hit already exists, never spend profile visits.
   const fast = rankCandidates(input, candidates);
   if (fast.ranked.length > 0) return candidates;
 
   // Enriched path: shortlist the most name-plausible candidates and pull
   // their profile cards, then re-rank on the enriched evidence. The
-  // shortlist reuses nameSimilarity — the same identity anchor
-  // rankCandidates shields on — so enrichment targets exactly the people
+  // shortlist reuses nameSimilarity, the same identity anchor
+  // rankCandidates shields on, so enrichment targets exactly the people
   // the shield would let through.
   const shortlist = [...candidates]
-    .sort(
+.sort(
       (a, b) =>
         nameSimilarity(input.fullName, b.fullName) -
         nameSimilarity(input.fullName, a.fullName),
     )
-    .slice(0, 5);
+.slice(0, 5);
 
   let enriched = candidates;
   if (shortlist.length > 0) {
@@ -446,9 +445,9 @@ export async function linkiFindPerson(
           original: string | null,
           next: string | null | undefined,
         ): string | null =>
-          typeof next === "string" && next.trim() ? next.trim() : original;
+          typeof next === "string" && next.trim() ? next.trim(): original;
         const merged: LinkiCandidate = {
-          ...c,
+...c,
           linkedinUrl: c.linkedinUrl, // enriched values win, identity (URL) never changes
           fullName: p.full_name?.trim() || c.fullName,
           headline: merge(c.headline, p.headline ?? p.title),
@@ -468,8 +467,7 @@ export async function linkiFindPerson(
   }
 
   // Return the enriched set when it yields a confident card; otherwise
-  // fall back to today's exact behavior (the unenriched candidates —
-  // callers rank them and get the same empty result as before).
+  // fall back to today's exact behavior (the unenriched candidates, // callers rank them and get the same empty result as before).
   const reRanked = rankCandidates(input, enriched);
-  return reRanked.ranked.length > 0 ? enriched : candidates;
+  return reRanked.ranked.length > 0 ? enriched: candidates;
 }

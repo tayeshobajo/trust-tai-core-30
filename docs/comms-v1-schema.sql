@@ -1,4 +1,4 @@
--- Trust Tai OS — Comms v1 schema
+-- Trust Tai OS. Comms v1 schema
 --
 -- APPLIED. These six tables are live in the externally managed Trust Tai
 -- Supabase project (ref okydosoacqdnursmmenf) with RLS enabled. This file is

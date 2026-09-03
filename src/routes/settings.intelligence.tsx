@@ -43,7 +43,7 @@ interface RuntimeStatusPayload {
 
 /**
  * Reasoning provider readiness, server-derived. One provider serves every
- * room — Comms, Scout, Roadmap, Steward, Studio, Conductor — so this is the
+ * room. Comms, Scout, Roadmap, Steward, Studio, Conductor, so this is the
  * first thing to check when any room's reasoning fails.
  */
 function RuntimeStatusPanel() {
@@ -61,9 +61,9 @@ function RuntimeStatusPanel() {
   const chip =
     status.isPending || !status.data
       ? { label: "checking…", tone: TONE.missing }
-      : status.data.configured
+: status.data.configured
         ? { label: "operational", tone: TONE.current }
-        : { label: "not configured", tone: TONE.partial };
+: { label: "not configured", tone: TONE.partial };
 
   return (
     <section aria-label="Reasoning provider" className="mb-6 rounded-xl border border-border p-4">
@@ -79,26 +79,26 @@ function RuntimeStatusPanel() {
         </span>
         {status.data?.provider ? (
           <span className="ml-auto font-mono text-[11px] text-muted-foreground">
-            {status.data.provider} · {status.data.model ?? "—"} · checked{" "}
+            {status.data.provider} · {status.data.model ?? ", "} · checked{" "}
             {stamp(status.data.checkedAt)}
           </span>
-        ) : null}
+        ): null}
       </div>
       <p className="mt-2 text-[13px] text-muted-foreground">
         {status.error
           ? "The status probe itself failed, so provider health cannot be confirmed from here."
-          : status.data?.configured
-            ? "One provider serves every room's reasoning — Comms drafts, Scout reads, Roadmap and Studio generation, Steward and Conductor."
-            : "No reasoning provider is configured, so drafting and reads fail closed. Add OPENAI_API_KEY, or rely on LOVABLE_API_KEY, in the deployment's server environment (Settings → Secrets)."}
+: status.data?.configured
+            ? "One provider serves every room's reasoning. Comms drafts, Scout reads, Roadmap and Studio generation, Steward and Conductor."
+: "No reasoning provider is configured, so drafting and reads fail closed. Add OPENAI_API_KEY, or rely on LOVABLE_API_KEY, in the deployment's server environment (Settings → Secrets)."}
       </p>
     </section>
   );
 }
 
 function stamp(value: string | null): string {
-  if (!value) return "—";
+  if (!value) return ", ";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? ", ": date.toLocaleString();
 }
 
 function Row({ app }: { app: AppFreshness }) {
@@ -115,7 +115,7 @@ function Row({ app }: { app: AppFreshness }) {
           {FRESHNESS_LABEL[app.status]}
         </span>
         <span className="ml-auto font-mono text-[11px] text-muted-foreground">
-          {app.ageDays === null ? "no signal" : `${app.ageDays}d old`}
+          {app.ageDays === null ? "no signal": `${app.ageDays}d old`}
         </span>
       </div>
 
@@ -141,7 +141,7 @@ function Row({ app }: { app: AppFreshness }) {
         <p className="mt-2 font-mono text-[11px] text-muted-foreground">
           Latest sequence: {app.latestEventName}
         </p>
-      ) : null}
+      ): null}
     </li>
   );
 }
@@ -154,7 +154,7 @@ function IntelligenceFreshnessSettings() {
       const snapshot = await loadSuiteSnapshot(identity.organizationId);
       return auditIntelligenceFreshness({
         blocks: contextBlocks(snapshot),
-        events: [...snapshot.events, ...snapshot.opsActivities],
+        events: [...snapshot.events,...snapshot.opsActivities],
         withheld: snapshot.withheld,
         now: snapshot.now,
       });
@@ -176,11 +176,11 @@ function IntelligenceFreshnessSettings() {
         <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
           Reading every room…
         </p>
-      ) : audit.error ? (
+      ): audit.error ? (
         <p role="alert" className="text-sm text-destructive">
           {(audit.error as Error).message}
         </p>
-      ) : audit.data ? (
+      ): audit.data ? (
         <>
           <p className="mb-4 text-[13px] text-muted-foreground">
             {audit.data.current} current · {audit.data.partial} partial · {audit.data.missing}{" "}
@@ -192,7 +192,7 @@ function IntelligenceFreshnessSettings() {
             ))}
           </ul>
         </>
-      ) : null}
+      ): null}
     </div>
   );
 }

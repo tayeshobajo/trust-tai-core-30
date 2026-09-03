@@ -1,5 +1,5 @@
 /**
- * Conductor V3 hardening — the operating cycle before we trust it.
+ * Conductor V3 hardening, the operating cycle before we trust it.
  *
  * The loop only means something if a re-read is not a new fact. These tests
  * hold the line on that: opening the control room three times must not turn
@@ -68,7 +68,7 @@ function action(overrides: Partial<ControlledAction> = {}): ControlledAction {
     sourceEventKey: "key:1",
     status: "routed",
     createdAt: "2026-08-20T09:00:00.000Z",
-    ...overrides,
+...overrides,
   } as ControlledAction;
 }
 
@@ -121,7 +121,7 @@ function learningRecord(overrides: Partial<LearningRecord> = {}): LearningRecord
     isRule: true,
     grantsAuthority: false,
     recordedAt: "2026-08-20T10:00:00.000Z",
-    ...overrides,
+...overrides,
   } as LearningRecord;
 }
 
@@ -139,9 +139,9 @@ describe("re-checking is not re-happening", () => {
     const { store, ledger: sink } = ledger();
     const input = { organizationId: ORG, actions: [action()], receipts: [receipt], ledger: sink };
 
-    await runObservationPass({ ...input, now: "2026-08-20T11:00:00.000Z" });
-    await runObservationPass({ ...input, now: "2026-08-20T12:00:00.000Z" });
-    const third = await runObservationPass({ ...input, now: "2026-08-20T13:00:00.000Z" });
+    await runObservationPass({...input, now: "2026-08-20T11:00:00.000Z" });
+    await runObservationPass({...input, now: "2026-08-20T12:00:00.000Z" });
+    const third = await runObservationPass({...input, now: "2026-08-20T13:00:00.000Z" });
 
     expect(store.observations).toHaveLength(1);
     expect(third.observations).toHaveLength(0);

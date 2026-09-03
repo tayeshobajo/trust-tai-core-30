@@ -7,8 +7,8 @@
  * the entire identity row. The name the operator typed was simply lost, and
  * People & access then showed "Unnamed person".
  *
- * These tests exercise the governed route itself — authority check, Auth admin
- * call, profile write, membership write, directory read — so the guarantee is
+ * These tests exercise the governed route itself, authority check, Auth admin
+ * call, profile write, membership write, directory read, so the guarantee is
  * about behaviour and not about one helper in isolation.
  */
 
@@ -24,7 +24,7 @@ type Handler = (context: { request: Request }) => Promise<Response> | Response;
 
 function post(body: unknown): Promise<Response> {
   const handlers = (Route as unknown as { options: { server: { handlers: { POST: Handler } } } })
-    .options.server.handlers;
+.options.server.handlers;
   return Promise.resolve(
     handlers.POST({
       request: new Request("https://cmd.trusttai.com/api/public/settings/admin-password", {
@@ -54,10 +54,10 @@ function fakeSupabase() {
     new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
 
   const handler = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url = new URL(typeof input === "string" ? input : String(input));
+    const url = new URL(typeof input === "string" ? input: String(input));
     const path = url.pathname;
     const method = (init?.method ?? "GET").toUpperCase();
-    const body = init?.body ? JSON.parse(String(init.body)) : null;
+    const body = init?.body ? JSON.parse(String(init.body)): null;
 
     /* Who is calling. */
     if (path === "/auth/v1/user") return json(authUsers.get(CALLER));
@@ -71,7 +71,7 @@ function fakeSupabase() {
       if (existing) {
         return json({ error_code: "email_exists", msg: "A user with this email already exists" }, 422);
       }
-      const id = created.length === 0 ? NEW_USER : `${NEW_USER}-${created.length}`;
+      const id = created.length === 0 ? NEW_USER: `${NEW_USER}-${created.length}`;
       created.push(id);
       authUsers.set(id, { id, email, user_metadata: body.user_metadata ?? {} });
       return json({ id, email });
@@ -84,7 +84,7 @@ function fakeSupabase() {
         return json({ id });
       }
       const user = authUsers.get(id);
-      return user ? json(user) : json({ msg: "not found" }, 404);
+      return user ? json(user): json({ msg: "not found" }, 404);
     }
 
     if (path === "/rest/v1/organization_memberships") {
@@ -98,7 +98,7 @@ function fakeSupabase() {
       if (userFilter === CALLER) return json([{ role: "owner", status: "active" }]);
       if (userFilter) {
         const row = memberships.get(userFilter);
-        return json(row ? [row] : []);
+        return json(row ? [row]: []);
       }
       /* The whole workspace, as the directory reads it. */
       return json([...memberships.values()]);
@@ -118,7 +118,7 @@ function fakeSupabase() {
             );
           }
           const id = String(row["id"]);
-          profiles.set(id, { ...(profiles.get(id) ?? {}), ...row });
+          profiles.set(id, {...(profiles.get(id) ?? {}),...row });
         }
         return json(body);
       }
@@ -237,7 +237,7 @@ describe("provisioning a person with a temporary password", () => {
 
   it("refuses to take over an address that signs in but belongs to no member here", async () => {
     backend.authUsers.set("stranger", { id: "stranger", email: "someone@else.com" });
-    const response = await post({ ...createRequest, email: "someone@else.com" });
+    const response = await post({...createRequest, email: "someone@else.com" });
     expect(response.status).toBe(409);
     const body = (await response.json()) as { ok: boolean; existing: boolean };
     expect(body.ok).toBe(false);

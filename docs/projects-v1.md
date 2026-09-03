@@ -26,9 +26,9 @@ state a person sets and must explain.
 Health is derived, never typed in, and always explains itself
 (`src/domain/projects.ts`):
 
-- **At risk** — blocked, or nothing has moved for 14 days.
-- **Needs attention** — no owner, no destination, or no next move.
-- **On track** — owned, moving, with a recorded next move.
+- **At risk**, blocked, or nothing has moved for 14 days.
+- **Needs attention**, no owner, no destination, or no next move.
+- **On track**, owned, moving, with a recorded next move.
 
 ## Handoff
 
@@ -55,5 +55,5 @@ or cannot move. Ask Trust Tai answers about delivery from those blocks only.
 
 ## Routes
 
-- `/modules/projects` — the room: asking for you, incomplete, in flight, landed.
-- `/modules/projects/$projectId` — one piece of work, its evidence, and its move.
+- `/modules/projects`, the room: asking for you, incomplete, in flight, landed.
+- `/modules/projects/$projectId`, one piece of work, its evidence, and its move.

@@ -5,7 +5,7 @@
  *
  * A draft moves draft → sending → sent, and the mailbox still has the last
  * word through verification (`comms-verification`). A refusal lands in
- * `send_failed` with the reason kept — never as sent. Approving and sending
+ * `send_failed` with the reason kept, never as sent. Approving and sending
  * are one human act: pressing Send on a draft is the approval.
  *
  * The claim is the idempotency mechanism. Only the first attempt can move a
@@ -61,7 +61,7 @@ export function sendIdempotencyKey(draftId: string): string {
 function targetToJson(target: SendThreadTarget): Record<string, unknown> {
   return target.mode === "reply"
     ? { mode: "reply", provider_thread_id: target.providerThreadId }
-    : { mode: "new" };
+: { mode: "new" };
 }
 
 function targetFromJson(raw: unknown): SendThreadTarget | undefined {
@@ -79,7 +79,7 @@ function attachmentsToJson(attachments: AttachmentMeta[]): Record<string, unknow
     filename: attachment.filename,
     mime_type: attachment.mimeType,
     size: attachment.size,
-    ...(attachment.attachmentId ? { attachment_id: attachment.attachmentId } : {}),
+...(attachment.attachmentId ? { attachment_id: attachment.attachmentId }: {}),
   }));
 }
 
@@ -89,16 +89,16 @@ function attachmentsFromJson(raw: unknown): AttachmentMeta[] | undefined {
   for (const entry of raw) {
     if (!entry || typeof entry !== "object") continue;
     const value = entry as Record<string, unknown>;
-    const filename = typeof value["filename"] === "string" ? value["filename"] : "";
+    const filename = typeof value["filename"] === "string" ? value["filename"]: "";
     if (!filename) continue;
     out.push({
       filename,
-      mimeType: typeof value["mime_type"] === "string" ? value["mime_type"] : "application/octet-stream",
-      size: typeof value["size"] === "number" ? value["size"] : 0,
-      ...(typeof value["attachment_id"] === "string" ? { attachmentId: value["attachment_id"] } : {}),
+      mimeType: typeof value["mime_type"] === "string" ? value["mime_type"]: "application/octet-stream",
+      size: typeof value["size"] === "number" ? value["size"]: 0,
+...(typeof value["attachment_id"] === "string" ? { attachmentId: value["attachment_id"] }: {}),
     });
   }
-  return out.length > 0 ? out : undefined;
+  return out.length > 0 ? out: undefined;
 }
 
 /** Read the send record off a draft's rationale, if one is there. */
@@ -119,20 +119,20 @@ export function readDraftSend(
     attemptedAt:
       typeof value["attempted_at"] === "string"
         ? value["attempted_at"]
-        : new Date().toISOString(),
-    ...(typeof value["sent_at"] === "string" ? { sentAt: value["sent_at"] } : {}),
-    ...(typeof value["provider_message_id"] === "string"
+: new Date().toISOString(),
+...(typeof value["sent_at"] === "string" ? { sentAt: value["sent_at"] }: {}),
+...(typeof value["provider_message_id"] === "string"
       ? { providerMessageId: value["provider_message_id"] }
-      : {}),
-    ...(typeof value["provider_thread_id"] === "string"
+: {}),
+...(typeof value["provider_thread_id"] === "string"
       ? { providerThreadId: value["provider_thread_id"] }
-      : {}),
-    ...(threadTarget ? { threadTarget } : {}),
-    ...(attachments ? { attachments } : {}),
-    ...(typeof value["error"] === "string" ? { error: value["error"] } : {}),
-    ...(typeof value["required_scope"] === "string"
+: {}),
+...(threadTarget ? { threadTarget }: {}),
+...(attachments ? { attachments }: {}),
+...(typeof value["error"] === "string" ? { error: value["error"] }: {}),
+...(typeof value["required_scope"] === "string"
       ? { requiredScope: value["required_scope"] }
-      : {}),
+: {}),
   };
 }
 
@@ -142,18 +142,18 @@ export function writeDraftSend(
   send: DraftSend,
 ): Record<string, unknown> {
   return {
-    ...(rationale ?? {}),
+...(rationale ?? {}),
     send: {
       state: send.state,
       idempotency_key: send.idempotencyKey,
       attempted_at: send.attemptedAt,
-      ...(send.sentAt ? { sent_at: send.sentAt } : {}),
-      ...(send.providerMessageId ? { provider_message_id: send.providerMessageId } : {}),
-      ...(send.providerThreadId ? { provider_thread_id: send.providerThreadId } : {}),
-      ...(send.threadTarget ? { thread_target: targetToJson(send.threadTarget) } : {}),
-      ...(send.attachments?.length ? { attachments: attachmentsToJson(send.attachments) } : {}),
-      ...(send.error ? { error: send.error } : {}),
-      ...(send.requiredScope ? { required_scope: send.requiredScope } : {}),
+...(send.sentAt ? { sent_at: send.sentAt }: {}),
+...(send.providerMessageId ? { provider_message_id: send.providerMessageId }: {}),
+...(send.providerThreadId ? { provider_thread_id: send.providerThreadId }: {}),
+...(send.threadTarget ? { thread_target: targetToJson(send.threadTarget) }: {}),
+...(send.attachments?.length ? { attachments: attachmentsToJson(send.attachments) }: {}),
+...(send.error ? { error: send.error }: {}),
+...(send.requiredScope ? { required_scope: send.requiredScope }: {}),
     },
   };
 }
@@ -168,7 +168,7 @@ export type SendClaimDecision =
 
 /**
  * What a send attempt should do with this draft. The server still claims with
- * a conditional update — this decides how to read the outcome, and how to
+ * a conditional update, this decides how to read the outcome, and how to
  * answer a retried click without sending twice.
  */
 export function decideSendClaim(
@@ -191,7 +191,7 @@ export function decideSendClaim(
       draft.updatedAt !== undefined &&
       !Number.isNaN(new Date(draft.updatedAt).getTime()) &&
       now.getTime() - new Date(draft.updatedAt).getTime() > STALE_SENDING_MS;
-    return stale ? { kind: "claim" } : { kind: "in_flight" };
+    return stale ? { kind: "claim" }: { kind: "in_flight" };
   }
 
   if ((SENDABLE_STATES as string[]).includes(draft.reviewState)) return { kind: "claim" };

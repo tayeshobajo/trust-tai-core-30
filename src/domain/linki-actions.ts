@@ -1,5 +1,5 @@
 /**
- * Governed LinkedIn actions — the P2 execution contract.
+ * Governed LinkedIn actions, the P2 execution contract.
  *
  * Law (integration brief + Tai's 2026-08-27 authorization):
  *   - NO autonomous sending. Every action starts `pending_tai_approval` and
@@ -10,7 +10,7 @@
  *     prospect/person/contact linkage on every row); Comms owns the draft
  *     (`draft_body` arrives from Comms and is never generated here).
  *   - One person. One memory. The action references the canonical contact
- *     row — there is no parallel Linki identity model.
+ *     row, there is no parallel Linki identity model.
  *   - A failed action is TERMINAL. Retrying means a new action row that
  *     references the original via `parent_action_id`; nothing is re-executed
  *     in place.
@@ -82,7 +82,7 @@ export function isLinkiActionType(value: unknown): value is LinkiActionType {
 }
 
 /* ------------------------------------------------------------------ */
-/* Errors — typed so the HTTP route can map them without guessing.     */
+/* Errors, typed so the HTTP route can map them without guessing.     */
 /* ------------------------------------------------------------------ */
 
 export type LinkiActionErrorCode =
@@ -125,13 +125,13 @@ export function linkiActionErrorStatus(code: LinkiActionErrorCode): number {
 }
 
 /* ------------------------------------------------------------------ */
-/* Domain model (camelCase) — the typed shape of one governed action.  */
+/* Domain model (camelCase), the typed shape of one governed action.  */
 /* ------------------------------------------------------------------ */
 
 /** What Linki handed back after a real send. Stored verbatim on the row. */
 export interface LinkiExecutionReceipt {
   provider: "linki";
-  /** Linki's run id — the auditable reference inside the transport. */
+  /** Linki's run id, the auditable reference inside the transport. */
   runId: string;
   sentAt: string;
   response: Record<string, unknown> | null;
@@ -143,7 +143,7 @@ export interface ApprovedLinkedInAction {
   prospectId: string;
   /** The canonical person (contacts row) this action is about. */
   personId: string;
-  /** The canonical contact record (same contacts table — one identity). */
+  /** The canonical contact record (same contacts table, one identity). */
   contactId: string;
   actionType: LinkiActionType;
   /** The Comms-owned draft. Never generated here, never edited here. */
@@ -165,7 +165,7 @@ export interface ApprovedLinkedInAction {
 }
 
 /* ------------------------------------------------------------------ */
-/* Environment switches — fail closed by default.                      */
+/* Environment switches, fail closed by default.                      */
 /* ------------------------------------------------------------------ */
 
 type Env = Record<string, string | undefined>;
@@ -174,7 +174,7 @@ export const DEFAULT_LINKI_DAILY_MSG_CAP = 10;
 export const DEFAULT_LINKI_DAILY_CONN_CAP = 5;
 
 /**
- * The execution kill switch. OFF unless EXPLICITLY `"true"` — unset, empty,
+ * The execution kill switch. OFF unless EXPLICITLY `"true"`, unset, empty,
  * "1", "yes", everything else means disabled. Default false everywhere.
  */
 export function linkiExecutionEnabled(env: Env = process.env): boolean {
@@ -185,12 +185,12 @@ function positiveInt(env: Env, name: string, fallback: number): number {
   const raw = env[name];
   if (raw === undefined || raw.trim() === "") return fallback;
   const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed: fallback;
 }
 
 /** Daily cap for one action type. Messages default 10, connections 5. */
 export function linkiDailyCap(env: Env, actionType: LinkiActionType): number {
   return actionType === "message"
     ? positiveInt(env, "LINKI_DAILY_MSG_CAP", DEFAULT_LINKI_DAILY_MSG_CAP)
-    : positiveInt(env, "LINKI_DAILY_CONN_CAP", DEFAULT_LINKI_DAILY_CONN_CAP);
+: positiveInt(env, "LINKI_DAILY_CONN_CAP", DEFAULT_LINKI_DAILY_CONN_CAP);
 }

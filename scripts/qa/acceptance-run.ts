@@ -1,10 +1,10 @@
 #!/usr/bin/env npx tsx
 /**
- * ACCEPTANCE RUN 2026-08-18 — full loop via REAL app code paths, no code changes.
+ * ACCEPTANCE RUN 2026-08-18, full loop via REAL app code paths, no code changes.
  *
  * Steps: assign (assignPaperclipTask) → wake (triggerHeartbeat) → poll run
  * → comments → Tai reply (postTaiNoteToIssue). Reconciliation is deliberately
- * NOT called here — the launchd 5-min sweep owns convergence.
+ * NOT called here, the launchd 5-min sweep owns convergence.
  *
  * Usage:
  *   npx tsx scripts/qa/acceptance-run.ts assign     # step 1+2: assign + wake
@@ -33,7 +33,7 @@ const COMMS_AGENT = "239a7269-6309-4547-bd54-67e4e3798b85";
 const TASK_KEY = "b31ca1fc-9049-4558-b4dc-4083fd2f2721";
 
 type State = { issueId?: string; bindingId?: string; runId?: string };
-const load = (): State => (existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, "utf8")) : {});
+const load = (): State => (existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, "utf8")): {});
 const save = (s: State) => writeFileSync(STATE_FILE, JSON.stringify(s, null, 1));
 
 const cmd = process.argv[2];
@@ -53,12 +53,12 @@ if (cmd === "assign") {
     sourceApp: "steward",
   });
   console.log(JSON.stringify(res, null, 1));
-  save({ ...load(), issueId: res.issueId, bindingId: res.bindingId });
+  save({...load(), issueId: res.issueId, bindingId: res.bindingId });
 
   const { paperclipClient } = await import("../../src/lib/paperclip-client.server");
   const wake = await paperclipClient.triggerHeartbeat(COMMS_AGENT);
   console.log("WAKE:", JSON.stringify(wake).slice(0, 240));
-  save({ ...load(), runId: (wake as { id?: string }).id });
+  save({...load(), runId: (wake as { id?: string }).id });
 } else if (cmd === "poll") {
   const s = load();
   const { paperclipClient } = await import("../../src/lib/paperclip-client.server");
@@ -79,7 +79,7 @@ if (cmd === "assign") {
   const { postTaiNoteToIssue } = await import("../../src/lib/steward-agents.server");
   const res = await postTaiNoteToIssue({
     issueId: s.issueId!,
-    note: "Acknowledged — carry on and close it out when done.",
+    note: "Acknowledged, carry on and close it out when done.",
     taiName: "Tai",
   });
   console.log("REPLY POSTED:", JSON.stringify(res));

@@ -1,4 +1,4 @@
--- Trust Tai OS — People & access: in-app activity.
+-- Trust Tai OS. People & access: in-app activity.
 --
 -- Sign-in truth already lives in auth.users.last_sign_in_at and is read
 -- server-side through the governed directory endpoint. That answers "did this

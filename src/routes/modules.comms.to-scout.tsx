@@ -3,7 +3,7 @@
  *
  * Sometimes the company arrives through a conversation. A member names the
  * company, the person's title and the role they play, and Scout gets a
- * profile of its own — with provenance saying plainly that a human entered it.
+ * profile of its own, with provenance saying plainly that a human entered it.
  *
  * The conversation stays where it is. One person, one memory.
  */
@@ -118,12 +118,12 @@ function ToScout({ identity }: { identity: WorkspaceIdentity }) {
             className="mt-2 h-9 w-full rounded-md border border-border bg-background px-3 text-[13px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="">
-              {relationshipsQuery.isLoading ? "Reading Comms…" : "Choose a relationship"}
+              {relationshipsQuery.isLoading ? "Reading Comms…": "Choose a relationship"}
             </option>
             {relationships.map((row) => (
               <option key={row.id} value={row.id}>
                 {row.fullName}
-                {row.companyName ? ` · ${row.companyName}` : ""}
+                {row.companyName ? ` · ${row.companyName}`: ""}
               </option>
             ))}
           </select>
@@ -190,15 +190,15 @@ function ToScout({ identity }: { identity: WorkspaceIdentity }) {
             Save to Scout
           </TTButton>
           <p className="text-[13px] text-muted-foreground">
-            Entered by a person. Scout records it as such — no sourcing is implied.
+            Entered by a person. Scout records it as such, no sourcing is implied.
           </p>
         </div>
 
         {save.isError ? (
           <p role="alert" className="text-[13px] text-destructive">
-            {save.error instanceof Error ? save.error.message : "That could not be saved."}
+            {save.error instanceof Error ? save.error.message: "That could not be saved."}
           </p>
-        ) : null}
+        ): null}
       </div>
     </div>
   );

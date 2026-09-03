@@ -44,7 +44,7 @@ export interface ReconcileResult {
  * the status fields back into `execution_agents`, and marks completed bindings.
  *
  * Call this from the edge function cron AND from the Agents tab on load for
- * freshness. The result is used directly by the UI — no double fetch needed.
+ * freshness. The result is used directly by the UI, no double fetch needed.
  */
 export async function reconcilePaperclipAgents(
   organizationId: string,
@@ -70,7 +70,7 @@ export async function reconcilePaperclipAgents(
       organizationId,
       resourceType: "agents",
       success: false,
-      error: error instanceof Error ? error.message : "Failed to read execution_agents.",
+      error: error instanceof Error ? error.message: "Failed to read execution_agents.",
     });
     return { organizationId, agents, syncedAt: now, totalErrors: 1 };
   }
@@ -124,7 +124,7 @@ export async function reconcilePaperclipAgents(
       // only set for company-level pauses, so status is the reliable signal.
       const pausedByStatus = agent.status === "paused";
 
-      // 3. Sync binding completions — mark dispatched bindings done when Paperclip says so
+      // 3. Sync binding completions, mark dispatched bindings done when Paperclip says so
       for (const issue of doneIssues) {
         if (issue.id && issue.status === "done") {
           await syncBindingCompletion({
@@ -132,7 +132,7 @@ export async function reconcilePaperclipAgents(
             status: "done",
             resultSummary: issue.title,
           }).catch(() => {
-            /* Non-fatal — best-effort sync */
+            /* Non-fatal, best-effort sync */
           });
         }
       }
@@ -143,15 +143,15 @@ export async function reconcilePaperclipAgents(
         lastKnownStatus: agent.status ?? "unknown",
         pausedAt: pausedByStatus
           ? (agent.pausedAt ?? syncedAtIso)
-          : null,
+: null,
         lastHeartbeatAt: agent.lastHeartbeatAt ?? null,
         paperclipCompanyId: agent.companyId,
       });
       agentResult.pausedAt = pausedByStatus
         ? (agent.pausedAt ?? syncedAtIso)
-        : null;
+: null;
     } catch (error) {
-      agentResult.error = error instanceof Error ? error.message : "Paperclip did not respond.";
+      agentResult.error = error instanceof Error ? error.message: "Paperclip did not respond.";
       totalErrors++;
     }
 
@@ -163,7 +163,7 @@ export async function reconcilePaperclipAgents(
     organizationId,
     resourceType: "agents",
     success: totalErrors === 0,
-    error: totalErrors > 0 ? `${totalErrors} agent(s) failed to sync.` : null,
+    error: totalErrors > 0 ? `${totalErrors} agent(s) failed to sync.`: null,
   }).catch(() => {
     /* Cursor failure is non-fatal */
   });

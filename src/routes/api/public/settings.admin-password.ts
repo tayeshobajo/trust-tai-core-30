@@ -67,7 +67,7 @@ const IdentityBody = z.object({
  *                   provisioned again from scratch. Their identity is written
  *                   into the append-only activity history first, and no work
  *                   record (contacts, prospects, messages, decisions) is
- *                   deleted — only the credential.
+ *                   deleted, only the credential.
  */
 const RemoveBody = z.object({
   action: z.literal("remove_member"),
@@ -131,7 +131,7 @@ async function serviceWrite(
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
       Prefer: "resolution=merge-duplicates,return=representation",
-      ...headers,
+...headers,
     },
     body: JSON.stringify(body),
   });
@@ -168,7 +168,7 @@ async function serviceWriteTolerant(
   row: Record<string, unknown>,
   required: string[],
 ): Promise<{ ok: boolean; status: number; body: unknown }> {
-  const current = { ...row };
+  const current = {...row };
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const result = await serviceWrite(path, key, [current]);
     if (result.ok) return result;
@@ -221,7 +221,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
     handlers: {
       POST: async ({ request }) => {
         const header = request.headers.get("authorization") ?? "";
-        const token = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
+        const token = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim(): "";
         if (!token) return refused(401, "Sign in before managing workspace passwords.");
 
         const parsed = Body.safeParse(await request.json().catch(() => null));
@@ -260,7 +260,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
         const refusal = refusePasswordAction({
           actorRole: membership?.role ?? null,
           actorActive: (membership?.status ?? "") === "active",
-          actorOrganizationId: membership ? input.organizationId : null,
+          actorOrganizationId: membership ? input.organizationId: null,
           organizationId: input.organizationId,
         });
         if (refusal) return refused(403, refusal);
@@ -325,12 +325,12 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
 
           /* An invitation is onboarding workflow state, not identity. Once the
              invited address signs in as a real member, the invitation is
-             satisfied — it must not keep counting as a live pending invite.
+             satisfied, it must not keep counting as a live pending invite.
              History in `activities` is untouched: nothing is rewritten. */
           const memberEmails = new Set(
             ids
-              .map((id) => (authById.get(id)?.email ?? byId.get(id)?.["email"] ?? "").toLowerCase())
-              .filter(Boolean),
+.map((id) => (authById.get(id)?.email ?? byId.get(id)?.["email"] ?? "").toLowerCase())
+.filter(Boolean),
           );
           const pending = await restGet<{ id: string; email: string }[]>(
             `organization_invitations?organization_id=eq.${input.organizationId}&status=eq.pending&select=id,email`,
@@ -423,14 +423,14 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
               organization_id: input.organizationId,
               actor_user_id: caller.id,
               event_type:
-                input.mode === "delete_account" ? "user.account_deleted" : "user.access_revoked",
+                input.mode === "delete_account" ? "user.account_deleted": "user.access_revoked",
               summary:
                 input.mode === "delete_account"
                   ? `${label} was removed from the workspace and their sign-in account was deleted. Their records were kept.`
-                  : `${label} was removed from the workspace. Their sign-in account and records were kept.`,
+: `${label} was removed from the workspace. Their sign-in account and records were kept.`,
               occurred_at: removedAt,
               payload: {
-                lifecycle: input.mode === "delete_account" ? "account_deleted" : "access_revoked",
+                lifecycle: input.mode === "delete_account" ? "account_deleted": "access_revoked",
                 label: address || label,
                 removed_user_id: input.userId,
                 name: label,
@@ -532,10 +532,10 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
               message?: string;
             } | null;
             return refused(
-              updated.status === 404 ? 404 : 422,
+              updated.status === 404 ? 404: 422,
               updated.status === 404
                 ? "That sign-in account no longer exists."
-                : humanAuthError({
+: humanAuthError({
                     status: updated.status,
                     code: failure?.error_code ?? null,
                     message: failure?.msg ?? failure?.message ?? null,
@@ -563,7 +563,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
             /* Deliberate: temporary-password onboarding must not send the person
                through an email confirmation they were never told to expect. */
             email_confirm: true,
-            ...(fullName ? { user_metadata: { full_name: fullName } } : {}),
+...(fullName ? { user_metadata: { full_name: fullName } }: {}),
           }),
         });
         const createdBody = (await created.json().catch(() => null)) as {
@@ -581,8 +581,8 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
             (createdBody?.error_code ?? "").toLowerCase() === "email_exists" ||
             /already/i.test(createdBody?.msg ?? createdBody?.message ?? "");
 
-          /* Idempotency. A retry — a double click, a lost response, a second
-             attempt after a timeout — must land on the same person, never on a
+          /* Idempotency. A retry, a double click, a lost response, a second
+             attempt after a timeout, must land on the same person, never on a
              second account. If that address already signs in AND is already a
              member of THIS workspace, this is that retry: finish the same
              provisioning against the same user id. If the address exists but
@@ -590,7 +590,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
              of this workspace may not take it over. */
           if (existing) {
             const known = (await readProfiles(`email=eq.${encodeURIComponent(email)}`, secret))[0];
-            const candidate = known?.["id"] ? String(known["id"]) : null;
+            const candidate = known?.["id"] ? String(known["id"]): null;
             if (candidate) {
               const alreadyMember = await restGet<{ user_id: string }[]>(
                 `organization_memberships?organization_id=eq.${input.organizationId}&user_id=eq.${candidate}&select=user_id`,
@@ -615,7 +615,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
                 }),
                 existing,
               },
-              { status: created.status === 422 ? 409 : 502 },
+              { status: created.status === 422 ? 409: 502 },
             );
           }
         }
@@ -632,10 +632,10 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           {
             id: userId,
             email,
-            ...(fullName ? { full_name: fullName } : {}),
+...(fullName ? { full_name: fullName }: {}),
             updated_at: now,
           },
-          fullName ? ["id", "full_name"] : ["id"],
+          fullName ? ["id", "full_name"]: ["id"],
         );
         if (!profileWrite.ok) {
           return refused(

@@ -1,5 +1,5 @@
 /**
- * Conductor V3.2 — question → Roadmap cycle.
+ * Conductor V3.2, question → Roadmap cycle.
  *
  * The Roadmap canon is a reasoning contract, not copy: Point A, the proof
  * under it, Point B and whether it is inferred or decided, the milestones, the
@@ -43,7 +43,7 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
     id: "rm-teamsynerg",
     organizationId: ORG,
     prospectId: "pros-teamsynerg",
-    title: "Teamsynerg — path to be agreed",
+    title: "Teamsynerg, path to be agreed",
     subjectLabel: "Teamsynerg",
     objective: "Turn scattered delivery into one operating system",
     status: "draft",
@@ -70,7 +70,7 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
     metadata: {},
     createdAt: NOW,
     updatedAt: NOW,
-    ...overrides,
+...overrides,
   };
 }
 
@@ -86,12 +86,12 @@ function decision(overrides: Partial<RoadmapDecision> = {}): RoadmapDecision {
     status: "open",
     createdAt: NOW,
     updatedAt: NOW,
-    ...overrides,
+...overrides,
   };
 }
 
 function snapshot(overrides: Partial<SuiteSnapshot> = {}): SuiteSnapshot {
-  return { ...emptySnapshot(ORG, NOW), ...overrides };
+  return {...emptySnapshot(ORG, NOW),...overrides };
 }
 
 /* --------------------------------------------------------------- canon read */
@@ -206,7 +206,7 @@ describe("subject resolution", () => {
     /* Snapshots are organisation-scoped; a foreign roadmap is simply absent. */
     const foreign = roadmap({ id: "rm-foreign", organizationId: "org-2" });
     const resolution = resolveRoadmapSubject({
-      snapshot: { ...snapshot(), roadmaps: [] },
+      snapshot: {...snapshot(), roadmaps: [] },
       question: `Where does roadmap ${foreign.id} stand?`,
     });
     expect(resolution.status).toBe("none");

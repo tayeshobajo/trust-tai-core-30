@@ -1,5 +1,5 @@
 /**
- * Tai's Voice DNA — a drafting policy, not a prompt string.
+ * Tai's Voice DNA, a drafting policy, not a prompt string.
  *
  * Spirit first. See the human before the transaction. Warmth through
  * specificity, authority through brevity, stewardship through attention.
@@ -109,7 +109,7 @@ export const VOICE_RULES: Record<VoiceRuleId, VoiceRule> = {
 export const EMAIL_SIGNOFF = "Trust,\nTai";
 
 /**
- * Tai's Relationship Voice — the canonical baseline for every message.
+ * Tai's Relationship Voice, the canonical baseline for every message.
  *
  * This is deliberately distinct from Brand Voice. The Voice DNA document
  * below is the organization's editable brand expression; website and content
@@ -117,7 +117,7 @@ export const EMAIL_SIGNOFF = "Trust,\nTai";
  * positioning) belong to that surface and enter an ordinary email only when
  * the actual conversation calls for them. Relationship email is governed by
  * this baseline first. Approved examples and Tai's edits influence style on
- * top of it — they never replace it.
+ * top of it, they never replace it.
  */
 export const TAI_RELATIONSHIP_VOICE: readonly string[] = [
   "Spirit first: see the person before the transaction.",
@@ -127,7 +127,7 @@ export const TAI_RELATIONSHIP_VOICE: readonly string[] = [
   "Natural contractions. Short paragraphs. Everyday words.",
   "No corporate language and no generic networking language.",
   "No manufactured urgency and no fake familiarity.",
-  "No invented personalization — if it is not in the evidence, it does not exist.",
+  "No invented personalization, if it is not in the evidence, it does not exist.",
   "No forced call to action. A natural question is welcome; an ask appears only when the judgment names one.",
   "No em dashes. Close with Trust, then Tai.",
 ];

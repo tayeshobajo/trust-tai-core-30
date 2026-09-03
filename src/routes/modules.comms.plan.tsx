@@ -1,8 +1,8 @@
 /**
  * The Comms plan.
  *
- * What happens next with each person — meetings that are set, promises still
- * open, replies owed, follow-ups someone dated — beside a month calendar so
+ * What happens next with each person, meetings that are set, promises still
+ * open, replies owed, follow-ups someone dated, beside a month calendar so
  * nothing slips between labeled mail and Scout.
  *
  * Every line rests on something a person recorded. Dates are only ever set by
@@ -88,27 +88,27 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
   const scoped = useMemo(
     () =>
       plans
-        .map((plan) => ({
-          ...plan,
+.map((plan) => ({
+...plan,
           items: plan.items.filter((item) => inScope(item, scope, now)),
         }))
-        .filter((plan) => plan.items.length > 0),
+.filter((plan) => plan.items.length > 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [plans, scope],
   );
 
   const buckets = useMemo(() => itemsByDay(plans), [plans]);
-  const dayItems = selectedDay ? (buckets[selectedDay] ?? []) : [];
+  const dayItems = selectedDay ? (buckets[selectedDay] ?? []): [];
 
   const setFollowUp = useMutation({
     mutationFn: ({ plan, date }: { plan: PersonPlan; date: string }) =>
       commsService.update(
         plan.relationship.id,
-        { followUpDueAt: date ? new Date(`${date}T09:00:00`).toISOString() : null },
+        { followUpDueAt: date ? new Date(`${date}T09:00:00`).toISOString(): null },
         { organizationId: identity.organizationId, userId: identity.userId },
       ),
     onSuccess: (_data, variables) => {
-      toast.success(variables.date ? "Follow-up date saved" : "Follow-up cleared", {
+      toast.success(variables.date ? "Follow-up date saved": "Follow-up cleared", {
         description: variables.plan.relationship.fullName,
       });
       void queryClient.invalidateQueries({ queryKey: ["comms"] });
@@ -123,7 +123,7 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
       <PageHeader
         eyebrow="Comms"
         title="Plan"
-        supporting="Each person's next steps and the dates behind them. Nothing here is invented — every line comes from something you or they recorded."
+        supporting="Each person's next steps and the dates behind them. Nothing here is invented, every line comes from something you or they recorded."
         appId="comms"
       />
       <CommsTabs active="plan" />
@@ -132,11 +132,11 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
         <p className="text-sm text-destructive">
           {relationships.error instanceof Error
             ? relationships.error.message
-            : "That read failed."}
+: "That read failed."}
         </p>
-      ) : loading ? (
+      ): loading ? (
         <p className="text-sm text-muted-foreground">Reading your plan…</p>
-      ) : (
+      ): (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
           <section className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -149,7 +149,7 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
                     "rounded-full border px-3 py-1 text-[12px] transition-colors",
                     option === scope
                       ? "border-[var(--royal)] text-foreground"
-                      : "border-border text-muted-foreground hover:text-foreground",
+: "border-border text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {PLAN_SCOPE_LABEL[option]}
@@ -162,7 +162,7 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
                 Nothing is outstanding in this view. When a meeting is set, a promise is made or
                 you date a follow-up, it appears here.
               </p>
-            ) : (
+            ): (
               <ul className="space-y-3">
                 {scoped.map((plan) => (
                   <li key={plan.relationship.id} className="rounded-xl border border-border p-4">
@@ -175,14 +175,14 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
                               {" "}
                               · {plan.relationship.companyName}
                             </span>
-                          ) : null}
+                          ): null}
                         </h2>
                         <p className="text-[12px] text-muted-foreground">
                           {plan.overdueCount > 0
                             ? `${plan.overdueCount} overdue`
-                            : plan.nextAt
+: plan.nextAt
                               ? `Next: ${dueLabel(plan.nextAt, now)}`
-                              : "No date set"}
+: "No date set"}
                         </p>
                       </div>
                       <ScoutConversationLink relationship={plan.relationship} />
@@ -206,7 +206,7 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
                           <span
                             className={cn(
                               "text-[12px]",
-                              item.overdue ? "text-destructive" : "text-muted-foreground",
+                              item.overdue ? "text-destructive": "text-muted-foreground",
                             )}
                           >
                             {dueLabel(item.dueAt, now)}
@@ -223,7 +223,7 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
                         defaultValue={
                           plan.relationship.followUpDueAt
                             ? dayKey(plan.relationship.followUpDueAt)
-                            : ""
+: ""
                         }
                         onChange={(event) =>
                           setFollowUp.mutate({ plan, date: event.target.value })
@@ -239,7 +239,7 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
                         >
                           Clear
                         </TTButton>
-                      ) : null}
+                      ): null}
                     </label>
                   </li>
                 ))}
@@ -257,11 +257,11 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
             />
             <div className="rounded-xl border border-border p-4">
               <h3 className="text-[13px] text-foreground">
-                {selectedDay ? new Date(`${selectedDay}T12:00:00`).toDateString() : "Pick a day"}
+                {selectedDay ? new Date(`${selectedDay}T12:00:00`).toDateString(): "Pick a day"}
               </h3>
               {selectedDay && dayItems.length === 0 ? (
                 <p className="mt-1 text-[13px] text-muted-foreground">Nothing on this day.</p>
-              ) : null}
+              ): null}
               <ul className="mt-2 space-y-2">
                 {dayItems.map((item) => (
                   <li key={item.id} className="text-[13px] text-foreground">
@@ -341,18 +341,18 @@ function Calendar({
                 "flex h-11 flex-col items-center justify-center rounded-lg border text-[12px] transition-colors",
                 key === selectedDay
                   ? "border-[var(--royal)] text-foreground"
-                  : "border-transparent hover:bg-secondary/40",
-                outside ? "text-muted-foreground/50" : "text-foreground",
-                key === today && key !== selectedDay ? "bg-secondary/60" : "",
+: "border-transparent hover:bg-secondary/40",
+                outside ? "text-muted-foreground/50": "text-foreground",
+                key === today && key !== selectedDay ? "bg-secondary/60": "",
               )}
             >
               {day.getDate()}
               {count > 0 ? (
                 <span
                   className="mt-0.5 h-1.5 w-1.5 rounded-full bg-[var(--royal)]"
-                  aria-label={`${count} item${count === 1 ? "" : "s"}`}
+                  aria-label={`${count} item${count === 1 ? "": "s"}`}
                 />
-              ) : null}
+              ): null}
             </button>
           );
         })}

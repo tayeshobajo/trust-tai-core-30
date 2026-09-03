@@ -27,7 +27,7 @@ vi.mock("@/integrations/trust-tai/supabase", () => ({
 const recorded: ActivityEvent[] = [];
 const activity: Pick<ActivityStream, "record"> = {
   async record(event) {
-    const full: ActivityEvent = { ...event, id: crypto.randomUUID() };
+    const full: ActivityEvent = {...event, id: crypto.randomUUID() };
     recorded.push(full);
     return full;
   },
@@ -72,10 +72,10 @@ function makeInput(over: Partial<Parameters<ReturnType<typeof createLinkiActionS
     personId: CONTACT,
     contactId: CONTACT,
     actionType: "message" as LinkiActionType,
-    draftBody: "Mark — your {growth} piece changed how I think about category design.",
+    draftBody: "Mark, your {growth} piece changed how I think about category design.",
     channelContext: { thread: "comms-rel-1", route: LINKEDIN_URL },
     idempotencyKey: `act-${crypto.randomUUID()}`,
-    ...over,
+...over,
   };
 }
 
@@ -83,7 +83,7 @@ function makeInput(over: Partial<Parameters<ReturnType<typeof createLinkiActionS
 function fakeTransport(opts: { failWith?: Error } = {}) {
   const sends: Array<{ linkedinUrl: string; draftBody: string; idempotencyKey: string }> = [];
   const transport: LinkiTransport = async (input) => {
-    sends.push({ ...input });
+    sends.push({...input });
     if (opts.failWith) throw opts.failWith;
     return {
       receipt: {
@@ -136,7 +136,7 @@ describe("create", () => {
     ).rejects.toMatchObject({ code: "validation" });
   });
 
-  it("rejects an empty draft (Comms owns the body — no message exists without it)", async () => {
+  it("rejects an empty draft (Comms owns the body, no message exists without it)", async () => {
     await expect(service().create(makeInput({ draftBody: "  " }), CONTEXT)).rejects.toMatchObject({
       code: "validation",
     });
@@ -158,7 +158,7 @@ describe("create", () => {
 
   it("blocks creation when the contact has no confirmed LinkedIn route", async () => {
     db.tables["contacts"] = [
-      { ...db.tables["contacts"]![0]!, metadata: { email: "x@y.com" } },
+      {...db.tables["contacts"]![0]!, metadata: { email: "x@y.com" } },
     ];
     await expect(service().create(makeInput(), CONTEXT)).rejects.toMatchObject({
       code: "validation",
@@ -174,7 +174,7 @@ describe("create", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* Approve — the human boundary                                        */
+/* Approve, the human boundary                                        */
 /* ------------------------------------------------------------------ */
 
 describe("approve", () => {
@@ -213,7 +213,7 @@ describe("approve", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* Execute — the only send path                                        */
+/* Execute, the only send path                                        */
 /* ------------------------------------------------------------------ */
 
 describe("execute", () => {
@@ -234,7 +234,7 @@ describe("execute", () => {
     });
   });
 
-  it("only the approver may execute — nobody else can trigger the send", async () => {
+  it("only the approver may execute, nobody else can trigger the send", async () => {
     const svc = service({ LINKI_EXECUTION_ENABLED: "true" });
     const created = await svc.create(makeInput(), CONTEXT);
     await svc.approve(created.id, CONTEXT);
@@ -283,7 +283,7 @@ describe("execute", () => {
     await svc.execute(created.id, CONTEXT);
 
     // Simulate a crashed client: force the row back to executing, then call
-    // again — the guard must return it as already-done, not re-send.
+    // again, the guard must return it as already-done, not re-send.
     const row = actions().find((r) => r["id"] === created.id)!;
     row["status"] = "executing";
     const again = await svc.execute(created.id, CONTEXT);
@@ -429,7 +429,7 @@ describe("daily caps", () => {
     await expect(
       svc.create(makeInput({ actionType: "connection_request" }), CONTEXT),
     ).rejects.toMatchObject({ code: "cap_exceeded" });
-    // Messages still allowed — the caps are per type.
+    // Messages still allowed, the caps are per type.
     await expect(svc.create(makeInput(), CONTEXT)).resolves.toBeTruthy();
   });
 
@@ -451,9 +451,9 @@ describe("daily caps", () => {
     await svc.create(makeInput(), CONTEXT);
     // Same cap, different org: unaffected (that org owns its own contact).
     db.tables["contacts"] = [
-      ...db.tables["contacts"]!,
+...db.tables["contacts"]!,
       {
-        ...db.tables["contacts"]![0]!,
+...db.tables["contacts"]![0]!,
         id: "77777777-7777-4777-8777-777777777777",
         organization_id: OTHER_ORG,
       },

@@ -1,4 +1,4 @@
-# Comms v1 — the relationship room
+# Comms v1, the relationship room
 
 Comms is not an inbox. It is Trust Tai's relationship and networking operating
 system: no meaningful message falls through, and every outreach sounds like Tai.
@@ -49,22 +49,20 @@ editable by owners and admins at `/modules/comms/voice`.
 
 Spirit first. Reason first. Write second. `src/lib/comms-draft.server.ts` does
 not generate messages: it makes a relationship-specific **communication
-judgment** (`src/domain/comms-judgment.ts`) over governed evidence — identity,
-stage, observed/decided memory, open commitments, and the recent thread —
-then writes the message that judgment requires. The judgment is persisted
+judgment** (`src/domain/comms-judgment.ts`) over governed evidence, identity,
+stage, observed/decided memory, open commitments, and the recent thread, then writes the message that judgment requires. The judgment is persisted
 with the draft's rationale, so the reasoning a person approves is inspectable,
 never hidden.
 
 **Tai Relationship Voice vs Brand Voice.** The canonical baseline for every
 message is Tai's relationship voice (`TAI_RELATIONSHIP_VOICE` in
-`src/domain/voice.ts`): spirit first — see the person before the transaction,
-make them feel specifically seen, create spaciousness rather than pressure —
-then warm, calm, concise, human, specific prose with natural contractions,
+`src/domain/voice.ts`): spirit first, see the person before the transaction,
+make them feel specifically seen, create spaciousness rather than pressure, then warm, calm, concise, human, specific prose with natural contractions,
 short paragraphs, and no corporate language, manufactured urgency, fake
 familiarity, invented personalization, forced CTA, or em dashes. The org
 Voice DNA document is the editable **brand expression**; approved/sent
 messages and Tai's edits are **learned style influence**. Both layer on top of
-the canonical baseline — neither replaces it — and the evidence packet keeps
+the canonical baseline, neither replaces it, and the evidence packet keeps
 the three provenances separate (`canonicalRelationshipVoice`,
 `relationshipEvidence`, `brandVoiceDna`, `learnedStyleExamples`). Website and
 content rules (roadmap language, proprietary frameworks, declarative
@@ -79,7 +77,7 @@ The laws this boundary enforces:
   plus a reason grounds a proactive note. Extra memory, commitments, Scout
   context, and approved examples improve a grounded draft but are never
   mandatory. Below the bar, drafting would require inventing the reason, the
-  facts, or the relationship — so Comms fails honestly and names what is
+  facts, or the relationship, so Comms fails honestly and names what is
   missing: "Comms can't draft this message without inventing a real prior
   interaction and a reason to write now. Nothing was created."
 - **Comms does not generate messages.** It judges, then writes. The structured
@@ -90,11 +88,10 @@ The laws this boundary enforces:
   FROM it. The visible rationale is a few concise lines: Why now · What I
   noticed · What it says about them · What to build on · Ask (with its
   reason), or "No ask" with the reason no ask belongs.
-- **Conversation before conversion.** The judgment reads the room in order —
-  Notice the human signal in the latest message (generosity, pride,
+- **Conversation before conversion.** The judgment reads the room in order. Notice the human signal in the latest message (generosity, pride,
   curiosity, care, excitement, frustration), Understand what it says about
   the person, Reflect it back so they feel recognized rather than targeted,
-  Build on the most interesting thread they offered — and only then Decide
+  Build on the most interesting thread they offered, and only then Decide
   whether an ask belongs. Do not advance the relationship because advancement
   is possible; respond first to what the person just gave. Make the person
   feel interesting, not merely praised: specific recognition of something
@@ -108,7 +105,7 @@ The laws this boundary enforces:
   discussion; active reciprocal exploration; clear reciprocal curiosity; a
   meeting makes their life easier right now; the conversation has naturally
   arrived there. "Maintain momentum", "build the relationship", and "stay
-  connected" fail the gate — the default is often no ask. Enforcement is
+  connected" fail the gate, the default is often no ask. Enforcement is
   deterministic, not prompt-only: when `shouldAsk` is false,
   `unearnedAskInBody` scans the written draft for a snuck-in call/coffee/
   meeting ask, the writing pass is corrected once in plain language, and if
@@ -128,12 +125,12 @@ The laws this boundary enforces:
   `summarizeDraftGrounding` summary (`draft_grounding` on the rationale) and
   the composer shows it: a calm level (Well grounded / Grounded / Thin
   grounding), the plain-language basis (thread, memory, commitments, approved
-  examples, stated reason), and — when thin — what would sharpen the next
+  examples, stated reason), and, when thin, what would sharpen the next
   draft. A reply on a real thread is never called thin.
 - **Human approval remains mandatory** before anything sends, and the
   deterministic Voice pass gates every draft.
 
-_Status: implemented 2026-08-23; not yet production-human-accepted — pending
+_Status: implemented 2026-08-23; not yet production-human-accepted, pending
 Tai's live testing of real drafts._
 
 **Drafts never trap the conversation.** Close is not discard. The draft editor
@@ -156,7 +153,7 @@ and by a unique index on `(organization_id, prospect_id)`.
 ## Operating views (Clients / Nurture / Needs you / All)
 
 One `comms_relationships` record per person, one continuous history, four
-calm reads of the same derived state — never a pipeline, never a second
+calm reads of the same derived state, never a pipeline, never a second
 prospect or client copy. Scout finds people worth knowing; Comms makes sure
 the right relationships actually go somewhere. The views exist so hundreds
 of Scout/outbound prospects can never crowd the established-client room.
@@ -165,9 +162,9 @@ of Scout/outbound prospects can never crowd the established-client room.
   relationships. Kept deliberately calm and small.
 - **Nurture**: people Trust Tai has deliberately chosen to develop after a
   Scout handoff or approved outreach. Prioritized by attention, next move,
-  and recency — never a giant undifferentiated list.
+  and recency, never a giant undifferentiated list.
 - **Needs you**: cross-cutting. Anyone in Clients or Nurture where human
-  judgment is required — a reply owed, a promise open, a real reason with
+  judgment is required, a reply owed, a promise open, a real reason with
   urgency. It reuses the existing conversation-health and next-move reads;
   there is no parallel rules engine.
 - **All**: the complete relationship ledger, everyone exactly once,
@@ -182,7 +179,7 @@ visible:
 1. **Established evidence → Clients.** A linked client record (`client_id`),
    a graduated stage (`meeting_set`, `opportunity`, `client`), or an
    explicit established intent (`active_client`, `past_client`, `partner`,
-   `referral`, `community`, `vendor`, `personal`) — whatever the origin, and
+   `referral`, `community`, `vendor`, `personal`), whatever the origin, and
    even when the row still carries Scout provenance or an early stage.
 2. **Development evidence → Nurture.** An explicit `nurture` stage, an
    explicit `prospect` intent, a linked prospect (`prospect_id`), a
@@ -206,7 +203,7 @@ Clients, same record, same history. A dormant relationship with a
 
 **Moving between rooms.** Nurture → Clients is "Mark as client" (stage
 becomes `client`). Clients → Nurture is "Move to Nurture", offered only when
-the client classification rests on contextual fallback — never when a linked
+the client classification rests on contextual fallback, never when a linked
 client record, a graduated stage, or an explicit established intent says
 otherwise (`canMoveToNurture`). Both are stage changes on the same record;
 nothing is ever copied, migrated, or re-created.
@@ -217,7 +214,7 @@ the full view is derived: tab counts, health counts, and search always
 describe the whole view, never the page on screen. Changing tab, search, or
 health filter returns to page one; changing page falls selection back to the
 page's first row when the open conversation is not on it. Priority rows
-(attention first, then longest waiting) lead every page — Nurture is ordered
+(attention first, then longest waiting) lead every page. Nurture is ordered
 by intelligence, never alphabet.
 
 **Scale boundary.** Health reads use the organization's most recent 5,000
@@ -230,7 +227,7 @@ larger client cap.
 **Color language.** Classification and condition never share a hue.
 Classification: Clients royal blue, Nurture soft plum (`--plum`), archived
 muted. Health stays green / amber / red / quiet gray. A row answers who this
-is, what kind of relationship it is, and whether anything is needed — in
+is, what kind of relationship it is, and whether anything is needed, in
 that order, in about two seconds.
 
 **Entry rules.** A Scout discovery alone never creates a Comms relationship.
@@ -246,7 +243,7 @@ exactly where it is. Nothing is copied, migrated, or re-created.
 
 **Automation ends where relationship begins.** When someone replies
 meaningfully they stop being an outbound target and become a real
-conversation — held by the same record, read by the same health and
+conversation, held by the same record, read by the same health and
 next-move logic as any client.
 
 **Comms agent continuity mission** (standing responsibility for the future
@@ -258,11 +255,11 @@ has deliberately chosen to care about.*
 - Once a person is approved into Comms, their known email identity belongs
   to that relationship; a new Gmail thread from the same approved email is
   a new conversation under the same relationship, never a new person.
-- `Trust Tai/Comms` remains the Gmail ingestion boundary — label gate
+- `Trust Tai/Comms` remains the Gmail ingestion boundary, label gate
   first, identity match second; reading never mutates labels.
 - Sending is a separate, explicit act: a reply leaves only when a person
   clicks Send on an approved draft, over the `gmail.send` grant. Comms
-  never sends on its own, and `gmail.modify` is never requested — labels
+  never sends on its own, and `gmail.modify` is never requested, labels
   stay Tai's alone.
 - Automation may recommend or prepare Gmail-native filters and continuity
   mechanisms, but no Gmail mutation permissions are granted; applying them
@@ -286,12 +283,12 @@ new topic is simply a new thread under the same person.
 Jane's existing relationship and thread. No human confirmation is needed because
 the From address is already an approved identity for that relationship.
 
-**Changed/new email identity — requires human confirmation.**
+**Changed/new email identity, requires human confirmation.**
 A labeled Gmail thread arrives from `jane.smith@acme.co`, but the existing
 relationship for Jane is tied to `jane@acme.co`. Even if the display name or
 domain matches, the new address is not yet approved for that relationship. Comms
 must surface the new email for human review (e.g., "Jane also emailed from
-jane.smith@acme.co — merge into the existing relationship?"). Until confirmed,
+jane.smith@acme.co, merge into the existing relationship?"). Until confirmed,
 the message is treated as pending/unknown, not stored under the original
 relationship, and no new relationship is auto-created. After confirmation, the
 new address becomes an approved identity on the same relationship and future
@@ -345,8 +342,8 @@ deliberately empty until an approved source exists.
 and the new thread columns. It has not been applied; until it is,
 `/modules/comms/integrations` reports every track as not connected. Refresh
 tokens live in `private.comms_integration_secrets`, readable only by the
-service role. Consent requests `gmail.readonly` plus `gmail.send` — never
-`gmail.modify` — and the granted set is persisted on the connection row, so
+service role. Consent requests `gmail.readonly` plus `gmail.send`, never
+`gmail.modify`, and the granted set is persisted on the connection row, so
 the send capability check tells the truth.
 
 ## Gmail track (labeled read + human-approved send)
@@ -362,18 +359,18 @@ Mailboxes own transport identity. Relationships own memory.
 A member can connect more than one Gmail mailbox. Every synced message and
 every Comms-sent row stamps `provenance.mailbox` with the mailbox that
 observed or sent it, so one relationship may hold conversations from multiple
-connected Trust Tai mailboxes — one person, one memory, many conversations.
+connected Trust Tai mailboxes, one person, one memory, many conversations.
 Replies always stay with the mailbox that owns the Gmail thread (provenance,
 never a guess, and never an explicit From choice); a brand-new outbound
 message only offers a From selector when more than one connected mailbox can
-send — with a single send-capable mailbox the choice is automatic and
+send, with a single send-capable mailbox the choice is automatic and
 invisible. A mailbox whose grant lacks `gmail.send` blocks only that mailbox,
 naming it; a send is never silently rerouted to another account. Each
 mailbox keeps the same `Trust Tai/Comms` label as its read boundary.
 
 Registered redirect URI (exact match required by Google):
 
-- production: `https://cmd.trusttai.com/api/public/comms/gmail/connect` — the
+- production: `https://cmd.trusttai.com/api/public/comms/gmail/connect`, the
   deterministic constant (`GMAIL_PRODUCTION_REDIRECT_URI`); every
   production-shaped request resolves to it.
 - preview/development: the request origin's own callback, or set
@@ -387,7 +384,7 @@ Flow:
    `gmail.readonly` plus `gmail.send`, with `prompt=consent` and
    `include_granted_scopes=true` so reconnecting an older read-only
    connection upgrades the grant cleanly without dropping what was already
-   allowed. `gmail.modify` is never requested — Comms cannot change labels
+   allowed. `gmail.modify` is never requested. Comms cannot change labels
    by construction. The scopes Google actually grants are persisted on
    `comms_integrations.scopes` exactly as reported.
 2. Google calls back to `/api/public/comms/gmail/connect`. That callback has no
@@ -401,17 +398,15 @@ Flow:
    label `Trust Tai/Comms`: its id is resolved from Gmail's own `/labels`
    list (matching the full nested path, never a free-text `label:` search,
    which would split on the space and slash), and every message listing is
-   constrained by that label id plus the overlap window. Unlabeled mail —
-   promotions, newsletters, alerts, even mail with a person Comms knows —
-   never enters Comms at all. Listing is capped at 60 messages over the
+   constrained by that label id plus the overlap window. Unlabeled mail, promotions, newsletters, alerts, even mail with a person Comms knows, never enters Comms at all. Listing is capped at 60 messages over the
    window. A missing label fails safe with a clear "Needs attention" status;
    there is no whole-mailbox fallback. Upserts key on
    `(organization_id, provider, provider_message_id)`, so repeat passes are
    idempotent. Thread state and the response clock come from the pure
    `readThread` reading, not from Gmail. Comms never adds, renames, or
-   removes Gmail labels — labeling is Tai's act, in Gmail.
+   removes Gmail labels, labeling is Tai's act, in Gmail.
 
-### Doctrine — the label approves the conversation
+### Doctrine, the label approves the conversation
 
 **Applying the exact `Trust Tai/Comms` Gmail label is the human approval to
 bring that correspondent into Comms, and to keep following that conversation.
@@ -460,13 +455,13 @@ What follows from that, and is enforced in code:
   checkbox selection, no per-person "Add to Comms" for a correspondent the
   label already approved. That surface has been retired.
 - Intake infers a person and nothing else. No organization, no client, no
-  lifecycle promotion — the relationship starts where governed rules start it.
+  lifecycle promotion, the relationship starts where governed rules start it.
 - Provenance is kept: the Gmail label, the mailbox identity, the first
   observed thread and message, and their timestamps live on
   `metadata.gmail_intake`, and one `relationship.created` activity carries a
   dedupe key naming the person.
 - Ambiguity fails closed, not open. A labeled outbound thread with more than
-  one human recipient — or a create that failed — is recorded on
+  one human recipient, or a create that failed, is recorded on
   `cursor.intake_exceptions` (capped, deduped by message id) and surfaced on
   Connections as "Needs your decision", retryable, never guessed at and never
   silently dropped. `resolveIntakeCounterpart` (`src/domain/comms-intake.ts`)
@@ -476,7 +471,7 @@ What follows from that, and is enforced in code:
   "Watching Trust Tai/Comms · last checked …".
 5. Coverage is visible, not assumed. Every pass persists a counts-only
    summary on the connection (`cursor.last_run`: messages read and stored,
-   people added, events emitted, drafts verified, and `pending_people` — the
+   people added, events emitted, drafts verified, and `pending_people`, the
    exceptions still awaiting a decision). The Connections card reports the
    last pass verbatim without re-reading the mailbox.
 
@@ -493,7 +488,7 @@ of an unknown labeled correspondent is still pending.
 Replies leave through a deterministic state machine (`draft → approved →
 sending → sent → mailbox_verified`; `src/domain/comms-send.ts`,
 `src/lib/comms-gmail-send.server.ts`). A human click on Send is the only
-trigger — there is no autonomous sender. The composer enables Send only when
+trigger, there is no autonomous sender. The composer enables Send only when
 the persisted grant includes `gmail.send`; an older read-only connection
 shows a calm "Reconnect with send access" affordance instead. Idempotency
 keys on `send:{draftId}`; a failed Gmail call lands in retryable
@@ -505,8 +500,8 @@ then send one real reply and confirm it lands in Gmail's Sent mail. Until
 that run, real sending is **not production-verified**.
 
 Onboarding backfill (Add to Comms brings history with it) was implemented on
-2026-08-22 — composition and clamp unit-tested (`src/data/comms-onboarding.*`),
-typecheck clean — but is **not yet production-verified**; a live Add-to-Comms
+2026-08-22, composition and clamp unit-tested (`src/data/comms-onboarding.*`),
+typecheck clean, but is **not yet production-verified**; a live Add-to-Comms
 run against the real mailbox is still required before marking it verified.
 
 Body retention is off: only snippets are stored. `comms_messages.body_text`
@@ -523,7 +518,7 @@ counterparty-authored evidence alone (`counterpartyEvidence` in
 `src/data/relationship-development.ts`):
 
 - INBOUND email/SMS, with quoted reply history and signatures stripped by the
-  one shared quoted-content logic — an inbound reply quoting our earlier email
+  one shared quoted-content logic, an inbound reply quoting our earlier email
   can never read our language back as their need.
 - INBOUND recorded interactions, and captures a person explicitly marked as
   "their own words" (`provenance.their_words`); our notes and hypotheses are

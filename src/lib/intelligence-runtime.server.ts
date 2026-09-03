@@ -1,5 +1,5 @@
 /**
- * The Trust Tai Intelligence Runtime — the single reasoning boundary (server only).
+ * The Trust Tai Intelligence Runtime, the single reasoning boundary (server only).
  *
  * Every room's model reasoning goes through here. The room assembles its
  * retrieval bundle under RLS, builds its question, and calls one of the two
@@ -17,11 +17,11 @@
  *
  * 1. Fails closed: a valid token and active membership are verified against
  *    the real backend before any model call.
- * 2. Sends the model only what the room deliberately assembled — never
+ * 2. Sends the model only what the room deliberately assembled, never
  *    transcripts or free text beyond what the room placed in evidence.
  * 3. Verifies what comes back where a verifier exists, and degrades honestly:
  *    when no provider answers, the room gets the deterministic read over the
- *    same bundle — never a blank surface, never an invented one.
+ *    same bundle, never a blank surface, never an invented one.
  *
  * Rooms must not call providers directly. The fragmentation guard
  * (src/lib/intelligence-runtime-boundary.ts) enforces that in CI.
@@ -108,10 +108,10 @@ export async function runtimeModelCaller(access: {
   return (call) =>
     callRoadmapProvider(call.instructions, call.input, {
       webSearch: call.webSearch ?? false,
-      ...(call.responseFormat ? { responseFormat: call.responseFormat } : {}),
-      ...(call.onDelta ? { onDelta: call.onDelta } : {}),
-      ...(call.gateway ? { gateway: call.gateway } : {}),
-      ...(call.initialRunId ? { initialRunId: call.initialRunId } : {}),
+...(call.responseFormat ? { responseFormat: call.responseFormat }: {}),
+...(call.onDelta ? { onDelta: call.onDelta }: {}),
+...(call.gateway ? { gateway: call.gateway }: {}),
+...(call.initialRunId ? { initialRunId: call.initialRunId }: {}),
     });
 }
 
@@ -181,11 +181,11 @@ export async function reasonOverPacket(input: {
     instructions: ENGINE_INSTRUCTIONS,
     input: JSON.stringify(input.packet),
     webSearch: false,
-    ...(input.gateway ? { gateway: input.gateway } : {}),
+...(input.gateway ? { gateway: input.gateway }: {}),
   });
 
   const parsed = extractJsonObject(raw);
-  const list = Array.isArray(parsed["hypotheses"]) ? (parsed["hypotheses"] as unknown[]) : [];
+  const list = Array.isArray(parsed["hypotheses"]) ? (parsed["hypotheses"] as unknown[]): [];
   return {
     hypotheses: list.filter(
       (entry): entry is RawHypothesis => Boolean(entry) && typeof entry === "object",
@@ -201,7 +201,7 @@ const INSTRUCTIONS = `You are the reasoning layer of Trust Tai OS, an operating 
 services business. A room has asked you a question and handed you a packet. Every statement in the
 packet is true. You may use only the packet.
 
-Return a structured operator read — the things an experienced operator needs to know — as strict
+Return a structured operator read, the things an experienced operator needs to know, as strict
 JSON with exactly these fields:
 {
   "facts": [{"statement": "...", "evidenceRefs": ["..."]}],
@@ -226,7 +226,7 @@ Laws you must obey:
    surfaces always require a person to carry them.
 8. If the packet supports nothing worth saying, return empty lists. Silence is a valid answer.
 9. Never comment on an individual's performance, reliability or effort.
-10. Reason step by step internally, but return only the structured read — never your working.`;
+10. Reason step by step internally, but return only the structured read, never your working.`;
 
 export interface RuntimeReasonResult {
   read: RuntimeRead;
@@ -274,7 +274,7 @@ export async function reasonWithRuntime(input: {
     verificationExpectation: input.request.verification,
     approval: input.request.approval,
     allowedOperations: input.request.allowedOperations,
-    ...bundleForModel(input.bundle),
+...bundleForModel(input.bundle),
   };
 
   try {
@@ -282,7 +282,7 @@ export async function reasonWithRuntime(input: {
       instructions: INSTRUCTIONS,
       input: JSON.stringify(packet),
       webSearch: false,
-      ...(input.gateway ? { gateway: input.gateway } : {}),
+...(input.gateway ? { gateway: input.gateway }: {}),
     });
     const parsed = extractJsonObject(raw) as RawRuntimeRead;
     const verified = verifyRuntimeRead({

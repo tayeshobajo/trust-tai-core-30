@@ -4,7 +4,7 @@
  * No authenticated browser session was available, so this is the runbook Tai
  * will follow from the signed-in UI, executed here against the real control
  * layer, the real adapters, the real observer and the real learning rules.
- * Only the outermost IO — Supabase and the room services — is replaced.
+ * Only the outermost IO. Supabase and the room services, is replaced.
  *
  * The cycle proved here is the whole point of V3:
  *
@@ -83,7 +83,7 @@ vi.mock("@/data/events/control-events", () => ({
   },
 }));
 
-/** Append-only ledger, SELECT/INSERT semantics only — never an update. */
+/** Append-only ledger, SELECT/INSERT semantics only, never an update. */
 const observationLedger: ActionObservation[] = [];
 const learningLedger: LearningRecord[] = [];
 
@@ -150,7 +150,7 @@ function discoveryAction(): ControlledAction {
 /** A second branch the person deliberately does not approve. */
 function heldBranch(): ControlledAction {
   return {
-    ...discoveryAction(),
+...discoveryAction(),
     id: "action:first-cycle:comms",
     owningApp: "comms",
     operation: "comms.send_message",
@@ -175,10 +175,10 @@ beforeEach(() => {
 
 /* ------------------------------------------------------------ stage one */
 
-describe("stage 1 — a question yields a governed cross-room recommendation", () => {
+describe("stage 1, a question yields a governed cross-room recommendation", () => {
   it("produces governed actions, but none of them can be routed today", async () => {
     const snapshot = {
-      ...emptySnapshot(ORG, NOW),
+...emptySnapshot(ORG, NOW),
       relationships: [1, 2, 3].map((index) => ({
         id: `rel-${index}`,
         organizationId: ORG,
@@ -209,12 +209,12 @@ describe("stage 1 — a question yields a governed cross-room recommendation", (
     /*
      * The honest gap. Every action a question can currently produce is either
      * informational or names an operation no adapter claims, so the cycle
-     * cannot begin from reasoning alone — a person must supply the subject.
+     * cannot begin from reasoning alone, a person must supply the subject.
      */
     const routable = actions.filter(
       (action) =>
         routability({
-          action: { ...action, status: "approved" } as ControlledAction,
+          action: {...action, status: "approved" } as ControlledAction,
           actions,
           adapters: ROOM_ADAPTERS,
           access,
@@ -226,7 +226,7 @@ describe("stage 1 — a question yields a governed cross-room recommendation", (
 
 /* -------------------------------------------------- stages two to seven */
 
-describe("stages 2-7 — approve one branch, route it, observe it once, learn modestly", () => {
+describe("stages 2-7, approve one branch, route it, observe it once, learn modestly", () => {
   it("runs the whole loop and records exactly one result", async () => {
     const queue = [discoveryAction(), heldBranch()];
 
@@ -261,7 +261,7 @@ describe("stages 2-7 — approve one branch, route it, observe it once, learn mo
     const first = await runObservationPass({
       organizationId: ORG,
       actions: routed,
-      receipts: outcome.receipt ? [outcome.receipt] : [],
+      receipts: outcome.receipt ? [outcome.receipt]: [],
       now: NOW,
     });
     expect(first.observations).toHaveLength(1);
@@ -271,7 +271,7 @@ describe("stages 2-7 — approve one branch, route it, observe it once, learn mo
     const second = await runObservationPass({
       organizationId: ORG,
       actions: routed,
-      receipts: outcome.receipt ? [outcome.receipt] : [],
+      receipts: outcome.receipt ? [outcome.receipt]: [],
       now: "2026-08-25T11:00:00.000Z",
     });
     expect(second.observations).toHaveLength(0);
@@ -295,7 +295,7 @@ describe("stages 2-7 — approve one branch, route it, observe it once, learn mo
     /* The intelligence read stays separate from the business action's status. */
     const read = buildExecutionRead({
       actions: routed,
-      receipts: outcome.receipt ? [outcome.receipt] : [],
+      receipts: outcome.receipt ? [outcome.receipt]: [],
       observations: observationLedger,
       learning: learningLedger,
       access,
@@ -307,15 +307,15 @@ describe("stages 2-7 — approve one branch, route it, observe it once, learn mo
   });
 
   it("a genuinely changed room result creates a second observation", async () => {
-    const approved = { ...discoveryAction(), status: "approved" } as ControlledAction;
+    const approved = {...discoveryAction(), status: "approved" } as ControlledAction;
     const outcome = await routeAction(approved, [approved], owner, actor, ROOM_ADAPTERS, NOW);
     const routed = [outcome.action];
-    const receiptsFor = outcome.receipt ? [outcome.receipt] : [];
+    const receiptsFor = outcome.receipt ? [outcome.receipt]: [];
 
     await runObservationPass({ organizationId: ORG, actions: routed, receipts: receiptsFor, now: NOW });
     expect(observationLedger).toHaveLength(1);
 
-    /* Scout loses the run — a different reading, honestly recorded. */
+    /* Scout loses the run, a different reading, honestly recorded. */
     scoutRunHistory.length = 0;
     const again = await runObservationPass({
       organizationId: ORG,
@@ -329,7 +329,7 @@ describe("stages 2-7 — approve one branch, route it, observe it once, learn mo
   });
 
   it("an unreadable room never rolls back a routed action", async () => {
-    const approved = { ...discoveryAction(), status: "approved" } as ControlledAction;
+    const approved = {...discoveryAction(), status: "approved" } as ControlledAction;
     const outcome = await routeAction(approved, [approved], owner, actor, ROOM_ADAPTERS, NOW);
     /* No receipt, so the reference cannot be checked at all. */
     const pass = await runObservationPass({
@@ -346,14 +346,14 @@ describe("stages 2-7 — approve one branch, route it, observe it once, learn mo
 
 /* ----------------------------------------------- stages eight to ten */
 
-describe("stages 8-10 — the next answer knows, without gaining authority", () => {
+describe("stages 8-10, the next answer knows, without gaining authority", () => {
   async function cycle() {
-    const approved = { ...discoveryAction(), status: "approved" } as ControlledAction;
+    const approved = {...discoveryAction(), status: "approved" } as ControlledAction;
     const outcome = await routeAction(approved, [approved], owner, actor, ROOM_ADAPTERS, NOW);
     await runObservationPass({
       organizationId: ORG,
       actions: [outcome.action],
-      receipts: outcome.receipt ? [outcome.receipt] : [],
+      receipts: outcome.receipt ? [outcome.receipt]: [],
       now: NOW,
     });
     return outcome;
@@ -377,7 +377,7 @@ describe("stages 8-10 — the next answer knows, without gaining authority", () 
     await cycle();
     const inferred = learningLedger[0]!;
     const corrected: LearningRecord = {
-      ...inferred,
+...inferred,
       id: "learning:scout:scout.start_discovery_run:corrected",
       basis: "decided",
       isRule: true,
@@ -431,7 +431,7 @@ describe("stages 8-10 — the next answer knows, without gaining authority", () 
     /* And a member without scout.write is still refused. */
     const viewer = accessContext({ userId: "v", organizationId: ORG, role: "viewer" });
     const refused = routability({
-      action: { ...unapproved, status: "approved" } as ControlledAction,
+      action: {...unapproved, status: "approved" } as ControlledAction,
       actions: [unapproved],
       adapters: ROOM_ADAPTERS,
       access: { can: (permission: string) => can(viewer, permission as Permission) },
@@ -440,7 +440,7 @@ describe("stages 8-10 — the next answer knows, without gaining authority", () 
   });
 
   it("holds the organization boundary", async () => {
-    const foreign = { ...discoveryAction(), organizationId: "org-other", status: "approved" } as ControlledAction;
+    const foreign = {...discoveryAction(), organizationId: "org-other", status: "approved" } as ControlledAction;
     const outcome = await routeAction(foreign, [foreign], owner, actor, ROOM_ADAPTERS, NOW);
     expect(outcome.refusedBecause).toContain("another organization");
     expect(scoutDiscover).not.toHaveBeenCalled();

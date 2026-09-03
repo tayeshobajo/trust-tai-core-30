@@ -46,7 +46,7 @@ const READERS: Record<
   string,
   (input: ObservationInput) => Promise<Reading>
 > = {
-  /* Comms — the draft either exists in Comms' own record or it does not. */
+  /* Comms, the draft either exists in Comms' own record or it does not. */
   async "comms.draft_reply"(input) {
     const relationshipId = String(input.action.payload?.["relationshipId"] ?? "");
     const reference = input.receipt?.result?.reference;
@@ -54,7 +54,7 @@ const READERS: Record<
     const drafts = await commsService.listDrafts(relationshipId);
     const match = reference
       ? drafts.find((draft) => draft.id === reference)
-      : undefined;
+: undefined;
     if (!match) {
       return {
         result: "signal_absent",
@@ -73,7 +73,7 @@ const READERS: Record<
     };
   },
 
-  /* Projects — the blocker text is on the project record or it is not. */
+  /* Projects, the blocker text is on the project record or it is not. */
   async "projects.record_blocker"(input) {
     const projectId = String(input.action.payload?.["projectId"] ?? "");
     const expected = String(input.action.payload?.["blocker"] ?? "").trim();
@@ -91,18 +91,18 @@ const READERS: Record<
       };
     }
     return {
-      result: recorded === expected ? "signal_present" : "partial",
+      result: recorded === expected ? "signal_present": "partial",
       truth: "observed",
       evidence: [{ label: `${project.name} records: ${recorded}`, kind: "computed" }],
       because:
         recorded === expected
           ? "Projects records exactly the blocker that was approved."
-          : "Projects records a blocker, though a person has since changed the wording.",
+: "Projects records a blocker, though a person has since changed the wording.",
       metricKey: "projects.blocker_age",
     };
   },
 
-  /* Scout — the discovery run exists in Scout's own run history. */
+  /* Scout, the discovery run exists in Scout's own run history. */
   async "scout.start_discovery_run"(input) {
     const reference = input.receipt?.result?.reference;
     if (!reference) return NOT_MEASURABLE("No discovery run reference was returned by Scout.");
@@ -118,7 +118,7 @@ const READERS: Record<
       };
     }
     return {
-      result: (match.resultCount ?? 0) > 0 ? "signal_present" : "partial",
+      result: (match.resultCount ?? 0) > 0 ? "signal_present": "partial",
       truth: "observed",
       evidence: [
         {
@@ -129,12 +129,12 @@ const READERS: Record<
       because:
         (match.resultCount ?? 0) > 0
           ? "Scout ran the pass and saved companies it could verify."
-          : "Scout ran the pass but saved nothing it could verify.",
+: "Scout ran the pass but saved nothing it could verify.",
       metricKey: "scout.discovery_runs",
     };
   },
 
-  /* Roadmap — the decision request is open in Roadmap's own record. */
+  /* Roadmap, the decision request is open in Roadmap's own record. */
   async "roadmap.request_decision"(input) {
     const roadmapId = String(input.action.payload?.["roadmapId"] ?? "");
     const reference = input.receipt?.result?.reference;
@@ -181,7 +181,7 @@ export async function observeAction(input: ObservationInput): Promise<ActionObse
     ? await reader(input).catch((error: Error) =>
         NOT_MEASURABLE(`The owning room could not be read: ${error.message}`),
       )
-    : NOT_MEASURABLE(
+: NOT_MEASURABLE(
         `Nothing in ${input.action.owningApp} can prove "${input.action.expectedSignal.statement}" yet.`,
       );
 
@@ -192,7 +192,7 @@ export async function observeAction(input: ObservationInput): Promise<ActionObse
    * Identity is the reading, not the clock: re-checking an unchanged room
    * yields the same id, so a refresh can never inflate the evidence count.
    */
-  const outcomeStatus = measured ? ("measured" as const) : ("inconclusive" as const);
+  const outcomeStatus = measured ? ("measured" as const): ("inconclusive" as const);
   const fingerprint = observationFingerprint({
     actionId: input.action.id,
     result: reading.result,
@@ -206,26 +206,26 @@ export async function observeAction(input: ObservationInput): Promise<ActionObse
     id: observationId(input.action.id, fingerprint),
     organizationId: input.organizationId,
     actionId: input.action.id,
-    ...(input.action.recommendationId ? { recommendationId: input.action.recommendationId } : {}),
-    ...(input.action.answerId ? { answerId: input.action.answerId } : {}),
-    ...(input.action.planId ? { planId: input.action.planId } : {}),
+...(input.action.recommendationId ? { recommendationId: input.action.recommendationId }: {}),
+...(input.action.answerId ? { answerId: input.action.answerId }: {}),
+...(input.action.planId ? { planId: input.action.planId }: {}),
     owningApp: input.action.owningApp,
     operation: input.action.operation,
     expectedSignal: input.action.expectedSignal,
-    ...(input.action.routedAt ? { observationWindow: { from: input.action.routedAt } } : {}),
+...(input.action.routedAt ? { observationWindow: { from: input.action.routedAt } }: {}),
     observedEvidence: reading.evidence,
     result: reading.result,
     truth: reading.truth,
-    confidence: measured ? "high" : "unknown",
-    ...(metricKey ? { metricKey, metricClass: metricClassOf(metricKey)! } : {}),
+    confidence: measured ? "high": "unknown",
+...(metricKey ? { metricKey, metricClass: metricClassOf(metricKey)! }: {}),
     outcomeStatus,
     measuredAt: at,
-    ...(measured ? { observedAt: at } : {}),
+...(measured ? { observedAt: at }: {}),
     provenance: {
       appId: "conductor",
       actor: { type: "system", id: "conductor.outcome_observer", label: reading.because },
       observedAt: at,
-      confidence: reading.truth === "observed" ? "observed" : "inferred",
+      confidence: reading.truth === "observed" ? "observed": "inferred",
     },
   };
 }

@@ -33,7 +33,7 @@ const claire = {
 };
 
 const intelWithPerson: ScoutIntel = {
-  ...EMPTY_INTEL,
+...EMPTY_INTEL,
   collectedAt: "2026-08-19T00:00:00.000Z",
   people: [claire],
 } as unknown as ScoutIntel;
@@ -98,7 +98,7 @@ describe("a gated first message names the gate", () => {
     });
     expect(move.state).toBe("no_urgency");
     expect(move.blocked).toBe(true);
-    expect(move.headline).toBe("Email looks like the right way in — verify it first");
+    expect(move.headline).toBe("Email looks like the right way in, verify it first");
     expect(move.headline).not.toMatch(/^Start with email/);
     expect(move.primary.kind).toBe("resolve_blockers");
     expect(move.primary.label).toBe("Resolve 2 blockers");
@@ -121,7 +121,7 @@ describe("a gated first message names the gate", () => {
 
   it("urgency does not override the gate: the signal is cited, the gate is named", () => {
     const intel: ScoutIntel = {
-      ...intelWithPerson,
+...intelWithPerson,
       buyingSignals: [
         { statement: "They opened a second location in Franklin", observedAt: "2026-08-20T00:00:00.000Z" },
       ],
@@ -134,7 +134,7 @@ describe("a gated first message names the gate", () => {
     expect(move.state).toBe("act_now");
     expect(move.whyNow).toBe("They opened a second location in Franklin");
     expect(move.blocked).toBe(true);
-    expect(move.headline).toBe("Email looks like the right way in — verify it first");
+    expect(move.headline).toBe("Email looks like the right way in, verify it first");
     expect(move.primary.kind).toBe("resolve_blockers");
     expect(move.reason).toContain(UNVERIFIED);
   });
@@ -168,9 +168,9 @@ describe("a clear handoff opens the first message", () => {
 describe("non-email channels", () => {
   it("a blocked LinkedIn route names the person, not a channel Scout cannot promise", () => {
     const linkedinOnly: ScoutIntel = {
-      ...intelWithPerson,
+...intelWithPerson,
       people: [
-        { ...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" },
+        {...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" },
       ],
     } as unknown as ScoutIntel;
     const move = buildRecommendedNextMove({
@@ -180,7 +180,7 @@ describe("non-email channels", () => {
     });
     expect(move.channel?.channel).toBe("linkedin");
     expect(move.blocked).toBe(true);
-    expect(move.headline).toBe("Claire is worth knowing — verify the way in first");
+    expect(move.headline).toBe("Claire is worth knowing, verify the way in first");
     expect(move.headline).not.toContain("LinkedIn");
   });
 });
@@ -204,18 +204,18 @@ describe("evidence supports, it does not re-explain", () => {
 
   it("a verified address reads as verified, and a dated signal replaces the no-signal note", () => {
     const intel: ScoutIntel = {
-      ...intelWithPerson,
+...intelWithPerson,
       buyingSignals: [
         { statement: "They opened a second location in Franklin", observedAt: "2026-08-20T00:00:00.000Z" },
       ],
     } as unknown as ScoutIntel;
-    const brief = { ...preparedBrief, bestChannel: "email" as const };
+    const brief = {...preparedBrief, bestChannel: "email" as const };
     const marker = {
-      ...preparedMarker(),
+...preparedMarker(),
       brief,
     } as RelationshipResearchMarker;
     const dated = {
-      ...candidate({ intel }),
+...candidate({ intel }),
       development: { watch: null, research: marker },
     } as unknown as ProspectCandidate;
     // The entry's email is treated as verified through the brief's channel read.

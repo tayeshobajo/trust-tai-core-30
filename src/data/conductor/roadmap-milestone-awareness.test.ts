@@ -1,5 +1,5 @@
 /**
- * Conductor V3.3 — Roadmap milestone awareness.
+ * Conductor V3.3. Roadmap milestone awareness.
  *
  * Milestones are Roadmap's own stages, read, never re-modelled. What is proved:
  *  - stages read → milestonesKnown true, with provenance carried
@@ -33,7 +33,7 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
     id: "rm-teamsynerg",
     organizationId: ORG,
     prospectId: "pros-teamsynerg",
-    title: "Teamsynerg — path to be agreed",
+    title: "Teamsynerg, path to be agreed",
     subjectLabel: "Teamsynerg",
     objective: "Turn scattered delivery into one operating system",
     status: "draft",
@@ -56,7 +56,7 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
     metadata: {},
     createdAt: NOW,
     updatedAt: NOW,
-    ...overrides,
+...overrides,
   };
 }
 
@@ -73,7 +73,7 @@ function stage(overrides: Partial<RoadmapStage> = {}): RoadmapStage {
     evidence: [{ label: "Discovery call, 12 August", kind: "human" }],
     createdAt: NOW,
     updatedAt: NOW,
-    ...overrides,
+...overrides,
   };
 }
 
@@ -89,12 +89,12 @@ function decision(overrides: Partial<RoadmapDecision> = {}): RoadmapDecision {
     status: "open",
     createdAt: NOW,
     updatedAt: NOW,
-    ...overrides,
+...overrides,
   };
 }
 
 function snapshot(overrides: Partial<SuiteSnapshot> = {}): SuiteSnapshot {
-  return { ...emptySnapshot(ORG, NOW), ...overrides };
+  return {...emptySnapshot(ORG, NOW),...overrides };
 }
 
 const SEQUENCE = [

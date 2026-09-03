@@ -73,7 +73,7 @@ export function AddInteraction({
 
   const definition = interactionDefinition(type);
   const derived = useMemo(
-    () => (definition.narrative ? deriveInteraction(value) : { summary: "", suggestions: [] }),
+    () => (definition.narrative ? deriveInteraction(value): { summary: "", suggestions: [] }),
     [definition.narrative, value],
   );
 
@@ -88,14 +88,14 @@ export function AddInteraction({
       return;
     }
     const occurredAt = new Date(when).toISOString();
-    const summary = definition.narrative ? derived.summary || text.slice(0, 120) : text.slice(0, 200);
+    const summary = definition.narrative ? derived.summary || text.slice(0, 120): text.slice(0, 200);
     onSave({
       type,
       summary,
-      ...(definition.narrative ? { body: text } : {}),
-      occurredAt: Number.isNaN(Date.parse(occurredAt)) ? new Date().toISOString() : occurredAt,
+...(definition.narrative ? { body: text }: {}),
+      occurredAt: Number.isNaN(Date.parse(occurredAt)) ? new Date().toISOString(): occurredAt,
       confirmed: confirmedList,
-      ...(definition.narrative && theirWords ? { theirWords: true } : {}),
+...(definition.narrative && theirWords ? { theirWords: true }: {}),
     });
   }
 
@@ -120,7 +120,7 @@ export function AddInteraction({
         </header>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          {step === "confirm" ? null : (
+          {step === "confirm" ? null: (
           <>
           <fieldset>
             <legend className="tt-eyebrow">What kind</legend>
@@ -139,7 +139,7 @@ export function AddInteraction({
                     "rounded-full border px-3 py-1.5 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     type === entry.type
                       ? "border-royal/40 bg-royal/8 text-royal"
-                      : "border-border bg-card text-muted-foreground hover:text-foreground",
+: "border-border bg-card text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {entry.label}
@@ -155,7 +155,7 @@ export function AddInteraction({
                 setValue(event.target.value);
                 setStep("capture");
               }}
-              rows={definition.narrative ? 6 : 3}
+              rows={definition.narrative ? 6: 3}
               placeholder={definition.placeholder}
               className="w-full rounded-lg border border-input bg-card px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -197,8 +197,7 @@ export function AddInteraction({
                   </span>
                   <span className="mt-0.5 block text-[12px] text-muted-foreground">
                     Tick this when the capture quotes what they actually said. Reads that only
-                    ever listen to the other person — like recognizing a need they revealed —
-                    will treat it as their voice, not yours.
+                    ever listen to the other person, like recognizing a need they revealed, will treat it as their voice, not yours.
                   </span>
                 </span>
               </label>
@@ -211,7 +210,7 @@ export function AddInteraction({
                     Nothing structured stood out. The capture will be saved as written, and no
                     facts will be added to memory.
                   </p>
-                ) : (
+                ): (
                   <>
                     <p className="mt-1.5 text-[12px] text-muted-foreground">
                       Nothing here reaches memory unless you tick it. Untick anything Comms read
@@ -227,7 +226,7 @@ export function AddInteraction({
                               checked={Boolean(ticked[entry.id])}
                               onChange={(event) =>
                                 setTicked((current) => ({
-                                  ...current,
+...current,
                                   [entry.id]: event.target.checked,
                                 }))
                               }
@@ -237,7 +236,7 @@ export function AddInteraction({
                                 {KIND_LABEL[entry.kind]}
                                 {entry.due
                                   ? ` \u00b7 due ${new Date(entry.due).toLocaleDateString()}`
-                                  : ""}
+: ""}
                               </span>
                               <span className="mt-0.5 block text-[13px] text-foreground">
                                 {entry.text}
@@ -253,13 +252,13 @@ export function AddInteraction({
                     <p className="mt-2 text-[12px] text-muted-foreground">
                       {confirmedList.length === 0
                         ? "Nothing is ticked, so only the interaction itself will be saved."
-                        : `${confirmedList.length} of ${derived.suggestions.length} will be added to memory.`}
+: `${confirmedList.length} of ${derived.suggestions.length} will be added to memory.`}
                     </p>
                   </>
                 )}
               </div>
             </section>
-          ) : null}
+          ): null}
         </div>
 
         <footer className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
@@ -267,16 +266,16 @@ export function AddInteraction({
             variant="quiet"
             size="sm"
             type="button"
-            onClick={step === "confirm" ? () => setStep("capture") : onCancel}
+            onClick={step === "confirm" ? () => setStep("capture"): onCancel}
           >
-            {step === "confirm" ? "Back to the capture" : "Cancel"}
+            {step === "confirm" ? "Back to the capture": "Cancel"}
           </TTButton>
           <TTButton size="sm" type="button" onClick={save} disabled={busy || !value.trim()}>
             {busy
               ? "Saving\u2026"
-              : definition.narrative && step === "capture"
+: definition.narrative && step === "capture"
                 ? "Read this back"
-                : "Save interaction"}
+: "Save interaction"}
           </TTButton>
         </footer>
       </div>

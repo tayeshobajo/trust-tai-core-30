@@ -33,7 +33,7 @@ function relationship(part: Partial<Relationship> = {}): Relationship {
     metadata: {},
     createdAt: days(60),
     updatedAt: days(1),
-    ...part,
+...part,
   };
 }
 
@@ -44,7 +44,7 @@ function touch(part: Partial<Touch> & { id: string; occurredAt: string }): Touch
     channel: "email",
     direction: "outbound",
     summary: "A message",
-    ...part,
+...part,
   };
 }
 
@@ -75,7 +75,7 @@ const AT_RISK = {
 const QUIET = { relationship: relationship({ id: "r4", stage: "nurture" }), touches: [] as Touch[] };
 
 describe("deriveConversationHealth", () => {
-  it("is deterministic — the same conversation reads the same twice", () => {
+  it("is deterministic, the same conversation reads the same twice", () => {
     const first = deriveConversationHealth(HEALTHY.relationship, HEALTHY.touches, NOW);
     const second = deriveConversationHealth(HEALTHY.relationship, [...HEALTHY.touches], NOW);
     expect(second).toEqual(first);
@@ -121,7 +121,7 @@ describe("deriveConversationHealth", () => {
     const scores = {
       healthy: deriveConversationHealth(HEALTHY.relationship, HEALTHY.touches, NOW).score,
       needs: deriveConversationHealth(NEEDS_ATTENTION.relationship, NEEDS_ATTENTION.touches, NOW)
-        .score,
+.score,
       risk: deriveConversationHealth(AT_RISK.relationship, AT_RISK.touches, NOW).score,
     };
     for (const score of Object.values(scores)) {

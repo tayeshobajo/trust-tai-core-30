@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Trust Tai OS — visual regression sweep (browser half).
+Trust Tai OS, visual regression sweep (browser half).
 
 Renders the key OS screens at three breakpoints and checks the three things
 branding drifts on first: the official logo lockup, the typography hierarchy,
@@ -9,10 +9,10 @@ a baseline exists, compared pixel-wise so a layout change is visible too.
 
     python3 scripts/visual-regression.py                 # check against baselines
     python3 scripts/visual-regression.py --update        # (re)write baselines
-    python3 scripts/visual-regression.py --base-url ...  # default http://localhost:8080
+    python3 scripts/visual-regression.py --base-url...  # default http://localhost:8080
 
 Signed-out rooms render their fail-closed preview, which still carries the full
-shell branding — so the sweep needs no session.
+shell branding, so the sweep needs no session.
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ PROBE = """
     return { width: r.width, height: r.height, src: el.currentSrc || el.src, complete: el.complete && el.naturalWidth > 0 };
   });
   const seen = new Map();
-  for (const el of document.querySelectorAll('h1, h2, h3, p, .tt-eyebrow')) {
+  for (const el of document.querySelectorAll('h1, h2, h3, p,.tt-eyebrow')) {
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
     const cs = getComputedStyle(el);
@@ -106,7 +106,7 @@ MONO = "JetBrains Mono"
 
 
 def norm_color(value: str) -> str:
-    """CSS serialises oklch as `oklch(19% .048 266)`; compare on numbers, not text."""
+    """CSS serialises oklch as `oklch(19%.048 266)`; compare on numbers, not text."""
     v = value.strip().lower()
     if not v.startswith("oklch("):
         return v
@@ -210,7 +210,7 @@ async def main() -> int:
                 if not args.update:
                     drift = compare(shot, BASELINE / f"{screen}-{bp}.png")
                     if drift:
-                        failures.append(f"{screen}@{bp}: pixel drift — {drift}")
+                        failures.append(f"{screen}@{bp}: pixel drift, {drift}")
             await context.close()
         await browser.close()
 

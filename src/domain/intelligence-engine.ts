@@ -97,7 +97,7 @@ export interface Hypothesis {
   /** Why the engine thinks so, from the observations only. */
   because: string;
   confidence: ConfidenceLevel;
-  /** Observation ids. Never empty — that is what makes it checkable. */
+  /** Observation ids. Never empty, that is what makes it checkable. */
   observationRefs: ID[];
   /** Rooms the supporting observations came from. */
   sourceApps: string[];
@@ -183,7 +183,7 @@ export interface ActionProposal {
   title: string;
   /** One sentence: what this does, and to what. */
   summary: string;
-  /** The explicit limits of the action. Never empty — a boundless action is not proposed. */
+  /** The explicit limits of the action. Never empty, a boundless action is not proposed. */
   willDo: string[];
   willNotDo: string[];
   payload: Record<string, unknown>;

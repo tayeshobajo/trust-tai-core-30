@@ -12,7 +12,7 @@
  *  D. "Resolve N blockers" opens a guided flow: each blocker with its own
  *     action, honest progress as blockers clear, and a way back.
  *  E. When the final blocker clears, the flow advances straight into the
- *     first-message confirmation — no rediscovery.
+ *     first-message confirmation, no rediscovery.
  *  F. Research pending and failure states stay in place and truthful.
  */
 
@@ -51,9 +51,9 @@ const claire = {
 } as unknown as Person;
 
 const intel: ScoutIntel = {
-  ...EMPTY_INTEL,
+...EMPTY_INTEL,
   collectedAt: "2026-08-19T00:00:00.000Z",
-  people: [{ ...claire, id: undefined }],
+  people: [{...claire, id: undefined }],
 } as unknown as ScoutIntel;
 
 const brief: RelationshipDevelopmentBrief = {
@@ -139,10 +139,10 @@ function renderCard(over: Record<string, unknown> = {}) {
     onOpenPeople: vi.fn(),
     onWatch: vi.fn(),
     onSeeResearch: vi.fn(),
-    ...over,
+...over,
   };
   const view = render(<RecommendedNextMoveCard {...props} />);
-  return { ...view, props };
+  return {...view, props };
 }
 
 /* ---------------------------------------------------------- A · one reason */
@@ -175,7 +175,7 @@ describe("a gated first message", () => {
   it("shows the gate headline and Resolve 2 blockers, never Prepare first message", () => {
     renderCard();
     expect(
-      screen.getByRole("heading", { name: "Email looks like the right way in — verify it first" }),
+      screen.getByRole("heading", { name: "Email looks like the right way in, verify it first" }),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Resolve 2 blockers" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Prepare first message" })).toBeNull();
@@ -206,7 +206,7 @@ describe("the guided blocker flow", () => {
   });
 
   it("counts what has cleared as blockers resolve", () => {
-    const verified = { ...claire, emailStatus: "verified" } as unknown as Person;
+    const verified = {...claire, emailStatus: "verified" } as unknown as Person;
     const oneLeft: MoveBlocker[] = buildMoveBlockers({
       candidate,
       people: [verified],
@@ -270,7 +270,7 @@ describe("a ready handoff", () => {
 
 describe("prepare research feedback", () => {
   const researchMove = buildRecommendedNextMove({
-    candidate: { ...candidate, development: undefined } as unknown as ProspectCandidate,
+    candidate: {...candidate, development: undefined } as unknown as ProspectCandidate,
     people: [claire],
     now: new Date("2026-08-24T00:00:00.000Z"),
   });
@@ -349,7 +349,7 @@ describe("confirm this address feedback", () => {
 
     const alert = screen.getByRole("alert");
     expect(alert.textContent).toContain("That change could not be saved.");
-    // The blocker did not clear — a failed click changes nothing silently.
+    // The blocker did not clear, a failed click changes nothing silently.
     expect(screen.getByText(EMAIL_BLOCKER.message)).toBeTruthy();
     expect(screen.getByText("0 of 2 resolved")).toBeTruthy();
 

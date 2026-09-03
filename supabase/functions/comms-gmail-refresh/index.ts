@@ -1,12 +1,12 @@
 /**
- * comms-gmail-refresh — Supabase Edge Function
+ * comms-gmail-refresh. Supabase Edge Function
  *
  * Server-side bridge: decrypts the stored OAuth refresh token (AES-GCM,
  * sealed by the app under COMMS_TOKEN_ENC_KEY) and exchanges it for a
  * fresh Gmail access token.
  *
  * Called by the Comms Agent (service role) and by the app server.
- * Never called from the browser — the access token never leaves the
+ * Never called from the browser, the access token never leaves the
  * server boundary.
  *
  * Auth: Bearer must be the Supabase service role key. Any other token
@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
     return Response.json({ error: "Method not allowed." }, { status: 405 });
   }
 
-  // Must be service role — checked by comparing the bearer to the env key
+  // Must be service role, checked by comparing the bearer to the env key
   // Accepts either the legacy service-role JWT (COMMS_AGENT_AUTH_KEY) or the
   // platform-injected SUPABASE_SERVICE_ROLE_KEY (new sb_secret_ format).
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -109,11 +109,11 @@ Deno.serve(async (req: Request) => {
   });
 
   const { data: integration, error: integrationError } = await supabase
-    .from("comms_integrations")
-    .select("id, status, account_email")
-    .eq("organization_id", organizationId)
-    .eq("provider", "gmail")
-    .maybeSingle();
+.from("comms_integrations")
+.select("id, status, account_email")
+.eq("organization_id", organizationId)
+.eq("provider", "gmail")
+.maybeSingle();
 
   if (integrationError) {
     return Response.json({ error: integrationError.message }, { status: 500 });
@@ -132,7 +132,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // Read sealed token via the system RPC (service-role-only path).
-  // The member-facing RPC checks auth.uid() membership — null for service
+  // The member-facing RPC checks auth.uid() membership, null for service
   // role. This variant is granted to service_role only.
   const rpcUrl = new URL(`${supabaseUrl}/rest/v1/rpc/comms_get_integration_secret_system`);
   const rpcRes = await fetch(rpcUrl, {
@@ -158,20 +158,20 @@ Deno.serve(async (req: Request) => {
       { status: 404 },
     );
   }
-  // PostgREST returns JSON strings quoted — strip the quotes
-  const sealedValue = sealed.startsWith('"') ? JSON.parse(sealed) : sealed;
+  // PostgREST returns JSON strings quoted, strip the quotes
+  const sealedValue = sealed.startsWith('"') ? JSON.parse(sealed): sealed;
 
   // Decrypt
   let refreshToken: string;
   try {
     refreshToken = await openSecret(sealedValue, encKey);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Decryption failed.";
+    const message = err instanceof Error ? err.message: "Decryption failed.";
     // Mark as revoked so the UI surfaces it clearly
     await supabase
-      .from("comms_integrations")
-      .update({ status: "revoked", last_error: message, updated_at: new Date().toISOString() })
-      .eq("id", row.id);
+.from("comms_integrations")
+.update({ status: "revoked", last_error: message, updated_at: new Date().toISOString() })
+.eq("id", row.id);
     return Response.json({ error: `Token decryption failed: ${message}` }, { status: 500 });
   }
 
@@ -199,9 +199,9 @@ Deno.serve(async (req: Request) => {
     // If Google says the token is revoked, surface it
     if (tokenPayload.error === "invalid_grant") {
       await supabase
-        .from("comms_integrations")
-        .update({ status: "revoked", last_error: message, updated_at: new Date().toISOString() })
-        .eq("id", row.id);
+.from("comms_integrations")
+.update({ status: "revoked", last_error: message, updated_at: new Date().toISOString() })
+.eq("id", row.id);
     }
     return Response.json({ error: message }, { status: 502 });
   }
@@ -212,9 +212,9 @@ Deno.serve(async (req: Request) => {
 
   // Update last_sync_at on the integration row (non-fatal)
   await supabase
-    .from("comms_integrations")
-    .update({ last_sync_at: new Date().toISOString(), status: "connected", last_error: null, updated_at: new Date().toISOString() })
-    .eq("id", row.id);
+.from("comms_integrations")
+.update({ last_sync_at: new Date().toISOString(), status: "connected", last_error: null, updated_at: new Date().toISOString() })
+.eq("id", row.id);
 
   return Response.json({
     accessToken: tokenPayload.access_token,

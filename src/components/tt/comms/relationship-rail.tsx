@@ -88,16 +88,16 @@ function WhyItMatters({
           <TTButton variant="quiet" size="sm" type="button" onClick={onGraduate}>
             Mark as client
           </TTButton>
-        ) : onMoveToNurture && canMoveToNurture(relationship) ? (
+        ): onMoveToNurture && canMoveToNurture(relationship) ? (
           <TTButton variant="quiet" size="sm" type="button" onClick={onMoveToNurture}>
             Move to Nurture
           </TTButton>
-        ) : null
+        ): null
       }
     >
       <p className="text-[13px] text-foreground">
         {decided?.value ??
-          `${INTENT_LABEL[intent]} relationship${relationship.companyName ? ` at ${relationship.companyName}` : ""}.`}
+          `${INTENT_LABEL[intent]} relationship${relationship.companyName ? ` at ${relationship.companyName}`: ""}.`}
       </p>
       <p className="mt-1.5 flex items-center gap-2 text-[12px] text-muted-foreground">
         <SegmentPill segment={segment} />
@@ -105,9 +105,9 @@ function WhyItMatters({
       </p>
       {segment === "nurture" ? (
         <p className="mt-1 text-[12px] text-muted-foreground">
-          In Nurture — a relationship Trust Tai chose to develop.
+          In Nurture, a relationship Trust Tai chose to develop.
         </p>
-      ) : null}
+      ): null}
     </RailCard>
   );
 }
@@ -121,9 +121,9 @@ function WhatWeKnow({
   relationship: Relationship;
   onRemember?: () => void;
 }) {
-  const items = [...relationship.decided, ...relationship.observed, ...relationship.inferred]
-    .filter((item) => !isCommitment(item))
-    .slice(0, 6);
+  const items = [...relationship.decided,...relationship.observed,...relationship.inferred]
+.filter((item) => !isCommitment(item))
+.slice(0, 6);
 
   return (
     <RailCard
@@ -134,14 +134,14 @@ function WhatWeKnow({
           <TTButton variant="quiet" size="sm" type="button" onClick={onRemember}>
             Remember this
           </TTButton>
-        ) : null
+        ): null
       }
     >
       {items.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">
           Nothing is remembered yet. Add how you met or what they care about, and it stays here.
         </p>
-      ) : (
+      ): (
         <ul className="space-y-2.5">
           {items.map((item, index) => (
             <li key={`${item.label}-${index}`}>
@@ -151,7 +151,7 @@ function WhatWeKnow({
               <p className="mt-0.5 text-[13px] text-foreground">{item.value}</p>
               {item.addedBy ? (
                 <p className="text-[12px] text-muted-foreground">{item.addedBy}</p>
-              ) : null}
+              ): null}
             </li>
           ))}
         </ul>
@@ -178,7 +178,7 @@ function NextMoveCard({
       className={
         move.needed
           ? "rounded-xl border border-royal/25 bg-royal/5 p-4"
-          : "rounded-xl border border-border bg-card p-4"
+: "rounded-xl border border-border bg-card p-4"
       }
     >
       <p className="tt-eyebrow">
@@ -199,21 +199,21 @@ function NextMoveCard({
         <div className="mt-3 flex flex-wrap gap-2">
           {onPrepare ? (
             <TTButton size="sm" type="button" onClick={onPrepare}>
-              Prepare {move.urgency === "now" ? "this" : "check-in"}
+              Prepare {move.urgency === "now" ? "this": "check-in"}
             </TTButton>
-          ) : null}
+          ): null}
           {onRemindLater ? (
             <TTButton variant="quiet" size="sm" type="button" onClick={onRemindLater}>
               Remind me later
             </TTButton>
-          ) : null}
+          ): null}
           {onNotNeeded ? (
             <TTButton variant="quiet" size="sm" type="button" onClick={onNotNeeded}>
               Not needed
             </TTButton>
-          ) : null}
+          ): null}
         </div>
-      ) : null}
+      ): null}
     </section>
   );
 }
@@ -233,8 +233,8 @@ function CommitmentRow({
       <p className="text-[13px] text-foreground">{commitment.text}</p>
       <p className="mt-0.5 text-[12px] text-muted-foreground">
         {COMMITMENT_OWNER_LABEL[commitment.owner]}
-        {due ? ` · due ${due}` : " · no date set"}
-        {commitment.status !== "open" ? ` · ${commitment.status}` : ""}
+        {due ? ` · due ${due}`: " · no date set"}
+        {commitment.status !== "open" ? ` · ${commitment.status}`: ""}
       </p>
       {commitment.status === "open" && onSettle ? (
         <div className="mt-1.5 flex gap-2">
@@ -250,7 +250,7 @@ function CommitmentRow({
             Released
           </TTButton>
         </div>
-      ) : null}
+      ): null}
     </li>
   );
 }
@@ -265,7 +265,7 @@ function Promises({
   const [showSettled, setShowSettled] = useState(false);
   const all = commitmentsOf(relationship);
   const open = all.filter((entry) => entry.status === "open");
-  const shown = showSettled ? all : open;
+  const shown = showSettled ? all: open;
 
   return (
     <RailCard
@@ -279,19 +279,19 @@ function Promises({
             type="button"
             onClick={() => setShowSettled((value) => !value)}
           >
-            {showSettled ? "Open only" : "Show settled"}
+            {showSettled ? "Open only": "Show settled"}
           </TTButton>
-        ) : null
+        ): null
       }
     >
       {shown.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">
           Nothing is promised in either direction.
         </p>
-      ) : (
+      ): (
         <ul className="space-y-2">
           {shown.map((commitment) => (
-            <CommitmentRow key={commitment.id} commitment={commitment} {...(onSettle ? { onSettle } : {})} />
+            <CommitmentRow key={commitment.id} commitment={commitment} {...(onSettle ? { onSettle }: {})} />
           ))}
         </ul>
       )}
@@ -331,7 +331,7 @@ export function RelationshipRail({
   /**
    * Clients → Nurture, offered only when the client classification rests on
    * contextual fallback rather than hard evidence (`canMoveToNurture`). Same
-   * record, same history — only the stage becomes an explicit `nurture`.
+   * record, same history, only the stage becomes an explicit `nurture`.
    */
   onMoveToNurture?: () => void;
 }) {
@@ -339,19 +339,19 @@ export function RelationshipRail({
     <div className="space-y-3">
       <WhyItMatters
         relationship={relationship}
-        {...(onGraduate ? { onGraduate } : {})}
-        {...(onMoveToNurture ? { onMoveToNurture } : {})}
+        {...(onGraduate ? { onGraduate }: {})}
+        {...(onMoveToNurture ? { onMoveToNurture }: {})}
       />
-      <WhatWeKnow relationship={relationship} {...(onRemember ? { onRemember } : {})} />
+      <WhatWeKnow relationship={relationship} {...(onRemember ? { onRemember }: {})} />
       <NextMoveCard
         move={move}
-        {...(onPrepareMove ? { onPrepare: onPrepareMove } : {})}
-        {...(onRemindLater ? { onRemindLater } : {})}
-        {...(onNotNeeded ? { onNotNeeded } : {})}
+        {...(onPrepareMove ? { onPrepare: onPrepareMove }: {})}
+        {...(onRemindLater ? { onRemindLater }: {})}
+        {...(onNotNeeded ? { onNotNeeded }: {})}
       />
       <ConversationHealthCard health={health} />
       <RelationshipStrength strength={strength} />
-      <Promises relationship={relationship} {...(onSettleCommitment ? { onSettle: onSettleCommitment } : {})} />
+      <Promises relationship={relationship} {...(onSettleCommitment ? { onSettle: onSettleCommitment }: {})} />
     </div>
   );
 }

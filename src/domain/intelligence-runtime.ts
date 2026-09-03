@@ -1,5 +1,5 @@
 /**
- * The Trust Tai Intelligence Runtime — shared contract.
+ * The Trust Tai Intelligence Runtime, shared contract.
  *
  * The law: no business app may become its own isolated AI brain. Scout, Comms,
  * Roadmap, Projects, Ops, Studio, Steward and Conductor all reason through one
@@ -29,7 +29,7 @@ export type RuntimeRoom = string;
 /* ---------------------------------------------------------------- request */
 
 /**
- * A piece of evidence the caller already assembled — under RLS, in the room
+ * A piece of evidence the caller already assembled, under RLS, in the room
  * that owns it. The runtime never fetches evidence itself; it reasons over
  * what it is handed and says honestly when the packet is thin.
  */
@@ -42,7 +42,7 @@ export interface RuntimeEvidenceInput {
   owningRoom: RuntimeRoom;
   /** How the statement came to be true. */
   tier: "observed" | "decided" | "derived";
-  /** Optional source label, e.g. "Context packet — Website Growth Sprint". */
+  /** Optional source label, e.g. "Context packet. Website Growth Sprint". */
   label?: string;
 }
 
@@ -65,7 +65,7 @@ export interface VerificationExpectation {
 /**
  * The one shape every room uses to ask the runtime to reason. If a room's
  * question cannot be expressed as a ReasoningRequest, the room's contract is
- * wrong — not the runtime's.
+ * wrong, not the runtime's.
  */
 export interface ReasoningRequest {
   /** The owning room asking. The runtime answers for one room at a time. */
@@ -128,7 +128,7 @@ export interface RetrievedKnowledgeRef {
 
 /**
  * A bounded next step. "Bounded" means it says what it will do, what it will
- * not do, and whose authority it needs — before anyone is asked to approve it.
+ * not do, and whose authority it needs, before anyone is asked to approve it.
  */
 export interface RuntimeNextStep {
   title: string;
@@ -139,7 +139,7 @@ export interface RuntimeNextStep {
   willDo: string[];
   willNotDo: string[];
   reversible: boolean;
-  /** Leaves the building — a person carries it; the suite never does. */
+  /** Leaves the building, a person carries it; the suite never does. */
   external: boolean;
 }
 
@@ -224,7 +224,7 @@ const CONFIDENCE_ORDER: ConfidenceLevel[] = ["unknown", "low", "moderate", "high
  * The runtime's confidence can never outrun its evidence: no evidence means
  * "unknown", one source means at most "low", two means at most "moderate".
  * "high" requires three or more independent sources. The runtime has no
- * "proven" tier — proof is the verification gate's job, not a label.
+ * "proven" tier, proof is the verification gate's job, not a label.
  */
 export function runtimeConfidence(evidenceCount: number): ConfidenceLevel {
   if (evidenceCount <= 0) return "unknown";
@@ -236,7 +236,7 @@ export function runtimeConfidence(evidenceCount: number): ConfidenceLevel {
 /** The strongest confidence a read may claim, given its evidence. */
 export function capConfidence(level: ConfidenceLevel, evidenceCount: number): ConfidenceLevel {
   const cap = runtimeConfidence(evidenceCount);
-  return CONFIDENCE_ORDER.indexOf(level) > CONFIDENCE_ORDER.indexOf(cap) ? cap : level;
+  return CONFIDENCE_ORDER.indexOf(level) > CONFIDENCE_ORDER.indexOf(cap) ? cap: level;
 }
 
 /* ------------------------------------------- the problem-solving protocol */
@@ -296,8 +296,8 @@ export interface CompletionEvidence {
 }
 
 /**
- * "Done" is a claim that must carry proof. The gate — implemented in
- * src/data/intelligence/runtime/verification.ts — refuses any completion
+ * "Done" is a claim that must carry proof. The gate, implemented in
+ * src/data/intelligence/runtime/verification.ts, refuses any completion
  * whose only evidence is that an action ran.
  */
 export interface CompletionClaim {

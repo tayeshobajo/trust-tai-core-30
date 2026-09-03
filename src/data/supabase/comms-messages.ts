@@ -5,7 +5,7 @@
  * (member token or the scheduled service pass) and read here under the
  * member's own session, so RLS keeps the organization boundary. A workspace
  * whose integration tables are not applied yet reads as an empty timeline,
- * never an error dressed up as data — and a schema that predates the newer
+ * never an error dressed up as data, and a schema that predates the newer
  * columns degrades one variant at a time (body_html, body_text,
  * attachments), the same tolerance the sync write path keeps.
  *
@@ -59,15 +59,15 @@ export interface MessageRow {
 }
 
 function text(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+  return typeof value === "string" && value.trim().length > 0 ? value.trim(): undefined;
 }
 
 function attachments(value: unknown): AttachmentMeta[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const out = value
-    .map((entry) => attachmentMetaFromJson(entry))
-    .filter((entry): entry is AttachmentMeta => entry !== null);
-  return out.length > 0 ? out : undefined;
+.map((entry) => attachmentMetaFromJson(entry))
+.filter((entry): entry is AttachmentMeta => entry !== null);
+  return out.length > 0 ? out: undefined;
 }
 
 /** Exported for the focused provenance-mapping test. */
@@ -76,39 +76,39 @@ export function toMessage(row: MessageRow): StoredMailboxMessage {
   const provenance =
     row.provenance && typeof row.provenance === "object"
       ? (row.provenance as Record<string, unknown>)
-      : null;
+: null;
   // Transport identity is carried in provenance and only in provenance.
   // Synced Gmail mail and Comms-sent rows both stamp it server-side; a row
-  // without it gets no mailbox — we never infer one.
+  // without it gets no mailbox, we never infer one.
   const mailbox = mailboxFromProvenance(row.provenance);
   const blockedRemoteImages =
     typeof provenance?.["blocked_remote_images"] === "number"
       ? (provenance["blocked_remote_images"] as number)
-      : undefined;
+: undefined;
   return {
     id: row.id,
     organizationId: row.organization_id,
     relationshipId: row.relationship_id,
-    ...(row.thread_id ? { threadId: row.thread_id } : {}),
-    ...(text(row.provider_message_id) ? { providerMessageId: text(row.provider_message_id)! } : {}),
-    ...(text(row.provider_thread_id) ? { providerThreadId: text(row.provider_thread_id)! } : {}),
-    direction: row.direction === "outbound" ? "outbound" : "inbound",
-    ...(text(row.from_email) ? { fromEmail: text(row.from_email)! } : {}),
-    ...(text(row.from_name) ? { fromName: text(row.from_name)! } : {}),
-    ...(text(row.subject) ? { subject: text(row.subject)! } : {}),
-    ...(text(row.snippet) ? { snippet: text(row.snippet)! } : {}),
-    ...(text(row.body_text) ? { bodyText: text(row.body_text)! } : {}),
-    ...(text(row.body_html) ? { bodyHtml: row.body_html! } : {}),
+...(row.thread_id ? { threadId: row.thread_id }: {}),
+...(text(row.provider_message_id) ? { providerMessageId: text(row.provider_message_id)! }: {}),
+...(text(row.provider_thread_id) ? { providerThreadId: text(row.provider_thread_id)! }: {}),
+    direction: row.direction === "outbound" ? "outbound": "inbound",
+...(text(row.from_email) ? { fromEmail: text(row.from_email)! }: {}),
+...(text(row.from_name) ? { fromName: text(row.from_name)! }: {}),
+...(text(row.subject) ? { subject: text(row.subject)! }: {}),
+...(text(row.snippet) ? { snippet: text(row.snippet)! }: {}),
+...(text(row.body_text) ? { bodyText: text(row.body_text)! }: {}),
+...(text(row.body_html) ? { bodyHtml: row.body_html! }: {}),
     occurredAt: row.occurred_at,
-    ...(files ? { attachments: files } : {}),
-    ...(blockedRemoteImages !== undefined ? { blockedRemoteImages } : {}),
-    ...(provenance?.["source"] === "gmail-send" ? { sentViaComms: true } : {}),
-    ...(mailbox ? { mailbox } : {}),
+...(files ? { attachments: files }: {}),
+...(blockedRemoteImages !== undefined ? { blockedRemoteImages }: {}),
+...(provenance?.["source"] === "gmail-send" ? { sentViaComms: true }: {}),
+...(mailbox ? { mailbox }: {}),
   };
 }
 
 function notProvisioned(message: string): boolean {
-  return /relation .*comms_messages.* does not exist|could not find the table|schema cache/i.test(
+  return /relation.*comms_messages.* does not exist|could not find the table|schema cache/i.test(
     message,
   );
 }
@@ -132,12 +132,12 @@ export async function listRelationshipMessages(
 
   for (; index < COLUMN_VARIANTS.length; index += 1) {
     const result = await supabase
-      .from("comms_messages")
-      .select(COLUMN_VARIANTS[index]!)
-      .eq("organization_id", organizationId)
-      .eq("relationship_id", relationshipId)
-      .order("occurred_at", { ascending: true })
-      .limit(limit);
+.from("comms_messages")
+.select(COLUMN_VARIANTS[index]!)
+.eq("organization_id", organizationId)
+.eq("relationship_id", relationshipId)
+.order("occurred_at", { ascending: true })
+.limit(limit);
 
     if (!result.error) {
       data = result.data as unknown as MessageRow[];

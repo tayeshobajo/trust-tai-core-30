@@ -55,12 +55,12 @@ export function findBlindSpots(input: {
     spots.push({
       key: `intent_unmeasurable:${intent.kind}`,
       question: `Are we meeting the goal "${intent.label}"?`,
-      whyItMatters: `You decided this goal${intent.critical ? " and marked it critical" : ""}, and nothing in the suite can answer whether it is being met.`,
+      whyItMatters: `You decided this goal${intent.critical ? " and marked it critical": ""}, and nothing in the suite can answer whether it is being met.`,
       howToInstrument: definition?.instrumentation ?? "Connect a source for this metric.",
-      severity: intent.critical ? "critical" : "important",
+      severity: intent.critical ? "critical": "important",
       state: "not_connected",
       vitalKey: key,
-      ...(definition?.ownerApp ? { ownerApp: definition.ownerApp } : {}),
+...(definition?.ownerApp ? { ownerApp: definition.ownerApp }: {}),
       evidence: [human("Business intent you decided")],
     });
   }
@@ -78,12 +78,12 @@ export function findBlindSpots(input: {
       question: `What is our ${definition.label.toLowerCase()}?`,
       whyItMatters: wantsPipeline
         ? `${definition.whyItMatters} Without it, a revenue or pipeline goal cannot be turned into room-by-room targets.`
-        : definition.whyItMatters,
+: definition.whyItMatters,
       howToInstrument: definition.instrumentation,
-      severity: wantsPipeline ? "critical" : "important",
+      severity: wantsPipeline ? "critical": "important",
       state: "not_connected",
       vitalKey: key,
-      ...(definition.ownerApp ? { ownerApp: definition.ownerApp } : {}),
+...(definition.ownerApp ? { ownerApp: definition.ownerApp }: {}),
       evidence: [computed("No source in the suite answers this")],
     });
   }
@@ -141,8 +141,8 @@ export function findBlindSpots(input: {
   /* 6. Single point of failure: everything recorded by one person. */
   const actors = new Set(
     snapshot.events
-      .map((event) => event.provenance.actor.id)
-      .filter((id) => typeof id === "string" && id.length > 0),
+.map((event) => event.provenance.actor.id)
+.filter((id) => typeof id === "string" && id.length > 0),
   );
   if (snapshot.events.length >= 10 && actors.size === 1) {
     spots.push({
@@ -157,7 +157,7 @@ export function findBlindSpots(input: {
     });
   }
 
-  /* 7. No decided goal at all — the largest possible gap. */
+  /* 7. No decided goal at all, the largest possible gap. */
   if (intents.length === 0) {
     spots.push({
       key: "no_business_intent",

@@ -1,12 +1,12 @@
 /**
- * Trust Tai OS — Comms ↔ People identity.
+ * Trust Tai OS. Comms ↔ People identity.
  *
  * One person, one memory. A Comms relationship is a conversation; the person
  * having it lives once, in the shared `contacts` table. This module holds the
  * pure rules that keep the two honest with each other:
  *
  *  1. Nothing is invented. A company is only derived from an address when the
- *     domain actually belongs to a company — a free mailbox says nothing about
+ *     domain actually belongs to a company, a free mailbox says nothing about
  *     where someone works, so it stays blank rather than becoming "Gmail".
  *  2. A human edit outranks a derivation. A value a person typed is never
  *     replaced by something a sync guessed.
@@ -58,7 +58,7 @@ export function isFreeMailDomain(domain: string | undefined): boolean {
 
 /**
  * A company name that can be honestly read from an address, or nothing.
- * Free mailboxes and bare hostnames yield nothing — silence beats invention.
+ * Free mailboxes and bare hostnames yield nothing, silence beats invention.
  */
 export function companyFromEmail(email: string | undefined | null): string | undefined {
   const domain = domainOf(email);
@@ -66,10 +66,10 @@ export function companyFromEmail(email: string | undefined | null): string | und
   const base = domain.split(".")[0] ?? "";
   if (base.length < 2) return undefined;
   return base
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+.split(/[-_]/)
+.filter(Boolean)
+.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+.join(" ");
 }
 
 /**
@@ -99,7 +99,7 @@ export interface PersonIdentity {
 
 function clean(value: string | undefined | null): string | undefined {
   const trimmed = (value ?? "").trim().replace(/\s+/g, " ");
-  return trimmed ? trimmed : undefined;
+  return trimmed ? trimmed: undefined;
 }
 
 export function normalizeIdentity(input: {
@@ -109,8 +109,8 @@ export function normalizeIdentity(input: {
 }): PersonIdentity {
   return {
     fullName: clean(input.fullName) ?? "",
-    ...(clean(input.roleTitle) ? { roleTitle: clean(input.roleTitle) } : {}),
-    ...(clean(input.companyName) ? { companyName: clean(input.companyName) } : {}),
+...(clean(input.roleTitle) ? { roleTitle: clean(input.roleTitle) }: {}),
+...(clean(input.companyName) ? { companyName: clean(input.companyName) }: {}),
   };
 }
 
@@ -136,7 +136,7 @@ export function resolveIdentity(sides: IdentitySides): PersonIdentity {
   return normalizeIdentity({
     fullName: clean(sides.relationship.fullName) ?? clean(sides.contact?.fullName) ?? "",
     roleTitle: clean(sides.contact?.roleTitle),
-    ...(company ? { companyName: company } : {}),
+...(company ? { companyName: company }: {}),
   });
 }
 

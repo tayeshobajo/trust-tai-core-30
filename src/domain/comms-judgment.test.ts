@@ -56,7 +56,7 @@ const JUDGMENT: CommunicationJudgment = {
   whyNow: "They asked about timing; a straight answer and a next step are owed.",
   latestHumanSignal: "They mentioned almost in passing that their team just shipped phase one.",
   whatThisSaysAboutThem: "They are proud of the team's momentum and want a partner who keeps pace.",
-  whatDeservesAcknowledgment: "The phase one ship — name it before answering the timing question.",
+  whatDeservesAcknowledgment: "The phase one ship, name it before answering the timing question.",
   threadToBuildOn: "Their momentum: what phase two looks like now that phase one is live.",
   intendedEffect: "That they feel heard and unhurried, with a clear way forward.",
   responseObligation: "They asked whether the proposal covers phase two.",
@@ -135,12 +135,12 @@ describe("communication judgment on the rationale", () => {
 
   it("drops an ask with no content and keeps whyNatural when no ask belongs", () => {
     const parsed = parseCommunicationJudgment({
-      ...JUDGMENT,
+...JUDGMENT,
       askDecision: { shouldAsk: true, whyNatural: "Momentum.", what: "" },
     });
     expect(parsed?.askDecision.shouldAsk).toBe(false);
     const noAsk = parseCommunicationJudgment({
-      ...JUDGMENT,
+...JUDGMENT,
       askDecision: {
         shouldAsk: false,
         whyNatural: "She gave warmth; the conversation has not earned an ask.",
@@ -170,13 +170,13 @@ describe("judgmentSummaryLines", () => {
 
   it("says plainly when there is no ask, with the reason when one was judged", () => {
     const noReason = judgmentSummaryLines({
-      ...JUDGMENT,
+...JUDGMENT,
       askDecision: { shouldAsk: false, whyNatural: "", what: "" },
     });
     expect(noReason.at(-1)).toBe("No ask needed.");
 
     const withReason = judgmentSummaryLines({
-      ...JUDGMENT,
+...JUDGMENT,
       askDecision: {
         shouldAsk: false,
         whyNatural: "A warm note deserves acknowledgment, not a request for time.",
@@ -193,12 +193,12 @@ describe("the Brooke regression at judgment level", () => {
   /* Brooke thanked Tai for kind words, said it was lovely to meet him,
      enjoyed his perspective in the Mastermind, and offered to be a resource.
      The judgment the model returns for that thread must read as generosity
-     recognized — and no ask, because nothing in her note earns one. This
+     recognized, and no ask, because nothing in her note earns one. This
      pins the contract shape that judgment takes once parsed. */
   const BROOKE_JUDGMENT_RAW = {
     whyNow: "Brooke replied warmly to Tai's note after the Mastermind; a reply is owed while the thread is warm.",
     latestHumanSignal:
-      "She offered to be a resource — meeting someone once and already thinking about how she might be useful to them.",
+      "She offered to be a resource, meeting someone once and already thinking about how she might be useful to them.",
     whatThisSaysAboutThem:
       "A generous, help-first orientation; consistent with her daily work guiding business owners.",
     whatDeservesAcknowledgment:
@@ -290,7 +290,7 @@ describe("assessDraftGrounding", () => {
     expect(decision.missing).toEqual([]);
   });
 
-  it("regression: Brooke's case — known identity plus a real inbound thread passes grounding", () => {
+  it("regression: Brooke's case, known identity plus a real inbound thread passes grounding", () => {
     /* Production: Brooke Siler has a real inbound Gmail thread and a known
        identity (full name and email on the relationship). The gate must
        pass; the failure lived after grounding, at the provider boundary. */
@@ -428,7 +428,7 @@ describe("threadContextForJudgment", () => {
     occurredAt: string,
     text: string,
     subject?: string,
-  ) => ({ direction, occurredAt, bodyText: text, ...(subject ? { subject } : {}) });
+  ) => ({ direction, occurredAt, bodyText: text,...(subject ? { subject }: {}) });
 
   it("returns the recent slice oldest-to-newest with sides marked", () => {
     const entries = threadContextForJudgment([

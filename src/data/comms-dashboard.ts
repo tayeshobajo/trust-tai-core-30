@@ -4,7 +4,7 @@
  * Reads: every relationship in the workspace, and the recent synced messages
  * across all of them, so one screen can honestly say who wrote last.
  *
- * Writes: only two human acts — opening a conversation (which is what "read"
+ * Writes: only two human acts, opening a conversation (which is what "read"
  * means here) and closing or reopening it. Both land on the relationship's
  * metadata, so no new table and no invented state.
  */
@@ -23,7 +23,7 @@ const BASE =
 const VARIANTS = [`${BASE}, body_text`, BASE] as const;
 
 function notProvisioned(message: string): boolean {
-  return /relation .*comms_messages.* does not exist|could not find the table|schema cache/i.test(
+  return /relation.*comms_messages.* does not exist|could not find the table|schema cache/i.test(
     message,
   );
 }
@@ -42,11 +42,11 @@ export async function listWorkspaceMessages(
 
   for (const columns of VARIANTS) {
     const result = await supabase
-      .from("comms_messages")
-      .select(columns)
-      .eq("organization_id", organizationId)
-      .order("occurred_at", { ascending: false })
-      .limit(limit);
+.from("comms_messages")
+.select(columns)
+.eq("organization_id", organizationId)
+.order("occurred_at", { ascending: false })
+.limit(limit);
     if (!result.error) {
       rows = result.data as unknown as MessageRow[];
       break;
@@ -75,7 +75,7 @@ export async function markConversationRead(input: {
     input.relationship.id,
     {
       metadata: {
-        ...(input.relationship.metadata ?? {}),
+...(input.relationship.metadata ?? {}),
         [READ_AT_KEY]: input.at ?? new Date().toISOString(),
       },
     },
@@ -90,7 +90,7 @@ export async function setConversationClosed(input: {
   organizationId: ID;
   userId: ID;
 }): Promise<Relationship> {
-  const metadata = { ...(input.relationship.metadata ?? {}) };
+  const metadata = {...(input.relationship.metadata ?? {}) };
   if (input.closed) metadata[CLOSED_AT_KEY] = new Date().toISOString();
   else delete metadata[CLOSED_AT_KEY];
 

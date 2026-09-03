@@ -10,7 +10,7 @@
  * present. Fail-closed in both directions: no configured secret means no
  * endpoint, a wrong key means 401, and a mailbox that fails keeps its last
  * successful state and reports "Needs attention" through the connections page.
- * Read-only against Google — no send scope exists anywhere in this system.
+ * Read-only against Google, no send scope exists anywhere in this system.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -53,11 +53,11 @@ export const Route = createFileRoute("/api/public/comms/gmail/scheduled-sync")({
 
         try {
           const report = await syncAllConnectedMailboxes(
-            backfillDays !== undefined ? { backfillDays } : undefined,
+            backfillDays !== undefined ? { backfillDays }: undefined,
           );
           return Response.json(report);
         } catch (error) {
-          const message = error instanceof Error ? error.message : "That sweep failed.";
+          const message = error instanceof Error ? error.message: "That sweep failed.";
           return Response.json({ error: message }, { status: 500 });
         }
       },

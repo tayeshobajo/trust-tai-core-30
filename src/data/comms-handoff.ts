@@ -39,9 +39,9 @@ export function developmentFromBrief(
 ): HandoffDevelopment | undefined {
   if (!brief || !brief.grounded) return undefined;
   return {
-    ...(brief.whyNow ? { whyNow: brief.whyNow } : {}),
-    ...(brief.bestChannel ? { bestChannel: brief.bestChannel } : {}),
-    ...(brief.channelReason ? { channelReason: brief.channelReason } : {}),
+...(brief.whyNow ? { whyNow: brief.whyNow }: {}),
+...(brief.bestChannel ? { bestChannel: brief.bestChannel }: {}),
+...(brief.channelReason ? { channelReason: brief.channelReason }: {}),
     bridgeIdeas: brief.bridgeIdeas.map((idea) => ({
       label: idea.label,
       idea: idea.idea,
@@ -55,11 +55,11 @@ export function developmentFromBrief(
 export function chooseContact(people: Person[]): Person | null {
   const ranked = [...people].sort((a, b) => {
     const score = (person: Person) =>
-      (isCommsReady(person) ? 4 : 0) +
-      (person.emailStatus === "verified" ? 2 : person.email ? 1 : 0) +
-      (person.linkedinConfirmed === true && person.linkedinUrl ? 2 : 0) +
-      (isDecisionMaker(person) ? 2 : 0) +
-      (person.confidence === "human_confirmed" ? 1 : 0);
+      (isCommsReady(person) ? 4: 0) +
+      (person.emailStatus === "verified" ? 2: person.email ? 1: 0) +
+      (person.linkedinConfirmed === true && person.linkedinUrl ? 2: 0) +
+      (isDecisionMaker(person) ? 2: 0) +
+      (person.confidence === "human_confirmed" ? 1: 0);
     return score(b) - score(a);
   });
   return ranked[0] ?? null;
@@ -69,12 +69,12 @@ function toHandoffContact(person: Person): HandoffContact {
   return {
     personId: person.id,
     fullName: person.fullName,
-    ...(person.roleTitle ? { roleTitle: person.roleTitle } : {}),
-    ...(person.email ? { email: person.email } : {}),
+...(person.roleTitle ? { roleTitle: person.roleTitle }: {}),
+...(person.email ? { email: person.email }: {}),
     emailStatus: person.emailStatus,
-    ...(person.emailCheckedAt ? { emailCheckedAt: person.emailCheckedAt } : {}),
-    ...(person.linkedinUrl ? { linkedinUrl: person.linkedinUrl } : {}),
-    ...(person.linkedinConfirmed ? { linkedinConfirmed: person.linkedinConfirmed } : {}),
+...(person.emailCheckedAt ? { emailCheckedAt: person.emailCheckedAt }: {}),
+...(person.linkedinUrl ? { linkedinUrl: person.linkedinUrl }: {}),
+...(person.linkedinConfirmed ? { linkedinConfirmed: person.linkedinConfirmed }: {}),
     // Canonical reachability: verified email OR confirmed LinkedIn (brief §3).
     reachable:
       person.emailStatus === "verified" ||
@@ -101,26 +101,26 @@ export function selectTargets(people: Person[]): HandoffTarget[] {
       ? !person.email
         ? person.linkedinUrl
           ? "A LinkedIn URL is stored but unconfirmed. Confirm the route to make this person reachable."
-          : "No business email is on record."
-        : `${EMAIL_STATUS_LABEL[person.emailStatus]} · nobody has confirmed this address.`
-      : undefined;
+: "No business email is on record."
+: `${EMAIL_STATUS_LABEL[person.emailStatus]} · nobody has confirmed this address.`
+: undefined;
 
     return {
-      ...toHandoffContact(person),
-      rank: index === 0 && isCommsReady(person) ? "primary" : "alternate",
-      why: `${role}${person.confidence === "human_confirmed" ? ", confirmed by a Trust Tai member" : `, read from ${person.sourceId.replace(/-/g, " ")}`}.`,
-      ...(blocker ? { blocker } : {}),
+...toHandoffContact(person),
+      rank: index === 0 && isCommsReady(person) ? "primary": "alternate",
+      why: `${role}${person.confidence === "human_confirmed" ? ", confirmed by a Trust Tai member": `, read from ${person.sourceId.replace(/-/g, " ")}`}.`,
+...(blocker ? { blocker }: {}),
     };
   });
 }
 
 function weight(person: Person): number {
   return (
-    (isCommsReady(person) ? 8 : 0) +
-    (person.emailStatus === "verified" ? 4 : person.email ? 2 : 0) +
-    (person.linkedinConfirmed === true && person.linkedinUrl ? 3 : 0) +
-    (person.seniority === "founder" || person.seniority === "owner" ? 2 : 0) +
-    (person.confidence === "human_confirmed" ? 1 : 0)
+    (isCommsReady(person) ? 8: 0) +
+    (person.emailStatus === "verified" ? 4: person.email ? 2: 0) +
+    (person.linkedinConfirmed === true && person.linkedinUrl ? 3: 0) +
+    (person.seniority === "founder" || person.seniority === "owner" ? 2: 0) +
+    (person.confidence === "human_confirmed" ? 1: 0)
   );
 }
 
@@ -217,11 +217,11 @@ export function buildHandoffBlockers(input: {
   const blockers: HandoffBlocker[] = [];
   if (targets.length === 0) {
     blockers.push({
-      kind: people.length > 0 ? "no_decision_maker" : "no_person",
+      kind: people.length > 0 ? "no_decision_maker": "no_person",
       message:
         people.length > 0
           ? "Nobody on record is a founder or decision maker."
-          : "No named person is on record to address.",
+: "No named person is on record to address.",
     });
   }
   if (!person) {
@@ -235,7 +235,7 @@ export function buildHandoffBlockers(input: {
     });
   }
   if (person && !person.email) {
-    // A confirmed LinkedIn route satisfies reachability on its own — the email
+    // A confirmed LinkedIn route satisfies reachability on its own, the email
     // blocker only stands when no route of any kind exists (brief §3).
     const linkedinReachable = person.linkedinConfirmed === true && Boolean(person.linkedinUrl);
     if (!linkedinReachable) {
@@ -243,7 +243,7 @@ export function buildHandoffBlockers(input: {
         kind: "no_email",
         message: person.linkedinUrl
           ? `No business email is on record for ${person.fullName}, and the stored LinkedIn URL is unconfirmed.`
-          : `No business email is on record for ${person.fullName}.`,
+: `No business email is on record for ${person.fullName}.`,
         personId: person.id,
       });
     }
@@ -253,7 +253,7 @@ export function buildHandoffBlockers(input: {
     if (!linkedinReachable) {
       blockers.push({
         kind: "email_unverified",
-        message: `${person.email} is ${person.emailStatus === "found" ? "unverified" : person.emailStatus}, and no confirmed LinkedIn route stands in for it.`,
+        message: `${person.email} is ${person.emailStatus === "found" ? "unverified": person.emailStatus}, and no confirmed LinkedIn route stands in for it.`,
         personId: person.id,
       });
     }
@@ -285,7 +285,7 @@ export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
       "ICP fit",
       evaluation.scoreable
         ? `${evaluation.score}% against ICP v${evaluation.icpVersion ?? "-"} (${evaluation.light}).`
-        : "Never scored against live evidence.",
+: "Never scored against live evidence.",
       "fact",
       [{ label: "Deterministic evaluator", kind: "computed" }],
     ),
@@ -308,7 +308,7 @@ export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
       contextItem("Observed", signal.statement, "fact", [
         signal.sourceUrl
           ? { label: "Public page", url: signal.sourceUrl, kind: "page" }
-          : { label: "Public website read", kind: "page" },
+: { label: "Public website read", kind: "page" },
       ]),
     );
   }
@@ -330,36 +330,36 @@ export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
   );
 
   const confidence: ConfidenceRead = {
-    level: blockers.length === 0 ? fitConfidence.level : coverage.thin ? "low" : "moderate",
+    level: blockers.length === 0 ? fitConfidence.level: coverage.thin ? "low": "moderate",
     because:
       blockers.length === 0
         ? `${fitConfidence.because} A verified contact is on record.`
-        : `${blockers.length} thing${blockers.length === 1 ? "" : "s"} still stand${blockers.length === 1 ? "s" : ""} between this brief and a safe handoff.`,
+: `${blockers.length} thing${blockers.length === 1 ? "": "s"} still stand${blockers.length === 1 ? "s": ""} between this brief and a safe handoff.`,
     evidence: [
-      ...fitConfidence.evidence,
-      ...(person
+...fitConfidence.evidence,
+...(person
         ? [
             {
               label: `${person.fullName} · ${person.sourceId.replace(/-/g, " ")}`,
-              ...(person.sourceUrl ? { url: person.sourceUrl } : {}),
-              kind: person.sourceId === "manual" ? ("human" as const) : ("provider" as const),
+...(person.sourceUrl ? { url: person.sourceUrl }: {}),
+              kind: person.sourceId === "manual" ? ("human" as const): ("provider" as const),
             },
           ]
-        : []),
+: []),
     ],
   };
 
   return {
     prospectId: prospect.id,
     companyName: prospect.name,
-    ...(prospect.websiteUrl ? { websiteUrl: prospect.websiteUrl } : {}),
-    contact: person ? toHandoffContact(person) : null,
+...(prospect.websiteUrl ? { websiteUrl: prospect.websiteUrl }: {}),
+    contact: person ? toHandoffContact(person): null,
     targets,
     intent,
     intentBecause: because,
     requiredContext,
     confidence,
-    ...(input.development ? { development: input.development } : {}),
+...(input.development ? { development: input.development }: {}),
     blockers,
     ready: blockers.length === 0,
     generatedAt: new Date().toISOString(),

@@ -16,7 +16,7 @@ import type { StoredMailboxMessage } from "./comms-integrations";
 import type { ISODateTime } from "./entities";
 
 export interface LabeledThread {
-  /** Gmail's own conversation id — the thing the label was applied to. */
+  /** Gmail's own conversation id, the thing the label was applied to. */
   threadId: string;
   relationship: Relationship;
   /** Every stored message in this conversation, oldest first. */
@@ -32,7 +32,7 @@ export interface LabeledThread {
 function time(value: string | null | undefined): number {
   if (!value) return 0;
   const at = new Date(value).getTime();
-  return Number.isNaN(at) ? 0 : at;
+  return Number.isNaN(at) ? 0: at;
 }
 
 /**
@@ -76,7 +76,7 @@ export function labeledThreads(
           (message) => message.direction === "inbound" && time(message.occurredAt) > readAt,
         ).length,
         lastActivityAt: last.occurredAt,
-        ...(last.mailbox ? { mailbox: last.mailbox } : {}),
+...(last.mailbox ? { mailbox: last.mailbox }: {}),
       });
     }
   }
@@ -122,14 +122,14 @@ export function matchesInboxSearch(thread: LabeledThread, query: string): boolea
     thread.relationship.email ?? "",
     thread.subject,
   ]
-    .join(" ")
-    .toLowerCase()
-    .includes(needle);
+.join(" ")
+.toLowerCase()
+.includes(needle);
 }
 
 /** The subject a reply should carry: theirs, prefixed once. */
 export function replySubject(thread: LabeledThread): string {
-  const subject = thread.subject === "No subject" ? "" : thread.subject;
+  const subject = thread.subject === "No subject" ? "": thread.subject;
   if (!subject) return "";
-  return /^re:/i.test(subject) ? subject : `Re: ${subject}`;
+  return /^re:/i.test(subject) ? subject: `Re: ${subject}`;
 }

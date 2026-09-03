@@ -1,7 +1,7 @@
 /**
  * The send composer.
  *
- * Where a prepared draft becomes a sent message — but only ever by a
+ * Where a prepared draft becomes a sent message, but only ever by a
  * person's hand. The composer shows exactly what will be sent: the wording,
  * the recipients, the files. Comms never appends a hidden signature or
  * rewrites a word at send time; what is on screen is what leaves.
@@ -10,8 +10,7 @@
  * owns the conversation, and a new conversation shows a From choice only
  * when more than one mailbox can send. The boundary holds here too: Gmail's
  * send permission is requested only when the workspace chooses to grant it.
- * Until then the composer explains, calmly, why the Send button is quiet —
- * and everything else still works.
+ * Until then the composer explains, calmly, why the Send button is quiet, * and everything else still works.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -115,7 +114,7 @@ export function SendComposer({
 
   /**
    * The threads this relationship already has, newest first, each with the
-   * mailbox that owns it. Ownership comes from stored provenance — a reply
+   * mailbox that owns it. Ownership comes from stored provenance, a reply
    * always leaves from the mailbox the conversation lives in.
    */
   const threads = useMemo(() => {
@@ -126,17 +125,17 @@ export function SendComposer({
       if (!current || message.occurredAt > current.at) {
         seen.set(message.providerThreadId, {
           at: message.occurredAt,
-          ...(message.mailbox ? { mailbox: message.mailbox } : {}),
+...(message.mailbox ? { mailbox: message.mailbox }: {}),
         });
       }
     }
     return [...seen.entries()]
-      .sort((a, b) => (a[1].at < b[1].at ? 1 : -1))
-      .map(([id, meta]) => ({ id, ...(meta.mailbox ? { mailbox: meta.mailbox } : {}) }));
+.sort((a, b) => (a[1].at < b[1].at ? 1: -1))
+.map(([id, meta]) => ({ id,...(meta.mailbox ? { mailbox: meta.mailbox }: {}) }));
   }, [messages]);
 
   const [threadChoice, setThreadChoice] = useState<SendThreadChoice>(
-    threads.length > 0 ? { mode: "reply", providerThreadId: threads[0]!.id } : { mode: "new" },
+    threads.length > 0 ? { mode: "reply", providerThreadId: threads[0]!.id }: { mode: "new" },
   );
 
   const capability = useQuery({
@@ -175,7 +174,7 @@ export function SendComposer({
   const effectiveFromId =
     sendCapable.length === 1
       ? sendCapable[0]!.integrationId
-      : (fromMailboxId ?? sendCapable[0]?.integrationId ?? null);
+: (fromMailboxId ?? sendCapable[0]?.integrationId ?? null);
 
   async function saveEdits(): Promise<boolean> {
     const cc = parseRecipients(ccText);
@@ -189,7 +188,7 @@ export function SendComposer({
       await commsService.setDraftExtras(draft, { cc, bcc }, context);
       return true;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Those changes could not be saved.");
+      setError(cause instanceof Error ? cause.message: "Those changes could not be saved.");
       return false;
     }
   }
@@ -223,7 +222,7 @@ export function SendComposer({
     onClose();
   }
 
-  // Escape closes the editor through the same non-destructive path — it can
+  // Escape closes the editor through the same non-destructive path, it can
   // never discard a draft.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -238,8 +237,8 @@ export function SendComposer({
     if (!list || list.length === 0) return;
     const files = [...list];
     const problems = validateAttachments([
-      ...staged.map((file) => ({ filename: file.filename, size: file.size })),
-      ...files.map((file) => ({ filename: file.name, size: file.size })),
+...staged.map((file) => ({ filename: file.filename, size: file.size })),
+...files.map((file) => ({ filename: file.name, size: file.size })),
     ]);
     if (problems.length > 0) {
       setError(problems.join(" "));
@@ -252,8 +251,8 @@ export function SendComposer({
       for (const file of files) {
         const path = attachmentStoragePath(context.organizationId, draft.id, file.name);
         const { error: uploadError } = await supabase.storage
-          .from(DRAFT_ATTACHMENT_BUCKET)
-          .upload(path, file, { contentType: file.type || "application/octet-stream" });
+.from(DRAFT_ATTACHMENT_BUCKET)
+.upload(path, file, { contentType: file.type || "application/octet-stream" });
         if (uploadError) throw new Error(uploadError.message);
         next.push({
           filename: file.name,
@@ -265,7 +264,7 @@ export function SendComposer({
       await commsService.setDraftAttachments(draft, next, context);
       onChanged();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "That file could not be attached.");
+      setError(cause instanceof Error ? cause.message: "That file could not be attached.");
     } finally {
       setBusy(null);
       if (fileInput.current) fileInput.current.value = "";
@@ -283,11 +282,11 @@ export function SendComposer({
       );
       onChanged();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "That file could not be removed.");
+      setError(cause instanceof Error ? cause.message: "That file could not be removed.");
     }
   }
 
-  /** The one irreversible act — a person's click, recorded and idempotent. */
+  /** The one irreversible act, a person's click, recorded and idempotent. */
   async function handleSend() {
     setBusy("send");
     setError(null);
@@ -304,7 +303,7 @@ export function SendComposer({
         threadChoice,
         // A reply always leaves from its owning mailbox; the choice below
         // applies only when this draft opens a new conversation.
-        threadChoice.mode === "new" ? (effectiveFromId ?? undefined) : undefined,
+        threadChoice.mode === "new" ? (effectiveFromId ?? undefined): undefined,
       );
       if (outcome.state === "blocked") {
         setError(
@@ -312,15 +311,15 @@ export function SendComposer({
             "Gmail needs send permission before Comms can send for you. Reconnect Google with send access when you're ready.",
         );
       } else if (outcome.state === "failed") {
-        setError(outcome.error ?? "That send failed. The draft is kept — you can try again.");
+        setError(outcome.error ?? "That send failed. The draft is kept, you can try again.");
       } else if (outcome.state === "sending") {
         setNotice("Sending through Gmail…");
       } else {
-        setNotice(outcome.replayed ? "Already sent — nothing was sent twice." : "Sent through Gmail.");
+        setNotice(outcome.replayed ? "Already sent, nothing was sent twice.": "Sent through Gmail.");
       }
       onChanged();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "That send failed.");
+      setError(cause instanceof Error ? cause.message: "That send failed.");
     } finally {
       setBusy(null);
     }
@@ -335,7 +334,7 @@ export function SendComposer({
         <p className="tt-eyebrow">This draft</p>
         <div className="flex items-center gap-3">
           <p className="hidden text-[11px] text-muted-foreground sm:block">
-            What you see is exactly what is sent — Comms never adds a hidden signature.
+            What you see is exactly what is sent. Comms never adds a hidden signature.
           </p>
           <button
             type="button"
@@ -364,7 +363,7 @@ export function SendComposer({
             ))}
           </div>
         </div>
-      ) : null}
+      ): null}
 
       {/* What the draft stands on. Before anything sends, a person sees the
           evidence used and, when grounding is thin, what would sharpen it. */}
@@ -397,9 +396,9 @@ export function SendComposer({
                 </p>
               ))}
             </div>
-          ) : null}
+          ): null}
         </div>
-      ) : null}
+      ): null}
 
       <div className="grid gap-3">
         <EditorField label={`To · ${relationship.email ?? relationship.fullName}`}>
@@ -473,7 +472,7 @@ export function SendComposer({
           >
             {busy === "upload" ? (
               <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-            ) : (
+            ): (
               <Paperclip className="h-3 w-3" aria-hidden />
             )}
             Attach a file
@@ -517,7 +516,7 @@ export function SendComposer({
                   "rounded-full border px-3 py-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   threadChoice.mode === option.value
                     ? "border-royal/40 bg-royal/8 text-royal"
-                    : "border-border bg-card text-muted-foreground hover:text-foreground",
+: "border-border bg-card text-muted-foreground hover:text-foreground",
                 )}
               >
                 {option.label}
@@ -528,12 +527,12 @@ export function SendComposer({
             <p className="text-[12px] text-muted-foreground">
               Replies in this conversation send from {replyOwner}.
               {replyOwnerCapability && !replyOwnerCapability.canSend
-                ? " That mailbox has read-only access — reconnect it with send access under Connections to reply here."
-                : ""}
+                ? " That mailbox has read-only access, reconnect it with send access under Connections to reply here."
+: ""}
             </p>
-          ) : null}
+          ): null}
         </div>
-      ) : null}
+      ): null}
 
       {/* From: a real choice only when more than one mailbox can send. With
           one, the sender is automatic and stays invisible. */}
@@ -554,35 +553,34 @@ export function SendComposer({
             ))}
           </select>
         </div>
-      ) : null}
+      ): null}
 
       {error ? (
         <p role="alert" className="rounded-lg border border-ember/30 bg-ember/8 px-3 py-2 text-[12px] text-ember">
           {error}
         </p>
-      ) : null}
+      ): null}
       {failed && sendRecord?.error ? (
         <p className="rounded-lg border border-ember/30 bg-ember/8 px-3 py-2 text-[12px] text-ember">
           Last attempt failed: {sendRecord.error}
         </p>
-      ) : null}
+      ): null}
       {notice ? (
         <p className="rounded-lg border border-fern/30 bg-fern/8 px-3 py-2 text-[12px] text-fern">
           {notice}
         </p>
-      ) : null}
+      ): null}
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
         <div className="text-[12px] text-muted-foreground">
           {capability.data && !capability.data.connected ? (
             <p>Connect Gmail in Settings to send from here. Drafts work either way.</p>
-          ) : capability.data && !capability.data.canSend ? (
+          ): capability.data && !capability.data.canSend ? (
             <p>
-              No connected mailbox can send yet. Sending needs Google's send permission —
-              reconnect a mailbox with send access when you're ready. Until then, drafts and
+              No connected mailbox can send yet. Sending needs Google's send permission, reconnect a mailbox with send access when you're ready. Until then, drafts and
               history work as always.
             </p>
-          ) : (
+          ): (
             <p>Sending is always your click. Comms never sends on its own.</p>
           )}
         </div>
@@ -594,7 +592,7 @@ export function SendComposer({
             onClick={() => void handleSave()}
             disabled={sending || busy !== null}
           >
-            {busy === "save" ? "Saving…" : "Save changes"}
+            {busy === "save" ? "Saving…": "Save changes"}
           </TTButton>
           {capability.data?.canSend ? (
             <TTButton
@@ -608,13 +606,13 @@ export function SendComposer({
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Sending…
                 </>
-              ) : (
+              ): (
                 <>
                   <Send className="h-3.5 w-3.5" aria-hidden /> Send via Gmail
                 </>
               )}
             </TTButton>
-          ) : null}
+          ): null}
         </div>
       </div>
     </section>

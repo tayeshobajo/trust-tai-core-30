@@ -11,8 +11,7 @@
  * runtime boundary (src/lib/intelligence-runtime.server.ts), which verifies
  * access and then calls this transport. The fragmentation guard
  * (src/lib/intelligence-runtime-boundary.test.ts) enforces that. Offline QA
- * harnesses under scripts/ may import it directly to build a model caller —
- * they are operator-run tooling, not app code.
+ * harnesses under scripts/ may import it directly to build a model caller, * they are operator-run tooling, not app code.
  *
  * Provider discipline: keys never leave the server, the provider that
  * answered is recorded truthfully, and with no provider configured the call
@@ -53,10 +52,10 @@ async function requireMembership(
   organizationId: string,
 ): Promise<boolean> {
   const { data, error } = await supabase
-    .from("organization_memberships")
-    .select("organization_id")
-    .eq("organization_id", organizationId)
-    .limit(1);
+.from("organization_memberships")
+.select("organization_id")
+.eq("organization_id", organizationId)
+.limit(1);
   return !error && (data ?? []).length > 0;
 }
 
@@ -77,7 +76,7 @@ export async function requireRoadmapAccess(
  * Typed provider failures. Rooms never parse provider error strings: they
  * branch on these classes (via the runtime boundary's re-export) and map them
  * to their own honest, calm outcomes. Messages are for server logs and
- * operator reads — never trust them to be safe for a browser verbatim.
+ * operator reads, never trust them to be safe for a browser verbatim.
  */
 export class ProviderNotConfiguredError extends Error {
   readonly code = "provider_not_configured" as const;
@@ -132,7 +131,7 @@ export async function callRoadmapProvider(
     // end the run when a second provider is configured. Nothing is fabricated:
     // the fallback is a real reasoning call, and the reply records which
     // provider actually answered.
-    const fallback = selected.provider === "openai" ? lovableGatewayProvider() : null;
+    const fallback = selected.provider === "openai" ? lovableGatewayProvider(): null;
     const recoverable =
       error instanceof ProviderCallFailedError &&
       /quota|credit|billing|api key|unauthor|invalid_api_key|401|429/i.test(error.message);
@@ -151,10 +150,10 @@ async function runProviderCall(
   const response = await doFetch(selected.endpoint, {
     method: "POST",
     headers: {
-      ...selected.headers,
-      ...(selected.provider === "lovable" && options.initialRunId
+...selected.headers,
+...(selected.provider === "lovable" && options.initialRunId
         ? { [LOVABLE_AIG_RUN_ID_HEADER]: options.initialRunId }
-        : {}),
+: {}),
     },
     body: JSON.stringify({
       model: selected.model,
@@ -168,12 +167,12 @@ async function runProviderCall(
       // prompt and the reply is unwrapped by extractJsonObject. A caller that
       // passes an explicit strict responseFormat (e.g. Scout's candidate
       // schema) opts into sending both, which the hosted tool supports.
-      ...(options.webSearch ? { tools: [{ type: "web_search" }] } : {}),
-      ...(options.responseFormat
+...(options.webSearch ? { tools: [{ type: "web_search" }] }: {}),
+...(options.responseFormat
         ? { text: { format: options.responseFormat } }
-        : options.webSearch
+: options.webSearch
           ? {}
-          : { text: { format: { type: "json_object" } } }),
+: { text: { format: { type: "json_object" } } }),
     }),
   });
 
@@ -224,7 +223,7 @@ async function runProviderCall(
         throw new ProviderCallFailedError(
           detail
             ? `The reasoning run failed before returning anything. ${detail}`
-            : "The reasoning run failed before returning anything.",
+: "The reasoning run failed before returning anything.",
         );
       }
     }
@@ -244,10 +243,10 @@ async function runProviderCall(
  */
 export function extractJsonObject(raw: string): Record<string, unknown> {
   const text = raw
-    .trim()
-    .replace(/^```(?:json)?/i, "")
-    .replace(/```$/, "")
-    .trim();
+.trim()
+.replace(/^```(?:json)?/i, "")
+.replace(/```$/, "")
+.trim();
   try {
     return JSON.parse(text) as Record<string, unknown>;
   } catch {

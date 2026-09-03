@@ -1,7 +1,7 @@
 /**
  * Segment classification: which room of the relationship workspace a person
  * belongs to. Classification follows current relationship reality, not the
- * door the person entered through — established evidence (client link,
+ * door the person entered through, established evidence (client link,
  * graduated stage, established intent) wins over development evidence
  * (nurture stage, prospect intent, Scout provenance, early stage), and the
  * fallback keeps legacy established/manual rows visible in Clients.
@@ -24,13 +24,13 @@ function relationship(part: Partial<Relationship> = {}): Relationship {
     metadata: {},
     createdAt: "2026-08-01T00:00:00.000Z",
     updatedAt: "2026-08-01T00:00:00.000Z",
-    ...part,
+...part,
   };
 }
 
 describe("relationshipSegment", () => {
   it("classifies by reality, not source: new + in_person is Nurture", () => {
-    // Lorena: a prospect we met in person, early days — she is being
+    // Lorena: a prospect we met in person, early days, she is being
     // developed, not an established client.
     expect(relationshipSegment(relationship({ source: "in_person", stage: "new" }))).toBe(
       "nurture",
@@ -135,7 +135,7 @@ describe("relationshipSegment", () => {
 
   it("graduation never changes identity: only the stage moves", () => {
     const before = relationship({ id: "r9", source: "scout_handoff", stage: "in_conversation" });
-    const after = { ...before, stage: "client" as const };
+    const after = {...before, stage: "client" as const };
     expect(relationshipSegment(before)).toBe("nurture");
     expect(relationshipSegment(after)).toBe("client");
     expect(after.id).toBe(before.id);

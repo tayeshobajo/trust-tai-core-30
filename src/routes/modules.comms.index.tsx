@@ -2,7 +2,7 @@
  * Comms, the relationship room.
  *
  * Relationships on the left, the relationship itself owning the rest.
- * Intelligence appears when called, in an overlay context drawer — never a
+ * Intelligence appears when called, in an overlay context drawer, never a
  * permanent third column taxing the reading width. Reading a relationship
  * should feel like continuing a conversation, not administering a record.
  *
@@ -88,11 +88,11 @@ const DESCRIPTION =
 
 export const Route = createFileRoute("/modules/comms/")({
   // A Scout handoff lands here carrying the relationship it just opened, so
-  // Comms opens on exactly that person — never on whoever sorted first.
+  // Comms opens on exactly that person, never on whoever sorted first.
   validateSearch: (search: Record<string, unknown>): { relationship?: string } => ({
-    ...(typeof search["relationship"] === "string" && search["relationship"]
+...(typeof search["relationship"] === "string" && search["relationship"]
       ? { relationship: search["relationship"] as string }
-      : {}),
+: {}),
   }),
   head: () => ({
     meta: [
@@ -144,7 +144,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
    * Whether the draft editor is open is a person's choice, never a derived
    * fact: an existing draft must not trap the thread. Keyed by
    * relationship AND draft, so switching people can never leak one person's
-   * draft state into another's room. Close is not discard — closing here
+   * draft state into another's room. Close is not discard, closing here
    * only returns to the conversation; the draft stays on record.
    */
   const [openDraftKey, setOpenDraftKey] = useState<string | null>(null);
@@ -200,8 +200,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   );
 
   /**
-   * The view is always derived in full — search, filters, counts, and tabs
-   * describe the whole view — and only the rendered list is paged.
+   * The view is always derived in full, search, filters, counts, and tabs
+   * describe the whole view, and only the rendered list is paged.
    */
   const pageView = useMemo(() => inboxPage(view, page), [view, page]);
 
@@ -213,7 +213,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   function changeView(next: { tab?: InboxTab; query?: string; health?: ConversationHealthStatus | null }) {
     const nextTab = next.tab ?? tab;
     const nextQuery = next.query ?? query;
-    const nextHealth = next.health !== undefined ? next.health : healthFilter;
+    const nextHealth = next.health !== undefined ? next.health: healthFilter;
     setTab(nextTab);
     setQuery(nextQuery);
     setHealthFilter(nextHealth);
@@ -235,11 +235,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   /**
    * The open conversation defaults to the first person on the current page,
-   * so the room never shows someone the list is not showing — unless the
+   * so the room never shows someone the list is not showing, unless the
    * person was opened directly (from the sidebar), which always wins.
    */
   const selected: Relationship | null =
-    (selectedId ? relationships.find((entry) => entry.id === selectedId) : null) ??
+    (selectedId ? relationships.find((entry) => entry.id === selectedId): null) ??
     relationships.find((entry) => entry.id === pageSelection(pageView.rows, null)) ??
     null;
 
@@ -247,19 +247,19 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     if (!selectedId && selected) setSelectedId(selected.id);
   }, [selected, selectedId]);
 
-  // A deep link — above all a Scout handoff — names the relationship to open
+  // A deep link, above all a Scout handoff, names the relationship to open
   // on. It seeds the selection once; a person's own clicks always win after.
   useEffect(() => {
     if (deepLink.relationship) setSelectedId(deepLink.relationship);
   }, [deepLink.relationship]);
 
-  // Relationship context is an overlay drawer at every size — the room grid
+  // Relationship context is an overlay drawer at every size, the room grid
   // keeps only inbox + conversation. Escape closes it, focus returns to the
   // control that opened it, and the drawer always reflects the currently
   // selected relationship because the rail derives from `selected`.
   useEffect(() => {
     if (!contextOpen) return;
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement: null;
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") setContextOpen(false);
     }
@@ -295,8 +295,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
   const drafts = draftsQuery.data ?? [];
   const selectedMessages = messagesQuery.data ?? [];
-  const health = selected ? deriveConversationHealth(selected, selectedTouches) : null;
-  const strength = selected ? relationshipStrength(selected, selectedTouches) : null;
+  const health = selected ? deriveConversationHealth(selected, selectedTouches): null;
+  const strength = selected ? relationshipStrength(selected, selectedTouches): null;
   const days = useMemo(
     () => groupByDay(conversationTimeline(selectedTouches, drafts, selectedMessages)),
     [selectedTouches, drafts, selectedMessages],
@@ -304,7 +304,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   /**
    * Roadmap is recognized only from needs THEY revealed, never forced. This
-   * read runs over counterparty-authored evidence alone — inbound mail with
+   * read runs over counterparty-authored evidence alone, inbound mail with
    * quoted history stripped, and interactions a person recorded as their
    * words. Our own copy, drafts, and notes can never manufacture a signal.
    * It recommends nothing and creates nothing. Tai decides.
@@ -318,8 +318,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const savedDraft = drafts.find((draft) => draft.reviewState !== "discarded");
   /** The open editor is this relationship's draft AND a person's choice. */
   const activeDraft =
-    selected && savedDraft && COMPOSER_STATES.has(savedDraft.reviewState) ? savedDraft : null;
-  const draftKey = selected && activeDraft ? `${selected.id}:${activeDraft.id}` : null;
+    selected && savedDraft && COMPOSER_STATES.has(savedDraft.reviewState) ? savedDraft: null;
+  const draftKey = selected && activeDraft ? `${selected.id}:${activeDraft.id}`: null;
   const editorOpen = draftKey !== null && openDraftKey === draftKey;
 
   async function refresh() {
@@ -375,7 +375,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           summary: `${submission.summary} · ${provenance.label}`,
           body: submission.body,
           occurredAt: submission.occurredAt,
-          ...(submission.theirWords ? { theirWords: true } : {}),
+...(submission.theirWords ? { theirWords: true }: {}),
         },
         context,
       );
@@ -384,18 +384,18 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         await commsService.remember(
           relationship,
           {
-            label: entry.kind === "commitment" ? "Promise" : "Worth remembering",
+            label: entry.kind === "commitment" ? "Promise": "Worth remembering",
             value: entry.text,
             tier: "decided",
             evidence: [provenance, { label: `From: ${entry.because}`, kind: "human" }],
-            ...(entry.kind === "commitment"
+...(entry.kind === "commitment"
               ? {
                   category: COMMITMENT_CATEGORY,
                   status: "open" as const,
                   owner: entry.owner ?? "us",
-                  ...(entry.due ? { due: entry.due } : {}),
+...(entry.due ? { due: entry.due }: {}),
                 }
-              : { category: entry.kind === "next_move" ? "Important context" : "What they care about" }),
+: { category: entry.kind === "next_move" ? "Important context": "What they care about" }),
             addedBy: provenance.label,
           },
           context,
@@ -428,7 +428,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           touch,
           relationship: selected!,
           summary: input.edit.summary,
-          ...(input.edit.body !== undefined ? { body: input.edit.body } : {}),
+...(input.edit.body !== undefined ? { body: input.edit.body }: {}),
           editedBy: identity.name,
         },
         context,
@@ -449,8 +449,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           touch,
           relationship: selected!,
           retractedBy: identity.name,
-          ...(input.because ? { because: input.because } : {}),
-          ...(input.restore ? { restore: true } : {}),
+...(input.because ? { because: input.because }: {}),
+...(input.restore ? { restore: true }: {}),
         },
         context,
       );
@@ -476,10 +476,10 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 writeCommunicationJudgment({ violations: draft.violations }, draft.judgment),
                 draft.grounding,
               )
-            : { violations: draft.violations },
+: { violations: draft.violations },
           evidence: draft.usedEvidence.map((entry) => ({
             label: `${entry.label} (${entry.tier})`,
-            kind: entry.tier === "decided" ? "human" : "computed",
+            kind: entry.tier === "decided" ? "human": "computed",
           })),
         },
         context,
@@ -489,7 +489,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   /**
    * Discard is the only destructive act on a draft, and it is always a
-   * separate, explicit, confirmed choice — never a side effect of closing.
+   * separate, explicit, confirmed choice, never a side effect of closing.
    */
   const discardDraft = useMutation({
     mutationFn: (draft: NonNullable<typeof activeDraft>) =>
@@ -529,7 +529,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       setOpenDraftKey(`${selected.id}:${saved.id}`);
     } catch (error) {
       setDraftError(
-        error instanceof Error ? error.message : "That draft could not be prepared.",
+        error instanceof Error ? error.message: "That draft could not be prepared.",
       );
     } finally {
       setDrafting(false);
@@ -549,14 +549,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     );
   }
 
-  const move = selected ? nextRelationshipMove(selected) : null;
+  const move = selected ? nextRelationshipMove(selected): null;
   const attentionSplit = splitAttention(
     relationshipsWorthAttention(relationships),
     attentionState,
   );
   const editingTouch = editingTouchId
     ? (selectedTouches.find((entry) => entry.id === editingTouchId) ?? null)
-    : null;
+: null;
 
   const rail =
     selected && health && strength && move ? (
@@ -575,7 +575,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         onGraduate={() => update.mutate({ stage: "client" })}
         onMoveToNurture={() => update.mutate({ stage: "nurture" })}
       />
-    ) : null;
+    ): null;
 
   return (
     <AppShell
@@ -620,7 +620,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 blockedBecause={
                   roadmapHandoffReadiness(selected).ready
                     ? null
-                    : roadmapHandoffReadiness(selected).because
+: roadmapHandoffReadiness(selected).because
                 }
                 context={{
                   organizationId: identity.organizationId,
@@ -628,16 +628,16 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                   userLabel: identity.name,
                 }}
               />
-            ) : null}
+            ): null}
             {selected ? (
               <TTButton variant="quiet" onClick={() => setInteracting(true)}>
                 Add interaction
               </TTButton>
-            ) : null}
+            ): null}
             <TTButton
               onClick={() => setCapturing((value) => !value)}
             >
-              {capturing ? "Close" : "Add relationship"}
+              {capturing ? "Close": "Add relationship"}
             </TTButton>
           </div>
         }
@@ -655,18 +655,18 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             onCancel={() => setCapturing(false)}
           />
           <p className="text-[13px] text-muted-foreground">
-            Or label them <span className="text-foreground">Trust Tai/Comms</span> in Gmail — Comms
+            Or label them <span className="text-foreground">Trust Tai/Comms</span> in Gmail. Comms
             brings that person in on its own, with their labeled history.
           </p>
           {create.isError ? (
             <p className="text-[13px] text-destructive">{(create.error as Error).message}</p>
-          ) : null}
+          ): null}
 
         </div>
-      ) : null}
+      ): null}
 
       {/* Inbox finds the person; conversation owns the room. Intelligence
-          appears when called — context is an overlay drawer, never a column. */}
+          appears when called, context is an overlay drawer, never a column. */}
       <div className="mt-5 grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
         <aside className="tt-surface max-h-[78vh] overflow-hidden p-0 lg:sticky lg:top-20">
           <CommsInbox
@@ -694,7 +694,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             <p className="p-8 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
               Opening your conversations…
             </p>
-          ) : selected && health ? (
+          ): selected && health ? (
             <ConversationRoom
               relationship={selected}
               days={days}
@@ -725,7 +725,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                     {roadmapSignal.needs.map((need) => (
                       <li key={need.kind} className="text-[13px] text-foreground">
                         <span className="font-medium">{need.label}</span>
-                        <span className="text-muted-foreground"> — {need.evidence}</span>
+                        <span className="text-muted-foreground">, {need.evidence}</span>
                       </li>
                     ))}
                   </ul>
@@ -734,7 +734,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                     conversation.
                   </p>
                 </div>
-              ) : null}
+              ): null}
 
               {profileOpen ? (
                 <div className="border-t border-border bg-secondary/30 px-5 py-4">
@@ -746,13 +746,13 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                   <p className="mt-3 text-[13px] text-muted-foreground">
                     {[
                       selected.email,
-                      selected.metWhere ? `Met at ${selected.metWhere}` : null,
+                      selected.metWhere ? `Met at ${selected.metWhere}`: null,
                       selected.metAt
                         ? `Met ${new Date(selected.metAt).toLocaleDateString()}`
-                        : null,
+: null,
                     ]
-                      .filter(Boolean)
-                      .join(" · ") || "Nothing else on record yet."}
+.filter(Boolean)
+.join(" · ") || "Nothing else on record yet."}
                   </p>
 
                   <div className="mt-3">
@@ -772,7 +772,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                     </TTButton>
                   </div>
                 </div>
-              ) : null}
+              ): null}
 
               {activeDraft && editorOpen ? (
                 <SendComposer
@@ -783,17 +783,17 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                   onChanged={refresh}
                   onClose={() => setOpenDraftKey(null)}
                 />
-              ) : (
+              ): (
                 <>
                   {/* A draft exists but the editor is closed: the thread stays
                       readable, and this quiet strip is the way back in. The
-                      draft is never discarded by closing — only by the
+                      draft is never discarded by closing, only by the
                       explicit, confirmed choice here. */}
                   {activeDraft ? (
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-cloud/40 px-4 py-2 sm:px-5">
                       <p className="min-w-0 truncate text-[12px] text-muted-foreground">
                         <span className="font-medium text-foreground">Draft saved</span>
-                        {activeDraft.subject?.trim() ? ` · ${activeDraft.subject.trim()}` : ""}
+                        {activeDraft.subject?.trim() ? ` · ${activeDraft.subject.trim()}`: ""}
                       </p>
                       <div className="flex items-center gap-2">
                         {confirmDiscard ? (
@@ -808,7 +808,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                               disabled={discardDraft.isPending}
                               onClick={() => discardDraft.mutate(activeDraft)}
                             >
-                              {discardDraft.isPending ? "Discarding…" : "Confirm discard"}
+                              {discardDraft.isPending ? "Discarding…": "Confirm discard"}
                             </TTButton>
                             <TTButton
                               variant="quiet"
@@ -819,7 +819,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                               Keep it
                             </TTButton>
                           </>
-                        ) : (
+                        ): (
                           <button
                             type="button"
                             onClick={() => setConfirmDiscard(true)}
@@ -841,19 +841,19 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                         </TTButton>
                       </div>
                     </div>
-                  ) : null}
+                  ): null}
                   <ReplyRecordBar
                     drafting={drafting}
                     busy={recordInteraction.isPending || saveDraft.isPending}
                     error={draftError}
-                    purposeHint={move?.needed ? move.action : null}
+                    purposeHint={move?.needed ? move.action: null}
                     onPrepareDraft={(register, purpose) => void compose(register, purpose)}
                     onRecordInteraction={() => setInteracting(true)}
                   />
                 </>
               )}
             </ConversationRoom>
-          ) : (
+          ): (
             <div className="p-8">
               <EmptyState
                 title="No conversations yet."
@@ -873,7 +873,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         Relationship intelligence lives in an overlay drawer at every size, so
         the conversation keeps the full width it is owed. Escape closes it,
         the scrim is a real button, and switching relationships re-derives the
-        rail in place — context can never go stale.
+        rail in place, context can never go stale.
       */}
       {contextOpen && rail ? (
         <div
@@ -905,7 +905,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
             {rail}
           </div>
         </div>
-      ) : null}
+      ): null}
 
       {editingTouch && selected ? (
         <EditInteraction
@@ -916,11 +916,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           onCancel={() => setEditingTouchId(null)}
           onSave={(edit) => editTouch.mutate({ touchId: editingTouch.id, edit })}
           onRetract={(because) =>
-            retractTouch.mutate({ touchId: editingTouch.id, ...(because ? { because } : {}) })
+            retractTouch.mutate({ touchId: editingTouch.id,...(because ? { because }: {}) })
           }
           onRestore={() => retractTouch.mutate({ touchId: editingTouch.id, restore: true })}
         />
-      ) : null}
+      ): null}
 
       {exporting && selected && health && strength && move ? (
         <RelationshipExport
@@ -934,7 +934,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           }}
           onClose={() => setExporting(false)}
         />
-      ) : null}
+      ): null}
 
       {interacting && selected ? (
         <AddInteraction
@@ -944,7 +944,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           onCancel={() => setInteracting(false)}
           onSave={(submission) => recordInteraction.mutate(submission)}
         />
-      ) : null}
+      ): null}
     </div>
     </AppShell>
   );

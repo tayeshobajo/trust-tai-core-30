@@ -1,4 +1,4 @@
-# Steward — Memory + Learning
+# Steward. Memory + Learning
 
 > Steward does not manage people. Steward helps people remember what matters to
 > one another.
@@ -16,7 +16,7 @@ applied: canonical `public.conversations` and `public.commitments`, plus
 `steward_beliefs` already carries what memory needs: append-only rows, org
 scoping through the shared RLS helper, `tier`, `authority`, `supersedes_id`,
 `evidence`, and who recorded it. So a memory row *is* a belief. The structured
-part — facet, person, pattern key, the value before a correction — rides as one
+part, facet, person, pattern key, the value before a correction, rides as one
 reserved entry in the belief's `evidence` array (`steward-memory::{…}`,
 `src/data/steward/memory-encoding.ts`) and is stripped on read. A person only
 ever sees real evidence.
@@ -30,8 +30,7 @@ steps.
 `correctionsFromEdit` produces one record per field that actually moved.
 `correctionToDraft` writes it as `tier: decided`, `authority: human`,
 `supersedes_id` pointing at what it replaces, with the before and after both
-kept. Nothing is deleted, ever. A cleared field is treated as no instruction —
-absence of typing is not a deletion.
+kept. Nothing is deleted, ever. A cleared field is treated as no instruction, absence of typing is not a deletion.
 
 ## B. Organizational memory model
 
@@ -48,7 +47,7 @@ before they are ever counted, and a test asserts it.
 
 Threshold: **three distinct canonical conversations**
 (`RECURRING_PATTERN_THRESHOLD`). One event is an event, two is a coincidence.
-Repetition inside a single meeting counts once — a meeting talks about the same
+Repetition inside a single meeting counts once, a meeting talks about the same
 thing many times.
 
 Patterns are counted from **confirmed commitments**, not from one meeting's
@@ -61,7 +60,7 @@ pattern" and holds it only when a person says yes. Declining writes a decided
 
 `proposeStateChanges` matches a new reading against live commitments by wording
 overlap, requiring owner agreement when both sides name someone. It proposes
-`already_completed`, `waiting`, `released` or `restated` — and **changes
+`already_completed`, `waiting`, `released` or `restated`, and **changes
 nothing**. Only a person moves a status, because only a person knows whether "I
 sent that over" meant the promised thing or something adjacent.
 
@@ -80,8 +79,8 @@ it, and the record stays.
 
 ## G. Learning in the interpreter
 
-`selectRelevantMemory` hands the model a bounded slice — people actually in the
-room, projects actually named, capped by `MEMORY_SELECTION_LIMITS` — split into
+`selectRelevantMemory` hands the model a bounded slice, people actually in the
+room, projects actually named, capped by `MEMORY_SELECTION_LIMITS`, split into
 `decided_memory` and `inferred_memory`. Interpreter law: decided memory is
 settled and not re-litigated; inferred memory is context only; **when memory and
 the transcript disagree, follow the transcript and say so**. Disagreements with
@@ -97,7 +96,7 @@ fabricates memory.
 
 ## Acceptance (read-only)
 
-`bun run scripts/steward-semantic-acceptance.ts` — Fathom 779145597, Bioptrics
+`bun run scripts/steward-semantic-acceptance.ts`. Fathom 779145597, Bioptrics
 plan update. Latest run:
 
 - 633 segments → 32 candidates → clean owner-attributed readings
@@ -121,12 +120,11 @@ nothing is scored. Two dismissals of the same pattern stop Steward raising that
 shape of reading.
 
 When memory disagrees with the transcript, the review shows both sentences side
-by side — who taught Steward the remembered side and when, against what was just
-heard — and asks a person which is true now. Steward never picks.
+by side, who taught Steward the remembered side and when, against what was just
+heard, and asks a person which is true now. Steward never picks.
 
 Selection is relevance-first and hard-bounded (8 decided, 5 inferred): people in
 the room, people named or called by first name, projects actually discussed.
-Matching is forgiving about how people speak and strict about everything else —
-a loose match scores lower rather than passing free. The review's **Memory used**
+Matching is forgiving about how people speak and strict about everything else, a loose match scores lower rather than passing free. The review's **Memory used**
 panel lists exactly which beliefs were handed to the model, out of how many held,
 each with the plain sentence explaining why it was chosen.

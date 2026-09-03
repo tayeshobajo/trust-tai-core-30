@@ -9,7 +9,7 @@ import {
 } from "@/lib/linki-reply-ingest.server";
 
 /**
- * A minimal stand-in for the governed Supabase client — the same shape the
+ * A minimal stand-in for the governed Supabase client, the same shape the
  * comms-intake tests use, extended for the three tables the seam touches:
  * contacts (resolution), comms_relationships / comms_touches (thread append),
  * linkedin_replies (landing ledger), activities (event stream).
@@ -20,7 +20,7 @@ interface ContactSeed {
   metadata: Record<string, unknown>;
 }
 
-/** Row shape used by the fake — everything is a plain record. */
+/** Row shape used by the fake, everything is a plain record. */
 interface ContactSeed {
   [key: string]: unknown;
   id: string;
@@ -46,7 +46,7 @@ function fakeClient(seed?: {
     linkedinReplies: [] as Record<string, unknown>[],
     touches: [] as Record<string, unknown>[],
     activities: [] as Record<string, unknown>[],
-    /** Set true and any .insert on the named table throws a non-23505 error. */
+    /** Set true and any.insert on the named table throws a non-23505 error. */
     failInsertOn: null as string | null,
   };
   let counter = 0;
@@ -55,9 +55,9 @@ function fakeClient(seed?: {
     const rows =
       table === "contacts"
         ? state.contacts
-        : table === "comms_relationships"
+: table === "comms_relationships"
           ? state.relationships
-          : [];
+: [];
     const columnMatches = (row: Record<string, unknown>, column: string, value: string): boolean => {
       if (column === "metadata->>linkedin_url") {
         const meta = row["metadata"] as Record<string, unknown> | undefined;
@@ -75,7 +75,7 @@ function fakeClient(seed?: {
         if (!columnMatches(row, column, value)) return false;
       }
       if (orFilter) {
-        // "col.eq.v,col.eq.v" — PostgREST OR over the two metadata locations.
+        // "col.eq.v,col.eq.v". PostgREST OR over the two metadata locations.
         const clauses = orFilter.split(",").map((clause) => {
           const [column, op, value] = clause.split(".");
           return { column: column!, op: op!, value: value! };
@@ -92,9 +92,9 @@ function fakeClient(seed?: {
     const rows =
       table === "linkedin_replies"
         ? state.linkedinReplies
-        : table === "comms_relationships"
+: table === "comms_relationships"
           ? state.relationships
-          : [];
+: [];
     for (const row of rows) {
       let ok = true;
       for (const [column, value] of Object.entries(filters)) {
@@ -162,7 +162,7 @@ function fakeClient(seed?: {
         }
         counter += 1;
         const id = `${table}-${counter}`;
-        insertedRow = { ...row, id };
+        insertedRow = {...row, id };
         if (table === "contacts") state.contacts.push(insertedRow);
         if (table === "comms_relationships") state.relationships.push(insertedRow);
         if (table === "linkedin_replies") state.linkedinReplies.push(insertedRow);
@@ -175,7 +175,7 @@ function fakeClient(seed?: {
       },
       update: (patch: Record<string, unknown>) => {
         updatePatch = patch;
-        const updateFilters: Record<string, string> = { ...filters };
+        const updateFilters: Record<string, string> = {...filters };
         const updateBuilder: Record<string, unknown> = {
           eq: (column: string, value: string) => {
             updateFilters[column] = value;
@@ -205,9 +205,9 @@ function confirmedContact(over: Partial<ContactSeed> = {}): ContactSeed {
     metadata: {
       linkedin_url: URL_CONFIRMED,
       linkedin_confirmed: true,
-      ...(over.metadata ?? {}),
+...(over.metadata ?? {}),
     },
-    ...over,
+...over,
   };
 }
 
@@ -219,10 +219,10 @@ function replyInput(over: Partial<LinkedInReplyObserved> = {}): LinkedInReplyObs
     externalMessageRef: "msg-001",
     senderLinkedinUrl: URL_CONFIRMED,
     senderName: "Jonathan Mull",
-    body: "Thanks for the note — let's talk next week.",
+    body: "Thanks for the note, let's talk next week.",
     observedAt: "2026-08-27T18:00:00.000Z",
     accountRef: "linki-account-31f9",
-    ...over,
+...over,
   };
 }
 
@@ -267,7 +267,7 @@ describe("normalizeLinkedinUrl", () => {
   });
 
   it("reads the nested people-metadata location as the same person", () => {
-    // documented behavior parity with peopleMetaOf — both spellings normalize equal
+    // documented behavior parity with peopleMetaOf, both spellings normalize equal
     expect(normalizeLinkedinUrl("www.linkedin.com/in/jonathan-mull")).toBe(URL_CONFIRMED);
   });
 
@@ -333,7 +333,7 @@ describe("resolveSender", () => {
 
 /* ------------------------------------------------------- full ingestion */
 
-describe("ingestLinkedInReply — resolved happy path", () => {
+describe("ingestLinkedInReply, resolved happy path", () => {
   function seeded() {
     return fakeClient({
       contacts: [confirmedContact()],
@@ -359,7 +359,7 @@ describe("ingestLinkedInReply — resolved happy path", () => {
     expect(touch!["channel"]).toBe("linkedin");
     expect(touch!["direction"]).toBe("inbound");
     expect(touch!["occurred_at"]).toBe("2026-08-27T18:00:00.000Z");
-    expect(touch!["body"]).toBe("Thanks for the note — let's talk next week.");
+    expect(touch!["body"]).toBe("Thanks for the note, let's talk next week.");
     const provenance = touch!["provenance"] as Record<string, unknown>;
     expect(provenance["source"]).toBe("linki");
     expect(provenance["external_message_ref"]).toBe("msg-001");
@@ -409,7 +409,7 @@ describe("ingestLinkedInReply — resolved happy path", () => {
   });
 });
 
-describe("ingestLinkedInReply — unresolved goes to the human queue", () => {
+describe("ingestLinkedInReply, unresolved goes to the human queue", () => {
   it("queues and never auto-creates a contact or relationship", async () => {
     const { client, state } = fakeClient({ contacts: [] });
     const result = await ingestLinkedInReply(client, replyInput(), {
@@ -421,7 +421,7 @@ describe("ingestLinkedInReply — unresolved goes to the human queue", () => {
     // The observation is kept for the human...
     expect(state.linkedinReplies).toHaveLength(1);
     expect(state.linkedinReplies[0]!["status"]).toBe("pending_resolution");
-    // ...but nothing was invented.
+    //...but nothing was invented.
     expect(state.contacts).toHaveLength(0);
     expect(state.relationships).toHaveLength(0);
     expect(state.touches).toHaveLength(0);

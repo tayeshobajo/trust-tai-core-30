@@ -1,4 +1,4 @@
--- Trust Tai OS — Roadmap Intelligence v2 schema
+-- Trust Tai OS. Roadmap Intelligence v2 schema
 --
 -- NOT YET APPLIED to the externally managed Trust Tai Supabase project
 -- (ref okydosoacqdnursmmenf). Until it is applied, the Research, Strategy,

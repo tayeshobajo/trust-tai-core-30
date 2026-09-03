@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — in-app presence.
+ * Trust Tai OS, in-app presence.
  *
  * Signing in and working are two different truths. Supabase Auth owns the
  * first; this owns the second: the last time a person opened a room. A person
@@ -44,10 +44,10 @@ export async function readMemberPresence(
   organizationId: string,
 ): Promise<Provisioned<Map<string, MemberPresence>>> {
   const result = await supabase
-    .from("member_activity")
-    .select("user_id, app_key, last_seen_at")
-    .eq("organization_id", organizationId)
-    .order("last_seen_at", { ascending: false });
+.from("member_activity")
+.select("user_id, app_key, last_seen_at")
+.eq("organization_id", organizationId)
+.order("last_seen_at", { ascending: false });
 
   if (result.error) {
     if (missingRelation(result.error)) return { provisioned: false, value: new Map() };

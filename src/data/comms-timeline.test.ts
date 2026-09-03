@@ -35,7 +35,7 @@ function mail(partial: Partial<StoredMailboxMessage>): StoredMailboxMessage {
     relationshipId: "rel-1",
     direction: "inbound",
     occurredAt: "2026-08-20T11:00:00.000Z",
-    ...partial,
+...partial,
   };
 }
 
@@ -77,13 +77,13 @@ describe("conversationTimeline with synced mail", () => {
 
   it("shows a sent draft as a claim until the mailbox proves it", () => {
     const [event] = conversationTimeline([], [DRAFT], []);
-    expect(event?.source).toBe("Sent via Gmail — not yet seen in the mailbox");
+    expect(event?.source).toBe("Sent via Gmail, not yet seen in the mailbox");
     expect(event?.meta).toBe("sent");
   });
 
   it("upgrades a sent draft once the mailbox has verified it", () => {
     const verified: CommsDraft = {
-      ...DRAFT,
+...DRAFT,
       rationale: {
         verification: {
           state: "mailbox_verified",
@@ -94,7 +94,7 @@ describe("conversationTimeline with synced mail", () => {
       },
     };
     const [event] = conversationTimeline([], [verified], []);
-    expect(event?.source).toBe("Sent — seen in the mailbox");
+    expect(event?.source).toBe("Sent, seen in the mailbox");
     expect(event?.meta).toBe("mailbox_verified");
   });
 });

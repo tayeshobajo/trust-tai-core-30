@@ -16,8 +16,8 @@ Two layers guard the Trust Tai OS brand surface. Both read the same contract,
 
 ## 2. Rendered checks (headless Chromium)
 
-`scripts/visual-regression.py` loads five screens — Auth, Home, Scout, Conductor,
-Pulse — at 375, 768 and 1440 px. For each it reads computed styles and asserts
+`scripts/visual-regression.py` loads five screens. Auth, Home, Scout, Conductor,
+Pulse, at 375, 768 and 1440 px. For each it reads computed styles and asserts
 the logo loads from the official asset at the right aspect and height, every
 heading/body/eyebrow uses a brand family at an in-range size, and every token
 resolves to its canonical value. It then screenshots each screen and compares

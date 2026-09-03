@@ -1,5 +1,5 @@
 /**
- * Conductor V3.1 — question to routable Scout cycle.
+ * Conductor V3.1, question to routable Scout cycle.
  *
  * The V3 first-cycle rehearsal locked in one honest failure: a question could
  * not start a cycle, because no reasoning path produced a governed action
@@ -132,7 +132,7 @@ const SAVED_ICP: IcpContext = {
 /** A snapshot whose Scout board is genuinely empty. */
 function thinPipeline(organizationId = ORG) {
   return {
-    ...emptySnapshot(organizationId, NOW),
+...emptySnapshot(organizationId, NOW),
     /* Conversations exist, but the Scout board is empty: the evidence the
      * thin-pipeline hypothesis actually reads. */
     relationships: [1, 2, 3].map((index) => ({
@@ -252,7 +252,7 @@ describe("deterministic execution-input resolution", () => {
     const answer = answerQuestion({
       snapshot: thinPipeline(),
       question: DEMAND_QUESTION,
-      icp: { ...SAVED_ICP, contentMarkdown: "## \n---\n" },
+      icp: {...SAVED_ICP, contentMarkdown: "## \n---\n" },
     });
     const discovery = answer.proposedActions.find((a) => a.operation === "scout.open_discovery")!;
     expect(answer.inputResolutions?.[discovery.id]?.missing).toContain("target industries");
@@ -319,7 +319,7 @@ describe("question → approval → Scout execution → observation → learning
     /* Now the real adapter accepts it, because the brief is present. */
     expect(
       routability({ action: scoutAction, actions: approved, adapters: ROOM_ADAPTERS, access })
-        .routable,
+.routable,
     ).toBe(true);
 
     const outcome = await routeAction(scoutAction, approved, owner, actor, ROOM_ADAPTERS, NOW);
@@ -329,7 +329,7 @@ describe("question → approval → Scout execution → observation → learning
 
     /* Observation and learning: unchanged V3 behaviour, deduped on re-check. */
     const routed = [outcome.action];
-    const receiptsFor = outcome.receipt ? [outcome.receipt] : [];
+    const receiptsFor = outcome.receipt ? [outcome.receipt]: [];
     const first = await runObservationPass({
       organizationId: ORG,
       actions: routed,

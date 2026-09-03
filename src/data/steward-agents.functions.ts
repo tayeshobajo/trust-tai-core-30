@@ -5,9 +5,9 @@ import type { StewardAgentRead } from "@/domain/steward-accountability";
 
 /** Read the Paperclip workforce for one workspace. Membership is enforced. */
 export const getStewardAgents = createServerFn({ method: "GET" })
-  .inputValidator((data: { organizationId: string }) => data)
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context, data }): Promise<StewardAgentRead> => {
+.inputValidator((data: { organizationId: string }) => data)
+.middleware([requireSupabaseAuth])
+.handler(async ({ context, data }): Promise<StewardAgentRead> => {
     const { assertStewardMembership, readStewardAgents } = await import(
       "@/lib/steward-agents.server"
     );
@@ -24,20 +24,20 @@ export const getStewardAgents = createServerFn({ method: "GET" })
  * issues even on retry.
  */
 export const assignStewardAgentTask = createServerFn({ method: "POST" })
-  .inputValidator(
+.inputValidator(
     (data: {
       organizationId: string;
       agentId: string;
       title: string;
       description: string;
-      /** Trust Tai task key — used as idempotency key base. */
+      /** Trust Tai task key, used as idempotency key base. */
       sourceEntityId?: string | null;
       sourceEntityType?: string | null;
       sourceApp?: string | null;
     }) => data,
   )
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context, data }): Promise<{ issueId: string; bindingId: string; isNew: boolean }> => {
+.middleware([requireSupabaseAuth])
+.handler(async ({ context, data }): Promise<{ issueId: string; bindingId: string; isNew: boolean }> => {
     const { assertStewardMembership, assignPaperclipTask } = await import(
       "@/lib/steward-agents.server"
     );
@@ -55,14 +55,14 @@ export const assignStewardAgentTask = createServerFn({ method: "POST" })
 
 /**
  * Pause or resume a Paperclip agent. Reflects the new state immediately.
- * Steward does not store its own paused flag — Paperclip owns execution state.
+ * Steward does not store its own paused flag. Paperclip owns execution state.
  */
 export const setPaperclipAgentPausedFn = createServerFn({ method: "POST" })
-  .inputValidator(
+.inputValidator(
     (data: { organizationId: string; agentId: string; paused: boolean }) => data,
   )
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context, data }): Promise<{ status: string; pausedAt: string | null }> => {
+.middleware([requireSupabaseAuth])
+.handler(async ({ context, data }): Promise<{ status: string; pausedAt: string | null }> => {
     const { assertStewardMembership, setPaperclipAgentPaused } = await import(
       "@/lib/steward-agents.server"
     );
@@ -75,11 +75,11 @@ export const setPaperclipAgentPausedFn = createServerFn({ method: "POST" })
  * Used to answer agent questions or leave context mid-task.
  */
 export const postTaiNoteToIssueFn = createServerFn({ method: "POST" })
-  .inputValidator(
+.inputValidator(
     (data: { organizationId: string; issueId: string; note: string }) => data,
   )
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context, data }): Promise<{ commentId: string }> => {
+.middleware([requireSupabaseAuth])
+.handler(async ({ context, data }): Promise<{ commentId: string }> => {
     const { assertStewardMembership, postTaiNoteToIssue } = await import(
       "@/lib/steward-agents.server"
     );

@@ -1,13 +1,13 @@
 #!/usr/bin/env npx tsx
 /**
- * Local reconcile sweep — mirrors supabase/functions/paperclip-reconcile.
+ * Local reconcile sweep, mirrors supabase/functions/paperclip-reconcile.
  *
  * Runs on the laptop (launchd com.trusttai.reconcile-sweep, 300s) because
  * Paperclip is laptop-local (127.0.0.1:3100, private exposure). The edge fn
  * stays deployed but unscheduled; when Paperclip gets a public URL, switch:
  * set PAPERCLIP_API_URL secret + dashboard schedule, then unload local plist.
  *
- * Reads .env.local for credentials (never committed).
+ * Reads.env.local for credentials (never committed).
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -61,10 +61,10 @@ async function main() {
 
   // 1. Read registered agents from DB
   const { data: agentRows, error: agentsError } = await supabase
-    .from("execution_agents")
-    .select("id, paperclip_agent_id, name, enabled")
-    .eq("organization_id", organizationId)
-    .eq("enabled", true);
+.from("execution_agents")
+.select("id, paperclip_agent_id, name, enabled")
+.eq("organization_id", organizationId)
+.eq("enabled", true);
 
   if (agentsError || !agentRows) {
     await supabase.from("paperclip_sync_state").upsert({
@@ -74,7 +74,7 @@ async function main() {
       consecutive_failures: 1,
       updated_at: now,
     }, { onConflict: "organization_id,resource_type" });
-    console.error(`reconcile-sweep: failed to read agents — ${agentsError?.message}`);
+    console.error(`reconcile-sweep: failed to read agents, ${agentsError?.message}`);
     process.exit(1);
   }
 
@@ -98,7 +98,7 @@ async function main() {
         last_known_status: agent.status,
         last_synced_at: now,
         last_heartbeat_at: agent.lastHeartbeatAt ?? null,
-        paused_at: pausedByStatus ? (agent.pausedAt ?? now) : null,
+        paused_at: pausedByStatus ? (agent.pausedAt ?? now): null,
         paperclip_company_id: agent.companyId,
         updated_at: now,
       }).eq("paperclip_agent_id", agentId);
@@ -112,19 +112,19 @@ async function main() {
         for (const issue of doneRes) {
           if (issue.status === "done" && issue.id) {
             await supabase
-              .from("execution_bindings")
-              .update({
+.from("execution_bindings")
+.update({
                 status: "completed",
                 result_summary: issue.title,
                 updated_at: now,
               })
-              .eq("paperclip_issue_id", issue.id)
-              .in("status", ["dispatched", "dispatching", "in_progress"]);
+.eq("paperclip_issue_id", issue.id)
+.in("status", ["dispatched", "dispatching", "in_progress"]);
           }
         }
       }
     } catch (error) {
-      syncError = error instanceof Error ? error.message : "Unknown error";
+      syncError = error instanceof Error ? error.message: "Unknown error";
       totalErrors++;
     }
 
@@ -136,8 +136,8 @@ async function main() {
   await supabase.from("paperclip_sync_state").upsert({
     organization_id: organizationId,
     resource_type: "agents",
-    last_success_at: totalErrors === 0 ? now : undefined,
-    last_error: totalErrors > 0 ? `${totalErrors} agent(s) failed to sync.` : null,
+    last_success_at: totalErrors === 0 ? now: undefined,
+    last_error: totalErrors > 0 ? `${totalErrors} agent(s) failed to sync.`: null,
     consecutive_failures: totalErrors,
     updated_at: now,
   }, { onConflict: "organization_id,resource_type" });
@@ -147,6 +147,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error(`reconcile-sweep: fatal — ${e instanceof Error ? e.message : e}`);
+  console.error(`reconcile-sweep: fatal, ${e instanceof Error ? e.message: e}`);
   process.exit(1);
 });

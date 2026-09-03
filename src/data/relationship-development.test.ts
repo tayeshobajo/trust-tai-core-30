@@ -6,10 +6,9 @@
  *     person is "needs a person", never "ready".
  *  2. 60% fit triggers deeper research, never outreach. Preparation is
  *     bounded: newly eligible, moved evidence, staleness, or a person's
- *     explicit refresh — never every render.
- *  3. Roadmap is recognized only from needs THEY revealed. Our own copy —
- *     outbound mail, our notes, even our words quoted back inside their
- *     reply — can never manufacture a signal.
+ *     explicit refresh, never every render.
+ *  3. Roadmap is recognized only from needs THEY revealed. Our own copy, *     outbound mail, our notes, even our words quoted back inside their
+ *     reply, can never manufacture a signal.
  *  4. Text is a protected channel. Meeting someone, an introduction, or a
  *     found phone number never opens it; only explicit text-route evidence
  *     does.
@@ -65,12 +64,12 @@ const candidate = (over: {
       score: over.score ?? 80,
     },
     intel: over.intel ?? EMPTY_INTEL,
-    ...(over.development ? { development: over.development } : {}),
+...(over.development ? { development: over.development }: {}),
     lastCheckedAt: over.lastCheckedAt ?? "2026-08-01T00:00:00.000Z",
   }) as unknown as ProspectCandidate;
 
 const intelWithPerson: ScoutIntel = {
-  ...EMPTY_INTEL,
+...EMPTY_INTEL,
   people: [
     {
       fullName: "Jordan Meyer",
@@ -83,7 +82,7 @@ const intelWithPerson: ScoutIntel = {
 } as unknown as ScoutIntel;
 
 const inboundEmail = (bodyText: string, over: Record<string, unknown> = {}) =>
-  ({ direction: "inbound", subject: "", bodyText, ...over }) as unknown as Pick<
+  ({ direction: "inbound", subject: "", bodyText,...over }) as unknown as Pick<
     StoredMailboxMessage,
     "direction" | "subject" | "snippet" | "bodyText" | "bodyHtml"
   >;
@@ -99,10 +98,10 @@ const touch = (direction: "inbound" | "outbound", summary: string, provenance?: 
     direction,
     summary,
     body: undefined,
-    ...(provenance ? { provenance } : {}),
+...(provenance ? { provenance }: {}),
   }) as unknown as Pick<Touch, "direction" | "summary" | "body" | "provenance">;
 
-/* --------------------------- issue 1 — the actionable queue is people */
+/* --------------------------- issue 1, the actionable queue is people */
 
 describe("worth-knowing membership", () => {
   it("admits 60%+ fit with a traceable founder/decision maker", () => {
@@ -117,7 +116,7 @@ describe("worth-knowing membership", () => {
 
   it("keeps an unconfirmed lookalike out of the actionable queue", () => {
     const intel: ScoutIntel = {
-      ...EMPTY_INTEL,
+...EMPTY_INTEL,
       people: [
         {
           fullName: "Maybe Person",
@@ -141,7 +140,7 @@ describe("worth-knowing membership", () => {
   });
 });
 
-/* --------------------------- issue 2 — bounded governed preparation */
+/* --------------------------- issue 2, bounded governed preparation */
 
 describe("relationship preparation planning", () => {
   const prepared: RelationshipResearchMarker = {
@@ -153,7 +152,7 @@ describe("relationship preparation planning", () => {
     brief: { grounded: true } as never,
   };
 
-  it("prepares once when eligibility is newly reached — research only", () => {
+  it("prepares once when eligibility is newly reached, research only", () => {
     const plan = planRelationshipPreparation({
       candidate: candidate({ score: 80, intel: intelWithPerson }),
     });
@@ -175,7 +174,7 @@ describe("relationship preparation planning", () => {
     expect(plan.action).toBe("mark_ineligible");
   });
 
-  it("leaves a current prepared brief alone — never re-runs every render", () => {
+  it("leaves a current prepared brief alone, never re-runs every render", () => {
     const plan = planRelationshipPreparation({
       candidate: candidate({
         score: 80,
@@ -201,7 +200,7 @@ describe("relationship preparation planning", () => {
 
   it("refreshes a stale brief", () => {
     const stale: RelationshipResearchMarker = {
-      ...prepared,
+...prepared,
       preparedAt: new Date(Date.now() - 45 * 86_400_000).toISOString(),
     };
     const plan = planRelationshipPreparation({
@@ -229,7 +228,7 @@ describe("relationship preparation planning", () => {
   });
 });
 
-/* --------------------------- issue 3 — roadmap from THEIR words only */
+/* --------------------------- issue 3, roadmap from THEIR words only */
 
 describe("roadmap recognition consumes only counterparty words", () => {
   it("detects a founder bottleneck they stated in their own inbound email", () => {
@@ -263,7 +262,7 @@ describe("roadmap recognition consumes only counterparty words", () => {
     const evidence = counterpartyEvidence({
       messages: [
         outboundEmail(
-          "We should talk about a roadmap — your sequencing and the founder bottleneck are solvable.",
+          "We should talk about a roadmap, your sequencing and the founder bottleneck are solvable.",
         ),
       ],
       touches: [touch("outbound", "Followed up on roadmap and sequencing next steps.")],
@@ -296,7 +295,7 @@ describe("roadmap recognition consumes only counterparty words", () => {
     const evidence = counterpartyEvidence({
       messages: [
         inboundEmail(
-          "Honestly, we don't know what to do first — the site, the hiring, or the product. Everything else is fine.",
+          "Honestly, we don't know what to do first, the site, the hiring, or the product. Everything else is fine.",
         ),
       ],
     });
@@ -310,14 +309,14 @@ describe("roadmap recognition consumes only counterparty words", () => {
   it("generic warmth and sales vocabulary never trigger", () => {
     const evidence = counterpartyEvidence({
       messages: [
-        inboundEmail("Great to stay connected — excited about our growth and next steps!"),
+        inboundEmail("Great to stay connected, excited about our growth and next steps!"),
       ],
     });
     expect(detectRoadmapOpportunity(evidence).emerging).toBe(false);
   });
 });
 
-/* --------------------------- issue 4 — text is a protected channel */
+/* --------------------------- issue 4, text is a protected channel */
 
 describe("channel recommendation protects text", () => {
   it("met in person with a business email but no text evidence recommends email, not text", () => {

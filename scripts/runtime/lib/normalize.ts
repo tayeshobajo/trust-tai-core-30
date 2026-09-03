@@ -1,5 +1,5 @@
 /**
- * §5 Normalized document structure — provider-neutral shape all adapters
+ * §5 Normalized document structure, provider-neutral shape all adapters
  * produce before extraction. No provider-specific types leak past this file.
  */
 import { createHash } from "crypto";
@@ -19,7 +19,7 @@ export interface NormalizedDocument {
   messages: NormalizedMessage[];
   attachments: { name: string; kind?: string }[];
   imported_at: string;
-  /** Fingerprint of the full content — incremental import key. */
+  /** Fingerprint of the full content, incremental import key. */
   content_hash: string;
 }
 
@@ -46,7 +46,7 @@ export function normalizeDocument(input: {
   };
 
   for (const line of lines) {
-    const role = speakerRe.test(line) ? roleOf(line) : null;
+    const role = speakerRe.test(line) ? roleOf(line): null;
     if (role) {
       if (current) messages.push({ role: current.role, body: current.body.join("\n").trim() });
       current = { role, body: [line.replace(/^[^:]*:\s*/, "")] };

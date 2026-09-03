@@ -1,7 +1,7 @@
 /**
  * Proof that a human-sent draft actually reached the mailbox.
  *
- * Comms never sends email. A person marks an approved draft as sent — that is
+ * Comms never sends email. A person marks an approved draft as sent, that is
  * a claim. The mailbox, read back later, is the evidence. This module is the
  * deterministic rule that reconciles the two, and it is deliberately strict:
  *
@@ -70,11 +70,11 @@ const FINGERPRINT_LENGTH = 48;
 
 function decodeEntities(value: string): string {
   return value
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#0?39;/g, "'");
+.replace(/&amp;/gi, "&")
+.replace(/&lt;/gi, "<")
+.replace(/&gt;/gi, ">")
+.replace(/&quot;/gi, '"')
+.replace(/&#0?39;/g, "'");
 }
 
 /** Subjects compare without reply prefixes, case, or punctuation. */
@@ -92,15 +92,15 @@ export function normalizeSubject(value: string | undefined): string {
 /** Opening words of a body, reduced to letters and digits. */
 export function bodyFingerprint(body: string): string {
   return decodeEntities(body)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "")
-    .slice(0, FINGERPRINT_LENGTH);
+.toLowerCase()
+.replace(/[^a-z0-9]+/g, "")
+.slice(0, FINGERPRINT_LENGTH);
 }
 
 function normalizedHaystack(message: ObservedMessageLike): string {
   return decodeEntities(`${message.subject ?? ""} ${message.snippet ?? ""}`)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "");
+.toLowerCase()
+.replace(/[^a-z0-9]+/g, "");
 }
 
 /* --------------------------------------------------------------- matching */
@@ -124,7 +124,7 @@ export function matchSentDraft(
 
   if (draft.recipientEmail) {
     const recipient = draft.recipientEmail.toLowerCase();
-    const addressed = [...message.toEmails, ...message.ccEmails].map((entry) =>
+    const addressed = [...message.toEmails,...message.ccEmails].map((entry) =>
       entry.toLowerCase(),
     );
     if (!addressed.includes(recipient)) return null;
@@ -144,7 +144,7 @@ export function matchSentDraft(
   }
 
   // A recipient match alone only narrows the field; something about the
-  // content itself — subject line or opening words — must agree.
+  // content itself, subject line or opening words, must agree.
   if (!matchedBy.includes("subject") && !matchedBy.includes("body")) return null;
   return matchedBy;
 }
@@ -160,8 +160,8 @@ export function planDraftVerifications(
   messages: ObservedMessageLike[],
 ): DraftVerificationPlan[] {
   const outbound = messages
-    .filter((message) => message.direction === "outbound")
-    .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
+.filter((message) => message.direction === "outbound")
+.sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
   const ordered = [...drafts].sort((left, right) =>
     left.markedSentAt.localeCompare(right.markedSentAt),
   );
@@ -198,8 +198,8 @@ export function readDraftVerification(
     state: "mailbox_verified",
     providerMessageId: value["provider_message_id"],
     verifiedAt:
-      typeof value["verified_at"] === "string" ? value["verified_at"] : new Date().toISOString(),
-    matchedBy: Array.isArray(value["matched_by"]) ? value["matched_by"].map(String) : [],
+      typeof value["verified_at"] === "string" ? value["verified_at"]: new Date().toISOString(),
+    matchedBy: Array.isArray(value["matched_by"]) ? value["matched_by"].map(String): [],
   };
 }
 
@@ -208,14 +208,14 @@ export function draftProvenanceLabel(
   reviewState: string,
   verification: DraftVerification | null,
 ): string {
-  if (verification) return "Sent — seen in the mailbox";
+  if (verification) return "Sent, seen in the mailbox";
   switch (reviewState) {
     case "sent":
-      return "Sent via Gmail — not yet seen in the mailbox";
+      return "Sent via Gmail, not yet seen in the mailbox";
     case "sending":
       return "Sending via Gmail…";
     case "send_failed":
-      return "Send failed — the draft is kept, retry or open in Gmail";
+      return "Send failed, the draft is kept, retry or open in Gmail";
     case "approved":
       return "Approved, waiting to be sent";
     default:

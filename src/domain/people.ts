@@ -90,7 +90,7 @@ export interface Person {
   linkedinUrl?: string;
   /**
    * LinkedIn route provenance. `linkedinUrl` alone is a link a provider
-   * returned or a human pasted — not a confirmed route. A route is only
+   * returned or a human pasted, not a confirmed route. A route is only
    * confirmed through the human identity gate (integration brief §12),
    * which stamps these fields.
    */
@@ -181,7 +181,7 @@ export interface PeopleProvider extends PeopleProviderInfo {
 /**
  * Canonical reachability (brief §3): a verified email is one route, not the
  * definition of reachability. A person is reachable through ANY confirmed
- * legitimate professional route — verified email or confirmed LinkedIn.
+ * legitimate professional route, verified email or confirmed LinkedIn.
  * An unverified email or a merely-stored LinkedIn URL is never reachable.
  */
 export function isReachable(person: Person): boolean {

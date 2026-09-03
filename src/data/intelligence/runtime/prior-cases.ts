@@ -2,7 +2,7 @@
  * The prior-case retrieval seam.
  *
  * "Have we solved something like this before?" answered honestly: the only
- * legitimate linkage is a shared canon pattern — a case attaches to the
+ * legitimate linkage is a shared canon pattern, a case attaches to the
  * pattern it was recorded against, and an outcome attaches to its case. This
  * module never invents similarity and never invents success: a case with no
  * outcome is "we have seen this shape before", and a rejected outcome is
@@ -48,8 +48,8 @@ export function priorCasesForMatches(input: {
   const refs: PriorCaseRef[] = [];
   for (const match of input.matches) {
     const related = input.cases
-      .filter((entry) => entry.patternId === match.patternId)
-      .sort((a, b) => Number(Boolean(b.correction)) - Number(Boolean(a.correction)));
+.filter((entry) => entry.patternId === match.patternId)
+.sort((a, b) => Number(Boolean(b.correction)) - Number(Boolean(a.correction)));
     for (const entry of related) {
       const outcome = input.outcomes.find((row) => row.caseId === entry.id) ?? null;
       refs.push({
@@ -66,7 +66,7 @@ export function priorCasesForMatches(input: {
               result: outcome.result,
               because: outcome.resultBecause,
             }
-          : null,
+: null,
       });
       if (refs.length >= limit) return refs;
     }

@@ -43,7 +43,7 @@ async function post<T>(url: string, body: Record<string, unknown>): Promise<T> {
   });
   const payload = (await response.json()) as Record<string, unknown>;
   if (!response.ok) {
-    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That call failed.");
+    throw new Error(typeof payload["error"] === "string" ? payload["error"]: "That call failed.");
   }
   return payload as T;
 }
@@ -70,7 +70,7 @@ export async function gmailExchange(input: {
 }): Promise<{ accountEmail: string; canSend?: boolean }> {
   return post<{ accountEmail: string; canSend?: boolean }>(CONNECT_URL, {
     action: "exchange",
-    ...input,
+...input,
   });
 }
 
@@ -83,7 +83,7 @@ export async function gmailDisconnect(
 }
 
 export interface GmailSyncResult {
-  /** The connection row this pass ran against — the mailbox's identity. */
+  /** The connection row this pass ran against, the mailbox's identity. */
   integrationId?: string;
   accountEmail?: string;
   messagesRead: number;
@@ -113,8 +113,8 @@ export async function gmailSync(
 ): Promise<GmailSyncResult> {
   return post<GmailSyncResult>(SYNC_URL, {
     organizationId,
-    ...(integrationId ? { integrationId } : {}),
-    ...(backfillDays === undefined ? {} : { backfillDays: clampBackfillDays(backfillDays) }),
+...(integrationId ? { integrationId }: {}),
+...(backfillDays === undefined ? {}: { backfillDays: clampBackfillDays(backfillDays) }),
   });
 }
 
@@ -139,7 +139,7 @@ export interface MailboxCandidatesResult {
  * People ONE mailbox corresponds with, offered as import candidates. Reads
  * only; each mailbox is gated on its own Trust Tai/Comms label. The window
  * is bounded (at most 60 labeled messages, up to 90 days back) but every
- * correspondent discovered inside it is returned — the UI pages, filters,
+ * correspondent discovered inside it is returned, the UI pages, filters,
  * and searches the full discovered set, so counts are always truthful.
  */
 export async function gmailCandidates(
@@ -148,7 +148,7 @@ export async function gmailCandidates(
 ): Promise<MailboxCandidatesResult> {
   return post<MailboxCandidatesResult>("/api/public/comms/gmail/candidates", {
     organizationId,
-    ...(integrationId ? { integrationId } : {}),
+...(integrationId ? { integrationId }: {}),
   });
 }
 
@@ -183,7 +183,7 @@ export async function gmailSendStatus(organizationId: string): Promise<GmailSend
   });
   const payload = (await response.json()) as Record<string, unknown>;
   if (!response.ok) {
-    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That check failed.");
+    throw new Error(typeof payload["error"] === "string" ? payload["error"]: "That check failed.");
   }
   return payload as unknown as GmailSendCapability;
 }
@@ -199,8 +199,7 @@ export interface GmailSendOutcome {
 }
 
 /**
- * Send one draft through Gmail. Human-triggered only; idempotent per draft —
- * a double click or a retry replays the recorded outcome instead of sending
+ * Send one draft through Gmail. Human-triggered only; idempotent per draft, * a double click or a retry replays the recorded outcome instead of sending
  * a second message. Replies always leave from the mailbox that owns the
  * conversation; `integrationId` is the sender choice for a new conversation.
  */
@@ -219,24 +218,24 @@ export async function gmailSendDraft(
     body: JSON.stringify({
       organizationId,
       draftId,
-      ...(threadTarget ? { threadTarget } : {}),
-      ...(integrationId ? { integrationId } : {}),
+...(threadTarget ? { threadTarget }: {}),
+...(integrationId ? { integrationId }: {}),
     }),
   });
   const payload = (await response.json()) as Record<string, unknown>;
   // The permission checkpoint arrives as 403 with a structured outcome.
   if (!response.ok && response.status !== 403) {
-    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That send failed.");
+    throw new Error(typeof payload["error"] === "string" ? payload["error"]: "That send failed.");
   }
   if (!response.ok && typeof payload["state"] !== "string") {
-    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That send failed.");
+    throw new Error(typeof payload["error"] === "string" ? payload["error"]: "That send failed.");
   }
   return payload as unknown as GmailSendOutcome;
 }
 
 /**
  * Fetch one inline MIME image for in-place rendering. Same authenticated
- * proxy as attachment downloads — the server proves the message and the
+ * proxy as attachment downloads, the server proves the message and the
  * resource belong together and to the caller's workspace, and only stored
  * metadata may declare a resource inline. Returns an object URL; the caller
  * revokes it. No Google credential or raw Gmail URL ever reaches the
@@ -263,7 +262,7 @@ export async function gmailFetchInlineImage(input: {
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     throw new Error(
-      typeof payload["error"] === "string" ? payload["error"] : "That image could not be loaded.",
+      typeof payload["error"] === "string" ? payload["error"]: "That image could not be loaded.",
     );
   }
   return URL.createObjectURL(await response.blob());
@@ -295,7 +294,7 @@ export async function gmailDownloadAttachment(input: {
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     throw new Error(
-      typeof payload["error"] === "string" ? payload["error"] : "That file could not be opened.",
+      typeof payload["error"] === "string" ? payload["error"]: "That file could not be opened.",
     );
   }
   const blob = await response.blob();

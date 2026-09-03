@@ -2,7 +2,7 @@
  * Bounded pagination for the relationship list.
  *
  * One calm control at the foot of the list: where you are, previous and
- * next, and compact page numbers. No page-size selector — the rhythm is
+ * next, and compact page numbers. No page-size selector, the rhythm is
  * fixed so the room never becomes a wall of rows. When everything fits on
  * one page the control stays out of the way entirely.
  */
@@ -22,7 +22,7 @@ export function CommsPagination({
 }: {
   view: PageView<unknown>;
   onPage: (page: number) => void;
-  /** Accessible name for the nav — name the list being paged. */
+  /** Accessible name for the nav, name the list being paged. */
   label?: string;
 }) {
   if (view.pageCount <= 1) return null;
@@ -33,7 +33,7 @@ export function CommsPagination({
       className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2"
     >
       <p className="text-[12px] text-muted-foreground" aria-live="polite">
-        {view.total === 0 ? "No relationships" : `${view.from}–${view.to} of ${view.total}`}
+        {view.total === 0 ? "No relationships": `${view.from}–${view.to} of ${view.total}`}
       </p>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -54,11 +54,11 @@ export function CommsPagination({
               <span key={`gap-${index}`} aria-hidden className="px-0.5 text-muted-foreground">
                 …
               </span>
-            ) : (
+            ): (
               <button
                 key={entry}
                 type="button"
-                aria-current={entry === view.page ? "page" : undefined}
+                aria-current={entry === view.page ? "page": undefined}
                 aria-label={`Page ${entry}`}
                 onClick={() => onPage(entry)}
                 className={cn(

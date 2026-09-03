@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * R1: Ingestion — external source → normalized doc → knowledge extraction →
+ * R1: Ingestion, external source → normalized doc → knowledge extraction →
  * project_knowledge (needs_review, provenance kept), incremental (§8),
  * honest sync_state (§4), audit every mutation (§20).
  *
@@ -19,29 +19,29 @@ import { resolve, basename } from "path";
 import { db, audit, ORG_ID, sha256 } from "./lib/runtime";
 import { normalizeDocument, type NormalizedDocument } from "./lib/normalize";
 
-// Reuse the product's own extraction cues — single extraction brain.
+// Reuse the product's own extraction cues, single extraction brain.
 import { parseThinkingImport } from "../../src/data/projects/thinking-import";
 
 async function loadSource(projectId: string, sourceId: string) {
   const { data, error } = await db()
-    .from("project_thinking_sources")
-    .select("*")
-    .eq("organization_id", ORG_ID)
-    .eq("project_id", projectId)
-    .eq("id", sourceId)
-    .maybeSingle();
+.from("project_thinking_sources")
+.select("*")
+.eq("organization_id", ORG_ID)
+.eq("project_id", projectId)
+.eq("id", sourceId)
+.maybeSingle();
   if (error || !data) throw new Error(`source not found: ${error?.message ?? sourceId}`);
   return data as Record<string, string | boolean | null>;
 }
 
 async function ingest(projectId: string, sourceId: string, rawPath: string) {
-  const raw = rawPath === "-" ? readFileSync(0, "utf8") : readFileSync(resolve(rawPath), "utf8");
+  const raw = rawPath === "-" ? readFileSync(0, "utf8"): readFileSync(resolve(rawPath), "utf8");
   const source = await loadSource(projectId, sourceId);
   const { data: inputDecisions } = await db()
-    .from("project_decisions")
-    .select("question, answer, status")
-    .eq("organization_id", ORG_ID)
-    .eq("project_id", projectId);
+.from("project_decisions")
+.select("question, answer, status")
+.eq("organization_id", ORG_ID)
+.eq("project_id", projectId);
   const provider = (source.source_type as NormalizedDocument["provider"]) ?? "other";
   const title = String(source.title ?? "thinking room");
 
@@ -49,9 +49,9 @@ async function ingest(projectId: string, sourceId: string, rawPath: string) {
 
   // §4 honest state: a transcript/export was genuinely provided.
   await db()
-    .from("project_thinking_sources")
-    .update({ sync_state: "imported", last_reviewed_at: new Date().toISOString() })
-    .eq("id", sourceId);
+.from("project_thinking_sources")
+.update({ sync_state: "imported", last_reviewed_at: new Date().toISOString() })
+.eq("id", sourceId);
   await audit({
     projectId,
     projectName: undefined,
@@ -63,17 +63,16 @@ async function ingest(projectId: string, sourceId: string, rawPath: string) {
 
   // §8 incremental: existing rows for this source
   const { data: existing } = await db()
-    .from("project_knowledge")
-    .select("id, section, body, review_state")
-    .eq("organization_id", ORG_ID)
-    .eq("project_id", projectId)
-    .eq("source_reference", sourceId);
+.from("project_knowledge")
+.select("id, section, body, review_state")
+.eq("organization_id", ORG_ID)
+.eq("project_id", projectId)
+.eq("source_reference", sourceId);
   const existingBodies = new Map(
     (existing ?? []).map((r) => [String(r.body).trim().toLowerCase(), r as { id: string; review_state: string }]),
   );
 
-  // Extraction over the normalized document (§5), assistant voice only —
-  // Tai's prompts are questions, not knowledge; extracting them pollutes
+  // Extraction over the normalized document (§5), assistant voice only, // Tai's prompts are questions, not knowledge; extracting them pollutes
   // open questions with transcript noise.
   const seen = new Set<string>();
   const candidates: { section: string; body: string; confidence: number; msgIndex: number }[] = [];
@@ -83,7 +82,7 @@ async function ingest(projectId: string, sourceId: string, rawPath: string) {
     const key = `${c.section}:${c.body.trim().toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    candidates.push({ ...c, msgIndex: -1 });
+    candidates.push({...c, msgIndex: -1 });
   }
 
   let inserted = 0;
@@ -171,7 +170,7 @@ async function ingest(projectId: string, sourceId: string, rawPath: string) {
 
 /**
  * Polarity-aware overlap: statements contradict when they share meaningful
- * topic words but carry opposing negation. Conservative by design — when
+ * topic words but carry opposing negation. Conservative by design, when
  * unsure, it does not flag (a missed flag is reviewable; a false block is
  * dispatch friction).
  */
@@ -198,10 +197,10 @@ function sharePrefix(a: string, b: string, words: number): boolean {
 
 async function status(projectId: string) {
   const { data } = await db()
-    .from("project_thinking_sources")
-    .select("id, title, source_type, sync_state, last_reviewed_at")
-    .eq("organization_id", ORG_ID)
-    .eq("project_id", projectId);
+.from("project_thinking_sources")
+.select("id, title, source_type, sync_state, last_reviewed_at")
+.eq("organization_id", ORG_ID)
+.eq("project_id", projectId);
   console.log(JSON.stringify(data ?? [], null, 1));
 }
 

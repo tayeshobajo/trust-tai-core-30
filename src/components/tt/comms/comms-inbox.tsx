@@ -4,7 +4,7 @@
  * A list of conversations, not a table of records. Each row answers three
  * questions in two seconds: who this is, what kind of relationship it is,
  * and whether anything is needed. Health marks stay distinct from
- * classification marks — kind is never condition.
+ * classification marks, kind is never condition.
  */
 
 import { HEALTH_LABEL, type ConversationHealthStatus } from "@/domain/comms-health";
@@ -62,9 +62,9 @@ export function ConversationListItem({
   const { relationship, health } = entry;
   const segment = relationshipSegment(relationship);
   // Developing relationships carry their human-facing state. One record, one
-  // memory — this is a read of the same lifecycle, not a second pipeline.
+  // memory, this is a read of the same lifecycle, not a second pipeline.
   const development =
-    segment === "nurture" ? developmentStage(relationship, []) : null;
+    segment === "nurture" ? developmentStage(relationship, []): null;
   const snippet =
     relationship.nextAction?.trim() ||
     health.reasons[0] ||
@@ -75,11 +75,11 @@ export function ConversationListItem({
       <button
         type="button"
         onClick={onSelect}
-        aria-current={active ? "true" : undefined}
+        aria-current={active ? "true": undefined}
         className={cn(
           "flex w-full items-start gap-3 border-b border-border/70 border-l-2 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
           SEGMENT_EDGE[segment],
-          active ? SEGMENT_SURFACE_SELECTED[segment] : SEGMENT_SURFACE[segment],
+          active ? SEGMENT_SURFACE_SELECTED[segment]: SEGMENT_SURFACE[segment],
         )}
       >
         <span
@@ -105,7 +105,7 @@ export function ConversationListItem({
             <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
               {relationship.companyName}
             </span>
-          ) : null}
+          ): null}
           {/* What kind of relationship, and how the conversation is doing. */}
           <span className="mt-1.5 flex flex-wrap items-center gap-2">
             <SegmentPill segment={segment} />
@@ -113,7 +113,7 @@ export function ConversationListItem({
               <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-violet-700">
                 {DEVELOPMENT_STAGE_LABEL[development.stage]}
               </span>
-            ) : null}
+            ): null}
             <span className="inline-flex items-center gap-1.5">
               <HealthDot status={health.status} />
               <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -180,7 +180,7 @@ export function CommsInbox({
   empty,
 }: {
   view: InboxView;
-  /** The current page of the view — the only rows rendered below. */
+  /** The current page of the view, the only rows rendered below. */
   page: PageView<InboxEntry>;
   onPage: (page: number) => void;
   tab: InboxTab;
@@ -226,7 +226,7 @@ export function CommsInbox({
                 "rounded-full px-2.5 py-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 tab === entry
                   ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground",
+: "text-muted-foreground hover:text-foreground",
               )}
             >
               {TAB_LABEL[entry]}
@@ -255,13 +255,13 @@ export function CommsInbox({
               <button
                 key={status}
                 type="button"
-                onClick={() => onHealth(active ? null : status)}
+                onClick={() => onHealth(active ? null: status)}
                 aria-pressed={active}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   active
                     ? "border-foreground text-foreground"
-                    : "border-border text-muted-foreground hover:text-foreground",
+: "border-border text-muted-foreground hover:text-foreground",
                 )}
               >
                 <HealthDot status={status} />
@@ -278,9 +278,9 @@ export function CommsInbox({
       <div className="min-h-0 flex-1 overflow-y-auto">
         {page.rows.length === 0 ? (
           <p className="p-4 text-[13px] text-muted-foreground">
-            {empty ? EMPTY_COPY.all : filtered ? "Nothing matches this search or filter." : EMPTY_COPY[tab]}
+            {empty ? EMPTY_COPY.all: filtered ? "Nothing matches this search or filter.": EMPTY_COPY[tab]}
           </p>
-        ) : (
+        ): (
           <>
             <Section
               title="Priority"

@@ -26,7 +26,7 @@ function connectionLine(lastSuccessAt: string | null): string {
   const state = paperclipConnection({ liveReachable: false, lastSuccessAt });
   return state.mode === "synchronized"
     ? `Paperclip \u00b7 synchronized. ${state.helper}`
-    : `Paperclip \u00b7 interrupted. ${state.helper}`;
+: `Paperclip \u00b7 interrupted. ${state.helper}`;
 }
 
 /** Boundaries every Trust Tai agent has, regardless of capability list. */
@@ -45,7 +45,7 @@ function lifecycleOf(agentStatus: string, issues: { status: string }[]): AgentLi
   if (status === "running" || status === "working") return "working";
   if (status === "failed" || status === "error") return "failed";
   if (status === "idle" || status === "ready" || status === "active") return "idle";
-  return status ? "unknown" : "idle";
+  return status ? "unknown": "idle";
 }
 
 function toTask(issue: {
@@ -58,7 +58,7 @@ function toTask(issue: {
     id: issue.id,
     title: issue.title,
     status: issue.status,
-    ...(issue.updatedAt ? { updatedAt: issue.updatedAt } : {}),
+...(issue.updatedAt ? { updatedAt: issue.updatedAt }: {}),
   };
 }
 
@@ -76,8 +76,8 @@ function boundariesOf(metadata: Record<string, unknown> | null): string[] {
   const stated = (metadata ?? {})["cannot_do"];
   const extra = Array.isArray(stated)
     ? stated.filter((value): value is string => typeof value === "string")
-    : [];
-  return [...extra, ...UNIVERSAL_BOUNDARIES];
+: [];
+  return [...extra,...UNIVERSAL_BOUNDARIES];
 }
 
 function toRoutine(r: import("@/lib/paperclip-client.server").PaperclipRoutine): StewardAgentRoutine {
@@ -98,7 +98,7 @@ function toActivityItem(
   return {
     id: comment.id,
     kind: "comment",
-    authorKind: isAgent ? "agent" : "human",
+    authorKind: isAgent ? "agent": "human",
     body: comment.body,
     createdAt: comment.createdAt,
   };
@@ -120,8 +120,8 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       agents: [],
       connected: false,
       syncHealth: null,
-      liveFailureDetail: error instanceof Error ? error.message : null,
-      because: error instanceof Error ? error.message : "The execution bridge is not available.",
+      liveFailureDetail: error instanceof Error ? error.message: null,
+      because: error instanceof Error ? error.message: "The execution bridge is not available.",
     };
   }
 
@@ -133,11 +133,11 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       agents: [],
       connected: false,
       syncHealth: null,
-      liveFailureDetail: error instanceof Error ? error.message : null,
+      liveFailureDetail: error instanceof Error ? error.message: null,
       because:
         error instanceof Error
           ? `The agent registry could not be read. ${error.message}`
-          : "The agent registry could not be read.",
+: "The agent registry could not be read.",
     };
   }
 
@@ -180,7 +180,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
     const owningApp = String(record["owning_app"] ?? "unknown");
     const capabilities = Array.isArray(record["capabilities"])
       ? (record["capabilities"] as unknown[]).filter((v): v is string => typeof v === "string")
-      : [];
+: [];
     const metadata = (record["metadata"] ?? null) as Record<string, unknown> | null;
 
     const base: StewardAgent = {
@@ -242,14 +242,14 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
           const { paperclipClient } = await import("@/lib/paperclip-client.server");
           const comments = await paperclipClient.getIssueComments(latestIssueId);
           activityTimeline = comments
-            .filter((c) => !c.deletedAt)
-            .slice(0, 10)
-            .map(toActivityItem);
+.filter((c) => !c.deletedAt)
+.slice(0, 10)
+.map(toActivityItem);
         } catch { /* non-fatal */ }
       }
 
       agents.push({
-        ...base,
+...base,
         lifecycle: lifecycleOf(rec.status, open),
         currentWork: working?.title ?? null,
         activeTasks: active.map(toTask),
@@ -287,9 +287,9 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
     connected: reachable,
     syncHealth,
     because: reachable
-      ? `${agents.length} agent${agents.length === 1 ? "" : "s"} registered. Paperclip \u00b7 live.`
-      : connectionLine(syncHealth?.lastSuccessAt ?? null),
-    liveFailureDetail: reachable ? null : firstFailure
+      ? `${agents.length} agent${agents.length === 1 ? "": "s"} registered. Paperclip \u00b7 live.`
+: connectionLine(syncHealth?.lastSuccessAt ?? null),
+    liveFailureDetail: reachable ? null: firstFailure
   };
 }
 
@@ -315,12 +315,12 @@ export async function assignPaperclipTask(input: {
   // can never land in Paperclip more than once.
   const idempotencyKey = input.sourceEntityId
     ? `trusttai:task:${input.organizationId}:${input.sourceEntityId}`
-    : `trusttai:task:${input.organizationId}:${input.agentId}:${Date.now()}`;
+: `trusttai:task:${input.organizationId}:${input.agentId}:${Date.now()}`;
 
   const agent = await paperclipClient.getAgent(input.agentId);
 
   // Record the binding first. `recordBinding` returns the existing record if
-  // the idempotency key already exists — no duplicate Paperclip issue created.
+  // the idempotency key already exists, no duplicate Paperclip issue created.
   const binding = await recordBinding({
     organizationId: input.organizationId,
     sourceApp: input.sourceApp ?? "steward",
@@ -333,7 +333,7 @@ export async function assignPaperclipTask(input: {
     idempotencyKey,
   });
 
-  // If the binding already has a Paperclip issue, this was a retry — return
+  // If the binding already has a Paperclip issue, this was a retry, return
   // the existing record without creating a duplicate issue.
   if (binding.paperclip_issue_id) {
     return { issueId: binding.paperclip_issue_id, bindingId: binding.id, isNew: false };
@@ -356,16 +356,16 @@ export async function assignPaperclipTask(input: {
   // Patch the issue ID onto the binding row directly.
   const { trustTaiServiceRoleClient } = await import("@/lib/execution-bridge.server");
   await trustTaiServiceRoleClient()
-    .from("execution_bindings")
-    .update({ paperclip_issue_id: issue.id, status: "dispatched" })
-    .eq("id", binding.id);
+.from("execution_bindings")
+.update({ paperclip_issue_id: issue.id, status: "dispatched" })
+.eq("id", binding.id);
 
   return { issueId: issue.id, bindingId: binding.id, isNew: true };
 }
 
 /**
  * Pause or resume a Paperclip agent. Reflects the change via Paperclip PATCH.
- * Steward reads Paperclip's response as truth — it does not set its own paused flag.
+ * Steward reads Paperclip's response as truth, it does not set its own paused flag.
  *
  * Paperclip pause is status="paused"; pausedAt may stay null on status-pause,
  * so we synthesize a timestamp for the UI when pausing.
@@ -376,17 +376,17 @@ export async function setPaperclipAgentPaused(
 ): Promise<{ status: string; pausedAt: string | null }> {
   const { paperclipClient } = await import("@/lib/paperclip-client.server");
   const updated = await paperclipClient.setAgentPaused(agentId, paused);
-  const status = updated.status ?? (paused ? "paused" : "active");
+  const status = updated.status ?? (paused ? "paused": "active");
   const pausedAt = paused
     ? (updated.pausedAt ??
        new Date().toISOString())
-    : null;
+: null;
   return { status, pausedAt };
 }
 
 /**
  * Post a Tai note into a Paperclip issue's comment thread.
- * Board key resolves as agent context in Paperclip — the comment will show
+ * Board key resolves as agent context in Paperclip, the comment will show
  * as agent-authored. We label it "[Tai via Trust Tai OS]" in the body so it
  * is distinguishable inside Paperclip's UI.
  */
@@ -398,7 +398,7 @@ export async function postTaiNoteToIssue(input: {
   const { paperclipClient } = await import("@/lib/paperclip-client.server");
   const body = `[${input.taiName} via Trust Tai OS]\n\n${input.note.trim()}`;
   const comment = await paperclipClient.getIssueComments(input.issueId); // warm the connection
-  void comment; // suppress unused warning — just ensuring Paperclip is reachable
+  void comment; // suppress unused warning, just ensuring Paperclip is reachable
   // Post comment without authorType (Paperclip infers from bearer token)
   const result = await fetch(
     `${process.env["PAPERCLIP_API_URL"] || "http://127.0.0.1:3100"}/api/issues/${input.issueId}/comments`,
@@ -429,10 +429,10 @@ export async function assertStewardMembership(
   organizationId: string,
 ): Promise<void> {
   const { data, error } = await context.supabase
-    .from("organizations")
-    .select("id")
-    .eq("id", organizationId)
-    .maybeSingle();
+.from("organizations")
+.select("id")
+.eq("id", organizationId)
+.maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("You are not a member of this Trust Tai workspace.");
 }

@@ -3,7 +3,7 @@
  *
  * One calm list of people: what they last said, how many of their messages
  * you have not opened, and the thread itself beside it. Closing a
- * conversation is a human decision recorded on the relationship — nothing is
+ * conversation is a human decision recorded on the relationship, nothing is
  * archived automatically and nothing is ever sent from here.
  */
 
@@ -102,8 +102,8 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
         row.relationship.companyName ?? "",
         row.relationship.email ?? "",
       ]
-        .join(" ")
-        .toLowerCase();
+.join(" ")
+.toLowerCase();
       return haystack.includes(needle);
     });
   }, [rows, filter, query]);
@@ -134,7 +134,7 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
         userId: identity.userId,
       }),
     onSuccess: (_data, variables) => {
-      toast.success(variables.closed ? "Conversation closed" : "Conversation reopened", {
+      toast.success(variables.closed ? "Conversation closed": "Conversation reopened", {
         description: variables.row.relationship.fullName,
       });
       invalidate();
@@ -162,11 +162,11 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
 
       {failure ? (
         <p className="text-sm text-destructive">
-          {failure instanceof Error ? failure.message : "That read failed."}
+          {failure instanceof Error ? failure.message: "That read failed."}
         </p>
-      ) : loading ? (
+      ): loading ? (
         <p className="text-sm text-muted-foreground">Reading your conversations…</p>
-      ) : (
+      ): (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
           <section className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -179,7 +179,7 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
                     "rounded-full border px-3 py-1 text-[12px] transition-colors",
                     option === filter
                       ? "border-[var(--royal)] text-foreground"
-                      : "border-border text-muted-foreground hover:text-foreground",
+: "border-border text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {FILTER_LABEL[option]} · {counts[option]}
@@ -200,7 +200,7 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
                 <li className="p-4 text-sm text-muted-foreground">
                   Nothing in this view yet.
                 </li>
-              ) : (
+              ): (
                 visible.map((row) => (
                   <li key={row.relationship.id}>
                     <button
@@ -210,7 +210,7 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
                         "flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors",
                         row.relationship.id === selected?.relationship.id
                           ? "bg-secondary/60"
-                          : "hover:bg-secondary/30",
+: "hover:bg-secondary/30",
                       )}
                     >
                       <span className="flex items-center justify-between gap-3">
@@ -221,7 +221,7 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
                               {" "}
                               · {row.relationship.companyName}
                             </span>
-                          ) : null}
+                          ): null}
                         </span>
                         <span className="flex shrink-0 items-center gap-2">
                           {row.unreadCount > 0 ? (
@@ -231,7 +231,7 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
                             >
                               {row.unreadCount}
                             </span>
-                          ) : null}
+                          ): null}
                           <span className="text-[12px] text-muted-foreground">
                             {whenLabel(row.lastMessage?.occurredAt ?? row.relationship.lastTouchAt)}
                           </span>
@@ -244,13 +244,13 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
                         <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                           Closed
                         </span>
-                      ) : null}
+                      ): null}
                     </button>
                     {row.relationship.prospectId ? (
                       <div className="px-4 pb-3">
                         <ScoutConversationLink relationship={row.relationship} />
                       </div>
-                    ) : null}
+                    ): null}
                   </li>
 
                 ))
@@ -261,7 +261,7 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
           <ThreadView
             row={selected}
             identity={identity}
-            messages={selected ? (messages.data?.[selected.relationship.id] ?? []) : []}
+            messages={selected ? (messages.data?.[selected.relationship.id] ?? []): []}
             busy={close.isPending}
             onToggleClosed={(closed) => {
               if (selected) close.mutate({ row: selected, closed });
@@ -308,8 +308,8 @@ function ThreadView({
               "No company or email on record."}
           </p>
           <p className="mt-1 text-[12px] text-muted-foreground">
-            {row.messageCount} message{row.messageCount === 1 ? "" : "s"} on record
-            {row.closedAt ? ` · closed ${whenLabel(row.closedAt)} ago` : ""}
+            {row.messageCount} message{row.messageCount === 1 ? "": "s"} on record
+            {row.closedAt ? ` · closed ${whenLabel(row.closedAt)} ago`: ""}
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -323,9 +323,9 @@ function ThreadView({
             >
               {busy
                 ? "Saving…"
-                : row.closedAt
+: row.closedAt
                   ? "Reopen conversation"
-                  : "Mark conversation closed"}
+: "Mark conversation closed"}
             </TTButton>
           </div>
           <MeetingFromMessage
@@ -341,7 +341,7 @@ function ThreadView({
           <p className="text-sm text-muted-foreground">
             No synced messages for this person yet.
           </p>
-        ) : (
+        ): (
           ordered.map((message) => (
             <article
               key={message.id}
@@ -349,20 +349,20 @@ function ThreadView({
                 "rounded-lg border p-3",
                 message.direction === "outbound"
                   ? "border-border bg-secondary/40"
-                  : "border-[var(--cloud-line)] bg-background",
+: "border-[var(--cloud-line)] bg-background",
               )}
             >
               <p className="flex flex-wrap items-center justify-between gap-2 text-[12px] text-muted-foreground">
                 <span>
                   {message.direction === "outbound"
                     ? "You"
-                    : (message.fromName ?? message.fromEmail ?? row.relationship.fullName)}
+: (message.fromName ?? message.fromEmail ?? row.relationship.fullName)}
                 </span>
                 <span>{new Date(message.occurredAt).toLocaleString()}</span>
               </p>
               {message.subject ? (
                 <p className="mt-1 text-[14px] text-foreground">{message.subject}</p>
-              ) : null}
+              ): null}
               <p className="mt-1 whitespace-pre-wrap text-[13px] text-muted-foreground">
                 {message.bodyText ?? message.snippet ?? ""}
               </p>

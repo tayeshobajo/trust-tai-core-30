@@ -1,5 +1,5 @@
 /**
- * Conductor V3.4 — Decision-to-milestone progression awareness.
+ * Conductor V3.4. Decision-to-milestone progression awareness.
  *
  * Once a person answers a decision in Roadmap, Conductor re-reads canon and
  * says plainly where attention moved. What is proved here:
@@ -30,7 +30,7 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
   return {
     id: "rm-teamsynerg",
     organizationId: ORG,
-    title: "Teamsynerg — path to be agreed",
+    title: "Teamsynerg, path to be agreed",
     subjectLabel: "Teamsynerg",
     objective: "Turn scattered delivery into one operating system",
     status: "draft",
@@ -53,7 +53,7 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
     metadata: {},
     createdAt: NOW,
     updatedAt: NOW,
-    ...overrides,
+...overrides,
   };
 }
 
@@ -69,7 +69,7 @@ function stage(overrides: Partial<RoadmapStage> = {}): RoadmapStage {
     evidence: [{ label: "Discovery call, 12 August", kind: "human" }],
     createdAt: NOW,
     updatedAt: NOW,
-    ...overrides,
+...overrides,
   };
 }
 
@@ -85,7 +85,7 @@ function decision(overrides: Partial<RoadmapDecision> = {}): RoadmapDecision {
     status: "open",
     createdAt: NOW,
     updatedAt: NOW,
-    ...overrides,
+...overrides,
   };
 }
 
@@ -180,7 +180,7 @@ describe("after a person resolves the decision", () => {
   it("never invents a dependency in the progression wording", () => {
     const progression = milestoneProgressionOf({
       milestones: readRoadmapCanon({ roadmap: roadmap(), decisions: [], stages: SEQUENCE })
-        .milestones,
+.milestones,
       decisions: [RESOLVED],
       pointB: { tier: "decided" },
     });
@@ -238,7 +238,7 @@ describe("edges", () => {
     const canon = readRoadmapCanon({
       roadmap: roadmap(),
       decisions: [RESOLVED],
-      stages: SEQUENCE.map((row) => ({ ...row, state: "live" as const, tier: "decided" as const })),
+      stages: SEQUENCE.map((row) => ({...row, state: "live" as const, tier: "decided" as const })),
     });
     expect(canon.milestoneAttention).toBeNull();
     /* Attention moves nowhere, and nothing is claimed complete by Conductor. */
@@ -250,7 +250,7 @@ describe("edges", () => {
     const canon = readRoadmapCanon({
       roadmap: roadmap(),
       decisions: [
-        { ...RESOLVED, id: "dec-other", organizationId: "org-2", roadmapId: "rm-other" },
+        {...RESOLVED, id: "dec-other", organizationId: "org-2", roadmapId: "rm-other" },
       ],
       stages: SEQUENCE,
     });
@@ -271,7 +271,7 @@ describe("authority is unchanged", () => {
 
   it("resolves nothing and moves nothing: canon is a pure read", () => {
     const decisions = [decision()];
-    const stages = SEQUENCE.map((row) => ({ ...row }));
+    const stages = SEQUENCE.map((row) => ({...row }));
     readRoadmapCanon({ roadmap: roadmap(), decisions, stages });
     expect(decisions[0]!.status).toBe("open");
     expect(stages.map((row) => `${row.position}:${row.state}`)).toEqual([

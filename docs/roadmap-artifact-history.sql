@@ -1,4 +1,4 @@
--- Trust Tai OS — Roadmap artifact history (optional, additive)
+-- Trust Tai OS. Roadmap artifact history (optional, additive)
 --
 -- Roadmap Intelligence works without this file. Studio already refuses to
 -- overwrite a hand edited document, and every composition records its provider,

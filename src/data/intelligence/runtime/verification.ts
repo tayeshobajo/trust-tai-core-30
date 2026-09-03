@@ -3,7 +3,7 @@
  *
  * The OpenClaw lesson, made structural: "the action ran" is never accepted as
  * proof that the work completed. A completion claim is accepted only when it
- * carries evidence of the right kind — a test result, a changed state the
+ * carries evidence of the right kind, a test result, a changed state the
  * suite can re-read, an external system's response, an artifact, a met
  * acceptance criterion, a downstream receipt, or a person's acceptance.
  *
@@ -52,7 +52,7 @@ export function verifyCompletion(
       accepted: false,
       because:
         "Running the action is not evidence the work completed. The claim needs proof, not a log line.",
-      missing: [expectation ? `${expectation.kind}: ${expectation.description}` : "any evidence"],
+      missing: [expectation ? `${expectation.kind}: ${expectation.description}`: "any evidence"],
     };
   }
 
@@ -77,7 +77,7 @@ export function verifyCompletion(
     const humanAccepted = claim.evidence.some((item) => item.kind === "human_acceptance");
     if (!objective && !humanAccepted) {
       missing.push(
-        "objective proof (test_result, changed_state, api_response, acceptance_criterion or downstream_receipt) — a runtime, adapter or agent cannot grade its own homework",
+        "objective proof (test_result, changed_state, api_response, acceptance_criterion or downstream_receipt), a runtime, adapter or agent cannot grade its own homework",
       );
     }
   }

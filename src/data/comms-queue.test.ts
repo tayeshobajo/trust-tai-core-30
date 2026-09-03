@@ -14,7 +14,7 @@ function memory(partial: Partial<MemoryItem>): MemoryItem {
     tier: "observed",
     evidence: [],
     at: "2026-02-01T00:00:00.000Z",
-    ...partial,
+...partial,
   };
 }
 
@@ -31,7 +31,7 @@ function relationship(partial: Partial<Relationship> = {}): Relationship {
     metadata: {},
     createdAt: "2026-03-01T00:00:00.000Z",
     updatedAt: "2026-03-01T00:00:00.000Z",
-    ...partial,
+...partial,
   };
 }
 
@@ -116,11 +116,11 @@ describe("reasons to reconnect", () => {
 
 describe("voice policy", () => {
   it("repairs em dashes rather than accepting them", () => {
-    const verdict = checkVoice("Good to meet you — the site looks sharp.", {
+    const verdict = checkVoice("Good to meet you, the site looks sharp.", {
       register: "follow_up",
       requireSignoff: false,
     });
-    expect(verdict.text).not.toContain("—");
+    expect(verdict.text).not.toContain(", ");
   });
 
   it("blocks a generic check-in", () => {

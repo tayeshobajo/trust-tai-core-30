@@ -88,7 +88,7 @@ function SortHeader({
     <th
       scope="col"
       className="tt-eyebrow px-4 py-2 font-normal"
-      aria-sort={active ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
+      aria-sort={active ? (sort.direction === "asc" ? "ascending": "descending"): "none"}
     >
       <span className="inline-flex items-center gap-1.5">
         <button
@@ -97,11 +97,11 @@ function SortHeader({
           className="inline-flex items-center gap-1 uppercase tracking-[inherit] hover:text-foreground"
         >
           {label}
-          <span aria-hidden className={active ? "text-royal" : "text-muted-foreground/50"}>
-            {active ? (sort.direction === "asc" ? "\u2191" : "\u2193") : "\u2195"}
+          <span aria-hidden className={active ? "text-royal": "text-muted-foreground/50"}>
+            {active ? (sort.direction === "asc" ? "\u2191": "\u2193"): "\u2195"}
           </span>
         </button>
-        {hint ? <InfoTip label={`About ${label}`}>{hint}</InfoTip> : null}
+        {hint ? <InfoTip label={`About ${label}`}>{hint}</InfoTip>: null}
       </span>
     </th>
   );
@@ -128,8 +128,8 @@ function PeopleSettings() {
     setPage(1);
     setSort((current) =>
       current.key === key
-        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
-        : { key, direction: key === "lastSignIn" || key === "lastActivity" ? "desc" : "asc" },
+        ? { key, direction: current.direction === "asc" ? "desc": "asc" }
+: { key, direction: key === "lastSignIn" || key === "lastActivity" ? "desc": "asc" },
     );
   };
 
@@ -220,7 +220,7 @@ function PeopleSettings() {
             (member.jobTitle ?? "").toLowerCase().includes(term) ||
             ROLE_LABEL[member.role].toLowerCase().includes(term),
         )
-      : all;
+: all;
 
     const decorated = matches.map((member) => ({
       member,
@@ -235,7 +235,7 @@ function PeopleSettings() {
       ).length,
     }));
 
-    const direction = sort.direction === "asc" ? 1 : -1;
+    const direction = sort.direction === "asc" ? 1: -1;
     return [...decorated].sort((a, b) => {
       switch (sort.key) {
         case "role":
@@ -245,14 +245,14 @@ function PeopleSettings() {
         case "lastActivity":
           return (
             direction *
-            ((a.member.lastActivityAt ? Date.parse(a.member.lastActivityAt) : 0) -
-              (b.member.lastActivityAt ? Date.parse(b.member.lastActivityAt) : 0))
+            ((a.member.lastActivityAt ? Date.parse(a.member.lastActivityAt): 0) -
+              (b.member.lastActivityAt ? Date.parse(b.member.lastActivityAt): 0))
           );
         case "lastSignIn":
           return (
             direction *
-            ((a.member.lastSignInAt ? Date.parse(a.member.lastSignInAt) : 0) -
-              (b.member.lastSignInAt ? Date.parse(b.member.lastSignInAt) : 0))
+            ((a.member.lastSignInAt ? Date.parse(a.member.lastSignInAt): 0) -
+              (b.member.lastSignInAt ? Date.parse(b.member.lastSignInAt): 0))
           );
         case "status":
           return direction * a.member.status.localeCompare(b.member.status);
@@ -270,8 +270,8 @@ function PeopleSettings() {
 
   /* Bulk selection never reaches beyond what this admin may actually change. */
   const eligibleOnPage = pageRows
-    .map(({ member }) => member)
-    .filter((member) => identity.canManage && member.userId !== identity.userId);
+.map(({ member }) => member)
+.filter((member) => identity.canManage && member.userId !== identity.userId);
   const checkedSet = new Set(checkedIds);
   const checkedMembers = (members.data ?? []).filter(
     (member) => checkedSet.has(member.userId) && member.userId !== identity.userId,
@@ -283,7 +283,7 @@ function PeopleSettings() {
     setCheckedIds((previous) =>
       previous.includes(userId)
         ? previous.filter((id) => id !== userId)
-        : [...previous, userId],
+: [...previous, userId],
     );
 
   const togglePage = () =>
@@ -291,7 +291,7 @@ function PeopleSettings() {
       const ids = eligibleOnPage.map((member) => member.userId);
       return allOnPageChecked
         ? previous.filter((id) => !ids.includes(id))
-        : Array.from(new Set([...previous, ...ids]));
+: Array.from(new Set([...previous,...ids]));
     });
 
   const runBulk = async (action: { kind: "role" } | { kind: "status"; status: "active" | "deactivated" }) => {
@@ -327,8 +327,8 @@ function PeopleSettings() {
     setBulkBusy(false);
     setBulkNote(
       failures.length === 0
-        ? `Updated ${done} ${done === 1 ? "person" : "people"}.`
-        : `Updated ${done}. ${failures[0] ?? ""}`,
+        ? `Updated ${done} ${done === 1 ? "person": "people"}.`
+: `Updated ${done}. ${failures[0] ?? ""}`,
     );
     if (failures.length === 0) setCheckedIds([]);
     refresh();
@@ -372,7 +372,7 @@ function PeopleSettings() {
             className="max-w-xs"
           />
           <span className="text-xs text-muted-foreground">
-            {members.isPending ? "Reading members…" : `${rows.length} shown`}
+            {members.isPending ? "Reading members…": `${rows.length} shown`}
           </span>
           <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
             <label htmlFor="people-page-size">People per page</label>
@@ -442,10 +442,10 @@ function PeopleSettings() {
             <span className="w-full text-xs text-muted-foreground">
               {bulkBusy
                 ? "Applying, one person at a time so every change is recorded."
-                : (bulkNote ?? "You are never included in a bulk change.")}
+: (bulkNote ?? "You are never included in a bulk change.")}
             </span>
           </div>
-        ) : null}
+        ): null}
 
         <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full min-w-[720px] text-left">
@@ -462,7 +462,7 @@ function PeopleSettings() {
                       onChange={togglePage}
                     />
                   </th>
-                ) : null}
+                ): null}
                 <SortHeader label="Person" sortKey="name" sort={sort} onSort={toggleSort} />
                 <SortHeader
                   label="Role"
@@ -518,7 +518,7 @@ function PeopleSettings() {
                           onChange={() => toggleChecked(member.userId)}
                         />
                       </td>
-                    ) : null}
+                    ): null}
                     <td className="px-4 py-3">
                       <PersonChip
                         name={member.name}
@@ -528,8 +528,8 @@ function PeopleSettings() {
                           member.email || "No email on file",
                           member.jobTitle ?? "",
                         ]
-                          .filter(Boolean)
-                          .join(" · ")}
+.filter(Boolean)
+.join(" · ")}
                       />
                     </td>
 
@@ -552,12 +552,12 @@ function PeopleSettings() {
                             </option>
                           ))}
                         </TTSelect>
-                      ) : (
+                      ): (
                         <span className="text-sm text-foreground">{ROLE_LABEL[member.role]}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {rooms === 0 ? "No rooms" : `${rooms} of ${APP_REGISTRY.length}`}
+                      {rooms === 0 ? "No rooms": `${rooms} of ${APP_REGISTRY.length}`}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {whenText(member.lastSignInAt)}
@@ -567,23 +567,23 @@ function PeopleSettings() {
                         ? new Date(member.lastActivityAt).toLocaleDateString(undefined, {
                             dateStyle: "medium",
                           })
-                        : "No room opened yet"}
-                      {member.lastActivityApp ? ` · ${member.lastActivityApp}` : ""}
+: "No room opened yet"}
+                      {member.lastActivityApp ? ` · ${member.lastActivityApp}`: ""}
                     </td>
                     <td className="px-4 py-3">
-                      <Health tone={member.status === "active" ? "good" : "neutral"}>
-                        {member.status === "active" ? "Active" : "Deactivated"}
+                      <Health tone={member.status === "active" ? "good": "neutral"}>
+                        {member.status === "active" ? "Active": "Deactivated"}
                       </Health>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
                         onClick={() =>
-                          setSelectedId(selectedId === member.userId ? null : member.userId)
+                          setSelectedId(selectedId === member.userId ? null: member.userId)
                         }
                         className="text-[13px] text-royal hover:underline"
                       >
-                        {selectedId === member.userId ? "Close" : "Manage access"}
+                        {selectedId === member.userId ? "Close": "Manage access"}
                       </button>
                     </td>
                   </tr>
@@ -592,13 +592,13 @@ function PeopleSettings() {
               {!members.isPending && rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={identity.canManage ? 8 : 7}
+                    colSpan={identity.canManage ? 8: 7}
                     className="px-4 py-8 text-center text-sm text-muted-foreground"
                   >
                     No one matches that search.
                   </td>
                 </tr>
-              ) : null}
+              ): null}
             </tbody>
           </table>
         </div>
@@ -629,17 +629,17 @@ function PeopleSettings() {
               </TTButton>
             </div>
           </div>
-        ) : null}
+        ): null}
 
 
         {roleChange.error || accessChange.error || statusChange.error ? (
           <p className="mt-4 text-sm text-destructive" role="alert">
             {
               ((roleChange.error ?? accessChange.error ?? statusChange.error) as Error)
-                .message
+.message
             }
           </p>
-        ) : null}
+        ): null}
       </div>
 
       {selected ? (
@@ -656,7 +656,7 @@ function PeopleSettings() {
           }
           onStatus={(status) => statusChange.mutate({ member: selected, status })}
         />
-      ) : null}
+      ): null}
 
       {identity.canManage ? (
         <InvitePanel
@@ -666,11 +666,11 @@ function PeopleSettings() {
           actorUserId={identity.userId}
           onDone={refresh}
           onDelivery={(invitationId, result) =>
-            setDeliveryById((previous) => ({ ...previous, [invitationId]: result }))
+            setDeliveryById((previous) => ({...previous, [invitationId]: result }))
           }
         />
 
-      ) : null}
+      ): null}
 
       <div className="tt-surface p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -703,7 +703,7 @@ function PeopleSettings() {
                         email: invitation.email,
                         actorUserId: identity.userId,
                       });
-                      setDeliveryById((previous) => ({ ...previous, [invitation.id]: result }));
+                      setDeliveryById((previous) => ({...previous, [invitation.id]: result }));
                       if (result.delivered) sent += 1;
                       else failed += 1;
                     } catch {
@@ -713,8 +713,8 @@ function PeopleSettings() {
                   setResendAllBusy(false);
                   setResendAllNote(
                     failed === 0
-                      ? `Sent again to ${sent} ${sent === 1 ? "person" : "people"}.`
-                      : `Sent again to ${sent}; ${failed} could not be emailed.`,
+                      ? `Sent again to ${sent} ${sent === 1 ? "person": "people"}.`
+: `Sent again to ${sent}; ${failed} could not be emailed.`,
                   );
                   refresh();
                 })();
@@ -722,21 +722,21 @@ function PeopleSettings() {
             >
               {resendAllBusy
                 ? "Sending…"
-                : `Send all ${pendingInvitations.length} again`}
+: `Send all ${pendingInvitations.length} again`}
             </button>
-          ) : null}
+          ): null}
         </div>
         {resendAllNote ? (
           <p className="mb-3 text-xs text-muted-foreground" role="status">
             {resendAllNote}
           </p>
-        ) : null}
+        ): null}
 
         {invitations.data?.provisioned === false ? (
           <NotProvisioned what="Invitations" file="docs/settings-schema.sql" />
-        ) : pendingInvitations.length === 0 ? (
+        ): pendingInvitations.length === 0 ? (
           <p className="text-sm text-muted-foreground">No invitations are waiting.</p>
-        ) : (
+        ): (
           <div className="divide-y divide-border rounded-xl border border-border">
             {pendingInvitations.map((invitation) => (
                 <div
@@ -769,7 +769,7 @@ function PeopleSettings() {
                               actorUserId: identity.userId,
                             });
                             setDeliveryById((previous) => ({
-                              ...previous,
+...previous,
                               [invitation.id]: result,
                             }));
                             refresh();
@@ -793,7 +793,7 @@ function PeopleSettings() {
                         Cancel
                       </button>
                     </>
-                  ) : null}
+                  ): null}
                 </div>
               ))}
           </div>
@@ -806,13 +806,13 @@ function PeopleSettings() {
               key={invitation.id}
               className={cn(
                 "mt-3 text-xs",
-                status.delivered ? "text-emerald-700" : "text-amber-700",
+                status.delivered ? "text-emerald-700": "text-amber-700",
               )}
               role="status"
             >
               {status.delivered
                 ? `Emailed ${invitation.email}: ${status.because}`
-                : `Could not email ${invitation.email}: ${status.because}`}
+: `Could not email ${invitation.email}: ${status.because}`}
             </p>
           );
         })}
@@ -825,9 +825,9 @@ function PeopleSettings() {
           canManage={identity.canManage}
           orgEnabled={orgEnabled}
         />
-      ) : null}
+      ): null}
 
-      {identity.canManage ? <InvitationAudit query={invitationAudit} /> : null}
+      {identity.canManage ? <InvitationAudit query={invitationAudit} />: null}
 
       <PermissionSummary role={normalizeRole(identity.role)} />
     </>
@@ -853,11 +853,11 @@ function InvitationAudit({
       />
       {query.data?.provisioned === false ? (
         <NotProvisioned what="Invitation history" file="docs/settings-schema.sql" />
-      ) : query.isPending ? (
+      ): query.isPending ? (
         <p className="text-sm text-muted-foreground">Reading history…</p>
-      ) : entries.length === 0 ? (
+      ): entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">No invitation activity recorded yet.</p>
-      ) : (
+      ): (
         <ol className="divide-y divide-border rounded-xl border border-border">
           {entries.map((entry) => (
             <li key={entry.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
@@ -865,9 +865,9 @@ function InvitationAudit({
                 tone={
                   entry.lifecycle === "cancelled"
                     ? "caution"
-                    : entry.delivered === false
+: entry.delivered === false
                       ? "risk"
-                      : "good"
+: "good"
                 }
               >
                 {LIFECYCLE_LABEL[entry.lifecycle]}
@@ -875,7 +875,7 @@ function InvitationAudit({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-foreground">{entry.summary}</p>
                 <p className="text-xs text-muted-foreground">
-                  {entry.email ? `${entry.email} · ` : ""}
+                  {entry.email ? `${entry.email} · `: ""}
                   {whenText(entry.at)}
                 </p>
               </div>
@@ -930,7 +930,7 @@ function MemberAccessPanel({
             member={member}
           />
         </div>
-      ) : null}
+      ): null}
 
       <SectionHeading
         eyebrow="Access"
@@ -979,7 +979,7 @@ function MemberAccessPanel({
         })}
       </div>
 
-      {provisioned ? null : (
+      {provisioned ? null: (
         <div className="mt-4">
           <NotProvisioned what="Per-person application access" file="docs/settings-schema.sql" />
         </div>
@@ -999,20 +999,20 @@ function MemberAccessPanel({
 
       {canManage ? (
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          {isSelf ? null : (
+          {isSelf ? null: (
             <TTButton
               variant="secondary"
-              onClick={() => onStatus(member.status === "active" ? "deactivated" : "active")}
+              onClick={() => onStatus(member.status === "active" ? "deactivated": "active")}
             >
               {member.status === "active"
                 ? `Deactivate ${member.name}`
-                : `Reactivate ${member.name}`}
+: `Reactivate ${member.name}`}
             </TTButton>
           )}
           <TTButton variant="secondary" onClick={() => setResetOpen(true)}>
             Set new password
           </TTButton>
-          {isSelf ? null : (
+          {isSelf ? null: (
             <TTButton variant="secondary" onClick={() => setRemoveOpen(true)}>
               Remove {member.name}
             </TTButton>
@@ -1020,10 +1020,10 @@ function MemberAccessPanel({
           <span className="text-xs text-muted-foreground">
             {isSelf
               ? "Setting a password here changes your own sign-in credential immediately."
-              : "A deactivated person keeps their history and loses every room immediately."}
+: "A deactivated person keeps their history and loses every room immediately."}
           </span>
         </div>
-      ) : null}
+      ): null}
 
       {removeOpen ? (
         <RemoveMemberDialog
@@ -1031,7 +1031,7 @@ function MemberAccessPanel({
           member={member}
           onClose={() => setRemoveOpen(false)}
         />
-      ) : null}
+      ): null}
 
       {resetOpen ? (
         <ResetPasswordDialog
@@ -1040,7 +1040,7 @@ function MemberAccessPanel({
           member={member}
           onClose={() => setResetOpen(false)}
         />
-      ) : null}
+      ): null}
     </div>
   );
 
@@ -1051,7 +1051,7 @@ function MemberAccessPanel({
  *
  * Two honest outcomes, said in the words that matter to the person deciding:
  * end their access and keep the account, or delete the sign-in account so the
- * same address can be set up again. Neither deletes their work — contacts,
+ * same address can be set up again. Neither deletes their work, contacts,
  * prospects, conversations, decisions and history all stay, and who they were
  * is written into the workspace history before anything is removed.
  */
@@ -1078,12 +1078,12 @@ function RemoveMemberDialog({
     },
     onSuccess: () => {
       toast.success(
-        mode === "delete_account" ? "Account deleted" : "Access removed",
+        mode === "delete_account" ? "Account deleted": "Access removed",
         {
           description:
             mode === "delete_account"
               ? `${address} can be created again from scratch. Their records were kept.`
-              : `${member.name} no longer has access. Their account and records were kept.`,
+: `${member.name} no longer has access. Their account and records were kept.`,
         },
       );
       void queryClient.invalidateQueries({ queryKey: ["settings"] });
@@ -1126,7 +1126,7 @@ function RemoveMemberDialog({
                 "w-full rounded-xl border px-4 py-3 text-left transition-colors",
                 mode === option.value
                   ? "border-foreground/30 bg-secondary/60"
-                  : "border-border hover:bg-secondary/30",
+: "border-border hover:bg-secondary/30",
               )}
             >
               <p className="text-sm font-medium text-foreground">{option.title}</p>
@@ -1148,7 +1148,7 @@ function RemoveMemberDialog({
               />
             </TTField>
           </div>
-        ) : null}
+        ): null}
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <TTButton
@@ -1157,9 +1157,9 @@ function RemoveMemberDialog({
           >
             {remove.isPending
               ? "Removing..."
-              : mode === "delete_account"
+: mode === "delete_account"
                 ? "Remove and delete account"
-                : "Remove access"}
+: "Remove access"}
           </TTButton>
           <TTButton variant="secondary" onClick={onClose}>
             Cancel
@@ -1186,7 +1186,7 @@ function MemberIdentityEditor({
   member: MemberProfile;
 }) {
   const queryClient = useQueryClient();
-  const [name, setName] = useState(member.name === member.email ? "" : member.name);
+  const [name, setName] = useState(member.name === member.email ? "": member.name);
   const [title, setTitle] = useState(member.jobTitle ?? "");
 
   const save = useMutation({
@@ -1236,7 +1236,7 @@ function MemberIdentityEditor({
           disabled={save.isPending}
           onClick={() => save.mutate()}
         >
-          {save.isPending ? "Saving…" : "Save name"}
+          {save.isPending ? "Saving…": "Save name"}
         </TTButton>
       </div>
     </div>
@@ -1321,8 +1321,8 @@ function InvitePanel({
       }
       setDelivered(
         failures.length === 0
-          ? `${created.length} invitation${created.length === 1 ? "" : "s"} emailed.`
-          : failures[0] ?? null,
+          ? `${created.length} invitation${created.length === 1 ? "": "s"} emailed.`
+: failures[0] ?? null,
       );
       onDone();
     },
@@ -1397,7 +1397,7 @@ function InvitePanel({
           hint={
             mode === "password"
               ? "How this person appears in People & access."
-              : "Recorded when you create the account with a temporary password."
+: "Recorded when you create the account with a temporary password."
           }
         >
           <TTInput
@@ -1444,7 +1444,7 @@ function InvitePanel({
               key={choice.value}
               className={cn(
                 "flex items-start gap-3 rounded-xl border px-4 py-3",
-                mode === choice.value ? "border-royal bg-secondary/40" : "border-border",
+                mode === choice.value ? "border-royal bg-secondary/40": "border-border",
               )}
             >
               <input
@@ -1477,7 +1477,7 @@ function InvitePanel({
             onConfirmation={setConfirmation}
           />
         </div>
-      ) : null}
+      ): null}
 
       <p className="tt-eyebrow mt-5 mb-2">Application access</p>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -1496,19 +1496,19 @@ function InvitePanel({
                 disabled={ceiling === "hidden"}
                 onChange={(event) =>
                   setOverrides((previous) => ({
-                    ...previous,
+...previous,
                     [app.id]: event.target.checked
                       ? ceiling === "hidden"
                         ? "hidden"
-                        : "view"
-                      : "hidden",
+: "view"
+: "hidden",
                   }))
                 }
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-foreground">{app.name}</span>
                 <span className="block text-xs text-muted-foreground">
-                  {ceiling === "hidden" ? "Not available to this role" : APP_ACCESS_LABEL[current]}
+                  {ceiling === "hidden" ? "Not available to this role": APP_ACCESS_LABEL[current]}
                 </span>
               </span>
               {ceiling !== "hidden" && current !== "hidden" ? (
@@ -1518,7 +1518,7 @@ function InvitePanel({
                   value={current}
                   onChange={(event) =>
                     setOverrides((previous) => ({
-                      ...previous,
+...previous,
                       [app.id]: event.target.value as AppAccessLevel,
                     }))
                   }
@@ -1529,7 +1529,7 @@ function InvitePanel({
                     </option>
                   ))}
                 </TTSelect>
-              ) : null}
+              ): null}
             </label>
           );
         })}
@@ -1548,7 +1548,7 @@ function InvitePanel({
             className="text-[13px] text-royal hover:underline"
             onClick={() => setShowPreview((value) => !value)}
           >
-            {showPreview ? "Hide preview" : "Preview email"}
+            {showPreview ? "Hide preview": "Preview email"}
           </button>
         </div>
         {showPreview ? (
@@ -1575,7 +1575,7 @@ function InvitePanel({
               </pre>
             </details>
           </div>
-        ) : null}
+        ): null}
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -1585,34 +1585,34 @@ function InvitePanel({
             onClick={() => createUser.mutate()}
             disabled={parsed.valid.length === 0 || createUser.isPending}
           >
-            {createUser.isPending ? "Creating…" : "Create user"}
+            {createUser.isPending ? "Creating…": "Create user"}
           </TTButton>
-        ) : (
+        ): (
           <TTButton
             onClick={() => invite.mutate()}
             disabled={parsed.valid.length === 0 || invite.isPending}
           >
             {invite.isPending
               ? "Sending…"
-              : `Send ${parsed.valid.length || ""} invitation${parsed.valid.length === 1 ? "" : "s"}`.trim()}
+: `Send ${parsed.valid.length || ""} invitation${parsed.valid.length === 1 ? "": "s"}`.trim()}
           </TTButton>
         )}
         {parsed.invalid.length > 0 ? (
           <span className="text-xs text-warning">
             Not a valid address: {parsed.invalid.join(", ")}
           </span>
-        ) : null}
+        ): null}
         {sent ? (
           <span className="text-sm text-success" role="status">
-            {sent} invitation{sent === 1 ? "" : "s"} recorded.
-            {delivered ? ` ${delivered}` : ""}
+            {sent} invitation{sent === 1 ? "": "s"} recorded.
+            {delivered ? ` ${delivered}`: ""}
           </span>
-        ) : null}
+        ): null}
         {invite.error || createUser.error ? (
           <span className="text-sm text-destructive" role="alert">
             {((invite.error ?? createUser.error) as Error).message}
           </span>
-        ) : null}
+        ): null}
       </div>
 
       {created ? (
@@ -1627,7 +1627,7 @@ function InvitePanel({
             </li>
             <li>Role applied: {ROLE_LABEL[created.role]}.</li>
             <li>
-              Rooms: {created.rooms.length > 0 ? created.rooms.join(", ") : "None yet"}.
+              Rooms: {created.rooms.length > 0 ? created.rooms.join(", "): "None yet"}.
             </li>
             <li>A temporary password was set.</li>
           </ul>
@@ -1636,7 +1636,7 @@ function InvitePanel({
             cannot be shown again.
           </p>
         </div>
-      ) : null}
+      ): null}
     </div>
   );
 }
@@ -1667,7 +1667,7 @@ function PasswordFields({
       <TTField label="Temporary password" hint={PASSWORD_HELP}>
         <TTInput
           id={`${idPrefix}-password`}
-          type={visible ? "text" : "password"}
+          type={visible ? "text": "password"}
           autoComplete="new-password"
           value={password}
           onChange={(event) => onPassword(event.target.value)}
@@ -1676,7 +1676,7 @@ function PasswordFields({
       <TTField label="Confirm password" hint="Type it a second time so a typo cannot lock them out.">
         <TTInput
           id={`${idPrefix}-confirm`}
-          type={visible ? "text" : "password"}
+          type={visible ? "text": "password"}
           autoComplete="new-password"
           value={confirmation}
           onChange={(event) => onConfirmation(event.target.value)}
@@ -1687,7 +1687,7 @@ function PasswordFields({
         className="justify-self-start text-[13px] text-royal hover:underline"
         onClick={() => setVisible((value) => !value)}
       >
-        {visible ? "Hide password" : "Show password"}
+        {visible ? "Hide password": "Show password"}
       </button>
     </div>
   );
@@ -1757,7 +1757,7 @@ function ResetPasswordDialog({
               be shown again.
             </p>
           </div>
-        ) : (
+        ): (
           <PasswordFields
             idPrefix={`reset-${member.userId}`}
             password={password}
@@ -1771,15 +1771,15 @@ function ResetPasswordDialog({
           <p className="mt-4 text-sm text-destructive" role="alert">
             {note}
           </p>
-        ) : null}
+        ): null}
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           {done ? (
             <TTButton onClick={onClose}>Done</TTButton>
-          ) : (
+          ): (
             <>
               <TTButton onClick={() => reset.mutate()} disabled={reset.isPending}>
-                {reset.isPending ? "Setting…" : "Set new password"}
+                {reset.isPending ? "Setting…": "Set new password"}
               </TTButton>
               <TTButton variant="secondary" onClick={onClose}>
                 Cancel

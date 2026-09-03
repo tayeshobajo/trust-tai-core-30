@@ -47,7 +47,7 @@ export function developmentStage(
   const lastOutbound = [...ordered].reverse().find((touch) => touch.direction === "outbound");
   const latest = ordered[ordered.length - 1];
 
-  // They replied. The moment a reply exists, this is a conversation — the
+  // They replied. The moment a reply exists, this is a conversation, the
   // relationship has crossed the line where automation ends.
   if (
     stage !== "new" &&
@@ -73,7 +73,7 @@ export function developmentStage(
   const lastTouchAt = relationship.lastTouchAt ?? latest?.occurredAt;
   const daysQuiet = lastTouchAt
     ? Math.floor((now.getTime() - new Date(lastTouchAt).getTime()) / DAY)
-    : null;
+: null;
 
   if (stage === "reached_out") {
     if (daysQuiet !== null && daysQuiet > COOLING_AFTER_DAYS) {

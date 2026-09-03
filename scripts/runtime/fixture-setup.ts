@@ -13,25 +13,25 @@ async function main() {
   const sb = db();
   const now = new Date().toISOString();
 
-  // 1. Thinking source — ChatGPT URL, honest state (§2/§4)
+  // 1. Thinking source. ChatGPT URL, honest state (§2/§4)
   const { data: src, error: srcErr } = await sb
-    .from("project_thinking_sources")
-    .insert({
+.from("project_thinking_sources")
+.insert({
       organization_id: ORG_ID,
       project_id: PROJECT_ID,
       source_type: "chatgpt",
-      title: "Onboarding thinking — intake design",
+      title: "Onboarding thinking, intake design",
       url: "https://chatgpt.com/c/fixture-onboarding-intake",
       is_primary: true,
       sync_state: "import_needs_upload",
       added_by_label: RUNTIME_ACTOR_LABEL,
       added_by: RUNTIME_ACTOR_ID,
     })
-    .select("id")
-    .single();
+.select("id")
+.single();
   if (srcErr) throw new Error(`thinking source: ${srcErr.message}`);
 
-  // 2. Confirmed decision (human-approved — highest authority)
+  // 2. Confirmed decision (human-approved, highest authority)
   const { error: decErr } = await sb.from("project_decisions").insert({
     organization_id: ORG_ID,
     project_id: PROJECT_ID,
@@ -39,7 +39,7 @@ async function main() {
     why_it_matters: "Determines build complexity and client success risk.",
     owner_label: "Tai",
     status: "answered",
-    answer: "Guided path — one intake flow carries every new client.",
+    answer: "Guided path, one intake flow carries every new client.",
     decided_at: now,
   });
   if (decErr) throw new Error(`decision: ${decErr.message}`);
@@ -57,20 +57,20 @@ async function main() {
   });
   if (knErr) throw new Error(`knowledge: ${knErr.message}`);
 
-  // 4. Approved mockup asset (file row + asset row; upload ≠ approval — status approved is explicit)
+  // 4. Approved mockup asset (file row + asset row; upload ≠ approval, status approved is explicit)
   const existingFile = await sb
-    .from("project_files")
-    .select("id")
-    .eq("project_id", PROJECT_ID)
-    .eq("storage_path", "projects/97184a93/intake-mockup-v1.png")
-    .maybeSingle();
+.from("project_files")
+.select("id")
+.eq("project_id", PROJECT_ID)
+.eq("storage_path", "projects/97184a93/intake-mockup-v1.png")
+.maybeSingle();
   if (existingFile.data) {
     console.log(JSON.stringify({ note: "fixture already present", fileId: existingFile.data.id }));
     process.exit(0);
   }
   const { data: file, error: fileErr } = await sb
-    .from("project_files")
-    .insert({
+.from("project_files")
+.insert({
       organization_id: ORG_ID,
       project_id: PROJECT_ID,
       name: "intake-mockup-v1.png",
@@ -81,15 +81,15 @@ async function main() {
       uploaded_by_label: RUNTIME_ACTOR_LABEL,
       uploaded_by: RUNTIME_ACTOR_ID,
     })
-    .select("id")
-    .single();
+.select("id")
+.single();
   if (fileErr) throw new Error(`file: ${fileErr.message}`);
   const { error: assetErr } = await sb.from("project_assets").insert({
     organization_id: ORG_ID,
     project_id: PROJECT_ID,
     file_id: file!.id,
     asset_type: "mockup",
-    title: "Guided intake — v1 approved mockup",
+    title: "Guided intake, v1 approved mockup",
     version: 1,
     status: "approved",
     uploaded_by_label: RUNTIME_ACTOR_LABEL,
@@ -97,7 +97,7 @@ async function main() {
   });
   if (assetErr) throw new Error(`asset: ${assetErr.message}`);
 
-  // 5. Connections: Lovable + GitHub, honest 'linked' (bookmarks — §19)
+  // 5. Connections: Lovable + GitHub, honest 'linked' (bookmarks, §19)
   const conn = (type: string, label: string, url: string, external_id: string) => ({
     organization_id: ORG_ID,
     project_id: PROJECT_ID,

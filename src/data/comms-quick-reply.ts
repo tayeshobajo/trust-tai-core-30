@@ -15,7 +15,7 @@ import type { GmailSendOutcome } from "@/data/supabase/comms-gmail";
 
 export async function sendQuickReply(input: {
   relationship: Relationship;
-  /** Gmail's conversation id — the reply joins this exact thread. */
+  /** Gmail's conversation id, the reply joins this exact thread. */
   providerThreadId: string;
   subject: string;
   body: string;
@@ -32,7 +32,7 @@ export async function sendQuickReply(input: {
       relationship: input.relationship,
       register: "follow_up",
       intent: "quick_reply",
-      ...(input.subject.trim() ? { subject: input.subject.trim() } : {}),
+...(input.subject.trim() ? { subject: input.subject.trim() }: {}),
       body,
       reviewState: "approved",
       rationale: {

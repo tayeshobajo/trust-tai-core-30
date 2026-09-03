@@ -1,5 +1,5 @@
 /**
- * Roadmap Gold Standard acceptance harness — DEVELOPMENT/QA ONLY.
+ * Roadmap Gold Standard acceptance harness. DEVELOPMENT/QA ONLY.
  *
  * Not part of the app bundle and not routable. It runs the exact production
  * intelligence path (same prompts, same normalisation, same ranking, same
@@ -37,7 +37,7 @@ import type { RuntimeModelCaller } from "../src/lib/intelligence-runtime.server"
 const offlineCaller: RuntimeModelCaller = (call) =>
   callRoadmapProvider(call.instructions, call.input, {
     webSearch: call.webSearch ?? false,
-    ...(call.responseFormat ? { responseFormat: call.responseFormat } : {}),
+...(call.responseFormat ? { responseFormat: call.responseFormat }: {}),
   });
 import { composeStudioDocument } from "../src/lib/roadmap-studio.server";
 
@@ -49,7 +49,7 @@ const objective =
 const now = new Date().toISOString();
 function log(label: string, value?: unknown) {
   if (value === undefined) console.log(`\n=== ${label}`);
-  else console.log(`${label}: ${typeof value === "string" ? value : JSON.stringify(value)}`);
+  else console.log(`${label}: ${typeof value === "string" ? value: JSON.stringify(value)}`);
 }
 
 /* --------------------------------------------------------------- research */
@@ -59,7 +59,7 @@ let result: RoadmapResearchResult | null = null;
 for await (const stage of researchSubject({
   subjectLabel,
   objective,
-  ...(website ? { website } : {}),
+...(website ? { website }: {}),
   known: [],
 }, offlineCaller)) {
   console.log(`  [${stage.stage}] ${stage.message}`);
@@ -72,7 +72,7 @@ const research = result.research;
 log("provider", `${result.provider} / ${result.model}`);
 log("sources", research.sources.length);
 log("unknowns", research.unknowns.length);
-for (const claim of [...research.companyModel, ...research.buyers, ...research.strengths]) {
+for (const claim of [...research.companyModel,...research.buyers,...research.strengths]) {
   console.log(`  (${claim.tier}/${claim.confidence}) ${claim.statement}`);
 }
 log("competitors", research.competitors.map((c) => c.name));
@@ -120,7 +120,7 @@ for (const m of ranked) {
  */
 function approve(item: StrategyItem | null): StrategyItem | null {
   if (!item) return null;
-  return { ...item, tier: "decided", approval: "approved", approvedAt: now };
+  return {...item, tier: "decided", approval: "approved", approvedAt: now };
 }
 const decidedStrategy: RoadmapStrategy = {
   id: "qa-strategy",
@@ -134,7 +134,7 @@ const decidedStrategy: RoadmapStrategy = {
   centralTruth: approve(normalized.centralTruth),
   // Deliberately approve only the first gap: the rest stay proposed, so the
   // packet can be checked for rejected/deferred leakage.
-  gaps: normalized.gaps.map((i, index) => (index === 0 ? approve(i)! : i)),
+  gaps: normalized.gaps.map((i, index) => (index === 0 ? approve(i)!: i)),
   leveragePoint: approve(normalized.leveragePoint),
   provider: result.provider,
   model: result.model,
@@ -163,9 +163,9 @@ const milestones: RoadmapMilestone[] = ranked.map((m, index) => ({
   priorityScore: m.priorityScore,
   priorityRationale: m.priorityRationale,
   recommendedSequence: m.recommendedSequence,
-  status: index < SELECTED ? "approved" : "candidate",
-  tier: index < SELECTED ? "decided" : "inferred",
-  ownerLabel: index < SELECTED ? "Tai" : undefined,
+  status: index < SELECTED ? "approved": "candidate",
+  tier: index < SELECTED ? "decided": "inferred",
+  ownerLabel: index < SELECTED ? "Tai": undefined,
   createdAt: now,
   updatedAt: now,
 }));

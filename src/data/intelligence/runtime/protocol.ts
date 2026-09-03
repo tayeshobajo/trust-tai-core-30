@@ -8,8 +8,8 @@
  * completion failed, because "the action ran" was accepted as proof and a
  * failed attempt produced a dead end instead of the next bounded diagnostic
  * step. This module encodes the recovery discipline as data: after a failed
- * or blocked attempt, the runtime names the next safe step — a different
- * inspection angle, a missing retrieval, a re-read of state — and escalates
+ * or blocked attempt, the runtime names the next safe step, a different
+ * inspection angle, a missing retrieval, a re-read of state, and escalates
  * only when the bounded options are genuinely exhausted or the boundary
  * requires a person.
  *
@@ -128,9 +128,9 @@ export function nextProtocolStep(
   return {
     kind: "escalate",
     because: `${failures.length} bounded attempts made no progress (${attempts
-      .slice(-MAX_DIAGNOSTIC_ATTEMPTS)
-      .map((attempt) => attempt.action)
-      .join("; ")}).`,
+.slice(-MAX_DIAGNOSTIC_ATTEMPTS)
+.map((attempt) => attempt.action)
+.join("; ")}).`,
     blockedOn: context.unknowns[0] ?? "the evidence the suite does not hold",
   };
 }

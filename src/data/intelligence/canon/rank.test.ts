@@ -38,7 +38,7 @@ function match(overrides: Partial<PatternMatch> & { patternId: string }): Patter
     unmetConditions: [],
     contradicting: [],
     competingExplanations: [],
-    ...overrides,
+...overrides,
   } as PatternMatch;
 }
 
@@ -59,7 +59,7 @@ function experience(overrides: Partial<PriorExperience>): PriorExperience {
       guidance: "",
     },
     note: null,
-    ...overrides,
+...overrides,
   } as PriorExperience;
 }
 
@@ -144,7 +144,7 @@ describe("ranking competing readings", () => {
     expect(text).toContain("Likely:");
     expect(text).toContain("Also plausible:");
     expect(text).toContain("before acting");
-    expect(text).not.toContain("—");
+    expect(text).not.toContain(", ");
   });
 });
 
@@ -162,7 +162,7 @@ describe("prior case resemblance", () => {
       decidedBy: "u",
       decidedAt: NOW,
       diagnosisVerdict: "unknown",
-      ...(correction ? { correction } : {}),
+...(correction ? { correction }: {}),
       createdAt: NOW,
     } as IntelligenceCase;
   }

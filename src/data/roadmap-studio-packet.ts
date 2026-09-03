@@ -160,7 +160,7 @@ function approvedFacts(items: StrategyItem[], group: string): PacketFact[] {
 }
 
 function approvedFact(item: StrategyItem | null | undefined, group: string): PacketFact | null {
-  return isApprovedItem(item) ? toFact(item as StrategyItem, group) : null;
+  return isApprovedItem(item) ? toFact(item as StrategyItem, group): null;
 }
 
 /**
@@ -194,17 +194,17 @@ export function buildEvidencePacket(input: PacketInput): EvidencePacket {
           executionBoundary: milestone.executionBoundary,
           sources: milestone.evidence,
         }))
-      : [];
+: [];
 
   const allowed = new Set<string>();
   for (const fact of [
-    ...pointA,
-    ...anchorProof,
-    ...gaps,
-    ...(centralTruth ? [centralTruth] : []),
-    ...(leveragePoint ? [leveragePoint] : []),
-    ...(pointB ? [pointB] : []),
-    ...(pointC ? [pointC] : []),
+...pointA,
+...anchorProof,
+...gaps,
+...(centralTruth ? [centralTruth]: []),
+...(leveragePoint ? [leveragePoint]: []),
+...(pointB ? [pointB]: []),
+...(pointC ? [pointC]: []),
   ]) {
     for (const ref of fact.sources) allowed.add(ref.url);
   }
@@ -216,17 +216,17 @@ export function buildEvidencePacket(input: PacketInput): EvidencePacket {
   }
 
   const supportKeys = [
-    ...[
-      ...pointA,
-      ...anchorProof,
-      ...gaps,
-      ...(centralTruth ? [centralTruth] : []),
-      ...(leveragePoint ? [leveragePoint] : []),
-      ...(pointB ? [pointB] : []),
-      ...(pointC ? [pointC] : []),
-      ...observed,
+...[
+...pointA,
+...anchorProof,
+...gaps,
+...(centralTruth ? [centralTruth]: []),
+...(leveragePoint ? [leveragePoint]: []),
+...(pointB ? [pointB]: []),
+...(pointC ? [pointC]: []),
+...observed,
     ].map((fact) => fact.key),
-    ...milestones.map((milestone) => `milestone:${milestone.id}`),
+...milestones.map((milestone) => `milestone:${milestone.id}`),
   ];
 
   const missing: string[] = [];
@@ -242,7 +242,7 @@ export function buildEvidencePacket(input: PacketInput): EvidencePacket {
     subjectLabel: input.subjectLabel,
     kind: input.kind,
     observed,
-    ...(input.research?.checkedAt ? { checkedAt: input.research.checkedAt } : {}),
+...(input.research?.checkedAt ? { checkedAt: input.research.checkedAt }: {}),
     centralTruth,
     pointA,
     anchorProof,
@@ -335,20 +335,20 @@ const NUMERIC = /\b\d[\d,.]*\s?(%|percent|k|m|bn|billion|million|x)?\b|[$£€]\
 
 function normalizeVoice(text: string): string {
   // No em dashes, ever. They are the tell of generated copy.
-  return text.replace(/\s*[—–]\s*/g, ", ").replace(/\s{2,}/g, " ").trim();
+  return text.replace(/\s*[, –]\s*/g, ", ").replace(/\s{2,}/g, " ").trim();
 }
 
 function packetCorpus(packet: EvidencePacket): string {
   const parts: string[] = [packet.subjectLabel];
   for (const fact of [
-    ...packet.pointA,
-    ...packet.anchorProof,
-    ...packet.gaps,
-    ...(packet.centralTruth ? [packet.centralTruth] : []),
-    ...(packet.leveragePoint ? [packet.leveragePoint] : []),
-    ...(packet.pointB ? [packet.pointB] : []),
-    ...(packet.pointC ? [packet.pointC] : []),
-    ...packet.observed,
+...packet.pointA,
+...packet.anchorProof,
+...packet.gaps,
+...(packet.centralTruth ? [packet.centralTruth]: []),
+...(packet.leveragePoint ? [packet.leveragePoint]: []),
+...(packet.pointB ? [packet.pointB]: []),
+...(packet.pointC ? [packet.pointC]: []),
+...packet.observed,
   ]) {
     parts.push(fact.statement, fact.because);
   }
@@ -362,7 +362,7 @@ function packetCorpus(packet: EvidencePacket): string {
       milestone.immediateValue,
       milestone.longTermValue,
       milestone.executionBoundary,
-      ...milestone.dependencies,
+...milestone.dependencies,
     );
   }
   return parts.join(" ").toLowerCase();
@@ -414,10 +414,10 @@ export function packetSummary(packet: EvidencePacket): PacketSummary {
     packet.pointA.length +
     packet.anchorProof.length +
     packet.gaps.length +
-    (packet.centralTruth ? 1 : 0) +
-    (packet.leveragePoint ? 1 : 0) +
-    (packet.pointB ? 1 : 0) +
-    (packet.pointC ? 1 : 0);
+    (packet.centralTruth ? 1: 0) +
+    (packet.leveragePoint ? 1: 0) +
+    (packet.pointB ? 1: 0) +
+    (packet.pointC ? 1: 0);
 
   return {
     ready: packet.ready,
@@ -426,7 +426,7 @@ export function packetSummary(packet: EvidencePacket): PacketSummary {
     approvedMilestoneCount: packet.milestones.length,
     observedFactCount: packet.observed.length,
     sourceCount: packet.allowedUrls.length,
-    ...(packet.checkedAt ? { checkedAt: packet.checkedAt } : {}),
+...(packet.checkedAt ? { checkedAt: packet.checkedAt }: {}),
   };
 }
 
@@ -438,14 +438,14 @@ export function packetSummary(packet: EvidencePacket): PacketSummary {
 export function packetFactIndex(packet: EvidencePacket): Map<string, PacketFact> {
   const index = new Map<string, PacketFact>();
   for (const fact of [
-    ...packet.pointA,
-    ...packet.anchorProof,
-    ...packet.gaps,
-    ...packet.observed,
-    ...(packet.centralTruth ? [packet.centralTruth] : []),
-    ...(packet.leveragePoint ? [packet.leveragePoint] : []),
-    ...(packet.pointB ? [packet.pointB] : []),
-    ...(packet.pointC ? [packet.pointC] : []),
+...packet.pointA,
+...packet.anchorProof,
+...packet.gaps,
+...packet.observed,
+...(packet.centralTruth ? [packet.centralTruth]: []),
+...(packet.leveragePoint ? [packet.leveragePoint]: []),
+...(packet.pointB ? [packet.pointB]: []),
+...(packet.pointC ? [packet.pointC]: []),
   ]) {
     index.set(fact.key, fact);
   }
@@ -577,15 +577,15 @@ export function validateSections(
     return {
       key: section.key,
       title: normalizeVoice(section.title),
-      body: empty ? [NOT_READY_LINE] : body,
-      tier: empty || sources.length === 0 ? ("inferred" as const) : ("decided" as const),
+      body: empty ? [NOT_READY_LINE]: body,
+      tier: empty || sources.length === 0 ? ("inferred" as const): ("decided" as const),
       sources,
-      ...(section.visualDirection
+...(section.visualDirection
         ? { visualDirection: normalizeVoice(section.visualDirection) }
-        : {}),
-      ...(section.caption ? { caption: normalizeVoice(section.caption) } : {}),
-      ...(unlocks.length > 0 ? { unlocks } : {}),
-      ...(support.length > 0 ? { support, supportKeys } : {}),
+: {}),
+...(section.caption ? { caption: normalizeVoice(section.caption) }: {}),
+...(unlocks.length > 0 ? { unlocks }: {}),
+...(support.length > 0 ? { support, supportKeys }: {}),
     } satisfies ArtifactSection;
   });
 

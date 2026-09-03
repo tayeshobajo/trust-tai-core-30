@@ -3,7 +3,7 @@
  *
  * Comms owns the relationship; Scout only reads it. A company page shows the
  * real thread with the real person so nobody has to guess whether anyone has
- * spoken to them — and every reply lands against the person it came from.
+ * spoken to them, and every reply lands against the person it came from.
  *
  * Read-only by design: writing, drafting and sending all stay in Comms.
  */
@@ -35,10 +35,10 @@ export async function listProspectConversations(
   let rows: RelationshipRow[] = [];
   try {
     const byProspect = await supabase
-      .from("comms_relationships")
-      .select(RELATIONSHIP_COLUMNS)
-      .eq("organization_id", organizationId)
-      .eq("prospect_id", prospectId);
+.from("comms_relationships")
+.select(RELATIONSHIP_COLUMNS)
+.eq("organization_id", organizationId)
+.eq("prospect_id", prospectId);
     if (byProspect.error) throw new Error(byProspect.error.message);
     rows = (byProspect.data ?? []) as unknown as RelationshipRow[];
 
@@ -48,10 +48,10 @@ export async function listProspectConversations(
     const contactIds = people.map((person) => person.id);
     if (contactIds.length > 0) {
       const byContact = await supabase
-        .from("comms_relationships")
-        .select(RELATIONSHIP_COLUMNS)
-        .eq("organization_id", organizationId)
-        .in("contact_id", contactIds);
+.from("comms_relationships")
+.select(RELATIONSHIP_COLUMNS)
+.eq("organization_id", organizationId)
+.in("contact_id", contactIds);
       if (byContact.error) throw new Error(byContact.error.message);
       for (const row of (byContact.data ?? []) as unknown as RelationshipRow[]) {
         if (!rows.some((existing) => existing.id === row.id)) rows.push(row);

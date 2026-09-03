@@ -3,7 +3,7 @@
  *
  * A company that came to us is a different kind of object from one we went
  * looking for, and Tai should feel that within a second. The treatment is a
- * royal keyline, a monospace INBOUND mark, and an Ambient Identity Wash — one
+ * royal keyline, a monospace INBOUND mark, and an Ambient Identity Wash, one
  * atmospheric region per surface, never a coloured card.
  */
 
@@ -55,12 +55,12 @@ export function InboundWash({ children }: { children: React.ReactNode }) {
 }
 
 function percent(value?: number | null): string {
-  return typeof value === "number" ? `${Math.round(value * 100)}%` : "Not recorded";
+  return typeof value === "number" ? `${Math.round(value * 100)}%`: "Not recorded";
 }
 
 /**
  * The origin rail: where this company came from, and how complete their own
- * account was. Facts only — no judgment, that belongs to Tai.
+ * account was. Facts only, no judgment, that belongs to Tai.
  */
 export function InboundOriginRail({
   packet,
@@ -69,7 +69,7 @@ export function InboundOriginRail({
   packet: FounderSignalPacket;
   channel: string;
 }) {
-  const submitted = packet.statedAt ? new Date(packet.statedAt) : null;
+  const submitted = packet.statedAt ? new Date(packet.statedAt): null;
   return (
     <InboundWash>
       <div className="p-5">
@@ -84,8 +84,8 @@ export function InboundOriginRail({
           This company came to us. They completed the roadmap conversation on the website
           {submitted && !Number.isNaN(submitted.getTime())
             ? ` on ${submitted.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}`
-            : ""}
-          .
+: ""}
+.
         </p>
 
         <dl className="mt-4 grid gap-3 sm:grid-cols-4">
@@ -98,9 +98,9 @@ export function InboundOriginRail({
               value:
                 packet.understanding.authorizesResearch === true
                   ? "Given"
-                  : packet.understanding.authorizesResearch === false
+: packet.understanding.authorizesResearch === false
                     ? "Withheld"
-                    : "Not asked",
+: "Not asked",
             },
           ].map((item) => (
             <div key={item.label}>
@@ -121,7 +121,7 @@ export function InboundOriginRail({
             Read the full conversation
             <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
           </Link>
-        ) : null}
+        ): null}
       </div>
     </InboundWash>
   );
@@ -178,7 +178,7 @@ export function StatedTranscript({ packet }: { packet: FounderSignalPacket }) {
         {answered.map((turn, index) => (
           <li key={index} className="rounded-xl border border-border bg-card px-4 py-3">
             <div className="flex flex-wrap items-center gap-2">
-              <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
+              <MetaPill>{turn.modality === "voice" ? "Spoken": "Typed"}</MetaPill>
               <p className="text-[13px] text-muted-foreground">{turn.questionText}</p>
             </div>
             <p className="mt-2 flex gap-2 text-[14px] text-foreground">
@@ -195,7 +195,7 @@ export function StatedTranscript({ packet }: { packet: FounderSignalPacket }) {
                 Open this answer on the website record
                 <ArrowUpRight className="h-3 w-3" aria-hidden />
               </Link>
-            ) : null}
+            ): null}
           </li>
         ))}
       </ol>

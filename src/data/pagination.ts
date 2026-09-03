@@ -3,7 +3,7 @@
  *
  * Deliberately free of React and of Supabase: pure slicing over rows already
  * loaded for the organization, so any list surface (Scout companies, Comms
- * relationships) paginates the same honest way — counts always describe the
+ * relationships) paginates the same honest way, counts always describe the
  * full filtered set, never just the page on screen.
  */
 
@@ -30,7 +30,7 @@ export function paginate<T>(items: T[], page: number, pageSize: number): PageVie
     page: current,
     pageCount,
     total,
-    from: total === 0 ? 0 : start + 1,
+    from: total === 0 ? 0: start + 1,
     to: Math.min(total, start + rows.length),
   };
 }

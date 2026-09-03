@@ -40,7 +40,7 @@ export interface ScoutFitEvaluation {
   explanation: string;
   /** True when the row cannot honestly be scored against live evidence. */
   scoreable: boolean;
-  /** Public pages read. Confidence context only — never ICP fit points. */
+  /** Public pages read. Confidence context only, never ICP fit points. */
   pagesResearched?: number;
   /** e.g. "5 public pages checked" or "Research depth is thin". */
   researchDepthNote?: string;

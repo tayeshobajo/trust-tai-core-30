@@ -58,7 +58,7 @@ export function HealthPill({
 
 /**
  * Classification marks: what kind of relationship this is. Deliberately a
- * separate hue family from health — royal blue says "client", soft plum says
+ * separate hue family from health, royal blue says "client", soft plum says
  * "developing", and neither is ever red, amber, or green, because kind is not
  * condition.
  */
@@ -77,7 +77,7 @@ export const SEGMENT_TEXT: Record<RelationshipSegment, string> = {
  * classification reads from these records, so the treatment cannot drift:
  * a quiet wash on the surface, a restrained classification edge on the
  * left, and a tinted avatar. Selected state keeps the same segment family
- * — a stronger wash plus a ring of the same hue — never a generic blue.
+ *, a stronger wash plus a ring of the same hue, never a generic blue.
  */
 export const SEGMENT_SURFACE: Record<RelationshipSegment, string> = {
   client: "bg-royal-wash hover:bg-royal-wash-strong",
@@ -132,7 +132,7 @@ export function SegmentPill({
       )}
     >
       <SegmentDot segment={segment} />
-      {segment === "client" ? "Client" : "Developing"}
+      {segment === "client" ? "Client": "Developing"}
     </span>
   );
 }
