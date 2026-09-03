@@ -264,6 +264,34 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
     approval_boundary: r("approval-driven by design (Conductor v2)"),
     outcome_learning: r("conductor learning ledger + canon outcomes (docs/conductor-v3.md)"),
   }),
+  manifest("approvals", {
+    evidence_grounding: r(
+      "every request carries the reasoning and the evidence the source app prepared; the room refuses to render a decision without them (src/domain/approvals.ts)",
+    ),
+    retrieval: d(
+      "the submitted packet is the whole context; Approvals reads no room's store",
+      "src/data/supabase/approvals-service.ts",
+      "the decision room must judge exactly what the owning room proposed, not a re-retrieved version of it",
+    ),
+    domain_patterns: d(
+      "domain knowledge stays in the room that prepared the work",
+      "src/data/intelligence/canon",
+      "Approvals judges authority and boundaries, which are universal; the domain pattern belongs to the owning room",
+    ),
+    safe_diagnostic_loop: r(
+      "request_revision returns work to its owner with a reason instead of retrying autonomously (src/domain/approvals.ts)",
+    ),
+    verification: r(
+      "approved, executed and verified are distinct states; the downstream record says queued, unavailable or failed honestly (docs/approvals-v1.md)",
+    ),
+    approval_boundary: r(
+      "the boundary itself: no request reaches executed without passing through a person's approval, enforced by the state machine (src/domain/approvals.test.ts)",
+    ),
+    outcome_learning: r(
+      "the append-only event trail records every decision, reason and handover outcome (approval_events)",
+    ),
+  }),
+
   manifest("studio", {
     evidence_grounding: r(
       "composes only approved roadmap packets; generation reasons through the runtime boundary (src/lib/roadmap-studio.server.ts)",
