@@ -1,115 +1,44 @@
-# Scout → Comms → Roadmap: Relationship Development
+# De-AI the typography and copy
 
-A governed relationship-development loop across the three rooms, built on the
-existing Scout intel, handoff, and Comms one-relationship architecture. No new
-CRM, no send automation, no schema changes (watch state rides on the existing
-`prospects.metadata` jsonb via `saveProspectMetadataPatch`).
+Client feedback: the serif headings, line breaks, sizing, and em dashes read as AI-generated. Fix the type system and strip em dashes everywhere.
 
-## New domain contracts — `src/domain/relationship-development.ts`
+## 1. New type system
 
-- `RelationshipOpportunityState`: `ready` ("Ready to consider"), `watching`
-  ("Worth watching"), `not_enough_signal`, `not_appropriate` ("Not appropriate now").
-- `OpportunityFactor` (key, label, present/absent/unknown, because, weight) —
-  eight factors: decision_maker, contact_route, recent_signal, specific_notice,
-  contribute_first, natural_bridge, local_relevance, freshness.
-- `ChannelRecommendation` for email / linkedin / text, always with a reason.
-- `ProofOfCare` (observation | diagnostic | mockup | introduction | resource |
-  pattern | idea) — never "lead magnet".
-- `RelationshipDevelopmentBrief` — the structured first-move judgment:
-  whyNow, humanSignal, whatIsInteresting, whatTaiCanNotice, risksOrAssumptions,
-  bestChannel + channelReason, bridgeIdeas, firstMovePosture, shouldActNow,
-  evidenceUsed, grounded.
-- `RoadmapOpportunitySignal` — revealed-need kinds (competing priorities,
-  founder bottleneck, unclear sequencing, growth outpacing systems,
-  disconnected tools, unclear next build, repeated symptoms) with evidence,
-  because, confidence. A signal, never an auto-conversion.
-- `DevelopmentStage` human-facing states: Ready for first move, Waiting for
-  reply, Conversation open, Needs Tai, Cooling, Developing.
+Replace Cormorant Garamond (display) and Inter (body) with a modern geometric pairing:
 
-## New compute layer — `src/data/relationship-development.ts` (pure, tested)
+- Headings / display: **Sora**
+- Body / interface: **Manrope**
+- Mono (eyebrows, IDs, statuses): keep JetBrains Mono
 
-- `relationshipResearchEligible(candidate, people)`: scoreable && score >= 60
-  && traceable decision maker. Pure read; eligibility never sends anything.
-- `computeRelationshipOpportunity`: deterministic weighted factors, absence is
-  unknown never negative. Ready requires decision maker + route + (recent
-  signal or specific notice); red fit → not appropriate now.
-- `worthKnowingSort`: state rank, then opportunity score — a fresh strong
-  signal outranks a stale higher-fit row.
-- `recommendChannel`: text only with prior-relationship evidence (never from a
-  phone number alone); LinkedIn when the opening signal is LinkedIn-native;
-  email default when a business email exists.
-- `suggestProofOfCare`: grounded bridge ideas from observed opportunities,
-  signals, and industry patterns only.
-- `buildRelationshipBrief`: deterministic assembly from stored evidence;
-  fail-closed (`grounded: false`, no first move) when there is nothing real to
-  notice. `firstMovePosture` encodes soft-introduction doctrine (no forced CTA).
-- `detectRoadmapOpportunity(texts)`: deterministic revealed-need detection.
-- `readRelationshipDevelopment(metadata)` / watch state reader.
+Load both from Google Fonts via the root route `<link>` tags, and repoint the `--font-display` / `--font-sans` theme tokens. No component-level font classes change, so every surface picks it up at once.
 
-## Comms stage derivation — `src/data/relationship-stage.ts` (pure, tested)
+## 2. Typographic tuning (the "AI feel")
 
-`developmentStage(relationship, touches, now)`: maps the existing one-record
-lifecycle to human-facing states. An inbound reply on a reached-out
-relationship flips it to "Conversation open" — sequence thinking ends there.
-Archived/client relationships return null (graduated, not developing).
+Beyond the family swap:
 
-## Handoff carry (Phase 5)
+- Headings get tighter tracking and a lower line-height (geometric sans needs less leading than a serif); remove the serif-era letter-spacing that now looks loose.
+- Cap heading sizes one step down where display text currently dominates, so hero statements feel edited rather than generated.
+- Set balanced wrapping on headline text so lines break on meaning instead of leaving orphan words.
+- Body copy gets a slightly tighter measure and consistent leading.
 
-- `src/domain/comms-handoff.ts`: optional `development?: HandoffDevelopment`
-  (channel + reason, bridge ideas, whyNow) on `HandoffDraft`.
-- `src/data/comms-handoff.ts`: `buildHandoffDraft` accepts and attaches it.
-- `comms-handoff-receiver.ts`: persists it under
-  `metadata.scout_handoff.development` — provenance survives into Comms.
-- Reuses the existing governed `routeToComms` path: explicit Tai action only,
-  deduped, one canonical relationship (existing `existing()` check).
+## 3. Remove all em dashes
 
-## Persistence
+Strip em dashes from:
 
-- `scoutService.setWatch(id, "watching" | "not_now" | null)`: writes
-  `metadata.relationship_development` via the existing
-  `saveProspectMetadataPatch` + an activity event. No migration needed.
+- Visible UI copy across routes and components
+- AI prompt and system text, so generated output stops producing them
+- Markdown docs
 
-## UI
+Each occurrence is rewritten by hand, not blanket-replaced: depending on the sentence it becomes a comma, a colon, a period, or a rephrase. No en-dash or double-hyphen substitutes.
 
-- Scout: new "Worth knowing" tab (`ScoutTabs` + `section=worth_knowing`) with
-  `src/components/tt/scout/worth-knowing.tsx` — calm rows (person + company,
-  fit, opportunity state, why now, what caught our attention, best way in, a
-  useful bridge, development status), actions See research / Prepare
-  introduction / Watch / Not now, truthful pagination via existing `paginate` +
-  `ScoutPagination`.
-- Prospect detail: new `RelationshipOpportunityCard` on the overview tab —
-  state, factors, eligibility line, channel recommendation, bridge ideas, and
-  the brief when grounded.
-- `HandoffPanel`: shows "Best way in" + "A useful bridge" and attaches the
-  development context to the draft. Button copy stays governed.
-- Comms: development-stage chip on Nurture inbox rows; "Roadmap opportunity
-  emerging" panel beside the existing `SequenceInRoadmap` gate in
-  `modules.comms.index.tsx`, stating what was revealed, evidence, why, and
-  confidence. Roadmap is still opened only by Tai.
+## 4. Verification
 
-## Tests
+- Typecheck and existing test suite green (a few tests assert copy containing em dashes and will be updated).
+- Visual check of Home, Scout, Comms, and the auth screen at 1440px and 375px.
+- Repo-wide scan confirming zero em dashes remain.
 
-`relationship-development.test.ts`: 59% fit ineligible (A); 60%+ with
-traceable founder eligible, no side effects (B); high fit without signal stays
-Worth watching (C); fresh-signal lower fit outranks stale higher fit (D); no
-cold text from a phone number (E); LinkedIn-native opening → LinkedIn (F);
-thin evidence → fail-closed brief with no ask posture (J); roadmap signal
-needs concrete revealed need, pure function (K).
-`relationship-stage.test.ts`: inbound reply → Conversation open (I); one
-record through the lifecycle (L).
-Handoff receiver test: development provenance survives handoff (H);
-duplicate prepare-introduction yields the same relationship (G, existing
-dedupe path).
+## Technical notes
 
-## Docs
-
-Update `docs/scout-v1.md`, `docs/scout-intelligence.md`, `docs/comms-v1.md`,
-`docs/architecture-canon.md` with the ownership laws: Scout finds people worth
-knowing, Comms develops the relationship, Roadmap is recognized from revealed
-need; automation ends where relationship begins.
-
-## Out of scope (labeled, not mocked)
-
-- No background send path, no new Gmail scopes, no LinkedIn scraping.
-- Deeper-research automation reuses existing Scout research runs; where a live
-  source is unavailable the UI labels the capability rather than faking it.
+- `src/routes/__root.tsx`: swap the Google Fonts stylesheet href.
+- `src/styles.css`: `--font-display: "Sora"`, `--font-sans: "Manrope"`, plus heading tracking/leading rules in the base layer.
+- Brand system note: the Trust Tai guideline names Cormorant for editorial statements. This change intentionally deviates on client feedback; the ink/paper/royal color law, spacing, and mono usage stay unchanged.
