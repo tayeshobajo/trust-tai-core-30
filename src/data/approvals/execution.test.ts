@@ -87,7 +87,7 @@ describe("a real Comms draft through Approvals", () => {
 
     const again = await submitCommsDraftForApproval("draft-1", CONTEXT);
     expect(again.request.id).toBe(first.request.id);
-    expect(db.tables["approval_requests"]).toHaveLength(1);
+    expect(db.tables["approval_requests"]!).toHaveLength(1);
   });
 
   it("approves the copy in Comms and stops there, sending nothing", async () => {
@@ -98,7 +98,7 @@ describe("a real Comms draft through Approvals", () => {
 
     expect(outcome.result.state).toBe("queued");
     expect(outcome.nextStatus).toBe("queued");
-    expect(db.tables["comms_drafts"][0]!["review_state"]).toBe("approved");
+    expect(db.tables["comms_drafts"]![0]!["review_state"]).toBe("approved");
     /* No message store is written by an approval. Only a real send does that. */
     expect(db.tables["comms_messages"] ?? []).toHaveLength(0);
   });
@@ -112,7 +112,7 @@ describe("a real Comms draft through Approvals", () => {
     seedDraft();
     const { request } = await submitCommsDraftForApproval("draft-1", CONTEXT);
     const approved = await approve(request.id);
-    db.tables["comms_drafts"][0]!["review_state"] = "sent";
+    db.tables["comms_drafts"]![0]!["review_state"] = "sent";
 
     const outcome = await executeApprovedRequest(approved, CONTEXT);
     expect(outcome.result.state).toBe("failed");
@@ -124,7 +124,7 @@ describe("a Scout prospect through Approvals", () => {
   it("records the decision honestly when Scout attached no brief", async () => {
     const request = await approvalsService.submit(CONTEXT, {
       sourceApp: "scout",
-      category: "relationship",
+      category: "qualification",
       approvalType: "scout_relationship",
       title: "Northbeam",
       summary: "Strong fit.",
@@ -140,6 +140,6 @@ describe("a Scout prospect through Approvals", () => {
     const outcome = await executeApprovedRequest(approved, CONTEXT);
 
     expect(outcome.result.state).toBe("unavailable");
-    expect(db.tables["comms_relationships"]).toHaveLength(1);
+    expect(db.tables["comms_relationships"]!).toHaveLength(1);
   });
 });
