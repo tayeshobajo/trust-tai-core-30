@@ -30,7 +30,7 @@ import {
   approvalsSchemaReady,
   approvalsService,
 } from "@/data/supabase/approvals-service";
-import { downstreamAdapter } from "@/data/approvals/downstream";
+import { executeApprovedRequest } from "@/data/approvals/execution";
 import { accessContext, can } from "@/domain/access";
 import {
   CATEGORY_TAB_LABEL,
@@ -166,15 +166,15 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
       const at = new Date().toISOString();
 
       if (input.action.id === "reject") {
-        return approvalsService.decide(context, {
+        return { request: await approvalsService.decide(context, {
           requestId: request.id,
           to: "rejected",
           decision: { decision: "reject", decidedBy, decidedAt: at, reason: input.reason },
-        });
+        }) };
       }
 
       if (input.action.id === "request_revision") {
-        return approvalsService.decide(context, {
+        return { request: await approvalsService.decide(context, {
           requestId: request.id,
           to: "revision_requested",
           decision: {
@@ -183,7 +183,7 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
             decidedAt: at,
             reason: input.reason,
           },
-        });
+        }) };
       }
 
       /* Approval records authority and nothing else. The handover to the
@@ -201,22 +201,23 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
         ...(request.batch ? { itemIds: input.itemIds } : {}),
       });
 
-      const adapter = downstreamAdapter(request.approvalType);
-      const result = adapter.handover(approved, new Date().toISOString());
+      /* The owning room performs the work through its own governed path. */
+      const outcome = await executeApprovedRequest(approved, context);
       await approvalsService.recordDownstream(
         context,
         request.id,
-        result,
-        result.state === "queued" ? adapter.nextStatus : undefined,
+        outcome.result,
+        outcome.nextStatus,
       );
-      return approved;
+      return { request: approved, outcome };
     },
-    onSuccess: (_result, variables) => {
-      toast.success(
-        variables.input.action.authorising && variables.input.action.id !== "reject"
-          ? "Recorded. The owning room takes it from here."
-          : "Recorded.",
-      );
+    onSuccess: (result) => {
+      const outcome = "outcome" in result ? result.outcome : null;
+      if (outcome && outcome.result.state !== "queued") {
+        toast.warning(outcome.result.because);
+      } else {
+        toast.success(outcome ? outcome.result.because : "Recorded.");
+      }
       void queryClient.invalidateQueries({ queryKey: ["approvals"] });
       void queryClient.invalidateQueries({ queryKey: ["approval"] });
     },
