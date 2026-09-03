@@ -39,7 +39,6 @@ vi.mock("./intelligence-runtime.server", async () => {
   };
 });
 
-
 const { runStudioComposition } = await import("./roadmap-studio.server");
 
 const CHECKED = "2026-01-05T00:00:00.000Z";
@@ -138,7 +137,9 @@ describe("runStudioComposition", () => {
 
   it("never sends anything the packet did not approve", async () => {
     await run({
-      strategy: strategy({ gaps: [item({ key: "gap", statement: "Deferred idea", approval: "deferred" })] }),
+      strategy: strategy({
+        gaps: [item({ key: "gap", statement: "Deferred idea", approval: "deferred" })],
+      }),
     });
     // Not ready without an approved gap, so the model is never called at all.
     expect(provider).not.toHaveBeenCalled();

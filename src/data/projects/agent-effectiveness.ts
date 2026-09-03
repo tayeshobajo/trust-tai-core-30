@@ -10,11 +10,7 @@
 import type { AgentEffectiveness, AgentEvidence } from "@/domain/project-intelligence";
 
 export type AccountabilityState =
-  | "on_track"
-  | "behind"
-  | "waiting"
-  | "needs_a_person"
-  | "not_defined";
+  "on_track" | "behind" | "waiting" | "needs_a_person" | "not_defined";
 
 export const ACCOUNTABILITY_LABEL: Record<AccountabilityState, string> = {
   on_track: "On track",
@@ -58,7 +54,8 @@ export function agentAccountability(
     lines.push(
       `${evidence.acceptedRecommendations} recommendations accepted, ${evidence.rejectedRecommendations} rejected`,
     );
-  if (evidence.correctionsRequired) lines.push(`${evidence.correctionsRequired} corrections required`);
+  if (evidence.correctionsRequired)
+    lines.push(`${evidence.correctionsRequired} corrections required`);
   if (evidence.humanInterventions) lines.push(`${evidence.humanInterventions} human interventions`);
   if (evidence.failedAttempts) lines.push(`${evidence.failedAttempts} failed attempts`);
   for (const outcome of evidence.linkedOutcomes) lines.push(`Linked outcome: ${outcome}`);

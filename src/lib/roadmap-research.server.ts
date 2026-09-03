@@ -11,24 +11,17 @@
  * runtime boundary (src/lib/intelligence-runtime.server.ts), which verifies
  * access and then calls this transport. The fragmentation guard
  * (src/lib/intelligence-runtime-boundary.test.ts) enforces that. Offline QA
- * harnesses under scripts/ may import it directly to build a model caller —
- * they are operator-run tooling, not app code.
+ * harnesses under scripts/ may import it directly to build a model caller, * they are operator-run tooling, not app code.
  *
  * Provider discipline: keys never leave the server, the provider that
  * answered is recorded truthfully, and with no provider configured the call
  * fails closed rather than inventing an answer.
  */
 
-import {
-  trustTaiSupabaseKey,
-  trustTaiSupabaseUrl,
-} from "@/lib/trust-tai-backend.server";
+import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import {
-  createLovableAiGatewayRunIdFetch,
-  LOVABLE_AIG_RUN_ID_HEADER,
-} from "./ai-gateway.server";
+import { createLovableAiGatewayRunIdFetch, LOVABLE_AIG_RUN_ID_HEADER } from "./ai-gateway.server";
 import { lovableGatewayProvider, selectScoutProvider } from "./scout-provider.server";
 
 function supabaseUrl(): string {
@@ -77,7 +70,7 @@ export async function requireRoadmapAccess(
  * Typed provider failures. Rooms never parse provider error strings: they
  * branch on these classes (via the runtime boundary's re-export) and map them
  * to their own honest, calm outcomes. Messages are for server logs and
- * operator reads — never trust them to be safe for a browser verbatim.
+ * operator reads, never trust them to be safe for a browser verbatim.
  */
 export class ProviderNotConfiguredError extends Error {
   readonly code = "provider_not_configured" as const;
@@ -217,9 +210,8 @@ async function runProviderCall(
         // apart without reading server logs.
         const detail =
           ((event["error"] as { message?: string } | undefined)?.message ??
-            (
-              (event["response"] as { error?: { message?: string } } | undefined)?.error ?? {}
-            ).message) ||
+            ((event["response"] as { error?: { message?: string } } | undefined)?.error ?? {})
+              .message) ||
           "";
         throw new ProviderCallFailedError(
           detail

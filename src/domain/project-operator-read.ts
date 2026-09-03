@@ -3,13 +3,13 @@
  *
  * The question Projects asks the runtime before a milestone is executable:
  * "What does an experienced operator need to know about this milestone before
- * it is executable?" Not a summary — a working read: what is missing, what
+ * it is executable?" Not a summary, a working read: what is missing, what
  * the suite has seen before, what could go wrong, what must be true first,
  * how the work will be judged, and who can actually do it.
  *
- * This file is the domain contract. The composition — building the
+ * This file is the domain contract. The composition, building the
  * ReasoningRequest from a ProjectContextPacket and folding the RuntimeRead
- * back into this shape — lives in src/data/projects/operator-read.ts.
+ * back into this shape, lives in src/data/projects/operator-read.ts.
  *
  * The read never executes anything. It prepares a person (or, with approval,
  * an owning adapter) to execute well.
@@ -60,7 +60,7 @@ export interface OperatorDependency {
   state: "met" | "open" | "unknown";
 }
 
-/** How the milestone's completion will be judged — proposed, not assumed. */
+/** How the milestone's completion will be judged, proposed, not assumed. */
 export interface OperatorAcceptanceCriterion {
   criterion: string;
   evidenceKind: CompletionEvidenceKind;

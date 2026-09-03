@@ -43,7 +43,6 @@ function row(overrides: Partial<OpsProjectRow> = {}): OpsProjectRow {
   };
 }
 
-
 describe("Ops projection rows", () => {
   it("shows a real Ops project once the projection has it, with no invented counts", () => {
     const portfolio = opsProjectionPortfolio([row()]);
@@ -68,7 +67,9 @@ describe("Ops projection rows", () => {
   });
 
   it("hides archived projects", () => {
-    expect(opsProjectionPortfolio([row({ removed: true, lifecycleState: 'removed' })]).systems).toHaveLength(0);
+    expect(
+      opsProjectionPortfolio([row({ removed: true, lifecycleState: "removed" })]).systems,
+    ).toHaveLength(0);
   });
 
   it("never fabricates rows when Ops has sent nothing", () => {
@@ -130,7 +131,6 @@ describe("Ops connection semantics", () => {
     expect(opsConnectionState({ projectionReadOk: false, now: NOW })).toBe("interrupted");
   });
 
-
   it("is live when a direct Ops read succeeds", () => {
     expect(opsConnectionState({ live: true, now: NOW })).toBe("live");
   });
@@ -144,9 +144,8 @@ describe("Ops projection lifecycle and health", () => {
   });
 
   it("keeps an archived project visible with Ops' own lifecycle word", () => {
-    const system = opsProjectionPortfolio([
-      row({ archived: true, lifecycleState: "archived" }),
-    ]).systems[0] as OpsSystem;
+    const system = opsProjectionPortfolio([row({ archived: true, lifecycleState: "archived" })])
+      .systems[0] as OpsSystem;
     expect(system.lifecycleState).toBe("archived");
   });
 
@@ -197,7 +196,6 @@ describe("Ops projection lifecycle and health", () => {
     expect(portfolio.systems).toHaveLength(0);
   });
 });
-
 
 describe("the live projection contract", () => {
   const raw = {

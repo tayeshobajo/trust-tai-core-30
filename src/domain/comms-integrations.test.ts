@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  readGmailRunSummary,
-  summarizeMailboxCoverage,
-} from "@/domain/comms-integrations";
+import { readGmailRunSummary, summarizeMailboxCoverage } from "@/domain/comms-integrations";
 
 describe("readGmailRunSummary", () => {
   it("reads a well-formed last run from the cursor", () => {
@@ -40,7 +37,7 @@ describe("readGmailRunSummary", () => {
     expect(readGmailRunSummary({ last_run: "not-an-object" })).toBeNull();
   });
 
-  it("requires a timestamp — a run without one is not a run", () => {
+  it("requires a timestamp, a run without one is not a run", () => {
     expect(readGmailRunSummary({ last_run: { messages_read: 3 } })).toBeNull();
     expect(readGmailRunSummary({ last_run: { at: "" } })).toBeNull();
   });

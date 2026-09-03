@@ -1,12 +1,12 @@
 /**
- * Comms Queue — draft approval surface.
+ * Comms Queue, draft approval surface.
  *
  * Shows emails the Comms Agent drafted and queued for Tai's review.
  * Tai approves (triggers send) or rejects (marks draft discarded).
  * Batch approve up to 20 at a time.
  *
  * The send itself hits the `comms-send` edge function with Tai's auth token.
- * Agent drafts always land in `needs_human_review` — this screen is the gate.
+ * Agent drafts always land in `needs_human_review`, this screen is the gate.
  */
 
 import { useState } from "react";
@@ -80,7 +80,9 @@ interface QueueItem {
 async function fetchQueue(organizationId: string): Promise<QueueItem[]> {
   const { data: drafts, error } = await supabase
     .from("comms_drafts")
-    .select("id, organization_id, relationship_id, subject, body, intent, register, review_state, rationale, created_at")
+    .select(
+      "id, organization_id, relationship_id, subject, body, intent, register, review_state, rationale, created_at",
+    )
     .eq("organization_id", organizationId)
     .in("review_state", ["needs_human_review"])
     .order("created_at", { ascending: false })
@@ -122,10 +124,12 @@ async function rejectDraft(draftId: string): Promise<void> {
 }
 
 async function sendDraft(draftId: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated.");
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] as string;
   const res = await fetch(`${supabaseUrl}/functions/v1/comms-send`, {
     method: "POST",
     headers: {
@@ -136,7 +140,7 @@ async function sendDraft(draftId: string): Promise<void> {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: "Send failed." })) as { error?: string };
+    const body = (await res.json().catch(() => ({ error: "Send failed." }))) as { error?: string };
     throw new Error(body.error ?? "Send failed.");
   }
 }
@@ -191,7 +195,7 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
       const sent = results.filter((r) => r.ok).length;
       const failed = results.filter((r) => !r.ok).length;
       if (sent > 0) toast.success(`${sent} email${sent === 1 ? "" : "s"} sent`);
-      if (failed > 0) toast.error(`${failed} failed — check queue`);
+      if (failed > 0) toast.error(`${failed} failed, check queue`);
       setSelected(new Set());
       void queryClient.invalidateQueries({ queryKey: ["comms", "queue"] });
     },
@@ -285,7 +289,10 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
               const isExpanded = expanded === draft.id;
               const isSelected = selected.has(draft.id);
               const contactName = relationship?.full_name ?? "Unknown contact";
-              const company = relationship?.company_name ?? (draft.rationale?.["company"] as string | undefined) ?? "";
+              const company =
+                relationship?.company_name ??
+                (draft.rationale?.["company"] as string | undefined) ??
+                "";
               const toEmail = relationship?.email ?? null;
               const hook = draft.rationale?.["hook"] as string | undefined;
 
@@ -350,7 +357,11 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
                         size="sm"
                         disabled={isBusy || !toEmail}
                         onClick={() => approveAndSendOne.mutate(draft.id)}
-                        title={!toEmail ? "No email address — add one to the relationship first" : undefined}
+                        title={
+                          !toEmail
+                            ? "No email address, add one to the relationship first"
+                            : undefined
+                        }
                       >
                         Send
                       </TTButton>
@@ -372,7 +383,8 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
                         </pre>
                       </div>
                       <p className="mt-2 text-[11px] text-muted-foreground">
-                        Drafted {new Date(draft.created_at).toLocaleDateString(undefined, {
+                        Drafted{" "}
+                        {new Date(draft.created_at).toLocaleDateString(undefined, {
                           month: "short",
                           day: "numeric",
                           hour: "2-digit",

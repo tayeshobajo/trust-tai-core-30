@@ -3,7 +3,7 @@
  *
  * A decision about a recommendation is feedback about the business, so it is
  * written where every other piece of learned truth already lives: the
- * append-only belief ledger. No new table, no scores, no hidden weighting 
+ * append-only belief ledger. No new table, no scores, no hidden weighting
  * only a countable record of what a person explicitly decided, and a small,
  * legible set of consequences:
  *
@@ -81,14 +81,13 @@ export function enginePatternsToSuppress(beliefs: MemoryBelief[]): string[] {
   return suppressedPatterns(engineOutcomeRecords(beliefs), DISMISSAL_SUPPRESSION_THRESHOLD);
 }
 
-/** Shapes a person accepted before. Ordering only — never a confidence boost. */
+/** Shapes a person accepted before. Ordering only, never a confidence boost. */
 export function engineFavouredPatterns(beliefs: MemoryBelief[]): string[] {
   return [
     ...new Set(
       engineOutcomeRecords(beliefs)
         .filter(
-          (record) =>
-            record.outcome === "confirmed" || record.outcome === "edited_then_confirmed",
+          (record) => record.outcome === "confirmed" || record.outcome === "edited_then_confirmed",
         )
         .map((record) => record.patternKey),
     ),

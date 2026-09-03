@@ -4,7 +4,7 @@
  * The production failure these tests guard: every post-grounding failure used
  * to collapse into one generic message, so "no provider configured" looked
  * identical to "the provider refused" and "the reply was unreadable". The
- * boundary now throws typed DraftFailure codes — the person keeps the calm
+ * boundary now throws typed DraftFailure codes, the person keeps the calm
  * sentence, the operator keeps the cause, and no draft is ever fabricated.
  */
 
@@ -74,16 +74,17 @@ const BROOKE_INPUT: DraftPassInput = {
 /* The conversation-first Brooke case: she replied warmly, thanked Tai for his
    words about the Mastermind, said it was lovely to meet him, and offered to
    be a resource. The right judgment recognizes the generosity and asks for
-   nothing — a call pushed here would be a funnel move, not a reply. */
+   nothing, a call pushed here would be a funnel move, not a reply. */
 const BROOKE_WARM_JUDGMENT = JSON.stringify({
   whyNow: "Brooke replied warmly after the Mastermind; a reply is owed while the thread is warm.",
   latestHumanSignal:
-    "She offered to be a resource — meeting someone once and already thinking about how she might be useful.",
+    "She offered to be a resource, meeting someone once and already thinking about how she might be useful.",
   whatThisSaysAboutThem:
     "A generous, help-first orientation, consistent with her work guiding business owners.",
   whatDeservesAcknowledgment: "The offer to be a resource, and the generosity underneath it.",
   threadToBuildOn: "Her instinct to be useful and the work it comes from.",
-  intendedEffect: "That she feels specifically seen and glad the Mastermind put them in the same room.",
+  intendedEffect:
+    "That she feels specifically seen and glad the Mastermind put them in the same room.",
   responseObligation: "Her thanks and kind words deserve acknowledgment.",
   askDecision: {
     shouldAsk: false,

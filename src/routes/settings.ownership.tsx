@@ -27,7 +27,8 @@ function OwnershipSettings() {
 
   const plan = useQuery({
     queryKey: key,
-    queryFn: () => ownershipBackfill.plan({ organizationId: identity.organizationId, userId: identity.userId }),
+    queryFn: () =>
+      ownershipBackfill.plan({ organizationId: identity.organizationId, userId: identity.userId }),
     retry: false,
   });
 
@@ -129,12 +130,14 @@ function OwnershipSettings() {
                   <h3 className="font-display text-xl text-foreground">
                     {entry.name || "Untitled milestone"}
                   </h3>
-                  {entry.boundaryChanged ? <MetaPill>Boundary names the wrong room</MetaPill> : null}
+                  {entry.boundaryChanged ? (
+                    <MetaPill>Boundary names the wrong room</MetaPill>
+                  ) : null}
                   {entry.linkChanged ? (
                     <MetaPill>
                       Handoff moves{" "}
-                      {entry.linkOwnerBefore ? EXECUTION_ROOM_LABEL[entry.linkOwnerBefore] : "—"} →{" "}
-                      {entry.linkOwnerAfter ? EXECUTION_ROOM_LABEL[entry.linkOwnerAfter] : "—"}
+                      {entry.linkOwnerBefore ? EXECUTION_ROOM_LABEL[entry.linkOwnerBefore] : ", "} →{" "}
+                      {entry.linkOwnerAfter ? EXECUTION_ROOM_LABEL[entry.linkOwnerAfter] : ", "}
                     </MetaPill>
                   ) : null}
                 </div>
@@ -148,7 +151,7 @@ function OwnershipSettings() {
                     <div>
                       <p className="tt-eyebrow">Stored today</p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {entry.boundaryBefore || "—"}
+                        {entry.boundaryBefore || ", "}
                       </p>
                     </div>
                     <div>

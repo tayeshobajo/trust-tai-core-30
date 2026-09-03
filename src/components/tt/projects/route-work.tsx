@@ -14,11 +14,7 @@ import { routeStanding, type RouteLedgerEntry } from "@/domain/route-ledger";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import type { AccessContext } from "@/domain/access";
 import { can } from "@/domain/access";
-import {
-  ROUTE_TARGETS,
-  ROUTE_TARGET_LABEL,
-  type RouteTarget,
-} from "@/domain/project-routing";
+import { ROUTE_TARGETS, ROUTE_TARGET_LABEL, type RouteTarget } from "@/domain/project-routing";
 import type { ExecutionProject } from "@/domain/projects";
 
 export function RouteWork({

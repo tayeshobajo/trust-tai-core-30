@@ -8,9 +8,9 @@ evidence-backed rather than confident-sounding.
 
 Every statement Scout shows carries a tier:
 
-- **Fact** — observed on the company's own public pages, with a source link.
-- **Inference** — Scout's reading of those facts. Always labelled.
-- **Decision** — a human's call. Never generated.
+- **Fact**, observed on the company's own public pages, with a source link.
+- **Inference**. Scout's reading of those facts. Always labelled.
+- **Decision**, a human's call. Never generated.
 
 Absence is reported as absence. A missing buying signal lowers *timing* to
 "unknown", it never counts against the company.
@@ -27,7 +27,7 @@ Absence is reported as absence. A missing buying signal lowers *timing* to
 | Evidence confidence | 20% | how much was actually observed, and how recently |
 | Reachability | 15% | best contact route on record, verified beating found |
 | Timing | 15% | buying signals, discounted as they age |
-| Research coverage | — | how completely the company has been looked at |
+| Research coverage |, | how completely the company has been looked at |
 
 The weighted result is the **priority** score. A company that was never
 researched has no priority at all: `null` sorts last on the board, it is never
@@ -54,7 +54,7 @@ Scout can close itself and which need a person or a connected provider.
 
 ## History
 
-Every scored pass — discovery *and* website research — is written to
+Every scored pass, discovery *and* website research, is written to
 `prospect_evaluations`, so fit over time is auditable rather than only visible
 as the latest number on the row.
 
@@ -67,7 +67,7 @@ Scout's intelligence layer feeds a governed relationship-development read
 - 60% fit triggers deeper research, never outreach. Eligibility additionally
   requires a traceable founder or decision maker; a company with no person is
   never presented as ready for relationship development.
-- Eligibility prepares a Relationship Development Brief — research only, from
+- Eligibility prepares a Relationship Development Brief, research only, from
   public professional evidence, bounded and idempotent
   (`planRelationshipPreparation`), with provenance and freshness stored on the
   prospect's `metadata.relationship_development.research` marker.

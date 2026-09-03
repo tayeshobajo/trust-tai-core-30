@@ -235,5 +235,5 @@ export function websiteHeadline(
 }
 
 export function formatKnown(value: KnownNumber): string {
-  return value === null ? "—" : String(value);
+  return value === null ? ", " : String(value);
 }

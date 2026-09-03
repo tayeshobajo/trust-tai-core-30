@@ -1,4 +1,4 @@
--- Trust Tai OS — Roadmap Intelligence v2.1 (additive)
+-- Trust Tai OS. Roadmap Intelligence v2.1 (additive)
 --
 -- Studio became model backed. An artifact is now a composed client facing
 -- document rather than a deterministic skeleton, so it has to carry the same

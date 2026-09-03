@@ -62,9 +62,24 @@ describe("severity rules", () => {
 
 describe("projection", () => {
   const signals = [
-    signal({ id: "comms:reply-debt:1", urgency: 95, category: "relationship", destination: { appId: "comms", label: "Open in Comms", route: "/modules/comms" } }),
-    signal({ id: "scout:fit:2", urgency: 40, category: "growth", destination: { appId: "scout", label: "Open Scout", route: "/modules/scout" } }),
-    signal({ id: "roadmap:decision:3", urgency: 70, category: "client_stewardship", destination: { appId: "roadmap", label: "Open Roadmap", route: "/modules/roadmap" } }),
+    signal({
+      id: "comms:reply-debt:1",
+      urgency: 95,
+      category: "relationship",
+      destination: { appId: "comms", label: "Open in Comms", route: "/modules/comms" },
+    }),
+    signal({
+      id: "scout:fit:2",
+      urgency: 40,
+      category: "growth",
+      destination: { appId: "scout", label: "Open Scout", route: "/modules/scout" },
+    }),
+    signal({
+      id: "roadmap:decision:3",
+      urgency: 70,
+      category: "client_stewardship",
+      destination: { appId: "roadmap", label: "Open Roadmap", route: "/modules/roadmap" },
+    }),
   ];
 
   const projected = toPulseSignals({ organizationId: "org", now: NOW, signals });

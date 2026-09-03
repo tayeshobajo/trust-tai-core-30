@@ -52,9 +52,7 @@ export async function loadReconcileSecret(client: ConfigClient): Promise<string 
   }
 }
 
-export type ReconcileAuthResult =
-  | { ok: true }
-  | { ok: false; status: 503 | 401; error: string };
+export type ReconcileAuthResult = { ok: true } | { ok: false; status: 503 | 401; error: string };
 
 /** Decides whether a presented header may run reconciliation. */
 export async function authorizeReconcileRequest(

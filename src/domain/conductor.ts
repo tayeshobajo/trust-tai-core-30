@@ -61,7 +61,6 @@ export const VALUE_BASIS_LABEL: Record<ValueBasis, string> = {
 /** Truth classes that may be used as an input to arithmetic. */
 export const FACTUAL_BASES: ValueBasis[] = ["observed", "decided"];
 
-
 /* --------------------------------------------------------- business intent */
 
 /** The kinds of outcome a services business steers by. */
@@ -106,7 +105,7 @@ export const GOAL_HORIZON_DAYS: Record<GoalHorizon, number> = {
  * One thing the business has decided to achieve.
  *
  * Always `decided`: an intent is a human commitment, never something the
- * Conductor worked out. Without a target value it is still a valid intent 
+ * Conductor worked out. Without a target value it is still a valid intent
  * it simply cannot be decomposed, and says so.
  */
 export interface BusinessIntent {
@@ -900,7 +899,6 @@ export interface MilestoneProgression {
   statement: string;
 }
 
-
 /**
  * The canonical Roadmap concepts, read from state the Roadmap app owns.
  * Nothing here is stored separately; this is a projection, not a model.
@@ -929,7 +927,6 @@ export interface RoadmapCanonRead {
    * did not change which milestone deserves attention.
    */
   milestoneProgression: MilestoneProgression | null;
-
 
   /** Unresolved human decisions on this roadmap. */
   openDecisions: RoadmapDecision[];
@@ -995,7 +992,7 @@ export interface ConductorActionGraph {
   /** The question or intent this graph serves. */
   purpose: string;
   steps: ConductorActionStep[];
-  /** True whenever any step is consequential — i.e. always gated. */
+  /** True whenever any step is consequential, i.e. always gated. */
   requiresApproval: boolean;
   /** Rooms touched, so a reader can see the blast radius at a glance. */
   owningApps: string[];
@@ -1052,7 +1049,7 @@ export interface ConductorAnswer {
   learning: LearningState;
   /**
    * What the outcome ledger already knows about the rooms this answer touches,
-   * each sentence carrying how strongly it is held. Bounded and relevant 
+   * each sentence carrying how strongly it is held. Bounded and relevant
    * never the whole history, and never a source of authority.
    */
   priorLearning: string[];

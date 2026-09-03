@@ -1,5 +1,5 @@
 /**
- * Conductor V3.4 live progression read — DEVELOPMENT/QA ONLY. Read-only.
+ * Conductor V3.4 live progression read. DEVELOPMENT/QA ONLY. Read-only.
  *
  * Signs in as the headless test account, loads real canon under RLS, and
  * reports milestone attention plus any decision-driven progression. It writes
@@ -22,9 +22,7 @@ const memberships = await supabase
   .select("organization_id, role, status")
   .eq("status", "active");
 if (memberships.error || !memberships.data?.length) throw new Error("no active membership");
-const organizationId = String(
-  (memberships.data[0] as Record<string, unknown>)["organization_id"],
-);
+const organizationId = String((memberships.data[0] as Record<string, unknown>)["organization_id"]);
 
 const snapshot = await loadSuiteSnapshot(organizationId);
 console.log("organization:", organizationId);

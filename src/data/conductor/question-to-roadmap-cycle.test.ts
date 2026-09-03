@@ -1,5 +1,5 @@
 /**
- * Conductor V3.2 — question → Roadmap cycle.
+ * Conductor V3.2, question → Roadmap cycle.
  *
  * The Roadmap canon is a reasoning contract, not copy: Point A, the proof
  * under it, Point B and whether it is inferred or decided, the milestones, the
@@ -43,7 +43,7 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
     id: "rm-teamsynerg",
     organizationId: ORG,
     prospectId: "pros-teamsynerg",
-    title: "Teamsynerg — path to be agreed",
+    title: "Teamsynerg, path to be agreed",
     subjectLabel: "Teamsynerg",
     objective: "Turn scattered delivery into one operating system",
     status: "draft",
@@ -79,7 +79,8 @@ function decision(overrides: Partial<RoadmapDecision> = {}): RoadmapDecision {
     id: "dec-destination",
     organizationId: ORG,
     roadmapId: "rm-teamsynerg",
-    question: 'Is "One operating system the team actually runs the week from" the right destination?',
+    question:
+      'Is "One operating system the team actually runs the week from" the right destination?',
     whyItMatters: "Everything sequenced below assumes this destination.",
     options: ["Approve as written", "Change the destination"],
     evidence: [],
@@ -149,9 +150,9 @@ describe("existing roadmap first", () => {
         [open],
       ),
     ).toBeDefined();
-    expect(isMateriallySameQuestion("Which sequence should we build first?", "Who owns billing?")).toBe(
-      false,
-    );
+    expect(
+      isMateriallySameQuestion("Which sequence should we build first?", "Who owns billing?"),
+    ).toBe(false);
   });
 
   it("may propose a genuinely new decision, attached to the real roadmap", () => {
@@ -337,13 +338,15 @@ describe("human authority is unchanged", () => {
   });
 
   it("keeps roadmap operations behind a roadmap permission", () => {
-    expect(capabilityFor("roadmap", ROADMAP_SHELL_OPERATION)?.requiredCapability).toContain("roadmap");
-    expect(capabilityFor("roadmap", ROADMAP_DECISION_OPERATION)?.requiredCapability).toContain("roadmap");
+    expect(capabilityFor("roadmap", ROADMAP_SHELL_OPERATION)?.requiredCapability).toContain(
+      "roadmap",
+    );
+    expect(capabilityFor("roadmap", ROADMAP_DECISION_OPERATION)?.requiredCapability).toContain(
+      "roadmap",
+    );
   });
 
   it("never lets a learned lesson grant execution", () => {
-    expect(
-      learningGrantsExecution({ id: "l1", organizationId: ORG } as never),
-    ).toBe(false);
+    expect(learningGrantsExecution({ id: "l1", organizationId: ORG } as never)).toBe(false);
   });
 });

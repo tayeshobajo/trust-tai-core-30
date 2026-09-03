@@ -51,11 +51,51 @@ export interface EvidenceReview {
 }
 
 const STOPWORDS = new Set([
-  "about", "after", "again", "their", "there", "these", "those", "which", "while",
-  "with", "that", "this", "from", "have", "been", "they", "them", "into", "more",
-  "than", "then", "when", "will", "would", "could", "should", "want", "wants",
-  "need", "needs", "make", "making", "does", "doing", "just", "also", "very",
-  "much", "some", "over", "under", "before", "because", "company", "business",
+  "about",
+  "after",
+  "again",
+  "their",
+  "there",
+  "these",
+  "those",
+  "which",
+  "while",
+  "with",
+  "that",
+  "this",
+  "from",
+  "have",
+  "been",
+  "they",
+  "them",
+  "into",
+  "more",
+  "than",
+  "then",
+  "when",
+  "will",
+  "would",
+  "could",
+  "should",
+  "want",
+  "wants",
+  "need",
+  "needs",
+  "make",
+  "making",
+  "does",
+  "doing",
+  "just",
+  "also",
+  "very",
+  "much",
+  "some",
+  "over",
+  "under",
+  "before",
+  "because",
+  "company",
+  "business",
 ]);
 
 function tokens(text: string): Set<string> {
@@ -153,11 +193,7 @@ export function researchConfidence(review: EvidenceReview): {
 /* ------------------------------------------------------ decision state ---- */
 
 export type TaiDecision =
-  | "read_them_first"
-  | "research_needed"
-  | "ready_to_route"
-  | "routed"
-  | "settled";
+  "read_them_first" | "research_needed" | "ready_to_route" | "routed" | "settled";
 
 export const TAI_DECISION_LABEL: Record<TaiDecision, string> = {
   read_them_first: "Read what they said",
@@ -232,7 +268,9 @@ export function decisionTrail(events: ActivityEvent[]): DecisionTrailEntry[] {
     .map((event) => ({
       at: event.occurredAt,
       label: event.summary || event.name.replace(/[._]/g, " "),
-      actor: event.provenance.actor.label ?? (event.provenance.actor.type === "user" ? "A person" : "Trust Tai OS"),
+      actor:
+        event.provenance.actor.label ??
+        (event.provenance.actor.type === "user" ? "A person" : "Trust Tai OS"),
       byPerson: event.provenance.actor.type === "user",
     }));
 }

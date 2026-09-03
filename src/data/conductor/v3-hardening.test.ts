@@ -1,5 +1,5 @@
 /**
- * Conductor V3 hardening — the operating cycle before we trust it.
+ * Conductor V3 hardening, the operating cycle before we trust it.
  *
  * The loop only means something if a re-read is not a new fact. These tests
  * hold the line on that: opening the control room three times must not turn
@@ -29,7 +29,12 @@ vi.mock("@/data/supabase/scout-service", () => ({
 }));
 
 vi.mock("@/data/supabase/roadmap-service", () => ({
-  roadmapService: { create: vi.fn(), addDecision: vi.fn(), detail: vi.fn(), resolveDecision: vi.fn() },
+  roadmapService: {
+    create: vi.fn(),
+    addDecision: vi.fn(),
+    detail: vi.fn(),
+    resolveDecision: vi.fn(),
+  },
 }));
 
 vi.mock("@/data/supabase/conductor-learning-service", () => ({
@@ -39,9 +44,7 @@ vi.mock("@/data/supabase/conductor-learning-service", () => ({
   recordLearning: vi.fn(async (row: LearningRecord) => row),
 }));
 
-const { runObservationPass, observableActions } = await import(
-  "@/data/conductor/outcome-service"
-);
+const { runObservationPass, observableActions } = await import("@/data/conductor/outcome-service");
 
 /* -------------------------------------------------------------- fixtures */
 
@@ -217,7 +220,12 @@ describe("re-checking is not re-happening", () => {
       },
     } as ActionObservation;
     const { store, ledger: sink } = ledger([foreign]);
-    await runObservationPass({ organizationId: ORG, actions: [action()], receipts: [receipt], ledger: sink });
+    await runObservationPass({
+      organizationId: ORG,
+      actions: [action()],
+      receipts: [receipt],
+      ledger: sink,
+    });
     const mine = store.observations.filter((row) => row.organizationId === ORG);
     expect(mine).toHaveLength(1);
     expect(mine[0]?.actionId).toBe("action:x");

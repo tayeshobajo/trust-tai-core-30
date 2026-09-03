@@ -72,10 +72,13 @@ const AT_RISK = {
   touches: [touch({ id: "e", relationshipId: "r3", occurredAt: days(10), direction: "outbound" })],
 };
 
-const QUIET = { relationship: relationship({ id: "r4", stage: "nurture" }), touches: [] as Touch[] };
+const QUIET = {
+  relationship: relationship({ id: "r4", stage: "nurture" }),
+  touches: [] as Touch[],
+};
 
 describe("deriveConversationHealth", () => {
-  it("is deterministic — the same conversation reads the same twice", () => {
+  it("is deterministic, the same conversation reads the same twice", () => {
     const first = deriveConversationHealth(HEALTHY.relationship, HEALTHY.touches, NOW);
     const second = deriveConversationHealth(HEALTHY.relationship, [...HEALTHY.touches], NOW);
     expect(second).toEqual(first);
@@ -99,7 +102,11 @@ describe("deriveConversationHealth", () => {
   });
 
   it("reads an unanswered inbound with no next move as needing attention", () => {
-    const read = deriveConversationHealth(NEEDS_ATTENTION.relationship, NEEDS_ATTENTION.touches, NOW);
+    const read = deriveConversationHealth(
+      NEEDS_ATTENTION.relationship,
+      NEEDS_ATTENTION.touches,
+      NOW,
+    );
     expect(read.status).toBe("needs_attention");
     expect(read.nextMoveStatus).toBe("none");
     expect(read.waitingOn).toBe("needs_us");
@@ -155,10 +162,10 @@ describe("sidebar glance and driver read the same derived state", () => {
   it("counts every non-archived conversation exactly once across health rows", () => {
     const rows = glanceRows(view);
     const byKey = Object.fromEntries(rows.map((row) => [row.key, row.count]));
-    expect(byKey['needs_attention']).toBe(view.healthCounts.needs_attention);
-    expect(byKey['at_risk']).toBe(view.healthCounts.at_risk);
-    expect(byKey['quiet']).toBe(view.healthCounts.quiet);
-    expect(byKey['needs_you']).toBe(view.tabCounts.needs_you);
+    expect(byKey["needs_attention"]).toBe(view.healthCounts.needs_attention);
+    expect(byKey["at_risk"]).toBe(view.healthCounts.at_risk);
+    expect(byKey["quiet"]).toBe(view.healthCounts.quiet);
+    expect(byKey["needs_you"]).toBe(view.tabCounts.needs_you);
     const health = Object.values(view.healthCounts).reduce((sum, n) => sum + n, 0);
     expect(health).toBe(relationships.length);
   });

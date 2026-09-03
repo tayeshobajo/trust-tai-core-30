@@ -86,7 +86,13 @@ export function detectFriction(snapshot: SuiteSnapshot): FrictionPattern[] {
       }
     }
     if (event.name === "prospect.handed_over" || event.name === "relationship.created") {
-      bucket(map, "handoff_volume", "Context is being carried between rooms by hand.", appId, event);
+      bucket(
+        map,
+        "handoff_volume",
+        "Context is being carried between rooms by hand.",
+        appId,
+        event,
+      );
     }
   }
 
@@ -171,7 +177,8 @@ const TEMPLATES: Record<string, Template> = {
     reversible: true,
     owningApp: "ops",
     route: "/modules/ops",
-    expectedSignal: "Routing requests are delivered, and acceptance starts appearing in the stream.",
+    expectedSignal:
+      "Routing requests are delivered, and acceptance starts appearing in the stream.",
   },
   handoff_volume: {
     headline: "Carry the handoff context automatically",

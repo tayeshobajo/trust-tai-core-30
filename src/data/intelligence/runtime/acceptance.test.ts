@@ -63,7 +63,7 @@ describe("readiness manifest coverage", () => {
     }
   });
 
-  it("Ops is honestly NOT READY — the reference failure mode is not repeated", () => {
+  it("Ops is honestly NOT READY, the reference failure mode is not repeated", () => {
     const check = checkRoomReadiness("ops");
     expect(check).not.toBeNull();
     expect(check!.ready, "Ops must not read as ready while its gaps exist").toBe(false);

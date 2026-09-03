@@ -1,4 +1,4 @@
--- Trust Tai OS — Ops Integration v1
+-- Trust Tai OS. Ops Integration v1
 -- Idempotency key for activity rows written by external specialist apps (Ops).
 --
 -- Why this exists

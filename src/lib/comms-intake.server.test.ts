@@ -4,10 +4,13 @@ import { ensureLabeledRelationship, nameFromEmail } from "@/lib/comms-intake.ser
 
 /**
  * A minimal stand-in for the governed Supabase client: enough table state to
- * prove the laws that matter — one canonical person, one relationship, and a
+ * prove the laws that matter, one canonical person, one relationship, and a
  * repeated sync that writes nothing new.
  */
-function fakeClient(seed?: { contacts?: { id: string; email: string }[]; relationships?: { id: string; email: string; full_name: string }[] }) {
+function fakeClient(seed?: {
+  contacts?: { id: string; email: string }[];
+  relationships?: { id: string; email: string; full_name: string }[];
+}) {
   const state = {
     contacts: [...(seed?.contacts ?? [])],
     relationships: [...(seed?.relationships ?? [])] as Record<string, unknown>[],
@@ -89,7 +92,7 @@ describe("ensureLabeledRelationship", () => {
     expect(String(state.activities[0]!["source_event_key"])).toContain("claire@dozen.com");
   });
 
-  it("is idempotent — a repeated pass finds the relationship and writes nothing", async () => {
+  it("is idempotent, a repeated pass finds the relationship and writes nothing", async () => {
     const { client, state } = fakeClient();
     const first = await ensureLabeledRelationship(client, { ...BASE, email: "claire@dozen.com" });
     const writesAfterFirst = state.inserts;

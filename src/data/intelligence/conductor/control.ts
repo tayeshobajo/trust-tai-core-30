@@ -88,9 +88,7 @@ function whyFrom(step: ConductorActionStep): string {
  * the same idempotency keys, and any action already governed is returned as it
  * stands rather than reset to `proposed`.
  */
-export function buildControlledActions(
-  input: BuildControlledActionsInput,
-): ControlledAction[] {
+export function buildControlledActions(input: BuildControlledActionsInput): ControlledAction[] {
   const { organizationId, graph, now } = input;
   const byKey = new Map((input.existing ?? []).map((action) => [action.sourceEventKey, action]));
 
@@ -314,9 +312,7 @@ export function routingQueue(
   adapters: RoomAdapter[],
   access: { can: (permission: string) => boolean },
 ): ControlledAction[] {
-  return actions.filter(
-    (action) => routability({ action, actions, adapters, access }).routable,
-  );
+  return actions.filter((action) => routability({ action, actions, adapters, access }).routable);
 }
 
 /* -------------------------------------------------------- control response */
@@ -401,10 +397,7 @@ export function controlResponse(
  * Attach what was actually observed. The link back to the recommendation and
  * the approval survives, so a later pass can learn from what worked.
  */
-export function attachOutcome(
-  action: ControlledAction,
-  outcome: ActionOutcome,
-): ControlledAction {
+export function attachOutcome(action: ControlledAction, outcome: ActionOutcome): ControlledAction {
   if (action.status !== "completed") {
     throw new Error("An outcome can only be measured once the owning room reported completion.");
   }

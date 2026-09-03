@@ -125,7 +125,9 @@ describe("event payload contract", () => {
     expect(
       EventsBody.safeParse({
         source_app: "website",
-        events: [{ event_name: "page_view", event_key: "s1:pv:1", occurred_at: "2026-08-20T09:00:00Z" }],
+        events: [
+          { event_name: "page_view", event_key: "s1:pv:1", occurred_at: "2026-08-20T09:00:00Z" },
+        ],
       }).success,
     ).toBe(true);
     expect(EventsBody.safeParse({ source_app: "website", events: [] }).success).toBe(false);

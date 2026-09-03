@@ -349,8 +349,7 @@ export function ActionProposalRow({
       {state === "authorized" ? (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <p className="text-sm text-foreground">
-            Authorised. {ROOM_LABEL[action.appId] ?? action.appId} owns the change, finish it
-            there.
+            Authorised. {ROOM_LABEL[action.appId] ?? action.appId} owns the change, finish it there.
           </p>
           <a
             href={action.route}
@@ -384,7 +383,6 @@ export function ActionProposalRow({
     </div>
   );
 }
-
 
 /** What the read saw, what it could not see, and what it was told to leave alone. */
 function ReadFooting({ read }: { read: EngineRead }) {

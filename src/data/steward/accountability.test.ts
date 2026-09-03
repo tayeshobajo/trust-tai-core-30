@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  applyTeamFilter,
-  buildStewardTasks,
-  glanceOf,
-  personRead,
-} from "./accountability";
+import { applyTeamFilter, buildStewardTasks, glanceOf, personRead } from "./accountability";
 import type { Commitment } from "@/domain/steward";
 import type { StewardAgent } from "@/domain/steward-accountability";
 

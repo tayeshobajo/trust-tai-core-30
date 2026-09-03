@@ -34,7 +34,7 @@ async function paperclipGetSafe<T>(path: string): Promise<T | null> {
 }
 
 Deno.serve(async (req: Request) => {
-  // Auth guard — only accept requests with the execution key or internal Supabase invocation
+  // Auth guard, only accept requests with the execution key or internal Supabase invocation
   const authHeader = req.headers.get("Authorization") ?? "";
   const executionKey = req.headers.get("X-Execution-Key") ?? "";
   const isServiceRole = authHeader.includes(SERVICE_ROLE_KEY);
@@ -67,10 +67,10 @@ Deno.serve(async (req: Request) => {
 
   // 1. Read registered agents from DB
   const { data: agentRows, error: agentsError } = await supabase
-    .from("execution_agents")
-    .select("id, paperclip_agent_id, name, enabled")
-    .eq("organization_id", organizationId)
-    .eq("enabled", true);
+.from("execution_agents")
+.select("id, paperclip_agent_id, name, enabled")
+.eq("organization_id", organizationId)
+.eq("enabled", true);
 
   if (agentsError || !agentRows) {
     await supabase.from("paperclip_sync_state").upsert({
@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
         last_known_status: agent.status,
         last_synced_at: now,
         last_heartbeat_at: agent.lastHeartbeatAt ?? null,
-        paused_at: pausedByStatus ? (agent.pausedAt ?? now) : null,
+        paused_at: pausedByStatus ? (agent.pausedAt ?? now): null,
         paperclip_company_id: agent.companyId,
         updated_at: now,
       }).eq("paperclip_agent_id", agentId);
@@ -117,31 +117,31 @@ Deno.serve(async (req: Request) => {
         for (const issue of doneRes) {
           if (issue.status === "done" && issue.id) {
             await supabase
-              .from("execution_bindings")
-              .update({
+.from("execution_bindings")
+.update({
                 status: "completed",
                 result_summary: issue.title,
                 updated_at: now,
               })
-              .eq("paperclip_issue_id", issue.id)
-              .in("status", ["dispatched", "dispatching", "in_progress"]);
+.eq("paperclip_issue_id", issue.id)
+.in("status", ["dispatched", "dispatching", "in_progress"]);
           }
         }
       }
     } catch (error) {
-      syncError = error instanceof Error ? error.message : "Unknown error";
+      syncError = error instanceof Error ? error.message: "Unknown error";
       totalErrors++;
     }
 
-    results.push({ agentId, status: syncError ? "error" : "ok", error: syncError });
+    results.push({ agentId, status: syncError ? "error": "ok", error: syncError });
   }
 
   // 5. Update sync state cursor
   await supabase.from("paperclip_sync_state").upsert({
     organization_id: organizationId,
     resource_type: "agents",
-    last_success_at: totalErrors === 0 ? now : undefined,
-    last_error: totalErrors > 0 ? `${totalErrors} agent(s) failed to sync.` : null,
+    last_success_at: totalErrors === 0 ? now: undefined,
+    last_error: totalErrors > 0 ? `${totalErrors} agent(s) failed to sync.`: null,
     consecutive_failures: totalErrors,
     updated_at: now,
   }, { onConflict: "organization_id,resource_type" });

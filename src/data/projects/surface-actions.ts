@@ -81,10 +81,7 @@ export function changesForSurface(target: SurfaceStatus, reason = ""): SurfaceMo
  * are kept and disabled with their reason: a person deserves to know why a
  * door is shut, not to find it missing.
  */
-export function surfaceActions(
-  project: ExecutionProject,
-  reason = "",
-): SurfaceAction[] {
+export function surfaceActions(project: ExecutionProject, reason = ""): SurfaceAction[] {
   const from = surfaceStatus(project);
 
   return SURFACE_ORDER.map((target) => {
@@ -109,7 +106,11 @@ export function surfaceActions(
       return { ...base, ok: false, because: `Already ${SURFACE_STATUS_LABEL[target]}.` };
     }
 
-    if (needsReason && !reason.trim() && !(target === "blocked" && project.blockedBecause?.trim())) {
+    if (
+      needsReason &&
+      !reason.trim() &&
+      !(target === "blocked" && project.blockedBecause?.trim())
+    ) {
       return {
         ...base,
         ok: false,

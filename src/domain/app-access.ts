@@ -155,8 +155,7 @@ export function resolveAppAccess(appId: string, input: AppAccessInput): AppAcces
       : normalizeAccessLevel(input.override);
   if (requested === "hidden") return DENIED(appId, "Hidden for this person.");
 
-  const level: AppAccessLevel =
-    LEVEL_RANK[requested] <= LEVEL_RANK[ceiling] ? requested : ceiling;
+  const level: AppAccessLevel = LEVEL_RANK[requested] <= LEVEL_RANK[ceiling] ? requested : ceiling;
 
   return {
     appId,

@@ -101,8 +101,7 @@ export interface ProjectRouteRequest {
 }
 
 export type RouteResult =
-  | { ok: true; request: ProjectRouteRequest }
-  | { ok: false; because: string };
+  { ok: true; request: ProjectRouteRequest } | { ok: false; because: string };
 
 function clean(value: string | null | undefined): string {
   return (value ?? "").trim();
@@ -138,10 +137,7 @@ export interface RouteIntent {
  * Build the request from what Projects already holds. Refuses rather than
  * guesses: no outcome, no reason, no destination, no identity, no route.
  */
-export function buildRouteRequest(
-  project: ExecutionProject,
-  intent: RouteIntent,
-): RouteResult {
+export function buildRouteRequest(project: ExecutionProject, intent: RouteIntent): RouteResult {
   if (!clean(project.id) || !clean(project.organizationId)) {
     return { ok: false, because: "This project has no stable identity to route from." };
   }

@@ -1,5 +1,5 @@
 /**
- * The reasoning pass — assemble, verify, return.
+ * The reasoning pass, assemble, verify, return.
  *
  * Two pure functions rooms compose around:
  *
@@ -243,7 +243,7 @@ export function verifyRuntimeRead(input: {
 /**
  * The read with no model: facts straight from the evidence, knowledge from
  * retrieval, unknowns named. This is what a room shows when reasoning is
- * unavailable — honest, grounded, and never blank.
+ * unavailable, honest, grounded, and never blank.
  */
 export function assembleDeterministicRead(
   request: ReasoningRequest,

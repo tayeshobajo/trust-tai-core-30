@@ -119,7 +119,9 @@ function actionLabelOf(appId: string, severity: PulseSeverity): string {
 
 function reasonOf(signal: Signal, ageDays: number, room: string): string {
   const age =
-    ageDays <= 0 ? "It was read just now" : `It has stood for ${ageDays} day${ageDays === 1 ? "" : "s"}`;
+    ageDays <= 0
+      ? "It was read just now"
+      : `It has stood for ${ageDays} day${ageDays === 1 ? "" : "s"}`;
   return `${signal.why} ${age}, and ${room} owns the change.`;
 }
 
@@ -315,11 +317,7 @@ export function relativeAge(at: string, now: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function recentlyUpdated(
-  signals: PulseSignal[],
-  now: string,
-  limit = 3,
-): PulseRecentItem[] {
+export function recentlyUpdated(signals: PulseSignal[], now: string, limit = 3): PulseRecentItem[] {
   return [...signals]
     .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
     .slice(0, limit)

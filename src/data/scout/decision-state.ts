@@ -17,12 +17,7 @@ import type { EvidenceReview } from "./research-workspace";
 
 /* ------------------------------------------------------------- the moves - */
 
-export type DecisionMoveKey =
-  | "qualify"
-  | "ask_question"
-  | "hold"
-  | "pass"
-  | "explore_roadmap";
+export type DecisionMoveKey = "qualify" | "ask_question" | "hold" | "pass" | "explore_roadmap";
 
 export interface DecisionMove {
   key: DecisionMoveKey;
@@ -95,9 +90,7 @@ const RECORDED_NAMES = new Set([
 function moveOf(event: ActivityEvent): DecisionMoveKey | null {
   const payload = (event.payload ?? {}) as Record<string, unknown>;
   const raw = payload["scout_decision_move"];
-  return typeof raw === "string" && raw in DECISION_MOVE_LABEL
-    ? (raw as DecisionMoveKey)
-    : null;
+  return typeof raw === "string" && raw in DECISION_MOVE_LABEL ? (raw as DecisionMoveKey) : null;
 }
 
 /** Everything a person or the system already settled here, newest first. */

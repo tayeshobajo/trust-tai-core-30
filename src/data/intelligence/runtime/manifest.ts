@@ -11,7 +11,7 @@
  * The acceptance tests (runtime/acceptance.test.ts) enforce the floor: every
  * registered room declares all eight dimensions, every delegation names its
  * equivalent, and no room reads as ready while a required dimension is
- * missing. The report is Ready / Delegated-equivalent / Not ready — never
+ * missing. The report is Ready / Delegated-equivalent / Not ready, never
  * manufactured green.
  */
 
@@ -118,7 +118,7 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
       "relationship state + handoff briefs under RLS (src/data/supabase/comms-service.ts)",
     ),
     retrieval: r(
-      "drafts reason through the runtime boundary over governed evidence — memory, thread, commitments — behind a deterministic grounding gate: thread plus identity grounds a reply, identity plus a real prior interaction plus a reason grounds a proactive note (src/lib/comms-draft.server.ts, src/domain/comms-judgment.ts)",
+      "drafts reason through the runtime boundary over governed evidence, memory, thread, commitments, behind a deterministic grounding gate: thread plus identity grounds a reply, identity plus a real prior interaction plus a reason grounds a proactive note (src/lib/comms-draft.server.ts, src/domain/comms-judgment.ts)",
     ),
     domain_patterns: r(
       "Tai's canonical relationship voice is the baseline; the org Voice DNA and approved/sent examples layer on top with separate provenance, never replacing it (src/domain/voice.ts, src/lib/comms-draft.server.ts)",
@@ -237,7 +237,9 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
   manifest("pulse", {
     evidence_grounding: r("signals derived from room state (src/data/intelligence/derive.ts)"),
     retrieval: r("suite snapshot + canon experience (src/data/intelligence/service.ts)"),
-    domain_patterns: r("canon matches on engine observations (src/data/intelligence/canon/match.ts)"),
+    domain_patterns: r(
+      "canon matches on engine observations (src/data/intelligence/canon/match.ts)",
+    ),
     safe_diagnostic_loop: d(
       "read-only visibility surface; it routes attention, it does not diagnose",
       "src/data/intelligence/runtime/protocol.ts",
@@ -345,7 +347,7 @@ export function checkRoomReadiness(room: string): RoomReadinessCheck | null {
   return { room, ready: missing.length === 0, missing, delegated, manifest: manifestEntry };
 }
 
-/** Every registered room without a manifest — the acceptance test requires none. */
+/** Every registered room without a manifest, the acceptance test requires none. */
 export function roomsMissingManifests(): string[] {
   return APP_REGISTRY.filter((app) => !manifestFor(app.id)).map((app) => app.id);
 }

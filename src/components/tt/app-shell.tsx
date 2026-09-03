@@ -22,7 +22,6 @@ import { useState, type ReactNode } from "react";
 
 import { usePresence } from "@/hooks/use-presence";
 
-
 import { APP_REGISTRY, type AppRegistration } from "@/domain/registry";
 import { initialsOf } from "@/domain/steward-accountability";
 import { cn } from "@/lib/utils";
@@ -94,7 +93,10 @@ function NavList({
               />
             ) : null}
             <Icon
-              className={cn("size-[18px] shrink-0", active ? "text-royal" : "text-muted-foreground")}
+              className={cn(
+                "size-[18px] shrink-0",
+                active ? "text-royal" : "text-muted-foreground",
+              )}
               aria-hidden
             />
             <span className="min-w-0 flex-1 truncate">{app.name}</span>
@@ -112,7 +114,6 @@ function NavList({
     </nav>
   );
 }
-
 
 export function AppShell({
   children,
@@ -138,7 +139,6 @@ export function AppShell({
     userId: identity?.userId,
     appKey: currentApp?.id ?? (pathname.startsWith("/settings") ? "settings" : null),
   });
-
 
   async function handleSignOut() {
     await signOut(queryClient);
@@ -185,13 +185,13 @@ export function AppShell({
                   className="size-9 rounded-full object-cover"
                 />
               ) : (
-              <span
-                className="flex size-9 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
-                aria-label={`Signed in as ${identity.name}`}
-                title={identity.email}
-              >
-                {initialsOf(identity.name)}
-              </span>
+                <span
+                  className="flex size-9 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
+                  aria-label={`Signed in as ${identity.name}`}
+                  title={identity.email}
+                >
+                  {initialsOf(identity.name)}
+                </span>
               )}
               <button
                 type="button"
@@ -231,7 +231,6 @@ export function AppShell({
           <div className="mx-auto w-full max-w-canvas">{children}</div>
         </main>
       </div>
-
     </div>
   );
 }

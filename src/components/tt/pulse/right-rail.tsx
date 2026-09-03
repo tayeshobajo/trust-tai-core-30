@@ -119,9 +119,7 @@ export function PulseTrendCard({ trend }: { trend: PulseTrend }) {
         >
           <Icon className="size-4" aria-hidden />
         </span>
-        <p className="text-[15px] font-medium text-foreground">
-          {trend.delta} vs last 7 days
-        </p>
+        <p className="text-[15px] font-medium text-foreground">{trend.delta} vs last 7 days</p>
       </div>
       <p className="mt-2 text-[13px] text-muted-foreground">{trend.meaning}</p>
     </RailCard>

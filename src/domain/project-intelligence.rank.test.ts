@@ -4,7 +4,9 @@ import { rankOf } from "@/domain/project-intelligence";
 
 describe("knowledge authority", () => {
   it("promotes an imported statement once a person confirms it", () => {
-    expect(rankOf("thinking_room", "confirmed")).toBeLessThan(rankOf("thinking_room", "needs_review"));
+    expect(rankOf("thinking_room", "confirmed")).toBeLessThan(
+      rankOf("thinking_room", "needs_review"),
+    );
     expect(rankOf("thinking_room", "confirmed")).toBe(rankOf("human", "confirmed"));
   });
 

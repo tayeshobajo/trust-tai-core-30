@@ -105,7 +105,7 @@ export function AskPanel({
                   <ul className="mt-2 space-y-1">
                     {entry.inferences.map((line) => (
                       <li key={line} className="max-w-reading text-sm text-muted-foreground">
-  · {line}
+                        · {line}
                       </li>
                     ))}
                   </ul>
@@ -118,7 +118,7 @@ export function AskPanel({
                   <ul className="mt-2 space-y-1">
                     {entry.unknowns.map((line) => (
                       <li key={line} className="max-w-reading text-sm text-muted-foreground">
-  · {line}
+                        · {line}
                       </li>
                     ))}
                   </ul>

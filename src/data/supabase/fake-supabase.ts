@@ -1,7 +1,7 @@
 /**
  * A tiny in-memory stand-in for the Supabase client, for tests only.
  *
- * It supports exactly the query shapes Scout's persistence layer uses 
+ * It supports exactly the query shapes Scout's persistence layer uses
  * insert/select/update with `eq` filters and `order` · so integration tests
  * can exercise real service code end to end without a network or a database.
  *
@@ -73,8 +73,7 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     let rows = this.rows.filter((row) =>
       this.filters.every((filter) => {
         if (filter.anyOf) return filter.anyOf.includes(row[filter.column]);
-        if (filter.gte !== undefined)
-          return String(row[filter.column] ?? "") >= String(filter.gte);
+        if (filter.gte !== undefined) return String(row[filter.column] ?? "") >= String(filter.gte);
         if (filter.lt !== undefined) return String(row[filter.column] ?? "") < String(filter.lt);
         return row[filter.column] === filter.value;
       }),

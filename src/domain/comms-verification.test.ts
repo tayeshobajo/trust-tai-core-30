@@ -57,7 +57,9 @@ describe("matchSentDraft", () => {
   });
 
   it("refuses an inbound message", () => {
-    expect(matchSentDraft(DRAFT, message({ direction: "inbound", subject: "Following up" }))).toBeNull();
+    expect(
+      matchSentDraft(DRAFT, message({ direction: "inbound", subject: "Following up" })),
+    ).toBeNull();
   });
 
   it("refuses a message to a different person", () => {
@@ -92,9 +94,7 @@ describe("matchSentDraft", () => {
     const shortDraft: SentDraftLike = { ...DRAFT, body: "Thanks!" };
     delete shortDraft.subject;
     expect(bodyFingerprint(shortDraft.body).length).toBeLessThan(24);
-    expect(
-      matchSentDraft(shortDraft, message({ snippet: "Thanks! Talk soon." })),
-    ).toBeNull();
+    expect(matchSentDraft(shortDraft, message({ snippet: "Thanks! Talk soon." }))).toBeNull();
   });
 });
 
@@ -112,8 +112,16 @@ describe("planDraftVerifications", () => {
     const plan = planDraftVerifications(
       [DRAFT],
       [
-        message({ providerMessageId: "later", subject: "Following up", occurredAt: "2026-08-20T12:00:00.000Z" }),
-        message({ providerMessageId: "earlier", subject: "Following up", occurredAt: "2026-08-20T10:05:00.000Z" }),
+        message({
+          providerMessageId: "later",
+          subject: "Following up",
+          occurredAt: "2026-08-20T12:00:00.000Z",
+        }),
+        message({
+          providerMessageId: "earlier",
+          subject: "Following up",
+          occurredAt: "2026-08-20T10:05:00.000Z",
+        }),
       ],
     );
     expect(plan[0]?.providerMessageId).toBe("earlier");
@@ -152,8 +160,8 @@ describe("draftProvenanceLabel", () => {
   });
 
   it("distinguishes claim from proof", () => {
-    expect(draftProvenanceLabel("sent", stamp)).toBe("Sent — seen in the mailbox");
-    expect(draftProvenanceLabel("sent", null)).toBe("Sent via Gmail — not yet seen in the mailbox");
+    expect(draftProvenanceLabel("sent", stamp)).toBe("Sent, seen in the mailbox");
+    expect(draftProvenanceLabel("sent", null)).toBe("Sent via Gmail, not yet seen in the mailbox");
     expect(draftProvenanceLabel("approved", null)).toBe("Approved, waiting to be sent");
     expect(draftProvenanceLabel("draft", null)).toBe("Prepared in Comms, not sent");
   });

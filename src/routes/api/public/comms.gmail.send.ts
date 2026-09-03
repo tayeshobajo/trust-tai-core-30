@@ -1,10 +1,10 @@
 /**
  * Gmail send (raw HTTP).
  *
- *  GET   — what each connected mailbox may do, one capability per account,
+ *  GET, what each connected mailbox may do, one capability per account,
  *          so the composer can offer a From choice only when one is real.
- *  POST  — send one approved draft. Human-triggered only: this is the hand
- *          on the door, and the server enforces everything else — membership,
+ *  POST, send one approved draft. Human-triggered only: this is the hand
+ *          on the door, and the server enforces everything else, membership,
  *          the send-scope checkpoint per mailbox, the reply-from rule (a
  *          reply leaves from the mailbox that owns the conversation),
  *          idempotent claim, bounded MIME, sentinel timeline row.
@@ -76,10 +76,7 @@ export const Route = createFileRoute("/api/public/comms/gmail/send")({
             ? body["integrationId"].trim()
             : undefined;
         if (!organizationId || !draftId) {
-          return Response.json(
-            { error: "A workspace and a draft are required." },
-            { status: 400 },
-          );
+          return Response.json({ error: "A workspace and a draft are required." }, { status: 400 });
         }
 
         const rawTarget = body["threadTarget"];

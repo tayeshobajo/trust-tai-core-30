@@ -2,7 +2,7 @@
  * Inbox state, as a pure function.
  *
  * The relationship workspace has four operating views, all reading the same
- * derived state — never separate lists, never a pipeline:
+ * derived state, never separate lists, never a pipeline:
  *
  *  - Clients:   established clients and meaningful existing relationships.
  *  - Nurture:   people Trust Tai deliberately chose to develop.
@@ -33,12 +33,12 @@ export const TABS: InboxTab[] = ["all", "clients", "nurture", "needs_you"];
 
 /**
  * One quiet line under the tabs saying what the current view is for.
- * Calm and descriptive — never a metric, never a judgement.
+ * Calm and descriptive, never a metric, never a judgement.
  */
 export const VIEW_SUMMARY: Record<InboxTab, string> = {
   clients: "Established clients and meaningful existing relationships.",
   nurture: "People you have deliberately chosen to develop, ordered by what needs attention.",
-  needs_you: "Anyone — client or developing — where your judgment is required now.",
+  needs_you: "Anyone, client or developing, where your judgment is required now.",
   all: "The complete relationship ledger, everyone exactly once.",
 };
 
@@ -55,7 +55,11 @@ export function inboxEntries(
 ): InboxEntry[] {
   return relationships.map((relationship) => ({
     relationship,
-    health: deriveConversationHealth(relationship, touchesByRelationship[relationship.id] ?? [], now),
+    health: deriveConversationHealth(
+      relationship,
+      touchesByRelationship[relationship.id] ?? [],
+      now,
+    ),
   }));
 }
 
@@ -70,8 +74,8 @@ export function segmentViewOf(entry: InboxEntry): "clients" | "nurture" | null {
 
 /**
  * Needs you, cross-cutting Clients and Nurture. Reuses the two existing
- * attention reads — the conversation waiting on us, and the next-move rules
- * with real urgency — rather than inventing a parallel engine.
+ * attention reads, the conversation waiting on us, and the next-move rules
+ * with real urgency, rather than inventing a parallel engine.
  */
 export function needsYou(entry: InboxEntry, now: Date = new Date()): boolean {
   if (entry.relationship.stage === "archived") return false;
@@ -102,9 +106,7 @@ export function tabCounts(entries: InboxEntry[], now: Date = new Date()): Record
   return counts;
 }
 
-export function healthCounts(
-  entries: InboxEntry[],
-): Record<ConversationHealthStatus, number> {
+export function healthCounts(entries: InboxEntry[]): Record<ConversationHealthStatus, number> {
   const counts: Record<ConversationHealthStatus, number> = {
     healthy: 0,
     needs_attention: 0,
@@ -130,12 +132,8 @@ export function sortEntries(entries: InboxEntry[]): InboxEntry[] {
   return [...entries].sort((a, b) => {
     const weight = STATUS_WEIGHT[a.health.status] - STATUS_WEIGHT[b.health.status];
     if (weight !== 0) return weight;
-    const at = new Date(
-      a.health.lastActivityAt ?? a.relationship.createdAt,
-    ).getTime();
-    const bt = new Date(
-      b.health.lastActivityAt ?? b.relationship.createdAt,
-    ).getTime();
+    const at = new Date(a.health.lastActivityAt ?? a.relationship.createdAt).getTime();
+    const bt = new Date(b.health.lastActivityAt ?? b.relationship.createdAt).getTime();
     return at - bt;
   });
 }
@@ -174,8 +172,7 @@ export function inboxView(
   const sorted = sortEntries(visible);
   return {
     priority: sorted.filter(
-      (entry) =>
-        entry.health.status === "at_risk" || entry.health.status === "needs_attention",
+      (entry) => entry.health.status === "at_risk" || entry.health.status === "needs_attention",
     ),
     others: sorted.filter(
       (entry) => entry.health.status !== "at_risk" && entry.health.status !== "needs_attention",
@@ -195,8 +192,7 @@ export function inboxView(
 export const RELATIONSHIPS_PER_PAGE = 25;
 
 /**
- * The current page of a view. The view is always derived in full first —
- * search, filters, counts, and tab totals describe the whole view — and only
+ * The current page of a view. The view is always derived in full first, * search, filters, counts, and tab totals describe the whole view, and only
  * then is the rendered list sliced. Priority rows lead, exactly as sorted.
  */
 export function inboxPage(view: InboxView, page: number): PageView<InboxEntry> {

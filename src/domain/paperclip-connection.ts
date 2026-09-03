@@ -126,5 +126,5 @@ export function paperclipConnection(input: {
 
 /** Never render an unknown count as a fact. Zero only when zero is proven. */
 export function metricText(value: number | null | undefined): string {
-  return typeof value === "number" ? String(value) : "—";
+  return typeof value === "number" ? String(value) : "\u2014";
 }

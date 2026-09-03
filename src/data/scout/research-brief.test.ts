@@ -60,7 +60,11 @@ function candidate(input: {
     signals: input.signals ?? [],
     fit: { whyItFits: "", recommendation: "" },
     source: { kind: input.stated ? "website_intake" : "preview_demo", label: "src" },
-    evaluation: { score: 40, criteria: [], scoreable: false } as unknown as ProspectCandidate["evaluation"],
+    evaluation: {
+      score: 40,
+      criteria: [],
+      scoreable: false,
+    } as unknown as ProspectCandidate["evaluation"],
     lastCheckedAt: "2026-08-19T10:00:00.000Z",
     ...(input.stated ? { stated: input.stated } : {}),
     ...(input.consent ? { researchConsent: input.consent } : {}),
@@ -150,7 +154,11 @@ describe("four lanes", () => {
       true,
     );
     const observed = [
-      signal("s1", "The website has no contact form and no enquiry capture", "https://northwind.com"),
+      signal(
+        "s1",
+        "The website has no contact form and no enquiry capture",
+        "https://northwind.com",
+      ),
     ];
     const review = reviewStatedEvidence(candidate({ stated, signals: observed }));
     const themes = evidenceThemes(candidate({ stated, signals: observed }), review);

@@ -18,7 +18,7 @@ const SEND: DraftSend = {
 };
 
 describe("sendIdempotencyKey", () => {
-  it("is stable per draft — one draft, one send identity", () => {
+  it("is stable per draft, one draft, one send identity", () => {
     expect(sendIdempotencyKey("d1")).toBe("send:d1");
     expect(sendIdempotencyKey("d1")).toBe(sendIdempotencyKey("d1"));
     expect(sendIdempotencyKey("d1")).not.toBe(sendIdempotencyKey("d2"));
@@ -86,12 +86,12 @@ describe("decideSendClaim", () => {
     expect(decision).toEqual({ kind: "replay", send });
   });
 
-  it("refuses a draft marked sent by hand — Comms never re-sends what a person says went out", () => {
+  it("refuses a draft marked sent by hand. Comms never re-sends what a person says went out", () => {
     const decision = decideSendClaim({ reviewState: "sent", rationale: {} }, now);
     expect(decision.kind).toBe("not_sendable");
   });
 
-  it("holds a fresh claim as in flight — the double-click guard", () => {
+  it("holds a fresh claim as in flight, the double-click guard", () => {
     const rationale = writeDraftSend({}, SEND);
     const decision = decideSendClaim(
       { reviewState: "sending", rationale, updatedAt: "2026-08-01T11:55:00.000Z" },
@@ -100,10 +100,13 @@ describe("decideSendClaim", () => {
     expect(decision.kind).toBe("in_flight");
   });
 
-  it("lets a stale claim be reclaimed — a died-mid-flight attempt is retryable", () => {
+  it("lets a stale claim be reclaimed, a died-mid-flight attempt is retryable", () => {
     const rationale = writeDraftSend({}, SEND);
     const staleAt = new Date(now.getTime() - STALE_SENDING_MS - 1000).toISOString();
-    const decision = decideSendClaim({ reviewState: "sending", rationale, updatedAt: staleAt }, now);
+    const decision = decideSendClaim(
+      { reviewState: "sending", rationale, updatedAt: staleAt },
+      now,
+    );
     expect(decision.kind).toBe("claim");
   });
 

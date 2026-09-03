@@ -157,7 +157,7 @@ export function findBlindSpots(input: {
     });
   }
 
-  /* 7. No decided goal at all — the largest possible gap. */
+  /* 7. No decided goal at all, the largest possible gap. */
   if (intents.length === 0) {
     spots.push({
       key: "no_business_intent",

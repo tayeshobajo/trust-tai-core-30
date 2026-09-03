@@ -51,12 +51,12 @@ describe("findCommsLabelId", () => {
     expect(findCommsLabelId(labels)).toBe("Label_42");
   });
 
-  it("falls back to a case-insensitive match — Gmail label names are case-insensitively unique", () => {
+  it("falls back to a case-insensitive match. Gmail label names are case-insensitively unique", () => {
     expect(findCommsLabelId([{ id: "Label_5", name: "trust tai/comms" }])).toBe("Label_5");
     expect(findCommsLabelId([{ id: "Label_6", name: "TRUST TAI/COMMS" }])).toBe("Label_6");
   });
 
-  it("returns null when the label is missing — the safe no-op trigger, never a fallback", () => {
+  it("returns null when the label is missing, the safe no-op trigger, never a fallback", () => {
     expect(findCommsLabelId([])).toBeNull();
     expect(findCommsLabelId([{ id: "INBOX", name: "INBOX" }])).toBeNull();
     expect(findCommsLabelId([{ id: "Label_1", name: "Comms" }])).toBeNull();
@@ -69,7 +69,7 @@ describe("findCommsLabelId", () => {
 });
 
 describe("buildLabelListPath", () => {
-  it("gates on the label id first — unlabeled mail can never enter the candidate set", () => {
+  it("gates on the label id first, unlabeled mail can never enter the candidate set", () => {
     const path = buildLabelListPath({ labelId: "Label_42", days: 2, maxResults: 60 });
     expect(path).toContain("labelIds=Label_42");
     const decoded = decodeURIComponent(path);
@@ -77,7 +77,7 @@ describe("buildLabelListPath", () => {
     expect(decoded).toContain("maxResults=60");
   });
 
-  it("carries no address scoping — identity is decided after listing, not by mailbox discovery", () => {
+  it("carries no address scoping, identity is decided after listing, not by mailbox discovery", () => {
     const decoded = decodeURIComponent(
       buildLabelListPath({ labelId: "Label_42", days: 30, maxResults: 25 }),
     );
@@ -133,7 +133,7 @@ describe("findTrackedCounterpart", () => {
     ).toBe(tracked);
   });
 
-  it("never matches unknown senders — they cannot be stored or become relationships", () => {
+  it("never matches unknown senders, they cannot be stored or become relationships", () => {
     expect(
       findTrackedCounterpart(
         { fromEmail: "newsletter@noise.io", toEmails: [mailbox], ccEmails: [] },
@@ -208,7 +208,7 @@ describe("authorizeUrl", () => {
     }
   }
 
-  it("requests labeled reading plus send — never gmail.modify", () => {
+  it("requests labeled reading plus send, never gmail.modify", () => {
     withConfig(() => {
       const url = new URL(
         authorizeUrl({ redirectUri: "https://example.org/cb", state: "signed-state" }),
@@ -261,7 +261,7 @@ describe("grantedGmailScopes", () => {
     ).toEqual(["https://www.googleapis.com/auth/gmail.readonly"]);
   });
 
-  it("falls back to read-only when Google reports no scope field — send stays blocked", () => {
+  it("falls back to read-only when Google reports no scope field, send stays blocked", () => {
     expect(grantedGmailScopes(undefined)).toEqual([
       "https://www.googleapis.com/auth/gmail.readonly",
     ]);
@@ -270,7 +270,7 @@ describe("grantedGmailScopes", () => {
 });
 
 describe("connectionRowFor", () => {
-  it("persists the granted scopes exactly — send survives the write", () => {
+  it("persists the granted scopes exactly, send survives the write", () => {
     const granted = [
       "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/gmail.send",
@@ -344,7 +344,7 @@ function mailbox(id: string, email: string, canSend: boolean, connected = true):
 }
 
 describe("multi-mailbox connections", () => {
-  it("two Gmail connection rows can coexist — connecting a second never replaces the first", () => {
+  it("two Gmail connection rows can coexist, connecting a second never replaces the first", () => {
     const first = connectionRowFor(
       {
         organizationId: "org",
@@ -399,7 +399,7 @@ describe("multi-mailbox connections", () => {
     expect(sender.requiredScope).toBeUndefined();
   });
 
-  it("a reply goes from the mailbox that owns the thread — provenance beats any From choice", () => {
+  it("a reply goes from the mailbox that owns the thread, provenance beats any From choice", () => {
     const connections = [
       mailbox("a", "tayeshobajo@gmail.com", true),
       mailbox("b", "tai@trusttai.com", true),
@@ -482,7 +482,10 @@ describe("multi-mailbox connections", () => {
     // No send-capable mailbox at all is an honest empty state.
     expect(
       resolveSendMailbox({ connections: [mailbox("a", "tayeshobajo@gmail.com", false)] }),
-    ).toEqual({ kind: "none_send_capable", connections: [mailbox("a", "tayeshobajo@gmail.com", false)] });
+    ).toEqual({
+      kind: "none_send_capable",
+      connections: [mailbox("a", "tayeshobajo@gmail.com", false)],
+    });
     expect(resolveSendMailbox({ connections: [] })).toEqual({ kind: "none_connected" });
   });
 
@@ -491,7 +494,7 @@ describe("multi-mailbox connections", () => {
     const request = new Request("https://cmd.trusttai.com/api/public/comms/gmail/connect");
     expect(gmailRedirectUri(request)).toBe(PRODUCTION_REDIRECT);
     // Any other production-shaped origin still resolves to the one registered
-    // callback — Google accepts only what the OAuth client lists.
+    // callback. Google accepts only what the OAuth client lists.
     const apex = new Request("https://trusttai.com/api/public/comms/gmail/connect");
     expect(gmailRedirectUri(apex)).toBe(PRODUCTION_REDIRECT);
   });
@@ -529,10 +532,7 @@ describe("multi-mailbox connections", () => {
  * Message fidelity: enrichment counting and row construction
  * ==================================================================== */
 
-import {
-  buildMessageRow,
-  classifySyncedMessages,
-} from "@/lib/comms-gmail.server";
+import { buildMessageRow, classifySyncedMessages } from "@/lib/comms-gmail.server";
 import type { NormalizedMessage } from "@/domain/comms-integrations";
 
 function syncedMessage(overrides: Partial<NormalizedMessage>): NormalizedMessage {
@@ -548,7 +548,7 @@ function syncedMessage(overrides: Partial<NormalizedMessage>): NormalizedMessage
   };
 }
 
-describe("classifySyncedMessages — resync enriches without counting", () => {
+describe("classifySyncedMessages, resync enriches without counting", () => {
   it("an already-stored message is neither counted nor re-emitted", () => {
     const existing = new Set(["pm-1"]);
     const result = classifySyncedMessages(
@@ -573,7 +573,7 @@ describe("classifySyncedMessages — resync enriches without counting", () => {
   });
 });
 
-describe("buildMessageRow — fidelity columns and inline metadata", () => {
+describe("buildMessageRow, fidelity columns and inline metadata", () => {
   it("stores body, sanitized html, and inline resources with content ids", () => {
     const row = buildMessageRow({
       organizationId: "org-1",
@@ -649,7 +649,7 @@ function observed(
   return { providerThreadId, mailbox, occurredAt };
 }
 
-describe("approved-thread continuity — the label approves the conversation", () => {
+describe("approved-thread continuity, the label approves the conversation", () => {
   it("A: a thread discovered through the label becomes an approved watched conversation", () => {
     // The discovery pass stored thread-1; it is now approved for refresh.
     const ids = selectApprovedThreadIds({
@@ -668,7 +668,7 @@ describe("approved-thread continuity — the label approves the conversation", (
       approved: new Set(["thread-1"]),
       soleMailbox: true,
     });
-    // Gmail's own thread endpoint — no label filter anywhere in the path.
+    // Gmail's own thread endpoint, no label filter anywhere in the path.
     expect(buildThreadFetchPath(ids[0]!)).toBe("/threads/thread-1?format=full");
     expect(buildThreadFetchPath("thread-1")).not.toContain("labelIds");
   });
@@ -676,7 +676,10 @@ describe("approved-thread continuity — the label approves the conversation", (
   it("C: a new unlabeled thread from the same known correspondent is not watched", () => {
     const ids = selectApprovedThreadIds({
       // thread-2 was never approved through the label gate.
-      observed: [observed("thread-1", "2026-08-20T10:00:00Z"), observed("thread-2", "2026-08-21T10:00:00Z")],
+      observed: [
+        observed("thread-1", "2026-08-20T10:00:00Z"),
+        observed("thread-2", "2026-08-21T10:00:00Z"),
+      ],
       mailbox: MAILBOX,
       approved: new Set(["thread-1"]),
       soleMailbox: true,

@@ -1,5 +1,5 @@
 /**
- * Conductor V3.1 — question to routable Scout cycle.
+ * Conductor V3.1, question to routable Scout cycle.
  *
  * The V3 first-cycle rehearsal locked in one honest failure: a question could
  * not start a cycle, because no reasoning path produced a governed action
@@ -40,13 +40,23 @@ vi.mock("@/data/supabase/scout-service", () => ({
   },
 }));
 vi.mock("@/data/supabase/comms-service", () => ({
-  commsService: { listDrafts: async () => [], saveDraft: vi.fn(), list: async () => [], send: vi.fn() },
+  commsService: {
+    listDrafts: async () => [],
+    saveDraft: vi.fn(),
+    list: async () => [],
+    send: vi.fn(),
+  },
 }));
 vi.mock("@/data/supabase/projects-service", () => ({
   projectsService: { get: async () => null, update: vi.fn(), routeWork: vi.fn() },
 }));
 vi.mock("@/data/supabase/roadmap-service", () => ({
-  roadmapService: { create: vi.fn(), addDecision: vi.fn(), detail: vi.fn(), resolveDecision: vi.fn() },
+  roadmapService: {
+    create: vi.fn(),
+    addDecision: vi.fn(),
+    detail: vi.fn(),
+    resolveDecision: vi.fn(),
+  },
 }));
 
 const persisted: ControlledAction[] = [];
@@ -95,9 +105,8 @@ const { decide, routeAction } = await import("./orchestrator");
 const { runObservationPass } = await import("./outcome-service");
 const { relevantLearning } = await import("./learning");
 const { answerQuestion } = await import("@/data/intelligence/conductor");
-const { buildControlledActions, routability } = await import(
-  "@/data/intelligence/conductor/control"
-);
+const { buildControlledActions, routability } =
+  await import("@/data/intelligence/conductor/control");
 const { ROOM_ADAPTERS } = await import("./adapters");
 
 /* ------------------------------------------------------------- fixtures */
@@ -152,7 +161,6 @@ function thinPipeline(organizationId = ORG) {
     })),
   };
 }
-
 
 const DEMAND_QUESTION = "our pipeline is thin, how do we find more qualified companies";
 
@@ -239,9 +247,7 @@ describe("deterministic execution-input resolution", () => {
       question: DEMAND_QUESTION,
       icp: null,
     });
-    const discovery = answer.proposedActions.find(
-      (a) => a.operation === "scout.open_discovery",
-    );
+    const discovery = answer.proposedActions.find((a) => a.operation === "scout.open_discovery");
     expect(discovery).toBeDefined();
     expect(discovery!.payload["brief"]).toBeUndefined();
     expect(discovery!.payload["inputResolution"]).toBe("missing_input");
@@ -346,7 +352,6 @@ describe("question → approval → Scout execution → observation → learning
       now: "2026-08-27T10:00:00.000Z",
     });
     expect(observationLedger.length).toBe(afterFirst);
-
 
     /* A later related question carries the bounded lesson; an unrelated one
      * does not. */

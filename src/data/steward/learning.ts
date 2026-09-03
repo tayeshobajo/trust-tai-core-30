@@ -34,7 +34,6 @@ import {
   type MemoryObservation,
 } from "@/domain/steward-memory";
 
-
 import {
   commitmentSubject,
   handoffSubject,
@@ -85,7 +84,13 @@ const FACET_SENTENCE: Record<MemoryFacet, (original: string, corrected: string) 
 export function correctionsFromEdit(input: {
   signal: Pick<
     InterpretedSignal,
-    "id" | "normalizedMeaning" | "ownerName" | "beneficiary" | "projectLabel" | "dueText" | "evidence"
+    | "id"
+    | "normalizedMeaning"
+    | "ownerName"
+    | "beneficiary"
+    | "projectLabel"
+    | "dueText"
+    | "evidence"
   >;
   edit: InterpretationEdit;
   conversationId?: string;
@@ -137,10 +142,7 @@ export function correctionsFromEdit(input: {
 }
 
 /** A correction, as it will be written to the append-only ledger. */
-export function correctionToDraft(
-  correction: CorrectionDraft,
-  supersedesId?: string,
-): MemoryDraft {
+export function correctionToDraft(correction: CorrectionDraft, supersedesId?: string): MemoryDraft {
   return {
     subjectKey: correction.subjectKey,
     subjectLabel: correction.subjectLabel,
@@ -176,8 +178,7 @@ export function correctionToDraft(
 /** Dispositions that may teach. Withheld readings teach nothing, by law. */
 const TEACHABLE = new Set(["commitment", "dependency", "decision"]);
 
-const RESPONSIBILITY_STOPWORDS =
-  /^(the|a|an|this|that|these|those|it|them|him|her|us|we|i|you)$/i;
+const RESPONSIBILITY_STOPWORDS = /^(the|a|an|this|that|these|those|it|them|him|her|us|we|i|you)$/i;
 
 /** A short noun-ish subject for a responsibility, e.g. "weekly planning document". */
 function subjectOf(meaning: string): string {
@@ -400,10 +401,9 @@ export function accumulatePatterns(input: {
     if (sources.length < threshold) continue;
 
     const first = group[0]!;
-    const subjectKey =
-      first.counterpartKey
-        ? handoffSubject(first.personKey, first.counterpartKey)
-        : personSubject(first.personKey);
+    const subjectKey = first.counterpartKey
+      ? handoffSubject(first.personKey, first.counterpartKey)
+      : personSubject(first.personKey);
     if (decidedSubjects.has(`${subjectKey}|${first.facet}`)) continue;
 
     drafts.push({
@@ -482,7 +482,6 @@ export interface OutcomeRecord {
 
 /** How many dismissals it takes before Steward stops raising a shape of reading. */
 export const DISMISSAL_SUPPRESSION_THRESHOLD = 2;
-
 
 /**
  * Patterns Steward should stop raising, because people keep saying they are

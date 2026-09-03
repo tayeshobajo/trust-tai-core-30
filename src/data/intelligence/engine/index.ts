@@ -33,7 +33,6 @@ export * from "./learn";
 export * from "./runs";
 export * from "./audit";
 
-
 export interface EngineOptions {
   /** Hypotheses a model produced, already verified against the packet. */
   reasoned?: Hypothesis[];

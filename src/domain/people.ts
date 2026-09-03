@@ -19,13 +19,7 @@ import type { Provenance } from "./activity";
 import type { ID, ISODateTime } from "./entities";
 
 /** How reachable an email address actually is. Never assume better. */
-export type EmailStatus =
-  | "unknown"
-  | "found"
-  | "verified"
-  | "risky"
-  | "invalid"
-  | "bounced";
+export type EmailStatus = "unknown" | "found" | "verified" | "risky" | "invalid" | "bounced";
 
 export const EMAIL_STATUS_LABEL: Record<EmailStatus, string> = {
   unknown: "No email",
@@ -37,11 +31,7 @@ export const EMAIL_STATUS_LABEL: Record<EmailStatus, string> = {
 };
 
 /** How much to trust the claim that this person holds this role. */
-export type PersonConfidence =
-  | "observed"
-  | "inferred"
-  | "asserted_by_provider"
-  | "human_confirmed";
+export type PersonConfidence = "observed" | "inferred" | "asserted_by_provider" | "human_confirmed";
 
 export const CONFIDENCE_LABEL: Record<PersonConfidence, string> = {
   observed: "Read from a public page",
@@ -50,13 +40,7 @@ export const CONFIDENCE_LABEL: Record<PersonConfidence, string> = {
   human_confirmed: "Confirmed by a person",
 };
 
-export type Seniority =
-  | "founder"
-  | "owner"
-  | "exec"
-  | "marketing"
-  | "operations"
-  | "other";
+export type Seniority = "founder" | "owner" | "exec" | "marketing" | "operations" | "other";
 
 export const SENIORITY_LABEL: Record<Seniority, string> = {
   founder: "Founder",
@@ -90,7 +74,7 @@ export interface Person {
   linkedinUrl?: string;
   /**
    * LinkedIn route provenance. `linkedinUrl` alone is a link a provider
-   * returned or a human pasted — not a confirmed route. A route is only
+   * returned or a human pasted, not a confirmed route. A route is only
    * confirmed through the human identity gate (integration brief §12),
    * which stamps these fields.
    */
@@ -181,7 +165,7 @@ export interface PeopleProvider extends PeopleProviderInfo {
 /**
  * Canonical reachability (brief §3): a verified email is one route, not the
  * definition of reachability. A person is reachable through ANY confirmed
- * legitimate professional route — verified email or confirmed LinkedIn.
+ * legitimate professional route, verified email or confirmed LinkedIn.
  * An unverified email or a merely-stored LinkedIn URL is never reachable.
  */
 export function isReachable(person: Person): boolean {
@@ -195,9 +179,9 @@ export function isReachable(person: Person): boolean {
 export function isCommsReady(person: Person): boolean {
   return Boolean(
     person.fullName &&
-      person.roleTitle &&
-      (person.emailStatus === "verified" ||
-        (person.linkedinConfirmed === true && Boolean(person.linkedinUrl))),
+    person.roleTitle &&
+    (person.emailStatus === "verified" ||
+      (person.linkedinConfirmed === true && Boolean(person.linkedinUrl))),
   );
 }
 

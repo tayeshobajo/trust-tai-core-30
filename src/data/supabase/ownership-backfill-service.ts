@@ -34,13 +34,7 @@ export interface OwnershipBackfillResult {
 
 type Row = Record<string, unknown>;
 
-const LINK_STATUSES = [
-  "requested",
-  "accepted",
-  "in_progress",
-  "complete",
-  "withdrawn",
-] as const;
+const LINK_STATUSES = ["requested", "accepted", "in_progress", "complete", "withdrawn"] as const;
 
 function text(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -84,7 +78,8 @@ const ownershipBackfillRaw = {
       .eq("organization_id", context.organizationId);
     const linkRows: BackfillLink[] = missingTable(links.error)
       ? []
-      : (assertOk(links.error), ((links.data ?? []) as Row[]).map((row) => ({
+      : (assertOk(links.error),
+        ((links.data ?? []) as Row[]).map((row) => ({
           id: String(row["id"]),
           milestoneId: String(row["milestone_id"]),
           owningApp: room(row["owning_app"]),
@@ -149,9 +144,6 @@ const ownershipBackfillRaw = {
   },
 };
 
-export const ownershipBackfill = guardRoomWrites(
-  "roadmap",
-  "Roadmap",
-  ownershipBackfillRaw,
-  ["plan"],
-);
+export const ownershipBackfill = guardRoomWrites("roadmap", "Roadmap", ownershipBackfillRaw, [
+  "plan",
+]);

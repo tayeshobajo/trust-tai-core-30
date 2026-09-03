@@ -7,12 +7,7 @@
  */
 
 import type { ProspectCandidate } from "@/domain/scout";
-import type {
-  Roadmap,
-  RoadmapDecision,
-  RoadmapStage,
-  Tier,
-} from "@/domain/roadmap";
+import type { Roadmap, RoadmapDecision, RoadmapStage, Tier } from "@/domain/roadmap";
 import { UNKNOWN_STATEMENT } from "@/domain/roadmap";
 
 /** The small, user-facing state model. Internal statuses map into it. */
@@ -93,7 +88,9 @@ export function buildRoadmapRow(
   const open = decisions.filter((decision) => decision.roadmapId === roadmap.id);
   const milestones = markStages(stages);
   const current =
-    milestones.find((m) => m.state === "current") ?? milestones.find((m) => m.state === "blocked") ?? null;
+    milestones.find((m) => m.state === "current") ??
+    milestones.find((m) => m.state === "blocked") ??
+    null;
   const next = current ? null : (milestones.find((m) => m.state === "future") ?? null);
   const firstA = roadmap.pointA[0];
 
@@ -195,7 +192,7 @@ export function readyFromScout(
     .sort((a, b) => b.evaluation.score - a.evaluation.score);
 }
 
-/** "2d ago" / "just now" — quiet metadata, never the point of the row. */
+/** "2d ago" / "just now", quiet metadata, never the point of the row. */
 export function relativeTime(iso: string, now = Date.now()): string {
   const then = Date.parse(iso);
   if (Number.isNaN(then)) return "";

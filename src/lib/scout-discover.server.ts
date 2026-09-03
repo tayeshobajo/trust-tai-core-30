@@ -23,11 +23,7 @@
  * organization boundary still apply. No service-role key is used here.
  */
 
-
-import {
-  trustTaiSupabaseKey,
-  trustTaiSupabaseUrl,
-} from "@/lib/trust-tai-backend.server";
+import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import {
@@ -68,18 +64,12 @@ export function discoveryConfigured(): boolean {
   return runtimeProviderStatus().configured;
 }
 
-
-
 function supabaseUrl(): string {
-  return (
-    trustTaiSupabaseUrl()
-  );
+  return trustTaiSupabaseUrl();
 }
 
 function supabaseKey(): string {
-  return (
-    trustTaiSupabaseKey()
-  );
+  return trustTaiSupabaseKey();
 }
 
 /** A Supabase client acting as the signed-in user. RLS applies to every call. */
@@ -121,9 +111,7 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
   const model = status.model ?? "unknown";
   const gateway = input.gateway ?? createLovableAiGatewayRunIdFetch(input.initialRunId);
 
-
   const supabase = clientFor(input.token);
-
 
   const { data: userData, error: userError } = await supabase.auth.getUser(input.token);
   const user = userData?.user;
@@ -165,7 +153,10 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     yield { stage: "error", message: "Describe who you are looking for." };
     return;
   }
-  const limit = Math.min(MAX_LIMIT, Math.max(1, Number(input.limit ?? DEFAULT_LIMIT) || DEFAULT_LIMIT));
+  const limit = Math.min(
+    MAX_LIMIT,
+    Math.max(1, Number(input.limit ?? DEFAULT_LIMIT) || DEFAULT_LIMIT),
+  );
 
   yield { stage: "reading_icp", message: "Reading ICP" };
 
@@ -307,10 +298,15 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
   let candidates: RawDiscoveryCandidate[] = [];
   try {
     const parsed = JSON.parse(raw) as { candidates?: unknown };
-    candidates = Array.isArray(parsed.candidates) ? (parsed.candidates as RawDiscoveryCandidate[]) : [];
+    candidates = Array.isArray(parsed.candidates)
+      ? (parsed.candidates as RawDiscoveryCandidate[])
+      : [];
   } catch {
     await failRun("The research result could not be read.");
-    yield { stage: "error", message: "Scout could not read the research result. Nothing was changed." };
+    yield {
+      stage: "error",
+      message: "Scout could not read the research result. Nothing was changed.",
+    };
     return;
   }
 
@@ -341,14 +337,14 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
       .eq("organization_id", orgId);
     for (const row of contactRows ?? []) {
       const meta = ((row["metadata"] ?? {}) as Record<string, unknown>)["people"] as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       const pid = meta?.["prospect_id"];
-      const name = String(row["full_name"] ?? "").trim().toLowerCase();
+      const name = String(row["full_name"] ?? "")
+        .trim()
+        .toLowerCase();
       if (typeof pid === "string" && name) existingContacts.add(`${pid}|${name}`);
     }
   }
-
 
   for (const { domain, candidate } of accepted) {
     const fit = candidate.icp_fit ?? {};
@@ -389,7 +385,13 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
     // Stored in the app's own evaluation shape so a discovered company reads on
     // the board exactly like a researched one.
     const evaluation = discoveryEvaluation(candidate, { icpVersion, at: finishedAt });
-    const discoveryMeta = { run_id: runId, query, at: finishedAt, model, citations: candidate.source_urls ?? [] };
+    const discoveryMeta = {
+      run_id: runId,
+      query,
+      at: finishedAt,
+      model,
+      citations: candidate.source_urls ?? [],
+    };
     // Buying signals, digital opportunities and named people, kept apart from
     // the fit read: they inform timing, work and reachability, never the score.
     const intelMeta = {
@@ -476,7 +478,6 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
         },
       });
     }
-
 
     await supabase.from("prospect_evaluations").insert({
       organization_id: orgId,

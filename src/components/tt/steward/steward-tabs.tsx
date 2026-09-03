@@ -23,7 +23,11 @@ export function StewardTabs({ active }: { active: StewardSection }) {
       aria-label="Steward sections"
       className="flex flex-wrap items-center gap-1 border-b border-border pb-px"
     >
-      <Link to="/modules/steward" aria-current={active === "team" ? "page" : undefined} className={tabClass(active === "team")}>
+      <Link
+        to="/modules/steward"
+        aria-current={active === "team" ? "page" : undefined}
+        className={tabClass(active === "team")}
+      >
         Team
       </Link>
       <Link

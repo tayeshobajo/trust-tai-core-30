@@ -1,7 +1,7 @@
 /**
  * The Person card on a Scout company.
  *
- * Name, title, company — the three things Comms cannot open without. Saving
+ * Name, title, company, the three things Comms cannot open without. Saving
  * them is a human confirmation, so it also prepares the first message in Comms
  * with exactly those words. Nothing is sent.
  */
@@ -50,8 +50,7 @@ export function ProspectPersonCard({
     return (
       <DetailSection title="Person" meta="none on record">
         <Empty>
-          No one is on record for {companyName} yet. Add a person below and their card appears
-          here.
+          No one is on record for {companyName} yet. Add a person below and their card appears here.
         </Empty>
       </DetailSection>
     );

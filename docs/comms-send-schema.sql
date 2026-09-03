@@ -1,4 +1,4 @@
--- Trust Tai OS — Comms send loop schema
+-- Trust Tai OS. Comms send loop schema
 --
 -- NOT YET APPLIED. This is the exact statement set of record for the Comms
 -- end-to-end communication loop (send path + attachment handling). Apply it
@@ -18,7 +18,7 @@
 -- --------------------------------------------------------- message attachments
 -- Gmail-native attachment metadata on a synced or sent message: a jsonb
 -- array of { filename, mime_type, size, attachment_id? }. Bytes never live
--- here — incoming bytes stay in Gmail and are proxied on demand; outgoing
+-- here, incoming bytes stay in Gmail and are proxied on demand; outgoing
 -- bytes live in the `comms-drafts` bucket below until a successful send.
 -- Table-level grants and RLS on public.comms_messages already exist
 -- (docs/comms-integrations-schema.sql); a new column inherits them, so no
@@ -33,13 +33,13 @@ alter table public.comms_messages
 --   <organization_id>/<draft_id>/<timestamp>-<file name>
 -- (src/domain/comms-outgoing.ts). The browser uploads and removes with the
 -- member's own session; the server send path downloads and sweeps with the
--- same member token, so `authenticated` policies below cover both — nothing
+-- same member token, so `authenticated` policies below cover both, nothing
 -- here needs or gets service-role or anon reach.
 --
 -- Retention note: a successful send deletes its staged files (Gmail becomes
 -- the source of truth); a failed send keeps them so a retry never re-asks.
 -- Files abandoned on drafts that are never sent or discarded simply remain
--- in the bucket — sweeping them is a future operational decision, not part
+-- in the bucket, sweeping them is a future operational decision, not part
 -- of this statement set.
 
 insert into storage.buckets (id, name, public)

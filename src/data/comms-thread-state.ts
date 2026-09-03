@@ -111,10 +111,7 @@ export function readThread(
  * the person we wrote to rather than with ourselves. Never a name guess: only
  * addresses, lowercased, in first-seen order.
  */
-export function counterpartEmails(
-  messages: NormalizedMessage[],
-  ownAddresses: string[],
-): string[] {
+export function counterpartEmails(messages: NormalizedMessage[], ownAddresses: string[]): string[] {
   const own = new Set(ownAddresses.map(normalizeEmail).filter(Boolean));
   const seen: string[] = [];
   for (const message of mergeMessages([], messages)) {

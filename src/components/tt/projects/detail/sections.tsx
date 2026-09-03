@@ -165,13 +165,7 @@ function WorkItemSelect({
   );
 }
 
-function LinkedWork({
-  items,
-  workItemId,
-}: {
-  items: WorkItem[];
-  workItemId?: string | undefined;
-}) {
+function LinkedWork({ items, workItemId }: { items: WorkItem[]; workItemId?: string | undefined }) {
   const item = workItemId ? items.find((entry) => entry.id === workItemId) : undefined;
   if (!item) return null;
   return (
@@ -630,7 +624,9 @@ export function FilesTab({
                   <p className="mt-1 text-[13px] text-muted-foreground">
                     {FILE_KIND_LABEL[file.kind]} · {new Date(file.createdAt).toLocaleDateString()}
                     {file.uploadedByLabel ? ` · ${file.uploadedByLabel}` : ""}
-                    {file.sizeBytes ? ` · ${Math.max(1, Math.round(file.sizeBytes / 1024))} KB` : ""}
+                    {file.sizeBytes
+                      ? ` · ${Math.max(1, Math.round(file.sizeBytes / 1024))} KB`
+                      : ""}
                   </p>
                   <LinkedWork items={items} workItemId={file.workItemId} />
                 </div>

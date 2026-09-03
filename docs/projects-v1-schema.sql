@@ -1,4 +1,4 @@
--- Trust Tai OS — Projects v1 (idempotent, additive).
+-- Trust Tai OS. Projects v1 (idempotent, additive).
 --
 -- Projects reuses the shared public.projects table. Nothing here renames or
 -- drops anything. The app already writes tolerantly: any column below that is

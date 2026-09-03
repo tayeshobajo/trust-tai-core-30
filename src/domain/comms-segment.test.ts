@@ -1,7 +1,7 @@
 /**
  * Segment classification: which room of the relationship workspace a person
  * belongs to. Classification follows current relationship reality, not the
- * door the person entered through — established evidence (client link,
+ * door the person entered through, established evidence (client link,
  * graduated stage, established intent) wins over development evidence
  * (nurture stage, prospect intent, Scout provenance, early stage), and the
  * fallback keeps legacy established/manual rows visible in Clients.
@@ -30,7 +30,7 @@ function relationship(part: Partial<Relationship> = {}): Relationship {
 
 describe("relationshipSegment", () => {
   it("classifies by reality, not source: new + in_person is Nurture", () => {
-    // Lorena: a prospect we met in person, early days — she is being
+    // Lorena: a prospect we met in person, early days, she is being
     // developed, not an established client.
     expect(relationshipSegment(relationship({ source: "in_person", stage: "new" }))).toBe(
       "nurture",
@@ -52,16 +52,14 @@ describe("relationshipSegment", () => {
       "reached_out",
       "in_conversation",
     ] as const) {
-      expect(relationshipSegment(relationship({ source: "scout_handoff", stage }))).toBe(
-        "nurture",
-      );
+      expect(relationshipSegment(relationship({ source: "scout_handoff", stage }))).toBe("nurture");
     }
   });
 
   it("treats in_conversation as contextual: prospect evidence means Nurture", () => {
-    expect(
-      relationshipSegment(relationship({ stage: "in_conversation", prospectId: "p1" })),
-    ).toBe("nurture");
+    expect(relationshipSegment(relationship({ stage: "in_conversation", prospectId: "p1" }))).toBe(
+      "nurture",
+    );
     expect(
       relationshipSegment(relationship({ stage: "in_conversation", source: "scout_handoff" })),
     ).toBe("nurture");
@@ -73,9 +71,9 @@ describe("relationshipSegment", () => {
   });
 
   it("treats in_conversation as contextual: client evidence means Clients", () => {
-    expect(
-      relationshipSegment(relationship({ stage: "in_conversation", clientId: "c1" })),
-    ).toBe("client");
+    expect(relationshipSegment(relationship({ stage: "in_conversation", clientId: "c1" }))).toBe(
+      "client",
+    );
     expect(
       relationshipSegment(
         relationship({ stage: "in_conversation", metadata: { intent: "active_client" } }),
@@ -102,7 +100,9 @@ describe("relationshipSegment", () => {
 
   it("honours an explicit prospect intent as development evidence", () => {
     expect(
-      relationshipSegment(relationship({ stage: "in_conversation", metadata: { intent: "prospect" } })),
+      relationshipSegment(
+        relationship({ stage: "in_conversation", metadata: { intent: "prospect" } }),
+      ),
     ).toBe("nurture");
   });
 

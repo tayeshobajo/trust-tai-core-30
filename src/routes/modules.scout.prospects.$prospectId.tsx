@@ -311,7 +311,7 @@ function CompanyDetail({
         },
         { organizationId, userId },
       ),
-    // A newly added founder can make the company newly eligible — prepare the
+    // A newly added founder can make the company newly eligible, prepare the
     // brief if so (research only; a current brief is never re-run).
     onSuccess: () => {
       prepareBrief.mutate({ quiet: true });
@@ -435,7 +435,7 @@ function CompanyDetail({
   const peopleRows = people.data ?? [];
 
   // The confirm failure surfaces inline next to its blocker, where the click
-  // happened — not as a detached page-level banner.
+  // happened, not as a detached page-level banner.
   const error = (research.error ??
     setResearchConsent.error ??
     setStatus.error ??
@@ -577,7 +577,7 @@ function CompanyDetail({
 
   // The handoff draft behind "Prepare first message": the stored governed
   // brief travels as provenance, with canonical prospect/person IDs intact.
-  // Built first because it is the canonical readiness read — the recommended
+  // Built first because it is the canonical readiness read, the recommended
   // move below must never recommend outreach this draft would block.
   const storedBrief =
     candidate.development?.research?.state === "prepared"
@@ -624,7 +624,7 @@ function CompanyDetail({
   });
 
   // Moves that route to the canonical People area put keyboard focus on the
-  // exact section that resolves them — never a generic tab switch.
+  // exact section that resolves them, never a generic tab switch.
   const focusPeopleSection = (id: string) => {
     void goToTab("people");
     window.setTimeout(() => {
@@ -664,7 +664,7 @@ function CompanyDetail({
 
   // "Prepare first message" is the explicit Scout → Comms transition: the
   // brief is carried across, and the person reviews the draft there. Comms
-  // opens on exactly the relationship the handoff opened — never on whoever
+  // opens on exactly the relationship the handoff opened, never on whoever
   // happened to sort first.
   const prepareFirstMessage = () => {
     if (!firstMessageDraft.ready) return;
@@ -922,9 +922,7 @@ function CompanyDetail({
                   companyName={prospect.name}
                   saving={savePerson.isPending}
                   saved={savePerson.data ?? null}
-                  error={
-                    savePerson.error instanceof Error ? savePerson.error.message : null
-                  }
+                  error={savePerson.error instanceof Error ? savePerson.error.message : null}
                   onSave={(person, identity) => savePerson.mutate({ person, identity })}
                 />
                 <PeoplePanel

@@ -81,7 +81,10 @@ function nameKey(name: string | undefined | null): string {
 }
 
 /** True when the viewer is the person this record names. */
-function isViewer(viewer: JudgmentViewer, input: { email?: string; name?: string; userId?: string }): boolean {
+function isViewer(
+  viewer: JudgmentViewer,
+  input: { email?: string; name?: string; userId?: string },
+): boolean {
   if (input.userId && viewer.userId && input.userId === viewer.userId) return true;
   const email = (input.email ?? "").trim().toLowerCase();
   if (email && email === viewer.personKey) return true;
@@ -255,7 +258,12 @@ function commitmentItems(input: JudgmentInput, closed: Set<string>): AttentionIt
           human(`Due date set for ${commitment.dueAt!.slice(0, 10)}`),
         ],
         ...(commitment.beneficiary
-          ? { waitingOn: { name: commitment.beneficiary, personKey: nameKey(commitment.beneficiary) } }
+          ? {
+              waitingOn: {
+                name: commitment.beneficiary,
+                personKey: nameKey(commitment.beneficiary),
+              },
+            }
           : {}),
         order: orderOf("promise_at_risk", commitment.dueAt, now),
         patternKey: patternFor("carries", viewer.personKey, commitment.what),
@@ -352,10 +360,13 @@ function opsItems(input: JudgmentInput): AttentionItem[] {
   const items: AttentionItem[] = [];
 
   for (const chain of clearedOpsChains(input.opsEvents ?? [], now)) {
-    const project = chain.projectId ? projects.find((row) => row.id === chain.projectId) : undefined;
+    const project = chain.projectId
+      ? projects.find((row) => row.id === chain.projectId)
+      : undefined;
     const commitment = chain.projectId
       ? input.commitments.find(
-          (row) => row.projectId === chain.projectId && row.status !== "kept" && row.status !== "released",
+          (row) =>
+            row.projectId === chain.projectId && row.status !== "kept" && row.status !== "released",
         )
       : undefined;
 
@@ -454,13 +465,7 @@ function commsItems(input: JudgmentInput): AttentionItem[] {
 
 function dedupeKey(item: AttentionItem): string {
   const refs = item.refs;
-  return (
-    refs.commitmentId ??
-    refs.projectId ??
-    refs.relationshipId ??
-    refs.opsChainKey ??
-    item.id
-  );
+  return refs.commitmentId ?? refs.projectId ?? refs.relationshipId ?? refs.opsChainKey ?? item.id;
 }
 
 /**
@@ -489,7 +494,9 @@ export function collapse(items: AttentionItem[]): AttentionItem[] {
       evidence,
       refs: { ...other.refs, ...winner.refs },
       sourceApps: [...new Set([...winner.sourceApps, ...other.sourceApps])],
-      ...(winner.nextMove ?? other.nextMove ? { nextMove: winner.nextMove ?? other.nextMove } : {}),
+      ...((winner.nextMove ?? other.nextMove)
+        ? { nextMove: winner.nextMove ?? other.nextMove }
+        : {}),
     });
   }
 
@@ -512,9 +519,7 @@ export function judge(input: JudgmentInput): JudgmentRead {
 
   const collapsed = collapse(raw).filter((item) => !suppressed.has(item.patternKey));
 
-  const sorted = [...collapsed].sort(
-    (a, b) => b.order - a.order || a.id.localeCompare(b.id),
-  );
+  const sorted = [...collapsed].sort((a, b) => b.order - a.order || a.id.localeCompare(b.id));
 
   const actionable = sorted.filter((item) => ACTIONABLE_STATES.includes(item.state));
   const waiting = sorted.filter((item) => item.state === "waiting");

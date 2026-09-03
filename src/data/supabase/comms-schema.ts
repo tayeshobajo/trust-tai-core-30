@@ -87,7 +87,6 @@ function memory(value: unknown, tier: MemoryItem["tier"]): MemoryItem[] {
     .filter((entry) => entry.value.length > 0);
 }
 
-
 /* ------------------------------------------------------------------- rows */
 
 export interface RelationshipRow {
@@ -275,4 +274,3 @@ export function memoryPayload(items: MemoryItem[]): Row[] {
     ...(item.addedBy ? { added_by: item.addedBy } : {}),
   }));
 }
-

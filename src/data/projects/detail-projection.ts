@@ -158,7 +158,9 @@ export function healthSignals(
   }
 
   const owned = Boolean(project.ownerUserId || project.ownerLabel?.trim());
-  signals.push(owned ? `Carried by ${project.ownerLabel ?? "a named owner"}` : "Nobody carries this yet");
+  signals.push(
+    owned ? `Carried by ${project.ownerLabel ?? "a named owner"}` : "Nobody carries this yet",
+  );
   return signals;
 }
 

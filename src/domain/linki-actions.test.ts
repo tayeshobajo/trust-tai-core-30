@@ -46,7 +46,7 @@ describe("linki action statuses", () => {
   });
 });
 
-describe("status machine — the legal transitions", () => {
+describe("status machine, the legal transitions", () => {
   it("pending_tai_approval can ONLY become approved (human boundary)", () => {
     expect(LINKI_ACTION_TRANSITIONS.pending_tai_approval).toEqual(["approved"]);
   });
@@ -63,7 +63,7 @@ describe("status machine — the legal transitions", () => {
     expect(LINKI_ACTION_TRANSITIONS.executed).toEqual(["verified"]);
   });
 
-  it("failed and verified are terminal — no transitions out", () => {
+  it("failed and verified are terminal, no transitions out", () => {
     expect(LINKI_ACTION_TRANSITIONS.failed).toEqual([]);
     expect(LINKI_ACTION_TRANSITIONS.verified).toEqual([]);
   });
@@ -105,7 +105,7 @@ describe("daily cap counting", () => {
   });
 });
 
-describe("kill switch — LINKI_EXECUTION_ENABLED", () => {
+describe("kill switch. LINKI_EXECUTION_ENABLED", () => {
   it("defaults OFF when unset", () => {
     expect(linkiExecutionEnabled({})).toBe(false);
   });

@@ -39,7 +39,7 @@ export const Route = createFileRoute("/api/public/linki/lookup")({
   server: {
     handlers: {
       // Cheap configuration probe. Never discloses the internal Linki host or
-      // any part of the secret — only whether the provider is wired and on.
+      // any part of the secret, only whether the provider is wired and on.
       GET: async () => {
         const status = linkiStatus();
         return json({ configured: status.configured, enabled: status.enabled });

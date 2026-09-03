@@ -1,5 +1,5 @@
 /**
- * Governed LinkedIn action execution endpoint — SERVER ONLY.
+ * Governed LinkedIn action execution endpoint. SERVER ONLY.
  *
  * This is the single HTTP surface for the P2 execution plumbing. The browser
  * reaches it only with a valid Supabase session, the action must already be
@@ -8,7 +8,7 @@
  * was sent.
  *
  * Idempotency contract: POST /api/linki/execute with an action id whose row
- * is executing/executed/verified returns the EXISTING receipt — a double
+ * is executing/executed/verified returns the EXISTING receipt, a double
  * click, a retried request, or a crashed client can never double-send.
  */
 
@@ -61,7 +61,7 @@ export const Route = createFileRoute("/api/linki/execute")({
           return json({ error: "action_id is required." }, 400);
         }
 
-        // Session auth: a real, signed-in user — never a service key.
+        // Session auth: a real, signed-in user, never a service key.
         const supabase = clientFor(token);
         const { data: userData, error: userError } = await supabase.auth.getUser(token);
         const user = userData?.user;
@@ -112,7 +112,10 @@ export const Route = createFileRoute("/api/linki/execute")({
           });
         } catch (error) {
           if (error instanceof LinkiActionError) {
-            return json({ error: error.message, code: error.code }, linkiActionErrorStatus(error.code));
+            return json(
+              { error: error.message, code: error.code },
+              linkiActionErrorStatus(error.code),
+            );
           }
           return json({ error: "Execution failed. Nothing was sent." }, 502);
         }

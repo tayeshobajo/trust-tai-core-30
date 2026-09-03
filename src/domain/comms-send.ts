@@ -5,7 +5,7 @@
  *
  * A draft moves draft → sending → sent, and the mailbox still has the last
  * word through verification (`comms-verification`). A refusal lands in
- * `send_failed` with the reason kept — never as sent. Approving and sending
+ * `send_failed` with the reason kept, never as sent. Approving and sending
  * are one human act: pressing Send on a draft is the approval.
  *
  * The claim is the idempotency mechanism. Only the first attempt can move a
@@ -93,9 +93,12 @@ function attachmentsFromJson(raw: unknown): AttachmentMeta[] | undefined {
     if (!filename) continue;
     out.push({
       filename,
-      mimeType: typeof value["mime_type"] === "string" ? value["mime_type"] : "application/octet-stream",
+      mimeType:
+        typeof value["mime_type"] === "string" ? value["mime_type"] : "application/octet-stream",
       size: typeof value["size"] === "number" ? value["size"] : 0,
-      ...(typeof value["attachment_id"] === "string" ? { attachmentId: value["attachment_id"] } : {}),
+      ...(typeof value["attachment_id"] === "string"
+        ? { attachmentId: value["attachment_id"] }
+        : {}),
     });
   }
   return out.length > 0 ? out : undefined;
@@ -117,9 +120,7 @@ export function readDraftSend(
     state,
     idempotencyKey: value["idempotency_key"],
     attemptedAt:
-      typeof value["attempted_at"] === "string"
-        ? value["attempted_at"]
-        : new Date().toISOString(),
+      typeof value["attempted_at"] === "string" ? value["attempted_at"] : new Date().toISOString(),
     ...(typeof value["sent_at"] === "string" ? { sentAt: value["sent_at"] } : {}),
     ...(typeof value["provider_message_id"] === "string"
       ? { providerMessageId: value["provider_message_id"] }
@@ -168,7 +169,7 @@ export type SendClaimDecision =
 
 /**
  * What a send attempt should do with this draft. The server still claims with
- * a conditional update — this decides how to read the outcome, and how to
+ * a conditional update, this decides how to read the outcome, and how to
  * answer a retried click without sending twice.
  */
 export function decideSendClaim(

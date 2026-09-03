@@ -197,7 +197,6 @@ function payloadFor(input: ProjectInput, state: ExecutionState, now: string): Ro
   };
 }
 
-
 export const projectsService = {
   /** Every project this organization can read, newest movement first. */
   async list(organizationId: ID): Promise<ExecutionProject[]> {
@@ -351,8 +350,11 @@ export const projectsService = {
       changes.waitingOn !== undefined ? changes.waitingOn.trim() : (project.waitingOn ?? "");
     metadata["waiting_on"] = state === "in_flight" && waitingOn ? waitingOn : null;
     metadata["blocked_since"] =
-      state === "blocked" ? (project.state === "blocked" ? (project.blockedSince ?? now) : now) : null;
-
+      state === "blocked"
+        ? project.state === "blocked"
+          ? (project.blockedSince ?? now)
+          : now
+        : null;
 
     const { data, error } = await writeTolerant(
       { ...body, updated_at: now },

@@ -51,7 +51,7 @@ export interface MemberProfile {
   status: "active" | "deactivated" | "invited" | string;
   /**
    * When Supabase Auth last saw this person sign in. Authoritative, read
-   * server-side from auth.users — never mirrored into a workspace column.
+   * server-side from auth.users, never mirrored into a workspace column.
    */
   lastSignInAt: string | null;
   /** When the sign-in account itself was created. */
@@ -66,7 +66,6 @@ export interface MemberProfile {
   /** Per-app overrides recorded for this person. Empty means "role default". */
   access: Record<string, AppAccessLevel>;
 }
-
 
 function nameOf(row: Row, email: string): string {
   const candidate =
@@ -85,7 +84,7 @@ function nameOf(row: Row, email: string): string {
  * A signed-in person can only read their own profile row, so the list would
  * otherwise show blanks for everybody else. The governed endpoint verifies the
  * caller is an active owner or admin of this organization before it answers,
- * and it returns identity only — never a credential.
+ * and it returns identity only, never a credential.
  */
 export interface DirectoryPerson {
   userId: string;
@@ -100,13 +99,11 @@ export interface DirectoryPerson {
   emailConfirmedAt: string | null;
 }
 
-
 export async function readMemberDirectory(
   organizationId: string,
 ): Promise<Map<string, DirectoryPerson>> {
   const outcome = (await callAdminPassword({ action: "directory", organizationId })) as
-    | (AdminPasswordResult & { people?: DirectoryPerson[] })
-    | null;
+    (AdminPasswordResult & { people?: DirectoryPerson[] }) | null;
   const people = outcome?.ok ? (outcome.people ?? []) : [];
   return new Map(people.map((person) => [person.userId, person]));
 }
@@ -144,7 +141,7 @@ export async function saveMemberIdentity(input: {
  * Take someone out of the workspace.
  *
  * "revoke" ends their access and keeps everything else. "delete_account" also
- * deletes the sign-in credential so the address can be provisioned again — the
+ * deletes the sign-in credential so the address can be provisioned again, the
  * person's records (contacts, prospects, messages, decisions, history) are
  * never deleted either way, and who they were is written into the append-only
  * history before the credential goes.
@@ -218,7 +215,6 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
       } satisfies MemberProfile;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
-
 }
 
 /* --------------------------------------------------------------- app state */
@@ -381,7 +377,6 @@ export async function setRoleAppAccess(input: {
   });
 }
 
-
 export async function setMemberRole(input: {
   organizationId: string;
   userId: string;
@@ -469,9 +464,7 @@ function toInvitation(row: Row): Invitation {
   };
 }
 
-export async function listInvitations(
-  organizationId: string,
-): Promise<Provisioned<Invitation[]>> {
+export async function listInvitations(organizationId: string): Promise<Provisioned<Invitation[]>> {
   const result = await supabase
     .from("organization_invitations")
     .select("*")
@@ -522,8 +515,7 @@ export async function inviteMembers(input: {
   const expires = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
   /* A name only belongs to one person, so it is carried only when a single
      address is being invited. */
-  const fullName =
-    input.emails.length === 1 ? (input.fullName ?? "").trim() : "";
+  const fullName = input.emails.length === 1 ? (input.fullName ?? "").trim() : "";
 
   const rows = input.emails.map((email) => ({
     organization_id: input.organizationId,
@@ -599,7 +591,6 @@ export async function resendInvitation(input: {
   });
 }
 
-
 export async function cancelInvitation(input: {
   organizationId: string;
   invitationId: string;
@@ -640,13 +631,7 @@ export interface InvitationAuditEntry {
   at: string;
   event: string;
   lifecycle:
-    | "created"
-    | "resent"
-    | "cancelled"
-    | "emailed"
-    | "password_reset"
-    | "removed"
-    | "other";
+    "created" | "resent" | "cancelled" | "emailed" | "password_reset" | "removed" | "other";
   email: string;
   summary: string;
   actorUserId: string | null;
@@ -778,7 +763,7 @@ export async function deliverInvitationEmail(input: {
  * authority before Supabase Auth is touched.
  *
  * The plaintext password lives in this call and nowhere else. It is never put
- * into an activity payload, storage, or a log line — only the fact that the
+ * into an activity payload, storage, or a log line, only the fact that the
  * action happened, by whom, for whom, and when.
  */
 export interface AdminPasswordResult {
@@ -887,7 +872,6 @@ export async function resetMemberPassword(input: {
   return outcome;
 }
 
-
 /* ------------------------------------------------------------------ profile */
 
 export interface ProfileDetail {
@@ -904,7 +888,11 @@ export interface ProfileDetail {
 }
 
 export async function readProfile(userId: string, email: string): Promise<ProfileDetail> {
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   const row = (data ?? {}) as Row;
   const text = (key: string) => String(row[key] ?? "");

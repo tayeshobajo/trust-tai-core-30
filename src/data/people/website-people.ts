@@ -1,5 +1,5 @@
 /**
- * Approved source — the company's own public website.
+ * Approved source, the company's own public website.
  *
  * This provider reads nothing new. It re-reads what `scout-research` already
  * pulled from the company's public pages (team page, contact page, structured
@@ -73,7 +73,7 @@ function peopleFromFacts(facts: Record<string, unknown>): PersonDraft[] {
   return drafts;
 }
 
-/** Published business addresses. Found, never verified — nobody tested them. */
+/** Published business addresses. Found, never verified, nobody tested them. */
 function emailsFromText(input: PeopleDiscoveryInput): PersonDraft[] {
   const haystack = [
     ...(input.statements ?? []),
@@ -87,9 +87,8 @@ function emailsFromText(input: PeopleDiscoveryInput): PersonDraft[] {
 
   for (const email of found) {
     const local = email.split("@")[0] ?? "";
-    const generic = /^(info|hello|contact|admin|support|sales|office|team|enquiries|inquiries)$/i.test(
-      local,
-    );
+    const generic =
+      /^(info|hello|contact|admin|support|sales|office|team|enquiries|inquiries)$/i.test(local);
     if (generic) continue;
     const guessName = local
       .split(/[._-]+/)
@@ -114,9 +113,7 @@ function emailsFromText(input: PeopleDiscoveryInput): PersonDraft[] {
 function rolesFromStatements(input: PeopleDiscoveryInput): PersonDraft[] {
   const drafts: PersonDraft[] = [];
   for (const statement of input.statements ?? []) {
-    const match = statement.match(
-      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*[,–—-]\s*([^.,;]{3,60})/,
-    );
+    const match = statement.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*[,–, -]\s*([^.,;]{3,60})/);
     if (!match) continue;
     const [, fullName, roleTitle] = match;
     if (!fullName || !roleTitle || !ROLE_HINT.test(roleTitle)) continue;
@@ -168,7 +165,6 @@ export const websitePeopleProvider: PeopleProvider = {
         ...(roleTitle ? { roleTitle } : {}),
         ...(email ? { email } : {}),
       });
-
     }
 
     return [...byName.values()];

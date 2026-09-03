@@ -103,7 +103,9 @@ export function classifyPriorCase(entry: IntelligenceCase, shapeKinds: string[])
 
 function newestFirst<T extends { recordedAt?: string; createdAt?: string }>(rows: T[]): T[] {
   return [...rows].sort((a, b) =>
-    String(b.recordedAt ?? b.createdAt ?? "").localeCompare(String(a.recordedAt ?? a.createdAt ?? "")),
+    String(b.recordedAt ?? b.createdAt ?? "").localeCompare(
+      String(a.recordedAt ?? a.createdAt ?? ""),
+    ),
   );
 }
 
@@ -199,7 +201,9 @@ export function experienceLedger(input: {
   };
 
   return [...ids]
-    .map((patternId) => priorExperience({ patternId, cases: input.cases, outcomes: input.outcomes }))
+    .map((patternId) =>
+      priorExperience({ patternId, cases: input.cases, outcomes: input.outcomes }),
+    )
     .sort(
       (a, b) =>
         rank(a) - rank(b) ||
@@ -209,9 +213,11 @@ export function experienceLedger(input: {
     );
 }
 
-
 /** Cases with nothing recorded against them yet. */
-export function openCases(cases: IntelligenceCase[], outcomes: PatternOutcome[]): IntelligenceCase[] {
+export function openCases(
+  cases: IntelligenceCase[],
+  outcomes: PatternOutcome[],
+): IntelligenceCase[] {
   const closed = new Set(outcomes.map((row) => row.caseId).filter(Boolean));
   return newestFirst(cases.filter((row) => !closed.has(row.id)));
 }

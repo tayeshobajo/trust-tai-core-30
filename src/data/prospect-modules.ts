@@ -75,11 +75,7 @@ export function runFromEvaluation(evaluation: ScoutFitEvaluation, at: string): R
 }
 
 /** Append a run, keeping the log bounded and free of exact duplicates. */
-export function appendResearchRun(
-  metadata: unknown,
-  run: ResearchRun,
-  limit = 12,
-): ResearchRun[] {
+export function appendResearchRun(metadata: unknown, run: ResearchRun, limit = 12): ResearchRun[] {
   const history = readResearchHistory(metadata).filter((entry) => entry.at !== run.at);
   return [...history, run].slice(-limit);
 }
@@ -90,7 +86,8 @@ export function appendResearchRun(
 
 export function computeCoverage(candidate: ProspectCandidate): ResearchCoverage {
   const facts = candidate.facts ?? {};
-  const pages = candidate.evaluation.pagesResearched ?? candidate.source.pagesResearched?.length ?? 0;
+  const pages =
+    candidate.evaluation.pagesResearched ?? candidate.source.pagesResearched?.length ?? 0;
   const known = PAGE_KINDS.filter((kind) => kind.key in facts);
   const checked = PAGE_KINDS.map((kind) => ({
     key: kind.key,
@@ -146,7 +143,11 @@ export function computePulse(history: ResearchRun[]): SignalPulse | null {
   const delta = current.score - previous.score;
 
   const movement =
-    delta > 0 ? `Fit rose ${delta} points` : delta < 0 ? `Fit fell ${Math.abs(delta)} points` : "Fit held steady";
+    delta > 0
+      ? `Fit rose ${delta} points`
+      : delta < 0
+        ? `Fit fell ${Math.abs(delta)} points`
+        : "Fit held steady";
   const evidence =
     gained.length === 0 && lost.length === 0
       ? "no criteria changed state"
@@ -172,7 +173,6 @@ function daysSince(value: string): number | null {
   if (Number.isNaN(date.getTime())) return null;
   return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000));
 }
-
 
 /* ------------------------------------------------------------------ *
  * Confidence, how sure we are, and what that rests on
@@ -201,7 +201,7 @@ function pageLabel(url: string): string {
 
 /**
  * Confidence in one criterion. Evidence quantity sets the ceiling; thin
- * coverage lowers it. A criterion nobody has evidence for is never "low" 
+ * coverage lowers it. A criterion nobody has evidence for is never "low"
  * it is simply not established.
  */
 export function criterionConfidence(
@@ -267,7 +267,13 @@ export function fitConfidence(
       kind: "computed",
     },
     ...(candidate.prospect.websiteUrl
-      ? [{ label: pageLabel(candidate.prospect.websiteUrl), url: candidate.prospect.websiteUrl, kind: "page" as const }]
+      ? [
+          {
+            label: pageLabel(candidate.prospect.websiteUrl),
+            url: candidate.prospect.websiteUrl,
+            kind: "page" as const,
+          },
+        ]
       : []),
   ];
 
@@ -375,13 +381,15 @@ function nextMoveBase(
   const { prospect, evaluation } = candidate;
   const contacts = input.contactCount ?? 0;
   const hasDecisionMaker =
-    contacts > 0 || evaluation.criteria.some((c) => c.key === "decision_maker" && c.state === "met");
+    contacts > 0 ||
+    evaluation.criteria.some((c) => c.key === "decision_maker" && c.state === "met");
 
   if (prospect.status === "passed") {
     return {
       action: "review",
       headline: "This company was passed",
-      detail: "Nothing is scheduled. Re-research it only if something about the business has changed.",
+      detail:
+        "Nothing is scheduled. Re-research it only if something about the business has changed.",
       because: "A Trust Tai member decided to pass.",
     };
   }
@@ -427,7 +435,8 @@ function nextMoveBase(
       return {
         action: "people",
         headline: "Find the decision maker",
-        detail: "Qualified, but no named person with a role is recorded. Comms cannot open without one.",
+        detail:
+          "Qualified, but no named person with a role is recorded. Comms cannot open without one.",
         because: "A company cannot be handed over without someone who carries it.",
       };
     }
@@ -455,7 +464,6 @@ function nextMoveBase(
     because: `The website has been read and scored ${evaluation.score}% against the active ICP.`,
   };
 }
-
 
 /* ------------------------------------------------------------------ *
  * Emphasis, which surface the page leans on, decided by rule
@@ -553,11 +561,7 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
 
   const nextMove = computeNextMove(input, coverage, needsRescore, staleDays);
   const focus = FOCUS_BY_ACTION[nextMove.action];
-  const push = (
-    id: ProspectModule["id"],
-    zone: ProspectModule["zone"],
-    weight: number,
-  ) => {
+  const push = (id: ProspectModule["id"], zone: ProspectModule["zone"], weight: number) => {
     const { emphasis, reason } = emphasisFor(id, {
       focus,
       status: prospect.status,

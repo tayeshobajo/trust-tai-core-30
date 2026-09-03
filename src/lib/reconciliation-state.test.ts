@@ -219,7 +219,6 @@ describe("loadReconciliationSnapshot", () => {
   });
 });
 
-
 describe("evaluateOpenCase", () => {
   const cleared = {
     organizationId: "org-1",

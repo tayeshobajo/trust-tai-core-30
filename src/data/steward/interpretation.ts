@@ -96,8 +96,16 @@ function normalizeForMatch(text: string): string {
 }
 
 function overlap(a: string, b: string): number {
-  const left = new Set(normalizeForMatch(a).split(" ").filter((word) => word.length > 3));
-  const right = new Set(normalizeForMatch(b).split(" ").filter((word) => word.length > 3));
+  const left = new Set(
+    normalizeForMatch(a)
+      .split(" ")
+      .filter((word) => word.length > 3),
+  );
+  const right = new Set(
+    normalizeForMatch(b)
+      .split(" ")
+      .filter((word) => word.length > 3),
+  );
   if (left.size === 0 || right.size === 0) return 0;
   let shared = 0;
   for (const word of left) if (right.has(word)) shared += 1;
@@ -105,10 +113,7 @@ function overlap(a: string, b: string): number {
 }
 
 /** An existing canonical commitment this meaning repeats, if any. */
-export function findDuplicate(
-  meaning: string,
-  commitments: Commitment[],
-): Commitment | null {
+export function findDuplicate(meaning: string, commitments: Commitment[]): Commitment | null {
   let best: { commitment: Commitment; score: number } | null = null;
   for (const commitment of commitments) {
     if (commitment.status === "released") continue;
@@ -157,8 +162,7 @@ export function toSignal(
       "Steward could not state this as one clear operational sentence, so it is held back.";
   }
 
-  const duplicate =
-    disposition === "commitment" ? findDuplicate(meaning, commitments) : null;
+  const duplicate = disposition === "commitment" ? findDuplicate(meaning, commitments) : null;
   if (duplicate) disposition = "duplicate";
 
   return {

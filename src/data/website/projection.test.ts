@@ -52,7 +52,7 @@ describe("intakeFunnel", () => {
   it("reports unmeasured stages as unknown, never zero", () => {
     const stages = intakeFunnel([], [submission({})]);
     expect(stages[0]!.value).toBeNull();
-    expect(formatKnown(stages[0]!.value)).toBe("—");
+    expect(formatKnown(stages[0]!.value)).toBe(", ");
     expect(stages.find((s) => s.key === "submitted")!.value).toBe(1);
   });
 

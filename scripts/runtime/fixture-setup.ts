@@ -13,14 +13,14 @@ async function main() {
   const sb = db();
   const now = new Date().toISOString();
 
-  // 1. Thinking source — ChatGPT URL, honest state (§2/§4)
+  // 1. Thinking source. ChatGPT URL, honest state (§2/§4)
   const { data: src, error: srcErr } = await sb
     .from("project_thinking_sources")
     .insert({
       organization_id: ORG_ID,
       project_id: PROJECT_ID,
       source_type: "chatgpt",
-      title: "Onboarding thinking — intake design",
+      title: "Onboarding thinking, intake design",
       url: "https://chatgpt.com/c/fixture-onboarding-intake",
       is_primary: true,
       sync_state: "import_needs_upload",
@@ -31,7 +31,7 @@ async function main() {
     .single();
   if (srcErr) throw new Error(`thinking source: ${srcErr.message}`);
 
-  // 2. Confirmed decision (human-approved — highest authority)
+  // 2. Confirmed decision (human-approved, highest authority)
   const { error: decErr } = await sb.from("project_decisions").insert({
     organization_id: ORG_ID,
     project_id: PROJECT_ID,
@@ -39,7 +39,7 @@ async function main() {
     why_it_matters: "Determines build complexity and client success risk.",
     owner_label: "Tai",
     status: "answered",
-    answer: "Guided path — one intake flow carries every new client.",
+    answer: "Guided path, one intake flow carries every new client.",
     decided_at: now,
   });
   if (decErr) throw new Error(`decision: ${decErr.message}`);
@@ -57,7 +57,7 @@ async function main() {
   });
   if (knErr) throw new Error(`knowledge: ${knErr.message}`);
 
-  // 4. Approved mockup asset (file row + asset row; upload ≠ approval — status approved is explicit)
+  // 4. Approved mockup asset (file row + asset row; upload ≠ approval, status approved is explicit)
   const existingFile = await sb
     .from("project_files")
     .select("id")
@@ -89,7 +89,7 @@ async function main() {
     project_id: PROJECT_ID,
     file_id: file!.id,
     asset_type: "mockup",
-    title: "Guided intake — v1 approved mockup",
+    title: "Guided intake, v1 approved mockup",
     version: 1,
     status: "approved",
     uploaded_by_label: RUNTIME_ACTOR_LABEL,
@@ -97,7 +97,7 @@ async function main() {
   });
   if (assetErr) throw new Error(`asset: ${assetErr.message}`);
 
-  // 5. Connections: Lovable + GitHub, honest 'linked' (bookmarks — §19)
+  // 5. Connections: Lovable + GitHub, honest 'linked' (bookmarks, §19)
   const conn = (type: string, label: string, url: string, external_id: string) => ({
     organization_id: ORG_ID,
     project_id: PROJECT_ID,
@@ -107,10 +107,22 @@ async function main() {
     external_id,
     status: "linked",
   });
-  const { error: connErr } = await sb.from("project_connections").insert([
-    conn("lovable", "Trust Tai Core (30)", "https://lovable.dev/projects/65944e34-ede5-4757-befb-870e1ff97444", "65944e34-ede5-4757-befb-870e1ff97444"),
-    conn("github", "trust-tai-core-30", "https://github.com/tayeshobajo/trust-tai-core-30", "trust-tai-core-30"),
-  ]);
+  const { error: connErr } = await sb
+    .from("project_connections")
+    .insert([
+      conn(
+        "lovable",
+        "Trust Tai Core (30)",
+        "https://lovable.dev/projects/65944e34-ede5-4757-befb-870e1ff97444",
+        "65944e34-ede5-4757-befb-870e1ff97444",
+      ),
+      conn(
+        "github",
+        "trust-tai-core-30",
+        "https://github.com/tayeshobajo/trust-tai-core-30",
+        "trust-tai-core-30",
+      ),
+    ]);
   if (connErr) throw new Error(`connections: ${connErr.message}`);
 
   // 6. Agent effectiveness for Comms Agent (§15)
@@ -119,7 +131,10 @@ async function main() {
     agent_id: "239a7269-6309-4547-bd54-67e4e3798b85",
     responsibility: "Draft client-facing comms from confirmed project truth. Never invent policy.",
     expected_weekly_outcomes: ["Draft-ready intake copy", "Relationship summaries current"],
-    success_criteria: ["Drafts cite confirmed decisions", "No unconfirmed claim in client-facing text"],
+    success_criteria: [
+      "Drafts cite confirmed decisions",
+      "No unconfirmed claim in client-facing text",
+    ],
     surface_when: ["Client language contradicts confirmed decision", "Missing context for a draft"],
     required_context: ["Confirmed decisions", "Approved assets", "Open questions"],
     escalation_rules: ["Anything contractual → Tai", "Missing requirement → ask, do not assume"],

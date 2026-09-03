@@ -1,4 +1,4 @@
--- Trust Tai OS — Projects delivery room.
+-- Trust Tai OS. Projects delivery room.
 --
 -- Apply to the shared backend (project okydosoacqdnursmmenf).
 -- Idempotent: safe to run more than once.

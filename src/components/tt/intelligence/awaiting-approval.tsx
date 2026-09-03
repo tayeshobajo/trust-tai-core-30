@@ -53,7 +53,7 @@ export function AwaitingApproval({
         title={`${proposals.length} bounded next step${proposals.length === 1 ? "" : "s"}`}
         description={
           yours === proposals.length
-            ? "Each one is small and reversible. Approving records your permission, the work is done by you, in the room that owns the change."
+            ? "Each one is small and reversible. Approving records your permission. The work is done by you, in the room that owns the change."
             : `${yours} of ${proposals.length} are yours to authorise. The rest belong to a role you do not hold.`
         }
       />

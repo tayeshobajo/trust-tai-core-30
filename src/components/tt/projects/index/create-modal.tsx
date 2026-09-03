@@ -64,7 +64,11 @@ const SELECT = "h-9 rounded-md border border-border bg-background px-2 text-[13p
 type Step = "promise" | "thinking" | "mockups" | "build";
 
 const STEPS: { id: Step; label: string; note: string }[] = [
-  { id: "promise", label: "The promise", note: "Who it is for, who carries it, what will be true." },
+  {
+    id: "promise",
+    label: "The promise",
+    note: "Who it is for, who carries it, what will be true.",
+  },
   { id: "thinking", label: "Thinking", note: "Where this was actually worked out." },
   { id: "mockups", label: "Mockups", note: "What it should look like. Uploaded as drafts." },
   { id: "build", label: "Build", note: "Where it is being built. Linked, not connected." },
@@ -283,7 +287,9 @@ export function CreateProjectModal({
                     disabled={milestones.length === 0}
                     value={base.origin.milestoneId ?? ""}
                     onChange={(event) => {
-                      const row = milestones.find((entry) => entry.milestone.id === event.target.value);
+                      const row = milestones.find(
+                        (entry) => entry.milestone.id === event.target.value,
+                      );
                       if (row && onSeedFromMilestone) onSeedFromMilestone(row);
                     }}
                   >
@@ -339,7 +345,9 @@ export function CreateProjectModal({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-[12px] text-muted-foreground">Where things stand (Point A)</span>
+              <span className="text-[12px] text-muted-foreground">
+                Where things stand (Point A)
+              </span>
               <textarea
                 rows={2}
                 className={FIELD}

@@ -13,7 +13,9 @@ export function CoverageCard({ coverage }: { coverage: ResearchCoverage }) {
     <RailCard title="Research coverage">
       <div className="space-y-3">
         <p className="text-sm text-foreground">
-          {coverage.percent === null ? `${coverage.pages} pages read` : `${coverage.percent}% covered`}
+          {coverage.percent === null
+            ? `${coverage.pages} pages read`
+            : `${coverage.percent}% covered`}
         </p>
         {coverage.checked.length > 0 ? (
           <ul className="flex flex-wrap gap-1.5">

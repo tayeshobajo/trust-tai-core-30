@@ -1,4 +1,4 @@
--- Trust Tai OS — Roadmap v1 schema
+-- Trust Tai OS. Roadmap v1 schema
 --
 -- NOT YET APPLIED. Run this against the externally managed Trust Tai Supabase
 -- project (ref okydosoacqdnursmmenf). Until it is applied, /modules/roadmap

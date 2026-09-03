@@ -49,7 +49,7 @@ console.log(dispositionCounts(run.signals));
 const reviewable = reviewableSignals(run.signals);
 for (const s of reviewable) {
   console.log(
-    `\n[${s.disposition}|${s.confidence}|${s.truthTier}] ${s.at} owner=${s.ownerName ?? "—"} due="${s.dueText ?? "—"}"`,
+    `\n[${s.disposition}|${s.confidence}|${s.truthTier}] ${s.at} owner=${s.ownerName ?? ", "} due="${s.dueText ?? ", "}"`,
   );
   console.log("  meaning:", s.normalizedMeaning);
   console.log("  why:", s.rationale);

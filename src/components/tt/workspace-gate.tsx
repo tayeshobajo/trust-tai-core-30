@@ -81,10 +81,7 @@ export function WorkspaceGate({
   if (state.status === "signed_out") {
     const signIn = (
       <TTButton asChild>
-        <Link
-          to="/auth"
-          search={{ redirect: preview?.returnTo ?? "/" }}
-        >
+        <Link to="/auth" search={{ redirect: preview?.returnTo ?? "/" }}>
           Sign in with Trust Tai
         </Link>
       </TTButton>
@@ -148,7 +145,9 @@ export function WorkspaceGate({
         note="Membership is granted by a Trust Tai owner. Nothing is created automatically, and there is no demo access."
         action={
           <TTButton asChild variant="secondary">
-            <Link to="/auth" search={{ redirect: "/" }}>Use a different account</Link>
+            <Link to="/auth" search={{ redirect: "/" }}>
+              Use a different account
+            </Link>
           </TTButton>
         }
       />
@@ -163,7 +162,9 @@ export function WorkspaceGate({
         pills={["Access: closed"]}
         action={
           <TTButton asChild variant="secondary">
-            <Link to="/auth" search={{ redirect: "/" }}>Back to sign in</Link>
+            <Link to="/auth" search={{ redirect: "/" }}>
+              Back to sign in
+            </Link>
           </TTButton>
         }
       />

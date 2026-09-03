@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  buildRoadmapRow,
-  filterRoadmapRows,
-  readyFromScout,
-  roadmapGlance,
-} from "./roadmap-index";
+import { buildRoadmapRow, filterRoadmapRows, readyFromScout, roadmapGlance } from "./roadmap-index";
 import type { Roadmap, RoadmapDecision, RoadmapStage } from "@/domain/roadmap";
 
 const now = "2026-01-01T00:00:00.000Z";
@@ -120,7 +115,11 @@ describe("roadmap index read models", () => {
         evaluation: { score },
       }) as never;
     const list = readyFromScout(
-      [candidate("p1", "qualified", 80), candidate("p2", "qualified", 90), candidate("p3", "discovered", 99)],
+      [
+        candidate("p1", "qualified", 80),
+        candidate("p2", "qualified", 90),
+        candidate("p3", "discovered", 99),
+      ],
       [roadmap({ prospectId: "p1" })],
     );
     expect(list.map((c) => c.prospect.id)).toEqual(["p2"]);

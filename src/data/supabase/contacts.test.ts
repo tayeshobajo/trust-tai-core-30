@@ -5,7 +5,7 @@
  * fields under `metadata.people`, and `toPerson` resolves that nested object
  * first. A write that stamped `email_status` at the metadata root was
  * invisible to the next read, so "Confirm this address" saved successfully
- * yet the blocker never cleared — the click looked like nothing happened.
+ * yet the blocker never cleared, the click looked like nothing happened.
  *
  * These tests pin the shared read/write location for both metadata shapes
  * and prove unrelated metadata survives a confirmation untouched.
@@ -102,7 +102,7 @@ describe("contacts metadata round trip", () => {
     expect(after?.emailCheckedBy).toBe("human");
     expect(after?.emailCheckedAt).toBeTruthy();
 
-    // The write landed inside the nested object the reader resolves — not at
+    // The write landed inside the nested object the reader resolves, not at
     // the root, where this record never looks.
     const stored = db.tables["contacts"]![0]!;
     const metadata = stored["metadata"] as Record<string, unknown>;
@@ -113,7 +113,7 @@ describe("contacts metadata round trip", () => {
     expect(metadata["email_status"]).toBeUndefined();
   });
 
-  it("unrelated metadata — root and nested — survives a confirmation", async () => {
+  it("unrelated metadata, root and nested, survives a confirmation", async () => {
     db.tables["contacts"] = [legacyDiscoveryRow()];
     const [before] = await listProspectContacts("org-1", "prospect-1");
     await peopleService.confirmEmail(before!, CONTEXT);

@@ -1,11 +1,11 @@
 /**
- * Linki execution transport — server only, and SEND-capable.
+ * Linki execution transport, server only, and SEND-capable.
  *
  * Unlike `linki-provider.server.ts` (the read-only lookup provider), this
  * adapter performs the actual LinkedIn send THROUGH Linki. That is why it is
  * gated twice: the caller must already hold an `approved` action AND the
  * LINKI_EXECUTION_ENABLED kill switch must be on. The adapter itself never
- * decides anything — it takes the exact approved action, hands it to Linki,
+ * decides anything, it takes the exact approved action, hands it to Linki,
  * and returns the receipt. No draft generation, no retries, no fallbacks.
  *
  * Architecture law:
@@ -26,7 +26,7 @@ export interface LinkiSendResult {
 /** The narrow transport input: exactly what the approved action carries. */
 export interface LinkiSendInput {
   actionType: ApprovedLinkedInAction["actionType"];
-  /** LinkedIn profile URL — the confirmed route for this person. */
+  /** LinkedIn profile URL, the confirmed route for this person. */
   linkedinUrl: string;
   draftBody: string;
   /** Transport idempotency: the same action id must never double-send. */
@@ -56,7 +56,7 @@ function config(env: Env): { baseUrl: string; apiKey: string } {
  * never sees this module, the base URL, or the secret.
  *
  * The expected Linki endpoint is its action API (POST /api/actions). If the
- * deployed adapter surface differs, only `pathFor` changes — everything else
+ * deployed adapter surface differs, only `pathFor` changes, everything else
  * (idempotency key, receipt shape, fail-closed handling) stays the law.
  */
 export async function linkiSendAction(
@@ -79,7 +79,9 @@ export async function linkiSendAction(
       body: JSON.stringify({
         type: input.actionType === "connection_request" ? "connect" : "message",
         profile_url: input.linkedinUrl,
-        ...(input.actionType === "message" ? { message: input.draftBody } : { note: input.draftBody }),
+        ...(input.actionType === "message"
+          ? { message: input.draftBody }
+          : { note: input.draftBody }),
         idempotency_key: input.idempotencyKey,
       }),
       signal: controller.signal,
@@ -99,10 +101,10 @@ export async function linkiSendAction(
       // second submit of the same action, so reaching this branch means a
       // crash landed between Linki's original send and Core's receipt write.
       // Marked as a CONFIRMED failure whose reason tells the human the
-      // original send may stand — any retry is a NEW action row Tai chooses
+      // original send may stand, any retry is a NEW action row Tai chooses
       // deliberately, never an automatic re-send.
       throw new LinkiTransportError(
-        "Linki rejected the send as a duplicate (idempotency replay): this action was already sent once. The original send may stand — review before creating any retry.",
+        "Linki rejected the send as a duplicate (idempotency replay): this action was already sent once. The original send may stand, review before creating any retry.",
         true,
       );
     }

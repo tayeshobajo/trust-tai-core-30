@@ -1,12 +1,12 @@
 /**
- * Trust Tai OS — Comms ↔ People identity.
+ * Trust Tai OS. Comms ↔ People identity.
  *
  * One person, one memory. A Comms relationship is a conversation; the person
  * having it lives once, in the shared `contacts` table. This module holds the
  * pure rules that keep the two honest with each other:
  *
  *  1. Nothing is invented. A company is only derived from an address when the
- *     domain actually belongs to a company — a free mailbox says nothing about
+ *     domain actually belongs to a company, a free mailbox says nothing about
  *     where someone works, so it stays blank rather than becoming "Gmail".
  *  2. A human edit outranks a derivation. A value a person typed is never
  *     replaced by something a sync guessed.
@@ -58,7 +58,7 @@ export function isFreeMailDomain(domain: string | undefined): boolean {
 
 /**
  * A company name that can be honestly read from an address, or nothing.
- * Free mailboxes and bare hostnames yield nothing — silence beats invention.
+ * Free mailboxes and bare hostnames yield nothing, silence beats invention.
  */
 export function companyFromEmail(email: string | undefined | null): string | undefined {
   const domain = domainOf(email);
@@ -76,7 +76,10 @@ export function companyFromEmail(email: string | undefined | null): string | und
  * A stored company that was clearly derived from a free mailbox ("Gmail",
  * "Icloud"). It is noise, not knowledge, and Comms should stop showing it.
  */
-export function isMailboxNoise(companyName: string | undefined | null, email?: string | null): boolean {
+export function isMailboxNoise(
+  companyName: string | undefined | null,
+  email?: string | null,
+): boolean {
   const value = (companyName ?? "").trim().toLowerCase();
   if (!value) return false;
   const compact = value.replace(/[\s.]/g, "");
@@ -115,8 +118,18 @@ export function normalizeIdentity(input: {
 }
 
 export interface IdentitySides {
-  relationship: { fullName?: string | undefined; companyName?: string | undefined; email?: string | undefined };
-  contact?: { fullName?: string | undefined; roleTitle?: string | undefined; companyName?: string | undefined } | undefined;
+  relationship: {
+    fullName?: string | undefined;
+    companyName?: string | undefined;
+    email?: string | undefined;
+  };
+  contact?:
+    | {
+        fullName?: string | undefined;
+        roleTitle?: string | undefined;
+        companyName?: string | undefined;
+      }
+    | undefined;
 }
 
 /**
@@ -166,7 +179,8 @@ export function identityPatches(sides: IdentitySides, next: PersonIdentity): Ide
   const contactTitle = clean(sides.contact?.roleTitle);
   const contactCompany = clean(sides.contact?.companyName);
   if (contactName !== target.fullName) patches.contact.fullName = target.fullName;
-  if (target.roleTitle && target.roleTitle !== contactTitle) patches.contact.roleTitle = target.roleTitle;
+  if (target.roleTitle && target.roleTitle !== contactTitle)
+    patches.contact.roleTitle = target.roleTitle;
   if (target.companyName && target.companyName !== contactCompany) {
     patches.contact.companyName = target.companyName;
   }

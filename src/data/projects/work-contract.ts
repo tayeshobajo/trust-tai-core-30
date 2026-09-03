@@ -2,7 +2,7 @@
  * Work Contract composition for Projects.
  *
  * Pure builders: they shape the contract and the Paperclip assignment packet
- * from approved inputs. Persistence and execution live elsewhere — a
+ * from approved inputs. Persistence and execution live elsewhere, a
  * contract is drafted here, approved by a person, sequenced by Roadmap, and
  * only then handed to Paperclip. Nothing in this module performs a
  * consequential write.
@@ -35,13 +35,12 @@ export interface WorkContractDraft {
 
 /**
  * Draft a contract. Refuses (returns null) when the draft cannot name how
- * success would be proven — a contract without acceptance criteria is a
+ * success would be proven, a contract without acceptance criteria is a
  * hope, not a contract.
  */
-export function draftWorkContract(input: WorkContractDraft): Omit<
-  WorkContract,
-  "humanApproval"
-> | null {
+export function draftWorkContract(
+  input: WorkContractDraft,
+): Omit<WorkContract, "humanApproval"> | null {
   if (!input.objective.trim() || !input.outcomeStatement.trim()) return null;
   const criteria = input.acceptanceCriteria.filter(
     (criterion) => criterion.statement.trim().length > 0,
@@ -108,9 +107,7 @@ export function paperclipPacketFor(
       patternName: ref.patternName,
       lesson: ref.lesson,
       correction: ref.correction,
-      outcome: ref.outcome
-        ? { decision: ref.outcome.decision, result: ref.outcome.result }
-        : null,
+      outcome: ref.outcome ? { decision: ref.outcome.decision, result: ref.outcome.result } : null,
     })),
     acceptanceCriteria: contract.acceptanceCriteria,
     constraints: contract.constraints,

@@ -12,7 +12,7 @@
  *  D. "Resolve N blockers" opens a guided flow: each blocker with its own
  *     action, honest progress as blockers clear, and a way back.
  *  E. When the final blocker clears, the flow advances straight into the
- *     first-message confirmation — no rediscovery.
+ *     first-message confirmation, no rediscovery.
  *  F. Research pending and failure states stay in place and truthful.
  */
 
@@ -100,8 +100,7 @@ const candidate = {
 
 const EMAIL_BLOCKER: HandoffBlocker = {
   kind: "email_unverified",
-  message:
-    "claire@example.com is unverified, and no confirmed LinkedIn route stands in for it.",
+  message: "claire@example.com is unverified, and no confirmed LinkedIn route stands in for it.",
   personId: "person-1",
 };
 const COVERAGE_BLOCKER: HandoffBlocker = {
@@ -175,7 +174,7 @@ describe("a gated first message", () => {
   it("shows the gate headline and Resolve 2 blockers, never Prepare first message", () => {
     renderCard();
     expect(
-      screen.getByRole("heading", { name: "Email looks like the right way in — verify it first" }),
+      screen.getByRole("heading", { name: "Email looks like the right way in, verify it first" }),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Resolve 2 blockers" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Prepare first message" })).toBeNull();
@@ -195,9 +194,7 @@ describe("the guided blocker flow", () => {
     expect(flow.textContent).toContain(COVERAGE_BLOCKER.message);
 
     fireEvent.click(screen.getByRole("button", { name: "Confirm this address" }));
-    expect(props.onConfirmEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "person-1" }),
-    );
+    expect(props.onConfirmEmail).toHaveBeenCalledWith(expect.objectContaining({ id: "person-1" }));
     fireEvent.click(screen.getByRole("button", { name: "Refresh the company read" }));
     expect(props.onRunResearch).toHaveBeenCalled();
 
@@ -216,12 +213,7 @@ describe("the guided blocker flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Resolve 2 blockers" }));
     expect(screen.getByText("0 of 2 resolved")).toBeTruthy();
 
-    rerender(
-      <RecommendedNextMoveCard
-        {...props}
-        blockers={oneLeft}
-      />,
-    );
+    rerender(<RecommendedNextMoveCard {...props} blockers={oneLeft} />);
     expect(screen.getByText("1 of 2 resolved")).toBeTruthy();
     expect(screen.queryByText(EMAIL_BLOCKER.message)).toBeNull();
   });
@@ -349,7 +341,7 @@ describe("confirm this address feedback", () => {
 
     const alert = screen.getByRole("alert");
     expect(alert.textContent).toContain("That change could not be saved.");
-    // The blocker did not clear — a failed click changes nothing silently.
+    // The blocker did not clear, a failed click changes nothing silently.
     expect(screen.getByText(EMAIL_BLOCKER.message)).toBeTruthy();
     expect(screen.getByText("0 of 2 resolved")).toBeTruthy();
 

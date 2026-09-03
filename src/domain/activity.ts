@@ -31,7 +31,7 @@ export type ActivityAction =
   /** Scout: a person marked a company as worth exploring in Roadmap. */
   | "roadmap_intent"
   /** Scout: deeper relationship research was prepared for a newly eligible
-   *  prospect. Research only — nothing was sent and no relationship created. */
+   *  prospect. Research only, nothing was sent and no relationship created. */
   | "relationship_brief_prepared"
 
   /* --- Settings: identity, membership and application access --- */
@@ -84,7 +84,7 @@ export type ActivityAction =
   | "intake_held";
 
 /**
- * What an event is *about*. Usually a shared core entity. Two suite rooms 
+ * What an event is *about*. Usually a shared core entity. Two suite rooms
  * Ops and Studio, own work that has no shared entity in Core yet, so they may
  * scope their own lifecycle events to the room. The Conductor scope carries
  * governance history only. This is a naming scope, never a licence to create a
@@ -94,7 +94,6 @@ export type ActivityScope = EntityType | "ops" | "studio" | "conductor" | "websi
 
 /** Event name is always `scope.action`, e.g. "project.status_changed". */
 export type ActivityName = `${ActivityScope}.${ActivityAction}`;
-
 
 /** Where an event or fact came from, and how much to trust it. */
 export interface Provenance {

@@ -138,9 +138,7 @@ function destination(context: RoadmapSourceContext): Destination {
     because: objective
       ? "Taken from what was entered when this roadmap was created. It stays a proposal until you approve it."
       : "Nothing on record states where this should end up.",
-    evidence: objective
-      ? human("Entered by a person when the roadmap was created")
-      : [],
+    evidence: objective ? human("Entered by a person when the roadmap was created") : [],
   };
 }
 

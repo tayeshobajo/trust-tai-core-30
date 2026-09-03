@@ -6,8 +6,8 @@
  *    read and write is made with that token, so RLS and the organization
  *    boundary hold. There is no autonomous sender here or anywhere else.
  *  - Sending needs the `gmail.send` scope, requested on the same consent
- *    screen as reading. When the stored grant does not include it — an older
- *    read-only connection, or send declined — the answer is a calm `blocked`
+ *    screen as reading. When the stored grant does not include it, an older
+ *    read-only connection, or send declined, the answer is a calm `blocked`
  *    outcome naming the scope; the draft is untouched, never half-claimed.
  *  - Mailboxes own transport identity. A reply leaves from the same mailbox
  *    that owns the conversation (provenance, never a guess); a new
@@ -123,7 +123,7 @@ export function mailboxCapabilityOf(row: GmailConnectionRow): MailboxCapability 
 }
 
 /**
- * What this workspace's Gmail connections can do — every mailbox, each with
+ * What this workspace's Gmail connections can do, every mailbox, each with
  * its own send capability. Reads the integration rows under the caller's own
  * access; never touches Google.
  */
@@ -209,7 +209,7 @@ export interface ReplyPlan {
  *
  * Reply-all, safely: the person who last wrote to us leads To; the other
  * participants ride in Cc; our own mailbox is never a recipient. The
- * relationship's own address is always on the message — a reply that would
+ * relationship's own address is always on the message, a reply that would
  * otherwise skip the person the draft is for includes them. Pure; tested.
  */
 export function planReplyFromThread(
@@ -231,12 +231,10 @@ export function planReplyFromThread(
   const last = messages[messages.length - 1]!;
   const inReplyTo = headerOf(last, "Message-ID");
 
-  const lastInbound = [...messages]
-    .reverse()
-    .find((message) => {
-      const from = headerOf(message, "From")?.toLowerCase() ?? "";
-      return from.includes("@") && !from.includes(self) && from.length > 0;
-    });
+  const lastInbound = [...messages].reverse().find((message) => {
+    const from = headerOf(message, "From")?.toLowerCase() ?? "";
+    return from.includes("@") && !from.includes(self) && from.length > 0;
+  });
 
   let to: string[];
   let cc: string[];
@@ -359,7 +357,7 @@ export async function sendDraftViaGmail(input: {
   threadTarget?: SendThreadTarget;
   /**
    * The member's explicit mailbox choice for a new conversation. Ignored
-   * for replies — the owning mailbox always sends its own conversation.
+   * for replies, the owning mailbox always sends its own conversation.
    */
   integrationId?: string;
 }): Promise<SendOutcome> {
@@ -437,7 +435,7 @@ export async function sendDraftViaGmail(input: {
   }
 
   // The reply-from rule: a reply goes from the same mailbox that owns the
-  // conversation. Ownership is provenance, not guesswork — both the sync and
+  // conversation. Ownership is provenance, not guesswork, both the sync and
   // the send path stamp the observing mailbox on every message row.
   let threadMailbox: string | undefined;
   if (target.mode === "reply") {
@@ -475,7 +473,7 @@ export async function sendDraftViaGmail(input: {
   if (resolution.kind === "unknown_choice") throw new Error("That mailbox is not connected.");
   if (resolution.kind === "none_connected") throw new Error("No mailbox is connected yet.");
   if (resolution.kind === "needs_choice") {
-    throw new Error("More than one mailbox can send — choose which account sends this.");
+    throw new Error("More than one mailbox can send, choose which account sends this.");
   }
   if (resolution.kind === "owner_missing") {
     return {
@@ -501,7 +499,7 @@ export async function sendDraftViaGmail(input: {
 
   // The permission checkpoint, enforced before any claim: a read-only grant
   // can never send, so the draft is left exactly as it was. Only the chosen
-  // mailbox is blocked — other mailboxes stay fully usable.
+  // mailbox is blocked, other mailboxes stay fully usable.
   if (!canSendWithScopes(connection.scopes)) {
     return {
       draftId: draft.id,
@@ -557,7 +555,7 @@ export async function sendDraftViaGmail(input: {
 
   if (target.mode === "reply") {
     // The thread is re-read from Gmail (read-only scope covers this) so the
-    // reply carries real Message-ID headers — threading is Gmail's job, and
+    // reply carries real Message-ID headers, threading is Gmail's job, and
     // it needs them.
     const thread = await gmailGet<{ messages?: ThreadHeaderMessage[] }>(
       `/threads/${encodeURIComponent(target.providerThreadId)}` +
@@ -637,7 +635,10 @@ export async function sendDraftViaGmail(input: {
       .select("review_state, rationale")
       .eq("id", draft.id)
       .maybeSingle();
-    const row = current as { review_state: string; rationale: Record<string, unknown> | null } | null;
+    const row = current as {
+      review_state: string;
+      rationale: Record<string, unknown> | null;
+    } | null;
     const send = readDraftSend(row?.rationale);
     if (row?.review_state === "sent" && send?.state === "sent") {
       return {
@@ -658,7 +659,12 @@ export async function sendDraftViaGmail(input: {
     await settleClaim(
       client,
       draft,
-      { ...claimSend, state: "failed", error: failure.message, ...(failure.requiredScope ? { requiredScope: failure.requiredScope } : {}) },
+      {
+        ...claimSend,
+        state: "failed",
+        error: failure.message,
+        ...(failure.requiredScope ? { requiredScope: failure.requiredScope } : {}),
+      },
       "send_failed",
       false,
     );
@@ -681,7 +687,11 @@ export async function sendDraftViaGmail(input: {
     await settleClaim(
       client,
       draft,
-      { ...claimSend, state: "failed", error: "Gmail accepted nothing recognizable. Retry the send." },
+      {
+        ...claimSend,
+        state: "failed",
+        error: "Gmail accepted nothing recognizable. Retry the send.",
+      },
       "send_failed",
       false,
     );
@@ -696,7 +706,7 @@ export async function sendDraftViaGmail(input: {
 
   // Immediate evidence: the outbound message enters the timeline now, keyed
   // by Gmail's own message id. When sync later observes the same message it
-  // upserts onto this row — reconciliation merges, never duplicates.
+  // upserts onto this row, reconciliation merges, never duplicates.
   const { data: existingThread } = await client
     .from("comms_threads")
     .select("id")
@@ -776,7 +786,7 @@ export async function sendDraftViaGmail(input: {
     .eq("organization_id", input.organizationId);
 
   // The send succeeded: Gmail now holds the bytes, so staged uploads are
-  // removed. A cleanup failure is harmless — lifecycle sweeps orphans.
+  // removed. A cleanup failure is harmless, lifecycle sweeps orphans.
   if (staged.length > 0) {
     const { error: removeError } = await client.storage
       .from(DRAFT_ATTACHMENT_BUCKET)
@@ -808,7 +818,10 @@ export async function sendDraftViaGmail(input: {
 /** A safe Content-Disposition for bytes leaving our server. Pure; tested. */
 export function contentDisposition(filename: string): string {
   const fallback =
-    filename.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_").trim() || "attachment";
+    filename
+      .replace(/[^\x20-\x7e]/g, "_")
+      .replace(/["\\]/g, "_")
+      .trim() || "attachment";
   if (fallback === filename) return `attachment; filename="${fallback}"`;
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
@@ -827,11 +840,11 @@ export interface DownloadedAttachment {
 
 /**
  * Fetch one incoming attachment's bytes from Gmail, on demand. Gmail stays
- * the source of truth — nothing is copied into Trust Tai storage. The
+ * the source of truth, nothing is copied into Trust Tai storage. The
  * message row (read under the caller's token, so RLS holds) must actually
  * carry this attachment id; a made-up id never reaches Gmail.
  *
- * The read goes to the mailbox that observed the message — provenance on the
+ * The read goes to the mailbox that observed the message, provenance on the
  * row names it, so a workspace with several mailboxes never asks the wrong
  * account for a message it never saw.
  */

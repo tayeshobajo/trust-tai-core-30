@@ -1,7 +1,7 @@
 /**
  * The email itself, rendered faithfully.
  *
- * Comms shows the actual meaningful email a person sent or received — full
+ * Comms shows the actual meaningful email a person sent or received, full
  * body, inline images in place, quoted history behind an explicit toggle,
  * and never a silent clamp: long mail starts folded with a visible
  * Show more / Show less.
@@ -9,7 +9,7 @@
  * Rendering never touches raw HTML: the stored HTML was sanitized at ingest
  * and is parsed here into a small node tree that becomes ordinary
  * components. Inline images load through the authenticated attachment
- * proxy as object URLs — no Google credential or raw Gmail URL ever reaches
+ * proxy as object URLs, no Google credential or raw Gmail URL ever reaches
  * the browser. Remote images were refused at ingest and are simply absent,
  * with the refusal count surfaced in the event's provenance line.
  */
@@ -92,10 +92,7 @@ function InlineImage({
   }
   if (!url) {
     return (
-      <span
-        aria-hidden
-        className="my-1 block h-16 w-40 animate-pulse rounded-md bg-secondary/60"
-      />
+      <span aria-hidden className="my-1 block h-16 w-40 animate-pulse rounded-md bg-secondary/60" />
     );
   }
   return (
@@ -240,8 +237,7 @@ function renderNode(node: EmailNode, key: string, ctx: RenderContext): React.Rea
       );
     case "img": {
       if (!node.cid) return null;
-      const resource =
-        ctx.inlineByCid.get(node.cid) ?? ctx.inlineByCid.get(node.cid.toLowerCase());
+      const resource = ctx.inlineByCid.get(node.cid) ?? ctx.inlineByCid.get(node.cid.toLowerCase());
       if (!resource || !resource.attachmentId) {
         // The image was referenced but its resource was not stored. Show the
         // absence plainly rather than a broken frame.
@@ -284,7 +280,7 @@ const COLLAPSED_HEIGHT = "max-h-[16rem]";
 
 /**
  * One email's body: full fidelity, quoted history behind a toggle, long
- * mail folded with an explicit affordance — never a silent clamp.
+ * mail folded with an explicit affordance, never a silent clamp.
  */
 export function EmailBodyView({
   organizationId,
@@ -294,7 +290,7 @@ export function EmailBodyView({
   inline = [],
 }: {
   organizationId: string;
-  /** The comms_messages row id — the access handle for inline images. */
+  /** The comms_messages row id, the access handle for inline images. */
   messageId: string;
   text?: string;
   html?: string;
@@ -304,7 +300,7 @@ export function EmailBodyView({
   const [showQuoted, setShowQuoted] = useState(false);
 
   // The law: only the primary, currently visible content decides whether
-  // Show more exists — quoted history and inline images never cause a fold.
+  // Show more exists, quoted history and inline images never cause a fold.
   const needsCollapse = useMemo(() => primaryEmailNeedsCollapse(text, html), [text, html]);
 
   const inlineByCid = useMemo(() => {
@@ -336,15 +332,19 @@ export function EmailBodyView({
   // so nothing the person embedded disappears.
   const unreferenced = inline.filter(
     (resource) =>
-      resource.contentId &&
-      (!parsed || !parsed.referenced.has(resource.contentId.toLowerCase())),
+      resource.contentId && (!parsed || !parsed.referenced.has(resource.contentId.toLowerCase())),
   );
 
   const hasQuoted = parsed ? parsed.quoted.length > 0 : Boolean(textSplit?.quoted);
 
   return (
     <div className="mt-1 text-[13px] leading-relaxed text-foreground/90">
-      <div className={cn("relative", !expanded && needsCollapse ? `${COLLAPSED_HEIGHT} overflow-hidden` : "")}>
+      <div
+        className={cn(
+          "relative",
+          !expanded && needsCollapse ? `${COLLAPSED_HEIGHT} overflow-hidden` : "",
+        )}
+      >
         {parsed ? (
           <div className="whitespace-pre-wrap break-words">
             {parsed.main.map((node, index) => renderNode(node, `m${index}`, ctx))}

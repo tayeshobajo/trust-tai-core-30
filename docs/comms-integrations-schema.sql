@@ -1,4 +1,4 @@
--- Trust Tai OS — Comms external integrations schema
+-- Trust Tai OS. Comms external integrations schema
 --
 -- APPLIED. Verified live on the Trust Tai Supabase project
 -- (ref okydosoacqdnursmmenf) on 2026-08-22: every table, column, index and
@@ -347,12 +347,12 @@ grant execute on function public.comms_get_integration_secret_system(uuid) to se
 --   '17 */6 * * *',
 --   $$
 --   select net.http_post(
---     url := 'https://cmd.trusttai.com/api/public/comms/gmail/scheduled-sync',
---     headers := jsonb_build_object(
+--     url:= 'https://cmd.trusttai.com/api/public/comms/gmail/scheduled-sync',
+--     headers:= jsonb_build_object(
 --       'Content-Type', 'application/json',
 --       'X-Comms-Sync-Key', 'PASTE_COMMS_SYNC_CRON_SECRET'
 --     ),
---     body := '{}'::jsonb
+--     body:= '{}'::jsonb
 --   );
 --   $$
 -- );

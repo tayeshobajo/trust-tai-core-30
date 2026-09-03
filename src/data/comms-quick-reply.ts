@@ -15,7 +15,7 @@ import type { GmailSendOutcome } from "@/data/supabase/comms-gmail";
 
 export async function sendQuickReply(input: {
   relationship: Relationship;
-  /** Gmail's conversation id — the reply joins this exact thread. */
+  /** Gmail's conversation id, the reply joins this exact thread. */
   providerThreadId: string;
   subject: string;
   body: string;

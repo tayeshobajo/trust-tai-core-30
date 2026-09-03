@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — the single Supabase entry point.
+ * Trust Tai OS, the single Supabase entry point.
  *
  * This project talks to the externally managed Trust Tai Supabase project
  * (ref `okydosoacqdnursmmenf`), NOT to a Lovable-provisioned database.

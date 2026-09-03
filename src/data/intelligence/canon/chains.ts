@@ -26,7 +26,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["project_blocked"],
         appId: "projects",
         branches: [
-          { when: "A blocker exists", hypothesis: "Work is waiting on a named blocker nobody has cleared." },
+          {
+            when: "A blocker exists",
+            hypothesis: "Work is waiting on a named blocker nobody has cleared.",
+          },
           { when: "No blocker recorded", next: "late.decision" },
         ],
       },
@@ -37,7 +40,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["open_decisions", "roadmap_direction_undecided"],
         appId: "roadmap",
         branches: [
-          { when: "A decision is open", hypothesis: "Work is waiting on a decision rather than on effort." },
+          {
+            when: "A decision is open",
+            hypothesis: "Work is waiting on a decision rather than on effort.",
+          },
           { when: "Nothing open", next: "late.capacity" },
         ],
       },
@@ -48,7 +54,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["delivery_delay_count", "open_projects"],
         appId: "projects",
         branches: [
-          { when: "Several are late", hypothesis: "Capacity is committed beyond what the team can carry." },
+          {
+            when: "Several are late",
+            hypothesis: "Capacity is committed beyond what the team can carry.",
+          },
           { when: "Only this one", next: "late.criteria" },
         ],
       },
@@ -59,8 +68,14 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: [],
         appId: "projects",
         branches: [
-          { when: "No written criteria", hypothesis: "Acceptance criteria are unclear, so the work cannot be called done." },
-          { when: "Criteria exist and are met", hypothesis: "The work is finished and the record was never closed." },
+          {
+            when: "No written criteria",
+            hypothesis: "Acceptance criteria are unclear, so the work cannot be called done.",
+          },
+          {
+            when: "Criteria exist and are met",
+            hypothesis: "The work is finished and the record was never closed.",
+          },
         ],
       },
     ],
@@ -107,7 +122,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["project_delayed", "delivery_delay_count"],
         appId: "projects",
         branches: [
-          { when: "Their work is late", hypothesis: "The relationship is carrying the cost of a late delivery." },
+          {
+            when: "Their work is late",
+            hypothesis: "The relationship is carrying the cost of a late delivery.",
+          },
           { when: "Delivery is on time", next: "unhappy.expectations" },
         ],
       },
@@ -118,8 +136,14 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: [],
         appId: "comms",
         branches: [
-          { when: "Never agreed", hypothesis: "What was delivered and what was expected are not the same thing." },
-          { when: "Agreed and met", hypothesis: "Nothing is wrong with the work and the quiet is theirs, not ours." },
+          {
+            when: "Never agreed",
+            hypothesis: "What was delivered and what was expected are not the same thing.",
+          },
+          {
+            when: "Agreed and met",
+            hypothesis: "Nothing is wrong with the work and the quiet is theirs, not ours.",
+          },
         ],
       },
     ],
@@ -154,7 +178,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["strong_fit_unreviewed"],
         appId: "scout",
         branches: [
-          { when: "No decision recorded", hypothesis: "The company is waiting on a decision, not on the market." },
+          {
+            when: "No decision recorded",
+            hypothesis: "The company is waiting on a decision, not on the market.",
+          },
           { when: "Decided", next: "prospect.handover" },
         ],
       },
@@ -165,7 +192,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["pipeline_unrouted"],
         appId: "comms",
         branches: [
-          { when: "Never handed over", hypothesis: "The handover from Scout to Comms did not happen." },
+          {
+            when: "Never handed over",
+            hypothesis: "The handover from Scout to Comms did not happen.",
+          },
           { when: "A conversation exists", next: "prospect.followup" },
         ],
       },
@@ -176,8 +206,14 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["reply_debt"],
         appId: "comms",
         branches: [
-          { when: "One message and nothing after", hypothesis: "Follow-up stops after the first message." },
-          { when: "A live thread", hypothesis: "The conversation is running and simply not finished." },
+          {
+            when: "One message and nothing after",
+            hypothesis: "Follow-up stops after the first message.",
+          },
+          {
+            when: "A live thread",
+            hypothesis: "The conversation is running and simply not finished.",
+          },
         ],
       },
     ],
@@ -221,7 +257,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         appId: "projects",
         branches: [
           { when: "There is room", next: "bottleneck.clarity" },
-          { when: "The team is full", hypothesis: "This is a capacity problem, not a delegation problem." },
+          {
+            when: "The team is full",
+            hypothesis: "This is a capacity problem, not a delegation problem.",
+          },
         ],
       },
       {
@@ -231,8 +270,14 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["memory_recurring_work"],
         appId: "steward",
         branches: [
-          { when: "For context", hypothesis: "Context lives with the founder rather than in the work." },
-          { when: "For judgment", hypothesis: "Acceptance criteria are unclear, so work returns for a ruling." },
+          {
+            when: "For context",
+            hypothesis: "Context lives with the founder rather than in the work.",
+          },
+          {
+            when: "For judgment",
+            hypothesis: "Acceptance criteria are unclear, so work returns for a ruling.",
+          },
         ],
       },
     ],
@@ -266,7 +311,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["activity_volume", "room_quiet"],
         appId: "activity",
         branches: [
-          { when: "Mostly outside delivery", hypothesis: "Attention is going somewhere other than the late work." },
+          {
+            when: "Mostly outside delivery",
+            hypothesis: "Attention is going somewhere other than the late work.",
+          },
           { when: "Concentrated on delivery", next: "busy.parallel" },
         ],
       },
@@ -311,7 +359,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         appId: "website",
         branches: [
           { when: "Intakes arriving", next: "web.worked" },
-          { when: "Almost none", hypothesis: "This is an attention problem before it is a conversion problem." },
+          {
+            when: "Almost none",
+            hypothesis: "This is an attention problem before it is a conversion problem.",
+          },
         ],
       },
       {
@@ -321,7 +372,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["strong_fit_unreviewed", "pipeline_unrouted"],
         appId: "scout",
         branches: [
-          { when: "Waiting undecided", hypothesis: "Inbound is arriving faster than it is being worked." },
+          {
+            when: "Waiting undecided",
+            hypothesis: "Inbound is arriving faster than it is being worked.",
+          },
           { when: "All decided", next: "web.completion" },
         ],
       },
@@ -332,8 +386,14 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: [],
         appId: "website",
         branches: [
-          { when: "Mostly incomplete", hypothesis: "The question sequence is costing more trust than it earns." },
-          { when: "Complete", hypothesis: "The audience arriving is not the audience the questions were written for." },
+          {
+            when: "Mostly incomplete",
+            hypothesis: "The question sequence is costing more trust than it earns.",
+          },
+          {
+            when: "Complete",
+            hypothesis: "The audience arriving is not the audience the questions were written for.",
+          },
         ],
       },
     ],
@@ -379,8 +439,14 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["open_projects", "no_active_project"],
         appId: "projects",
         branches: [
-          { when: "Nothing picked it up", hypothesis: "The plan was agreed and never handed to delivery." },
-          { when: "Work exists", hypothesis: "The plan is moving in Projects and the roadmap record is stale." },
+          {
+            when: "Nothing picked it up",
+            hypothesis: "The plan was agreed and never handed to delivery.",
+          },
+          {
+            when: "Work exists",
+            hypothesis: "The plan is moving in Projects and the roadmap record is stale.",
+          },
         ],
       },
     ],
@@ -412,7 +478,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["commitment_overdue"],
         appId: "steward",
         branches: [
-          { when: "Something is overdue", hypothesis: "A promise past its date outranks everything else today." },
+          {
+            when: "Something is overdue",
+            hypothesis: "A promise past its date outranks everything else today.",
+          },
           { when: "Nothing overdue", next: "today.people" },
         ],
       },
@@ -423,7 +492,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["reply_debt", "relationship_silent"],
         appId: "comms",
         branches: [
-          { when: "Someone is waiting", hypothesis: "A person is waiting on us and that is today's first move." },
+          {
+            when: "Someone is waiting",
+            hypothesis: "A person is waiting on us and that is today's first move.",
+          },
           { when: "Nobody waiting", next: "today.decisions" },
         ],
       },
@@ -434,12 +506,20 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["open_decisions", "project_blocked"],
         appId: "roadmap",
         branches: [
-          { when: "A decision is open", hypothesis: "One decision would unblock more than one room." },
-          { when: "Nothing open", hypothesis: "Nothing needs a decision today, which is a real answer." },
+          {
+            when: "A decision is open",
+            hypothesis: "One decision would unblock more than one room.",
+          },
+          {
+            when: "Nothing open",
+            hypothesis: "Nothing needs a decision today, which is a real answer.",
+          },
         ],
       },
     ],
-    stopConditions: ["Nothing fires: say nothing needs attention rather than manufacturing something."],
+    stopConditions: [
+      "Nothing fires: say nothing needs attention rather than manufacturing something.",
+    ],
     hypothesisCandidates: [
       "A promise past its date outranks everything else today.",
       "A person is waiting on us and that is today's first move.",
@@ -461,7 +541,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["room_quiet"],
         appId: "activity",
         branches: [
-          { when: "A room is quiet", hypothesis: "Work in that room either stopped or moved out of sight." },
+          {
+            when: "A room is quiet",
+            hypothesis: "Work in that room either stopped or moved out of sight.",
+          },
           { when: "Every room active", next: "worse.pipeline" },
         ],
       },
@@ -472,7 +555,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["pipeline_sourcing_stale", "pipeline_volume", "inbound_volume"],
         appId: "scout",
         branches: [
-          { when: "Nothing new", hypothesis: "Today looks healthy and the quarter ahead does not." },
+          {
+            when: "Nothing new",
+            hypothesis: "Today looks healthy and the quarter ahead does not.",
+          },
           { when: "New demand arriving", next: "worse.relationships" },
         ],
       },
@@ -499,7 +585,8 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
   chain({
     id: "chain.capacity_or_clarity",
     domain: "business_health",
-    question: "Is this a capacity problem, a clarity problem, a dependency problem, or a decision problem?",
+    question:
+      "Is this a capacity problem, a clarity problem, a dependency problem, or a decision problem?",
     trigger: "Work is not moving and the cause has not been named.",
     checks: [
       {
@@ -532,7 +619,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         appId: "projects",
         branches: [
           { when: "Yes", hypothesis: "This is a capacity problem." },
-          { when: "No", hypothesis: "This is a clarity problem: nobody knows what finished looks like." },
+          {
+            when: "No",
+            hypothesis: "This is a clarity problem: nobody knows what finished looks like.",
+          },
         ],
       },
     ],
@@ -559,7 +649,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         appId: "steward",
         branches: [
           { when: "Several", next: "promise.load" },
-          { when: "One", hypothesis: "One promise slipped, which is a single follow-up rather than a pattern." },
+          {
+            when: "One",
+            hypothesis: "One promise slipped, which is a single follow-up rather than a pattern.",
+          },
         ],
       },
       {
@@ -569,12 +662,17 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["delivery_delay_count"],
         appId: "projects",
         branches: [
-          { when: "Yes", hypothesis: "Promises are being made against time the team does not have." },
+          {
+            when: "Yes",
+            hypothesis: "Promises are being made against time the team does not have.",
+          },
           { when: "No", hypothesis: "Promises are being kept and not closed in the record." },
         ],
       },
     ],
-    stopConditions: ["Commitments cannot be read: ask for Steward rather than assuming follow-through."],
+    stopConditions: [
+      "Commitments cannot be read: ask for Steward rather than assuming follow-through.",
+    ],
     hypothesisCandidates: [
       "Promises are being made against time the team does not have.",
       "Promises are being kept and not closed in the record.",
@@ -594,7 +692,10 @@ export const DIAGNOSTIC_CHAINS: DiagnosticChain[] = [
         requiredEvidence: ["inbound_volume"],
         appId: "website",
         branches: [
-          { when: "Some did not", hypothesis: "Intakes are arriving without reaching anyone who can act." },
+          {
+            when: "Some did not",
+            hypothesis: "Intakes are arriving without reaching anyone who can act.",
+          },
           { when: "All reached Scout", next: "inbound.decided" },
         ],
       },

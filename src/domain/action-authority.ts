@@ -34,7 +34,9 @@ const OPERATION_PERMISSION: Record<string, Permission> = {
 };
 
 /** The permission a specific proposal requires. */
-export function actionPermission(proposal: Pick<ActionProposal, "appId" | "operation">): Permission {
+export function actionPermission(
+  proposal: Pick<ActionProposal, "appId" | "operation">,
+): Permission {
   return (
     OPERATION_PERMISSION[proposal.operation] ??
     APP_AUTHORIZE_PERMISSION[proposal.appId] ??

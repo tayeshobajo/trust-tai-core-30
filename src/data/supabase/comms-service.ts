@@ -138,7 +138,6 @@ export interface RelationshipPatch {
   metadata?: Record<string, unknown>;
 }
 
-
 export const commsService = {
   /** Every relationship in the organization. The queue does its own grouping. */
   async list(organizationId: ID): Promise<Relationship[]> {
@@ -262,7 +261,6 @@ export const commsService = {
     if (patch.companyName !== undefined) payload["company_name"] = patch.companyName;
     if (patch.metadata !== undefined) payload["metadata"] = patch.metadata;
     payload["updated_at"] = new Date().toISOString();
-
 
     const { data, error } = await supabase
       .from("comms_relationships")
@@ -430,7 +428,7 @@ export const commsService = {
       /**
        * A person explicitly recorded this capture as the counterparty's own
        * words (a quote from a call, a pasted note from them). Only then may
-       * counterparty-only reads — like Roadmap recognition — treat an
+       * counterparty-only reads, like Roadmap recognition, treat an
        * otherwise-outbound interaction as their evidence.
        */
       theirWords?: boolean;
@@ -627,7 +625,7 @@ export const commsService = {
 
   /**
    * Edit a draft's wording. The draft stays a draft; its history, evidence,
-   * and send record are untouched. Content edits are quiet on purpose — the
+   * and send record are untouched. Content edits are quiet on purpose, the
    * state changes are what the record narrates.
    */
   async updateDraftContent(

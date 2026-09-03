@@ -1,5 +1,5 @@
 /**
- * comms-execution-capability — Supabase Edge Function
+ * comms-execution-capability. Supabase Edge Function
  *
  * Governed capability API for the Trust Tai Comms Agent.
  * Mirrors the Scout bridge pattern; all five endpoints enforce:
@@ -71,10 +71,10 @@ interface AgentRecord {
 
 async function validateAgent(paperclipAgentId: string, capability: string): Promise<AgentRecord> {
   const { data, error } = await supabase
-    .from("execution_agents")
-    .select("*")
-    .eq("paperclip_agent_id", paperclipAgentId)
-    .maybeSingle();
+.from("execution_agents")
+.select("*")
+.eq("paperclip_agent_id", paperclipAgentId)
+.maybeSingle();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
   if (!data) {
     throw Object.assign(
@@ -110,13 +110,13 @@ async function handleRelationships(req: Request): Promise<Response> {
   const agent = await validateAgent(executionAgentId(req), "comms.read");
 
   const { data: relationships, error } = await supabase
-    .from("comms_relationships")
-    .select(
+.from("comms_relationships")
+.select(
       "id, full_name, company_name, email, stage, source, last_touch_at, next_action, response_due_at, follow_up_due_at, created_at, updated_at",
     )
-    .eq("organization_id", agent.organization_id)
-    .order("updated_at", { ascending: false })
-    .limit(100);
+.eq("organization_id", agent.organization_id)
+.order("updated_at", { ascending: false })
+.limit(100);
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
 
   // Attach latest thread state per relationship
@@ -125,11 +125,11 @@ async function handleRelationships(req: Request): Promise<Response> {
 
   if (ids.length > 0) {
     const { data: threads } = await supabase
-      .from("comms_threads")
-      .select("relationship_id, state, last_message_at, subject")
-      .in("relationship_id", ids)
-      .eq("organization_id", agent.organization_id)
-      .order("updated_at", { ascending: false });
+.from("comms_threads")
+.select("relationship_id, state, last_message_at, subject")
+.in("relationship_id", ids)
+.eq("organization_id", agent.organization_id)
+.order("updated_at", { ascending: false });
     if (threads) {
       for (const t of threads as Array<{ relationship_id: string; state: string; last_message_at: string | null; subject: string | null }>) {
         // Keep only the most recent thread per relationship
@@ -145,7 +145,7 @@ async function handleRelationships(req: Request): Promise<Response> {
   }
 
   const result = (relationships ?? []).map((r: Record<string, unknown>) => ({
-    ...r,
+...r,
     thread: threadsByRelationship[r["id"] as string] ?? null,
   }));
 
@@ -162,35 +162,35 @@ async function handleThread(req: Request, threadId: string): Promise<Response> {
   const agent = await validateAgent(executionAgentId(req), "comms.read");
 
   const { data: thread, error: threadError } = await supabase
-    .from("comms_threads")
-    .select("*")
-    .eq("id", threadId)
-    .eq("organization_id", agent.organization_id)
-    .maybeSingle();
+.from("comms_threads")
+.select("*")
+.eq("id", threadId)
+.eq("organization_id", agent.organization_id)
+.maybeSingle();
   if (threadError) throw Object.assign(new Error(threadError.message), { status: 500 });
   if (!thread) return fail("Thread not found.", 404);
 
   const t = thread as Record<string, unknown>;
 
   const { data: messages, error: msgError } = await supabase
-    .from("comms_messages")
-    .select(
+.from("comms_messages")
+.select(
       "id, direction, from_email, from_name, to_emails, subject, snippet, body_text, occurred_at",
     )
-    .eq("thread_id", threadId)
-    .eq("organization_id", agent.organization_id)
-    .order("occurred_at", { ascending: true });
+.eq("thread_id", threadId)
+.eq("organization_id", agent.organization_id)
+.order("occurred_at", { ascending: true });
   if (msgError) throw Object.assign(new Error(msgError.message), { status: 500 });
 
   // Relationship context (observed/decided memory for drafting context)
   const { data: relationship } = await supabase
-    .from("comms_relationships")
-    .select(
+.from("comms_relationships")
+.select(
       "id, full_name, company_name, email, stage, met_where, next_action, observed, decided",
     )
-    .eq("id", t["relationship_id"] as string)
-    .eq("organization_id", agent.organization_id)
-    .maybeSingle();
+.eq("id", t["relationship_id"] as string)
+.eq("organization_id", agent.organization_id)
+.maybeSingle();
 
   return json({
     thread,
@@ -209,12 +209,12 @@ async function handleVoice(req: Request): Promise<Response> {
   const agent = await validateAgent(executionAgentId(req), "comms.read_voice");
 
   const { data: voice, error } = await supabase
-    .from("comms_voice_profiles")
-    .select("id, content_markdown, version, created_at")
-    .eq("organization_id", agent.organization_id)
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+.from("comms_voice_profiles")
+.select("id, content_markdown, version, created_at")
+.eq("organization_id", agent.organization_id)
+.order("version", { ascending: false })
+.limit(1)
+.maybeSingle();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
 
   if (!voice) {
@@ -249,17 +249,17 @@ async function handleDraft(req: Request): Promise<Response> {
   const agent = await validateAgent(executionAgentId(req), "comms.draft");
 
   const body = (await req.json()) as Record<string, unknown>;
-  const relationshipId = typeof body.relationship_id === "string" ? body.relationship_id.trim() : "";
-  const threadId = typeof body.thread_id === "string" && body.thread_id.trim() ? body.thread_id.trim() : null;
-  const intent = typeof body.intent === "string" ? body.intent.trim() : "";
-  const register = typeof body.register === "string" ? body.register.trim() : "follow_up";
-  const subject = typeof body.subject === "string" ? body.subject.trim() : null;
-  const draftBody = typeof body.body === "string" ? body.body.trim() : "";
+  const relationshipId = typeof body.relationship_id === "string" ? body.relationship_id.trim(): "";
+  const threadId = typeof body.thread_id === "string" && body.thread_id.trim() ? body.thread_id.trim(): null;
+  const intent = typeof body.intent === "string" ? body.intent.trim(): "";
+  const register = typeof body.register === "string" ? body.register.trim(): "follow_up";
+  const subject = typeof body.subject === "string" ? body.subject.trim(): null;
+  const draftBody = typeof body.body === "string" ? body.body.trim(): "";
   const rationale = (body.rationale && typeof body.rationale === "object" && !Array.isArray(body.rationale))
     ? body.rationale as Record<string, unknown>
-    : {};
-  const evidence = Array.isArray(body.evidence) ? body.evidence : [];
-  const voiceVersion = typeof body.voice_version === "number" ? body.voice_version : 1;
+: {};
+  const evidence = Array.isArray(body.evidence) ? body.evidence: [];
+  const voiceVersion = typeof body.voice_version === "number" ? body.voice_version: 1;
 
   if (!relationshipId || !intent || !draftBody) {
     return fail("relationship_id, intent, and body are required.", 400);
@@ -267,33 +267,33 @@ async function handleDraft(req: Request): Promise<Response> {
 
   // Verify relationship belongs to this org
   const { data: relationship, error: relError } = await supabase
-    .from("comms_relationships")
-    .select("id, organization_id")
-    .eq("id", relationshipId)
-    .eq("organization_id", agent.organization_id)
-    .maybeSingle();
+.from("comms_relationships")
+.select("id, organization_id")
+.eq("id", relationshipId)
+.eq("organization_id", agent.organization_id)
+.maybeSingle();
   if (relError) throw Object.assign(new Error(relError.message), { status: 500 });
   if (!relationship) return fail("Relationship not found in this organization.", 404);
 
   // If a thread is referenced, it must belong to the same org AND relationship.
   if (threadId) {
     const { data: thread } = await supabase
-      .from("comms_threads")
-      .select("id")
-      .eq("id", threadId)
-      .eq("organization_id", agent.organization_id)
-      .eq("relationship_id", relationshipId)
-      .maybeSingle();
+.from("comms_threads")
+.select("id")
+.eq("id", threadId)
+.eq("organization_id", agent.organization_id)
+.eq("relationship_id", relationshipId)
+.maybeSingle();
     if (!thread) return fail("Thread not found for this relationship.", 404);
   }
 
-  // Governance: always needs_human_review — agent cannot self-approve
+  // Governance: always needs_human_review, agent cannot self-approve
   const { data: draft, error } = await supabase
-    .from("comms_drafts")
-    .insert({
+.from("comms_drafts")
+.insert({
       organization_id: agent.organization_id,
       relationship_id: relationshipId,
-      ...(threadId ? { thread_id: threadId } : {}),
+...(threadId ? { thread_id: threadId }: {}),
       intent,
       register,
       subject,
@@ -301,7 +301,7 @@ async function handleDraft(req: Request): Promise<Response> {
       voice_version: voiceVersion,
       review_state: "needs_human_review",
       rationale: {
-        ...rationale,
+...rationale,
         source: "comms_agent",
         agent_id: agent.paperclip_agent_id,
         written_at: new Date().toISOString(),
@@ -309,8 +309,8 @@ async function handleDraft(req: Request): Promise<Response> {
       evidence,
       created_by: null, // agent, not a user
     })
-    .select("id, relationship_id, intent, register, subject, body, review_state, created_at")
-    .single();
+.select("id, relationship_id, intent, register, subject, body, review_state, created_at")
+.single();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
 
   return json({ draft, created: true });
@@ -333,7 +333,7 @@ async function handleDraft(req: Request): Promise<Response> {
  *   thread_id?: string (find-or-create when omitted)
  * }
  *
- * Governance: This records a message that ALREADY happened — it does NOT send.
+ * Governance: This records a message that ALREADY happened, it does NOT send.
  * direction="outbound" means "Tai already sent this; log it".
  */
 async function handleInjectMessage(req: Request): Promise<Response> {
@@ -341,22 +341,22 @@ async function handleInjectMessage(req: Request): Promise<Response> {
   const agent = await validateAgent(executionAgentId(req), "comms.inject_message");
 
   const body = (await req.json()) as Record<string, unknown>;
-  const relationshipId = typeof body.relationship_id === "string" ? body.relationship_id.trim() : "";
-  const channel = typeof body.channel === "string" && body.channel.trim() ? body.channel.trim() : "email";
-  const direction = body.direction === "outbound" ? "outbound" : "inbound";
-  const subject = typeof body.subject === "string" && body.subject.trim() ? body.subject.trim() : null;
-  const bodyText = typeof body.body_text === "string" ? body.body_text.trim() : "";
-  const fromName = typeof body.from_name === "string" && body.from_name.trim() ? body.from_name.trim() : null;
-  const fromEmail = typeof body.from_email === "string" && body.from_email.trim() ? body.from_email.trim() : null;
-  const snippet = typeof body.snippet === "string" && body.snippet.trim() ? body.snippet.trim() : bodyText.slice(0, 200);
+  const relationshipId = typeof body.relationship_id === "string" ? body.relationship_id.trim(): "";
+  const channel = typeof body.channel === "string" && body.channel.trim() ? body.channel.trim(): "email";
+  const direction = body.direction === "outbound" ? "outbound": "inbound";
+  const subject = typeof body.subject === "string" && body.subject.trim() ? body.subject.trim(): null;
+  const bodyText = typeof body.body_text === "string" ? body.body_text.trim(): "";
+  const fromName = typeof body.from_name === "string" && body.from_name.trim() ? body.from_name.trim(): null;
+  const fromEmail = typeof body.from_email === "string" && body.from_email.trim() ? body.from_email.trim(): null;
+  const snippet = typeof body.snippet === "string" && body.snippet.trim() ? body.snippet.trim(): bodyText.slice(0, 200);
   const occurredAt =
-    typeof body.occurred_at === "string" ? body.occurred_at : new Date().toISOString();
-  const inputThreadId = typeof body.thread_id === "string" && body.thread_id.trim() ? body.thread_id.trim() : null;
-  const provider = typeof body.provider === "string" && body.provider.trim() ? body.provider.trim() : "manual";
-  const providerThreadId = typeof body.provider_thread_id === "string" && body.provider_thread_id.trim() ? body.provider_thread_id.trim() : null;
+    typeof body.occurred_at === "string" ? body.occurred_at: new Date().toISOString();
+  const inputThreadId = typeof body.thread_id === "string" && body.thread_id.trim() ? body.thread_id.trim(): null;
+  const provider = typeof body.provider === "string" && body.provider.trim() ? body.provider.trim(): "manual";
+  const providerThreadId = typeof body.provider_thread_id === "string" && body.provider_thread_id.trim() ? body.provider_thread_id.trim(): null;
   const providerMessageId = typeof body.provider_message_id === "string" && body.provider_message_id.trim()
     ? body.provider_message_id.trim()
-    : `manual-${Date.now()}-${relationshipId.slice(0, 8)}`;
+: `manual-${Date.now()}-${relationshipId.slice(0, 8)}`;
 
   if (!relationshipId || !bodyText) {
     return fail("relationship_id and body_text are required.", 400);
@@ -364,11 +364,11 @@ async function handleInjectMessage(req: Request): Promise<Response> {
 
   // Verify relationship belongs to this org
   const { data: relationship, error: relError } = await supabase
-    .from("comms_relationships")
-    .select("id, organization_id, full_name, email")
-    .eq("id", relationshipId)
-    .eq("organization_id", agent.organization_id)
-    .maybeSingle();
+.from("comms_relationships")
+.select("id, organization_id, full_name, email")
+.eq("id", relationshipId)
+.eq("organization_id", agent.organization_id)
+.maybeSingle();
   if (relError) throw Object.assign(new Error(relError.message), { status: 500 });
   if (!relationship) return fail("Relationship not found in this organization.", 404);
 
@@ -378,40 +378,40 @@ async function handleInjectMessage(req: Request): Promise<Response> {
   let threadId = inputThreadId;
   if (threadId) {
     const { data: thread } = await supabase
-      .from("comms_threads")
-      .select("id")
-      .eq("id", threadId)
-      .eq("organization_id", agent.organization_id)
-      .eq("relationship_id", relationshipId)
-      .maybeSingle();
+.from("comms_threads")
+.select("id")
+.eq("id", threadId)
+.eq("organization_id", agent.organization_id)
+.eq("relationship_id", relationshipId)
+.maybeSingle();
     if (!thread) return fail("Thread not found for this relationship.", 404);
   } else {
     const { data: existingThread } = await supabase
-      .from("comms_threads")
-      .select("id")
-      .eq("relationship_id", relationshipId)
-      .eq("organization_id", agent.organization_id)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+.from("comms_threads")
+.select("id")
+.eq("relationship_id", relationshipId)
+.eq("organization_id", agent.organization_id)
+.order("updated_at", { ascending: false })
+.limit(1)
+.maybeSingle();
     threadId = (existingThread as { id?: string } | null)?.id ?? null;
 
     if (!threadId) {
       const { data: created, error: createError } = await supabase
-        .from("comms_threads")
-        .insert({
+.from("comms_threads")
+.insert({
           organization_id: agent.organization_id,
           relationship_id: relationshipId,
           channel,
-          state: direction === "inbound" ? "needs_reply" : "open",
+          state: direction === "inbound" ? "needs_reply": "open",
           subject: subject ?? "Manually injected conversation",
           last_message_at: occurredAt,
           response_due_at: direction === "inbound"
             ? new Date(Date.parse(occurredAt) + 2 * 86_400_000).toISOString()
-            : null,
+: null,
         })
-        .select("id")
-        .single();
+.select("id")
+.single();
       if (createError) throw Object.assign(new Error(createError.message), { status: 500 });
       threadId = (created as { id: string }).id;
     }
@@ -419,8 +419,8 @@ async function handleInjectMessage(req: Request): Promise<Response> {
 
   // Insert the message row (idempotent upsert on org+provider+provider_message_id)
   const { data: message, error } = await supabase
-    .from("comms_messages")
-    .upsert(
+.from("comms_messages")
+.upsert(
       {
         organization_id: agent.organization_id,
         relationship_id: relationshipId,
@@ -429,16 +429,16 @@ async function handleInjectMessage(req: Request): Promise<Response> {
         provider_message_id: providerMessageId,
         provider_thread_id: providerThreadId,
         direction,
-        from_email: fromEmail ?? (direction === "outbound" ? null : (rel["email"] as string | null)),
-        from_name: fromName ?? (direction === "outbound" ? "Tai" : (rel["full_name"] as string | null)),
-        to_emails: direction === "outbound" ? [rel["email"] ?? "tai@trusttai.com"] : ["tai@trusttai.com"],
+        from_email: fromEmail ?? (direction === "outbound" ? null: (rel["email"] as string | null)),
+        from_name: fromName ?? (direction === "outbound" ? "Tai": (rel["full_name"] as string | null)),
+        to_emails: direction === "outbound" ? [rel["email"] ?? "tai@trusttai.com"]: ["tai@trusttai.com"],
         cc_emails: [],
         subject,
         snippet,
         body_text: bodyText,
         occurred_at: occurredAt,
         provenance: {
-          source: provider === "gmail" ? "gmail_agent_sync" : "manual_injection",
+          source: provider === "gmail" ? "gmail_agent_sync": "manual_injection",
           injected_by: "comms_agent",
           agent_id: agent.paperclip_agent_id,
           logged_at: new Date().toISOString(),
@@ -446,11 +446,11 @@ async function handleInjectMessage(req: Request): Promise<Response> {
       },
       { onConflict: "organization_id,provider,provider_message_id", ignoreDuplicates: true },
     )
-    .select("id, thread_id, direction, subject, occurred_at")
-    .maybeSingle();
+.select("id, thread_id, direction, subject, occurred_at")
+.maybeSingle();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
 
-  // Duplicate (already synced) — idempotent no-op
+  // Duplicate (already synced), idempotent no-op
   if (message) {
     return json({
       message,
@@ -481,10 +481,10 @@ async function handleInjectMessage(req: Request): Promise<Response> {
     threadPatch["response_due_at"] = null;
   }
   await supabase
-    .from("comms_threads")
-    .update(threadPatch)
-    .eq("id", threadId)
-    .eq("organization_id", agent.organization_id);
+.from("comms_threads")
+.update(threadPatch)
+.eq("id", threadId)
+.eq("organization_id", agent.organization_id);
 
   const relPatch: Record<string, string | null> = {
     last_touch_at: occurredAt,
@@ -496,10 +496,10 @@ async function handleInjectMessage(req: Request): Promise<Response> {
     relPatch["response_due_at"] = null;
   }
   await supabase
-    .from("comms_relationships")
-    .update(relPatch)
-    .eq("id", relationshipId)
-    .eq("organization_id", agent.organization_id);
+.from("comms_relationships")
+.update(relPatch)
+.eq("id", relationshipId)
+.eq("organization_id", agent.organization_id);
 
   return json({
     message,
@@ -554,6 +554,6 @@ function toErrorResponse(error: unknown): Response {
     "status" in error &&
     typeof (error as { status: unknown }).status === "number"
       ? (error as { status: number }).status
-      : 500;
-  return fail(error instanceof Error ? error.message : "Capability call failed.", status);
+: 500;
+  return fail(error instanceof Error ? error.message: "Capability call failed.", status);
 }

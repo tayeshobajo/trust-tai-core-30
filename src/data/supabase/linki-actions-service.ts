@@ -1,5 +1,5 @@
 /**
- * Governed LinkedIn actions — the service layer.
+ * Governed LinkedIn actions, the service layer.
  *
  * The single funnel every approved-LinkedIn-action write passes through:
  * create (draft from Comms, pending Tai's approval) → approve (human boundary)
@@ -14,7 +14,7 @@
  *   - A failed action is terminal. `retry` creates a NEW row referencing the
  *     original; the original is never re-executed in place.
  *   - Daily caps are checked at CREATE (before Tai is asked to approve) and
- *     again at EXECUTE — the cap can be hit between those moments.
+ *     again at EXECUTE, the cap can be hit between those moments.
  */
 
 import { createHash } from "node:crypto";
@@ -39,7 +39,10 @@ import type { LinkiSendInput } from "@/lib/linki-execution.server";
 type Env = Record<string, string | undefined>;
 
 /** Seam for tests: the transport is injected, never imported here. */
-export type LinkiTransport = (input: LinkiSendInput, env?: Env) => Promise<{
+export type LinkiTransport = (
+  input: LinkiSendInput,
+  env?: Env,
+) => Promise<{
   receipt: LinkiExecutionReceipt;
 }>;
 
@@ -125,8 +128,7 @@ export interface CreateLinkiActionInput {
   parentActionId?: ID;
 }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function validateCreate(input: CreateLinkiActionInput, context: LinkiActionContext): void {
   const problems: string[] = [];
@@ -280,7 +282,7 @@ export function createLinkiActionService(
     if (typeof route !== "string" || route.trim().length === 0) {
       throw new LinkiActionError(
         "validation",
-        "This person has no confirmed LinkedIn route. Confirm identity first — Linki never guesses.",
+        "This person has no confirmed LinkedIn route. Confirm identity first. Linki never guesses.",
       );
     }
     return route.trim();
@@ -343,7 +345,12 @@ export function createLinkiActionService(
         throw new LinkiActionError("send_failed", `Could not save the action: ${error.message}`);
       }
       const action = toAction(data as Row);
-      await audit(action, context, action.status, `LinkedIn ${action.actionType} prepared for Tai's approval (draft from Comms).`);
+      await audit(
+        action,
+        context,
+        action.status,
+        `LinkedIn ${action.actionType} prepared for Tai's approval (draft from Comms).`,
+      );
       return action;
     },
 
@@ -376,7 +383,12 @@ export function createLinkiActionService(
         );
       }
       const updated = toAction(data as Row);
-      await audit(updated, context, action.status, `LinkedIn ${action.actionType} approved by Tai.`);
+      await audit(
+        updated,
+        context,
+        action.status,
+        `LinkedIn ${action.actionType} approved by Tai.`,
+      );
       return updated;
     },
 
@@ -384,7 +396,7 @@ export function createLinkiActionService(
      * Execute one approved action through Linki. THE ONLY SEND PATH.
      *
      * Guards, in order:
-     *   1. kill switch (LINKI_EXECUTION_ENABLED) — hard 503 when off
+     *   1. kill switch (LINKI_EXECUTION_ENABLED), hard 503 when off
      *   2. row status must be exactly `approved`
      *   3. caller must be the approver (the human who clicked)
      *   4. daily cap re-checked (it may have been hit since approval)
@@ -405,7 +417,11 @@ export function createLinkiActionService(
 
       const action = await byId(id, context.organizationId);
 
-      if (action.status === "executing" || action.status === "executed" || action.status === "verified") {
+      if (
+        action.status === "executing" ||
+        action.status === "executed" ||
+        action.status === "verified"
+      ) {
         return { action, alreadyDone: true };
       }
       if (action.status !== "approved") {
@@ -465,7 +481,7 @@ export function createLinkiActionService(
           .maybeSingle();
         if (error || !data) {
           // DANGER PATH: the send DID happen but the receipt could not be
-          // persisted. Marking this `failed` would invite a retry — and a
+          // persisted. Marking this `failed` would invite a retry, and a
           // retry uses a NEW idempotency key, so Linki would double-send.
           // Fail closed instead: the row stays in `executing`, which the
           // idempotency guard treats as already-done, and a human resolves
@@ -474,7 +490,7 @@ export function createLinkiActionService(
             executing,
             context,
             "executing",
-            "LinkedIn send SUCCEEDED but the receipt could not be saved. Row held in executing for manual review — do NOT retry blindly.",
+            "LinkedIn send SUCCEEDED but the receipt could not be saved. Row held in executing for manual review, do NOT retry blindly.",
             { receipt_unsaved: true, error: error?.message ?? "row vanished" },
           );
           throw new LinkiReceiptUnsavedError(
@@ -499,7 +515,10 @@ export function createLinkiActionService(
           .eq("id", id)
           .eq("organization_id", context.organizationId)
           .eq("status", "executing")
-          .then(() => undefined, () => undefined);
+          .then(
+            () => undefined,
+            () => undefined,
+          );
         const failed: ApprovedLinkedInAction = {
           ...executing,
           status: "failed",

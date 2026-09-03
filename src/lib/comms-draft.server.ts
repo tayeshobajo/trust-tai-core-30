@@ -3,14 +3,14 @@
  *
  * Spirit first. Reason first. Write second. Comms does not generate messages:
  * it makes a relationship-specific communication judgment over the governed
- * evidence — identity and stage, recorded memory, the live thread, open
- * commitments, and the writer's stated purpose — and then writes the one
+ * evidence, identity and stage, recorded memory, the live thread, open
+ * commitments, and the writer's stated purpose, and then writes the one
  * message that judgment requires. The judgment is persisted on the draft's
  * rationale so every draft carries its provenance.
  *
  * Tai's canonical relationship voice (TAI_RELATIONSHIP_VOICE) is the baseline
  * for every message. The org Voice DNA is the editable brand expression and
- * approved/sent examples are living style proof — both influence on top of
+ * approved/sent examples are living style proof, both influence on top of
  * the baseline, neither replaces it. Website/brand rules enter an ordinary
  * email only when the conversation itself calls for them.
  *
@@ -18,24 +18,20 @@
  *  - GROUNDING GATE: a real thread plus a known identity grounds a reply; a
  *    known identity plus one real prior interaction plus a reason grounds a
  *    proactive note. Below that bar drafting would mean inventing the reason,
- *    the facts, or the relationship — Comms says what is missing and creates
+ *    the facts, or the relationship. Comms says what is missing and creates
  *    nothing (assessDraftGrounding),
  *  - only observed facts and human decisions may be cited as fact;
  *    inferences may guide the angle, never appear as claims,
  *  - nothing is sent,
  *  - a sensitive register is always held for human review,
  *  - FAIL CLOSED: with no provider, a failed call, or an unreadable result,
- *    Comms says so and creates nothing. There is no mail-merge fallback —
- *    a fabricated generic draft impersonates intelligence.
+ *    Comms says so and creates nothing. There is no mail-merge fallback, *    a fabricated generic draft impersonates intelligence.
  *
  * Every read is made with the CALLER'S token, so RLS and the organization
  * boundary still apply. No service-role key is used.
  */
 
-import {
-  trustTaiSupabaseKey,
-  trustTaiSupabaseUrl,
-} from "@/lib/trust-tai-backend.server";
+import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 import { createClient } from "@supabase/supabase-js";
 
 import { checkVoice, requiresHumanReview, type VoiceVerdict } from "@/data/voice-policy";
@@ -45,9 +41,7 @@ import {
   TAI_RELATIONSHIP_VOICE,
   type VoiceRegister,
 } from "@/domain/voice";
-import {
-  COMMITMENT_CATEGORY,
-} from "@/domain/comms-interactions";
+import { COMMITMENT_CATEGORY } from "@/domain/comms-interactions";
 import {
   assessDraftGrounding,
   parseCommunicationJudgment,
@@ -123,7 +117,7 @@ export function classifyDraftAccessError(error: unknown): DraftFailure | null {
 
 /**
  * Map a transport failure to a typed draft failure, logging the safe detail
- * (the code and the provider's HTTP status — never keys, never bodies) so
+ * (the code and the provider's HTTP status, never keys, never bodies) so
  * production logs can tell a missing key from a provider refusal.
  */
 function toDraftFailure(error: unknown, stage: string): DraftFailure {
@@ -140,8 +134,8 @@ function toDraftFailure(error: unknown, stage: string): DraftFailure {
 
 /**
  * The honest refusal when drafting would require invention. Names the gaps
- * in plain language so the person knows exactly what to add — a real prior
- * interaction, a reason to write — instead of receiving a fabricated draft.
+ * in plain language so the person knows exactly what to add, a real prior
+ * interaction, a reason to write, instead of receiving a fabricated draft.
  */
 export function draftUngroundedMessage(missing: string[]): string {
   return `Comms can't draft this message without inventing ${missing.join(
@@ -204,7 +198,10 @@ interface MemoryRow {
   due?: unknown;
 }
 
-function memoryLines(value: unknown, tier: string): { label: string; value: string; tier: string }[] {
+function memoryLines(
+  value: unknown,
+  tier: string,
+): { label: string; value: string; tier: string }[] {
   if (!Array.isArray(value)) return [];
   return value
     .filter((entry): entry is MemoryRow => Boolean(entry) && typeof entry === "object")
@@ -270,9 +267,7 @@ async function loadThread(
       .filter((row) => row.direction === "inbound" || row.direction === "outbound")
       .map((row) => ({
         direction: row.direction as "inbound" | "outbound",
-        ...(typeof row.subject === "string" && row.subject.trim()
-          ? { subject: row.subject }
-          : {}),
+        ...(typeof row.subject === "string" && row.subject.trim() ? { subject: row.subject } : {}),
         ...(typeof row.snippet === "string" ? { snippet: row.snippet } : {}),
         ...(typeof row.body_text === "string" ? { bodyText: row.body_text } : {}),
         occurredAt: String(row.occurred_at ?? ""),
@@ -285,7 +280,7 @@ async function loadThread(
 
 /**
  * Voice evidence from how Tai actually communicated: the drafts a person
- * approved or sent, newest first. Real wording outranks style labels — this
+ * approved or sent, newest first. Real wording outranks style labels, this
  * is the Voice DNA's living proof, reused from the drafts table rather than
  * a parallel store.
  */
@@ -304,7 +299,10 @@ async function loadVoiceExamples(
   return ((data ?? []) as { subject?: unknown; body?: unknown }[])
     .map((row) => ({
       subject: String(row.subject ?? "").trim(),
-      excerpt: String(row.body ?? "").replace(/\s+/g, " ").trim().slice(0, 400),
+      excerpt: String(row.body ?? "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 400),
     }))
     .filter((row) => row.excerpt.length > 0);
 }
@@ -316,7 +314,7 @@ judgment a draft will be written from.
 Spirit first, the operational law: do not look for the fastest way to the next
 step. Look for the most human thing worth responding to.
 
-Reason in this order — Notice, Understand, Reflect, Build, then Decide:
+Reason in this order. Notice, Understand, Reflect, Build, then Decide:
 1. NOTICE the human signal in their latest message: generosity, pride, curiosity,
    relief, excitement, care, vulnerability, ambition, humor, frustration.
 2. UNDERSTAND what that signal says about them as a person.
@@ -334,7 +332,7 @@ must say which one:
 - a meeting would make their life easier right now,
 - the conversation has naturally arrived at that point.
 "Maintaining momentum", "building the relationship", and "staying connected"
-are NOT reasons — an ask whose only grounds is one of those fails the gate.
+are NOT reasons, an ask whose only grounds is one of those fails the gate.
 When no condition holds, shouldAsk is false. A warm acknowledgment, a specific
 observation, a natural question, or no ask at all is often the best move. A
 relationship can be moving even when there is no ask. Never treat "would you
@@ -343,7 +341,7 @@ be open to a call" as a default.
 Return strict JSON only:
 {
   "whyNow": "one plain sentence: why Tai is writing now, grounded in the evidence",
-  "latestHumanSignal": "the human signal in their latest message — what they just revealed, quoted or closely paraphrased",
+  "latestHumanSignal": "the human signal in their latest message, what they just revealed, quoted or closely paraphrased",
   "whatThisSaysAboutThem": "the quality or meaning underneath that signal",
   "whatDeservesAcknowledgment": "the specific thing to reflect back so they feel recognized, not praised",
   "threadToBuildOn": "the most interesting thing they just said that the reply can build on; empty when the right move is simply to close warmly",
@@ -355,7 +353,7 @@ Return strict JSON only:
     "what": "the proportionate ask, small and easy to decline; empty when shouldAsk is false"
   },
   "factsAllowed": ["evidence lines the draft may reference as fact"],
-  "factsAvoid": ["claims the draft must not state — inferred, unsupported, or invented"],
+  "factsAvoid": ["claims the draft must not state, inferred, unsupported, or invented"],
   "voiceEvidenceUsed": ["the canonical relationship-voice rules that govern this draft"],
   "learnedExamplesUsed": ["the approved examples that influenced the judgment; empty when none did"]
 }
@@ -364,7 +362,7 @@ Laws:
 1. Conversation before conversion. Do not advance the relationship because
    advancement is possible. Respond first to what the person just gave us.
 2. Make the person feel interesting, not merely praised. Generic compliments
-   fail; recognition is specific — something they revealed almost casually,
+   fail; recognition is specific, something they revealed almost casually,
    caught. They should feel recognized, never targeted.
 3. Use only the evidence provided. Never invent a fact, a name, a date, a
    shared history, or a personal detail. Thin evidence means a smaller
@@ -372,7 +370,7 @@ Laws:
 4. Inferred reads may shape your judgment but must land in factsAvoid, never
    factsAllowed.
 5. No forced momentum. When an ask does belong, it is small and easy to
-   decline — spaciousness, never pressure.
+   decline, spaciousness, never pressure.
 6. Ordinary email is not brand content. Roadmap language, proprietary
    frameworks, and positioning enter only when the conversation itself calls
    for them.
@@ -395,14 +393,14 @@ The canonical Tai relationship voice is the baseline for every message:
 
 Laws:
 1. The judgment governs. Reference only facts in factsAllowed. Never state anything in factsAvoid.
-2. If askDecision.shouldAsk is false, make no ask — no call, coffee, meeting,
+2. If askDecision.shouldAsk is false, make no ask, no call, coffee, meeting,
    "finding time", or scheduling nudge of any kind, however soft. The message
    acknowledges, answers, reflects, or continues; that is enough.
 3. Build on threadToBuildOn when it names one. When it is empty, a clean,
    warm close is the right shape.
 4. Hard rules: no em dashes, no exclamation marks, no 'just checking in' or 'touching base',
    no needy phrasing, no promises.
-5. Approved examples influence rhythm and texture only — they never override this baseline.
+5. Approved examples influence rhythm and texture only, they never override this baseline.
 6. Brand or website language enters only when the conversation calls for it.
 7. Short. Most messages earn 4 to 8 sentences before the signoff.
 8. Use the given salutation name only if a salutation is natural here; otherwise start plainly.
@@ -413,7 +411,7 @@ Laws:
 /**
  * Strict response formats for both passes. Pinning the schema server-side is
  * what makes a reply readable: without one the provider is asked for generic
- * json mode, which it may refuse outright — and every refusal used to
+ * json mode, which it may refuse outright, and every refusal used to
  * collapse into the same generic failure. Schemas follow the strict contract:
  * every property required, no optional keys, objects closed.
  */
@@ -489,10 +487,7 @@ const WRITE_RESPONSE_FORMAT: Record<string, unknown> = {
  * and a DraftFailure with a machine-readable code for every post-grounding
  * failure. A fabricated generic draft is never returned in either case.
  */
-export async function draftMessage(
-  token: string,
-  request: DraftRequest,
-): Promise<DraftResult> {
+export async function draftMessage(token: string, request: DraftRequest): Promise<DraftResult> {
   const supabase = callerClient(token);
 
   const { data: user, error: userError } = await supabase.auth.getUser();
@@ -542,8 +537,7 @@ export async function draftMessage(
 
   /* The grounding gate. A real thread plus a known identity grounds a reply;
      identity plus one real prior interaction plus a reason grounds a
-     proactive note. Below that bar the only honest outcome is no draft —
-     producing one would require inventing the reason, the facts, or the
+     proactive note. Below that bar the only honest outcome is no draft, producing one would require inventing the reason, the facts, or the
      relationship itself. Extra memory, commitments, and examples improve a
      grounded draft; they are never mandatory. */
   const grounding = assessDraftGrounding({
@@ -551,12 +545,9 @@ export async function draftMessage(
       fullName || String(row["email"] ?? "").trim() || String(row["company_name"] ?? "").trim(),
     ),
     threadHasInbound: thread.some((entry) => entry.direction === "inbound"),
-    priorInteractionCount:
-      thread.length + usedEvidence.length + (metWhere?.trim() ? 1 : 0),
+    priorInteractionCount: thread.length + usedEvidence.length + (metWhere?.trim() ? 1 : 0),
     hasReason: Boolean(
-      request.purpose?.trim() ||
-        String(row["next_action"] ?? "").trim() ||
-        commitments.length > 0,
+      request.purpose?.trim() || String(row["next_action"] ?? "").trim() || commitments.length > 0,
     ),
   });
   if (!grounding.grounded) throw new Error(draftUngroundedMessage(grounding.missing));
@@ -575,7 +566,7 @@ export async function draftMessage(
   /* The evidence packet keeps its provenance explicit: the canonical
      relationship voice is the baseline, relationship evidence is what may be
      said, the org Voice DNA is the editable brand expression, and approved
-     examples are learned style influence — layered, never merged. */
+     examples are learned style influence, layered, never merged. */
   const evidencePacket = {
     draftKind: grounding.kind,
     canonicalRelationshipVoice: [...TAI_RELATIONSHIP_VOICE],
@@ -613,7 +604,7 @@ export async function draftMessage(
   };
 
   /* From here the provider does the work, through the shared runtime
-     boundary. Every post-grounding failure is typed — the person keeps the
+     boundary. Every post-grounding failure is typed, the person keeps the
      calm sentence, the operator gets a machine-readable code in the response
      and the safe detail in the server log. Fail closed in all cases: a
      fabricated generic draft impersonates intelligence. */
@@ -655,7 +646,7 @@ export interface DraftPassInput {
 }
 
 /**
- * Judgment first, write second, deterministic voice pass last — over the
+ * Judgment first, write second, deterministic voice pass last, over the
  * caller the runtime boundary issued. Exported so the contract is testable
  * with a fake provider; production reaches it only through draftMessage,
  * after the grounding gate.
@@ -664,7 +655,7 @@ export async function executeDraftPasses(
   callModel: RuntimeModelCaller,
   input: DraftPassInput,
 ): Promise<DraftResult> {
-  // Pass one — reason. The judgment comes before any prose.
+  // Pass one, reason. The judgment comes before any prose.
   let reasoned: { raw: string; provider: string; model: string };
   try {
     reasoned = await callModel({
@@ -682,7 +673,7 @@ export async function executeDraftPasses(
     throw new DraftFailure("judgment_unreadable");
   }
 
-  // Pass two — write. The prose is generated FROM the judgment, never
+  // Pass two, write. The prose is generated FROM the judgment, never
   // alongside it.
   const writeInput = JSON.stringify({
     judgment,
@@ -703,9 +694,7 @@ export async function executeDraftPasses(
     }
   };
 
-  const readWritten = (
-    written: { raw: string },
-  ): { subject: string; body: string } => {
+  const readWritten = (written: { raw: string }): { subject: string; body: string } => {
     const parsed = safeJson(written.raw);
     if (!parsed) {
       console.error("[comms-draft] writing_unreadable: pass two returned no readable draft");
@@ -727,7 +716,7 @@ export async function executeDraftPasses(
 
   /* Ask-gate enforcement, deterministic. The judgment decided whether the
      conversation earned an ask; the model is never trusted to police itself.
-     When it snuck one in anyway, correct it once in plain language — and if
+     When it snuck one in anyway, correct it once in plain language, and if
      it still cannot honor the judgment, fail honestly rather than return a
      draft that reads the room worse than the judgment did. */
   if (!judgment.askDecision.shouldAsk) {
@@ -740,7 +729,7 @@ export async function executeDraftPasses(
         `${WRITE_INSTRUCTIONS}
 
 Correction: the judgment decided NO ask belongs in this message, but the previous
-attempt asked for time ("${snuck}"). Write again with no ask of any kind — no call,
+attempt asked for time ("${snuck}"). Write again with no ask of any kind, no call,
 coffee, meeting, or finding time, however softly phrased. Acknowledge, reflect, build
 on the thread, and close.`,
       );

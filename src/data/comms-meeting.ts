@@ -4,7 +4,7 @@
  * A meeting agreed in an email is a promise, so it is recorded exactly like
  * one: a dated commitment on the relationship's own memory, with the message
  * it came from as its evidence. The Plan tab then reads it like every other
- * plan item — no second calendar, no separate meeting table, nothing the Plan
+ * plan item, no second calendar, no separate meeting table, nothing the Plan
  * view has to be taught about.
  */
 

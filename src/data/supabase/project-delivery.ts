@@ -179,7 +179,6 @@ export const projectDelivery = {
     return (data ?? []).map((row) => toWorkItem(row as Row));
   },
 
-
   async addWork(input: WorkItemInput, context: DeliveryContext): Promise<WorkItem> {
     const { data, error } = await supabase
       .from("project_work_items")
@@ -201,9 +200,14 @@ export const projectDelivery = {
       .single();
     if (error || !data) fail("That work item could not be added.", error);
     const item = toWorkItem(data as Row);
-    await record(context, "project.next_move_changed", `${item.title} was added to the work list.`, {
-      work_item_id: item.id,
-    });
+    await record(
+      context,
+      "project.next_move_changed",
+      `${item.title} was added to the work list.`,
+      {
+        work_item_id: item.id,
+      },
+    );
     return item;
   },
 

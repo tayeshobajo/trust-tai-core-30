@@ -43,8 +43,7 @@ export const Route = createFileRoute("/api/internal/execution/scout/prospect")({
           if (!companyName || !websiteUrl || !whySourced || !idempotencyKey) {
             return Response.json(
               {
-                error:
-                  "company_name, website_url, why_sourced, and idempotency_key are required.",
+                error: "company_name, website_url, why_sourced, and idempotency_key are required.",
               },
               { status: 400 },
             );

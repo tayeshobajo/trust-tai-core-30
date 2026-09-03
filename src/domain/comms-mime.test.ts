@@ -26,9 +26,7 @@ describe("validateAttachments", () => {
   });
 
   it("names the file that is too large", () => {
-    const errors = validateAttachments([
-      { filename: "huge.zip", size: MAX_ATTACHMENT_BYTES + 1 },
-    ]);
+    const errors = validateAttachments([{ filename: "huge.zip", size: MAX_ATTACHMENT_BYTES + 1 }]);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain("huge.zip");
   });
@@ -119,7 +117,7 @@ describe("replySubject", () => {
 });
 
 describe("deterministicMessageId", () => {
-  it("is stable per draft — a retried send is recognizable", () => {
+  it("is stable per draft, a retried send is recognizable", () => {
     expect(deterministicMessageId("draft-1")).toBe(deterministicMessageId("draft-1"));
     expect(deterministicMessageId("draft-1")).toContain("draft-1");
     expect(deterministicMessageId("draft-1")).not.toBe(deterministicMessageId("draft-2"));
@@ -203,14 +201,13 @@ describe("encodeRawEmail", () => {
       from: "tai@trust-tai.com",
       to: ["dana@x.com"],
       subject: "Grüße aus Nashville",
-      bodyText: "Line one\nLine two — with unicode ✓",
+      bodyText: "Line one\nLine two, with unicode ✓",
     });
     const encoded = encodeRawEmail(raw);
     expect(encoded).not.toMatch(/[+/=]/);
-    const decoded = Buffer.from(
-      encoded.replace(/-/g, "+").replace(/_/g, "/"),
-      "base64",
-    ).toString("utf8");
+    const decoded = Buffer.from(encoded.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString(
+      "utf8",
+    );
     expect(decoded).toBe(raw);
   });
 });

@@ -101,10 +101,14 @@ export function roadmapHandoffReadiness(
     `${subject} as the roadmap subject, by reference`,
     `Comms stage: ${relationship.stage.replace(/_/g, " ")}`,
     ...(relationship.observed.length > 0
-      ? [`${relationship.observed.length} observed note${relationship.observed.length === 1 ? "" : "s"}`]
+      ? [
+          `${relationship.observed.length} observed note${relationship.observed.length === 1 ? "" : "s"}`,
+        ]
       : []),
     ...(decided
-      ? [`${relationship.decided.length} decision${relationship.decided.length === 1 ? "" : "s"} a person made`]
+      ? [
+          `${relationship.decided.length} decision${relationship.decided.length === 1 ? "" : "s"} a person made`,
+        ]
       : []),
     ...(relationship.prospectId ? ["The Scout prospect it came from"] : []),
   ];

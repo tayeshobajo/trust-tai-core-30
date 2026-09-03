@@ -24,11 +24,7 @@ import {
   type ProjectTab,
 } from "@/components/tt/projects/detail/frame";
 import { OverviewTab } from "@/components/tt/projects/detail/overview";
-import {
-  AssetsTab,
-  ContextTab,
-  KnowledgeTab,
-} from "@/components/tt/projects/detail/intelligence";
+import { AssetsTab, ContextTab, KnowledgeTab } from "@/components/tt/projects/detail/intelligence";
 import { DetailRail } from "@/components/tt/projects/detail/rail";
 import {
   ActivityTab,
@@ -100,13 +96,7 @@ function ProjectRoute() {
   );
 }
 
-function DeliveryRoom({
-  identity,
-  projectId,
-}: {
-  identity: WorkspaceIdentity;
-  projectId: string;
-}) {
+function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; projectId: string }) {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<ProjectTab>("overview");
   const [updating, setUpdating] = useState(false);
@@ -591,14 +581,12 @@ function DeliveryRoom({
               items={items}
               blockers={blockers}
               busy={busy}
-              onRaise={(input) => mutate.mutate(() => projectDelivery.raiseBlocker(input, delivery))}
+              onRaise={(input) =>
+                mutate.mutate(() => projectDelivery.raiseBlocker(input, delivery))
+              }
               onResolve={(blocker, resolution, resumeWork) =>
                 mutate.mutate(async () => {
-                  const saved = await projectDelivery.resolveBlocker(
-                    blocker,
-                    resolution,
-                    delivery,
-                  );
+                  const saved = await projectDelivery.resolveBlocker(blocker, resolution, delivery);
                   // Clearing a blocker may put its work item back in motion. Roadmap
                   // truth is untouched: only the delivery record moves.
                   const linked = blocker.workItemId

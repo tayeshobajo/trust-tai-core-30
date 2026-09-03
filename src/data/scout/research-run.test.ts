@@ -26,14 +26,22 @@ const coverage = (checkedCount: number) =>
 
 describe("planning a research run", () => {
   it("refuses to plan anything while permission is unsettled", () => {
-    const plan = planResearchRun({ coverage: coverage(0), permission: blocked, lastResearchedAt: null });
+    const plan = planResearchRun({
+      coverage: coverage(0),
+      permission: blocked,
+      lastResearchedAt: null,
+    });
     expect(plan.allowed).toBe(false);
     expect(plan.mode).toBe("blocked");
     expect(plan.blockedBecause).toMatch(/settled|permission|consent/i);
   });
 
   it("calls a first pass initial, not a re-run", () => {
-    const plan = planResearchRun({ coverage: coverage(0), permission: allowed, lastResearchedAt: null });
+    const plan = planResearchRun({
+      coverage: coverage(0),
+      permission: allowed,
+      lastResearchedAt: null,
+    });
     expect(plan.mode).toBe("initial");
     expect(plan.allowed).toBe(true);
   });
@@ -64,6 +72,9 @@ describe("merging observations", () => {
   });
 
   it("reports which areas a pass actually covered", () => {
-    expect(areasCovered([rows("a"), rows("b", "search")])).toEqual(["Website / positioning", "Search visibility"]);
+    expect(areasCovered([rows("a"), rows("b", "search")])).toEqual([
+      "Website / positioning",
+      "Search visibility",
+    ]);
   });
 });

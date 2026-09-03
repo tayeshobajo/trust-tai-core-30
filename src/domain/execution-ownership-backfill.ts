@@ -141,7 +141,9 @@ export function describeBackfillPlan(plan: OwnershipBackfillPlan): string {
     );
   }
   if (plan.counts.links > 0) {
-    parts.push(`${plan.counts.links} open ${plan.counts.links === 1 ? "handoff points" : "handoffs point"} at the wrong room`);
+    parts.push(
+      `${plan.counts.links} open ${plan.counts.links === 1 ? "handoff points" : "handoffs point"} at the wrong room`,
+    );
   }
   return `${parts.join(", and ")}. ${plan.counts.frozen > 0 ? `${plan.counts.frozen} settled ${plan.counts.frozen === 1 ? "handoff stays" : "handoffs stay"} as history.` : ""}`.trim();
 }

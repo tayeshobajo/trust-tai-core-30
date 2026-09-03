@@ -41,9 +41,9 @@ import { Route as ModulesCommsDashboardRouteImport } from './routes/modules.comm
 import { Route as ModulesCommsInboxRouteImport } from './routes/modules.comms.inbox'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsPlanRouteImport } from './routes/modules.comms.plan'
+import { Route as ModulesCommsQueueRouteImport } from './routes/modules.comms.queue'
 import { Route as ModulesCommsToScoutRouteImport } from './routes/modules.comms.to-scout'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
-import { Route as ModulesCommsQueueRouteImport } from './routes/modules.comms.queue'
 import { Route as ModulesProjectsIndexRouteImport } from './routes/modules.projects.index'
 import { Route as ModulesProjectsProjectIdRouteImport } from './routes/modules.projects.$projectId'
 import { Route as ModulesRoadmapIndexRouteImport } from './routes/modules.roadmap.index'
@@ -249,14 +249,14 @@ const ModulesCommsPlanRoute = ModulesCommsPlanRouteImport.update({
   path: '/plan',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
-const ModulesCommsToScoutRoute = ModulesCommsToScoutRouteImport.update({
-  id: '/to-scout',
-  path: '/to-scout',
-  getParentRoute: () => ModulesCommsRoute,
-} as any)
 const ModulesCommsQueueRoute = ModulesCommsQueueRouteImport.update({
   id: '/queue',
   path: '/queue',
+  getParentRoute: () => ModulesCommsRoute,
+} as any)
+const ModulesCommsToScoutRoute = ModulesCommsToScoutRouteImport.update({
+  id: '/to-scout',
+  path: '/to-scout',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
 const ModulesCommsVoiceRoute = ModulesCommsVoiceRouteImport.update({
@@ -533,8 +533,8 @@ export interface FileRoutesByFullPath {
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
-  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
@@ -607,8 +607,8 @@ export interface FileRoutesByTo {
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
-  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
@@ -687,8 +687,8 @@ export interface FileRoutesById {
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
-  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
@@ -769,6 +769,7 @@ export interface FileRouteTypes {
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
+    | '/modules/comms/queue'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -842,6 +843,7 @@ export interface FileRouteTypes {
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
+    | '/modules/comms/queue'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -920,6 +922,7 @@ export interface FileRouteTypes {
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
+    | '/modules/comms/queue'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -1239,6 +1242,13 @@ declare module '@tanstack/react-router' {
       path: '/plan'
       fullPath: '/modules/comms/plan'
       preLoaderRoute: typeof ModulesCommsPlanRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
+    '/modules/comms/queue': {
+      id: '/modules/comms/queue'
+      path: '/queue'
+      fullPath: '/modules/comms/queue'
+      preLoaderRoute: typeof ModulesCommsQueueRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
     '/modules/comms/to-scout': {
@@ -1606,8 +1616,8 @@ interface ModulesCommsRouteChildren {
   ModulesCommsInboxRoute: typeof ModulesCommsInboxRoute
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsPlanRoute: typeof ModulesCommsPlanRoute
-  ModulesCommsToScoutRoute: typeof ModulesCommsToScoutRoute
   ModulesCommsQueueRoute: typeof ModulesCommsQueueRoute
+  ModulesCommsToScoutRoute: typeof ModulesCommsToScoutRoute
   ModulesCommsVoiceRoute: typeof ModulesCommsVoiceRoute
   ModulesCommsIndexRoute: typeof ModulesCommsIndexRoute
 }
@@ -1617,8 +1627,8 @@ const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
   ModulesCommsInboxRoute: ModulesCommsInboxRoute,
   ModulesCommsIntegrationsRoute: ModulesCommsIntegrationsRoute,
   ModulesCommsPlanRoute: ModulesCommsPlanRoute,
-  ModulesCommsToScoutRoute: ModulesCommsToScoutRoute,
   ModulesCommsQueueRoute: ModulesCommsQueueRoute,
+  ModulesCommsToScoutRoute: ModulesCommsToScoutRoute,
   ModulesCommsVoiceRoute: ModulesCommsVoiceRoute,
   ModulesCommsIndexRoute: ModulesCommsIndexRoute,
 }

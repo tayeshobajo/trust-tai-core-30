@@ -75,9 +75,7 @@ export function LearningTrailPanel({ trail }: { trail: LearningTrail }) {
           {trail.entries.length > FIRST_SHOWN ? (
             <div className="mt-4">
               <TTButton variant="quiet" onClick={() => setExpanded((value) => !value)}>
-                {expanded
-                  ? "Show fewer"
-                  : `Show all ${trail.entries.length} decisions`}
+                {expanded ? "Show fewer" : `Show all ${trail.entries.length} decisions`}
               </TTButton>
             </div>
           ) : null}
@@ -90,17 +88,14 @@ export function LearningTrailPanel({ trail }: { trail: LearningTrail }) {
                   {trail.suppressed.map((item) => (
                     <li key={item.patternKey} className="text-sm text-muted-foreground">
                       {item.label}
-                      <span className="text-xs">
-                        {" "}
-                        · dismissed {item.dismissals} times
-                      </span>
+                      <span className="text-xs"> · dismissed {item.dismissals} times</span>
                     </li>
                   ))}
                 </ul>
               ) : (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Nothing is suppressed. {trail.suppressionThreshold} dismissals of the same
-                  reading stop it being raised.
+                  Nothing is suppressed. {trail.suppressionThreshold} dismissals of the same reading
+                  stop it being raised.
                 </p>
               )}
             </div>
@@ -110,16 +105,18 @@ export function LearningTrailPanel({ trail }: { trail: LearningTrail }) {
               {trail.adopted.length > 0 ? (
                 <ul className="mt-2 space-y-2">
                   {trail.adopted.map((item) => (
-                    <li key={`${item.at}-${item.statement}`} className="text-sm text-muted-foreground">
-                      “{item.statement}”
-                      <span className="text-xs"> · {when(item.at)}</span>
+                    <li
+                      key={`${item.at}-${item.statement}`}
+                      className="text-sm text-muted-foreground"
+                    >
+                      “{item.statement}”<span className="text-xs"> · {when(item.at)}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  You have not rewritten a reading yet. When you do, inference will not
-                  contradict it.
+                  You have not rewritten a reading yet. When you do, inference will not contradict
+                  it.
                 </p>
               )}
             </div>
@@ -127,9 +124,8 @@ export function LearningTrailPanel({ trail }: { trail: LearningTrail }) {
 
           {trail.favoured.length > 0 ? (
             <p className="mt-6 text-xs text-muted-foreground">
-              Offered earlier when they recur:{" "}
-              {trail.favoured.map((item) => item.label).join(", ")}. Ordering only, accepting
-              something never makes the engine more certain about it.
+              Offered earlier when they recur: {trail.favoured.map((item) => item.label).join(", ")}
+              . Ordering only, accepting something never makes the engine more certain about it.
             </p>
           ) : null}
         </>

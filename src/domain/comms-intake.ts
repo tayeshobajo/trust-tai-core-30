@@ -3,7 +3,7 @@
  *
  * The doctrine: applying the exact `Trust Tai/Comms` Gmail label IS the human
  * approval to bring that correspondent into Comms. Nothing here reads Gmail
- * or writes Supabase — it decides, from one already-labeled message, WHO the
+ * or writes Supabase, it decides, from one already-labeled message, WHO the
  * counterpart is, and refuses to guess when a thread cannot be resolved
  * safely.
  *
@@ -40,7 +40,7 @@ export interface IntakeMessageLike {
 
 export type IntakeCounterpart =
   | { kind: "person"; email: string; name?: string }
-  /** Nothing human on the far side — machine mail, or the mailbox alone. */
+  /** Nothing human on the far side, machine mail, or the mailbox alone. */
   | { kind: "none" }
   /** Several possible counterparts; a human decides which, if any. */
   | { kind: "ambiguous"; emails: string[] };
@@ -86,7 +86,7 @@ export type IntakeExceptionReason = "ambiguous_thread" | "create_failed";
 
 /**
  * One labeled message Comms could not bring in on its own. Stored on the
- * connection cursor — no new schema — and surfaced as "Needs your decision".
+ * connection cursor, no new schema, and surfaced as "Needs your decision".
  */
 export interface IntakeException {
   reason: IntakeExceptionReason;
@@ -153,7 +153,7 @@ export function intakeExceptionToJson(entry: IntakeException): Record<string, un
  * Fold this pass's exceptions into what was already recorded. Same message,
  * same exception: the newer observation replaces the older one, so a resolved
  * thread never lingers twice and a repeated sync never grows the queue.
- * `resolved` names messages that came in successfully this pass — they leave
+ * `resolved` names messages that came in successfully this pass, they leave
  * the queue.
  */
 export function mergeIntakeExceptions(

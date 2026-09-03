@@ -49,9 +49,7 @@ export function FathomSyncControl({
   const refresh = useMutation({
     mutationFn: async () => {
       const state = await source.refetch({ throwOnError: true });
-      await Promise.all(
-        refreshKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      await Promise.all(refreshKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
       return state.data;
     },
     onSuccess: () => setCheckedAt(new Date().toISOString()),

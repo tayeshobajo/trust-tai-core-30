@@ -46,15 +46,31 @@ describe("opsPortfolio", () => {
     expect(system.health).toBe("healthy");
     expect(system.company).toBeUndefined();
     expect(system.environment).toBeUndefined();
-    expect(system.latestRun).toEqual({ label: "qa passed", at: "2026-08-04T10:00:00Z", passed: true });
+    expect(system.latestRun).toEqual({
+      label: "qa passed",
+      at: "2026-08-04T10:00:00Z",
+      passed: true,
+    });
   });
 
   it("filters by search and health", () => {
     const portfolio = opsPortfolio([
-      event({ name: "ops.blocked", at: "2026-08-05T10:00:00Z", chainKey: "a", subjectLabel: "Alpha" }),
-      event({ name: "ops.completed", at: "2026-08-05T11:00:00Z", chainKey: "b", subjectLabel: "Beta" }),
+      event({
+        name: "ops.blocked",
+        at: "2026-08-05T10:00:00Z",
+        chainKey: "a",
+        subjectLabel: "Alpha",
+      }),
+      event({
+        name: "ops.completed",
+        at: "2026-08-05T11:00:00Z",
+        chainKey: "b",
+        subjectLabel: "Beta",
+      }),
     ]);
-    expect(filterOpsSystems(portfolio.systems, { ...EMPTY_OPS_FILTERS, query: "beta" })).toHaveLength(1);
+    expect(
+      filterOpsSystems(portfolio.systems, { ...EMPTY_OPS_FILTERS, query: "beta" }),
+    ).toHaveLength(1);
     expect(
       filterOpsSystems(portfolio.systems, { ...EMPTY_OPS_FILTERS, health: "incident" })[0]!.name,
     ).toBe("Alpha");

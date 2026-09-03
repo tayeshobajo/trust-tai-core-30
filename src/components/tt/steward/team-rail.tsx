@@ -41,16 +41,14 @@ export function TeamRail({
   /** True when the rail sits under the checklist on narrow screens. */
   stacked?: boolean;
 }) {
-  const approvals = agents?.agents.reduce((total, agent) => total + agent.awaitingApproval.length, 0) ?? 0;
-  const needsTai =
-    unownedCount > 0 || overdueTasks.length > 0 || approvals > 0;
+  const approvals =
+    agents?.agents.reduce((total, agent) => total + agent.awaitingApproval.length, 0) ?? 0;
+  const needsTai = unownedCount > 0 || overdueTasks.length > 0 || approvals > 0;
 
   return (
     <aside
       className={
-        stacked
-          ? "grid gap-4 sm:grid-cols-2 lg:sticky lg:top-6 lg:grid-cols-1"
-          : "space-y-4"
+        stacked ? "grid gap-4 sm:grid-cols-2 lg:sticky lg:top-6 lg:grid-cols-1" : "space-y-4"
       }
     >
       <RailCard title="Team at a glance">
@@ -82,7 +80,8 @@ export function TeamRail({
                   onClick={onReviewOverdue}
                   className="text-left text-sm text-foreground hover:underline"
                 >
-                  {overdueTasks.length} promise{overdueTasks.length === 1 ? "" : "s"} past their date
+                  {overdueTasks.length} promise{overdueTasks.length === 1 ? "" : "s"} past their
+                  date
                 </button>
               </li>
             ) : null}

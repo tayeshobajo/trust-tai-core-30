@@ -44,10 +44,7 @@ export async function emitSuiteEvent(input: SuiteEventInput): Promise<ActivityEv
 }
 
 /** Read the shared stream, newest first. Organization scoped by RLS. */
-export async function readSuiteEvents(
-  organizationId: ID,
-  limit = 40,
-): Promise<ActivityEvent[]> {
+export async function readSuiteEvents(organizationId: ID, limit = 40): Promise<ActivityEvent[]> {
   try {
     return await supabaseActivity.list({ organizationId, limit });
   } catch {

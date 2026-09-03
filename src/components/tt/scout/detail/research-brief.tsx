@@ -139,9 +139,7 @@ export function ResearchHeader({
             {researchedAt ? `Last researched ${relativeTime(researchedAt)}` : "Never researched"}
           </MetaPill>
         </div>
-        <p className="mt-2 max-w-reading text-[13px] text-muted-foreground">
-          {permission.because}
-        </p>
+        <p className="mt-2 max-w-reading text-[13px] text-muted-foreground">{permission.because}</p>
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
           <TTButton
@@ -206,10 +204,7 @@ export function CoverageStrip({
       />
       <ul className="grid gap-2 sm:grid-cols-2">
         {areas.map((area) => (
-          <li
-            key={area.key}
-            className="rounded-lg border border-border bg-card px-3.5 py-2.5"
-          >
+          <li key={area.key} className="rounded-lg border border-border bg-card px-3.5 py-2.5">
             <div className="flex items-center gap-2">
               <span className="text-[13px] font-medium text-foreground">{area.label}</span>
               <span
@@ -222,7 +217,9 @@ export function CoverageStrip({
               </span>
             </div>
             <p className="mt-1 text-[12px] text-muted-foreground">
-              {area.checked ? (area.evidence?.statement ?? "Read from a public page.") : area.looksFor}
+              {area.checked
+                ? (area.evidence?.statement ?? "Read from a public page.")
+                : area.looksFor}
             </p>
           </li>
         ))}
@@ -325,7 +322,7 @@ export function RerunPanel({
                 <li key={target.key} className="text-[13px] text-foreground">
                   {target.label}{" "}
                   <span className="text-muted-foreground">
-                    — {target.reason === "never_checked" ? "never checked" : "older than 30 days"}
+                    {target.reason === "never_checked" ? "never checked" : "older than 30 days"}
                   </span>
                 </li>
               ))}
@@ -347,7 +344,11 @@ export function RerunPanel({
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <TTButton className="h-10 px-4 text-[13px]" disabled={busy || !plan.allowed} onClick={onRun}>
+        <TTButton
+          className="h-10 px-4 text-[13px]"
+          disabled={busy || !plan.allowed}
+          onClick={onRun}
+        >
           Update missing evidence
         </TTButton>
         <TTButton
@@ -428,7 +429,10 @@ export function EvidenceLanes({
                 ) : (
                   <ul className="mt-1.5 space-y-1.5">
                     {theme.stated.map((statement, index) => (
-                      <li key={index} className="flex items-start gap-2 text-[14px] text-foreground">
+                      <li
+                        key={index}
+                        className="flex items-start gap-2 text-[14px] text-foreground"
+                      >
                         <Quote className="mt-1 h-3.5 w-3.5 shrink-0 text-royal" aria-hidden />
                         {statement}
                       </li>
@@ -460,7 +464,7 @@ export function EvidenceLanes({
                   <ul className="mt-1.5 space-y-1.5">
                     {theme.inferred.map((read, index) => (
                       <li key={index} className="text-[13px] text-muted-foreground">
-                        <span className="text-foreground">{read.statement}</span> — {read.because}{" "}
+                        <span className="text-foreground">{read.statement}</span>, {read.because}{" "}
                         <span className="font-mono text-[10px] uppercase tracking-[0.12em]">
                           {read.confidence} confidence
                         </span>
@@ -481,7 +485,7 @@ export function EvidenceLanes({
                   <ul className="mt-1.5 space-y-1.5">
                     {theme.suggested.map((move, index) => (
                       <li key={index} className="text-[13px] text-muted-foreground">
-                        <span className="text-foreground">{move.statement}</span> — {move.because}
+                        <span className="text-foreground">{move.statement}</span>, {move.because}
                         <AuditTrail audit={auditForSuggested(move, observed)} />
                       </li>
                     ))}
@@ -569,12 +573,18 @@ export function ResearchSources({ observed }: { observed: ScoutSignal[] }) {
             className="inline-flex items-center gap-1.5 text-[13px] text-royal hover:underline"
           >
             {open ? "Hide the evidence" : "Show the evidence"}
-            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} aria-hidden />
+            <ChevronDown
+              className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
+              aria-hidden
+            />
           </button>
           {open ? (
             <ul className="mt-3 space-y-2">
               {observed.map((signal) => (
-                <li key={signal.id} className="rounded-lg border border-border bg-card px-3.5 py-2.5">
+                <li
+                  key={signal.id}
+                  className="rounded-lg border border-border bg-card px-3.5 py-2.5"
+                >
                   <p className="text-[13px] text-foreground">{signal.statement}</p>
                   <p className="mt-1 flex flex-wrap items-center gap-3 font-mono text-[11px] text-muted-foreground">
                     <span>{signal.provenance.appId}</span>

@@ -28,12 +28,7 @@ export function AppHero({
   className?: string;
 }) {
   return (
-    <header
-      className={cn(
-        "tt-rise tt-level-secondary overflow-hidden rounded-2xl",
-        className,
-      )}
-    >
+    <header className={cn("tt-rise tt-level-secondary overflow-hidden rounded-2xl", className)}>
       <AmbientRule appId={appId} />
       <AmbientSurface appId={appId} className="px-6 py-7 sm:px-8 sm:py-8">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-6">

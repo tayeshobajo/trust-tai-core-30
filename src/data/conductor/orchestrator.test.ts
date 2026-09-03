@@ -2,8 +2,7 @@
  * Conductor V2 acceptance: approval is not execution.
  *
  * These tests exercise the pure control layer and the orchestrator's gates
- * with a stub adapter and a stubbed ledger, so they assert the *rules* —
- * approval, selectivity, dependency order, permission, idempotency — without
+ * with a stub adapter and a stubbed ledger, so they assert the *rules*, * approval, selectivity, dependency order, permission, idempotency, without
  * touching Supabase or any room's real service.
  */
 

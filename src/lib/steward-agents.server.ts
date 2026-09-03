@@ -80,7 +80,9 @@ function boundariesOf(metadata: Record<string, unknown> | null): string[] {
   return [...extra, ...UNIVERSAL_BOUNDARIES];
 }
 
-function toRoutine(r: import("@/lib/paperclip-client.server").PaperclipRoutine): StewardAgentRoutine {
+function toRoutine(
+  r: import("@/lib/paperclip-client.server").PaperclipRoutine,
+): StewardAgentRoutine {
   return {
     id: r.id,
     title: r.title,
@@ -170,9 +172,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
   let firstFailure: string | null = null;
 
   // Build map from reconcile results for fast lookup
-  const reconcileMap = new Map(
-    reconcileResult.agents.map((r) => [r.agentId, r]),
-  );
+  const reconcileMap = new Map(reconcileResult.agents.map((r) => [r.agentId, r]));
 
   for (const record of records) {
     const paperclipAgentId = String(record["paperclip_agent_id"] ?? "");
@@ -204,8 +204,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       lastHeartbeatAt: (record["last_heartbeat_at"] as string | null) ?? null,
 
       isPaused:
-        Boolean(record["paused_at"]) ||
-        String(record["last_known_status"] ?? "") === "paused",
+        Boolean(record["paused_at"]) || String(record["last_known_status"] ?? "") === "paused",
     };
     // Projection freshness: when live Paperclip is unreachable (e.g. production
     // while Paperclip runs laptop-local), hydrate lifecycle from the reconcile
@@ -232,7 +231,9 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
           limit: 20,
           status: ["done"],
         });
-      } catch { /* non-fatal */ }
+      } catch {
+        /* non-fatal */
+      }
 
       // Fetch comments for the most recent active/done issue (activity timeline)
       let activityTimeline: StewardAgentActivityItem[] = [];
@@ -245,7 +246,9 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
             .filter((c) => !c.deletedAt)
             .slice(0, 10)
             .map(toActivityItem);
-        } catch { /* non-fatal */ }
+        } catch {
+          /* non-fatal */
+        }
       }
 
       agents.push({
@@ -280,7 +283,9 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
         consecutiveFailures: agentState.consecutiveFailures,
       };
     }
-  } catch { /* non-fatal */ }
+  } catch {
+    /* non-fatal */
+  }
 
   return {
     agents,
@@ -289,7 +294,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
     because: reachable
       ? `${agents.length} agent${agents.length === 1 ? "" : "s"} registered. Paperclip \u00b7 live.`
       : connectionLine(syncHealth?.lastSuccessAt ?? null),
-    liveFailureDetail: reachable ? null : firstFailure
+    liveFailureDetail: reachable ? null : firstFailure,
   };
 }
 
@@ -320,7 +325,7 @@ export async function assignPaperclipTask(input: {
   const agent = await paperclipClient.getAgent(input.agentId);
 
   // Record the binding first. `recordBinding` returns the existing record if
-  // the idempotency key already exists — no duplicate Paperclip issue created.
+  // the idempotency key already exists, no duplicate Paperclip issue created.
   const binding = await recordBinding({
     organizationId: input.organizationId,
     sourceApp: input.sourceApp ?? "steward",
@@ -333,7 +338,7 @@ export async function assignPaperclipTask(input: {
     idempotencyKey,
   });
 
-  // If the binding already has a Paperclip issue, this was a retry — return
+  // If the binding already has a Paperclip issue, this was a retry, return
   // the existing record without creating a duplicate issue.
   if (binding.paperclip_issue_id) {
     return { issueId: binding.paperclip_issue_id, bindingId: binding.id, isNew: false };
@@ -365,7 +370,7 @@ export async function assignPaperclipTask(input: {
 
 /**
  * Pause or resume a Paperclip agent. Reflects the change via Paperclip PATCH.
- * Steward reads Paperclip's response as truth — it does not set its own paused flag.
+ * Steward reads Paperclip's response as truth, it does not set its own paused flag.
  *
  * Paperclip pause is status="paused"; pausedAt may stay null on status-pause,
  * so we synthesize a timestamp for the UI when pausing.
@@ -377,16 +382,13 @@ export async function setPaperclipAgentPaused(
   const { paperclipClient } = await import("@/lib/paperclip-client.server");
   const updated = await paperclipClient.setAgentPaused(agentId, paused);
   const status = updated.status ?? (paused ? "paused" : "active");
-  const pausedAt = paused
-    ? (updated.pausedAt ??
-       new Date().toISOString())
-    : null;
+  const pausedAt = paused ? (updated.pausedAt ?? new Date().toISOString()) : null;
   return { status, pausedAt };
 }
 
 /**
  * Post a Tai note into a Paperclip issue's comment thread.
- * Board key resolves as agent context in Paperclip — the comment will show
+ * Board key resolves as agent context in Paperclip, the comment will show
  * as agent-authored. We label it "[Tai via Trust Tai OS]" in the body so it
  * is distinguishable inside Paperclip's UI.
  */
@@ -398,7 +400,7 @@ export async function postTaiNoteToIssue(input: {
   const { paperclipClient } = await import("@/lib/paperclip-client.server");
   const body = `[${input.taiName} via Trust Tai OS]\n\n${input.note.trim()}`;
   const comment = await paperclipClient.getIssueComments(input.issueId); // warm the connection
-  void comment; // suppress unused warning — just ensuring Paperclip is reachable
+  void comment; // suppress unused warning, just ensuring Paperclip is reachable
   // Post comment without authorType (Paperclip infers from bearer token)
   const result = await fetch(
     `${process.env["PAPERCLIP_API_URL"] || "http://127.0.0.1:3100"}/api/issues/${input.issueId}/comments`,

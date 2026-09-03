@@ -1,10 +1,10 @@
 /**
- * Website submission detail — the canonical source record.
+ * Website submission detail, the canonical source record.
  *
  * One inbound conversation, whole and addressable. This is the evidence page
  * behind every inbound company in Scout: what they were asked, what they said,
  * where they came from, and whether the submission reached a company. It
- * asserts nothing and decides nothing — the Website room reports, Scout judges.
+ * asserts nothing and decides nothing, the Website room reports, Scout judges.
  *
  * TODO(stated-lane): when the canonical `stated` evidence lane lands, the
  * "What they told us" block below becomes its rendering surface; the shape of
@@ -132,7 +132,7 @@ function SubmissionBody({
   prospectName: string | null;
 }) {
   const packet = packetFromSubmission(submission, submission.id);
-  /** Every lane, always — an unanswered lane is itself a fact. */
+  /** Every lane, always, an unanswered lane is itself a fact. */
   const lanes = STATED_LANE_ORDER.map((lane) => ({
     lane,
     statements: claimsInLane(packet, lane),
@@ -160,7 +160,10 @@ function SubmissionBody({
           </div>
 
           <h1 className="mt-3 font-display text-[34px] leading-tight text-foreground">
-            {submission.company.name || prospectName || submission.person.name || "An inbound founder"}
+            {submission.company.name ||
+              prospectName ||
+              submission.person.name ||
+              "An inbound founder"}
           </h1>
           <p className="mt-2 max-w-reading text-[15px] text-muted-foreground">
             {submission.person.name ? `${submission.person.name} ` : "Someone "}
@@ -177,9 +180,7 @@ function SubmissionBody({
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <MetaPill>
-              {linked
-                ? "Linked to a Scout company"
-                : "Not linked to a Scout prospect yet"}
+              {linked ? "Linked to a Scout company" : "Not linked to a Scout prospect yet"}
             </MetaPill>
             {submission.scoutStatus ? <MetaPill>Scout · {submission.scoutStatus}</MetaPill> : null}
             {linked ? (
@@ -250,7 +251,6 @@ function SubmissionBody({
                     id={answerAnchorId(turn.questionId, index)}
                     className="scroll-mt-24 rounded-xl border border-border bg-card px-4 py-3"
                   >
-
                     <div className="flex flex-wrap items-center gap-2">
                       <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
                       {turn.skipped ? <MetaPill>Skipped</MetaPill> : null}
@@ -292,7 +292,9 @@ function SubmissionBody({
             <dl className="space-y-3">
               <Field
                 label="State"
-                value={linked ? "Linked" : submission.linkState === "unlinked" ? "Unlinked" : "Held"}
+                value={
+                  linked ? "Linked" : submission.linkState === "unlinked" ? "Unlinked" : "Held"
+                }
               />
               <Field label="Company in Scout" value={stated(prospectName)} />
               <Field label="Reason" value={stated(submission.linkReason)} />
@@ -385,7 +387,7 @@ function SubmissionBody({
             </dl>
           </div>
 
-          {/* 3. Understanding — only what the intake actually stored */}
+          {/* 3. Understanding, only what the intake actually stored */}
           <div className="tt-surface p-5">
             <SectionHeading
               eyebrow="Understanding"
@@ -394,10 +396,7 @@ function SubmissionBody({
             />
             <dl className="space-y-3">
               <Field label="Frame" value={stated(submission.signals.frame)} />
-              <Field
-                label="Frame confidence"
-                value={percent(submission.signals.frameConfidence)}
-              />
+              <Field label="Frame confidence" value={percent(submission.signals.frameConfidence)} />
               <Field
                 label="Objective coverage"
                 value={percent(submission.signals.objectiveCoverage)}

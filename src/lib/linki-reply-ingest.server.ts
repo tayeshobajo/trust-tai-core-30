@@ -1,5 +1,5 @@
 /**
- * LinkedIn reply ingestion — server only (P3 seam).
+ * LinkedIn reply ingestion, server only (P3 seam).
  *
  * Linki observes a raw LinkedIn reply and hands Core one
  * `LinkedInReplyObserved` payload. This seam is the ONLY place that payload
@@ -13,14 +13,14 @@
  *     not.
  *  2. LINKI IS TRANSPORT. Its identifiers (thread/message refs, sender
  *     profile URL, account ref) ride along as provenance on the touch and the
- *     landing row — never as identity.
+ *     landing row, never as identity.
  *  3. AUTOMATION ENDS WHERE RELATIONSHIP BEGINS. An ingested reply appends to
  *     the same relationship thread model email uses (channel='linkedin') and
  *     emits the same `relationship.message_received` event Comms already
  *     reads. Nothing here drafts, sends, sequences, or schedules anything.
  *
  * Everything is feature-gated OFF behind `LINKI_REPLY_INGESTION_ENABLED`
- * (default false). No cron, no polling, no route wiring — the caller of this
+ * (default false). No cron, no polling, no route wiring, the caller of this
  * seam decides when a payload exists; the seam decides what it lawfully
  * becomes.
  */
@@ -33,10 +33,7 @@ import type { ThreadChannel } from "@/domain/comms";
 /** How much of the observed body is kept on the touch summary line. */
 export const SUMMARY_MAX_CHARS = 140;
 
-export type LinkiReplyIngestStatus =
-  | "pending_resolution"
-  | "resolved"
-  | "rejected";
+export type LinkiReplyIngestStatus = "pending_resolution" | "resolved" | "rejected";
 
 /** The observed-reply contract, as Linki (transport) delivers it. */
 export interface LinkedInReplyObserved {
@@ -149,7 +146,7 @@ export interface ResolutionOutcome {
  *
  * The ONLY key is the confirmed `linkedin_url` provenance written at P1.10
  * confirm time: `contacts.metadata.linkedin_url` where
- * `linkedin_confirmed = true` (root metadata or nested under `people` — the
+ * `linkedin_confirmed = true` (root metadata or nested under `people`, the
  * same two locations `peopleMetaOf` reads). Exact URL string equality after
  * normalization.
  *
@@ -159,7 +156,7 @@ export interface ResolutionOutcome {
  * - No sender URL at all → pending_resolution immediately.
  *
  * The relationship is then found through `comms_relationships.contact_id`,
- * newest first. A resolved contact with no relationship still resolves — the
+ * newest first. A resolved contact with no relationship still resolves, the
  * reply lands on the contact ledger and the queue carries the gap; nothing
  * here invents a relationship.
  */
@@ -178,7 +175,7 @@ export async function resolveSender(
     };
   }
 
-  // Two exact reads — the two metadata locations peopleMetaOf knows — merged
+  // Two exact reads, the two metadata locations peopleMetaOf knows, merged
   // and re-verified in code, so URL spelling and confirmation state resolve
   // deterministically regardless of which location the confirm wrote.
   const reads: { id: string; metadata?: Row | null }[][] = [];
@@ -254,7 +251,7 @@ function peopleMetaOf(metadata: Row | null | undefined): Row {
  * The ingestion seam. Idempotent, fail-closed, and inert until the feature
  * flag says otherwise. Returns a structured result; never throws for
  * duplicate delivery or flag-off; throws only when a write it must make
- * fails (the caller retries the SAME payload — dedupe absorbs the replay).
+ * fails (the caller retries the SAME payload, dedupe absorbs the replay).
  */
 export async function ingestLinkedInReply(
   client: SupabaseClient,
@@ -295,7 +292,7 @@ export async function ingestLinkedInReply(
   }
   const replyId = (landed as { id: string }).id;
 
-  // 2) Resolve onto the canonical contact — or queue for a human.
+  // 2) Resolve onto the canonical contact, or queue for a human.
   let resolution: ResolutionOutcome;
   try {
     resolution = await resolveSender(client, input);
@@ -363,7 +360,9 @@ export async function ingestLinkedInReply(
     .select("id")
     .single();
   if (touchError) {
-    throw new Error(`The observed reply could not join the relationship thread: ${touchError.message}`);
+    throw new Error(
+      `The observed reply could not join the relationship thread: ${touchError.message}`,
+    );
   }
   const touchId = (touch as { id: string }).id;
 
@@ -402,7 +401,7 @@ export async function ingestLinkedInReply(
   }
 
   // 5) The event stream: the SAME judgment hook email replies already feed.
-  //    Observation only — Comms reads it; nothing acts on it automatically.
+  //    Observation only. Comms reads it; nothing acts on it automatically.
   const definition = SUITE_EVENTS.RELATIONSHIP_MESSAGE_RECEIVED;
   const key = eventKey(input.organizationId, input.externalMessageRef.trim());
   const { error: eventError } = await client.from("activities").insert({

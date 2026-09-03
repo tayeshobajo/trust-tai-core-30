@@ -1,5 +1,5 @@
 /**
- * Governed LinkedIn actions — the P2 execution contract.
+ * Governed LinkedIn actions, the P2 execution contract.
  *
  * Law (integration brief + Tai's 2026-08-27 authorization):
  *   - NO autonomous sending. Every action starts `pending_tai_approval` and
@@ -10,7 +10,7 @@
  *     prospect/person/contact linkage on every row); Comms owns the draft
  *     (`draft_body` arrives from Comms and is never generated here).
  *   - One person. One memory. The action references the canonical contact
- *     row — there is no parallel Linki identity model.
+ *     row, there is no parallel Linki identity model.
  *   - A failed action is TERMINAL. Retrying means a new action row that
  *     references the original via `parent_action_id`; nothing is re-executed
  *     in place.
@@ -39,10 +39,7 @@ export const CAP_COUNTED_STATUSES: readonly LinkiActionStatus[] = [
 ];
 
 /** Terminal states. No transition leaves these. */
-export const TERMINAL_LINKI_ACTION_STATUSES: readonly LinkiActionStatus[] = [
-  "failed",
-  "verified",
-];
+export const TERMINAL_LINKI_ACTION_STATUSES: readonly LinkiActionStatus[] = ["failed", "verified"];
 
 /**
  * The one legal state machine. Everything else is rejected:
@@ -54,15 +51,14 @@ export const TERMINAL_LINKI_ACTION_STATUSES: readonly LinkiActionStatus[] = [
  *   failed               → (terminal; retry = NEW row with parent_action_id)
  *   verified             → (terminal)
  */
-export const LINKI_ACTION_TRANSITIONS: Record<LinkiActionStatus, readonly LinkiActionStatus[]> =
-  {
-    pending_tai_approval: ["approved"],
-    approved: ["executing"],
-    executing: ["executed", "failed"],
-    executed: ["verified"],
-    failed: [],
-    verified: [],
-  };
+export const LINKI_ACTION_TRANSITIONS: Record<LinkiActionStatus, readonly LinkiActionStatus[]> = {
+  pending_tai_approval: ["approved"],
+  approved: ["executing"],
+  executing: ["executed", "failed"],
+  executed: ["verified"],
+  failed: [],
+  verified: [],
+};
 
 export function canTransition(before: LinkiActionStatus, after: LinkiActionStatus): boolean {
   const allowed = LINKI_ACTION_TRANSITIONS[before];
@@ -70,19 +66,15 @@ export function canTransition(before: LinkiActionStatus, after: LinkiActionStatu
 }
 
 export function isLinkiActionStatus(value: unknown): value is LinkiActionStatus {
-  return (
-    typeof value === "string" && (LINKI_ACTION_STATUSES as readonly string[]).includes(value)
-  );
+  return typeof value === "string" && (LINKI_ACTION_STATUSES as readonly string[]).includes(value);
 }
 
 export function isLinkiActionType(value: unknown): value is LinkiActionType {
-  return (
-    typeof value === "string" && (LINKI_ACTION_TYPES as readonly string[]).includes(value)
-  );
+  return typeof value === "string" && (LINKI_ACTION_TYPES as readonly string[]).includes(value);
 }
 
 /* ------------------------------------------------------------------ */
-/* Errors — typed so the HTTP route can map them without guessing.     */
+/* Errors, typed so the HTTP route can map them without guessing.     */
 /* ------------------------------------------------------------------ */
 
 export type LinkiActionErrorCode =
@@ -125,13 +117,13 @@ export function linkiActionErrorStatus(code: LinkiActionErrorCode): number {
 }
 
 /* ------------------------------------------------------------------ */
-/* Domain model (camelCase) — the typed shape of one governed action.  */
+/* Domain model (camelCase), the typed shape of one governed action.  */
 /* ------------------------------------------------------------------ */
 
 /** What Linki handed back after a real send. Stored verbatim on the row. */
 export interface LinkiExecutionReceipt {
   provider: "linki";
-  /** Linki's run id — the auditable reference inside the transport. */
+  /** Linki's run id, the auditable reference inside the transport. */
   runId: string;
   sentAt: string;
   response: Record<string, unknown> | null;
@@ -143,7 +135,7 @@ export interface ApprovedLinkedInAction {
   prospectId: string;
   /** The canonical person (contacts row) this action is about. */
   personId: string;
-  /** The canonical contact record (same contacts table — one identity). */
+  /** The canonical contact record (same contacts table, one identity). */
   contactId: string;
   actionType: LinkiActionType;
   /** The Comms-owned draft. Never generated here, never edited here. */
@@ -165,7 +157,7 @@ export interface ApprovedLinkedInAction {
 }
 
 /* ------------------------------------------------------------------ */
-/* Environment switches — fail closed by default.                      */
+/* Environment switches, fail closed by default.                      */
 /* ------------------------------------------------------------------ */
 
 type Env = Record<string, string | undefined>;
@@ -174,7 +166,7 @@ export const DEFAULT_LINKI_DAILY_MSG_CAP = 10;
 export const DEFAULT_LINKI_DAILY_CONN_CAP = 5;
 
 /**
- * The execution kill switch. OFF unless EXPLICITLY `"true"` — unset, empty,
+ * The execution kill switch. OFF unless EXPLICITLY `"true"`, unset, empty,
  * "1", "yes", everything else means disabled. Default false everywhere.
  */
 export function linkiExecutionEnabled(env: Env = process.env): boolean {

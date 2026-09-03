@@ -76,13 +76,7 @@ export const MEMORY_KIND_LABEL: Record<MemoryKind, string> = {
  * ask "who hands off to whom" without inventing a new subsystem.
  */
 export type MemoryRelation =
-  | "carries"
-  | "owns"
-  | "depends_on"
-  | "hands_off_to"
-  | "prepares_for"
-  | "belongs_to"
-  | "changed";
+  "carries" | "owns" | "depends_on" | "hands_off_to" | "prepares_for" | "belongs_to" | "changed";
 
 /* ------------------------------------------------------------- outcomes */
 
@@ -153,7 +147,6 @@ export interface MemoryMeta {
   /** A person retired this belief. History stays; it stops being consulted. */
   retired?: boolean;
 }
-
 
 /** A belief with its structured memory decoded. */
 export interface MemoryBelief {
@@ -326,7 +319,6 @@ export const MEMORY_SELECTION_LIMITS = {
   people: 8,
   projects: 5,
 } as const;
-
 
 /* --------------------------------------------------------------- the guard */
 

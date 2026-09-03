@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { browserOrigin, signInUrlFor } from "@/lib/auth-origin";
 import { inviteEmailBody } from "@/lib/invite-email-template";
 
-
 import { SectionHeading, TTButton, TTField, TTInput } from "@/components/tt/primitives";
 import {
   Health,
@@ -58,7 +57,6 @@ const ASSIGNABLE_ROLES = MEMBERSHIP_ROLES as readonly WorkspaceRole[];
 export const Route = createFileRoute("/settings/people")({
   component: PeopleSettings,
 });
-
 
 function whenText(value: string | null): string {
   if (!value) return "Never signed in";
@@ -133,7 +131,6 @@ function PeopleSettings() {
     );
   };
 
-
   const members = useQuery({
     queryKey: ["settings", "members", identity.organizationId],
     queryFn: () => listMembers(identity.organizationId),
@@ -147,18 +144,15 @@ function PeopleSettings() {
     queryFn: () => listInvitations(identity.organizationId),
   });
 
-  const pendingInvitations = useMemo(
-    () => {
-      /* An invited address that is already a real member is not a live invite. */
-      const memberEmails = new Set(
-        (members.data ?? []).map((member) => member.email.toLowerCase()).filter(Boolean),
-      );
-      return (invitations.data?.value ?? []).filter(
-        (row) => row.status === "pending" && !memberEmails.has(row.email.toLowerCase()),
-      );
-    },
-    [invitations.data?.value, members.data],
-  );
+  const pendingInvitations = useMemo(() => {
+    /* An invited address that is already a real member is not a live invite. */
+    const memberEmails = new Set(
+      (members.data ?? []).map((member) => member.email.toLowerCase()).filter(Boolean),
+    );
+    return (invitations.data?.value ?? []).filter(
+      (row) => row.status === "pending" && !memberEmails.has(row.email.toLowerCase()),
+    );
+  }, [invitations.data?.value, members.data]);
 
   const orgEnabled = apps.data?.value ?? {};
   const refresh = () => {
@@ -281,9 +275,7 @@ function PeopleSettings() {
 
   const toggleChecked = (userId: string) =>
     setCheckedIds((previous) =>
-      previous.includes(userId)
-        ? previous.filter((id) => id !== userId)
-        : [...previous, userId],
+      previous.includes(userId) ? previous.filter((id) => id !== userId) : [...previous, userId],
     );
 
   const togglePage = () =>
@@ -294,7 +286,9 @@ function PeopleSettings() {
         : Array.from(new Set([...previous, ...ids]));
     });
 
-  const runBulk = async (action: { kind: "role" } | { kind: "status"; status: "active" | "deactivated" }) => {
+  const runBulk = async (
+    action: { kind: "role" } | { kind: "status"; status: "active" | "deactivated" },
+  ) => {
     if (checkedMembers.length === 0) return;
     setBulkBusy(true);
     setBulkNote(null);
@@ -335,13 +329,14 @@ function PeopleSettings() {
   };
 
   const selected = (members.data ?? []).find((member) => member.userId === selectedId) ?? null;
-  const [deliveryById, setDeliveryById] = useState<Record<string, { delivered: boolean; because: string }>>({});
+  const [deliveryById, setDeliveryById] = useState<
+    Record<string, { delivered: boolean; because: string }>
+  >({});
   const invitationAudit = useQuery({
     queryKey: ["settings", "invitation-audit", identity.organizationId],
     queryFn: () => listInvitationAudit(identity.organizationId),
     enabled: identity.canManage,
   });
-
 
   return (
     <>
@@ -353,7 +348,6 @@ function PeopleSettings() {
       />
 
       <div className="tt-surface p-6">
-
         <SectionHeading
           eyebrow="Workspace"
           title="People &amp; access"
@@ -396,9 +390,7 @@ function PeopleSettings() {
 
         {identity.canManage && checkedMembers.length > 0 ? (
           <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-royal/30 bg-royal/5 px-4 py-3">
-            <span className="text-sm text-foreground">
-              {checkedMembers.length} selected
-            </span>
+            <span className="text-sm text-foreground">{checkedMembers.length} selected</span>
             <TTSelect
               aria-label="Role to apply to selected people"
               className="h-9 w-40"
@@ -524,10 +516,7 @@ function PeopleSettings() {
                         name={member.name}
                         email={member.email}
                         avatarUrl={member.avatarUrl}
-                        supporting={[
-                          member.email || "No email on file",
-                          member.jobTitle ?? "",
-                        ]
+                        supporting={[member.email || "No email on file", member.jobTitle ?? ""]
                           .filter(Boolean)
                           .join(" · ")}
                       />
@@ -631,13 +620,9 @@ function PeopleSettings() {
           </div>
         ) : null}
 
-
         {roleChange.error || accessChange.error || statusChange.error ? (
           <p className="mt-4 text-sm text-destructive" role="alert">
-            {
-              ((roleChange.error ?? accessChange.error ?? statusChange.error) as Error)
-                .message
-            }
+            {((roleChange.error ?? accessChange.error ?? statusChange.error) as Error).message}
           </p>
         ) : null}
       </div>
@@ -669,7 +654,6 @@ function PeopleSettings() {
             setDeliveryById((previous) => ({ ...previous, [invitationId]: result }))
           }
         />
-
       ) : null}
 
       <div className="tt-surface p-6">
@@ -720,9 +704,7 @@ function PeopleSettings() {
                 })();
               }}
             >
-              {resendAllBusy
-                ? "Sending…"
-                : `Send all ${pendingInvitations.length} again`}
+              {resendAllBusy ? "Sending…" : `Send all ${pendingInvitations.length} again`}
             </button>
           ) : null}
         </div>
@@ -739,63 +721,60 @@ function PeopleSettings() {
         ) : (
           <div className="divide-y divide-border rounded-xl border border-border">
             {pendingInvitations.map((invitation) => (
-                <div
-                  key={invitation.id}
-                  className="flex flex-wrap items-center gap-3 px-4 py-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm text-foreground">{invitation.email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {ROLE_LABEL[invitation.role]} · invited {whenText(invitation.createdAt)}
-                    </p>
-                  </div>
-                  {identity.canManage ? (
-                    <>
-                      <button
-                        type="button"
-                        className="text-[13px] text-royal hover:underline"
-                        onClick={() => {
-                          void (async () => {
-                            await resendInvitation({
-                              organizationId: identity.organizationId,
-                              invitationId: invitation.id,
-                              email: invitation.email,
-                              actorUserId: identity.userId,
-                            });
-                            const result = await deliverInvitationEmail({
-                              organizationId: identity.organizationId,
-                              invitationId: invitation.id,
-                              email: invitation.email,
-                              actorUserId: identity.userId,
-                            });
-                            setDeliveryById((previous) => ({
-                              ...previous,
-                              [invitation.id]: result,
-                            }));
-                            refresh();
-                          })();
-                        }}
-                      >
-                        Send again
-                      </button>
-                      <button
-                        type="button"
-                        className="text-[13px] text-muted-foreground hover:text-destructive hover:underline"
-                        onClick={() =>
-                          void cancelInvitation({
+              <div key={invitation.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-foreground">{invitation.email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ROLE_LABEL[invitation.role]} · invited {whenText(invitation.createdAt)}
+                  </p>
+                </div>
+                {identity.canManage ? (
+                  <>
+                    <button
+                      type="button"
+                      className="text-[13px] text-royal hover:underline"
+                      onClick={() => {
+                        void (async () => {
+                          await resendInvitation({
                             organizationId: identity.organizationId,
                             invitationId: invitation.id,
                             email: invitation.email,
                             actorUserId: identity.userId,
-                          }).then(refresh)
-                        }
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              ))}
+                          });
+                          const result = await deliverInvitationEmail({
+                            organizationId: identity.organizationId,
+                            invitationId: invitation.id,
+                            email: invitation.email,
+                            actorUserId: identity.userId,
+                          });
+                          setDeliveryById((previous) => ({
+                            ...previous,
+                            [invitation.id]: result,
+                          }));
+                          refresh();
+                        })();
+                      }}
+                    >
+                      Send again
+                    </button>
+                    <button
+                      type="button"
+                      className="text-[13px] text-muted-foreground hover:text-destructive hover:underline"
+                      onClick={() =>
+                        void cancelInvitation({
+                          organizationId: identity.organizationId,
+                          invitationId: invitation.id,
+                          email: invitation.email,
+                          actorUserId: identity.userId,
+                        }).then(refresh)
+                      }
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ))}
           </div>
         )}
         {pendingInvitations.map((invitation) => {
@@ -920,7 +899,6 @@ function MemberAccessPanel({
   const [resetOpen, setResetOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
   return (
-
     <div className="tt-surface p-6">
       {canManage ? (
         <div className="mb-6">
@@ -937,7 +915,6 @@ function MemberAccessPanel({
         title={`What ${member.name} can reach`}
         description="Visibility and authority are separate. Hidden rooms never appear in their navigation."
       />
-
 
       <div className="space-y-2">
         {APP_REGISTRY.map((app) => {
@@ -1043,7 +1020,6 @@ function MemberAccessPanel({
       ) : null}
     </div>
   );
-
 }
 
 /**
@@ -1051,7 +1027,7 @@ function MemberAccessPanel({
  *
  * Two honest outcomes, said in the words that matter to the person deciding:
  * end their access and keep the account, or delete the sign-in account so the
- * same address can be set up again. Neither deletes their work — contacts,
+ * same address can be set up again. Neither deletes their work, contacts,
  * prospects, conversations, decisions and history all stay, and who they were
  * is written into the workspace history before anything is removed.
  */
@@ -1077,15 +1053,12 @@ function RemoveMemberDialog({
       if (!outcome.ok) throw new Error(outcome.because ?? "That person could not be removed.");
     },
     onSuccess: () => {
-      toast.success(
-        mode === "delete_account" ? "Account deleted" : "Access removed",
-        {
-          description:
-            mode === "delete_account"
-              ? `${address} can be created again from scratch. Their records were kept.`
-              : `${member.name} no longer has access. Their account and records were kept.`,
-        },
-      );
+      toast.success(mode === "delete_account" ? "Account deleted" : "Access removed", {
+        description:
+          mode === "delete_account"
+            ? `${address} can be created again from scratch. Their records were kept.`
+            : `${member.name} no longer has access. Their account and records were kept.`,
+      });
       void queryClient.invalidateQueries({ queryKey: ["settings"] });
       void queryClient.invalidateQueries({ queryKey: ["workspace"] });
       onClose();
@@ -1103,21 +1076,19 @@ function RemoveMemberDialog({
         />
 
         <div className="mt-4 space-y-2">
-          {(
-            [
-              {
-                value: "revoke" as const,
-                title: "Remove their access",
-                detail:
-                  "They lose every room immediately. Their sign-in account and all their records stay, and you can add them back later.",
-              },
-              {
-                value: "delete_account" as const,
-                title: "Remove access and delete the sign-in account",
-                detail: `Deletes the credential for ${address} so you can create that person again from scratch. Contacts, prospects, conversations and history are kept.`,
-              },
-            ]
-          ).map((option) => (
+          {[
+            {
+              value: "revoke" as const,
+              title: "Remove their access",
+              detail:
+                "They lose every room immediately. Their sign-in account and all their records stay, and you can add them back later.",
+            },
+            {
+              value: "delete_account" as const,
+              title: "Remove access and delete the sign-in account",
+              detail: `Deletes the credential for ${address} so you can create that person again from scratch. Contacts, prospects, conversations and history are kept.`,
+            },
+          ].map((option) => (
             <button
               key={option.value}
               type="button"
@@ -1151,10 +1122,7 @@ function RemoveMemberDialog({
         ) : null}
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <TTButton
-            onClick={() => remove.mutate()}
-            disabled={!ready || remove.isPending}
-          >
+          <TTButton onClick={() => remove.mutate()} disabled={!ready || remove.isPending}>
             {remove.isPending
               ? "Removing..."
               : mode === "delete_account"
@@ -1231,19 +1199,13 @@ function MemberIdentityEditor({
         </TTField>
       </div>
       <div className="mt-3">
-        <TTButton
-          variant="secondary"
-          disabled={save.isPending}
-          onClick={() => save.mutate()}
-        >
+        <TTButton variant="secondary" disabled={save.isPending} onClick={() => save.mutate()}>
           {save.isPending ? "Saving…" : "Save name"}
         </TTButton>
       </div>
     </div>
   );
 }
-
-
 
 function InvitePanel({
   organizationId,
@@ -1293,8 +1255,6 @@ function InvitePanel({
     [previewTo, organizationName, role, invitedByName],
   );
 
-
-
   const invite = useMutation({
     mutationFn: async () =>
       inviteMembers({
@@ -1322,7 +1282,7 @@ function InvitePanel({
       setDelivered(
         failures.length === 0
           ? `${created.length} invitation${created.length === 1 ? "" : "s"} emailed.`
-          : failures[0] ?? null,
+          : (failures[0] ?? null),
       );
       onDone();
     },
@@ -1378,10 +1338,7 @@ function InvitePanel({
       />
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <TTField
-          label="Email addresses"
-          hint="One or several, separated by commas or new lines."
-        >
+        <TTField label="Email addresses" hint="One or several, separated by commas or new lines.">
           <TTInput
             value={emails}
             onChange={(event) => {
@@ -1579,7 +1536,6 @@ function InvitePanel({
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-
         {mode === "password" ? (
           <TTButton
             onClick={() => createUser.mutate()}
@@ -1626,9 +1582,7 @@ function InvitePanel({
               <span className="text-foreground">{created.email}</span> can sign in now.
             </li>
             <li>Role applied: {ROLE_LABEL[created.role]}.</li>
-            <li>
-              Rooms: {created.rooms.length > 0 ? created.rooms.join(", ") : "None yet"}.
-            </li>
+            <li>Rooms: {created.rooms.length > 0 ? created.rooms.join(", ") : "None yet"}.</li>
             <li>A temporary password was set.</li>
           </ul>
           <p className="mt-2 text-xs text-muted-foreground">
@@ -1673,7 +1627,10 @@ function PasswordFields({
           onChange={(event) => onPassword(event.target.value)}
         />
       </TTField>
-      <TTField label="Confirm password" hint="Type it a second time so a typo cannot lock them out.">
+      <TTField
+        label="Confirm password"
+        hint="Type it a second time so a typo cannot lock them out."
+      >
         <TTInput
           id={`${idPrefix}-confirm`}
           type={visible ? "text" : "password"}

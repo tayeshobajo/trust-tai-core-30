@@ -5,7 +5,7 @@
  * projects Ops manages so the room can list them and open the exact one.
  * Nothing here edits Ops state, and nothing here invents a value: a field Ops
  * did not send stays undefined, and a count Ops did not report stays null so
- * the surface can say "—" rather than "0".
+ * the surface can say ", " rather than "0".
  */
 
 import { OPS_ORIGIN } from "./ops";
@@ -78,9 +78,7 @@ export function opsPathFromUrl(candidate: unknown): string | undefined {
 }
 
 /** The same-site Ops path for a projected project, or undefined. */
-export function opsProjectPath(
-  row: Pick<OpsProjectRow, "opsPath" | "opsUrl">,
-): string | undefined {
+export function opsProjectPath(row: Pick<OpsProjectRow, "opsPath" | "opsUrl">): string | undefined {
   return safeOpsPath(row.opsPath) ?? opsPathFromUrl(row.opsUrl);
 }
 
@@ -103,7 +101,6 @@ export const OPS_SYNC_FRESH_MS = 15 * 60_000;
  * normal. Only silence longer than a full day is worth calling a break.
  */
 export const OPS_SYNC_DELAYED_MS = 24 * 3_600_000;
-
 
 export interface OpsConnectionInput {
   /** A direct Ops read succeeded just now. Today Core has no such read. */

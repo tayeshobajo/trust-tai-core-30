@@ -6,7 +6,7 @@
 
 import type { KnownNumber } from "@/domain/website";
 
-export const UNKNOWN = "—";
+export const UNKNOWN = ", ";
 
 export function percent(value: KnownNumber): string {
   return value === null ? UNKNOWN : `${(value * 100).toFixed(1)}%`;

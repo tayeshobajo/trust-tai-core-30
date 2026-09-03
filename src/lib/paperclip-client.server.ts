@@ -213,11 +213,7 @@ export const paperclipClient = {
   getRoutineRuns(routineId: string, limit = 5) {
     const searchParams = new URLSearchParams({ limit: String(limit), routineId });
     return requestFirstMatch<PaperclipRoutineRunSummary[]>(
-      [
-        `/api/routines/${routineId}/runs`,
-        `/api/routine-runs/${routineId}`,
-        `/api/routine-runs`,
-      ],
+      [`/api/routines/${routineId}/runs`, `/api/routine-runs/${routineId}`, `/api/routine-runs`],
       { searchParams },
     );
   },
@@ -265,7 +261,7 @@ export const paperclipClient = {
   /** Set agent paused state. Returns the updated agent.
    *
    * Paperclip models pause as agent *status* ("paused" in AGENT_STATUSES), not a
-   * boolean — `{ paused: true }` is silently ignored. Resume restores "active";
+   * boolean, `{ paused: true }` is silently ignored. Resume restores "active";
    * callers that want to preserve a prior non-paused status must pass it through
    * resumeStatus.
    */

@@ -53,7 +53,9 @@ export function buildScoutCompanySummary(
 
   const reasons: string[] = [];
   if (factors.matched > 0) {
-    reasons.push(`Strong fit across ${factors.matched} ICP ${factors.matched === 1 ? "factor" : "factors"}`);
+    reasons.push(
+      `Strong fit across ${factors.matched} ICP ${factors.matched === 1 ? "factor" : "factors"}`,
+    );
   }
   for (const signal of strong.slice(0, 2)) {
     reasons.push(`${signal.title}: ${signal.explanation}`);

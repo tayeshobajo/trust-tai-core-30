@@ -2,7 +2,7 @@
  * The mailbox track: every connected Gmail account, one compact row each.
  *
  * Mailboxes own transport identity; relationships own memory. Several
- * mailboxes can be connected at once — each reads only the threads labeled
+ * mailboxes can be connected at once, each reads only the threads labeled
  * Trust Tai/Comms in its own account, and each sends only when a person
  * clicks Send on a draft they approved. Connecting another account never
  * replaces an existing one; disconnecting one leaves the others live.
@@ -59,7 +59,7 @@ export function GmailConnection({
       setNotice(
         result.canSend
           ? `Connected ${result.accountEmail}. Comms reads its labeled mail and can send a draft when you click Send.`
-          : `Connected ${result.accountEmail}. Reading labeled mail only — Google did not grant send access; reconnect to approve it.`,
+          : `Connected ${result.accountEmail}. Reading labeled mail only. Google did not grant send access; reconnect to approve it.`,
       );
       void invalidate();
     },
@@ -84,11 +84,7 @@ export function GmailConnection({
     params.delete("gmail_code");
     params.delete("gmail_state");
     const query = params.toString();
-    window.history.replaceState(
-      {},
-      "",
-      `${window.location.pathname}${query ? `?${query}` : ""}`,
-    );
+    window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
     // Runs once per callback landing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -140,10 +136,10 @@ export function GmailConnection({
       </div>
       <AmbientRule appId="comms" contextAccent={null} />
       <p className="text-sm leading-relaxed text-muted-foreground">
-        Label someone <span className="text-foreground">Trust Tai/Comms</span> in Gmail. Comms
-        picks them up automatically — the label is your approval to bring that person in, and
-        their labeled history comes with them. Unlabeled mail stays invisible to Comms. Nothing is
-        ever sent on its own, and Comms cannot change your Gmail labels.
+        Label someone <span className="text-foreground">Trust Tai/Comms</span> in Gmail. Comms picks
+        them up automatically. The label is your approval to bring that person in, and their labeled
+        history comes with them. Unlabeled mail stays invisible to Comms. Nothing is ever sent on
+        its own, and Comms cannot change your Gmail labels.
       </p>
 
       {connections.length === 0 ? (
@@ -236,7 +232,7 @@ function MailboxRow({
   // Whether the persisted grant includes send. An older read-only connection
   // stays fully functional for reading; reconnecting upgrades the grant.
   const canSend = connection.scopes.includes(GMAIL_SEND_SCOPE);
-  // The persisted summary of the last pass on this mailbox — visible even
+  // The persisted summary of the last pass on this mailbox, visible even
   // when nobody has pressed "Read now" this session.
   const lastRun = readGmailRunSummary(connection.cursor);
 
@@ -287,7 +283,7 @@ function MailboxRow({
                 <span className="text-foreground">
                   {exception.subject?.trim() || "A labeled thread"}
                 </span>{" "}
-                — {exception.emails.join(", ")}.{" "}
+                {exception.emails.join(", ")}.{" "}
                 {exception.reason === "ambiguous_thread"
                   ? "More than one person is on this labeled thread, so Comms did not guess who it belongs to. Label the individual thread with that person, or add them by hand."
                   : `${exception.detail ?? "That relationship could not be created."} Sync now to try again.`}
@@ -295,9 +291,7 @@ function MailboxRow({
             ))}
           </ul>
           {exceptions.length > 5 ? (
-            <p className="text-xs text-muted-foreground">
-              …and {exceptions.length - 5} more.
-            </p>
+            <p className="text-xs text-muted-foreground">…and {exceptions.length - 5} more.</p>
           ) : null}
         </div>
       ) : null}
@@ -305,7 +299,7 @@ function MailboxRow({
       {connected && !canSend ? (
         <p className="text-xs text-muted-foreground">
           This mailbox was granted read-only access, so Send stays off for it. Reconnect to approve
-          sending — Google keeps the existing reading access.
+          sending. Google keeps the existing reading access.
         </p>
       ) : null}
 
@@ -331,4 +325,3 @@ function MailboxRow({
     </li>
   );
 }
-

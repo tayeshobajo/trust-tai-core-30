@@ -100,7 +100,9 @@ function normalize(meeting: FathomMeeting, ref: ConversationSourceRef): Normaliz
       ...(text(invitee["email_domain"]) ? { emailDomain: text(invitee["email_domain"])! } : {}),
     })),
     segments: segmentsOf(meeting, url),
-    ...(text(meeting["default_summary"]) ? { sourceSummary: text(meeting["default_summary"])! } : {}),
+    ...(text(meeting["default_summary"])
+      ? { sourceSummary: text(meeting["default_summary"])! }
+      : {}),
     sourceActionItems: actionItems.flatMap((item) => {
       const description = text(item["description"]);
       if (!description) return [];
@@ -128,7 +130,9 @@ function matches(meeting: FathomMeeting, ref: ConversationSourceRef): boolean {
   return false;
 }
 
-async function page(cursor: string | null): Promise<{ items: FathomMeeting[]; next: string | null }> {
+async function page(
+  cursor: string | null,
+): Promise<{ items: FathomMeeting[]; next: string | null }> {
   const key = apiKey();
   if (!key) throw new SourceUnavailableError("Fathom is not connected.");
 

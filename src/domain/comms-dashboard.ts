@@ -5,8 +5,8 @@
  * yet, and whether a human decided the conversation is finished.
  *
  * Two rules hold here:
- *  1. Unread is measured against a human act — the moment a person opened the
- *     conversation — never against a provider flag we do not own.
+ *  1. Unread is measured against a human act, the moment a person opened the
+ *     conversation, never against a provider flag we do not own.
  *  2. Closed is a decision, so it is stored on the relationship and only ever
  *     changed by a person.
  */
@@ -54,10 +54,7 @@ function time(value: string | undefined | null): number {
 }
 
 /** Inbound messages newer than the last time a person opened this thread. */
-export function unreadCount(
-  messages: StoredMailboxMessage[],
-  readAt: ISODateTime | null,
-): number {
+export function unreadCount(messages: StoredMailboxMessage[], readAt: ISODateTime | null): number {
   const since = time(readAt);
   return messages.filter(
     (message) => message.direction === "inbound" && time(message.occurredAt) > since,
@@ -128,9 +125,9 @@ export function previewOf(row: ConversationRow): string {
 }
 
 export function whenLabel(value: string | undefined | null, now: Date = new Date()): string {
-  if (!value) return "—";
+  if (!value) return ", ";
   const at = new Date(value).getTime();
-  if (Number.isNaN(at)) return "—";
+  if (Number.isNaN(at)) return ", ";
   const minutes = Math.floor((now.getTime() - at) / 60_000);
   if (minutes < 1) return "Just now";
   if (minutes < 60) return `${minutes}m`;

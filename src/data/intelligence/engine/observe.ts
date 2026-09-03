@@ -171,8 +171,7 @@ export function observeBusiness(snapshot: SuiteSnapshot): Observation[] {
   );
   const qualified = live.filter(
     (candidate) =>
-      candidate.prospect.status === "qualified" ||
-      candidate.prospect.status === "ready_for_comms",
+      candidate.prospect.status === "qualified" || candidate.prospect.status === "ready_for_comms",
   );
   const routedProspectIds = new Set(
     snapshot.relationships.map((r) => r.prospectId).filter((id): id is string => Boolean(id)),
@@ -208,9 +207,7 @@ export function observeBusiness(snapshot: SuiteSnapshot): Observation[] {
     });
   }
 
-  const unrouted = qualified.filter(
-    (candidate) => !routedProspectIds.has(candidate.prospect.id),
-  );
+  const unrouted = qualified.filter((candidate) => !routedProspectIds.has(candidate.prospect.id));
   if (unrouted.length > 0) {
     drafts.push({
       kind: "pipeline_unrouted",
@@ -374,9 +371,8 @@ export function observeBusiness(snapshot: SuiteSnapshot): Observation[] {
     (roadmap) => daysOld(roadmap.updatedAt, now) >= STALE_ROADMAP_DAYS,
   );
   if (staleRoadmaps.length > 0) {
-    const oldest = staleRoadmaps
-      .map((roadmap) => daysOld(roadmap.updatedAt, now))
-      .sort((a, b) => b - a)[0] ?? 0;
+    const oldest =
+      staleRoadmaps.map((roadmap) => daysOld(roadmap.updatedAt, now)).sort((a, b) => b - a)[0] ?? 0;
     drafts.push({
       kind: "roadmap_stale",
       theme: "delivery",

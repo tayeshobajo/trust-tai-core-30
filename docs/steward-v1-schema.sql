@@ -1,4 +1,4 @@
--- Trust Tai OS — canonical conversations + commitments, and Steward context.
+-- Trust Tai OS, canonical conversations + commitments, and Steward context.
 --
 -- Applied to the managed Trust Tai Supabase project (ref okydosoacqdnursmmenf),
 -- together with a follow-up grant-hardening pass that is now folded in below.

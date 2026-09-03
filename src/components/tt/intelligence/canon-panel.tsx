@@ -60,8 +60,8 @@ export function CanonPanel({
       <div>
         <p className="tt-eyebrow">What this resembles</p>
         <p className="mt-1 max-w-reading text-[13px] text-muted-foreground">
-          Known shapes the current evidence is close to. These are readings, not
-          conclusions, and nothing here changes what the rooms hold.
+          Known shapes the current evidence is close to. These are readings, not conclusions, and
+          nothing here changes what the rooms hold.
         </p>
       </div>
 
@@ -185,7 +185,6 @@ export function CanonPanel({
             />
           ) : null}
         </TTCard>
-
       ))}
     </section>
   );

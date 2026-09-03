@@ -14,9 +14,33 @@ function Orbit() {
       viewBox="0 0 220 140"
       className="hidden h-[124px] w-[220px] shrink-0 text-royal sm:block"
     >
-      <ellipse cx="110" cy="70" rx="86" ry="34" fill="none" stroke="currentColor" strokeOpacity="0.16" />
-      <ellipse cx="110" cy="70" rx="56" ry="22" fill="none" stroke="currentColor" strokeOpacity="0.2" />
-      <ellipse cx="110" cy="70" rx="26" ry="10" fill="none" stroke="currentColor" strokeOpacity="0.26" />
+      <ellipse
+        cx="110"
+        cy="70"
+        rx="86"
+        ry="34"
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity="0.16"
+      />
+      <ellipse
+        cx="110"
+        cy="70"
+        rx="56"
+        ry="22"
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity="0.2"
+      />
+      <ellipse
+        cx="110"
+        cy="70"
+        rx="26"
+        ry="10"
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity="0.26"
+      />
       <circle cx="110" cy="70" r="5" fill="currentColor" />
       <circle cx="196" cy="70" r="3" fill="currentColor" fillOpacity="0.55" />
       <circle cx="66" cy="88" r="2.5" fill="currentColor" fillOpacity="0.45" />

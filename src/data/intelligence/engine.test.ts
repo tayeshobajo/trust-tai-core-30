@@ -300,7 +300,15 @@ describe("packet builder", () => {
       withheld: [{ appId: "steward", reason: "not_connected" }],
     });
     expect(Object.keys(packet).sort()).toEqual(
-      ["decided", "derived", "now", "observations", "organizationId", "suppressed", "withheld"].sort(),
+      [
+        "decided",
+        "derived",
+        "now",
+        "observations",
+        "organizationId",
+        "suppressed",
+        "withheld",
+      ].sort(),
     );
   });
 });

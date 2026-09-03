@@ -15,7 +15,11 @@
  * - Approval records (Paperclip owns them; we only read)
  */
 
-import type { PaperclipAgent, PaperclipIssue, PaperclipRoutine } from "@/lib/paperclip-client.server";
+import type {
+  PaperclipAgent,
+  PaperclipIssue,
+  PaperclipRoutine,
+} from "@/lib/paperclip-client.server";
 
 export interface ReconcileAgentResult {
   agentId: string;
@@ -44,18 +48,12 @@ export interface ReconcileResult {
  * the status fields back into `execution_agents`, and marks completed bindings.
  *
  * Call this from the edge function cron AND from the Agents tab on load for
- * freshness. The result is used directly by the UI — no double fetch needed.
+ * freshness. The result is used directly by the UI, no double fetch needed.
  */
-export async function reconcilePaperclipAgents(
-  organizationId: string,
-): Promise<ReconcileResult> {
+export async function reconcilePaperclipAgents(organizationId: string): Promise<ReconcileResult> {
   const { paperclipClient } = await import("@/lib/paperclip-client.server");
-  const {
-    listExecutionAgents,
-    updateAgentSyncProjection,
-    upsertSyncState,
-    syncBindingCompletion,
-  } = await import("@/lib/execution-bridge.server");
+  const { listExecutionAgents, updateAgentSyncProjection, upsertSyncState, syncBindingCompletion } =
+    await import("@/lib/execution-bridge.server");
 
   const now = new Date().toISOString();
   const syncedAtIso = now;
@@ -115,16 +113,14 @@ export async function reconcilePaperclipAgents(
       ]);
 
       agentResult.openIssues = openIssues;
-      agentResult.routines = routines.filter(
-        (r) => r.assigneeAgentId === paperclipAgentId,
-      );
+      agentResult.routines = routines.filter((r) => r.assigneeAgentId === paperclipAgentId);
       agentResult.approvals = approvals;
 
       // Paperclip models pause as status="paused" (AGENT_STATUSES); pausedAt is
       // only set for company-level pauses, so status is the reliable signal.
       const pausedByStatus = agent.status === "paused";
 
-      // 3. Sync binding completions — mark dispatched bindings done when Paperclip says so
+      // 3. Sync binding completions, mark dispatched bindings done when Paperclip says so
       for (const issue of doneIssues) {
         if (issue.id && issue.status === "done") {
           await syncBindingCompletion({
@@ -132,7 +128,7 @@ export async function reconcilePaperclipAgents(
             status: "done",
             resultSummary: issue.title,
           }).catch(() => {
-            /* Non-fatal — best-effort sync */
+            /* Non-fatal, best-effort sync */
           });
         }
       }
@@ -141,15 +137,11 @@ export async function reconcilePaperclipAgents(
       await updateAgentSyncProjection({
         paperclipAgentId,
         lastKnownStatus: agent.status ?? "unknown",
-        pausedAt: pausedByStatus
-          ? (agent.pausedAt ?? syncedAtIso)
-          : null,
+        pausedAt: pausedByStatus ? (agent.pausedAt ?? syncedAtIso) : null,
         lastHeartbeatAt: agent.lastHeartbeatAt ?? null,
         paperclipCompanyId: agent.companyId,
       });
-      agentResult.pausedAt = pausedByStatus
-        ? (agent.pausedAt ?? syncedAtIso)
-        : null;
+      agentResult.pausedAt = pausedByStatus ? (agent.pausedAt ?? syncedAtIso) : null;
     } catch (error) {
       agentResult.error = error instanceof Error ? error.message : "Paperclip did not respond.";
       totalErrors++;

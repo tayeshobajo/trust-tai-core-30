@@ -4,8 +4,8 @@
  * The runtime must never recommend an operation a room cannot actually
  * perform, and must never treat an external effect (an email sent, an Ops
  * task, a Paperclip dispatch) as something the suite did itself. This module
- * answers one question per room — "what can you really do, and where is the
- * human boundary?" — by composing the existing registries:
+ * answers one question per room, "what can you really do, and where is the
+ * human boundary?", by composing the existing registries:
  *
  * - ADAPTER_CAPABILITIES (src/domain/adapter-registry.ts): declared execution
  *   coverage, consequence classes, approval requirements.
@@ -43,7 +43,7 @@ export interface CapabilityAnswer {
   /** False when the room is not in the suite registry at all. */
   exists: boolean;
   layer?: string;
-  /** Operations with a real adapter behind them — the room can do these. */
+  /** Operations with a real adapter behind them, the room can do these. */
   executable: AdapterCapability[];
   /** Declared but deliberately unroutable operations, with the reason. */
   unavailable: AdapterCapability[];
@@ -65,10 +65,10 @@ export function roomCapabilities(room: string): CapabilityAnswer {
   const humanOnly: string[] = [];
   for (const cap of capabilities) {
     if (cap.requiresApproval) {
-      humanOnly.push(`${cap.operation} — always needs a person's approval`);
+      humanOnly.push(`${cap.operation}, always needs a person's approval`);
     }
     if (operationIsExternal(room, cap.operation)) {
-      humanOnly.push(`${cap.operation} — external effect; a person carries it`);
+      humanOnly.push(`${cap.operation}, external effect; a person carries it`);
     }
   }
 
@@ -93,7 +93,7 @@ export function approvalPermissionFor(room: string, operation: string): Permissi
 /**
  * May a read recommend this operation? Only when it is supported in the
  * capability registry, or when the room has no registry coverage at all (a
- * read-only room recommending a human step is fine — the person executes).
+ * read-only room recommending a human step is fine, the person executes).
  */
 export function operationIsRecommendable(room: string, operation: string): boolean {
   const answer = roomCapabilities(room);

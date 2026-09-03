@@ -6,13 +6,7 @@ import { AppHero } from "@/components/tt/app-hero";
  * Steward's header. The status line only ever states things that are true:
  * a real Fathom sync state and a real count of registered agents.
  */
-export function StewardHero({
-  action,
-  status,
-}: {
-  action?: ReactNode;
-  status?: ReactNode;
-}) {
+export function StewardHero({ action, status }: { action?: ReactNode; status?: ReactNode }) {
   return (
     <div className="space-y-3">
       <AppHero

@@ -18,12 +18,7 @@ import type { ID, ISODateTime, LifecycleStatus } from "./entities";
 
 /** Where a piece of delivery actually stands. */
 export type ExecutionState =
-  | "not_started"
-  | "in_flight"
-  | "in_review"
-  | "blocked"
-  | "delivered"
-  | "closed";
+  "not_started" | "in_flight" | "in_review" | "blocked" | "delivered" | "closed";
 
 export const EXECUTION_STATES: ExecutionState[] = [
   "not_started",
@@ -139,15 +134,18 @@ export function checkTransition(
   if (to === "blocked") {
     const reason = (changes.blockedBecause ?? project.blockedBecause ?? "").trim();
     if (!reason) {
-      return { ok: false, because: "Say what is blocking it. A block nobody named cannot be cleared." };
+      return {
+        ok: false,
+        because: "Say what is blocking it. A block nobody named cannot be cleared.",
+      };
     }
   }
 
   if (to === "in_flight" || to === "in_review") {
     const owned = Boolean(
       changes.ownerUserId ??
-        project.ownerUserId ??
-        (changes.ownerLabel ?? project.ownerLabel ?? "").trim(),
+      project.ownerUserId ??
+      (changes.ownerLabel ?? project.ownerLabel ?? "").trim(),
     );
     if (!owned) {
       return { ok: false, because: "Name who carries this before it moves." };
@@ -165,9 +163,6 @@ export function checkTransition(
 export function nextStates(project: ExecutionProject): ExecutionState[] {
   return ALLOWED_TRANSITIONS[project.state];
 }
-
-
-
 
 export type ProjectHealth = "on_track" | "needs_attention" | "at_risk" | "unknown";
 
@@ -233,7 +228,6 @@ export interface ExecutionProject {
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }
-
 
 /** After this long with no recorded movement, silence is itself a signal. */
 export const STALE_AFTER_DAYS = 14;

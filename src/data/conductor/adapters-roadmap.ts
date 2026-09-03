@@ -39,7 +39,11 @@ export const roadmapShellAdapter: RoomAdapter = {
     const refused = roomVerdict(this, action, access);
     if (refused) return refused;
     const kind = subjectKind(requireText(action.payload, "subjectKind"));
-    if (!kind || !requireText(action.payload, "subjectId") || !requireText(action.payload, "objective")) {
+    if (
+      !kind ||
+      !requireText(action.payload, "subjectId") ||
+      !requireText(action.payload, "objective")
+    ) {
       return {
         routable: false,
         because:
@@ -105,7 +109,10 @@ export const roadmapShellAdapter: RoomAdapter = {
         context,
         status: "routed",
         resultingState: "routed",
-        result: { reference: detail.roadmap.id, label: `Draft roadmap open: ${detail.roadmap.title}` },
+        result: {
+          reference: detail.roadmap.id,
+          label: `Draft roadmap open: ${detail.roadmap.title}`,
+        },
       });
     } catch (error) {
       return adapterReceipt({

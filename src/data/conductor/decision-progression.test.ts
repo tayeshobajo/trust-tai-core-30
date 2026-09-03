@@ -1,5 +1,5 @@
 /**
- * Conductor V3.4 — Decision-to-milestone progression awareness.
+ * Conductor V3.4. Decision-to-milestone progression awareness.
  *
  * Once a person answers a decision in Roadmap, Conductor re-reads canon and
  * says plainly where attention moved. What is proved here:
@@ -30,7 +30,7 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
   return {
     id: "rm-teamsynerg",
     organizationId: ORG,
-    title: "Teamsynerg — path to be agreed",
+    title: "Teamsynerg, path to be agreed",
     subjectLabel: "Teamsynerg",
     objective: "Turn scattered delivery into one operating system",
     status: "draft",
@@ -151,9 +151,7 @@ describe("after a person resolves the decision", () => {
         decisions: [],
         stages: SEQUENCE,
       }).milestones,
-      decisions: [
-        decision({ stageId: "st-1", status: "approved", resolvedAt: LATER }),
-      ],
+      decisions: [decision({ stageId: "st-1", status: "approved", resolvedAt: LATER })],
       pointB: { tier: "decided" },
     });
     expect(progression).not.toBeNull();
@@ -249,9 +247,7 @@ describe("edges", () => {
   it("never reads another organisation's roadmap decisions", () => {
     const canon = readRoadmapCanon({
       roadmap: roadmap(),
-      decisions: [
-        { ...RESOLVED, id: "dec-other", organizationId: "org-2", roadmapId: "rm-other" },
-      ],
+      decisions: [{ ...RESOLVED, id: "dec-other", organizationId: "org-2", roadmapId: "rm-other" }],
       stages: SEQUENCE,
     });
     expect(canon.milestoneProgression).toBeNull();

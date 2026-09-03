@@ -2,9 +2,9 @@
  * The fragmentation guard.
  *
  * The law, enforced: no business app may become its own isolated AI brain.
- * This test scans the suite for reasoning bypasses — direct provider imports,
+ * This test scans the suite for reasoning bypasses, direct provider imports,
  * direct provider or gateway URLs, and run-id plumbing outside transport
- * code — and fails when any file trips a rule without being either canonical
+ * code, and fails when any file trips a rule without being either canonical
  * machinery or a documented, dated exception in
  * src/lib/intelligence-runtime-boundary.ts.
  *
@@ -108,7 +108,7 @@ describe("intelligence runtime boundary", () => {
     for (const exception of REASONING_EXCEPTIONS) {
       expect(
         existsSync(join(ROOT, exception.file)),
-        `${exception.file} is gone — remove its entry`,
+        `${exception.file} is gone, remove its entry`,
       ).toBe(true);
       expect(exception.migration.length).toBeGreaterThan(0);
       expect(exception.bypass.length).toBeGreaterThan(0);

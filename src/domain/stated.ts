@@ -6,7 +6,7 @@
  * those describe: what the founder said about themselves.
  *
  * Stated truth is not evidence and it is not inference. It is testimony. It
- * is never scored, never treated as verified, and never rewritten — but it is
+ * is never scored, never treated as verified, and never rewritten, but it is
  * usually the most useful thing on the page, so it gets its own lane.
  */
 

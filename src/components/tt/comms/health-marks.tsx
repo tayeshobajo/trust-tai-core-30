@@ -5,10 +5,7 @@
  * stay quiet: no sirens, no grades, no colour without a label beside it.
  */
 
-import {
-  HEALTH_LABEL,
-  type ConversationHealthStatus,
-} from "@/domain/comms-health";
+import { HEALTH_LABEL, type ConversationHealthStatus } from "@/domain/comms-health";
 import { SEGMENT_LABEL, type RelationshipSegment } from "@/domain/comms";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +26,11 @@ export function HealthDot({
   return (
     <span
       aria-hidden
-      className={cn("inline-block h-1.5 w-1.5 shrink-0 rounded-full", HEALTH_DOT[status], className)}
+      className={cn(
+        "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+        HEALTH_DOT[status],
+        className,
+      )}
     />
   );
 }
@@ -58,7 +59,7 @@ export function HealthPill({
 
 /**
  * Classification marks: what kind of relationship this is. Deliberately a
- * separate hue family from health — royal blue says "client", soft plum says
+ * separate hue family from health, royal blue says "client", soft plum says
  * "developing", and neither is ever red, amber, or green, because kind is not
  * condition.
  */
@@ -77,7 +78,7 @@ export const SEGMENT_TEXT: Record<RelationshipSegment, string> = {
  * classification reads from these records, so the treatment cannot drift:
  * a quiet wash on the surface, a restrained classification edge on the
  * left, and a tinted avatar. Selected state keeps the same segment family
- * — a stronger wash plus a ring of the same hue — never a generic blue.
+ *, a stronger wash plus a ring of the same hue, never a generic blue.
  */
 export const SEGMENT_SURFACE: Record<RelationshipSegment, string> = {
   client: "bg-royal-wash hover:bg-royal-wash-strong",
@@ -111,7 +112,11 @@ export function SegmentDot({
       role="img"
       aria-label={SEGMENT_LABEL[segment]}
       title={SEGMENT_LABEL[segment]}
-      className={cn("inline-block h-1.5 w-1.5 shrink-0 rounded-full", SEGMENT_DOT[segment], className)}
+      className={cn(
+        "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+        SEGMENT_DOT[segment],
+        className,
+      )}
     />
   );
 }

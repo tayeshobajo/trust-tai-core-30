@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * R1: Ingestion — external source → normalized doc → knowledge extraction →
+ * R1: Ingestion, external source → normalized doc → knowledge extraction →
  * project_knowledge (needs_review, provenance kept), incremental (§8),
  * honest sync_state (§4), audit every mutation (§20).
  *
@@ -19,7 +19,7 @@ import { resolve, basename } from "path";
 import { db, audit, ORG_ID, sha256 } from "./lib/runtime";
 import { normalizeDocument, type NormalizedDocument } from "./lib/normalize";
 
-// Reuse the product's own extraction cues — single extraction brain.
+// Reuse the product's own extraction cues, single extraction brain.
 import { parseThinkingImport } from "../../src/data/projects/thinking-import";
 
 async function loadSource(projectId: string, sourceId: string) {
@@ -69,15 +69,20 @@ async function ingest(projectId: string, sourceId: string, rawPath: string) {
     .eq("project_id", projectId)
     .eq("source_reference", sourceId);
   const existingBodies = new Map(
-    (existing ?? []).map((r) => [String(r.body).trim().toLowerCase(), r as { id: string; review_state: string }]),
+    (existing ?? []).map((r) => [
+      String(r.body).trim().toLowerCase(),
+      r as { id: string; review_state: string },
+    ]),
   );
 
-  // Extraction over the normalized document (§5), assistant voice only —
-  // Tai's prompts are questions, not knowledge; extracting them pollutes
+  // Extraction over the normalized document (§5), assistant voice only, // Tai's prompts are questions, not knowledge; extracting them pollutes
   // open questions with transcript noise.
   const seen = new Set<string>();
   const candidates: { section: string; body: string; confidence: number; msgIndex: number }[] = [];
-  const docText = doc.messages.filter((m) => m.role === "assistant").map((m) => m.body).join("\n");
+  const docText = doc.messages
+    .filter((m) => m.role === "assistant")
+    .map((m) => m.body)
+    .join("\n");
   const allParsed = parseThinkingImport(docText);
   for (const c of allParsed) {
     const key = `${c.section}:${c.body.trim().toLowerCase()}`;
@@ -113,11 +118,16 @@ async function ingest(projectId: string, sourceId: string, rawPath: string) {
     // §9 human-decision outranks source: a candidate DECISION that negates a
     // confirmed decision or answered project decision is surfaced, not written.
     if (c.section === "decision") {
-      const negates = (inputDecisions ?? []).some(
-        (d) => String(d.answer ?? "").length > 0 && contradicts(String(d.answer), c.body),
-      ) || (existing ?? []).some(
-        (r) => r.section === "decision" && r.review_state === "confirmed" && contradicts(String(r.body), c.body),
-      );
+      const negates =
+        (inputDecisions ?? []).some(
+          (d) => String(d.answer ?? "").length > 0 && contradicts(String(d.answer), c.body),
+        ) ||
+        (existing ?? []).some(
+          (r) =>
+            r.section === "decision" &&
+            r.review_state === "confirmed" &&
+            contradicts(String(r.body), c.body),
+        );
       if (negates) {
         conflicts.push({ existing: "confirmed project decision", incoming: c.body });
         await audit({
@@ -171,14 +181,15 @@ async function ingest(projectId: string, sourceId: string, rawPath: string) {
 
 /**
  * Polarity-aware overlap: statements contradict when they share meaningful
- * topic words but carry opposing negation. Conservative by design — when
+ * topic words but carry opposing negation. Conservative by design, when
  * unsure, it does not flag (a missed flag is reviewable; a false block is
  * dispatch friction).
  */
 function contradicts(confirmed: string, incoming: string): boolean {
   const negCues = ["no ", "not ", "never ", "must not", "should not", "avoid"];
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, " ");
-  const a = norm(confirmed), b = norm(incoming);
+  const a = norm(confirmed),
+    b = norm(incoming);
   const aNeg = negCues.some((c) => a.includes(c));
   const bNeg = negCues.some((c) => b.includes(c));
   if (aNeg === bNeg) return false;
@@ -188,7 +199,19 @@ function contradicts(confirmed: string, incoming: string): boolean {
   for (const w of wordsB) if (wordsA.has(w)) shared++;
   return shared >= 2;
 }
-const STOP = new Set(["decision", "should", "would", "could", "clients", "client", "every", "there", "about", "which", "through"]);
+const STOP = new Set([
+  "decision",
+  "should",
+  "would",
+  "could",
+  "clients",
+  "client",
+  "every",
+  "there",
+  "about",
+  "which",
+  "through",
+]);
 
 function sharePrefix(a: string, b: string, words: number): boolean {
   const aw = a.toLowerCase().split(/\s+/).slice(0, words).join(" ");

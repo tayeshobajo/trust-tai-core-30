@@ -241,7 +241,11 @@ export const projectsBlockerAdapter: RoomAdapter = {
     if (!projectId || !blocker) {
       return { ready: false, because: "A project reference and blocker text are required." };
     }
-    return { ready: true, because: "Projects will record the blocker.", payload: { projectId, blocker } };
+    return {
+      ready: true,
+      because: "Projects will record the blocker.",
+      payload: { projectId, blocker },
+    };
   },
   async route(action, context) {
     const prepared = await this.prepare(action, context);

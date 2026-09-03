@@ -3,7 +3,7 @@
  *
  * The move itself is computed in `data/scout/recommended-move.ts`; this card
  * only makes the state unmistakable and carries the explicit human action.
- * One move, one clear reason, one primary action — the card ends shortly
+ * One move, one clear reason, one primary action, the card ends shortly
  * after its action row, and "Why this move" holds concise supporting
  * evidence, never a second prose interpretation.
  *
@@ -102,7 +102,7 @@ export function RecommendedNextMoveCard({
   }, [candidate.prospect.id]);
 
   // A saved confirmation is acknowledged in place until the refreshed read
-  // clears the blocker — a click that changed governed state never looks
+  // clears the blocker, a click that changed governed state never looks
   // like nothing happened.
   useEffect(() => {
     if (!confirmedEmailId) return;
@@ -117,9 +117,7 @@ export function RecommendedNextMoveCard({
     setConfirmedIds((prev) => {
       if (prev.size === 0) return prev;
       const stillBlocked = new Set(
-        blockers
-          .map((blocker) => blocker.person?.id)
-          .filter((id): id is string => Boolean(id)),
+        blockers.map((blocker) => blocker.person?.id).filter((id): id is string => Boolean(id)),
       );
       const next = new Set([...prev].filter((id) => stillBlocked.has(id)));
       return next.size === prev.size ? prev : next;
@@ -203,15 +201,12 @@ export function RecommendedNextMoveCard({
                 Preparing relationship research…
               </p>
             </div>
-            <div
-              aria-hidden
-              className="mt-3 h-1 overflow-hidden rounded-full bg-secondary"
-            >
+            <div aria-hidden className="mt-3 h-1 overflow-hidden rounded-full bg-secondary">
               <span className="block h-full w-1/3 rounded-full bg-royal animate-[tt-progress-indeterminate_1.2s_ease-in-out_infinite]" />
             </div>
             <p className="mt-3 text-[13px] text-muted-foreground">
-              Scout is reading the stored public evidence and refreshing the brief. Nothing is
-              being sent.
+              Scout is reading the stored public evidence and refreshing the brief. Nothing is being
+              sent.
             </p>
           </div>
         ) : null}
@@ -220,9 +215,7 @@ export function RecommendedNextMoveCard({
           <h3 className="max-w-[28ch] text-[22px] font-semibold leading-tight tracking-tight text-foreground">
             {move.headline}
           </h3>
-          <p className="mt-2 max-w-reading text-[15px] leading-7 text-foreground">
-            {move.reason}
-          </p>
+          <p className="mt-2 max-w-reading text-[15px] leading-7 text-foreground">{move.reason}</p>
           {move.person ? (
             <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
               Person on record · {move.person.fullName}
@@ -311,7 +304,7 @@ export function RecommendedNextMoveCard({
                 aria-live="polite"
                 className="inline-flex items-center rounded-lg border border-success/25 bg-success/8 px-3 py-2 text-sm font-medium text-success"
               >
-                Address confirmed — refreshing the read.
+                Address confirmed, refreshing the read.
               </p>
             ) : (
               <TTButton
@@ -360,12 +353,7 @@ export function RecommendedNextMoveCard({
           ) : null}
 
           {move.watch ? (
-            <TTButton
-              variant="quiet"
-              size="sm"
-              disabled={busy}
-              onClick={() => onWatch(null)}
-            >
+            <TTButton variant="quiet" size="sm" disabled={busy} onClick={() => onWatch(null)}>
               Clear pacing
             </TTButton>
           ) : null}
@@ -420,7 +408,7 @@ export function RecommendedNextMoveCard({
                             aria-live="polite"
                             className="inline-flex items-center rounded-lg border border-success/25 bg-success/8 px-3 py-1.5 text-[13px] font-medium text-success"
                           >
-                            Address confirmed — refreshing the read.
+                            Address confirmed, refreshing the read.
                           </p>
                         ) : (
                           <TTButton
@@ -484,16 +472,14 @@ export function RecommendedNextMoveCard({
           </div>
         ) : null}
 
-        {confirming &&
-        move.primary.kind === "prepare_first_message" &&
-        firstMessageReady ? (
+        {confirming && move.primary.kind === "prepare_first_message" && firstMessageReady ? (
           <div className="rounded-xl border border-royal/25 bg-royal/8 p-4">
             <p className="text-sm font-medium text-foreground">
               Carry {candidate.prospect.name} into Comms?
             </p>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              Comms will prepare the first message for your review. Nothing is sent
-              automatically, and sending is always your click.
+              Comms will prepare the first message for your review. Nothing is sent automatically,
+              and sending is always your click.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <TTButton
@@ -526,7 +512,7 @@ export function RecommendedNextMoveCard({
 
 /**
  * The quiet "where am I" strip: Match → Person → Research → First message.
- * Completed, current, upcoming — never a wizard, never interactive.
+ * Completed, current, upcoming, never a wizard, never interactive.
  */
 function ProgressStrip({ stages }: { stages: RecommendedNextMove["progress"] }) {
   return (
@@ -536,9 +522,7 @@ function ProgressStrip({ stages }: { stages: RecommendedNextMove["progress"] }) 
     >
       {stages.map((stage, index) => (
         <li key={stage.key} className="flex items-center gap-2">
-          {index > 0 ? (
-            <span aria-hidden className="h-px w-4 bg-border" />
-          ) : null}
+          {index > 0 ? <span aria-hidden className="h-px w-4 bg-border" /> : null}
           <span
             aria-current={stage.state === "current" ? "step" : undefined}
             className={cn(

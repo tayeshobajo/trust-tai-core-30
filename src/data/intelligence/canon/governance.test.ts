@@ -15,7 +15,12 @@ import type {
 } from "@/domain/intelligence-canon";
 
 import { experienceHealth } from "./health";
-import { awaitingDecision, decisionFor, proposalDecisionRow, proposalFingerprint } from "./proposals";
+import {
+  awaitingDecision,
+  decisionFor,
+  proposalDecisionRow,
+  proposalFingerprint,
+} from "./proposals";
 import { roomEventOutcomes } from "./room-events";
 import { checkableKinds } from "./outcome-checks";
 

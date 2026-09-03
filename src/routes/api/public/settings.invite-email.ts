@@ -69,9 +69,10 @@ export const Route = createFileRoute("/api/public/settings/invite-email")({
           headers: { apikey: publishableKey(), Authorization: `Bearer ${token}` },
         });
         if (!userResponse.ok) return refuse(401, "That session is no longer valid.");
-        const user = (await userResponse.json().catch(() => null)) as
-          | { id?: string; email?: string }
-          | null;
+        const user = (await userResponse.json().catch(() => null)) as {
+          id?: string;
+          email?: string;
+        } | null;
         if (!user?.id) return refuse(401, "That session is no longer valid.");
 
         /* 2. Are they an active owner or admin of this organization? */
@@ -103,10 +104,9 @@ export const Route = createFileRoute("/api/public/settings/invite-email")({
           `organizations?id=eq.${organizationId}&select=name`,
           token,
         );
-        const profiles = await restGet<{ preferred_name: string | null; full_name: string | null }[]>(
-          `profiles?id=eq.${user.id}&select=full_name,preferred_name`,
-          token,
-        );
+        const profiles = await restGet<
+          { preferred_name: string | null; full_name: string | null }[]
+        >(`profiles?id=eq.${user.id}&select=full_name,preferred_name`, token);
         const invitedByName =
           profiles?.[0]?.full_name ??
           profiles?.[0]?.preferred_name ??

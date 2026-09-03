@@ -4,13 +4,24 @@ import { evaluateScoutFit } from "./scout-fit-evaluator";
 
 type Obs = { key: string; label: string; value: unknown; evidence?: string; source_url?: string };
 
-function obs(key: string, value: unknown, evidence = "", sourceUrl = "https://example.com/page"): Obs {
+function obs(
+  key: string,
+  value: unknown,
+  evidence = "",
+  sourceUrl = "https://example.com/page",
+): Obs {
   return { key, label: key, value, evidence, source_url: sourceUrl };
 }
 
-const base = { inferred: {}, suggested: {}, scoreable: true, icpVersion: 1, at: "2026-01-01T00:00:00.000Z" };
+const base = {
+  inferred: {},
+  suggested: {},
+  scoreable: true,
+  icpVersion: 1,
+  at: "2026-01-01T00:00:00.000Z",
+};
 
-describe("scout fit evaluator v2 — structured v3 observations", () => {
+describe("scout fit evaluator v2, structured v3 observations", () => {
   it("scores strong structured evidence green only with >=75 and >=3 met criteria", () => {
     const result = evaluateScoutFit({
       ...base,
@@ -24,7 +35,11 @@ describe("scout fit evaluator v2 — structured v3 observations", () => {
         obs("decision_maker_signals", 2, "Founder Jane Doe, Director Sam Lee"),
         obs("contact_routes", 3, "Form, email, phone"),
         obs("booking_signal", false),
-        obs("milestone_opportunities", ["Add a booking path", "Rebuild the case-study library"], "No booking despite services"),
+        obs(
+          "milestone_opportunities",
+          ["Add a booking path", "Rebuild the case-study library"],
+          "No booking despite services",
+        ),
         obs("pages_researched", 6),
       ],
       pagesResearched: 6,
@@ -107,7 +122,9 @@ describe("scout fit evaluator v2 — structured v3 observations", () => {
   it("ignores the generic milestone fallback", () => {
     const result = evaluateScoutFit({
       ...base,
-      observed: [obs("milestone_opportunities", ["Deeper human review before proposing a milestone"])],
+      observed: [
+        obs("milestone_opportunities", ["Deeper human review before proposing a milestone"]),
+      ],
     });
     expect(result.criteria.find((c) => c.key === "first_milestone")?.state).toBe("missing");
     expect(result.criteria.find((c) => c.key === "roadmap_depth")?.state).toBe("missing");
@@ -116,7 +133,11 @@ describe("scout fit evaluator v2 — structured v3 observations", () => {
   it("keeps funding capacity conservative", () => {
     const result = evaluateScoutFit({
       ...base,
-      observed: [obs("pricing_signal", true), obs("organization_schema", 2), obs("wordpress_detected", true)],
+      observed: [
+        obs("pricing_signal", true),
+        obs("organization_schema", 2),
+        obs("wordpress_detected", true),
+      ],
     });
     const funding = result.criteria.find((c) => c.key === "funding_capacity");
     expect(funding?.state).toBe("partial");
@@ -133,8 +154,18 @@ describe("scout fit evaluator v2 — structured v3 observations", () => {
     const result = evaluateScoutFit({
       ...base,
       observed: [
-        { key: "s1", label: "", value: "Services page lists three offerings for clients", evidence: "Services page" },
-        { key: "s2", label: "", value: "Testimonials from two named clients", evidence: "Testimonials" },
+        {
+          key: "s1",
+          label: "",
+          value: "Services page lists three offerings for clients",
+          evidence: "Services page",
+        },
+        {
+          key: "s2",
+          label: "",
+          value: "Testimonials from two named clients",
+          evidence: "Testimonials",
+        },
       ],
     });
     expect(result.scoreable).toBe(true);
@@ -142,7 +173,7 @@ describe("scout fit evaluator v2 — structured v3 observations", () => {
   });
 });
 
-describe("scout fit evaluator v3 — v4 absence discipline", () => {
+describe("scout fit evaluator v3, v4 absence discipline", () => {
   it("cannot mark limiting_system met for a one-page WordPress-only company", () => {
     const result = evaluateScoutFit({
       ...base,
@@ -163,7 +194,11 @@ describe("scout fit evaluator v3 — v4 absence discipline", () => {
   it("does not create a gap from contact_routes=0 without contact_page_checked", () => {
     const result = evaluateScoutFit({
       ...base,
-      observed: [obs("contact_routes", 0), obs("clear_offer_signals", true), obs("pages_researched", 1)],
+      observed: [
+        obs("contact_routes", 0),
+        obs("clear_offer_signals", true),
+        obs("pages_researched", 1),
+      ],
       pagesResearched: 1,
       researchVersion: 4,
     });

@@ -63,7 +63,6 @@ export interface AppRegistration {
   capabilities: CapabilityTag[];
 }
 
-
 export const APP_REGISTRY: AppRegistration[] = [
   {
     id: "home",
@@ -140,8 +139,7 @@ export const APP_REGISTRY: AppRegistration[] = [
     layer: "business",
     name: "Website",
     slug: "website",
-    description:
-      "Attention and intake on TrustTai.com, and what reached Scout because of it.",
+    description: "Attention and intake on TrustTai.com, and what reached Scout because of it.",
     status: "live",
     route: "/modules/website",
     icon: "Globe",

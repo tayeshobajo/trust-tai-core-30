@@ -1,8 +1,8 @@
 /**
  * The Comms plan.
  *
- * What happens next with each person — meetings that are set, promises still
- * open, replies owed, follow-ups someone dated — beside a month calendar so
+ * What happens next with each person, meetings that are set, promises still
+ * open, replies owed, follow-ups someone dated, beside a month calendar so
  * nothing slips between labeled mail and Scout.
  *
  * Every line rests on something a person recorded. Dates are only ever set by
@@ -123,16 +123,14 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
       <PageHeader
         eyebrow="Comms"
         title="Plan"
-        supporting="Each person's next steps and the dates behind them. Nothing here is invented — every line comes from something you or they recorded."
+        supporting="Each person's next steps and the dates behind them. Nothing here is invented, every line comes from something you or they recorded."
         appId="comms"
       />
       <CommsTabs active="plan" />
 
       {relationships.error ? (
         <p className="text-sm text-destructive">
-          {relationships.error instanceof Error
-            ? relationships.error.message
-            : "That read failed."}
+          {relationships.error instanceof Error ? relationships.error.message : "That read failed."}
         </p>
       ) : loading ? (
         <p className="text-sm text-muted-foreground">Reading your plan…</p>
@@ -159,8 +157,8 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
 
             {scoped.length === 0 ? (
               <p className="rounded-xl border border-border p-6 text-sm text-muted-foreground">
-                Nothing is outstanding in this view. When a meeting is set, a promise is made or
-                you date a follow-up, it appears here.
+                Nothing is outstanding in this view. When a meeting is set, a promise is made or you
+                date a follow-up, it appears here.
               </p>
             ) : (
               <ul className="space-y-3">
@@ -225,9 +223,7 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
                             ? dayKey(plan.relationship.followUpDueAt)
                             : ""
                         }
-                        onChange={(event) =>
-                          setFollowUp.mutate({ plan, date: event.target.value })
-                        }
+                        onChange={(event) => setFollowUp.mutate({ plan, date: event.target.value })}
                         disabled={setFollowUp.isPending}
                       />
                       {plan.relationship.followUpDueAt ? (

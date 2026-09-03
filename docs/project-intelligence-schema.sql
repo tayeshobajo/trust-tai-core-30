@@ -1,4 +1,4 @@
--- Trust Tai OS — Project Intelligence (additive, idempotent).
+-- Trust Tai OS. Project Intelligence (additive, idempotent).
 --
 -- Apply to the shared backend (project okydosoacqdnursmmenf).
 --

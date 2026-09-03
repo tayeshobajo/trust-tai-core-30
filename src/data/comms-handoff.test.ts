@@ -180,7 +180,7 @@ describe("buildHandoffDraft", () => {
 });
 
 /* ------------------------------------------------------------------ *
- * Canonical reachability — verified email OR confirmed LinkedIn (brief §3)
+ * Canonical reachability, verified email OR confirmed LinkedIn (brief §3)
  * ------------------------------------------------------------------ */
 
 const FOUNDER_LINKEDIN_CONFIRMED = person({
@@ -219,7 +219,11 @@ describe("canonical reachability (LinkedIn route)", () => {
   });
 
   it("prefers the verified-email founder, but ranks confirmed-LinkedIn above unconfirmed", () => {
-    const targets = selectTargets([FOUNDER_VERIFIED, FOUNDER_LINKEDIN_CONFIRMED, FOUNDER_UNVERIFIED]);
+    const targets = selectTargets([
+      FOUNDER_VERIFIED,
+      FOUNDER_LINKEDIN_CONFIRMED,
+      FOUNDER_UNVERIFIED,
+    ]);
 
     expect(targets[0]?.fullName).toBe("Ada Rowe"); // verified email still wins
     expect(targets[1]?.fullName).toBe("Isaac Meek"); // LinkedIn-confirmed beats unverified email

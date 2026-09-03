@@ -5,7 +5,7 @@
  * memory. The server stamps `provenance.mailbox` on every synced Gmail
  * message and every Comms-sent row; the client mapping must surface it so
  * the timeline and composer can keep replies with the mailbox that owns
- * the conversation. Absent provenance means no mailbox — never inferred.
+ * the conversation. Absent provenance means no mailbox, never inferred.
  */
 import { describe, expect, it } from "vitest";
 import { toMessage, type MessageRow } from "@/data/supabase/comms-messages";

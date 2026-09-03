@@ -66,7 +66,6 @@ export interface RoadmapExport {
   commsMessageId?: ID;
 }
 
-
 /* --------------------------------------------------------- execution links */
 
 export type OwningApp = "projects" | "ops" | "studio";
@@ -151,7 +150,6 @@ export interface RoadmapDetailNote {
   authorLabel?: string;
   createdAt: ISODateTime;
 }
-
 
 /** Next semantic version for a client copy: 1.0, 2.0, 3.0 … */
 export function nextVersion(existing: RoadmapExport[]): string {

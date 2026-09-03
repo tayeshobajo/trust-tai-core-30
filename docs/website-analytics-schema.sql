@@ -1,4 +1,4 @@
--- Trust Tai OS — Website measurement tables.
+-- Trust Tai OS. Website measurement tables.
 --
 -- Additive and provider neutral. GA4 and Search Console are two possible
 -- producers of these shapes; nothing here names a vendor. Canonical entities

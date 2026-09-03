@@ -4,8 +4,8 @@
  * A blocked first message is never a dead end and never a hunt: each blocker
  * is shown with the exact plain-language action that clears it, and progress
  * is counted honestly as the underlying evidence changes. Every action reuses
- * an existing governed mechanism — confirming an address, refreshing the
- * company read, or the canonical People area — so this flow adds no parallel
+ * an existing governed mechanism, confirming an address, refreshing the
+ * company read, or the canonical People area, so this flow adds no parallel
  * verification or research path.
  *
  * Pure and deterministic; nothing here fetches, sends, or mutates.
@@ -38,12 +38,12 @@ export interface MoveBlocker {
 
 const BLOCKER_DETAIL: Record<HandoffBlockerKind, string> = {
   no_person:
-    "Find or add the founder or decision maker — the People area holds the governed ingest and the manual add.",
+    "Find or add the founder or decision maker, the People area holds the governed ingest and the manual add.",
   no_decision_maker:
     "Someone on record needs to be the person who decides. The People area holds the governed ingest and the manual add.",
   no_role: "Record the role so the brief knows who it is addressing.",
   no_email:
-    "Add the address you already know, or ingest from an approved source — the People area holds both.",
+    "Add the address you already know, or ingest from an approved source, the People area holds both.",
   email_unverified:
     "A person confirms the address is real. That confirmation is what makes it safely reachable.",
   not_scored:
@@ -89,7 +89,7 @@ export function buildMoveBlockers(input: {
 /**
  * Honest progress through the flow. `total` is the number of blockers when
  * the flow was opened; `remaining` is the live count. Progress can only come
- * from the evidence actually changing — a refresh makes it visible.
+ * from the evidence actually changing, a refresh makes it visible.
  */
 export function blockerProgress(
   total: number,
@@ -102,16 +102,12 @@ export function blockerProgress(
 /**
  * The final blocker has cleared when the move now offers the first message
  * and the handoff behind it is ready. The recommendation advances on its
- * own — the person never has to rediscover what to do.
+ * own, the person never has to rediscover what to do.
  */
 export function advanceAfterBlockers(input: {
   flowOpen: boolean;
   firstMessageReady: boolean;
   primaryKind: RecommendedMoveAction;
 }): boolean {
-  return (
-    input.flowOpen &&
-    input.firstMessageReady &&
-    input.primaryKind === "prepare_first_message"
-  );
+  return input.flowOpen && input.firstMessageReady && input.primaryKind === "prepare_first_message";
 }

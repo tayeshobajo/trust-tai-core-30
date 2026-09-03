@@ -1,12 +1,11 @@
--- Trust Tai OS — Conductor V2: the control ledger.
+-- Trust Tai OS. Conductor V2: the control ledger.
 --
 -- Applied to the managed Trust Tai Supabase project (ref okydosoacqdnursmmenf).
 -- Additive and idempotent. Requires docs/conductor-v1-schema.sql first.
 --
 -- Architecture note. These two tables are *governance*, not business truth.
 -- They record what the Conductor prepared, what a person decided about it, and
--- what was handed to the room that owns the change. They hold references —
--- never a copy of a prospect, relationship, roadmap, project or asset. The
+-- what was handed to the room that owns the change. They hold references, -- never a copy of a prospect, relationship, roadmap, project or asset. The
 -- owning room remains the only writer of its own state.
 --
 -- Security. RLS on both tables, reusing the existing hardened

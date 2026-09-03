@@ -11,15 +11,7 @@ import { Check, ChevronRight } from "lucide-react";
 
 import type { ProjectRowModel } from "@/data/projects/index-projection";
 
-function Step({
-  label,
-  value,
-  to,
-}: {
-  label: string;
-  value: string;
-  to?: { roadmapId: string };
-}) {
+function Step({ label, value, to }: { label: string; value: string; to?: { roadmapId: string } }) {
   return (
     <div className="min-w-0">
       <p className="tt-eyebrow">{label}</p>
@@ -40,9 +32,7 @@ function Step({
 }
 
 function Arrow() {
-  return (
-    <ChevronRight aria-hidden className="mt-4 hidden size-4 shrink-0 text-border md:block" />
-  );
+  return <ChevronRight aria-hidden className="mt-4 hidden size-4 shrink-0 text-border md:block" />;
 }
 
 export function ProjectLineage({ row }: { row: ProjectRowModel }) {
@@ -115,7 +105,9 @@ export function ProjectLineage({ row }: { row: ProjectRowModel }) {
               >
                 <Check className="size-3" />
               </span>
-              <span className={item.done ? "text-muted-foreground line-through" : "text-foreground"}>
+              <span
+                className={item.done ? "text-muted-foreground line-through" : "text-foreground"}
+              >
                 {item.label}
               </span>
             </li>

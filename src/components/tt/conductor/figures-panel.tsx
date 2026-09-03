@@ -10,11 +10,7 @@
 import { useState } from "react";
 
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
-import {
-  FIGURE_INPUTS,
-  FIGURE_STALE_DAYS,
-  type BusinessFigure,
-} from "@/domain/conductor";
+import { FIGURE_INPUTS, FIGURE_STALE_DAYS, type BusinessFigure } from "@/domain/conductor";
 import { currentFigure, figureAgeDays } from "@/data/intelligence/conductor/figures";
 
 export interface FiguresPanelProps {
@@ -24,7 +20,12 @@ export interface FiguresPanelProps {
   /** Set when the ledger cannot be written yet, recording is refused up front. */
   disabled?: boolean;
   disabledReason?: string;
-  onRecord: (input: { key: string; value: number; asOf: string; note?: string }) => void | Promise<void>;
+  onRecord: (input: {
+    key: string;
+    value: number;
+    asOf: string;
+    note?: string;
+  }) => void | Promise<void>;
 }
 
 function today(now: string): string {
@@ -65,8 +66,8 @@ export function FiguresPanel({
       <div className="space-y-1">
         <h2 className="text-base">Figures only you can supply</h2>
         <p className="text-sm text-[var(--tt-ink-muted)]">
-          Nothing in the suite counts these. Record them and they become decided
-          truth, dated, attributed, and stale after {FIGURE_STALE_DAYS} days.
+          Nothing in the suite counts these. Record them and they become decided truth, dated,
+          attributed, and stale after {FIGURE_STALE_DAYS} days.
         </p>
       </div>
 
@@ -79,7 +80,11 @@ export function FiguresPanel({
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-sm">{input.label}</span>
                 <span className="text-sm">
-                  {figure ? figure.value : <span className="text-[var(--tt-ink-muted)]">Not recorded</span>}
+                  {figure ? (
+                    figure.value
+                  ) : (
+                    <span className="text-[var(--tt-ink-muted)]">Not recorded</span>
+                  )}
                 </span>
               </div>
               <p className="text-xs text-[var(--tt-ink-muted)]">

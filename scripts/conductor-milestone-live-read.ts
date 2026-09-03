@@ -1,5 +1,5 @@
 /**
- * Conductor V3.3 live milestone read — DEVELOPMENT/QA ONLY. Read-only.
+ * Conductor V3.3 live milestone read. DEVELOPMENT/QA ONLY. Read-only.
  *
  * Signs in as the headless test account, loads the real suite snapshot under
  * RLS, and reports milestone visibility and the milestone-attention result for
@@ -28,16 +28,14 @@ const memberships = await supabase
 if (memberships.error || !memberships.data?.length) {
   throw new Error(`no active membership: ${memberships.error?.message ?? "none"}`);
 }
-const organizationId = String(
-  (memberships.data[0] as Record<string, unknown>)["organization_id"],
-);
+const organizationId = String((memberships.data[0] as Record<string, unknown>)["organization_id"]);
 console.log("organization:", organizationId, memberships.data[0]);
 
 const snapshot = await loadSuiteSnapshot(organizationId);
 console.log("roadmaps:", snapshot.roadmaps.length);
 console.log(
   "stages read:",
-  snapshot.roadmapStages ? "yes" : "NO — withheld",
+  snapshot.roadmapStages ? "yes" : "NO, withheld",
   snapshot.roadmapStages ? Object.keys(snapshot.roadmapStages).length + " roadmap groups" : "",
 );
 
@@ -54,7 +52,7 @@ for (const roadmap of snapshot.roadmaps) {
   console.log(
     "  attention:",
     canon.milestoneAttention
-      ? `${canon.milestoneAttention.milestone.title} [${canon.milestoneAttention.rule}] — ${canon.milestoneAttention.because}`
+      ? `${canon.milestoneAttention.milestone.title} [${canon.milestoneAttention.rule}], ${canon.milestoneAttention.because}`
       : "none",
   );
 }

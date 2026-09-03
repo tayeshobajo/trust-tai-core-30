@@ -3,14 +3,18 @@
  *
  * Comms owns the relationship; Scout only reads it. A company page shows the
  * real thread with the real person so nobody has to guess whether anyone has
- * spoken to them — and every reply lands against the person it came from.
+ * spoken to them, and every reply lands against the person it came from.
  *
  * Read-only by design: writing, drafting and sending all stay in Comms.
  */
 
 import { listRelationshipMessages } from "@/data/supabase/comms-messages";
 import { listProspectContacts } from "@/data/supabase/contacts";
-import { RELATIONSHIP_COLUMNS, toRelationship, type RelationshipRow } from "@/data/supabase/comms-schema";
+import {
+  RELATIONSHIP_COLUMNS,
+  toRelationship,
+  type RelationshipRow,
+} from "@/data/supabase/comms-schema";
 import type { Relationship } from "@/domain/comms";
 import type { StoredMailboxMessage } from "@/domain/comms-integrations";
 import type { ID } from "@/domain/entities";

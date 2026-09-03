@@ -7,8 +7,7 @@
  * matters, who put it on the record.
  *
  * Inbox finds the person; conversation owns the room. The header stays
- * compact — who this is, how it stands, and the few actions that matter —
- * and relationship intelligence lives one click away in the context drawer,
+ * compact, who this is, how it stands, and the few actions that matter, * and relationship intelligence lives one click away in the context drawer,
  * never as a permanent tax on reading width.
  */
 
@@ -59,7 +58,7 @@ export function ConversationEvent({
   onDownloadAttachment,
 }: {
   event: EventShape;
-  /** The workspace — the access handle for inline images in email bodies. */
+  /** The workspace, the access handle for inline images in email bodies. */
   organizationId?: string;
   onEdit?: (touchId: string) => void;
   onRetract?: (touchId: string) => void;
@@ -68,9 +67,10 @@ export function ConversationEvent({
 }) {
   const side = eventSide(event.kind);
   const touchId = event.touchId;
-  // A synced email shows the actual message — full body, inline images in
-  // place, quoted history behind a toggle — never a clamped snippet.
-  const isEmail = Boolean(event.messageId) && (event.kind === "we_emailed" || event.kind === "they_emailed");
+  // A synced email shows the actual message, full body, inline images in
+  // place, quoted history behind a toggle, never a clamped snippet.
+  const isEmail =
+    Boolean(event.messageId) && (event.kind === "we_emailed" || event.kind === "they_emailed");
   const chips = fileAttachments(event.attachments);
 
   return (
@@ -124,7 +124,11 @@ export function ConversationEvent({
                     type="button"
                     disabled={!downloadable || !onDownloadAttachment}
                     onClick={() => onDownloadAttachment?.(event, file)}
-                    title={downloadable ? "Open from Gmail" : `${file.filename} · ${formatBytes(file.size)}`}
+                    title={
+                      downloadable
+                        ? "Open from Gmail"
+                        : `${file.filename} · ${formatBytes(file.size)}`
+                    }
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground",
                       downloadable && onDownloadAttachment
@@ -198,7 +202,7 @@ export function ConversationRoom({
   relationship: Relationship;
   days: ConversationDay[];
   health: ConversationHealth;
-  /** The workspace — resolves inline images and attachment downloads. */
+  /** The workspace, resolves inline images and attachment downloads. */
   organizationId?: string;
   onViewProfile: () => void;
   onOpenContext?: () => void;
@@ -212,10 +216,7 @@ export function ConversationRoom({
 }) {
   // One quiet row: what this relationship is for, where it stands, how the
   // conversation is doing. Provenance and the rest live in the context drawer.
-  const chips = [
-    INTENT_LABEL[effectiveIntent(relationship)],
-    STAGE_LABEL[relationship.stage],
-  ];
+  const chips = [INTENT_LABEL[effectiveIntent(relationship)], STAGE_LABEL[relationship.stage]];
 
   return (
     <div className="flex h-full min-h-0 flex-col">

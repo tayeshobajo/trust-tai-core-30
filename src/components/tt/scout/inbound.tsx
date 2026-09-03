@@ -3,7 +3,7 @@
  *
  * A company that came to us is a different kind of object from one we went
  * looking for, and Tai should feel that within a second. The treatment is a
- * royal keyline, a monospace INBOUND mark, and an Ambient Identity Wash — one
+ * royal keyline, a monospace INBOUND mark, and an Ambient Identity Wash, one
  * atmospheric region per surface, never a coloured card.
  */
 
@@ -36,7 +36,6 @@ export function InboundBadge({ className }: { className?: string }) {
   );
 }
 
-
 /** The Ambient Identity Wash for an inbound surface. Light entering the page. */
 export function InboundWash({ children }: { children: React.ReactNode }) {
   return (
@@ -60,7 +59,7 @@ function percent(value?: number | null): string {
 
 /**
  * The origin rail: where this company came from, and how complete their own
- * account was. Facts only — no judgment, that belongs to Tai.
+ * account was. Facts only, no judgment, that belongs to Tai.
  */
 export function InboundOriginRail({
   packet,
@@ -199,7 +198,6 @@ export function StatedTranscript({ packet }: { packet: FounderSignalPacket }) {
           </li>
         ))}
       </ol>
-
     </div>
   );
 }

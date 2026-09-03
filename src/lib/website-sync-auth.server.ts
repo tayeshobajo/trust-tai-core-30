@@ -45,8 +45,7 @@ export async function loadWebsiteSyncConfig(
 }
 
 export type WebsiteSyncAuth =
-  | { ok: true; config: WebsiteSyncConfig }
-  | { ok: false; status: 503 | 401; error: string };
+  { ok: true; config: WebsiteSyncConfig } | { ok: false; status: 503 | 401; error: string };
 
 /** Decides whether a presented header may run a website sync. */
 export async function authorizeWebsiteSync(

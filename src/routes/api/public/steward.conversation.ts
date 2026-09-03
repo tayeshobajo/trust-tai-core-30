@@ -64,7 +64,10 @@ export const Route = createFileRoute("/api/public/steward/conversation")({
         if (!token) return Response.json({ error: "Sign in to use Steward." }, { status: 401 });
         const organizationId = new URL(request.url).searchParams.get("organization_id") ?? "";
         if (!(await requireMembership(token, organizationId))) {
-          return Response.json({ error: "You are not a member of this workspace." }, { status: 403 });
+          return Response.json(
+            { error: "You are not a member of this workspace." },
+            { status: 403 },
+          );
         }
 
         const status = fathomStatus();
@@ -109,7 +112,10 @@ export const Route = createFileRoute("/api/public/steward/conversation")({
         const organizationId = String(body["organization_id"] ?? "");
         const link = String(body["source_url"] ?? "").trim();
         if (!(await requireMembership(token, organizationId))) {
-          return Response.json({ error: "You are not a member of this workspace." }, { status: 403 });
+          return Response.json(
+            { error: "You are not a member of this workspace." },
+            { status: 403 },
+          );
         }
         if (!link) {
           return Response.json({ error: "Paste a call link to read." }, { status: 400 });

@@ -185,7 +185,6 @@ export function readCompanyIdentity(sources: {
         if (source) identity.logoSource = source;
       }
     }
-
   }
   // `fetched_at` only means identity freshness inside the identity block.
   const identityBlock = (sources.metadata as Record<string, unknown> | undefined)?.["identity"];

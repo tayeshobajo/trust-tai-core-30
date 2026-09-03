@@ -26,15 +26,7 @@ function when(iso?: string): string {
   });
 }
 
-function Line({
-  label,
-  value,
-  url,
-}: {
-  label: string;
-  value: string;
-  url?: string | undefined;
-}) {
+function Line({ label, value, url }: { label: string; value: string; url?: string | undefined }) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-b border-border/70 py-2 last:border-b-0">
       <span className="tt-eyebrow">{label}</span>
@@ -68,7 +60,9 @@ export function PersonProvenance({ person }: { person: Person }) {
       <div className="mt-2 rounded-lg border border-border bg-background px-4 py-1">
         <Line
           label="Source"
-          value={person.sourceId === "manual" ? "Entered by hand" : person.sourceId.replace(/-/g, " ")}
+          value={
+            person.sourceId === "manual" ? "Entered by hand" : person.sourceId.replace(/-/g, " ")
+          }
           {...(person.sourceUrl ? { url: person.sourceUrl } : {})}
         />
         <Line label="Confidence" value={CONFIDENCE_LABEL[person.confidence]} />

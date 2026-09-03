@@ -3,7 +3,7 @@
  *
  * A role name alone is a coarse instrument. This layer lets an owner or admin
  * say, for a whole role, which rooms it may see and how far it may act inside
- * them — without touching each person one by one.
+ * them, without touching each person one by one.
  *
  * Two laws keep it fail-closed:
  *   1. A role grant can never exceed what that role's permissions already
@@ -48,10 +48,7 @@ export function roleAccessFor(
 }
 
 /** Which levels an owner or admin may actually choose for a role and room. */
-export function selectableLevels(
-  role: string | null | undefined,
-  appId: string,
-): AppAccessLevel[] {
+export function selectableLevels(role: string | null | undefined, appId: string): AppAccessLevel[] {
   const ceiling = roleCeiling(normalizeRole(role), appId);
   return APP_ACCESS_LEVELS.filter((level) => rank(level) <= rank(ceiling));
 }

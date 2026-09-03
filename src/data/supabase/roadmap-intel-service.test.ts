@@ -28,7 +28,7 @@ const CONTEXT = { organizationId: "org-1", userId: "user-1", userLabel: "Tai" };
 const ROADMAP = "roadmap-1";
 
 const SOURCE = {
-  label: "Northbeam — About",
+  label: "Northbeam. About",
   url: "https://northbeam.example/about",
   checkedAt: "2026-08-13T00:00:00.000Z",
   provider: "openai",

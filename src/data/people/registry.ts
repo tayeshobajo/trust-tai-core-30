@@ -11,10 +11,7 @@ import type { PeopleProvider, PeopleProviderInfo } from "@/domain/people";
 import { enrichmentProvider } from "./enrichment";
 import { websitePeopleProvider } from "./website-people";
 
-export const PEOPLE_PROVIDERS: PeopleProvider[] = [
-  websitePeopleProvider,
-  enrichmentProvider,
-];
+export const PEOPLE_PROVIDERS: PeopleProvider[] = [websitePeopleProvider, enrichmentProvider];
 
 export function getPeopleProvider(id: string): PeopleProvider | null {
   return PEOPLE_PROVIDERS.find((provider) => provider.id === id && provider.approved) ?? null;

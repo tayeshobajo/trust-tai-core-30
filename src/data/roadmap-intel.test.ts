@@ -72,7 +72,14 @@ function strategy(overrides: Partial<RoadmapStrategy> = {}): RoadmapStrategy {
 
 describe("scoreMilestone", () => {
   it("rewards sourced, market-aligned, bounded work", () => {
-    const result = scoreMilestone({ ...milestone(), evidence: [source, { ...source, url: "https://acme.com/news" }, { ...source, url: "https://acme.com/careers" }] });
+    const result = scoreMilestone({
+      ...milestone(),
+      evidence: [
+        source,
+        { ...source, url: "https://acme.com/news" },
+        { ...source, url: "https://acme.com/careers" },
+      ],
+    });
     expect(result.priorityScore).toBe(100);
     expect(result.priorityRationale.join(" ")).toContain("3 sourced references");
   });
@@ -98,7 +105,12 @@ describe("scoreMilestone", () => {
 describe("rankMilestones", () => {
   it("orders by score then by fewer dependencies", () => {
     const ranked = rankMilestones([
-      { ...milestone({ name: "Weak" }), evidence: [], supportingMarketDirection: "", confidence: "low" },
+      {
+        ...milestone({ name: "Weak" }),
+        evidence: [],
+        supportingMarketDirection: "",
+        confidence: "low",
+      },
       { ...milestone({ name: "Strong" }) },
     ]);
     expect(ranked[0]!.name).toBe("Strong");
@@ -140,7 +152,10 @@ describe("normalizeResearch", () => {
     const result = normalizeResearch(
       {
         company_model: [
-          { statement: "Sells to regional operators", sources: [{ url: "https://acme.com", label: "Home" }] },
+          {
+            statement: "Sells to regional operators",
+            sources: [{ url: "https://acme.com", label: "Home" }],
+          },
           { statement: "Probably expanding", confidence: "high" },
         ],
       },

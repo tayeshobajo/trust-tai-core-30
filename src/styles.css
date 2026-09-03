@@ -59,7 +59,7 @@
   --color-paper: var(--paper);
   --color-royal: var(--royal);
   --color-plum: var(--plum);
-  /* Segment classification washes — derived from the segment hues so the
+  /* Segment classification washes, derived from the segment hues so the
      Client vs Developing surface treatment cannot drift from the tokens. */
   --color-royal-wash: var(--royal-wash);
   --color-royal-wash-strong: var(--royal-wash-strong);
@@ -72,8 +72,7 @@
   /* Evaluate: a human decision. Distinct from watch-closely amber. */
   --color-ember: var(--ember);
 
-
-  /* Cloud sky — calm suite surfaces and restrained blue accents. */
+  /* Cloud sky, calm suite surfaces and restrained blue accents. */
   --color-cloud: var(--cloud);
   --color-cloud-strong: var(--cloud-strong);
   --color-cloud-line: var(--cloud-line);
@@ -88,8 +87,10 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-display: "Cormorant Garamond", "Times New Roman", serif;
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Sora", system-ui, sans-serif;
+  --font-sans: "Manrope", system-ui, sans-serif;
+  /* No serif anywhere: legacy font-serif usage resolves to the display sans. */
+  --font-serif: "Sora", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --container-reading: 720px;
@@ -101,10 +102,10 @@
 
   /* Trust Tai canonical palette */
   --ink: oklch(0.19 0.048 266);
-  /* Paper is pure white in the Cloud direction — no warm ivory anywhere. */
+  /* Paper is pure white in the Cloud direction, no warm ivory anywhere. */
   --paper: oklch(1 0 0);
   --royal: oklch(0.49 0.185 264);
-  /* Plum: the Nurture classification hue — soft violet, never a health color. */
+  /* Plum: the Nurture classification hue, soft violet, never a health color. */
   --plum: oklch(0.52 0.09 310);
   /* Segment surface washes: ~6% resting tint, ~13% selected tint. Strong
      enough to read at peripheral vision, quiet enough to stay premium. */
@@ -117,7 +118,6 @@
   --warning: oklch(0.58 0.117 76);
   --danger: oklch(0.52 0.19 27);
   --ember: oklch(0.62 0.16 45);
-
 
   /* Cloud sky blue: light surfaces, never wallpaper for text. */
   --cloud: oklch(0.974 0.012 250);
@@ -154,11 +154,8 @@
   --sidebar-border: var(--rule);
   --sidebar-ring: var(--royal);
 
-
-  --shadow-tt-sm:
-    0 1px 0 oklch(1 0 0 / 0.6) inset, 0 8px 24px -14px oklch(0.17 0.055 268 / 0.16);
-  --shadow-tt-md:
-    0 1px 0 oklch(1 0 0 / 0.65) inset, 0 18px 50px -26px oklch(0.17 0.055 268 / 0.22);
+  --shadow-tt-sm: 0 1px 0 oklch(1 0 0 / 0.6) inset, 0 8px 24px -14px oklch(0.17 0.055 268 / 0.16);
+  --shadow-tt-md: 0 1px 0 oklch(1 0 0 / 0.65) inset, 0 18px 50px -26px oklch(0.17 0.055 268 / 0.22);
 
   /* Four-level working hierarchy: canvas → decision → evidence → utility. */
   --surface-primary: var(--card);
@@ -173,9 +170,8 @@
   --shadow-card: 0 14px 34px -30px color-mix(in oklab, var(--ink) 32%, transparent);
   --shadow-action: 0 10px 24px -16px color-mix(in oklab, var(--royal) 55%, transparent);
 
-
   /*
-   * Per-app ambient accents. Atmosphere only — never status, never a control
+   * Per-app ambient accents. Atmosphere only, never status, never a control
    * colour. Documented and mapped in src/domain/ambient-theme.ts.
    */
   --tt-app-home: #1d54c1; /* Trust Tai Royal */
@@ -203,6 +199,18 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 
   :focus-visible {
@@ -234,7 +242,11 @@
 @utility tt-ambient {
   background-image: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--tt-ambient-accent, var(--royal)) var(--tt-ambient-strength, 6%), transparent)
+    color-mix(
+        in oklab,
+        var(--tt-ambient-accent, var(--royal)) var(--tt-ambient-strength, 6%),
+        transparent
+      )
       0%,
     transparent var(--tt-ambient-depth, 180px)
   );
@@ -261,31 +273,31 @@
 
 @utility tt-display {
   font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  line-height: 1.08;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  text-wrap: balance;
 }
 
-/* Level B — the primary decision surface on a page. */
+/* Level B, the primary decision surface on a page. */
 @utility tt-level-primary {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--royal) 4.5%, var(--surface-primary)) 0%,
-      var(--surface-primary) 170px
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--royal) 4.5%, var(--surface-primary)) 0%,
+    var(--surface-primary) 170px
+  );
   border: 1px solid var(--surface-primary-border);
   box-shadow: var(--shadow-decision);
 }
 
-/* Level C — clear evidence and working cards. */
+/* Level C, clear evidence and working cards. */
 @utility tt-level-secondary {
   background-color: var(--surface-secondary);
   border: 1px solid var(--surface-secondary-border);
   box-shadow: var(--shadow-card);
 }
 
-/* Level D — quiet utility surfaces, rails, filters and previews. */
+/* Level D, quiet utility surfaces, rails, filters and previews. */
 @utility tt-level-tertiary {
   background-color: var(--surface-tertiary);
   border: 1px solid var(--surface-tertiary-border);

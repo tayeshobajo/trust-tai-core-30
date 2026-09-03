@@ -133,7 +133,9 @@ function baseCandidate(row: ProspectRow, icpVersion: number | null): ProspectCan
     prospect,
     // An inbound company has told us things but we have observed nothing yet,
     // so it must never borrow the preview demo's evidence.
-    ...(inbound ? { signals: [], fit: { whyItFits: "", recommendation: "" } } : previewEvidence(prospect.domain)),
+    ...(inbound
+      ? { signals: [], fit: { whyItFits: "", recommendation: "" } }
+      : previewEvidence(prospect.domain)),
     source: PREVIEW_SOURCE,
     evaluation: previewEvaluation(icpVersion, lastCheckedAt),
     lastCheckedAt,
@@ -344,7 +346,7 @@ export const scoutService = {
   ) {
     const at = new Date().toISOString();
     // The stored metadata merge is shallow, so the whole block is rewritten
-    // with the research marker preserved — a pacing decision must never
+    // with the research marker preserved, a pacing decision must never
     // silently drop a prepared brief.
     const row = await getProspectRow(input.prospectId);
     await saveProspectMetadataPatch(input.prospectId, {
@@ -384,7 +386,7 @@ export const scoutService = {
    * The gate is the full eligibility read: 60% ICP fit AND a traceable
    * founder or decision maker. The work runs when eligibility is newly
    * reached, when the underlying evidence moved, when the brief went stale,
-   * or when a person explicitly asks — never on every render. This is
+   * or when a person explicitly asks, never on every render. This is
    * research only: it never sends, never creates a Comms relationship, never
    * marks ready-for-comms, and never approves outreach.
    */
@@ -650,7 +652,7 @@ export const scoutService = {
     // traceable founder or decision maker), the deeper brief is prepared from
     // the evidence just gathered. Research only: nothing is sent and no
     // relationship is created. Idempotent against the stored marker, and a
-    // failure here never fails the research run — the explicit Prepare action
+    // failure here never fails the research run, the explicit Prepare action
     // on the company page remains available.
     try {
       await this.prepareRelationshipDevelopment(
@@ -698,15 +700,13 @@ export const scoutService = {
     });
   },
 
-
   /**
    * Route a prepared brief to Comms. The brief is stored on the prospect with
    * full provenance and the company moves to `ready_for_comms`. Nothing is
    * sent: Comms opens the conversation, a person still writes it.
    *
    * Returns the relationship the handoff opened (or the one already carried
-   * across) so the caller can land Tai on exactly that person in Comms —
-   * never on whoever happened to sort first.
+   * across) so the caller can land Tai on exactly that person in Comms, * never on whoever happened to sort first.
    */
   async routeToComms(
     draft: HandoffDraft,

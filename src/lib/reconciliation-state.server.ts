@@ -141,7 +141,9 @@ export async function loadReconciliationSnapshot(
 
   if (relationshipRows.ok) {
     readableKinds.push("reply_debt");
-    const overdue = relationships.filter((relationship) => dueState(relationship, now) === "overdue");
+    const overdue = relationships.filter(
+      (relationship) => dueState(relationship, now) === "overdue",
+    );
     if (overdue.length > 0) {
       conditions.push({
         kind: "reply_debt",

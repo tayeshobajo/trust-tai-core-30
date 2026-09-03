@@ -1,5 +1,5 @@
 /**
- * Scout live acceptance harness — DEVELOPMENT/QA ONLY.
+ * Scout live acceptance harness. DEVELOPMENT/QA ONLY.
  *
  * Not part of the app bundle and not routable. It exercises the exact same
  * provider selection, request building, structured-output parsing, evidence
@@ -54,7 +54,9 @@ const response = await fetch(selected.endpoint, {
 });
 
 if (!response.ok || !response.body) {
-  console.error(`FAIL: provider returned ${response.status}: ${(await response.text()).slice(0, 800)}`);
+  console.error(
+    `FAIL: provider returned ${response.status}: ${(await response.text()).slice(0, 800)}`,
+  );
   process.exit(1);
 }
 
@@ -96,7 +98,9 @@ console.log(`web_search tool invoked in run: ${sawWebSearchCall}`);
 let candidates: RawDiscoveryCandidate[] = [];
 try {
   const parsed = JSON.parse(raw) as { candidates?: unknown };
-  candidates = Array.isArray(parsed.candidates) ? (parsed.candidates as RawDiscoveryCandidate[]) : [];
+  candidates = Array.isArray(parsed.candidates)
+    ? (parsed.candidates as RawDiscoveryCandidate[])
+    : [];
 } catch {
   console.error(`FAIL: structured output did not parse. First 400 chars: ${raw.slice(0, 400)}`);
   process.exit(1);

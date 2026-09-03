@@ -1,5 +1,5 @@
 /**
- * Scout, person readiness — the specific missing step on the Person stage.
+ * Scout, person readiness, the specific missing step on the Person stage.
  *
  * `relationshipResearchEligible()` answers one lawful question: is this
  * company eligible for deeper relationship research? It collapses every
@@ -8,11 +8,11 @@
  * match with nobody on record is "find the founder", a known founder with no
  * route is "find a way in", and a known person whose decision role is not
  * established is "confirm who decides". Three different human actions, three
- * different states — derived from the same normalized people evidence, never
+ * different states, derived from the same normalized people evidence, never
  * from the eligibility boolean.
  *
  * Pure and deterministic; nothing here fetches, sends, or mutates. The
- * eligibility law itself is unchanged — this read only names WHERE the
+ * eligibility law itself is unchanged, this read only names WHERE the
  * person stage stands, it never lowers the bar.
  */
 
@@ -46,7 +46,7 @@ export interface PersonReadiness {
  *
  * The subject is chosen honestly: when no decision maker is traceable, the
  * read speaks about the best-known decision maker (no route) or the
- * best-known person (role unestablished) — never about an anonymous company.
+ * best-known person (role unestablished), never about an anonymous company.
  */
 export function personReadiness(people: OpportunityPerson[]): PersonReadiness {
   const entry = bestEntryPerson(people);
