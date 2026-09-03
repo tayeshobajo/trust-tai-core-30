@@ -7,6 +7,7 @@ export type CommsSection =
   | "inbox"
   | "dashboard"
   | "plan"
+  | "queue"
   | "to_scout"
   | "voice"
   | "integrations";
@@ -30,6 +31,7 @@ const TABS: { to: string; section: CommsSection; label: string }[] = [
   { to: "/modules/comms/inbox", section: "inbox", label: "Inbox" },
   { to: "/modules/comms/dashboard", section: "dashboard", label: "Dashboard" },
   { to: "/modules/comms/plan", section: "plan", label: "Plan" },
+  { to: "/modules/comms/queue", section: "queue", label: "Queue" },
   { to: "/modules/comms/to-scout", section: "to_scout", label: "Save to Scout" },
 
   { to: "/modules/comms/voice", section: "voice", label: "Voice DNA" },

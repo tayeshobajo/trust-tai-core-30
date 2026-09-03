@@ -43,6 +43,7 @@ import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.c
 import { Route as ModulesCommsPlanRouteImport } from './routes/modules.comms.plan'
 import { Route as ModulesCommsToScoutRouteImport } from './routes/modules.comms.to-scout'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
+import { Route as ModulesCommsQueueRouteImport } from './routes/modules.comms.queue'
 import { Route as ModulesProjectsIndexRouteImport } from './routes/modules.projects.index'
 import { Route as ModulesProjectsProjectIdRouteImport } from './routes/modules.projects.$projectId'
 import { Route as ModulesRoadmapIndexRouteImport } from './routes/modules.roadmap.index'
@@ -251,6 +252,11 @@ const ModulesCommsPlanRoute = ModulesCommsPlanRouteImport.update({
 const ModulesCommsToScoutRoute = ModulesCommsToScoutRouteImport.update({
   id: '/to-scout',
   path: '/to-scout',
+  getParentRoute: () => ModulesCommsRoute,
+} as any)
+const ModulesCommsQueueRoute = ModulesCommsQueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
 const ModulesCommsVoiceRoute = ModulesCommsVoiceRouteImport.update({
@@ -528,6 +534,7 @@ export interface FileRoutesByFullPath {
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
+  '/modules/comms/queue': typeof ModulesCommsQueueRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
@@ -601,6 +608,7 @@ export interface FileRoutesByTo {
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
+  '/modules/comms/queue': typeof ModulesCommsQueueRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
@@ -680,6 +688,7 @@ export interface FileRoutesById {
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
+  '/modules/comms/queue': typeof ModulesCommsQueueRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
@@ -1598,6 +1607,7 @@ interface ModulesCommsRouteChildren {
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsPlanRoute: typeof ModulesCommsPlanRoute
   ModulesCommsToScoutRoute: typeof ModulesCommsToScoutRoute
+  ModulesCommsQueueRoute: typeof ModulesCommsQueueRoute
   ModulesCommsVoiceRoute: typeof ModulesCommsVoiceRoute
   ModulesCommsIndexRoute: typeof ModulesCommsIndexRoute
 }
@@ -1608,6 +1618,7 @@ const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
   ModulesCommsIntegrationsRoute: ModulesCommsIntegrationsRoute,
   ModulesCommsPlanRoute: ModulesCommsPlanRoute,
   ModulesCommsToScoutRoute: ModulesCommsToScoutRoute,
+  ModulesCommsQueueRoute: ModulesCommsQueueRoute,
   ModulesCommsVoiceRoute: ModulesCommsVoiceRoute,
   ModulesCommsIndexRoute: ModulesCommsIndexRoute,
 }
