@@ -212,7 +212,20 @@ async function runProviderCall(
         options.onDelta?.(delta);
       }
       if (type === "response.failed" || type === "error") {
-        throw new ProviderCallFailedError("The reasoning run failed before returning anything.");
+        // Say what the provider actually said. "Out of credits" and "bad key"
+        // are different problems and an operator must be able to tell them
+        // apart without reading server logs.
+        const detail =
+          ((event["error"] as { message?: string } | undefined)?.message ??
+            (
+              (event["response"] as { error?: { message?: string } } | undefined)?.error ?? {}
+            ).message) ||
+          "";
+        throw new ProviderCallFailedError(
+          detail
+            ? `The reasoning run failed before returning anything. ${detail}`
+            : "The reasoning run failed before returning anything.",
+        );
       }
     }
   }
