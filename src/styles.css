@@ -90,6 +90,8 @@
 
   --font-display: "Sora", system-ui, sans-serif;
   --font-sans: "Manrope", system-ui, sans-serif;
+  /* No serif anywhere: legacy font-serif usage resolves to the display sans. */
+  --font-serif: "Sora", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --container-reading: 720px;
