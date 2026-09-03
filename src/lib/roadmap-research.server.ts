@@ -29,7 +29,7 @@ import {
   createLovableAiGatewayRunIdFetch,
   LOVABLE_AIG_RUN_ID_HEADER,
 } from "./ai-gateway.server";
-import { selectScoutProvider } from "./scout-provider.server";
+import { lovableGatewayProvider, selectScoutProvider } from "./scout-provider.server";
 
 function supabaseUrl(): string {
   return trustTaiSupabaseUrl();
