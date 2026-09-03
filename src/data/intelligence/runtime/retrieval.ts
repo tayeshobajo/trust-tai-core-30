@@ -102,60 +102,60 @@ export function composeRetrieval(input: RetrievalInput): RetrievalBundle {
       statement,
       owningRoom: input.room,
       tier: "observed",
-...(input.contextPacket ? { label: `Context packet, ${input.contextPacket.title}` }: {}),
+      ...(input.contextPacket ? { label: `Context packet, ${input.contextPacket.title}` } : {}),
     }),
   );
 
-  const evidence = [...input.evidence,...packetEvidence,...decidedEvidence];
+  const evidence = [...input.evidence, ...packetEvidence, ...decidedEvidence];
 
   const observations = input.observations ?? [];
   const patterns =
     observations.length > 0
       ? matchPatterns({
           observations,
-...(input.canonDomains ? { domains: input.canonDomains }: {}),
-...(input.suppressed ? { suppressed: input.suppressed }: {}),
+          ...(input.canonDomains ? { domains: input.canonDomains } : {}),
+          ...(input.suppressed ? { suppressed: input.suppressed } : {}),
           limit: 5,
         })
-: [];
+      : [];
 
   const cases = input.cases ?? [];
   const outcomes = input.outcomes ?? [];
   const priorExperience =
     patterns.length > 0 && cases.length > 0
       ? experienceForMatches({ matches: patterns, cases, outcomes })
-: {};
+      : {};
 
   /* Human corrections outrank everything the engine inferred. */
   const corrections = cases.filter((entry) => Boolean(entry.correction));
 
   /* "Have we solved something like this before?", same-pattern linkage only. */
   const priorCases =
-    patterns.length > 0 ? priorCasesForMatches({ matches: patterns, cases, outcomes }): [];
+    patterns.length > 0 ? priorCasesForMatches({ matches: patterns, cases, outcomes }) : [];
 
   const capabilities = roomCapabilities(input.room);
 
   const knowledge: RetrievedKnowledgeRef[] = [
-...patterns.map((match) => ({
+    ...patterns.map((match) => ({
       kind: "canon_pattern" as const,
       id: match.patternId,
       label: match.patternName,
       note: match.label,
     })),
-...corrections.map((entry) => ({
+    ...corrections.map((entry) => ({
       kind: "human_correction" as const,
       id: entry.id,
       label: `Corrected: ${entry.lesson ?? entry.hypothesis}`,
     })),
-...priorCases.map((ref) => ({
+    ...priorCases.map((ref) => ({
       kind: "prior_case" as const,
       id: ref.caseId,
       label: `${ref.patternName}: seen before`,
       note: ref.outcome
         ? `Outcome: ${ref.outcome.result} (${ref.outcome.decision}), ${ref.outcome.because}`
-: "Seen before; no recorded outcome yet.",
+        : "Seen before; no recorded outcome yet.",
     })),
-...(input.contextPacket
+    ...(input.contextPacket
       ? [
           {
             kind: "context_packet" as const,
@@ -163,7 +163,7 @@ export function composeRetrieval(input: RetrievalInput): RetrievalBundle {
             label: input.contextPacket.title,
           },
         ]
-: []),
+      : []),
   ];
 
   return {
@@ -194,7 +194,7 @@ export function bundleForModel(bundle: RetrievalBundle): Record<string, unknown>
       statement: item.statement,
       owningRoom: item.owningRoom,
       tier: item.tier,
-...(item.label ? { label: item.label }: {}),
+      ...(item.label ? { label: item.label } : {}),
     })),
     decided: bundle.decided,
     withheld: bundle.withheld,

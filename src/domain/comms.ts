@@ -87,7 +87,6 @@ export interface MemoryItem {
   addedBy?: string;
 }
 
-
 export const TIER_LABEL: Record<MemoryItem["tier"], string> = {
   observed: "Observed",
   inferred: "Inferred",
@@ -124,14 +123,7 @@ export interface Relationship {
 
 /* --------------------------------------------------------------- threads */
 
-export type ThreadChannel =
-  | "email"
-  | "call"
-  | "meeting"
-  | "message"
-  | "note"
-  | "linkedin"
-  | "text";
+export type ThreadChannel = "email" | "call" | "meeting" | "message" | "note" | "linkedin" | "text";
 
 export const CHANNEL_LABEL: Record<ThreadChannel, string> = {
   email: "Email",
@@ -142,7 +134,6 @@ export const CHANNEL_LABEL: Record<ThreadChannel, string> = {
   linkedin: "LinkedIn",
   text: "Text",
 };
-
 
 export type ThreadState = "open" | "waiting_on_us" | "waiting_on_them" | "scheduled" | "closed";
 
@@ -184,13 +175,7 @@ export interface Touch {
  * the last word through verification.
  */
 export type DraftReviewState =
-  | "draft"
-  | "needs_human_review"
-  | "approved"
-  | "sending"
-  | "sent"
-  | "send_failed"
-  | "discarded";
+  "draft" | "needs_human_review" | "approved" | "sending" | "sent" | "send_failed" | "discarded";
 
 export const REVIEW_STATE_LABEL: Record<DraftReviewState, string> = {
   draft: "Draft",
@@ -275,7 +260,7 @@ const DAY = 86_400_000;
 
 export function daysBetween(from: ISODateTime, to: ISODateTime | Date): number {
   const a = new Date(from).getTime();
-  const b = to instanceof Date ? to.getTime(): new Date(to).getTime();
+  const b = to instanceof Date ? to.getTime() : new Date(to).getTime();
   if (Number.isNaN(a) || Number.isNaN(b)) return 0;
   return Math.floor((b - a) / DAY);
 }
@@ -294,10 +279,10 @@ function startOfDay(date: Date): number {
  */
 export function dueState(relationship: Relationship, now: Date = new Date()): DueState {
   const due = [relationship.responseDueAt, relationship.followUpDueAt]
-.filter((value): value is string => Boolean(value))
-.map((value) => new Date(value).getTime())
-.filter((value) => !Number.isNaN(value))
-.sort((a, b) => a - b)[0];
+    .filter((value): value is string => Boolean(value))
+    .map((value) => new Date(value).getTime())
+    .filter((value) => !Number.isNaN(value))
+    .sort((a, b) => a - b)[0];
 
   if (due !== undefined) {
     const today = startOfDay(now);

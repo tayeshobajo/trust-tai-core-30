@@ -47,7 +47,7 @@ export function composeFirstMessage(input: {
   const title = input.person.roleTitle?.trim() || "";
   const development = input.development;
 
-  const subject = company ? `A thought about ${company}`: `Hello, ${first}`;
+  const subject = company ? `A thought about ${company}` : `Hello, ${first}`;
 
   const lines: string[] = [`Hi ${first},`, ""];
 

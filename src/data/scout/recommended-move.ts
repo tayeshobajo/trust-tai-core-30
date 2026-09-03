@@ -149,7 +149,7 @@ function blockedHeadline(channel: ChannelRecommendation | null, name: string): s
 }
 
 function blockerLabel(count: number): string {
-  return `Resolve ${count} blocker${count === 1 ? "": "s"}`;
+  return `Resolve ${count} blocker${count === 1 ? "" : "s"}`;
 }
 
 function personRef(
@@ -158,7 +158,7 @@ function personRef(
   if (!person) return null;
   return {
     fullName: person.fullName,
-...(person.roleTitle ? { roleTitle: person.roleTitle }: {}),
+    ...(person.roleTitle ? { roleTitle: person.roleTitle } : {}),
   };
 }
 
@@ -175,26 +175,30 @@ function buildMoveProgress(input: {
   briefReady: boolean;
 }): MoveStage[] {
   const complete = input.inComms;
-  const match: MoveStage["state"] = complete ? "complete": input.strongFit ? "complete": "current";
+  const match: MoveStage["state"] = complete
+    ? "complete"
+    : input.strongFit
+      ? "complete"
+      : "current";
   const person: MoveStage["state"] = complete
     ? "complete"
-: !input.strongFit
+    : !input.strongFit
       ? "upcoming"
-: input.personReady
+      : input.personReady
         ? "complete"
-: "current";
+        : "current";
   const research: MoveStage["state"] = complete
     ? "complete"
-: input.briefReady
+    : input.briefReady
       ? "complete"
-: input.strongFit && input.personReady
+      : input.strongFit && input.personReady
         ? "current"
-: "upcoming";
+        : "upcoming";
   const firstMessage: MoveStage["state"] = complete
     ? "complete"
-: input.personReady && input.briefReady
+    : input.personReady && input.briefReady
       ? "current"
-: "upcoming";
+      : "upcoming";
   return [
     { key: "match", label: "Match", state: match },
     { key: "person", label: "Person", state: person },
@@ -205,7 +209,9 @@ function buildMoveProgress(input: {
 
 function base(
   partial: Omit<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence"> &
-    Partial<Pick<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence">>,
+    Partial<
+      Pick<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence">
+    >,
 ): RecommendedNextMove {
   return {
     blocked: false,
@@ -213,7 +219,7 @@ function base(
     watch: null,
     whyNow: null,
     evidence: [],
-...partial,
+    ...partial,
   };
 }
 
@@ -257,12 +263,12 @@ export function buildRecommendedNextMove(input: {
   // The progress strip reads the same evidence the move does.
   const preparation = planRelationshipPreparation({
     candidate,
-...(input.people ? { people: input.people }: {}),
-...(input.now ? { now: input.now }: {}),
+    ...(input.people ? { people: input.people } : {}),
+    ...(input.now ? { now: input.now } : {}),
   });
   const research = candidate.development?.research;
   const brief: RelationshipDevelopmentBrief | undefined =
-    research?.state === "prepared" ? research.brief: undefined;
+    research?.state === "prepared" ? research.brief : undefined;
   const strongFit =
     evaluation.scoreable &&
     evaluation.light !== "red" &&
@@ -280,8 +286,10 @@ export function buildRecommendedNextMove(input: {
       RecommendedNextMove,
       "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence" | "progress"
     > &
-      Partial<Pick<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence">>,
-  ): RecommendedNextMove => base({...partial, progress });
+      Partial<
+        Pick<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence">
+      >,
+  ): RecommendedNextMove => base({ ...partial, progress });
 
   // Already handed over: Scout stops behaving like outbound. The relationship
   // develops in Comms; Scout keeps the research.
@@ -339,7 +347,7 @@ export function buildRecommendedNextMove(input: {
       channel: null,
       primary: canResearch
         ? { kind: "research_company", label: "Research this company" }
-: { kind: "none", label: "" },
+        : { kind: "none", label: "" },
       watch,
     });
   }
@@ -368,7 +376,7 @@ export function buildRecommendedNextMove(input: {
         label: "Confirm who decides",
         headline: `Confirm whether ${readiness.person.fullName} is the right person`,
         reason: `${readiness.person.fullName} is on record${
-          readiness.person.roleTitle ? ` as ${readiness.person.roleTitle}`: ""
+          readiness.person.roleTitle ? ` as ${readiness.person.roleTitle}` : ""
         }, but their relationship to this decision is not established. Confirming who decides comes before any research or message.`,
         person: personRef(readiness.person),
         channel: null,
@@ -431,7 +439,7 @@ export function buildRecommendedNextMove(input: {
       evidence: [
         { label: `ICP fit ${evaluation.score}%`, kind: "computed" },
         {
-          label: `${name} identified${readiness.person.roleTitle ? ` as ${readiness.person.roleTitle}`: " as a decision maker"}`,
+          label: `${name} identified${readiness.person.roleTitle ? ` as ${readiness.person.roleTitle}` : " as a decision maker"}`,
           kind: "computed",
         },
         { label: "Business email found but unverified", kind: "computed" },
@@ -447,10 +455,10 @@ export function buildRecommendedNextMove(input: {
       state: "research_first",
       label: "Understand them first",
       headline: `Understand ${entry!.fullName.split(/\s+/)[0]} before writing`,
-      reason: `${entry!.fullName} is on record${entry!.roleTitle ? ` as ${entry!.roleTitle}`: ""}, but the relationship brief ${
+      reason: `${entry!.fullName} is on record${entry!.roleTitle ? ` as ${entry!.roleTitle}` : ""}, but the relationship brief ${
         research?.state === "prepared"
           ? "is stale and needs a fresh read"
-: "has not been prepared yet"
+          : "has not been prepared yet"
       }. Understand them first, drafting waits for that governed read.`,
       person: personRef(entry),
       channel: null,
@@ -480,19 +488,22 @@ export function buildRecommendedNextMove(input: {
   const opportunity = computeRelationshipOpportunity({
     candidate,
     intel,
-...(input.people ? { people: input.people }: {}),
-...(input.now ? { now: input.now }: {}),
+    ...(input.people ? { people: input.people } : {}),
+    ...(input.now ? { now: input.now } : {}),
   });
   const name = entry!.fullName;
   const notice =
-    brief?.whatTaiCanNotice ?? intel.opportunities[0]?.statement ?? candidate.signals[0]?.statement ?? null;
+    brief?.whatTaiCanNotice ??
+    intel.opportunities[0]?.statement ??
+    candidate.signals[0]?.statement ??
+    null;
 
   // Concise supporting evidence, facts, not another prose interpretation:
   // the fit, the person, what was noticed, the way in, and the urgency read.
   const evidence: EvidenceRef[] = [
     { label: `ICP fit ${evaluation.score}%`, kind: "computed" },
     {
-      label: `${name} identified${entry!.roleTitle ? ` as ${entry!.roleTitle}`: " as a decision maker"}`,
+      label: `${name} identified${entry!.roleTitle ? ` as ${entry!.roleTitle}` : " as a decision maker"}`,
       kind: "computed",
     },
   ];
@@ -501,7 +512,7 @@ export function buildRecommendedNextMove(input: {
     evidence.push({
       label: entry!.emailVerified
         ? "Business email verified"
-: "Business email found but unverified",
+        : "Business email found but unverified",
       kind: "computed",
     });
   }
@@ -517,20 +528,19 @@ export function buildRecommendedNextMove(input: {
   // is resolving what stands in the way.
   const blocked = Boolean(firstMessage && !firstMessage.ready);
   const blockers = firstMessage?.blockers ?? [];
-  const blockerSentence =
-    blockers.length > 0 ? ` Still in the way: ${blockers.join(" ")}`: "";
+  const blockerSentence = blockers.length > 0 ? ` Still in the way: ${blockers.join(" ")}` : "";
   const resolution =
     blockers.length > 0
-      ? ` Clear ${blockers.length === 1 ? "it": blockers.length === 2 ? "both": `all ${blockers.length}`} and the first message opens up.`
-: "";
+      ? ` Clear ${blockers.length === 1 ? "it" : blockers.length === 2 ? "both" : `all ${blockers.length}`} and the first message opens up.`
+      : "";
   const primary = blocked
     ? { kind: "resolve_blockers" as const, label: blockerLabel(blockers.length) }
-: { kind: "prepare_first_message" as const, label: "Prepare first message" };
+    : { kind: "prepare_first_message" as const, label: "Prepare first message" };
   const headline = blocked
     ? blockedHeadline(channel, name)
-: channel
+    : channel
       ? (CHANNEL_MOVE[channel.channel] ?? ((n: string) => `Reach out to ${n}`))(name)
-: `Reach out to ${name}`;
+      : `Reach out to ${name}`;
 
   // A real dated signal: worth knowing now, with the signal cited.
   if (opportunity.whyNow) {
@@ -539,8 +549,8 @@ export function buildRecommendedNextMove(input: {
       label: "Worth knowing now",
       headline,
       reason: `${opportunity.whyNow}, a real, dated reason to reach out.${
-        channel ? ` ${channel.reason}`: ""
-      }${blocked ? `${blockerSentence}${resolution}`: " Keep it useful; the goal is the next natural exchange, not a meeting."}`,
+        channel ? ` ${channel.reason}` : ""
+      }${blocked ? `${blockerSentence}${resolution}` : " Keep it useful; the goal is the next natural exchange, not a meeting."}`,
       person: personRef(entry),
       channel,
       primary,
@@ -557,11 +567,11 @@ export function buildRecommendedNextMove(input: {
     label: "Worth knowing, no urgency",
     headline,
     reason: `${name} is a credible person with a useful opening${
-      notice ? `, ${notice}`: ""
-    }.${channel ? ` ${channel.reason}`: ""}${
+      notice ? `, ${notice}` : ""
+    }.${channel ? ` ${channel.reason}` : ""}${
       blocked
         ? `${blockerSentence}${resolution}`
-: " Nothing is time-sensitive, so keep the first message light and useful: earn the next exchange, not a call."
+        : " Nothing is time-sensitive, so keep the first message light and useful: earn the next exchange, not a call."
     }`,
     person: personRef(entry),
     channel,

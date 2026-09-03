@@ -69,7 +69,7 @@ function candidate(name: string, overrides: Record<string, unknown> = {}) {
     dependencies: [],
     executionBoundary: "Copy and build only. No paid media.",
     confidence: "high" as const,
-...overrides,
+    ...overrides,
   };
 }
 
@@ -345,7 +345,7 @@ describe("studio", () => {
   it("a hand edit sticks and blocks a silent regeneration", async () => {
     const artifact = await roadmapIntel.saveArtifact(CONTEXT, ROADMAP, "preview", "P", sections);
     const edited = await roadmapIntel.editArtifact(CONTEXT, artifact, [
-      {...sections[0]!, body: ["Written by a person."] },
+      { ...sections[0]!, body: ["Written by a person."] },
     ]);
     expect(edited.humanEdited).toBe(true);
     expect(edited.editedAt).toBeTruthy();
@@ -358,7 +358,7 @@ describe("studio", () => {
   it("an explicit replace overrides the hand edited document", async () => {
     const artifact = await roadmapIntel.saveArtifact(CONTEXT, ROADMAP, "preview", "P", sections);
     await roadmapIntel.editArtifact(CONTEXT, artifact, [
-      {...sections[0]!, body: ["Written by a person."] },
+      { ...sections[0]!, body: ["Written by a person."] },
     ]);
     const replaced = await roadmapIntel.saveArtifact(
       CONTEXT,
@@ -438,8 +438,8 @@ describe("errors", () => {
     };
     const supabaseModule = await import("@/integrations/trust-tai/supabase");
     const spy = vi
-.spyOn(supabaseModule.supabase, "from")
-.mockReturnValue(failing as unknown as ReturnType<typeof supabaseModule.supabase.from>);
+      .spyOn(supabaseModule.supabase, "from")
+      .mockReturnValue(failing as unknown as ReturnType<typeof supabaseModule.supabase.from>);
 
     await expect(roadmapIntel.load(ROADMAP)).rejects.toThrow(
       'relation "roadmap_research" does not exist',

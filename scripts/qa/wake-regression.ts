@@ -34,7 +34,11 @@ const wake = (await paperclipClient.triggerHeartbeat(COMMS_AGENT)) as {
 };
 
 if (!wake.id || !wake.status) {
-  console.error(`FAIL: triggerHeartbeat did not return a heartbeat run, got ${JSON.stringify(wake).slice(0, 200)}`);
+  console.error(
+    `FAIL: triggerHeartbeat did not return a heartbeat run, got ${JSON.stringify(wake).slice(0, 200)}`,
+  );
   process.exit(1);
 }
-console.log(`PASS: wake → run ${wake.id.slice(0, 8)} status=${wake.status} source=${wake.invocationSource}`);
+console.log(
+  `PASS: wake → run ${wake.id.slice(0, 8)} status=${wake.status} source=${wake.invocationSource}`,
+);

@@ -116,10 +116,7 @@ export function ScoutCompanyTable({
           const { prospect, evaluation, profile } = candidate;
           const inbound = candidate.source.kind === "website_intake";
           return (
-            <li
-              key={prospect.id}
-              className={cn(inbound && "border-l-2 border-royal/60")}
-            >
+            <li key={prospect.id} className={cn(inbound && "border-l-2 border-royal/60")}>
               <Link
                 to="/modules/scout/prospects/$prospectId"
                 params={{ prospectId: prospect.id }}

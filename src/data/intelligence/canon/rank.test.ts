@@ -38,7 +38,7 @@ function match(overrides: Partial<PatternMatch> & { patternId: string }): Patter
     unmetConditions: [],
     contradicting: [],
     competingExplanations: [],
-...overrides,
+    ...overrides,
   } as PatternMatch;
 }
 
@@ -59,7 +59,7 @@ function experience(overrides: Partial<PriorExperience>): PriorExperience {
       guidance: "",
     },
     note: null,
-...overrides,
+    ...overrides,
   } as PriorExperience;
 }
 
@@ -67,9 +67,18 @@ describe("ranking competing readings", () => {
   it("orders by current evidence and publishes the features behind the order", () => {
     const ranked = rankHypotheses({
       matches: [
-        match({ patternId: "weak", score: 0.4, missingEvidence: [
-          { appId: "projects", inspect: "the project owner field", wouldConfirm: "an owner", wouldRefute: "no owner" },
-        ] }),
+        match({
+          patternId: "weak",
+          score: 0.4,
+          missingEvidence: [
+            {
+              appId: "projects",
+              inspect: "the project owner field",
+              wouldConfirm: "an owner",
+              wouldRefute: "no owner",
+            },
+          ],
+        }),
         match({ patternId: "strong", score: 0.95 }),
       ],
       now: NOW,
@@ -82,7 +91,10 @@ describe("ranking competing readings", () => {
 
   it("never lets prior experience overturn a clear evidence difference", () => {
     const ranked = rankHypotheses({
-      matches: [match({ patternId: "strong", score: 0.95 }), match({ patternId: "weak", score: 0.3 })],
+      matches: [
+        match({ patternId: "strong", score: 0.95 }),
+        match({ patternId: "weak", score: 0.3 }),
+      ],
       experience: {
         weak: experience({
           standing: {
@@ -134,7 +146,14 @@ describe("ranking competing readings", () => {
             patternId: "a",
             patternName: "Delivery is slipping while replies pile up",
             score: 0.9,
-            missingEvidence: [{ appId: "projects", inspect: "who is on this project", wouldConfirm: "two people", wouldRefute: "one person" }],
+            missingEvidence: [
+              {
+                appId: "projects",
+                inspect: "who is on this project",
+                wouldConfirm: "two people",
+                wouldRefute: "one person",
+              },
+            ],
           }),
           match({ patternId: "b", patternName: "Pipeline is unrouted", score: 0.5 }),
         ],
@@ -162,7 +181,7 @@ describe("prior case resemblance", () => {
       decidedBy: "u",
       decidedAt: NOW,
       diagnosisVerdict: "unknown",
-...(correction ? { correction }: {}),
+      ...(correction ? { correction } : {}),
       createdAt: NOW,
     } as IntelligenceCase;
   }

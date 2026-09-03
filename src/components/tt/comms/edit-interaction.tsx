@@ -61,8 +61,8 @@ export function EditInteraction({
           <p className="tt-eyebrow">Edit interaction</p>
           <h2 className="mt-1 text-lg text-foreground">Correct what is on the record</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Recorded as happening {occurredLabel}. That timestamp and its original wording are
-            kept; your correction is added as {userLabel}.
+            Recorded as happening {occurredLabel}. That timestamp and its original wording are kept;
+            your correction is added as {userLabel}.
           </p>
           {note ? <p className="mt-1.5 text-[12px] text-muted-foreground">{note}</p> : null}
         </header>

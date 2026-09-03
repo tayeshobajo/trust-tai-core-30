@@ -164,7 +164,7 @@ export function ResearchView({
           <ul className="mt-3 space-y-1.5">
             {research.unknowns.map((entry) => (
               <li key={entry} className="text-sm text-muted-foreground">
-  · {entry}
+                · {entry}
               </li>
             ))}
           </ul>

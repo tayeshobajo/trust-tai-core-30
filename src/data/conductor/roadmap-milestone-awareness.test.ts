@@ -52,11 +52,15 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
       because: "Taken from what was entered when this roadmap was created.",
       evidence: [],
     },
-    nextMove: { action: "Agree the destination", because: "Everything below assumes it.", tier: "inferred" },
+    nextMove: {
+      action: "Agree the destination",
+      because: "Everything below assumes it.",
+      tier: "inferred",
+    },
     metadata: {},
     createdAt: NOW,
     updatedAt: NOW,
-...overrides,
+    ...overrides,
   };
 }
 
@@ -73,7 +77,7 @@ function stage(overrides: Partial<RoadmapStage> = {}): RoadmapStage {
     evidence: [{ label: "Discovery call, 12 August", kind: "human" }],
     createdAt: NOW,
     updatedAt: NOW,
-...overrides,
+    ...overrides,
   };
 }
 
@@ -82,25 +86,38 @@ function decision(overrides: Partial<RoadmapDecision> = {}): RoadmapDecision {
     id: "dec-destination",
     organizationId: ORG,
     roadmapId: "rm-teamsynerg",
-    question: 'Is "One operating system the team actually runs the week from" the right destination?',
+    question:
+      'Is "One operating system the team actually runs the week from" the right destination?',
     whyItMatters: "Everything sequenced below assumes this destination.",
     options: ["Approve as written", "Change the destination"],
     evidence: [],
     status: "open",
     createdAt: NOW,
     updatedAt: NOW,
-...overrides,
+    ...overrides,
   };
 }
 
 function snapshot(overrides: Partial<SuiteSnapshot> = {}): SuiteSnapshot {
-  return {...emptySnapshot(ORG, NOW),...overrides };
+  return { ...emptySnapshot(ORG, NOW), ...overrides };
 }
 
 const SEQUENCE = [
   stage(),
-  stage({ id: "st-2", position: 2, title: "Sequence the build", state: "mapped", tier: "inferred" }),
-  stage({ id: "st-3", position: 3, title: "Build the delivery board", state: "mapped", tier: "inferred" }),
+  stage({
+    id: "st-2",
+    position: 2,
+    title: "Sequence the build",
+    state: "mapped",
+    tier: "inferred",
+  }),
+  stage({
+    id: "st-3",
+    position: 3,
+    title: "Build the delivery board",
+    state: "mapped",
+    tier: "inferred",
+  }),
 ];
 
 /* ------------------------------------------------------------ known state */
@@ -149,7 +166,8 @@ describe("milestones known", () => {
 describe("milestone attention rules", () => {
   it("puts an unresolved decision on a stage above sequence position", () => {
     const attention = milestoneAttentionOf({
-      milestones: readRoadmapCanon({ roadmap: roadmap(), decisions: [], stages: SEQUENCE }).milestones,
+      milestones: readRoadmapCanon({ roadmap: roadmap(), decisions: [], stages: SEQUENCE })
+        .milestones,
       openDecisions: [decision({ id: "dec-board", stageId: "st-3" })],
       pointB: { tier: "decided" },
     })!;
@@ -173,7 +191,9 @@ describe("milestone attention rules", () => {
 
   it("falls back to the earliest unfinished milestone with no invented dependency", () => {
     const canon = readRoadmapCanon({
-      roadmap: roadmap({ pointB: { statement: "Agreed", tier: "decided", because: "Approved", evidence: [] } }),
+      roadmap: roadmap({
+        pointB: { statement: "Agreed", tier: "decided", because: "Approved", evidence: [] },
+      }),
       decisions: [],
       stages: [
         stage({ id: "st-1", position: 1, title: "Discovery", state: "live", tier: "decided" }),
@@ -196,7 +216,10 @@ describe("reasoning packet", () => {
       snapshot: snapshot({
         roadmaps: [roadmap()],
         openDecisions: [decision()],
-        roadmapStages: { "rm-teamsynerg": SEQUENCE, "rm-other": [stage({ id: "st-x", roadmapId: "rm-other" })] },
+        roadmapStages: {
+          "rm-teamsynerg": SEQUENCE,
+          "rm-other": [stage({ id: "st-x", roadmapId: "rm-other" })],
+        },
       }),
       question: "Where does the Teamsynerg roadmap stand?",
     });
@@ -209,7 +232,11 @@ describe("reasoning packet", () => {
 
   it("says milestones are unknown when the snapshot could not read them", () => {
     const cycle = planRoadmapCycle({
-      snapshot: snapshot({ roadmaps: [roadmap()], openDecisions: [decision()], roadmapStages: null }),
+      snapshot: snapshot({
+        roadmaps: [roadmap()],
+        openDecisions: [decision()],
+        roadmapStages: null,
+      }),
       question: "Where does the Teamsynerg roadmap stand?",
     });
     expect(cycle.canon?.milestonesKnown).toBe(false);
@@ -221,7 +248,9 @@ describe("reasoning packet", () => {
       snapshot: snapshot({
         roadmaps: [roadmap()],
         openDecisions: [],
-        roadmapStages: { "rm-foreign": [stage({ id: "st-f", roadmapId: "rm-foreign", organizationId: "org-2" })] },
+        roadmapStages: {
+          "rm-foreign": [stage({ id: "st-f", roadmapId: "rm-foreign", organizationId: "org-2" })],
+        },
       }),
       question: "Where does the Teamsynerg roadmap stand?",
     });
@@ -234,15 +263,23 @@ describe("reasoning packet", () => {
 
 describe("governance unchanged", () => {
   it("adds no adapter and still cannot resolve or reorder", () => {
-    const resolve = ADAPTER_CAPABILITIES.find((row) => row.operation === "roadmap.resolve_decision");
-    const sequencing = ADAPTER_CAPABILITIES.find((row) => row.operation === "roadmap.change_sequencing");
+    const resolve = ADAPTER_CAPABILITIES.find(
+      (row) => row.operation === "roadmap.resolve_decision",
+    );
+    const sequencing = ADAPTER_CAPABILITIES.find(
+      (row) => row.operation === "roadmap.change_sequencing",
+    );
     expect(resolve?.supported).toBe(false);
     expect(sequencing?.supported).toBe(false);
   });
 
   it("proposes nothing merely because milestones became visible", () => {
     const cycle = planRoadmapCycle({
-      snapshot: snapshot({ roadmaps: [roadmap()], openDecisions: [], roadmapStages: { "rm-teamsynerg": SEQUENCE } }),
+      snapshot: snapshot({
+        roadmaps: [roadmap()],
+        openDecisions: [],
+        roadmapStages: { "rm-teamsynerg": SEQUENCE },
+      }),
       question: "Where does the Teamsynerg roadmap stand?",
     });
     expect(cycle.proposals).toHaveLength(0);

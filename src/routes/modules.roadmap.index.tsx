@@ -59,7 +59,9 @@ export const Route = createFileRoute("/modules/roadmap/")({
 
 function RoadmapRoute() {
   return (
-    <WorkspaceGate appId="roadmap">{(identity) => <RoadmapRoom identity={identity} />}</WorkspaceGate>
+    <WorkspaceGate appId="roadmap">
+      {(identity) => <RoadmapRoom identity={identity} />}
+    </WorkspaceGate>
   );
 }
 
@@ -148,8 +150,7 @@ function RoadmapRoom({ identity }: { identity: WorkspaceIdentity }) {
   }, [candidates]);
 
   const rows = useMemo(
-    () =>
-      buildRoadmapRows(roadmaps, stagesQuery.data ?? {}, decisionsQuery.data ?? [], identities),
+    () => buildRoadmapRows(roadmaps, stagesQuery.data ?? {}, decisionsQuery.data ?? [], identities),
     [roadmaps, stagesQuery.data, decisionsQuery.data, identities],
   );
 

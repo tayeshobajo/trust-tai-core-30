@@ -44,10 +44,10 @@ export interface IntakeOutcome {
 export function nameFromEmail(email: string): string {
   const local = email.split("@")[0] ?? email;
   const words = local
-.split(/[._\-+]+/)
-.filter(Boolean)
-.map((word) => word.charAt(0).toUpperCase() + word.slice(1));
-  return words.length > 0 ? words.join(" "): email;
+    .split(/[._\-+]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1));
+  return words.length > 0 ? words.join(" ") : email;
 }
 
 /** The canonical person row, reused when the workspace already knows them. */
@@ -57,11 +57,11 @@ async function findOrCreateCanonicalContact(
   fullName: string,
 ): Promise<string | null> {
   const { data: existing, error } = await client
-.from("contacts")
-.select("id, email")
-.eq("organization_id", input.organizationId)
-.ilike("email", input.email)
-.limit(1);
+    .from("contacts")
+    .select("id, email")
+    .eq("organization_id", input.organizationId)
+    .ilike("email", input.email)
+    .limit(1);
   if (error) {
     console.warn(`[comms-intake] contact read failed: ${error.message}`);
     return null;
@@ -71,8 +71,8 @@ async function findOrCreateCanonicalContact(
 
   const at = new Date().toISOString();
   const { data: created, error: insertError } = await client
-.from("contacts")
-.insert({
+    .from("contacts")
+    .insert({
       organization_id: input.organizationId,
       full_name: fullName,
       email: input.email,
@@ -89,8 +89,8 @@ async function findOrCreateCanonicalContact(
         },
       },
     })
-.select("id")
-.single();
+    .select("id")
+    .single();
   if (insertError) {
     console.warn(`[comms-intake] contact write failed: ${insertError.message}`);
     return null;
@@ -159,11 +159,11 @@ export async function ensureLabeledRelationship(
   if (!email) throw new Error("A labeled correspondent needs an address.");
 
   const { data: existing, error: existingError } = await client
-.from("comms_relationships")
-.select("id, full_name, email")
-.eq("organization_id", input.organizationId)
-.eq("email", email)
-.limit(1);
+    .from("comms_relationships")
+    .select("id, full_name, email")
+    .eq("organization_id", input.organizationId)
+    .eq("email", email)
+    .limit(1);
   if (existingError) throw new Error(existingError.message);
   const found = ((existing ?? []) as { id: string; full_name: string }[])[0];
   if (found) {
@@ -171,12 +171,12 @@ export async function ensureLabeledRelationship(
   }
 
   const fullName = input.name?.trim() || nameFromEmail(email);
-  const contactId = await findOrCreateCanonicalContact(client, {...input, email }, fullName);
+  const contactId = await findOrCreateCanonicalContact(client, { ...input, email }, fullName);
 
   const at = new Date().toISOString();
   const { data: created, error } = await client
-.from("comms_relationships")
-.insert({
+    .from("comms_relationships")
+    .insert({
       organization_id: input.organizationId,
       full_name: fullName,
       email,
@@ -197,11 +197,11 @@ export async function ensureLabeledRelationship(
         },
       },
     })
-.select("id, full_name")
-.single();
+    .select("id, full_name")
+    .single();
   if (error) throw new Error(error.message);
   const row = created as { id: string; full_name: string };
 
-  await recordCreation(client, {...input, email }, row.id, row.full_name);
+  await recordCreation(client, { ...input, email }, row.id, row.full_name);
   return { relationshipId: row.id, fullName: row.full_name, email, created: true };
 }

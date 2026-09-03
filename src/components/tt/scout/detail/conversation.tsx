@@ -65,9 +65,7 @@ export function ConversationTab({
           }
         >
           {messages.length === 0 ? (
-            <Empty>
-              This conversation is open in Comms, but nothing has been exchanged yet.
-            </Empty>
+            <Empty>This conversation is open in Comms, but nothing has been exchanged yet.</Empty>
           ) : (
             <ol className="space-y-3">
               {[...messages].reverse().map((message) => (

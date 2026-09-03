@@ -27,7 +27,8 @@ function OwnershipSettings() {
 
   const plan = useQuery({
     queryKey: key,
-    queryFn: () => ownershipBackfill.plan({ organizationId: identity.organizationId, userId: identity.userId }),
+    queryFn: () =>
+      ownershipBackfill.plan({ organizationId: identity.organizationId, userId: identity.userId }),
     retry: false,
   });
 
@@ -64,11 +65,11 @@ function OwnershipSettings() {
       <section className="tt-surface p-6">
         {plan.isPending ? (
           <p className="text-sm text-muted-foreground">Reading every milestone…</p>
-        ): plan.isError ? (
+        ) : plan.isError ? (
           <p className="text-sm text-danger">
-            {plan.error instanceof Error ? plan.error.message: "The milestones could not be read."}
+            {plan.error instanceof Error ? plan.error.message : "The milestones could not be read."}
           </p>
-        ): data ? (
+        ) : data ? (
           <>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -83,9 +84,9 @@ function OwnershipSettings() {
               >
                 {backfill.isPending
                   ? "Correcting…"
-: data.changes.length === 0
+                  : data.changes.length === 0
                     ? "Nothing to correct"
-: `Correct ${data.changes.length} row${data.changes.length === 1 ? "": "s"}`}
+                    : `Correct ${data.changes.length} row${data.changes.length === 1 ? "" : "s"}`}
               </TTButton>
             </div>
 
@@ -93,17 +94,17 @@ function OwnershipSettings() {
               <p className="mt-3 text-sm text-danger">
                 {backfill.error instanceof Error
                   ? backfill.error.message
-: "The correction did not complete."}
+                  : "The correction did not complete."}
               </p>
-            ): null}
+            ) : null}
             {backfill.data ? (
               <p className="mt-3 text-sm text-muted-foreground">
                 Rewrote {backfill.data.boundariesWritten} boundary sentence
-                {backfill.data.boundariesWritten === 1 ? "": "s"} and re-pointed{" "}
+                {backfill.data.boundariesWritten === 1 ? "" : "s"} and re-pointed{" "}
                 {backfill.data.linksWritten} handoff
-                {backfill.data.linksWritten === 1 ? "": "s"}.
+                {backfill.data.linksWritten === 1 ? "" : "s"}.
               </p>
-            ): null}
+            ) : null}
 
             <div className="mt-6 flex flex-wrap gap-2">
               <MetaPill>{data.counts.milestones} milestones</MetaPill>
@@ -112,7 +113,7 @@ function OwnershipSettings() {
               <MetaPill>{data.counts.frozen} settled, left as history</MetaPill>
             </div>
           </>
-        ): null}
+        ) : null}
       </section>
 
       {data && data.corrections.length > 0 ? (
@@ -129,14 +130,16 @@ function OwnershipSettings() {
                   <h3 className="font-display text-xl text-foreground">
                     {entry.name || "Untitled milestone"}
                   </h3>
-                  {entry.boundaryChanged ? <MetaPill>Boundary names the wrong room</MetaPill>: null}
+                  {entry.boundaryChanged ? (
+                    <MetaPill>Boundary names the wrong room</MetaPill>
+                  ) : null}
                   {entry.linkChanged ? (
                     <MetaPill>
                       Handoff moves{" "}
-                      {entry.linkOwnerBefore ? EXECUTION_ROOM_LABEL[entry.linkOwnerBefore]: ", "} →{" "}
-                      {entry.linkOwnerAfter ? EXECUTION_ROOM_LABEL[entry.linkOwnerAfter]: ", "}
+                      {entry.linkOwnerBefore ? EXECUTION_ROOM_LABEL[entry.linkOwnerBefore] : ", "} →{" "}
+                      {entry.linkOwnerAfter ? EXECUTION_ROOM_LABEL[entry.linkOwnerAfter] : ", "}
                     </MetaPill>
-                  ): null}
+                  ) : null}
                 </div>
 
                 <div className="mt-3">
@@ -156,7 +159,7 @@ function OwnershipSettings() {
                       <p className="mt-1 text-sm text-foreground">{entry.boundaryAfter}</p>
                     </div>
                   </div>
-                ): (
+                ) : (
                   <p className="mt-3 text-sm text-muted-foreground">
                     {entry.boundaryBefore || "No boundary sentence stored."}
                   </p>
@@ -164,12 +167,12 @@ function OwnershipSettings() {
 
                 {entry.frozenBecause ? (
                   <p className="mt-3 text-sm text-warning">{entry.frozenBecause}</p>
-                ): null}
+                ) : null}
               </li>
             ))}
           </ul>
         </section>
-      ): null}
+      ) : null}
     </div>
   );
 }

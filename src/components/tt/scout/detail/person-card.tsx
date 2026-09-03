@@ -50,8 +50,7 @@ export function ProspectPersonCard({
     return (
       <DetailSection title="Person" meta="none on record">
         <Empty>
-          No one is on record for {companyName} yet. Add a person below and their card appears
-          here.
+          No one is on record for {companyName} yet. Add a person below and their card appears here.
         </Empty>
       </DetailSection>
     );
@@ -71,14 +70,14 @@ export function ProspectPersonCard({
               className={
                 row.id === person.id
                   ? "rounded-full border border-royal px-3 py-1 text-[12px] text-royal"
-: "rounded-full border border-border px-3 py-1 text-[12px] text-muted-foreground hover:text-foreground"
+                  : "rounded-full border border-border px-3 py-1 text-[12px] text-muted-foreground hover:text-foreground"
               }
             >
               {row.fullName}
             </button>
           ))}
         </div>
-      ): null}
+      ) : null}
 
       <div className="grid gap-2 sm:grid-cols-3">
         <TTInput
@@ -115,7 +114,7 @@ export function ProspectPersonCard({
             })
           }
         >
-          {saving ? "Saving and preparing…": "Save person"}
+          {saving ? "Saving and preparing…" : "Save person"}
         </TTButton>
         <p className="text-[13px] text-muted-foreground">
           Saving confirms this person and prepares the first message in Comms. Nothing is sent.
@@ -126,7 +125,7 @@ export function ProspectPersonCard({
         <p role="alert" className="mt-3 text-[13px] text-destructive">
           {error}
         </p>
-      ): null}
+      ) : null}
 
       {saved ? (
         <div className="mt-3 rounded-lg border border-border bg-secondary/40 p-3">
@@ -134,8 +133,8 @@ export function ProspectPersonCard({
             {prepared
               ? prepared.created
                 ? "Saved. A first message is prepared in Comms with their name, title and company."
-: "Saved. A prepared first message already exists in Comms."
-: (saved.because ?? "Saved to their record.")}
+                : "Saved. A prepared first message already exists in Comms."
+              : (saved.because ?? "Saved to their record.")}
           </p>
           {prepared ? (
             <TTButton asChild variant="secondary" size="sm" className="mt-2">
@@ -143,9 +142,9 @@ export function ProspectPersonCard({
                 Review the draft in Comms
               </Link>
             </TTButton>
-          ): null}
+          ) : null}
         </div>
-      ): null}
+      ) : null}
     </DetailSection>
   );
 }

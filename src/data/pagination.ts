@@ -30,7 +30,7 @@ export function paginate<T>(items: T[], page: number, pageSize: number): PageVie
     page: current,
     pageCount,
     total,
-    from: total === 0 ? 0: start + 1,
+    from: total === 0 ? 0 : start + 1,
     to: Math.min(total, start + rows.length),
   };
 }

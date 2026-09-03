@@ -75,13 +75,13 @@ export function buildMoveBlockers(input: {
   return buildHandoffBlockers(input).map((blocker) => {
     const person = blocker.personId
       ? input.people.find((entry) => entry.id === blocker.personId)
-: undefined;
+      : undefined;
     return {
-      key: blocker.personId ? `${blocker.kind}:${blocker.personId}`: blocker.kind,
+      key: blocker.personId ? `${blocker.kind}:${blocker.personId}` : blocker.kind,
       message: blocker.message,
       detail: BLOCKER_DETAIL[blocker.kind],
       action: BLOCKER_ACTION[blocker.kind],
-...(person ? { person }: {}),
+      ...(person ? { person } : {}),
     };
   });
 }
@@ -109,9 +109,5 @@ export function advanceAfterBlockers(input: {
   firstMessageReady: boolean;
   primaryKind: RecommendedMoveAction;
 }): boolean {
-  return (
-    input.flowOpen &&
-    input.firstMessageReady &&
-    input.primaryKind === "prepare_first_message"
-  );
+  return input.flowOpen && input.firstMessageReady && input.primaryKind === "prepare_first_message";
 }

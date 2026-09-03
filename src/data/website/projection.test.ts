@@ -31,7 +31,7 @@ function submission(partial: Partial<WebsiteSubmission>): WebsiteSubmission {
     linkState: "linked",
     linkReason: "",
     scoutStatus: "discovered",
-...partial,
+    ...partial,
   };
 }
 
@@ -44,7 +44,7 @@ function event(partial: Partial<WebsiteEvent>): WebsiteEvent {
     eventKey: "k1",
     utm: {},
     properties: {},
-...partial,
+    ...partial,
   };
 }
 

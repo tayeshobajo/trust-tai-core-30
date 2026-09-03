@@ -115,20 +115,20 @@ type Fit = "all" | FitLight;
 function parseSection(value: unknown): Section {
   return value === "qualified" || value === "research" || value === "worth_knowing"
     ? value
-: "scout";
+    : "scout";
 }
 
 function parseFit(value: unknown): Fit {
   return value === "green" || value === "yellow" || value === "red" || value === "neutral"
     ? value
-: "all";
+    : "all";
 }
 
 export const Route = createFileRoute("/modules/scout/prospects/$prospectId")({
   validateSearch: (search: Record<string, unknown>) => ({
     section: parseSection(search["section"]),
     fit: parseFit(search["fit"]),
-...(parseDetailTab(search["tab"]) === "overview" ? {}: { tab: parseDetailTab(search["tab"]) }),
+    ...(parseDetailTab(search["tab"]) === "overview" ? {} : { tab: parseDetailTab(search["tab"]) }),
   }),
   head: () => ({
     meta: [
@@ -184,7 +184,7 @@ function CompanyDetail({
     navigate({
       to: "/modules/scout/prospects/$prospectId",
       params: { prospectId },
-      search: { section, fit,...(next === "overview" ? {}: { tab: next }) },
+      search: { section, fit, ...(next === "overview" ? {} : { tab: next }) },
     });
 
   const icp = useQuery({
@@ -285,7 +285,7 @@ function CompanyDetail({
   const prepareBrief = useMutation({
     mutationFn: (input: { force?: boolean; quiet?: boolean }) =>
       scoutService.prepareRelationshipDevelopment(
-        { prospectId,...(input.force !== undefined ? { force: input.force }: {}) },
+        { prospectId, ...(input.force !== undefined ? { force: input.force } : {}) },
         { organizationId, userId },
       ),
     onSuccess: async (_result, input) => {
@@ -332,9 +332,9 @@ function CompanyDetail({
       peopleService.lookupLinkedinCandidates({
         organizationId,
         fullName: person.fullName,
-...(candidate?.prospect.name ? { companyName: candidate.prospect.name }: {}),
-...(candidate?.prospect.domain ? { companyDomain: candidate.prospect.domain }: {}),
-...(person.roleTitle ? { roleTitle: person.roleTitle }: {}),
+        ...(candidate?.prospect.name ? { companyName: candidate.prospect.name } : {}),
+        ...(candidate?.prospect.domain ? { companyDomain: candidate.prospect.domain } : {}),
+        ...(person.roleTitle ? { roleTitle: person.roleTitle } : {}),
       }),
   });
 
@@ -410,7 +410,7 @@ function CompanyDetail({
         companyName: candidate.prospect.name,
         person,
         identity,
-...(development ? { development }: {}),
+        ...(development ? { development } : {}),
       });
     },
     onSuccess: async () => {
@@ -449,8 +449,8 @@ function CompanyDetail({
   const prepareErrorMessage = prepareBrief.error
     ? prepareBrief.error instanceof Error
       ? prepareBrief.error.message
-: "Scout could not prepare the research. Retry when you are ready."
-: null;
+      : "Scout could not prepare the research. Retry when you are ready."
+    : null;
 
   const busy =
     research.isPending ||
@@ -497,8 +497,8 @@ function CompanyDetail({
   const { prospect, evaluation } = candidate;
   const ordered = board.filter((c) => c.prospect.status !== "archived");
   const position = ordered.findIndex((c) => c.prospect.id === prospectId);
-  const prevCandidate = position > 0 ? ordered[position - 1]: undefined;
-  const nextCandidate = position >= 0 ? ordered[position + 1]: undefined;
+  const prevCandidate = position > 0 ? ordered[position - 1] : undefined;
+  const nextCandidate = position >= 0 ? ordered[position + 1] : undefined;
 
   const plan = buildPersonPlan(peopleRows);
   const lookupTarget =
@@ -513,7 +513,7 @@ function CompanyDetail({
           (person) =>
             person.id === plan.primary?.personId && isDecisionMaker(person) && !isReachable(person),
         ) ?? null)
-: null);
+      : null);
   const composition = composeProspectPage({
     candidate,
     activeIcpVersion: icp.data?.version ?? null,
@@ -570,7 +570,7 @@ function CompanyDetail({
           lastResearchedAt: lastResearchedAt(candidate),
           force: true,
         })
-: lifecycle.plan;
+      : lifecycle.plan;
     if (!plan.allowed) return;
     research.mutate({ candidate, plan });
   };
@@ -582,7 +582,7 @@ function CompanyDetail({
   const storedBrief =
     candidate.development?.research?.state === "prepared"
       ? candidate.development.research.brief
-: undefined;
+      : undefined;
   const firstMessageDevelopment =
     developmentFromBrief(storedBrief) ??
     developmentFromBrief(buildRelationshipBrief({ candidate, people: peopleRows }));
@@ -591,7 +591,7 @@ function CompanyDetail({
     people: peopleRows,
     coverage: composition.coverage,
     fitConfidence: composition.confidence,
-...(firstMessageDevelopment ? { development: firstMessageDevelopment }: {}),
+    ...(firstMessageDevelopment ? { development: firstMessageDevelopment } : {}),
   });
 
   // The guided flow behind "Resolve N blockers": the same structured blockers
@@ -606,7 +606,7 @@ function CompanyDetail({
   const confirmEmailBlocker =
     firstMessageDraft.blockers.length === 1
       ? moveBlockers.find((blocker) => blocker.action.kind === "confirm_email" && blocker.person)
-: undefined;
+      : undefined;
 
   // The one canonical decision surface: the recommended next move, computed
   // from the eligibility read, the governed brief, the pacing decision, and
@@ -617,9 +617,9 @@ function CompanyDetail({
     firstMessage: {
       ready: firstMessageDraft.ready,
       blockers: firstMessageDraft.blockers,
-...(confirmEmailBlocker?.person
+      ...(confirmEmailBlocker?.person
         ? { confirmEmailPersonId: confirmEmailBlocker.person.id }
-: {}),
+        : {}),
     },
   });
 
@@ -649,7 +649,7 @@ function CompanyDetail({
         focusPeopleSection("scout-people-role");
         break;
       case "prepare_research":
-        prepareBrief.mutate(recommendedMove.prepareForce ? { force: true }: {});
+        prepareBrief.mutate(recommendedMove.prepareForce ? { force: true } : {});
         break;
       case "research_company":
         startResearch();
@@ -689,7 +689,7 @@ function CompanyDetail({
     switch (key) {
       case "review_evidence":
         document
-.getElementById("scout-evidence-review")
+          .getElementById("scout-evidence-review")
           ?.scrollIntoView({ behavior: "smooth", block: "start" });
         break;
       case "run_research":
@@ -725,12 +725,12 @@ function CompanyDetail({
           previous={
             prevCandidate
               ? { id: prevCandidate.prospect.id, name: prevCandidate.prospect.name }
-: null
+              : null
           }
           next={
             nextCandidate
               ? { id: nextCandidate.prospect.id, name: nextCandidate.prospect.name }
-: null
+              : null
           }
         />
 
@@ -743,13 +743,13 @@ function CompanyDetail({
             <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-royal" />
             Re-reading the public pages on {prospect.domain}. This takes a few moments.
           </div>
-        ): null}
+        ) : null}
 
         {error ? (
           <p role="alert" className="text-sm text-destructive">
             {error.message}
           </p>
-        ): null}
+        ) : null}
 
         <CompanyHero candidate={candidate} summary={derived.summary} />
 
@@ -770,7 +770,7 @@ function CompanyDetail({
               <div className="space-y-6">
                 <ResearchHeader
                   companyName={prospect.name}
-                  toldUs={candidate.stated ? inboundToldUs(candidate.stated): null}
+                  toldUs={candidate.stated ? inboundToldUs(candidate.stated) : null}
                   permission={permission}
                   state={state}
                   researchedAt={lastResearchedAt(candidate)}
@@ -796,11 +796,11 @@ function CompanyDetail({
                 <DecisionStatePanel
                   companyName={prospect.name}
                   state={decisionState}
-                  toldUs={candidate.stated ? inboundToldUs(candidate.stated): null}
+                  toldUs={candidate.stated ? inboundToldUs(candidate.stated) : null}
                   submissionHref={
                     candidate.stated?.submissionRowId
                       ? `/modules/website/submissions/${candidate.stated.submissionRowId}`
-: null
+                      : null
                   }
                   onCommit={(commit) => recordDecision.mutate(commit)}
                   busy={busy}
@@ -814,9 +814,9 @@ function CompanyDetail({
                 <div id="scout-evidence-review">
                   <EvidenceReviewPanel review={workspace.review} />
                 </div>
-                {candidate.stated ? <StatedTranscript packet={candidate.stated} />: null}
+                {candidate.stated ? <StatedTranscript packet={candidate.stated} /> : null}
               </div>
-            ): null}
+            ) : null}
 
             {tab === "overview" ? (
               <div className="space-y-6">
@@ -829,14 +829,14 @@ function CompanyDetail({
                           candidate.stated.attribution.utmSource,
                           candidate.stated.attribution.utmCampaign,
                         ]
-.filter((part): part is string => Boolean(part && part.trim()))
-.join(" · ") || "Direct"
+                          .filter((part): part is string => Boolean(part && part.trim()))
+                          .join(" · ") || "Direct"
                       }
                     />
                     <StatedPanel packet={candidate.stated} />
                     <StatedTranscript packet={candidate.stated} />
                   </>
-                ): null}
+                ) : null}
                 <InboundSourceCard organizationId={organizationId} prospectId={prospectId} />
                 <ScoutSummaryCard
                   summary={derived.summary}
@@ -853,7 +853,7 @@ function CompanyDetail({
                   firstMessageReady={firstMessageDraft.ready}
                   routingFirstMessage={routeToComms.isPending}
                   confirmingEmailId={
-                    confirmEmail.isPending ? (confirmEmail.variables?.id ?? null): null
+                    confirmEmail.isPending ? (confirmEmail.variables?.id ?? null) : null
                   }
                   confirmedEmailId={confirmEmail.data?.id ?? null}
                   confirmEmailError={
@@ -863,15 +863,15 @@ function CompanyDetail({
                           message:
                             confirmEmail.error instanceof Error
                               ? confirmEmail.error.message
-: "That confirmation could not be saved. Retry when you are ready.",
+                              : "That confirmation could not be saved. Retry when you are ready.",
                         }
-: null
+                      : null
                   }
                   researchPending={research.isPending}
                   onPrimary={onRecommendedPrimary}
                   onPrepareFirstMessage={prepareFirstMessage}
                   onWatch={(watch) => setWatch.mutate(watch)}
-                  onPrepareBrief={(force) => prepareBrief.mutate(force ? { force: true }: {})}
+                  onPrepareBrief={(force) => prepareBrief.mutate(force ? { force: true } : {})}
                   onConfirmEmail={(person) => {
                     confirmEmail.reset();
                     confirmEmail.mutate(person);
@@ -879,7 +879,7 @@ function CompanyDetail({
                   onRunResearch={() => startResearch()}
                   onOpenPeople={resolveHandoffBlockers}
                   onSeeResearch={() =>
-                    void goToTab(hasResearchWorkspace(candidate) ? "research": "icp")
+                    void goToTab(hasResearchWorkspace(candidate) ? "research" : "icp")
                   }
                 />
 
@@ -895,9 +895,9 @@ function CompanyDetail({
                 <RecentActivityCard events={allEvents} onViewAll={() => void goToTab("activity")} />
                 <SimilarCompaniesCard companies={derived.similar} linkSearch={backSearch} />
               </div>
-            ): null}
+            ) : null}
 
-            {tab === "signals" ? <SignalsTab signals={derived.allSignals} />: null}
+            {tab === "signals" ? <SignalsTab signals={derived.allSignals} /> : null}
 
             {tab === "icp" ? (
               <IcpAnalysisTab
@@ -905,7 +905,7 @@ function CompanyDetail({
                 explanation={derived.summary.summary}
                 icpVersion={icp.data?.version ?? null}
               />
-            ): null}
+            ) : null}
 
             {tab === "conversation" ? (
               <ConversationTab
@@ -913,7 +913,7 @@ function CompanyDetail({
                 loading={conversations.isLoading}
                 companyName={prospect.name}
               />
-            ): null}
+            ) : null}
 
             {tab === "people" ? (
               <div className="space-y-6">
@@ -922,9 +922,7 @@ function CompanyDetail({
                   companyName={prospect.name}
                   saving={savePerson.isPending}
                   saved={savePerson.data ?? null}
-                  error={
-                    savePerson.error instanceof Error ? savePerson.error.message: null
-                  }
+                  error={savePerson.error instanceof Error ? savePerson.error.message : null}
                   onSave={(person, identity) => savePerson.mutate({ person, identity })}
                 />
                 <PeoplePanel
@@ -967,8 +965,8 @@ function CompanyDetail({
                     lookupLinkedin.error
                       ? lookupLinkedin.error instanceof Error
                         ? lookupLinkedin.error.message
-: "LinkedIn route search failed. Retry when you are ready."
-: null
+                        : "LinkedIn route search failed. Retry when you are ready."
+                      : null
                   }
                 />
                 <HandoffPanel
@@ -983,7 +981,7 @@ function CompanyDetail({
                   routing={routeToComms.isPending}
                 />
               </div>
-            ): null}
+            ) : null}
 
             {tab === "notes" ? (
               <NotesTab
@@ -991,9 +989,9 @@ function CompanyDetail({
                 onAdd={(body) => addNote.mutate(body)}
                 busy={addNote.isPending}
               />
-            ): null}
+            ) : null}
 
-            {tab === "activity" ? <ActivityTab events={allEvents} />: null}
+            {tab === "activity" ? <ActivityTab events={allEvents} /> : null}
           </div>
 
           <aside className="space-y-5">

@@ -45,7 +45,9 @@ export interface AcceptedCandidate {
 /** Keep only object entries from a model-returned array. */
 export function asArray(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value)
-    ? value.filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === "object")
+    ? value.filter(
+        (entry): entry is Record<string, unknown> => !!entry && typeof entry === "object",
+      )
     : [];
 }
 
@@ -79,8 +81,7 @@ export function acceptCandidates(candidates: RawDiscoveryCandidate[]): {
 
   for (const candidate of candidates ?? []) {
     const domain = rootDomain(candidate?.website);
-    const name =
-      typeof candidate?.company_name === "string" ? candidate.company_name.trim() : "";
+    const name = typeof candidate?.company_name === "string" ? candidate.company_name.trim() : "";
     const sources = Array.isArray(candidate?.source_urls)
       ? candidate.source_urls.filter((url) => typeof url === "string" && url.trim().length > 0)
       : [];
@@ -94,7 +95,10 @@ export function acceptCandidates(candidates: RawDiscoveryCandidate[]): {
       continue;
     }
     seen.add(domain);
-    accepted.push({ domain, candidate: { ...candidate, company_name: name, source_urls: sources } });
+    accepted.push({
+      domain,
+      candidate: { ...candidate, company_name: name, source_urls: sources },
+    });
   }
 
   return { accepted, rejected, duplicates };
@@ -119,7 +123,9 @@ export function discoveryEvaluation(
     const row = (entry ?? {}) as Record<string, unknown>;
     const status = String(row["status"] ?? "unknown");
     return {
-      key: String(row["name"] ?? `criterion_${index}`).toLowerCase().replace(/\s+/g, "_"),
+      key: String(row["name"] ?? `criterion_${index}`)
+        .toLowerCase()
+        .replace(/\s+/g, "_"),
       label: String(row["name"] ?? "Criterion"),
       score: Number(row["score_contribution"] ?? 0),
       maxScore: Number(row["weight"] ?? 0),
@@ -152,7 +158,8 @@ export function discoveryEvaluation(
     icpVersion: options.icpVersion,
     evaluatorVersion: SCOUT_DISCOVERY_EVALUATOR_VERSION,
     evaluatedAt: options.at,
-    explanation: String(fit.reasoning ?? "").trim() || "No reasoning was returned for this company.",
+    explanation:
+      String(fit.reasoning ?? "").trim() || "No reasoning was returned for this company.",
     scoreable: true,
     pagesResearched: Array.isArray(candidate.source_urls) ? candidate.source_urls.length : 0,
     researchDepthNote:

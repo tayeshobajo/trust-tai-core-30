@@ -31,10 +31,7 @@
  * boundary still apply. No service-role key is used.
  */
 
-import {
-  trustTaiSupabaseKey,
-  trustTaiSupabaseUrl,
-} from "@/lib/trust-tai-backend.server";
+import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 import { createClient } from "@supabase/supabase-js";
 
 import { checkVoice, requiresHumanReview, type VoiceVerdict } from "@/data/voice-policy";
@@ -44,9 +41,7 @@ import {
   TAI_RELATIONSHIP_VOICE,
   type VoiceRegister,
 } from "@/domain/voice";
-import {
-  COMMITMENT_CATEGORY,
-} from "@/domain/comms-interactions";
+import { COMMITMENT_CATEGORY } from "@/domain/comms-interactions";
 import {
   assessDraftGrounding,
   parseCommunicationJudgment,
@@ -117,7 +112,7 @@ export function classifyDraftAccessError(error: unknown): DraftFailure | null {
         "access_denied",
         "You don't have access to draft in this workspace. Nothing was created.",
       )
-: null;
+    : null;
 }
 
 /**
@@ -130,9 +125,9 @@ function toDraftFailure(error: unknown, stage: string): DraftFailure {
     console.error(`[comms-draft] provider_not_configured during ${stage}`);
     return new DraftFailure("provider_not_configured");
   }
-  const status = error instanceof ProviderCallFailedError ? error.status: undefined;
+  const status = error instanceof ProviderCallFailedError ? error.status : undefined;
   console.error(
-    `[comms-draft] provider_call_failed during ${stage}${status ? ` (provider status ${status})`: ""}`,
+    `[comms-draft] provider_call_failed during ${stage}${status ? ` (provider status ${status})` : ""}`,
   );
   return new DraftFailure("provider_call_failed");
 }
@@ -190,7 +185,7 @@ export interface DraftResult {
 }
 
 export function parseRegister(value: unknown): VoiceRegister {
-  return REGISTERS.includes(value as VoiceRegister) ? (value as VoiceRegister): "follow_up";
+  return REGISTERS.includes(value as VoiceRegister) ? (value as VoiceRegister) : "follow_up";
 }
 
 interface MemoryRow {
@@ -203,36 +198,39 @@ interface MemoryRow {
   due?: unknown;
 }
 
-function memoryLines(value: unknown, tier: string): { label: string; value: string; tier: string }[] {
+function memoryLines(
+  value: unknown,
+  tier: string,
+): { label: string; value: string; tier: string }[] {
   if (!Array.isArray(value)) return [];
   return value
-.filter((entry): entry is MemoryRow => Boolean(entry) && typeof entry === "object")
-.map((entry) => ({
+    .filter((entry): entry is MemoryRow => Boolean(entry) && typeof entry === "object")
+    .map((entry) => ({
       label: String(entry.label ?? "Note"),
       value: String(entry.value ?? ""),
       tier,
     }))
-.filter((entry) => entry.value.length > 0);
+    .filter((entry) => entry.value.length > 0);
 }
 
 /** Open promises on record: decided memory carrying the commitment category. */
 function openCommitmentLines(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
-.filter((entry): entry is MemoryRow => Boolean(entry) && typeof entry === "object")
-.filter(
+    .filter((entry): entry is MemoryRow => Boolean(entry) && typeof entry === "object")
+    .filter(
       (entry) =>
         entry.category === COMMITMENT_CATEGORY &&
         (entry.status === undefined || entry.status === "open"),
     )
-.map((entry) => {
+    .map((entry) => {
       const text = String(entry.value ?? "").trim();
       if (!text) return "";
-      const owner = entry.owner === "them" ? "they owe": "we owe";
-      const due = typeof entry.due === "string" && entry.due ? `, due ${entry.due}`: "";
+      const owner = entry.owner === "them" ? "they owe" : "we owe";
+      const due = typeof entry.due === "string" && entry.due ? `, due ${entry.due}` : "";
       return `${text} (${owner}${due})`;
     })
-.filter(Boolean);
+    .filter(Boolean);
 }
 
 interface ThreadRow {
@@ -259,24 +257,22 @@ async function loadThread(
   ];
   for (const columns of variants) {
     const { data, error } = await supabase
-.from("comms_messages")
-.select(columns)
-.eq("relationship_id", relationshipId)
-.order("occurred_at", { ascending: true })
-.limit(40);
+      .from("comms_messages")
+      .select(columns)
+      .eq("relationship_id", relationshipId)
+      .order("occurred_at", { ascending: true })
+      .limit(40);
     if (error) continue;
     const rows = ((data ?? []) as unknown as ThreadRow[])
-.filter((row) => row.direction === "inbound" || row.direction === "outbound")
-.map((row) => ({
+      .filter((row) => row.direction === "inbound" || row.direction === "outbound")
+      .map((row) => ({
         direction: row.direction as "inbound" | "outbound",
-...(typeof row.subject === "string" && row.subject.trim()
-          ? { subject: row.subject }
-: {}),
-...(typeof row.snippet === "string" ? { snippet: row.snippet }: {}),
-...(typeof row.body_text === "string" ? { bodyText: row.body_text }: {}),
+        ...(typeof row.subject === "string" && row.subject.trim() ? { subject: row.subject } : {}),
+        ...(typeof row.snippet === "string" ? { snippet: row.snippet } : {}),
+        ...(typeof row.body_text === "string" ? { bodyText: row.body_text } : {}),
         occurredAt: String(row.occurred_at ?? ""),
       }))
-.filter((row) => row.occurredAt);
+      .filter((row) => row.occurredAt);
     return threadContextForJudgment(rows);
   }
   return [];
@@ -293,19 +289,22 @@ async function loadVoiceExamples(
   organizationId: string,
 ): Promise<{ subject: string; excerpt: string }[]> {
   const { data, error } = await supabase
-.from("comms_drafts")
-.select("subject, body, created_at")
-.eq("organization_id", organizationId)
-.in("review_state", ["approved", "sent"])
-.order("created_at", { ascending: false })
-.limit(3);
+    .from("comms_drafts")
+    .select("subject, body, created_at")
+    .eq("organization_id", organizationId)
+    .in("review_state", ["approved", "sent"])
+    .order("created_at", { ascending: false })
+    .limit(3);
   if (error) return [];
   return ((data ?? []) as { subject?: unknown; body?: unknown }[])
-.map((row) => ({
+    .map((row) => ({
       subject: String(row.subject ?? "").trim(),
-      excerpt: String(row.body ?? "").replace(/\s+/g, " ").trim().slice(0, 400),
+      excerpt: String(row.body ?? "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 400),
     }))
-.filter((row) => row.excerpt.length > 0);
+    .filter((row) => row.excerpt.length > 0);
 }
 
 const JUDGMENT_INSTRUCTIONS = `You are the communication judgment of Trust Tai. You do NOT write the message.
@@ -488,22 +487,19 @@ const WRITE_RESPONSE_FORMAT: Record<string, unknown> = {
  * and a DraftFailure with a machine-readable code for every post-grounding
  * failure. A fabricated generic draft is never returned in either case.
  */
-export async function draftMessage(
-  token: string,
-  request: DraftRequest,
-): Promise<DraftResult> {
+export async function draftMessage(token: string, request: DraftRequest): Promise<DraftResult> {
   const supabase = callerClient(token);
 
   const { data: user, error: userError } = await supabase.auth.getUser();
   if (userError || !user?.user) throw new Error("Sign in to draft a message.");
 
   const { data: relationship, error } = await supabase
-.from("comms_relationships")
-.select(
+    .from("comms_relationships")
+    .select(
       "id, organization_id, full_name, email, company_name, stage, met_where, next_action, observed, inferred, decided",
     )
-.eq("id", request.relationshipId)
-.maybeSingle();
+    .eq("id", request.relationshipId)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!relationship) throw new Error("That relationship is not in your workspace.");
 
@@ -511,10 +507,10 @@ export async function draftMessage(
   const organizationId = String(row["organization_id"]);
 
   const { data: voice } = await supabase
-.from("comms_voice_profiles")
-.select("content_markdown, version")
-.eq("organization_id", organizationId)
-.maybeSingle();
+    .from("comms_voice_profiles")
+    .select("content_markdown, version")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
   const voiceDocument =
     (voice as { content_markdown?: string } | null)?.content_markdown?.trim() ||
     DEFAULT_VOICE_DOCUMENT;
@@ -522,8 +518,8 @@ export async function draftMessage(
   // Only observed facts and human decisions may be cited. Inferences inform
   // the angle; they never become a claim in the message.
   const usedEvidence = [
-...memoryLines(row["observed"], "observed"),
-...memoryLines(row["decided"], "decided"),
+    ...memoryLines(row["observed"], "observed"),
+    ...memoryLines(row["decided"], "decided"),
   ];
   const inferred = memoryLines(row["inferred"], "inferred");
   const commitments = openCommitmentLines(row["decided"]);
@@ -549,12 +545,9 @@ export async function draftMessage(
       fullName || String(row["email"] ?? "").trim() || String(row["company_name"] ?? "").trim(),
     ),
     threadHasInbound: thread.some((entry) => entry.direction === "inbound"),
-    priorInteractionCount:
-      thread.length + usedEvidence.length + (metWhere?.trim() ? 1: 0),
+    priorInteractionCount: thread.length + usedEvidence.length + (metWhere?.trim() ? 1 : 0),
     hasReason: Boolean(
-      request.purpose?.trim() ||
-        String(row["next_action"] ?? "").trim() ||
-        commitments.length > 0,
+      request.purpose?.trim() || String(row["next_action"] ?? "").trim() || commitments.length > 0,
     ),
   });
   if (!grounding.grounded) throw new Error(draftUngroundedMessage(grounding.missing));
@@ -701,9 +694,7 @@ export async function executeDraftPasses(
     }
   };
 
-  const readWritten = (
-    written: { raw: string },
-  ): { subject: string; body: string } => {
+  const readWritten = (written: { raw: string }): { subject: string; body: string } => {
     const parsed = safeJson(written.raw);
     if (!parsed) {
       console.error("[comms-draft] writing_unreadable: pass two returned no readable draft");
@@ -761,7 +752,7 @@ on the thread, and close.`,
     subject: subject.replace(/[!\u2014]/g, "").trim(),
     body: verdict.text,
     register: input.register,
-    reviewState: requiresHumanReview(input.register, verdict) ? "needs_human_review": "draft",
+    reviewState: requiresHumanReview(input.register, verdict) ? "needs_human_review" : "draft",
     violations: verdict.violations,
     usedEvidence: input.usedEvidence,
     judgment,

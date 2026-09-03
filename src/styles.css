@@ -72,7 +72,6 @@
   /* Evaluate: a human decision. Distinct from watch-closely amber. */
   --color-ember: var(--ember);
 
-
   /* Cloud sky, calm suite surfaces and restrained blue accents. */
   --color-cloud: var(--cloud);
   --color-cloud-strong: var(--cloud-strong);
@@ -120,7 +119,6 @@
   --danger: oklch(0.52 0.19 27);
   --ember: oklch(0.62 0.16 45);
 
-
   /* Cloud sky blue: light surfaces, never wallpaper for text. */
   --cloud: oklch(0.974 0.012 250);
   --cloud-strong: oklch(0.955 0.022 250);
@@ -156,11 +154,8 @@
   --sidebar-border: var(--rule);
   --sidebar-ring: var(--royal);
 
-
-  --shadow-tt-sm:
-    0 1px 0 oklch(1 0 0 / 0.6) inset, 0 8px 24px -14px oklch(0.17 0.055 268 / 0.16);
-  --shadow-tt-md:
-    0 1px 0 oklch(1 0 0 / 0.65) inset, 0 18px 50px -26px oklch(0.17 0.055 268 / 0.22);
+  --shadow-tt-sm: 0 1px 0 oklch(1 0 0 / 0.6) inset, 0 8px 24px -14px oklch(0.17 0.055 268 / 0.16);
+  --shadow-tt-md: 0 1px 0 oklch(1 0 0 / 0.65) inset, 0 18px 50px -26px oklch(0.17 0.055 268 / 0.22);
 
   /* Four-level working hierarchy: canvas → decision → evidence → utility. */
   --surface-primary: var(--card);
@@ -174,7 +169,6 @@
     0 2px 8px -5px color-mix(in oklab, var(--ink) 18%, transparent);
   --shadow-card: 0 14px 34px -30px color-mix(in oklab, var(--ink) 32%, transparent);
   --shadow-action: 0 10px 24px -16px color-mix(in oklab, var(--royal) 55%, transparent);
-
 
   /*
    * Per-app ambient accents. Atmosphere only, never status, never a control
@@ -220,7 +214,7 @@
     text-wrap: pretty;
   }
 
-:focus-visible {
+  :focus-visible {
     outline: 2px solid var(--royal);
     outline-offset: 2px;
     border-radius: 4px;
@@ -249,7 +243,11 @@
 @utility tt-ambient {
   background-image: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--tt-ambient-accent, var(--royal)) var(--tt-ambient-strength, 6%), transparent)
+    color-mix(
+        in oklab,
+        var(--tt-ambient-accent, var(--royal)) var(--tt-ambient-strength, 6%),
+        transparent
+      )
       0%,
     transparent var(--tt-ambient-depth, 180px)
   );
@@ -284,12 +282,11 @@
 
 /* Level B, the primary decision surface on a page. */
 @utility tt-level-primary {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--royal) 4.5%, var(--surface-primary)) 0%,
-      var(--surface-primary) 170px
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--royal) 4.5%, var(--surface-primary)) 0%,
+    var(--surface-primary) 170px
+  );
   border: 1px solid var(--surface-primary-border);
   box-shadow: var(--shadow-decision);
 }

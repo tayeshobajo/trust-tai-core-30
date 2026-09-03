@@ -53,7 +53,6 @@ export function AtAGlanceCard({ candidate }: { candidate: ProspectCandidate }) {
 
   const known = rows.filter((row) => row.value);
 
-
   return (
     <DetailSection title="At a glance" emphasis="quiet">
       {known.length === 0 ? (

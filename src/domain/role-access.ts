@@ -32,7 +32,7 @@ export function clampToRole(
 ): AppAccessLevel {
   const ceiling = roleCeiling(normalizeRole(role), appId);
   const proposed = normalizeAccessLevel(level);
-  return rank(proposed) > rank(ceiling) ? ceiling: proposed;
+  return rank(proposed) > rank(ceiling) ? ceiling : proposed;
 }
 
 /** The level this role holds in this room today: recorded grant, else template. */
@@ -48,10 +48,7 @@ export function roleAccessFor(
 }
 
 /** Which levels an owner or admin may actually choose for a role and room. */
-export function selectableLevels(
-  role: string | null | undefined,
-  appId: string,
-): AppAccessLevel[] {
+export function selectableLevels(role: string | null | undefined, appId: string): AppAccessLevel[] {
   const ceiling = roleCeiling(normalizeRole(role), appId);
   return APP_ACCESS_LEVELS.filter((level) => rank(level) <= rank(ceiling));
 }

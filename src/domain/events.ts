@@ -193,7 +193,6 @@ export const SUITE_EVENTS = {
   },
 } as const satisfies Record<string, SuiteEventDefinition>;
 
-
 export type SuiteEventKey = keyof typeof SUITE_EVENTS;
 export type SuiteEventName = (typeof SUITE_EVENTS)[SuiteEventKey]["name"];
 
@@ -214,7 +213,6 @@ export function isSuiteEvent(name: string): name is SuiteEventName {
 export function mayEmit(appId: string, key: SuiteEventKey): boolean {
   return SUITE_EVENTS[key].emittedBy === appId;
 }
-
 
 /** The smallest useful envelope an emitting app has to fill in. */
 export interface SuiteEventInput {

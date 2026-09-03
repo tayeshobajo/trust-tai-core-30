@@ -5,10 +5,7 @@
  * stay quiet: no sirens, no grades, no colour without a label beside it.
  */
 
-import {
-  HEALTH_LABEL,
-  type ConversationHealthStatus,
-} from "@/domain/comms-health";
+import { HEALTH_LABEL, type ConversationHealthStatus } from "@/domain/comms-health";
 import { SEGMENT_LABEL, type RelationshipSegment } from "@/domain/comms";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +26,11 @@ export function HealthDot({
   return (
     <span
       aria-hidden
-      className={cn("inline-block h-1.5 w-1.5 shrink-0 rounded-full", HEALTH_DOT[status], className)}
+      className={cn(
+        "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+        HEALTH_DOT[status],
+        className,
+      )}
     />
   );
 }
@@ -111,7 +112,11 @@ export function SegmentDot({
       role="img"
       aria-label={SEGMENT_LABEL[segment]}
       title={SEGMENT_LABEL[segment]}
-      className={cn("inline-block h-1.5 w-1.5 shrink-0 rounded-full", SEGMENT_DOT[segment], className)}
+      className={cn(
+        "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+        SEGMENT_DOT[segment],
+        className,
+      )}
     />
   );
 }
@@ -132,7 +137,7 @@ export function SegmentPill({
       )}
     >
       <SegmentDot segment={segment} />
-      {segment === "client" ? "Client": "Developing"}
+      {segment === "client" ? "Client" : "Developing"}
     </span>
   );
 }

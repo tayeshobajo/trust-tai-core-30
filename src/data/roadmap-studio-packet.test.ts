@@ -36,7 +36,7 @@ function item(overrides: Partial<StrategyItem> = {}): StrategyItem {
     confidence: "high",
     sources: [source],
     approval: "approved",
-...overrides,
+    ...overrides,
   };
 }
 
@@ -55,7 +55,7 @@ function strategy(overrides: Partial<RoadmapStrategy> = {}): RoadmapStrategy {
     leveragePoint: item({ key: "lev", statement: "Their crew data is already structured." }),
     createdAt: CHECKED,
     updatedAt: CHECKED,
-...overrides,
+    ...overrides,
   };
 }
 
@@ -83,7 +83,7 @@ function milestone(overrides: Partial<RoadmapMilestone> = {}): RoadmapMilestone 
     tier: "decided",
     createdAt: CHECKED,
     updatedAt: CHECKED,
-...overrides,
+    ...overrides,
   };
 }
 
@@ -111,7 +111,7 @@ function research(overrides: Partial<RoadmapResearch> = {}): RoadmapResearch {
     checkedAt: CHECKED,
     createdAt: CHECKED,
     updatedAt: CHECKED,
-...overrides,
+    ...overrides,
   };
 }
 
@@ -207,7 +207,7 @@ describe("validateSections", () => {
       tier: "inferred",
       sources: [source],
       support: body.map((line) => ({ line, keys: ["strategy:point_a:a"] })),
-...overrides,
+      ...overrides,
       body,
     };
   }
@@ -238,11 +238,17 @@ describe("validateSections", () => {
 
   it("drops a source the packet never cited", () => {
     const result = validateSections(
-      [section({ sources: [{ label: "Made up", url: "https://elsewhere.com", checkedAt: CHECKED }] })],
+      [
+        section({
+          sources: [{ label: "Made up", url: "https://elsewhere.com", checkedAt: CHECKED }],
+        }),
+      ],
       packet,
     );
     expect(result.sections[0]?.sources).toHaveLength(0);
-    expect(result.rejected.some((entry) => entry.reason.includes("not in the approved"))).toBe(true);
+    expect(result.rejected.some((entry) => entry.reason.includes("not in the approved"))).toBe(
+      true,
+    );
   });
 
   it("strips em dashes rather than shipping them", () => {
@@ -453,7 +459,10 @@ describe("support key namespacing and unlocks", () => {
           sources: [source],
           body: ["They already publish crew availability by phone."],
           support: [
-            { line: "They already publish crew availability by phone.", keys: ["strategy:point_a:a"] },
+            {
+              line: "They already publish crew availability by phone.",
+              keys: ["strategy:point_a:a"],
+            },
             { line, keys: [key] },
           ],
           unlocks: [line],

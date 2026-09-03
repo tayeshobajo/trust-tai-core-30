@@ -59,8 +59,7 @@ function Empty({ title, body }: { title: string; body: string }) {
   );
 }
 
-const SELECT =
-  "h-9 rounded-md border border-border bg-background px-2 text-[13px] text-foreground";
+const SELECT = "h-9 rounded-md border border-border bg-background px-2 text-[13px] text-foreground";
 
 /**
  * One linked thinking room, with the honest thing it can do next. A private
@@ -174,7 +173,10 @@ function ThinkingRow({
                 setOpen(false);
               }}
             >
-              Import {preview.length > 0 ? `${preview.length} candidate${preview.length === 1 ? "" : "s"}` : ""}
+              Import{" "}
+              {preview.length > 0
+                ? `${preview.length} candidate${preview.length === 1 ? "" : "s"}`
+                : ""}
             </TTButton>
           </div>
           {text.trim().length > 0 ? (
@@ -185,7 +187,6 @@ function ThinkingRow({
     </li>
   );
 }
-
 
 /* ---------------------------------------------------------------- context */
 
@@ -217,7 +218,6 @@ export function ContextTab({
   onAddConnection: (input: ConnectionInput) => void;
   onRemoveConnection: (connection: ProjectConnection) => void;
   onDismissSuggestion: (id: string) => void;
-
 }) {
   const [sourceType, setSourceType] = useState<ThinkingSourceType>("chatgpt");
   const [sourceTitle, setSourceTitle] = useState("");
@@ -228,7 +228,10 @@ export function ContextTab({
 
   return (
     <div className="space-y-5">
-      <Panel title="Context health" tone={health.level === "missing_key_context" ? "risk" : "plain"}>
+      <Panel
+        title="Context health"
+        tone={health.level === "missing_key_context" ? "risk" : "plain"}
+      >
         <p className="font-display text-xl text-foreground">
           {health.level === "strong"
             ? "Strong"
@@ -400,7 +403,10 @@ export function ContextTab({
         ) : (
           <ul className="mt-4 space-y-3">
             {connections.map((connection) => (
-              <li key={connection.id} className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
+              <li
+                key={connection.id}
+                className="flex flex-wrap items-center gap-3 border-t border-border pt-3"
+              >
                 <span className="text-[15px] text-foreground">{connection.label}</span>
                 <MetaPill>{CONNECTION_TYPE_LABEL[connection.connectionType]}</MetaPill>
                 <MetaPill>{CONNECTION_STATUS_LABEL[connection.status]}</MetaPill>
@@ -449,10 +455,15 @@ export function ContextTab({
         {packet.conflicts.length > 0 ? (
           <ul className="mt-4 space-y-3">
             {packet.conflicts.map((conflict) => (
-              <li key={`${conflict.about}-${conflict.alsoClaims}`} className="border-l-2 border-destructive/40 pl-4">
+              <li
+                key={`${conflict.about}-${conflict.alsoClaims}`}
+                className="border-l-2 border-destructive/40 pl-4"
+              >
                 <p className="text-[13px] text-muted-foreground">About {conflict.about}</p>
                 <p className="text-[15px] text-foreground">Kept: {conflict.kept}</p>
-                <p className="text-[14px] text-muted-foreground">Also claims: {conflict.alsoClaims}</p>
+                <p className="text-[14px] text-muted-foreground">
+                  Also claims: {conflict.alsoClaims}
+                </p>
               </li>
             ))}
           </ul>
@@ -480,8 +491,8 @@ function AuditTrail({ organizationId, projectId }: { organizationId: string; pro
   return (
     <Panel title="Change history">
       <p className="max-w-reading text-[14px] text-muted-foreground">
-        Every import, confirmation, supersede and evidence change on this project, with the
-        person who made it. Nothing here can be edited or removed.
+        Every import, confirmation, supersede and evidence change on this project, with the person
+        who made it. Nothing here can be edited or removed.
       </p>
       {!open ? (
         <TTButton size="sm" variant="secondary" className="mt-4" onClick={() => setOpen(true)}>
@@ -490,9 +501,7 @@ function AuditTrail({ organizationId, projectId }: { organizationId: string; pro
       ) : trail.isLoading ? (
         <p className="mt-4 text-[13px] text-muted-foreground">Reading the trail…</p>
       ) : (trail.data ?? []).length === 0 ? (
-        <p className="mt-4 text-[13px] text-muted-foreground">
-          Nothing has been changed here yet.
-        </p>
+        <p className="mt-4 text-[13px] text-muted-foreground">Nothing has been changed here yet.</p>
       ) : (
         <ul className="mt-4 space-y-3">
           {(trail.data ?? []).map((entry) => (
@@ -549,7 +558,6 @@ export function KnowledgeTab({
     items: live.filter((item) => item.section === value && item.reviewState === "confirmed"),
   })).filter((group) => group.items.length > 0);
 
-
   return (
     <div className="space-y-5">
       <Panel title="Record what this project knows">
@@ -603,16 +611,19 @@ export function KnowledgeTab({
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <MetaPill>{KNOWLEDGE_SECTION_LABEL[item.section]}</MetaPill>
                   <MetaPill>{KNOWLEDGE_REVIEW_LABEL[item.reviewState]}</MetaPill>
-                  <MetaPill>
-                    {item.sourceLabel ?? item.origin.replace(/_/g, " ")}
-                  </MetaPill>
+                  <MetaPill>{item.sourceLabel ?? item.origin.replace(/_/g, " ")}</MetaPill>
                   {typeof item.confidence === "number" ? (
                     <MetaPill>Read as {Math.round(item.confidence * 100)}% likely</MetaPill>
                   ) : null}
                   <TTButton size="sm" disabled={busy} onClick={() => onConfirm(item)}>
                     <Check aria-hidden className="size-4" /> Confirm
                   </TTButton>
-                  <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => onSupersede(item)}>
+                  <TTButton
+                    size="sm"
+                    variant="quiet"
+                    disabled={busy}
+                    onClick={() => onSupersede(item)}
+                  >
                     Discard
                   </TTButton>
                 </div>
@@ -621,8 +632,6 @@ export function KnowledgeTab({
           </ul>
         </Panel>
       ) : null}
-
-
 
       {grouped.length === 0 ? (
         <Empty
@@ -645,7 +654,12 @@ export function KnowledgeTab({
                         <Check aria-hidden className="size-4" /> Confirm
                       </TTButton>
                     )}
-                    <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => onSupersede(item)}>
+                    <TTButton
+                      size="sm"
+                      variant="quiet"
+                      disabled={busy}
+                      onClick={() => onSupersede(item)}
+                    >
                       No longer true
                     </TTButton>
                   </div>
@@ -755,7 +769,12 @@ export function AssetsTab({
                     Download
                   </TTButton>
                   {asset.status === "approved" ? (
-                    <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => onStatus(asset, "superseded")}>
+                    <TTButton
+                      size="sm"
+                      variant="quiet"
+                      disabled={busy}
+                      onClick={() => onStatus(asset, "superseded")}
+                    >
                       Supersede
                     </TTButton>
                   ) : (
@@ -764,7 +783,12 @@ export function AssetsTab({
                     </TTButton>
                   )}
                   {asset.status === "reference" ? null : (
-                    <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => onStatus(asset, "reference")}>
+                    <TTButton
+                      size="sm"
+                      variant="quiet"
+                      disabled={busy}
+                      onClick={() => onStatus(asset, "reference")}
+                    >
                       Mark reference
                     </TTButton>
                   )}

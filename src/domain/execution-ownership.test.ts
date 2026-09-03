@@ -53,7 +53,10 @@ describe("execution ownership law", () => {
 
   it("rewrites a boundary sentence that names the wrong room", () => {
     expect(
-      correctExecutionBoundary("Studio builds an interactive dashboard prototype only.", "projects"),
+      correctExecutionBoundary(
+        "Studio builds an interactive dashboard prototype only.",
+        "projects",
+      ),
     ).toBe("Projects builds an interactive dashboard prototype only.");
   });
 

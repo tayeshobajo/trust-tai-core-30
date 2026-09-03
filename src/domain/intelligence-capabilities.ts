@@ -75,7 +75,7 @@ export function roomCapabilities(room: string): CapabilityAnswer {
   return {
     room,
     exists: Boolean(registered),
-...(registered ? { layer: registered.layer }: {}),
+    ...(registered ? { layer: registered.layer } : {}),
     executable,
     unavailable,
     readOnly: executable.length === 0,
@@ -97,7 +97,7 @@ export function approvalPermissionFor(room: string, operation: string): Permissi
  */
 export function operationIsRecommendable(room: string, operation: string): boolean {
   const answer = roomCapabilities(room);
-  const declared = [...answer.executable,...answer.unavailable];
+  const declared = [...answer.executable, ...answer.unavailable];
   if (declared.length === 0) return true;
   return answer.executable.some((cap) => cap.operation === operation);
 }

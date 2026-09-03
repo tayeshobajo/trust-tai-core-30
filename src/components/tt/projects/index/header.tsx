@@ -70,7 +70,6 @@ export function ProjectsHeader({
   );
 }
 
-
 export function ProjectsEmptyState() {
   return (
     <section className="rounded-xl border border-border bg-card p-8">

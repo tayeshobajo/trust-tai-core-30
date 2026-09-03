@@ -4,16 +4,27 @@ import { evaluateScoutFit } from "./scout-fit-evaluator";
 
 type Obs = { key: string; label: string; value: unknown; evidence?: string; source_url?: string };
 
-function obs(key: string, value: unknown, evidence = "", sourceUrl = "https://example.com/page"): Obs {
+function obs(
+  key: string,
+  value: unknown,
+  evidence = "",
+  sourceUrl = "https://example.com/page",
+): Obs {
   return { key, label: key, value, evidence, source_url: sourceUrl };
 }
 
-const base = { inferred: {}, suggested: {}, scoreable: true, icpVersion: 1, at: "2026-01-01T00:00:00.000Z" };
+const base = {
+  inferred: {},
+  suggested: {},
+  scoreable: true,
+  icpVersion: 1,
+  at: "2026-01-01T00:00:00.000Z",
+};
 
 describe("scout fit evaluator v2, structured v3 observations", () => {
   it("scores strong structured evidence green only with >=75 and >=3 met criteria", () => {
     const result = evaluateScoutFit({
-...base,
+      ...base,
       observed: [
         obs("active_business_signals", 5, "Services, hours, and client work are published"),
         obs("proof_signals", 4, "Four named case studies"),
@@ -24,7 +35,11 @@ describe("scout fit evaluator v2, structured v3 observations", () => {
         obs("decision_maker_signals", 2, "Founder Jane Doe, Director Sam Lee"),
         obs("contact_routes", 3, "Form, email, phone"),
         obs("booking_signal", false),
-        obs("milestone_opportunities", ["Add a booking path", "Rebuild the case-study library"], "No booking despite services"),
+        obs(
+          "milestone_opportunities",
+          ["Add a booking path", "Rebuild the case-study library"],
+          "No booking despite services",
+        ),
         obs("pages_researched", 6),
       ],
       pagesResearched: 6,
@@ -40,7 +55,7 @@ describe("scout fit evaluator v2, structured v3 observations", () => {
 
   it("keeps thin evidence yellow", () => {
     const result = evaluateScoutFit({
-...base,
+      ...base,
       observed: [
         obs("active_business_signals", 1, "One services page"),
         obs("proof_signals", 0),
@@ -60,7 +75,7 @@ describe("scout fit evaluator v2, structured v3 observations", () => {
 
   it("does not turn missing proof into red", () => {
     const result = evaluateScoutFit({
-...base,
+      ...base,
       observed: [
         obs("active_business_signals", 3, "Services, hours, locations"),
         obs("proof_signals", 0),
@@ -78,7 +93,7 @@ describe("scout fit evaluator v2, structured v3 observations", () => {
 
   it("treats a named decision maker without a contact route as partial only", () => {
     const result = evaluateScoutFit({
-...base,
+      ...base,
       observed: [obs("decision_maker_signals", 1, "Founder Jane Doe"), obs("contact_routes", 0)],
     });
     const criterion = result.criteria.find((c) => c.key === "decision_maker");
@@ -88,7 +103,7 @@ describe("scout fit evaluator v2, structured v3 observations", () => {
 
   it("never treats WordPress alone as a system gap", () => {
     const result = evaluateScoutFit({
-...base,
+      ...base,
       observed: [
         obs("wordpress_detected", true, "wp-content asset paths"),
         obs("active_business_signals", 2),
@@ -106,8 +121,10 @@ describe("scout fit evaluator v2, structured v3 observations", () => {
 
   it("ignores the generic milestone fallback", () => {
     const result = evaluateScoutFit({
-...base,
-      observed: [obs("milestone_opportunities", ["Deeper human review before proposing a milestone"])],
+      ...base,
+      observed: [
+        obs("milestone_opportunities", ["Deeper human review before proposing a milestone"]),
+      ],
     });
     expect(result.criteria.find((c) => c.key === "first_milestone")?.state).toBe("missing");
     expect(result.criteria.find((c) => c.key === "roadmap_depth")?.state).toBe("missing");
@@ -115,15 +132,19 @@ describe("scout fit evaluator v2, structured v3 observations", () => {
 
   it("keeps funding capacity conservative", () => {
     const result = evaluateScoutFit({
-...base,
-      observed: [obs("pricing_signal", true), obs("organization_schema", 2), obs("wordpress_detected", true)],
+      ...base,
+      observed: [
+        obs("pricing_signal", true),
+        obs("organization_schema", 2),
+        obs("wordpress_detected", true),
+      ],
     });
     const funding = result.criteria.find((c) => c.key === "funding_capacity");
     expect(funding?.state).toBe("partial");
   });
 
   it("leaves preview demo rows neutral", () => {
-    const result = evaluateScoutFit({...base, observed: [], scoreable: false });
+    const result = evaluateScoutFit({ ...base, observed: [], scoreable: false });
     expect(result.light).toBe("neutral");
     expect(result.score).toBe(0);
     expect(result.scoreable).toBe(false);
@@ -131,10 +152,20 @@ describe("scout fit evaluator v2, structured v3 observations", () => {
 
   it("still evaluates legacy v1/v2 keyword rows", () => {
     const result = evaluateScoutFit({
-...base,
+      ...base,
       observed: [
-        { key: "s1", label: "", value: "Services page lists three offerings for clients", evidence: "Services page" },
-        { key: "s2", label: "", value: "Testimonials from two named clients", evidence: "Testimonials" },
+        {
+          key: "s1",
+          label: "",
+          value: "Services page lists three offerings for clients",
+          evidence: "Services page",
+        },
+        {
+          key: "s2",
+          label: "",
+          value: "Testimonials from two named clients",
+          evidence: "Testimonials",
+        },
       ],
     });
     expect(result.scoreable).toBe(true);
@@ -145,7 +176,7 @@ describe("scout fit evaluator v2, structured v3 observations", () => {
 describe("scout fit evaluator v3, v4 absence discipline", () => {
   it("cannot mark limiting_system met for a one-page WordPress-only company", () => {
     const result = evaluateScoutFit({
-...base,
+      ...base,
       observed: [
         obs("wordpress_detected", true, "wp-content asset paths"),
         obs("contact_routes", 0),
@@ -162,8 +193,12 @@ describe("scout fit evaluator v3, v4 absence discipline", () => {
 
   it("does not create a gap from contact_routes=0 without contact_page_checked", () => {
     const result = evaluateScoutFit({
-...base,
-      observed: [obs("contact_routes", 0), obs("clear_offer_signals", true), obs("pages_researched", 1)],
+      ...base,
+      observed: [
+        obs("contact_routes", 0),
+        obs("clear_offer_signals", true),
+        obs("pages_researched", 1),
+      ],
       pagesResearched: 1,
       researchVersion: 4,
     });
@@ -174,7 +209,7 @@ describe("scout fit evaluator v3, v4 absence discipline", () => {
 
   it("supports a gap when contact_page_checked is true and there are zero routes", () => {
     const result = evaluateScoutFit({
-...base,
+      ...base,
       observed: [
         obs("contact_page_checked", true),
         obs("offer_page_checked", true),
@@ -191,7 +226,7 @@ describe("scout fit evaluator v3, v4 absence discipline", () => {
 
   it("ignores the legacy WordPress milestone string", () => {
     const result = evaluateScoutFit({
-...base,
+      ...base,
       observed: [obs("milestone_opportunities", ["WordPress support or modernization path"])],
       researchVersion: 3,
     });
@@ -201,7 +236,7 @@ describe("scout fit evaluator v3, v4 absence discipline", () => {
 
   it("satisfies roadmap depth with two supported concrete opportunities", () => {
     const result = evaluateScoutFit({
-...base,
+      ...base,
       observed: [
         obs("contact_page_checked", true),
         obs("contact_routes", 0),

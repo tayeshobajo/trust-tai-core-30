@@ -32,7 +32,7 @@ export interface ConversationRow {
 
 function stamp(metadata: Record<string, unknown>, key: string): ISODateTime | null {
   const value = metadata[key];
-  return typeof value === "string" && value.trim() ? value: null;
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 export function closedAtOf(relationship: Relationship): ISODateTime | null {
@@ -50,14 +50,11 @@ export function isClosed(relationship: Relationship): boolean {
 function time(value: string | undefined | null): number {
   if (!value) return 0;
   const at = new Date(value).getTime();
-  return Number.isNaN(at) ? 0: at;
+  return Number.isNaN(at) ? 0 : at;
 }
 
 /** Inbound messages newer than the last time a person opened this thread. */
-export function unreadCount(
-  messages: StoredMailboxMessage[],
-  readAt: ISODateTime | null,
-): number {
+export function unreadCount(messages: StoredMailboxMessage[], readAt: ISODateTime | null): number {
   const since = time(readAt);
   return messages.filter(
     (message) => message.direction === "inbound" && time(message.occurredAt) > since,
@@ -70,7 +67,7 @@ export function conversationRows(
   messagesByRelationship: Record<string, StoredMailboxMessage[]>,
 ): ConversationRow[] {
   return relationships
-.map((relationship) => {
+    .map((relationship) => {
       const messages = [...(messagesByRelationship[relationship.id] ?? [])].sort(
         (a, b) => time(a.occurredAt) - time(b.occurredAt),
       );
@@ -84,7 +81,7 @@ export function conversationRows(
         readAt,
       } satisfies ConversationRow;
     })
-.sort((a, b) => {
+    .sort((a, b) => {
       const at = time(a.lastMessage?.occurredAt ?? a.relationship.lastTouchAt);
       const bt = time(b.lastMessage?.occurredAt ?? b.relationship.lastTouchAt);
       return bt - at;
@@ -122,9 +119,9 @@ export function previewOf(row: ConversationRow): string {
   const message = row.lastMessage;
   if (!message) return "No messages on record yet.";
   const words = (message.snippet ?? message.bodyText ?? message.subject ?? "").trim();
-  if (!words) return message.direction === "outbound" ? "You sent a message.": "They wrote.";
-  const lead = message.direction === "outbound" ? "You: ": "";
-  return `${lead}${words.length > 160 ? `${words.slice(0, 157)}…`: words}`;
+  if (!words) return message.direction === "outbound" ? "You sent a message." : "They wrote.";
+  const lead = message.direction === "outbound" ? "You: " : "";
+  return `${lead}${words.length > 160 ? `${words.slice(0, 157)}…` : words}`;
 }
 
 export function whenLabel(value: string | undefined | null, now: Date = new Date()): string {

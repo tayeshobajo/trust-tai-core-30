@@ -71,23 +71,21 @@ export function opsPathFromUrl(candidate: unknown): string | undefined {
     const url = new URL(candidate.trim());
     if (url.origin !== OPS_ORIGIN) return undefined;
     const path = `${url.pathname}${url.search}`;
-    return path === "/" ? undefined: safeOpsPath(path);
+    return path === "/" ? undefined : safeOpsPath(path);
   } catch {
     return undefined;
   }
 }
 
 /** The same-site Ops path for a projected project, or undefined. */
-export function opsProjectPath(
-  row: Pick<OpsProjectRow, "opsPath" | "opsUrl">,
-): string | undefined {
+export function opsProjectPath(row: Pick<OpsProjectRow, "opsPath" | "opsUrl">): string | undefined {
   return safeOpsPath(row.opsPath) ?? opsPathFromUrl(row.opsUrl);
 }
 
 /** The absolute Ops URL for a projected project, or Ops home when unknown. */
 export function opsProjectUrl(row: Pick<OpsProjectRow, "opsPath" | "opsUrl">): string {
   const path = opsProjectPath(row);
-  return path ? `${OPS_ORIGIN}${path}`: OPS_ORIGIN;
+  return path ? `${OPS_ORIGIN}${path}` : OPS_ORIGIN;
 }
 
 /* ------------------------------------------------------------------ */
@@ -104,7 +102,6 @@ export const OPS_SYNC_FRESH_MS = 15 * 60_000;
  */
 export const OPS_SYNC_DELAYED_MS = 24 * 3_600_000;
 
-
 export interface OpsConnectionInput {
   /** A direct Ops read succeeded just now. Today Core has no such read. */
   live?: boolean;
@@ -118,7 +115,7 @@ export interface OpsConnectionInput {
 export function opsConnectionState(input: OpsConnectionInput): OpsConnection {
   if (input.live === true) return "live";
   if (input.projectionReadOk === false) return "interrupted";
-  const at = input.lastSyncedAt ? new Date(input.lastSyncedAt).getTime(): Number.NaN;
+  const at = input.lastSyncedAt ? new Date(input.lastSyncedAt).getTime() : Number.NaN;
   if (Number.isNaN(at)) return "interrupted";
   const age = input.now - at;
   if (age <= OPS_SYNC_FRESH_MS) return "synchronized";
@@ -140,7 +137,7 @@ export const OPS_CONNECTION_LABEL: Record<OpsConnection, string> = {
 function text(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed: undefined;
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function count(value: unknown): number | null {
@@ -188,7 +185,7 @@ export function readOpsProjectRow(raw: Record<string, unknown>): OpsProjectRow |
   const environment = text(raw["primary_domain"]);
   const canonicalProjectId = text(raw["canonical_project_id"]);
   const opsPath = safeOpsPath(raw["ops_path"]);
-  const opsUrl = opsPathFromUrl(raw["ops_url"]) ? String(raw["ops_url"]).trim(): undefined;
+  const opsUrl = opsPathFromUrl(raw["ops_url"]) ? String(raw["ops_url"]).trim() : undefined;
   const lifecycleState = (text(raw["lifecycle_state"]) ?? "active").toLowerCase();
 
   return {
@@ -206,13 +203,13 @@ export function readOpsProjectRow(raw: Record<string, unknown>): OpsProjectRow |
     needsAttention: raw["needs_attention"] === true,
     removed: lifecycleState === "removed",
     archived: lifecycleState === "archived",
-...(company ? { company }: {}),
-...(status ? { status }: {}),
-...(owner ? { owner }: {}),
-...(environment ? { environment }: {}),
-...(canonicalProjectId ? { canonicalProjectId }: {}),
-...(opsPath ? { opsPath }: {}),
-...(opsUrl ? { opsUrl }: {}),
+    ...(company ? { company } : {}),
+    ...(status ? { status } : {}),
+    ...(owner ? { owner } : {}),
+    ...(environment ? { environment } : {}),
+    ...(canonicalProjectId ? { canonicalProjectId } : {}),
+    ...(opsPath ? { opsPath } : {}),
+    ...(opsUrl ? { opsUrl } : {}),
   };
 }
 

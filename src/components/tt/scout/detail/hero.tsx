@@ -268,7 +268,6 @@ export function CompanyHero({
             </div>
           </div>
         </div>
-
       </div>
 
       <div className="grid grid-cols-2 divide-x divide-border border-t border-border sm:grid-cols-3 xl:grid-cols-6">

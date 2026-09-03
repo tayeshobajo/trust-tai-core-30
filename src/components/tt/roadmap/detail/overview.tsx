@@ -51,7 +51,7 @@ export function PointSummary({
             <ul className="mt-3 space-y-1.5">
               {roadmap.pointA.slice(1, 4).map((note) => (
                 <li key={`${note.label}-${note.at}`} className="text-[13px] text-muted-foreground">
-  · {note.value}
+                  · {note.value}
                 </li>
               ))}
             </ul>

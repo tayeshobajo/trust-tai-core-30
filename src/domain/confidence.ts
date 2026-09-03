@@ -33,7 +33,6 @@ export interface ConfidenceRead {
 /** Confidence can be lowered by context, never raised past its evidence. */
 export function capConfidence(read: ConfidenceRead, cap: ConfidenceLevel): ConfidenceRead {
   const order: ConfidenceLevel[] = ["unknown", "low", "moderate", "high"];
-  const level =
-    order.indexOf(read.level) > order.indexOf(cap) ? cap : read.level;
+  const level = order.indexOf(read.level) > order.indexOf(cap) ? cap : read.level;
   return { ...read, level };
 }

@@ -26,9 +26,7 @@ describe("validateAttachments", () => {
   });
 
   it("names the file that is too large", () => {
-    const errors = validateAttachments([
-      { filename: "huge.zip", size: MAX_ATTACHMENT_BYTES + 1 },
-    ]);
+    const errors = validateAttachments([{ filename: "huge.zip", size: MAX_ATTACHMENT_BYTES + 1 }]);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain("huge.zip");
   });
@@ -79,7 +77,7 @@ describe("replyRecipients", () => {
     });
     expect(result.to).toEqual(["dana@x.com"]);
     expect(result.cc).toEqual(["lee@y.com", "sam@z.com"]);
-    expect([...result.to,...result.cc]).not.toContain("tai@trust-tai.com");
+    expect([...result.to, ...result.cc]).not.toContain("tai@trust-tai.com");
   });
 
   it("keeps the person we answer in To, everyone else in Cc, once", () => {
@@ -207,10 +205,9 @@ describe("encodeRawEmail", () => {
     });
     const encoded = encodeRawEmail(raw);
     expect(encoded).not.toMatch(/[+/=]/);
-    const decoded = Buffer.from(
-      encoded.replace(/-/g, "+").replace(/_/g, "/"),
-      "base64",
-    ).toString("utf8");
+    const decoded = Buffer.from(encoded.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString(
+      "utf8",
+    );
     expect(decoded).toBe(raw);
   });
 });

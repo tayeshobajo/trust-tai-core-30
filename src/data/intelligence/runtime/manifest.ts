@@ -68,7 +68,7 @@ function manifest(
   return {
     room,
     layer: registered?.layer ?? "business",
-    aspects: {...defaults,...overrides },
+    aspects: { ...defaults, ...overrides },
   };
 }
 
@@ -237,7 +237,9 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
   manifest("pulse", {
     evidence_grounding: r("signals derived from room state (src/data/intelligence/derive.ts)"),
     retrieval: r("suite snapshot + canon experience (src/data/intelligence/service.ts)"),
-    domain_patterns: r("canon matches on engine observations (src/data/intelligence/canon/match.ts)"),
+    domain_patterns: r(
+      "canon matches on engine observations (src/data/intelligence/canon/match.ts)",
+    ),
     safe_diagnostic_loop: d(
       "read-only visibility surface; it routes attention, it does not diagnose",
       "src/data/intelligence/runtime/protocol.ts",

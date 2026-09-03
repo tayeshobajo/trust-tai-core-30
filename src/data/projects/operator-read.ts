@@ -63,7 +63,7 @@ export function operatorEvidenceFromPacket(packet: ProjectContextPacket): Runtim
   packet.activeBlockers.forEach((blocker, index) => {
     evidence.push({
       id: `packet:${packet.project.id}:blocker:${index}`,
-      statement: `Blocked: ${blocker.reason}${blocker.owner ? ` (owner: ${blocker.owner})`: ""}`,
+      statement: `Blocked: ${blocker.reason}${blocker.owner ? ` (owner: ${blocker.owner})` : ""}`,
       owningRoom: "projects",
       tier: "derived",
       label: "Active blocker",
@@ -73,7 +73,7 @@ export function operatorEvidenceFromPacket(packet: ProjectContextPacket): Runtim
   packet.currentWork.forEach((work, index) => {
     evidence.push({
       id: `packet:${packet.project.id}:work:${index}`,
-      statement: `Work in flight: ${work.title}, ${work.status}${work.dueDate ? `, due ${work.dueDate}`: ""}`,
+      statement: `Work in flight: ${work.title}, ${work.status}${work.dueDate ? `, due ${work.dueDate}` : ""}`,
       owningRoom: "projects",
       tier: "derived",
       label: "Current work",
@@ -138,7 +138,7 @@ export function foldOperatorRead(input: {
   const missingContext: OperatorGap[] = read.unknowns.map((unknown) => ({
     missing: unknown,
     whyItMatters: "The operator read could not ground this from the evidence supplied.",
-...(GAP_CUES.test(unknown) ? { closesWith: "meeting" as const }: {}),
+    ...(GAP_CUES.test(unknown) ? { closesWith: "meeting" as const } : {}),
   }));
 
   /* Open questions in the packet are gaps by definition. */
@@ -152,10 +152,10 @@ export function foldOperatorRead(input: {
   }
 
   const patternKnowledge: OperatorKnowledge[] = read.knowledge
-.filter((item) =>
+    .filter((item) =>
       ["canon_pattern", "diagnostic_chain", "prior_case", "human_correction"].includes(item.kind),
     )
-.map((item) => ({
+    .map((item) => ({
       kind: item.kind as OperatorKnowledge["kind"],
       id: item.id,
       label: item.label,
@@ -163,14 +163,14 @@ export function foldOperatorRead(input: {
     }));
 
   const risks: OperatorRisk[] = [
-...read.interpretations
-.filter((interpretation) => RISK_CUES.test(interpretation.claim))
-.map((interpretation) => ({
+    ...read.interpretations
+      .filter((interpretation) => RISK_CUES.test(interpretation.claim))
+      .map((interpretation) => ({
         risk: interpretation.claim,
         because: interpretation.because,
         restsOn: interpretation.restsOn,
       })),
-...packet.activeBlockers.map((blocker, index) => ({
+    ...packet.activeBlockers.map((blocker, index) => ({
       risk: `Active blocker: ${blocker.reason}`,
       because: "On the context packet as an active blocker.",
       restsOn: [`packet:${packet.project.id}:blocker:${index}`],
@@ -180,14 +180,14 @@ export function foldOperatorRead(input: {
   const dependencies: OperatorDependency[] = packet.currentWork.map((work) => ({
     dependsOn: work.title,
     owner: work.owner ?? "unassigned",
-    state: work.status === "done" ? "met": work.status === "blocked" ? "open": "unknown",
+    state: work.status === "done" ? "met" : work.status === "blocked" ? "open" : "unknown",
   }));
 
   const capabilityFit: OperatorCapabilityFit = {
     fits: capabilities.executable.map((cap) => cap.operation),
     gaps: read.nextSteps
-.filter((step) => step.external)
-.map((step) => `${step.title}, external; a person carries it`),
+      .filter((step) => step.external)
+      .map((step) => `${step.title}, external; a person carries it`),
     external: capabilities.externalSurfaces,
   };
 
@@ -203,7 +203,7 @@ export function foldOperatorRead(input: {
       input.operatorSummary ??
       (read.facts.length > 0
         ? `Grounded in ${read.facts.length} facts from the project packet.`
-: "The packet holds too little to read this milestone responsibly."),
+        : "The packet holds too little to read this milestone responsibly."),
     facts: read.facts,
     missingContext,
     patternKnowledge,

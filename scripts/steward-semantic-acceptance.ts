@@ -94,7 +94,7 @@ console.log(
 /* The same shape of work, seen in the required number of distinct conversations. */
 const repeated = Array.from({ length: RECURRING_PATTERN_THRESHOLD }, (_, index) =>
   observations.map((observation) => ({
-...observation,
+    ...observation,
     conversationId: `rehearsal-conversation-${index}`,
   })),
 ).flat();

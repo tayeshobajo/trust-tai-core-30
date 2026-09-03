@@ -33,10 +33,7 @@ import type { ThreadChannel } from "@/domain/comms";
 /** How much of the observed body is kept on the touch summary line. */
 export const SUMMARY_MAX_CHARS = 140;
 
-export type LinkiReplyIngestStatus =
-  | "pending_resolution"
-  | "resolved"
-  | "rejected";
+export type LinkiReplyIngestStatus = "pending_resolution" | "resolved" | "rejected";
 
 /** The observed-reply contract, as Linki (transport) delivers it. */
 export interface LinkedInReplyObserved {
@@ -92,7 +89,7 @@ export function truncateForSummary(body: string, max = SUMMARY_MAX_CHARS): strin
   if (clean.length <= max) return clean;
   const cut = clean.slice(0, max);
   const lastSpace = cut.lastIndexOf(" ");
-  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace): cut).trimEnd()}…`;
+  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
 /**
@@ -126,8 +123,8 @@ function provenanceFor(input: LinkedInReplyObserved, at: string): Row {
     channel: "linkedin",
     external_thread_ref: input.externalThreadRef,
     external_message_ref: input.externalMessageRef,
-...(input.senderExternalId ? { sender_external_id: input.senderExternalId }: {}),
-...(input.accountRef ? { account_ref: input.accountRef }: {}),
+    ...(input.senderExternalId ? { sender_external_id: input.senderExternalId } : {}),
+    ...(input.accountRef ? { account_ref: input.accountRef } : {}),
   };
 }
 
@@ -174,7 +171,7 @@ export async function resolveSender(
       relationshipId: null,
       queueReason: input.senderLinkedinUrl
         ? "The observed sender URL is not a usable LinkedIn profile URL."
-: "The observed reply carried no sender profile URL.",
+        : "The observed reply carried no sender profile URL.",
     };
   }
 
@@ -184,11 +181,11 @@ export async function resolveSender(
   const reads: { id: string; metadata?: Row | null }[][] = [];
   for (const column of ["metadata->>linkedin_url", "metadata->people->>linkedin_url"]) {
     const { data, error } = await client
-.from("contacts")
-.select("id, metadata")
-.eq("organization_id", input.organizationId)
-.eq(column, senderUrl)
-.limit(10);
+      .from("contacts")
+      .select("id, metadata")
+      .eq("organization_id", input.organizationId)
+      .eq(column, senderUrl)
+      .limit(10);
     if (error) {
       throw new Error(`Reply resolution could not read contacts: ${error.message}`);
     }
@@ -202,7 +199,7 @@ export async function resolveSender(
     const meta = peopleMetaOf(row.metadata);
     const confirmed = meta["linkedin_confirmed"] === true || meta["linkedin_confirmed"] === "true";
     const stored = normalizeLinkedinUrl(
-      typeof meta["linkedin_url"] === "string" ? meta["linkedin_url"]: null,
+      typeof meta["linkedin_url"] === "string" ? meta["linkedin_url"] : null,
     );
     return confirmed && stored === senderUrl;
   });
@@ -226,12 +223,12 @@ export async function resolveSender(
 
   const contactId = matches[0]!.id;
   const { data: relationships, error: relError } = await client
-.from("comms_relationships")
-.select("id")
-.eq("organization_id", input.organizationId)
-.eq("contact_id", contactId)
-.order("created_at", { ascending: false })
-.limit(1);
+    .from("comms_relationships")
+    .select("id")
+    .eq("organization_id", input.organizationId)
+    .eq("contact_id", contactId)
+    .order("created_at", { ascending: false })
+    .limit(1);
   if (relError) {
     throw new Error(`Reply resolution could not read relationships: ${relError.message}`);
   }
@@ -245,7 +242,7 @@ function peopleMetaOf(metadata: Row | null | undefined): Row {
   const nested = metadata["people"];
   return nested && typeof nested === "object" && !Array.isArray(nested)
     ? (nested as Row)
-: metadata;
+    : metadata;
 }
 
 /* -------------------------------------------------------------- ingestion */
@@ -273,8 +270,8 @@ export async function ingestLinkedInReply(
   //    constraint absorbs redelivery as a no-op BEFORE anything else runs.
   const landingError = new Error("The observed reply could not be recorded.");
   const { data: landed, error: insertError } = await client
-.from("linkedin_replies")
-.insert({
+    .from("linkedin_replies")
+    .insert({
       organization_id: input.organizationId,
       source: input.source,
       external_thread_ref: input.externalThreadRef.trim(),
@@ -287,8 +284,8 @@ export async function ingestLinkedInReply(
       observed_at: input.observedAt,
       payload: input.payload ?? {},
     })
-.select("id")
-.single();
+    .select("id")
+    .single();
   if (insertError) {
     if (insertError.code === "23505") return { status: "duplicate" };
     throw landingError;
@@ -308,9 +305,9 @@ export async function ingestLinkedInReply(
 
   if (!resolution.contactId) {
     const { error: queueError } = await client
-.from("linkedin_replies")
-.update({ status: "pending_resolution", resolution_note: resolution.queueReason ?? null })
-.eq("id", replyId);
+      .from("linkedin_replies")
+      .update({ status: "pending_resolution", resolution_note: resolution.queueReason ?? null })
+      .eq("id", replyId);
     if (queueError) {
       throw new Error(`The unresolved reply could not be queued: ${queueError.message}`);
     }
@@ -327,14 +324,14 @@ export async function ingestLinkedInReply(
   //    (ledger) but parks as pending so a human decides the Comms side.
   if (!resolution.relationshipId) {
     const { error: parkError } = await client
-.from("linkedin_replies")
-.update({
+      .from("linkedin_replies")
+      .update({
         status: "pending_resolution",
         resolved_contact_id: resolution.contactId,
         resolution_note:
           "The sender resolved to a contact, but no Comms relationship exists yet. A person decides whether to open one.",
       })
-.eq("id", replyId);
+      .eq("id", replyId);
     if (parkError) {
       throw new Error(`The resolved reply could not be parked: ${parkError.message}`);
     }
@@ -348,8 +345,8 @@ export async function ingestLinkedInReply(
   }
 
   const { data: touch, error: touchError } = await client
-.from("comms_touches")
-.insert({
+    .from("comms_touches")
+    .insert({
       organization_id: input.organizationId,
       relationship_id: resolution.relationshipId,
       channel: "linkedin" as ThreadChannel,
@@ -360,24 +357,26 @@ export async function ingestLinkedInReply(
       provenance: provenanceFor(input, input.observedAt),
       logged_by: null,
     })
-.select("id")
-.single();
+    .select("id")
+    .single();
   if (touchError) {
-    throw new Error(`The observed reply could not join the relationship thread: ${touchError.message}`);
+    throw new Error(
+      `The observed reply could not join the relationship thread: ${touchError.message}`,
+    );
   }
   const touchId = (touch as { id: string }).id;
 
   // Inbound touches start the reply clock, exactly like email ingestion.
   const responseDueAt = new Date(Date.parse(input.observedAt) + 2 * 86_400_000).toISOString();
   const { error: relUpdateError } = await client
-.from("comms_relationships")
-.update({
+    .from("comms_relationships")
+    .update({
       last_touch_at: input.observedAt,
       response_due_at: responseDueAt,
       updated_at: new Date().toISOString(),
     })
-.eq("id", resolution.relationshipId)
-.eq("organization_id", input.organizationId);
+    .eq("id", resolution.relationshipId)
+    .eq("organization_id", input.organizationId);
   if (relUpdateError) {
     // The touch is the truth; the denormalized clock is a convenience. Warn,
     // do not fail: a resync recomputes from touches.
@@ -388,15 +387,15 @@ export async function ingestLinkedInReply(
 
   // 4) Resolve the landing row.
   const { error: resolveError } = await client
-.from("linkedin_replies")
-.update({
+    .from("linkedin_replies")
+    .update({
       status: "resolved",
       resolved_contact_id: resolution.contactId,
       relationship_id: resolution.relationshipId,
       resolution_note: "Resolved by confirmed LinkedIn route provenance (P1.10).",
       resolved_at: new Date().toISOString(),
     })
-.eq("id", replyId);
+    .eq("id", replyId);
   if (resolveError) {
     throw new Error(`The resolved reply could not be stamped: ${resolveError.message}`);
   }

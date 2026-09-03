@@ -56,17 +56,19 @@ export async function audit(input: {
   beforeState?: string | null;
   afterState?: string | null;
 }): Promise<void> {
-  const { error } = await db().from("intelligence_audit").insert({
-    organization_id: ORG_ID,
-...(input.projectId ? { project_id: input.projectId }: {}),
-...(input.projectName ? { project_name: input.projectName }: {}),
-    action: input.action,
-    subject: input.subject.slice(0, 500),
-...(input.beforeState ? { before_state: input.beforeState }: {}),
-...(input.afterState ? { after_state: input.afterState }: {}),
-    actor_id: RUNTIME_ACTOR_ID,
-    actor_label: RUNTIME_ACTOR_LABEL,
-    occurred_at: new Date().toISOString(),
-  });
+  const { error } = await db()
+    .from("intelligence_audit")
+    .insert({
+      organization_id: ORG_ID,
+      ...(input.projectId ? { project_id: input.projectId } : {}),
+      ...(input.projectName ? { project_name: input.projectName } : {}),
+      action: input.action,
+      subject: input.subject.slice(0, 500),
+      ...(input.beforeState ? { before_state: input.beforeState } : {}),
+      ...(input.afterState ? { after_state: input.afterState } : {}),
+      actor_id: RUNTIME_ACTOR_ID,
+      actor_label: RUNTIME_ACTOR_LABEL,
+      occurred_at: new Date().toISOString(),
+    });
   if (error) throw new Error(`audit write failed: ${error.message}`);
 }

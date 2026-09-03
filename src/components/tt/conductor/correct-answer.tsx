@@ -95,7 +95,9 @@ export function CorrectAnswer({ answer, saving, saved, onCorrect }: CorrectAnswe
     return (
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-[var(--tt-ink-muted)]">
-          {saved ? "Recorded. The next answer will take it into account." : "If this is wrong, say so, it changes what comes next."}
+          {saved
+            ? "Recorded. The next answer will take it into account."
+            : "If this is wrong, say so, it changes what comes next."}
         </span>
         <button
           type="button"

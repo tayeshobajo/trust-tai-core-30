@@ -29,7 +29,12 @@ vi.mock("@/data/supabase/scout-service", () => ({
 }));
 
 vi.mock("@/data/supabase/roadmap-service", () => ({
-  roadmapService: { create: vi.fn(), addDecision: vi.fn(), detail: vi.fn(), resolveDecision: vi.fn() },
+  roadmapService: {
+    create: vi.fn(),
+    addDecision: vi.fn(),
+    detail: vi.fn(),
+    resolveDecision: vi.fn(),
+  },
 }));
 
 vi.mock("@/data/supabase/conductor-learning-service", () => ({
@@ -39,9 +44,7 @@ vi.mock("@/data/supabase/conductor-learning-service", () => ({
   recordLearning: vi.fn(async (row: LearningRecord) => row),
 }));
 
-const { runObservationPass, observableActions } = await import(
-  "@/data/conductor/outcome-service"
-);
+const { runObservationPass, observableActions } = await import("@/data/conductor/outcome-service");
 
 /* -------------------------------------------------------------- fixtures */
 
@@ -68,7 +71,7 @@ function action(overrides: Partial<ControlledAction> = {}): ControlledAction {
     sourceEventKey: "key:1",
     status: "routed",
     createdAt: "2026-08-20T09:00:00.000Z",
-...overrides,
+    ...overrides,
   } as ControlledAction;
 }
 
@@ -121,7 +124,7 @@ function learningRecord(overrides: Partial<LearningRecord> = {}): LearningRecord
     isRule: true,
     grantsAuthority: false,
     recordedAt: "2026-08-20T10:00:00.000Z",
-...overrides,
+    ...overrides,
   } as LearningRecord;
 }
 
@@ -139,9 +142,9 @@ describe("re-checking is not re-happening", () => {
     const { store, ledger: sink } = ledger();
     const input = { organizationId: ORG, actions: [action()], receipts: [receipt], ledger: sink };
 
-    await runObservationPass({...input, now: "2026-08-20T11:00:00.000Z" });
-    await runObservationPass({...input, now: "2026-08-20T12:00:00.000Z" });
-    const third = await runObservationPass({...input, now: "2026-08-20T13:00:00.000Z" });
+    await runObservationPass({ ...input, now: "2026-08-20T11:00:00.000Z" });
+    await runObservationPass({ ...input, now: "2026-08-20T12:00:00.000Z" });
+    const third = await runObservationPass({ ...input, now: "2026-08-20T13:00:00.000Z" });
 
     expect(store.observations).toHaveLength(1);
     expect(third.observations).toHaveLength(0);
@@ -217,7 +220,12 @@ describe("re-checking is not re-happening", () => {
       },
     } as ActionObservation;
     const { store, ledger: sink } = ledger([foreign]);
-    await runObservationPass({ organizationId: ORG, actions: [action()], receipts: [receipt], ledger: sink });
+    await runObservationPass({
+      organizationId: ORG,
+      actions: [action()],
+      receipts: [receipt],
+      ledger: sink,
+    });
     const mine = store.observations.filter((row) => row.organizationId === ORG);
     expect(mine).toHaveLength(1);
     expect(mine[0]?.actionId).toBe("action:x");

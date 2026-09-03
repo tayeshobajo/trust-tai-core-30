@@ -178,7 +178,9 @@ export function OpsSystemRow({
           {system.latestRun ? <MetaPill>latest: {system.latestRun.label}</MetaPill> : null}
           {system.owner ? <MetaPill>{system.owner}</MetaPill> : null}
           {system.canonicalProjectId ? <MetaPill>linked to a project</MetaPill> : null}
-          <MetaPill>{system.source === "projection" ? "synced from Ops" : "from activity"}</MetaPill>
+          <MetaPill>
+            {system.source === "projection" ? "synced from Ops" : "from activity"}
+          </MetaPill>
         </div>
       </div>
 
@@ -236,8 +238,7 @@ export function OpsPager({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
       <p className="text-[13px] text-muted-foreground">
-        Showing {page.from}-{page.to} of {page.total}{" "}
-        {page.total === 1 ? "system" : "systems"}
+        Showing {page.from}-{page.to} of {page.total} {page.total === 1 ? "system" : "systems"}
       </p>
       <div className="flex items-center gap-2">
         <select

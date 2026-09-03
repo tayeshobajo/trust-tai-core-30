@@ -118,12 +118,12 @@ function ToScout({ identity }: { identity: WorkspaceIdentity }) {
             className="mt-2 h-9 w-full rounded-md border border-border bg-background px-3 text-[13px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="">
-              {relationshipsQuery.isLoading ? "Reading Comms…": "Choose a relationship"}
+              {relationshipsQuery.isLoading ? "Reading Comms…" : "Choose a relationship"}
             </option>
             {relationships.map((row) => (
               <option key={row.id} value={row.id}>
                 {row.fullName}
-                {row.companyName ? ` · ${row.companyName}`: ""}
+                {row.companyName ? ` · ${row.companyName}` : ""}
               </option>
             ))}
           </select>
@@ -196,9 +196,9 @@ function ToScout({ identity }: { identity: WorkspaceIdentity }) {
 
         {save.isError ? (
           <p role="alert" className="text-[13px] text-destructive">
-            {save.error instanceof Error ? save.error.message: "That could not be saved."}
+            {save.error instanceof Error ? save.error.message : "That could not be saved."}
           </p>
-        ): null}
+        ) : null}
       </div>
     </div>
   );

@@ -32,7 +32,7 @@ export interface LabeledThread {
 function time(value: string | null | undefined): number {
   if (!value) return 0;
   const at = new Date(value).getTime();
-  return Number.isNaN(at) ? 0: at;
+  return Number.isNaN(at) ? 0 : at;
 }
 
 /**
@@ -60,9 +60,7 @@ export function labeledThreads(
     }
 
     for (const [threadId, messages] of grouped) {
-      const ordered = [...messages].sort(
-        (a, b) => time(a.occurredAt) - time(b.occurredAt),
-      );
+      const ordered = [...messages].sort((a, b) => time(a.occurredAt) - time(b.occurredAt));
       const last = ordered[ordered.length - 1]!;
       threads.push({
         threadId,
@@ -70,13 +68,12 @@ export function labeledThreads(
         messages: ordered,
         lastMessage: last,
         subject:
-          ordered.find((message) => message.subject?.trim())?.subject?.trim() ||
-          "No subject",
+          ordered.find((message) => message.subject?.trim())?.subject?.trim() || "No subject",
         unreadCount: ordered.filter(
           (message) => message.direction === "inbound" && time(message.occurredAt) > readAt,
         ).length,
         lastActivityAt: last.occurredAt,
-...(last.mailbox ? { mailbox: last.mailbox }: {}),
+        ...(last.mailbox ? { mailbox: last.mailbox } : {}),
       });
     }
   }
@@ -122,14 +119,14 @@ export function matchesInboxSearch(thread: LabeledThread, query: string): boolea
     thread.relationship.email ?? "",
     thread.subject,
   ]
-.join(" ")
-.toLowerCase()
-.includes(needle);
+    .join(" ")
+    .toLowerCase()
+    .includes(needle);
 }
 
 /** The subject a reply should carry: theirs, prefixed once. */
 export function replySubject(thread: LabeledThread): string {
-  const subject = thread.subject === "No subject" ? "": thread.subject;
+  const subject = thread.subject === "No subject" ? "" : thread.subject;
   if (!subject) return "";
-  return /^re:/i.test(subject) ? subject: `Re: ${subject}`;
+  return /^re:/i.test(subject) ? subject : `Re: ${subject}`;
 }

@@ -57,7 +57,7 @@ function valueOf(criterion: FitCriterion): string | undefined {
   if (!raw) return undefined;
   const clause = raw.split(/[.·, ]|\s-\s/)[0]?.trim() ?? "";
   if (!clause) return undefined;
-  return clause.length > 64 ? `${clause.slice(0, 61)}…`: clause;
+  return clause.length > 64 ? `${clause.slice(0, 61)}…` : clause;
 }
 
 export function readIcpFactors(evaluation: ScoutFitEvaluation): ICPFactorView {
@@ -68,15 +68,15 @@ export function readIcpFactors(evaluation: ScoutFitEvaluation): ICPFactorView {
       factorKey: criterion.key,
       label: criterion.label,
       status,
-...(value ? { value }: {}),
+      ...(value ? { value } : {}),
       scoreContribution: criterion.score,
       maxContribution: criterion.maxScore,
       confidence:
         status === "unknown"
           ? "unknown"
-: (criterion.sourceUrls?.length ?? 0) > 0
+          : (criterion.sourceUrls?.length ?? 0) > 0
             ? "observed"
-: "inferred",
+            : "inferred",
       reason: criterion.reason,
       evidence: criterion.sourceUrls ?? [],
     };
@@ -94,6 +94,6 @@ export function readIcpFactors(evaluation: ScoutFitEvaluation): ICPFactorView {
     headline:
       factors.length === 0
         ? "No ICP factors evaluated yet"
-: `${matched} of ${factors.length} factors met`,
+        : `${matched} of ${factors.length} factors met`,
   };
 }

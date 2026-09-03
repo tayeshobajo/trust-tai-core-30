@@ -40,7 +40,7 @@ vi.mock("@/data/supabase/conductor-control-service", () => ({
       const id = key(action.organizationId, action.sourceEventKey);
       const existing = actionRows.get(id);
       // upsert on (organization_id, source_event_key): never a second row
-      const merged = existing ? {...existing }: action;
+      const merged = existing ? { ...existing } : action;
       actionRows.set(id, merged);
       return merged;
     }),
@@ -92,9 +92,8 @@ vi.mock("@/data/supabase/projects-service", () => ({
   },
 }));
 
-const { decide, publishProposedActions, routeApproved, loadControl } = await import(
-  "@/data/conductor/orchestrator"
-);
+const { decide, publishProposedActions, routeApproved, loadControl } =
+  await import("@/data/conductor/orchestrator");
 
 /* ------------------------------------------------------------- the plan */
 
@@ -120,7 +119,7 @@ function graph(): ConductorActionGraph {
     generatedAt: NOW,
     steps: [
       {
-...base,
+        ...base,
         id: "branch-comms",
         owningApp: "comms",
         operation: "comms.draft_reply",
@@ -135,7 +134,7 @@ function graph(): ConductorActionGraph {
         expectedSignal: "A draft exists in Comms.",
       },
       {
-...base,
+        ...base,
         id: "branch-projects",
         owningApp: "projects",
         operation: "projects.record_blocker",
@@ -150,7 +149,7 @@ function graph(): ConductorActionGraph {
         expectedSignal: "The project shows a blocker.",
       },
       {
-...base,
+        ...base,
         id: "branch-held",
         owningApp: "comms",
         operation: "comms.draft_reply",

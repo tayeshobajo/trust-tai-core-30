@@ -15,7 +15,11 @@
  * - Approval records (Paperclip owns them; we only read)
  */
 
-import type { PaperclipAgent, PaperclipIssue, PaperclipRoutine } from "@/lib/paperclip-client.server";
+import type {
+  PaperclipAgent,
+  PaperclipIssue,
+  PaperclipRoutine,
+} from "@/lib/paperclip-client.server";
 
 export interface ReconcileAgentResult {
   agentId: string;
@@ -46,16 +50,10 @@ export interface ReconcileResult {
  * Call this from the edge function cron AND from the Agents tab on load for
  * freshness. The result is used directly by the UI, no double fetch needed.
  */
-export async function reconcilePaperclipAgents(
-  organizationId: string,
-): Promise<ReconcileResult> {
+export async function reconcilePaperclipAgents(organizationId: string): Promise<ReconcileResult> {
   const { paperclipClient } = await import("@/lib/paperclip-client.server");
-  const {
-    listExecutionAgents,
-    updateAgentSyncProjection,
-    upsertSyncState,
-    syncBindingCompletion,
-  } = await import("@/lib/execution-bridge.server");
+  const { listExecutionAgents, updateAgentSyncProjection, upsertSyncState, syncBindingCompletion } =
+    await import("@/lib/execution-bridge.server");
 
   const now = new Date().toISOString();
   const syncedAtIso = now;
@@ -70,7 +68,7 @@ export async function reconcilePaperclipAgents(
       organizationId,
       resourceType: "agents",
       success: false,
-      error: error instanceof Error ? error.message: "Failed to read execution_agents.",
+      error: error instanceof Error ? error.message : "Failed to read execution_agents.",
     });
     return { organizationId, agents, syncedAt: now, totalErrors: 1 };
   }
@@ -115,9 +113,7 @@ export async function reconcilePaperclipAgents(
       ]);
 
       agentResult.openIssues = openIssues;
-      agentResult.routines = routines.filter(
-        (r) => r.assigneeAgentId === paperclipAgentId,
-      );
+      agentResult.routines = routines.filter((r) => r.assigneeAgentId === paperclipAgentId);
       agentResult.approvals = approvals;
 
       // Paperclip models pause as status="paused" (AGENT_STATUSES); pausedAt is
@@ -141,17 +137,13 @@ export async function reconcilePaperclipAgents(
       await updateAgentSyncProjection({
         paperclipAgentId,
         lastKnownStatus: agent.status ?? "unknown",
-        pausedAt: pausedByStatus
-          ? (agent.pausedAt ?? syncedAtIso)
-: null,
+        pausedAt: pausedByStatus ? (agent.pausedAt ?? syncedAtIso) : null,
         lastHeartbeatAt: agent.lastHeartbeatAt ?? null,
         paperclipCompanyId: agent.companyId,
       });
-      agentResult.pausedAt = pausedByStatus
-        ? (agent.pausedAt ?? syncedAtIso)
-: null;
+      agentResult.pausedAt = pausedByStatus ? (agent.pausedAt ?? syncedAtIso) : null;
     } catch (error) {
-      agentResult.error = error instanceof Error ? error.message: "Paperclip did not respond.";
+      agentResult.error = error instanceof Error ? error.message : "Paperclip did not respond.";
       totalErrors++;
     }
 
@@ -163,7 +155,7 @@ export async function reconcilePaperclipAgents(
     organizationId,
     resourceType: "agents",
     success: totalErrors === 0,
-    error: totalErrors > 0 ? `${totalErrors} agent(s) failed to sync.`: null,
+    error: totalErrors > 0 ? `${totalErrors} agent(s) failed to sync.` : null,
   }).catch(() => {
     /* Cursor failure is non-fatal */
   });

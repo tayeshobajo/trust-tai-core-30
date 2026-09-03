@@ -29,7 +29,12 @@ import { learningGrantsExecution, metricClassOf } from "@/domain/outcomes";
 
 /* -------------------------------------------------------------- room spies */
 
-const scoutDiscover = vi.fn(async (..._args: any[]) => ({ runId: "run-1", saved: 4, rejected: 1, returned: 5 }));
+const scoutDiscover = vi.fn(async (..._args: any[]) => ({
+  runId: "run-1",
+  saved: 4,
+  rejected: 1,
+  returned: 5,
+}));
 const scoutFeedback = vi.fn(async (..._args: any[]) => undefined);
 const scoutRuns = vi.fn(async () => [
   { id: "run-1", query: "fintech", status: "succeeded", resultCount: 4 },
@@ -95,9 +100,8 @@ const { ROADMAP_ADAPTERS } = await import("./adapters-roadmap");
 const { ROOM_ADAPTERS, operationGap } = await import("./adapters");
 const { observeAction, canObserve } = await import("./outcome-observer");
 const { runObservationPass } = await import("./outcome-service");
-const { distillLearning, relevantLearning, confidenceFor, phraseLesson } = await import(
-  "./learning"
-);
+const { distillLearning, relevantLearning, confidenceFor, phraseLesson } =
+  await import("./learning");
 
 /* -------------------------------------------------------------- fixtures */
 
@@ -133,7 +137,7 @@ function action(overrides: Partial<ControlledAction>): ControlledAction {
     sourceEventKey: "conductor.action:org-v3:scout:scout.start_discovery_run:brief",
     status: "approved",
     createdAt: NOW,
-...overrides,
+    ...overrides,
   } as ControlledAction;
 }
 
@@ -152,7 +156,7 @@ function observation(overrides: Partial<ActionObservation>): ActionObservation {
     outcomeStatus: "measured",
     measuredAt: NOW,
     provenance: { appId: "conductor", actor: { type: "system", id: "obs" }, observedAt: NOW },
-...overrides,
+    ...overrides,
   } as ActionObservation;
 }
 
@@ -487,24 +491,22 @@ describe("learning rules", () => {
   it("recalls only relevant lessons, not the whole history", () => {
     const records: LearningRecord[] = [
       {
-...(distillLearning({
+        ...distillLearning({
           organizationId: ORG,
           scope,
           scopeLabel: "Scout discovery",
           observations: [observation({}), observation({}), observation({})],
           now: NOW,
-        })!),
+        })!,
       },
       {
-...(distillLearning({
+        ...distillLearning({
           organizationId: ORG,
           scope: { owningApp: "comms", operation: "comms.draft_reply" },
           scopeLabel: "Comms drafts",
-          observations: [
-            observation({ owningApp: "comms", operation: "comms.draft_reply" }),
-          ],
+          observations: [observation({ owningApp: "comms", operation: "comms.draft_reply" })],
           now: NOW,
-        })!),
+        })!,
       },
     ];
     const recalled = relevantLearning({ records, rooms: ["scout"] });

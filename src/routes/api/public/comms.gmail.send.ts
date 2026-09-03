@@ -20,7 +20,7 @@ import { gmailAvailable } from "@/lib/comms-gmail.server";
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
-  return header.startsWith("Bearer ") ? header.slice(7).trim() || null: null;
+  return header.startsWith("Bearer ") ? header.slice(7).trim() || null : null;
 }
 
 export const Route = createFileRoute("/api/public/comms/gmail/send")({
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/api/public/comms/gmail/send")({
         try {
           return Response.json(await sendCapability({ token, organizationId }));
         } catch (error) {
-          const message = error instanceof Error ? error.message: "That check failed.";
+          const message = error instanceof Error ? error.message : "That check failed.";
           return Response.json({ error: message }, { status: 400 });
         }
       },
@@ -69,17 +69,14 @@ export const Route = createFileRoute("/api/public/comms/gmail/send")({
         }
 
         const organizationId =
-          typeof body["organizationId"] === "string" ? body["organizationId"]: "";
-        const draftId = typeof body["draftId"] === "string" ? body["draftId"]: "";
+          typeof body["organizationId"] === "string" ? body["organizationId"] : "";
+        const draftId = typeof body["draftId"] === "string" ? body["draftId"] : "";
         const integrationId =
           typeof body["integrationId"] === "string" && body["integrationId"].trim()
             ? body["integrationId"].trim()
-: undefined;
+            : undefined;
         if (!organizationId || !draftId) {
-          return Response.json(
-            { error: "A workspace and a draft are required." },
-            { status: 400 },
-          );
+          return Response.json({ error: "A workspace and a draft are required." }, { status: 400 });
         }
 
         const rawTarget = body["threadTarget"];
@@ -91,21 +88,21 @@ export const Route = createFileRoute("/api/public/comms/gmail/send")({
                   mode: "reply" as const,
                   providerThreadId: (rawTarget as { providerThreadId: string }).providerThreadId,
                 }
-: { mode: "new" as const }
-: undefined;
+              : { mode: "new" as const }
+            : undefined;
 
         try {
           const outcome = await sendDraftViaGmail({
             token,
             organizationId,
             draftId,
-...(threadTarget ? { threadTarget }: {}),
-...(integrationId ? { integrationId }: {}),
+            ...(threadTarget ? { threadTarget } : {}),
+            ...(integrationId ? { integrationId } : {}),
           });
           // The checkpoint is a first-class answer, not an exception.
-          return Response.json(outcome, { status: outcome.state === "blocked" ? 403: 200 });
+          return Response.json(outcome, { status: outcome.state === "blocked" ? 403 : 200 });
         } catch (error) {
-          const message = error instanceof Error ? error.message: "That send failed.";
+          const message = error instanceof Error ? error.message : "That send failed.";
           return Response.json({ error: message }, { status: 400 });
         }
       },

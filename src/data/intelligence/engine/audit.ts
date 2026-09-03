@@ -110,10 +110,7 @@ export function learningTrail(beliefs: MemoryBelief[]): LearningTrail {
     if (belief.meta.outcome === "dismissed_as_context") {
       dismissals.set(key, (dismissals.get(key) ?? 0) + 1);
     }
-    if (
-      belief.meta.outcome === "confirmed" ||
-      belief.meta.outcome === "edited_then_confirmed"
-    ) {
+    if (belief.meta.outcome === "confirmed" || belief.meta.outcome === "edited_then_confirmed") {
       acceptances.set(key, (acceptances.get(key) ?? 0) + 1);
     }
   }

@@ -45,7 +45,12 @@ async function assertMembership(context: any, organizationId: string) {
   if (!data) throw membershipError();
 }
 
-function statusFromPaperclip(agent: any, issues: any[], current: number, target: number): WorkforceState {
+function statusFromPaperclip(
+  agent: any,
+  issues: any[],
+  current: number,
+  target: number,
+): WorkforceState {
   const waitingForTai = issues.some(
     (issue) =>
       issue.status === "in_review" ||
@@ -53,7 +58,8 @@ function statusFromPaperclip(agent: any, issues: any[], current: number, target:
   );
   if (waitingForTai) return "waiting_for_tai";
   if (issues.some((issue) => issue.status === "blocked")) return "blocked";
-  if (agent.status === "running" || agent.status === "working" || current < target) return "working";
+  if (agent.status === "running" || agent.status === "working" || current < target)
+    return "working";
   return "idle";
 }
 
@@ -77,17 +83,11 @@ async function scoutSnapshot(organizationId: string): Promise<{
   data: ScoutDriverData;
   workforceState: WorkforceState;
 }> {
-  const [
-    { paperclipClient },
-    {
-      latestExecutionBinding,
-      listExecutionAgents,
-      scoutPipelineState,
-    },
-  ] = await Promise.all([
-    import("@/lib/paperclip-client.server"),
-    import("@/lib/execution-bridge.server"),
-  ]);
+  const [{ paperclipClient }, { latestExecutionBinding, listExecutionAgents, scoutPipelineState }] =
+    await Promise.all([
+      import("@/lib/paperclip-client.server"),
+      import("@/lib/execution-bridge.server"),
+    ]);
 
   const [agents, pipeline] = await Promise.all([
     listExecutionAgents(organizationId),
@@ -140,10 +140,7 @@ export const getWorkforceSummary = createServerFn({ method: "GET" })
   .validator((data: { organizationId: string }) => data)
   .handler(async ({ context, data }) => {
     await assertMembership(context, data.organizationId);
-    const [
-      scout,
-      { listExecutionAgents },
-    ] = await Promise.all([
+    const [scout, { listExecutionAgents }] = await Promise.all([
       scoutSnapshot(data.organizationId),
       import("@/lib/execution-bridge.server"),
     ]);

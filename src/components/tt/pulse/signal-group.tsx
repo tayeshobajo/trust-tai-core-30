@@ -53,12 +53,7 @@ export function PulseSignalGroup({
       aria-label={label}
       className="overflow-hidden rounded-2xl border border-border bg-card"
     >
-      <header
-        className={cn(
-          "flex items-center gap-2 px-5 py-3",
-          SEVERITY_SURFACE[severity],
-        )}
-      >
+      <header className={cn("flex items-center gap-2 px-5 py-3", SEVERITY_SURFACE[severity])}>
         <h2
           className={cn(
             "font-mono text-[11px] uppercase tracking-[0.18em]",

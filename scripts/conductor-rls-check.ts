@@ -31,7 +31,7 @@ const results: { name: string; pass: boolean; detail: string }[] = [];
 
 function record(name: string, pass: boolean, detail: string) {
   results.push({ name, pass, detail });
-  console.log(`${pass ? "PASS": "FAIL"}  ${name}${detail ? `, ${detail}`: ""}`);
+  console.log(`${pass ? "PASS" : "FAIL"}  ${name}${detail ? `, ${detail}` : ""}`);
 }
 
 function client(): SupabaseClient {
@@ -67,8 +67,8 @@ async function main() {
   /* 1, a member writes and reads their own organization. */
   const asOf = new Date().toISOString();
   const { data: figure, error: writeError } = await a.sb
-.from("business_figures")
-.insert({
+    .from("business_figures")
+    .insert({
       organization_id: orgA,
       key: "cash_on_hand",
       value: 1,
@@ -77,16 +77,20 @@ async function main() {
       note: "rls acceptance probe",
       recorded_by: a.userId,
     })
-.select("id")
-.maybeSingle();
-  record("member can record a figure in own org", !writeError && Boolean(figure), writeError?.message ?? "");
+    .select("id")
+    .maybeSingle();
+  record(
+    "member can record a figure in own org",
+    !writeError && Boolean(figure),
+    writeError?.message ?? "",
+  );
 
   const { data: readBack } = await a.sb
-.from("business_figures")
-.select("id, value, as_of")
-.eq("organization_id", orgA)
-.order("as_of", { ascending: false })
-.limit(1);
+    .from("business_figures")
+    .select("id, value, as_of")
+    .eq("organization_id", orgA)
+    .order("as_of", { ascending: false })
+    .limit(1);
   record("member can read own org figures", (readBack ?? []).length > 0, "");
 
   const { error: correctionError } = await a.sb.from("conductor_corrections").insert({
@@ -95,14 +99,18 @@ async function main() {
     note: "rls acceptance probe",
     corrected_by: a.userId,
   });
-  record("member can record a correction in own org", !correctionError, correctionError?.message ?? "");
+  record(
+    "member can record a correction in own org",
+    !correctionError,
+    correctionError?.message ?? "",
+  );
 
   /* 2 & 3, the other organization stays closed. */
   if (orgB) {
     const { data: crossRead } = await a.sb
-.from("business_figures")
-.select("id")
-.eq("organization_id", orgB);
+      .from("business_figures")
+      .select("id")
+      .eq("organization_id", orgB);
     record("member reads nothing from another org", (crossRead ?? []).length === 0, "");
 
     const { error: crossWrite } = await a.sb.from("business_figures").insert({
@@ -113,7 +121,11 @@ async function main() {
       as_of: asOf,
       recorded_by: a.userId,
     });
-    record("member cannot write into another org", Boolean(crossWrite), crossWrite?.message ?? "insert unexpectedly allowed");
+    record(
+      "member cannot write into another org",
+      Boolean(crossWrite),
+      crossWrite?.message ?? "insert unexpectedly allowed",
+    );
 
     const { error: spoofed } = await a.sb.from("conductor_corrections").insert({
       organization_id: orgA,
@@ -121,16 +133,20 @@ async function main() {
       note: "spoofed author",
       corrected_by: "00000000-0000-0000-0000-000000000000",
     });
-    record("correction author cannot be spoofed", Boolean(spoofed), spoofed?.message ?? "insert unexpectedly allowed");
+    record(
+      "correction author cannot be spoofed",
+      Boolean(spoofed),
+      spoofed?.message ?? "insert unexpectedly allowed",
+    );
   }
 
   /* A non-member account, if one is supplied, must see nothing of org A. */
   if (process.env["TT_EMAIL_B"]) {
     const b = await signIn(process.env["TT_EMAIL_B"]!, process.env["TT_PASSWORD_B"]!);
     const { data: outsider } = await b.sb
-.from("business_figures")
-.select("id")
-.eq("organization_id", orgA);
+      .from("business_figures")
+      .select("id")
+      .eq("organization_id", orgA);
     record("non-member reads nothing of org A", (outsider ?? []).length === 0, "");
   }
 

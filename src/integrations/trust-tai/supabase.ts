@@ -25,10 +25,10 @@ import type { Database } from "@/integrations/supabase/types";
  * `.rpc()` call is compile-checked. While the file still holds the empty
  * placeholder schema, the client stays untyped so nothing breaks.
  */
-type HasGeneratedSchema = [keyof Database["public"]["Tables"]] extends [never] ? false: true;
+type HasGeneratedSchema = [keyof Database["public"]["Tables"]] extends [never] ? false : true;
 export type TrustTaiClient = HasGeneratedSchema extends true
   ? SupabaseClient<Database>
-: SupabaseClient;
+  : SupabaseClient;
 
 /** Trust Tai's managed Supabase project reference. */
 export const TRUST_TAI_PROJECT_REF = "okydosoacqdnursmmenf";
@@ -39,7 +39,7 @@ const FALLBACK_PUBLISHABLE_KEY = "sb_publishable_uARvNwZli88tfhOHBwFTsQ_JUpQo-UL
 
 function readEnv(name: string): string | undefined {
   const value = (import.meta.env as Record<string, string | undefined>)[name];
-  return value && value.length > 0 ? value: undefined;
+  return value && value.length > 0 ? value : undefined;
 }
 
 function resolveConfig(): { url: string; key: string; fromEnv: boolean } {
@@ -65,7 +65,7 @@ export const supabaseConfig = {
 function trustTaiFetch(key: string): typeof fetch {
   return (input, init) => {
     const headers = new Headers(
-      typeof Request !== "undefined" && input instanceof Request ? input.headers: undefined,
+      typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
     );
     if (init?.headers) {
       new Headers(init.headers).forEach((value, name) => headers.set(name, value));
@@ -74,7 +74,7 @@ function trustTaiFetch(key: string): typeof fetch {
       headers.delete("Authorization");
     }
     headers.set("apikey", key);
-    return fetch(input, {...init, headers });
+    return fetch(input, { ...init, headers });
   };
 }
 
@@ -82,7 +82,7 @@ function create(): TrustTaiClient {
   return createClient<Database>(config.url, config.key, {
     global: { fetch: trustTaiFetch(config.key) },
     auth: {
-      storage: typeof window !== "undefined" ? window.localStorage: undefined,
+      storage: typeof window !== "undefined" ? window.localStorage : undefined,
       storageKey: `tt-auth-${TRUST_TAI_PROJECT_REF}`,
       persistSession: true,
       autoRefreshToken: true,

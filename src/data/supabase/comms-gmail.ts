@@ -43,7 +43,7 @@ async function post<T>(url: string, body: Record<string, unknown>): Promise<T> {
   });
   const payload = (await response.json()) as Record<string, unknown>;
   if (!response.ok) {
-    throw new Error(typeof payload["error"] === "string" ? payload["error"]: "That call failed.");
+    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That call failed.");
   }
   return payload as T;
 }
@@ -70,7 +70,7 @@ export async function gmailExchange(input: {
 }): Promise<{ accountEmail: string; canSend?: boolean }> {
   return post<{ accountEmail: string; canSend?: boolean }>(CONNECT_URL, {
     action: "exchange",
-...input,
+    ...input,
   });
 }
 
@@ -113,8 +113,8 @@ export async function gmailSync(
 ): Promise<GmailSyncResult> {
   return post<GmailSyncResult>(SYNC_URL, {
     organizationId,
-...(integrationId ? { integrationId }: {}),
-...(backfillDays === undefined ? {}: { backfillDays: clampBackfillDays(backfillDays) }),
+    ...(integrationId ? { integrationId } : {}),
+    ...(backfillDays === undefined ? {} : { backfillDays: clampBackfillDays(backfillDays) }),
   });
 }
 
@@ -148,7 +148,7 @@ export async function gmailCandidates(
 ): Promise<MailboxCandidatesResult> {
   return post<MailboxCandidatesResult>("/api/public/comms/gmail/candidates", {
     organizationId,
-...(integrationId ? { integrationId }: {}),
+    ...(integrationId ? { integrationId } : {}),
   });
 }
 
@@ -183,7 +183,7 @@ export async function gmailSendStatus(organizationId: string): Promise<GmailSend
   });
   const payload = (await response.json()) as Record<string, unknown>;
   if (!response.ok) {
-    throw new Error(typeof payload["error"] === "string" ? payload["error"]: "That check failed.");
+    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That check failed.");
   }
   return payload as unknown as GmailSendCapability;
 }
@@ -218,17 +218,17 @@ export async function gmailSendDraft(
     body: JSON.stringify({
       organizationId,
       draftId,
-...(threadTarget ? { threadTarget }: {}),
-...(integrationId ? { integrationId }: {}),
+      ...(threadTarget ? { threadTarget } : {}),
+      ...(integrationId ? { integrationId } : {}),
     }),
   });
   const payload = (await response.json()) as Record<string, unknown>;
   // The permission checkpoint arrives as 403 with a structured outcome.
   if (!response.ok && response.status !== 403) {
-    throw new Error(typeof payload["error"] === "string" ? payload["error"]: "That send failed.");
+    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That send failed.");
   }
   if (!response.ok && typeof payload["state"] !== "string") {
-    throw new Error(typeof payload["error"] === "string" ? payload["error"]: "That send failed.");
+    throw new Error(typeof payload["error"] === "string" ? payload["error"] : "That send failed.");
   }
   return payload as unknown as GmailSendOutcome;
 }
@@ -262,7 +262,7 @@ export async function gmailFetchInlineImage(input: {
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     throw new Error(
-      typeof payload["error"] === "string" ? payload["error"]: "That image could not be loaded.",
+      typeof payload["error"] === "string" ? payload["error"] : "That image could not be loaded.",
     );
   }
   return URL.createObjectURL(await response.blob());
@@ -294,7 +294,7 @@ export async function gmailDownloadAttachment(input: {
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     throw new Error(
-      typeof payload["error"] === "string" ? payload["error"]: "That file could not be opened.",
+      typeof payload["error"] === "string" ? payload["error"] : "That file could not be opened.",
     );
   }
   const blob = await response.blob();

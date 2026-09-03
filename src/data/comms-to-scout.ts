@@ -49,11 +49,11 @@ export async function saveRelationshipAsProspect(
     organizationId: input.organizationId,
     userId: input.userId,
     companyName,
-...(input.websiteUrl?.trim() ? { websiteUrl: input.websiteUrl.trim() }: {}),
+    ...(input.websiteUrl?.trim() ? { websiteUrl: input.websiteUrl.trim() } : {}),
     relationshipId: input.relationshipId,
     personName: linked.identity.fullName,
-...(input.roleTitle?.trim() ? { roleTitle: input.roleTitle.trim() }: {}),
-...(input.role?.trim() ? { role: input.role.trim() }: {}),
+    ...(input.roleTitle?.trim() ? { roleTitle: input.roleTitle.trim() } : {}),
+    ...(input.role?.trim() ? { role: input.role.trim() } : {}),
   });
 
   // The person belongs to the company now, on the one shared record.
@@ -62,20 +62,20 @@ export async function saveRelationshipAsProspect(
     {
       prospectId: prospect.id,
       companyName,
-...(input.roleTitle?.trim() ? { roleTitle: input.roleTitle.trim() }: {}),
+      ...(input.roleTitle?.trim() ? { roleTitle: input.roleTitle.trim() } : {}),
     },
     input.userId,
   );
 
   const { error } = await supabase
-.from("comms_relationships")
-.update({
+    .from("comms_relationships")
+    .update({
       prospect_id: prospect.id,
       company_name: companyName,
       updated_at: new Date().toISOString(),
     })
-.eq("id", input.relationshipId)
-.eq("organization_id", input.organizationId);
+    .eq("id", input.relationshipId)
+    .eq("organization_id", input.organizationId);
   if (error) throw new Error(error.message);
 
   return { prospect, contactId: linked.contactId };

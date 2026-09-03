@@ -58,10 +58,14 @@ export function SignalPulseCard({
         <p className="text-[13px] text-muted-foreground">{pulse.summary}</p>
 
         {pulse.gained.length > 0 ? (
-          <p className="text-[13px] text-success">Newly met: {pulse.gained.map(label).join(", ")}</p>
+          <p className="text-[13px] text-success">
+            Newly met: {pulse.gained.map(label).join(", ")}
+          </p>
         ) : null}
         {pulse.lost.length > 0 ? (
-          <p className="text-[13px] text-warning">No longer met: {pulse.lost.map(label).join(", ")}</p>
+          <p className="text-[13px] text-warning">
+            No longer met: {pulse.lost.map(label).join(", ")}
+          </p>
         ) : null}
 
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">

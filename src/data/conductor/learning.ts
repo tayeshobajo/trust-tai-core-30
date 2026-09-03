@@ -113,7 +113,11 @@ export function distillLearning(input: DistillInput): LearningRecord | undefined
   /* A person's word. Recorded as decided, superseding any inference. */
   if (input.humanCorrection) {
     const basis: TruthClass = "decided";
-    if (input.prior && !outranks(basis, input.prior.basis) && input.prior.lesson === input.humanCorrection.statement) {
+    if (
+      input.prior &&
+      !outranks(basis, input.prior.basis) &&
+      input.prior.lesson === input.humanCorrection.statement
+    ) {
       return undefined;
     }
     return {
@@ -144,7 +148,9 @@ export function distillLearning(input: DistillInput): LearningRecord | undefined
   /* A prior human decision is not overturned by inference. */
   if (input.prior?.basis === "decided") return undefined;
 
-  const consistent = measured.filter((observation) => observation.result === "signal_present").length;
+  const consistent = measured.filter(
+    (observation) => observation.result === "signal_present",
+  ).length;
   const contradicting = measured.filter(
     (observation) => observation.result === "signal_absent" || observation.result === "partial",
   ).length;
@@ -182,7 +188,9 @@ export function distillLearning(input: DistillInput): LearningRecord | undefined
     grantsAuthority: false,
     recordedAt: at,
     ...(input.prior ? { supersedes: input.prior.id } : {}),
-    ...(input.prior && contradictsPrior(input.prior, outcome) ? { contradicts: input.prior.id } : {}),
+    ...(input.prior && contradictsPrior(input.prior, outcome)
+      ? { contradicts: input.prior.id }
+      : {}),
   };
 
   /* Nothing new to say. Keep the ledger quiet rather than repeating itself. */
@@ -222,9 +230,7 @@ export function relevantLearning(input: {
   return input.records
     .filter((record) => !superseded.has(record.id))
     .filter((record) => input.rooms.includes(record.scope.owningApp))
-    .filter(
-      (record) => !input.operations || input.operations.includes(record.scope.operation),
-    )
+    .filter((record) => !input.operations || input.operations.includes(record.scope.operation))
     .filter((record) => record.confidence !== "none")
     .sort((a, b) => {
       /* A person's decision comes first, whatever the inference says. */

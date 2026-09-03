@@ -162,20 +162,26 @@ describe("repeated evidence", () => {
   });
 
   it("counts one conversation once, however often it repeats itself", () => {
-    const observations = [0, 1, 2, 3].map(() =>
-      observationsFromCommitments({
-        commitments: [commitment({ conversationId: "conversation-1" })],
-      }),
-    ).flat();
+    const observations = [0, 1, 2, 3]
+      .map(() =>
+        observationsFromCommitments({
+          commitments: [commitment({ conversationId: "conversation-1" })],
+        }),
+      )
+      .flat();
     expect(accumulatePatterns({ observations, existing: [] })).toEqual([]);
   });
 
   it("never re-proposes a pattern it already holds", () => {
-    const observations = ["a", "b", "c"].map((id) =>
-      observationsFromCommitments({
-        commitments: [commitment({ id: `commitment-${id}`, conversationId: `conversation-${id}` })],
-      }),
-    ).flat();
+    const observations = ["a", "b", "c"]
+      .map((id) =>
+        observationsFromCommitments({
+          commitments: [
+            commitment({ id: `commitment-${id}`, conversationId: `conversation-${id}` }),
+          ],
+        }),
+      )
+      .flat();
     const first = accumulatePatterns({ observations, existing: [] });
     const held = [
       belief({ meta: { ...belief().meta, patternKey: first[0]!.meta.patternKey ?? "" } }),
@@ -287,7 +293,9 @@ describe("memory offered to a reading", () => {
 
   it("surfaces a disagreement with a decided correction instead of resolving it", () => {
     const conflicts = flagMemoryConflicts({
-      signals: [signal({ ownerName: "Emmanuel", normalizedMeaning: "Emmanuel owns bioptrics onboarding." })],
+      signals: [
+        signal({ ownerName: "Emmanuel", normalizedMeaning: "Emmanuel owns bioptrics onboarding." }),
+      ],
       beliefs: [
         belief({
           tier: "decided",
@@ -311,7 +319,9 @@ describe("person-centred law", () => {
     for (const term of MEMORY_FORBIDDEN_TERMS) {
       expect(isPersonSafeStatement(`Henry has a good ${term}.`)).toBe(false);
     }
-    expect(isPersonSafeStatement("Henry usually prepares the weekly pack for Emmanuel.")).toBe(true);
+    expect(isPersonSafeStatement("Henry usually prepares the weekly pack for Emmanuel.")).toBe(
+      true,
+    );
   });
 
   it("never learns a pattern phrased as a judgement", () => {
@@ -336,7 +346,10 @@ describe("storage", () => {
       authority: "source",
       evidence: [
         { kind: "provider", label: "Fathom 00:12:04" },
-        { kind: "computed", label: 'steward-memory::{"kind":"responsibility","facet":"responsibility"}' },
+        {
+          kind: "computed",
+          label: 'steward-memory::{"kind":"responsibility","facet":"responsibility"}',
+        },
       ],
       recordedBy: "Steward",
       recordedAt: "2026-01-02T09:00:00.000Z",
@@ -380,14 +393,24 @@ describe("bounded relevance, and being able to audit it", () => {
           statement: "Henry carries clinical onboarding.",
           subjectKey: "henry",
           subjectLabel: "Henry",
-          meta: { kind: "person", facet: "responsibility", personKey: "henry", personName: "Henry" },
+          meta: {
+            kind: "person",
+            facet: "responsibility",
+            personKey: "henry",
+            personName: "Henry",
+          },
         }),
         belief({
           id: "b-elsewhere",
           statement: "Priya carries billing.",
           subjectKey: "priya",
           subjectLabel: "Priya",
-          meta: { kind: "person", facet: "responsibility", personKey: "priya", personName: "Priya" },
+          meta: {
+            kind: "person",
+            facet: "responsibility",
+            personKey: "priya",
+            personName: "Priya",
+          },
         }),
       ],
       conversation: conversationAbout("Morning all, onboarding first.", [{ name: "Henry" }]),

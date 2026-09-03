@@ -10,12 +10,7 @@
  * logistics note.
  */
 
-export type VoiceRegister =
-  | "warm_intro"
-  | "follow_up"
-  | "reconnect"
-  | "logistics"
-  | "sensitive";
+export type VoiceRegister = "warm_intro" | "follow_up" | "reconnect" | "logistics" | "sensitive";
 
 export const REGISTER_LABEL: Record<VoiceRegister, string> = {
   warm_intro: "Warm introduction",

@@ -24,24 +24,24 @@ import { parseThinkingImport } from "../../src/data/projects/thinking-import";
 
 async function loadSource(projectId: string, sourceId: string) {
   const { data, error } = await db()
-.from("project_thinking_sources")
-.select("*")
-.eq("organization_id", ORG_ID)
-.eq("project_id", projectId)
-.eq("id", sourceId)
-.maybeSingle();
+    .from("project_thinking_sources")
+    .select("*")
+    .eq("organization_id", ORG_ID)
+    .eq("project_id", projectId)
+    .eq("id", sourceId)
+    .maybeSingle();
   if (error || !data) throw new Error(`source not found: ${error?.message ?? sourceId}`);
   return data as Record<string, string | boolean | null>;
 }
 
 async function ingest(projectId: string, sourceId: string, rawPath: string) {
-  const raw = rawPath === "-" ? readFileSync(0, "utf8"): readFileSync(resolve(rawPath), "utf8");
+  const raw = rawPath === "-" ? readFileSync(0, "utf8") : readFileSync(resolve(rawPath), "utf8");
   const source = await loadSource(projectId, sourceId);
   const { data: inputDecisions } = await db()
-.from("project_decisions")
-.select("question, answer, status")
-.eq("organization_id", ORG_ID)
-.eq("project_id", projectId);
+    .from("project_decisions")
+    .select("question, answer, status")
+    .eq("organization_id", ORG_ID)
+    .eq("project_id", projectId);
   const provider = (source.source_type as NormalizedDocument["provider"]) ?? "other";
   const title = String(source.title ?? "thinking room");
 
@@ -49,9 +49,9 @@ async function ingest(projectId: string, sourceId: string, rawPath: string) {
 
   // §4 honest state: a transcript/export was genuinely provided.
   await db()
-.from("project_thinking_sources")
-.update({ sync_state: "imported", last_reviewed_at: new Date().toISOString() })
-.eq("id", sourceId);
+    .from("project_thinking_sources")
+    .update({ sync_state: "imported", last_reviewed_at: new Date().toISOString() })
+    .eq("id", sourceId);
   await audit({
     projectId,
     projectName: undefined,
@@ -63,26 +63,32 @@ async function ingest(projectId: string, sourceId: string, rawPath: string) {
 
   // §8 incremental: existing rows for this source
   const { data: existing } = await db()
-.from("project_knowledge")
-.select("id, section, body, review_state")
-.eq("organization_id", ORG_ID)
-.eq("project_id", projectId)
-.eq("source_reference", sourceId);
+    .from("project_knowledge")
+    .select("id, section, body, review_state")
+    .eq("organization_id", ORG_ID)
+    .eq("project_id", projectId)
+    .eq("source_reference", sourceId);
   const existingBodies = new Map(
-    (existing ?? []).map((r) => [String(r.body).trim().toLowerCase(), r as { id: string; review_state: string }]),
+    (existing ?? []).map((r) => [
+      String(r.body).trim().toLowerCase(),
+      r as { id: string; review_state: string },
+    ]),
   );
 
   // Extraction over the normalized document (§5), assistant voice only, // Tai's prompts are questions, not knowledge; extracting them pollutes
   // open questions with transcript noise.
   const seen = new Set<string>();
   const candidates: { section: string; body: string; confidence: number; msgIndex: number }[] = [];
-  const docText = doc.messages.filter((m) => m.role === "assistant").map((m) => m.body).join("\n");
+  const docText = doc.messages
+    .filter((m) => m.role === "assistant")
+    .map((m) => m.body)
+    .join("\n");
   const allParsed = parseThinkingImport(docText);
   for (const c of allParsed) {
     const key = `${c.section}:${c.body.trim().toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    candidates.push({...c, msgIndex: -1 });
+    candidates.push({ ...c, msgIndex: -1 });
   }
 
   let inserted = 0;
@@ -112,11 +118,16 @@ async function ingest(projectId: string, sourceId: string, rawPath: string) {
     // §9 human-decision outranks source: a candidate DECISION that negates a
     // confirmed decision or answered project decision is surfaced, not written.
     if (c.section === "decision") {
-      const negates = (inputDecisions ?? []).some(
-        (d) => String(d.answer ?? "").length > 0 && contradicts(String(d.answer), c.body),
-      ) || (existing ?? []).some(
-        (r) => r.section === "decision" && r.review_state === "confirmed" && contradicts(String(r.body), c.body),
-      );
+      const negates =
+        (inputDecisions ?? []).some(
+          (d) => String(d.answer ?? "").length > 0 && contradicts(String(d.answer), c.body),
+        ) ||
+        (existing ?? []).some(
+          (r) =>
+            r.section === "decision" &&
+            r.review_state === "confirmed" &&
+            contradicts(String(r.body), c.body),
+        );
       if (negates) {
         conflicts.push({ existing: "confirmed project decision", incoming: c.body });
         await audit({
@@ -177,7 +188,8 @@ async function ingest(projectId: string, sourceId: string, rawPath: string) {
 function contradicts(confirmed: string, incoming: string): boolean {
   const negCues = ["no ", "not ", "never ", "must not", "should not", "avoid"];
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, " ");
-  const a = norm(confirmed), b = norm(incoming);
+  const a = norm(confirmed),
+    b = norm(incoming);
   const aNeg = negCues.some((c) => a.includes(c));
   const bNeg = negCues.some((c) => b.includes(c));
   if (aNeg === bNeg) return false;
@@ -187,7 +199,19 @@ function contradicts(confirmed: string, incoming: string): boolean {
   for (const w of wordsB) if (wordsA.has(w)) shared++;
   return shared >= 2;
 }
-const STOP = new Set(["decision", "should", "would", "could", "clients", "client", "every", "there", "about", "which", "through"]);
+const STOP = new Set([
+  "decision",
+  "should",
+  "would",
+  "could",
+  "clients",
+  "client",
+  "every",
+  "there",
+  "about",
+  "which",
+  "through",
+]);
 
 function sharePrefix(a: string, b: string, words: number): boolean {
   const aw = a.toLowerCase().split(/\s+/).slice(0, words).join(" ");
@@ -197,10 +221,10 @@ function sharePrefix(a: string, b: string, words: number): boolean {
 
 async function status(projectId: string) {
   const { data } = await db()
-.from("project_thinking_sources")
-.select("id, title, source_type, sync_state, last_reviewed_at")
-.eq("organization_id", ORG_ID)
-.eq("project_id", projectId);
+    .from("project_thinking_sources")
+    .select("id, title, source_type, sync_state, last_reviewed_at")
+    .eq("organization_id", ORG_ID)
+    .eq("project_id", projectId);
   console.log(JSON.stringify(data ?? [], null, 1));
 }
 

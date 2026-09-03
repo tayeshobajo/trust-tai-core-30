@@ -236,7 +236,7 @@ export function runtimeConfidence(evidenceCount: number): ConfidenceLevel {
 /** The strongest confidence a read may claim, given its evidence. */
 export function capConfidence(level: ConfidenceLevel, evidenceCount: number): ConfidenceLevel {
   const cap = runtimeConfidence(evidenceCount);
-  return CONFIDENCE_ORDER.indexOf(level) > CONFIDENCE_ORDER.indexOf(cap) ? cap: level;
+  return CONFIDENCE_ORDER.indexOf(level) > CONFIDENCE_ORDER.indexOf(cap) ? cap : level;
 }
 
 /* ------------------------------------------- the problem-solving protocol */

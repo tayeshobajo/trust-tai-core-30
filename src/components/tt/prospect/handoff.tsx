@@ -139,9 +139,7 @@ export function HandoffPanel({
 
           <div className="rounded-lg border border-border bg-background p-4">
             <p className="tt-eyebrow">Message intent</p>
-            <p className="mt-1.5 text-sm text-foreground">
-              {HANDOFF_INTENT_LABEL[draft.intent]}
-            </p>
+            <p className="mt-1.5 text-sm text-foreground">{HANDOFF_INTENT_LABEL[draft.intent]}</p>
             <p className="mt-1 text-[13px] text-muted-foreground">{draft.intentBecause}</p>
           </div>
         </div>
@@ -165,7 +163,8 @@ export function HandoffPanel({
               <div className="rounded-lg border border-border bg-background p-4">
                 <p className="tt-eyebrow">A useful bridge</p>
                 <p className="mt-1.5 text-[13px] text-foreground">
-                  {draft.development.bridgeIdeas[0]!.label}: {draft.development.bridgeIdeas[0]!.idea}
+                  {draft.development.bridgeIdeas[0]!.label}:{" "}
+                  {draft.development.bridgeIdeas[0]!.idea}
                 </p>
                 <p className="mt-0.5 text-[12px] text-muted-foreground">
                   {draft.development.bridgeIdeas[0]!.why}
@@ -230,11 +229,7 @@ export function HandoffPanel({
               Carry to Comms
             </TTButton>
           ) : (
-            <TTButton
-              variant="secondary"
-              disabled={busy}
-              onClick={() => onResolveBlockers?.()}
-            >
+            <TTButton variant="secondary" disabled={busy} onClick={() => onResolveBlockers?.()}>
               Resolve {draft.blockers.length} blocker{draft.blockers.length === 1 ? "" : "s"}
             </TTButton>
           )}

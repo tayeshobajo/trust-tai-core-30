@@ -128,9 +128,9 @@ export function nextProtocolStep(
   return {
     kind: "escalate",
     because: `${failures.length} bounded attempts made no progress (${attempts
-.slice(-MAX_DIAGNOSTIC_ATTEMPTS)
-.map((attempt) => attempt.action)
-.join("; ")}).`,
+      .slice(-MAX_DIAGNOSTIC_ATTEMPTS)
+      .map((attempt) => attempt.action)
+      .join("; ")}).`,
     blockedOn: context.unknowns[0] ?? "the evidence the suite does not hold",
   };
 }

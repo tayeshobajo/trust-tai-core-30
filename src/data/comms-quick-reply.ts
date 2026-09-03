@@ -32,7 +32,7 @@ export async function sendQuickReply(input: {
       relationship: input.relationship,
       register: "follow_up",
       intent: "quick_reply",
-...(input.subject.trim() ? { subject: input.subject.trim() }: {}),
+      ...(input.subject.trim() ? { subject: input.subject.trim() } : {}),
       body,
       reviewState: "approved",
       rationale: {

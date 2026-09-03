@@ -211,7 +211,6 @@ export const PROJECT_TABS = [
   { value: "activity", label: "Activity" },
 ] as const;
 
-
 export type ProjectTab = (typeof PROJECT_TABS)[number]["value"];
 
 export function ProjectTabs({
@@ -224,7 +223,11 @@ export function ProjectTabs({
   onChange: (tab: ProjectTab) => void;
 }) {
   return (
-    <div role="tablist" aria-label="Project sections" className="flex flex-wrap gap-1 border-b border-border">
+    <div
+      role="tablist"
+      aria-label="Project sections"
+      className="flex flex-wrap gap-1 border-b border-border"
+    >
       {PROJECT_TABS.map((entry) => {
         const active = entry.value === tab;
         const count = counts[entry.value];

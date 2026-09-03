@@ -41,12 +41,7 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export function signalTypeLabel(type: string): string {
-  return (
-    TYPE_LABEL[type] ??
-    type
-      .replace(/_/g, " ")
-      .replace(/^\w/, (c) => c.toUpperCase())
-  );
+  return TYPE_LABEL[type] ?? type.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 }
 
 const DAY = 24 * 60 * 60 * 1000;

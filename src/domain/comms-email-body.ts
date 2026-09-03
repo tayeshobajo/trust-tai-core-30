@@ -93,8 +93,8 @@ function contentIdOf(part: MimePart): string | undefined {
   const raw = headerValue(part, "Content-ID");
   if (!raw) return undefined;
   const match = raw.trim().match(/^<([^>]+)>$/);
-  const id = (match ? match[1]!: raw.trim()).trim();
-  return id.length > 0 ? id: undefined;
+  const id = (match ? match[1]! : raw.trim()).trim();
+  return id.length > 0 ? id : undefined;
 }
 
 function dispositionOf(part: MimePart): string | undefined {
@@ -109,7 +109,7 @@ function inlineFilename(part: MimePart, contentId: string | undefined): string {
   if (existing) return existing;
   const extension = (part.mimeType ?? "").toLowerCase().split("/")[1] ?? "img";
   const base = (contentId ?? "image").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 40);
-  return `${base}.${extension === "jpeg" ? "jpg": extension}`;
+  return `${base}.${extension === "jpeg" ? "jpg" : extension}`;
 }
 
 interface WalkState {
@@ -152,8 +152,8 @@ function walkPart(part: MimePart, state: WalkState): void {
       filename: inlineFilename(part, contentId),
       mimeType: mime || "image/*",
       size,
-...(attachmentId ? { attachmentId }: {}),
-...(contentId ? { contentId }: {}),
+      ...(attachmentId ? { attachmentId } : {}),
+      ...(contentId ? { contentId } : {}),
       inline: true,
     });
     return;
@@ -166,7 +166,7 @@ function walkPart(part: MimePart, state: WalkState): void {
       filename: filename || "attachment",
       mimeType: mime || "application/octet-stream",
       size,
-...(attachmentId ? { attachmentId }: {}),
+      ...(attachmentId ? { attachmentId } : {}),
     });
     return;
   }
@@ -197,11 +197,11 @@ export function extractEmailBody(payload: MimePart | undefined): ExtractedEmailB
 
   const text = state.text?.replace(/\r\n/g, "\n").trim();
   const bodyText =
-    text && text.length > 0 ? text: bodyHtml ? htmlToPlainText(bodyHtml): undefined;
+    text && text.length > 0 ? text : bodyHtml ? htmlToPlainText(bodyHtml) : undefined;
 
   return {
-...(bodyText ? { bodyText }: {}),
-...(bodyHtml && bodyHtml.trim().length > 0 ? { bodyHtml }: {}),
+    ...(bodyText ? { bodyText } : {}),
+    ...(bodyHtml && bodyHtml.trim().length > 0 ? { bodyHtml } : {}),
     blockedRemoteImages,
     attachments: state.attachments,
     inline: state.inline,
@@ -211,24 +211,71 @@ export function extractEmailBody(payload: MimePart | undefined): ExtractedEmailB
 /* ----------------------------------------------------------- sanitizer */
 
 const ALLOWED_TAGS = new Set([
-  "a", "b", "strong", "i", "em", "u", "s", "strike", "p", "br", "div", "span",
-  "ul", "ol", "li", "blockquote", "h1", "h2", "h3", "h4", "hr", "img",
-  "table", "thead", "tbody", "tfoot", "tr", "td", "th", "pre", "code",
+  "a",
+  "b",
+  "strong",
+  "i",
+  "em",
+  "u",
+  "s",
+  "strike",
+  "p",
+  "br",
+  "div",
+  "span",
+  "ul",
+  "ol",
+  "li",
+  "blockquote",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "hr",
+  "img",
+  "table",
+  "thead",
+  "tbody",
+  "tfoot",
+  "tr",
+  "td",
+  "th",
+  "pre",
+  "code",
 ]);
 const VOID_TAGS = new Set(["br", "hr", "img"]);
 /** Dropped together with everything inside them. */
 const DROP_WITH_CONTENTS = new Set([
-  "script", "style", "iframe", "object", "embed", "form", "svg", "math",
-  "template", "title", "textarea", "select", "option", "button", "input",
-  "link", "meta", "base", "video", "audio", "source", "track", "canvas",
-  "frame", "frameset", "applet",
+  "script",
+  "style",
+  "iframe",
+  "object",
+  "embed",
+  "form",
+  "svg",
+  "math",
+  "template",
+  "title",
+  "textarea",
+  "select",
+  "option",
+  "button",
+  "input",
+  "link",
+  "meta",
+  "base",
+  "video",
+  "audio",
+  "source",
+  "track",
+  "canvas",
+  "frame",
+  "frameset",
+  "applet",
 ]);
 
 function escapeText(value: string): string {
-  return value
-.replace(/&/g, "&amp;")
-.replace(/</g, "&lt;")
-.replace(/>/g, "&gt;");
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function escapeAttribute(value: string): string {
@@ -251,12 +298,12 @@ function safeImageSrc(value: string): string | undefined {
 
 function safeClassName(value: string): string | undefined {
   const trimmed = value.trim();
-  return /^[a-zA-Z0-9_ -]{1,100}$/.test(trimmed) ? trimmed: undefined;
+  return /^[a-zA-Z0-9_ -]{1,100}$/.test(trimmed) ? trimmed : undefined;
 }
 
 function safeDimension(value: string): string | undefined {
   const trimmed = value.trim();
-  return /^\d{1,4}$/.test(trimmed) ? trimmed: undefined;
+  return /^\d{1,4}$/.test(trimmed) ? trimmed : undefined;
 }
 
 interface ParsedTag {
@@ -270,7 +317,7 @@ interface ParsedTag {
 function parseTag(raw: string): ParsedTag | null {
   const source = raw.trim();
   const closing = source.startsWith("/");
-  const body = closing ? source.slice(1): source;
+  const body = closing ? source.slice(1) : source;
   const nameMatch = body.match(/^([a-zA-Z][a-zA-Z0-9]*)/);
   if (!nameMatch) return null;
   const name = nameMatch[1]!.toLowerCase();
@@ -325,7 +372,7 @@ export function sanitizeEmailHtml(input: string): SanitizeResult {
 
     if (input.startsWith("<!--", lt)) {
       const end = input.indexOf("-->", lt + 4);
-      index = end === -1 ? input.length: end + 3;
+      index = end === -1 ? input.length : end + 3;
       continue;
     }
     // A `<` that cannot begin a tag is literal text, never markup.
@@ -350,9 +397,9 @@ export function sanitizeEmailHtml(input: string): SanitizeResult {
       closePattern.lastIndex = index;
       let match: RegExpExecArray | null;
       while (depth > 0 && (match = closePattern.exec(input)) !== null) {
-        depth += match[0].startsWith("</") ? -1: 1;
+        depth += match[0].startsWith("</") ? -1 : 1;
       }
-      index = depth === 0 ? closePattern.lastIndex: input.length;
+      index = depth === 0 ? closePattern.lastIndex : input.length;
       continue;
     }
     if (DROP_WITH_CONTENTS.has(tag.name)) continue;
@@ -375,9 +422,9 @@ export function sanitizeEmailHtml(input: string): SanitizeResult {
       const height = safeDimension(tag.attrs["height"] ?? "");
       out.push(
         `<img data-cid="${escapeAttribute(cid)}"` +
-          (alt ? ` alt="${escapeAttribute(alt)}"`: "") +
-          (width ? ` width="${width}"`: "") +
-          (height ? ` height="${height}"`: "") +
+          (alt ? ` alt="${escapeAttribute(alt)}"` : "") +
+          (width ? ` width="${width}"` : "") +
+          (height ? ` height="${height}"` : "") +
           ` />`,
       );
       continue;
@@ -413,16 +460,16 @@ const BLOCK_BOUNDARY_TAGS = /<(p|div|br|li|tr|blockquote|h[1-4]|hr|table|ul|ol|p
 /** Decode the entities the sanitizer emits, plus the common named set. */
 export function decodeEntities(value: string): string {
   return value
-.replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) =>
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) =>
       String.fromCodePoint(Number.parseInt(hex, 16)),
     )
-.replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(Number.parseInt(dec, 10)))
-.replace(/&nbsp;/g, " ")
-.replace(/&amp;/g, "&")
-.replace(/&lt;/g, "<")
-.replace(/&gt;/g, ">")
-.replace(/&quot;/g, '"')
-.replace(/&#39;|&apos;/g, "'");
+    .replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(Number.parseInt(dec, 10)))
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'");
 }
 
 /** Flatten (sanitized) HTML to readable text: block tags become newlines. */
@@ -430,9 +477,9 @@ export function htmlToPlainText(html: string): string {
   const withBreaks = html.replace(BLOCK_BOUNDARY_TAGS, "\n");
   const withoutTags = withBreaks.replace(/<[^>]*>/g, "");
   return decodeEntities(withoutTags)
-.replace(/[ \t]+\n/g, "\n")
-.replace(/\n{3,}/g, "\n\n")
-.trim();
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /* --------------------------------------------------- render node tree */
@@ -459,7 +506,8 @@ export type EmailNode =
 export function parseEmailHtml(html: string): EmailNode[] {
   const root: EmailNode[] = [];
   const stack: { tag: string; node: Extract<EmailNode, { type: "element" }> }[] = [];
-  const current = (): EmailNode[] => (stack.length > 0 ? stack[stack.length - 1]!.node.children: root);
+  const current = (): EmailNode[] =>
+    stack.length > 0 ? stack[stack.length - 1]!.node.children : root;
 
   let index = 0;
   while (index < html.length) {
@@ -485,7 +533,11 @@ export function parseEmailHtml(html: string): EmailNode[] {
       continue;
     }
 
-    const node: Extract<EmailNode, { type: "element" }> = { type: "element", tag: tag.name, children: [] };
+    const node: Extract<EmailNode, { type: "element" }> = {
+      type: "element",
+      tag: tag.name,
+      children: [],
+    };
     if (tag.name === "a") {
       const href = safeHref(tag.attrs["href"] ?? "");
       if (href) node.href = href;
@@ -596,8 +648,11 @@ function textNeedsCollapse(basis: string): boolean {
  * unsplit body and exists for callers that genuinely need the whole-body
  * measure.
  */
-export function emailNeedsCollapse(bodyText: string | undefined, bodyHtml: string | undefined): boolean {
-  const basis = bodyText ?? (bodyHtml ? htmlToPlainText(bodyHtml): "");
+export function emailNeedsCollapse(
+  bodyText: string | undefined,
+  bodyHtml: string | undefined,
+): boolean {
+  const basis = bodyText ?? (bodyHtml ? htmlToPlainText(bodyHtml) : "");
   return textNeedsCollapse(basis);
 }
 

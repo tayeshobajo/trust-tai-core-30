@@ -58,7 +58,8 @@ const COVERAGE_AREAS: { key: string; label: string; looksFor: string; match: Reg
     key: "conversion",
     label: "Conversion path / lead capture",
     looksFor: "How an interested visitor actually gets in touch.",
-    match: /(contact form|enquiry|inquiry|lead capture|call to action|\bcta\b|booking|quote form|phone number)/i,
+    match:
+      /(contact form|enquiry|inquiry|lead capture|call to action|\bcta\b|booking|quote form|phone number)/i,
   },
   {
     key: "social",
@@ -76,7 +77,8 @@ const COVERAGE_AREAS: { key: string; label: string; looksFor: string; match: Reg
     key: "tech",
     label: "Basic public tech footprint",
     looksFor: "The platform the public site runs on, and obvious age.",
-    match: /(wordpress|shopify|webflow|squarespace|wix|react|platform|\bcms\b|https|ssl|framework|technology)/i,
+    match:
+      /(wordpress|shopify|webflow|squarespace|wix|react|platform|\bcms\b|https|ssl|framework|technology)/i,
   },
   {
     key: "competitors",
@@ -100,7 +102,10 @@ export const COVERAGE_AREA_LABEL: Record<string, string> = Object.fromEntries(
  * What has and has not been looked at. Derived only from observed signals and
  * recorded facts; absence is reported as not checked, never as a finding.
  */
-export function evidenceCoverage(candidate: ProspectCandidate, observed: ScoutSignal[]): {
+export function evidenceCoverage(
+  candidate: ProspectCandidate,
+  observed: ScoutSignal[],
+): {
   areas: CoverageArea[];
   checkedCount: number;
   total: number;
@@ -116,7 +121,7 @@ export function evidenceCoverage(candidate: ProspectCandidate, observed: ScoutSi
       label: area.label,
       looksFor: area.looksFor,
       checked: Boolean(evidence) || inFacts,
-...(evidence ? { evidence }: {}),
+      ...(evidence ? { evidence } : {}),
     };
   });
   return {
@@ -146,7 +151,7 @@ export function researchState(input: {
   running?: boolean;
 }): ResearchState {
   if (input.running) return "running";
-  if (input.observedCount === 0) return input.canResearch ? "ready": "not_started";
+  if (input.observedCount === 0) return input.canResearch ? "ready" : "not_started";
   if (input.contradictions > 0 || input.checkedCount < 3) return "needs_review";
   return "complete";
 }
@@ -154,7 +159,7 @@ export function researchState(input: {
 /** The most recent moment Scout actually read something public. */
 export function lastResearchedAt(candidate: ProspectCandidate): string | null {
   const runs = candidate.history ?? [];
-  const last = runs.length > 0 ? runs[runs.length - 1]: null;
+  const last = runs.length > 0 ? runs[runs.length - 1] : null;
   if (last?.at) return last.at;
   if (candidate.source.kind === "live_website") {
     return candidate.source.researchedAt ?? candidate.lastCheckedAt ?? null;
@@ -187,18 +192,58 @@ export interface EvidenceTheme {
 }
 
 const STOPWORDS = new Set([
-  "about", "after", "again", "their", "there", "these", "those", "which", "while",
-  "with", "that", "this", "from", "have", "been", "they", "them", "into", "more",
-  "than", "then", "when", "will", "would", "could", "should", "want", "wants",
-  "need", "needs", "make", "making", "does", "doing", "just", "also", "very",
-  "much", "some", "over", "under", "before", "because", "company", "business",
+  "about",
+  "after",
+  "again",
+  "their",
+  "there",
+  "these",
+  "those",
+  "which",
+  "while",
+  "with",
+  "that",
+  "this",
+  "from",
+  "have",
+  "been",
+  "they",
+  "them",
+  "into",
+  "more",
+  "than",
+  "then",
+  "when",
+  "will",
+  "would",
+  "could",
+  "should",
+  "want",
+  "wants",
+  "need",
+  "needs",
+  "make",
+  "making",
+  "does",
+  "doing",
+  "just",
+  "also",
+  "very",
+  "much",
+  "some",
+  "over",
+  "under",
+  "before",
+  "because",
+  "company",
+  "business",
 ]);
 
 function tokens(text: string): Set<string> {
   const out = new Set<string>();
   for (const raw of text.toLowerCase().split(/[^a-z0-9]+/)) {
     if (raw.length < 4 || STOPWORDS.has(raw)) continue;
-    out.add(raw.endsWith("s") && raw.length > 4 ? raw.slice(0, -1): raw);
+    out.add(raw.endsWith("s") && raw.length > 4 ? raw.slice(0, -1) : raw);
   }
   return out;
 }
@@ -237,13 +282,15 @@ export function evidenceThemes(
 
     const laneTokens = tokens(claims.map((claim) => claim.statement).join(" "));
     const inferred: InferredRead[] = opportunities
-.filter((opportunity) => overlaps(laneTokens, tokens(`${opportunity.statement} ${opportunity.evidence}`)))
-.slice(0, 2)
-.map((opportunity) => ({
+      .filter((opportunity) =>
+        overlaps(laneTokens, tokens(`${opportunity.statement} ${opportunity.evidence}`)),
+      )
+      .slice(0, 2)
+      .map((opportunity) => ({
         statement: opportunity.statement,
         because: opportunity.evidence,
         confidence: "moderate" as ConfidenceLevel,
-...(opportunity.sourceUrl ? { sourceUrl: opportunity.sourceUrl }: {}),
+        ...(opportunity.sourceUrl ? { sourceUrl: opportunity.sourceUrl } : {}),
       }));
 
     themes.push({
@@ -272,7 +319,7 @@ export function evidenceThemes(
                 because: "They never raised it, so its weight is unknown until they say.",
               },
             ]
-: [],
+          : [],
     });
   }
 
@@ -298,7 +345,7 @@ function laneSuggestions(
   return [
     {
       statement: `Look for public evidence of: ${first.statement}`,
-      because: `${unverified.length} claim${unverified.length === 1 ? "": "s"} in this theme rest on their word alone.`,
+      because: `${unverified.length} claim${unverified.length === 1 ? "" : "s"} in this theme rest on their word alone.`,
     },
   ];
 }
@@ -326,14 +373,16 @@ const RULES: {
     key: "visibility",
     headline: "They think visibility is the problem, the site looks findable",
     stated: /(not (being )?found|invisible|no ?one finds|visibility|seo|search|traffic|ranking)/i,
-    observed: /(strong|good|healthy|high|steady)\s+(search|seo|organic|visibility|traffic|ranking)/i,
+    observed:
+      /(strong|good|healthy|high|steady)\s+(search|seo|organic|visibility|traffic|ranking)/i,
     note: "The problem they feel may be conversion or lead quality rather than being found. Worth asking.",
   },
   {
     key: "capture",
     headline: "They want follow-up, but no capture path is visible",
     stated: /(follow ?up|automat|nurtur|lead|enquir|inquir|booking|crm)/i,
-    observed: /((no|missing|without|lacks)\s+(contact form|enquiry form|inquiry form|lead capture|call to action|cta|booking))/i,
+    observed:
+      /((no|missing|without|lacks)\s+(contact form|enquiry form|inquiry form|lead capture|call to action|cta|booking))/i,
     note: "Automating follow-up assumes something to follow up on. Confirm how enquiries reach them today.",
   },
   {
@@ -371,7 +420,7 @@ export function contradictions(review: EvidenceReview): Contradiction[] {
       headline: rule.headline,
       stated: claim.statement,
       observed: signal.statement,
-...(signal.sourceUrl ? { sourceUrl: signal.sourceUrl }: {}),
+      ...(signal.sourceUrl ? { sourceUrl: signal.sourceUrl } : {}),
       note: rule.note,
     });
   }
@@ -396,19 +445,17 @@ export function scoutRead(input: {
   const { review, coverage, conflicts } = input;
 
   const appearsTrue = review.claims
-.filter((claim) => claim.standing === "corroborated")
-.slice(0, 3)
-.map((claim) => `Stated: ${claim.statement}, observed evidence speaks to it.`);
+    .filter((claim) => claim.standing === "corroborated")
+    .slice(0, 3)
+    .map((claim) => `Stated: ${claim.statement}, observed evidence speaks to it.`);
 
   const unverified = review.claims.filter((claim) => claim.standing === "unverified");
   const stillUncertain = unverified
-.slice(0, 3)
-.map((claim) => `Stated, unchecked: ${claim.statement}`);
+    .slice(0, 3)
+    .map((claim) => `Stated, unchecked: ${claim.statement}`);
   const unchecked = coverage.areas.filter((area) => !area.checked);
   if (unchecked.length > 0) {
-    stillUncertain.push(
-      `Not checked yet: ${unchecked.map((area) => area.label).join(", ")}.`,
-    );
+    stillUncertain.push(`Not checked yet: ${unchecked.map((area) => area.label).join(", ")}.`);
   }
 
   const deservesAttention = conflicts.map((conflict) => `Mismatch: ${conflict.headline}`);

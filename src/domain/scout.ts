@@ -18,7 +18,6 @@ import type { FounderSignalPacket } from "./stated";
 import type { CompanyIdentity } from "@/lib/company-identity";
 import type { CompanyProfile } from "@/data/scout-profile";
 
-
 /**
  * A person's own decision about researching an inbound company, taken when the
  * intake never asked. Recorded with who decided and when; it never rewrites
@@ -105,7 +104,6 @@ export interface ProspectCandidate {
   /** A person's pacing decision on developing this relationship (watch / not now). */
   development?: RelationshipDevelopmentMarker;
 }
-
 
 export interface ScoutSearchRequest {
   organizationId: ID;

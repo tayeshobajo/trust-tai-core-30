@@ -24,7 +24,7 @@ function relationship(part: Partial<Relationship> = {}): Relationship {
     metadata: {},
     createdAt: "2026-08-01T00:00:00.000Z",
     updatedAt: "2026-08-01T00:00:00.000Z",
-...part,
+    ...part,
   };
 }
 
@@ -52,16 +52,14 @@ describe("relationshipSegment", () => {
       "reached_out",
       "in_conversation",
     ] as const) {
-      expect(relationshipSegment(relationship({ source: "scout_handoff", stage }))).toBe(
-        "nurture",
-      );
+      expect(relationshipSegment(relationship({ source: "scout_handoff", stage }))).toBe("nurture");
     }
   });
 
   it("treats in_conversation as contextual: prospect evidence means Nurture", () => {
-    expect(
-      relationshipSegment(relationship({ stage: "in_conversation", prospectId: "p1" })),
-    ).toBe("nurture");
+    expect(relationshipSegment(relationship({ stage: "in_conversation", prospectId: "p1" }))).toBe(
+      "nurture",
+    );
     expect(
       relationshipSegment(relationship({ stage: "in_conversation", source: "scout_handoff" })),
     ).toBe("nurture");
@@ -73,9 +71,9 @@ describe("relationshipSegment", () => {
   });
 
   it("treats in_conversation as contextual: client evidence means Clients", () => {
-    expect(
-      relationshipSegment(relationship({ stage: "in_conversation", clientId: "c1" })),
-    ).toBe("client");
+    expect(relationshipSegment(relationship({ stage: "in_conversation", clientId: "c1" }))).toBe(
+      "client",
+    );
     expect(
       relationshipSegment(
         relationship({ stage: "in_conversation", metadata: { intent: "active_client" } }),
@@ -102,7 +100,9 @@ describe("relationshipSegment", () => {
 
   it("honours an explicit prospect intent as development evidence", () => {
     expect(
-      relationshipSegment(relationship({ stage: "in_conversation", metadata: { intent: "prospect" } })),
+      relationshipSegment(
+        relationship({ stage: "in_conversation", metadata: { intent: "prospect" } }),
+      ),
     ).toBe("nurture");
   });
 
@@ -135,7 +135,7 @@ describe("relationshipSegment", () => {
 
   it("graduation never changes identity: only the stage moves", () => {
     const before = relationship({ id: "r9", source: "scout_handoff", stage: "in_conversation" });
-    const after = {...before, stage: "client" as const };
+    const after = { ...before, stage: "client" as const };
     expect(relationshipSegment(before)).toBe("nurture");
     expect(relationshipSegment(after)).toBe("client");
     expect(after.id).toBe(before.id);

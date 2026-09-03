@@ -28,7 +28,7 @@ export type ExecutionAgentRow = {
   routine_ids: string[] | null;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type PaperclipSyncStateRow = {
   id: string;
@@ -40,7 +40,7 @@ export type PaperclipSyncStateRow = {
   consecutive_failures: number;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type ExecutionBindingRow = {
   id: string;
@@ -61,7 +61,7 @@ export type ExecutionBindingRow = {
   idempotency_key: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type ProspectRow = {
   id: string;
@@ -76,7 +76,7 @@ export type ProspectRow = {
   provenance: unknown;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type IcpProfileRow = {
   id: string;
@@ -86,7 +86,7 @@ export type IcpProfileRow = {
   format: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
 type TableContract<Row> = {
   Row: Row;

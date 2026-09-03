@@ -150,10 +150,7 @@ export const Route = createFileRoute("/api/public/comms/gmail/connect")({
             const integrationId =
               typeof body["integrationId"] === "string" ? body["integrationId"] : "";
             if (!integrationId) {
-              return Response.json(
-                { error: "Name the mailbox to disconnect." },
-                { status: 400 },
-              );
+              return Response.json({ error: "Name the mailbox to disconnect." }, { status: 400 });
             }
             await disconnect({ token, organizationId, integrationId });
             return Response.json({ connected: false });

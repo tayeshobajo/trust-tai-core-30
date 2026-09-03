@@ -26,7 +26,7 @@ function connectionLine(lastSuccessAt: string | null): string {
   const state = paperclipConnection({ liveReachable: false, lastSuccessAt });
   return state.mode === "synchronized"
     ? `Paperclip \u00b7 synchronized. ${state.helper}`
-: `Paperclip \u00b7 interrupted. ${state.helper}`;
+    : `Paperclip \u00b7 interrupted. ${state.helper}`;
 }
 
 /** Boundaries every Trust Tai agent has, regardless of capability list. */
@@ -45,7 +45,7 @@ function lifecycleOf(agentStatus: string, issues: { status: string }[]): AgentLi
   if (status === "running" || status === "working") return "working";
   if (status === "failed" || status === "error") return "failed";
   if (status === "idle" || status === "ready" || status === "active") return "idle";
-  return status ? "unknown": "idle";
+  return status ? "unknown" : "idle";
 }
 
 function toTask(issue: {
@@ -58,7 +58,7 @@ function toTask(issue: {
     id: issue.id,
     title: issue.title,
     status: issue.status,
-...(issue.updatedAt ? { updatedAt: issue.updatedAt }: {}),
+    ...(issue.updatedAt ? { updatedAt: issue.updatedAt } : {}),
   };
 }
 
@@ -76,11 +76,13 @@ function boundariesOf(metadata: Record<string, unknown> | null): string[] {
   const stated = (metadata ?? {})["cannot_do"];
   const extra = Array.isArray(stated)
     ? stated.filter((value): value is string => typeof value === "string")
-: [];
-  return [...extra,...UNIVERSAL_BOUNDARIES];
+    : [];
+  return [...extra, ...UNIVERSAL_BOUNDARIES];
 }
 
-function toRoutine(r: import("@/lib/paperclip-client.server").PaperclipRoutine): StewardAgentRoutine {
+function toRoutine(
+  r: import("@/lib/paperclip-client.server").PaperclipRoutine,
+): StewardAgentRoutine {
   return {
     id: r.id,
     title: r.title,
@@ -98,7 +100,7 @@ function toActivityItem(
   return {
     id: comment.id,
     kind: "comment",
-    authorKind: isAgent ? "agent": "human",
+    authorKind: isAgent ? "agent" : "human",
     body: comment.body,
     createdAt: comment.createdAt,
   };
@@ -120,8 +122,8 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       agents: [],
       connected: false,
       syncHealth: null,
-      liveFailureDetail: error instanceof Error ? error.message: null,
-      because: error instanceof Error ? error.message: "The execution bridge is not available.",
+      liveFailureDetail: error instanceof Error ? error.message : null,
+      because: error instanceof Error ? error.message : "The execution bridge is not available.",
     };
   }
 
@@ -133,11 +135,11 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       agents: [],
       connected: false,
       syncHealth: null,
-      liveFailureDetail: error instanceof Error ? error.message: null,
+      liveFailureDetail: error instanceof Error ? error.message : null,
       because:
         error instanceof Error
           ? `The agent registry could not be read. ${error.message}`
-: "The agent registry could not be read.",
+          : "The agent registry could not be read.",
     };
   }
 
@@ -170,9 +172,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
   let firstFailure: string | null = null;
 
   // Build map from reconcile results for fast lookup
-  const reconcileMap = new Map(
-    reconcileResult.agents.map((r) => [r.agentId, r]),
-  );
+  const reconcileMap = new Map(reconcileResult.agents.map((r) => [r.agentId, r]));
 
   for (const record of records) {
     const paperclipAgentId = String(record["paperclip_agent_id"] ?? "");
@@ -180,7 +180,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
     const owningApp = String(record["owning_app"] ?? "unknown");
     const capabilities = Array.isArray(record["capabilities"])
       ? (record["capabilities"] as unknown[]).filter((v): v is string => typeof v === "string")
-: [];
+      : [];
     const metadata = (record["metadata"] ?? null) as Record<string, unknown> | null;
 
     const base: StewardAgent = {
@@ -204,8 +204,7 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
       lastHeartbeatAt: (record["last_heartbeat_at"] as string | null) ?? null,
 
       isPaused:
-        Boolean(record["paused_at"]) ||
-        String(record["last_known_status"] ?? "") === "paused",
+        Boolean(record["paused_at"]) || String(record["last_known_status"] ?? "") === "paused",
     };
     // Projection freshness: when live Paperclip is unreachable (e.g. production
     // while Paperclip runs laptop-local), hydrate lifecycle from the reconcile
@@ -232,7 +231,9 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
           limit: 20,
           status: ["done"],
         });
-      } catch { /* non-fatal */ }
+      } catch {
+        /* non-fatal */
+      }
 
       // Fetch comments for the most recent active/done issue (activity timeline)
       let activityTimeline: StewardAgentActivityItem[] = [];
@@ -242,14 +243,16 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
           const { paperclipClient } = await import("@/lib/paperclip-client.server");
           const comments = await paperclipClient.getIssueComments(latestIssueId);
           activityTimeline = comments
-.filter((c) => !c.deletedAt)
-.slice(0, 10)
-.map(toActivityItem);
-        } catch { /* non-fatal */ }
+            .filter((c) => !c.deletedAt)
+            .slice(0, 10)
+            .map(toActivityItem);
+        } catch {
+          /* non-fatal */
+        }
       }
 
       agents.push({
-...base,
+        ...base,
         lifecycle: lifecycleOf(rec.status, open),
         currentWork: working?.title ?? null,
         activeTasks: active.map(toTask),
@@ -280,16 +283,18 @@ export async function readStewardAgents(organizationId: string): Promise<Steward
         consecutiveFailures: agentState.consecutiveFailures,
       };
     }
-  } catch { /* non-fatal */ }
+  } catch {
+    /* non-fatal */
+  }
 
   return {
     agents,
     connected: reachable,
     syncHealth,
     because: reachable
-      ? `${agents.length} agent${agents.length === 1 ? "": "s"} registered. Paperclip \u00b7 live.`
-: connectionLine(syncHealth?.lastSuccessAt ?? null),
-    liveFailureDetail: reachable ? null: firstFailure
+      ? `${agents.length} agent${agents.length === 1 ? "" : "s"} registered. Paperclip \u00b7 live.`
+      : connectionLine(syncHealth?.lastSuccessAt ?? null),
+    liveFailureDetail: reachable ? null : firstFailure,
   };
 }
 
@@ -315,7 +320,7 @@ export async function assignPaperclipTask(input: {
   // can never land in Paperclip more than once.
   const idempotencyKey = input.sourceEntityId
     ? `trusttai:task:${input.organizationId}:${input.sourceEntityId}`
-: `trusttai:task:${input.organizationId}:${input.agentId}:${Date.now()}`;
+    : `trusttai:task:${input.organizationId}:${input.agentId}:${Date.now()}`;
 
   const agent = await paperclipClient.getAgent(input.agentId);
 
@@ -356,9 +361,9 @@ export async function assignPaperclipTask(input: {
   // Patch the issue ID onto the binding row directly.
   const { trustTaiServiceRoleClient } = await import("@/lib/execution-bridge.server");
   await trustTaiServiceRoleClient()
-.from("execution_bindings")
-.update({ paperclip_issue_id: issue.id, status: "dispatched" })
-.eq("id", binding.id);
+    .from("execution_bindings")
+    .update({ paperclip_issue_id: issue.id, status: "dispatched" })
+    .eq("id", binding.id);
 
   return { issueId: issue.id, bindingId: binding.id, isNew: true };
 }
@@ -376,11 +381,8 @@ export async function setPaperclipAgentPaused(
 ): Promise<{ status: string; pausedAt: string | null }> {
   const { paperclipClient } = await import("@/lib/paperclip-client.server");
   const updated = await paperclipClient.setAgentPaused(agentId, paused);
-  const status = updated.status ?? (paused ? "paused": "active");
-  const pausedAt = paused
-    ? (updated.pausedAt ??
-       new Date().toISOString())
-: null;
+  const status = updated.status ?? (paused ? "paused" : "active");
+  const pausedAt = paused ? (updated.pausedAt ?? new Date().toISOString()) : null;
   return { status, pausedAt };
 }
 
@@ -429,10 +431,10 @@ export async function assertStewardMembership(
   organizationId: string,
 ): Promise<void> {
   const { data, error } = await context.supabase
-.from("organizations")
-.select("id")
-.eq("id", organizationId)
-.maybeSingle();
+    .from("organizations")
+    .select("id")
+    .eq("id", organizationId)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("You are not a member of this Trust Tai workspace.");
 }

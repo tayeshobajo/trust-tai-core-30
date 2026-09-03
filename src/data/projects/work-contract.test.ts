@@ -6,16 +6,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import {
-  classifyExecution,
-  executionStateAtLeast,
-} from "@/domain/work-contract";
+import { classifyExecution, executionStateAtLeast } from "@/domain/work-contract";
 
-import {
-  approveWorkContract,
-  draftWorkContract,
-  paperclipPacketFor,
-} from "./work-contract";
+import { approveWorkContract, draftWorkContract, paperclipPacketFor } from "./work-contract";
 
 const NOW = "2026-08-22T10:00:00.000Z";
 
@@ -27,7 +20,11 @@ function draft() {
     outcomeStatement: "A confirmed submission receives a receipt within one minute",
     sourceRefs: [{ kind: "context_packet", id: "packet:p1", label: "Project packet" }],
     acceptanceCriteria: [
-      { id: "ac1", statement: "Receipt email recorded in Comms", evidenceKind: "downstream_receipt" },
+      {
+        id: "ac1",
+        statement: "Receipt email recorded in Comms",
+        evidenceKind: "downstream_receipt",
+      },
     ],
     mustNotChange: ["The public submission form"],
     now: NOW,
@@ -57,9 +54,7 @@ describe("work contract drafting", () => {
         objective: "  ",
         outcomeStatement: "It is done",
         sourceRefs: [],
-        acceptanceCriteria: [
-          { id: "ac1", statement: "Proof exists", evidenceKind: "test_result" },
-        ],
+        acceptanceCriteria: [{ id: "ac1", statement: "Proof exists", evidenceKind: "test_result" }],
         now: NOW,
       }),
     ).toBeNull();
@@ -80,10 +75,18 @@ describe("work contract drafting", () => {
 
 describe("execution semantics", () => {
   it("attempted != executed != verified != human accepted", () => {
-    expect(classifyExecution({ actionRan: false, verificationPassed: false, humanAccepted: false })).toBe("not_attempted");
-    expect(classifyExecution({ actionRan: true, verificationPassed: false, humanAccepted: false })).toBe("executed");
-    expect(classifyExecution({ actionRan: true, verificationPassed: true, humanAccepted: false })).toBe("verified");
-    expect(classifyExecution({ actionRan: true, verificationPassed: true, humanAccepted: true })).toBe("human_accepted");
+    expect(
+      classifyExecution({ actionRan: false, verificationPassed: false, humanAccepted: false }),
+    ).toBe("not_attempted");
+    expect(
+      classifyExecution({ actionRan: true, verificationPassed: false, humanAccepted: false }),
+    ).toBe("executed");
+    expect(
+      classifyExecution({ actionRan: true, verificationPassed: true, humanAccepted: false }),
+    ).toBe("verified");
+    expect(
+      classifyExecution({ actionRan: true, verificationPassed: true, humanAccepted: true }),
+    ).toBe("human_accepted");
     expect(executionStateAtLeast("executed", "verified")).toBe(false);
     expect(executionStateAtLeast("human_accepted", "verified")).toBe(true);
   });

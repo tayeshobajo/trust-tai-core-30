@@ -33,7 +33,7 @@ const claire = {
 };
 
 const intelWithPerson: ScoutIntel = {
-...EMPTY_INTEL,
+  ...EMPTY_INTEL,
   collectedAt: "2026-08-19T00:00:00.000Z",
   people: [claire],
 } as unknown as ScoutIntel;
@@ -64,10 +64,7 @@ const preparedMarker = (): RelationshipResearchMarker =>
     brief: preparedBrief,
   }) as RelationshipResearchMarker;
 
-const candidate = (over: {
-  intel?: ScoutIntel;
-  status?: string;
-}): ProspectCandidate =>
+const candidate = (over: { intel?: ScoutIntel; status?: string }): ProspectCandidate =>
   ({
     prospect: {
       id: "p1",
@@ -121,9 +118,12 @@ describe("a gated first message names the gate", () => {
 
   it("urgency does not override the gate: the signal is cited, the gate is named", () => {
     const intel: ScoutIntel = {
-...intelWithPerson,
+      ...intelWithPerson,
       buyingSignals: [
-        { statement: "They opened a second location in Franklin", observedAt: "2026-08-20T00:00:00.000Z" },
+        {
+          statement: "They opened a second location in Franklin",
+          observedAt: "2026-08-20T00:00:00.000Z",
+        },
       ],
     } as unknown as ScoutIntel;
     const move = buildRecommendedNextMove({
@@ -168,10 +168,8 @@ describe("a clear handoff opens the first message", () => {
 describe("non-email channels", () => {
   it("a blocked LinkedIn route names the person, not a channel Scout cannot promise", () => {
     const linkedinOnly: ScoutIntel = {
-...intelWithPerson,
-      people: [
-        {...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" },
-      ],
+      ...intelWithPerson,
+      people: [{ ...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" }],
     } as unknown as ScoutIntel;
     const move = buildRecommendedNextMove({
       candidate: candidate({ intel: linkedinOnly }),
@@ -204,18 +202,21 @@ describe("evidence supports, it does not re-explain", () => {
 
   it("a verified address reads as verified, and a dated signal replaces the no-signal note", () => {
     const intel: ScoutIntel = {
-...intelWithPerson,
+      ...intelWithPerson,
       buyingSignals: [
-        { statement: "They opened a second location in Franklin", observedAt: "2026-08-20T00:00:00.000Z" },
+        {
+          statement: "They opened a second location in Franklin",
+          observedAt: "2026-08-20T00:00:00.000Z",
+        },
       ],
     } as unknown as ScoutIntel;
-    const brief = {...preparedBrief, bestChannel: "email" as const };
+    const brief = { ...preparedBrief, bestChannel: "email" as const };
     const marker = {
-...preparedMarker(),
+      ...preparedMarker(),
       brief,
     } as RelationshipResearchMarker;
     const dated = {
-...candidate({ intel }),
+      ...candidate({ intel }),
       development: { watch: null, research: marker },
     } as unknown as ProspectCandidate;
     // The entry's email is treated as verified through the brief's channel read.

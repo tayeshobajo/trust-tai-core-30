@@ -1,11 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { initialsOf } from "@/domain/steward-accountability";
 
@@ -133,7 +128,13 @@ export function NotProvisioned({ what, file }: { what: string; file: string }) {
   );
 }
 
-export function Health({ tone, children }: { tone: "good" | "caution" | "risk" | "neutral"; children: ReactNode }) {
+export function Health({
+  tone,
+  children,
+}: {
+  tone: "good" | "caution" | "risk" | "neutral";
+  children: ReactNode;
+}) {
   const map = {
     good: "border-success/25 bg-success/8 text-success",
     caution: "border-warning/30 bg-warning/8 text-warning",

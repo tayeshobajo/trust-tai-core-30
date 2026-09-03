@@ -110,12 +110,12 @@ function stripSignoff(text: string): { body: string; signoff: string | null } {
  */
 export function repairVoice(input: string): string {
   return input
-.replace(/\u2014/g, ". ")
-.replace(/\s+--\s+/g, ". ")
-.replace(/\.\s*\.\s*/g, ". ")
-.replace(/[ \t]+\n/g, "\n")
-.replace(/[ \t]{2,}/g, " ")
-.trimEnd();
+    .replace(/\u2014/g, ". ")
+    .replace(/\s+--\s+/g, ". ")
+    .replace(/\.\s*\.\s*/g, ". ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trimEnd();
 }
 
 /** Add the exact Trust Tai signoff when an email is missing one. */
@@ -169,9 +169,9 @@ export function checkVoice(input: string, options: VoiceCheckOptions): VoiceVerd
 
   const { body } = stripSignoff(text);
   const sentences = body
-.split(/(?<=[.?])\s+/)
-.map((entry) => entry.trim())
-.filter(Boolean);
+    .split(/(?<=[.?])\s+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
   const long = sentences.find((entry) => entry.split(/\s+/).length > LONG_SENTENCE_WORDS);
   if (long) add("short_cadence", `${long.slice(0, 60)}…`);
 

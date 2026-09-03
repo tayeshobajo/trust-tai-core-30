@@ -82,7 +82,12 @@ export function AmbientSurface({
   className?: string;
   children: ReactNode;
 } & { [key: string]: unknown }) {
-  const style = ambientStyle({ appId, contextAccent, ...(strength ? { strength } : {}), ...(depth ? { depth } : {}) });
+  const style = ambientStyle({
+    appId,
+    contextAccent,
+    ...(strength ? { strength } : {}),
+    ...(depth ? { depth } : {}),
+  });
 
   return (
     <Tag className={cn("tt-ambient", className)} style={style} {...rest}>

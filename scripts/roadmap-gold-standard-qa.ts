@@ -37,7 +37,7 @@ import type { RuntimeModelCaller } from "../src/lib/intelligence-runtime.server"
 const offlineCaller: RuntimeModelCaller = (call) =>
   callRoadmapProvider(call.instructions, call.input, {
     webSearch: call.webSearch ?? false,
-...(call.responseFormat ? { responseFormat: call.responseFormat }: {}),
+    ...(call.responseFormat ? { responseFormat: call.responseFormat } : {}),
   });
 import { composeStudioDocument } from "../src/lib/roadmap-studio.server";
 
@@ -49,19 +49,22 @@ const objective =
 const now = new Date().toISOString();
 function log(label: string, value?: unknown) {
   if (value === undefined) console.log(`\n=== ${label}`);
-  else console.log(`${label}: ${typeof value === "string" ? value: JSON.stringify(value)}`);
+  else console.log(`${label}: ${typeof value === "string" ? value : JSON.stringify(value)}`);
 }
 
 /* --------------------------------------------------------------- research */
 
 log("RESEARCH");
 let result: RoadmapResearchResult | null = null;
-for await (const stage of researchSubject({
-  subjectLabel,
-  objective,
-...(website ? { website }: {}),
-  known: [],
-}, offlineCaller)) {
+for await (const stage of researchSubject(
+  {
+    subjectLabel,
+    objective,
+    ...(website ? { website } : {}),
+    known: [],
+  },
+  offlineCaller,
+)) {
   console.log(`  [${stage.stage}] ${stage.message}`);
   if (stage.stage === "error") process.exit(1);
   if (stage.stage === "complete") result = stage.data as RoadmapResearchResult;
@@ -72,11 +75,17 @@ const research = result.research;
 log("provider", `${result.provider} / ${result.model}`);
 log("sources", research.sources.length);
 log("unknowns", research.unknowns.length);
-for (const claim of [...research.companyModel,...research.buyers,...research.strengths]) {
+for (const claim of [...research.companyModel, ...research.buyers, ...research.strengths]) {
   console.log(`  (${claim.tier}/${claim.confidence}) ${claim.statement}`);
 }
-log("competitors", research.competitors.map((c) => c.name));
-log("market direction", research.marketDirection.map((c) => c.statement));
+log(
+  "competitors",
+  research.competitors.map((c) => c.name),
+);
+log(
+  "market direction",
+  research.marketDirection.map((c) => c.statement),
+);
 
 /* --------------------------------------------------------------- strategy */
 
@@ -88,12 +97,24 @@ const normalized: NormalizedStrategy = normalizeStrategy(result.strategy, {
 
 log("STRATEGY (proposed, inferred)");
 log("central truth", normalized.centralTruth?.statement ?? "none");
-log("point A", normalized.pointA.map((i) => i.statement));
-log("anchor proof", normalized.anchorProof.map((i) => i.statement));
-log("horizon", normalized.horizon.map((b) => `${b.years}y (${b.tier}): ${b.statement}`));
+log(
+  "point A",
+  normalized.pointA.map((i) => i.statement),
+);
+log(
+  "anchor proof",
+  normalized.anchorProof.map((i) => i.statement),
+);
+log(
+  "horizon",
+  normalized.horizon.map((b) => `${b.years}y (${b.tier}): ${b.statement}`),
+);
 log("point B", normalized.pointB?.statement ?? "none");
 log("point C", normalized.pointC?.statement ?? "none");
-log("gaps", normalized.gaps.map((i) => i.statement));
+log(
+  "gaps",
+  normalized.gaps.map((i) => i.statement),
+);
 log("leverage point", normalized.leveragePoint?.statement ?? "none");
 
 /* ------------------------------------------------------------- milestones */
@@ -108,7 +129,9 @@ const ranked = rankMilestones(candidates);
 log("MILESTONES");
 log("candidates considered", ranked.length);
 for (const m of ranked) {
-  console.log(`  #${m.recommendedSequence} [${m.priorityScore}] ${m.name} (${m.confidence}, ${m.evidence.length} sources)`);
+  console.log(
+    `  #${m.recommendedSequence} [${m.priorityScore}] ${m.name} (${m.confidence}, ${m.evidence.length} sources)`,
+  );
 }
 
 /* ---------------------------------------- human decision, simulated in QA */
@@ -120,7 +143,7 @@ for (const m of ranked) {
  */
 function approve(item: StrategyItem | null): StrategyItem | null {
   if (!item) return null;
-  return {...item, tier: "decided", approval: "approved", approvedAt: now };
+  return { ...item, tier: "decided", approval: "approved", approvedAt: now };
 }
 const decidedStrategy: RoadmapStrategy = {
   id: "qa-strategy",
@@ -134,7 +157,7 @@ const decidedStrategy: RoadmapStrategy = {
   centralTruth: approve(normalized.centralTruth),
   // Deliberately approve only the first gap: the rest stay proposed, so the
   // packet can be checked for rejected/deferred leakage.
-  gaps: normalized.gaps.map((i, index) => (index === 0 ? approve(i)!: i)),
+  gaps: normalized.gaps.map((i, index) => (index === 0 ? approve(i)! : i)),
   leveragePoint: approve(normalized.leveragePoint),
   provider: result.provider,
   model: result.model,
@@ -163,13 +186,16 @@ const milestones: RoadmapMilestone[] = ranked.map((m, index) => ({
   priorityScore: m.priorityScore,
   priorityRationale: m.priorityRationale,
   recommendedSequence: m.recommendedSequence,
-  status: index < SELECTED ? "approved": "candidate",
-  tier: index < SELECTED ? "decided": "inferred",
-  ownerLabel: index < SELECTED ? "Tai": undefined,
+  status: index < SELECTED ? "approved" : "candidate",
+  tier: index < SELECTED ? "decided" : "inferred",
+  ownerLabel: index < SELECTED ? "Tai" : undefined,
   createdAt: now,
   updatedAt: now,
 }));
-log("selected by a person", milestones.filter((m) => m.status === "approved").map((m) => m.name));
+log(
+  "selected by a person",
+  milestones.filter((m) => m.status === "approved").map((m) => m.name),
+);
 
 /* ------------------------------------------------------------------ studio */
 
@@ -205,13 +231,16 @@ log("packet", packetSummary(packet));
 log("support keys", packet.supportKeys);
 
 let composed: { sections: unknown[]; rejected: unknown[] } | null = null;
-for await (const stage of composeStudioDocument({
-  kind: "full",
-  subjectLabel,
-  strategy: decidedStrategy,
-  milestones,
-  research: researchRow,
-}, offlineCaller)) {
+for await (const stage of composeStudioDocument(
+  {
+    kind: "full",
+    subjectLabel,
+    strategy: decidedStrategy,
+    milestones,
+    research: researchRow,
+  },
+  offlineCaller,
+)) {
   console.log(`  [${stage.stage}] ${stage.message}`);
   if (stage.stage === "error") {
     console.log(JSON.stringify(stage.data, null, 2));
@@ -235,12 +264,15 @@ for (const question of [
   `What is the central business truth for ${subjectLabel}, and what backs it?`,
   `What was ${subjectLabel}'s exact revenue last quarter?`,
 ]) {
-  const answer = await answerRoadmapQuestion({
-    question,
-    subjectLabel,
-    context: storedEvidence,
-    research: false,
-  }, offlineCaller);
+  const answer = await answerRoadmapQuestion(
+    {
+      question,
+      subjectLabel,
+      context: storedEvidence,
+      research: false,
+    },
+    offlineCaller,
+  );
   console.log(`\nQ: ${question}`);
   console.log(JSON.stringify(answer, null, 2));
 }

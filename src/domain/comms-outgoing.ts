@@ -34,10 +34,10 @@ export function attachmentStoragePath(
   filename: string,
 ): string {
   const clean = filename
-.trim()
-.replace(/[^\w. -]+/g, "_")
-.replace(/\s+/g, " ")
-.slice(-120);
+    .trim()
+    .replace(/[^\w. -]+/g, "_")
+    .replace(/\s+/g, " ")
+    .slice(-120);
   return `${organizationId}/${draftId}/${Date.now()}-${clean || "file"}`;
 }
 
@@ -46,15 +46,15 @@ export function attachmentStoragePath(
 function refFromJson(raw: unknown): OutgoingAttachmentRef | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
-  const filename = typeof value["filename"] === "string" ? value["filename"]: "";
-  const path = typeof value["path"] === "string" ? value["path"]: "";
+  const filename = typeof value["filename"] === "string" ? value["filename"] : "";
+  const path = typeof value["path"] === "string" ? value["path"] : "";
   if (!filename || !path) return null;
   return {
     filename,
     path,
     mimeType:
-      typeof value["mime_type"] === "string" ? value["mime_type"]: "application/octet-stream",
-    size: typeof value["size"] === "number" ? value["size"]: 0,
+      typeof value["mime_type"] === "string" ? value["mime_type"] : "application/octet-stream",
+    size: typeof value["size"] === "number" ? value["size"] : 0,
   };
 }
 
@@ -73,7 +73,7 @@ export function writeOutgoingAttachments(
   attachments: OutgoingAttachmentRef[],
 ): Record<string, unknown> {
   return {
-...(rationale ?? {}),
+    ...(rationale ?? {}),
     outgoing_attachments: attachments.map((attachment) => ({
       filename: attachment.filename,
       mime_type: attachment.mimeType,
@@ -90,14 +90,15 @@ export function writeOutgoingAttachments(
  * draft so what was approved is on record, and merged into the send plan at
  * send time. Never includes the person's own mailbox, the server drops it.
  */
-export function readOutgoingExtras(
-  rationale: Record<string, unknown> | null | undefined,
-): { cc: string[]; bcc: string[] } {
+export function readOutgoingExtras(rationale: Record<string, unknown> | null | undefined): {
+  cc: string[];
+  bcc: string[];
+} {
   const raw = rationale?.["outgoing_extras"];
   if (!raw || typeof raw !== "object") return { cc: [], bcc: [] };
   const value = raw as Record<string, unknown>;
   const list = (key: string): string[] =>
-    Array.isArray(value[key]) ? (value[key] as unknown[]).map(String).filter(Boolean): [];
+    Array.isArray(value[key]) ? (value[key] as unknown[]).map(String).filter(Boolean) : [];
   return { cc: list("cc"), bcc: list("bcc") };
 }
 
@@ -107,7 +108,7 @@ export function writeOutgoingExtras(
   extras: { cc: string[]; bcc: string[] },
 ): Record<string, unknown> {
   return {
-...(rationale ?? {}),
+    ...(rationale ?? {}),
     outgoing_extras: { cc: extras.cc, bcc: extras.bcc },
   };
 }

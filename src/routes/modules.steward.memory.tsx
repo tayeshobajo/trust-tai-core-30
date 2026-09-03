@@ -329,7 +329,9 @@ function MemoryGroup({
           <span className="tt-eyebrow block">
             {MEMORY_KIND_LABEL[kind]} · {beliefs.length}
           </span>
-          <span className="mt-1 block max-w-reading text-[13px] text-muted-foreground">{blurb}</span>
+          <span className="mt-1 block max-w-reading text-[13px] text-muted-foreground">
+            {blurb}
+          </span>
         </span>
       </button>
 

@@ -145,13 +145,25 @@ describe("Tai decision state", () => {
       id: "e2",
       name: "prospect.commented",
       summary: "Read the intake.",
-      provenance: { appId: "scout", actor: { type: "user", id: "u1", label: "Tai" }, observedAt: AT },
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: "u1", label: "Tai" },
+        observedAt: AT,
+      },
     };
     const c = candidate({
       signals: [
         observedSignal,
-        { ...observedSignal, id: "obs_2", statement: "They publish invoice reconciliation guides." },
-        { ...observedSignal, id: "obs_3", statement: "Their pricing page lists a scheduling tier." },
+        {
+          ...observedSignal,
+          id: "obs_2",
+          statement: "They publish invoice reconciliation guides.",
+        },
+        {
+          ...observedSignal,
+          id: "obs_3",
+          statement: "Their pricing page lists a scheduling tier.",
+        },
         { ...observedSignal, id: "obs_4", statement: "They lose time on manual invoice work." },
       ],
     });

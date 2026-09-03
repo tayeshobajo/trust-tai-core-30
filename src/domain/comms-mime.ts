@@ -30,15 +30,51 @@ export const MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 /** Extensions Gmail refuses outright; naming one is an actionable error. */
 const BLOCKED_EXTENSIONS = new Set([
-  "ade", "adp", "apk", "app", "appx", "bat", "cab", "cmd", "com", "cpl", "dll",
-  "dmg", "exe", "hta", "ins", "iso", "jar", "js", "jse", "lib", "lnk", "mde",
-  "msc", "msi", "msp", "mst", "nsh", "pif", "ps1", "scr", "sct", "sh", "sys",
-  "vb", "vbe", "vbs", "vxd", "wsc", "wsf", "wsh",
+  "ade",
+  "adp",
+  "apk",
+  "app",
+  "appx",
+  "bat",
+  "cab",
+  "cmd",
+  "com",
+  "cpl",
+  "dll",
+  "dmg",
+  "exe",
+  "hta",
+  "ins",
+  "iso",
+  "jar",
+  "js",
+  "jse",
+  "lib",
+  "lnk",
+  "mde",
+  "msc",
+  "msi",
+  "msp",
+  "mst",
+  "nsh",
+  "pif",
+  "ps1",
+  "scr",
+  "sct",
+  "sh",
+  "sys",
+  "vb",
+  "vbe",
+  "vbs",
+  "vxd",
+  "wsc",
+  "wsf",
+  "wsh",
 ]);
 
 function extensionOf(filename: string): string {
   const dot = filename.lastIndexOf(".");
-  return dot >= 0 ? filename.slice(dot + 1).toLowerCase(): "";
+  return dot >= 0 ? filename.slice(dot + 1).toLowerCase() : "";
 }
 
 /** `9` or `9.5`, for calm human-readable sizes. */
@@ -64,9 +100,7 @@ export function validateAttachments(files: { filename: string; size: number }[])
     }
     const extension = extensionOf(file.filename);
     if (BLOCKED_EXTENSIONS.has(extension)) {
-      errors.push(
-        `“${file.filename}” cannot go through Gmail,.${extension} files are blocked.`,
-      );
+      errors.push(`“${file.filename}” cannot go through Gmail,.${extension} files are blocked.`);
     }
     if (file.size > MAX_ATTACHMENT_BYTES) {
       errors.push(
@@ -113,10 +147,10 @@ export function replyRecipients(input: {
 }): { to: string[]; cc: string[] } {
   const self = input.mailbox.trim().toLowerCase();
   const replyTo = input.replyTo.trim().toLowerCase();
-  const to = replyTo && replyTo !== self ? [replyTo]: [];
+  const to = replyTo && replyTo !== self ? [replyTo] : [];
   const seen = new Set(to);
   const cc: string[] = [];
-  for (const email of [...input.toEmails,...input.ccEmails]) {
+  for (const email of [...input.toEmails, ...input.ccEmails]) {
     const clean = email.trim().toLowerCase();
     if (!clean || clean === self || seen.has(clean)) continue;
     seen.add(clean);
@@ -133,7 +167,7 @@ export function replySubject(subject: string | undefined): string {
     if (stripped === base) break;
     base = stripped;
   }
-  return base ? `Re: ${base}`: "";
+  return base ? `Re: ${base}` : "";
 }
 
 /* -------------------------------------------------------------- encoding */
@@ -165,7 +199,7 @@ const ASCII_PRINTABLE = /^[\x20-\x7e]*$/;
 /** Headers carry ASCII; anything richer rides as an RFC 2047 encoded word. */
 export function encodeHeaderValue(value: string): string {
   const clean = value.replace(/[\r\n]+/g, " ").trim();
-  return ASCII_PRINTABLE.test(clean) ? clean: `=?UTF-8?B?${textToBase64(clean)}?=`;
+  return ASCII_PRINTABLE.test(clean) ? clean : `=?UTF-8?B?${textToBase64(clean)}?=`;
 }
 
 /** The deterministic identity one draft carries into the mailbox. */
@@ -201,10 +235,7 @@ export interface MimeMessageInput {
  * `multipart/mixed` tree whose first part is always the readable text.
  */
 export function buildMimeMessage(input: MimeMessageInput): string {
-  const headers: string[] = [
-    `From: ${input.from.trim().toLowerCase()}`,
-    `To: input.to.join(", ")`,
-  ];
+  const headers: string[] = [`From: ${input.from.trim().toLowerCase()}`, `To: input.to.join(", ")`];
   // (header list built below, kept explicit so a review reads top to bottom)
   headers.length = 0;
   headers.push(`From: ${input.from.trim().toLowerCase()}`);
@@ -229,7 +260,7 @@ export function buildMimeMessage(input: MimeMessageInput): string {
   const textBody = fold76(textToBase64(input.bodyText));
 
   if (attachments.length === 0) {
-    return [...headers,...textHeaders, "", textBody].join("\r\n");
+    return [...headers, ...textHeaders, "", textBody].join("\r\n");
   }
 
   // The boundary is derived from the message identity, not a random source:
@@ -250,10 +281,10 @@ export function buildMimeMessage(input: MimeMessageInput): string {
   }
 
   return [
-...headers,
+    ...headers,
     `Content-Type: multipart/mixed; boundary="${boundary}"`,
     "",
-...parts.flatMap((part) => [`--${boundary}`, part]),
+    ...parts.flatMap((part) => [`--${boundary}`, part]),
     `--${boundary}--`,
     "",
   ].join("\r\n");
@@ -268,11 +299,7 @@ export function encodeRawEmail(rfc2822: string): string {
  * The always-available fallback: the same words, opened in Gmail's own
  * compose window, when Comms may not send itself.
  */
-export function gmailComposeUrl(input: {
-  to?: string[];
-  subject?: string;
-  body?: string;
-}): string {
+export function gmailComposeUrl(input: { to?: string[]; subject?: string; body?: string }): string {
   const params = new URLSearchParams({ view: "cm", fs: "1" });
   if (input.to?.length) params.set("to", input.to.join(","));
   if (input.subject) params.set("su", input.subject);

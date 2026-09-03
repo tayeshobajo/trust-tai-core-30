@@ -59,7 +59,8 @@ function toCase(row: Record<string, unknown>): IntelligenceCase {
     humanDecision: String(row["human_decision"] ?? ""),
     decidedBy: String(row["decided_by"] ?? ""),
     decidedAt: String(row["decided_at"]),
-    diagnosisVerdict: (row["diagnosis_verdict"] ?? "unknown") as IntelligenceCase["diagnosisVerdict"],
+    diagnosisVerdict: (row["diagnosis_verdict"] ??
+      "unknown") as IntelligenceCase["diagnosisVerdict"],
     ...(typeof row["correction"] === "string" ? { correction: row["correction"] as string } : {}),
     createdAt: String(row["created_at"] ?? row["decided_at"]),
   };

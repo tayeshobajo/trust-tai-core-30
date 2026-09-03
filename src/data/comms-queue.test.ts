@@ -14,7 +14,7 @@ function memory(partial: Partial<MemoryItem>): MemoryItem {
     tier: "observed",
     evidence: [],
     at: "2026-02-01T00:00:00.000Z",
-...partial,
+    ...partial,
   };
 }
 
@@ -31,7 +31,7 @@ function relationship(partial: Partial<Relationship> = {}): Relationship {
     metadata: {},
     createdAt: "2026-03-01T00:00:00.000Z",
     updatedAt: "2026-03-01T00:00:00.000Z",
-...partial,
+    ...partial,
   };
 }
 
@@ -90,14 +90,16 @@ describe("search", () => {
 
 describe("reasons to reconnect", () => {
   it("returns nothing when nothing true has happened", () => {
-    expect(reasonsToReconnect(relationship({ lastTouchAt: "2026-03-08T00:00:00.000Z" }), NOW)).toEqual(
-      [],
-    );
+    expect(
+      reasonsToReconnect(relationship({ lastTouchAt: "2026-03-08T00:00:00.000Z" }), NOW),
+    ).toEqual([]);
   });
 
   it("surfaces a commitment we made, with its evidence", () => {
     const entry = relationship({
-      decided: [memory({ tier: "decided", label: "Commitment", value: "We said we would send the audit" })],
+      decided: [
+        memory({ tier: "decided", label: "Commitment", value: "We said we would send the audit" }),
+      ],
     });
     const reason = primaryReason(entry, NOW);
     expect(reason?.reasonCode).toBe("commitment_made");
@@ -106,7 +108,9 @@ describe("reasons to reconnect", () => {
 
   it("surfaces an unfollowed in-person meeting", () => {
     const entry = relationship({ source: "in_person", metWhere: "Chamber breakfast" });
-    expect(reasonsToReconnect(entry, NOW).some((r) => r.reasonCode === "event_follow_up")).toBe(true);
+    expect(reasonsToReconnect(entry, NOW).some((r) => r.reasonCode === "event_follow_up")).toBe(
+      true,
+    );
   });
 
   it("says nothing for an archived relationship", () => {

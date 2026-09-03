@@ -18,8 +18,15 @@ import { resolve } from "path";
 import { db, audit, ORG_ID, newId } from "./lib/runtime";
 import { buildProjectContextPacket, contextHealth } from "../../src/data/projects/context-packet";
 import {
-  toProjectRow, toKnowledgeRow, toDecisionRow, toBlockerRow, toWorkRow,
-  toAssetRow, toConnectionRow, toThinkingRow, type Row,
+  toProjectRow,
+  toKnowledgeRow,
+  toDecisionRow,
+  toBlockerRow,
+  toWorkRow,
+  toAssetRow,
+  toConnectionRow,
+  toThinkingRow,
+  type Row,
 } from "../../src/lib/context-packet.server";
 import { assignPaperclipTask } from "../../src/lib/steward-agents.server";
 import { paperclipClient } from "../../src/lib/paperclip-client.server";
@@ -30,11 +37,11 @@ async function loadPacket(projectId: string, agentId?: string) {
     supabase.from(table).select("*").eq("organization_id", ORG_ID).eq("project_id", projectId);
 
   const { data: projectRow } = await supabase
-.from("projects")
-.select("*")
-.eq("organization_id", ORG_ID)
-.eq("id", projectId)
-.maybeSingle();
+    .from("projects")
+    .select("*")
+    .eq("organization_id", ORG_ID)
+    .eq("id", projectId)
+    .maybeSingle();
   if (!projectRow) throw new Error("project not found");
 
   const [knowledge, work, blockers, decisions, assets, connections, thinking] = await Promise.all([
@@ -50,15 +57,15 @@ async function loadPacket(projectId: string, agentId?: string) {
   let agent: Parameters<typeof buildProjectContextPacket>[0]["agent"];
   if (agentId) {
     const { data: definition } = await supabase
-.from("agent_effectiveness")
-.select("*")
-.eq("organization_id", ORG_ID)
-.eq("agent_id", agentId)
-.maybeSingle();
+      .from("agent_effectiveness")
+      .select("*")
+      .eq("organization_id", ORG_ID)
+      .eq("agent_id", agentId)
+      .maybeSingle();
     const row = (definition ?? null) as Row | null;
     agent = {
       agentId,
-      responsibility: row ? String(row["responsibility"] ?? ""): "",
+      responsibility: row ? String(row["responsibility"] ?? "") : "",
       requiredContext: (row?.["required_context"] as string[]) ?? [],
       escalationRules: (row?.["escalation_rules"] as string[]) ?? [],
       evidenceExpected: (row?.["evidence_expected"] as string[]) ?? [],
@@ -68,10 +75,13 @@ async function loadPacket(projectId: string, agentId?: string) {
   const project = toProjectRow(projectRow as Row);
   const packet = buildProjectContextPacket({
     project,
-...(project.origin.subjectLabel ? { company: project.origin.subjectLabel }: {}),
+    ...(project.origin.subjectLabel ? { company: project.origin.subjectLabel } : {}),
     roadmap: project.origin.roadmapId
-      ? { roadmapId: project.origin.roadmapId,...(project.origin.milestoneId ? { milestoneId: project.origin.milestoneId }: {}) }
-: {},
+      ? {
+          roadmapId: project.origin.roadmapId,
+          ...(project.origin.milestoneId ? { milestoneId: project.origin.milestoneId } : {}),
+        }
+      : {},
     knowledge: ((knowledge.data ?? []) as Row[]).map(toKnowledgeRow),
     decisions: ((decisions.data ?? []) as Row[]).map(toDecisionRow),
     blockers: ((blockers.data ?? []) as Row[]).map(toBlockerRow),
@@ -79,7 +89,7 @@ async function loadPacket(projectId: string, agentId?: string) {
     assets: ((assets.data ?? []) as Row[]).map(toAssetRow),
     connections: ((connections.data ?? []) as Row[]).map(toConnectionRow),
     thinking: ((thinking.data ?? []) as Row[]).map(toThinkingRow),
-...(agent ? { agent }: {}),
+    ...(agent ? { agent } : {}),
   });
 
   const hasDesignWork = packet.approvedAssets.some(
@@ -100,35 +110,39 @@ function freshness(
   if (packet.conflicts.length > 0) {
     return {
       state: "Blocked by conflict",
-      reasons: packet.conflicts.map((c) => `Kept: "${c.kept}" vs source: "${c.alsoClaims}" (about ${c.about})`),
+      reasons: packet.conflicts.map(
+        (c) => `Kept: "${c.kept}" vs source: "${c.alsoClaims}" (about ${c.about})`,
+      ),
     };
   }
   if (health.level !== "strong") reasons.push(...health.reasons);
-  return { state: reasons.length === 0 ? "Current": "Needs review", reasons };
+  return { state: reasons.length === 0 ? "Current" : "Needs review", reasons };
 }
 
 /** §13 unresolved ingest-time conflict blocks dispatch entirely. */
 async function hasUnresolvedIngestConflict(projectId: string): Promise<string[]> {
   const { data } = await db()
-.from("intelligence_audit")
-.select("action, subject, after_state, occurred_at")
-.eq("organization_id", ORG_ID)
-.eq("project_id", projectId)
-.eq("action", "ingest.conflict_flagged")
-.order("occurred_at", { ascending: false })
-.limit(20);
+    .from("intelligence_audit")
+    .select("action, subject, after_state, occurred_at")
+    .eq("organization_id", ORG_ID)
+    .eq("project_id", projectId)
+    .eq("action", "ingest.conflict_flagged")
+    .order("occurred_at", { ascending: false })
+    .limit(20);
   return (data ?? []).map((r) => String(r.subject));
 }
 
 function packetToPrompt(p: ReturnType<typeof buildProjectContextPacket>): string {
   const lines: string[] = [];
-  lines.push(`## PROJECT: ${p.project.name}${p.project.company ? ` (${p.project.company})`: ""}`);
+  lines.push(`## PROJECT: ${p.project.name}${p.project.company ? ` (${p.project.company})` : ""}`);
   if (p.project.outcome) lines.push(`Outcome: ${p.project.outcome}`);
   if (p.project.owner) lines.push(`Owner: ${p.project.owner}`);
   lines.push(`State: ${p.project.state}`);
   if (p.confirmedDecisions.length) {
     lines.push("\n## CONFIRMED KNOWLEDGE, decisions");
-    p.confirmedDecisions.forEach((d) => lines.push(`- [${d.sourceLabel ?? d.authority}] ${d.statement}`));
+    p.confirmedDecisions.forEach((d) =>
+      lines.push(`- [${d.sourceLabel ?? d.authority}] ${d.statement}`),
+    );
   }
   if (p.requirements.length) {
     lines.push("\n## CONFIRMED REQUIREMENTS");
@@ -144,7 +158,11 @@ function packetToPrompt(p: ReturnType<typeof buildProjectContextPacket>): string
   }
   if (p.connectedSystems.length) {
     lines.push("\n## CONNECTED BUILD ENVIRONMENT");
-    p.connectedSystems.forEach((c) => lines.push(`- ${c.type}: ${c.label} [${c.status}]${c.lastSyncedAt ? ` synced ${c.lastSyncedAt}`: ""}`));
+    p.connectedSystems.forEach((c) =>
+      lines.push(
+        `- ${c.type}: ${c.label} [${c.status}]${c.lastSyncedAt ? ` synced ${c.lastSyncedAt}` : ""}`,
+      ),
+    );
   }
   if (p.currentWork.length) {
     lines.push("\n## ACTIVE WORK");
@@ -174,13 +192,21 @@ function packetToPrompt(p: ReturnType<typeof buildProjectContextPacket>): string
 }
 
 /** §21 packet audit snapshot → execution_bindings.business_outputs. */
-function packetAudit(p: ReturnType<typeof buildProjectContextPacket>, knowledgeRows: { id: string; sourceReference?: string | null; section: string }[], decisionRows: { id: string }[], assetRows: { id: string }[], sourceIds: string[]) {
+function packetAudit(
+  p: ReturnType<typeof buildProjectContextPacket>,
+  knowledgeRows: { id: string; sourceReference?: string | null; section: string }[],
+  decisionRows: { id: string }[],
+  assetRows: { id: string }[],
+  sourceIds: string[],
+) {
   return {
     context_packet: {
       version: 1,
       generated_at: p.generatedAt,
       project_id: p.project.id,
-      knowledge_ids_used: knowledgeRows.filter((k) => k.section !== "open_question").map((k) => k.id),
+      knowledge_ids_used: knowledgeRows
+        .filter((k) => k.section !== "open_question")
+        .map((k) => k.id),
       asset_ids_used: assetRows.map((a) => a.id),
       decision_ids_used: decisionRows.map((d) => d.id),
       source_ids_used: sourceIds,
@@ -197,9 +223,13 @@ if (cmd === "packet") {
   const { packet, health } = await loadPacket(projectId, a3);
   const flagged = await hasUnresolvedIngestConflict(projectId);
   const f0 = freshness(packet, health);
-  const f = flagged.length > 0
-    ? { state: "Blocked by conflict" as const, reasons: [...f0.reasons,...flagged.map((s) => `Unresolved source conflict: ${s}`)] }
-: f0;
+  const f =
+    flagged.length > 0
+      ? {
+          state: "Blocked by conflict" as const,
+          reasons: [...f0.reasons, ...flagged.map((s) => `Unresolved source conflict: ${s}`)],
+        }
+      : f0;
   console.log("=== FRESHNESS ===");
   console.log(JSON.stringify(f, null, 1));
   console.log("=== HEALTH ===");
@@ -209,15 +239,23 @@ if (cmd === "packet") {
 } else if (cmd === "task") {
   const agentId = a3!;
   const descFile = a4 ?? "-";
-  const description = descFile === "-" ? readFileSync(0, "utf8"): readFileSync(resolve(descFile), "utf8");
+  const description =
+    descFile === "-" ? readFileSync(0, "utf8") : readFileSync(resolve(descFile), "utf8");
   const supabase = db();
 
   const { packet, health } = await loadPacket(projectId, agentId);
   const flaggedConflicts = await hasUnresolvedIngestConflict(projectId);
   const f0 = freshness(packet, health);
-  const f = flaggedConflicts.length > 0
-    ? { state: "Blocked by conflict" as const, reasons: [...f0.reasons,...flaggedConflicts.map((s) => `Unresolved source conflict: ${s}`)] }
-: f0;
+  const f =
+    flaggedConflicts.length > 0
+      ? {
+          state: "Blocked by conflict" as const,
+          reasons: [
+            ...f0.reasons,
+            ...flaggedConflicts.map((s) => `Unresolved source conflict: ${s}`),
+          ],
+        }
+      : f0;
   if (f.state === "Blocked by conflict") {
     console.error("DISPATCH REFUSED, conflict requires a human decision:");
     f.reasons.forEach((r) => console.error(` - ${r}`));
@@ -231,12 +269,12 @@ if (cmd === "packet") {
 
   // capability gate (§14): agent must be enabled
   const { data: agentRow } = await supabase
-.from("execution_agents")
-.select("name, capabilities, enabled")
-.eq("organization_id", ORG_ID)
-.eq("paperclip_agent_id", agentId)
-.eq("enabled", true)
-.maybeSingle();
+    .from("execution_agents")
+    .select("name, capabilities, enabled")
+    .eq("organization_id", ORG_ID)
+    .eq("paperclip_agent_id", agentId)
+    .eq("enabled", true)
+    .maybeSingle();
   if (!agentRow) {
     console.error(`DISPATCH REFUSED, agent ${agentId} not enabled/registered`);
     process.exit(5);
@@ -256,14 +294,40 @@ if (cmd === "packet") {
   });
 
   // §21 audit: what the agent knew at dispatch
-  const knowledgeRows = ((await supabase.from("project_knowledge").select("id, section, source_reference").eq("organization_id", ORG_ID).eq("project_id", projectId).neq("review_state", "superseded").then((r) => r.data ?? [])) as { id: string; section: string; source_reference?: string | null }[]);
-  const decisionRows = ((await supabase.from("project_decisions").select("id").eq("organization_id", ORG_ID).eq("project_id", projectId).then((r) => r.data ?? [])) as { id: string }[]);
-  const assetRows = ((await supabase.from("project_assets").select("id").eq("organization_id", ORG_ID).eq("project_id", projectId).eq("status", "approved").then((r) => r.data ?? [])) as { id: string }[]);
-  const sourceIds = [...new Set(knowledgeRows.map((k) => k.source_reference).filter((s): s is string => Boolean(s)))];
+  const knowledgeRows = (await supabase
+    .from("project_knowledge")
+    .select("id, section, source_reference")
+    .eq("organization_id", ORG_ID)
+    .eq("project_id", projectId)
+    .neq("review_state", "superseded")
+    .then((r) => r.data ?? [])) as {
+    id: string;
+    section: string;
+    source_reference?: string | null;
+  }[];
+  const decisionRows = (await supabase
+    .from("project_decisions")
+    .select("id")
+    .eq("organization_id", ORG_ID)
+    .eq("project_id", projectId)
+    .then((r) => r.data ?? [])) as { id: string }[];
+  const assetRows = (await supabase
+    .from("project_assets")
+    .select("id")
+    .eq("organization_id", ORG_ID)
+    .eq("project_id", projectId)
+    .eq("status", "approved")
+    .then((r) => r.data ?? [])) as { id: string }[];
+  const sourceIds = [
+    ...new Set(knowledgeRows.map((k) => k.source_reference).filter((s): s is string => Boolean(s))),
+  ];
 
-  await supabase.from("execution_bindings").update({
-    business_outputs: packetAudit(packet, knowledgeRows, decisionRows, assetRows, sourceIds),
-  }).eq("id", res.bindingId);
+  await supabase
+    .from("execution_bindings")
+    .update({
+      business_outputs: packetAudit(packet, knowledgeRows, decisionRows, assetRows, sourceIds),
+    })
+    .eq("id", res.bindingId);
 
   await audit({
     projectId,
@@ -274,8 +338,21 @@ if (cmd === "packet") {
 
   // wake agent (corrected client sends {})
   const wake = await paperclipClient.triggerHeartbeat(agentId);
-  console.log(JSON.stringify({...res, freshness: f.state, wakeRun: (wake as { id?: string }).id ?? null, packetSections: packetToPrompt(packet).split("\n## ").length - 1 }, null, 1));
+  console.log(
+    JSON.stringify(
+      {
+        ...res,
+        freshness: f.state,
+        wakeRun: (wake as { id?: string }).id ?? null,
+        packetSections: packetToPrompt(packet).split("\n## ").length - 1,
+      },
+      null,
+      1,
+    ),
+  );
 } else {
-  console.error("usage: dispatch.ts packet <projectId> [agentId] | dispatch.ts task <projectId> <agentId> <title> <descFile|->");
+  console.error(
+    "usage: dispatch.ts packet <projectId> [agentId] | dispatch.ts task <projectId> <agentId> <title> <descFile|->",
+  );
   process.exit(1);
 }

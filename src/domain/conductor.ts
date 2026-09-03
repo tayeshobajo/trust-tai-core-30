@@ -61,7 +61,6 @@ export const VALUE_BASIS_LABEL: Record<ValueBasis, string> = {
 /** Truth classes that may be used as an input to arithmetic. */
 export const FACTUAL_BASES: ValueBasis[] = ["observed", "decided"];
 
-
 /* --------------------------------------------------------- business intent */
 
 /** The kinds of outcome a services business steers by. */
@@ -900,7 +899,6 @@ export interface MilestoneProgression {
   statement: string;
 }
 
-
 /**
  * The canonical Roadmap concepts, read from state the Roadmap app owns.
  * Nothing here is stored separately; this is a projection, not a model.
@@ -929,7 +927,6 @@ export interface RoadmapCanonRead {
    * did not change which milestone deserves attention.
    */
   milestoneProgression: MilestoneProgression | null;
-
 
   /** Unresolved human decisions on this roadmap. */
   openDecisions: RoadmapDecision[];

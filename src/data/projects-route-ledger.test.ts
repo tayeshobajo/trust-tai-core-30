@@ -11,11 +11,7 @@ import {
 const NOW = new Date("2026-08-16T00:00:00.000Z");
 const KEY = "project.routed_to_ops:p1:ship-the-site";
 
-function event(
-  name: string,
-  occurredAt: string,
-  payload: Record<string, unknown>,
-): ActivityEvent {
+function event(name: string, occurredAt: string, payload: Record<string, unknown>): ActivityEvent {
   return {
     id: `${name}-${occurredAt}`,
     organizationId: "org-1",
@@ -98,7 +94,9 @@ describe("route ledger", () => {
       route_event_key: KEY,
       because: "No longer needed",
     });
-    expect(unansweredRoutes(buildRouteLedger([requested, withdrawn], { now: NOW }))).toHaveLength(0);
+    expect(unansweredRoutes(buildRouteLedger([requested, withdrawn], { now: NOW }))).toHaveLength(
+      0,
+    );
   });
 
   it("keeps the notification outcome honest", () => {

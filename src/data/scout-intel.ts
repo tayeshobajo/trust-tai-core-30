@@ -57,7 +57,9 @@ function toSignal(entry: Row): BuyingSignal | null {
 function toOpportunity(entry: Row): DigitalOpportunity | null {
   const statement = str(entry["statement"]) || str(entry["issue"]) || str(entry["summary"]);
   if (!statement) return null;
-  const rawArea = str(entry["area"]).toLowerCase().replace(/[\s-]+/g, "_");
+  const rawArea = str(entry["area"])
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
   const sourceUrl = str(entry["source_url"]) || str(entry["url"]);
   return {
     area: isOpportunityArea(rawArea) ? rawArea : "ux",
@@ -152,10 +154,7 @@ function daysSince(iso: string | undefined, now: Date): number | null {
 }
 
 /** Signals with a date inside the recency window carry the timing read. */
-export function recentSignals(
-  signals: BuyingSignal[],
-  now: Date = new Date(),
-): BuyingSignal[] {
+export function recentSignals(signals: BuyingSignal[], now: Date = new Date()): BuyingSignal[] {
   return signals.filter((signal) => {
     const age = daysSince(signal.observedAt, now);
     return age === null ? false : age <= RECENT_DAYS;
@@ -293,8 +292,7 @@ export function computeDecisionMetrics(input: MetricsInput): DecisionMetrics {
       key: "research_coverage",
       label: METRIC_LABEL.research_coverage,
       value: coveragePercent,
-      because:
-        input.coverage?.note ?? "Coverage of the public website has not been measured yet.",
+      because: input.coverage?.note ?? "Coverage of the public website has not been measured yet.",
       weight: METRIC_WEIGHTS.research_coverage,
     },
     {
@@ -346,10 +344,7 @@ export function computeDecisionMetrics(input: MetricsInput): DecisionMetrics {
 }
 
 /** Highest priority first. Unranked records always sort last, never first. */
-export function byPriority(
-  a: { priority: number | null },
-  b: { priority: number | null },
-): number {
+export function byPriority(a: { priority: number | null }, b: { priority: number | null }): number {
   if (a.priority === null && b.priority === null) return 0;
   if (a.priority === null) return 1;
   if (b.priority === null) return -1;

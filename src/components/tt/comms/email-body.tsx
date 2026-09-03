@@ -60,7 +60,7 @@ function InlineImage({
       messageId,
       attachmentId: resource.attachmentId,
     })
-.then((created) => {
+      .then((created) => {
         if (cancelled) {
           URL.revokeObjectURL(created);
           return;
@@ -68,7 +68,7 @@ function InlineImage({
         objectUrl = created;
         setUrl(created);
       })
-.catch(() => {
+      .catch(() => {
         if (!cancelled) setFailed(true);
       });
     return () => {
@@ -86,16 +86,13 @@ function InlineImage({
         <span className="max-w-[180px] truncate">{resource.filename}</span>
         {resource.size > 0 ? (
           <span className="text-[10px] opacity-70">{formatBytes(resource.size)}</span>
-        ): null}
+        ) : null}
       </span>
     );
   }
   if (!url) {
     return (
-      <span
-        aria-hidden
-        className="my-1 block h-16 w-40 animate-pulse rounded-md bg-secondary/60"
-      />
+      <span aria-hidden className="my-1 block h-16 w-40 animate-pulse rounded-md bg-secondary/60" />
     );
   }
   return (
@@ -143,7 +140,7 @@ function renderNode(node: EmailNode, key: string, ctx: RenderContext): React.Rea
         >
           {children}
         </a>
-      ): (
+      ) : (
         <span key={key}>{children}</span>
       );
     case "b":
@@ -240,8 +237,7 @@ function renderNode(node: EmailNode, key: string, ctx: RenderContext): React.Rea
       );
     case "img": {
       if (!node.cid) return null;
-      const resource =
-        ctx.inlineByCid.get(node.cid) ?? ctx.inlineByCid.get(node.cid.toLowerCase());
+      const resource = ctx.inlineByCid.get(node.cid) ?? ctx.inlineByCid.get(node.cid.toLowerCase());
       if (!resource || !resource.attachmentId) {
         // The image was referenced but its resource was not stored. Show the
         // absence plainly rather than a broken frame.
@@ -336,29 +332,33 @@ export function EmailBodyView({
   // so nothing the person embedded disappears.
   const unreferenced = inline.filter(
     (resource) =>
-      resource.contentId &&
-      (!parsed || !parsed.referenced.has(resource.contentId.toLowerCase())),
+      resource.contentId && (!parsed || !parsed.referenced.has(resource.contentId.toLowerCase())),
   );
 
-  const hasQuoted = parsed ? parsed.quoted.length > 0: Boolean(textSplit?.quoted);
+  const hasQuoted = parsed ? parsed.quoted.length > 0 : Boolean(textSplit?.quoted);
 
   return (
     <div className="mt-1 text-[13px] leading-relaxed text-foreground/90">
-      <div className={cn("relative", !expanded && needsCollapse ? `${COLLAPSED_HEIGHT} overflow-hidden`: "")}>
+      <div
+        className={cn(
+          "relative",
+          !expanded && needsCollapse ? `${COLLAPSED_HEIGHT} overflow-hidden` : "",
+        )}
+      >
         {parsed ? (
           <div className="whitespace-pre-wrap break-words">
             {parsed.main.map((node, index) => renderNode(node, `m${index}`, ctx))}
           </div>
-        ): textSplit ? (
+        ) : textSplit ? (
           <p className="whitespace-pre-wrap break-words">{textSplit.main}</p>
-        ): null}
+        ) : null}
 
         {!expanded && needsCollapse ? (
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent"
           />
-        ): null}
+        ) : null}
       </div>
 
       {unreferenced.map((resource) =>
@@ -369,7 +369,7 @@ export function EmailBodyView({
             messageId={messageId}
             resource={resource}
           />
-        ): null,
+        ) : null,
       )}
 
       <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
@@ -380,9 +380,9 @@ export function EmailBodyView({
             aria-expanded={expanded}
             className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {expanded ? "Show less": "Show more"}
+            {expanded ? "Show less" : "Show more"}
           </button>
-        ): null}
+        ) : null}
         {hasQuoted ? (
           <button
             type="button"
@@ -390,9 +390,9 @@ export function EmailBodyView({
             aria-expanded={showQuoted}
             className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {showQuoted ? "Hide quoted text": "Show quoted text"}
+            {showQuoted ? "Hide quoted text" : "Show quoted text"}
           </button>
-        ): null}
+        ) : null}
       </div>
 
       {showQuoted && parsed && parsed.quoted.length > 0 ? (
@@ -401,12 +401,12 @@ export function EmailBodyView({
             {parsed.quoted.map((node, index) => renderNode(node, `q${index}`, ctx))}
           </div>
         </div>
-      ): null}
+      ) : null}
       {showQuoted && textSplit?.quoted ? (
         <p className="mt-2 whitespace-pre-wrap break-words border-l-2 border-border pl-3 text-muted-foreground">
           {textSplit.quoted}
         </p>
-      ): null}
+      ) : null}
     </div>
   );
 }

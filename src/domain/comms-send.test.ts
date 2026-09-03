@@ -103,7 +103,10 @@ describe("decideSendClaim", () => {
   it("lets a stale claim be reclaimed, a died-mid-flight attempt is retryable", () => {
     const rationale = writeDraftSend({}, SEND);
     const staleAt = new Date(now.getTime() - STALE_SENDING_MS - 1000).toISOString();
-    const decision = decideSendClaim({ reviewState: "sending", rationale, updatedAt: staleAt }, now);
+    const decision = decideSendClaim(
+      { reviewState: "sending", rationale, updatedAt: staleAt },
+      now,
+    );
     expect(decision.kind).toBe("claim");
   });
 

@@ -84,11 +84,7 @@ function MilestoneCard({
         <Line label="Execution boundary" value={owned.boundary} />
       </div>
 
-      <OwnershipInspector
-        read={read.owner}
-        boundary={owned.boundary}
-        subject={milestone.name}
-      />
+      <OwnershipInspector read={read.owner} boundary={owned.boundary} subject={milestone.name} />
 
       <EvidenceList
         evidence={milestone.evidence.map((ref) => ({
@@ -109,7 +105,7 @@ function MilestoneCard({
         <ul className="mt-2 space-y-1">
           {milestone.priorityRationale.map((line) => (
             <li key={line} className="text-sm text-muted-foreground">
-  · {line}
+              · {line}
             </li>
           ))}
         </ul>

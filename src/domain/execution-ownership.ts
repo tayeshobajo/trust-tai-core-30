@@ -229,10 +229,6 @@ export function ownedExecutionBoundary(input: {
   whatWeBuild?: string | null;
   executionBoundary?: string | null;
 }): { owner: OwnershipRead; boundary: string } {
-  const owner = classifyExecutionOwner(
-    input.name,
-    input.whatWeBuild,
-    input.executionBoundary,
-  );
+  const owner = classifyExecutionOwner(input.name, input.whatWeBuild, input.executionBoundary);
   return { owner, boundary: correctExecutionBoundary(input.executionBoundary, owner.primary) };
 }

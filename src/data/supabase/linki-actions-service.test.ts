@@ -14,7 +14,11 @@ import type { ActivityStream, ActivityEvent } from "@/domain/activity";
 import type { LinkiActionType, LinkiExecutionReceipt } from "@/domain/linki-actions";
 
 import { createFakeSupabase, type FakeRow } from "./fake-supabase";
-import { createLinkiActionService, receiptHash, type LinkiTransport } from "./linki-actions-service";
+import {
+  createLinkiActionService,
+  receiptHash,
+  type LinkiTransport,
+} from "./linki-actions-service";
 
 const db = createFakeSupabase();
 
@@ -27,7 +31,7 @@ vi.mock("@/integrations/trust-tai/supabase", () => ({
 const recorded: ActivityEvent[] = [];
 const activity: Pick<ActivityStream, "record"> = {
   async record(event) {
-    const full: ActivityEvent = {...event, id: crypto.randomUUID() };
+    const full: ActivityEvent = { ...event, id: crypto.randomUUID() };
     recorded.push(full);
     return full;
   },
@@ -66,7 +70,9 @@ function seedContact(): void {
   ];
 }
 
-function makeInput(over: Partial<Parameters<ReturnType<typeof createLinkiActionService>["create"]>[0]> = {}) {
+function makeInput(
+  over: Partial<Parameters<ReturnType<typeof createLinkiActionService>["create"]>[0]> = {},
+) {
   return {
     prospectId: PROSPECT,
     personId: CONTACT,
@@ -75,7 +81,7 @@ function makeInput(over: Partial<Parameters<ReturnType<typeof createLinkiActionS
     draftBody: "Mark, your {growth} piece changed how I think about category design.",
     channelContext: { thread: "comms-rel-1", route: LINKEDIN_URL },
     idempotencyKey: `act-${crypto.randomUUID()}`,
-...over,
+    ...over,
   };
 }
 
@@ -83,7 +89,7 @@ function makeInput(over: Partial<Parameters<ReturnType<typeof createLinkiActionS
 function fakeTransport(opts: { failWith?: Error } = {}) {
   const sends: Array<{ linkedinUrl: string; draftBody: string; idempotencyKey: string }> = [];
   const transport: LinkiTransport = async (input) => {
-    sends.push({...input });
+    sends.push({ ...input });
     if (opts.failWith) throw opts.failWith;
     return {
       receipt: {
@@ -157,9 +163,7 @@ describe("create", () => {
   });
 
   it("blocks creation when the contact has no confirmed LinkedIn route", async () => {
-    db.tables["contacts"] = [
-      {...db.tables["contacts"]![0]!, metadata: { email: "x@y.com" } },
-    ];
+    db.tables["contacts"] = [{ ...db.tables["contacts"]![0]!, metadata: { email: "x@y.com" } }];
     await expect(service().create(makeInput(), CONTEXT)).rejects.toMatchObject({
       code: "validation",
     });
@@ -323,10 +327,7 @@ describe("execute", () => {
   it("re-checks the daily cap at execute time, even after approval", async () => {
     const { transport, sends } = fakeTransport();
     // Two actions created while the cap was 2; one approves for execution.
-    const svc = service(
-      { LINKI_EXECUTION_ENABLED: "true", LINKI_DAILY_MSG_CAP: "2" },
-      transport,
-    );
+    const svc = service({ LINKI_EXECUTION_ENABLED: "true", LINKI_DAILY_MSG_CAP: "2" }, transport);
     const created = await svc.create(makeInput(), CONTEXT);
     await svc.create(makeInput({ idempotencyKey: "queued-earlier" }), CONTEXT); // consumes a slot
     await svc.approve(created.id, CONTEXT);
@@ -451,9 +452,9 @@ describe("daily caps", () => {
     await svc.create(makeInput(), CONTEXT);
     // Same cap, different org: unaffected (that org owns its own contact).
     db.tables["contacts"] = [
-...db.tables["contacts"]!,
+      ...db.tables["contacts"]!,
       {
-...db.tables["contacts"]![0]!,
+        ...db.tables["contacts"]![0]!,
         id: "77777777-7777-4777-8777-777777777777",
         organization_id: OTHER_ORG,
       },
@@ -537,7 +538,12 @@ describe("audit trail", () => {
 
 describe("receiptHash", () => {
   it("hashes deterministically and never exposes receipt contents", () => {
-    const receipt: LinkiExecutionReceipt = { provider: "linki", runId: "run-9", sentAt: "2026-08-27T10:00:00Z", response: null };
+    const receipt: LinkiExecutionReceipt = {
+      provider: "linki",
+      runId: "run-9",
+      sentAt: "2026-08-27T10:00:00Z",
+      response: null,
+    };
     const hash = receiptHash(receipt);
     expect(hash).toBe(receiptHash(receipt));
     expect(hash).toMatch(/^[0-9a-f]{16}$/);

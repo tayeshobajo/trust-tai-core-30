@@ -107,7 +107,7 @@ export function RecommendedNextMoveCard({
   useEffect(() => {
     if (!confirmedEmailId) return;
     setConfirmedIds((prev) =>
-      prev.has(confirmedEmailId) ? prev: new Set(prev).add(confirmedEmailId),
+      prev.has(confirmedEmailId) ? prev : new Set(prev).add(confirmedEmailId),
     );
   }, [confirmedEmailId]);
 
@@ -117,12 +117,10 @@ export function RecommendedNextMoveCard({
     setConfirmedIds((prev) => {
       if (prev.size === 0) return prev;
       const stillBlocked = new Set(
-        blockers
-.map((blocker) => blocker.person?.id)
-.filter((id): id is string => Boolean(id)),
+        blockers.map((blocker) => blocker.person?.id).filter((id): id is string => Boolean(id)),
       );
       const next = new Set([...prev].filter((id) => stillBlocked.has(id)));
-      return next.size === prev.size ? prev: next;
+      return next.size === prev.size ? prev : next;
     });
   }, [blockers]);
 
@@ -203,32 +201,27 @@ export function RecommendedNextMoveCard({
                 Preparing relationship research…
               </p>
             </div>
-            <div
-              aria-hidden
-              className="mt-3 h-1 overflow-hidden rounded-full bg-secondary"
-            >
+            <div aria-hidden className="mt-3 h-1 overflow-hidden rounded-full bg-secondary">
               <span className="block h-full w-1/3 rounded-full bg-royal animate-[tt-progress-indeterminate_1.2s_ease-in-out_infinite]" />
             </div>
             <p className="mt-3 text-[13px] text-muted-foreground">
-              Scout is reading the stored public evidence and refreshing the brief. Nothing is
-              being sent.
+              Scout is reading the stored public evidence and refreshing the brief. Nothing is being
+              sent.
             </p>
           </div>
-        ): null}
+        ) : null}
 
         <div>
           <h3 className="max-w-[28ch] text-[22px] font-semibold leading-tight tracking-tight text-foreground">
             {move.headline}
           </h3>
-          <p className="mt-2 max-w-reading text-[15px] leading-7 text-foreground">
-            {move.reason}
-          </p>
+          <p className="mt-2 max-w-reading text-[15px] leading-7 text-foreground">{move.reason}</p>
           {move.person ? (
             <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
               Person on record · {move.person.fullName}
-              {move.person.roleTitle ? ` · ${move.person.roleTitle}`: ""}
+              {move.person.roleTitle ? ` · ${move.person.roleTitle}` : ""}
             </p>
-          ): null}
+          ) : null}
         </div>
 
         {move.whyNow ? (
@@ -236,17 +229,17 @@ export function RecommendedNextMoveCard({
             <p className="tt-eyebrow text-royal">Why now</p>
             <p className="mt-1 text-sm text-foreground">{move.whyNow}</p>
           </div>
-        ): null}
+        ) : null}
 
         {move.watch ? (
           <div className="rounded-xl border border-border bg-surface-tertiary px-4 py-3">
             <p className="text-sm text-foreground">
               {move.watch === "watching"
                 ? "Watching for a real dated signal."
-: "Marked not now. The research stays; nothing is owed."}
+                : "Marked not now. The research stays; nothing is owed."}
             </p>
           </div>
-        ): null}
+        ) : null}
 
         {prepareError ? (
           <div
@@ -268,14 +261,14 @@ export function RecommendedNextMoveCard({
               </TTButton>
             </div>
           </div>
-        ): null}
+        ) : null}
 
         {move.evidence.length > 0 ? (
           <details className="group rounded-xl border border-border bg-surface-tertiary px-4 py-3">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               Why this move
               <span className="flex items-center gap-2">
-                {confidenceLevel ? <ConfidenceChip level={confidenceLevel} />: null}
+                {confidenceLevel ? <ConfidenceChip level={confidenceLevel} /> : null}
                 <ChevronDown
                   aria-hidden
                   className="size-4 text-muted-foreground transition-transform group-open:rotate-180"
@@ -294,14 +287,14 @@ export function RecommendedNextMoveCard({
                     >
                       {item.label}
                     </a>
-                  ): (
+                  ) : (
                     item.label
                   )}
                 </li>
               ))}
             </ul>
           </details>
-        ): null}
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-5">
           {canAct ? (
@@ -313,7 +306,7 @@ export function RecommendedNextMoveCard({
               >
                 Address confirmed, refreshing the read.
               </p>
-            ): (
+            ) : (
               <TTButton
                 pending={
                   (preparingBrief && move.primary.kind === "prepare_research") ||
@@ -322,7 +315,7 @@ export function RecommendedNextMoveCard({
                 pendingLabel={
                   move.primary.kind === "confirm_email"
                     ? "Confirming…"
-: "Preparing relationship research…"
+                    : "Preparing relationship research…"
                 }
                 disabled={busy || (preparingBrief && move.primary.kind !== "prepare_research")}
                 onClick={runPrimary}
@@ -330,13 +323,13 @@ export function RecommendedNextMoveCard({
                 {move.primary.label}
               </TTButton>
             )
-          ): null}
+          ) : null}
 
           {move.primary.kind === "confirm_email" && confirmEmailError ? (
             <p role="alert" className="text-[13px] text-destructive">
               {confirmEmailError.message}
             </p>
-          ): null}
+          ) : null}
 
           {move.state === "no_urgency" || move.state === "act_now" ? (
             <>
@@ -357,18 +350,13 @@ export function RecommendedNextMoveCard({
                 Not now
               </TTButton>
             </>
-          ): null}
+          ) : null}
 
           {move.watch ? (
-            <TTButton
-              variant="quiet"
-              size="sm"
-              disabled={busy}
-              onClick={() => onWatch(null)}
-            >
+            <TTButton variant="quiet" size="sm" disabled={busy} onClick={() => onWatch(null)}>
               Clear pacing
             </TTButton>
-          ): null}
+          ) : null}
 
           <TTButton variant="quiet" size="sm" onClick={onSeeResearch}>
             Open research
@@ -405,7 +393,7 @@ export function RecommendedNextMoveCard({
                     personId !== undefined &&
                     confirmEmailError?.personId === personId
                       ? confirmEmailError
-: null;
+                      : null;
                   return (
                     <li
                       key={blocker.key}
@@ -422,7 +410,7 @@ export function RecommendedNextMoveCard({
                           >
                             Address confirmed, refreshing the read.
                           </p>
-                        ): (
+                        ) : (
                           <TTButton
                             variant="secondary"
                             size="sm"
@@ -434,7 +422,7 @@ export function RecommendedNextMoveCard({
                             pendingLabel={
                               blocker.action.kind === "confirm_email"
                                 ? "Confirming…"
-: "Reading the public pages…"
+                                : "Reading the public pages…"
                             }
                             disabled={busy}
                             onClick={() => runBlockerAction(blocker)}
@@ -465,12 +453,12 @@ export function RecommendedNextMoveCard({
                             </TTButton>
                           </div>
                         </div>
-                      ): null}
+                      ) : null}
                     </li>
                   );
                 })}
               </ul>
-            ): (
+            ) : (
               <p className="mt-3 text-[13px] text-muted-foreground">
                 The way in is clear. The recommendation above has the next move.
               </p>
@@ -482,18 +470,16 @@ export function RecommendedNextMoveCard({
               </TTButton>
             </div>
           </div>
-        ): null}
+        ) : null}
 
-        {confirming &&
-        move.primary.kind === "prepare_first_message" &&
-        firstMessageReady ? (
+        {confirming && move.primary.kind === "prepare_first_message" && firstMessageReady ? (
           <div className="rounded-xl border border-royal/25 bg-royal/8 p-4">
             <p className="text-sm font-medium text-foreground">
               Carry {candidate.prospect.name} into Comms?
             </p>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              Comms will prepare the first message for your review. Nothing is sent
-              automatically, and sending is always your click.
+              Comms will prepare the first message for your review. Nothing is sent automatically,
+              and sending is always your click.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <TTButton
@@ -518,7 +504,7 @@ export function RecommendedNextMoveCard({
               </TTButton>
             </div>
           </div>
-        ): null}
+        ) : null}
       </div>
     </Panel>
   );
@@ -536,11 +522,9 @@ function ProgressStrip({ stages }: { stages: RecommendedNextMove["progress"] }) 
     >
       {stages.map((stage, index) => (
         <li key={stage.key} className="flex items-center gap-2">
-          {index > 0 ? (
-            <span aria-hidden className="h-px w-4 bg-border" />
-          ): null}
+          {index > 0 ? <span aria-hidden className="h-px w-4 bg-border" /> : null}
           <span
-            aria-current={stage.state === "current" ? "step": undefined}
+            aria-current={stage.state === "current" ? "step" : undefined}
             className={cn(
               "inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em]",
               stage.state === "complete" && "text-success",
@@ -569,11 +553,11 @@ function StatusTag({ state }: { state: RecommendedNextMove["state"] }) {
   const tone =
     state === "act_now"
       ? "border-royal/30 bg-royal/8 text-royal"
-: state === "in_comms"
+      : state === "in_comms"
         ? "border-success/25 bg-success/8 text-success"
-: state === "not_ready"
+        : state === "not_ready"
           ? "border-border bg-surface-tertiary text-muted-foreground"
-: "border-warning/30 bg-warning/8 text-warning";
+          : "border-warning/30 bg-warning/8 text-warning";
 
   return (
     <span

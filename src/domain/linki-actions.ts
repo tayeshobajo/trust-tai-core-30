@@ -39,10 +39,7 @@ export const CAP_COUNTED_STATUSES: readonly LinkiActionStatus[] = [
 ];
 
 /** Terminal states. No transition leaves these. */
-export const TERMINAL_LINKI_ACTION_STATUSES: readonly LinkiActionStatus[] = [
-  "failed",
-  "verified",
-];
+export const TERMINAL_LINKI_ACTION_STATUSES: readonly LinkiActionStatus[] = ["failed", "verified"];
 
 /**
  * The one legal state machine. Everything else is rejected:
@@ -54,15 +51,14 @@ export const TERMINAL_LINKI_ACTION_STATUSES: readonly LinkiActionStatus[] = [
  *   failed               → (terminal; retry = NEW row with parent_action_id)
  *   verified             → (terminal)
  */
-export const LINKI_ACTION_TRANSITIONS: Record<LinkiActionStatus, readonly LinkiActionStatus[]> =
-  {
-    pending_tai_approval: ["approved"],
-    approved: ["executing"],
-    executing: ["executed", "failed"],
-    executed: ["verified"],
-    failed: [],
-    verified: [],
-  };
+export const LINKI_ACTION_TRANSITIONS: Record<LinkiActionStatus, readonly LinkiActionStatus[]> = {
+  pending_tai_approval: ["approved"],
+  approved: ["executing"],
+  executing: ["executed", "failed"],
+  executed: ["verified"],
+  failed: [],
+  verified: [],
+};
 
 export function canTransition(before: LinkiActionStatus, after: LinkiActionStatus): boolean {
   const allowed = LINKI_ACTION_TRANSITIONS[before];
@@ -70,15 +66,11 @@ export function canTransition(before: LinkiActionStatus, after: LinkiActionStatu
 }
 
 export function isLinkiActionStatus(value: unknown): value is LinkiActionStatus {
-  return (
-    typeof value === "string" && (LINKI_ACTION_STATUSES as readonly string[]).includes(value)
-  );
+  return typeof value === "string" && (LINKI_ACTION_STATUSES as readonly string[]).includes(value);
 }
 
 export function isLinkiActionType(value: unknown): value is LinkiActionType {
-  return (
-    typeof value === "string" && (LINKI_ACTION_TYPES as readonly string[]).includes(value)
-  );
+  return typeof value === "string" && (LINKI_ACTION_TYPES as readonly string[]).includes(value);
 }
 
 /* ------------------------------------------------------------------ */
@@ -185,12 +177,12 @@ function positiveInt(env: Env, name: string, fallback: number): number {
   const raw = env[name];
   if (raw === undefined || raw.trim() === "") return fallback;
   const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed: fallback;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 /** Daily cap for one action type. Messages default 10, connections 5. */
 export function linkiDailyCap(env: Env, actionType: LinkiActionType): number {
   return actionType === "message"
     ? positiveInt(env, "LINKI_DAILY_MSG_CAP", DEFAULT_LINKI_DAILY_MSG_CAP)
-: positiveInt(env, "LINKI_DAILY_CONN_CAP", DEFAULT_LINKI_DAILY_CONN_CAP);
+    : positiveInt(env, "LINKI_DAILY_CONN_CAP", DEFAULT_LINKI_DAILY_CONN_CAP);
 }

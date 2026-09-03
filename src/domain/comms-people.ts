@@ -66,17 +66,20 @@ export function companyFromEmail(email: string | undefined | null): string | und
   const base = domain.split(".")[0] ?? "";
   if (base.length < 2) return undefined;
   return base
-.split(/[-_]/)
-.filter(Boolean)
-.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-.join(" ");
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 /**
  * A stored company that was clearly derived from a free mailbox ("Gmail",
  * "Icloud"). It is noise, not knowledge, and Comms should stop showing it.
  */
-export function isMailboxNoise(companyName: string | undefined | null, email?: string | null): boolean {
+export function isMailboxNoise(
+  companyName: string | undefined | null,
+  email?: string | null,
+): boolean {
   const value = (companyName ?? "").trim().toLowerCase();
   if (!value) return false;
   const compact = value.replace(/[\s.]/g, "");
@@ -99,7 +102,7 @@ export interface PersonIdentity {
 
 function clean(value: string | undefined | null): string | undefined {
   const trimmed = (value ?? "").trim().replace(/\s+/g, " ");
-  return trimmed ? trimmed: undefined;
+  return trimmed ? trimmed : undefined;
 }
 
 export function normalizeIdentity(input: {
@@ -109,14 +112,24 @@ export function normalizeIdentity(input: {
 }): PersonIdentity {
   return {
     fullName: clean(input.fullName) ?? "",
-...(clean(input.roleTitle) ? { roleTitle: clean(input.roleTitle) }: {}),
-...(clean(input.companyName) ? { companyName: clean(input.companyName) }: {}),
+    ...(clean(input.roleTitle) ? { roleTitle: clean(input.roleTitle) } : {}),
+    ...(clean(input.companyName) ? { companyName: clean(input.companyName) } : {}),
   };
 }
 
 export interface IdentitySides {
-  relationship: { fullName?: string | undefined; companyName?: string | undefined; email?: string | undefined };
-  contact?: { fullName?: string | undefined; roleTitle?: string | undefined; companyName?: string | undefined } | undefined;
+  relationship: {
+    fullName?: string | undefined;
+    companyName?: string | undefined;
+    email?: string | undefined;
+  };
+  contact?:
+    | {
+        fullName?: string | undefined;
+        roleTitle?: string | undefined;
+        companyName?: string | undefined;
+      }
+    | undefined;
 }
 
 /**
@@ -136,7 +149,7 @@ export function resolveIdentity(sides: IdentitySides): PersonIdentity {
   return normalizeIdentity({
     fullName: clean(sides.relationship.fullName) ?? clean(sides.contact?.fullName) ?? "",
     roleTitle: clean(sides.contact?.roleTitle),
-...(company ? { companyName: company }: {}),
+    ...(company ? { companyName: company } : {}),
   });
 }
 
@@ -166,7 +179,8 @@ export function identityPatches(sides: IdentitySides, next: PersonIdentity): Ide
   const contactTitle = clean(sides.contact?.roleTitle);
   const contactCompany = clean(sides.contact?.companyName);
   if (contactName !== target.fullName) patches.contact.fullName = target.fullName;
-  if (target.roleTitle && target.roleTitle !== contactTitle) patches.contact.roleTitle = target.roleTitle;
+  if (target.roleTitle && target.roleTitle !== contactTitle)
+    patches.contact.roleTitle = target.roleTitle;
   if (target.companyName && target.companyName !== contactCompany) {
     patches.contact.companyName = target.companyName;
   }

@@ -129,7 +129,10 @@ function StewardTasks({
   const visible = useMemo(
     () =>
       searchTasks(
-        applyTasksFilter(tasks, filter, { now: read.data?.now ?? new Date().toISOString(), viewerKey }),
+        applyTasksFilter(tasks, filter, {
+          now: read.data?.now ?? new Date().toISOString(),
+          viewerKey,
+        }),
         query,
       ),
     [tasks, filter, query, read.data?.now, viewerKey],
@@ -324,9 +327,7 @@ function StewardTasks({
 
       <TaskDetailPanel
         task={shownTask}
-        {...(shownTask && shownTask === linkedTask && recordedAt
-          ? { recordedAt }
-          : {})}
+        {...(shownTask && shownTask === linkedTask && recordedAt ? { recordedAt } : {})}
         actor={actor}
         onClose={() => {
           setOpenTask(null);

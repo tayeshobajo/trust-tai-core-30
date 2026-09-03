@@ -40,7 +40,7 @@ function text(value: unknown): string {
 }
 
 /**
- * Invoke the Edge Function. Failures are surfaced as calm, specific messages 
+ * Invoke the Edge Function. Failures are surfaced as calm, specific messages
  * there is never a silent fall back to preview data.
  */
 export async function researchWebsite(websiteUrl: string): Promise<ScoutResearchPayload> {

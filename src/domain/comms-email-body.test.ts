@@ -24,10 +24,10 @@ import {
 /** base64url, as Gmail writes it: no padding, `-` and `_`. */
 function b64url(value: string): string {
   return Buffer.from(value, "utf8")
-.toString("base64")
-.replace(/\+/g, "-")
-.replace(/\//g, "_")
-.replace(/=+$/, "");
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 describe("decodeBase64UrlToText", () => {
@@ -100,9 +100,7 @@ describe("extractEmailBody, multipart/alternative", () => {
       parts: [
         {
           mimeType: "multipart/alternative",
-          parts: [
-            { mimeType: "text/plain", body: { data: b64url("Body."), size: 5 } },
-          ],
+          parts: [{ mimeType: "text/plain", body: { data: b64url("Body."), size: 5 } }],
         },
       ],
     };
@@ -202,7 +200,7 @@ describe("sanitizeEmailHtml, the security boundary", () => {
   it("strips scripts, iframes, forms, and event handlers", () => {
     const dirty =
       '<p onclick="steal()">Hi</p>' +
-      '<script>alert(1)</script>' +
+      "<script>alert(1)</script>" +
       '<iframe src="https://evil.example"></iframe>' +
       '<form action="https://evil.example"><input name="pw" /></form>' +
       '<a href="#" onmouseover="track()">link</a>';
@@ -270,7 +268,7 @@ describe("parseEmailHtml", () => {
         '<div class="gmail_quote"><blockquote>Earlier words</blockquote></div>',
     );
     const nodes = parseEmailHtml(html);
-    expect(nodes.map((node) => (node.type === "element" ? node.tag: "text"))).toEqual([
+    expect(nodes.map((node) => (node.type === "element" ? node.tag : "text"))).toEqual([
       "p",
       "a",
       "img",
@@ -286,9 +284,7 @@ describe("parseEmailHtml", () => {
 describe("splitQuotedNodes", () => {
   it("splits at the first top-level quoted block", () => {
     const nodes = parseEmailHtml(
-      sanitizeEmailHtml(
-        "<p>My reply.</p><blockquote><p>What you wrote.</p></blockquote>",
-      ).html,
+      sanitizeEmailHtml("<p>My reply.</p><blockquote><p>What you wrote.</p></blockquote>").html,
     );
     const { main, quoted } = splitQuotedNodes(nodes);
     expect(main).toHaveLength(1);
@@ -427,7 +423,10 @@ describe("primaryEmailNeedsCollapse, only visible primary content may fold", () 
     // Alt text is metadata, not prose, it must not count.
     expect(primaryEmailNeedsCollapse(undefined, `<div>${img}</div>`)).toBe(false);
     expect(
-      primaryEmailNeedsCollapse(undefined, `<p>Here is the mockup we discussed.</p><div>${img}</div>`),
+      primaryEmailNeedsCollapse(
+        undefined,
+        `<p>Here is the mockup we discussed.</p><div>${img}</div>`,
+      ),
     ).toBe(false);
   });
 

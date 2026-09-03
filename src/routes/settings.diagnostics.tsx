@@ -24,7 +24,7 @@ function Row({ label, value, note }: { label: string; value: string; note?: stri
     <div className="rounded-xl border border-border p-4">
       <dt className="tt-eyebrow">{label}</dt>
       <dd className="mt-1 font-mono text-sm text-foreground">{value}</dd>
-      {note ? <dd className="mt-1 text-xs text-muted-foreground">{note}</dd>: null}
+      {note ? <dd className="mt-1 text-xs text-muted-foreground">{note}</dd> : null}
     </div>
   );
 }
@@ -57,55 +57,57 @@ function DiagnosticsSettings() {
           note={
             build.commitSha
               ? "Short SHA of the deployed build."
-: "The deployment did not provide VITE_BUILD_SHA."
+              : "The deployment did not provide VITE_BUILD_SHA."
           }
         />
         <Row
           label="Built at"
           value={build.builtAt ?? unknown}
-          note={build.builtAt ? undefined: "The deployment did not provide VITE_BUILD_TIME."}
+          note={build.builtAt ? undefined : "The deployment did not provide VITE_BUILD_TIME."}
         />
         <Row label="Build mode" value={build.mode} />
         <Row
           label="Supabase"
-          value={pending ? "…": data ? (data.supabase.reachable ? "Reachable": "Unreachable"): unknown}
-          {...(data?.supabase.detail ? { note: data.supabase.detail }: {})}
+          value={
+            pending ? "…" : data ? (data.supabase.reachable ? "Reachable" : "Unreachable") : unknown
+          }
+          {...(data?.supabase.detail ? { note: data.supabase.detail } : {})}
         />
         <Row
           label="Paperclip mode"
-          value={pending ? "…": data ? PAPERCLIP_MODE_LABEL[data.paperclip.mode]: unknown}
+          value={pending ? "…" : data ? PAPERCLIP_MODE_LABEL[data.paperclip.mode] : unknown}
           note={
             data
               ? data.paperclip.boardKeyConfigured
                 ? "Board key configured on this deployment."
-: "No board key configured on this deployment."
-: undefined
+                : "No board key configured on this deployment."
+              : undefined
           }
         />
         <Row
           label="Last successful reconciliation"
-          value={pending ? "…": (data?.paperclip.lastSuccessAt ?? unknown)}
+          value={pending ? "…" : (data?.paperclip.lastSuccessAt ?? unknown)}
           note={
             data && data.paperclip.consecutiveFailures !== null
               ? `${data.paperclip.consecutiveFailures} consecutive sweep failure${
-                  data.paperclip.consecutiveFailures === 1 ? "": "s"
+                  data.paperclip.consecutiveFailures === 1 ? "" : "s"
                 }.`
-: undefined
+              : undefined
           }
         />
         <Row
           label="Paperclip host"
-          value={pending ? "…": (data?.paperclip.host.origin ?? unknown)}
+          value={pending ? "…" : (data?.paperclip.host.origin ?? unknown)}
           note={
             data
               ? data.paperclip.host.loopback
                 ? "Loopback address. A hosted deployment cannot reach it, so Paperclip stays synchronized rather than live."
-: data.paperclip.host.tls
+                : data.paperclip.host.tls
                   ? data.paperclip.host.configured
                     ? "Public TLS origin from PAPERCLIP_API_URL."
-: "Default origin."
-: "Not TLS. Set PAPERCLIP_API_URL to an https origin before going live."
-: undefined
+                    : "Default origin."
+                  : "Not TLS. Set PAPERCLIP_API_URL to an https origin before going live."
+              : undefined
           }
         />
         <Row
@@ -113,7 +115,7 @@ function DiagnosticsSettings() {
           value={`${OPS_ORIGIN}${OPS_SSO_PATH}`}
           note="Sessions are handed to this exact origin. Ops must list this deployment's origin in its own allowlist, or the handshake is refused."
         />
-        <Row label="Server time" value={pending ? "…": (data?.serverTime ?? unknown)} />
+        <Row label="Server time" value={pending ? "…" : (data?.serverTime ?? unknown)} />
       </dl>
     </div>
   );

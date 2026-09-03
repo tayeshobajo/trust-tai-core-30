@@ -315,7 +315,6 @@ export const stewardService = {
   },
 
   async roleMemory(organizationId: ID): Promise<RoleMemory[]> {
-
     const { data, error } = await supabase
       .from("steward_role_memory")
       .select("*")

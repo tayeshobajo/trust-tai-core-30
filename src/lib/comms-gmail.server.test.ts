@@ -482,7 +482,10 @@ describe("multi-mailbox connections", () => {
     // No send-capable mailbox at all is an honest empty state.
     expect(
       resolveSendMailbox({ connections: [mailbox("a", "tayeshobajo@gmail.com", false)] }),
-    ).toEqual({ kind: "none_send_capable", connections: [mailbox("a", "tayeshobajo@gmail.com", false)] });
+    ).toEqual({
+      kind: "none_send_capable",
+      connections: [mailbox("a", "tayeshobajo@gmail.com", false)],
+    });
     expect(resolveSendMailbox({ connections: [] })).toEqual({ kind: "none_connected" });
   });
 
@@ -529,10 +532,7 @@ describe("multi-mailbox connections", () => {
  * Message fidelity: enrichment counting and row construction
  * ==================================================================== */
 
-import {
-  buildMessageRow,
-  classifySyncedMessages,
-} from "@/lib/comms-gmail.server";
+import { buildMessageRow, classifySyncedMessages } from "@/lib/comms-gmail.server";
 import type { NormalizedMessage } from "@/domain/comms-integrations";
 
 function syncedMessage(overrides: Partial<NormalizedMessage>): NormalizedMessage {
@@ -544,7 +544,7 @@ function syncedMessage(overrides: Partial<NormalizedMessage>): NormalizedMessage
     toEmails: ["tai@trusttai.com"],
     ccEmails: [],
     occurredAt: "2026-08-22T10:00:00Z",
-...overrides,
+    ...overrides,
   };
 }
 
@@ -676,7 +676,10 @@ describe("approved-thread continuity, the label approves the conversation", () =
   it("C: a new unlabeled thread from the same known correspondent is not watched", () => {
     const ids = selectApprovedThreadIds({
       // thread-2 was never approved through the label gate.
-      observed: [observed("thread-1", "2026-08-20T10:00:00Z"), observed("thread-2", "2026-08-21T10:00:00Z")],
+      observed: [
+        observed("thread-1", "2026-08-20T10:00:00Z"),
+        observed("thread-2", "2026-08-21T10:00:00Z"),
+      ],
       mailbox: MAILBOX,
       approved: new Set(["thread-1"]),
       soleMailbox: true,

@@ -97,10 +97,7 @@ export function readFigure(
  * be positive, a business with no recorded burn does not have infinite
  * runway, it has an unrecorded one.
  */
-export function deriveRunway(
-  figures: BusinessFigure[],
-  now: string,
-): FigureReading | undefined {
+export function deriveRunway(figures: BusinessFigure[], now: string): FigureReading | undefined {
   const cash = currentFigure(figures, "cash_on_hand", now);
   const burn = currentFigure(figures, "monthly_burn", now);
   if (!cash || !burn || burn.value <= 0) return undefined;
@@ -125,7 +122,13 @@ export function deriveRunway(
 
 /** Every figure-backed reading available today, runway included. */
 export function readFigures(figures: BusinessFigure[], now: string): FigureReading[] {
-  const keys = ["recurring_revenue", "receivables", "average_deal_size", "close_rate", "sales_cycle"];
+  const keys = [
+    "recurring_revenue",
+    "receivables",
+    "average_deal_size",
+    "close_rate",
+    "sales_cycle",
+  ];
   const readings = keys
     .map((key) => readFigure(figures, key, now))
     .filter((row): row is FigureReading => row !== undefined);

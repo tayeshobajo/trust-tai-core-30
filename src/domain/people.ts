@@ -19,13 +19,7 @@ import type { Provenance } from "./activity";
 import type { ID, ISODateTime } from "./entities";
 
 /** How reachable an email address actually is. Never assume better. */
-export type EmailStatus =
-  | "unknown"
-  | "found"
-  | "verified"
-  | "risky"
-  | "invalid"
-  | "bounced";
+export type EmailStatus = "unknown" | "found" | "verified" | "risky" | "invalid" | "bounced";
 
 export const EMAIL_STATUS_LABEL: Record<EmailStatus, string> = {
   unknown: "No email",
@@ -37,11 +31,7 @@ export const EMAIL_STATUS_LABEL: Record<EmailStatus, string> = {
 };
 
 /** How much to trust the claim that this person holds this role. */
-export type PersonConfidence =
-  | "observed"
-  | "inferred"
-  | "asserted_by_provider"
-  | "human_confirmed";
+export type PersonConfidence = "observed" | "inferred" | "asserted_by_provider" | "human_confirmed";
 
 export const CONFIDENCE_LABEL: Record<PersonConfidence, string> = {
   observed: "Read from a public page",
@@ -50,13 +40,7 @@ export const CONFIDENCE_LABEL: Record<PersonConfidence, string> = {
   human_confirmed: "Confirmed by a person",
 };
 
-export type Seniority =
-  | "founder"
-  | "owner"
-  | "exec"
-  | "marketing"
-  | "operations"
-  | "other";
+export type Seniority = "founder" | "owner" | "exec" | "marketing" | "operations" | "other";
 
 export const SENIORITY_LABEL: Record<Seniority, string> = {
   founder: "Founder",
@@ -195,9 +179,9 @@ export function isReachable(person: Person): boolean {
 export function isCommsReady(person: Person): boolean {
   return Boolean(
     person.fullName &&
-      person.roleTitle &&
-      (person.emailStatus === "verified" ||
-        (person.linkedinConfirmed === true && Boolean(person.linkedinUrl))),
+    person.roleTitle &&
+    (person.emailStatus === "verified" ||
+      (person.linkedinConfirmed === true && Boolean(person.linkedinUrl))),
   );
 }
 

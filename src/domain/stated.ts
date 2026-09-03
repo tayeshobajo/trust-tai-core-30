@@ -157,7 +157,7 @@ export const STATED_METADATA_KEY = "inbound_stated";
 
 /** Read a stored packet back, tolerating rows written before this lane existed. */
 export function readPacket(metadata: unknown): FounderSignalPacket | null {
-  const bag = metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>): {};
+  const bag = metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : {};
   const raw = bag[STATED_METADATA_KEY];
   if (!raw || typeof raw !== "object") return null;
   const packet = raw as Partial<FounderSignalPacket>;
@@ -166,8 +166,8 @@ export function readPacket(metadata: unknown): FounderSignalPacket | null {
     submissionId: String(packet.submissionId),
     submissionRowId: packet.submissionRowId ?? null,
     statedAt: String(packet.statedAt ?? ""),
-    claims: Array.isArray(packet.claims) ? packet.claims: [],
-    transcript: Array.isArray(packet.transcript) ? packet.transcript: [],
+    claims: Array.isArray(packet.claims) ? packet.claims : [],
+    transcript: Array.isArray(packet.transcript) ? packet.transcript : [],
     understanding: packet.understanding ?? {},
     attribution: packet.attribution ?? {},
   };
@@ -187,5 +187,5 @@ export function researchAuthorized(packet: FounderSignalPacket | null): boolean 
  */
 export function answerAnchorId(questionId: string | null | undefined, index: number): string {
   const key = (questionId ?? "").trim();
-  return key ? `answer-${key}`: `answer-${index}`;
+  return key ? `answer-${key}` : `answer-${index}`;
 }

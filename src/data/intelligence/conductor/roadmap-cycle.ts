@@ -107,7 +107,8 @@ function bySequence(a: CanonMilestone, b: CanonMilestone): number {
     a.position - b.position ||
     (STATE_RANK[a.state] ?? 9) - (STATE_RANK[b.state] ?? 9) ||
     TIER_RANK[a.tier] - TIER_RANK[b.tier] ||
-    Number(Boolean(b.ownerLabel ?? b.ownerUserId)) - Number(Boolean(a.ownerLabel ?? a.ownerUserId)) ||
+    Number(Boolean(b.ownerLabel ?? b.ownerUserId)) -
+      Number(Boolean(a.ownerLabel ?? a.ownerUserId)) ||
     a.id.localeCompare(b.id)
   );
 }
@@ -158,7 +159,6 @@ export function milestoneAttentionOf(input: {
 
 /* --------------------------------------------------------- progression */
 
-
 /**
  * What changed once a person answered a decision (V3.4).
  *
@@ -176,9 +176,7 @@ export function milestoneProgressionOf(input: {
   const open = input.decisions.filter((row) => row.status === "open");
   const resolved = input.decisions
     .filter((row) => row.status !== "open")
-    .sort((a, b) =>
-      (b.resolvedAt ?? b.updatedAt).localeCompare(a.resolvedAt ?? a.updatedAt),
-    );
+    .sort((a, b) => (b.resolvedAt ?? b.updatedAt).localeCompare(a.resolvedAt ?? a.updatedAt));
   const latest = resolved[0];
   if (!latest) return null;
 
@@ -204,7 +202,6 @@ export function milestoneProgressionOf(input: {
         pointB: input.pointB,
       });
   if (!before) return null;
-
 
   const after = milestoneAttentionOf({
     milestones: input.milestones,
@@ -288,9 +285,7 @@ export function readRoadmapCanon(input: {
     milestoneProgression: stages
       ? milestoneProgressionOf({
           milestones,
-          decisions: input.decisions.filter(
-            (decision) => decision.roadmapId === roadmap.id,
-          ),
+          decisions: input.decisions.filter((decision) => decision.roadmapId === roadmap.id),
           pointB,
         })
       : null,
@@ -414,9 +409,49 @@ export function posesDecision(question: string): boolean {
 /* ------------------------------------------------------------- duplication */
 
 const STOP_WORDS = new Set([
-  "the","a","an","is","are","was","were","be","to","of","for","and","or","we","i","our","us",
-  "should","do","does","did","this","that","it","in","on","with","right","now","next","what",
-  "which","how","can","could","would","will","shall","need","needs","really","still","one",
+  "the",
+  "a",
+  "an",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "to",
+  "of",
+  "for",
+  "and",
+  "or",
+  "we",
+  "i",
+  "our",
+  "us",
+  "should",
+  "do",
+  "does",
+  "did",
+  "this",
+  "that",
+  "it",
+  "in",
+  "on",
+  "with",
+  "right",
+  "now",
+  "next",
+  "what",
+  "which",
+  "how",
+  "can",
+  "could",
+  "would",
+  "will",
+  "shall",
+  "need",
+  "needs",
+  "really",
+  "still",
+  "one",
 ]);
 
 function tokens(text: string): Set<string> {
@@ -451,7 +486,8 @@ export function existingEquivalentDecision(
   decisions: RoadmapDecision[],
 ): RoadmapDecision | undefined {
   return decisions.find(
-    (decision) => decision.status === "open" && isMateriallySameQuestion(decision.question, question),
+    (decision) =>
+      decision.status === "open" && isMateriallySameQuestion(decision.question, question),
   );
 }
 
@@ -488,7 +524,11 @@ export function resolveRoadmapSubject(input: {
   const { snapshot, question } = input;
 
   const fromRoadmaps: RoadmapSubjectCandidate[] = snapshot.roadmaps.map((roadmap) => ({
-    kind: (roadmap.clientId ? "client" : roadmap.prospectId ? "prospect" : "relationship") as RoadmapSubjectKind,
+    kind: (roadmap.clientId
+      ? "client"
+      : roadmap.prospectId
+        ? "prospect"
+        : "relationship") as RoadmapSubjectKind,
     id: roadmap.clientId ?? roadmap.prospectId ?? roadmap.relationshipId ?? roadmap.id,
     label: roadmap.subjectLabel,
     roadmap,
@@ -825,7 +865,10 @@ export function planRoadmapCycle(input: {
     proposals: [proposal],
     resolutions,
     evidence: [
-      { label: `${subject.label} exists as a ${subject.kind} in this organisation`, kind: "computed" },
+      {
+        label: `${subject.label} exists as a ${subject.kind} in this organisation`,
+        kind: "computed",
+      },
     ],
   };
 }

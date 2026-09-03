@@ -16,7 +16,6 @@ function readRedirect(search: Record<string, unknown>): string {
   return sanitizeReturnPath(search["redirect"]);
 }
 
-
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({ redirect: readRedirect(search) }),
   head: () => ({
@@ -84,8 +83,7 @@ function AuthRoute() {
         <div className="tt-rise mt-8 rounded-xl border border-border bg-secondary/40 p-6">
           <p className="tt-eyebrow">Check your inbox</p>
           <p className="mt-2 text-sm text-foreground">
-            A sign-in link is on its way to {sentTo}. Open it on this device to enter the
-            workspace.
+            A sign-in link is on its way to {sentTo}. Open it on this device to enter the workspace.
           </p>
           <div className="mt-4">
             <TTButton variant="quiet" size="sm" onClick={() => setSentTo(null)}>

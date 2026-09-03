@@ -67,7 +67,6 @@ export interface MemberProfile {
   access: Record<string, AppAccessLevel>;
 }
 
-
 function nameOf(row: Row, email: string): string {
   const candidate =
     (row["full_name"] as string | null) ??
@@ -100,14 +99,12 @@ export interface DirectoryPerson {
   emailConfirmedAt: string | null;
 }
 
-
 export async function readMemberDirectory(
   organizationId: string,
 ): Promise<Map<string, DirectoryPerson>> {
   const outcome = (await callAdminPassword({ action: "directory", organizationId })) as
-    | (AdminPasswordResult & { people?: DirectoryPerson[] })
-    | null;
-  const people = outcome?.ok ? (outcome.people ?? []): [];
+    (AdminPasswordResult & { people?: DirectoryPerson[] }) | null;
+  const people = outcome?.ok ? (outcome.people ?? []) : [];
   return new Map(people.map((person) => [person.userId, person]));
 }
 
@@ -164,9 +161,9 @@ export async function removeMember(input: {
 
 export async function listMembers(organizationId: string): Promise<MemberProfile[]> {
   const memberships = await supabase
-.from("organization_memberships")
-.select("*")
-.eq("organization_id", organizationId);
+    .from("organization_memberships")
+    .select("*")
+    .eq("organization_id", organizationId);
   if (memberships.error) throw new Error(memberships.error.message);
 
   const rows = (memberships.data ?? []) as Row[];
@@ -191,7 +188,7 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
   }));
 
   return rows
-.map((row) => {
+    .map((row) => {
       const userId = String(row["user_id"]);
       const profile = byId.get(userId) ?? {};
       const known = directory.get(userId);
@@ -217,8 +214,7 @@ export async function listMembers(organizationId: string): Promise<MemberProfile
         access: overrides.value[userId] ?? {},
       } satisfies MemberProfile;
     })
-.sort((a, b) => a.name.localeCompare(b.name));
-
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /* --------------------------------------------------------------- app state */
@@ -227,9 +223,9 @@ export async function readOrganizationApps(
   organizationId: string,
 ): Promise<Provisioned<Record<string, boolean>>> {
   const result = await supabase
-.from("organization_app_settings")
-.select("app_key, enabled")
-.eq("organization_id", organizationId);
+    .from("organization_app_settings")
+    .select("app_key, enabled")
+    .eq("organization_id", organizationId);
   if (result.error) {
     if (missingRelation(result.error)) return notProvisioned({});
     throw new Error(result.error.message);
@@ -265,7 +261,7 @@ export async function setOrganizationApp(input: {
     actorUserId: input.actorUserId,
     name: "app.status_changed",
     subject: { type: "app", id: input.appId, label: input.appName },
-    summary: `${input.appName} was ${input.enabled ? "enabled": "disabled"} for the organization.`,
+    summary: `${input.appName} was ${input.enabled ? "enabled" : "disabled"} for the organization.`,
     payload: { enabled: input.enabled },
   });
 }
@@ -276,9 +272,9 @@ export async function readMemberAccess(
   organizationId: string,
 ): Promise<Provisioned<Record<string, Record<string, AppAccessLevel>>>> {
   const result = await supabase
-.from("member_app_access")
-.select("user_id, app_key, access_level")
-.eq("organization_id", organizationId);
+    .from("member_app_access")
+    .select("user_id, app_key, access_level")
+    .eq("organization_id", organizationId);
   if (result.error) {
     if (missingRelation(result.error)) return notProvisioned({});
     throw new Error(result.error.message);
@@ -334,9 +330,9 @@ export async function readRoleAppAccess(
   organizationId: string,
 ): Promise<Provisioned<Record<string, Record<string, AppAccessLevel>>>> {
   const result = await supabase
-.from("organization_role_app_access")
-.select("role, app_key, access_level")
-.eq("organization_id", organizationId);
+    .from("organization_role_app_access")
+    .select("role, app_key, access_level")
+    .eq("organization_id", organizationId);
   if (result.error) {
     if (missingRelation(result.error)) return notProvisioned({});
     throw new Error(result.error.message);
@@ -381,7 +377,6 @@ export async function setRoleAppAccess(input: {
   });
 }
 
-
 export async function setMemberRole(input: {
   organizationId: string;
   userId: string;
@@ -390,10 +385,10 @@ export async function setMemberRole(input: {
   actorUserId: string;
 }): Promise<void> {
   const { error } = await supabase
-.from("organization_memberships")
-.update({ role: input.role, updated_at: new Date().toISOString() })
-.eq("organization_id", input.organizationId)
-.eq("user_id", input.userId);
+    .from("organization_memberships")
+    .update({ role: input.role, updated_at: new Date().toISOString() })
+    .eq("organization_id", input.organizationId)
+    .eq("user_id", input.userId);
   if (error) throw new Error(error.message);
 
   await audit({
@@ -415,23 +410,23 @@ export async function setMemberStatus(input: {
 }): Promise<void> {
   /* The database records loss of access as `suspended`. The product says
      "deactivated"; the row keeps its history either way. */
-  const persisted = input.status === "active" ? "active": "suspended";
+  const persisted = input.status === "active" ? "active" : "suspended";
   const { error } = await supabase
-.from("organization_memberships")
-.update({ status: persisted, updated_at: new Date().toISOString() })
-.eq("organization_id", input.organizationId)
-.eq("user_id", input.userId);
+    .from("organization_memberships")
+    .update({ status: persisted, updated_at: new Date().toISOString() })
+    .eq("organization_id", input.organizationId)
+    .eq("user_id", input.userId);
   if (error) throw new Error(error.message);
 
   await audit({
     organizationId: input.organizationId,
     actorUserId: input.actorUserId,
-    name: input.status === "active" ? "user.reactivated": "user.deactivated",
+    name: input.status === "active" ? "user.reactivated" : "user.deactivated",
     subject: { type: "user", id: input.userId, label: input.memberName },
     summary:
       input.status === "active"
         ? `${input.memberName} was reactivated.`
-: `${input.memberName} was deactivated.`,
+        : `${input.memberName} was deactivated.`,
     payload: { status: input.status },
   });
 }
@@ -469,14 +464,12 @@ function toInvitation(row: Row): Invitation {
   };
 }
 
-export async function listInvitations(
-  organizationId: string,
-): Promise<Provisioned<Invitation[]>> {
+export async function listInvitations(organizationId: string): Promise<Provisioned<Invitation[]>> {
   const result = await supabase
-.from("organization_invitations")
-.select("*")
-.eq("organization_id", organizationId)
-.order("created_at", { ascending: false });
+    .from("organization_invitations")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
   if (result.error) {
     if (missingRelation(result.error)) return notProvisioned([]);
     throw new Error(result.error.message);
@@ -487,9 +480,9 @@ export async function listInvitations(
 /** Split a pasted list of emails. Empty and duplicate entries are dropped. */
 export function parseEmails(input: string): { valid: string[]; invalid: string[] } {
   const parts = input
-.split(/[\s,;]+/)
-.map((part) => part.trim().toLowerCase())
-.filter(Boolean);
+    .split(/[\s,;]+/)
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
   const valid: string[] = [];
   const invalid: string[] = [];
   for (const part of parts) {
@@ -522,8 +515,7 @@ export async function inviteMembers(input: {
   const expires = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
   /* A name only belongs to one person, so it is carried only when a single
      address is being invited. */
-  const fullName =
-    input.emails.length === 1 ? (input.fullName ?? "").trim(): "";
+  const fullName = input.emails.length === 1 ? (input.fullName ?? "").trim() : "";
 
   const rows = input.emails.map((email) => ({
     organization_id: input.organizationId,
@@ -535,24 +527,24 @@ export async function inviteMembers(input: {
     created_at: now.toISOString(),
     last_sent_at: now.toISOString(),
     expires_at: expires,
-...(fullName ? { full_name: fullName }: {}),
+    ...(fullName ? { full_name: fullName } : {}),
   }));
 
   /* The name column is optional in this deployment: if it is not there the
      invitation still goes out, and the name is preserved in history so the
      same identity can be resolved on acceptance. */
   let result = await supabase
-.from("organization_invitations")
-.upsert(rows, { onConflict: "organization_id,email" })
-.select("id, email");
+    .from("organization_invitations")
+    .upsert(rows, { onConflict: "organization_id,email" })
+    .select("id, email");
   if (result.error && isMissingColumn(result.error) === "full_name") {
     result = await supabase
-.from("organization_invitations")
-.upsert(
-        rows.map(({ full_name: _dropped,...rest }) => rest),
+      .from("organization_invitations")
+      .upsert(
+        rows.map(({ full_name: _dropped, ...rest }) => rest),
         { onConflict: "organization_id,email" },
       )
-.select("id, email");
+      .select("id, email");
   }
   if (result.error) throw new Error(result.error.message);
 
@@ -562,7 +554,7 @@ export async function inviteMembers(input: {
       actorUserId: input.actorUserId,
       name: "user.invited",
       subject: { type: "user", id: email, label: fullName || email },
-      summary: `${fullName ? `${fullName} (${email})`: email} was invited as ${input.role}.`,
+      summary: `${fullName ? `${fullName} (${email})` : email} was invited as ${input.role}.`,
       payload: {
         role: input.role,
         app_access: input.access,
@@ -585,9 +577,9 @@ export async function resendInvitation(input: {
   actorUserId: string;
 }): Promise<void> {
   const { error } = await supabase
-.from("organization_invitations")
-.update({ last_sent_at: new Date().toISOString(), status: "pending" })
-.eq("id", input.invitationId);
+    .from("organization_invitations")
+    .update({ last_sent_at: new Date().toISOString(), status: "pending" })
+    .eq("id", input.invitationId);
   if (error) throw new Error(error.message);
   await audit({
     organizationId: input.organizationId,
@@ -599,7 +591,6 @@ export async function resendInvitation(input: {
   });
 }
 
-
 export async function cancelInvitation(input: {
   organizationId: string;
   invitationId: string;
@@ -607,9 +598,9 @@ export async function cancelInvitation(input: {
   actorUserId: string;
 }): Promise<void> {
   const { error } = await supabase
-.from("organization_invitations")
-.update({ status: "cancelled" })
-.eq("id", input.invitationId);
+    .from("organization_invitations")
+    .update({ status: "cancelled" })
+    .eq("id", input.invitationId);
   if (error) throw new Error(error.message);
   await audit({
     organizationId: input.organizationId,
@@ -640,13 +631,7 @@ export interface InvitationAuditEntry {
   at: string;
   event: string;
   lifecycle:
-    | "created"
-    | "resent"
-    | "cancelled"
-    | "emailed"
-    | "password_reset"
-    | "removed"
-    | "other";
+    "created" | "resent" | "cancelled" | "emailed" | "password_reset" | "removed" | "other";
   email: string;
   summary: string;
   actorUserId: string | null;
@@ -674,12 +659,12 @@ export async function listInvitationAudit(
   limit = 50,
 ): Promise<Provisioned<InvitationAuditEntry[]>> {
   const result = await supabase
-.from("activities")
-.select("id, event_type, summary, occurred_at, created_at, actor_user_id, payload")
-.eq("organization_id", organizationId)
-.in("event_type", INVITATION_EVENTS as unknown as string[])
-.order("occurred_at", { ascending: false })
-.limit(limit);
+    .from("activities")
+    .select("id, event_type, summary, occurred_at, created_at, actor_user_id, payload")
+    .eq("organization_id", organizationId)
+    .in("event_type", INVITATION_EVENTS as unknown as string[])
+    .order("occurred_at", { ascending: false })
+    .limit(limit);
   if (result.error) {
     if (missingRelation(result.error)) return notProvisioned([]);
     throw new Error(result.error.message);
@@ -696,12 +681,12 @@ export async function listInvitationAudit(
       email:
         typeof payload["label"] === "string"
           ? (payload["label"] as string)
-: typeof payload["entity_ref"] === "string"
+          : typeof payload["entity_ref"] === "string"
             ? (payload["entity_ref"] as string)
-: "",
+            : "",
       summary: String(row["summary"] ?? ""),
       actorUserId: (row["actor_user_id"] as string | null) ?? null,
-      delivered: typeof delivered === "boolean" ? delivered: null,
+      delivered: typeof delivered === "boolean" ? delivered : null,
     } satisfies InvitationAuditEntry;
   });
   return { provisioned: true, value: entries };
@@ -756,13 +741,13 @@ export async function deliverInvitationEmail(input: {
     subject: { type: "user", id: input.email, label: input.email },
     summary: outcome.delivered
       ? `An invitation email was sent to ${input.email}.`
-: `An invitation email to ${input.email} was not delivered. ${outcome.because}`,
+      : `An invitation email to ${input.email} was not delivered. ${outcome.because}`,
     payload: {
       lifecycle: "emailed",
       delivered: outcome.delivered,
       because: outcome.because,
       invitation_id: input.invitationId,
-...(outcome.providerId ? { provider_id: outcome.providerId }: {}),
+      ...(outcome.providerId ? { provider_id: outcome.providerId } : {}),
     },
   });
 
@@ -831,7 +816,7 @@ export async function createMemberWithPassword(input: {
     confirmation: input.confirmation,
     role: input.role,
     access: input.access,
-...(input.fullName?.trim() ? { fullName: input.fullName.trim() }: {}),
+    ...(input.fullName?.trim() ? { fullName: input.fullName.trim() } : {}),
   });
 
   /* History records the creation once. A retry that lands on the same person
@@ -844,7 +829,7 @@ export async function createMemberWithPassword(input: {
       actorUserId: input.actorUserId,
       name: "user.created_with_password",
       subject: { type: "user", id: outcome.userId ?? email, label: person || email },
-      summary: `${person ? `${person} (${email})`: email} was created as ${input.role} with a temporary password.`,
+      summary: `${person ? `${person} (${email})` : email} was created as ${input.role} with a temporary password.`,
       payload: {
         role: input.role,
         app_access: input.access,
@@ -887,7 +872,6 @@ export async function resetMemberPassword(input: {
   return outcome;
 }
 
-
 /* ------------------------------------------------------------------ profile */
 
 export interface ProfileDetail {
@@ -904,7 +888,11 @@ export interface ProfileDetail {
 }
 
 export async function readProfile(userId: string, email: string): Promise<ProfileDetail> {
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   const row = (data ?? {}) as Row;
   const text = (key: string) => String(row[key] ?? "");
@@ -949,13 +937,13 @@ export async function saveProfile(input: ProfileDetail): Promise<string[]> {
      account. Settings updates it rather than upserting, because insert on
      profiles is not a privilege a signed-in person holds. */
   const { data, error } = await writeTolerant<Row>(payload, ["id"], async (body) => {
-    const { id,...fields } = body;
+    const { id, ...fields } = body;
     const result = await supabase
-.from("profiles")
-.update(fields)
-.eq("id", String(id))
-.select("*")
-.maybeSingle();
+      .from("profiles")
+      .update(fields)
+      .eq("id", String(id))
+      .select("*")
+      .maybeSingle();
     return { data: (result.data ?? null) as Row | null, error: result.error };
   });
   if (error) throw new Error(error.message);
@@ -978,10 +966,10 @@ export interface OrganizationDetail {
 
 export async function readOrganization(organizationId: string): Promise<OrganizationDetail> {
   const { data, error } = await supabase
-.from("organizations")
-.select("*")
-.eq("id", organizationId)
-.maybeSingle();
+    .from("organizations")
+    .select("*")
+    .eq("id", organizationId)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   const row = (data ?? {}) as Row;
   return {
@@ -1007,13 +995,13 @@ export async function saveOrganization(
     updated_at: new Date().toISOString(),
   };
   const { error } = await writeTolerant<Row>(payload, ["id", "name", "slug"], async (body) => {
-    const { id,...fields } = body;
+    const { id, ...fields } = body;
     const result = await supabase
-.from("organizations")
-.update(fields)
-.eq("id", String(id))
-.select("*")
-.maybeSingle();
+      .from("organizations")
+      .update(fields)
+      .eq("id", String(id))
+      .select("*")
+      .maybeSingle();
     return { data: (result.data ?? null) as Row | null, error: result.error };
   });
   if (error) throw new Error(error.message);
@@ -1037,11 +1025,11 @@ export async function readNotificationPreferences(
   organizationId: string,
 ): Promise<Provisioned<NotificationPreferences>> {
   const result = await supabase
-.from("user_notification_preferences")
-.select("preferences")
-.eq("user_id", userId)
-.eq("organization_id", organizationId)
-.maybeSingle();
+    .from("user_notification_preferences")
+    .select("preferences")
+    .eq("user_id", userId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
   if (result.error) {
     if (missingRelation(result.error)) return notProvisioned({});
     throw new Error(result.error.message);

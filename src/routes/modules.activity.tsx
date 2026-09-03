@@ -60,8 +60,7 @@ const EMPTY: Record<ActivityView, { title: string; belongsHere: string; whyItMat
   moved: {
     title: "Nothing has moved yet",
     belongsHere: "Every handover between rooms, including refusals and failures.",
-    whyItMatters:
-      "A movement is recorded when an authorised step reaches the room that owns it.",
+    whyItMatters: "A movement is recorded when an authorised step reaches the room that owns it.",
   },
 };
 
@@ -232,7 +231,10 @@ function ActivityPage({
                 type="button"
                 aria-pressed={kind === option}
                 onClick={() =>
-                  navigate({ search: (prev) => ({ ...prev, kind: option, page: 1 }), replace: true })
+                  navigate({
+                    search: (prev) => ({ ...prev, kind: option, page: 1 }),
+                    replace: true,
+                  })
                 }
                 className={
                   kind === option
@@ -320,51 +322,54 @@ function ActivityPage({
           )
         ) : (
           <>
-          <ul className="divide-y divide-border rounded-xl border border-border bg-card">
-            {paged.rows.map((row) => (
-              <li key={row.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-3.5">
-                {row.task ? (
-                  <Link
-                    to="/modules/steward/tasks"
-                    search={{ task: row.task.key, at: row.at ?? "" }}
-                    className="min-w-0 flex-1 text-[14px] text-foreground underline decoration-border underline-offset-4 hover:decoration-royal"
-                    title={`Open ${row.task.title} as it stood when this was recorded`}
-                  >
-                    {row.label}
-                  </Link>
-                ) : (
-                  <span className="min-w-0 flex-1 text-[14px] text-foreground">{row.label}</span>
-                )}
-                <span className="tt-eyebrow">{row.roomLabel}</span>
-                <span className="text-[12.5px] text-muted-foreground">{row.standing}</span>
-                <span className="w-[128px] text-right text-[12.5px] tabular-nums text-muted-foreground">
-                  {when(row.at)}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="flex flex-wrap items-center gap-4">
-            <p className="text-[12.5px] text-muted-foreground" aria-live="polite">
-              Showing {paged.rows.length} of {paged.total}
-            </p>
-            {paged.hasMore ? (
-              <Link
-                to="/modules/activity"
-                search={{
-                  view,
-                  page: paged.page + 1,
-                  kind,
-                  q: query,
-                  from: range.from,
-                  to: range.to,
-                }}
-                replace
-                className="rounded-full border border-border px-3.5 py-1.5 text-[13px] text-royal"
-              >
-                Show {Math.min(ACTIVITY_PAGE_SIZE, paged.total - paged.rows.length)} more
-              </Link>
-            ) : null}
-          </div>
+            <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+              {paged.rows.map((row) => (
+                <li
+                  key={row.id}
+                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-3.5"
+                >
+                  {row.task ? (
+                    <Link
+                      to="/modules/steward/tasks"
+                      search={{ task: row.task.key, at: row.at ?? "" }}
+                      className="min-w-0 flex-1 text-[14px] text-foreground underline decoration-border underline-offset-4 hover:decoration-royal"
+                      title={`Open ${row.task.title} as it stood when this was recorded`}
+                    >
+                      {row.label}
+                    </Link>
+                  ) : (
+                    <span className="min-w-0 flex-1 text-[14px] text-foreground">{row.label}</span>
+                  )}
+                  <span className="tt-eyebrow">{row.roomLabel}</span>
+                  <span className="text-[12.5px] text-muted-foreground">{row.standing}</span>
+                  <span className="w-[128px] text-right text-[12.5px] tabular-nums text-muted-foreground">
+                    {when(row.at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap items-center gap-4">
+              <p className="text-[12.5px] text-muted-foreground" aria-live="polite">
+                Showing {paged.rows.length} of {paged.total}
+              </p>
+              {paged.hasMore ? (
+                <Link
+                  to="/modules/activity"
+                  search={{
+                    view,
+                    page: paged.page + 1,
+                    kind,
+                    q: query,
+                    from: range.from,
+                    to: range.to,
+                  }}
+                  replace
+                  className="rounded-full border border-border px-3.5 py-1.5 text-[13px] text-royal"
+                >
+                  Show {Math.min(ACTIVITY_PAGE_SIZE, paged.total - paged.rows.length)} more
+                </Link>
+              ) : null}
+            </div>
           </>
         )}
 

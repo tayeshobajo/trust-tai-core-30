@@ -18,16 +18,10 @@
  * fails closed rather than inventing an answer.
  */
 
-import {
-  trustTaiSupabaseKey,
-  trustTaiSupabaseUrl,
-} from "@/lib/trust-tai-backend.server";
+import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import {
-  createLovableAiGatewayRunIdFetch,
-  LOVABLE_AIG_RUN_ID_HEADER,
-} from "./ai-gateway.server";
+import { createLovableAiGatewayRunIdFetch, LOVABLE_AIG_RUN_ID_HEADER } from "./ai-gateway.server";
 import { lovableGatewayProvider, selectScoutProvider } from "./scout-provider.server";
 
 function supabaseUrl(): string {
@@ -52,10 +46,10 @@ async function requireMembership(
   organizationId: string,
 ): Promise<boolean> {
   const { data, error } = await supabase
-.from("organization_memberships")
-.select("organization_id")
-.eq("organization_id", organizationId)
-.limit(1);
+    .from("organization_memberships")
+    .select("organization_id")
+    .eq("organization_id", organizationId)
+    .limit(1);
   return !error && (data ?? []).length > 0;
 }
 
@@ -131,7 +125,7 @@ export async function callRoadmapProvider(
     // end the run when a second provider is configured. Nothing is fabricated:
     // the fallback is a real reasoning call, and the reply records which
     // provider actually answered.
-    const fallback = selected.provider === "openai" ? lovableGatewayProvider(): null;
+    const fallback = selected.provider === "openai" ? lovableGatewayProvider() : null;
     const recoverable =
       error instanceof ProviderCallFailedError &&
       /quota|credit|billing|api key|unauthor|invalid_api_key|401|429/i.test(error.message);
@@ -150,10 +144,10 @@ async function runProviderCall(
   const response = await doFetch(selected.endpoint, {
     method: "POST",
     headers: {
-...selected.headers,
-...(selected.provider === "lovable" && options.initialRunId
+      ...selected.headers,
+      ...(selected.provider === "lovable" && options.initialRunId
         ? { [LOVABLE_AIG_RUN_ID_HEADER]: options.initialRunId }
-: {}),
+        : {}),
     },
     body: JSON.stringify({
       model: selected.model,
@@ -167,12 +161,12 @@ async function runProviderCall(
       // prompt and the reply is unwrapped by extractJsonObject. A caller that
       // passes an explicit strict responseFormat (e.g. Scout's candidate
       // schema) opts into sending both, which the hosted tool supports.
-...(options.webSearch ? { tools: [{ type: "web_search" }] }: {}),
-...(options.responseFormat
+      ...(options.webSearch ? { tools: [{ type: "web_search" }] } : {}),
+      ...(options.responseFormat
         ? { text: { format: options.responseFormat } }
-: options.webSearch
+        : options.webSearch
           ? {}
-: { text: { format: { type: "json_object" } } }),
+          : { text: { format: { type: "json_object" } } }),
     }),
   });
 
@@ -216,14 +210,13 @@ async function runProviderCall(
         // apart without reading server logs.
         const detail =
           ((event["error"] as { message?: string } | undefined)?.message ??
-            (
-              (event["response"] as { error?: { message?: string } } | undefined)?.error ?? {}
-            ).message) ||
+            ((event["response"] as { error?: { message?: string } } | undefined)?.error ?? {})
+              .message) ||
           "";
         throw new ProviderCallFailedError(
           detail
             ? `The reasoning run failed before returning anything. ${detail}`
-: "The reasoning run failed before returning anything.",
+            : "The reasoning run failed before returning anything.",
         );
       }
     }
@@ -243,10 +236,10 @@ async function runProviderCall(
  */
 export function extractJsonObject(raw: string): Record<string, unknown> {
   const text = raw
-.trim()
-.replace(/^```(?:json)?/i, "")
-.replace(/```$/, "")
-.trim();
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/, "")
+    .trim();
   try {
     return JSON.parse(text) as Record<string, unknown>;
   } catch {

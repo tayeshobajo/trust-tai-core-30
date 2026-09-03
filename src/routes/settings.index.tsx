@@ -112,7 +112,10 @@ function SettingsOverview() {
         )}
         <div className="mt-6">
           <TTButton asChild variant="secondary" size="sm">
-            <Link to="/modules/activity" search={{ view: "today", page: 1, kind: "all", q: "", from: "", to: "" }}>
+            <Link
+              to="/modules/activity"
+              search={{ view: "today", page: 1, kind: "all", q: "", from: "", to: "" }}
+            >
               View recent workspace activity
             </Link>
           </TTButton>

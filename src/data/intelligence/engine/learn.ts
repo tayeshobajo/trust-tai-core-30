@@ -51,7 +51,7 @@ export function recommendationOutcomeDraft(input: {
   const about =
     decision === "edited" && input.editedText?.trim()
       ? input.editedText.trim()
-: recommendation.headline;
+      : recommendation.headline;
 
   return outcomeToDraft({
     outcome: OUTCOME_FOR[decision],
@@ -65,7 +65,7 @@ export function recommendationOutcomeDraft(input: {
         label: `Proposed by the Intelligence Engine, expected to change: ${recommendation.expectedSignal}`,
       },
     ],
-...(input.note ? { note: input.note }: {}),
+    ...(input.note ? { note: input.note } : {}),
   });
 }
 
@@ -84,13 +84,12 @@ export function enginePatternsToSuppress(beliefs: MemoryBelief[]): string[] {
 /** Shapes a person accepted before. Ordering only, never a confidence boost. */
 export function engineFavouredPatterns(beliefs: MemoryBelief[]): string[] {
   return [
-...new Set(
+    ...new Set(
       engineOutcomeRecords(beliefs)
-.filter(
-          (record) =>
-            record.outcome === "confirmed" || record.outcome === "edited_then_confirmed",
+        .filter(
+          (record) => record.outcome === "confirmed" || record.outcome === "edited_then_confirmed",
         )
-.map((record) => record.patternKey),
+        .map((record) => record.patternKey),
     ),
   ];
 }
@@ -98,10 +97,10 @@ export function engineFavouredPatterns(beliefs: MemoryBelief[]): string[] {
 /** Statements a person decided, which any inference must not contradict. */
 export function decidedStatements(beliefs: MemoryBelief[], limit = 20): string[] {
   return beliefs
-.filter((belief) => belief.tier === "decided" && belief.authority === "human")
-.filter((belief) => !belief.meta.retired)
-.slice(0, limit)
-.map((belief) => belief.statement);
+    .filter((belief) => belief.tier === "decided" && belief.authority === "human")
+    .filter((belief) => !belief.meta.retired)
+    .slice(0, limit)
+    .map((belief) => belief.statement);
 }
 
 /* ---------------------------------------------------------------- outcomes */

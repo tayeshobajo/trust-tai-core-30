@@ -10,7 +10,11 @@
 
 import { listRelationshipMessages } from "@/data/supabase/comms-messages";
 import { listProspectContacts } from "@/data/supabase/contacts";
-import { RELATIONSHIP_COLUMNS, toRelationship, type RelationshipRow } from "@/data/supabase/comms-schema";
+import {
+  RELATIONSHIP_COLUMNS,
+  toRelationship,
+  type RelationshipRow,
+} from "@/data/supabase/comms-schema";
 import type { Relationship } from "@/domain/comms";
 import type { StoredMailboxMessage } from "@/domain/comms-integrations";
 import type { ID } from "@/domain/entities";
@@ -35,10 +39,10 @@ export async function listProspectConversations(
   let rows: RelationshipRow[] = [];
   try {
     const byProspect = await supabase
-.from("comms_relationships")
-.select(RELATIONSHIP_COLUMNS)
-.eq("organization_id", organizationId)
-.eq("prospect_id", prospectId);
+      .from("comms_relationships")
+      .select(RELATIONSHIP_COLUMNS)
+      .eq("organization_id", organizationId)
+      .eq("prospect_id", prospectId);
     if (byProspect.error) throw new Error(byProspect.error.message);
     rows = (byProspect.data ?? []) as unknown as RelationshipRow[];
 
@@ -48,10 +52,10 @@ export async function listProspectConversations(
     const contactIds = people.map((person) => person.id);
     if (contactIds.length > 0) {
       const byContact = await supabase
-.from("comms_relationships")
-.select(RELATIONSHIP_COLUMNS)
-.eq("organization_id", organizationId)
-.in("contact_id", contactIds);
+        .from("comms_relationships")
+        .select(RELATIONSHIP_COLUMNS)
+        .eq("organization_id", organizationId)
+        .in("contact_id", contactIds);
       if (byContact.error) throw new Error(byContact.error.message);
       for (const row of (byContact.data ?? []) as unknown as RelationshipRow[]) {
         if (!rows.some((existing) => existing.id === row.id)) rows.push(row);

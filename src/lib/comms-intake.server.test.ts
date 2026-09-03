@@ -7,7 +7,10 @@ import { ensureLabeledRelationship, nameFromEmail } from "@/lib/comms-intake.ser
  * prove the laws that matter, one canonical person, one relationship, and a
  * repeated sync that writes nothing new.
  */
-function fakeClient(seed?: { contacts?: { id: string; email: string }[]; relationships?: { id: string; email: string; full_name: string }[] }) {
+function fakeClient(seed?: {
+  contacts?: { id: string; email: string }[];
+  relationships?: { id: string; email: string; full_name: string }[];
+}) {
   const state = {
     contacts: [...(seed?.contacts ?? [])],
     relationships: [...(seed?.relationships ?? [])] as Record<string, unknown>[],
@@ -41,7 +44,7 @@ function fakeClient(seed?: { contacts?: { id: string; email: string }[]; relatio
         counter += 1;
         const id = `${table}-${counter}`;
         if (table === "contacts") state.contacts.push({ id, email: String(row["email"]) });
-        if (table === "comms_relationships") state.relationships.push({...row, id });
+        if (table === "comms_relationships") state.relationships.push({ ...row, id });
         if (table === "activities") state.activities.push(row);
         return {
           select: () => ({
@@ -71,7 +74,7 @@ describe("ensureLabeledRelationship", () => {
   it("brings an unknown labeled correspondent in as one person and one relationship", async () => {
     const { client, state } = fakeClient();
     const outcome = await ensureLabeledRelationship(client, {
-...BASE,
+      ...BASE,
       email: "claire@dozen.com",
       name: "Claire Meneely",
     });
@@ -91,10 +94,10 @@ describe("ensureLabeledRelationship", () => {
 
   it("is idempotent, a repeated pass finds the relationship and writes nothing", async () => {
     const { client, state } = fakeClient();
-    const first = await ensureLabeledRelationship(client, {...BASE, email: "claire@dozen.com" });
+    const first = await ensureLabeledRelationship(client, { ...BASE, email: "claire@dozen.com" });
     const writesAfterFirst = state.inserts;
     const second = await ensureLabeledRelationship(client, {
-...BASE,
+      ...BASE,
       providerMessageId: "m2",
       email: "Claire@Dozen.com",
     });
@@ -108,7 +111,7 @@ describe("ensureLabeledRelationship", () => {
     const { client, state } = fakeClient({
       contacts: [{ id: "contact-existing", email: "sara@warren.co" }],
     });
-    const outcome = await ensureLabeledRelationship(client, {...BASE, email: "sara@warren.co" });
+    const outcome = await ensureLabeledRelationship(client, { ...BASE, email: "sara@warren.co" });
     expect(outcome.created).toBe(true);
     expect(state.contacts).toHaveLength(1);
     expect(state.relationships[0]!["contact_id"]).toBe("contact-existing");
@@ -121,6 +124,6 @@ describe("ensureLabeledRelationship", () => {
 
   it("refuses an empty address rather than creating an anonymous relationship", async () => {
     const { client } = fakeClient();
-    await expect(ensureLabeledRelationship(client, {...BASE, email: "  " })).rejects.toThrow();
+    await expect(ensureLabeledRelationship(client, { ...BASE, email: "  " })).rejects.toThrow();
   });
 });

@@ -61,9 +61,7 @@ function toDraft(entry: unknown): PersonDraft | null {
     ...(roleTitle ? { roleTitle } : {}),
     seniority: guessSeniority(roleTitle),
     ...(email ? { email, emailStatus: toEmailStatus(record["email_status"], "found") } : {}),
-    ...(typeof record["linkedin_url"] === "string"
-      ? { linkedinUrl: record["linkedin_url"] }
-      : {}),
+    ...(typeof record["linkedin_url"] === "string" ? { linkedinUrl: record["linkedin_url"] } : {}),
     ...(typeof record["source_url"] === "string" ? { sourceUrl: record["source_url"] } : {}),
     confidence: "asserted_by_provider",
   };

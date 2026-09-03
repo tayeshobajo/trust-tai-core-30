@@ -143,7 +143,7 @@ export function verifyRuntimeRead(input: {
       claim,
       because: candidate.because?.trim() ?? "",
       restsOn,
-...(candidate.theme ? { theme: candidate.theme }: {}),
+      ...(candidate.theme ? { theme: candidate.theme } : {}),
     });
   }
 
@@ -171,11 +171,11 @@ export function verifyRuntimeRead(input: {
       }
     }
 
-    const external = operation ? operationIsExternal(owningRoom, operation): false;
+    const external = operation ? operationIsExternal(owningRoom, operation) : false;
     nextSteps.push({
       title,
       owningRoom,
-...(operation ? { operation }: {}),
+      ...(operation ? { operation } : {}),
       requiresApproval: request.approval.required || external,
       willDo: (candidate.willDo ?? []).filter((line) => typeof line === "string" && line.trim()),
       willNotDo: (candidate.willNotDo ?? []).filter(
@@ -207,7 +207,7 @@ export function verifyRuntimeRead(input: {
 
   const modelConfidence = CONFIDENCE_LEVELS.includes(raw.confidence as ConfidenceLevel)
     ? (raw.confidence as ConfidenceLevel)
-: runtimeConfidence(bundle.evidence.length);
+    : runtimeConfidence(bundle.evidence.length);
   const confidence = capConfidence(modelConfidence, bundle.evidence.length);
 
   const unknowns = (raw.unknowns ?? []).filter(

@@ -17,12 +17,7 @@ import type { ID, ISODateTime } from "./entities";
 /* -------------------------------------------------------------- lifecycle */
 
 export type RoadmapStatus =
-  | "draft"
-  | "proposed"
-  | "approved"
-  | "in_progress"
-  | "complete"
-  | "archived";
+  "draft" | "proposed" | "approved" | "in_progress" | "complete" | "archived";
 
 export const ROADMAP_STATUSES: RoadmapStatus[] = [
   "draft",
@@ -187,10 +182,7 @@ export function isOpen(decision: RoadmapDecision): boolean {
 
 /** Roadmaps still moving. Used by Home to separate active from finished. */
 export function isActiveRoadmap(roadmap: Roadmap): boolean {
-  return (
-    roadmap.status !== "complete" &&
-    roadmap.status !== "archived"
-  );
+  return roadmap.status !== "complete" && roadmap.status !== "archived";
 }
 
 /** Stage ordering is positional and stable; ties fall back to creation time. */

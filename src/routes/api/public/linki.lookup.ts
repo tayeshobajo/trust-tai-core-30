@@ -15,7 +15,7 @@ import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backen
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
-  return header.startsWith("Bearer ") ? header.slice(7).trim() || null: null;
+  return header.startsWith("Bearer ") ? header.slice(7).trim() || null : null;
 }
 
 function clientFor(token: string): SupabaseClient {
@@ -56,17 +56,17 @@ export const Route = createFileRoute("/api/public/linki/lookup")({
           body = {};
         }
 
-        const fullName = typeof body["full_name"] === "string" ? body["full_name"].trim(): "";
+        const fullName = typeof body["full_name"] === "string" ? body["full_name"].trim() : "";
         const companyName =
-          typeof body["company_name"] === "string" ? body["company_name"].trim(): undefined;
+          typeof body["company_name"] === "string" ? body["company_name"].trim() : undefined;
         const companyDomain =
-          typeof body["company_domain"] === "string" ? body["company_domain"].trim(): undefined;
+          typeof body["company_domain"] === "string" ? body["company_domain"].trim() : undefined;
         const roleTitle =
-          typeof body["role_title"] === "string" ? body["role_title"].trim(): undefined;
+          typeof body["role_title"] === "string" ? body["role_title"].trim() : undefined;
         const personLocation =
-          typeof body["location"] === "string" ? body["location"].trim(): undefined;
+          typeof body["location"] === "string" ? body["location"].trim() : undefined;
         const organizationId =
-          typeof body["organization_id"] === "string" ? body["organization_id"]: undefined;
+          typeof body["organization_id"] === "string" ? body["organization_id"] : undefined;
 
         if (fullName.length < 2) {
           return json({ error: "A person's full name is required before Linki can search." }, 400);
@@ -83,13 +83,13 @@ export const Route = createFileRoute("/api/public/linki/lookup")({
         }
 
         const { data: memberships } = await supabase
-.from("organization_memberships")
-.select("organization_id, status")
-.eq("user_id", user.id);
+          .from("organization_memberships")
+          .select("organization_id, status")
+          .eq("user_id", user.id);
         const active = (memberships ?? []).filter((m) => (m["status"] ?? "active") === "active");
         const membership = organizationId
           ? active.find((m) => m["organization_id"] === organizationId)
-: active[0];
+          : active[0];
         if (!membership) {
           return json({ error: "Your account is not a member of this Trust Tai workspace." }, 403);
         }
@@ -97,10 +97,10 @@ export const Route = createFileRoute("/api/public/linki/lookup")({
         try {
           const candidates = await linkiFindPerson({
             fullName,
-...(companyName ? { companyName }: {}),
-...(companyDomain ? { companyDomain }: {}),
-...(roleTitle ? { roleTitle }: {}),
-...(personLocation ? { location: personLocation }: {}),
+            ...(companyName ? { companyName } : {}),
+            ...(companyDomain ? { companyDomain } : {}),
+            ...(roleTitle ? { roleTitle } : {}),
+            ...(personLocation ? { location: personLocation } : {}),
           });
           // Rank BEFORE display. Company/title/location/domain are evidence
           // here, never search tokens. Fail-closed: nobody clears the bar →
@@ -108,10 +108,10 @@ export const Route = createFileRoute("/api/public/linki/lookup")({
           const { ranked, noMatchReason } = rankCandidates(
             {
               fullName,
-...(companyName ? { companyName }: {}),
-...(companyDomain ? { companyDomain }: {}),
-...(roleTitle ? { roleTitle }: {}),
-...(personLocation ? { location: personLocation }: {}),
+              ...(companyName ? { companyName } : {}),
+              ...(companyDomain ? { companyDomain } : {}),
+              ...(roleTitle ? { roleTitle } : {}),
+              ...(personLocation ? { location: personLocation } : {}),
             },
             candidates,
           );
@@ -122,7 +122,7 @@ export const Route = createFileRoute("/api/public/linki/lookup")({
               error:
                 error instanceof Error
                   ? error.message
-: "LinkedIn route search failed. Nothing was changed.",
+                  : "LinkedIn route search failed. Nothing was changed.",
             },
             503,
           );

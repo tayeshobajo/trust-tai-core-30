@@ -53,7 +53,7 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
     metadata: {},
     createdAt: NOW,
     updatedAt: NOW,
-...overrides,
+    ...overrides,
   };
 }
 
@@ -69,7 +69,7 @@ function stage(overrides: Partial<RoadmapStage> = {}): RoadmapStage {
     evidence: [{ label: "Discovery call, 12 August", kind: "human" }],
     createdAt: NOW,
     updatedAt: NOW,
-...overrides,
+    ...overrides,
   };
 }
 
@@ -85,7 +85,7 @@ function decision(overrides: Partial<RoadmapDecision> = {}): RoadmapDecision {
     status: "open",
     createdAt: NOW,
     updatedAt: NOW,
-...overrides,
+    ...overrides,
   };
 }
 
@@ -151,9 +151,7 @@ describe("after a person resolves the decision", () => {
         decisions: [],
         stages: SEQUENCE,
       }).milestones,
-      decisions: [
-        decision({ stageId: "st-1", status: "approved", resolvedAt: LATER }),
-      ],
+      decisions: [decision({ stageId: "st-1", status: "approved", resolvedAt: LATER })],
       pointB: { tier: "decided" },
     });
     expect(progression).not.toBeNull();
@@ -180,7 +178,7 @@ describe("after a person resolves the decision", () => {
   it("never invents a dependency in the progression wording", () => {
     const progression = milestoneProgressionOf({
       milestones: readRoadmapCanon({ roadmap: roadmap(), decisions: [], stages: SEQUENCE })
-.milestones,
+        .milestones,
       decisions: [RESOLVED],
       pointB: { tier: "decided" },
     });
@@ -238,7 +236,7 @@ describe("edges", () => {
     const canon = readRoadmapCanon({
       roadmap: roadmap(),
       decisions: [RESOLVED],
-      stages: SEQUENCE.map((row) => ({...row, state: "live" as const, tier: "decided" as const })),
+      stages: SEQUENCE.map((row) => ({ ...row, state: "live" as const, tier: "decided" as const })),
     });
     expect(canon.milestoneAttention).toBeNull();
     /* Attention moves nowhere, and nothing is claimed complete by Conductor. */
@@ -249,9 +247,7 @@ describe("edges", () => {
   it("never reads another organisation's roadmap decisions", () => {
     const canon = readRoadmapCanon({
       roadmap: roadmap(),
-      decisions: [
-        {...RESOLVED, id: "dec-other", organizationId: "org-2", roadmapId: "rm-other" },
-      ],
+      decisions: [{ ...RESOLVED, id: "dec-other", organizationId: "org-2", roadmapId: "rm-other" }],
       stages: SEQUENCE,
     });
     expect(canon.milestoneProgression).toBeNull();
@@ -271,7 +267,7 @@ describe("authority is unchanged", () => {
 
   it("resolves nothing and moves nothing: canon is a pure read", () => {
     const decisions = [decision()];
-    const stages = SEQUENCE.map((row) => ({...row }));
+    const stages = SEQUENCE.map((row) => ({ ...row }));
     readRoadmapCanon({ roadmap: roadmap(), decisions, stages });
     expect(decisions[0]!.status).toBe("open");
     expect(stages.map((row) => `${row.position}:${row.state}`)).toEqual([

@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import type { KnowledgeItem, ProjectAsset, ProjectConnection, ThinkingSource } from "@/domain/project-intelligence";
+import type {
+  KnowledgeItem,
+  ProjectAsset,
+  ProjectConnection,
+  ThinkingSource,
+} from "@/domain/project-intelligence";
 import type { ProjectBlocker, ProjectDecision, WorkItem } from "@/domain/project-delivery";
 import type { ExecutionProject } from "@/domain/projects";
 
-import { buildProjectContextPacket, contextHealth, type ContextPacketInput } from "./context-packet";
+import {
+  buildProjectContextPacket,
+  contextHealth,
+  type ContextPacketInput,
+} from "./context-packet";
 import { projectSuggestions } from "./suggestions";
 
 const NOW = new Date("2026-03-10T09:00:00.000Z");
@@ -22,7 +31,9 @@ const project: ExecutionProject = {
   updatedAt: NOW.toISOString(),
 } as unknown as ExecutionProject;
 
-function knowledge(partial: Partial<KnowledgeItem> & Pick<KnowledgeItem, "section" | "body">): KnowledgeItem {
+function knowledge(
+  partial: Partial<KnowledgeItem> & Pick<KnowledgeItem, "section" | "body">,
+): KnowledgeItem {
   return {
     id: partial.body,
     organizationId: "org1",
@@ -65,7 +76,9 @@ describe("project context packet", () => {
             updatedAt: NOW.toISOString(),
           } as ProjectDecision,
         ],
-        knowledge: [knowledge({ section: "decision", body: "Two step checkout", origin: "thinking_room" })],
+        knowledge: [
+          knowledge({ section: "decision", body: "Two step checkout", origin: "thinking_room" }),
+        ],
       }),
     );
 
@@ -77,7 +90,11 @@ describe("project context packet", () => {
     const packet = buildProjectContextPacket(
       baseInput({
         knowledge: [
-          knowledge({ section: "constraint", body: "Must ship before April", reviewState: "needs_review" }),
+          knowledge({
+            section: "constraint",
+            body: "Must ship before April",
+            reviewState: "needs_review",
+          }),
           knowledge({ section: "constraint", body: "Accessibility AA" }),
         ],
       }),
@@ -154,7 +171,9 @@ describe("project context packet", () => {
 describe("context health", () => {
   it("is missing key context when nothing says what success is", () => {
     const packet = buildProjectContextPacket(
-      baseInput({ project: { ...project, pointB: "", ownerLabel: undefined } as unknown as ExecutionProject }),
+      baseInput({
+        project: { ...project, pointB: "", ownerLabel: undefined } as unknown as ExecutionProject,
+      }),
     );
     const health = contextHealth(packet);
 
@@ -175,7 +194,9 @@ describe("context health", () => {
     const packet = buildProjectContextPacket(
       baseInput({
         roadmap: { roadmapId: "r1", milestoneId: "m1", milestoneName: "Milestone 02" },
-        knowledge: [knowledge({ section: "decision", body: "Ship one page checkout", origin: "roadmap" })],
+        knowledge: [
+          knowledge({ section: "decision", body: "Ship one page checkout", origin: "roadmap" }),
+        ],
       }),
     );
 
@@ -197,9 +218,7 @@ describe("project suggestions", () => {
     }) as WorkItem;
 
   it("only suggests what a condition in the record justifies", () => {
-    const packet = buildProjectContextPacket(
-      baseInput({ roadmap: { roadmapId: "r1" } }),
-    );
+    const packet = buildProjectContextPacket(baseInput({ roadmap: { roadmapId: "r1" } }));
     const suggestions = projectSuggestions({ packet, work: [], assets: [] });
 
     expect(suggestions.map((s) => s.id)).toEqual(["plan-the-work"]);
@@ -234,7 +253,9 @@ describe("project suggestions", () => {
       },
     ];
     const packet = buildProjectContextPacket(baseInput({ assets, roadmap: { roadmapId: "r1" } }));
-    const ids = projectSuggestions({ packet, work: [work("Build QA pass")], assets }).map((s) => s.id);
+    const ids = projectSuggestions({ packet, work: [work("Build QA pass")], assets }).map(
+      (s) => s.id,
+    );
 
     expect(ids).toContain("review-approval-a");
   });

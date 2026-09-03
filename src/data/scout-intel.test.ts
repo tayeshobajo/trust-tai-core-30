@@ -143,7 +143,9 @@ describe("decision metrics", () => {
 
   it("never ranks a record that was never researched", () => {
     const metrics = computeDecisionMetrics({
-      candidate: candidate({ evaluation: evaluation({ scoreable: false, score: 0, light: "neutral" }) }),
+      candidate: candidate({
+        evaluation: evaluation({ scoreable: false, score: 0, light: "neutral" }),
+      }),
       intel: EMPTY_INTEL,
       people: [],
       now: NOW,
@@ -230,9 +232,7 @@ describe("person priority", () => {
   });
 
   it("names the gap when the best route is an unverified address", () => {
-    const plan = buildPersonPlan([
-      person({ email: "jane@acme.test", emailStatus: "found" }),
-    ]);
+    const plan = buildPersonPlan([person({ email: "jane@acme.test", emailStatus: "found" })]);
     expect(plan.gap).toContain("has not been verified");
   });
 
@@ -260,7 +260,9 @@ describe("account brief", () => {
     const brief = buildAccountBrief({ candidate: candidate(), intel: richIntel, plan });
     expect(brief.grounded).toBe(true);
     expect(brief.sections.map((section) => section.id)).toContain("why_now");
-    expect(brief.sections.find((section) => section.id === "evidence")?.sources.length).toBeGreaterThan(0);
+    expect(
+      brief.sections.find((section) => section.id === "evidence")?.sources.length,
+    ).toBeGreaterThan(0);
   });
 
   it("labels the suggested angle as an inference, never as a fact", () => {

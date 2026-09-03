@@ -26,7 +26,7 @@ function row(overrides: Partial<MessageRow>): MessageRow {
     occurred_at: "2026-08-22T00:00:00Z",
     attachments: null,
     provenance: null,
-...overrides,
+    ...overrides,
   };
 }
 

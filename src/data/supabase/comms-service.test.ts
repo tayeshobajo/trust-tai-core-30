@@ -93,7 +93,7 @@ function handoffDraft(overrides: Partial<HandoffDraft> = {}): HandoffDraft {
     blockers: [],
     ready: true,
     generatedAt: at,
-...overrides,
+    ...overrides,
   } as HandoffDraft;
 }
 

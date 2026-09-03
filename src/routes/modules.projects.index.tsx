@@ -25,10 +25,7 @@ import {
   type CreateProjectSeed,
 } from "@/components/tt/projects/index/create-modal";
 import { RoadmapHandoffs, type HandoffRow } from "@/components/tt/projects/index/handoff-list";
-import {
-  ProjectsEmptyState,
-  ProjectsHeader,
-} from "@/components/tt/projects/index/header";
+import { ProjectsEmptyState, ProjectsHeader } from "@/components/tt/projects/index/header";
 import { ProjectsGlanceRail, ProjectsSupportRail } from "@/components/tt/projects/index/rails";
 import { ProjectsToolbar } from "@/components/tt/projects/index/toolbar";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -63,7 +60,6 @@ import { scoutService } from "@/data/supabase/scout-service";
 import type { ExecutionProject, ProjectInput } from "@/domain/projects";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-
 const TITLE = "Projects · Approved work in motion · Trust Tai OS";
 const DESCRIPTION =
   "Every approved roadmap milestone in delivery: the company it serves, who carries it, what is blocked, and what is due next.";
@@ -84,7 +80,11 @@ export const Route = createFileRoute("/modules/projects/")({
 });
 
 function ProjectsRoute() {
-  return <WorkspaceGate appId="projects">{(identity) => <ProjectsRoom identity={identity} />}</WorkspaceGate>;
+  return (
+    <WorkspaceGate appId="projects">
+      {(identity) => <ProjectsRoom identity={identity} />}
+    </WorkspaceGate>
+  );
 }
 
 function ordinal(position: number): string {
@@ -118,7 +118,6 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
     userId: identity.userId,
     userLabel: identity.name,
   };
-
 
   const projectsQuery = useQuery({
     queryKey: ["projects", "list", identity.organizationId],
@@ -206,8 +205,7 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
       if (project.origin.milestoneId) started.set(project.origin.milestoneId, project.id);
     }
     return (approvedQuery.data ?? []).map((milestone) => {
-      const company =
-        sources.roadmapCompany[milestone.roadmapId] ?? "No company attached";
+      const company = sources.roadmapCompany[milestone.roadmapId] ?? "No company attached";
       const ready = readiness(milestone);
       const existing = started.get(milestone.id);
       return {
@@ -221,13 +219,7 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
   }, [approvedQuery.data, projectsQuery.data, sources]);
 
   const create = useMutation({
-    mutationFn: async ({
-      input,
-      extras,
-    }: {
-      input: ProjectInput;
-      extras: CreateProjectExtras;
-    }) => {
+    mutationFn: async ({ input, extras }: { input: ProjectInput; extras: CreateProjectExtras }) => {
       const project = await projectsService.start(input, context);
       // Everything after the promise is optional, so a failing extra must not
       // undo a project that already exists. Each one is attempted on its own.
@@ -322,7 +314,6 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const attention = useMemo(() => needsAttention(rows), [rows]);
   const tabbed = useMemo(() => rows.filter((row) => inTab(row, tab)), [rows, tab]);
   const visible = useMemo(() => filterProjectRows(tabbed, filters), [tabbed, filters]);
-
 
   const counts = useMemo(
     () =>
@@ -523,6 +514,5 @@ function ProjectsRoom({ identity }: { identity: WorkspaceIdentity }) {
         onCreate={(input, extras) => create.mutate({ input, extras })}
       />
     </AppShell>
-
   );
 }

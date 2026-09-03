@@ -111,7 +111,6 @@ export function canOpenCase(signal: PulseSignal): boolean {
   return Boolean(signal.patternRead) && PULSE_DECIDABLE_SEVERITIES.includes(signal.severity);
 }
 
-
 /* -------------------------------------------------------------- feedback */
 
 /**

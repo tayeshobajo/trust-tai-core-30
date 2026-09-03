@@ -30,7 +30,7 @@ const objective =
 
 function log(label: string, value?: unknown) {
   if (value === undefined) console.log(`\n=== ${label}`);
-  else console.log(`${label}: ${typeof value === "string" ? value: JSON.stringify(value)}`);
+  else console.log(`${label}: ${typeof value === "string" ? value : JSON.stringify(value)}`);
 }
 
 /* ------------------------------------------------------------ real session */
@@ -48,10 +48,10 @@ log("LIVE SESSION");
 log("user", sessionData.user.email ?? sessionData.user.id);
 
 const membership = await supabase
-.from("organization_memberships")
-.select("organization_id, role, status")
-.eq("status", "active")
-.maybeSingle();
+  .from("organization_memberships")
+  .select("organization_id, role, status")
+  .eq("status", "active")
+  .maybeSingle();
 if (membership.error || !membership.data) throw new Error("no active membership under RLS");
 const organizationId = String(membership.data["organization_id"]);
 log("organization", `${organizationId} (${membership.data["role"]})`);
@@ -65,13 +65,13 @@ const context: IntelContext = {
 /* ------------------------------------------------------------- real subject */
 
 const prospect = await supabase
-.from("prospects")
-.select("id, company_name, website_url, status, fit_score")
-.ilike("company_name", `%${companyQuery}%`)
-.maybeSingle();
+  .from("prospects")
+  .select("id, company_name, website_url, status, fit_score")
+  .ilike("company_name", `%${companyQuery}%`)
+  .maybeSingle();
 if (prospect.error || !prospect.data) throw new Error(`no live prospect matching ${companyQuery}`);
 const subjectLabel = String(prospect.data["company_name"]);
-const website = prospect.data["website_url"] ? String(prospect.data["website_url"]): undefined;
+const website = prospect.data["website_url"] ? String(prospect.data["website_url"]) : undefined;
 log("SUBJECT (live Scout row)");
 log("prospect", prospect.data);
 
@@ -88,12 +88,15 @@ log("RESEARCH (live web, persisted)");
 let result: Awaited<ReturnType<typeof collectResearch>> | null = null;
 async function collectResearch() {
   let out: any = null;
-  for await (const stage of researchSubject({
-    subjectLabel,
-    objective,
-...(website ? { website }: {}),
-    known: [],
-  }, offlineCaller)) {
+  for await (const stage of researchSubject(
+    {
+      subjectLabel,
+      objective,
+      ...(website ? { website } : {}),
+      known: [],
+    },
+    offlineCaller,
+  )) {
     console.log(`  [${stage.stage}] ${stage.message}`);
     if (stage.stage === "error") throw new Error(String(stage.message));
     if (stage.stage === "complete") out = stage.data;
@@ -122,7 +125,7 @@ const normalized = normalizeStrategy(result.strategy, {
   checkedAt: result.checkedAt,
 });
 let strategy = await roadmapIntel.saveStrategy(context, roadmapId, subjectLabel, {
-...normalized,
+  ...normalized,
   provider: result.provider,
   model: result.model,
   generatedAt: result.checkedAt,
@@ -132,14 +135,14 @@ log("central truth", strategy.centralTruth?.statement ?? "none");
 log(
   "tiers before approval",
   [strategy.centralTruth, strategy.pointB, strategy.pointC, strategy.leveragePoint]
-.filter(Boolean)
-.map((i) => `${(i as StrategyItem).key}=${(i as StrategyItem).tier}`),
+    .filter(Boolean)
+    .map((i) => `${(i as StrategyItem).key}=${(i as StrategyItem).tier}`),
 );
 
 // A person approves. This is the only path from Inferred to Decided.
 const approvable: string[] = [
-...strategy.pointA.map((i) => i.key),
-...strategy.anchorProof.map((i) => i.key),
+  ...strategy.pointA.map((i) => i.key),
+  ...strategy.anchorProof.map((i) => i.key),
   strategy.centralTruth?.key,
   strategy.pointB?.key,
   strategy.pointC?.key,
@@ -148,14 +151,20 @@ const approvable: string[] = [
 ].filter((k): k is string => Boolean(k));
 
 for (const key of approvable) {
-  strategy = await roadmapIntel.setStrategyApproval(context, strategy, key, "approved", subjectLabel);
+  strategy = await roadmapIntel.setStrategyApproval(
+    context,
+    strategy,
+    key,
+    "approved",
+    subjectLabel,
+  );
 }
 log("approved by a person", approvable);
 log(
   "tiers after approval",
   [strategy.centralTruth, strategy.pointB, strategy.pointC, strategy.leveragePoint]
-.filter(Boolean)
-.map((i) => `${(i as StrategyItem).key}=${(i as StrategyItem).tier}`),
+    .filter(Boolean)
+    .map((i) => `${(i as StrategyItem).key}=${(i as StrategyItem).tier}`),
 );
 log(
   "gaps left proposed",
@@ -169,24 +178,33 @@ const candidates = normalizeMilestones(result.milestones, {
   model: result.model,
   checkedAt: result.checkedAt,
 });
-let milestones = await roadmapIntel.replaceCandidates(
-  context,
-  roadmapId,
-  subjectLabel,
-  candidates,
-);
+let milestones = await roadmapIntel.replaceCandidates(context, roadmapId, subjectLabel, candidates);
 log("MILESTONES (persisted candidates)");
 for (const m of rankMilestones(candidates)) {
   console.log(`  #${m.recommendedSequence} [${m.priorityScore}] ${m.name} (${m.confidence})`);
 }
 
-const shortlist = [...milestones].sort((a, b) => a.recommendedSequence - b.recommendedSequence).slice(0, 3);
+const shortlist = [...milestones]
+  .sort((a, b) => a.recommendedSequence - b.recommendedSequence)
+  .slice(0, 3);
 for (const m of shortlist) {
-  const updated = await roadmapIntel.setMilestoneStatus(context, m, "approved", subjectLabel, "Live acceptance run");
-  milestones = milestones.map((x) => (x.id === updated.id ? updated: x));
+  const updated = await roadmapIntel.setMilestoneStatus(
+    context,
+    m,
+    "approved",
+    subjectLabel,
+    "Live acceptance run",
+  );
+  milestones = milestones.map((x) => (x.id === updated.id ? updated : x));
 }
-log("approved by a person", shortlist.map((m) => m.name));
-log("build order", buildOrder(milestones).map((m) => `${m.recommendedSequence}. ${m.name} [${m.status}]`));
+log(
+  "approved by a person",
+  shortlist.map((m) => m.name),
+);
+log(
+  "build order",
+  buildOrder(milestones).map((m) => `${m.recommendedSequence}. ${m.name} [${m.status}]`),
+);
 
 /* ------------------------------------------------------------------ studio */
 
@@ -202,13 +220,16 @@ log("STUDIO");
 log("packet (from stored rows)", packetSummary(packet));
 
 let composed: { title?: string; sections: ArtifactSection[]; rejected: any[] } | null = null;
-for await (const stage of composeStudioDocument({
-  kind: "full",
-  subjectLabel,
-  strategy: reloaded.strategy!,
-  milestones: reloaded.milestones,
-  research: reloaded.research,
-}, offlineCaller)) {
+for await (const stage of composeStudioDocument(
+  {
+    kind: "full",
+    subjectLabel,
+    strategy: reloaded.strategy!,
+    milestones: reloaded.milestones,
+    research: reloaded.research,
+  },
+  offlineCaller,
+)) {
   console.log(`  [${stage.stage}] ${stage.message}`);
   if (stage.stage === "error") throw new Error(JSON.stringify(stage.data));
   if (stage.stage === "complete") composed = stage.data as typeof composed;
@@ -230,7 +251,9 @@ log("artifact saved", `${artifact.id} v${artifact.version} humanEdited=${artifac
 /* --------------------------------------- human edit + protection + versions */
 
 const edited: ArtifactSection[] = artifact.sections.map((section, index) =>
-  index === 0 ? {...section, body: [...section.body, "Reviewed and signed off by Tai."] }: section,
+  index === 0
+    ? { ...section, body: [...section.body, "Reviewed and signed off by Tai."] }
+    : section,
 );
 artifact = await roadmapIntel.editArtifact(context, artifact, edited);
 log("hand edited", `v${artifact.version} humanEdited=${artifact.humanEdited}`);
@@ -270,15 +293,22 @@ for (const question of [
   `What is the central business truth for ${subjectLabel}, and what backs it?`,
   `What was ${subjectLabel}'s exact revenue last quarter?`,
 ]) {
-  const answer = await answerRoadmapQuestion({
-    question,
-    subjectLabel,
-    context: { research: stored.research, strategy: stored.strategy, milestones: stored.milestones },
-    research: false,
-  }, offlineCaller);
-  const saved = await roadmapIntel.saveAnswer(context, roadmapId, {...answer, question });
+  const answer = await answerRoadmapQuestion(
+    {
+      question,
+      subjectLabel,
+      context: {
+        research: stored.research,
+        strategy: stored.strategy,
+        milestones: stored.milestones,
+      },
+      research: false,
+    },
+    offlineCaller,
+  );
+  const saved = await roadmapIntel.saveAnswer(context, roadmapId, { ...answer, question });
   console.log(`\nQ: ${question}`);
-  console.log(JSON.stringify({...answer, savedId: saved.id }, null, 2));
+  console.log(JSON.stringify({ ...answer, savedId: saved.id }, null, 2));
 }
 
 log("DONE, every step above wrote through RLS as the signed-in person.");

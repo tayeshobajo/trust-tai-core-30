@@ -51,9 +51,9 @@ const claire = {
 } as unknown as Person;
 
 const intel: ScoutIntel = {
-...EMPTY_INTEL,
+  ...EMPTY_INTEL,
   collectedAt: "2026-08-19T00:00:00.000Z",
-  people: [{...claire, id: undefined }],
+  people: [{ ...claire, id: undefined }],
 } as unknown as ScoutIntel;
 
 const brief: RelationshipDevelopmentBrief = {
@@ -100,8 +100,7 @@ const candidate = {
 
 const EMAIL_BLOCKER: HandoffBlocker = {
   kind: "email_unverified",
-  message:
-    "claire@example.com is unverified, and no confirmed LinkedIn route stands in for it.",
+  message: "claire@example.com is unverified, and no confirmed LinkedIn route stands in for it.",
   personId: "person-1",
 };
 const COVERAGE_BLOCKER: HandoffBlocker = {
@@ -139,10 +138,10 @@ function renderCard(over: Record<string, unknown> = {}) {
     onOpenPeople: vi.fn(),
     onWatch: vi.fn(),
     onSeeResearch: vi.fn(),
-...over,
+    ...over,
   };
   const view = render(<RecommendedNextMoveCard {...props} />);
-  return {...view, props };
+  return { ...view, props };
 }
 
 /* ---------------------------------------------------------- A · one reason */
@@ -195,9 +194,7 @@ describe("the guided blocker flow", () => {
     expect(flow.textContent).toContain(COVERAGE_BLOCKER.message);
 
     fireEvent.click(screen.getByRole("button", { name: "Confirm this address" }));
-    expect(props.onConfirmEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "person-1" }),
-    );
+    expect(props.onConfirmEmail).toHaveBeenCalledWith(expect.objectContaining({ id: "person-1" }));
     fireEvent.click(screen.getByRole("button", { name: "Refresh the company read" }));
     expect(props.onRunResearch).toHaveBeenCalled();
 
@@ -206,7 +203,7 @@ describe("the guided blocker flow", () => {
   });
 
   it("counts what has cleared as blockers resolve", () => {
-    const verified = {...claire, emailStatus: "verified" } as unknown as Person;
+    const verified = { ...claire, emailStatus: "verified" } as unknown as Person;
     const oneLeft: MoveBlocker[] = buildMoveBlockers({
       candidate,
       people: [verified],
@@ -216,12 +213,7 @@ describe("the guided blocker flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Resolve 2 blockers" }));
     expect(screen.getByText("0 of 2 resolved")).toBeTruthy();
 
-    rerender(
-      <RecommendedNextMoveCard
-        {...props}
-        blockers={oneLeft}
-      />,
-    );
+    rerender(<RecommendedNextMoveCard {...props} blockers={oneLeft} />);
     expect(screen.getByText("1 of 2 resolved")).toBeTruthy();
     expect(screen.queryByText(EMAIL_BLOCKER.message)).toBeNull();
   });
@@ -270,7 +262,7 @@ describe("a ready handoff", () => {
 
 describe("prepare research feedback", () => {
   const researchMove = buildRecommendedNextMove({
-    candidate: {...candidate, development: undefined } as unknown as ProspectCandidate,
+    candidate: { ...candidate, development: undefined } as unknown as ProspectCandidate,
     people: [claire],
     now: new Date("2026-08-24T00:00:00.000Z"),
   });

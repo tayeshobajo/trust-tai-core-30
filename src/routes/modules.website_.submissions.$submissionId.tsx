@@ -63,15 +63,15 @@ function SubmissionRoute() {
 }
 
 function percent(value?: number | null): string {
-  return typeof value === "number" ? `${Math.round(value * 100)}%`: "Not stated";
+  return typeof value === "number" ? `${Math.round(value * 100)}%` : "Not stated";
 }
 
 function stated(value?: string | null): string {
-  return value && value.trim() ? value: "Not stated";
+  return value && value.trim() ? value : "Not stated";
 }
 
 function shortId(value: string): string {
-  return value.length > 14 ? `${value.slice(0, 8)}…${value.slice(-4)}`: value;
+  return value.length > 14 ? `${value.slice(0, 8)}…${value.slice(-4)}` : value;
 }
 
 function SubmissionDetail({ identity }: { identity: WorkspaceIdentity }) {
@@ -160,10 +160,13 @@ function SubmissionBody({
           </div>
 
           <h1 className="mt-3 font-display text-[34px] leading-tight text-foreground">
-            {submission.company.name || prospectName || submission.person.name || "An inbound founder"}
+            {submission.company.name ||
+              prospectName ||
+              submission.person.name ||
+              "An inbound founder"}
           </h1>
           <p className="mt-2 max-w-reading text-[15px] text-muted-foreground">
-            {submission.person.name ? `${submission.person.name} `: "Someone "}
+            {submission.person.name ? `${submission.person.name} ` : "Someone "}
             completed the roadmap conversation on TrustTai.com on{" "}
             {new Date(submission.submittedAt).toLocaleString(undefined, {
               month: "long",
@@ -172,16 +175,14 @@ function SubmissionBody({
               hour: "numeric",
               minute: "2-digit",
             })}
-. {submission.linkReason}
+            . {submission.linkReason}
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <MetaPill>
-              {linked
-                ? "Linked to a Scout company"
-: "Not linked to a Scout prospect yet"}
+              {linked ? "Linked to a Scout company" : "Not linked to a Scout prospect yet"}
             </MetaPill>
-            {submission.scoutStatus ? <MetaPill>Scout · {submission.scoutStatus}</MetaPill>: null}
+            {submission.scoutStatus ? <MetaPill>Scout · {submission.scoutStatus}</MetaPill> : null}
             {linked ? (
               <Link
                 to="/modules/scout/prospects/$prospectId"
@@ -192,7 +193,7 @@ function SubmissionBody({
                 Open in Scout
                 <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
-            ): null}
+            ) : null}
           </div>
         </div>
       </InboundWash>
@@ -214,7 +215,7 @@ function SubmissionBody({
                   </p>
                   {statements.length === 0 ? (
                     <p className="mt-1 text-[14px] text-muted-foreground">Not stated</p>
-                  ): (
+                  ) : (
                     <ul className="mt-2 space-y-1.5">
                       {statements.map((statement, index) => (
                         <li
@@ -242,7 +243,7 @@ function SubmissionBody({
               <p className="text-sm text-muted-foreground">
                 No answers were recorded for this submission.
               </p>
-            ): (
+            ) : (
               <ol className="space-y-4">
                 {submission.verbatim.map((turn, index) => (
                   <li
@@ -250,20 +251,19 @@ function SubmissionBody({
                     id={answerAnchorId(turn.questionId, index)}
                     className="scroll-mt-24 rounded-xl border border-border bg-card px-4 py-3"
                   >
-
                     <div className="flex flex-wrap items-center gap-2">
-                      <MetaPill>{turn.modality === "voice" ? "Spoken": "Typed"}</MetaPill>
-                      {turn.skipped ? <MetaPill>Skipped</MetaPill>: null}
+                      <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
+                      {turn.skipped ? <MetaPill>Skipped</MetaPill> : null}
                       {turn.answeredAt ? (
                         <MetaPill>{new Date(turn.answeredAt).toLocaleTimeString()}</MetaPill>
-                      ): null}
+                      ) : null}
                       <p className="text-[13px] text-muted-foreground">{turn.questionText}</p>
                     </div>
                     {turn.skipped || !turn.answerText.trim() ? (
                       <p className="mt-2 pl-3 text-[14px] italic text-muted-foreground">
                         No answer given.
                       </p>
-                    ): (
+                    ) : (
                       <p className="mt-2 border-l-2 border-royal/25 pl-3 text-[15px] text-foreground">
                         {turn.answerText}
                       </p>
@@ -277,7 +277,7 @@ function SubmissionBody({
                       >
                         Open the recording
                       </a>
-                    ): null}
+                    ) : null}
                   </li>
                 ))}
               </ol>
@@ -292,7 +292,9 @@ function SubmissionBody({
             <dl className="space-y-3">
               <Field
                 label="State"
-                value={linked ? "Linked": submission.linkState === "unlinked" ? "Unlinked": "Held"}
+                value={
+                  linked ? "Linked" : submission.linkState === "unlinked" ? "Unlinked" : "Held"
+                }
               />
               <Field label="Company in Scout" value={stated(prospectName)} />
               <Field label="Reason" value={stated(submission.linkReason)} />
@@ -308,7 +310,7 @@ function SubmissionBody({
                 Open in Scout
                 <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
-            ): (
+            ) : (
               <p className="mt-4 text-[13px] text-muted-foreground">
                 Not linked to a Scout prospect yet. Linking is a person's decision and happens in
                 Scout; nothing is connected from this page.
@@ -333,7 +335,7 @@ function SubmissionBody({
                 value={
                   typeof submission.attribution.pageViewsBeforeStart === "number"
                     ? String(submission.attribution.pageViewsBeforeStart)
-: "Not stated"
+                    : "Not stated"
                 }
               />
               <Field label="Device" value={stated(submission.attribution.device)} />
@@ -343,7 +345,7 @@ function SubmissionBody({
                 value={
                   submission.attribution.sessionId
                     ? shortId(submission.attribution.sessionId)
-: "Not stated"
+                    : "Not stated"
                 }
               />
               <Field label="Submission" value={shortId(submission.submissionId)} />
@@ -352,9 +354,9 @@ function SubmissionBody({
                 value={
                   submission.signals.authorizesResearch === true
                     ? "Given"
-: submission.signals.authorizesResearch === false
+                    : submission.signals.authorizesResearch === false
                       ? "Withheld"
-: "Not asked"
+                      : "Not asked"
                 }
               />
               <Field
@@ -362,9 +364,9 @@ function SubmissionBody({
                 value={
                   submission.consent.marketingOptIn === true
                     ? "Given"
-: submission.consent.marketingOptIn === false
+                    : submission.consent.marketingOptIn === false
                       ? "Declined"
-: "Not asked"
+                      : "Not asked"
                 }
               />
               <Field label="Privacy version" value={stated(submission.consent.privacyVersion)} />
@@ -394,10 +396,7 @@ function SubmissionBody({
             />
             <dl className="space-y-3">
               <Field label="Frame" value={stated(submission.signals.frame)} />
-              <Field
-                label="Frame confidence"
-                value={percent(submission.signals.frameConfidence)}
-              />
+              <Field label="Frame confidence" value={percent(submission.signals.frameConfidence)} />
               <Field
                 label="Objective coverage"
                 value={percent(submission.signals.objectiveCoverage)}

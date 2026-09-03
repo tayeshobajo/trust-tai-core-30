@@ -81,7 +81,9 @@ export function RoutedWorkStep({
             </ul>
           </div>
           <label className="block space-y-1">
-            <span className="text-[13px] text-[var(--tt-ink-muted)]">Why is it being taken back?</span>
+            <span className="text-[13px] text-[var(--tt-ink-muted)]">
+              Why is it being taken back?
+            </span>
             <textarea
               value={because}
               onChange={(event) => setBecause(event.target.value)}
@@ -98,8 +100,8 @@ export function RoutedWorkStep({
           </TTButton>
           {canPropose ? null : (
             <p className="text-[13px] text-[var(--tt-ink-muted)]">
-              Your role can read Projects but not withdraw work it routed, so this step is not
-              yours to propose.
+              Your role can read Projects but not withdraw work it routed, so this step is not yours
+              to propose.
             </p>
           )}
         </div>

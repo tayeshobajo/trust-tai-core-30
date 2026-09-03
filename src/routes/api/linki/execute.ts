@@ -23,7 +23,7 @@ import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backen
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
-  return header.startsWith("Bearer ") ? header.slice(7).trim() || null: null;
+  return header.startsWith("Bearer ") ? header.slice(7).trim() || null : null;
 }
 
 function clientFor(token: string): SupabaseClient {
@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/linki/execute")({
         } catch {
           body = {};
         }
-        const actionId = typeof body["action_id"] === "string" ? body["action_id"].trim(): "";
+        const actionId = typeof body["action_id"] === "string" ? body["action_id"].trim() : "";
         if (!actionId) {
           return json({ error: "action_id is required." }, 400);
         }
@@ -74,9 +74,9 @@ export const Route = createFileRoute("/api/linki/execute")({
 
         // Active workspace membership, same gate as every governed route.
         const { data: memberships } = await supabase
-.from("organization_memberships")
-.select("organization_id, status")
-.eq("user_id", user.id);
+          .from("organization_memberships")
+          .select("organization_id, status")
+          .eq("user_id", user.id);
         const active = (memberships ?? []).filter((m) => (m["status"] ?? "active") === "active");
         if (active.length === 0) {
           return json({ error: "Your account is not a member of this Trust Tai workspace." }, 403);
@@ -85,10 +85,10 @@ export const Route = createFileRoute("/api/linki/execute")({
         // Resolve the action's organization, then require the caller to be a
         // member of THAT organization (not just any).
         const { data: actionLookup, error: actionError } = await supabase
-.from("approved_linkedin_actions")
-.select("id, organization_id")
-.eq("id", actionId)
-.maybeSingle();
+          .from("approved_linkedin_actions")
+          .select("id, organization_id")
+          .eq("id", actionId)
+          .maybeSingle();
         if (actionError || !actionLookup) {
           return json({ error: "That LinkedIn action does not exist." }, 404);
         }
@@ -112,7 +112,10 @@ export const Route = createFileRoute("/api/linki/execute")({
           });
         } catch (error) {
           if (error instanceof LinkiActionError) {
-            return json({ error: error.message, code: error.code }, linkiActionErrorStatus(error.code));
+            return json(
+              { error: error.message, code: error.code },
+              linkiActionErrorStatus(error.code),
+            );
           }
           return json({ error: "Execution failed. Nothing was sent." }, 502);
         }

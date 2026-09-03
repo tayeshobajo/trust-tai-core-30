@@ -153,12 +153,7 @@ export function isApproved(item: StrategyItem | null | undefined): boolean {
 
 /* --------------------------------------------------------------- milestones */
 
-export type MilestoneStatus =
-  | "candidate"
-  | "shortlisted"
-  | "approved"
-  | "rejected"
-  | "deferred";
+export type MilestoneStatus = "candidate" | "shortlisted" | "approved" | "rejected" | "deferred";
 
 export const MILESTONE_STATUSES: MilestoneStatus[] = [
   "candidate",
@@ -265,16 +260,10 @@ export interface RoadmapArtifact {
   updatedAt: ISODateTime;
 }
 
-
 /* -------------------------------------------------------------- walkthrough */
 
 export type WalkthroughEntryKind =
-  | "note"
-  | "approval"
-  | "rejection"
-  | "change"
-  | "question"
-  | "next_action";
+  "note" | "approval" | "rejection" | "change" | "question" | "next_action";
 
 export const WALKTHROUGH_KIND_LABEL: Record<WalkthroughEntryKind, string> = {
   note: "Note",

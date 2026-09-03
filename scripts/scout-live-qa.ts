@@ -54,7 +54,9 @@ const response = await fetch(selected.endpoint, {
 });
 
 if (!response.ok || !response.body) {
-  console.error(`FAIL: provider returned ${response.status}: ${(await response.text()).slice(0, 800)}`);
+  console.error(
+    `FAIL: provider returned ${response.status}: ${(await response.text()).slice(0, 800)}`,
+  );
   process.exit(1);
 }
 
@@ -96,7 +98,9 @@ console.log(`web_search tool invoked in run: ${sawWebSearchCall}`);
 let candidates: RawDiscoveryCandidate[] = [];
 try {
   const parsed = JSON.parse(raw) as { candidates?: unknown };
-  candidates = Array.isArray(parsed.candidates) ? (parsed.candidates as RawDiscoveryCandidate[]): [];
+  candidates = Array.isArray(parsed.candidates)
+    ? (parsed.candidates as RawDiscoveryCandidate[])
+    : [];
 } catch {
   console.error(`FAIL: structured output did not parse. First 400 chars: ${raw.slice(0, 400)}`);
   process.exit(1);
@@ -128,4 +132,4 @@ const everyHasDomainAndSource = accepted.every(
 const uniqueDomains = new Set(accepted.map((a) => a.domain)).size === accepted.length;
 console.log(`every accepted has root domain + source url: ${everyHasDomainAndSource}`);
 console.log(`root domains unique: ${uniqueDomains}`);
-console.log(accepted.length > 0 && everyHasDomainAndSource && uniqueDomains ? "PASS": "FAIL");
+console.log(accepted.length > 0 && everyHasDomainAndSource && uniqueDomains ? "PASS" : "FAIL");

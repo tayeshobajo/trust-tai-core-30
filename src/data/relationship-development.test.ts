@@ -64,12 +64,12 @@ const candidate = (over: {
       score: over.score ?? 80,
     },
     intel: over.intel ?? EMPTY_INTEL,
-...(over.development ? { development: over.development }: {}),
+    ...(over.development ? { development: over.development } : {}),
     lastCheckedAt: over.lastCheckedAt ?? "2026-08-01T00:00:00.000Z",
   }) as unknown as ProspectCandidate;
 
 const intelWithPerson: ScoutIntel = {
-...EMPTY_INTEL,
+  ...EMPTY_INTEL,
   people: [
     {
       fullName: "Jordan Meyer",
@@ -82,7 +82,7 @@ const intelWithPerson: ScoutIntel = {
 } as unknown as ScoutIntel;
 
 const inboundEmail = (bodyText: string, over: Record<string, unknown> = {}) =>
-  ({ direction: "inbound", subject: "", bodyText,...over }) as unknown as Pick<
+  ({ direction: "inbound", subject: "", bodyText, ...over }) as unknown as Pick<
     StoredMailboxMessage,
     "direction" | "subject" | "snippet" | "bodyText" | "bodyHtml"
   >;
@@ -93,12 +93,16 @@ const outboundEmail = (bodyText: string) =>
     "direction" | "subject" | "snippet" | "bodyText" | "bodyHtml"
   >;
 
-const touch = (direction: "inbound" | "outbound", summary: string, provenance?: Record<string, unknown>) =>
+const touch = (
+  direction: "inbound" | "outbound",
+  summary: string,
+  provenance?: Record<string, unknown>,
+) =>
   ({
     direction,
     summary,
     body: undefined,
-...(provenance ? { provenance }: {}),
+    ...(provenance ? { provenance } : {}),
   }) as unknown as Pick<Touch, "direction" | "summary" | "body" | "provenance">;
 
 /* --------------------------- issue 1, the actionable queue is people */
@@ -116,7 +120,7 @@ describe("worth-knowing membership", () => {
 
   it("keeps an unconfirmed lookalike out of the actionable queue", () => {
     const intel: ScoutIntel = {
-...EMPTY_INTEL,
+      ...EMPTY_INTEL,
       people: [
         {
           fullName: "Maybe Person",
@@ -200,7 +204,7 @@ describe("relationship preparation planning", () => {
 
   it("refreshes a stale brief", () => {
     const stale: RelationshipResearchMarker = {
-...prepared,
+      ...prepared,
       preparedAt: new Date(Date.now() - 45 * 86_400_000).toISOString(),
     };
     const plan = planRelationshipPreparation({
@@ -233,9 +237,7 @@ describe("relationship preparation planning", () => {
 describe("roadmap recognition consumes only counterparty words", () => {
   it("detects a founder bottleneck they stated in their own inbound email", () => {
     const evidence = counterpartyEvidence({
-      messages: [
-        inboundEmail("Everything still runs through me and I'm becoming the bottleneck."),
-      ],
+      messages: [inboundEmail("Everything still runs through me and I'm becoming the bottleneck.")],
     });
     const signal = detectRoadmapOpportunity(evidence);
     expect(signal.emerging).toBe(true);
@@ -277,9 +279,9 @@ describe("roadmap recognition consumes only counterparty words", () => {
       "My read: everything runs through the founder and she is the bottleneck.",
       { app_key: "comms", actor: "u1" },
     );
-    expect(
-      detectRoadmapOpportunity(counterpartyEvidence({ touches: [hypothesis] })).emerging,
-    ).toBe(false);
+    expect(detectRoadmapOpportunity(counterpartyEvidence({ touches: [hypothesis] })).emerging).toBe(
+      false,
+    );
 
     const quoted = touch(
       "outbound",
@@ -308,9 +310,7 @@ describe("roadmap recognition consumes only counterparty words", () => {
 
   it("generic warmth and sales vocabulary never trigger", () => {
     const evidence = counterpartyEvidence({
-      messages: [
-        inboundEmail("Great to stay connected, excited about our growth and next steps!"),
-      ],
+      messages: [inboundEmail("Great to stay connected, excited about our growth and next steps!")],
     });
     expect(detectRoadmapOpportunity(evidence).emerging).toBe(false);
   });

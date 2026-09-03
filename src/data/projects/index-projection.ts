@@ -24,12 +24,7 @@ import {
 
 /** The status language the room speaks. Internal execution states map into it. */
 export type SurfaceStatus =
-  | "ready"
-  | "in_progress"
-  | "blocked"
-  | "waiting"
-  | "in_review"
-  | "complete";
+  "ready" | "in_progress" | "blocked" | "waiting" | "in_review" | "complete";
 
 export const SURFACE_STATUS_LABEL: Record<SurfaceStatus, string> = {
   ready: "Ready",
@@ -322,7 +317,6 @@ export const EMPTY_PROJECT_FILTERS: ProjectFilters = {
   due: "all",
 };
 
-
 function matchesDue(row: ProjectRowModel, due: ProjectFilters["due"]): boolean {
   if (due === "all") return true;
   if (due === "none") return row.dueInDays === null;
@@ -371,9 +365,7 @@ export function ownerOptions(rows: ProjectRowModel[]): string[] {
 export function milestoneOptions(rows: ProjectRowModel[]): string[] {
   return [
     ...new Set(
-      rows
-        .map((row) => row.lineage.milestoneName ?? "")
-        .filter((name) => name.trim().length > 0),
+      rows.map((row) => row.lineage.milestoneName ?? "").filter((name) => name.trim().length > 0),
     ),
   ].sort((a, b) => a.localeCompare(b));
 }
@@ -384,7 +376,6 @@ export function statusOptions(rows: ProjectRowModel[]): SurfaceStatus[] {
     present.has(status),
   );
 }
-
 
 /* --------------------------------------------------------------- rail */
 

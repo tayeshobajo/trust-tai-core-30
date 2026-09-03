@@ -103,10 +103,10 @@ function parseAskDecision(value: Record<string, unknown>): AskDecision {
   if (moveRaw && typeof moveRaw === "object") {
     const move = moveRaw as Record<string, unknown>;
     const what = text(move["what"]);
-    return {...noAsk, shouldAsk: move["ask"] === true && Boolean(what), what };
+    return { ...noAsk, shouldAsk: move["ask"] === true && Boolean(what), what };
   }
   if (typeof moveRaw === "string" && moveRaw.trim()) {
-    return {...noAsk, shouldAsk: true, what: moveRaw.trim() };
+    return { ...noAsk, shouldAsk: true, what: moveRaw.trim() };
   }
   return noAsk;
 }
@@ -152,7 +152,7 @@ export function writeCommunicationJudgment(
   rationale: Record<string, unknown> | null | undefined,
   judgment: CommunicationJudgment,
 ): Record<string, unknown> {
-  return {...(rationale ?? {}), [JUDGMENT_KEY]: judgment };
+  return { ...(rationale ?? {}), [JUDGMENT_KEY]: judgment };
 }
 
 /** The judgment a draft was prepared from, when one is on record. */
@@ -169,24 +169,24 @@ export function readCommunicationJudgment(
  */
 export function judgmentSummaryLines(judgment: CommunicationJudgment): string[] {
   const lines = [
-    judgment.whyNow ? `Why now: ${judgment.whyNow}`: "",
-    judgment.latestHumanSignal ? `What I noticed: ${judgment.latestHumanSignal}`: "",
+    judgment.whyNow ? `Why now: ${judgment.whyNow}` : "",
+    judgment.latestHumanSignal ? `What I noticed: ${judgment.latestHumanSignal}` : "",
     judgment.whatThisSaysAboutThem
       ? `What it says about them: ${judgment.whatThisSaysAboutThem}`
-: "",
-    judgment.threadToBuildOn ? `What to build on: ${judgment.threadToBuildOn}`: "",
+      : "",
+    judgment.threadToBuildOn ? `What to build on: ${judgment.threadToBuildOn}` : "",
   ].filter(Boolean);
   if (judgment.askDecision.shouldAsk) {
     lines.push(
       judgment.askDecision.whyNatural
         ? `Ask: ${judgment.askDecision.what} (${judgment.askDecision.whyNatural})`
-: `Ask: ${judgment.askDecision.what}`,
+        : `Ask: ${judgment.askDecision.what}`,
     );
   } else {
     lines.push(
       judgment.askDecision.whyNatural
         ? `No ask: ${judgment.askDecision.whyNatural}`
-: "No ask needed.",
+        : "No ask needed.",
     );
   }
   return lines.slice(0, 5);
@@ -307,7 +307,7 @@ export interface DraftGroundingFacts {
 }
 
 function plural(count: number, singular: string): string {
-  return count === 1 ? `${count} ${singular}`: `${count} ${singular}s`;
+  return count === 1 ? `${count} ${singular}` : `${count} ${singular}s`;
 }
 
 export function summarizeDraftGrounding(facts: DraftGroundingFacts): DraftGroundingSummary {
@@ -339,7 +339,11 @@ export function summarizeDraftGrounding(facts: DraftGroundingFacts): DraftGround
      wrote is adequate grounding by itself. Proactive notes earn their level
      from supporting signals alone. */
   const level: GroundingLevel =
-    basis.length >= 4 ? "strong": basis.length >= 3 || facts.kind === "reply" ? "grounded": "thin";
+    basis.length >= 4
+      ? "strong"
+      : basis.length >= 3 || facts.kind === "reply"
+        ? "grounded"
+        : "thin";
   return { kind: facts.kind, level, basis, wouldStrengthen };
 }
 
@@ -350,8 +354,8 @@ export function writeDraftGrounding(
   rationale: Record<string, unknown> | null | undefined,
   grounding: DraftGroundingSummary | null | undefined,
 ): Record<string, unknown> {
-  if (!grounding) return {...(rationale ?? {}) };
-  return {...(rationale ?? {}), [GROUNDING_KEY]: grounding };
+  if (!grounding) return { ...(rationale ?? {}) };
+  return { ...(rationale ?? {}), [GROUNDING_KEY]: grounding };
 }
 
 /** The grounding summary a draft was prepared with, when one is on record. */
@@ -363,9 +367,9 @@ export function readDraftGrounding(
   const value = raw as Record<string, unknown>;
   const kindRaw = value["kind"];
   const levelRaw = value["level"];
-  const kind = kindRaw === "reply" || kindRaw === "proactive" ? kindRaw: null;
+  const kind = kindRaw === "reply" || kindRaw === "proactive" ? kindRaw : null;
   const level =
-    levelRaw === "strong" || levelRaw === "grounded" || levelRaw === "thin" ? levelRaw: null;
+    levelRaw === "strong" || levelRaw === "grounded" || levelRaw === "thin" ? levelRaw : null;
   const basis = stringList(value["basis"]);
   if (!kind || !level || basis.length === 0) return null;
   return { kind, level, basis, wouldStrengthen: stringList(value["wouldStrengthen"]) };
@@ -381,12 +385,13 @@ export function readDraftGrounding(
  * is stripped so no salutation can ever carry a trailing comma into prose.
  */
 export function salutationName(fullName: string): string {
-  const clean = fullName.trim().replace(/,+\s*$/, "").trim();
+  const clean = fullName
+    .trim()
+    .replace(/,+\s*$/, "")
+    .trim();
   if (!clean) return "";
   // Surname-first format: everything after the first comma is the given name.
-  const given = clean.includes(",")
-    ? clean.slice(clean.indexOf(",") + 1).trim()
-: clean;
+  const given = clean.includes(",") ? clean.slice(clean.indexOf(",") + 1).trim() : clean;
   const token = given.split(/\s+/)[0] ?? "";
   return token.replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}'-]+$/gu, "");
 }
@@ -431,13 +436,13 @@ export function threadContextForJudgment(
   messages: ThreadSourceMessage[],
   limit = THREAD_ENTRY_LIMIT,
 ): ThreadJudgmentEntry[] {
-  const ordered = [...messages].sort((a, b) => (a.occurredAt < b.occurredAt ? -1: 1));
+  const ordered = [...messages].sort((a, b) => (a.occurredAt < b.occurredAt ? -1 : 1));
   const recent = ordered.slice(-Math.max(1, limit));
   const lastInbound = recent.map((m) => m.direction).lastIndexOf("inbound");
   const lastOutbound = recent.map((m) => m.direction).lastIndexOf("outbound");
   return recent.map((message, index) => ({
     direction: message.direction,
-...(message.subject?.trim() ? { subject: message.subject.trim() }: {}),
+    ...(message.subject?.trim() ? { subject: message.subject.trim() } : {}),
     text: trimMessageText(message.bodyText ?? message.snippet ?? ""),
     occurredAt: message.occurredAt,
     latestForSide: index === lastInbound || index === lastOutbound,

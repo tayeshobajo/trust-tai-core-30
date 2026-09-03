@@ -55,7 +55,11 @@ export function inboxEntries(
 ): InboxEntry[] {
   return relationships.map((relationship) => ({
     relationship,
-    health: deriveConversationHealth(relationship, touchesByRelationship[relationship.id] ?? [], now),
+    health: deriveConversationHealth(
+      relationship,
+      touchesByRelationship[relationship.id] ?? [],
+      now,
+    ),
   }));
 }
 
@@ -65,7 +69,7 @@ export function inboxEntries(
  */
 export function segmentViewOf(entry: InboxEntry): "clients" | "nurture" | null {
   if (entry.relationship.stage === "archived") return null;
-  return relationshipSegment(entry.relationship) === "client" ? "clients": "nurture";
+  return relationshipSegment(entry.relationship) === "client" ? "clients" : "nurture";
 }
 
 /**
@@ -102,9 +106,7 @@ export function tabCounts(entries: InboxEntry[], now: Date = new Date()): Record
   return counts;
 }
 
-export function healthCounts(
-  entries: InboxEntry[],
-): Record<ConversationHealthStatus, number> {
+export function healthCounts(entries: InboxEntry[]): Record<ConversationHealthStatus, number> {
   const counts: Record<ConversationHealthStatus, number> = {
     healthy: 0,
     needs_attention: 0,
@@ -130,12 +132,8 @@ export function sortEntries(entries: InboxEntry[]): InboxEntry[] {
   return [...entries].sort((a, b) => {
     const weight = STATUS_WEIGHT[a.health.status] - STATUS_WEIGHT[b.health.status];
     if (weight !== 0) return weight;
-    const at = new Date(
-      a.health.lastActivityAt ?? a.relationship.createdAt,
-    ).getTime();
-    const bt = new Date(
-      b.health.lastActivityAt ?? b.relationship.createdAt,
-    ).getTime();
+    const at = new Date(a.health.lastActivityAt ?? a.relationship.createdAt).getTime();
+    const bt = new Date(b.health.lastActivityAt ?? b.relationship.createdAt).getTime();
     return at - bt;
   });
 }
@@ -174,8 +172,7 @@ export function inboxView(
   const sorted = sortEntries(visible);
   return {
     priority: sorted.filter(
-      (entry) =>
-        entry.health.status === "at_risk" || entry.health.status === "needs_attention",
+      (entry) => entry.health.status === "at_risk" || entry.health.status === "needs_attention",
     ),
     others: sorted.filter(
       (entry) => entry.health.status !== "at_risk" && entry.health.status !== "needs_attention",
@@ -199,7 +196,7 @@ export const RELATIONSHIPS_PER_PAGE = 25;
  * then is the rendered list sliced. Priority rows lead, exactly as sorted.
  */
 export function inboxPage(view: InboxView, page: number): PageView<InboxEntry> {
-  return paginate([...view.priority,...view.others], page, RELATIONSHIPS_PER_PAGE);
+  return paginate([...view.priority, ...view.others], page, RELATIONSHIPS_PER_PAGE);
 }
 
 /**

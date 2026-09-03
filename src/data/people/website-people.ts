@@ -26,7 +26,7 @@ function asArray(value: unknown): unknown[] {
   return [];
 }
 
-function readString(source: Record<string, unknown>,...keys: string[]): string | undefined {
+function readString(source: Record<string, unknown>, ...keys: string[]): string | undefined {
   for (const key of keys) {
     const value = source[key];
     if (typeof value === "string" && value.trim().length > 0) return value.trim();
@@ -56,15 +56,15 @@ function peopleFromFacts(facts: Record<string, unknown>): PersonDraft[] {
       const email = readString(record, "email");
       drafts.push({
         fullName,
-...(roleTitle ? { roleTitle }: {}),
+        ...(roleTitle ? { roleTitle } : {}),
         seniority: guessSeniority(roleTitle),
-...(email ? { email, emailStatus: "found" as const }: {}),
-...(readString(record, "linkedin", "linkedin_url")
+        ...(email ? { email, emailStatus: "found" as const } : {}),
+        ...(readString(record, "linkedin", "linkedin_url")
           ? { linkedinUrl: readString(record, "linkedin", "linkedin_url")! }
-: {}),
-...(readString(record, "source_url", "url")
+          : {}),
+        ...(readString(record, "source_url", "url")
           ? { sourceUrl: readString(record, "source_url", "url")! }
-: {}),
+          : {}),
         confidence: "observed",
       });
     }
@@ -76,9 +76,9 @@ function peopleFromFacts(facts: Record<string, unknown>): PersonDraft[] {
 /** Published business addresses. Found, never verified, nobody tested them. */
 function emailsFromText(input: PeopleDiscoveryInput): PersonDraft[] {
   const haystack = [
-...(input.statements ?? []),
-...Object.values(input.facts ?? {}).map((value) =>
-      typeof value === "string" ? value: JSON.stringify(value ?? ""),
+    ...(input.statements ?? []),
+    ...Object.values(input.facts ?? {}).map((value) =>
+      typeof value === "string" ? value : JSON.stringify(value ?? ""),
     ),
   ].join(" ");
 
@@ -87,15 +87,14 @@ function emailsFromText(input: PeopleDiscoveryInput): PersonDraft[] {
 
   for (const email of found) {
     const local = email.split("@")[0] ?? "";
-    const generic = /^(info|hello|contact|admin|support|sales|office|team|enquiries|inquiries)$/i.test(
-      local,
-    );
+    const generic =
+      /^(info|hello|contact|admin|support|sales|office|team|enquiries|inquiries)$/i.test(local);
     if (generic) continue;
     const guessName = local
-.split(/[._-]+/)
-.filter(Boolean)
-.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-.join(" ");
+      .split(/[._-]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
     if (guessName.length < 3) continue;
     drafts.push({
       fullName: guessName,
@@ -114,9 +113,7 @@ function emailsFromText(input: PeopleDiscoveryInput): PersonDraft[] {
 function rolesFromStatements(input: PeopleDiscoveryInput): PersonDraft[] {
   const drafts: PersonDraft[] = [];
   for (const statement of input.statements ?? []) {
-    const match = statement.match(
-      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*[,–, -]\s*([^.,;]{3,60})/,
-    );
+    const match = statement.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*[,–, -]\s*([^.,;]{3,60})/);
     if (!match) continue;
     const [, fullName, roleTitle] = match;
     if (!fullName || !roleTitle || !ROLE_HINT.test(roleTitle)) continue;
@@ -146,9 +143,9 @@ export const websitePeopleProvider: PeopleProvider = {
 
   async discover(input) {
     const drafts = [
-...peopleFromFacts(input.facts ?? {}),
-...rolesFromStatements(input),
-...emailsFromText(input),
+      ...peopleFromFacts(input.facts ?? {}),
+      ...rolesFromStatements(input),
+      ...emailsFromText(input),
     ];
 
     // Collapse repeats by name, keeping the richest record.
@@ -163,12 +160,11 @@ export const websitePeopleProvider: PeopleProvider = {
       const roleTitle = current.roleTitle ?? draft.roleTitle;
       const email = current.email ?? draft.email;
       byName.set(key, {
-...current,
-...draft,
-...(roleTitle ? { roleTitle }: {}),
-...(email ? { email }: {}),
+        ...current,
+        ...draft,
+        ...(roleTitle ? { roleTitle } : {}),
+        ...(email ? { email } : {}),
       });
-
     }
 
     return [...byName.values()];

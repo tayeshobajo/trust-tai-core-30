@@ -67,7 +67,6 @@ export function PulseSignalRow({
   const [decision, setDecision] = useState("");
   const decidable = Boolean(onDecide) && canOpenCase(signal);
 
-
   return (
     <article className="border-t border-border px-5 py-4 first:border-t-0">
       <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] lg:items-start lg:gap-4">

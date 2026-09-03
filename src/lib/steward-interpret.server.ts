@@ -58,7 +58,6 @@ const LAWS = [
   "normalized_meaning is one concise operational sentence in plain English that a reader can act on without reading the transcript. Never copy raw speech.",
 ].join(" ");
 
-
 function instructions(): string {
   return [
     "You are Steward, reading one real meeting for what actually happened, and you return json only.",

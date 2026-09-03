@@ -17,11 +17,7 @@ import type { TruthTier } from "./signals";
 
 /** The only five human states v1 will resolve into. */
 export type JudgmentState =
-  | "needs_you"
-  | "waiting"
-  | "newly_unblocked"
-  | "promise_at_risk"
-  | "nothing_needs_you";
+  "needs_you" | "waiting" | "newly_unblocked" | "promise_at_risk" | "nothing_needs_you";
 
 export const JUDGMENT_STATE_LABEL: Record<JudgmentState, string> = {
   needs_you: "Needs you",

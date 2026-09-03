@@ -207,7 +207,6 @@ export function createScoutSource(activity: ActivityStream): ScoutProvider {
       );
     },
 
-
     async setStatus(id, status, context) {
       const entry = PREVIEW_CANDIDATES.find((c) => c.prospect.id === id);
       if (!entry) return null;

@@ -60,7 +60,11 @@ export function AppArtwork({
           loaded ? "opacity-0" : "opacity-70",
         )}
       >
-        <AppMotifArt motif={theme.motif} tint={theme.tint} {...(motifClassName ? { className: motifClassName } : {})} />
+        <AppMotifArt
+          motif={theme.motif}
+          tint={theme.tint}
+          {...(motifClassName ? { className: motifClassName } : {})}
+        />
       </div>
 
       {image && !failed ? (

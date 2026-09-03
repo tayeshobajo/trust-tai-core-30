@@ -46,13 +46,23 @@ vi.mock("@/data/supabase/scout-service", () => ({
 }));
 
 vi.mock("@/data/supabase/comms-service", () => ({
-  commsService: { listDrafts: async () => [], saveDraft: vi.fn(), list: async () => [], send: vi.fn() },
+  commsService: {
+    listDrafts: async () => [],
+    saveDraft: vi.fn(),
+    list: async () => [],
+    send: vi.fn(),
+  },
 }));
 vi.mock("@/data/supabase/projects-service", () => ({
   projectsService: { get: async () => null, update: vi.fn(), routeWork: vi.fn() },
 }));
 vi.mock("@/data/supabase/roadmap-service", () => ({
-  roadmapService: { create: vi.fn(), addDecision: vi.fn(), detail: vi.fn(), resolveDecision: vi.fn() },
+  roadmapService: {
+    create: vi.fn(),
+    addDecision: vi.fn(),
+    detail: vi.fn(),
+    resolveDecision: vi.fn(),
+  },
 }));
 
 /* ------------------------------------------------------- governance store */
@@ -109,9 +119,8 @@ const { runObservationPass, observableActions } = await import("./outcome-servic
 const { relevantLearning } = await import("./learning");
 const { buildExecutionRead } = await import("@/data/intelligence/conductor/execution-read");
 const { answerQuestion } = await import("@/data/intelligence/conductor");
-const { buildControlledActions, routability } = await import(
-  "@/data/intelligence/conductor/control"
-);
+const { buildControlledActions, routability } =
+  await import("@/data/intelligence/conductor/control");
 const { ROOM_ADAPTERS } = await import("./adapters");
 
 /* ------------------------------------------------------------- fixtures */
@@ -150,7 +159,7 @@ function discoveryAction(): ControlledAction {
 /** A second branch the person deliberately does not approve. */
 function heldBranch(): ControlledAction {
   return {
-...discoveryAction(),
+    ...discoveryAction(),
     id: "action:first-cycle:comms",
     owningApp: "comms",
     operation: "comms.send_message",
@@ -178,7 +187,7 @@ beforeEach(() => {
 describe("stage 1, a question yields a governed cross-room recommendation", () => {
   it("produces governed actions, but none of them can be routed today", async () => {
     const snapshot = {
-...emptySnapshot(ORG, NOW),
+      ...emptySnapshot(ORG, NOW),
       relationships: [1, 2, 3].map((index) => ({
         id: `rel-${index}`,
         organizationId: ORG,
@@ -214,7 +223,7 @@ describe("stage 1, a question yields a governed cross-room recommendation", () =
     const routable = actions.filter(
       (action) =>
         routability({
-          action: {...action, status: "approved" } as ControlledAction,
+          action: { ...action, status: "approved" } as ControlledAction,
           actions,
           adapters: ROOM_ADAPTERS,
           access,
@@ -261,7 +270,7 @@ describe("stages 2-7, approve one branch, route it, observe it once, learn modes
     const first = await runObservationPass({
       organizationId: ORG,
       actions: routed,
-      receipts: outcome.receipt ? [outcome.receipt]: [],
+      receipts: outcome.receipt ? [outcome.receipt] : [],
       now: NOW,
     });
     expect(first.observations).toHaveLength(1);
@@ -271,7 +280,7 @@ describe("stages 2-7, approve one branch, route it, observe it once, learn modes
     const second = await runObservationPass({
       organizationId: ORG,
       actions: routed,
-      receipts: outcome.receipt ? [outcome.receipt]: [],
+      receipts: outcome.receipt ? [outcome.receipt] : [],
       now: "2026-08-25T11:00:00.000Z",
     });
     expect(second.observations).toHaveLength(0);
@@ -279,9 +288,7 @@ describe("stages 2-7, approve one branch, route it, observe it once, learn modes
     expect(second.skipped.some((row) => row.because.includes("same result"))).toBe(true);
 
     /* The held branch is never observed. */
-    expect(
-      first.skipped.some((row) => row.actionId === "action:first-cycle:comms"),
-    ).toBe(true);
+    expect(first.skipped.some((row) => row.actionId === "action:first-cycle:comms")).toBe(true);
 
     /* 7. One result. Modest, provenanced, and not a rule. */
     expect(learningLedger).toHaveLength(1);
@@ -295,7 +302,7 @@ describe("stages 2-7, approve one branch, route it, observe it once, learn modes
     /* The intelligence read stays separate from the business action's status. */
     const read = buildExecutionRead({
       actions: routed,
-      receipts: outcome.receipt ? [outcome.receipt]: [],
+      receipts: outcome.receipt ? [outcome.receipt] : [],
       observations: observationLedger,
       learning: learningLedger,
       access,
@@ -307,12 +314,17 @@ describe("stages 2-7, approve one branch, route it, observe it once, learn modes
   });
 
   it("a genuinely changed room result creates a second observation", async () => {
-    const approved = {...discoveryAction(), status: "approved" } as ControlledAction;
+    const approved = { ...discoveryAction(), status: "approved" } as ControlledAction;
     const outcome = await routeAction(approved, [approved], owner, actor, ROOM_ADAPTERS, NOW);
     const routed = [outcome.action];
-    const receiptsFor = outcome.receipt ? [outcome.receipt]: [];
+    const receiptsFor = outcome.receipt ? [outcome.receipt] : [];
 
-    await runObservationPass({ organizationId: ORG, actions: routed, receipts: receiptsFor, now: NOW });
+    await runObservationPass({
+      organizationId: ORG,
+      actions: routed,
+      receipts: receiptsFor,
+      now: NOW,
+    });
     expect(observationLedger).toHaveLength(1);
 
     /* Scout loses the run, a different reading, honestly recorded. */
@@ -329,7 +341,7 @@ describe("stages 2-7, approve one branch, route it, observe it once, learn modes
   });
 
   it("an unreadable room never rolls back a routed action", async () => {
-    const approved = {...discoveryAction(), status: "approved" } as ControlledAction;
+    const approved = { ...discoveryAction(), status: "approved" } as ControlledAction;
     const outcome = await routeAction(approved, [approved], owner, actor, ROOM_ADAPTERS, NOW);
     /* No receipt, so the reference cannot be checked at all. */
     const pass = await runObservationPass({
@@ -348,12 +360,12 @@ describe("stages 2-7, approve one branch, route it, observe it once, learn modes
 
 describe("stages 8-10, the next answer knows, without gaining authority", () => {
   async function cycle() {
-    const approved = {...discoveryAction(), status: "approved" } as ControlledAction;
+    const approved = { ...discoveryAction(), status: "approved" } as ControlledAction;
     const outcome = await routeAction(approved, [approved], owner, actor, ROOM_ADAPTERS, NOW);
     await runObservationPass({
       organizationId: ORG,
       actions: [outcome.action],
-      receipts: outcome.receipt ? [outcome.receipt]: [],
+      receipts: outcome.receipt ? [outcome.receipt] : [],
       now: NOW,
     });
     return outcome;
@@ -377,7 +389,7 @@ describe("stages 8-10, the next answer knows, without gaining authority", () => 
     await cycle();
     const inferred = learningLedger[0]!;
     const corrected: LearningRecord = {
-...inferred,
+      ...inferred,
       id: "learning:scout:scout.start_discovery_run:corrected",
       basis: "decided",
       isRule: true,
@@ -431,7 +443,7 @@ describe("stages 8-10, the next answer knows, without gaining authority", () => 
     /* And a member without scout.write is still refused. */
     const viewer = accessContext({ userId: "v", organizationId: ORG, role: "viewer" });
     const refused = routability({
-      action: {...unapproved, status: "approved" } as ControlledAction,
+      action: { ...unapproved, status: "approved" } as ControlledAction,
       actions: [unapproved],
       adapters: ROOM_ADAPTERS,
       access: { can: (permission: string) => can(viewer, permission as Permission) },
@@ -440,7 +452,11 @@ describe("stages 8-10, the next answer knows, without gaining authority", () => 
   });
 
   it("holds the organization boundary", async () => {
-    const foreign = {...discoveryAction(), organizationId: "org-other", status: "approved" } as ControlledAction;
+    const foreign = {
+      ...discoveryAction(),
+      organizationId: "org-other",
+      status: "approved",
+    } as ControlledAction;
     const outcome = await routeAction(foreign, [foreign], owner, actor, ROOM_ADAPTERS, NOW);
     expect(outcome.refusedBecause).toContain("another organization");
     expect(scoutDiscover).not.toHaveBeenCalled();

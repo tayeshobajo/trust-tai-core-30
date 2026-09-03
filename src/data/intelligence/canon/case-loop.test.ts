@@ -11,12 +11,14 @@ import { describe, expect, it } from "vitest";
 import { activePatterns, patternById } from "./patterns";
 import { openCase, recordPatternOutcome } from "./cases";
 import { experienceForMatches, openCases, priorExperience, resolvedCases } from "./experience";
-import { canReconcile, reconcileCase, outcomeFromReconciliation, FAILURE_AFTER_HOURS } from "./outcome-checks";
-import { matchPatterns } from "./match";
 import {
-  caseFingerprint,
-  outcomeFingerprint,
-} from "@/data/supabase/intelligence-canon-service";
+  canReconcile,
+  reconcileCase,
+  outcomeFromReconciliation,
+  FAILURE_AFTER_HOURS,
+} from "./outcome-checks";
+import { matchPatterns } from "./match";
+import { caseFingerprint, outcomeFingerprint } from "@/data/supabase/intelligence-canon-service";
 import type { Observation } from "@/domain/intelligence-engine";
 import type { IntelligenceCase, PatternMatch, PatternOutcome } from "@/domain/intelligence-canon";
 
@@ -114,9 +116,7 @@ describe("outcome reconciliation is deterministic and never generous", () => {
     const observations = pattern.triggers
       .filter((trigger) => !trigger.optional)
       .map((trigger) => observation(trigger.observationKind, 9));
-    const later = new Date(
-      Date.parse(NOW) + (FAILURE_AFTER_HOURS + 1) * 3_600_000,
-    ).toISOString();
+    const later = new Date(Date.parse(NOW) + (FAILURE_AFTER_HOURS + 1) * 3_600_000).toISOString();
     expect(reconcileCase({ entry, observations, now: later })?.result).toBe("failure");
   });
 

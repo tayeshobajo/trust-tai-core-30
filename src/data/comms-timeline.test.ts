@@ -35,7 +35,7 @@ function mail(partial: Partial<StoredMailboxMessage>): StoredMailboxMessage {
     relationshipId: "rel-1",
     direction: "inbound",
     occurredAt: "2026-08-20T11:00:00.000Z",
-...partial,
+    ...partial,
   };
 }
 
@@ -44,7 +44,15 @@ describe("conversationTimeline with synced mail", () => {
     const events = conversationTimeline(
       [TOUCH],
       [DRAFT],
-      [mail({ subject: "About Thursday" }), mail({ id: "mail-2", direction: "outbound", occurredAt: "2026-08-20T12:00:00.000Z", subject: "Re: About Thursday" })],
+      [
+        mail({ subject: "About Thursday" }),
+        mail({
+          id: "mail-2",
+          direction: "outbound",
+          occurredAt: "2026-08-20T12:00:00.000Z",
+          subject: "Re: About Thursday",
+        }),
+      ],
     );
     expect(events.map((event) => event.id)).toEqual([
       "touch:touch-1",
@@ -55,10 +63,11 @@ describe("conversationTimeline with synced mail", () => {
   });
 
   it("places inbound mail on their side and outbound on ours", () => {
-    const events = conversationTimeline([], [], [
-      mail({ direction: "inbound" }),
-      mail({ id: "mail-2", direction: "outbound" }),
-    ]);
+    const events = conversationTimeline(
+      [],
+      [],
+      [mail({ direction: "inbound" }), mail({ id: "mail-2", direction: "outbound" })],
+    );
     expect(eventSide(events[0]!.kind)).toBe("them");
     expect(eventSide(events[1]!.kind)).toBe("us");
   });
@@ -83,7 +92,7 @@ describe("conversationTimeline with synced mail", () => {
 
   it("upgrades a sent draft once the mailbox has verified it", () => {
     const verified: CommsDraft = {
-...DRAFT,
+      ...DRAFT,
       rationale: {
         verification: {
           state: "mailbox_verified",
@@ -105,7 +114,10 @@ describe("conversationTimeline with synced mail", () => {
 
 describe("conversationTimeline email body fidelity", () => {
   it("shows the full body, keeps html and inline resources, and flags blocked images", () => {
-    const events = conversationTimeline([], [], [
+    const events = conversationTimeline(
+      [],
+      [],
+      [
         {
           id: "msg-1",
           organizationId: "org-1",
@@ -143,7 +155,10 @@ describe("conversationTimeline email body fidelity", () => {
   });
 
   it("falls back to the snippet when no body was captured", () => {
-    const events = conversationTimeline([], [], [
+    const events = conversationTimeline(
+      [],
+      [],
+      [
         {
           id: "msg-2",
           organizationId: "org-1",

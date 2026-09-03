@@ -37,7 +37,7 @@ const claire = {
 };
 
 const intelWithPerson: ScoutIntel = {
-...EMPTY_INTEL,
+  ...EMPTY_INTEL,
   collectedAt: "2026-08-19T00:00:00.000Z",
   people: [claire],
 } as unknown as ScoutIntel;
@@ -66,7 +66,7 @@ const preparedMarker = (over: Record<string, unknown> = {}): RelationshipResearc
     preparedAt: "2026-08-21T00:00:00.000Z",
     evidenceAt: "2026-08-19T00:00:00.000Z",
     brief: preparedBrief,
-...over,
+    ...over,
   }) as RelationshipResearchMarker;
 
 const candidate = (over: {
@@ -93,7 +93,7 @@ const candidate = (over: {
     intel: over.intel ?? EMPTY_INTEL,
     signals: [],
     fit: { whyItFits: "A strong ICP match." },
-...(over.development ? { development: over.development }: {}),
+    ...(over.development ? { development: over.development } : {}),
     lastCheckedAt: "2026-08-19T00:00:00.000Z",
   }) as unknown as ProspectCandidate;
 
@@ -146,7 +146,7 @@ describe("understand them first", () => {
   });
 
   it("an ungrounded brief fails closed into a forced fresh read", () => {
-    const ungrounded = preparedMarker({ brief: {...preparedBrief, grounded: false } });
+    const ungrounded = preparedMarker({ brief: { ...preparedBrief, grounded: false } });
     const move = buildRecommendedNextMove({
       candidate: candidate({
         score: 86,
@@ -181,7 +181,7 @@ describe("worth knowing, no urgency", () => {
 describe("worth knowing now", () => {
   it("a dated signal is cited as the reason to act", () => {
     const intel: ScoutIntel = {
-...intelWithPerson,
+      ...intelWithPerson,
       buyingSignals: [
         {
           statement: "They opened a second location in Franklin",
@@ -231,8 +231,8 @@ describe("relationship developing in Comms", () => {
 describe("text is a protected channel", () => {
   it("never recommends text without explicit text-route evidence", () => {
     const withLinkedIn: ScoutIntel = {
-...intelWithPerson,
-      people: [{...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" }],
+      ...intelWithPerson,
+      people: [{ ...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" }],
     } as unknown as ScoutIntel;
     const moves = [
       buildRecommendedNextMove({ candidate: readyCandidate(), now: NOW }),
@@ -332,8 +332,8 @@ describe("the canonical handoff readiness governs the move", () => {
 
   it("a blocked non-email route speaks about the person, never instructs outreach", () => {
     const withLinkedIn: ScoutIntel = {
-...intelWithPerson,
-      people: [{...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" }],
+      ...intelWithPerson,
+      people: [{ ...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" }],
     } as unknown as ScoutIntel;
     const move = buildRecommendedNextMove({
       candidate: candidate({
@@ -392,14 +392,14 @@ describe("one canonical decision surface", () => {
 describe("the person stage distinguishes the real missing step", () => {
   const discovered = (over: Record<string, unknown>) =>
     ({
-...EMPTY_INTEL,
+      ...EMPTY_INTEL,
       collectedAt: "2026-08-19T00:00:00.000Z",
       people: [
         {
           fullName: "Sara Warren",
           roleTitle: "Founder",
           sourceUrl: "https://acme.example/about",
-...over,
+          ...over,
         },
       ],
     }) as unknown as ScoutIntel;
@@ -603,7 +603,10 @@ describe("the person stage distinguishes the real missing step", () => {
     expect(after.state).toBe("no_urgency");
     expect(after.blocked).toBeFalsy();
     expect(after.headline).toBe("Start with email to Claire Meneely");
-    expect(after.primary).toEqual({ kind: "prepare_first_message", label: "Prepare first message" });
+    expect(after.primary).toEqual({
+      kind: "prepare_first_message",
+      label: "Prepare first message",
+    });
     expect(after.progress.find((s) => s.key === "first_message")?.state).toBe("current");
   });
 

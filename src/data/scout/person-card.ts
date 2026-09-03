@@ -21,7 +21,11 @@ import {
   type FirstMessageDevelopmentRead,
 } from "@/domain/first-message";
 import type { Person } from "@/domain/people";
-import { RELATIONSHIP_COLUMNS, toRelationship, type RelationshipRow } from "@/data/supabase/comms-schema";
+import {
+  RELATIONSHIP_COLUMNS,
+  toRelationship,
+  type RelationshipRow,
+} from "@/data/supabase/comms-schema";
 
 export interface ProspectPersonIdentity {
   fullName: string;
@@ -125,10 +129,7 @@ export async function prepareFirstMessageDraft(input: {
     ));
 
   // Keep the conversation's company in step with what the card now says.
-  if (
-    input.identity.companyName &&
-    relationship.companyName !== input.identity.companyName
-  ) {
+  if (input.identity.companyName && relationship.companyName !== input.identity.companyName) {
     await commsService.update(
       relationship.id,
       { companyName: input.identity.companyName },

@@ -170,17 +170,13 @@ describe("newly unblocked", () => {
 
 describe("promise at risk", () => {
   it("a passed due date a person set puts the promise at risk", () => {
-    const read = judge(
-      input({ commitments: [commitment({ dueAt: "2026-05-18T09:00:00.000Z" })] }),
-    );
+    const read = judge(input({ commitments: [commitment({ dueAt: "2026-05-18T09:00:00.000Z" })] }));
     expect(read.items[0]!.state).toBe("promise_at_risk");
     expect(read.items[0]!.whyNow).toMatch(/passed 2 days ago/);
   });
 
   it("vague timing never invents urgency", () => {
-    const read = judge(
-      input({ commitments: [commitment({ dueText: "sometime soon" })] }),
-    );
+    const read = judge(input({ commitments: [commitment({ dueText: "sometime soon" })] }));
     expect(read.items).toHaveLength(0);
     expect(read.headline).toBe("Nothing needs you right now.");
   });

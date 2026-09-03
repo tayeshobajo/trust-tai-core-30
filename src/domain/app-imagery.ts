@@ -72,7 +72,6 @@ export const APP_IMAGERY: Record<string, AppImage> = {
   },
 };
 
-
 export function getAppImage(appId: string): AppImage | undefined {
   return APP_IMAGERY[appId];
 }

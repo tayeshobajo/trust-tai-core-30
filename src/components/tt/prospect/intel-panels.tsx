@@ -26,7 +26,10 @@ export function BuyingSignalsPanel({ intel }: { intel: ScoutIntel }) {
     >
       <ul className="space-y-4">
         {intel.buyingSignals.map((signal, index) => (
-          <li key={`${signal.statement}-${index}`} className="border-b border-border pb-4 last:border-b-0 last:pb-0">
+          <li
+            key={`${signal.statement}-${index}`}
+            className="border-b border-border pb-4 last:border-b-0 last:pb-0"
+          >
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                 {signal.type.replace(/_/g, " ")}
@@ -61,7 +64,10 @@ export function OpportunitiesPanel({ intel }: { intel: ScoutIntel }) {
     >
       <ul className="space-y-4">
         {intel.opportunities.map((item, index) => (
-          <li key={`${item.statement}-${index}`} className="border-b border-border pb-4 last:border-b-0 last:pb-0">
+          <li
+            key={`${item.statement}-${index}`}
+            className="border-b border-border pb-4 last:border-b-0 last:pb-0"
+          >
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {OPPORTUNITY_AREA_LABEL[item.area]}
             </p>

@@ -19,8 +19,7 @@ import { getCurrentIcp, saveIcp, type IcpProfile } from "@/data/supabase/icp";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "ICP settings · Scout · Trust Tai OS";
-const DESCRIPTION =
-  "The Ideal Client Profile Scout uses to decide who deserves deeper research.";
+const DESCRIPTION = "The Ideal Client Profile Scout uses to decide who deserves deeper research.";
 
 const ACCEPTED = [".md", ".txt"];
 
@@ -243,10 +242,7 @@ function IcpSettings({ identity }: { identity: WorkspaceIdentity }) {
                   className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
 
-                <label
-                  htmlFor="icp-markdown"
-                  className="block text-sm font-medium text-foreground"
-                >
+                <label htmlFor="icp-markdown" className="block text-sm font-medium text-foreground">
                   Profile (Markdown)
                 </label>
                 <textarea

@@ -31,10 +31,12 @@ import {
   interpretConversation,
   InterpretationUnavailableError,
 } from "@/lib/steward-interpret.server";
-import { createLovableAiGatewayRunIdFetch, getLovableAiGatewayRunId } from "@/lib/ai-gateway.server";
+import {
+  createLovableAiGatewayRunIdFetch,
+  getLovableAiGatewayRunId,
+} from "@/lib/ai-gateway.server";
 import { runtimeModelCaller } from "@/lib/intelligence-runtime.server";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
-
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
@@ -110,7 +112,6 @@ async function readMemory(
   supabase: SupabaseClient,
   organizationId: string,
 ): Promise<{ memory: MemoryContext; commitments: Commitment[] }> {
-
   try {
     const { data, error } = await supabase
       .from("commitments")
@@ -153,7 +154,6 @@ async function readMemory(
         return detail
           ? { name: String(row["name"] ?? ""), title: detail }
           : { name: String(row["name"] ?? "") };
-
       })
       .filter((person) => person.name.length > 0);
 
@@ -179,7 +179,6 @@ async function readMemory(
         projects,
       },
     };
-
   } catch (error) {
     return {
       commitments: [],
@@ -222,7 +221,10 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
 
         const conversation = body["conversation"] as NormalizedConversation | undefined;
         if (!conversation || !Array.isArray(conversation.segments)) {
-          return Response.json({ error: "No conversation was sent to interpret." }, { status: 400 });
+          return Response.json(
+            { error: "No conversation was sent to interpret." },
+            { status: 400 },
+          );
         }
 
         const { memory, commitments } = await readMemory(supabase, organizationId);
@@ -279,9 +281,7 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
             memoryConsidered: relevant.consideredCount,
             suppressedCount: suppressed.length,
           });
-
         } catch (error) {
-
           if (error instanceof InterpretationUnavailableError) {
             return Response.json({ error: error.message }, { status: 503 });
           }

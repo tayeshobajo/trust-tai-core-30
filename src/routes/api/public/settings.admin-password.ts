@@ -131,7 +131,7 @@ async function serviceWrite(
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
       Prefer: "resolution=merge-duplicates,return=representation",
-...headers,
+      ...headers,
     },
     body: JSON.stringify(body),
   });
@@ -168,7 +168,7 @@ async function serviceWriteTolerant(
   row: Record<string, unknown>,
   required: string[],
 ): Promise<{ ok: boolean; status: number; body: unknown }> {
-  const current = {...row };
+  const current = { ...row };
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const result = await serviceWrite(path, key, [current]);
     if (result.ok) return result;
@@ -183,10 +183,7 @@ async function serviceWriteTolerant(
  * Read profile rows as the service role, narrowing the projection if the
  * deployment lacks one of the optional display columns.
  */
-async function readProfiles(
-  filter: string,
-  key: string,
-): Promise<Record<string, string | null>[]> {
+async function readProfiles(filter: string, key: string): Promise<Record<string, string | null>[]> {
   for (const columns of [PROFILE_COLUMNS, ["id", "email", "full_name"]]) {
     const response = await fetch(
       `${supabaseUrl()}/rest/v1/profiles?${filter}&select=${columns.join(",")}`,
@@ -215,13 +212,12 @@ function displayNameOf(
   return (email.split("@")[0] ?? "").trim();
 }
 
-
 export const Route = createFileRoute("/api/public/settings/admin-password")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const header = request.headers.get("authorization") ?? "";
-        const token = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim(): "";
+        const token = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
         if (!token) return refused(401, "Sign in before managing workspace passwords.");
 
         const parsed = Body.safeParse(await request.json().catch(() => null));
@@ -260,7 +256,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
         const refusal = refusePasswordAction({
           actorRole: membership?.role ?? null,
           actorActive: (membership?.status ?? "") === "active",
-          actorOrganizationId: membership ? input.organizationId: null,
+          actorOrganizationId: membership ? input.organizationId : null,
           organizationId: input.organizationId,
         });
         if (refusal) return refused(403, refusal);
@@ -278,7 +274,6 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           const list = `(${ids.map((id) => `"${id}"`).join(",")})`;
           const rows = await readProfiles(`id=in.${encodeURIComponent(list)}`, secret);
           const byId = new Map(rows.map((row) => [String(row["id"]), row]));
-
 
           /* Supabase Auth is the authority for a person's sign-in identity:
              the address they actually sign in with, when the account was
@@ -329,8 +324,8 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
              History in `activities` is untouched: nothing is rewritten. */
           const memberEmails = new Set(
             ids
-.map((id) => (authById.get(id)?.email ?? byId.get(id)?.["email"] ?? "").toLowerCase())
-.filter(Boolean),
+              .map((id) => (authById.get(id)?.email ?? byId.get(id)?.["email"] ?? "").toLowerCase())
+              .filter(Boolean),
           );
           const pending = await restGet<{ id: string; email: string }[]>(
             `organization_invitations?organization_id=eq.${input.organizationId}&status=eq.pending&select=id,email`,
@@ -381,7 +376,6 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           });
         }
 
-
         /* ---------------------------------------- take someone out, keep the work */
         if (input.action === "remove_member") {
           if (input.userId === caller.id) {
@@ -395,7 +389,10 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           if (!target?.[0]) {
             return refused(403, "That person is not a member of this workspace.");
           }
-          if (normalizeRole(target[0].role) === "owner" && normalizeRole(membership?.role ?? "") !== "owner") {
+          if (
+            normalizeRole(target[0].role) === "owner" &&
+            normalizeRole(membership?.role ?? "") !== "owner"
+          ) {
             return refused(403, "Only an owner can remove another owner.");
           }
 
@@ -423,14 +420,14 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
               organization_id: input.organizationId,
               actor_user_id: caller.id,
               event_type:
-                input.mode === "delete_account" ? "user.account_deleted": "user.access_revoked",
+                input.mode === "delete_account" ? "user.account_deleted" : "user.access_revoked",
               summary:
                 input.mode === "delete_account"
                   ? `${label} was removed from the workspace and their sign-in account was deleted. Their records were kept.`
-: `${label} was removed from the workspace. Their sign-in account and records were kept.`,
+                  : `${label} was removed from the workspace. Their sign-in account and records were kept.`,
               occurred_at: removedAt,
               payload: {
-                lifecycle: input.mode === "delete_account" ? "account_deleted": "access_revoked",
+                lifecycle: input.mode === "delete_account" ? "account_deleted" : "access_revoked",
                 label: address || label,
                 removed_user_id: input.userId,
                 name: label,
@@ -503,8 +500,6 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           return Response.json({ ok: true, userId: input.userId, action: "set_identity" });
         }
 
-
-
         /* ------------------------------------------------- reset an existing */
         if (input.action === "reset_password") {
           const target = await restGet<{ organization_id: string }[]>(
@@ -532,10 +527,10 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
               message?: string;
             } | null;
             return refused(
-              updated.status === 404 ? 404: 422,
+              updated.status === 404 ? 404 : 422,
               updated.status === 404
                 ? "That sign-in account no longer exists."
-: humanAuthError({
+                : humanAuthError({
                     status: updated.status,
                     code: failure?.error_code ?? null,
                     message: failure?.msg ?? failure?.message ?? null,
@@ -563,7 +558,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
             /* Deliberate: temporary-password onboarding must not send the person
                through an email confirmation they were never told to expect. */
             email_confirm: true,
-...(fullName ? { user_metadata: { full_name: fullName } }: {}),
+            ...(fullName ? { user_metadata: { full_name: fullName } } : {}),
           }),
         });
         const createdBody = (await created.json().catch(() => null)) as {
@@ -590,7 +585,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
              of this workspace may not take it over. */
           if (existing) {
             const known = (await readProfiles(`email=eq.${encodeURIComponent(email)}`, secret))[0];
-            const candidate = known?.["id"] ? String(known["id"]): null;
+            const candidate = known?.["id"] ? String(known["id"]) : null;
             if (candidate) {
               const alreadyMember = await restGet<{ user_id: string }[]>(
                 `organization_memberships?organization_id=eq.${input.organizationId}&user_id=eq.${candidate}&select=user_id`,
@@ -615,7 +610,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
                 }),
                 existing,
               },
-              { status: created.status === 422 ? 409: 502 },
+              { status: created.status === 422 ? 409 : 502 },
             );
           }
         }
@@ -632,10 +627,10 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           {
             id: userId,
             email,
-...(fullName ? { full_name: fullName }: {}),
+            ...(fullName ? { full_name: fullName } : {}),
             updated_at: now,
           },
-          fullName ? ["id", "full_name"]: ["id"],
+          fullName ? ["id", "full_name"] : ["id"],
         );
         if (!profileWrite.ok) {
           return refused(
@@ -658,7 +653,6 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
             body: JSON.stringify({ password: input.password }),
           }).catch(() => null);
         }
-
 
         const memberWrite = await serviceWrite(
           "organization_memberships?on_conflict=organization_id,user_id",

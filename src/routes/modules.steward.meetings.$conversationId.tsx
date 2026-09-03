@@ -18,11 +18,7 @@ import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { extractProposals } from "@/data/steward/extract";
 import { interpretConversation } from "@/data/steward/ingest";
-import {
-  correctionToDraft,
-  outcomeToDraft,
-  patternKeyForSignal,
-} from "@/data/steward/learning";
+import { correctionToDraft, outcomeToDraft, patternKeyForSignal } from "@/data/steward/learning";
 import type { CorrectionDraft, MemoryDraft } from "@/domain/steward-memory";
 import { stewardService } from "@/data/supabase/steward-service";
 
@@ -124,7 +120,6 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
       });
     },
   });
-
 
   /**
    * Explicit feedback, on the record.
@@ -241,8 +236,6 @@ function ConversationReview({ identity }: { identity: WorkspaceIdentity }) {
           }
         />
       ) : (
-
-
         <>
           <p className="tt-surface p-5 text-sm text-muted-foreground">
             {interpretation.isFetching

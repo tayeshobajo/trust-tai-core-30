@@ -168,7 +168,9 @@ describe("needs judgment", () => {
   });
 
   it("is empty when nothing asks for judgment", () => {
-    expect(needsJudgment(project(), [work({ status: "in_progress" })], [], [], NOW)).toHaveLength(0);
+    expect(needsJudgment(project(), [work({ status: "in_progress" })], [], [], NOW)).toHaveLength(
+      0,
+    );
   });
 
   it("names unowned work as needing a person", () => {

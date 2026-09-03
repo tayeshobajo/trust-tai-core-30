@@ -91,7 +91,8 @@ export function experienceHealth(input: HealthInput): ExperienceHealth {
     corrections,
     patternsWithEnoughOutcomes,
     proposalsAwaitingDecision,
-    oldestOpenCaseDays: oldest === undefined ? null : Math.max(0, Math.floor((nowMs - oldest) / DAY)),
+    oldestOpenCaseDays:
+      oldest === undefined ? null : Math.max(0, Math.floor((nowMs - oldest) / DAY)),
     casesCheckedAutomatically: resolvedAutomatically.size + unknownAfterChecks,
     casesResolvedAutomatically: resolvedAutomatically.size,
     casesUnknownAfterChecks: unknownAfterChecks,

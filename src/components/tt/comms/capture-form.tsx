@@ -63,7 +63,11 @@ export function CaptureForm({
           placeholder="Nashville Tech Council breakfast"
         />
       </TTField>
-      <TTField label="One thing worth remembering" optional hint="Kept as a human note, never inferred.">
+      <TTField
+        label="One thing worth remembering"
+        optional
+        hint="Kept as a human note, never inferred."
+      >
         <TTInput
           value={note}
           onChange={(event) => setNote(event.target.value)}

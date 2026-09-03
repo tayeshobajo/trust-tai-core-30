@@ -37,10 +37,8 @@ export async function readNdjsonStream(
       const stage = JSON.parse(line) as StreamStage;
       onStage(stage);
       if (stage.stage === "error") throw new Error(stage.message);
-      if (stage.stage === "complete") payload = (stage.data ?? null) as Record<
-        string,
-        unknown
-      > | null;
+      if (stage.stage === "complete")
+        payload = (stage.data ?? null) as Record<string, unknown> | null;
     }
   }
 

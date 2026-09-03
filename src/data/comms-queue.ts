@@ -14,12 +14,7 @@ import {
 } from "@/domain/comms";
 
 export type QueueBucket =
-  | "needs_you"
-  | "waiting_on_them"
-  | "new_from_scout"
-  | "met_in_person"
-  | "warm"
-  | "quiet";
+  "needs_you" | "waiting_on_them" | "new_from_scout" | "met_in_person" | "warm" | "quiet";
 
 export const BUCKET_LABEL: Record<QueueBucket, string> = {
   needs_you: "Needs you",

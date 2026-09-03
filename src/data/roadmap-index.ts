@@ -7,12 +7,7 @@
  */
 
 import type { ProspectCandidate } from "@/domain/scout";
-import type {
-  Roadmap,
-  RoadmapDecision,
-  RoadmapStage,
-  Tier,
-} from "@/domain/roadmap";
+import type { Roadmap, RoadmapDecision, RoadmapStage, Tier } from "@/domain/roadmap";
 import { UNKNOWN_STATEMENT } from "@/domain/roadmap";
 
 /** The small, user-facing state model. Internal statuses map into it. */
@@ -76,11 +71,11 @@ function markStages(stages: RoadmapStage[]): MilestoneMark[] {
     state:
       stage.state === "live"
         ? ("done" as const)
-: stage.state === "in_build"
+        : stage.state === "in_build"
           ? ("current" as const)
-: stage.state === "blocked"
+          : stage.state === "blocked"
             ? ("blocked" as const)
-: ("future" as const),
+            : ("future" as const),
   }));
 }
 
@@ -93,8 +88,10 @@ export function buildRoadmapRow(
   const open = decisions.filter((decision) => decision.roadmapId === roadmap.id);
   const milestones = markStages(stages);
   const current =
-    milestones.find((m) => m.state === "current") ?? milestones.find((m) => m.state === "blocked") ?? null;
-  const next = current ? null: (milestones.find((m) => m.state === "future") ?? null);
+    milestones.find((m) => m.state === "current") ??
+    milestones.find((m) => m.state === "blocked") ??
+    null;
+  const next = current ? null : (milestones.find((m) => m.state === "future") ?? null);
   const firstA = roadmap.pointA[0];
 
   return {
@@ -127,7 +124,7 @@ export function buildRoadmapRows(
       roadmap,
       stagesByRoadmap[roadmap.id] ?? [],
       decisions,
-      (roadmap.prospectId ? identities[roadmap.prospectId]: undefined) ?? {},
+      (roadmap.prospectId ? identities[roadmap.prospectId] : undefined) ?? {},
     ),
   );
 }
@@ -186,13 +183,13 @@ export function readyFromScout(
 ): ProspectCandidate[] {
   const taken = new Set(roadmaps.map((r) => r.prospectId).filter(Boolean) as string[]);
   return candidates
-.filter(
+    .filter(
       (candidate) =>
         (candidate.prospect.status === "qualified" ||
           candidate.prospect.status === "ready_for_comms") &&
         !taken.has(candidate.prospect.id),
     )
-.sort((a, b) => b.evaluation.score - a.evaluation.score);
+    .sort((a, b) => b.evaluation.score - a.evaluation.score);
 }
 
 /** "2d ago" / "just now", quiet metadata, never the point of the row. */

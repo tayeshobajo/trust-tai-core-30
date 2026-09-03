@@ -87,7 +87,12 @@ export function planResearchRun(input: {
   for (const area of input.coverage.areas) {
     const at = checkedAt(area, input.lastResearchedAt);
     if (!area.checked) {
-      targets.push({ key: area.key, label: area.label, reason: "never_checked", lastCheckedAt: null });
+      targets.push({
+        key: area.key,
+        label: area.label,
+        reason: "never_checked",
+        lastCheckedAt: null,
+      });
       continue;
     }
     const age = ageDays(at, now);

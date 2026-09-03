@@ -15,8 +15,8 @@ async function main() {
 
   // 1. Thinking source. ChatGPT URL, honest state (§2/§4)
   const { data: src, error: srcErr } = await sb
-.from("project_thinking_sources")
-.insert({
+    .from("project_thinking_sources")
+    .insert({
       organization_id: ORG_ID,
       project_id: PROJECT_ID,
       source_type: "chatgpt",
@@ -27,8 +27,8 @@ async function main() {
       added_by_label: RUNTIME_ACTOR_LABEL,
       added_by: RUNTIME_ACTOR_ID,
     })
-.select("id")
-.single();
+    .select("id")
+    .single();
   if (srcErr) throw new Error(`thinking source: ${srcErr.message}`);
 
   // 2. Confirmed decision (human-approved, highest authority)
@@ -59,18 +59,18 @@ async function main() {
 
   // 4. Approved mockup asset (file row + asset row; upload ≠ approval, status approved is explicit)
   const existingFile = await sb
-.from("project_files")
-.select("id")
-.eq("project_id", PROJECT_ID)
-.eq("storage_path", "projects/97184a93/intake-mockup-v1.png")
-.maybeSingle();
+    .from("project_files")
+    .select("id")
+    .eq("project_id", PROJECT_ID)
+    .eq("storage_path", "projects/97184a93/intake-mockup-v1.png")
+    .maybeSingle();
   if (existingFile.data) {
     console.log(JSON.stringify({ note: "fixture already present", fileId: existingFile.data.id }));
     process.exit(0);
   }
   const { data: file, error: fileErr } = await sb
-.from("project_files")
-.insert({
+    .from("project_files")
+    .insert({
       organization_id: ORG_ID,
       project_id: PROJECT_ID,
       name: "intake-mockup-v1.png",
@@ -81,8 +81,8 @@ async function main() {
       uploaded_by_label: RUNTIME_ACTOR_LABEL,
       uploaded_by: RUNTIME_ACTOR_ID,
     })
-.select("id")
-.single();
+    .select("id")
+    .single();
   if (fileErr) throw new Error(`file: ${fileErr.message}`);
   const { error: assetErr } = await sb.from("project_assets").insert({
     organization_id: ORG_ID,
@@ -107,10 +107,22 @@ async function main() {
     external_id,
     status: "linked",
   });
-  const { error: connErr } = await sb.from("project_connections").insert([
-    conn("lovable", "Trust Tai Core (30)", "https://lovable.dev/projects/65944e34-ede5-4757-befb-870e1ff97444", "65944e34-ede5-4757-befb-870e1ff97444"),
-    conn("github", "trust-tai-core-30", "https://github.com/tayeshobajo/trust-tai-core-30", "trust-tai-core-30"),
-  ]);
+  const { error: connErr } = await sb
+    .from("project_connections")
+    .insert([
+      conn(
+        "lovable",
+        "Trust Tai Core (30)",
+        "https://lovable.dev/projects/65944e34-ede5-4757-befb-870e1ff97444",
+        "65944e34-ede5-4757-befb-870e1ff97444",
+      ),
+      conn(
+        "github",
+        "trust-tai-core-30",
+        "https://github.com/tayeshobajo/trust-tai-core-30",
+        "trust-tai-core-30",
+      ),
+    ]);
   if (connErr) throw new Error(`connections: ${connErr.message}`);
 
   // 6. Agent effectiveness for Comms Agent (§15)
@@ -119,7 +131,10 @@ async function main() {
     agent_id: "239a7269-6309-4547-bd54-67e4e3798b85",
     responsibility: "Draft client-facing comms from confirmed project truth. Never invent policy.",
     expected_weekly_outcomes: ["Draft-ready intake copy", "Relationship summaries current"],
-    success_criteria: ["Drafts cite confirmed decisions", "No unconfirmed claim in client-facing text"],
+    success_criteria: [
+      "Drafts cite confirmed decisions",
+      "No unconfirmed claim in client-facing text",
+    ],
     surface_when: ["Client language contradicts confirmed decision", "Missing context for a draft"],
     required_context: ["Confirmed decisions", "Approved assets", "Open questions"],
     escalation_rules: ["Anything contractual → Tai", "Missing requirement → ask, do not assume"],

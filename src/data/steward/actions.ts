@@ -15,7 +15,12 @@ import type { ActivityEvent } from "@/domain/activity";
 import type { Commitment } from "@/domain/steward";
 import type { StewardAgent, StewardFocus, StewardTask } from "@/domain/steward-accountability";
 
-import { completeAuthority, dueDateAuthority, reassignAuthority, type StewardActor } from "./authority";
+import {
+  completeAuthority,
+  dueDateAuthority,
+  reassignAuthority,
+  type StewardActor,
+} from "./authority";
 
 export interface AssignableTarget {
   key: string;
@@ -78,7 +83,7 @@ async function audit(
       name: input.name,
       subject: { type: "task", id: input.task.id, label: input.task.title },
       summary: input.summary,
-      payload: { steward_task_key: input.task.key,...(input.payload ?? {}) },
+      payload: { steward_task_key: input.task.key, ...(input.payload ?? {}) },
       provenance: {
         appId: "steward",
         actor: { type: "user", id: writer.identity.userId, label: writer.identity.name },
@@ -99,9 +104,9 @@ export function agentCanTake(agent: StewardAgent, task: StewardTask): boolean {
   const haystack = `${task.title} ${task.sourceLabel}`.toLowerCase();
   return agent.capabilities.some((capability) => {
     const words = capability
-.toLowerCase()
-.split(/[^a-z0-9]+/)
-.filter((word) => word.length > 3);
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((word) => word.length > 3);
     return words.some((word) => haystack.includes(word));
   });
 }
@@ -131,7 +136,7 @@ export async function completeTask(
     name: "task.completed",
     task,
     summary: `${writer.identity.name} completed “${task.title}”.`,
-...(note.trim() ? { payload: { note: note.trim() } }: {}),
+    ...(note.trim() ? { payload: { note: note.trim() } } : {}),
   });
 }
 
@@ -164,7 +169,7 @@ export async function reprioritizeTask(
     task,
     summary: aboveTitle
       ? `${writer.identity.name} moved “${task.title}” above “${aboveTitle}”.`
-: `${writer.identity.name} reordered “${task.title}”.`,
+      : `${writer.identity.name} reordered “${task.title}”.`,
     payload: { rank },
   });
 }
@@ -179,9 +184,7 @@ export async function setTaskDue(
   await audit(writer, {
     name: "task.updated",
     task,
-    summary: dueAt
-      ? `Due date set to ${dueAt.slice(0, 10)}.`
-: "Due date removed.",
+    summary: dueAt ? `Due date set to ${dueAt.slice(0, 10)}.` : "Due date removed.",
   });
 }
 
@@ -194,7 +197,7 @@ export async function reassignToPerson(
 
   await writer.deps.setCommitmentOwner(task.id, {
     name: person.name,
-    email: person.key.includes("@") ? person.key: null,
+    email: person.key.includes("@") ? person.key : null,
   });
   await audit(writer, {
     name: "task.assigned",
@@ -220,7 +223,7 @@ export async function requestAgentAssignment(
     title: task.title,
     description: `${task.why} Source: ${task.sourceLabel}.`,
     sourceEntityId: task.key,
-    sourceEntityType: task.origin === "commitment" ? "commitment": "task",
+    sourceEntityType: task.origin === "commitment" ? "commitment" : "task",
     sourceApp: "steward",
   });
   await audit(writer, {

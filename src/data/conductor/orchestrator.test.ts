@@ -135,11 +135,11 @@ function stubAdapter(room: string, operation: string, outcome: "routed" | "faile
       approvedBy: context.approvedBy,
       routedBy: context.actor,
       sourceEventKey: `${action.sourceEventKey}:route`,
-      status: outcome === "routed" ? "routed": "failed",
-...(outcome === "routed"
+      status: outcome === "routed" ? "routed" : "failed",
+      ...(outcome === "routed"
         ? { result: { label: `${room} recorded it`, reference: "ref-1" } }
-: { failure: `${room} refused` }),
-      resultingState: outcome === "routed" ? "routed": "failed",
+        : { failure: `${room} refused` }),
+      resultingState: outcome === "routed" ? "routed" : "failed",
     }),
     readStatus: async () => "routed",
   };
@@ -287,7 +287,7 @@ describe("routing", () => {
   });
 
   it("refuses another organization's action outright", async () => {
-    const foreign = {...actions()[0]!, organizationId: "org-2", status: "approved" as const };
+    const foreign = { ...actions()[0]!, organizationId: "org-2", status: "approved" as const };
     const outcome = await routeAction(foreign, [foreign], owner, actor, adapters);
     expect(outcome.refusedBecause).toMatch(/another organization/i);
     expect(receipts).toHaveLength(0);

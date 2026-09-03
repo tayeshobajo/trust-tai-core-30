@@ -86,7 +86,6 @@ export function ProspectWorkspace({
   const { prospect, evaluation } = candidate;
   const contactCount = people.length;
 
-
   const composition = useMemo(
     () =>
       composeProspectPage({
@@ -105,7 +104,10 @@ export function ProspectWorkspace({
     () => computeDecisionMetrics({ candidate, intel, people, coverage: composition.coverage }),
     [candidate, intel, people, composition.coverage],
   );
-  const brief = useMemo(() => buildAccountBrief({ candidate, intel, plan }), [candidate, intel, plan]);
+  const brief = useMemo(
+    () => buildAccountBrief({ candidate, intel, plan }),
+    [candidate, intel, plan],
+  );
   const gapPlan = useMemo(
     () => buildGapPlan({ candidate, intel, plan, coverage: composition.coverage }),
     [candidate, intel, plan, composition.coverage],
@@ -183,7 +185,6 @@ export function ProspectWorkspace({
           />
 
           <AccountBriefPanel brief={brief} />
-
 
           {hasModule(composition, "handoff") ? (
             <HandoffPanel

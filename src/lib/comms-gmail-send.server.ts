@@ -115,10 +115,10 @@ export function mailboxCapabilityOf(row: GmailConnectionRow): MailboxCapability 
   const accountEmail = row.account_email?.trim().toLowerCase();
   return {
     integrationId: row.id,
-...(accountEmail ? { accountEmail }: {}),
+    ...(accountEmail ? { accountEmail } : {}),
     connected,
     canSend,
-...(canSend ? {}: { requiredScope: GMAIL_SEND_SCOPE }),
+    ...(canSend ? {} : { requiredScope: GMAIL_SEND_SCOPE }),
   };
 }
 
@@ -142,8 +142,8 @@ export async function sendCapability(input: {
   return {
     connected: live.length > 0,
     canSend: capable.length > 0,
-...(live[0]?.accountEmail ? { accountEmail: live[0].accountEmail }: {}),
-...(live.length > 0 && capable.length === 0 ? { requiredScope: GMAIL_SEND_SCOPE }: {}),
+    ...(live[0]?.accountEmail ? { accountEmail: live[0].accountEmail } : {}),
+    ...(live.length > 0 && capable.length === 0 ? { requiredScope: GMAIL_SEND_SCOPE } : {}),
     mailboxes,
   };
 }
@@ -178,7 +178,7 @@ export function classifyGmailSendFailure(
   const detail = bodyText.replace(/\s+/g, " ").trim().slice(0, 200);
   return {
     kind: "failed",
-    message: `Gmail did not accept the message (${status})${detail ? `: ${detail}`: "."}`,
+    message: `Gmail did not accept the message (${status})${detail ? `: ${detail}` : "."}`,
   };
 }
 
@@ -226,17 +226,15 @@ export function planReplyFromThread(
   const subject = draftSubject?.trim() || replySubject(threadSubject);
 
   const messageIds = messages
-.map((message) => headerOf(message, "Message-ID"))
-.filter((value): value is string => Boolean(value));
+    .map((message) => headerOf(message, "Message-ID"))
+    .filter((value): value is string => Boolean(value));
   const last = messages[messages.length - 1]!;
   const inReplyTo = headerOf(last, "Message-ID");
 
-  const lastInbound = [...messages]
-.reverse()
-.find((message) => {
-      const from = headerOf(message, "From")?.toLowerCase() ?? "";
-      return from.includes("@") && !from.includes(self) && from.length > 0;
-    });
+  const lastInbound = [...messages].reverse().find((message) => {
+    const from = headerOf(message, "From")?.toLowerCase() ?? "";
+    return from.includes("@") && !from.includes(self) && from.length > 0;
+  });
 
   let to: string[];
   let cc: string[];
@@ -258,7 +256,7 @@ export function planReplyFromThread(
 
   // The person this relationship is about is always on their own reply.
   if (person && person !== self && !to.includes(person) && !cc.includes(person)) {
-    to = [person,...to];
+    to = [person, ...to];
   }
   if (to.length === 0) to = [person];
 
@@ -266,7 +264,7 @@ export function planReplyFromThread(
     to,
     cc,
     subject,
-...(inReplyTo ? { inReplyTo }: {}),
+    ...(inReplyTo ? { inReplyTo } : {}),
     references: messageIds.slice(-10),
   };
 }
@@ -276,7 +274,7 @@ export function buildSendRequestBody(
   raw: string,
   target: SendThreadTarget,
 ): { raw: string; threadId?: string } {
-  return target.mode === "reply" ? { raw, threadId: target.providerThreadId }: { raw };
+  return target.mode === "reply" ? { raw, threadId: target.providerThreadId } : { raw };
 }
 
 /* ------------------------------------------------------------------ outcome */
@@ -334,18 +332,18 @@ async function settleClaim(
   clearStagedFiles: boolean,
 ): Promise<void> {
   const rationale = writeDraftSend(
-    clearStagedFiles ? writeOutgoingAttachments(draft.rationale, []): draft.rationale,
+    clearStagedFiles ? writeOutgoingAttachments(draft.rationale, []) : draft.rationale,
     send,
   );
   await client
-.from("comms_drafts")
-.update({
+    .from("comms_drafts")
+    .update({
       review_state: reviewState,
       rationale,
       updated_at: new Date().toISOString(),
     })
-.eq("id", draft.id)
-.eq("review_state", "sending");
+    .eq("id", draft.id)
+    .eq("review_state", "sending");
 }
 
 /**
@@ -367,11 +365,11 @@ export async function sendDraftViaGmail(input: {
   await requireMember(client, input.organizationId);
 
   const { data: draftRow, error: draftError } = await client
-.from("comms_drafts")
-.select("id, relationship_id, subject, body, review_state, rationale, updated_at")
-.eq("id", input.draftId)
-.eq("organization_id", input.organizationId)
-.maybeSingle();
+    .from("comms_drafts")
+    .select("id, relationship_id, subject, body, review_state, rationale, updated_at")
+    .eq("id", input.draftId)
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
   if (draftError) throw new Error(draftError.message);
   if (!draftRow) throw new Error("That draft is not on record.");
   const draft = draftRow as DraftRow;
@@ -381,19 +379,19 @@ export async function sendDraftViaGmail(input: {
   const decision = decideSendClaim({
     reviewState: draft.review_state,
     rationale: draft.rationale,
-...(draft.updated_at ? { updatedAt: draft.updated_at }: {}),
+    ...(draft.updated_at ? { updatedAt: draft.updated_at } : {}),
   });
   if (decision.kind === "replay") {
     return {
       draftId: draft.id,
       state: "sent",
       replayed: true,
-...(decision.send.providerMessageId
+      ...(decision.send.providerMessageId
         ? { providerMessageId: decision.send.providerMessageId }
-: {}),
-...(decision.send.providerThreadId
+        : {}),
+      ...(decision.send.providerThreadId
         ? { providerThreadId: decision.send.providerThreadId }
-: {}),
+        : {}),
     };
   }
   if (decision.kind === "in_flight") {
@@ -404,11 +402,11 @@ export async function sendDraftViaGmail(input: {
   }
 
   const { data: relationshipRow, error: relationshipError } = await client
-.from("comms_relationships")
-.select("id, email, full_name")
-.eq("id", draft.relationship_id)
-.eq("organization_id", input.organizationId)
-.maybeSingle();
+    .from("comms_relationships")
+    .select("id, email, full_name")
+    .eq("id", draft.relationship_id)
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
   if (relationshipError) throw new Error(relationshipError.message);
   const relationship = relationshipRow as { id: string; email: string | null } | null;
   if (!relationship?.email) {
@@ -423,14 +421,14 @@ export async function sendDraftViaGmail(input: {
   let target: SendThreadTarget = input.threadTarget ?? { mode: "new" };
   if (!input.threadTarget) {
     const { data: threadRow } = await client
-.from("comms_threads")
-.select("provider_thread_id")
-.eq("organization_id", input.organizationId)
-.eq("relationship_id", relationship.id)
-.eq("provider", "gmail")
-.order("last_message_at", { ascending: false })
-.limit(1)
-.maybeSingle();
+      .from("comms_threads")
+      .select("provider_thread_id")
+      .eq("organization_id", input.organizationId)
+      .eq("relationship_id", relationship.id)
+      .eq("provider", "gmail")
+      .order("last_message_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     const providerThreadId = (threadRow as { provider_thread_id?: string } | null)
       ?.provider_thread_id;
     if (providerThreadId) target = { mode: "reply", providerThreadId };
@@ -442,16 +440,16 @@ export async function sendDraftViaGmail(input: {
   let threadMailbox: string | undefined;
   if (target.mode === "reply") {
     const { data: provenanceRows } = await client
-.from("comms_messages")
-.select("provenance")
-.eq("organization_id", input.organizationId)
-.eq("provider", "gmail")
-.eq("provider_thread_id", target.providerThreadId)
-.order("occurred_at", { ascending: false })
-.limit(5);
+      .from("comms_messages")
+      .select("provenance")
+      .eq("organization_id", input.organizationId)
+      .eq("provider", "gmail")
+      .eq("provider_thread_id", target.providerThreadId)
+      .order("occurred_at", { ascending: false })
+      .limit(5);
     threadMailbox = ((provenanceRows ?? []) as { provenance: unknown }[])
-.map((row) => mailboxFromProvenance(row.provenance))
-.find((entry): entry is string => Boolean(entry));
+      .map((row) => mailboxFromProvenance(row.provenance))
+      .find((entry): entry is string => Boolean(entry));
   }
 
   const connectionRows = await loadGmailConnections(client, input.organizationId);
@@ -461,15 +459,15 @@ export async function sendDraftViaGmail(input: {
     const capability = mailboxCapabilityOf(row);
     return {
       id: capability.integrationId,
-...(capability.accountEmail ? { accountEmail: capability.accountEmail }: {}),
+      ...(capability.accountEmail ? { accountEmail: capability.accountEmail } : {}),
       connected: capability.connected,
       canSend: capability.canSend,
     };
   });
   const resolution = resolveSendMailbox({
     connections: refs,
-...(threadMailbox ? { threadMailbox }: {}),
-...(input.integrationId ? { integrationId: input.integrationId }: {}),
+    ...(threadMailbox ? { threadMailbox } : {}),
+    ...(input.integrationId ? { integrationId: input.integrationId } : {}),
   });
 
   if (resolution.kind === "unknown_choice") throw new Error("That mailbox is not connected.");
@@ -525,8 +523,8 @@ export async function sendDraftViaGmail(input: {
   const attachments: OutgoingAttachment[] = [];
   for (const file of staged) {
     const { data: blob, error: downloadError } = await client.storage
-.from(DRAFT_ATTACHMENT_BUCKET)
-.download(file.path);
+      .from(DRAFT_ATTACHMENT_BUCKET)
+      .download(file.path);
     if (downloadError || !blob) {
       throw new Error(
         `“${file.filename}” is no longer available in draft storage. Remove it and attach the file again.`,
@@ -581,7 +579,7 @@ export async function sendDraftViaGmail(input: {
   // Our own mailbox is never a recipient, even if it was typed in.
   const extras = readOutgoingExtras(draft.rationale);
   const notSelf = (email: string) => email.trim().toLowerCase() !== mailbox;
-  cc = [...new Set([...cc,...extras.cc].map((email) => email.trim().toLowerCase()))].filter(
+  cc = [...new Set([...cc, ...extras.cc].map((email) => email.trim().toLowerCase()))].filter(
     (email) => email && notSelf(email) && !to.includes(email),
   );
   const bcc = [...new Set(extras.bcc.map((email) => email.trim().toLowerCase()))].filter(
@@ -594,13 +592,13 @@ export async function sendDraftViaGmail(input: {
       from: mailbox,
       to,
       cc,
-...(bcc.length > 0 ? { bcc }: {}),
+      ...(bcc.length > 0 ? { bcc } : {}),
       subject,
       bodyText: draft.body,
       messageId,
-...(inReplyTo ? { inReplyTo }: {}),
-...(references.length > 0 ? { references }: {}),
-...(attachments.length > 0 ? { attachments }: {}),
+      ...(inReplyTo ? { inReplyTo } : {}),
+      ...(references.length > 0 ? { references } : {}),
+      ...(attachments.length > 0 ? { attachments } : {}),
     }),
   );
 
@@ -613,11 +611,11 @@ export async function sendDraftViaGmail(input: {
     idempotencyKey: sendIdempotencyKey(draft.id),
     attemptedAt,
     threadTarget: target,
-...(staged.length > 0 ? { attachments: staged }: {}),
+    ...(staged.length > 0 ? { attachments: staged } : {}),
   };
   const { count: claimed } = await client
-.from("comms_drafts")
-.update(
+    .from("comms_drafts")
+    .update(
       {
         review_state: "sending",
         rationale: writeDraftSend(draft.rationale, claimSend),
@@ -625,27 +623,30 @@ export async function sendDraftViaGmail(input: {
       },
       { count: "exact" },
     )
-.eq("id", draft.id)
-.or(
+    .eq("id", draft.id)
+    .or(
       `review_state.in.(${SENDABLE_STATES.join(",")}),` +
         `and(review_state.eq.sending,updated_at.lt.${staleBefore})`,
     );
   if (!claimed) {
     // Lost the race: answer from whoever holds the claim now.
     const { data: current } = await client
-.from("comms_drafts")
-.select("review_state, rationale")
-.eq("id", draft.id)
-.maybeSingle();
-    const row = current as { review_state: string; rationale: Record<string, unknown> | null } | null;
+      .from("comms_drafts")
+      .select("review_state, rationale")
+      .eq("id", draft.id)
+      .maybeSingle();
+    const row = current as {
+      review_state: string;
+      rationale: Record<string, unknown> | null;
+    } | null;
     const send = readDraftSend(row?.rationale);
     if (row?.review_state === "sent" && send?.state === "sent") {
       return {
         draftId: draft.id,
         state: "sent",
         replayed: true,
-...(send.providerMessageId ? { providerMessageId: send.providerMessageId }: {}),
-...(send.providerThreadId ? { providerThreadId: send.providerThreadId }: {}),
+        ...(send.providerMessageId ? { providerMessageId: send.providerMessageId } : {}),
+        ...(send.providerThreadId ? { providerThreadId: send.providerThreadId } : {}),
       };
     }
     return { draftId: draft.id, state: "sending" };
@@ -658,7 +659,12 @@ export async function sendDraftViaGmail(input: {
     await settleClaim(
       client,
       draft,
-      {...claimSend, state: "failed", error: failure.message,...(failure.requiredScope ? { requiredScope: failure.requiredScope }: {}) },
+      {
+        ...claimSend,
+        state: "failed",
+        error: failure.message,
+        ...(failure.requiredScope ? { requiredScope: failure.requiredScope } : {}),
+      },
       "send_failed",
       false,
     );
@@ -666,22 +672,26 @@ export async function sendDraftViaGmail(input: {
       draftId: draft.id,
       state: "failed",
       error: failure.message,
-...(failure.requiredScope ? { requiredScope: failure.requiredScope }: {}),
+      ...(failure.requiredScope ? { requiredScope: failure.requiredScope } : {}),
     };
   }
 
-  const providerMessageId = typeof result.payload["id"] === "string" ? result.payload["id"]: "";
+  const providerMessageId = typeof result.payload["id"] === "string" ? result.payload["id"] : "";
   const providerThreadId =
     typeof result.payload["threadId"] === "string"
       ? result.payload["threadId"]
-: target.mode === "reply"
+      : target.mode === "reply"
         ? target.providerThreadId
-: "";
+        : "";
   if (!providerMessageId || !providerThreadId) {
     await settleClaim(
       client,
       draft,
-      {...claimSend, state: "failed", error: "Gmail accepted nothing recognizable. Retry the send." },
+      {
+        ...claimSend,
+        state: "failed",
+        error: "Gmail accepted nothing recognizable. Retry the send.",
+      },
       "send_failed",
       false,
     );
@@ -698,12 +708,12 @@ export async function sendDraftViaGmail(input: {
   // by Gmail's own message id. When sync later observes the same message it
   // upserts onto this row, reconciliation merges, never duplicates.
   const { data: existingThread } = await client
-.from("comms_threads")
-.select("id")
-.eq("organization_id", input.organizationId)
-.eq("provider", "gmail")
-.eq("provider_thread_id", providerThreadId)
-.maybeSingle();
+    .from("comms_threads")
+    .select("id")
+    .eq("organization_id", input.organizationId)
+    .eq("provider", "gmail")
+    .eq("provider_thread_id", providerThreadId)
+    .maybeSingle();
   const threadPayload = {
     organization_id: input.organizationId,
     relationship_id: relationship.id,
@@ -719,15 +729,15 @@ export async function sendDraftViaGmail(input: {
   let threadId = (existingThread as { id?: string } | null)?.id;
   if (threadId) {
     await client
-.from("comms_threads")
-.update({ last_message_at: sentAt, updated_at: sentAt })
-.eq("id", threadId);
+      .from("comms_threads")
+      .update({ last_message_at: sentAt, updated_at: sentAt })
+      .eq("id", threadId);
   } else {
     const { data: inserted, error: threadError } = await client
-.from("comms_threads")
-.insert(threadPayload)
-.select("id")
-.single();
+      .from("comms_threads")
+      .insert(threadPayload)
+      .select("id")
+      .single();
     if (threadError) {
       console.warn(`[comms-gmail-send] thread write failed: ${threadError.message}`);
     }
@@ -770,17 +780,17 @@ export async function sendDraftViaGmail(input: {
   }
 
   await client
-.from("comms_relationships")
-.update({ last_touch_at: sentAt, response_due_at: null, updated_at: sentAt })
-.eq("id", relationship.id)
-.eq("organization_id", input.organizationId);
+    .from("comms_relationships")
+    .update({ last_touch_at: sentAt, response_due_at: null, updated_at: sentAt })
+    .eq("id", relationship.id)
+    .eq("organization_id", input.organizationId);
 
   // The send succeeded: Gmail now holds the bytes, so staged uploads are
   // removed. A cleanup failure is harmless, lifecycle sweeps orphans.
   if (staged.length > 0) {
     const { error: removeError } = await client.storage
-.from(DRAFT_ATTACHMENT_BUCKET)
-.remove(staged.map((file) => file.path));
+      .from(DRAFT_ATTACHMENT_BUCKET)
+      .remove(staged.map((file) => file.path));
     if (removeError) {
       console.warn(`[comms-gmail-send] staged file cleanup failed: ${removeError.message}`);
     }
@@ -790,7 +800,7 @@ export async function sendDraftViaGmail(input: {
     client,
     draft,
     {
-...claimSend,
+      ...claimSend,
       state: "sent",
       sentAt,
       providerMessageId,
@@ -808,7 +818,10 @@ export async function sendDraftViaGmail(input: {
 /** A safe Content-Disposition for bytes leaving our server. Pure; tested. */
 export function contentDisposition(filename: string): string {
   const fallback =
-    filename.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_").trim() || "attachment";
+    filename
+      .replace(/[^\x20-\x7e]/g, "_")
+      .replace(/["\\]/g, "_")
+      .trim() || "attachment";
   if (fallback === filename) return `attachment; filename="${fallback}"`;
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
@@ -845,12 +858,12 @@ export async function downloadMailboxAttachment(input: {
   await requireMember(client, input.organizationId);
 
   const { data: messageRow, error: messageError } = await client
-.from("comms_messages")
-.select("id, provider_message_id, attachments, provenance")
-.eq("id", input.messageId)
-.eq("organization_id", input.organizationId)
-.eq("provider", "gmail")
-.maybeSingle();
+    .from("comms_messages")
+    .select("id, provider_message_id, attachments, provenance")
+    .eq("id", input.messageId)
+    .eq("organization_id", input.organizationId)
+    .eq("provider", "gmail")
+    .maybeSingle();
   if (messageError) throw new Error(messageError.message);
   if (!messageRow) throw new Error("That message is not on record.");
   const message = messageRow as {
@@ -861,9 +874,9 @@ export async function downloadMailboxAttachment(input: {
   };
   if (!message.provider_message_id) throw new Error("That message has no mailbox copy.");
 
-  const attachments = (Array.isArray(message.attachments) ? message.attachments: [])
-.map((entry) => attachmentMetaFromJson(entry))
-.filter((entry): entry is AttachmentMeta => entry !== null);
+  const attachments = (Array.isArray(message.attachments) ? message.attachments : [])
+    .map((entry) => attachmentMetaFromJson(entry))
+    .filter((entry): entry is AttachmentMeta => entry !== null);
   const target = attachments.find((entry) => entry.attachmentId === input.attachmentId);
   if (!target) throw new Error("That file is not part of this message.");
 
@@ -871,14 +884,14 @@ export async function downloadMailboxAttachment(input: {
   const observedBy = mailboxFromProvenance(message.provenance);
   const connection = observedBy
     ? connections.find((row) => row.account_email?.toLowerCase() === observedBy)
-: connections.length === 1
+    : connections.length === 1
       ? connections[0]
-: undefined;
+      : undefined;
   if (!connection) {
     throw new Error(
       observedBy
         ? `The mailbox ${observedBy} that holds this file is not connected. Reconnect it under Connections to open this file.`
-: "The mailbox that holds this file could not be determined. Reconnect the mailbox under Connections.",
+        : "The mailbox that holds this file could not be determined. Reconnect the mailbox under Connections.",
     );
   }
 

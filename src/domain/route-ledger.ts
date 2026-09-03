@@ -76,7 +76,9 @@ function text(value: unknown): string {
 }
 
 function list(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
 }
 
 /** The route a follow-up event is about, as recorded by its emitter. */

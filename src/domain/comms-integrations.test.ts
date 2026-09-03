@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  readGmailRunSummary,
-  summarizeMailboxCoverage,
-} from "@/domain/comms-integrations";
+import { readGmailRunSummary, summarizeMailboxCoverage } from "@/domain/comms-integrations";
 
 describe("readGmailRunSummary", () => {
   it("reads a well-formed last run from the cursor", () => {

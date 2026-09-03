@@ -96,9 +96,7 @@ function Inbox({ identity }: { identity: WorkspaceIdentity }) {
 
   const visible = useMemo(
     () =>
-      threads.filter(
-        (thread) => inInboxScope(thread, scope) && matchesInboxSearch(thread, query),
-      ),
+      threads.filter((thread) => inInboxScope(thread, scope) && matchesInboxSearch(thread, query)),
     [threads, scope, query],
   );
 
@@ -261,9 +259,7 @@ function ThreadPanel({
               .join(" · ")}
           </p>
           {thread.mailbox ? (
-            <p className="mt-1 text-[12px] text-muted-foreground">
-              Labeled in {thread.mailbox}
-            </p>
+            <p className="mt-1 text-[12px] text-muted-foreground">Labeled in {thread.mailbox}</p>
           ) : null}
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -278,12 +274,7 @@ function ThreadPanel({
 
       <div className="max-h-[65vh] space-y-3 overflow-y-auto p-4">
         {thread.messages.map((message) => (
-          <MessageCard
-            key={message.id}
-            thread={thread}
-            message={message}
-            identity={identity}
-          />
+          <MessageCard key={message.id} thread={thread} message={message} identity={identity} />
         ))}
       </div>
     </section>

@@ -44,10 +44,10 @@ export async function readMemberPresence(
   organizationId: string,
 ): Promise<Provisioned<Map<string, MemberPresence>>> {
   const result = await supabase
-.from("member_activity")
-.select("user_id, app_key, last_seen_at")
-.eq("organization_id", organizationId)
-.order("last_seen_at", { ascending: false });
+    .from("member_activity")
+    .select("user_id, app_key, last_seen_at")
+    .eq("organization_id", organizationId)
+    .order("last_seen_at", { ascending: false });
 
   if (result.error) {
     if (missingRelation(result.error)) return { provisioned: false, value: new Map() };

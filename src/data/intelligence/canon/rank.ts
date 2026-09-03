@@ -217,7 +217,8 @@ export function narrateRanking(ranked: RankedHypothesis[]): string {
   }
 
   if (first.caution) parts.push(first.caution);
-  if (first.checkBeforeActing) parts.push(`Check ${lowerFirst(first.checkBeforeActing)} before acting.`);
+  if (first.checkBeforeActing)
+    parts.push(`Check ${lowerFirst(first.checkBeforeActing)} before acting.`);
 
   return parts.join(" ");
 }

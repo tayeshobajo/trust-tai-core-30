@@ -22,30 +22,28 @@ if (signIn.error || !signIn.data.user) throw new Error(`sign-in failed: ${signIn
 console.log("signed in:", signIn.data.user.email);
 
 const memberships = await supabase
-.from("organization_memberships")
-.select("organization_id, role, status")
-.eq("status", "active");
+  .from("organization_memberships")
+  .select("organization_id, role, status")
+  .eq("status", "active");
 if (memberships.error || !memberships.data?.length) {
   throw new Error(`no active membership: ${memberships.error?.message ?? "none"}`);
 }
-const organizationId = String(
-  (memberships.data[0] as Record<string, unknown>)["organization_id"],
-);
+const organizationId = String((memberships.data[0] as Record<string, unknown>)["organization_id"]);
 console.log("organization:", organizationId, memberships.data[0]);
 
 const snapshot = await loadSuiteSnapshot(organizationId);
 console.log("roadmaps:", snapshot.roadmaps.length);
 console.log(
   "stages read:",
-  snapshot.roadmapStages ? "yes": "NO, withheld",
-  snapshot.roadmapStages ? Object.keys(snapshot.roadmapStages).length + " roadmap groups": "",
+  snapshot.roadmapStages ? "yes" : "NO, withheld",
+  snapshot.roadmapStages ? Object.keys(snapshot.roadmapStages).length + " roadmap groups" : "",
 );
 
 for (const roadmap of snapshot.roadmaps) {
   const canon = readRoadmapCanon({
     roadmap,
     decisions: snapshot.openDecisions,
-...(snapshot.roadmapStages ? { stages: snapshot.roadmapStages[roadmap.id] ?? [] }: {}),
+    ...(snapshot.roadmapStages ? { stages: snapshot.roadmapStages[roadmap.id] ?? [] } : {}),
   });
   console.log("\n---", canon.subjectLabel, canon.roadmapId);
   console.log("  status:", canon.status, "| Point B:", canon.pointB?.tier ?? "not stated");
@@ -55,7 +53,7 @@ for (const roadmap of snapshot.roadmaps) {
     "  attention:",
     canon.milestoneAttention
       ? `${canon.milestoneAttention.milestone.title} [${canon.milestoneAttention.rule}], ${canon.milestoneAttention.because}`
-: "none",
+      : "none",
   );
 }
 

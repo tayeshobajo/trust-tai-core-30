@@ -68,7 +68,6 @@ function packetFromSnapshot(snapshot: SuiteSnapshot) {
   });
 }
 
-
 import {
   answer as deriveAnswer,
   bundleFor,
@@ -119,9 +118,7 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
     safe("roadmap", base.roadmaps, () => roadmapService.list(organizationId)),
     safe("roadmap", base.openDecisions, () => roadmapService.openDecisions(organizationId)),
     /* Answered decisions: what a person decided, never re-decided here. */
-    safe("roadmap", base.resolvedDecisions, () =>
-      roadmapService.resolvedDecisions(organizationId),
-    ),
+    safe("roadmap", base.resolvedDecisions, () => roadmapService.resolvedDecisions(organizationId)),
     /* Milestones. A failed read stays null: unknown is said, never guessed. */
     safe("roadmap", base.roadmapStages, () => roadmapService.stagesByRoadmap(organizationId)),
     safe("projects", base.projects, () => projectsService.list(organizationId)),
@@ -194,8 +191,6 @@ export async function loadSuiteSnapshot(organizationId: ID): Promise<SuiteSnapsh
   };
 }
 
-
-
 export const intelligenceService = {
   snapshot: loadSuiteSnapshot,
 
@@ -254,13 +249,9 @@ export const intelligenceService = {
    * record itself rather than a summary of it.
    */
   async learning(organizationId: ID): Promise<LearningTrail> {
-    const beliefs = await stewardService
-      .memory(organizationId)
-      .catch(() => [] as MemoryBelief[]);
+    const beliefs = await stewardService.memory(organizationId).catch(() => [] as MemoryBelief[]);
     return learningTrail(beliefs);
   },
-
-
 
   /**
    * Record what a person decided about a proposal. This is the only write the

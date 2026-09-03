@@ -95,7 +95,6 @@ export type ActivityScope = EntityType | "ops" | "studio" | "conductor" | "websi
 /** Event name is always `scope.action`, e.g. "project.status_changed". */
 export type ActivityName = `${ActivityScope}.${ActivityAction}`;
 
-
 /** Where an event or fact came from, and how much to trust it. */
 export interface Provenance {
   /** App registry id that produced the record, e.g. "ops". */

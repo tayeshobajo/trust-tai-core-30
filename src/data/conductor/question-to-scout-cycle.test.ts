@@ -40,13 +40,23 @@ vi.mock("@/data/supabase/scout-service", () => ({
   },
 }));
 vi.mock("@/data/supabase/comms-service", () => ({
-  commsService: { listDrafts: async () => [], saveDraft: vi.fn(), list: async () => [], send: vi.fn() },
+  commsService: {
+    listDrafts: async () => [],
+    saveDraft: vi.fn(),
+    list: async () => [],
+    send: vi.fn(),
+  },
 }));
 vi.mock("@/data/supabase/projects-service", () => ({
   projectsService: { get: async () => null, update: vi.fn(), routeWork: vi.fn() },
 }));
 vi.mock("@/data/supabase/roadmap-service", () => ({
-  roadmapService: { create: vi.fn(), addDecision: vi.fn(), detail: vi.fn(), resolveDecision: vi.fn() },
+  roadmapService: {
+    create: vi.fn(),
+    addDecision: vi.fn(),
+    detail: vi.fn(),
+    resolveDecision: vi.fn(),
+  },
 }));
 
 const persisted: ControlledAction[] = [];
@@ -95,9 +105,8 @@ const { decide, routeAction } = await import("./orchestrator");
 const { runObservationPass } = await import("./outcome-service");
 const { relevantLearning } = await import("./learning");
 const { answerQuestion } = await import("@/data/intelligence/conductor");
-const { buildControlledActions, routability } = await import(
-  "@/data/intelligence/conductor/control"
-);
+const { buildControlledActions, routability } =
+  await import("@/data/intelligence/conductor/control");
 const { ROOM_ADAPTERS } = await import("./adapters");
 
 /* ------------------------------------------------------------- fixtures */
@@ -132,7 +141,7 @@ const SAVED_ICP: IcpContext = {
 /** A snapshot whose Scout board is genuinely empty. */
 function thinPipeline(organizationId = ORG) {
   return {
-...emptySnapshot(organizationId, NOW),
+    ...emptySnapshot(organizationId, NOW),
     /* Conversations exist, but the Scout board is empty: the evidence the
      * thin-pipeline hypothesis actually reads. */
     relationships: [1, 2, 3].map((index) => ({
@@ -152,7 +161,6 @@ function thinPipeline(organizationId = ORG) {
     })),
   };
 }
-
 
 const DEMAND_QUESTION = "our pipeline is thin, how do we find more qualified companies";
 
@@ -239,9 +247,7 @@ describe("deterministic execution-input resolution", () => {
       question: DEMAND_QUESTION,
       icp: null,
     });
-    const discovery = answer.proposedActions.find(
-      (a) => a.operation === "scout.open_discovery",
-    );
+    const discovery = answer.proposedActions.find((a) => a.operation === "scout.open_discovery");
     expect(discovery).toBeDefined();
     expect(discovery!.payload["brief"]).toBeUndefined();
     expect(discovery!.payload["inputResolution"]).toBe("missing_input");
@@ -252,7 +258,7 @@ describe("deterministic execution-input resolution", () => {
     const answer = answerQuestion({
       snapshot: thinPipeline(),
       question: DEMAND_QUESTION,
-      icp: {...SAVED_ICP, contentMarkdown: "## \n---\n" },
+      icp: { ...SAVED_ICP, contentMarkdown: "## \n---\n" },
     });
     const discovery = answer.proposedActions.find((a) => a.operation === "scout.open_discovery")!;
     expect(answer.inputResolutions?.[discovery.id]?.missing).toContain("target industries");
@@ -319,7 +325,7 @@ describe("question → approval → Scout execution → observation → learning
     /* Now the real adapter accepts it, because the brief is present. */
     expect(
       routability({ action: scoutAction, actions: approved, adapters: ROOM_ADAPTERS, access })
-.routable,
+        .routable,
     ).toBe(true);
 
     const outcome = await routeAction(scoutAction, approved, owner, actor, ROOM_ADAPTERS, NOW);
@@ -329,7 +335,7 @@ describe("question → approval → Scout execution → observation → learning
 
     /* Observation and learning: unchanged V3 behaviour, deduped on re-check. */
     const routed = [outcome.action];
-    const receiptsFor = outcome.receipt ? [outcome.receipt]: [];
+    const receiptsFor = outcome.receipt ? [outcome.receipt] : [];
     const first = await runObservationPass({
       organizationId: ORG,
       actions: routed,
@@ -346,7 +352,6 @@ describe("question → approval → Scout execution → observation → learning
       now: "2026-08-27T10:00:00.000Z",
     });
     expect(observationLedger.length).toBe(afterFirst);
-
 
     /* A later related question carries the bounded lesson; an unrelated one
      * does not. */

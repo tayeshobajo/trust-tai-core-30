@@ -81,11 +81,11 @@ export function kindOfTouch(touch: Touch): ConversationEventKind {
     case "note":
       return "note";
     case "text":
-      return touch.direction === "inbound" ? "they_texted": "i_texted";
+      return touch.direction === "inbound" ? "they_texted" : "i_texted";
     case "email":
-      return touch.direction === "inbound" ? "they_emailed": "we_emailed";
+      return touch.direction === "inbound" ? "they_emailed" : "we_emailed";
     default:
-      return touch.direction === "inbound" ? "they_texted": "i_texted";
+      return touch.direction === "inbound" ? "they_texted" : "i_texted";
   }
 }
 
@@ -111,9 +111,9 @@ export function conversationTimeline(
       kind: kindOfTouch(touch),
       occurredAt: touch.occurredAt,
       title: touch.summary,
-...(touch.body ? { body: touch.body }: {}),
-...(note ? { source: note }: {}),
-...(record.retracted ? { retracted: true }: {}),
+      ...(touch.body ? { body: touch.body } : {}),
+      ...(note ? { source: note } : {}),
+      ...(record.retracted ? { retracted: true } : {}),
       meta: touch.channel,
     });
   }
@@ -122,32 +122,30 @@ export function conversationTimeline(
     const title =
       message.subject?.trim() ||
       message.snippet?.trim() ||
-      (message.direction === "inbound" ? "Email from them": "Email from us");
+      (message.direction === "inbound" ? "Email from them" : "Email from us");
     // The timeline shows the actual email: full body first, Gmail's preview
     // snippet only when the body has not been enriched yet (an old row one
     // resync away from fidelity, or a metadata-era schema).
     const body = message.bodyText?.trim() || message.snippet?.trim() || undefined;
     const provenance = message.sentViaComms
       ? "Sent from Comms via Gmail"
-: "Synced from Gmail · read-only";
+      : "Synced from Gmail · read-only";
     const source = message.blockedRemoteImages
       ? `${provenance} · ${message.blockedRemoteImages} remote ${
-          message.blockedRemoteImages === 1 ? "image": "images"
+          message.blockedRemoteImages === 1 ? "image" : "images"
         } blocked`
-: provenance;
+      : provenance;
     events.push({
       id: `mail:${message.id}`,
-      kind: message.direction === "inbound" ? "they_emailed": "we_emailed",
+      kind: message.direction === "inbound" ? "they_emailed" : "we_emailed",
       occurredAt: message.occurredAt,
       title,
-...(body ? { body }: {}),
-...(message.bodyHtml ? { htmlBody: message.bodyHtml }: {}),
-...(message.blockedRemoteImages
-        ? { blockedRemoteImages: message.blockedRemoteImages }
-: {}),
+      ...(body ? { body } : {}),
+      ...(message.bodyHtml ? { htmlBody: message.bodyHtml } : {}),
+      ...(message.blockedRemoteImages ? { blockedRemoteImages: message.blockedRemoteImages } : {}),
       source,
       meta: "email",
-...(message.attachments?.length ? { attachments: message.attachments }: {}),
+      ...(message.attachments?.length ? { attachments: message.attachments } : {}),
       messageId: message.id,
     });
   }
@@ -158,7 +156,7 @@ export function conversationTimeline(
     // Files the person staged, or files a send carried, whichever is true now.
     const send = readDraftSend(draft.rationale);
     const staged = readOutgoingAttachments(draft.rationale);
-    const files = staged.length > 0 ? staged: (send?.attachments ?? []);
+    const files = staged.length > 0 ? staged : (send?.attachments ?? []);
     events.push({
       id: `draft:${draft.id}`,
       kind: "draft",
@@ -166,14 +164,12 @@ export function conversationTimeline(
       title: draft.subject?.trim() || draft.intent || "Draft prepared",
       body: draft.body,
       source: draftProvenanceLabel(draft.reviewState, verification),
-      meta: verification ? "mailbox_verified": draft.reviewState,
-...(files.length > 0 ? { attachments: files }: {}),
+      meta: verification ? "mailbox_verified" : draft.reviewState,
+      ...(files.length > 0 ? { attachments: files } : {}),
     });
   }
 
-  return events.sort(
-    (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime(),
-  );
+  return events.sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
 }
 
 export interface ConversationDay {
@@ -194,16 +190,13 @@ function dayLabel(date: Date, now: Date): string {
 }
 
 /** The same thread, split by day so it reads like a conversation. */
-export function groupByDay(
-  events: ConversationEvent[],
-  now: Date = new Date(),
-): ConversationDay[] {
+export function groupByDay(events: ConversationEvent[], now: Date = new Date()): ConversationDay[] {
   const days = new Map<string, ConversationEvent[]>();
   for (const event of events) {
     const date = new Date(event.occurredAt);
     const key = Number.isNaN(date.getTime())
       ? "unknown"
-: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+      : `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
     const list = days.get(key) ?? [];
     list.push(event);
     days.set(key, list);
@@ -211,7 +204,7 @@ export function groupByDay(
 
   return [...days.entries()].map(([key, list]) => ({
     key,
-    label: key === "unknown" ? "Undated": dayLabel(new Date(list[0]!.occurredAt), now),
+    label: key === "unknown" ? "Undated" : dayLabel(new Date(list[0]!.occurredAt), now),
     events: list,
   }));
 }

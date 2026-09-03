@@ -56,7 +56,13 @@ export interface ProjectContextPacket {
   requirements: PacketStatement[];
   activeBlockers: { reason: string; owner?: string; raisedAt: string }[];
   currentWork: { id: string; title: string; status: string; owner?: string; dueDate?: string }[];
-  approvedAssets: { id: string; title: string; assetType: string; version: number; fileId: string }[];
+  approvedAssets: {
+    id: string;
+    title: string;
+    assetType: string;
+    version: number;
+    fileId: string;
+  }[];
   connectedSystems: {
     type: string;
     label: string;
@@ -260,9 +266,7 @@ export function buildProjectContextPacket(input: ContextPacketInput): ProjectCon
       primary: source.isPrimary,
       sync: source.syncState,
     })),
-    conflicts: conflictsBetween(confirmedDecisions, [
-      ...live.map(statementFrom),
-    ]),
+    conflicts: conflictsBetween(confirmedDecisions, [...live.map(statementFrom)]),
   };
 
   if (input.agent) {
@@ -306,8 +310,7 @@ export function contextHealth(packet: ProjectContextPacket, hasDesignWork = fals
 
   if (!packet.project.outcome.trim()) missing.push("No outcome is recorded.");
   if (!packet.project.owner) missing.push("Nobody is named as owner.");
-  if (packet.confirmedDecisions.length === 0)
-    review.push("No decision has been confirmed yet.");
+  if (packet.confirmedDecisions.length === 0) review.push("No decision has been confirmed yet.");
   if (packet.openQuestions.length > 0)
     review.push(
       `${packet.openQuestions.length} open question${packet.openQuestions.length === 1 ? "" : "s"} still unanswered.`,

@@ -70,7 +70,7 @@ function buildEntry(candidate: ProspectCandidate): WorthKnowingEntry {
     membership: worthKnowingMembership(candidate),
     eligibleBecause: eligibility.because,
     watch: candidate.development?.watch ?? null,
-...(candidate.development?.research ? { research: candidate.development.research }: {}),
+    ...(candidate.development?.research ? { research: candidate.development.research } : {}),
   };
 }
 
@@ -78,7 +78,7 @@ function formatDay(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "recently"
-: date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export function WorthKnowingQueue({
@@ -156,8 +156,8 @@ export function WorthKnowingQueue({
     <section aria-label="Worth knowing" className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-[13px] text-muted-foreground">
-          People worth knowing, ordered by whether there is a legitimate, timely reason to act.
-          Fit decides who is considered; a traceable person decides who appears.
+          People worth knowing, ordered by whether there is a legitimate, timely reason to act. Fit
+          decides who is considered; a traceable person decides who appears.
         </p>
       </div>
 
@@ -205,9 +205,7 @@ export function WorthKnowingQueue({
                     {entry.candidate.prospect.name}
                   </Link>
                   <MetaPill>{entry.candidate.evaluation.score}% fit</MetaPill>
-                  <span className="text-[12px] text-muted-foreground">
-                    {entry.eligibleBecause}
-                  </span>
+                  <span className="text-[12px] text-muted-foreground">{entry.eligibleBecause}</span>
                 </span>
                 <TTButton asChild variant="quiet" size="sm">
                   <Link
@@ -222,14 +220,14 @@ export function WorthKnowingQueue({
             ))}
           </ul>
         </div>
-      ): null}
+      ) : null}
 
       {setAside > 0 ? (
         <p className="text-xs text-muted-foreground">
-          {setAside} strong-fit {setAside === 1 ? "company is": "companies are"} set aside for now.
+          {setAside} strong-fit {setAside === 1 ? "company is" : "companies are"} set aside for now.
           They stay on the board, untouched, until you say otherwise.
         </p>
-      ): null}
+      ) : null}
     </section>
   );
 }
@@ -251,8 +249,7 @@ function WorthKnowingRow({
   const entryPerson = bestEntryPerson(people);
   const channel = recommendChannel({ person: entryPerson });
   const bridge = suggestProofOfCare(candidate, intel)[0];
-  const noticed =
-    intel.opportunities[0]?.statement ?? candidate.signals[0]?.statement ?? null;
+  const noticed = intel.opportunities[0]?.statement ?? candidate.signals[0]?.statement ?? null;
 
   return (
     <li className="rounded-xl border border-border bg-card p-4">
@@ -265,14 +262,14 @@ function WorthKnowingRow({
               search={linkSearch}
               className="text-[15px] font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {entryPerson ? entryPerson.fullName: candidate.prospect.name}
+              {entryPerson ? entryPerson.fullName : candidate.prospect.name}
             </Link>
             {entryPerson ? (
               <span className="text-[13px] text-muted-foreground">
-                {entryPerson.roleTitle ? `${entryPerson.roleTitle}, `: ""}
+                {entryPerson.roleTitle ? `${entryPerson.roleTitle}, ` : ""}
                 {candidate.prospect.name}
               </span>
-            ): null}
+            ) : null}
             <MetaPill>{candidate.evaluation.score}% fit</MetaPill>
             <span
               className={cn(
@@ -282,13 +279,13 @@ function WorthKnowingRow({
             >
               {RELATIONSHIP_OPPORTUNITY_LABEL[opportunity.state]}
             </span>
-            {entry.watch === "watching" ? <MetaPill>Worth watching</MetaPill>: null}
+            {entry.watch === "watching" ? <MetaPill>Worth watching</MetaPill> : null}
           </div>
           <p className="mt-1.5 text-[13px] text-muted-foreground">{opportunity.headline}</p>
           <p className="mt-1 text-[12px] text-muted-foreground/80">
             {research?.state === "prepared" && research.preparedAt
               ? `Brief prepared ${formatDay(research.preparedAt)} from the stored public evidence. Nothing has been sent.`
-: "Research needed, the deeper brief has not been prepared for this person yet."}
+              : "Research needed, the deeper brief has not been prepared for this person yet."}
           </p>
         </div>
 
@@ -312,14 +309,14 @@ function WorthKnowingRow({
                 Prepare first message
               </Link>
             </TTButton>
-          ): null}
+          ) : null}
           <TTButton
             variant="quiet"
             size="sm"
             disabled={busy}
-            onClick={() => onWatch(entry.watch === "watching" ? null: "watching")}
+            onClick={() => onWatch(entry.watch === "watching" ? null : "watching")}
           >
-            {entry.watch === "watching" ? "Watching": "Watch"}
+            {entry.watch === "watching" ? "Watching" : "Watch"}
           </TTButton>
           <TTButton variant="quiet" size="sm" disabled={busy} onClick={() => onWatch("not_now")}>
             Not now
@@ -351,7 +348,7 @@ function WorthKnowingRow({
           <dd className="mt-0.5 text-foreground">
             {channel
               ? `${RELATIONSHIP_CHANNEL_LABEL[channel.channel]} · ${channel.reason}`
-: "No socially appropriate route is on record yet."}
+              : "No socially appropriate route is on record yet."}
           </dd>
         </div>
         <div>
@@ -359,7 +356,7 @@ function WorthKnowingRow({
             A useful bridge
           </dt>
           <dd className="mt-0.5 text-foreground">
-            {bridge ? `${bridge.label}: ${bridge.idea}`: "No honest bridge is visible yet."}
+            {bridge ? `${bridge.label}: ${bridge.idea}` : "No honest bridge is visible yet."}
           </dd>
         </div>
       </dl>

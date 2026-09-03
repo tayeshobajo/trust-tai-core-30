@@ -38,10 +38,9 @@ export interface WorkContractDraft {
  * success would be proven, a contract without acceptance criteria is a
  * hope, not a contract.
  */
-export function draftWorkContract(input: WorkContractDraft): Omit<
-  WorkContract,
-  "humanApproval"
-> | null {
+export function draftWorkContract(
+  input: WorkContractDraft,
+): Omit<WorkContract, "humanApproval"> | null {
   if (!input.objective.trim() || !input.outcomeStatement.trim()) return null;
   const criteria = input.acceptanceCriteria.filter(
     (criterion) => criterion.statement.trim().length > 0,
@@ -75,7 +74,7 @@ export function approveWorkContract(
   approval: { approvedBy: string; approvedAt: string },
 ): WorkContract | null {
   if (!approval.approvedBy.trim()) return null;
-  return {...contract, humanApproval: approval };
+  return { ...contract, humanApproval: approval };
 }
 
 /**
@@ -101,16 +100,14 @@ export function paperclipPacketFor(
       kind: ref.kind,
       id: ref.id,
       label: ref.label,
-...(ref.note ? { note: ref.note }: {}),
+      ...(ref.note ? { note: ref.note } : {}),
     })),
     priorCases: input.priorCases.map((ref) => ({
       caseId: ref.caseId,
       patternName: ref.patternName,
       lesson: ref.lesson,
       correction: ref.correction,
-      outcome: ref.outcome
-        ? { decision: ref.outcome.decision, result: ref.outcome.result }
-: null,
+      outcome: ref.outcome ? { decision: ref.outcome.decision, result: ref.outcome.result } : null,
     })),
     acceptanceCriteria: contract.acceptanceCriteria,
     constraints: contract.constraints,

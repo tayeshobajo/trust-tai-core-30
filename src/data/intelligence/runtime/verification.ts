@@ -52,7 +52,7 @@ export function verifyCompletion(
       accepted: false,
       because:
         "Running the action is not evidence the work completed. The claim needs proof, not a log line.",
-      missing: [expectation ? `${expectation.kind}: ${expectation.description}`: "any evidence"],
+      missing: [expectation ? `${expectation.kind}: ${expectation.description}` : "any evidence"],
     };
   }
 

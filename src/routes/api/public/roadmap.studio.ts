@@ -19,11 +19,7 @@ import {
   withLovableAiGatewayRunIdHeader,
 } from "@/lib/ai-gateway.server";
 import { runStudioComposition } from "@/lib/roadmap-studio.server";
-import type {
-  RoadmapMilestone,
-  RoadmapResearch,
-  RoadmapStrategy,
-} from "@/domain/roadmap-intel";
+import type { RoadmapMilestone, RoadmapResearch, RoadmapStrategy } from "@/domain/roadmap-intel";
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";

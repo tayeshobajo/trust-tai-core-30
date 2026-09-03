@@ -56,9 +56,7 @@ export const getRuntimeDiagnostics = createServerFn({ method: "GET" })
       /* non-fatal: report unknown rather than guess */
     }
 
-    const { paperclipClient, paperclipHostInfo } = await import(
-      "@/lib/paperclip-client.server"
-    );
+    const { paperclipClient, paperclipHostInfo } = await import("@/lib/paperclip-client.server");
     const host = paperclipHostInfo();
     let liveReachable = false;
     try {

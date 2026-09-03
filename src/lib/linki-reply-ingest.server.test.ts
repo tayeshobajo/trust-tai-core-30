@@ -36,10 +36,7 @@ interface RelationshipSeed {
   created_at?: string;
 }
 
-function fakeClient(seed?: {
-  contacts?: ContactSeed[];
-  relationships?: RelationshipSeed[];
-}) {
+function fakeClient(seed?: { contacts?: ContactSeed[]; relationships?: RelationshipSeed[] }) {
   const state = {
     contacts: [...(seed?.contacts ?? [])] as Record<string, unknown>[],
     relationships: [...(seed?.relationships ?? [])] as Record<string, unknown>[],
@@ -51,14 +48,22 @@ function fakeClient(seed?: {
   };
   let counter = 0;
 
-  function matchesFilters(table: string, filters: Record<string, string>, orFilter?: string): Record<string, unknown>[] {
+  function matchesFilters(
+    table: string,
+    filters: Record<string, string>,
+    orFilter?: string,
+  ): Record<string, unknown>[] {
     const rows =
       table === "contacts"
         ? state.contacts
-: table === "comms_relationships"
+        : table === "comms_relationships"
           ? state.relationships
-: [];
-    const columnMatches = (row: Record<string, unknown>, column: string, value: string): boolean => {
+          : [];
+    const columnMatches = (
+      row: Record<string, unknown>,
+      column: string,
+      value: string,
+    ): boolean => {
       if (column === "metadata->>linkedin_url") {
         const meta = row["metadata"] as Record<string, unknown> | undefined;
         return (meta?.["linkedin_url"] as string) === value;
@@ -88,13 +93,17 @@ function fakeClient(seed?: {
     });
   }
 
-  function applyUpdate(table: string, filters: Record<string, string>, patch: Record<string, unknown>): void {
+  function applyUpdate(
+    table: string,
+    filters: Record<string, string>,
+    patch: Record<string, unknown>,
+  ): void {
     const rows =
       table === "linkedin_replies"
         ? state.linkedinReplies
-: table === "comms_relationships"
+        : table === "comms_relationships"
           ? state.relationships
-: [];
+          : [];
     for (const row of rows) {
       let ok = true;
       for (const [column, value] of Object.entries(filters)) {
@@ -154,7 +163,10 @@ function fakeClient(seed?: {
               existing["external_message_ref"] === row["external_message_ref"],
           )
         ) {
-          const failure = { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint" } };
+          const failure = {
+            data: null,
+            error: { code: "23505", message: "duplicate key value violates unique constraint" },
+          };
           return {
             select: () => ({ single: () => Promise.resolve(failure) }),
             then: (resolve: (value: typeof failure) => unknown) => resolve(failure),
@@ -162,7 +174,7 @@ function fakeClient(seed?: {
         }
         counter += 1;
         const id = `${table}-${counter}`;
-        insertedRow = {...row, id };
+        insertedRow = { ...row, id };
         if (table === "contacts") state.contacts.push(insertedRow);
         if (table === "comms_relationships") state.relationships.push(insertedRow);
         if (table === "linkedin_replies") state.linkedinReplies.push(insertedRow);
@@ -175,7 +187,7 @@ function fakeClient(seed?: {
       },
       update: (patch: Record<string, unknown>) => {
         updatePatch = patch;
-        const updateFilters: Record<string, string> = {...filters };
+        const updateFilters: Record<string, string> = { ...filters };
         const updateBuilder: Record<string, unknown> = {
           eq: (column: string, value: string) => {
             updateFilters[column] = value;
@@ -205,9 +217,9 @@ function confirmedContact(over: Partial<ContactSeed> = {}): ContactSeed {
     metadata: {
       linkedin_url: URL_CONFIRMED,
       linkedin_confirmed: true,
-...(over.metadata ?? {}),
+      ...(over.metadata ?? {}),
     },
-...over,
+    ...over,
   };
 }
 
@@ -222,7 +234,7 @@ function replyInput(over: Partial<LinkedInReplyObserved> = {}): LinkedInReplyObs
     body: "Thanks for the note, let's talk next week.",
     observedAt: "2026-08-27T18:00:00.000Z",
     accountRef: "linki-account-31f9",
-...over,
+    ...over,
   };
 }
 
@@ -261,9 +273,9 @@ describe("feature flag", () => {
 
 describe("normalizeLinkedinUrl", () => {
   it("canonicalizes host, tracking params, and trailing slash", () => {
-    expect(
-      normalizeLinkedinUrl("https://LinkedIn.com/in/Jonathan-Mull/?tracking=xyz"),
-    ).toBe(URL_CONFIRMED);
+    expect(normalizeLinkedinUrl("https://LinkedIn.com/in/Jonathan-Mull/?tracking=xyz")).toBe(
+      URL_CONFIRMED,
+    );
   });
 
   it("reads the nested people-metadata location as the same person", () => {
@@ -306,7 +318,9 @@ describe("resolveSender", () => {
   it("queues when nothing matches (false negative acceptable, never a guess)", async () => {
     const { client } = fakeClient({
       contacts: [
-        confirmedContact({ metadata: { linkedin_url: "https://www.linkedin.com/in/someone-else" } }),
+        confirmedContact({
+          metadata: { linkedin_url: "https://www.linkedin.com/in/someone-else" },
+        }),
       ],
     });
     const outcome = await resolveSender(client, replyInput());
@@ -338,7 +352,12 @@ describe("ingestLinkedInReply, resolved happy path", () => {
     return fakeClient({
       contacts: [confirmedContact()],
       relationships: [
-        { id: "rel-1", contact_id: "contact-1", organization_id: "org-1", created_at: "2026-08-01" },
+        {
+          id: "rel-1",
+          contact_id: "contact-1",
+          organization_id: "org-1",
+          created_at: "2026-08-01",
+        },
       ],
     });
   }

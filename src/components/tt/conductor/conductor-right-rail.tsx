@@ -8,9 +8,22 @@
 
 import { Link } from "@tanstack/react-router";
 
-import { CONDUCTOR_CAN, type ConductorGlance, type MovedItem, type NeedsTaiItem } from "./capabilities";
+import {
+  CONDUCTOR_CAN,
+  type ConductorGlance,
+  type MovedItem,
+  type NeedsTaiItem,
+} from "./capabilities";
 
-function Rail({ title, children, cta }: { title: string; children: React.ReactNode; cta?: React.ReactNode }) {
+function Rail({
+  title,
+  children,
+  cta,
+}: {
+  title: string;
+  children: React.ReactNode;
+  cta?: React.ReactNode;
+}) {
   return (
     <section className="rounded-xl border border-border bg-card p-4">
       <h2 className="tt-eyebrow mb-3">{title}</h2>
@@ -38,7 +51,14 @@ export function ConductorRightRail({
         cta={
           <Link
             to="/modules/activity"
-            search={{ view: "today" as const, page: 1, kind: "all" as const, q: "", from: "", to: "" }}
+            search={{
+              view: "today" as const,
+              page: 1,
+              kind: "all" as const,
+              q: "",
+              from: "",
+              to: "",
+            }}
             className="text-royal underline underline-offset-4"
           >
             View today&rsquo;s activity
@@ -66,7 +86,14 @@ export function ConductorRightRail({
         cta={
           <Link
             to="/modules/activity"
-            search={{ view: "needs" as const, page: 1, kind: "all" as const, q: "", from: "", to: "" }}
+            search={{
+              view: "needs" as const,
+              page: 1,
+              kind: "all" as const,
+              q: "",
+              from: "",
+              to: "",
+            }}
             className="text-royal underline underline-offset-4"
           >
             View all
@@ -96,7 +123,14 @@ export function ConductorRightRail({
         cta={
           <Link
             to="/modules/activity"
-            search={{ view: "moved" as const, page: 1, kind: "all" as const, q: "", from: "", to: "" }}
+            search={{
+              view: "moved" as const,
+              page: 1,
+              kind: "all" as const,
+              q: "",
+              from: "",
+              to: "",
+            }}
             className="text-royal underline underline-offset-4"
           >
             View all movements
@@ -122,7 +156,11 @@ export function ConductorRightRail({
       <Rail
         title="What Conductor can do"
         cta={
-          <button type="button" onClick={onCapabilities} className="text-royal underline underline-offset-4">
+          <button
+            type="button"
+            onClick={onCapabilities}
+            className="text-royal underline underline-offset-4"
+          >
             View capabilities
           </button>
         }

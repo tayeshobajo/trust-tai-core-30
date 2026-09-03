@@ -120,9 +120,9 @@ export function attachmentMetaToJson(meta: AttachmentMeta): Record<string, unkno
     filename: meta.filename,
     mime_type: meta.mimeType,
     size: meta.size,
-...(meta.attachmentId ? { attachment_id: meta.attachmentId }: {}),
-...(meta.contentId ? { content_id: meta.contentId }: {}),
-...(meta.inline ? { inline: true }: {}),
+    ...(meta.attachmentId ? { attachment_id: meta.attachmentId } : {}),
+    ...(meta.contentId ? { content_id: meta.contentId } : {}),
+    ...(meta.inline ? { inline: true } : {}),
   };
 }
 
@@ -133,20 +133,20 @@ export function attachmentMetaFromJson(raw: unknown): AttachmentMeta | null {
   const filename =
     typeof entry["filename"] === "string" && entry["filename"].trim().length > 0
       ? entry["filename"].trim()
-: null;
+      : null;
   if (!filename) return null;
   const text = (value: unknown) =>
-    typeof value === "string" && value.trim().length > 0 ? value.trim(): undefined;
+    typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
   const mimeType = text(entry["mime_type"]) ?? text(entry["mimeType"]);
   const attachmentId = text(entry["attachment_id"]) ?? text(entry["attachmentId"]);
   const contentId = text(entry["content_id"]) ?? text(entry["contentId"]);
   return {
     filename,
     mimeType: mimeType ?? "application/octet-stream",
-    size: typeof entry["size"] === "number" ? entry["size"]: 0,
-...(attachmentId ? { attachmentId }: {}),
-...(contentId ? { contentId }: {}),
-...(entry["inline"] === true ? { inline: true }: {}),
+    size: typeof entry["size"] === "number" ? entry["size"] : 0,
+    ...(attachmentId ? { attachmentId } : {}),
+    ...(contentId ? { contentId } : {}),
+    ...(entry["inline"] === true ? { inline: true } : {}),
   };
 }
 
@@ -234,7 +234,7 @@ export function mailboxFromProvenance(provenance: unknown): string | null {
   const value = (provenance as Record<string, unknown>)["mailbox"];
   if (typeof value !== "string") return null;
   const mailbox = value.trim().toLowerCase();
-  return mailbox.includes("@") ? mailbox: null;
+  return mailbox.includes("@") ? mailbox : null;
 }
 
 /* ------------------------------------------------- multi-mailbox sending */
@@ -291,14 +291,14 @@ export function resolveSendMailbox<T extends SendMailboxRef>(input: {
     );
     return found
       ? { kind: "resolved", connection: found, reason: "thread_owner" }
-: { kind: "owner_missing", mailbox: owner };
+      : { kind: "owner_missing", mailbox: owner };
   }
 
   if (input.integrationId) {
     const found = input.connections.find((connection) => connection.id === input.integrationId);
     return found
       ? { kind: "resolved", connection: found, reason: "explicit" }
-: { kind: "unknown_choice" };
+      : { kind: "unknown_choice" };
   }
 
   if (live.length === 0) return { kind: "none_connected" };
@@ -451,9 +451,7 @@ export interface GmailRunSummary {
 }
 
 function runCount(value: unknown): number {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0
-    ? Math.floor(value)
-: 0;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
 }
 
 /** Defensive read of `cursor.last_run`; anything malformed is simply absent. */

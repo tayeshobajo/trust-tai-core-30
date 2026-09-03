@@ -60,7 +60,7 @@ const CONFIDENCES: PersonConfidence[] = [
 const SENIORITIES: Seniority[] = ["founder", "owner", "exec", "marketing", "operations", "other"];
 
 function text(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim(): undefined;
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 /**
@@ -73,7 +73,7 @@ function peopleMetaOf(metadata: Row): Row {
   const nested = metadata["people"];
   return nested && typeof nested === "object" && !Array.isArray(nested)
     ? (nested as Row)
-: metadata;
+    : metadata;
 }
 
 function peopleMeta(row: ContactRow): Row {
@@ -87,9 +87,9 @@ function peopleMeta(row: ContactRow): Row {
 function mergePeopleMeta(metadata: Row, patch: Row): Row {
   const nested = metadata["people"];
   if (nested && typeof nested === "object" && !Array.isArray(nested)) {
-    return {...metadata, people: {...(nested as Row),...patch } };
+    return { ...metadata, people: { ...(nested as Row), ...patch } };
   }
-  return {...metadata,...patch };
+  return { ...metadata, ...patch };
 }
 
 export function toPerson(row: ContactRow): Person {
@@ -103,39 +103,52 @@ export function toPerson(row: ContactRow): Person {
   return {
     id: row.id,
     organizationId: row.organization_id,
-...(text(meta["prospect_id"]) ? { prospectId: text(meta["prospect_id"])! }: {}),
-...(row.client_id ? { clientId: row.client_id }: {}),
+    ...(text(meta["prospect_id"]) ? { prospectId: text(meta["prospect_id"])! } : {}),
+    ...(row.client_id ? { clientId: row.client_id } : {}),
     fullName: row.full_name,
-...(row.title ? { roleTitle: row.title }: {}),
+    ...(row.title ? { roleTitle: row.title } : {}),
     seniority:
       seniority && SENIORITIES.includes(seniority)
         ? seniority
-: guessSeniority(row.title ?? undefined),
-...(row.email ? { email: row.email }: {}),
+        : guessSeniority(row.title ?? undefined),
+    ...(row.email ? { email: row.email } : {}),
     emailStatus:
       emailStatus && EMAIL_STATUSES.includes(emailStatus)
         ? emailStatus
-: row.email
+        : row.email
           ? "found"
-: "unknown",
+          : "unknown",
     confidence:
-      confidence && CONFIDENCES.includes(confidence) ? confidence: "asserted_by_provider",
-...(text(meta["linkedin_url"]) ? { linkedinUrl: text(meta["linkedin_url"])! }: {}),
-...(meta["linkedin_confirmed"] !== undefined && meta["linkedin_confirmed"] !== null
-      ? { linkedinConfirmed: meta["linkedin_confirmed"] === "true" || meta["linkedin_confirmed"] === true }
-: {}),
-...(text(meta["linkedin_checked_at"]) ? { linkedinCheckedAt: text(meta["linkedin_checked_at"])! }: {}),
-...(text(meta["linkedin_provider"]) ? { linkedinProvider: text(meta["linkedin_provider"])! }: {}),
-...(text(meta["linkedin_external_id"]) ? { linkedinExternalId: text(meta["linkedin_external_id"])! }: {}),
-...(text(meta["linkedin_route_confidence"])
-      ? { linkedinConfidence: text(meta["linkedin_route_confidence"]) as NonNullable<Person["linkedinConfidence"]> }
-: {}),
-...(row.phone ? { phone: row.phone }: {}),
-...(text(meta["email_checked_at"]) ? { emailCheckedAt: text(meta["email_checked_at"])! }: {}),
-...(text(meta["email_checked_by"]) ? { emailCheckedBy: text(meta["email_checked_by"])! }: {}),
+      confidence && CONFIDENCES.includes(confidence) ? confidence : "asserted_by_provider",
+    ...(text(meta["linkedin_url"]) ? { linkedinUrl: text(meta["linkedin_url"])! } : {}),
+    ...(meta["linkedin_confirmed"] !== undefined && meta["linkedin_confirmed"] !== null
+      ? {
+          linkedinConfirmed:
+            meta["linkedin_confirmed"] === "true" || meta["linkedin_confirmed"] === true,
+        }
+      : {}),
+    ...(text(meta["linkedin_checked_at"])
+      ? { linkedinCheckedAt: text(meta["linkedin_checked_at"])! }
+      : {}),
+    ...(text(meta["linkedin_provider"])
+      ? { linkedinProvider: text(meta["linkedin_provider"])! }
+      : {}),
+    ...(text(meta["linkedin_external_id"])
+      ? { linkedinExternalId: text(meta["linkedin_external_id"])! }
+      : {}),
+    ...(text(meta["linkedin_route_confidence"])
+      ? {
+          linkedinConfidence: text(meta["linkedin_route_confidence"]) as NonNullable<
+            Person["linkedinConfidence"]
+          >,
+        }
+      : {}),
+    ...(row.phone ? { phone: row.phone } : {}),
+    ...(text(meta["email_checked_at"]) ? { emailCheckedAt: text(meta["email_checked_at"])! } : {}),
+    ...(text(meta["email_checked_by"]) ? { emailCheckedBy: text(meta["email_checked_by"])! } : {}),
     sourceId: text(meta["source_id"]) ?? "manual",
-...(text(meta["source_url"]) ? { sourceUrl: text(meta["source_url"])! }: {}),
-...(text(meta["note"]) ? { note: text(meta["note"])! }: {}),
+    ...(text(meta["source_url"]) ? { sourceUrl: text(meta["source_url"])! } : {}),
+    ...(text(meta["note"]) ? { note: text(meta["note"])! } : {}),
     provenance: {
       appId: String(provenance.appId ?? "scout"),
       actor: (provenance.actor as Provenance["actor"]) ?? {
@@ -143,8 +156,8 @@ export function toPerson(row: ContactRow): Person {
         id: row.created_by ?? "",
       },
       observedAt: String(provenance.observedAt ?? createdAt),
-...(provenance.externalRef ? { externalRef: String(provenance.externalRef) }: {}),
-...(provenance.confidence ? { confidence: provenance.confidence }: {}),
+      ...(provenance.externalRef ? { externalRef: String(provenance.externalRef) } : {}),
+      ...(provenance.confidence ? { confidence: provenance.confidence } : {}),
     },
     createdAt,
     updatedAt: row.updated_at ?? createdAt,
@@ -154,14 +167,14 @@ export function toPerson(row: ContactRow): Person {
 /** Everyone on record for one Scout prospect. */
 export async function listProspectContacts(organizationId: ID, prospectId: ID): Promise<Person[]> {
   const { data, error } = await supabase
-.from("contacts")
-.select(SELECT_COLUMNS)
-.eq("organization_id", organizationId)
-.order("created_at", { ascending: true });
+    .from("contacts")
+    .select(SELECT_COLUMNS)
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   return ((data ?? []) as unknown as ContactRow[])
-.map(toPerson)
-.filter((person) => person.prospectId === prospectId);
+    .map(toPerson)
+    .filter((person) => person.prospectId === prospectId);
 }
 
 export interface ContactWrite {
@@ -188,15 +201,15 @@ function metadataFor(input: ContactWrite, at: string): Row {
     email_status: input.emailStatus,
     confidence: input.confidence,
     source_id: input.sourceId,
-...(input.linkedinUrl ? { linkedin_url: input.linkedinUrl }: {}),
-...(input.sourceUrl ? { source_url: input.sourceUrl }: {}),
-...(input.note ? { note: input.note }: {}),
+    ...(input.linkedinUrl ? { linkedin_url: input.linkedinUrl } : {}),
+    ...(input.sourceUrl ? { source_url: input.sourceUrl } : {}),
+    ...(input.note ? { note: input.note } : {}),
     provenance: {
       appId: "scout",
       actor: { type: "user", id: input.userId },
       observedAt: at,
-      confidence: input.confidence === "inferred" ? "inferred": "observed",
-...(input.sourceUrl ? { externalRef: input.sourceUrl }: {}),
+      confidence: input.confidence === "inferred" ? "inferred" : "observed",
+      ...(input.sourceUrl ? { externalRef: input.sourceUrl } : {}),
     },
   };
 }
@@ -257,7 +270,6 @@ export interface ContactPatch {
   prospectId?: ID | undefined;
 }
 
-
 /** Patch one person, merging into the existing metadata rather than replacing. */
 export async function updateContact(id: ID, patch: ContactPatch, userId: ID): Promise<Person> {
   const current = await supabase.from("contacts").select(SELECT_COLUMNS).eq("id", id).single();
@@ -284,9 +296,12 @@ export async function updateContact(id: ID, patch: ContactPatch, userId: ID): Pr
     peoplePatch["linkedin_checked_at"] = at;
     if (patch.linkedinConfirmed) peoplePatch["linkedin_route_confidence"] = "confirmed";
   }
-  if (patch.linkedinProvider !== undefined) peoplePatch["linkedin_provider"] = patch.linkedinProvider;
-  if (patch.linkedinExternalId !== undefined) peoplePatch["linkedin_external_id"] = patch.linkedinExternalId;
-  if (patch.linkedinConfidence !== undefined) peoplePatch["linkedin_route_confidence"] = patch.linkedinConfidence;
+  if (patch.linkedinProvider !== undefined)
+    peoplePatch["linkedin_provider"] = patch.linkedinProvider;
+  if (patch.linkedinExternalId !== undefined)
+    peoplePatch["linkedin_external_id"] = patch.linkedinExternalId;
+  if (patch.linkedinConfidence !== undefined)
+    peoplePatch["linkedin_route_confidence"] = patch.linkedinConfidence;
   if (patch.companyName !== undefined) peoplePatch["company_name"] = patch.companyName;
   if (patch.prospectId !== undefined) peoplePatch["prospect_id"] = patch.prospectId;
 
@@ -296,20 +311,20 @@ export async function updateContact(id: ID, patch: ContactPatch, userId: ID): Pr
   const meta = mergePeopleMeta((row.metadata ?? {}) as Row, peoplePatch);
 
   const payload: Row = {
-...(patch.fullName ? { full_name: patch.fullName }: {}),
-...(patch.roleTitle !== undefined ? { title: patch.roleTitle }: {}),
-...(patch.email !== undefined ? { email: patch.email }: {}),
-...(patch.phone !== undefined ? { phone: patch.phone }: {}),
+    ...(patch.fullName ? { full_name: patch.fullName } : {}),
+    ...(patch.roleTitle !== undefined ? { title: patch.roleTitle } : {}),
+    ...(patch.email !== undefined ? { email: patch.email } : {}),
+    ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
     metadata: meta,
   };
 
   const { data, error } = await writeTolerant<ContactRow>(payload, ["metadata"], async (body) => {
     const result = await supabase
-.from("contacts")
-.update(body)
-.eq("id", id)
-.select(SELECT_COLUMNS)
-.single();
+      .from("contacts")
+      .update(body)
+      .eq("id", id)
+      .select(SELECT_COLUMNS)
+      .single();
     return { data: result.data as unknown as ContactRow | null, error: result.error };
   });
 
@@ -338,14 +353,14 @@ export async function findOrCreateContact(input: {
   const email = input.email?.trim().toLowerCase() || undefined;
 
   const { data, error } = await supabase
-.from("contacts")
-.select(SELECT_COLUMNS)
-.eq("organization_id", input.organizationId);
+    .from("contacts")
+    .select(SELECT_COLUMNS)
+    .eq("organization_id", input.organizationId);
   if (error) throw new Error(error.message);
 
   const rows = (data ?? []) as unknown as ContactRow[];
   const match =
-    (email ? rows.find((row) => (row.email ?? "").toLowerCase() === email): undefined) ??
+    (email ? rows.find((row) => (row.email ?? "").toLowerCase() === email) : undefined) ??
     rows.find((row) => row.full_name.trim().toLowerCase() === fullName.toLowerCase());
 
   if (match) {
@@ -365,17 +380,17 @@ export async function findOrCreateContact(input: {
   const at = new Date().toISOString();
   const metadata: Row = {
     seniority: guessSeniority(input.roleTitle),
-    email_status: email ? "found": "unknown",
+    email_status: email ? "found" : "unknown",
     confidence: "human_confirmed",
     source_id: "comms_capture",
-...(input.note ? { note: input.note }: {}),
-...(input.metWhere ? { met_where: input.metWhere }: {}),
+    ...(input.note ? { note: input.note } : {}),
+    ...(input.metWhere ? { met_where: input.metWhere } : {}),
     provenance: {
       appId: "comms",
       actor: { type: "user", id: input.userId },
       observedAt: at,
       confidence: "observed",
-...(input.metWhere ? { externalRef: input.metWhere }: {}),
+      ...(input.metWhere ? { externalRef: input.metWhere } : {}),
     },
   };
 

@@ -80,7 +80,13 @@ import { supabase } from "@/integrations/trust-tai/supabase";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 /** States in which the composer replaces the prepare bar: a draft is in hand. */
-const COMPOSER_STATES = new Set(["draft", "needs_human_review", "approved", "sending", "send_failed"]);
+const COMPOSER_STATES = new Set([
+  "draft",
+  "needs_human_review",
+  "approved",
+  "sending",
+  "send_failed",
+]);
 
 const TITLE = "Comms · relationships kept warm · Trust Tai OS";
 const DESCRIPTION =
@@ -90,9 +96,9 @@ export const Route = createFileRoute("/modules/comms/")({
   // A Scout handoff lands here carrying the relationship it just opened, so
   // Comms opens on exactly that person, never on whoever sorted first.
   validateSearch: (search: Record<string, unknown>): { relationship?: string } => ({
-...(typeof search["relationship"] === "string" && search["relationship"]
+    ...(typeof search["relationship"] === "string" && search["relationship"]
       ? { relationship: search["relationship"] as string }
-: {}),
+      : {}),
   }),
   head: () => ({
     meta: [
@@ -122,7 +128,9 @@ interface DraftPreview {
 }
 
 function CommsRoute() {
-  return <WorkspaceGate appId="comms">{(identity) => <CommsRoom identity={identity} />}</WorkspaceGate>;
+  return (
+    <WorkspaceGate appId="comms">{(identity) => <CommsRoom identity={identity} />}</WorkspaceGate>
+  );
 }
 
 function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
@@ -210,10 +218,14 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
    * and the open conversation falls back to the first row of that page when
    * the person is no longer on it.
    */
-  function changeView(next: { tab?: InboxTab; query?: string; health?: ConversationHealthStatus | null }) {
+  function changeView(next: {
+    tab?: InboxTab;
+    query?: string;
+    health?: ConversationHealthStatus | null;
+  }) {
     const nextTab = next.tab ?? tab;
     const nextQuery = next.query ?? query;
-    const nextHealth = next.health !== undefined ? next.health: healthFilter;
+    const nextHealth = next.health !== undefined ? next.health : healthFilter;
     setTab(nextTab);
     setQuery(nextQuery);
     setHealthFilter(nextHealth);
@@ -239,7 +251,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
    * person was opened directly (from the sidebar), which always wins.
    */
   const selected: Relationship | null =
-    (selectedId ? relationships.find((entry) => entry.id === selectedId): null) ??
+    (selectedId ? relationships.find((entry) => entry.id === selectedId) : null) ??
     relationships.find((entry) => entry.id === pageSelection(pageView.rows, null)) ??
     null;
 
@@ -259,7 +271,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   // selected relationship because the rail derives from `selected`.
   useEffect(() => {
     if (!contextOpen) return;
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement: null;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") setContextOpen(false);
     }
@@ -269,8 +281,6 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       previous?.focus();
     };
   }, [contextOpen]);
-
-
 
   const touchesQuery = useQuery({
     queryKey: ["comms", "touches", selected?.id],
@@ -295,8 +305,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const selectedTouches = touchesQuery.data ?? touchesByRelationship[selected?.id ?? ""] ?? [];
   const drafts = draftsQuery.data ?? [];
   const selectedMessages = messagesQuery.data ?? [];
-  const health = selected ? deriveConversationHealth(selected, selectedTouches): null;
-  const strength = selected ? relationshipStrength(selected, selectedTouches): null;
+  const health = selected ? deriveConversationHealth(selected, selectedTouches) : null;
+  const strength = selected ? relationshipStrength(selected, selectedTouches) : null;
   const days = useMemo(
     () => groupByDay(conversationTimeline(selectedTouches, drafts, selectedMessages)),
     [selectedTouches, drafts, selectedMessages],
@@ -318,8 +328,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const savedDraft = drafts.find((draft) => draft.reviewState !== "discarded");
   /** The open editor is this relationship's draft AND a person's choice. */
   const activeDraft =
-    selected && savedDraft && COMPOSER_STATES.has(savedDraft.reviewState) ? savedDraft: null;
-  const draftKey = selected && activeDraft ? `${selected.id}:${activeDraft.id}`: null;
+    selected && savedDraft && COMPOSER_STATES.has(savedDraft.reviewState) ? savedDraft : null;
+  const draftKey = selected && activeDraft ? `${selected.id}:${activeDraft.id}` : null;
   const editorOpen = draftKey !== null && openDraftKey === draftKey;
 
   async function refresh() {
@@ -343,8 +353,6 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
    * and that lives on Connections.
    */
 
-
-
   const update = useMutation({
     mutationFn: (input: Parameters<typeof commsService.update>[1]) =>
       commsService.update(selected!.id, input, context),
@@ -352,8 +360,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   const remember = useMutation({
-    mutationFn: (item: Omit<MemoryItem, "at">) =>
-      commsService.remember(selected!, item, context),
+    mutationFn: (item: Omit<MemoryItem, "at">) => commsService.remember(selected!, item, context),
     onSuccess: refresh,
   });
 
@@ -375,7 +382,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           summary: `${submission.summary} · ${provenance.label}`,
           body: submission.body,
           occurredAt: submission.occurredAt,
-...(submission.theirWords ? { theirWords: true }: {}),
+          ...(submission.theirWords ? { theirWords: true } : {}),
         },
         context,
       );
@@ -384,18 +391,21 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         await commsService.remember(
           relationship,
           {
-            label: entry.kind === "commitment" ? "Promise": "Worth remembering",
+            label: entry.kind === "commitment" ? "Promise" : "Worth remembering",
             value: entry.text,
             tier: "decided",
             evidence: [provenance, { label: `From: ${entry.because}`, kind: "human" }],
-...(entry.kind === "commitment"
+            ...(entry.kind === "commitment"
               ? {
                   category: COMMITMENT_CATEGORY,
                   status: "open" as const,
                   owner: entry.owner ?? "us",
-...(entry.due ? { due: entry.due }: {}),
+                  ...(entry.due ? { due: entry.due } : {}),
                 }
-: { category: entry.kind === "next_move" ? "Important context": "What they care about" }),
+              : {
+                  category:
+                    entry.kind === "next_move" ? "Important context" : "What they care about",
+                }),
             addedBy: provenance.label,
           },
           context,
@@ -428,7 +438,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           touch,
           relationship: selected!,
           summary: input.edit.summary,
-...(input.edit.body !== undefined ? { body: input.edit.body }: {}),
+          ...(input.edit.body !== undefined ? { body: input.edit.body } : {}),
           editedBy: identity.name,
         },
         context,
@@ -449,8 +459,8 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           touch,
           relationship: selected!,
           retractedBy: identity.name,
-...(input.because ? { because: input.because }: {}),
-...(input.restore ? { restore: true }: {}),
+          ...(input.because ? { because: input.because } : {}),
+          ...(input.restore ? { restore: true } : {}),
         },
         context,
       );
@@ -476,10 +486,10 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 writeCommunicationJudgment({ violations: draft.violations }, draft.judgment),
                 draft.grounding,
               )
-: { violations: draft.violations },
+            : { violations: draft.violations },
           evidence: draft.usedEvidence.map((entry) => ({
             label: `${entry.label} (${entry.tier})`,
-            kind: entry.tier === "decided" ? "human": "computed",
+            kind: entry.tier === "decided" ? "human" : "computed",
           })),
         },
         context,
@@ -528,9 +538,7 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
       setConfirmDiscard(false);
       setOpenDraftKey(`${selected.id}:${saved.id}`);
     } catch (error) {
-      setDraftError(
-        error instanceof Error ? error.message: "That draft could not be prepared.",
-      );
+      setDraftError(error instanceof Error ? error.message : "That draft could not be prepared.");
     } finally {
       setDrafting(false);
     }
@@ -549,14 +557,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
     );
   }
 
-  const move = selected ? nextRelationshipMove(selected): null;
-  const attentionSplit = splitAttention(
-    relationshipsWorthAttention(relationships),
-    attentionState,
-  );
+  const move = selected ? nextRelationshipMove(selected) : null;
+  const attentionSplit = splitAttention(relationshipsWorthAttention(relationships), attentionState);
   const editingTouch = editingTouchId
     ? (selectedTouches.find((entry) => entry.id === editingTouchId) ?? null)
-: null;
+    : null;
 
   const rail =
     selected && health && strength && move ? (
@@ -569,13 +574,11 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
         onPrepareMove={() => void compose("follow_up", move.action)}
         onRemindLater={() => update.mutate({ nextAction: move.action })}
         onNotNeeded={() => update.mutate({ nextAction: null })}
-        onSettleCommitment={(commitment, status) =>
-          settleCommitment.mutate({ commitment, status })
-        }
+        onSettleCommitment={(commitment, status) => settleCommitment.mutate({ commitment, status })}
         onGraduate={() => update.mutate({ stage: "client" })}
         onMoveToNurture={() => update.mutate({ stage: "nurture" })}
       />
-    ): null;
+    ) : null;
 
   return (
     <AppShell
@@ -597,355 +600,351 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
           onRestoreAttention={(id) => decideAttention(clearAttentionDecision(attentionState, id))}
           onOpenRelationship={(id) => setSelectedId(id)}
         />
-
       }
     >
-    <div className="-mx-4 -mt-8 w-auto bg-[linear-gradient(180deg,var(--cloud)_0%,transparent_200px)] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-mt-10 lg:px-8">
-
-      <PageHeader
-        appId="comms"
-        eyebrow="Comms"
-        title="Relationships, kept warm."
-        supporting="Comms remembers interactions, helps Tai decide the next move, and drafts in Tai's voice so every relationship stays cared for."
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            {selected ? (
-              <SequenceInRoadmap
-                subject={{
-                  kind: "relationship",
-                  id: selected.id,
-                  label: selected.companyName || selected.fullName,
-                }}
-                objective={`Turn the relationship with ${selected.companyName || selected.fullName} into a sequenced path both sides have agreed.`}
-                blockedBecause={
-                  roadmapHandoffReadiness(selected).ready
-                    ? null
-: roadmapHandoffReadiness(selected).because
-                }
-                context={{
-                  organizationId: identity.organizationId,
-                  userId: identity.userId,
-                  userLabel: identity.name,
-                }}
-              />
-            ): null}
-            {selected ? (
-              <TTButton variant="quiet" onClick={() => setInteracting(true)}>
-                Add interaction
-              </TTButton>
-            ): null}
-            <TTButton
-              onClick={() => setCapturing((value) => !value)}
-            >
-              {capturing ? "Close": "Add relationship"}
-            </TTButton>
-          </div>
-        }
-      />
-
-      <div className="mt-5">
-        <CommsTabs active="relationships" />
-      </div>
-
-      {capturing ? (
-        <div className="tt-surface mt-5 space-y-5 p-6">
-          <CaptureForm
-            onCreate={(input) => create.mutate(input)}
-            busy={create.isPending}
-            onCancel={() => setCapturing(false)}
-          />
-          <p className="text-[13px] text-muted-foreground">
-            Or label them <span className="text-foreground">Trust Tai/Comms</span> in Gmail. Comms
-            brings that person in on its own, with their labeled history.
-          </p>
-          {create.isError ? (
-            <p className="text-[13px] text-destructive">{(create.error as Error).message}</p>
-          ): null}
-
-        </div>
-      ): null}
-
-      {/* Inbox finds the person; conversation owns the room. Intelligence
-          appears when called, context is an overlay drawer, never a column. */}
-      <div className="mt-5 grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="tt-surface max-h-[78vh] overflow-hidden p-0 lg:sticky lg:top-20">
-          <CommsInbox
-            view={view}
-            page={pageView}
-            onPage={changePage}
-            tab={tab}
-            onTab={(next) => changeView({ tab: next })}
-            query={query}
-            onQuery={(value) => changeView({ query: value })}
-            health={healthFilter}
-            onHealth={(status) => changeView({ health: status })}
-            selectedId={selected?.id ?? null}
-            onSelect={(id) => {
-              setSelectedId(id);
-              setDraftError(null);
-              setProfileOpen(false);
-            }}
-            empty={relationships.length === 0}
-          />
-        </aside>
-
-        <main className="tt-surface flex h-[78vh] min-h-[560px] flex-col overflow-hidden p-0">
-          {relationshipsQuery.isLoading ? (
-            <p className="p-8 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              Opening your conversations…
-            </p>
-          ): selected && health ? (
-            <ConversationRoom
-              relationship={selected}
-              days={days}
-              health={health}
-              organizationId={context.organizationId}
-              onViewProfile={() => setProfileOpen((value) => !value)}
-              onOpenContext={() => setContextOpen(true)}
-              onAddInteraction={() => setInteracting(true)}
-              onExportSummary={() => setExporting(true)}
-              onEditTouch={(touchId) => setEditingTouchId(touchId)}
-              onRetractTouch={(touchId) => setEditingTouchId(touchId)}
-              onRestoreTouch={(touchId) => retractTouch.mutate({ touchId, restore: true })}
-              onDownloadAttachment={(event, file) => {
-                if (!event.messageId || !file.attachmentId) return;
-                void gmailDownloadAttachment({
-                  organizationId: context.organizationId,
-                  messageId: event.messageId,
-                  attachmentId: file.attachmentId,
-                  filename: file.filename,
-                });
-              }}
-            >
-              {roadmapSignal?.emerging ? (
-                <div className="border-t border-border bg-violet-50/60 px-5 py-4">
-                  <p className="tt-eyebrow text-violet-700">Roadmap opportunity emerging</p>
-                  <p className="mt-2 text-[13px] text-muted-foreground">{roadmapSignal.because}</p>
-                  <ul className="mt-2 space-y-1">
-                    {roadmapSignal.needs.map((need) => (
-                      <li key={need.kind} className="text-[13px] text-foreground">
-                        <span className="font-medium">{need.label}</span>
-                        <span className="text-muted-foreground">, {need.evidence}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-2 text-[12px] text-muted-foreground">
-                    Recognition, not a pitch. Whether to propose a roadmap stays your call, in the
-                    conversation.
-                  </p>
-                </div>
-              ): null}
-
-              {profileOpen ? (
-                <div className="border-t border-border bg-secondary/30 px-5 py-4">
-                  <RelationshipPersonCard
-                    organizationId={context.organizationId}
-                    userId={context.userId}
-                    relationshipId={selected.id}
-                  />
-                  <p className="mt-3 text-[13px] text-muted-foreground">
-                    {[
-                      selected.email,
-                      selected.metWhere ? `Met at ${selected.metWhere}`: null,
-                      selected.metAt
-                        ? `Met ${new Date(selected.metAt).toLocaleDateString()}`
-: null,
-                    ]
-.filter(Boolean)
-.join(" · ") || "Nothing else on record yet."}
-                  </p>
-
-                  <div className="mt-3">
-                    <TTButton
-                      variant="quiet"
-                      onClick={() =>
-                        remember.mutate({
-                          label: "Worth remembering",
-                          value: "Reviewed this profile.",
-                          tier: "decided",
-                          evidence: [{ label: "Entered by a person", kind: "human" }],
-                        })
-                      }
-                      disabled={remember.isPending}
-                    >
-                      Note this review
-                    </TTButton>
-                  </div>
-                </div>
-              ): null}
-
-              {activeDraft && editorOpen ? (
-                <SendComposer
-                  draft={activeDraft}
-                  relationship={selected}
-                  context={context}
-                  messages={selectedMessages}
-                  onChanged={refresh}
-                  onClose={() => setOpenDraftKey(null)}
+      <div className="-mx-4 -mt-8 w-auto bg-[linear-gradient(180deg,var(--cloud)_0%,transparent_200px)] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-mt-10 lg:px-8">
+        <PageHeader
+          appId="comms"
+          eyebrow="Comms"
+          title="Relationships, kept warm."
+          supporting="Comms remembers interactions, helps Tai decide the next move, and drafts in Tai's voice so every relationship stays cared for."
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              {selected ? (
+                <SequenceInRoadmap
+                  subject={{
+                    kind: "relationship",
+                    id: selected.id,
+                    label: selected.companyName || selected.fullName,
+                  }}
+                  objective={`Turn the relationship with ${selected.companyName || selected.fullName} into a sequenced path both sides have agreed.`}
+                  blockedBecause={
+                    roadmapHandoffReadiness(selected).ready
+                      ? null
+                      : roadmapHandoffReadiness(selected).because
+                  }
+                  context={{
+                    organizationId: identity.organizationId,
+                    userId: identity.userId,
+                    userLabel: identity.name,
+                  }}
                 />
-              ): (
-                <>
-                  {/* A draft exists but the editor is closed: the thread stays
+              ) : null}
+              {selected ? (
+                <TTButton variant="quiet" onClick={() => setInteracting(true)}>
+                  Add interaction
+                </TTButton>
+              ) : null}
+              <TTButton onClick={() => setCapturing((value) => !value)}>
+                {capturing ? "Close" : "Add relationship"}
+              </TTButton>
+            </div>
+          }
+        />
+
+        <div className="mt-5">
+          <CommsTabs active="relationships" />
+        </div>
+
+        {capturing ? (
+          <div className="tt-surface mt-5 space-y-5 p-6">
+            <CaptureForm
+              onCreate={(input) => create.mutate(input)}
+              busy={create.isPending}
+              onCancel={() => setCapturing(false)}
+            />
+            <p className="text-[13px] text-muted-foreground">
+              Or label them <span className="text-foreground">Trust Tai/Comms</span> in Gmail. Comms
+              brings that person in on its own, with their labeled history.
+            </p>
+            {create.isError ? (
+              <p className="text-[13px] text-destructive">{(create.error as Error).message}</p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Inbox finds the person; conversation owns the room. Intelligence
+          appears when called, context is an overlay drawer, never a column. */}
+        <div className="mt-5 grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
+          <aside className="tt-surface max-h-[78vh] overflow-hidden p-0 lg:sticky lg:top-20">
+            <CommsInbox
+              view={view}
+              page={pageView}
+              onPage={changePage}
+              tab={tab}
+              onTab={(next) => changeView({ tab: next })}
+              query={query}
+              onQuery={(value) => changeView({ query: value })}
+              health={healthFilter}
+              onHealth={(status) => changeView({ health: status })}
+              selectedId={selected?.id ?? null}
+              onSelect={(id) => {
+                setSelectedId(id);
+                setDraftError(null);
+                setProfileOpen(false);
+              }}
+              empty={relationships.length === 0}
+            />
+          </aside>
+
+          <main className="tt-surface flex h-[78vh] min-h-[560px] flex-col overflow-hidden p-0">
+            {relationshipsQuery.isLoading ? (
+              <p className="p-8 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                Opening your conversations…
+              </p>
+            ) : selected && health ? (
+              <ConversationRoom
+                relationship={selected}
+                days={days}
+                health={health}
+                organizationId={context.organizationId}
+                onViewProfile={() => setProfileOpen((value) => !value)}
+                onOpenContext={() => setContextOpen(true)}
+                onAddInteraction={() => setInteracting(true)}
+                onExportSummary={() => setExporting(true)}
+                onEditTouch={(touchId) => setEditingTouchId(touchId)}
+                onRetractTouch={(touchId) => setEditingTouchId(touchId)}
+                onRestoreTouch={(touchId) => retractTouch.mutate({ touchId, restore: true })}
+                onDownloadAttachment={(event, file) => {
+                  if (!event.messageId || !file.attachmentId) return;
+                  void gmailDownloadAttachment({
+                    organizationId: context.organizationId,
+                    messageId: event.messageId,
+                    attachmentId: file.attachmentId,
+                    filename: file.filename,
+                  });
+                }}
+              >
+                {roadmapSignal?.emerging ? (
+                  <div className="border-t border-border bg-violet-50/60 px-5 py-4">
+                    <p className="tt-eyebrow text-violet-700">Roadmap opportunity emerging</p>
+                    <p className="mt-2 text-[13px] text-muted-foreground">
+                      {roadmapSignal.because}
+                    </p>
+                    <ul className="mt-2 space-y-1">
+                      {roadmapSignal.needs.map((need) => (
+                        <li key={need.kind} className="text-[13px] text-foreground">
+                          <span className="font-medium">{need.label}</span>
+                          <span className="text-muted-foreground">, {need.evidence}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 text-[12px] text-muted-foreground">
+                      Recognition, not a pitch. Whether to propose a roadmap stays your call, in the
+                      conversation.
+                    </p>
+                  </div>
+                ) : null}
+
+                {profileOpen ? (
+                  <div className="border-t border-border bg-secondary/30 px-5 py-4">
+                    <RelationshipPersonCard
+                      organizationId={context.organizationId}
+                      userId={context.userId}
+                      relationshipId={selected.id}
+                    />
+                    <p className="mt-3 text-[13px] text-muted-foreground">
+                      {[
+                        selected.email,
+                        selected.metWhere ? `Met at ${selected.metWhere}` : null,
+                        selected.metAt
+                          ? `Met ${new Date(selected.metAt).toLocaleDateString()}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "Nothing else on record yet."}
+                    </p>
+
+                    <div className="mt-3">
+                      <TTButton
+                        variant="quiet"
+                        onClick={() =>
+                          remember.mutate({
+                            label: "Worth remembering",
+                            value: "Reviewed this profile.",
+                            tier: "decided",
+                            evidence: [{ label: "Entered by a person", kind: "human" }],
+                          })
+                        }
+                        disabled={remember.isPending}
+                      >
+                        Note this review
+                      </TTButton>
+                    </div>
+                  </div>
+                ) : null}
+
+                {activeDraft && editorOpen ? (
+                  <SendComposer
+                    draft={activeDraft}
+                    relationship={selected}
+                    context={context}
+                    messages={selectedMessages}
+                    onChanged={refresh}
+                    onClose={() => setOpenDraftKey(null)}
+                  />
+                ) : (
+                  <>
+                    {/* A draft exists but the editor is closed: the thread stays
                       readable, and this quiet strip is the way back in. The
                       draft is never discarded by closing, only by the
                       explicit, confirmed choice here. */}
-                  {activeDraft ? (
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-cloud/40 px-4 py-2 sm:px-5">
-                      <p className="min-w-0 truncate text-[12px] text-muted-foreground">
-                        <span className="font-medium text-foreground">Draft saved</span>
-                        {activeDraft.subject?.trim() ? ` · ${activeDraft.subject.trim()}`: ""}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        {confirmDiscard ? (
-                          <>
-                            <span className="text-[12px] text-muted-foreground">
-                              Discard this draft? This cannot be undone.
-                            </span>
-                            <TTButton
-                              variant="quiet"
-                              size="sm"
+                    {activeDraft ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-cloud/40 px-4 py-2 sm:px-5">
+                        <p className="min-w-0 truncate text-[12px] text-muted-foreground">
+                          <span className="font-medium text-foreground">Draft saved</span>
+                          {activeDraft.subject?.trim() ? ` · ${activeDraft.subject.trim()}` : ""}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          {confirmDiscard ? (
+                            <>
+                              <span className="text-[12px] text-muted-foreground">
+                                Discard this draft? This cannot be undone.
+                              </span>
+                              <TTButton
+                                variant="quiet"
+                                size="sm"
+                                type="button"
+                                disabled={discardDraft.isPending}
+                                onClick={() => discardDraft.mutate(activeDraft)}
+                              >
+                                {discardDraft.isPending ? "Discarding…" : "Confirm discard"}
+                              </TTButton>
+                              <TTButton
+                                variant="quiet"
+                                size="sm"
+                                type="button"
+                                onClick={() => setConfirmDiscard(false)}
+                              >
+                                Keep it
+                              </TTButton>
+                            </>
+                          ) : (
+                            <button
                               type="button"
-                              disabled={discardDraft.isPending}
-                              onClick={() => discardDraft.mutate(activeDraft)}
+                              onClick={() => setConfirmDiscard(true)}
+                              className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                              {discardDraft.isPending ? "Discarding…": "Confirm discard"}
-                            </TTButton>
-                            <TTButton
-                              variant="quiet"
-                              size="sm"
-                              type="button"
-                              onClick={() => setConfirmDiscard(false)}
-                            >
-                              Keep it
-                            </TTButton>
-                          </>
-                        ): (
-                          <button
+                              Discard
+                            </button>
+                          )}
+                          <TTButton
+                            variant="quiet"
+                            size="sm"
                             type="button"
-                            onClick={() => setConfirmDiscard(true)}
-                            className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => {
+                              setConfirmDiscard(false);
+                              setOpenDraftKey(draftKey);
+                            }}
                           >
-                            Discard
-                          </button>
-                        )}
-                        <TTButton
-                          variant="quiet"
-                          size="sm"
-                          type="button"
-                          onClick={() => {
-                            setConfirmDiscard(false);
-                            setOpenDraftKey(draftKey);
-                          }}
-                        >
-                          Resume draft
-                        </TTButton>
+                            Resume draft
+                          </TTButton>
+                        </div>
                       </div>
-                    </div>
-                  ): null}
-                  <ReplyRecordBar
-                    drafting={drafting}
-                    busy={recordInteraction.isPending || saveDraft.isPending}
-                    error={draftError}
-                    purposeHint={move?.needed ? move.action: null}
-                    onPrepareDraft={(register, purpose) => void compose(register, purpose)}
-                    onRecordInteraction={() => setInteracting(true)}
-                  />
-                </>
-              )}
-            </ConversationRoom>
-          ): (
-            <div className="p-8">
-              <EmptyState
-                title="No conversations yet."
-                belongsHere="The people behind the work: clients, prospects, and everyone you meet."
-                whyItMatters="Add the last person you met and Comms carries the conversation from there."
-                action={
-                  <TTButton onClick={() => setCapturing(true)}>Add someone you met</TTButton>
-                }
-              />
-            </div>
-          )}
-        </main>
+                    ) : null}
+                    <ReplyRecordBar
+                      drafting={drafting}
+                      busy={recordInteraction.isPending || saveDraft.isPending}
+                      error={draftError}
+                      purposeHint={move?.needed ? move.action : null}
+                      onPrepareDraft={(register, purpose) => void compose(register, purpose)}
+                      onRecordInteraction={() => setInteracting(true)}
+                    />
+                  </>
+                )}
+              </ConversationRoom>
+            ) : (
+              <div className="p-8">
+                <EmptyState
+                  title="No conversations yet."
+                  belongsHere="The people behind the work: clients, prospects, and everyone you meet."
+                  whyItMatters="Add the last person you met and Comms carries the conversation from there."
+                  action={
+                    <TTButton onClick={() => setCapturing(true)}>Add someone you met</TTButton>
+                  }
+                />
+              </div>
+            )}
+          </main>
+        </div>
 
-      </div>
-
-      {/*
+        {/*
         Relationship intelligence lives in an overlay drawer at every size, so
         the conversation keeps the full width it is owed. Escape closes it,
         the scrim is a real button, and switching relationships re-derives the
         rail in place, context can never go stale.
       */}
-      {contextOpen && rail ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Relationship context"
-          className="fixed inset-0 z-50 flex justify-end bg-foreground/25 backdrop-blur-sm"
-        >
-          <button
-            type="button"
-            aria-label="Close context"
-            className="flex-1"
-            onClick={() => setContextOpen(false)}
-          />
-          <div className="tt-rise flex h-full w-[min(400px,92vw)] flex-col overflow-y-auto border-l border-border bg-card">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3">
-              <p className="tt-eyebrow">Relationship context</p>
-              <button
-                type="button"
-                autoFocus
-                onClick={() => setContextOpen(false)}
-                aria-label="Close relationship context"
-                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <X className="h-3 w-3" aria-hidden />
-                Close
-              </button>
+        {contextOpen && rail ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Relationship context"
+            className="fixed inset-0 z-50 flex justify-end bg-foreground/25 backdrop-blur-sm"
+          >
+            <button
+              type="button"
+              aria-label="Close context"
+              className="flex-1"
+              onClick={() => setContextOpen(false)}
+            />
+            <div className="tt-rise flex h-full w-[min(400px,92vw)] flex-col overflow-y-auto border-l border-border bg-card">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3">
+                <p className="tt-eyebrow">Relationship context</p>
+                <button
+                  type="button"
+                  autoFocus
+                  onClick={() => setContextOpen(false)}
+                  aria-label="Close relationship context"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <X className="h-3 w-3" aria-hidden />
+                  Close
+                </button>
+              </div>
+              {rail}
             </div>
-            {rail}
           </div>
-        </div>
-      ): null}
+        ) : null}
 
-      {editingTouch && selected ? (
-        <EditInteraction
-          touch={editingTouch}
-          personName={selected.fullName}
-          userLabel={identity.name}
-          busy={editTouch.isPending || retractTouch.isPending}
-          onCancel={() => setEditingTouchId(null)}
-          onSave={(edit) => editTouch.mutate({ touchId: editingTouch.id, edit })}
-          onRetract={(because) =>
-            retractTouch.mutate({ touchId: editingTouch.id,...(because ? { because }: {}) })
-          }
-          onRestore={() => retractTouch.mutate({ touchId: editingTouch.id, restore: true })}
-        />
-      ): null}
+        {editingTouch && selected ? (
+          <EditInteraction
+            touch={editingTouch}
+            personName={selected.fullName}
+            userLabel={identity.name}
+            busy={editTouch.isPending || retractTouch.isPending}
+            onCancel={() => setEditingTouchId(null)}
+            onSave={(edit) => editTouch.mutate({ touchId: editingTouch.id, edit })}
+            onRetract={(because) =>
+              retractTouch.mutate({ touchId: editingTouch.id, ...(because ? { because } : {}) })
+            }
+            onRestore={() => retractTouch.mutate({ touchId: editingTouch.id, restore: true })}
+          />
+        ) : null}
 
-      {exporting && selected && health && strength && move ? (
-        <RelationshipExport
-          input={{
-            relationship: selected,
-            health,
-            strength,
-            move,
-            touches: selectedTouches,
-            exportedBy: identity.name,
-          }}
-          onClose={() => setExporting(false)}
-        />
-      ): null}
+        {exporting && selected && health && strength && move ? (
+          <RelationshipExport
+            input={{
+              relationship: selected,
+              health,
+              strength,
+              move,
+              touches: selectedTouches,
+              exportedBy: identity.name,
+            }}
+            onClose={() => setExporting(false)}
+          />
+        ) : null}
 
-      {interacting && selected ? (
-        <AddInteraction
-          personName={selected.fullName}
-          userLabel={identity.name}
-          busy={recordInteraction.isPending}
-          onCancel={() => setInteracting(false)}
-          onSave={(submission) => recordInteraction.mutate(submission)}
-        />
-      ): null}
-    </div>
+        {interacting && selected ? (
+          <AddInteraction
+            personName={selected.fullName}
+            userLabel={identity.name}
+            busy={recordInteraction.isPending}
+            onCancel={() => setInteracting(false)}
+            onSave={(submission) => recordInteraction.mutate(submission)}
+          />
+        ) : null}
+      </div>
     </AppShell>
   );
 }

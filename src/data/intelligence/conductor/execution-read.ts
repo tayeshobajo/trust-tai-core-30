@@ -11,7 +11,11 @@
  * rules can be tested exactly as they are enforced.
  */
 
-import type { ActionLifecycleState, ControlledAction, ExecutionReceipt } from "@/domain/conductor-control";
+import type {
+  ActionLifecycleState,
+  ControlledAction,
+  ExecutionReceipt,
+} from "@/domain/conductor-control";
 import { LIFECYCLE_LABEL, isRoutableConsequence } from "@/domain/conductor-control";
 import { capabilityFor } from "@/domain/adapter-registry";
 import type { ActionObservation, LearningRecord, MetricClass } from "@/domain/outcomes";
@@ -109,7 +113,8 @@ function stageFor(
   if (!isRoutableConsequence(action.consequence)) {
     return {
       stage: "not_routable",
-      because: "This leaves the building. A person does it in the owning room, never the Conductor.",
+      because:
+        "This leaves the building. A person does it in the owning room, never the Conductor.",
     };
   }
   if (!access.can(String(action.requiredCapability))) {
@@ -120,7 +125,10 @@ function stageFor(
   }
   const waiting = action.dependsOn.length > 0;
   if (state === "failed") {
-    return { stage: "approved_not_routed", because: "The last handover failed. It can be retried." };
+    return {
+      stage: "approved_not_routed",
+      because: "The last handover failed. It can be retried.",
+    };
   }
   return {
     stage: waiting ? "approved_not_routed" : "routable_now",
@@ -197,9 +205,7 @@ export function buildExecutionRead(input: ExecutionReadInput): ActionExecutionRe
       measurable: canObserve(action.operation),
       ...(observation ? { observation, observedResult: RESULT_LABEL[observation.result] } : {}),
       ...(metricKey ? { metricKey } : {}),
-      ...(metricKey && metricClassOf(metricKey)
-        ? { metricClass: metricClassOf(metricKey)! }
-        : {}),
+      ...(metricKey && metricClassOf(metricKey) ? { metricClass: metricClassOf(metricKey)! } : {}),
       ...(receiptByAction.get(action.id) ? { receipt: receiptByAction.get(action.id)! } : {}),
       ...(learning ? { learning } : {}),
       learningState: learningState(observation, learning),

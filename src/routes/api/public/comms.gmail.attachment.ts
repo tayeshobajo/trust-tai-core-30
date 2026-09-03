@@ -20,7 +20,7 @@ import { contentDisposition, downloadMailboxAttachment } from "@/lib/comms-gmail
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
-  return header.startsWith("Bearer ") ? header.slice(7).trim() || null: null;
+  return header.startsWith("Bearer ") ? header.slice(7).trim() || null : null;
 }
 
 export const Route = createFileRoute("/api/public/comms/gmail/attachment")({
@@ -45,10 +45,9 @@ export const Route = createFileRoute("/api/public/comms/gmail/attachment")({
           body = {};
         }
         const organizationId =
-          typeof body["organizationId"] === "string" ? body["organizationId"]: "";
-        const messageId = typeof body["messageId"] === "string" ? body["messageId"]: "";
-        const attachmentId =
-          typeof body["attachmentId"] === "string" ? body["attachmentId"]: "";
+          typeof body["organizationId"] === "string" ? body["organizationId"] : "";
+        const messageId = typeof body["messageId"] === "string" ? body["messageId"] : "";
+        const attachmentId = typeof body["attachmentId"] === "string" ? body["attachmentId"] : "";
         if (!organizationId || !messageId || !attachmentId) {
           return Response.json(
             { error: "A workspace, a message, and a file are required." },
@@ -66,16 +65,14 @@ export const Route = createFileRoute("/api/public/comms/gmail/attachment")({
           return new Response(new Blob([file.bytes as BlobPart]), {
             headers: {
               "Content-Type": file.mimeType,
-              "Content-Disposition": file.inline
-                ? "inline"
-: contentDisposition(file.filename),
+              "Content-Disposition": file.inline ? "inline" : contentDisposition(file.filename),
               // Inline images are re-requested as the person scrolls; files
               // are never cached. Either way, nothing leaves this browser.
-              "Cache-Control": file.inline ? "private, max-age=3600": "private, no-store",
+              "Cache-Control": file.inline ? "private, max-age=3600" : "private, no-store",
             },
           });
         } catch (error) {
-          const message = error instanceof Error ? error.message: "That file could not be opened.";
+          const message = error instanceof Error ? error.message : "That file could not be opened.";
           return Response.json({ error: message }, { status: 400 });
         }
       },

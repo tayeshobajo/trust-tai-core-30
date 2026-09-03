@@ -44,8 +44,10 @@ const HEALTH_FILTERS: ConversationHealthStatus[] = [
 
 /** View-aware words for an empty room. */
 const EMPTY_COPY: Record<InboxTab, string> = {
-  clients: "No established relationships here yet. When someone graduates from Nurture, they arrive here.",
-  nurture: "No one is being developed right now. A Scout handoff or an approved outreach lands here.",
+  clients:
+    "No established relationships here yet. When someone graduates from Nurture, they arrive here.",
+  nurture:
+    "No one is being developed right now. A Scout handoff or an approved outreach lands here.",
   needs_you: "Nothing needs your judgment right now.",
   all: "No conversations yet. Add the last person you met and Comms carries it from there.",
 };
@@ -63,23 +65,20 @@ export function ConversationListItem({
   const segment = relationshipSegment(relationship);
   // Developing relationships carry their human-facing state. One record, one
   // memory, this is a read of the same lifecycle, not a second pipeline.
-  const development =
-    segment === "nurture" ? developmentStage(relationship, []): null;
+  const development = segment === "nurture" ? developmentStage(relationship, []) : null;
   const snippet =
-    relationship.nextAction?.trim() ||
-    health.reasons[0] ||
-    "No messages on this conversation yet.";
+    relationship.nextAction?.trim() || health.reasons[0] || "No messages on this conversation yet.";
 
   return (
     <li>
       <button
         type="button"
         onClick={onSelect}
-        aria-current={active ? "true": undefined}
+        aria-current={active ? "true" : undefined}
         className={cn(
           "flex w-full items-start gap-3 border-b border-border/70 border-l-2 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
           SEGMENT_EDGE[segment],
-          active ? SEGMENT_SURFACE_SELECTED[segment]: SEGMENT_SURFACE[segment],
+          active ? SEGMENT_SURFACE_SELECTED[segment] : SEGMENT_SURFACE[segment],
         )}
       >
         <span
@@ -105,7 +104,7 @@ export function ConversationListItem({
             <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
               {relationship.companyName}
             </span>
-          ): null}
+          ) : null}
           {/* What kind of relationship, and how the conversation is doing. */}
           <span className="mt-1.5 flex flex-wrap items-center gap-2">
             <SegmentPill segment={segment} />
@@ -113,7 +112,7 @@ export function ConversationListItem({
               <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-violet-700">
                 {DEVELOPMENT_STAGE_LABEL[development.stage]}
               </span>
-            ): null}
+            ) : null}
             <span className="inline-flex items-center gap-1.5">
               <HealthDot status={health.status} />
               <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -122,7 +121,9 @@ export function ConversationListItem({
             </span>
           </span>
           {/* Why this row matters right now. */}
-          <span className="mt-1 block truncate text-[12px] text-muted-foreground/90">{snippet}</span>
+          <span className="mt-1 block truncate text-[12px] text-muted-foreground/90">
+            {snippet}
+          </span>
         </span>
       </button>
     </li>
@@ -226,13 +227,11 @@ export function CommsInbox({
                 "rounded-full px-2.5 py-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 tab === entry
                   ? "bg-foreground text-background"
-: "text-muted-foreground hover:text-foreground",
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {TAB_LABEL[entry]}
-              <span className="ml-1 font-mono text-[10px] opacity-70">
-                {view.tabCounts[entry]}
-              </span>
+              <span className="ml-1 font-mono text-[10px] opacity-70">{view.tabCounts[entry]}</span>
             </button>
           ))}
         </nav>
@@ -255,13 +254,13 @@ export function CommsInbox({
               <button
                 key={status}
                 type="button"
-                onClick={() => onHealth(active ? null: status)}
+                onClick={() => onHealth(active ? null : status)}
                 aria-pressed={active}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   active
                     ? "border-foreground text-foreground"
-: "border-border text-muted-foreground hover:text-foreground",
+                    : "border-border text-muted-foreground hover:text-foreground",
                 )}
               >
                 <HealthDot status={status} />
@@ -278,9 +277,13 @@ export function CommsInbox({
       <div className="min-h-0 flex-1 overflow-y-auto">
         {page.rows.length === 0 ? (
           <p className="p-4 text-[13px] text-muted-foreground">
-            {empty ? EMPTY_COPY.all: filtered ? "Nothing matches this search or filter.": EMPTY_COPY[tab]}
+            {empty
+              ? EMPTY_COPY.all
+              : filtered
+                ? "Nothing matches this search or filter."
+                : EMPTY_COPY[tab]}
           </p>
-        ): (
+        ) : (
           <>
             <Section
               title="Priority"

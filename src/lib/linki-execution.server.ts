@@ -77,9 +77,11 @@ export async function linkiSendAction(
         "x-idempotency-key": input.idempotencyKey,
       },
       body: JSON.stringify({
-        type: input.actionType === "connection_request" ? "connect": "message",
+        type: input.actionType === "connection_request" ? "connect" : "message",
         profile_url: input.linkedinUrl,
-...(input.actionType === "message" ? { message: input.draftBody }: { note: input.draftBody }),
+        ...(input.actionType === "message"
+          ? { message: input.draftBody }
+          : { note: input.draftBody }),
         idempotency_key: input.idempotencyKey,
       }),
       signal: controller.signal,
@@ -121,11 +123,11 @@ export async function linkiSendAction(
     const runId =
       typeof payload?.run_id === "string"
         ? payload.run_id
-: typeof payload?.runId === "string"
+        : typeof payload?.runId === "string"
           ? payload.runId
-: typeof payload?.id === "string"
+          : typeof payload?.id === "string"
             ? payload.id
-: `unconfirmed-${input.idempotencyKey}`;
+            : `unconfirmed-${input.idempotencyKey}`;
 
     return {
       receipt: {
@@ -141,7 +143,7 @@ export async function linkiSendAction(
       throw new LinkiTransportError("Linki send timed out. Nothing was confirmed as sent.");
     }
     throw new LinkiTransportError(
-      error instanceof Error ? error.message: "Linki send failed for an unknown reason.",
+      error instanceof Error ? error.message : "Linki send failed for an unknown reason.",
     );
   } finally {
     clearTimeout(timer);

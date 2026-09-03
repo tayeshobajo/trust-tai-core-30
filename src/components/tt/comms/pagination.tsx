@@ -33,7 +33,7 @@ export function CommsPagination({
       className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2"
     >
       <p className="text-[12px] text-muted-foreground" aria-live="polite">
-        {view.total === 0 ? "No relationships": `${view.from}–${view.to} of ${view.total}`}
+        {view.total === 0 ? "No relationships" : `${view.from}–${view.to} of ${view.total}`}
       </p>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -54,11 +54,11 @@ export function CommsPagination({
               <span key={`gap-${index}`} aria-hidden className="px-0.5 text-muted-foreground">
                 …
               </span>
-            ): (
+            ) : (
               <button
                 key={entry}
                 type="button"
-                aria-current={entry === view.page ? "page": undefined}
+                aria-current={entry === view.page ? "page" : undefined}
                 aria-label={`Page ${entry}`}
                 onClick={() => onPage(entry)}
                 className={cn(

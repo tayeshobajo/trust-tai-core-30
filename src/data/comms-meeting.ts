@@ -39,7 +39,7 @@ export async function planMeetingFromMessage(input: {
   const title = input.title?.trim() || defaultMeetingTitle(input.relationship);
   const meetingTitle = /meeting|call|intro|demo|coffee|zoom|catch ?up|session/i.test(title)
     ? title
-: `Meeting: ${title}`;
+    : `Meeting: ${title}`;
 
   const subject = input.message?.subject?.trim();
 
@@ -53,12 +53,12 @@ export async function planMeetingFromMessage(input: {
       due: when.toISOString(),
       status: "open",
       owner: input.owner ?? "us",
-...(input.addedBy ? { addedBy: `Added by ${input.addedBy}` }: {}),
+      ...(input.addedBy ? { addedBy: `Added by ${input.addedBy}` } : {}),
       evidence: [
         {
           label: subject
             ? `Planned from the email “${subject}”`
-: "Planned from this conversation in Comms",
+            : "Planned from this conversation in Comms",
           kind: "human" as const,
         },
       ],

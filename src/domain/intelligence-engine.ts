@@ -220,7 +220,6 @@ export interface ActionAuthorization {
 /** No recommendation may carry more bounded actions than this. */
 export const MAX_ACTION_PROPOSALS = 2;
 
-
 /* ----------------------------------------------------------------- outcome */
 
 export type RecommendationDecision = "accepted" | "edited" | "rejected" | "deferred";

@@ -39,7 +39,10 @@ import type { LinkiSendInput } from "@/lib/linki-execution.server";
 type Env = Record<string, string | undefined>;
 
 /** Seam for tests: the transport is injected, never imported here. */
-export type LinkiTransport = (input: LinkiSendInput, env?: Env) => Promise<{
+export type LinkiTransport = (
+  input: LinkiSendInput,
+  env?: Env,
+) => Promise<{
   receipt: LinkiExecutionReceipt;
 }>;
 
@@ -99,12 +102,12 @@ function toAction(row: Row): ApprovedLinkedInAction {
     status: row["status"] as LinkiActionStatus,
     idempotencyKey: String(row["idempotency_key"]),
     executionReceipt: (row["execution_receipt"] ?? null) as LinkiExecutionReceipt | null,
-    failureReason: row["failure_reason"] ? String(row["failure_reason"]): null,
+    failureReason: row["failure_reason"] ? String(row["failure_reason"]) : null,
     createdBy: String(row["created_by"]),
-    approvedAt: row["approved_at"] ? String(row["approved_at"]): null,
-    approvedBy: row["approved_by"] ? String(row["approved_by"]): null,
-    executedAt: row["executed_at"] ? String(row["executed_at"]): null,
-    parentActionId: row["parent_action_id"] ? String(row["parent_action_id"]): null,
+    approvedAt: row["approved_at"] ? String(row["approved_at"]) : null,
+    approvedBy: row["approved_by"] ? String(row["approved_by"]) : null,
+    executedAt: row["executed_at"] ? String(row["executed_at"]) : null,
+    parentActionId: row["parent_action_id"] ? String(row["parent_action_id"]) : null,
     createdAt: String(row["created_at"]),
     updatedAt: String(row["updated_at"] ?? row["created_at"]),
   };
@@ -125,8 +128,7 @@ export interface CreateLinkiActionInput {
   parentActionId?: ID;
 }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function validateCreate(input: CreateLinkiActionInput, context: LinkiActionContext): void {
   const problems: string[] = [];
@@ -178,12 +180,12 @@ async function capUsage(
   const cap = linkiDailyCap(env, actionType);
   const today = dayBucketOf(new Date().toISOString());
   const { data, error } = await supabase
-.from("approved_linkedin_actions")
-.select("id, status, created_at")
-.eq("organization_id", organizationId)
-.eq("action_type", actionType)
-.gte("created_at", `${today}T00:00:00.000Z`)
-.lt("created_at", `${today}T23:59:59.999Z`);
+    .from("approved_linkedin_actions")
+    .select("id, status, created_at")
+    .eq("organization_id", organizationId)
+    .eq("action_type", actionType)
+    .gte("created_at", `${today}T00:00:00.000Z`)
+    .lt("created_at", `${today}T23:59:59.999Z`);
   if (error) throw new LinkiActionError("send_failed", `Cap check failed: ${error.message}`);
   const used = (data ?? []).filter(
     (row) =>
@@ -197,7 +199,7 @@ function assertUnderCap(usage: CapUsage): void {
   if (usage.used >= usage.cap) {
     throw new LinkiActionError(
       "cap_exceeded",
-      `Daily ${usage.actionType === "message" ? "message": "connection"} limit reached for this workspace (${usage.used}/${usage.cap}). No further actions can be created today.`,
+      `Daily ${usage.actionType === "message" ? "message" : "connection"} limit reached for this workspace (${usage.used}/${usage.cap}). No further actions can be created today.`,
     );
   }
 }
@@ -238,7 +240,7 @@ export function createLinkiActionService(
         status_after: action.status,
         receipt_hash: receiptHash(action.executionReceipt),
         idempotency_key: action.idempotencyKey,
-...extra,
+        ...extra,
       },
       provenance: {
         appId: "linki",
@@ -252,11 +254,11 @@ export function createLinkiActionService(
 
   async function byId(id: ID, organizationId: ID): Promise<ApprovedLinkedInAction> {
     const { data, error } = await supabase
-.from("approved_linkedin_actions")
-.select(LINKI_ACTION_COLUMNS)
-.eq("id", id)
-.eq("organization_id", organizationId)
-.maybeSingle();
+      .from("approved_linkedin_actions")
+      .select(LINKI_ACTION_COLUMNS)
+      .eq("id", id)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
     if (error) throw new LinkiActionError("send_failed", `Action lookup failed: ${error.message}`);
     if (!data) throw new LinkiActionError("not_found", "That LinkedIn action does not exist.");
     return toAction(data as Row);
@@ -264,11 +266,11 @@ export function createLinkiActionService(
 
   async function fetchLinkedinUrl(contactId: ID, organizationId: ID): Promise<string> {
     const { data, error } = await supabase
-.from("contacts")
-.select("id, organization_id, metadata")
-.eq("id", contactId)
-.eq("organization_id", organizationId)
-.maybeSingle();
+      .from("contacts")
+      .select("id, organization_id, metadata")
+      .eq("id", contactId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
     if (error || !data) {
       throw new LinkiActionError(
         "validation",
@@ -301,11 +303,11 @@ export function createLinkiActionService(
       assertUnderCap(usage);
 
       const existing = await supabase
-.from("approved_linkedin_actions")
-.select("id")
-.eq("organization_id", context.organizationId)
-.eq("idempotency_key", input.idempotencyKey)
-.maybeSingle();
+        .from("approved_linkedin_actions")
+        .select("id")
+        .eq("organization_id", context.organizationId)
+        .eq("idempotency_key", input.idempotencyKey)
+        .maybeSingle();
       if (existing.data) {
         return byId(String((existing.data as Row)["id"]), context.organizationId);
       }
@@ -313,8 +315,8 @@ export function createLinkiActionService(
       await fetchLinkedinUrl(input.contactId, context.organizationId);
 
       const { data, error } = await supabase
-.from("approved_linkedin_actions")
-.insert({
+        .from("approved_linkedin_actions")
+        .insert({
           organization_id: context.organizationId,
           prospect_id: input.prospectId,
           person_id: input.personId,
@@ -327,23 +329,28 @@ export function createLinkiActionService(
           created_by: context.userId,
           parent_action_id: input.parentActionId ?? null,
         })
-.select(LINKI_ACTION_COLUMNS)
-.single();
+        .select(LINKI_ACTION_COLUMNS)
+        .single();
       if (error) {
         // A unique-violation race on idempotency_key: return the original row.
         if (String(error.message ?? "").includes("duplicate key")) {
           const raced = await supabase
-.from("approved_linkedin_actions")
-.select(LINKI_ACTION_COLUMNS)
-.eq("organization_id", context.organizationId)
-.eq("idempotency_key", input.idempotencyKey)
-.maybeSingle();
+            .from("approved_linkedin_actions")
+            .select(LINKI_ACTION_COLUMNS)
+            .eq("organization_id", context.organizationId)
+            .eq("idempotency_key", input.idempotencyKey)
+            .maybeSingle();
           if (raced.data) return toAction(raced.data as Row);
         }
         throw new LinkiActionError("send_failed", `Could not save the action: ${error.message}`);
       }
       const action = toAction(data as Row);
-      await audit(action, context, action.status, `LinkedIn ${action.actionType} prepared for Tai's approval (draft from Comms).`);
+      await audit(
+        action,
+        context,
+        action.status,
+        `LinkedIn ${action.actionType} prepared for Tai's approval (draft from Comms).`,
+      );
       return action;
     },
 
@@ -361,13 +368,13 @@ export function createLinkiActionService(
       }
       const at = now();
       const { data, error } = await supabase
-.from("approved_linkedin_actions")
-.update({ status: "approved", approved_at: at, approved_by: context.userId })
-.eq("id", id)
-.eq("organization_id", context.organizationId)
-.eq("status", "pending_tai_approval")
-.select(LINKI_ACTION_COLUMNS)
-.maybeSingle();
+        .from("approved_linkedin_actions")
+        .update({ status: "approved", approved_at: at, approved_by: context.userId })
+        .eq("id", id)
+        .eq("organization_id", context.organizationId)
+        .eq("status", "pending_tai_approval")
+        .select(LINKI_ACTION_COLUMNS)
+        .maybeSingle();
       if (error) throw new LinkiActionError("send_failed", `Approval failed: ${error.message}`);
       if (!data) {
         throw new LinkiActionError(
@@ -376,7 +383,12 @@ export function createLinkiActionService(
         );
       }
       const updated = toAction(data as Row);
-      await audit(updated, context, action.status, `LinkedIn ${action.actionType} approved by Tai.`);
+      await audit(
+        updated,
+        context,
+        action.status,
+        `LinkedIn ${action.actionType} approved by Tai.`,
+      );
       return updated;
     },
 
@@ -405,7 +417,11 @@ export function createLinkiActionService(
 
       const action = await byId(id, context.organizationId);
 
-      if (action.status === "executing" || action.status === "executed" || action.status === "verified") {
+      if (
+        action.status === "executing" ||
+        action.status === "executed" ||
+        action.status === "verified"
+      ) {
         return { action, alreadyDone: true };
       }
       if (action.status !== "approved") {
@@ -427,13 +443,13 @@ export function createLinkiActionService(
       assertUnderCap(usage);
 
       const moved = await supabase
-.from("approved_linkedin_actions")
-.update({ status: "executing" })
-.eq("id", id)
-.eq("organization_id", context.organizationId)
-.eq("status", "approved")
-.select(LINKI_ACTION_COLUMNS)
-.maybeSingle();
+        .from("approved_linkedin_actions")
+        .update({ status: "executing" })
+        .eq("id", id)
+        .eq("organization_id", context.organizationId)
+        .eq("status", "approved")
+        .select(LINKI_ACTION_COLUMNS)
+        .maybeSingle();
       if (!moved.data) {
         throw new LinkiActionError(
           "illegal_transition",
@@ -456,13 +472,13 @@ export function createLinkiActionService(
         );
         const executedAt = now();
         const { data, error } = await supabase
-.from("approved_linkedin_actions")
-.update({ status: "executed", execution_receipt: receipt, executed_at: executedAt })
-.eq("id", id)
-.eq("organization_id", context.organizationId)
-.eq("status", "executing")
-.select(LINKI_ACTION_COLUMNS)
-.maybeSingle();
+          .from("approved_linkedin_actions")
+          .update({ status: "executed", execution_receipt: receipt, executed_at: executedAt })
+          .eq("id", id)
+          .eq("organization_id", context.organizationId)
+          .eq("status", "executing")
+          .select(LINKI_ACTION_COLUMNS)
+          .maybeSingle();
         if (error || !data) {
           // DANGER PATH: the send DID happen but the receipt could not be
           // persisted. Marking this `failed` would invite a retry, and a
@@ -492,16 +508,19 @@ export function createLinkiActionService(
           throw new LinkiActionError("send_failed", error.message);
         }
         const message =
-          error instanceof Error ? error.message: "Linki execution failed for an unknown reason.";
+          error instanceof Error ? error.message : "Linki execution failed for an unknown reason.";
         await supabase
-.from("approved_linkedin_actions")
-.update({ status: "failed", failure_reason: message })
-.eq("id", id)
-.eq("organization_id", context.organizationId)
-.eq("status", "executing")
-.then(() => undefined, () => undefined);
+          .from("approved_linkedin_actions")
+          .update({ status: "failed", failure_reason: message })
+          .eq("id", id)
+          .eq("organization_id", context.organizationId)
+          .eq("status", "executing")
+          .then(
+            () => undefined,
+            () => undefined,
+          );
         const failed: ApprovedLinkedInAction = {
-...executing,
+          ...executing,
           status: "failed",
           failureReason: message,
         };
@@ -526,13 +545,13 @@ export function createLinkiActionService(
         );
       }
       const { data, error } = await supabase
-.from("approved_linkedin_actions")
-.update({ status: "verified" })
-.eq("id", id)
-.eq("organization_id", context.organizationId)
-.eq("status", "executed")
-.select(LINKI_ACTION_COLUMNS)
-.maybeSingle();
+        .from("approved_linkedin_actions")
+        .update({ status: "verified" })
+        .eq("id", id)
+        .eq("organization_id", context.organizationId)
+        .eq("status", "executed")
+        .select(LINKI_ACTION_COLUMNS)
+        .maybeSingle();
       if (error) throw new LinkiActionError("send_failed", `Verify failed: ${error.message}`);
       if (!data) {
         throw new LinkiActionError("illegal_transition", "Action was not in executed state.");

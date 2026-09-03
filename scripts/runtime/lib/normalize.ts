@@ -33,8 +33,7 @@ export function normalizeDocument(input: {
   // Chat export heuristics: message-block formats used by ChatGPT and Claude
   // share/exports ("You:"/"ChatGPT:" / "Human:"/"Assistant:" / markdown
   // speaker turns). Speaker-split first; fall back to whole-text single block.
-  const speakerRe =
-    /^(?:You|User|Human|Me|Tai)\s*:|^ChatGPT\s*:|^Assistant\s*:|^Claude\s*:/im;
+  const speakerRe = /^(?:You|User|Human|Me|Tai)\s*:|^ChatGPT\s*:|^Assistant\s*:|^Claude\s*:/im;
   const lines = input.raw.split(/\r?\n/);
   const messages: NormalizedMessage[] = [];
   let current: { role: NormalizedMessage["role"]; body: string[] } | null = null;
@@ -46,7 +45,7 @@ export function normalizeDocument(input: {
   };
 
   for (const line of lines) {
-    const role = speakerRe.test(line) ? roleOf(line): null;
+    const role = speakerRe.test(line) ? roleOf(line) : null;
     if (role) {
       if (current) messages.push({ role: current.role, body: current.body.join("\n").trim() });
       current = { role, body: [line.replace(/^[^:]*:\s*/, "")] };

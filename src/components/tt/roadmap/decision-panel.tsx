@@ -226,7 +226,7 @@ function OpenDecision({
         <ul className="mt-4 space-y-1.5">
           {decision.options.map((option) => (
             <li key={option} className="text-sm text-foreground">
-  · {option}
+              · {option}
             </li>
           ))}
         </ul>

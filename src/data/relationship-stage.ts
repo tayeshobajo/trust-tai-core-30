@@ -73,7 +73,7 @@ export function developmentStage(
   const lastTouchAt = relationship.lastTouchAt ?? latest?.occurredAt;
   const daysQuiet = lastTouchAt
     ? Math.floor((now.getTime() - new Date(lastTouchAt).getTime()) / DAY)
-: null;
+    : null;
 
   if (stage === "reached_out") {
     if (daysQuiet !== null && daysQuiet > COOLING_AFTER_DAYS) {
@@ -92,7 +92,8 @@ export function developmentStage(
     // Latest touch is outbound: we spoke last, so we are waiting on them.
     return {
       stage: "conversation_open",
-      because: "The conversation is open and moving. Judgment, not automation, carries it from here.",
+      because:
+        "The conversation is open and moving. Judgment, not automation, carries it from here.",
     };
   }
 

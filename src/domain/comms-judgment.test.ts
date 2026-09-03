@@ -135,12 +135,12 @@ describe("communication judgment on the rationale", () => {
 
   it("drops an ask with no content and keeps whyNatural when no ask belongs", () => {
     const parsed = parseCommunicationJudgment({
-...JUDGMENT,
+      ...JUDGMENT,
       askDecision: { shouldAsk: true, whyNatural: "Momentum.", what: "" },
     });
     expect(parsed?.askDecision.shouldAsk).toBe(false);
     const noAsk = parseCommunicationJudgment({
-...JUDGMENT,
+      ...JUDGMENT,
       askDecision: {
         shouldAsk: false,
         whyNatural: "She gave warmth; the conversation has not earned an ask.",
@@ -163,20 +163,18 @@ describe("judgmentSummaryLines", () => {
     expect(lines[1]).toBe(`What I noticed: ${JUDGMENT.latestHumanSignal}`);
     expect(lines[2]).toBe(`What it says about them: ${JUDGMENT.whatThisSaysAboutThem}`);
     expect(lines[3]).toBe(`What to build on: ${JUDGMENT.threadToBuildOn}`);
-    expect(lines[4]).toBe(
-      `Ask: ${JUDGMENT.askDecision.what} (${JUDGMENT.askDecision.whyNatural})`,
-    );
+    expect(lines[4]).toBe(`Ask: ${JUDGMENT.askDecision.what} (${JUDGMENT.askDecision.whyNatural})`);
   });
 
   it("says plainly when there is no ask, with the reason when one was judged", () => {
     const noReason = judgmentSummaryLines({
-...JUDGMENT,
+      ...JUDGMENT,
       askDecision: { shouldAsk: false, whyNatural: "", what: "" },
     });
     expect(noReason.at(-1)).toBe("No ask needed.");
 
     const withReason = judgmentSummaryLines({
-...JUDGMENT,
+      ...JUDGMENT,
       askDecision: {
         shouldAsk: false,
         whyNatural: "A warm note deserves acknowledgment, not a request for time.",
@@ -196,7 +194,8 @@ describe("the Brooke regression at judgment level", () => {
      recognized, and no ask, because nothing in her note earns one. This
      pins the contract shape that judgment takes once parsed. */
   const BROOKE_JUDGMENT_RAW = {
-    whyNow: "Brooke replied warmly to Tai's note after the Mastermind; a reply is owed while the thread is warm.",
+    whyNow:
+      "Brooke replied warmly to Tai's note after the Mastermind; a reply is owed while the thread is warm.",
     latestHumanSignal:
       "She offered to be a resource, meeting someone once and already thinking about how she might be useful to them.",
     whatThisSaysAboutThem:
@@ -205,8 +204,10 @@ describe("the Brooke regression at judgment level", () => {
       "The offer to be a resource itself, and the generosity underneath it.",
     threadToBuildOn:
       "Her instinct to be useful, and the work with business owners it likely comes from.",
-    intendedEffect: "That she feels specifically seen, and glad the Mastermind put them in the same room.",
-    responseObligation: "Her thanks and her kind words about the Mastermind deserve acknowledgment.",
+    intendedEffect:
+      "That she feels specifically seen, and glad the Mastermind put them in the same room.",
+    responseObligation:
+      "Her thanks and her kind words about the Mastermind deserve acknowledgment.",
     askDecision: {
       shouldAsk: false,
       whyNatural:
@@ -428,7 +429,7 @@ describe("threadContextForJudgment", () => {
     occurredAt: string,
     text: string,
     subject?: string,
-  ) => ({ direction, occurredAt, bodyText: text,...(subject ? { subject }: {}) });
+  ) => ({ direction, occurredAt, bodyText: text, ...(subject ? { subject } : {}) });
 
   it("returns the recent slice oldest-to-newest with sides marked", () => {
     const entries = threadContextForJudgment([
@@ -450,7 +451,11 @@ describe("threadContextForJudgment", () => {
 
   it("bounds the window and trims long bodies without dropping short ones", () => {
     const many = Array.from({ length: 12 }, (_, index) =>
-      message("inbound", `2026-08-${String(index + 1).padStart(2, "0")}T10:00:00Z`, `Note ${index}`),
+      message(
+        "inbound",
+        `2026-08-${String(index + 1).padStart(2, "0")}T10:00:00Z`,
+        `Note ${index}`,
+      ),
     );
     const entries = threadContextForJudgment(many);
     expect(entries).toHaveLength(8);

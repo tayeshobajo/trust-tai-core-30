@@ -176,7 +176,6 @@ export const intelligenceCanonService = {
     return toOutcome(data as Row);
   },
 
-
   /**
    * Open a case only if the same decision, about the same reading, on the same
    * evidence, is not already in the ledger.
@@ -185,7 +184,9 @@ export const intelligenceCanonService = {
    * enforced here by content: a retry, a double click or a re-render resolves
    * to the row already written instead of a second identical case.
    */
-  async openCaseOnce(entry: IntelligenceCase): Promise<{ entry: IntelligenceCase; created: boolean }> {
+  async openCaseOnce(
+    entry: IntelligenceCase,
+  ): Promise<{ entry: IntelligenceCase; created: boolean }> {
     const existing = await intelligenceCanonService.listCases(entry.organizationId);
     const match = existing.find((row) => caseFingerprint(row) === caseFingerprint(entry));
     if (match) return { entry: match, created: false };
@@ -230,4 +231,3 @@ export function outcomeFingerprint(entry: PatternOutcome): string {
     entry.humanCorrection?.trim() ?? "",
   ].join("::");
 }
-

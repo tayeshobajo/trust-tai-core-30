@@ -64,10 +64,7 @@ export function PulseSeverityIcon({
 export function PulseSeverityChip({ severity }: { severity: PulseSeverity }) {
   return (
     <span
-      className={cn(
-        "font-mono text-[10px] uppercase tracking-[0.16em]",
-        SEVERITY_TEXT[severity],
-      )}
+      className={cn("font-mono text-[10px] uppercase tracking-[0.16em]", SEVERITY_TEXT[severity])}
     >
       {PULSE_SEVERITY_LABEL[severity]}
     </span>

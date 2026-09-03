@@ -86,8 +86,10 @@ export function filterCandidates(
     if (filters.fit !== "all" && candidate.evaluation.light !== filters.fit) return false;
     if (!inBand(candidate.evaluation.score, candidate.evaluation.scoreable, filters.score))
       return false;
-    if (filters.industry !== "all" && candidate.profile?.industry !== filters.industry) return false;
-    if (filters.location !== "all" && candidate.profile?.location !== filters.location) return false;
+    if (filters.industry !== "all" && candidate.profile?.industry !== filters.industry)
+      return false;
+    if (filters.location !== "all" && candidate.profile?.location !== filters.location)
+      return false;
     if (filters.size !== "all" && candidate.profile?.size !== filters.size) return false;
     return true;
   });

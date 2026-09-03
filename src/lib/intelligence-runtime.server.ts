@@ -108,10 +108,10 @@ export async function runtimeModelCaller(access: {
   return (call) =>
     callRoadmapProvider(call.instructions, call.input, {
       webSearch: call.webSearch ?? false,
-...(call.responseFormat ? { responseFormat: call.responseFormat }: {}),
-...(call.onDelta ? { onDelta: call.onDelta }: {}),
-...(call.gateway ? { gateway: call.gateway }: {}),
-...(call.initialRunId ? { initialRunId: call.initialRunId }: {}),
+      ...(call.responseFormat ? { responseFormat: call.responseFormat } : {}),
+      ...(call.onDelta ? { onDelta: call.onDelta } : {}),
+      ...(call.gateway ? { gateway: call.gateway } : {}),
+      ...(call.initialRunId ? { initialRunId: call.initialRunId } : {}),
     });
 }
 
@@ -181,11 +181,11 @@ export async function reasonOverPacket(input: {
     instructions: ENGINE_INSTRUCTIONS,
     input: JSON.stringify(input.packet),
     webSearch: false,
-...(input.gateway ? { gateway: input.gateway }: {}),
+    ...(input.gateway ? { gateway: input.gateway } : {}),
   });
 
   const parsed = extractJsonObject(raw);
-  const list = Array.isArray(parsed["hypotheses"]) ? (parsed["hypotheses"] as unknown[]): [];
+  const list = Array.isArray(parsed["hypotheses"]) ? (parsed["hypotheses"] as unknown[]) : [];
   return {
     hypotheses: list.filter(
       (entry): entry is RawHypothesis => Boolean(entry) && typeof entry === "object",
@@ -274,7 +274,7 @@ export async function reasonWithRuntime(input: {
     verificationExpectation: input.request.verification,
     approval: input.request.approval,
     allowedOperations: input.request.allowedOperations,
-...bundleForModel(input.bundle),
+    ...bundleForModel(input.bundle),
   };
 
   try {
@@ -282,7 +282,7 @@ export async function reasonWithRuntime(input: {
       instructions: INSTRUCTIONS,
       input: JSON.stringify(packet),
       webSearch: false,
-...(input.gateway ? { gateway: input.gateway }: {}),
+      ...(input.gateway ? { gateway: input.gateway } : {}),
     });
     const parsed = extractJsonObject(raw) as RawRuntimeRead;
     const verified = verifyRuntimeRead({

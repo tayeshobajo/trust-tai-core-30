@@ -70,7 +70,7 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
     metadata: {},
     createdAt: NOW,
     updatedAt: NOW,
-...overrides,
+    ...overrides,
   };
 }
 
@@ -79,19 +79,20 @@ function decision(overrides: Partial<RoadmapDecision> = {}): RoadmapDecision {
     id: "dec-destination",
     organizationId: ORG,
     roadmapId: "rm-teamsynerg",
-    question: 'Is "One operating system the team actually runs the week from" the right destination?',
+    question:
+      'Is "One operating system the team actually runs the week from" the right destination?',
     whyItMatters: "Everything sequenced below assumes this destination.",
     options: ["Approve as written", "Change the destination"],
     evidence: [],
     status: "open",
     createdAt: NOW,
     updatedAt: NOW,
-...overrides,
+    ...overrides,
   };
 }
 
 function snapshot(overrides: Partial<SuiteSnapshot> = {}): SuiteSnapshot {
-  return {...emptySnapshot(ORG, NOW),...overrides };
+  return { ...emptySnapshot(ORG, NOW), ...overrides };
 }
 
 /* --------------------------------------------------------------- canon read */
@@ -149,9 +150,9 @@ describe("existing roadmap first", () => {
         [open],
       ),
     ).toBeDefined();
-    expect(isMateriallySameQuestion("Which sequence should we build first?", "Who owns billing?")).toBe(
-      false,
-    );
+    expect(
+      isMateriallySameQuestion("Which sequence should we build first?", "Who owns billing?"),
+    ).toBe(false);
   });
 
   it("may propose a genuinely new decision, attached to the real roadmap", () => {
@@ -206,7 +207,7 @@ describe("subject resolution", () => {
     /* Snapshots are organisation-scoped; a foreign roadmap is simply absent. */
     const foreign = roadmap({ id: "rm-foreign", organizationId: "org-2" });
     const resolution = resolveRoadmapSubject({
-      snapshot: {...snapshot(), roadmaps: [] },
+      snapshot: { ...snapshot(), roadmaps: [] },
       question: `Where does roadmap ${foreign.id} stand?`,
     });
     expect(resolution.status).toBe("none");
@@ -337,13 +338,15 @@ describe("human authority is unchanged", () => {
   });
 
   it("keeps roadmap operations behind a roadmap permission", () => {
-    expect(capabilityFor("roadmap", ROADMAP_SHELL_OPERATION)?.requiredCapability).toContain("roadmap");
-    expect(capabilityFor("roadmap", ROADMAP_DECISION_OPERATION)?.requiredCapability).toContain("roadmap");
+    expect(capabilityFor("roadmap", ROADMAP_SHELL_OPERATION)?.requiredCapability).toContain(
+      "roadmap",
+    );
+    expect(capabilityFor("roadmap", ROADMAP_DECISION_OPERATION)?.requiredCapability).toContain(
+      "roadmap",
+    );
   });
 
   it("never lets a learned lesson grant execution", () => {
-    expect(
-      learningGrantsExecution({ id: "l1", organizationId: ORG } as never),
-    ).toBe(false);
+    expect(learningGrantsExecution({ id: "l1", organizationId: ORG } as never)).toBe(false);
   });
 });

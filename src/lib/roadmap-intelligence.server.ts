@@ -147,9 +147,7 @@ export interface ResearchInput {
  * the room can see what is happening during a run that legitimately takes
  * minutes.
  */
-export async function* runRoadmapResearch(
-  input: ResearchInput,
-): AsyncGenerator<ResearchStage> {
+export async function* runRoadmapResearch(input: ResearchInput): AsyncGenerator<ResearchStage> {
   let callModel: RuntimeModelCaller;
   try {
     callModel = await runtimeModelCaller({

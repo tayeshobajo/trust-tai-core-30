@@ -70,10 +70,15 @@ describe("discovery request", () => {
 /** A mocked provider success path: stream -> parse -> validate -> evaluate. */
 function mockedProviderStream(payload: unknown): string {
   const text = JSON.stringify(payload);
-  return text
-.match(/.{1,40}/g)!
-.map((chunk) => `data: ${JSON.stringify({ type: "response.output_text.delta", delta: chunk })}\n`)
-.join("") + "data: [DONE]\n";
+  return (
+    text
+      .match(/.{1,40}/g)!
+      .map(
+        (chunk) =>
+          `data: ${JSON.stringify({ type: "response.output_text.delta", delta: chunk })}\n`,
+      )
+      .join("") + "data: [DONE]\n"
+  );
 }
 
 function parseStream(sse: string): string {
@@ -99,8 +104,14 @@ describe("mocked provider success path", () => {
         summary: "Managed IT provider serving mid-market clients.",
         discovery_reason: "US B2B IT services firm with public services pages.",
         observed_evidence: [
-          { statement: "Lists managed IT services", source_url: "https://www.nashvillemanagedit.com/services" },
-          { statement: "Based in Nashville, TN", source_url: "https://www.nashvillemanagedit.com/contact" },
+          {
+            statement: "Lists managed IT services",
+            source_url: "https://www.nashvillemanagedit.com/services",
+          },
+          {
+            statement: "Based in Nashville, TN",
+            source_url: "https://www.nashvillemanagedit.com/contact",
+          },
         ],
         source_urls: ["https://www.nashvillemanagedit.com/services"],
         unknowns: ["Headcount not published"],
@@ -110,17 +121,51 @@ describe("mocked provider success path", () => {
           confidence: "moderate",
           reasoning: "Matches services and geography; size unknown.",
           criteria: [
-            { name: "B2B services", weight: 30, status: "met", score_contribution: 30, evidence: "Services page", source_urls: [], confidence: "high" },
-            { name: "Headcount 10-250", weight: 20, status: "unknown", score_contribution: 0, evidence: "Not published", source_urls: [], confidence: "unknown" },
+            {
+              name: "B2B services",
+              weight: 30,
+              status: "met",
+              score_contribution: 30,
+              evidence: "Services page",
+              source_urls: [],
+              confidence: "high",
+            },
+            {
+              name: "Headcount 10-250",
+              weight: 20,
+              status: "unknown",
+              score_contribution: 0,
+              evidence: "Not published",
+              source_urls: [],
+              confidence: "unknown",
+            },
           ],
         },
       },
       // duplicate root domain (www + path), must be de-duped, not rejected
-      { company_name: "Nashville Managed IT (dup)", website: "http://nashvillemanagedit.com/about", source_urls: ["https://x.com"], observed_evidence: [], icp_fit: {} },
+      {
+        company_name: "Nashville Managed IT (dup)",
+        website: "http://nashvillemanagedit.com/about",
+        source_urls: ["https://x.com"],
+        observed_evidence: [],
+        icp_fit: {},
+      },
       // evidence-free, must be rejected
-      { company_name: "No Evidence Co", website: "https://noevidence.com", source_urls: [], observed_evidence: [], icp_fit: {} },
+      {
+        company_name: "No Evidence Co",
+        website: "https://noevidence.com",
+        source_urls: [],
+        observed_evidence: [],
+        icp_fit: {},
+      },
       // malformed website, must be rejected
-      { company_name: "Broken", website: "not a url", source_urls: ["https://x.com"], observed_evidence: [], icp_fit: {} },
+      {
+        company_name: "Broken",
+        website: "not a url",
+        source_urls: ["https://x.com"],
+        observed_evidence: [],
+        icp_fit: {},
+      },
     ],
   };
 
@@ -135,7 +180,10 @@ describe("mocked provider success path", () => {
     expect(accepted[0]!.domain).toBe("nashvillemanagedit.com");
     expect(accepted[0]!.candidate.source_urls!.length).toBeGreaterThan(0);
 
-    const evaluation = discoveryEvaluation(accepted[0]!.candidate, { icpVersion: 3, at: "2026-01-01T00:00:00Z" });
+    const evaluation = discoveryEvaluation(accepted[0]!.candidate, {
+      icpVersion: 3,
+      at: "2026-01-01T00:00:00Z",
+    });
     // Conservative: green claimed with only 2 evidence points is demoted.
     expect(evaluation["light"]).toBe("yellow");
     expect(evaluation["score"]).toBe(78);

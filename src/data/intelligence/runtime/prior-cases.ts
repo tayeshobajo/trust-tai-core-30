@@ -12,11 +12,7 @@
  * the reasoning stage may cite.
  */
 
-import type {
-  IntelligenceCase,
-  PatternMatch,
-  PatternOutcome,
-} from "@/domain/intelligence-canon";
+import type { IntelligenceCase, PatternMatch, PatternOutcome } from "@/domain/intelligence-canon";
 
 export interface PriorCaseRef {
   caseId: string;
@@ -48,8 +44,8 @@ export function priorCasesForMatches(input: {
   const refs: PriorCaseRef[] = [];
   for (const match of input.matches) {
     const related = input.cases
-.filter((entry) => entry.patternId === match.patternId)
-.sort((a, b) => Number(Boolean(b.correction)) - Number(Boolean(a.correction)));
+      .filter((entry) => entry.patternId === match.patternId)
+      .sort((a, b) => Number(Boolean(b.correction)) - Number(Boolean(a.correction)));
     for (const entry of related) {
       const outcome = input.outcomes.find((row) => row.caseId === entry.id) ?? null;
       refs.push({
@@ -66,7 +62,7 @@ export function priorCasesForMatches(input: {
               result: outcome.result,
               because: outcome.resultBecause,
             }
-: null,
+          : null,
       });
       if (refs.length >= limit) return refs;
     }

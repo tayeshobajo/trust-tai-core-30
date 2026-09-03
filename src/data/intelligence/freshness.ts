@@ -103,15 +103,15 @@ export function auditIntelligenceFreshness(input: {
     const blocks = input.blocks.filter((block) => block.appId === appId);
     const events = input.events.filter((event) => appOfEvent(event) === appId);
     const latestEvent = events
-.slice()
-.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))[0];
+      .slice()
+      .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))[0];
     const latestContextAt = newest(blocks.map((block) => block.at));
     const latestEventAt = latestEvent?.occurredAt ?? null;
     const latest = newest([latestContextAt, latestEventAt]);
     const ageDays =
       latest && !Number.isNaN(nowMs)
         ? Math.max(0, Math.floor((nowMs - Date.parse(latest)) / DAY))
-: null;
+        : null;
 
     let status: FreshnessStatus;
     let because: string;
@@ -119,16 +119,16 @@ export function auditIntelligenceFreshness(input: {
       status = "missing";
       because = withheld.has(appId)
         ? `Nothing read. The room reported: ${withheld.get(appId)?.replace(/_/g, " ")}.`
-: "This room contributed no context and no activity rows.";
+        : "This room contributed no context and no activity rows.";
     } else if (blocks.length === 0) {
       status = "partial";
-      because = `${events.length} activity row${events.length === 1 ? "": "s"}, but nothing reached the context layer.`;
+      because = `${events.length} activity row${events.length === 1 ? "" : "s"}, but nothing reached the context layer.`;
     } else if (ageDays !== null && ageDays > CURRENT_WINDOW_DAYS) {
       status = "partial";
       because = `Newest fact is ${ageDays} days old, past the ${CURRENT_WINDOW_DAYS}-day window.`;
     } else {
       status = "current";
-      because = `${blocks.length} context block${blocks.length === 1 ? "": "s"} and ${events.length} activity row${events.length === 1 ? "": "s"} inside the ${CURRENT_WINDOW_DAYS}-day window.`;
+      because = `${blocks.length} context block${blocks.length === 1 ? "" : "s"} and ${events.length} activity row${events.length === 1 ? "" : "s"} inside the ${CURRENT_WINDOW_DAYS}-day window.`;
     }
 
     return {
@@ -142,7 +142,7 @@ export function auditIntelligenceFreshness(input: {
       ageDays,
       latestEventName: latestEvent?.name ?? null,
       because,
-...(withheld.has(appId) ? { withheldReason: withheld.get(appId)! }: {}),
+      ...(withheld.has(appId) ? { withheldReason: withheld.get(appId)! } : {}),
     };
   });
 

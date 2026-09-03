@@ -90,9 +90,9 @@ export interface OpportunityPerson {
 function fromDiscovered(intel: ScoutIntel): OpportunityPerson[] {
   return intel.people.map((person) => ({
     fullName: person.fullName,
-...(person.roleTitle ? { roleTitle: person.roleTitle }: {}),
-...(person.email ? { email: person.email }: {}),
-...(person.linkedinUrl ? { linkedinUrl: person.linkedinUrl }: {}),
+    ...(person.roleTitle ? { roleTitle: person.roleTitle } : {}),
+    ...(person.email ? { email: person.email } : {}),
+    ...(person.linkedinUrl ? { linkedinUrl: person.linkedinUrl } : {}),
     decisionMaker: person.decisionMakerLikelihood === "high",
     confirmed: person.decisionMakerLikelihood === "high" && Boolean(person.sourceUrl),
     emailVerified: false,
@@ -103,9 +103,9 @@ function fromDiscovered(intel: ScoutIntel): OpportunityPerson[] {
 export function fromPersonRecords(people: Person[]): OpportunityPerson[] {
   return people.map((person) => ({
     fullName: person.fullName,
-...(person.roleTitle ? { roleTitle: person.roleTitle }: {}),
-...(person.email ? { email: person.email }: {}),
-...(person.linkedinUrl ? { linkedinUrl: person.linkedinUrl }: {}),
+    ...(person.roleTitle ? { roleTitle: person.roleTitle } : {}),
+    ...(person.email ? { email: person.email } : {}),
+    ...(person.linkedinUrl ? { linkedinUrl: person.linkedinUrl } : {}),
     decisionMaker:
       person.seniority === "founder" || person.seniority === "owner" || person.seniority === "exec",
     confirmed: person.confidence === "human_confirmed" || person.confidence === "observed",
@@ -138,13 +138,13 @@ function mergePersonIdentity(
   const linkedinUrl = record.linkedinUrl ?? discovered.linkedinUrl;
   return {
     fullName: record.fullName,
-...(roleTitle ? { roleTitle }: {}),
-...(email ? { email }: {}),
-...(linkedinUrl ? { linkedinUrl }: {}),
+    ...(roleTitle ? { roleTitle } : {}),
+    ...(email ? { email } : {}),
+    ...(linkedinUrl ? { linkedinUrl } : {}),
     decisionMaker: record.decisionMaker || (discovered.decisionMaker && !record.confirmed),
     confirmed: record.confirmed || discovered.confirmed,
     emailVerified: record.emailVerified,
-...(record.recordId ? { recordId: record.recordId }: {}),
+    ...(record.recordId ? { recordId: record.recordId } : {}),
   };
 }
 
@@ -162,12 +162,12 @@ export function opportunityPeople(intel: ScoutIntel, people: Person[] = []): Opp
   if (discovered.length === 0) return records;
   const merged = records.map((record) => {
     const match = discovered.find((person) => sameIdentity(record, person));
-    return match ? mergePersonIdentity(record, match): record;
+    return match ? mergePersonIdentity(record, match) : record;
   });
   const unmatched = discovered.filter(
     (person) => !records.some((record) => sameIdentity(record, person)),
   );
-  return [...merged,...unmatched];
+  return [...merged, ...unmatched];
 }
 
 /** The best person to enter through: a confirmed decision maker with a route. */
@@ -177,10 +177,10 @@ export function bestEntryPerson(people: OpportunityPerson[]): OpportunityPerson 
 
   function score(person: OpportunityPerson): number {
     return (
-      (person.decisionMaker ? 4: 0) +
-      (person.confirmed ? 2: 0) +
-      (person.emailVerified ? 2: person.email ? 1: 0) +
-      (person.linkedinUrl ? 1: 0)
+      (person.decisionMaker ? 4 : 0) +
+      (person.confirmed ? 2 : 0) +
+      (person.emailVerified ? 2 : person.email ? 1 : 0) +
+      (person.linkedinUrl ? 1 : 0)
     );
   }
 }
@@ -246,15 +246,11 @@ const FACTOR_WEIGHTS: Record<OpportunityFactorKey, number> = {
   local_relevance: 0, // familiarity only; it never creates a reason on its own
 };
 
-function factor(
-  key: OpportunityFactorKey,
-  present: boolean,
-  because: string,
-): OpportunityFactor {
+function factor(key: OpportunityFactorKey, present: boolean, because: string): OpportunityFactor {
   return {
     key,
     label: OPPORTUNITY_FACTOR_LABEL[key],
-    state: present ? "present": "unknown",
+    state: present ? "present" : "unknown",
     because,
     weight: FACTOR_WEIGHTS[key],
   };
@@ -302,28 +298,24 @@ export function computeRelationshipOpportunity(input: OpportunityInput): Relatio
       headline:
         candidate.evaluation.light === "red"
           ? "Fit says this is not our company right now."
-: "A person decided this is not for now.",
+          : "A person decided this is not for now.",
       factors: [],
       whyNow: null,
     };
   }
 
   const freshestSignalDays = intel.buyingSignals
-.map((signal) => daysSince(signal.observedAt, now))
-.filter((days): days is number => days !== null)
-.sort((a, b) => a - b)[0];
-  const recentSignal =
-    freshestSignalDays !== undefined && freshestSignalDays <= RECENT_SIGNAL_DAYS;
+    .map((signal) => daysSince(signal.observedAt, now))
+    .filter((days): days is number => days !== null)
+    .sort((a, b) => a - b)[0];
+  const recentSignal = freshestSignalDays !== undefined && freshestSignalDays <= RECENT_SIGNAL_DAYS;
   const whyNowSignal = recentSignal
-    ? intel.buyingSignals.find(
-        (signal) => daysSince(signal.observedAt, now) === freshestSignalDays,
-      )
-: undefined;
+    ? intel.buyingSignals.find((signal) => daysSince(signal.observedAt, now) === freshestSignalDays)
+    : undefined;
 
   const specificNotice =
     intel.opportunities.length > 0 || candidate.signals.length > 0 || Boolean(candidate.stated);
-  const noticeSource =
-    intel.opportunities[0]?.statement ?? candidate.signals[0]?.statement ?? null;
+  const noticeSource = intel.opportunities[0]?.statement ?? candidate.signals[0]?.statement ?? null;
 
   const checkedDays = daysSince(candidate.lastCheckedAt, now);
   const fresh = checkedDays !== null && checkedDays <= FRESH_EVIDENCE_DAYS;
@@ -335,81 +327,87 @@ export function computeRelationshipOpportunity(input: OpportunityInput): Relatio
       "decision_maker",
       Boolean(decider),
       decider
-        ? `${decider.fullName} is on record${decider.roleTitle ? ` as ${decider.roleTitle}`: ""} with a way in.`
-: "No founder or decision maker with a contact route has been found yet.",
+        ? `${decider.fullName} is on record${decider.roleTitle ? ` as ${decider.roleTitle}` : ""} with a way in.`
+        : "No founder or decision maker with a contact route has been found yet.",
     ),
     factor(
       "contact_route",
       Boolean(entry && (entry.email || entry.linkedinUrl)),
       entry?.email
         ? `A business email is on record for ${entry.fullName}.`
-: entry?.linkedinUrl
+        : entry?.linkedinUrl
           ? `A LinkedIn profile is on record for ${entry.fullName}.`
-: "No socially appropriate route has been found.",
+          : "No socially appropriate route has been found.",
     ),
     factor(
       "recent_signal",
       recentSignal,
       whyNowSignal
         ? `${whyNowSignal.statement} (${freshestSignalDays}d ago).`
-: intel.buyingSignals.length > 0
+        : intel.buyingSignals.length > 0
           ? "Signals exist but none are dated recently enough to act on."
-: "No meaningful recent signal has been observed.",
+          : "No meaningful recent signal has been observed.",
     ),
     factor(
       "specific_notice",
       specificNotice,
       noticeSource
         ? `There is something real to notice: ${noticeSource}`
-: candidate.stated
+        : candidate.stated
           ? "They told us about themselves directly through the intake."
-: "Nothing specific enough to genuinely notice has been read yet.",
+          : "Nothing specific enough to genuinely notice has been read yet.",
     ),
     factor(
       "contribute_first",
       intel.opportunities.length > 0,
       intel.opportunities.length > 0
         ? "An observed gap gives us an honest way to be useful before asking for anything."
-: "No observed gap gives us an honest way to contribute first.",
+        : "No observed gap gives us an honest way to contribute first.",
     ),
     factor(
       "natural_bridge",
       intel.opportunities.length > 0 || Boolean(whyNowSignal) || local,
       intel.opportunities.length > 0
         ? "A diagnostic read of what we observed is a natural bridge."
-: whyNowSignal
+        : whyNowSignal
           ? "The recent signal is a natural opening."
-: local
+          : local
             ? "A genuine local connection exists."
-: "No natural bridge is visible yet.",
+            : "No natural bridge is visible yet.",
     ),
     factor(
       "freshness",
       fresh,
       fresh
         ? `Evidence was read ${checkedDays}d ago.`
-: checkedDays !== null
+        : checkedDays !== null
           ? `Evidence is ${checkedDays}d old; a fresh read would sharpen this.`
-: "Evidence has no reliable date.",
+          : "Evidence has no reliable date.",
     ),
     factor(
       "local_relevance",
       local,
       local
         ? `${candidate.profile?.location}, a real local connection, to use only if it genuinely supports the conversation.`
-: "No evidenced local connection.",
+        : "No evidenced local connection.",
     ),
   ];
 
   const score = factors
-.filter((item) => item.state === "present")
-.reduce((total, item) => total + item.weight, 0);
+    .filter((item) => item.state === "present")
+    .reduce((total, item) => total + item.weight, 0);
 
   const hasReasonToAct = recentSignal || specificNotice;
   let state: RelationshipOpportunityState;
   if (!candidate.evaluation.scoreable || (score < 30 && !specificNotice)) {
     state = "not_enough_signal";
-  } else if (decider && entry && (entry.email || entry.linkedinUrl) && hasReasonToAct && score >= 60) {
+  } else if (
+    decider &&
+    entry &&
+    (entry.email || entry.linkedinUrl) &&
+    hasReasonToAct &&
+    score >= 60
+  ) {
     state = "ready";
   } else if (score >= 30 || specificNotice) {
     state = "watching";
@@ -425,16 +423,16 @@ export function computeRelationshipOpportunity(input: OpportunityInput): Relatio
   const headline =
     state === "ready"
       ? `A legitimate, timely reason exists: ${strongest?.because ?? "the evidence lines up."}`
-: state === "watching"
+      : state === "watching"
         ? "Real potential, but no timely reason to enter their world yet."
-: "Not enough has been observed to know whether attention is warranted.";
+        : "Not enough has been observed to know whether attention is warranted.";
 
   return {
     state,
     score,
     headline,
     factors,
-    whyNow: whyNowSignal ? whyNowSignal.statement: null,
+    whyNow: whyNowSignal ? whyNowSignal.statement : null,
   };
 }
 
@@ -473,8 +471,10 @@ export interface ChannelInput {
 }
 
 const TEXT_EVIDENCE_REASON: Record<TextChannelEvidence, string> = {
-  exchanged_direct_number: "They shared a direct number for reaching them, so a short personal text is natural.",
-  prior_sms_conversation: "You have texted before, so continuing on that thread is the natural step.",
+  exchanged_direct_number:
+    "They shared a direct number for reaching them, so a short personal text is natural.",
+  prior_sms_conversation:
+    "You have texted before, so continuing on that thread is the natural step.",
   explicit_text_preference: "They asked to be texted, so text is the channel they chose.",
 };
 
@@ -504,7 +504,7 @@ export function recommendChannel(input: ChannelInput): ChannelRecommendation | n
       channel: "email",
       reason: person.emailVerified
         ? `A verified business email is on record for ${person.fullName} and there is something worth saying.`
-: `Email appears to be the likely professional route for ${person.fullName}, but the address is not verified yet, so it is not safely reachable.`,
+        : `Email appears to be the likely professional route for ${person.fullName}, but the address is not verified yet, so it is not safely reachable.`,
     };
   }
 
@@ -524,7 +524,10 @@ export function recommendChannel(input: ChannelInput): ChannelRecommendation | n
  * Bridge ideas grounded in what was actually observed. Each is genuinely
  * useful, proportionate, and valuable even if they never hire Trust Tai.
  */
-export function suggestProofOfCare(candidate: ProspectCandidate, intel?: ScoutIntel): ProofOfCare[] {
+export function suggestProofOfCare(
+  candidate: ProspectCandidate,
+  intel?: ScoutIntel,
+): ProofOfCare[] {
   const resolved = intel ?? candidate.intel ?? EMPTY_INTEL;
   const bridges: ProofOfCare[] = [];
 
@@ -544,7 +547,7 @@ export function suggestProofOfCare(candidate: ProspectCandidate, intel?: ScoutIn
       kind: "observation",
       label: "A useful observation",
       idea: `A genuine note on what changed for them: ${signal.statement}`,
-      why: signal.sourceUrl ? `Observed on a public page: ${signal.sourceUrl}`: signal.statement,
+      why: signal.sourceUrl ? `Observed on a public page: ${signal.sourceUrl}` : signal.statement,
     });
   }
 
@@ -564,7 +567,7 @@ export function suggestProofOfCare(candidate: ProspectCandidate, intel?: ScoutIn
       idea: `A genuine note on something specific they are building: ${candidate.signals[0]!.statement}`,
       why: candidate.signals[0]!.sourceUrl
         ? `Observed on a public page: ${candidate.signals[0]!.sourceUrl}`
-: "Observed on their public site.",
+        : "Observed on their public site.",
     });
   }
 
@@ -595,8 +598,8 @@ export function buildRelationshipBrief(input: BriefInput): RelationshipDevelopme
   const bridges = suggestProofOfCare(candidate, intel);
   const channel = recommendChannel({
     person: entry,
-...(input.signalOrigin ? { signalOrigin: input.signalOrigin }: {}),
-...(input.textEvidence ? { textEvidence: input.textEvidence }: {}),
+    ...(input.signalOrigin ? { signalOrigin: input.signalOrigin } : {}),
+    ...(input.textEvidence ? { textEvidence: input.textEvidence } : {}),
   });
 
   const whatTaiCanNotice =
@@ -614,18 +617,18 @@ export function buildRelationshipBrief(input: BriefInput): RelationshipDevelopme
   for (const unknown of intel.unknowns.slice(0, 3)) risks.push(unknown);
 
   const evidenceUsed: EvidenceRef[] = [
-...intel.buyingSignals.slice(0, 3).map((signal) => ({
+    ...intel.buyingSignals.slice(0, 3).map((signal) => ({
       label: signal.statement,
-...(signal.sourceUrl ? { url: signal.sourceUrl }: {}),
+      ...(signal.sourceUrl ? { url: signal.sourceUrl } : {}),
       kind: "page" as const,
     })),
-...intel.opportunities.slice(0, 2).map((item) => ({
+    ...intel.opportunities.slice(0, 2).map((item) => ({
       label: item.statement,
-...(item.sourceUrl ? { url: item.sourceUrl }: {}),
+      ...(item.sourceUrl ? { url: item.sourceUrl } : {}),
       kind: "page" as const,
     })),
     {
-      label: `ICP fit ${candidate.evaluation.scoreable ? `${candidate.evaluation.score}%`: "unscored"} (deterministic evaluator)`,
+      label: `ICP fit ${candidate.evaluation.scoreable ? `${candidate.evaluation.score}%` : "unscored"} (deterministic evaluator)`,
       kind: "computed" as const,
     },
   ];
@@ -638,11 +641,13 @@ export function buildRelationshipBrief(input: BriefInput): RelationshipDevelopme
         `Step into ${entry!.fullName}'s world: name the specific thing you noticed and why it caught your attention.`,
         "Make them feel interesting, not praised. Reflect something real, then stop.",
         "No call, no pitch, no roadmap. The only goal is to earn the next natural exchange.",
-        bridges[0] ? `If a bridge belongs, offer it freely: ${bridges[0].label.toLowerCase()}.`: null,
+        bridges[0]
+          ? `If a bridge belongs, offer it freely: ${bridges[0].label.toLowerCase()}.`
+          : null,
       ]
-.filter(Boolean)
-.join(" ")
-: "There is no trustworthy first move yet. Research more before anyone writes a word.";
+        .filter(Boolean)
+        .join(" ")
+    : "There is no trustworthy first move yet. Research more before anyone writes a word.";
 
   return {
     whyNow: opportunity.whyNow,
@@ -709,8 +714,7 @@ const NEED_PATTERNS: { kind: RoadmapNeedKind; pattern: RegExp }[] = [
  * wall of surrounding email.
  */
 function needExcerpt(text: string, matched: string): string {
-  const clamp = (value: string): string =>
-    value.length > 200 ? `${value.slice(0, 197)}…`: value;
+  const clamp = (value: string): string => (value.length > 200 ? `${value.slice(0, 197)}…` : value);
   const at = text.indexOf(matched);
   if (at === -1) return clamp(text.trim());
   const sentences = text.split(/(?<=[.!?])\s+|\n+/);
@@ -744,7 +748,7 @@ export function detectRoadmapOpportunity(
         kind,
         label: ROADMAP_NEED_LABEL[kind],
         evidence: needExcerpt(text, match[0]),
-...(entry.source ? { source: entry.source }: {}),
+        ...(entry.source ? { source: entry.source } : {}),
       });
     }
   }
@@ -763,11 +767,11 @@ export function detectRoadmapOpportunity(
     emerging: true,
     needs,
     because: `They revealed ${needs
-.map((need) => need.label.toLowerCase())
-.join(
+      .map((need) => need.label.toLowerCase())
+      .join(
         ", ",
       )} in their own words, the kind of tangle a sequenced roadmap genuinely helps with. Tai decides whether to propose one.`,
-    confidence: needs.length >= 3 ? "high": needs.length === 2 ? "moderate": "low",
+    confidence: needs.length >= 3 ? "high" : needs.length === 2 ? "moderate" : "low",
   };
 }
 
@@ -815,27 +819,24 @@ export function counterpartyEvidence(input: {
     if (message.direction !== "inbound") continue;
     const body = counterpartyEmailText(message);
     const text = [message.subject ?? "", body]
-.map((part) => part.trim())
-.filter(Boolean)
-.join("\n");
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join("\n");
     if (text) texts.push({ text, source: "Their email" });
   }
 
   for (const touch of input.touches ?? []) {
-    const theirWords =
-      touch.direction === "inbound" || touch.provenance?.["their_words"] === true;
+    const theirWords = touch.direction === "inbound" || touch.provenance?.["their_words"] === true;
     if (!theirWords) continue;
     const text = [touch.summary, touch.body ?? ""]
-.map((part) => part.trim())
-.filter(Boolean)
-.join("\n");
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join("\n");
     if (!text) continue;
     texts.push({
       text,
       source:
-        touch.direction === "inbound"
-          ? "Their words"
-: "Their words, recorded by a person here",
+        touch.direction === "inbound" ? "Their words" : "Their words, recorded by a person here",
     });
   }
 
@@ -888,12 +889,12 @@ export function planRelationshipPreparation(input: {
   if (!eligibility.eligible) {
     return marker && marker.state !== "not_eligible"
       ? { action: "mark_ineligible", eligible: false, because: eligibility.because }
-: { action: "none", eligible: false, because: eligibility.because };
+      : { action: "none", eligible: false, because: eligibility.because };
   }
 
   if (input.force) {
     return {
-      action: marker?.state === "prepared" ? "refresh": "prepare",
+      action: marker?.state === "prepared" ? "refresh" : "prepare",
       eligible: true,
       because: "A person here asked for a fresh read.",
     };
@@ -946,7 +947,7 @@ export function worthKnowingMembership(
   }
   const intel = candidate.intel ?? EMPTY_INTEL;
   const eligibility = relationshipResearchEligible(candidate, opportunityPeople(intel, people));
-  return eligibility.eligible ? "actionable": "needs_person";
+  return eligibility.eligible ? "actionable" : "needs_person";
 }
 
 /* -------------------------------------------------------------- watch state */
@@ -963,16 +964,16 @@ function readResearchMarker(block: Row): RelationshipResearchMarker | undefined 
   }
   return {
     state,
-    because: typeof marker["because"] === "string" ? marker["because"]: "",
-    version: typeof marker["version"] === "number" ? marker["version"]: 0,
-...(typeof marker["eligible_since"] === "string"
+    because: typeof marker["because"] === "string" ? marker["because"] : "",
+    version: typeof marker["version"] === "number" ? marker["version"] : 0,
+    ...(typeof marker["eligible_since"] === "string"
       ? { eligibleSince: marker["eligible_since"] }
-: {}),
-...(typeof marker["prepared_at"] === "string" ? { preparedAt: marker["prepared_at"] }: {}),
-...(typeof marker["evidence_at"] === "string" ? { evidenceAt: marker["evidence_at"] }: {}),
-...(marker["brief"] && typeof marker["brief"] === "object"
+      : {}),
+    ...(typeof marker["prepared_at"] === "string" ? { preparedAt: marker["prepared_at"] } : {}),
+    ...(typeof marker["evidence_at"] === "string" ? { evidenceAt: marker["evidence_at"] } : {}),
+    ...(marker["brief"] && typeof marker["brief"] === "object"
       ? { brief: marker["brief"] as RelationshipDevelopmentBrief }
-: {}),
+      : {}),
   };
 }
 
@@ -981,15 +982,15 @@ function readResearchMarker(block: Row): RelationshipResearchMarker | undefined 
  * person's pacing decision and the governed research marker, side by side.
  */
 export function readRelationshipDevelopment(metadata: unknown): RelationshipDevelopmentMarker {
-  const meta = (metadata && typeof metadata === "object" ? metadata: {}) as Row;
+  const meta = (metadata && typeof metadata === "object" ? metadata : {}) as Row;
   const block = (meta["relationship_development"] ?? {}) as Row;
   const watch = block["watch"];
   const research = readResearchMarker(block);
   return {
-    watch: watch === "watching" || watch === "not_now" ? watch: null,
-...(typeof block["by"] === "string" ? { by: block["by"] }: {}),
-...(typeof block["at"] === "string" ? { at: block["at"] }: {}),
-...(research ? { research }: {}),
+    watch: watch === "watching" || watch === "not_now" ? watch : null,
+    ...(typeof block["by"] === "string" ? { by: block["by"] } : {}),
+    ...(typeof block["at"] === "string" ? { at: block["at"] } : {}),
+    ...(research ? { research } : {}),
   };
 }
 
@@ -1002,10 +1003,10 @@ export function researchMarkerToRow(marker: RelationshipResearchMarker): Row {
     state: marker.state,
     because: marker.because,
     version: marker.version,
-...(marker.eligibleSince ? { eligible_since: marker.eligibleSince }: {}),
-...(marker.preparedAt ? { prepared_at: marker.preparedAt }: {}),
-...(marker.evidenceAt ? { evidence_at: marker.evidenceAt }: {}),
-...(marker.brief ? { brief: marker.brief as unknown as Row }: {}),
+    ...(marker.eligibleSince ? { eligible_since: marker.eligibleSince } : {}),
+    ...(marker.preparedAt ? { prepared_at: marker.preparedAt } : {}),
+    ...(marker.evidenceAt ? { evidence_at: marker.evidenceAt } : {}),
+    ...(marker.brief ? { brief: marker.brief as unknown as Row } : {}),
   };
 }
 
@@ -1017,8 +1018,8 @@ export function researchMarkerToRow(marker: RelationshipResearchMarker): Row {
 export function relationshipDevelopmentRow(marker: RelationshipDevelopmentMarker): Row {
   return {
     watch: marker.watch,
-...(marker.by ? { by: marker.by }: {}),
-...(marker.at ? { at: marker.at }: {}),
-...(marker.research ? { research: researchMarkerToRow(marker.research) }: {}),
+    ...(marker.by ? { by: marker.by } : {}),
+    ...(marker.at ? { at: marker.at } : {}),
+    ...(marker.research ? { research: researchMarkerToRow(marker.research) } : {}),
   };
 }

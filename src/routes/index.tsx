@@ -48,7 +48,8 @@ function HomeRoute() {
 function SystemStatus({ identity }: { identity: WorkspaceIdentity }) {
   const { isSuccess, isError } = useQuery({
     queryKey: ["home-status", identity.organizationId],
-    queryFn: () => memorySource.activity.list({ organizationId: identity.organizationId, limit: 1 }),
+    queryFn: () =>
+      memorySource.activity.list({ organizationId: identity.organizationId, limit: 1 }),
   });
 
   if (!isSuccess && !isError) return null;

@@ -83,7 +83,8 @@ const BROOKE_WARM_JUDGMENT = JSON.stringify({
     "A generous, help-first orientation, consistent with her work guiding business owners.",
   whatDeservesAcknowledgment: "The offer to be a resource, and the generosity underneath it.",
   threadToBuildOn: "Her instinct to be useful and the work it comes from.",
-  intendedEffect: "That she feels specifically seen and glad the Mastermind put them in the same room.",
+  intendedEffect:
+    "That she feels specifically seen and glad the Mastermind put them in the same room.",
   responseObligation: "Her thanks and kind words deserve acknowledgment.",
   askDecision: {
     shouldAsk: false,
@@ -155,7 +156,7 @@ async function failureCode(promise: Promise<unknown>): Promise<string> {
 describe("executeDraftPasses", () => {
   it("Brooke's case succeeds with a configured provider returning valid judgment and draft", async () => {
     const result = await executeDraftPasses(callerReturning(VALID_JUDGMENT, VALID_DRAFT), {
-...BROOKE_INPUT,
+      ...BROOKE_INPUT,
     });
     expect(result.subject).toBe("Re: Starting next month");
     expect(result.body).toContain("Hi Brooke,");
@@ -171,12 +172,12 @@ describe("executeDraftPasses", () => {
     const spy: RuntimeModelCaller = async (request) => {
       seen.push({ type: (request.responseFormat as { type?: string } | undefined)?.type });
       return {
-        raw: seen.length === 1 ? VALID_JUDGMENT: VALID_DRAFT,
+        raw: seen.length === 1 ? VALID_JUDGMENT : VALID_DRAFT,
         provider: "test",
         model: "test-model",
       };
     };
-    await executeDraftPasses(spy, {...BROOKE_INPUT });
+    await executeDraftPasses(spy, { ...BROOKE_INPUT });
     expect(seen).toEqual([{ type: "json_schema" }, { type: "json_schema" }]);
   });
 
@@ -185,12 +186,12 @@ describe("executeDraftPasses", () => {
     const spy: RuntimeModelCaller = async () => {
       calls += 1;
       return {
-        raw: calls === 1 ? BROOKE_WARM_JUDGMENT: BROOKE_WARM_DRAFT,
+        raw: calls === 1 ? BROOKE_WARM_JUDGMENT : BROOKE_WARM_DRAFT,
         provider: "test",
         model: "test-model",
       };
     };
-    const result = await executeDraftPasses(spy, {...BROOKE_WARM_INPUT });
+    const result = await executeDraftPasses(spy, { ...BROOKE_WARM_INPUT });
     expect(calls).toBe(2);
     expect(result.judgment.askDecision.shouldAsk).toBe(false);
     expect(result.judgment.askDecision.whyNatural).toContain("nothing in her note");
@@ -202,7 +203,7 @@ describe("executeDraftPasses", () => {
 
   it("earned CTA: an explicit 'let's find time to talk' passes with the ask intact", async () => {
     const earnedJudgment = JSON.stringify({
-...JSON.parse(BROOKE_WARM_JUDGMENT),
+      ...JSON.parse(BROOKE_WARM_JUDGMENT),
       latestHumanSignal: "She said plainly: let's find time to talk.",
       askDecision: {
         shouldAsk: true,
@@ -218,12 +219,12 @@ describe("executeDraftPasses", () => {
     const spy: RuntimeModelCaller = async () => {
       calls += 1;
       return {
-        raw: calls === 1 ? earnedJudgment: earnedDraft,
+        raw: calls === 1 ? earnedJudgment : earnedDraft,
         provider: "test",
         model: "test-model",
       };
     };
-    const result = await executeDraftPasses(spy, {...BROOKE_WARM_INPUT });
+    const result = await executeDraftPasses(spy, { ...BROOKE_WARM_INPUT });
     expect(calls).toBe(2); // no rewrite: the ask is earned
     expect(result.judgment.askDecision.shouldAsk).toBe(true);
     expect(result.body).toContain("short call");
@@ -231,7 +232,7 @@ describe("executeDraftPasses", () => {
 
   it("earned CTA: a question requiring discussion earns an ask", async () => {
     const questionJudgment = JSON.stringify({
-...JSON.parse(BROOKE_WARM_JUDGMENT),
+      ...JSON.parse(BROOKE_WARM_JUDGMENT),
       responseObligation: "She asked how the engagement would work for her team.",
       askDecision: {
         shouldAsk: true,
@@ -247,12 +248,12 @@ describe("executeDraftPasses", () => {
     const spy: RuntimeModelCaller = async () => {
       calls += 1;
       return {
-        raw: calls === 1 ? questionJudgment: questionDraft,
+        raw: calls === 1 ? questionJudgment : questionDraft,
         provider: "test",
         model: "test-model",
       };
     };
-    const result = await executeDraftPasses(spy, {...BROOKE_WARM_INPUT });
+    const result = await executeDraftPasses(spy, { ...BROOKE_WARM_INPUT });
     expect(calls).toBe(2);
     expect(result.judgment.askDecision.shouldAsk).toBe(true);
   });
@@ -269,14 +270,14 @@ describe("executeDraftPasses", () => {
         raw:
           seen.length === 1
             ? BROOKE_WARM_JUDGMENT
-: seen.length === 2
+            : seen.length === 2
               ? sneakyDraft
-: BROOKE_WARM_DRAFT,
+              : BROOKE_WARM_DRAFT,
         provider: "test",
         model: "test-model",
       };
     };
-    const result = await executeDraftPasses(spy, {...BROOKE_WARM_INPUT });
+    const result = await executeDraftPasses(spy, { ...BROOKE_WARM_INPUT });
     expect(seen).toHaveLength(3); // judgment, write, corrective rewrite
     expect(seen[2]).toContain("judgment decided NO ask belongs");
     expect(unearnedAskInBody(result.body)).toBeNull();
@@ -290,7 +291,7 @@ describe("executeDraftPasses", () => {
     });
     const code = await failureCode(
       executeDraftPasses(callerReturning(BROOKE_WARM_JUDGMENT, sneakyDraft), {
-...BROOKE_WARM_INPUT,
+        ...BROOKE_WARM_INPUT,
       }),
     );
     expect(code).toBe("ask_gate_violated");
@@ -299,7 +300,7 @@ describe("executeDraftPasses", () => {
   it("types a missing provider as provider_not_configured", async () => {
     const code = await failureCode(
       executeDraftPasses(callerThrowing(new ProviderNotConfiguredError()), {
-...BROOKE_INPUT,
+        ...BROOKE_INPUT,
       }),
     );
     expect(code).toBe("provider_not_configured");
@@ -308,7 +309,7 @@ describe("executeDraftPasses", () => {
   it("types a provider refusal as provider_call_failed", async () => {
     const code = await failureCode(
       executeDraftPasses(callerThrowing(new ProviderCallFailedError("refused", 400)), {
-...BROOKE_INPUT,
+        ...BROOKE_INPUT,
       }),
     );
     expect(code).toBe("provider_call_failed");
@@ -316,21 +317,21 @@ describe("executeDraftPasses", () => {
 
   it("types an unknown transport error as provider_call_failed", async () => {
     const code = await failureCode(
-      executeDraftPasses(callerThrowing(new Error("socket hangup")), {...BROOKE_INPUT }),
+      executeDraftPasses(callerThrowing(new Error("socket hangup")), { ...BROOKE_INPUT }),
     );
     expect(code).toBe("provider_call_failed");
   });
 
   it("types an unreadable judgment as judgment_unreadable", async () => {
     const code = await failureCode(
-      executeDraftPasses(callerReturning("no json here at all"), {...BROOKE_INPUT }),
+      executeDraftPasses(callerReturning("no json here at all"), { ...BROOKE_INPUT }),
     );
     expect(code).toBe("judgment_unreadable");
   });
 
   it("types an unreadable written draft as writing_unreadable", async () => {
     const code = await failureCode(
-      executeDraftPasses(callerReturning(VALID_JUDGMENT, "still no json"), {...BROOKE_INPUT }),
+      executeDraftPasses(callerReturning(VALID_JUDGMENT, "still no json"), { ...BROOKE_INPUT }),
     );
     expect(code).toBe("writing_unreadable");
   });
@@ -339,7 +340,7 @@ describe("executeDraftPasses", () => {
     const code = await failureCode(
       executeDraftPasses(
         callerReturning(VALID_JUDGMENT, JSON.stringify({ subject: "", body: "  " })),
-        {...BROOKE_INPUT },
+        { ...BROOKE_INPUT },
       ),
     );
     expect(code).toBe("empty_draft");

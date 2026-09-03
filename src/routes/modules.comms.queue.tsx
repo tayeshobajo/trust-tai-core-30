@@ -79,21 +79,23 @@ interface QueueItem {
 
 async function fetchQueue(organizationId: string): Promise<QueueItem[]> {
   const { data: drafts, error } = await supabase
-.from("comms_drafts")
-.select("id, organization_id, relationship_id, subject, body, intent, register, review_state, rationale, created_at")
-.eq("organization_id", organizationId)
-.in("review_state", ["needs_human_review"])
-.order("created_at", { ascending: false })
-.limit(50);
+    .from("comms_drafts")
+    .select(
+      "id, organization_id, relationship_id, subject, body, intent, register, review_state, rationale, created_at",
+    )
+    .eq("organization_id", organizationId)
+    .in("review_state", ["needs_human_review"])
+    .order("created_at", { ascending: false })
+    .limit(50);
 
   if (error) throw new Error(error.message);
   if (!drafts || drafts.length === 0) return [];
 
   const relIds = [...new Set((drafts as DraftRow[]).map((d) => d.relationship_id))];
   const { data: relationships } = await supabase
-.from("comms_relationships")
-.select("id, full_name, company_name, email, stage")
-.in("id", relIds);
+    .from("comms_relationships")
+    .select("id, full_name, company_name, email, stage")
+    .in("id", relIds);
 
   const relMap = new Map<string, RelationshipRow>(
     ((relationships ?? []) as RelationshipRow[]).map((r) => [r.id, r]),
@@ -107,22 +109,24 @@ async function fetchQueue(organizationId: string): Promise<QueueItem[]> {
 
 async function approveDraft(draftId: string): Promise<void> {
   const { error } = await supabase
-.from("comms_drafts")
-.update({ review_state: "approved", updated_at: new Date().toISOString() })
-.eq("id", draftId);
+    .from("comms_drafts")
+    .update({ review_state: "approved", updated_at: new Date().toISOString() })
+    .eq("id", draftId);
   if (error) throw new Error(error.message);
 }
 
 async function rejectDraft(draftId: string): Promise<void> {
   const { error } = await supabase
-.from("comms_drafts")
-.update({ review_state: "discarded", updated_at: new Date().toISOString() })
-.eq("id", draftId);
+    .from("comms_drafts")
+    .update({ review_state: "discarded", updated_at: new Date().toISOString() })
+    .eq("id", draftId);
   if (error) throw new Error(error.message);
 }
 
 async function sendDraft(draftId: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated.");
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
@@ -136,7 +140,7 @@ async function sendDraft(draftId: string): Promise<void> {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: "Send failed." })) as { error?: string };
+    const body = (await res.json().catch(() => ({ error: "Send failed." }))) as { error?: string };
     throw new Error(body.error ?? "Send failed.");
   }
 }
@@ -176,13 +180,13 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
           await sendDraft(id);
           results.push({ id, ok: true });
         } catch (err) {
-          results.push({ id, ok: false, error: err instanceof Error ? err.message: "Failed." });
+          results.push({ id, ok: false, error: err instanceof Error ? err.message : "Failed." });
           // Roll back to needs_human_review on send failure
           await supabase
-.from("comms_drafts")
-.update({ review_state: "needs_human_review", updated_at: new Date().toISOString() })
-.eq("id", id)
-.eq("review_state", "approved");
+            .from("comms_drafts")
+            .update({ review_state: "needs_human_review", updated_at: new Date().toISOString() })
+            .eq("id", id)
+            .eq("review_state", "approved");
         }
       }
       return results;
@@ -190,7 +194,7 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: (results) => {
       const sent = results.filter((r) => r.ok).length;
       const failed = results.filter((r) => !r.ok).length;
-      if (sent > 0) toast.success(`${sent} email${sent === 1 ? "": "s"} sent`);
+      if (sent > 0) toast.success(`${sent} email${sent === 1 ? "" : "s"} sent`);
       if (failed > 0) toast.error(`${failed} failed, check queue`);
       setSelected(new Set());
       void queryClient.invalidateQueries({ queryKey: ["comms", "queue"] });
@@ -219,10 +223,10 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
     onError: async (err: Error, id: string) => {
       toast.error(err.message);
       await supabase
-.from("comms_drafts")
-.update({ review_state: "needs_human_review", updated_at: new Date().toISOString() })
-.eq("id", id)
-.eq("review_state", "approved");
+        .from("comms_drafts")
+        .update({ review_state: "needs_human_review", updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("review_state", "approved");
     },
   });
 
@@ -241,23 +245,23 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
 
       {queue.error ? (
         <p className="text-sm text-destructive">
-          {queue.error instanceof Error ? queue.error.message: "Failed to load queue."}
+          {queue.error instanceof Error ? queue.error.message : "Failed to load queue."}
         </p>
-      ): loading ? (
+      ) : loading ? (
         <p className="text-sm text-muted-foreground">Loading queue…</p>
-      ): items.length === 0 ? (
+      ) : items.length === 0 ? (
         <div className="rounded-xl border border-border p-8 text-center">
           <p className="text-sm text-muted-foreground">
             No drafts waiting. The Comms Agent will add emails here after its next run.
           </p>
         </div>
-      ): (
+      ) : (
         <div className="space-y-4">
           {/* Batch controls */}
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-[13px] text-muted-foreground">
-              {items.length} draft{items.length === 1 ? "": "s"} waiting
-              {selected.size > 0 ? ` · ${selected.size} selected`: ""}
+              {items.length} draft{items.length === 1 ? "" : "s"} waiting
+              {selected.size > 0 ? ` · ${selected.size} selected` : ""}
             </span>
             <TTButton variant="quiet" size="sm" onClick={selectAll} disabled={isBusy}>
               Select all (up to 20)
@@ -273,7 +277,7 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
                   disabled={isBusy || selected.size === 0}
                   onClick={() => batchSend.mutate([...selected])}
                 >
-                  Send {selected.size} email{selected.size === 1 ? "": "s"}
+                  Send {selected.size} email{selected.size === 1 ? "" : "s"}
                 </TTButton>
               </>
             )}
@@ -285,7 +289,10 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
               const isExpanded = expanded === draft.id;
               const isSelected = selected.has(draft.id);
               const contactName = relationship?.full_name ?? "Unknown contact";
-              const company = relationship?.company_name ?? (draft.rationale?.["company"] as string | undefined) ?? "";
+              const company =
+                relationship?.company_name ??
+                (draft.rationale?.["company"] as string | undefined) ??
+                "";
               const toEmail = relationship?.email ?? null;
               const hook = draft.rationale?.["hook"] as string | undefined;
 
@@ -294,7 +301,7 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
                   key={draft.id}
                   className={cn(
                     "rounded-xl border transition-colors",
-                    isSelected ? "border-[var(--royal)]": "border-border",
+                    isSelected ? "border-[var(--royal)]" : "border-border",
                   )}
                 >
                   {/* Row header */}
@@ -310,7 +317,7 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
                     <button
                       type="button"
                       className="min-w-0 flex-1 text-left"
-                      onClick={() => setExpanded(isExpanded ? null: draft.id)}
+                      onClick={() => setExpanded(isExpanded ? null : draft.id)}
                     >
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[15px] font-medium text-foreground">
@@ -350,7 +357,11 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
                         size="sm"
                         disabled={isBusy || !toEmail}
                         onClick={() => approveAndSendOne.mutate(draft.id)}
-                        title={!toEmail ? "No email address, add one to the relationship first": undefined}
+                        title={
+                          !toEmail
+                            ? "No email address, add one to the relationship first"
+                            : undefined
+                        }
                       >
                         Send
                       </TTButton>
@@ -372,7 +383,8 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
                         </pre>
                       </div>
                       <p className="mt-2 text-[11px] text-muted-foreground">
-                        Drafted {new Date(draft.created_at).toLocaleDateString(undefined, {
+                        Drafted{" "}
+                        {new Date(draft.created_at).toLocaleDateString(undefined, {
                           month: "short",
                           day: "numeric",
                           hour: "2-digit",

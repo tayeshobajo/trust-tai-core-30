@@ -104,9 +104,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     };
   }, [queryClient]);
 
-  return (
-    <SessionContext.Provider value={{ session, loading }}>{children}</SessionContext.Provider>
-  );
+  return <SessionContext.Provider value={{ session, loading }}>{children}</SessionContext.Provider>;
 }
 
 function displayName(profile: ProfileRow | null, email: string): string {
@@ -185,11 +183,9 @@ export function useWorkspace(): WorkspaceState {
         }),
       });
 
-
       /* Publish authority once, so room services can refuse a write that this
          person's access does not carry. Visibility alone is not authority. */
       setRoomAuthority(apps);
-
 
       return {
         status: "ready",
@@ -237,4 +233,3 @@ export function workspaceAccess(identity: WorkspaceIdentity): AccessContext {
     role: identity.role,
   });
 }
-

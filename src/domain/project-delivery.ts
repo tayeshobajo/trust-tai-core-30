@@ -161,6 +161,6 @@ export function projectFilePath(organizationId: ID, projectId: ID, fileName: str
   const unique =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
-: String(Date.now());
+      : String(Date.now());
   return `${organizationId}/${projectId}/${unique}-${safe}`;
 }

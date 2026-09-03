@@ -70,11 +70,11 @@ const FINGERPRINT_LENGTH = 48;
 
 function decodeEntities(value: string): string {
   return value
-.replace(/&amp;/gi, "&")
-.replace(/&lt;/gi, "<")
-.replace(/&gt;/gi, ">")
-.replace(/&quot;/gi, '"')
-.replace(/&#0?39;/g, "'");
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;/g, "'");
 }
 
 /** Subjects compare without reply prefixes, case, or punctuation. */
@@ -92,15 +92,15 @@ export function normalizeSubject(value: string | undefined): string {
 /** Opening words of a body, reduced to letters and digits. */
 export function bodyFingerprint(body: string): string {
   return decodeEntities(body)
-.toLowerCase()
-.replace(/[^a-z0-9]+/g, "")
-.slice(0, FINGERPRINT_LENGTH);
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .slice(0, FINGERPRINT_LENGTH);
 }
 
 function normalizedHaystack(message: ObservedMessageLike): string {
   return decodeEntities(`${message.subject ?? ""} ${message.snippet ?? ""}`)
-.toLowerCase()
-.replace(/[^a-z0-9]+/g, "");
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 /* --------------------------------------------------------------- matching */
@@ -124,7 +124,7 @@ export function matchSentDraft(
 
   if (draft.recipientEmail) {
     const recipient = draft.recipientEmail.toLowerCase();
-    const addressed = [...message.toEmails,...message.ccEmails].map((entry) =>
+    const addressed = [...message.toEmails, ...message.ccEmails].map((entry) =>
       entry.toLowerCase(),
     );
     if (!addressed.includes(recipient)) return null;
@@ -160,8 +160,8 @@ export function planDraftVerifications(
   messages: ObservedMessageLike[],
 ): DraftVerificationPlan[] {
   const outbound = messages
-.filter((message) => message.direction === "outbound")
-.sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
+    .filter((message) => message.direction === "outbound")
+    .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
   const ordered = [...drafts].sort((left, right) =>
     left.markedSentAt.localeCompare(right.markedSentAt),
   );
@@ -198,8 +198,8 @@ export function readDraftVerification(
     state: "mailbox_verified",
     providerMessageId: value["provider_message_id"],
     verifiedAt:
-      typeof value["verified_at"] === "string" ? value["verified_at"]: new Date().toISOString(),
-    matchedBy: Array.isArray(value["matched_by"]) ? value["matched_by"].map(String): [],
+      typeof value["verified_at"] === "string" ? value["verified_at"] : new Date().toISOString(),
+    matchedBy: Array.isArray(value["matched_by"]) ? value["matched_by"].map(String) : [],
   };
 }
 

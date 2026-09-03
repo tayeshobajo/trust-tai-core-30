@@ -28,14 +28,13 @@ export function signInStateOf(
   now: number = Date.now(),
 ): SignInState {
   if (member.status !== "active") return "no_access";
-  const at = member.lastSignInAt ? Date.parse(member.lastSignInAt): Number.NaN;
+  const at = member.lastSignInAt ? Date.parse(member.lastSignInAt) : Number.NaN;
   if (Number.isNaN(at)) return "never";
   const age = now - at;
   if (age <= 7 * DAY) return "recent";
   if (age <= 30 * DAY) return "quiet";
   return "dormant";
 }
-
 
 const TONE: Record<SignInState, "good" | "caution" | "risk" | "neutral"> = {
   recent: "good",
@@ -55,7 +54,6 @@ function whenText(value: string | null): string {
   if (days === 1) return `Yesterday · ${stamp}`;
   return `${days} days ago · ${stamp}`;
 }
-
 
 /** In-app presence, said plainly. Never a sign-in timestamp. */
 function activityText(value: string): string {
@@ -84,41 +82,41 @@ export function AccessOverview({
 
   /* The people an admin most likely came here for, first. */
   const attention = states
-.filter((row) => row.state === "never" || row.state === "dormant")
-.sort((a, b) => a.member.name.localeCompare(b.member.name));
+    .filter((row) => row.state === "never" || row.state === "dormant")
+    .sort((a, b) => a.member.name.localeCompare(b.member.name));
 
   return (
     <div className="tt-surface p-6">
       <div className="mb-4 flex flex-wrap items-baseline gap-2">
         <h2 className="font-serif text-[19px] text-foreground">Workspace at a glance</h2>
         <InfoTip label="How these numbers are decided">
-          Counted from live membership rows, Supabase Auth sign-in records, and
-          pending invitations. &ldquo;Signed in recently&rdquo; means a sign-in in the last 7
-          days, &ldquo;quiet&rdquo; within 30, and &ldquo;dormant&rdquo; beyond that.
+          Counted from live membership rows, Supabase Auth sign-in records, and pending invitations.
+          &ldquo;Signed in recently&rdquo; means a sign-in in the last 7 days, &ldquo;quiet&rdquo;
+          within 30, and &ldquo;dormant&rdquo; beyond that.
         </InfoTip>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard
           label="Active members"
-          value={isPending ? "…": String(active)}
+          value={isPending ? "…" : String(active)}
           supporting={`${count("recent")} signed in this week`}
         />
         <SummaryCard
           label="Never signed in"
-          value={isPending ? "…": String(count("never"))}
+          value={isPending ? "…" : String(count("never"))}
           supporting="Invited or provisioned, not yet arrived"
         />
         <SummaryCard
           label="Dormant"
-          value={isPending ? "…": String(count("dormant"))}
+          value={isPending ? "…" : String(count("dormant"))}
           supporting="No sign-in in over 30 days"
         />
         <SummaryCard
           label="Pending invites"
-          value={invitationsProvisioned ? String(pendingInvitations.length): ", "}
+          value={invitationsProvisioned ? String(pendingInvitations.length) : ", "}
           supporting={
-            invitationsProvisioned ? "Waiting to be accepted": "Invitations not provisioned"
+            invitationsProvisioned ? "Waiting to be accepted" : "Invitations not provisioned"
           }
         />
       </div>
@@ -127,7 +125,7 @@ export function AccessOverview({
         <div className="mt-4">
           <NotProvisioned what="Invitations" file="docs/settings-schema.sql" />
         </div>
-      ): null}
+      ) : null}
 
       <h3 className="tt-eyebrow mt-6 mb-2">Sign-in status</h3>
       <div className="overflow-x-auto rounded-xl border border-border">
@@ -148,13 +146,13 @@ export function AccessOverview({
                   Reading members…
                 </td>
               </tr>
-            ): states.length === 0 ? (
+            ) : states.length === 0 ? (
               <tr>
                 <td className="px-4 py-3 text-muted-foreground" colSpan={5}>
                   No members yet.
                 </td>
               </tr>
-            ): (
+            ) : (
               states.map(({ member, state }) => (
                 <tr key={member.userId}>
                   <td className="px-4 py-3">
@@ -164,7 +162,6 @@ export function AccessOverview({
                       avatarUrl={member.avatarUrl}
                       supporting={member.email || "No email on file"}
                     />
-
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{ROLE_LABEL[member.role]}</td>
                   <td className="px-4 py-3">
@@ -176,9 +173,9 @@ export function AccessOverview({
                   <td className="px-4 py-3 text-[13px] text-muted-foreground">
                     {member.lastActivityAt
                       ? `${activityText(member.lastActivityAt)}${
-                          member.lastActivityApp ? ` · ${member.lastActivityApp}`: ""
+                          member.lastActivityApp ? ` · ${member.lastActivityApp}` : ""
                         }`
-: "No room opened yet"}
+                      : "No room opened yet"}
                   </td>
                 </tr>
               ))
@@ -189,10 +186,10 @@ export function AccessOverview({
 
       {attention.length > 0 ? (
         <p className="mt-3 text-xs text-muted-foreground">
-          {attention.length} {attention.length === 1 ? "person has": "people have"} never signed in
+          {attention.length} {attention.length === 1 ? "person has" : "people have"} never signed in
           or gone dormant: {attention.map(({ member }) => member.name).join(", ")}.
         </p>
-      ): null}
+      ) : null}
     </div>
   );
 }

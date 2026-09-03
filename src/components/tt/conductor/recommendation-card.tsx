@@ -27,7 +27,11 @@ import {
   type RecommendationDecision,
 } from "@/domain/intelligence-engine";
 
-const EFFORT_LABEL = { small: "Small effort", medium: "Medium effort", large: "Large effort" } as const;
+const EFFORT_LABEL = {
+  small: "Small effort",
+  medium: "Medium effort",
+  large: "Large effort",
+} as const;
 
 export interface RecommendationCardProps {
   recommendation: Recommendation;

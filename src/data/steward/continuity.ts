@@ -16,15 +16,62 @@
 import { personKeyOf } from "@/domain/steward";
 import type { Commitment } from "@/domain/steward";
 import type { InterpretedSignal } from "@/domain/steward-semantic";
-import { STATE_CHANGE_LABEL, type StateChangeKind, type StateChangeProposal } from "@/domain/steward-memory";
+import {
+  STATE_CHANGE_LABEL,
+  type StateChangeKind,
+  type StateChangeProposal,
+} from "@/domain/steward-memory";
 
 /** Below this the two sentences are simply about different work. */
 const MATCH_FLOOR = 0.45;
 
 const STOPWORDS = new Set([
-  "the","a","an","to","of","and","or","for","with","on","in","at","by","is","are","be","will",
-  "that","this","it","we","i","you","he","she","they","them","our","your","their","from","as",
-  "have","has","had","do","does","did","get","got","need","needs","going","gonna","just","so",
+  "the",
+  "a",
+  "an",
+  "to",
+  "of",
+  "and",
+  "or",
+  "for",
+  "with",
+  "on",
+  "in",
+  "at",
+  "by",
+  "is",
+  "are",
+  "be",
+  "will",
+  "that",
+  "this",
+  "it",
+  "we",
+  "i",
+  "you",
+  "he",
+  "she",
+  "they",
+  "them",
+  "our",
+  "your",
+  "their",
+  "from",
+  "as",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "get",
+  "got",
+  "need",
+  "needs",
+  "going",
+  "gonna",
+  "just",
+  "so",
 ]);
 
 function terms(value: string): Set<string> {
@@ -56,7 +103,8 @@ const RELEASED =
 
 function readKind(signal: InterpretedSignal): StateChangeKind | null {
   const text = `${signal.normalizedMeaning} ${signal.quote}`;
-  if (signal.disposition === "already_completed" || COMPLETED.test(text)) return "already_completed";
+  if (signal.disposition === "already_completed" || COMPLETED.test(text))
+    return "already_completed";
   if (RELEASED.test(text)) return "released";
   if (signal.disposition === "dependency" || WAITING.test(text)) return "waiting";
   if (signal.disposition === "duplicate") return "restated";
@@ -156,7 +204,9 @@ export function buildCommitmentThread(input: {
       label: `Promised by ${input.commitment.ownerName}${
         input.commitment.dueText ? ` · ${input.commitment.dueText}` : ""
       }`,
-      ...(input.commitment.conversationId ? { conversationId: input.commitment.conversationId } : {}),
+      ...(input.commitment.conversationId
+        ? { conversationId: input.commitment.conversationId }
+        : {}),
     },
   ];
 

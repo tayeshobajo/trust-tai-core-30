@@ -24,9 +24,9 @@ describe("app access", () => {
   });
 
   it("fails closed when the membership is inactive", () => {
-    expect(resolveAppAccess("scout", { ...base, membershipActive: false, role: "owner" }).visible).toBe(
-      false,
-    );
+    expect(
+      resolveAppAccess("scout", { ...base, membershipActive: false, role: "owner" }).visible,
+    ).toBe(false);
   });
 
   it("fails closed when the organization has the app switched off", () => {
@@ -40,9 +40,9 @@ describe("app access", () => {
   });
 
   it("honours a hidden override even for an owner", () => {
-    expect(
-      resolveAppAccess("scout", { ...base, role: "owner", override: "hidden" }).visible,
-    ).toBe(false);
+    expect(resolveAppAccess("scout", { ...base, role: "owner", override: "hidden" }).visible).toBe(
+      false,
+    );
   });
 
   it("never widens beyond the role ceiling", () => {

@@ -79,9 +79,7 @@ describe("colour tokens", () => {
 
   it("defines an ambient accent for every room", () => {
     for (const [token, value] of Object.entries(AMBIENT_TOKENS)) {
-      expect(styles.toLowerCase(), `${token} missing or changed`).toContain(
-        `${token}: ${value};`,
-      );
+      expect(styles.toLowerCase(), `${token} missing or changed`).toContain(`${token}: ${value};`);
     }
   });
 
