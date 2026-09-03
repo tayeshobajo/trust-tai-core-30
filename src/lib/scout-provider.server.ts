@@ -58,21 +58,27 @@ export function selectScoutProvider(env: Env = process.env): ScoutProvider | nul
     };
   }
 
-  const lovableKey = env["LOVABLE_API_KEY"]?.trim();
-  if (lovableKey) {
-    return {
-      provider: "lovable",
-      model: modelForProvider("lovable", env),
-      endpoint: "https://ai.gateway.lovable.dev/v1/responses",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": lovableKey,
-        "X-Lovable-AIG-SDK": "fetch",
-      },
-    };
-  }
+  return lovableGatewayProvider(env);
+}
 
-  return null;
+/**
+ * The Lovable AI Gateway, when its key is present. Kept separate from
+ * selection so a direct OpenAI run that fails for a key or billing reason can
+ * be retried here rather than leaving Scout with nothing to reason with.
+ */
+export function lovableGatewayProvider(env: Env = process.env): ScoutProvider | null {
+  const lovableKey = env["LOVABLE_API_KEY"]?.trim();
+  if (!lovableKey) return null;
+  return {
+    provider: "lovable",
+    model: modelForProvider("lovable", env),
+    endpoint: "https://ai.gateway.lovable.dev/v1/responses",
+    headers: {
+      "Content-Type": "application/json",
+      "Lovable-API-Key": lovableKey,
+      "X-Lovable-AIG-SDK": "fetch",
+    },
+  };
 }
 
 /** Secret-free status for the config probe. */
