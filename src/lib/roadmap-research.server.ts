@@ -125,6 +125,28 @@ export async function callRoadmapProvider(
     throw new ProviderNotConfiguredError();
   }
 
+  try {
+    return await runProviderCall(selected, instructions, input, options);
+  } catch (error) {
+    // A direct OpenAI key that is expired, revoked, or out of credits must not
+    // end the run when a second provider is configured. Nothing is fabricated:
+    // the fallback is a real reasoning call, and the reply records which
+    // provider actually answered.
+    const fallback = selected.provider === "openai" ? lovableGatewayProvider() : null;
+    const recoverable =
+      error instanceof ProviderCallFailedError &&
+      /quota|credit|billing|api key|unauthor|invalid_api_key|401|429/i.test(error.message);
+    if (!fallback || !recoverable) throw error;
+    return runProviderCall(fallback, instructions, input, options);
+  }
+}
+
+async function runProviderCall(
+  selected: NonNullable<ReturnType<typeof selectScoutProvider>>,
+  instructions: string,
+  input: string,
+  options: ProviderCallOptions,
+): Promise<{ raw: string; provider: string; model: string }> {
   const doFetch = options.gateway?.fetch ?? fetch;
   const response = await doFetch(selected.endpoint, {
     method: "POST",
