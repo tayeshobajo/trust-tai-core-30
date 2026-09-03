@@ -59,7 +59,7 @@ export function ScoutSummaryCard({
           <ul className="mt-4 space-y-2">
             {summary.topReasons.length === 0 ? (
               <li className="text-[13px] text-muted-foreground">
-                No reasons yet, this company has not been researched.
+                No reasons yet. This company has not been researched.
               </li>
             ) : (
               summary.topReasons.slice(0, 3).map((reason) => (

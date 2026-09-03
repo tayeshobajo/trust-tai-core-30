@@ -305,7 +305,7 @@ export function SendComposer({
             "Gmail needs send permission before Comms can send for you. Reconnect Google with send access when you're ready.",
         );
       } else if (outcome.state === "failed") {
-        setError(outcome.error ?? "That send failed. The draft is kept, you can try again.");
+        setError(outcome.error ?? "That send failed. The draft is kept. You can try again.");
       } else if (outcome.state === "sending") {
         setNotice("Sending through Gmail…");
       } else {

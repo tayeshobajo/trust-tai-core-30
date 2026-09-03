@@ -67,7 +67,7 @@ function ModuleRoute() {
                 belongsHere={
                   external
                     ? "Site health, maintenance tasks, and monitoring signals belong to the existing Ops product."
-                    : `${app.name} will read shared clients, projects, and activity from the Trust Tai core, it will not keep its own copies.`
+                    : `${app.name} will read shared clients, projects, and activity from the Trust Tai core. It will not keep its own copies.`
                 }
                 whyItMatters={
                   external

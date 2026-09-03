@@ -137,7 +137,7 @@ export function GmailConnection({
       <AmbientRule appId="comms" contextAccent={null} />
       <p className="text-sm leading-relaxed text-muted-foreground">
         Label someone <span className="text-foreground">Trust Tai/Comms</span> in Gmail. Comms picks
-        them up automatically, the label is your approval to bring that person in, and their labeled
+        them up automatically. The label is your approval to bring that person in, and their labeled
         history comes with them. Unlabeled mail stays invisible to Comms. Nothing is ever sent on
         its own, and Comms cannot change your Gmail labels.
       </p>

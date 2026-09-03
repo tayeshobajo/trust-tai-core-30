@@ -97,7 +97,7 @@ export function CorrectAnswer({ answer, saving, saved, onCorrect }: CorrectAnswe
         <span className="text-xs text-[var(--tt-ink-muted)]">
           {saved
             ? "Recorded. The next answer will take it into account."
-            : "If this is wrong, say so, it changes what comes next."}
+            : "If this is wrong, say so. It changes what comes next."}
         </span>
         <button
           type="button"

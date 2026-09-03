@@ -71,7 +71,7 @@ function AuthRoute() {
         appId="home"
         eyebrow="Trust Tai OS"
         title="Sign in to your workspace."
-        supporting="We send a one-time link to your inbox. Use your Trust Tai email address, access itself is granted by your organization membership, not by the address you type."
+        supporting="We send a one-time link to your inbox. Use your Trust Tai email address. Access itself is granted by your organization membership, not by the address you type."
       />
 
       <div className="mt-8 flex flex-wrap items-center gap-2">

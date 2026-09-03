@@ -443,7 +443,7 @@ function Scout({
                 <EmptyState
                   title="No companies match these filters"
                   belongsHere="Clear a filter or widen the search to see the rest of the board."
-                  whyItMatters="Filtering never removes a company, it only narrows what you are looking at."
+                  whyItMatters="Filtering never removes a company. It only narrows what you are looking at."
                 />
               ) : (
                 <ScoutCompanyTable

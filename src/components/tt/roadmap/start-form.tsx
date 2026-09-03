@@ -59,7 +59,7 @@ export function StartRoadmapForm({
         What are we sequencing, and where should it end up?
       </h2>
       <p className="mt-1 max-w-reading text-sm text-muted-foreground">
-        Pick something already in Trust Tai. Point A is read from what is on record, you do not need
+        Pick something already in Trust Tai. Point A is read from what is on record. You do not need
         to retype it.
       </p>
 

@@ -74,7 +74,7 @@ export function EditInteraction({
                 value={because}
                 onChange={(event) => setBecause(event.target.value)}
                 rows={3}
-                placeholder="This never happened, it was logged on the wrong relationship."
+                placeholder="This never happened. It was logged on the wrong relationship."
                 className="w-full rounded-lg border border-input bg-card px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </TTField>
