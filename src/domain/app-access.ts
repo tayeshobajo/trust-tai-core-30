@@ -75,6 +75,7 @@ const APP_PERMISSIONS: Record<string, AppPermissions> = {
   studio: { read: "workspace.read" },
   pulse: { read: "intelligence.read" },
   conductor: { read: "intelligence.read", write: "conductor.approve" },
+  approvals: { read: "intelligence.read", write: "conductor.approve" },
 };
 
 export function knownApp(appId: string): boolean {

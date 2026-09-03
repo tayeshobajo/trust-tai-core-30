@@ -191,7 +191,20 @@ export const APP_REGISTRY: AppRegistration[] = [
     icon: "Compass",
     capabilities: ["intelligence", "analytics"],
   },
+  {
+    id: "approvals",
+    layer: "intelligence",
+    name: "Approvals",
+    slug: "approvals",
+    description:
+      "One place to decide. Agents prepare the work, you approve it, and the owning room executes afterwards.",
+    status: "live",
+    route: "/modules/approvals",
+    icon: "CheckCheck",
+    capabilities: ["decisions", "intelligence"],
+  },
 ];
+
 
 export function getApp(slug: string): AppRegistration | undefined {
   return APP_REGISTRY.find((app) => app.slug === slug);

@@ -15,6 +15,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesActivityRouteImport } from './routes/modules.activity'
+import { Route as ModulesApprovalsRouteImport } from './routes/modules.approvals'
 import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
 import { Route as ModulesConductorRouteImport } from './routes/modules.conductor'
 import { Route as ModulesOpsRouteImport } from './routes/modules.ops'
@@ -116,6 +117,11 @@ const ModulesSlugRoute = ModulesSlugRouteImport.update({
 const ModulesActivityRoute = ModulesActivityRouteImport.update({
   id: '/modules/activity',
   path: '/modules/activity',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesApprovalsRoute = ModulesApprovalsRouteImport.update({
+  id: '/modules/approvals',
+  path: '/modules/approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesCommsRoute = ModulesCommsRouteImport.update({
@@ -508,6 +514,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
+  '/modules/approvals': typeof ModulesApprovalsRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
@@ -587,6 +594,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
+  '/modules/approvals': typeof ModulesApprovalsRoute
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
@@ -662,6 +670,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
+  '/modules/approvals': typeof ModulesApprovalsRoute
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
@@ -744,6 +753,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/modules/$slug'
     | '/modules/activity'
+    | '/modules/approvals'
     | '/modules/comms'
     | '/modules/conductor'
     | '/modules/ops'
@@ -823,6 +833,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/modules/$slug'
     | '/modules/activity'
+    | '/modules/approvals'
     | '/modules/conductor'
     | '/modules/ops'
     | '/modules/pulse'
@@ -897,6 +908,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/modules/$slug'
     | '/modules/activity'
+    | '/modules/approvals'
     | '/modules/comms'
     | '/modules/conductor'
     | '/modules/ops'
@@ -977,6 +989,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRouteWithChildren
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesActivityRoute: typeof ModulesActivityRoute
+  ModulesApprovalsRoute: typeof ModulesApprovalsRoute
   ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
   ModulesConductorRoute: typeof ModulesConductorRoute
   ModulesOpsRoute: typeof ModulesOpsRoute
@@ -1060,6 +1073,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/activity'
       fullPath: '/modules/activity'
       preLoaderRoute: typeof ModulesActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/approvals': {
+      id: '/modules/approvals'
+      path: '/modules/approvals'
+      fullPath: '/modules/approvals'
+      preLoaderRoute: typeof ModulesApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/comms': {
@@ -1724,6 +1744,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRouteWithChildren,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesActivityRoute: ModulesActivityRoute,
+  ModulesApprovalsRoute: ModulesApprovalsRoute,
   ModulesCommsRoute: ModulesCommsRouteWithChildren,
   ModulesConductorRoute: ModulesConductorRoute,
   ModulesOpsRoute: ModulesOpsRoute,
