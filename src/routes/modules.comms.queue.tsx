@@ -129,7 +129,7 @@ async function sendDraft(draftId: string): Promise<void> {
   } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated.");
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] as string;
   const res = await fetch(`${supabaseUrl}/functions/v1/comms-send`, {
     method: "POST",
     headers: {
