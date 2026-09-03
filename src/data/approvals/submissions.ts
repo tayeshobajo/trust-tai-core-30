@@ -17,6 +17,8 @@ import type { ApprovalSubmission } from "@/data/supabase/approvals-service";
 /* ------------------------------------------------------------ Comms draft */
 
 export interface CommsDraftInput {
+  /** The draft being judged. Two drafts to one person are two decisions. */
+  draftId?: string;
   relationshipId: string;
   personName: string;
   companyName?: string;
@@ -28,6 +30,8 @@ export interface CommsDraftInput {
   /** What the agent could not settle on its own. */
   uncertainties?: string[];
   lastContactAt?: string;
+  /** The provider thread this message would continue, when there is one. */
+  threadId?: string;
   evidence?: EvidenceRef[];
 }
 
@@ -52,6 +56,7 @@ export function commsDraftSubmission(input: CommsDraftInput): ApprovalSubmission
       label: input.personName,
     },
     requiredCapability: "comms.write",
+    ...(input.draftId ? { aspect: `draft:${input.draftId}` } : {}),
     boundary: {
       willDo: ["Queue this message for sending from your account"],
       willNotDo: [
@@ -62,6 +67,8 @@ export function commsDraftSubmission(input: CommsDraftInput): ApprovalSubmission
     },
     evidence: input.evidence ?? [],
     payload: {
+      draftId: input.draftId ?? "",
+      threadId: input.threadId ?? "",
       personName: input.personName,
       companyName: input.companyName ?? "",
       channel: input.channel,
