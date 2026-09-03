@@ -49,6 +49,8 @@ export const APP_AMBIENT_THEMES: Record<string, AmbientTheme> = {
   ops: { accent: "var(--tt-app-ops)", accentName: "Steward Green" },
   studio: { accent: "var(--tt-app-studio)", accentName: "Soft Coral" },
   pulse: { accent: "var(--tt-app-pulse)", accentName: "Mulberry" },
+  approvals: { accent: "var(--tt-app-approvals)", accentName: "Verdigris" },
+
 };
 
 /** An unknown app still belongs to Trust Tai, so it inherits the Foundation. */

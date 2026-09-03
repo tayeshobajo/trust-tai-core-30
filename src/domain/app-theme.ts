@@ -73,6 +73,11 @@ export const APP_THEMES: Record<string, AppTheme> = {
     tint: "oklch(0.5 0.1 85)",
     character: "A quiet desk where the whole factory can be heard at once.",
   },
+  approvals: {
+    motif: "ledger",
+    tint: "oklch(0.52 0.075 175)",
+    character: "A single desk where every decision waits its turn.",
+  },
   pulse: {
     motif: "rhythm",
     tint: "oklch(0.52 0.12 300)",
