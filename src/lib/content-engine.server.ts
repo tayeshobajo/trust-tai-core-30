@@ -41,6 +41,12 @@ export interface ContentCommandInput {
   count: number;
   /** Real known paths on trusttai.com, for internal link resolution. */
   knownPaths: { path: string; title: string }[];
+  /** What the person actually asked for, in their own words. */
+  instructions?: string;
+  /** The settings they set or corrected, as plain label/value pairs. */
+  settings?: { label: string; value: string }[];
+  /** Bounded excerpts of the voice and reference material they selected. */
+  voiceReferences?: { label: string; kind: string; excerpt: string }[];
   gateway?: ReturnType<typeof createLovableAiGatewayRunIdFetch> | undefined;
 }
 
@@ -63,6 +69,7 @@ const PLAN_INSTRUCTIONS = [
   "Name the search intent and the audience problem plainly. Say why these pieces belong together as one cluster.",
   "For each post give: slug (kebab case, no dates), title, angle, reader_job (the job the reader is hiring the article to do), and outline (4 to 7 steps).",
   "Do not invent statistics, client names, case studies or figures anywhere.",
+  "When person_request, settings or voice_references are given, follow them. voice_references are reference evidence for how this person writes; match the cadence, never copy their sentences and never treat their claims as facts about Trust Tai.",
   VOICE,
 ].join(" ");
 
@@ -77,8 +84,34 @@ const POST_INSTRUCTIONS = [
   "cta: the offer must follow the article's own reader need. If the honest next step is simply to keep reading, say that. Do not force a Roadmap pitch.",
   "image_brief: one sentence describing a photographic or editorial image for the top of the article, and alt_text for it.",
   "category and tags only where the article genuinely sits in one.",
+  "When person_request, settings or voice_references are given, follow them for audience, length, structure, angle and image direction. voice_references show how this person writes; match the cadence, never copy their sentences and never restate their claims as facts.",
   VOICE,
 ].join(" ");
+
+/**
+ * What the person asked for, folded into the model input.
+ *
+ * Per-request instructions can shape the work, but they cannot switch off the
+ * quality gates: the voice rules and the no-invention rules stay in the
+ * instruction block above and are not overridable from a prompt.
+ */
+function requestContext(input: ContentCommandInput): Record<string, unknown> {
+  const settings = (input.settings ?? []).filter((entry) => entry.value.trim());
+  const references = (input.voiceReferences ?? []).filter((entry) => entry.excerpt.trim());
+  return {
+    ...(input.instructions?.trim() ? { person_request: input.instructions.trim() } : {}),
+    ...(settings.length ? { settings: Object.fromEntries(settings.map((s) => [s.label, s.value])) } : {}),
+    ...(references.length
+      ? {
+          voice_references: references.slice(0, 6).map((reference) => ({
+            label: reference.label,
+            kind: reference.kind,
+            excerpt: reference.excerpt,
+          })),
+        }
+      : {}),
+  };
+}
 
 /* ------------------------------------------------------------- shapes */
 
@@ -192,6 +225,7 @@ async function planCluster(
       keyword: input.keyword,
       count: input.count,
       known_paths: input.knownPaths.slice(0, 60),
+      ...requestContext(input),
     }),
     webSearch: false,
     ...(input.gateway ? { gateway: input.gateway } : {}),
@@ -276,6 +310,7 @@ async function writePost(
         audience_problem: plan.audienceProblem,
         post: { slug, title, angle: base.angle, reader_job: base.readerJob, outline },
         known_paths: input.knownPaths.slice(0, 60),
+        ...requestContext(input),
       }),
       webSearch: false,
       ...(input.gateway ? { gateway: input.gateway } : {}),
