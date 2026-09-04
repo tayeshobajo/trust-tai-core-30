@@ -8,6 +8,12 @@
 - [ ] Confirm invite email delivery end to end
 - [x] Approvals v1: contract, persistence, renderer registry, downstream adapters, room at `/modules/approvals`
 - [ ] Deploy `docs/approvals-v1-schema.sql` to Supabase (room shows the migration notice until then)
+- [x] Marketing source adapter: one batch, one approval card, one child per post
+- [x] Content Engine v1 in Studio at `/modules/studio` (`docs/content-engine.md`)
+- [x] Publish queue states: approved -> queued -> publishing -> published -> verified, with an attempt ledger
+- [ ] Deploy `docs/content-engine-schema.sql` to Supabase (Studio shows the migration notice until then)
+- [ ] Set `TRUST_TAI_PUBLISH_ENDPOINT` and `TRUST_TAI_PUBLISH_TOKEN`, then publish one controlled article and verify its canonical URL
+
 
 
 ## Next
