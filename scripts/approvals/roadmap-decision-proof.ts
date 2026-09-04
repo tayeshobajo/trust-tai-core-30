@@ -127,9 +127,9 @@ console.log(`decision after: ${JSON.stringify(afterRow.data)}`);
 
 const events = await serviceClient
   .from("approval_events")
-  .select("kind, at")
+  .select("kind, created_at")
   .eq("request_id", candidate.id)
-  .order("at", { ascending: true });
+  .order("created_at", { ascending: true });
 console.log(`events (${events.data?.length ?? 0}): ${(events.data ?? []).map((e) => e.kind).join(", ")}`);
 
 const row = await serviceClient
