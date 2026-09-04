@@ -805,3 +805,52 @@ export function dropOutcome(
 
   return { ok: true, action, confirm: dropNeedsConfirmation(request) };
 }
+
+/* ------------------------------------------------- server-side tab filter */
+
+const ALL_SOURCE_APPS: ApprovalSourceApp[] = [
+  "scout",
+  "comms",
+  "roadmap",
+  "website",
+  "projects",
+  "ops",
+  "studio",
+  "content",
+];
+
+const ALL_CATEGORIES: ApprovalCategory[] = [
+  "marketing",
+  "communication",
+  "qualification",
+  "strategy",
+  "delivery",
+  "creative",
+  "operations",
+];
+
+/**
+ * `tabFor` expressed as data a database can filter on.
+ *
+ * Some source apps decide the tab on their own; for the rest the category
+ * decides. Deriving both sets from `tabFor` itself keeps the server-side query
+ * and the in-memory rule from ever drifting apart.
+ */
+export interface TabFilter {
+  /** Rows in the tab whatever their category. */
+  sourceApps: ApprovalSourceApp[];
+  /** Rows in the tab only when the category matches. */
+  otherApps: ApprovalSourceApp[];
+  categories: ApprovalCategory[];
+}
+
+export function tabFilter(tab: Exclude<CategoryTab, "all">): TabFilter {
+  const sourceApps = ALL_SOURCE_APPS.filter((sourceApp) =>
+    ALL_CATEGORIES.every((category) => tabFor({ sourceApp, category }) === tab),
+  );
+  const otherApps = ALL_SOURCE_APPS.filter((sourceApp) => !sourceApps.includes(sourceApp));
+  const categories = ALL_CATEGORIES.filter((category) =>
+    otherApps.some((sourceApp) => tabFor({ sourceApp, category }) === tab),
+  );
+  return { sourceApps, otherApps, categories };
+}
