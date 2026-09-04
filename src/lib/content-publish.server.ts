@@ -411,7 +411,7 @@ export async function publishQueuedItem(input: {
     publish: executed,
     verification: unverified,
   });
-  await recordAttempt(client, input.organizationId, item, {
+  await recordAttempt(ledger, input.organizationId, item, {
     state: "executed",
     because: executed.because ?? "Published.",
     receipt: { ...sent.receipt },
