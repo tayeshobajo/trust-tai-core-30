@@ -31,6 +31,7 @@ import {
   approvalsService,
 } from "@/data/supabase/approvals-service";
 import { executeApprovedRequest } from "@/data/approvals/execution";
+import { backfillCommsApprovals } from "@/data/approvals/intake";
 import { accessContext, can } from "@/domain/access";
 import {
   CATEGORY_TAB_LABEL,
@@ -236,6 +237,24 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  /* A safe catch-up for work parked before intake existed. It reads real rows
+     only and reuses the same source key, so running it twice changes nothing. */
+  const backfill = useMutation({
+    mutationFn: () => backfillCommsApprovals(context),
+    onSuccess: (report) => {
+      if (report.scanned === 0) {
+        toast.success("No Comms drafts are waiting on a person.");
+      } else {
+        toast.success(
+          `${report.submitted} of ${report.scanned} Comms drafts are in the queue.` +
+            (report.failed > 0 ? ` ${report.failed} could not be read.` : ""),
+        );
+      }
+      void queryClient.invalidateQueries({ queryKey: ["approvals"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const open = detail.data;
 
   return (
@@ -290,6 +309,14 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
         </select>
         <TTButton variant="quiet" size="sm" onClick={() => setShowDecided((value) => !value)}>
           {showDecided ? "Hide decided" : "Show decided"}
+        </TTButton>
+        <TTButton
+          variant="quiet"
+          size="sm"
+          onClick={() => backfill.mutate()}
+          disabled={backfill.isPending}
+        >
+          {backfill.isPending ? "Checking Comms…" : "Check Comms for waiting drafts"}
         </TTButton>
       </div>
 
