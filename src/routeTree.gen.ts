@@ -62,6 +62,7 @@ import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio
 import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicContentGenerateRouteImport } from './routes/api/public/content.generate'
+import { Route as ApiPublicContentImageRouteImport } from './routes/api/public/content.image'
 import { Route as ApiPublicContentPublishRouteImport } from './routes/api/public/content.publish'
 import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/public/intelligence.reason'
 import { Route as ApiPublicIntelligenceReconcileRouteImport } from './routes/api/public/intelligence.reconcile'
@@ -362,6 +363,11 @@ const ApiPublicContentGenerateRoute =
     path: '/api/public/content/generate',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicContentImageRoute = ApiPublicContentImageRouteImport.update({
+  id: '/api/public/content/image',
+  path: '/api/public/content/image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicContentPublishRoute = ApiPublicContentPublishRouteImport.update({
   id: '/api/public/content/publish',
   path: '/api/public/content/publish',
@@ -592,6 +598,7 @@ export interface FileRoutesByFullPath {
   '/modules/studio/': typeof ModulesStudioIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
+  '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
@@ -670,6 +677,7 @@ export interface FileRoutesByTo {
   '/modules/studio': typeof ModulesStudioIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
+  '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
@@ -757,6 +765,7 @@ export interface FileRoutesById {
   '/modules/studio/': typeof ModulesStudioIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
+  '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
@@ -845,6 +854,7 @@ export interface FileRouteTypes {
     | '/modules/studio/'
     | '/api/public/comms/draft'
     | '/api/public/content/generate'
+    | '/api/public/content/image'
     | '/api/public/content/publish'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
@@ -923,6 +933,7 @@ export interface FileRouteTypes {
     | '/modules/studio'
     | '/api/public/comms/draft'
     | '/api/public/content/generate'
+    | '/api/public/content/image'
     | '/api/public/content/publish'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
@@ -1009,6 +1020,7 @@ export interface FileRouteTypes {
     | '/modules/studio/'
     | '/api/public/comms/draft'
     | '/api/public/content/generate'
+    | '/api/public/content/image'
     | '/api/public/content/publish'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
@@ -1063,6 +1075,7 @@ export interface RootRouteChildren {
   ModulesWebsitePageRoute: typeof ModulesWebsitePageRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicContentGenerateRoute: typeof ApiPublicContentGenerateRoute
+  ApiPublicContentImageRoute: typeof ApiPublicContentImageRoute
   ApiPublicContentPublishRoute: typeof ApiPublicContentPublishRoute
   ApiPublicIntelligenceReasonRoute: typeof ApiPublicIntelligenceReasonRoute
   ApiPublicIntelligenceReconcileRoute: typeof ApiPublicIntelligenceReconcileRoute
@@ -1464,6 +1477,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/content/generate'
       fullPath: '/api/public/content/generate'
       preLoaderRoute: typeof ApiPublicContentGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/content/image': {
+      id: '/api/public/content/image'
+      path: '/api/public/content/image'
+      fullPath: '/api/public/content/image'
+      preLoaderRoute: typeof ApiPublicContentImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/content/publish': {
@@ -1870,6 +1890,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesWebsitePageRoute: ModulesWebsitePageRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicContentGenerateRoute: ApiPublicContentGenerateRoute,
+  ApiPublicContentImageRoute: ApiPublicContentImageRoute,
   ApiPublicContentPublishRoute: ApiPublicContentPublishRoute,
   ApiPublicIntelligenceReasonRoute: ApiPublicIntelligenceReasonRoute,
   ApiPublicIntelligenceReconcileRoute: ApiPublicIntelligenceReconcileRoute,
