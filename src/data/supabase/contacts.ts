@@ -165,6 +165,22 @@ export function toPerson(row: ContactRow): Person {
 }
 
 /** Everyone on record for one Scout prospect. */
+/**
+ * Everyone on record for the whole organization, read once.
+ *
+ * Bulk callers (the Scout intake sweep) group these by prospect themselves
+ * rather than issuing one lookup per company.
+ */
+export async function listOrganizationContacts(organizationId: ID): Promise<Person[]> {
+  const { data, error } = await supabase
+    .from("contacts")
+    .select(SELECT_COLUMNS)
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as unknown as ContactRow[]).map(toPerson);
+}
+
 export async function listProspectContacts(organizationId: ID, prospectId: ID): Promise<Person[]> {
   const { data, error } = await supabase
     .from("contacts")
