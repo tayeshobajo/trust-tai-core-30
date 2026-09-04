@@ -117,10 +117,11 @@ Agents remain paused for the whole of P0.
 
 | ID | Gate | Required level | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| P8-01 | Content Engine v1 in Studio, composer, sources, provenance | Production Verified | **Production Verified** | `content_batches`, `content_items`, `content_sources`, `content_requests` all live; batch `cbat_ffebutsjmtn2ydym` exists with 10 articles and one approval card |
-| P8-02 | Publish queue states with an attempt ledger, hardened boundary | **Production Verified** | **Production Verified** | Ledger writes through a server-only key, no ledger write means no send, idempotent on the publish key |
-| P8-03 | Featured image provider connected | Production Verified | Blocked, see P0-06 | Every article is an exception until an image store exists |
-| P8-04 | One article published with a verified canonical URL | Human Accepted | Blocked, see P0-07 and P0-08 | Nothing published |
+| P8-01 | Content Engine v1 in Studio, composer, sources, provenance | Production Verified | Code/Test Verified, corrected downward | Tables exist and batch `cbat_ffebutsjmtn2ydym` holds 10 articles, but `content_sources` and `content_requests` hold **0 rows** in production, so the composer, source capture and provenance path has never actually run there. Table existence was mistaken for a production run |
+| P8-02 | Publish queue states with an attempt ledger, hardened boundary | Production Verified | Code/Test Verified, corrected downward | The boundary and its ledger-first ordering are covered by domain tests, but `content_publish_attempts` holds **0 rows** in production, so the hardened path has never been exercised against a real endpoint |
+| P8-03 | Featured image provider connected | Production Verified | Not started, no longer blocked by storage | P0-06 cleared the store: credentials and a durable public bucket both exist. `prepareFeaturedImage()` still refuses by design because no generation path is written. `GET /api/public/content/image` now reports `ready:false`, `generatorImplemented:false` rather than claiming readiness from configuration alone |
+| P8-04 | One article published with a verified canonical URL | Human Accepted | Blocked, see P0-07, P8-03 and P0-08 | Nothing published |
+
 | P8-05 | A published article shown to have changed something measurable | Human Accepted | Not started | Depends on P3 measurements |
 
 ## P9, intelligence expansion, post launch
