@@ -18,6 +18,13 @@ import {
   assertApprovalTransition,
   approvalSourceKey,
   summariseBatch,
+  tabFilter,
+  BOARD_COLUMNS,
+  BOARD_COLUMN_STATUSES,
+  OPEN_STATUSES,
+  type ApprovalSort,
+  type BoardColumn,
+  type CategoryTab,
   type ApprovalCategory,
   type ApprovalDecision,
   type ApprovalEvent,
@@ -217,6 +224,96 @@ async function loadItems(context: ApprovalsContext, requestId: ID): Promise<Appr
   return ((data ?? []) as Row[]).map(toItem);
 }
 
+/* ------------------------------------------------------- paged board reads */
+
+/**
+ * One column's worth of the queue, asked for in the database rather than in
+ * the browser.
+ *
+ * The board is built for hundreds of open decisions, so filtering, searching,
+ * ordering and counting all happen server side and only a bounded page of rows
+ * ever crosses the wire. Counts come from `count: exact` over the whole filtered
+ * set, never from the rows on screen.
+ */
+export interface ApprovalPageQuery {
+  tab: CategoryTab;
+  /** The board column to read, or explicit statuses when not a column read. */
+  column?: BoardColumn;
+  statuses?: ApprovalStatus[];
+  search?: string;
+  sort?: ApprovalSort;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ApprovalPage {
+  rows: ApprovalRequest[];
+  /** Everything matching the filter, not just this page. */
+  total: number;
+  hasMore: boolean;
+  offset: number;
+}
+
+/** Escape the characters PostgREST's filter mini-language treats specially. */
+function safeTerm(term: string): string {
+  return term.replace(/[,()"\\%]/g, " ").trim();
+}
+
+function applyTab(query: PostgrestLike, tab: CategoryTab): PostgrestLike {
+  if (tab === "all") return query;
+  const filter = tabFilter(tab);
+  const clauses: string[] = [];
+  if (filter.sourceApps.length > 0) {
+    clauses.push(`source_app.in.(${filter.sourceApps.join(",")})`);
+  }
+  if (filter.otherApps.length > 0 && filter.categories.length > 0) {
+    clauses.push(
+      `and(source_app.in.(${filter.otherApps.join(",")}),category.in.(${filter.categories.join(",")}))`,
+    );
+  }
+  return clauses.length > 0 ? query.or(clauses.join(",")) : query;
+}
+
+function applySearch(query: PostgrestLike, search: string | undefined): PostgrestLike {
+  const term = safeTerm(search ?? "");
+  if (term.length === 0) return query;
+  return query.or(
+    [`title.ilike.%${term}%`, `summary.ilike.%${term}%`, `why_it_needs_you.ilike.%${term}%`].join(
+      ",",
+    ),
+  );
+}
+
+/** The minimum of the Supabase builder these helpers rely on. */
+interface PostgrestLike {
+  or: (expression: string) => PostgrestLike;
+  in: (column: string, values: unknown[]) => PostgrestLike;
+  eq: (column: string, value: unknown) => PostgrestLike;
+  order: (column: string, options?: { ascending?: boolean }) => PostgrestLike;
+  range: (from: number, to: number) => PostgrestLike;
+}
+
+/**
+ * Server-side ordering.
+ *
+ * `priority` is an approximation of the in-memory rank the card list uses:
+ * urgency first (now, soon, whenever sorts alphabetically in that order),
+ * then the longest waiting. It is deliberately coarse rather than pretending
+ * the database can reproduce a rank that reads irreversibility and batch
+ * exceptions.
+ */
+function applySort(query: PostgrestLike, sort: ApprovalSort): PostgrestLike {
+  if (sort === "newest") return query.order("created_at", { ascending: false });
+  if (sort === "oldest") return query.order("created_at", { ascending: true });
+  return query.order("urgency", { ascending: true }).order("created_at", { ascending: true });
+}
+
+function statusesFor(query: ApprovalPageQuery): ApprovalStatus[] {
+  if (query.statuses?.length) return query.statuses;
+  if (query.column) return BOARD_COLUMN_STATUSES[query.column];
+  return OPEN_STATUSES;
+}
+
 export const approvalsService = {
   /**
    * Submit work for judgment, idempotently.
@@ -371,7 +468,10 @@ export const approvalsService = {
             .eq("organization_id", context.organizationId)
             .eq("id", known.id);
           if (error) throw new Error(missingTable(error) ? MISSING : error.message);
-          items.push({ ...known, ...toItem({ ...row, id: known.id, created_at: known.createdAt }) });
+          items.push({
+            ...known,
+            ...toItem({ ...row, id: known.id, created_at: known.createdAt }),
+          });
         } else {
           const itemId = id("api");
           const { error } = await supabase
@@ -418,6 +518,132 @@ export const approvalsService = {
         items.filter((item) => item.requestId === String(row["id"])),
       ),
     );
+  },
+
+  /**
+   * A bounded page of one column. Nothing outside the page is fetched, and the
+   * batch summaries for the page are loaded in one extra query, never one per
+   * card.
+   */
+  async listPage(context: ApprovalsContext, query: ApprovalPageQuery): Promise<ApprovalPage> {
+    const limit = Math.max(1, Math.min(query.limit ?? 25, 100));
+    const offset = Math.max(0, query.offset ?? 0);
+
+    let builder = supabase
+      .from("approval_requests")
+      .select("*", { count: "exact" })
+      .eq("organization_id", context.organizationId)
+      .in("status", statusesFor(query)) as unknown as PostgrestLike;
+    builder = applyTab(builder, query.tab);
+    builder = applySearch(builder, query.search);
+    builder = applySort(builder, query.sort ?? "priority").range(offset, offset + limit - 1);
+
+    const { data, error, count } = (await (builder as unknown as PromiseLike<{
+      data: unknown;
+      error: unknown;
+      count: number | null;
+    }>)) as { data: unknown; error: unknown; count: number | null };
+
+    if (error) {
+      if (missingTable(error)) return { rows: [], total: 0, hasMore: false, offset };
+      throw new Error((error as { message: string }).message);
+    }
+
+    const rows = (data ?? []) as Row[];
+    const total = count ?? rows.length;
+
+    /* One query for every batch on the page. No per-card lookup. */
+    let items: ApprovalItem[] = [];
+    if (rows.length > 0) {
+      const itemRows = await supabase
+        .from("approval_items")
+        .select("*")
+        .eq("organization_id", context.organizationId)
+        .in(
+          "request_id",
+          rows.map((row) => String(row["id"])),
+        );
+      items = itemRows.error ? [] : ((itemRows.data ?? []) as Row[]).map(toItem);
+    }
+
+    return {
+      rows: rows.map((row) =>
+        toRequest(
+          row,
+          items.filter((item) => item.requestId === String(row["id"])),
+        ),
+      ),
+      total,
+      hasMore: offset + rows.length < total,
+      offset,
+    };
+  },
+
+  /** How many rows match, without reading any of them. */
+  async count(
+    context: ApprovalsContext,
+    query: Omit<ApprovalPageQuery, "limit" | "offset" | "sort">,
+  ): Promise<number> {
+    let builder = supabase
+      .from("approval_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", context.organizationId)
+      .in("status", statusesFor(query)) as unknown as PostgrestLike;
+    builder = applyTab(builder, query.tab);
+    builder = applySearch(builder, query.search);
+
+    const { error, count } = (await (builder as unknown as PromiseLike<{
+      error: unknown;
+      count: number | null;
+    }>)) as { error: unknown; count: number | null };
+    if (error) {
+      if (missingTable(error)) return 0;
+      throw new Error((error as { message: string }).message);
+    }
+    return count ?? 0;
+  },
+
+  /** Open-decision totals per category tab, from counts rather than rows. */
+  async tabTotals(
+    context: ApprovalsContext,
+    options: { search?: string } = {},
+  ): Promise<Record<CategoryTab, number>> {
+    const tabs: CategoryTab[] = ["marketing", "comms", "scout", "roadmap", "delivery"];
+    const counted = await Promise.all(
+      tabs.map((tab) =>
+        this.count(context, { tab, ...(options.search ? { search: options.search } : {}) }),
+      ),
+    );
+    const totals = { all: 0, marketing: 0, comms: 0, scout: 0, roadmap: 0, delivery: 0 } as Record<
+      CategoryTab,
+      number
+    >;
+    tabs.forEach((tab, index) => {
+      totals[tab] = counted[index] ?? 0;
+      totals.all += counted[index] ?? 0;
+    });
+    return totals;
+  },
+
+  /** Column totals for the tab on screen, from counts rather than rows. */
+  async columnTotals(
+    context: ApprovalsContext,
+    options: { tab: CategoryTab; search?: string },
+  ): Promise<Record<BoardColumn, number>> {
+    const counted = await Promise.all(
+      BOARD_COLUMNS.map((column) =>
+        this.count(context, {
+          tab: options.tab,
+          column,
+          ...(options.search ? { search: options.search } : {}),
+        }),
+      ),
+    );
+    const totals = {} as Record<BoardColumn, number>;
+    BOARD_COLUMNS.forEach((column, index) => {
+      totals[column] = counted[index] ?? 0;
+    });
+    return totals;
   },
 
   async get(

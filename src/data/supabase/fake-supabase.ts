@@ -19,12 +19,102 @@ interface Filter {
   /** Range filters: inclusive lower / exclusive upper bound (string compare). */
   gte?: unknown;
   lt?: unknown;
+  /** Case-insensitive pattern, `%` wildcards, as PostgREST's ilike does. */
+  ilike?: string;
+  /** Anything but this value. */
+  not?: boolean;
+  /** A disjunction: the row matches when any branch matches. */
+  or?: Filter[];
+  /** A conjunction: the row matches when every branch matches. */
+  and?: Filter[];
 }
 
-class Query implements PromiseLike<{ data: unknown; error: null }> {
+/** How much this fake database was actually asked to hand back. */
+export interface FakeStats {
+  /** Every query run, whatever its shape. */
+  queries: number;
+  /** Rows materialised into results. A head count materialises none. */
+  rowsRead: number;
+}
+
+function matchesFilter(row: FakeRow, filter: Filter): boolean {
+  if (filter.or) return filter.or.some((branch) => matchesFilter(row, branch));
+  if (filter.and) return filter.and.every((branch) => matchesFilter(row, branch));
+  if (filter.ilike !== undefined) {
+    const pattern = new RegExp(
+      `^${filter.ilike.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*")}$`,
+      "i",
+    );
+    return pattern.test(String(row[filter.column] ?? ""));
+  }
+  if (filter.anyOf) {
+    const hit = filter.anyOf.includes(row[filter.column]);
+    return filter.not ? !hit : hit;
+  }
+  if (filter.gte !== undefined) return String(row[filter.column] ?? "") >= String(filter.gte);
+  if (filter.lt !== undefined) return String(row[filter.column] ?? "") < String(filter.lt);
+  const equal = row[filter.column] === filter.value;
+  return filter.not ? !equal : equal;
+}
+
+/**
+ * PostgREST's `or=(a.eq.1,b.ilike.%x%)` mini-language, enough of it for the
+ * board's server-side tab and search filtering.
+ */
+function parseOr(expression: string): Filter[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const character of expression) {
+    if (character === "(") depth += 1;
+    if (character === ")") depth -= 1;
+    if (character === "," && depth === 0) {
+      parts.push(current);
+      current = "";
+      continue;
+    }
+    current += character;
+  }
+  if (current) parts.push(current);
+
+  return parts.map((part) => {
+    if (part.startsWith("and(")) {
+      return { column: "", value: null, and: parseOr(part.slice(4, -1)) };
+    }
+    if (part.startsWith("or(")) {
+      return { column: "", value: null, or: parseOr(part.slice(3, -1)) };
+    }
+    const [column, operator, ...rest] = part.split(".");
+    const value = rest.join(".");
+    if (operator === "ilike") return { column: column!, value: null, ilike: value };
+    if (operator === "in") {
+      return {
+        column: column!,
+        value: null,
+        anyOf: value
+          .replace(/^\(|\)$/g, "")
+          .split(",")
+          .map((entry) => entry.replace(/^"|"$/g, "")),
+      };
+    }
+    return { column: column!, value };
+  });
+}
+
+interface FakeResult {
+  data: unknown;
+  error: null;
+  count?: number;
+}
+
+class Query implements PromiseLike<FakeResult> {
   private filters: Filter[] = [];
-  private orderBy: { column: string; ascending: boolean } | null = null;
+  private orderBy: Array<{ column: string; ascending: boolean }> = [];
   private limitTo: number | null = null;
+  private rangeFrom: number | null = null;
+  private rangeTo: number | null = null;
+  private counting = false;
+  private headOnly = false;
 
   constructor(
     private readonly rows: FakeRow[],
@@ -33,6 +123,8 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     private readonly onWrite?: (row: FakeRow) => void,
     /** Columns that make an upsert idempotent, as PostgREST's on_conflict does. */
     private readonly conflict: string[] = [],
+    /** Told how many rows each run actually handed back. */
+    private readonly track?: (rows: number) => void,
   ) {}
 
   eq(column: string, value: unknown): Query {
@@ -55,8 +147,29 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     return this;
   }
 
+  neq(column: string, value: unknown): Query {
+    this.filters.push({ column, value, not: true });
+    return this;
+  }
+
+  ilike(column: string, pattern: string): Query {
+    this.filters.push({ column, value: null, ilike: pattern });
+    return this;
+  }
+
+  or(expression: string): Query {
+    this.filters.push({ column: "", value: null, or: parseOr(expression) });
+    return this;
+  }
+
+  range(from: number, to: number): Query {
+    this.rangeFrom = from;
+    this.rangeTo = to;
+    return this;
+  }
+
   order(column: string, options?: { ascending?: boolean }): Query {
-    this.orderBy = { column, ascending: options?.ascending !== false };
+    this.orderBy.push({ column, ascending: options?.ascending !== false });
     return this;
   }
 
@@ -65,32 +178,36 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     return this;
   }
 
-  select(): Query {
+  select(_columns?: string, options?: { count?: string; head?: boolean }): Query {
+    if (options?.count) this.counting = true;
+    if (options?.head) this.headOnly = true;
     return this;
   }
 
-  private matched(): FakeRow[] {
+  private filtered(): FakeRow[] {
     let rows = this.rows.filter((row) =>
-      this.filters.every((filter) => {
-        if (filter.anyOf) return filter.anyOf.includes(row[filter.column]);
-        if (filter.gte !== undefined) return String(row[filter.column] ?? "") >= String(filter.gte);
-        if (filter.lt !== undefined) return String(row[filter.column] ?? "") < String(filter.lt);
-        return row[filter.column] === filter.value;
-      }),
+      this.filters.every((filter) => matchesFilter(row, filter)),
     );
-    if (this.orderBy) {
-      const { column, ascending } = this.orderBy;
+    for (const { column, ascending } of [...this.orderBy].reverse()) {
       rows = [...rows].sort((a, b) => {
         const left = String(a[column] ?? "");
         const right = String(b[column] ?? "");
         return ascending ? left.localeCompare(right) : right.localeCompare(left);
       });
     }
+    return rows;
+  }
+
+  private matched(): FakeRow[] {
+    let rows = this.filtered();
+    if (this.rangeFrom !== null && this.rangeTo !== null) {
+      rows = rows.slice(this.rangeFrom, this.rangeTo + 1);
+    }
     if (this.limitTo !== null) rows = rows.slice(0, this.limitTo);
     return rows;
   }
 
-  private run(): { data: unknown; error: null } {
+  private run(): FakeResult {
     if (this.mode === "upsert") {
       const bodies = Array.isArray(this.body) ? this.body : [this.body ?? {}];
       const written = bodies.map((body) => {
@@ -150,22 +267,29 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
       return { data: target, error: null };
     }
 
-    return { data: this.matched(), error: null };
+    if (this.counting) {
+      const total = this.filtered().length;
+      const rows = this.headOnly ? [] : this.matched();
+      this.track?.(rows.length);
+      return { data: this.headOnly ? null : rows, error: null, count: total };
+    }
+    const rows = this.matched();
+    this.track?.(rows.length);
+    return { data: rows, error: null };
   }
 
-  single(): { data: unknown; error: null } | PromiseLike<{ data: unknown; error: null }> {
+  single(): PromiseLike<FakeResult> {
     const result = this.run();
     const data = Array.isArray(result.data) ? (result.data[0] ?? null) : result.data;
     return Promise.resolve({ data, error: null });
   }
 
-  maybeSingle(): PromiseLike<{ data: unknown; error: null }> {
-    return this.single() as PromiseLike<{ data: unknown; error: null }>;
+  maybeSingle(): PromiseLike<FakeResult> {
+    return this.single();
   }
 
-  then<TResult1 = { data: unknown; error: null }, TResult2 = never>(
-    onfulfilled?:
-      ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+  then<TResult1 = FakeResult, TResult2 = never>(
+    onfulfilled?: ((value: FakeResult) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): PromiseLike<TResult1 | TResult2> {
     return Promise.resolve(this.run()).then(onfulfilled, onrejected);
@@ -174,8 +298,11 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
 
 export interface FakeSupabase {
   tables: Record<string, FakeRow[]>;
+  /** What the fake database was asked for, so a test can prove bounded reads. */
+  stats: FakeStats;
+  resetStats: () => void;
   from: (table: string) => {
-    select: (columns?: string) => Query;
+    select: (columns?: string, options?: { count?: string; head?: boolean }) => Query;
     insert: (body: FakeRow | FakeRow[]) => Query;
     upsert: (body: FakeRow | FakeRow[], options?: { onConflict?: string }) => Query;
     update: (body: FakeRow) => Query;
@@ -187,13 +314,24 @@ export interface FakeSupabase {
 export function createFakeSupabase(seed: Record<string, FakeRow[]> = {}): FakeSupabase {
   const tables: Record<string, FakeRow[]> = { ...seed };
   const rowsFor = (table: string) => (tables[table] ??= []);
+  const stats: FakeStats = { queries: 0, rowsRead: 0 };
+  const track = (rows: number) => {
+    stats.queries += 1;
+    stats.rowsRead += rows;
+  };
 
   return {
     tables,
+    stats,
+    resetStats() {
+      stats.queries = 0;
+      stats.rowsRead = 0;
+    },
     from(table: string) {
       const rows = rowsFor(table);
       return {
-        select: () => new Query(rows, "select"),
+        select: (columns?: string, options?: { count?: string; head?: boolean }) =>
+          new Query(rows, "select", undefined, undefined, [], track).select(columns, options),
         insert: (body: FakeRow | FakeRow[]) => new Query(rows, "insert", body),
         upsert: (body: FakeRow | FakeRow[], options?: { onConflict?: string }) =>
           new Query(

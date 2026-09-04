@@ -12,14 +12,14 @@
  *   - Anything the system cannot honestly do is said plainly, not hidden.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { ApprovalBoard } from "@/components/tt/approvals/approval-board";
+import { ApprovalBoard, type BoardColumnView } from "@/components/tt/approvals/approval-board";
 import {
   ApprovalWorkspace,
   type DecisionInput,
@@ -32,17 +32,16 @@ import {
 } from "@/data/supabase/approvals-service";
 import { executeApprovedRequest } from "@/data/approvals/execution";
 import { backfillCommsApprovals } from "@/data/approvals/intake";
+import { backfillScoutApprovals } from "@/data/approvals/scout-intake";
 import { accessContext, can } from "@/domain/access";
 import {
+  BOARD_COLUMNS,
   CATEGORY_TAB_LABEL,
-  OPEN_STATUSES,
   approvalRefusal,
-  inTab,
-  matchesSearch,
-  sortApprovals,
-  tabCounts,
+  dropOutcome,
   type ApprovalRequest,
   type ApprovalSort,
+  type BoardColumn,
   type CategoryTab,
 } from "@/domain/approvals";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -52,6 +51,9 @@ const DESCRIPTION =
   "One place to decide. Agents prepare the work, you approve it, and the room that owns the work executes afterwards.";
 
 const TABS: CategoryTab[] = ["all", "marketing", "comms", "scout", "roadmap", "delivery"];
+/** Cards fetched per column before the person asks for more. */
+const PAGE = 25;
+
 const SORTS: Array<{ id: ApprovalSort; label: string }> = [
   { id: "priority", label: "Most pressing" },
   { id: "newest", label: "Newest" },
@@ -100,8 +102,16 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [tab, setTab] = useState<CategoryTab>("all");
   const [sort, setSort] = useState<ApprovalSort>("priority");
   const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [showDecided, setShowDecided] = useState(false);
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [pageSize, setPageSize] = useState<Record<BoardColumn, number>>({
+    needs_review: PAGE,
+    needs_context: PAGE,
+    ready: PAGE,
+    approved: PAGE,
+  });
 
   const context = {
     organizationId: identity.organizationId,
@@ -114,36 +124,87 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
     role: identity.role,
   });
 
-  const queue = useQuery({
-    queryKey: ["approvals", identity.organizationId],
-    queryFn: () => approvalsService.list(context),
-  });
+  /* Searching is a database question, asked once the typing settles, so the
+     board stays responsive with hundreds of rows behind it. */
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const schema = useQuery({
     queryKey: ["approvals-schema", identity.organizationId],
     queryFn: () => approvalsSchemaReady(identity.organizationId),
   });
 
+  const totals = useQuery({
+    queryKey: ["approvals", "tab-totals", identity.organizationId, search],
+    queryFn: () => approvalsService.tabTotals(context, search ? { search } : {}),
+  });
+
+  const columnTotals = useQuery({
+    queryKey: ["approvals", "column-totals", identity.organizationId, tab, search],
+    queryFn: () => approvalsService.columnTotals(context, { tab, ...(search ? { search } : {}) }),
+  });
+
+  /* One bounded page per column. Nothing off screen is ever fetched. */
+  const pages = useQueries({
+    queries: BOARD_COLUMNS.map((column) => ({
+      queryKey: [
+        "approvals",
+        "page",
+        identity.organizationId,
+        tab,
+        search,
+        sort,
+        column,
+        pageSize[column],
+      ],
+      queryFn: () =>
+        approvalsService.listPage(context, {
+          tab,
+          column,
+          sort,
+          limit: pageSize[column],
+          ...(search ? { search } : {}),
+        }),
+      placeholderData: (previous: unknown) => previous,
+    })),
+  });
+
+  const columns = useMemo(() => {
+    const view = {} as Record<BoardColumn, BoardColumnView>;
+    BOARD_COLUMNS.forEach((column, index) => {
+      const page = pages[index];
+      view[column] = {
+        rows: page?.data?.rows ?? [],
+        total: columnTotals.data?.[column] ?? page?.data?.total ?? 0,
+        hasMore: page?.data?.hasMore ?? false,
+        loading: page?.isFetching ?? false,
+      };
+    });
+    return view;
+  }, [pages, columnTotals.data]);
+
+  const counts = totals.data ?? {
+    all: 0,
+    marketing: 0,
+    comms: 0,
+    scout: 0,
+    roadmap: 0,
+    delivery: 0,
+  };
+
+  const loading = pages.some((page) => page.isLoading);
+  const empty = !loading && BOARD_COLUMNS.every((column) => columns[column].total === 0);
+  const now = new Date().toISOString();
+
+  /* The selected card survives paging: its detail is read by id, not from the
+     rows currently on screen. */
   const detail = useQuery({
     queryKey: ["approval", identity.organizationId, openId],
     queryFn: () => (openId ? approvalsService.get(context, openId) : null),
     enabled: Boolean(openId),
   });
-
-  const now = new Date().toISOString();
-  const all = useMemo(() => queue.data ?? [], [queue.data]);
-
-  const visible = useMemo(() => {
-    const filtered = all.filter(
-      (request) =>
-        inTab(request, tab) &&
-        matchesSearch(request, query) &&
-        (showDecided || OPEN_STATUSES.includes(request.status)),
-    );
-    return sortApprovals(filtered, sort, now);
-  }, [all, tab, query, sort, showDecided, now]);
-
-  const counts = useMemo(() => tabCounts(all), [all]);
 
   function refusalFor(request: ApprovalRequest): string | null {
     return approvalRefusal({
@@ -156,35 +217,33 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
   }
 
   const decide = useMutation({
-    mutationFn: async ({
-      request,
-      input,
-    }: {
-      request: ApprovalRequest;
-      input: DecisionInput;
-    }) => {
+    mutationFn: async ({ request, input }: { request: ApprovalRequest; input: DecisionInput }) => {
       const decidedBy = { id: identity.userId, label: identity.name || "You" };
       const at = new Date().toISOString();
 
       if (input.action.id === "reject") {
-        return { request: await approvalsService.decide(context, {
-          requestId: request.id,
-          to: "rejected",
-          decision: { decision: "reject", decidedBy, decidedAt: at, reason: input.reason },
-        }) };
+        return {
+          request: await approvalsService.decide(context, {
+            requestId: request.id,
+            to: "rejected",
+            decision: { decision: "reject", decidedBy, decidedAt: at, reason: input.reason },
+          }),
+        };
       }
 
       if (input.action.id === "request_revision") {
-        return { request: await approvalsService.decide(context, {
-          requestId: request.id,
-          to: "revision_requested",
-          decision: {
-            decision: "request_revision",
-            decidedBy,
-            decidedAt: at,
-            reason: input.reason,
-          },
-        }) };
+        return {
+          request: await approvalsService.decide(context, {
+            requestId: request.id,
+            to: "revision_requested",
+            decision: {
+              decision: "request_revision",
+              decidedBy,
+              decidedAt: at,
+              reason: input.reason,
+            },
+          }),
+        };
       }
 
       /* Approval records authority and nothing else. The handover to the
@@ -222,8 +281,48 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
       void queryClient.invalidateQueries({ queryKey: ["approvals"] });
       void queryClient.invalidateQueries({ queryKey: ["approval"] });
     },
+    onSettled: () => setMovingId(null),
     onError: (error: Error) => toast.error(error.message),
   });
+
+  /* Dragging resolves to the card's own authorising action. The card shows the
+     move at once and returns to its column, with the reason, if it is refused. */
+  const onDropInto = useCallback(
+    (request: ApprovalRequest, column: BoardColumn) => {
+      const outcome = dropOutcome(request, column);
+      if (!outcome.ok) {
+        toast.warning(outcome.because);
+        return;
+      }
+      const refusal = refusalFor(request);
+      if (refusal) {
+        toast.error(refusal);
+        return;
+      }
+      /* A batch is a set of individual judgments. Dragging it whole would
+         approve items nobody looked at, so it opens instead. */
+      if (request.batch) {
+        setOpenId(request.id);
+        toast.info("Choose which items to approve inside the card.");
+        return;
+      }
+      if (
+        outcome.confirm &&
+        !window.confirm(
+          `${request.title}\n\n${request.boundary.willDo.join("\n")}\n\nApprove this now?`,
+        )
+      ) {
+        return;
+      }
+      setMovingId(request.id);
+      decide.mutate({
+        request,
+        input: { action: outcome.action, reason: "", itemIds: [] },
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [decide, access, identity.organizationId],
+  );
 
   const addNote = useMutation({
     mutationFn: (input: { requestId: string; body: string }) =>
@@ -248,6 +347,24 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
         toast.success(
           `${report.submitted} of ${report.scanned} Comms drafts are in the queue.` +
             (report.failed > 0 ? ` ${report.failed} could not be read.` : ""),
+        );
+      }
+      void queryClient.invalidateQueries({ queryKey: ["approvals"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  /* The same source-owned adapter the live path uses, run over rows that
+     predate it. Idempotent by source key, so a second run changes nothing. */
+  const scoutBackfill = useMutation({
+    mutationFn: () => backfillScoutApprovals(context),
+    onSuccess: (report) => {
+      if (report.scanned === 0) {
+        toast.success("No Scout matches are waiting on a decision.");
+      } else {
+        toast.success(
+          `${report.submitted} of ${report.scanned} strong Scout matches are in the queue` +
+            ` (${report.ready} ready, ${report.needsContext} need context).`,
         );
       }
       void queryClient.invalidateQueries({ queryKey: ["approvals"] });
@@ -307,18 +424,32 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
             </option>
           ))}
         </select>
-        <TTButton variant="quiet" size="sm" onClick={() => setShowDecided((value) => !value)}>
-          {showDecided ? "Hide decided" : "Show decided"}
-        </TTButton>
-        <TTButton
-          variant="quiet"
-          size="sm"
-          onClick={() => backfill.mutate()}
-          disabled={backfill.isPending}
-        >
-          {backfill.isPending ? "Checking Comms…" : "Check Comms for waiting drafts"}
+        <TTButton variant="quiet" size="sm" onClick={() => setShowDiagnostics((value) => !value)}>
+          {showDiagnostics ? "Hide more" : "More"}
         </TTButton>
       </div>
+
+      {showDiagnostics ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border p-4">
+          <p className="tt-eyebrow mr-auto">Recovery checks</p>
+          <TTButton
+            variant="quiet"
+            size="sm"
+            onClick={() => backfill.mutate()}
+            disabled={backfill.isPending}
+          >
+            {backfill.isPending ? "Checking Comms…" : "Check Comms for waiting drafts"}
+          </TTButton>
+          <TTButton
+            variant="quiet"
+            size="sm"
+            onClick={() => scoutBackfill.mutate()}
+            disabled={scoutBackfill.isPending}
+          >
+            {scoutBackfill.isPending ? "Checking Scout…" : "Check Scout for strong matches"}
+          </TTButton>
+        </div>
+      ) : null}
 
       {schema.data === false ? (
         <div className="rounded-xl border border-dashed border-border p-5">
@@ -330,9 +461,9 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
         </div>
       ) : null}
 
-      {queue.isLoading ? (
+      {loading ? (
         <p className="text-sm text-muted-foreground">Reading the queue…</p>
-      ) : visible.length === 0 ? (
+      ) : empty ? (
         <EmptyState
           title="Nothing is waiting on you"
           belongsHere="Prepared work from Comms, Scout, Marketing, Roadmap and Delivery lands here for a decision."
@@ -340,10 +471,15 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
         />
       ) : (
         <ApprovalBoard
-          requests={visible}
+          columns={columns}
           now={now}
           activeId={openId}
+          movingId={movingId}
           onOpen={(request) => setOpenId(request.id)}
+          onDropInto={onDropInto}
+          onLoadMore={(column) =>
+            setPageSize((current) => ({ ...current, [column]: current[column] + PAGE }))
+          }
         />
       )}
 

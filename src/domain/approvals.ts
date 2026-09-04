@@ -32,14 +32,7 @@ import type { Permission } from "./access";
 
 /** The room that prepared the work and still owns it. */
 export type ApprovalSourceApp =
-  | "scout"
-  | "comms"
-  | "roadmap"
-  | "website"
-  | "projects"
-  | "ops"
-  | "studio"
-  | "content";
+  "scout" | "comms" | "roadmap" | "website" | "projects" | "ops" | "studio" | "content";
 
 export const SOURCE_APP_LABEL: Record<ApprovalSourceApp, string> = {
   scout: "Scout",
@@ -192,7 +185,9 @@ export function assertApprovalTransition(from: ApprovalStatus, to: ApprovalStatu
 
 /** True once a human has authorised the work, whatever happened afterwards. */
 export function isHumanAuthorised(status: ApprovalStatus): boolean {
-  return status === "approved" || status === "queued" || status === "executed" || status === "verified";
+  return (
+    status === "approved" || status === "queued" || status === "executed" || status === "verified"
+  );
 }
 
 /* ------------------------------------------------------------ board states */
@@ -232,11 +227,7 @@ export function columnFor(status: ApprovalStatus): BoardColumn | null {
 
 /** The approval types with a registered renderer in V1. */
 export type ApprovalType =
-  | "comms_draft"
-  | "scout_relationship"
-  | "blog_batch"
-  | "roadmap_change"
-  | "delivery_change";
+  "comms_draft" | "scout_relationship" | "blog_batch" | "roadmap_change" | "delivery_change";
 
 export const APPROVAL_TYPE_LABEL: Record<ApprovalType, string> = {
   comms_draft: "Message draft",
@@ -256,10 +247,7 @@ export interface ApprovalSubmitter {
   label: string;
 }
 
-export type ApprovalDecisionKind =
-  | "approve"
-  | "reject"
-  | "request_revision";
+export type ApprovalDecisionKind = "approve" | "reject" | "request_revision";
 
 export interface ApprovalDecision {
   decision: ApprovalDecisionKind;
@@ -343,12 +331,7 @@ export interface BatchSummary {
 }
 
 export type ApprovalItemState =
-  | "ready"
-  | "exception"
-  | "failed"
-  | "approved"
-  | "rejected"
-  | "executed";
+  "ready" | "exception" | "failed" | "approved" | "rejected" | "executed";
 
 export const ITEM_STATE_LABEL: Record<ApprovalItemState, string> = {
   ready: "Ready",
@@ -438,12 +421,7 @@ export interface DownstreamResult {
 /* ----------------------------------------------------------------- notes */
 
 export type ApprovalEventKind =
-  | "submitted"
-  | "resubmitted"
-  | "note"
-  | "decision"
-  | "state_changed"
-  | "downstream";
+  "submitted" | "resubmitted" | "note" | "decision" | "state_changed" | "downstream";
 
 /** Append-only. A note always carries who wrote it and when. */
 export interface ApprovalEvent {
@@ -722,4 +700,140 @@ export function tabCounts(requests: ApprovalRequest[]): Record<CategoryTab, numb
     counts[tabFor(request)] += 1;
   }
   return counts;
+}
+
+/* ------------------------------------------------------- board pagination */
+
+/** The statuses a board column contains. The inverse of `columnFor`. */
+export const BOARD_COLUMN_STATUSES: Record<BoardColumn, ApprovalStatus[]> = {
+  needs_review: ["needs_review", "revision_requested"],
+  needs_context: ["needs_context"],
+  ready: ["ready"],
+  approved: ["approved", "queued", "executed"],
+};
+
+/* ------------------------------------------------------------ drag to decide */
+
+/**
+ * What dragging a card into a column means.
+ *
+ * Drag is a gesture, never a second decision path: it resolves to the same
+ * authorising action the card's own decision bar offers, and refuses anything
+ * the state machine or the renderer contract would refuse. Where approval can
+ * later trigger something irreversible outside Trust Tai, the gesture asks for
+ * a confirmation first rather than committing on a mouse release.
+ */
+export type DropOutcome =
+  | { ok: false; because: string }
+  | { ok: true; action: ApprovalAction; confirm: boolean; itemIds?: ID[] };
+
+/** True when approving this could later reach outside Trust Tai irreversibly. */
+export function dropNeedsConfirmation(request: {
+  approvalType: ApprovalType;
+  batch?: BatchSummary | undefined;
+  boundary: { willDo: string[] };
+}): boolean {
+  if (request.batch) return true;
+  if (request.approvalType === "blog_batch" || request.approvalType === "delivery_change") {
+    return true;
+  }
+  return request.boundary.willDo.some((line) => /publish|deploy|pay|charge/i.test(line));
+}
+
+export function dropOutcome(
+  request: Pick<ApprovalRequest, "approvalType" | "status" | "boundary"> & {
+    batch?: BatchSummary | undefined;
+  },
+  column: BoardColumn,
+): DropOutcome {
+  const from = columnFor(request.status);
+  if (from === column) return { ok: false, because: "It is already there." };
+
+  if (column !== "approved") {
+    return {
+      ok: false,
+      because:
+        "Approvals only records a decision. Moving work back is the owning room's call, so use Request revision or Not now.",
+    };
+  }
+
+  if (!canApprovalTransition(request.status, "approved")) {
+    return {
+      ok: false,
+      because: `An approval cannot move from "${STATUS_LABEL[request.status]}" to "${STATUS_LABEL.approved}".`,
+    };
+  }
+
+  const action = availableActions({
+    approvalType: request.approvalType,
+    status: request.status,
+    ...(request.batch ? { batch: request.batch } : {}),
+  }).find((entry) => entry.authorising && entry.id !== "reject");
+
+  if (!action) {
+    return {
+      ok: false,
+      because:
+        request.status === "needs_context"
+          ? "This one is still missing context, so it cannot be approved yet."
+          : "There is nothing to authorise on this request.",
+    };
+  }
+
+  return { ok: true, action, confirm: dropNeedsConfirmation(request) };
+}
+
+/* ------------------------------------------------- server-side tab filter */
+
+const ALL_SOURCE_APPS: ApprovalSourceApp[] = [
+  "scout",
+  "comms",
+  "roadmap",
+  "website",
+  "projects",
+  "ops",
+  "studio",
+  "content",
+];
+
+const ALL_CATEGORIES: ApprovalCategory[] = [
+  "marketing",
+  "communication",
+  "qualification",
+  "strategy",
+  "delivery",
+  "creative",
+  "operations",
+];
+
+/**
+ * `tabFor` expressed as data a database can filter on.
+ *
+ * Some source apps decide the tab on their own; for the rest the category
+ * decides. Deriving both sets from `tabFor` itself keeps the server-side query
+ * and the in-memory rule from ever drifting apart.
+ */
+export interface TabFilter {
+  /** Rows in the tab whatever their category. */
+  sourceApps: ApprovalSourceApp[];
+  /** Rows in the tab only when the category matches. */
+  otherApps: ApprovalSourceApp[];
+  categories: ApprovalCategory[];
+}
+
+function appDetermined(sourceApp: ApprovalSourceApp): boolean {
+  const first = tabFor({ sourceApp, category: ALL_CATEGORIES[0]! });
+  return ALL_CATEGORIES.every((category) => tabFor({ sourceApp, category }) === first);
+}
+
+export function tabFilter(tab: Exclude<CategoryTab, "all">): TabFilter {
+  const sourceApps = ALL_SOURCE_APPS.filter(
+    (sourceApp) =>
+      appDetermined(sourceApp) && tabFor({ sourceApp, category: "operations" }) === tab,
+  );
+  const otherApps = ALL_SOURCE_APPS.filter((sourceApp) => !appDetermined(sourceApp));
+  const categories = ALL_CATEGORIES.filter((category) =>
+    otherApps.every((sourceApp) => tabFor({ sourceApp, category }) === tab),
+  );
+  return { sourceApps, otherApps, categories };
 }
