@@ -18,6 +18,8 @@ export interface ImageProviderStatus {
   ready: boolean;
   generatorConfigured: boolean;
   storeConfigured: boolean;
+  /** False until a real generation path exists in this codebase. */
+  generatorImplemented: boolean;
   /** Names what is missing, never any value of a secret. */
   because: string;
   missing: string[];
@@ -25,6 +27,12 @@ export interface ImageProviderStatus {
 
 /** The bucket a featured image would live in. Must be public to be durable. */
 export const IMAGE_BUCKET = "content-images";
+
+/**
+ * No generation path is written yet. Credentials and a bucket are necessary
+ * but not sufficient, so configuration alone must never read as ready.
+ */
+const GENERATOR_IMPLEMENTED = false;
 
 export function imageProviderStatus(): ImageProviderStatus {
   const generatorConfigured = Boolean(process.env["LOVABLE_API_KEY"]);
@@ -38,20 +46,25 @@ export function imageProviderStatus(): ImageProviderStatus {
   if (!process.env["TRUST_TAI_IMAGE_BUCKET_PUBLIC"]) {
     missing.push(`a public storage bucket named ${IMAGE_BUCKET}, confirmed by TRUST_TAI_IMAGE_BUCKET_PUBLIC`);
   }
+  if (!GENERATOR_IMPLEMENTED) missing.push("a written image generation path");
 
-  const ready = generatorConfigured && storeConfigured;
+  const ready = generatorConfigured && storeConfigured && GENERATOR_IMPLEMENTED;
   return {
     ready,
     generatorConfigured,
     storeConfigured,
+    generatorImplemented: GENERATOR_IMPLEMENTED,
     missing,
     because: ready
       ? "A featured image can be produced and stored at a durable address."
-      : generatorConfigured
-        ? `An image could be generated, but there is nowhere durable to keep it, so no address would survive. Missing: ${missing.join(", ")}.`
-        : `No image provider is connected. Missing: ${missing.join(", ")}.`,
+      : generatorConfigured && storeConfigured
+        ? `Credentials and a durable store exist, but no image is produced yet. Missing: ${missing.join(", ")}.`
+        : generatorConfigured
+          ? `An image could be generated, but there is nowhere durable to keep it, so no address would survive. Missing: ${missing.join(", ")}.`
+          : `No image provider is connected. Missing: ${missing.join(", ")}.`,
   };
 }
+
 
 /**
  * Prepare one featured image.
