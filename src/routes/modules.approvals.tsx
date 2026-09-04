@@ -12,9 +12,9 @@
  *   - Anything the system cannot honestly do is said plainly, not hidden.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/tt/app-shell";
@@ -52,6 +52,9 @@ const DESCRIPTION =
   "One place to decide. Agents prepare the work, you approve it, and the room that owns the work executes afterwards.";
 
 const TABS: CategoryTab[] = ["all", "marketing", "comms", "scout", "roadmap", "delivery"];
+/** Cards fetched per column before the person asks for more. */
+const PAGE = 25;
+
 const SORTS: Array<{ id: ApprovalSort; label: string }> = [
   { id: "priority", label: "Most pressing" },
   { id: "newest", label: "Newest" },
@@ -282,8 +285,41 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
       void queryClient.invalidateQueries({ queryKey: ["approvals"] });
       void queryClient.invalidateQueries({ queryKey: ["approval"] });
     },
+    onSettled: () => setMovingId(null),
     onError: (error: Error) => toast.error(error.message),
   });
+
+  /* Dragging resolves to the card's own authorising action. The card shows the
+     move at once and returns to its column, with the reason, if it is refused. */
+  const onDropInto = useCallback(
+    (request: ApprovalRequest, column: BoardColumn) => {
+      const outcome = dropOutcome(request, column);
+      if (!outcome.ok) {
+        toast.warning(outcome.because);
+        return;
+      }
+      const refusal = refusalFor(request);
+      if (refusal) {
+        toast.error(refusal);
+        return;
+      }
+      if (
+        outcome.confirm &&
+        !window.confirm(
+          `${request.title}\n\n${request.boundary.willDo.join("\n")}\n\nApprove this now?`,
+        )
+      ) {
+        return;
+      }
+      setMovingId(request.id);
+      decide.mutate({
+        request,
+        input: { action: outcome.action, reason: "", itemIds: request.batch?.itemIds ?? [] },
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [decide, access, identity.organizationId],
+  );
 
   const addNote = useMutation({
     mutationFn: (input: { requestId: string; body: string }) =>
@@ -308,6 +344,24 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
         toast.success(
           `${report.submitted} of ${report.scanned} Comms drafts are in the queue.` +
             (report.failed > 0 ? ` ${report.failed} could not be read.` : ""),
+        );
+      }
+      void queryClient.invalidateQueries({ queryKey: ["approvals"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  /* The same source-owned adapter the live path uses, run over rows that
+     predate it. Idempotent by source key, so a second run changes nothing. */
+  const scoutBackfill = useMutation({
+    mutationFn: () => backfillScoutApprovals(context),
+    onSuccess: (report) => {
+      if (report.scanned === 0) {
+        toast.success("No Scout matches are waiting on a decision.");
+      } else {
+        toast.success(
+          `${report.submitted} of ${report.scanned} strong Scout matches are in the queue` +
+            ` (${report.ready} ready, ${report.needsContext} need context).`,
         );
       }
       void queryClient.invalidateQueries({ queryKey: ["approvals"] });
@@ -367,18 +421,32 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
             </option>
           ))}
         </select>
-        <TTButton variant="quiet" size="sm" onClick={() => setShowDecided((value) => !value)}>
-          {showDecided ? "Hide decided" : "Show decided"}
-        </TTButton>
-        <TTButton
-          variant="quiet"
-          size="sm"
-          onClick={() => backfill.mutate()}
-          disabled={backfill.isPending}
-        >
-          {backfill.isPending ? "Checking Comms…" : "Check Comms for waiting drafts"}
+        <TTButton variant="quiet" size="sm" onClick={() => setShowDiagnostics((value) => !value)}>
+          {showDiagnostics ? "Hide more" : "More"}
         </TTButton>
       </div>
+
+      {showDiagnostics ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border p-4">
+          <p className="tt-eyebrow mr-auto">Recovery checks</p>
+          <TTButton
+            variant="quiet"
+            size="sm"
+            onClick={() => backfill.mutate()}
+            disabled={backfill.isPending}
+          >
+            {backfill.isPending ? "Checking Comms…" : "Check Comms for waiting drafts"}
+          </TTButton>
+          <TTButton
+            variant="quiet"
+            size="sm"
+            onClick={() => scoutBackfill.mutate()}
+            disabled={scoutBackfill.isPending}
+          >
+            {scoutBackfill.isPending ? "Checking Scout…" : "Check Scout for strong matches"}
+          </TTButton>
+        </div>
+      ) : null}
 
       {schema.data === false ? (
         <div className="rounded-xl border border-dashed border-border p-5">
@@ -390,9 +458,9 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
         </div>
       ) : null}
 
-      {queue.isLoading ? (
+      {loading ? (
         <p className="text-sm text-muted-foreground">Reading the queue…</p>
-      ) : visible.length === 0 ? (
+      ) : empty ? (
         <EmptyState
           title="Nothing is waiting on you"
           belongsHere="Prepared work from Comms, Scout, Marketing, Roadmap and Delivery lands here for a decision."
@@ -400,10 +468,15 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
         />
       ) : (
         <ApprovalBoard
-          requests={visible}
+          columns={columns}
           now={now}
           activeId={openId}
+          movingId={movingId}
           onOpen={(request) => setOpenId(request.id)}
+          onDropInto={onDropInto}
+          onLoadMore={(column) =>
+            setPageSize((current) => ({ ...current, [column]: current[column] + PAGE }))
+          }
         />
       )}
 
