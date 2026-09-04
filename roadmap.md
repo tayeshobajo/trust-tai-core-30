@@ -121,8 +121,9 @@ Agents remain paused for the whole of P0.
 | --- | --- | --- | --- | --- |
 | P8-01 | Content Engine v1 in Studio, composer, sources, provenance | Production Verified | Code/Test Verified, corrected downward | Tables exist and batch `cbat_ffebutsjmtn2ydym` holds 10 articles, but `content_sources` and `content_requests` hold **0 rows** in production, so the composer, source capture and provenance path has never actually run there. Table existence was mistaken for a production run |
 | P8-02 | Publish queue states with an attempt ledger, hardened boundary | Production Verified | Code/Test Verified, corrected downward | The boundary and its ledger-first ordering are covered by domain tests, but `content_publish_attempts` holds **0 rows** in production, so the hardened path has never been exercised against a real endpoint |
-| P8-03 | Featured image provider connected | Production Verified | Not started, no longer blocked by storage | P0-06 cleared the store: credentials and a durable public bucket both exist. `prepareFeaturedImage()` still refuses by design because no generation path is written. `GET /api/public/content/image` now reports `ready:false`, `generatorImplemented:false` rather than claiming readiness from configuration alone |
-| P8-04 | One article published with a verified canonical URL | Human Accepted | Blocked, see P0-07, P8-03 and P0-08 | Nothing published |
+| P8-03 | Featured image provider connected | Production Verified | Not started, post launch, not a P0 blocker | P0-06 cleared the store: credentials and a durable public bucket both exist. `prepareFeaturedImage()` still refuses by design because no generation path is written. `GET /api/public/content/image` reports `ready:false`, `generatorImplemented:false`. Under current Content Engine law this does **not** block P0-08: `image.url` is nullable in the publish payload and the publish boundary never asks whether an image exists. The only cost of publishing without one is a weaker social card |
+| P8-04 | One article published with a verified canonical URL | Human Accepted | Blocked, see P0-07 and P0-08 | Nothing published |
+
 
 | P8-05 | A published article shown to have changed something measurable | Human Accepted | Not started | Depends on P3 measurements |
 
