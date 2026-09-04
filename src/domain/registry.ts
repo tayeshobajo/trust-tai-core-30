@@ -162,12 +162,14 @@ export const APP_REGISTRY: AppRegistration[] = [
     layer: "business",
     name: "Studio",
     slug: "studio",
-    description: "Brand, content, and asset production.",
-    status: "mapped",
+    description:
+      "The content room. One command becomes an editorial package, and one approval decides whether any of it reaches the website.",
+    status: "live",
     route: "/modules/studio",
     icon: "PenTool",
     capabilities: ["content"],
   },
+
   {
     id: "pulse",
     layer: "intelligence",
