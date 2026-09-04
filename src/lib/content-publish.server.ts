@@ -309,6 +309,28 @@ export async function publishQueuedItem(input: {
     };
   }
 
+  /* The ledger has to be reachable before anything else is considered. No
+     durable attempt record means no external publish call. */
+  const ledger = ledgerClient();
+
+  /* Idempotency on the publish key: a second request resolves to the receipt
+     the first one already earned, rather than becoming a second article. */
+  const already = await executedAttempt(ledger, input.organizationId, publishKey);
+  if (already) {
+    await patchItem(client, input.organizationId, input.itemId, {
+      state: "published",
+      external_post_id: already.externalPostId,
+      canonical_url: already.canonicalUrl,
+      published_at: already.publishedAt,
+    });
+    return {
+      itemId: input.itemId,
+      state: "executed",
+      because: "This post was already published under the same publish key, so nothing was sent again.",
+      canonicalUrl: already.canonicalUrl,
+    };
+  }
+
   const refusal = publishRefusal(
     {
       state: state as never,
@@ -336,14 +358,17 @@ export async function publishQueuedItem(input: {
     provider: PROVIDER,
     because: "Sent to the publisher.",
   };
+  /* Written before the transport, so a crash mid-flight is visible as an
+     attempt rather than as silence. */
+  await recordAttempt(ledger, input.organizationId, item, {
+    state: "attempted",
+    because: "Sent to the publisher.",
+  });
   await patchItem(client, input.organizationId, input.itemId, {
     state: "publishing",
     publish: attempting,
   });
-  await recordAttempt(client, input.organizationId, item, {
-    state: "attempted",
-    because: "Sent to the publisher.",
-  });
+
 
   const sent = await sendToPublisher(item, publishKey);
 
