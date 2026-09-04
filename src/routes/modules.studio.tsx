@@ -135,7 +135,7 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
         provenance: plan.provenance,
       });
       for (const item of items) {
-        await contentService.saveItem(context, batch.id, item);
+        await contentService.saveItem(context, batch.id, { ...item, generation: item.generation ?? null });
       }
       await contentService.setBatchState(context, batch.id, "prepared");
       return batch;
@@ -243,7 +243,8 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
             {(batches.data ?? []).length === 0 ? (
               <EmptyState
                 title="Nothing prepared yet"
-                description="Give Studio a keyword and it will plan a cluster."
+                belongsHere="Studio holds the editorial packages this workspace has written."
+                whyItMatters="Give Studio a keyword and it will plan a cluster you can argue with."
               />
             ) : null}
             {(batches.data ?? []).map((batch) => (
@@ -276,7 +277,8 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
           ) : (
             <EmptyState
               title="Open a batch"
-              description="Read the plan and the posts before anything is submitted for approval."
+              belongsHere="The plan and the posts sit here, side by side."
+              whyItMatters="Read them before anything is submitted for approval."
             />
           )}
         </div>
