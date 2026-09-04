@@ -844,13 +844,18 @@ export interface TabFilter {
   categories: ApprovalCategory[];
 }
 
+function appDetermined(sourceApp: ApprovalSourceApp): boolean {
+  const first = tabFor({ sourceApp, category: ALL_CATEGORIES[0]! });
+  return ALL_CATEGORIES.every((category) => tabFor({ sourceApp, category }) === first);
+}
+
 export function tabFilter(tab: Exclude<CategoryTab, "all">): TabFilter {
-  const sourceApps = ALL_SOURCE_APPS.filter((sourceApp) =>
-    ALL_CATEGORIES.every((category) => tabFor({ sourceApp, category }) === tab),
+  const sourceApps = ALL_SOURCE_APPS.filter(
+    (sourceApp) => appDetermined(sourceApp) && tabFor({ sourceApp, category: "operations" }) === tab,
   );
-  const otherApps = ALL_SOURCE_APPS.filter((sourceApp) => !sourceApps.includes(sourceApp));
+  const otherApps = ALL_SOURCE_APPS.filter((sourceApp) => !appDetermined(sourceApp));
   const categories = ALL_CATEGORIES.filter((category) =>
-    otherApps.some((sourceApp) => tabFor({ sourceApp, category }) === tab),
+    otherApps.every((sourceApp) => tabFor({ sourceApp, category }) === tab),
   );
   return { sourceApps, otherApps, categories };
 }
