@@ -620,7 +620,14 @@ export const commsService = {
       .single();
     assertOk(error);
     if (!data) throw new Error("That draft could not be saved.");
-    return toDraft(data as unknown as DraftRow);
+    const saved = toDraft(data as unknown as DraftRow);
+
+    /* Comms owns the draft; Approvals owns the decision. A draft parked at the
+       human boundary submits itself, so nobody has to remember to. */
+    const { submitCommsDraftQuietly } = await import("@/data/approvals/intake");
+    await submitCommsDraftQuietly(saved, input.relationship, context);
+
+    return saved;
   },
 
   /**
@@ -719,7 +726,13 @@ export const commsService = {
       `A draft for ${relationship.fullName} was marked ${reviewState.replace(/_/g, " ")}.`,
       { review_state: reviewState, register: draft.register },
     );
-    return toDraft(data as unknown as DraftRow);
+    const updated = toDraft(data as unknown as DraftRow);
+
+    /* Sending back for review is the same boundary, reached later. */
+    const { submitCommsDraftQuietly } = await import("@/data/approvals/intake");
+    await submitCommsDraftQuietly(updated, relationship, context);
+
+    return updated;
   },
 
   /* ------------------------------------------------------------ reminders */

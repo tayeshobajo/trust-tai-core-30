@@ -55,6 +55,33 @@ function threadIdOf(draft: CommsDraft): string | undefined {
 }
 
 /**
+ * The governed submission for a draft Comms already has in hand.
+ *
+ * Pure translation, no reads and no writes, so the intake hook and the
+ * id-based path below build the same request from the same facts.
+ */
+export function commsDraftSubmissionFor(draft: CommsDraft, relationship: Relationship) {
+  const reasoning =
+    typeof draft.rationale?.["why"] === "string"
+      ? (draft.rationale["why"] as string)
+      : `Prepared in Comms as a ${draft.register.replace(/_/g, " ")} message. Intent: ${draft.intent}`;
+
+  return commsDraftSubmission({
+    draftId: draft.id,
+    relationshipId: relationship.id,
+    personName: relationship.fullName,
+    ...(relationship.companyName ? { companyName: relationship.companyName } : {}),
+    channel: "email",
+    ...(draft.subject ? { subject: draft.subject } : {}),
+    body: draft.body,
+    reasoning,
+    ...(threadIdOf(draft) ? { threadId: threadIdOf(draft)! } : {}),
+    ...(relationship.lastTouchAt ? { lastContactAt: relationship.lastTouchAt } : {}),
+    evidence: draft.evidence,
+  });
+}
+
+/**
  * Ask a person to judge a prepared message.
  *
  * The draft, not the relationship, is the thing being judged, so the draft id
@@ -74,30 +101,11 @@ export async function submitCommsDraftForApproval(
     throw new Error("That draft was discarded in Comms.");
   }
 
-  const reasoning =
-    typeof draft.rationale?.["why"] === "string"
-      ? (draft.rationale["why"] as string)
-      : `Prepared in Comms as a ${draft.register.replace(/_/g, " ")} message. Intent: ${draft.intent}`;
-
-  const request = await approvalsService.submit(
-    context,
-    commsDraftSubmission({
-      draftId: draft.id,
-      relationshipId: relationship.id,
-      personName: relationship.fullName,
-      ...(relationship.companyName ? { companyName: relationship.companyName } : {}),
-      channel: "email",
-      ...(draft.subject ? { subject: draft.subject } : {}),
-      body: draft.body,
-      reasoning,
-      ...(threadIdOf(draft) ? { threadId: threadIdOf(draft)! } : {}),
-      ...(relationship.lastTouchAt ? { lastContactAt: relationship.lastTouchAt } : {}),
-      evidence: draft.evidence,
-    }),
-  );
+  const request = await approvalsService.submit(context, commsDraftSubmissionFor(draft, relationship));
 
   return { request, draft, relationship };
 }
+
 
 /* ------------------------------------------------------------------ Scout */
 
