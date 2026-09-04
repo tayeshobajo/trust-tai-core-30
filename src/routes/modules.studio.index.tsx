@@ -135,52 +135,97 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
 
   /* The run streams, so the room says which article is being written. */
   const generate = useMutation({
-    mutationFn: async () => {
-      const term = keyword.trim();
-      if (!term) throw new Error("Give Studio a keyword to work from.");
+    mutationFn: async (submission: ComposerSubmission) => {
+      const { request } = submission;
       setProgress([]);
 
-      const token = await accessToken();
-      const response = await fetch("/api/public/content/generate", {
-        method: "POST",
-        headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          organization_id: organizationId,
-          keyword: term,
-          count,
-          known_paths: (pages.data?.value ?? []).map((page) => ({
-            path: page.path,
-            title: page.title,
-          })),
-        }),
+      const chosen = (sources.data ?? []).filter((source) =>
+        submission.sourceIds.includes(source.id),
+      );
+
+      /* The request is recorded before the work starts, so what was asked for
+         survives even if the run fails. */
+      const record = await contentCommandService.recordRequest(context, {
+        prompt: request.prompt,
+        keyword: request.keyword,
+        postCount: request.count,
+        settings: request.settings,
+        sourceIds: submission.sourceIds,
       });
 
-      const payload = await readNdjsonStream(response, (stage) => {
-        setProgress((current) => [...current, stage.message]);
-      });
-      if (!payload) throw new Error("The run ended without returning a batch.");
+      try {
+        const token = await accessToken();
+        const response = await fetch("/api/public/content/generate", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            organization_id: organizationId,
+            keyword: request.keyword,
+            count: request.count,
+            instructions: request.instructions,
+            settings: settingPairs(request.settings),
+            voice_references: voiceExcerpts(chosen),
+            known_paths: (pages.data?.value ?? []).map((page) => ({
+              path: page.path,
+              title: page.title,
+            })),
+          }),
+        });
 
-      const plan = payload["plan"] as PreparedPlan;
-      const items = (payload["items"] ?? []) as PreparedItem[];
+        const payload = await readNdjsonStream(response, (stage) => {
+          setProgress((current) => [...current, stage.message]);
+        });
+        if (!payload) throw new Error("The run ended without returning a batch.");
 
-      /* The room writes its own truth, under its own membership. */
-      const batch = await contentService.createBatch(context, {
-        keyword: plan.keyword,
-        topicCluster: plan.topicCluster,
-        searchIntent: plan.searchIntent,
-        audienceProblem: plan.audienceProblem,
-        whyTogether: plan.whyTogether,
-        editorialPlan: plan.editorialPlan,
-        provenance: plan.provenance,
-      });
-      for (const item of items) {
-        await contentService.saveItem(context, batch.id, { ...item, generation: item.generation ?? null });
+        const plan = payload["plan"] as PreparedPlan;
+        const items = (payload["items"] ?? []) as PreparedItem[];
+
+        /* The room writes its own truth, under its own membership. */
+        const batch = await contentService.createBatch(context, {
+          keyword: plan.keyword,
+          topicCluster: plan.topicCluster,
+          searchIntent: plan.searchIntent,
+          audienceProblem: plan.audienceProblem,
+          whyTogether: plan.whyTogether,
+          editorialPlan: plan.editorialPlan,
+          provenance: {
+            ...plan.provenance,
+            requestId: record.id,
+            requestPrompt: request.prompt,
+            settings: request.settings,
+            sources: chosen.map((source) => ({
+              id: source.id,
+              label: source.label,
+              kind: source.kind,
+              origin: source.origin,
+            })),
+          },
+        });
+        for (const item of items) {
+          await contentService.saveItem(context, batch.id, {
+            ...item,
+            generation: item.generation ?? null,
+          });
+        }
+        await contentService.setBatchState(context, batch.id, "prepared");
+        await contentCommandService.settleRequest(context, record.id, {
+          state: "prepared",
+          because: "Studio prepared the batch and sent it for one decision.",
+          batchId: batch.id,
+        });
+        /* One prepared batch is one decision. Submitting is idempotent on the
+           batch id, so this never becomes a second card. */
+        await submitContentBatchQuietly(batch.id, context);
+        return batch;
+      } catch (error) {
+        await contentCommandService
+          .settleRequest(context, record.id, {
+            state: "failed",
+            because: (error as Error).message,
+          })
+          .catch(() => undefined);
+        throw error;
       }
-      await contentService.setBatchState(context, batch.id, "prepared");
-      /* One prepared batch is one decision. Submitting is idempotent on the
-         batch id, so this never becomes a second card. */
-      await submitContentBatchQuietly(batch.id, context);
-      return batch;
     },
     onSuccess: (batch) => {
       toast.success("The batch is prepared and waiting in Approvals. Nothing publishes until you decide.");
@@ -189,6 +234,7 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
 
   const submit = useMutation({
     mutationFn: async (batchId: string) => submitContentBatchForApproval(batchId, context),
