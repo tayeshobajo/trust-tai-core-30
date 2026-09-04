@@ -204,12 +204,7 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
           results.push({ id, ok: true });
         } catch (err) {
           results.push({ id, ok: false, error: err instanceof Error ? err.message : "Failed." });
-          // Roll back to needs_human_review on send failure
-          await supabase
-            .from("comms_drafts")
-            .update({ review_state: "needs_human_review", updated_at: new Date().toISOString() })
-            .eq("id", id)
-            .eq("review_state", "approved");
+          await reopenDraft(id, identity);
         }
       }
       return results;
