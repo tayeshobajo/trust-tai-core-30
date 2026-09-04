@@ -24,6 +24,7 @@ import { Route as ModulesPulseRouteImport } from './routes/modules.pulse'
 import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesStewardRouteImport } from './routes/modules.steward'
+import { Route as ModulesStudioRouteImport } from './routes/modules.studio'
 import { Route as ModulesWebsiteRouteImport } from './routes/modules.website'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsAppsRouteImport } from './routes/settings.apps'
@@ -164,6 +165,11 @@ const ModulesScoutRoute = ModulesScoutRouteImport.update({
 const ModulesStewardRoute = ModulesStewardRouteImport.update({
   id: '/modules/steward',
   path: '/modules/steward',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesStudioRoute = ModulesStudioRouteImport.update({
+  id: '/modules/studio',
+  path: '/modules/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesWebsiteRoute = ModulesWebsiteRouteImport.update({
@@ -536,6 +542,7 @@ export interface FileRoutesByFullPath {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/modules/studio': typeof ModulesStudioRoute
   '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
@@ -613,6 +620,7 @@ export interface FileRoutesByTo {
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
+  '/modules/studio': typeof ModulesStudioRoute
   '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
@@ -696,6 +704,7 @@ export interface FileRoutesById {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/modules/studio': typeof ModulesStudioRoute
   '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
@@ -781,6 +790,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/modules/studio'
     | '/modules/website'
     | '/settings/apps'
     | '/settings/diagnostics'
@@ -858,6 +868,7 @@ export interface FileRouteTypes {
     | '/modules/conductor'
     | '/modules/ops'
     | '/modules/pulse'
+    | '/modules/studio'
     | '/modules/website'
     | '/settings/apps'
     | '/settings/diagnostics'
@@ -940,6 +951,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/modules/studio'
     | '/modules/website'
     | '/settings/apps'
     | '/settings/diagnostics'
@@ -1023,6 +1035,7 @@ export interface RootRouteChildren {
   ModulesRoadmapRoute: typeof ModulesRoadmapRouteWithChildren
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
   ModulesStewardRoute: typeof ModulesStewardRouteWithChildren
+  ModulesStudioRoute: typeof ModulesStudioRoute
   ModulesWebsiteRoute: typeof ModulesWebsiteRoute
   ApiLinkiExecuteRoute: typeof ApiLinkiExecuteRoute
   ModulesWebsitePageRoute: typeof ModulesWebsitePageRoute
@@ -1163,6 +1176,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/steward'
       fullPath: '/modules/steward'
       preLoaderRoute: typeof ModulesStewardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/studio': {
+      id: '/modules/studio'
+      path: '/modules/studio'
+      fullPath: '/modules/studio'
+      preLoaderRoute: typeof ModulesStudioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/website': {
@@ -1794,6 +1814,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesRoadmapRoute: ModulesRoadmapRouteWithChildren,
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
   ModulesStewardRoute: ModulesStewardRouteWithChildren,
+  ModulesStudioRoute: ModulesStudioRoute,
   ModulesWebsiteRoute: ModulesWebsiteRoute,
   ApiLinkiExecuteRoute: ApiLinkiExecuteRoute,
   ModulesWebsitePageRoute: ModulesWebsitePageRoute,
