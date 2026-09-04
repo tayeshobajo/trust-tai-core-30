@@ -198,7 +198,9 @@ export function ApprovalBoard({
                   onClick={() => onLoadMore(column)}
                   disabled={view.loading}
                 >
-                  {view.loading ? "Loading…" : `Load more (${view.total - view.rows.length} more)`}
+                  {view.loading
+                    ? "Loading…"
+                    : `Load more (${Math.max(0, view.total - view.rows.length)} remaining)`}
                 </TTButton>
               ) : null}
             </div>

@@ -647,7 +647,25 @@ const roadmapServiceRaw = {
       { id: roadmapId, label: roadmapLabel },
       `Needs a decision: ${question.question}`,
     );
-    return toDecision(data as Row);
+    const decision = toDecision(data as Row);
+
+    /* A proposed change nobody has answered is a judgment waiting to happen,
+       so it joins the same queue as every other one. Roadmap keeps the truth;
+       Approvals only holds the decision. */
+    const roadmap = await this.detail(roadmapId, context.organizationId);
+    if (roadmap) {
+      const { submitRoadmapDecisionQuietly } = await import("@/data/approvals/roadmap-intake");
+      const stage =
+        roadmap.stages.find((entry) => entry.id === decision.stageId) ?? null;
+      await submitRoadmapDecisionQuietly(
+        decision,
+        roadmap.roadmap,
+        { organizationId: context.organizationId, userId: context.userId },
+        stage,
+      );
+    }
+
+    return decision;
   },
 
   /**
