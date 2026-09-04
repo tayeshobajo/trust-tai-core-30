@@ -303,6 +303,13 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
         toast.error(refusal);
         return;
       }
+      /* A batch is a set of individual judgments. Dragging it whole would
+         approve items nobody looked at, so it opens instead. */
+      if (request.batch) {
+        setOpenId(request.id);
+        toast.info("Choose which items to approve inside the card.");
+        return;
+      }
       if (
         outcome.confirm &&
         !window.confirm(
@@ -314,7 +321,7 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
       setMovingId(request.id);
       decide.mutate({
         request,
-        input: { action: outcome.action, reason: "", itemIds: request.batch?.itemIds ?? [] },
+        input: { action: outcome.action, reason: "", itemIds: [] },
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
