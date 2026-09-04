@@ -283,46 +283,21 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
         supporting="Studio plans the cluster, writes each article in Trust Tai's voice and says why it should exist. You approve the batch in Approvals, and only then does anything reach trusttai.com."
       />
 
-      <TTCard className="p-6">
-        <SectionHeading
-          title="One command"
-          description="For example: ten posts around fractional operations for founders."
-        />
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <TTInput
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            placeholder="Keyword or theme"
-            className="flex-1"
-            disabled={running}
-          />
-          <TTInput
-            type="number"
-            min={1}
-            max={12}
-            value={count}
-            onChange={(event) => setCount(Number(event.target.value) || 10)}
-            className="sm:w-28"
-            disabled={running}
-            aria-label="How many posts"
-          />
-          <TTButton onClick={() => generate.mutate()} disabled={running}>
-            {running ? "Writing" : "Prepare the batch"}
-          </TTButton>
-        </div>
+      <StudioComposer
+        sources={sources.data ?? []}
+        onAddPasted={(input) => addSource.mutate(input)}
+        onAddFile={(file) => {
+          void readFileAsSource(file).then((source) => addSource.mutate(source));
+        }}
+        onRemoveSource={(sourceId) => removeSource.mutate(sourceId)}
+        onSubmit={(submission) => generate.mutate(submission)}
+        running={running}
+        progress={progress}
+        {...(publisher.data && !publisher.data.configured
+          ? { publisherNote: publisher.data.because }
+          : {})}
+      />
 
-        {progress.length > 0 ? (
-          <ol className="mt-4 space-y-1 text-sm text-muted-foreground">
-            {progress.slice(-6).map((line, index) => (
-              <li key={`${line}-${index}`}>{line}</li>
-            ))}
-          </ol>
-        ) : null}
-
-        {publisher.data && !publisher.data.configured ? (
-          <p className="mt-4 text-sm text-muted-foreground">{publisher.data.because}</p>
-        ) : null}
-      </TTCard>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[22rem_1fr]">
         <TTCard className="p-5">
