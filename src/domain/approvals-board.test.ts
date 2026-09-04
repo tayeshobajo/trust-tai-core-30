@@ -72,7 +72,7 @@ describe("board columns", () => {
 const base = {
   approvalType: "comms_draft" as const,
   status: "ready" as ApprovalStatus,
-  boundary: { willDo: ["Marks the draft approved in Comms."] },
+  boundary: { willDo: ["Marks the draft approved in Comms."], willNotDo: [] },
 };
 
 describe("drag to decide", () => {
@@ -102,7 +102,7 @@ describe("drag to decide", () => {
 
   it("asks first when approving could reach outside Trust Tai", () => {
     const outcome = dropOutcome(
-      { ...base, boundary: { willDo: ["Publishes the post to trusttai.com."] } },
+      { ...base, boundary: { willDo: ["Publishes the post to trusttai.com."], willNotDo: [] } },
       "approved",
     );
     expect(outcome.ok && outcome.confirm).toBe(true);
