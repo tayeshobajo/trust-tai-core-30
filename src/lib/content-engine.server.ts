@@ -161,7 +161,11 @@ export type PreparedItem = Omit<
   | "verification"
   | "createdAt"
   | "updatedAt"
->;
+  | "state"
+> & {
+  /* A freshly written post can only be one of three honest things. */
+  state: "ready" | "exception" | "failed";
+};
 
 export interface PreparedPlan {
   keyword: string;
