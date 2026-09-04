@@ -188,12 +188,11 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
   const running = generate.isPending;
 
   return (
-    <AppShell appId="studio" identity={identity}>
+    <AppShell identity={identity}>
       <RoomHero
-        appId="studio"
         eyebrow="Studio"
         title="Say what the market is asking about."
-        lede="Studio plans the cluster, writes each article in Trust Tai's voice and says why it should exist. You approve the batch in Approvals, and only then does anything reach trusttai.com."
+        supporting="Studio plans the cluster, writes each article in Trust Tai's voice and says why it should exist. You approve the batch in Approvals, and only then does anything reach trusttai.com."
       />
 
       <TTCard className="p-6">
@@ -371,7 +370,7 @@ function BatchView({
             <details className="mt-4">
               <summary className="cursor-pointer text-sm underline">Read the draft</summary>
               <div className="mt-3">
-                <Markdown>{item.draftMarkdown}</Markdown>
+                <Markdown content={item.draftMarkdown} />
               </div>
             </details>
           ) : null}
