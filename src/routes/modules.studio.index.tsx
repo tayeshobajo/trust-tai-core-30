@@ -21,11 +21,17 @@ import {
   SectionHeading,
   TTButton,
   TTCard,
-  TTInput,
 } from "@/components/tt/primitives";
+import {
+  StudioComposer,
+  readFileAsSource,
+  type ComposerSubmission,
+  type PastedSource,
+} from "@/components/tt/studio/composer";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { submitContentBatchForApproval, submitContentBatchQuietly } from "@/data/content/intake";
 import { contentService } from "@/data/supabase/content-service";
+import { contentCommandService } from "@/data/supabase/content-request-service";
 import { listWebsitePages } from "@/data/supabase/website-analytics-service";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
@@ -36,8 +42,11 @@ import {
   type ContentBatch,
   type ContentItem,
 } from "@/domain/content";
+import { voiceExcerpts } from "@/domain/content-source";
+import type { ContentRequestSettings } from "@/domain/content-request";
 import type { PreparedItem, PreparedPlan } from "@/lib/content-engine.server";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+
 
 const TITLE = "Studio · The content room · Trust Tai OS";
 const DESCRIPTION =
