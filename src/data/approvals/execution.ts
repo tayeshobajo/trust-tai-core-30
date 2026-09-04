@@ -162,6 +162,69 @@ async function executeScoutRelationship(
   };
 }
 
+/* ---------------------------------------------------------------- Roadmap */
+
+/**
+ * An approved roadmap change is resolved through Roadmap's own decision log,
+ * the same call the room makes when a person answers the question inside it.
+ * Approvals never writes roadmap truth directly.
+ */
+async function executeRoadmapChange(
+  request: ApprovalRequest,
+  context: ExecutionContext,
+  at: string,
+): Promise<ExecutionOutcome> {
+  const decisionId = payloadString(request, "decisionId");
+  if (!decisionId) {
+    return {
+      result: {
+        state: "unavailable",
+        adapterId: "roadmap.decision_log",
+        because:
+          "This request was raised without a roadmap decision reference, so there is nothing for Roadmap to resolve. The decision is recorded.",
+        reference: reference(request),
+        at,
+      },
+    };
+  }
+
+  const { roadmapService } = await import("@/data/supabase/roadmap-service");
+  const open = await roadmapService.openDecisions(context.organizationId);
+  const decision = open.find((entry) => entry.id === decisionId);
+
+  if (!decision) {
+    return {
+      result: {
+        state: "failed",
+        adapterId: "roadmap.decision_log",
+        because:
+          "Roadmap has already resolved that question, so the approval was recorded but not applied.",
+        reference: `roadmap_decision:${decisionId}`,
+        at,
+      },
+    };
+  }
+
+  await roadmapService.resolveDecision(
+    decision,
+    "approved",
+    request.sourceEntity.label ?? "Roadmap",
+    { organizationId: context.organizationId, userId: context.userId },
+    request.decision?.reason || "Approved in Approvals.",
+  );
+
+  return {
+    result: {
+      state: "accepted",
+      adapterId: "roadmap.decision_log",
+      because: "Roadmap recorded the change and the reason it was made, with your name on it.",
+      reference: `roadmap_decision:${decision.id}`,
+      at,
+    },
+    nextStatus: "executed",
+  };
+}
+
 /* --------------------------------------------------------------- dispatch */
 
 /**
@@ -180,6 +243,7 @@ export async function executeApprovedRequest(
   if (request.approvalType === "scout_relationship") {
     return executeScoutRelationship(request, context, at);
   }
+  if (request.approvalType === "roadmap_change") return executeRoadmapChange(request, context, at);
 
   const adapter = downstreamAdapter(request.approvalType);
   const result = adapter.handover(request, at);

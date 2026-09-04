@@ -203,6 +203,10 @@ export interface RoadmapChangeInput {
   after: string;
   affects: string[];
   evidence?: EvidenceRef[];
+  /** The open roadmap decision this proposal belongs to, when there is one. */
+  decisionId?: string;
+  /** Where the proposal came from, kept with the decision for later reading. */
+  provenance?: Record<string, unknown>;
 }
 
 export function roadmapChangeSubmission(input: RoadmapChangeInput): ApprovalSubmission {
@@ -218,6 +222,9 @@ export function roadmapChangeSubmission(input: RoadmapChangeInput): ApprovalSubm
     impact: "high",
     sourceEntity: { type: "roadmap", id: input.roadmapId, label: input.changeTitle },
     requiredCapability: "roadmap.decide",
+    /* One roadmap can carry several open questions at once, so the decision,
+       not the roadmap, is what makes this request itself. */
+    ...(input.decisionId ? { aspect: `decision:${input.decisionId}` } : {}),
     boundary: {
       willDo: ["Record the change and your reasoning in the roadmap decision log"],
       willNotDo: ["Tell anyone", "Reschedule work", "Change a client commitment"],
@@ -228,6 +235,8 @@ export function roadmapChangeSubmission(input: RoadmapChangeInput): ApprovalSubm
       after: input.after,
       rationale: input.rationale,
       affects: input.affects,
+      ...(input.decisionId ? { decisionId: input.decisionId } : {}),
+      ...(input.provenance ? { provenance: input.provenance } : {}),
     },
   };
 }

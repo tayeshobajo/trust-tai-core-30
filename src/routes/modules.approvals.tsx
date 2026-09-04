@@ -33,6 +33,7 @@ import {
 import { executeApprovedRequest } from "@/data/approvals/execution";
 import { backfillCommsApprovals } from "@/data/approvals/intake";
 import { backfillScoutApprovals } from "@/data/approvals/scout-intake";
+import { backfillRoadmapApprovals } from "@/data/approvals/roadmap-intake";
 import { accessContext, can } from "@/domain/access";
 import {
   BOARD_COLUMNS,
@@ -51,8 +52,14 @@ const DESCRIPTION =
   "One place to decide. Agents prepare the work, you approve it, and the room that owns the work executes afterwards.";
 
 const TABS: CategoryTab[] = ["all", "marketing", "comms", "scout", "roadmap", "delivery"];
-/** Cards fetched per column before the person asks for more. */
-const PAGE = 25;
+/**
+ * Cards fetched per column before the person asks for more.
+ *
+ * A column you can take in without scrolling is a column you can orient in.
+ * Twelve is about a screen's worth at this card height; everything beyond it
+ * is asked for deliberately, never streamed in as you scroll.
+ */
+const PAGE = 12;
 
 const SORTS: Array<{ id: ApprovalSort; label: string }> = [
   { id: "priority", label: "Most pressing" },
@@ -130,6 +137,18 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
     const timer = setTimeout(() => setSearch(query.trim()), 250);
     return () => clearTimeout(timer);
   }, [query]);
+
+  /* Asking a different question starts the columns over. Otherwise a filter
+     applied after four "Load more" presses would quietly fetch four pages of
+     something the person has not looked at yet. */
+  useEffect(() => {
+    setPageSize({
+      needs_review: PAGE,
+      needs_context: PAGE,
+      ready: PAGE,
+      approved: PAGE,
+    });
+  }, [tab, search, sort]);
 
   const schema = useQuery({
     queryKey: ["approvals-schema", identity.organizationId],
@@ -372,6 +391,21 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  /* Open roadmap questions raised before the Roadmap hook existed. Same source
+     adapter, same source key, so a second run changes nothing. */
+  const roadmapBackfill = useMutation({
+    mutationFn: () => backfillRoadmapApprovals(context),
+    onSuccess: (report) => {
+      toast.success(
+        report.scanned === 0
+          ? "No roadmap change is waiting on a decision."
+          : `${report.submitted} of ${report.scanned} open roadmap questions are in the queue.`,
+      );
+      void queryClient.invalidateQueries({ queryKey: ["approvals"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const open = detail.data;
 
   return (
@@ -447,6 +481,14 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
             disabled={scoutBackfill.isPending}
           >
             {scoutBackfill.isPending ? "Checking Scout…" : "Check Scout for strong matches"}
+          </TTButton>
+          <TTButton
+            variant="quiet"
+            size="sm"
+            onClick={() => roadmapBackfill.mutate()}
+            disabled={roadmapBackfill.isPending}
+          >
+            {roadmapBackfill.isPending ? "Checking Roadmap…" : "Check Roadmap for open questions"}
           </TTButton>
         </div>
       ) : null}
