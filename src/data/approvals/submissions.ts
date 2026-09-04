@@ -136,12 +136,16 @@ export interface BlogBatchItemInput {
   title: string;
   state: ApprovalItemState;
   exceptionReasons?: ExceptionReason[];
+  /** The canonical content item in Studio. The pointer, never a copy. */
+  itemId?: string;
   hitScore?: number;
   wordCount?: number;
   imageState?: "ready" | "missing" | "placeholder";
   seoState?: "ready" | "thin" | "missing";
   excerpt?: string;
+  unresolvedLinks?: number;
 }
+
 
 export interface BlogBatchInput {
   batchId: string;
@@ -187,9 +191,14 @@ export function blogBatchSubmission(input: BlogBatchInput): ApprovalSubmission {
         imageState: item.imageState ?? "ready",
         seoState: item.seoState ?? "ready",
         excerpt: item.excerpt ?? "",
+        unresolvedLinks: item.unresolvedLinks ?? 0,
+        ...(item.itemId ? { contentItemId: item.itemId } : {}),
       },
-      sourceEntity: { type: "blog_post", id: item.slug, label: item.title },
+      sourceEntity: item.itemId
+        ? { type: "content_item", id: item.itemId, label: item.title }
+        : { type: "blog_post", id: item.slug, label: item.title },
     })),
+
   };
 }
 

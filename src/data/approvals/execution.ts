@@ -225,7 +225,65 @@ async function executeRoadmapChange(
   };
 }
 
+/* ---------------------------------------------------------------- Content */
+
+/**
+ * An approved editorial batch is queued in Studio, one canonical post at a
+ * time, and nothing else. Publishing stays an explicit later act with its own
+ * provider receipt, so approving copy never puts an article on the website.
+ *
+ * Only the child items a person actually authorised are queued. Skipped and
+ * excepted posts are left exactly where they were.
+ */
+async function executeContentBatch(
+  request: ApprovalRequest,
+  context: ExecutionContext,
+  at: string,
+): Promise<ExecutionOutcome> {
+  const { approvalsService } = await import("@/data/supabase/approvals-service");
+  const loaded = await approvalsService.get(
+    { organizationId: context.organizationId, userId: context.userId },
+    request.id,
+  );
+  const approvedItems = (loaded?.items ?? []).filter((item) => item.state === "approved");
+  const itemIds = approvedItems
+    .map((item) => item.sourceEntity?.id ?? "")
+    .filter((id): id is string => Boolean(id));
+
+  if (itemIds.length === 0) {
+    return {
+      result: {
+        state: "unavailable",
+        adapterId: "content.publish_queue",
+        because:
+          "No posts in this batch were authorised, so Studio has nothing to queue. The decision is recorded.",
+        reference: reference(request),
+        at,
+      },
+    };
+  }
+
+  const { contentService } = await import("@/data/supabase/content-service");
+  const queued = await contentService.queueApproved(
+    { organizationId: context.organizationId, userId: context.userId },
+    request.sourceEntity.id,
+    itemIds,
+  );
+
+  return {
+    result: {
+      state: "queued",
+      adapterId: "content.publish_queue",
+      because: `${queued} ${queued === 1 ? "post is" : "posts are"} queued in Studio. Publishing to trusttai.com is a separate act, and only a provider receipt will mark a post published.`,
+      reference: `content_batch:${request.sourceEntity.id}`,
+      at,
+    },
+    nextStatus: "queued",
+  };
+}
+
 /* --------------------------------------------------------------- dispatch */
+
 
 /**
  * Hand an approved decision to the room that owns the work.
@@ -244,6 +302,8 @@ export async function executeApprovedRequest(
     return executeScoutRelationship(request, context, at);
   }
   if (request.approvalType === "roadmap_change") return executeRoadmapChange(request, context, at);
+  if (request.approvalType === "blog_batch") return executeContentBatch(request, context, at);
+
 
   const adapter = downstreamAdapter(request.approvalType);
   const result = adapter.handover(request, at);

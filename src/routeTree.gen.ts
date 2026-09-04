@@ -58,6 +58,8 @@ import { Route as ModulesStewardMemoryRouteImport } from './routes/modules.stewa
 import { Route as ModulesStewardTasksRouteImport } from './routes/modules.steward.tasks'
 import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
+import { Route as ApiPublicContentGenerateRouteImport } from './routes/api/public/content.generate'
+import { Route as ApiPublicContentPublishRouteImport } from './routes/api/public/content.publish'
 import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/public/intelligence.reason'
 import { Route as ApiPublicIntelligenceReconcileRouteImport } from './routes/api/public/intelligence.reconcile'
 import { Route as ApiPublicIntelligenceStatusRouteImport } from './routes/api/public/intelligence.status'
@@ -336,6 +338,17 @@ const ApiPublicCommsDraftRoute = ApiPublicCommsDraftRouteImport.update({
   path: '/api/public/comms/draft',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicContentGenerateRoute =
+  ApiPublicContentGenerateRouteImport.update({
+    id: '/api/public/content/generate',
+    path: '/api/public/content/generate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicContentPublishRoute = ApiPublicContentPublishRouteImport.update({
+  id: '/api/public/content/publish',
+  path: '/api/public/content/publish',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicIntelligenceReasonRoute =
   ApiPublicIntelligenceReasonRouteImport.update({
     id: '/api/public/intelligence/reason',
@@ -557,6 +570,8 @@ export interface FileRoutesByFullPath {
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
+  '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
@@ -631,6 +646,8 @@ export interface FileRoutesByTo {
   '/modules/scout': typeof ModulesScoutIndexRoute
   '/modules/steward': typeof ModulesStewardIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
+  '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
@@ -713,6 +730,8 @@ export interface FileRoutesById {
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
+  '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
@@ -796,6 +815,8 @@ export interface FileRouteTypes {
     | '/modules/scout/'
     | '/modules/steward/'
     | '/api/public/comms/draft'
+    | '/api/public/content/generate'
+    | '/api/public/content/publish'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
@@ -870,6 +891,8 @@ export interface FileRouteTypes {
     | '/modules/scout'
     | '/modules/steward'
     | '/api/public/comms/draft'
+    | '/api/public/content/generate'
+    | '/api/public/content/publish'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
@@ -951,6 +974,8 @@ export interface FileRouteTypes {
     | '/modules/scout/'
     | '/modules/steward/'
     | '/api/public/comms/draft'
+    | '/api/public/content/generate'
+    | '/api/public/content/publish'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
@@ -1002,6 +1027,8 @@ export interface RootRouteChildren {
   ApiLinkiExecuteRoute: typeof ApiLinkiExecuteRoute
   ModulesWebsitePageRoute: typeof ModulesWebsitePageRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
+  ApiPublicContentGenerateRoute: typeof ApiPublicContentGenerateRoute
+  ApiPublicContentPublishRoute: typeof ApiPublicContentPublishRoute
   ApiPublicIntelligenceReasonRoute: typeof ApiPublicIntelligenceReasonRoute
   ApiPublicIntelligenceReconcileRoute: typeof ApiPublicIntelligenceReconcileRoute
   ApiPublicIntelligenceStatusRoute: typeof ApiPublicIntelligenceStatusRoute
@@ -1374,6 +1401,20 @@ declare module '@tanstack/react-router' {
       path: '/api/public/comms/draft'
       fullPath: '/api/public/comms/draft'
       preLoaderRoute: typeof ApiPublicCommsDraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/content/generate': {
+      id: '/api/public/content/generate'
+      path: '/api/public/content/generate'
+      fullPath: '/api/public/content/generate'
+      preLoaderRoute: typeof ApiPublicContentGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/content/publish': {
+      id: '/api/public/content/publish'
+      path: '/api/public/content/publish'
+      fullPath: '/api/public/content/publish'
+      preLoaderRoute: typeof ApiPublicContentPublishRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/intelligence/reason': {
@@ -1757,6 +1798,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLinkiExecuteRoute: ApiLinkiExecuteRoute,
   ModulesWebsitePageRoute: ModulesWebsitePageRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
+  ApiPublicContentGenerateRoute: ApiPublicContentGenerateRoute,
+  ApiPublicContentPublishRoute: ApiPublicContentPublishRoute,
   ApiPublicIntelligenceReasonRoute: ApiPublicIntelligenceReasonRoute,
   ApiPublicIntelligenceReconcileRoute: ApiPublicIntelligenceReconcileRoute,
   ApiPublicIntelligenceStatusRoute: ApiPublicIntelligenceStatusRoute,
