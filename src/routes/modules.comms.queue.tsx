@@ -123,13 +123,29 @@ async function rejectDraft(draftId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-async function sendDraft(draftId: string): Promise<void> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Not authenticated.");
+/**
+ * A send that failed leaves the draft where a person can decide again, and
+ * Approvals must know: re-parking at the human boundary is the same boundary,
+ * so it goes back through the one governed intake rather than quietly sitting
+ * in Comms alone.
+ */
+async function reopenDraft(draftId: string, identity: WorkspaceIdentity): Promise<void> {
+  await supabase
+    .from("comms_drafts")
+    .update({ review_state: "needs_human_review", updated_at: new Date().toISOString() })
+    .eq("id", draftId)
+    .eq("review_state", "approved");
+  try {
+    const { submitCommsDraftForApproval } = await import("@/data/approvals/sources");
+    await submitCommsDraftForApproval(draftId, {
+      organizationId: identity.organizationId,
+      userId: identity.userId,
+    });
+  } catch (error) {
+    console.warn("[approvals] reopen intake deferred:", (error as Error).message);
+  }
+}
 
-  const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] as string;
   const res = await fetch(`${supabaseUrl}/functions/v1/comms-send`, {
     method: "POST",
     headers: {
