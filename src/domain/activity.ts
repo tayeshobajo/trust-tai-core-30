@@ -26,6 +26,12 @@ export type ActivityAction =
   | "decision_resolved"
   | "next_move_changed"
   | "flagged"
+  /* --- commercial truth (see src/domain/commercial.ts) ---
+   * Human-entered only. Amounts are never derived and never inferred. */
+  | "tier_changed"
+  | "sent"
+  | "signed"
+  | "declined"
   /** Scout: a person drafted a question for review. Nothing was sent. */
   | "question_drafted"
   /** Scout: a person marked a company as worth exploring in Roadmap. */
