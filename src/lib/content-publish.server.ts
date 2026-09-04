@@ -29,7 +29,10 @@ import {
 
 export interface PublishProviderStatus {
   configured: boolean;
-  endpoint: string | null;
+  /** Whether the endpoint exists at all. Never its value. */
+  endpointConfigured: boolean;
+  /** Whether the attempt ledger can be written. No ledger, no publish. */
+  ledgerConfigured: boolean;
   because: string;
 }
 
@@ -45,20 +48,46 @@ function transportToken(): string | null {
   return value && value.trim() ? value.trim() : null;
 }
 
-/** What the room may honestly say about publishing being wired at all. */
+function ledgerConfigured(): boolean {
+  const key =
+    process.env["TRUST_TAI_SUPABASE_SERVICE_KEY"] || process.env["SUPABASE_SERVICE_ROLE_KEY"];
+  return Boolean(key && key.trim());
+}
+
+/**
+ * What the room may honestly say about publishing being wired at all.
+ *
+ * Presence only. No endpoint, token or key value ever leaves this process.
+ */
 export function publishProviderStatus(): PublishProviderStatus {
-  const url = endpoint();
-  const token = transportToken();
-  if (!url || !token) {
+  const hasEndpoint = Boolean(endpoint() && transportToken());
+  const hasLedger = ledgerConfigured();
+  if (!hasEndpoint) {
     return {
       configured: false,
-      endpoint: url,
+      endpointConfigured: false,
+      ledgerConfigured: hasLedger,
       because:
         "No publishing endpoint is connected yet, so approved posts stay queued in Studio rather than pretending to go live.",
     };
   }
-  return { configured: true, endpoint: url, because: "Connected to the trusttai.com publisher." };
+  if (!hasLedger) {
+    return {
+      configured: false,
+      endpointConfigured: true,
+      ledgerConfigured: false,
+      because:
+        "Publishing is held closed: the attempt ledger cannot be written, and nothing is sent to trusttai.com that cannot be recorded first.",
+    };
+  }
+  return {
+    configured: true,
+    endpointConfigured: true,
+    ledgerConfigured: true,
+    because: "Connected to the trusttai.com publisher.",
+  };
 }
+
 
 /* -------------------------------------------------------------- database */
 
