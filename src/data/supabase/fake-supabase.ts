@@ -19,12 +19,84 @@ interface Filter {
   /** Range filters: inclusive lower / exclusive upper bound (string compare). */
   gte?: unknown;
   lt?: unknown;
+  /** Case-insensitive pattern, `%` wildcards, as PostgREST's ilike does. */
+  ilike?: string;
+  /** Anything but this value. */
+  not?: boolean;
+  /** A disjunction: the row matches when any branch matches. */
+  or?: Filter[];
+}
+
+/** How much this fake database was actually asked to hand back. */
+export interface FakeStats {
+  /** Every query run, whatever its shape. */
+  queries: number;
+  /** Rows materialised into results. A head count materialises none. */
+  rowsRead: number;
+}
+
+function matchesFilter(row: FakeRow, filter: Filter): boolean {
+  if (filter.or) return filter.or.some((branch) => matchesFilter(row, branch));
+  if (filter.ilike !== undefined) {
+    const pattern = new RegExp(
+      `^${filter.ilike.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*")}$`,
+      "i",
+    );
+    return pattern.test(String(row[filter.column] ?? ""));
+  }
+  if (filter.anyOf) {
+    const hit = filter.anyOf.includes(row[filter.column]);
+    return filter.not ? !hit : hit;
+  }
+  if (filter.gte !== undefined) return String(row[filter.column] ?? "") >= String(filter.gte);
+  if (filter.lt !== undefined) return String(row[filter.column] ?? "") < String(filter.lt);
+  const equal = row[filter.column] === filter.value;
+  return filter.not ? !equal : equal;
+}
+
+/**
+ * PostgREST's `or=(a.eq.1,b.ilike.%x%)` mini-language, enough of it for the
+ * board's server-side tab and search filtering.
+ */
+function parseOr(expression: string): Filter[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const character of expression) {
+    if (character === "(") depth += 1;
+    if (character === ")") depth -= 1;
+    if (character === "," && depth === 0) {
+      parts.push(current);
+      current = "";
+      continue;
+    }
+    current += character;
+  }
+  if (current) parts.push(current);
+
+  return parts.map((part) => {
+    const [column, operator, ...rest] = part.split(".");
+    const value = rest.join(".");
+    if (operator === "ilike") return { column: column!, value: null, ilike: value };
+    if (operator === "in") {
+      return {
+        column: column!,
+        value: null,
+        anyOf: value.replace(/^\(|\)$/g, "").split(",").map((entry) => entry.replace(/^"|"$/g, "")),
+      };
+    }
+    return { column: column!, value };
+  });
 }
 
 class Query implements PromiseLike<{ data: unknown; error: null }> {
   private filters: Filter[] = [];
-  private orderBy: { column: string; ascending: boolean } | null = null;
+  private orderBy: Array<{ column: string; ascending: boolean }> = [];
   private limitTo: number | null = null;
+  private rangeFrom: number | null = null;
+  private rangeTo: number | null = null;
+  private counting = false;
+  private headOnly = false;
 
   constructor(
     private readonly rows: FakeRow[],
@@ -55,8 +127,29 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     return this;
   }
 
+  neq(column: string, value: unknown): Query {
+    this.filters.push({ column, value, not: true });
+    return this;
+  }
+
+  ilike(column: string, pattern: string): Query {
+    this.filters.push({ column, value: null, ilike: pattern });
+    return this;
+  }
+
+  or(expression: string): Query {
+    this.filters.push({ column: "", value: null, or: parseOr(expression) });
+    return this;
+  }
+
+  range(from: number, to: number): Query {
+    this.rangeFrom = from;
+    this.rangeTo = to;
+    return this;
+  }
+
   order(column: string, options?: { ascending?: boolean }): Query {
-    this.orderBy = { column, ascending: options?.ascending !== false };
+    this.orderBy.push({ column, ascending: options?.ascending !== false });
     return this;
   }
 
@@ -65,26 +158,28 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     return this;
   }
 
-  select(): Query {
+  select(_columns?: string, options?: { count?: string; head?: boolean }): Query {
+    if (options?.count) this.counting = true;
+    if (options?.head) this.headOnly = true;
     return this;
   }
 
-  private matched(): FakeRow[] {
-    let rows = this.rows.filter((row) =>
-      this.filters.every((filter) => {
-        if (filter.anyOf) return filter.anyOf.includes(row[filter.column]);
-        if (filter.gte !== undefined) return String(row[filter.column] ?? "") >= String(filter.gte);
-        if (filter.lt !== undefined) return String(row[filter.column] ?? "") < String(filter.lt);
-        return row[filter.column] === filter.value;
-      }),
-    );
-    if (this.orderBy) {
-      const { column, ascending } = this.orderBy;
+  private filtered(): FakeRow[] {
+    let rows = this.rows.filter((row) => this.filters.every((filter) => matchesFilter(row, filter)));
+    for (const { column, ascending } of [...this.orderBy].reverse()) {
       rows = [...rows].sort((a, b) => {
         const left = String(a[column] ?? "");
         const right = String(b[column] ?? "");
         return ascending ? left.localeCompare(right) : right.localeCompare(left);
       });
+    }
+    return rows;
+  }
+
+  private matched(): FakeRow[] {
+    let rows = this.filtered();
+    if (this.rangeFrom !== null && this.rangeTo !== null) {
+      rows = rows.slice(this.rangeFrom, this.rangeTo + 1);
     }
     if (this.limitTo !== null) rows = rows.slice(0, this.limitTo);
     return rows;
@@ -150,7 +245,15 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
       return { data: target, error: null };
     }
 
-    return { data: this.matched(), error: null };
+    if (this.counting) {
+      const total = this.filtered().length;
+      const rows = this.headOnly ? [] : this.matched();
+      this.track?.(rows.length);
+      return { data: this.headOnly ? null : rows, error: null, count: total };
+    }
+    const rows = this.matched();
+    this.track?.(rows.length);
+    return { data: rows, error: null };
   }
 
   single(): { data: unknown; error: null } | PromiseLike<{ data: unknown; error: null }> {
