@@ -111,11 +111,7 @@ function Article({ identity, itemId }: { identity: WorkspaceIdentity; itemId: st
           Back to Studio
         </Link>
         {approval.data ? (
-          <Link
-            to="/modules/approvals"
-            search={{ request: approval.data.id }}
-            className="text-sm underline"
-          >
+          <Link to="/modules/approvals" className="text-sm underline">
             Open the approval for this batch ({approval.data.status.replace(/_/g, " ")})
           </Link>
         ) : (
