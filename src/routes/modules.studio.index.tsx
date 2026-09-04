@@ -83,10 +83,29 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
   const context = useMemo(() => ({ organizationId, userId }), [organizationId, userId]);
   const queryClient = useQueryClient();
 
-  const [keyword, setKeyword] = useState("");
-  const [count, setCount] = useState(10);
   const [progress, setProgress] = useState<string[]>([]);
   const [openBatchId, setOpenBatchId] = useState<string | null>(null);
+
+  const sources = useQuery({
+    queryKey: ["studio", "sources", organizationId],
+    queryFn: () => contentCommandService.listSources(organizationId),
+  });
+
+  const addSource = useMutation({
+    mutationFn: async (input: PastedSource) => contentCommandService.addSource(context, input),
+    onSuccess: (source) => {
+      toast.success(`Kept "${source.label}" as a reference.`);
+      void queryClient.invalidateQueries({ queryKey: ["studio", "sources"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const removeSource = useMutation({
+    mutationFn: async (sourceId: string) => contentCommandService.removeSource(context, sourceId),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["studio", "sources"] }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
 
   const batches = useQuery({
     queryKey: ["studio", "batches", organizationId],
