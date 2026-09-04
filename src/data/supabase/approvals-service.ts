@@ -279,7 +279,7 @@ export const approvalsService = {
         existing.title !== input.title ||
         existing.summary !== input.summary ||
         existing.whyItNeedsYou !== input.whyItNeedsYou ||
-        JSON.stringify(existing.payload ?? {}) !== JSON.stringify(input.payload ?? {});
+        stableJson(existing.payload ?? {}) !== stableJson(input.payload ?? {});
 
       const { error } = await supabase
         .from("approval_requests")
