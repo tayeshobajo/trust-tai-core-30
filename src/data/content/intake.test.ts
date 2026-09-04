@@ -67,7 +67,7 @@ describe("content batch submission", () => {
   it("submits one batch as one decision, with one child per post", () => {
     const submission = batchSubmissionFor(batch, [
       item(),
-      item({ id: "citm_2", slug: "b", state: "exception", exceptionReasons: ["thin_draft"] }),
+      item({ id: "citm_2", slug: "b", state: "exception", exceptionReasons: ["weak_hit"] }),
     ]);
 
     expect(submission.approvalType).toBe("blog_batch");
