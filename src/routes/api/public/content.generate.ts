@@ -60,6 +60,29 @@ export const Route = createFileRoute("/api/public/content/generate")({
               .filter((entry) => entry.path)
           : [];
 
+        const instructions = String(body["instructions"] ?? "").slice(0, 4000);
+        const settings = Array.isArray(body["settings"])
+          ? (body["settings"] as { label?: string; value?: string }[])
+              .map((entry) => ({
+                label: String(entry?.label ?? "").trim(),
+                value: String(entry?.value ?? "").trim(),
+              }))
+              .filter((entry) => entry.label && entry.value)
+              .slice(0, 12)
+          : [];
+        /* Bounded on the way in as well as on the way out: reference material
+           is evidence, not an unlimited prompt budget. */
+        const voiceReferences = Array.isArray(body["voice_references"])
+          ? (body["voice_references"] as { label?: string; kind?: string; excerpt?: string }[])
+              .map((entry) => ({
+                label: String(entry?.label ?? "").trim(),
+                kind: String(entry?.kind ?? "text").trim(),
+                excerpt: String(entry?.excerpt ?? "").slice(0, 2400),
+              }))
+              .filter((entry) => entry.excerpt.trim())
+              .slice(0, 6)
+          : [];
+
         const gateway = createLovableAiGatewayRunIdFetch(getLovableAiGatewayRunId(request));
         const encoder = new TextEncoder();
         const stream = new ReadableStream({
@@ -71,8 +94,12 @@ export const Route = createFileRoute("/api/public/content/generate")({
                 keyword,
                 count,
                 knownPaths,
+                instructions,
+                settings,
+                voiceReferences,
                 gateway,
               })) {
+
                 controller.enqueue(encoder.encode(`${JSON.stringify(stage)}\n`));
               }
             } catch (error) {
