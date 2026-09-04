@@ -184,6 +184,9 @@ async function planCluster(
   const { raw, provider, model } = await callModel({
     instructions: PLAN_INSTRUCTIONS,
     input: JSON.stringify({
+      /* The provider requires the word json in the input to return a json
+         object, so the request carries the format it expects back. */
+      respond_with: "json",
       keyword: input.keyword,
       count: input.count,
       known_paths: input.knownPaths.slice(0, 60),
@@ -264,6 +267,7 @@ async function writePost(
     const { raw, provider, model } = await callModel({
       instructions: POST_INSTRUCTIONS,
       input: JSON.stringify({
+        respond_with: "json",
         keyword: plan.keyword,
         cluster: plan.topicCluster,
         search_intent: plan.searchIntent,

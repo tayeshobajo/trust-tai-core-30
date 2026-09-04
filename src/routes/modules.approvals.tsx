@@ -34,6 +34,7 @@ import { executeApprovedRequest } from "@/data/approvals/execution";
 import { backfillCommsApprovals } from "@/data/approvals/intake";
 import { backfillScoutApprovals } from "@/data/approvals/scout-intake";
 import { backfillRoadmapApprovals } from "@/data/approvals/roadmap-intake";
+import { backfillContentApprovals } from "@/data/content/intake";
 import { accessContext, can } from "@/domain/access";
 import {
   BOARD_COLUMNS,
@@ -406,6 +407,21 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  /* Editorial batches Studio prepared before intake ran on its own. Same
+     source adapter, same batch id, so a second run changes nothing. */
+  const contentBackfill = useMutation({
+    mutationFn: () => backfillContentApprovals(context),
+    onSuccess: (report) => {
+      toast.success(
+        report.scanned === 0
+          ? "No editorial batch is waiting on a decision."
+          : `${report.submitted} of ${report.scanned} editorial batches are in the queue.`,
+      );
+      void queryClient.invalidateQueries({ queryKey: ["approvals"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const open = detail.data;
 
   return (
@@ -489,6 +505,14 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
             disabled={roadmapBackfill.isPending}
           >
             {roadmapBackfill.isPending ? "Checking Roadmap…" : "Check Roadmap for open questions"}
+          </TTButton>
+          <TTButton
+            variant="quiet"
+            size="sm"
+            onClick={() => contentBackfill.mutate()}
+            disabled={contentBackfill.isPending}
+          >
+            {contentBackfill.isPending ? "Checking Studio…" : "Check Studio for prepared batches"}
           </TTButton>
         </div>
       ) : null}

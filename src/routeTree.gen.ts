@@ -57,6 +57,8 @@ import { Route as ModulesStewardAgentsRouteImport } from './routes/modules.stewa
 import { Route as ModulesStewardMeetingsRouteImport } from './routes/modules.steward.meetings'
 import { Route as ModulesStewardMemoryRouteImport } from './routes/modules.steward.memory'
 import { Route as ModulesStewardTasksRouteImport } from './routes/modules.steward.tasks'
+import { Route as ModulesStudioIndexRouteImport } from './routes/modules.studio.index'
+import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio.$itemId'
 import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicContentGenerateRouteImport } from './routes/api/public/content.generate'
@@ -334,6 +336,16 @@ const ModulesStewardTasksRoute = ModulesStewardTasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => ModulesStewardRoute,
 } as any)
+const ModulesStudioIndexRoute = ModulesStudioIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ModulesStudioRoute,
+} as any)
+const ModulesStudioItemIdRoute = ModulesStudioItemIdRouteImport.update({
+  id: '/$itemId',
+  path: '/$itemId',
+  getParentRoute: () => ModulesStudioRoute,
+} as any)
 const ModulesWebsitePageRoute = ModulesWebsitePageRouteImport.update({
   id: '/modules/website_/page',
   path: '/modules/website/page',
@@ -542,7 +554,7 @@ export interface FileRoutesByFullPath {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
-  '/modules/studio': typeof ModulesStudioRoute
+  '/modules/studio': typeof ModulesStudioRouteWithChildren
   '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
@@ -570,12 +582,14 @@ export interface FileRoutesByFullPath {
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/modules/steward/': typeof ModulesStewardIndexRoute
+  '/modules/studio/': typeof ModulesStudioIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
@@ -620,7 +634,6 @@ export interface FileRoutesByTo {
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
-  '/modules/studio': typeof ModulesStudioRoute
   '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
@@ -647,12 +660,14 @@ export interface FileRoutesByTo {
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
   '/modules/projects': typeof ModulesProjectsIndexRoute
   '/modules/roadmap': typeof ModulesRoadmapIndexRoute
   '/modules/scout': typeof ModulesScoutIndexRoute
   '/modules/steward': typeof ModulesStewardIndexRoute
+  '/modules/studio': typeof ModulesStudioIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
@@ -704,7 +719,7 @@ export interface FileRoutesById {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
-  '/modules/studio': typeof ModulesStudioRoute
+  '/modules/studio': typeof ModulesStudioRouteWithChildren
   '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
@@ -732,12 +747,14 @@ export interface FileRoutesById {
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/website_/page': typeof ModulesWebsitePageRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/modules/steward/': typeof ModulesStewardIndexRoute
+  '/modules/studio/': typeof ModulesStudioIndexRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
@@ -818,12 +835,14 @@ export interface FileRouteTypes {
     | '/modules/steward/meetings'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
+    | '/modules/studio/$itemId'
     | '/modules/website/page'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
     | '/modules/scout/'
     | '/modules/steward/'
+    | '/modules/studio/'
     | '/api/public/comms/draft'
     | '/api/public/content/generate'
     | '/api/public/content/publish'
@@ -868,7 +887,6 @@ export interface FileRouteTypes {
     | '/modules/conductor'
     | '/modules/ops'
     | '/modules/pulse'
-    | '/modules/studio'
     | '/modules/website'
     | '/settings/apps'
     | '/settings/diagnostics'
@@ -895,12 +913,14 @@ export interface FileRouteTypes {
     | '/modules/steward/agents'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
+    | '/modules/studio/$itemId'
     | '/modules/website/page'
     | '/modules/comms'
     | '/modules/projects'
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/modules/studio'
     | '/api/public/comms/draft'
     | '/api/public/content/generate'
     | '/api/public/content/publish'
@@ -979,12 +999,14 @@ export interface FileRouteTypes {
     | '/modules/steward/meetings'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
+    | '/modules/studio/$itemId'
     | '/modules/website_/page'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
     | '/modules/scout/'
     | '/modules/steward/'
+    | '/modules/studio/'
     | '/api/public/comms/draft'
     | '/api/public/content/generate'
     | '/api/public/content/publish'
@@ -1035,7 +1057,7 @@ export interface RootRouteChildren {
   ModulesRoadmapRoute: typeof ModulesRoadmapRouteWithChildren
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
   ModulesStewardRoute: typeof ModulesStewardRouteWithChildren
-  ModulesStudioRoute: typeof ModulesStudioRoute
+  ModulesStudioRoute: typeof ModulesStudioRouteWithChildren
   ModulesWebsiteRoute: typeof ModulesWebsiteRoute
   ApiLinkiExecuteRoute: typeof ApiLinkiExecuteRoute
   ModulesWebsitePageRoute: typeof ModulesWebsitePageRoute
@@ -1408,6 +1430,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/modules/steward/tasks'
       preLoaderRoute: typeof ModulesStewardTasksRouteImport
       parentRoute: typeof ModulesStewardRoute
+    }
+    '/modules/studio/': {
+      id: '/modules/studio/'
+      path: '/'
+      fullPath: '/modules/studio/'
+      preLoaderRoute: typeof ModulesStudioIndexRouteImport
+      parentRoute: typeof ModulesStudioRoute
+    }
+    '/modules/studio/$itemId': {
+      id: '/modules/studio/$itemId'
+      path: '/$itemId'
+      fullPath: '/modules/studio/$itemId'
+      preLoaderRoute: typeof ModulesStudioItemIdRouteImport
+      parentRoute: typeof ModulesStudioRoute
     }
     '/modules/website_/page': {
       id: '/modules/website_/page'
@@ -1799,6 +1835,20 @@ const ModulesStewardRouteWithChildren = ModulesStewardRoute._addFileChildren(
   ModulesStewardRouteChildren,
 )
 
+interface ModulesStudioRouteChildren {
+  ModulesStudioItemIdRoute: typeof ModulesStudioItemIdRoute
+  ModulesStudioIndexRoute: typeof ModulesStudioIndexRoute
+}
+
+const ModulesStudioRouteChildren: ModulesStudioRouteChildren = {
+  ModulesStudioItemIdRoute: ModulesStudioItemIdRoute,
+  ModulesStudioIndexRoute: ModulesStudioIndexRoute,
+}
+
+const ModulesStudioRouteWithChildren = ModulesStudioRoute._addFileChildren(
+  ModulesStudioRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
@@ -1814,7 +1864,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesRoadmapRoute: ModulesRoadmapRouteWithChildren,
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
   ModulesStewardRoute: ModulesStewardRouteWithChildren,
-  ModulesStudioRoute: ModulesStudioRoute,
+  ModulesStudioRoute: ModulesStudioRouteWithChildren,
   ModulesWebsiteRoute: ModulesWebsiteRoute,
   ApiLinkiExecuteRoute: ApiLinkiExecuteRoute,
   ModulesWebsitePageRoute: ModulesWebsitePageRoute,
