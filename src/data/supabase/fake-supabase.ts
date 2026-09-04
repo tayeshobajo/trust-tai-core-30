@@ -89,7 +89,13 @@ function parseOr(expression: string): Filter[] {
   });
 }
 
-class Query implements PromiseLike<{ data: unknown; error: null }> {
+interface FakeResult {
+  data: unknown;
+  error: null;
+  count?: number;
+}
+
+class Query implements PromiseLike<FakeResult> {
   private filters: Filter[] = [];
   private orderBy: Array<{ column: string; ascending: boolean }> = [];
   private limitTo: number | null = null;
@@ -105,6 +111,8 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     private readonly onWrite?: (row: FakeRow) => void,
     /** Columns that make an upsert idempotent, as PostgREST's on_conflict does. */
     private readonly conflict: string[] = [],
+    /** Told how many rows each run actually handed back. */
+    private readonly track?: (rows: number) => void,
   ) {}
 
   eq(column: string, value: unknown): Query {
@@ -185,7 +193,7 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     return rows;
   }
 
-  private run(): { data: unknown; error: null } {
+  private run(): FakeResult {
     if (this.mode === "upsert") {
       const bodies = Array.isArray(this.body) ? this.body : [this.body ?? {}];
       const written = bodies.map((body) => {
@@ -256,19 +264,18 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
     return { data: rows, error: null };
   }
 
-  single(): { data: unknown; error: null } | PromiseLike<{ data: unknown; error: null }> {
+  single(): PromiseLike<FakeResult> {
     const result = this.run();
     const data = Array.isArray(result.data) ? (result.data[0] ?? null) : result.data;
     return Promise.resolve({ data, error: null });
   }
 
-  maybeSingle(): PromiseLike<{ data: unknown; error: null }> {
-    return this.single() as PromiseLike<{ data: unknown; error: null }>;
+  maybeSingle(): PromiseLike<FakeResult> {
+    return this.single();
   }
 
-  then<TResult1 = { data: unknown; error: null }, TResult2 = never>(
-    onfulfilled?:
-      ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+  then<TResult1 = FakeResult, TResult2 = never>(
+    onfulfilled?: ((value: FakeResult) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): PromiseLike<TResult1 | TResult2> {
     return Promise.resolve(this.run()).then(onfulfilled, onrejected);
@@ -277,8 +284,11 @@ class Query implements PromiseLike<{ data: unknown; error: null }> {
 
 export interface FakeSupabase {
   tables: Record<string, FakeRow[]>;
+  /** What the fake database was asked for, so a test can prove bounded reads. */
+  stats: FakeStats;
+  resetStats: () => void;
   from: (table: string) => {
-    select: (columns?: string) => Query;
+    select: (columns?: string, options?: { count?: string; head?: boolean }) => Query;
     insert: (body: FakeRow | FakeRow[]) => Query;
     upsert: (body: FakeRow | FakeRow[], options?: { onConflict?: string }) => Query;
     update: (body: FakeRow) => Query;
@@ -290,13 +300,24 @@ export interface FakeSupabase {
 export function createFakeSupabase(seed: Record<string, FakeRow[]> = {}): FakeSupabase {
   const tables: Record<string, FakeRow[]> = { ...seed };
   const rowsFor = (table: string) => (tables[table] ??= []);
+  const stats: FakeStats = { queries: 0, rowsRead: 0 };
+  const track = (rows: number) => {
+    stats.queries += 1;
+    stats.rowsRead += rows;
+  };
 
   return {
     tables,
+    stats,
+    resetStats() {
+      stats.queries = 0;
+      stats.rowsRead = 0;
+    },
     from(table: string) {
       const rows = rowsFor(table);
       return {
-        select: () => new Query(rows, "select"),
+        select: (columns?: string, options?: { count?: string; head?: boolean }) =>
+          new Query(rows, "select", undefined, undefined, [], track).select(columns, options),
         insert: (body: FakeRow | FakeRow[]) => new Query(rows, "insert", body),
         upsert: (body: FakeRow | FakeRow[], options?: { onConflict?: string }) =>
           new Query(
