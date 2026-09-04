@@ -26,6 +26,12 @@ export type ActivityAction =
   | "decision_resolved"
   | "next_move_changed"
   | "flagged"
+  /* --- commercial truth (see src/domain/commercial.ts) ---
+   * Human-entered only. Amounts are never derived and never inferred. */
+  | "tier_changed"
+  | "sent"
+  | "signed"
+  | "declined"
   /** Scout: a person drafted a question for review. Nothing was sent. */
   | "question_drafted"
   /** Scout: a person marked a company as worth exploring in Roadmap. */
@@ -90,7 +96,19 @@ export type ActivityAction =
  * governance history only. This is a naming scope, never a licence to create a
  * parallel entity store.
  */
-export type ActivityScope = EntityType | "ops" | "studio" | "conductor" | "website" | "linki";
+/**
+ * `proposal` is a naming scope for commercial state that already lives on the
+ * prospect -> roadmap lineage. It is not a licence to create a deal entity or
+ * a second pipeline.
+ */
+export type ActivityScope =
+  | EntityType
+  | "ops"
+  | "studio"
+  | "conductor"
+  | "website"
+  | "linki"
+  | "proposal";
 
 /** Event name is always `scope.action`, e.g. "project.status_changed". */
 export type ActivityName = `${ActivityScope}.${ActivityAction}`;

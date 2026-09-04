@@ -102,6 +102,33 @@ export const SUITE_EVENTS = {
     emittedBy: "roadmap",
     meaning: "A person answered an open roadmap decision.",
   },
+  /* --- commercial truth (see src/domain/commercial.ts) ---
+   * A proposal is commercial state on the existing prospect -> roadmap
+   * lineage, so Roadmap owns and emits it. There is no deal object and no
+   * second pipeline. Amounts are human-entered, never derived. */
+  PROPOSAL_SENT: {
+    name: "proposal.sent",
+    emittedBy: "roadmap",
+    meaning: "A person sent a proposal to a company, at a stated amount.",
+  },
+  PROPOSAL_SIGNED: {
+    name: "proposal.signed",
+    emittedBy: "roadmap",
+    meaning:
+      "A person recorded that a proposal was signed. Diagnose revenue is recognised in full in this week.",
+  },
+  PROPOSAL_DECLINED: {
+    name: "proposal.declined",
+    emittedBy: "roadmap",
+    meaning: "A person recorded that a proposal was declined. Nothing is recognised.",
+  },
+  CLIENT_TIER_CHANGED: {
+    name: "client.tier_changed",
+    emittedBy: "roadmap",
+    meaning:
+      "A person moved a company between Diagnose, Build and Run. A change into Build carries the human-entered phase amount.",
+  },
+
   PROJECT_STARTED: {
     name: "project.started",
     emittedBy: "projects",
