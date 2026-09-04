@@ -270,26 +270,39 @@ export const approvalsService = {
         const settled = await loadItems(context, requestId);
         return toRequest(existingRow.data as Row, settled);
       }
-
+      /* A resubmit is only news when the work changed or a revision was asked
+         for. Re-offering the identical request must leave the record exactly
+         as it was, or the history stops meaning anything. */
+      const afterRevision = existing.status === "revision_requested";
+      const changed =
+        afterRevision ||
+        existing.title !== input.title ||
+        existing.summary !== input.summary ||
+        existing.whyItNeedsYou !== input.whyItNeedsYou ||
+        JSON.stringify(existing.payload ?? {}) !== JSON.stringify(input.payload ?? {});
 
       const { error } = await supabase
         .from("approval_requests")
         .update({
           ...base,
           status: input.status ?? "needs_review",
-          revision: existing.status === "revision_requested" ? existing.revision + 1 : existing.revision,
+          revision: afterRevision ? existing.revision + 1 : existing.revision,
         })
         .eq("organization_id", context.organizationId)
         .eq("id", requestId);
       if (error) throw new Error(missingTable(error) ? MISSING : error.message);
 
-      await writeEvent(
-        context,
-        requestId,
-        "resubmitted",
-        `${submittedBy.label} resubmitted this after a revision request.`,
-        { type: submittedBy.type, id: submittedBy.id, label: submittedBy.label },
-      );
+      if (changed) {
+        await writeEvent(
+          context,
+          requestId,
+          "resubmitted",
+          afterRevision
+            ? `${submittedBy.label} resubmitted this after a revision request.`
+            : `${submittedBy.label} updated this before you decided.`,
+          { type: submittedBy.type, id: submittedBy.id, label: submittedBy.label },
+        );
+      }
     } else {
       requestId = id("apr");
       const { error } = await supabase.from("approval_requests").insert({
