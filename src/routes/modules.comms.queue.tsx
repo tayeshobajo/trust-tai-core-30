@@ -240,11 +240,7 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
     },
     onError: async (err: Error, id: string) => {
       toast.error(err.message);
-      await supabase
-        .from("comms_drafts")
-        .update({ review_state: "needs_human_review", updated_at: new Date().toISOString() })
-        .eq("id", id)
-        .eq("review_state", "approved");
+      await reopenDraft(id, identity);
     },
   });
 
