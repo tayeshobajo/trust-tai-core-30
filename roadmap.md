@@ -35,11 +35,12 @@ No phase is complete, so no phase has received its completion weight.
 | P0-02 | Approvals schema live | Production Verified | **Production Verified** | `approval_requests` answers 200 in the production project |
 | P0-03 | Invite email end to end | Human Accepted | Pending, human gate | `RESEND_API_KEY` is configured; no delivered invite has been observed here |
 | P0-04 | Gmail send re-consent plus one real governed reply | Human Accepted | Pending, human gate | Requires a real re-consent and a real send; not performed |
-| P0-05 | Add-to-Comms production proof | Production Verified | Pending, needs verification | Code exists (`src/routes/modules.comms.to-scout.tsx`, intake services); no production run observed |
-| P0-06 | Public `content-images` bucket | Production Verified | Not started | `TRUST_TAI_IMAGE_BUCKET_PUBLIC` is not set; only `project-files` and `comms-drafts` buckets exist |
-| P0-07 | Publish endpoint configured | Production Verified | Not started | `TRUST_TAI_PUBLISH_ENDPOINT` and `TRUST_TAI_PUBLISH_TOKEN` are both unset |
-| P0-08 | One controlled article published and independently verified | Human Accepted | Pending, human gate, blocked by P0-06 and P0-07 | Nothing published |
-| P0-09 | Paperclip bridge verified | Production Verified | Pending | `PAPERCLIP_API_URL` unset, so the app is on the loopback default and stays SYNCHRONIZED (`docs/paperclip-hosting.md`) |
+| P0-05 | Add-to-Comms production proof | Production Verified | **Production Verified** | Two real `prospect.handed_over` events in the production stream (Mull IT 2026-08-25, Schaefer Marketing 2026-08-27), each with a human actor and "Nothing was sent"; matching `comms_relationships` rows carry `source=scout_handoff`, the originating `prospect_id`, the named contact and the observed/inferred/decided tiers intact. Read-only verification, nothing created |
+| P0-06 | Public `content-images` bucket | Production Verified | **Production Verified** | Bucket created in the production project: public, 10 MB limit, images only. A probe object uploaded with the server key was readable anonymously at the public URL (200) and then deleted; anonymous list and anonymous upload were both refused (400). No other bucket or policy touched. `TRUST_TAI_IMAGE_BUCKET_PUBLIC` now set |
+| P0-07 | Publish endpoint configured | Production Verified | Not started, blocked on external configuration | `TRUST_TAI_PUBLISH_ENDPOINT` and `TRUST_TAI_PUBLISH_TOKEN` are absent and the repo holds no other trusttai.com publisher reference (`docs/content-engine.md:72` is the only mention). `GET /api/public/content/publish` reports `endpointConfigured:false`. Requires a human to stand up the publisher route on trusttai.com and supply endpoint plus token |
+| P0-08 | One controlled article published and independently verified | Human Accepted | Pending, human gate, blocked by P0-07 and P8-03 | Nothing published |
+| P0-09 | Paperclip bridge verified | Production Verified | **Production Verified**, synchronized path only | `paperclip_sync_state` in production advanced twice while observed (22:15:16 -> 22:20:00 -> 22:20:21 UTC) with `consecutive_failures=0` and `last_error=null`, so the reconciliation bridge is genuinely running and writing production truth. Direct live mode is still unavailable: `PAPERCLIP_API_URL` is unset, so the app reads the projection and correctly labels itself synchronized (`docs/paperclip-hosting.md`). Agents remained paused; no reconcile or wake was triggered |
+
 
 Agents remain paused for the whole of P0.
 
