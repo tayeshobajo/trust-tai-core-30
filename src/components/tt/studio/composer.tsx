@@ -6,10 +6,14 @@
  * they can correct before anything runs, and every setting says whether it
  * came from their words, from a choice they made, or from a default.
  *
+ * Voice & Sources is a library, not a bin. Material attached during this
+ * request is active for it. Material saved earlier stays saved, but has to
+ * be included on purpose, so nothing quietly influences writing forever.
+ *
  * The composer never writes and never publishes. It produces a request.
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { MetaPill, SectionHeading, TTButton, TTCard, TTInput } from "@/components/tt/primitives";
 import {
@@ -25,6 +29,7 @@ import {
   EXTRACTION_LABEL,
   extractionPlan,
   kindForFile,
+  provenanceLine,
   usableAsVoice,
   type ContentSource,
   type ContentSourceKind,
@@ -63,6 +68,17 @@ const ORIGIN_LABEL: Record<RequestSetting["origin"], string> = {
   default: "default",
 };
 
+const KIND_LABEL: Record<ContentSourceKind, string> = {
+  text: "Pasted text",
+  markdown: "Markdown",
+  linkedin: "LinkedIn writing",
+  article: "Article",
+  audio: "Recording",
+  video: "Video",
+  document: "Document",
+  url: "Link",
+};
+
 const EXAMPLES = [
   "Write 10 posts about fractional operations for founders, practical, around 1200 words each.",
   "Six posts on why RevOps projects stall, for operations leads, with a case-shaped structure.",
@@ -91,11 +107,26 @@ export function StudioComposer({
   const [prompt, setPrompt] = useState("");
   const [overrides, setOverrides] = useState<Partial<Record<keyof ContentRequestSettings, string>>>({});
   const [countOverride, setCountOverride] = useState<number | null>(null);
+  const [refine, setRefine] = useState(false);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [pasteOpen, setPasteOpen] = useState(false);
+  const [attach, setAttach] = useState<"none" | "text" | "link">("none");
   const [pasteLabel, setPasteLabel] = useState("");
   const [pasteText, setPasteText] = useState("");
+  const [linkLabel, setLinkLabel] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement | null>(null);
+
+  /* Anything already in the library when this screen opened is "saved
+     material". Anything that appears afterwards was attached for this
+     request, so it starts active. */
+  const librarySnapshot = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (librarySnapshot.current === null && sources.length >= 0) {
+      librarySnapshot.current = new Set(sources.map((source) => source.id));
+    }
+  }, [sources]);
+  const savedBefore = librarySnapshot.current ?? new Set<string>();
 
   /* Interpretation is deterministic: no model call happens before a person
      has seen the plan and agreed with it. */
@@ -106,16 +137,57 @@ export function StudioComposer({
       if (!value?.trim()) continue;
       settings[key as keyof ContentRequestSettings] = { value: value.trim(), origin: "explicit" };
     }
-    return {
-      ...base,
-      count: countOverride ?? base.count,
-      settings,
-    };
+    return { ...base, count: countOverride ?? base.count, settings };
   }, [prompt, overrides, countOverride]);
 
-  const usable = sources.filter(usableAsVoice);
-  const activeSources = usable.filter((source) => selected[source.id] !== false);
+  const isActive = (source: ContentSource) => {
+    if (!usableAsVoice(source)) return false;
+    const explicit = selected[source.id];
+    if (explicit !== undefined) return explicit;
+    return !savedBefore.has(source.id);
+  };
+
+  const attached = sources.filter((source) => !savedBefore.has(source.id));
+  const library = sources.filter((source) => savedBefore.has(source.id));
+  const activeSources = sources.filter(isActive);
   const blockers = requestBlockers(request);
+
+  function keepPastedText() {
+    const text = pasteText.trim();
+    if (!text) return;
+    onAddPasted({
+      kind: "text",
+      label: pasteLabel.trim() || "Pasted text",
+      origin: "pasted into Studio",
+      mimeType: "text/plain",
+      byteSize: new Blob([text]).size,
+      extractedText: text,
+      extractionState: "extracted",
+      extractionNote: "Pasted directly, so it was read exactly as given.",
+    });
+    setPasteText("");
+    setPasteLabel("");
+    setAttach("none");
+  }
+
+  function keepLink() {
+    const url = linkUrl.trim();
+    if (!url) return;
+    const plan = extractionPlan("url");
+    onAddPasted({
+      kind: "url",
+      label: linkLabel.trim() || url,
+      origin: url,
+      mimeType: "text/uri-list",
+      byteSize: 0,
+      extractedText: "",
+      extractionState: plan.state,
+      extractionNote: plan.note,
+    });
+    setLinkUrl("");
+    setLinkLabel("");
+    setAttach("none");
+  }
 
   return (
     <div className="space-y-6">
@@ -155,9 +227,9 @@ export function StudioComposer({
             <p className="text-sm font-medium">Here is what I understood</p>
             <p className="mt-1 text-sm text-muted-foreground">{planLine(request, activeSources.length)}</p>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 flex flex-wrap items-center gap-3">
               <label className="text-sm">
-                <span className="text-muted-foreground">How many posts</span>
+                <span className="text-muted-foreground">Posts</span>{" "}
                 <TTInput
                   type="number"
                   min={1}
@@ -165,30 +237,41 @@ export function StudioComposer({
                   value={request.count}
                   disabled={running}
                   onChange={(event) => setCountOverride(Number(event.target.value) || 1)}
-                  className="mt-1"
+                  className="mt-1 inline-block h-9 w-24 px-3"
                 />
               </label>
-
-              {(Object.keys(SETTING_LABEL) as (keyof ContentRequestSettings)[]).map((key) => {
-                const setting = request.settings[key];
-                return (
-                  <label key={key} className="text-sm">
-                    <span className="text-muted-foreground">
-                      {SETTING_LABEL[key]}{" "}
-                      <span className="text-xs">({ORIGIN_LABEL[setting.origin]})</span>
-                    </span>
-                    <TTInput
-                      value={overrides[key] ?? setting.value}
-                      disabled={running}
-                      onChange={(event) =>
-                        setOverrides((current) => ({ ...current, [key]: event.target.value }))
-                      }
-                      className="mt-1"
-                    />
-                  </label>
-                );
-              })}
+              <button
+                type="button"
+                onClick={() => setRefine((open) => !open)}
+                className="text-sm underline text-muted-foreground"
+              >
+                {refine ? "Hide the details" : "Change the details"}
+              </button>
             </div>
+
+            {refine ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {(Object.keys(SETTING_LABEL) as (keyof ContentRequestSettings)[]).map((key) => {
+                  const setting = request.settings[key];
+                  return (
+                    <label key={key} className="text-sm">
+                      <span className="text-muted-foreground">
+                        {SETTING_LABEL[key]}{" "}
+                        <span className="text-xs">({ORIGIN_LABEL[setting.origin]})</span>
+                      </span>
+                      <TTInput
+                        value={overrides[key] ?? setting.value}
+                        disabled={running}
+                        onChange={(event) =>
+                          setOverrides((current) => ({ ...current, [key]: event.target.value }))
+                        }
+                        className="mt-1"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -202,9 +285,7 @@ export function StudioComposer({
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <TTButton
-            onClick={() =>
-              onSubmit({ request, sourceIds: activeSources.map((source) => source.id) })
-            }
+            onClick={() => onSubmit({ request, sourceIds: activeSources.map((source) => source.id) })}
             disabled={running || blockers.length > 0}
           >
             {running ? "Writing" : "Prepare the batch"}
@@ -227,30 +308,60 @@ export function StudioComposer({
 
       <TTCard className="p-6">
         <SectionHeading
-          title="What it should sound like"
-          description="Attach writing you already own. Studio uses it as reference for cadence, never as facts and never copied."
+          title="Voice & Sources"
+          description="Writing you already own, kept once and reused. Studio uses it as reference for cadence, never as facts and never copied."
         />
 
-        <div className="mt-4 flex flex-wrap gap-3">
-          <TTButton variant="secondary" onClick={() => setPasteOpen((open) => !open)}>
-            {pasteOpen ? "Close" : "Paste text"}
-          </TTButton>
-          <TTButton variant="secondary" onClick={() => fileInput.current?.click()}>
-            Add a file
-          </TTButton>
+        <div
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            for (const file of Array.from(event.dataTransfer.files ?? [])) onAddFile(file);
+          }}
+          className={`mt-2 rounded-lg border border-dashed p-5 text-center transition ${
+            dragging ? "border-primary bg-primary/5" : "border-border"
+          }`}
+        >
+          <p className="text-sm">Drop files here</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Text and Markdown are read. PDFs, documents and recordings are kept as references and say
+            so.
+          </p>
+          <div className="mt-3 flex flex-wrap justify-center gap-3">
+            <TTButton variant="secondary" onClick={() => fileInput.current?.click()}>
+              Choose a file
+            </TTButton>
+            <TTButton
+              variant="secondary"
+              onClick={() => setAttach((current) => (current === "text" ? "none" : "text"))}
+            >
+              Paste writing
+            </TTButton>
+            <TTButton
+              variant="secondary"
+              onClick={() => setAttach((current) => (current === "link" ? "none" : "link"))}
+            >
+              Add a link
+            </TTButton>
+          </div>
           <input
             ref={fileInput}
             type="file"
+            multiple
             className="hidden"
             onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) onAddFile(file);
+              for (const file of Array.from(event.target.files ?? [])) onAddFile(file);
               event.target.value = "";
             }}
           />
         </div>
 
-        {pasteOpen ? (
+        {attach === "text" ? (
           <div className="mt-4 space-y-3 rounded-lg border border-border p-4">
             <TTInput
               value={pasteLabel}
@@ -265,82 +376,137 @@ export function StudioComposer({
               className="w-full resize-y rounded-lg border border-border bg-background p-3 text-sm outline-none focus:border-primary"
               aria-label="Pasted reference text"
             />
-            <TTButton
-              onClick={() => {
-                const text = pasteText.trim();
-                if (!text) return;
-                const label = pasteLabel.trim() || "Pasted text";
-                onAddPasted({
-                  kind: "text",
-                  label,
-                  origin: "pasted into Studio",
-                  mimeType: "text/plain",
-                  byteSize: new Blob([text]).size,
-                  extractedText: text,
-                  extractionState: "extracted",
-                  extractionNote: "Pasted directly, so it was read exactly as given.",
-                });
-                setPasteText("");
-                setPasteLabel("");
-                setPasteOpen(false);
-              }}
-              disabled={!pasteText.trim()}
-            >
+            <TTButton onClick={keepPastedText} disabled={!pasteText.trim()}>
               Keep this reference
             </TTButton>
           </div>
         ) : null}
 
-        <div className="mt-5 space-y-2">
-          {sources.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nothing attached. Studio will write in the Trust Tai voice on its own.
+        {attach === "link" ? (
+          <div className="mt-4 space-y-3 rounded-lg border border-border p-4">
+            <TTInput
+              value={linkLabel}
+              onChange={(event) => setLinkLabel(event.target.value)}
+              placeholder="What is this? For example: my article on delivery reviews"
+            />
+            <TTInput
+              value={linkUrl}
+              onChange={(event) => setLinkUrl(event.target.value)}
+              placeholder="https://"
+              aria-label="Reference link"
+            />
+            <p className="text-xs text-muted-foreground">
+              Studio does not open links, so the page text is not read. The link is kept as a
+              reference. To use the writing itself, paste the text.
             </p>
-          ) : null}
-          {sources.map((source) => {
-            const readable = usableAsVoice(source);
-            return (
-              <div
-                key={source.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3"
-              >
+            <TTButton onClick={keepLink} disabled={!linkUrl.trim()}>
+              Keep this link
+            </TTButton>
+          </div>
+        ) : null}
+
+        <SourceGroup
+          title="Attached for this request"
+          empty="Nothing attached yet. Studio will write in the Trust Tai voice on its own."
+          sources={attached}
+          isActive={isActive}
+          onToggle={(id, next) => setSelected((current) => ({ ...current, [id]: next }))}
+          onRemove={onRemoveSource}
+        />
+
+        {library.length > 0 ? (
+          <SourceGroup
+            title="Saved in your library"
+            empty=""
+            note="Saved material stays saved but is not used unless you include it in this request."
+            sources={library}
+            isActive={isActive}
+            onToggle={(id, next) => setSelected((current) => ({ ...current, [id]: next }))}
+            onRemove={onRemoveSource}
+          />
+        ) : null}
+
+        <p className="mt-5 text-sm text-muted-foreground">
+          {activeSources.length === 0
+            ? "No sources are active for this request."
+            : `${activeSources.length} source${activeSources.length === 1 ? "" : "s"} active for this request.`}
+        </p>
+      </TTCard>
+    </div>
+  );
+}
+
+function SourceGroup({
+  title,
+  note,
+  empty,
+  sources,
+  isActive,
+  onToggle,
+  onRemove,
+}: {
+  title: string;
+  note?: string;
+  empty: string;
+  sources: ContentSource[];
+  isActive: (source: ContentSource) => boolean;
+  onToggle: (sourceId: string, next: boolean) => void;
+  onRemove: (sourceId: string) => void;
+}) {
+  return (
+    <div className="mt-6">
+      <p className="text-sm font-medium">{title}</p>
+      {note ? <p className="mt-1 text-xs text-muted-foreground">{note}</p> : null}
+      <div className="mt-3 space-y-2">
+        {sources.length === 0 && empty ? (
+          <p className="text-sm text-muted-foreground">{empty}</p>
+        ) : null}
+        {sources.map((source) => {
+          const readable = usableAsVoice(source);
+          const active = isActive(source);
+          return (
+            <div key={source.id} className="rounded-lg border border-border p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{source.label}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs text-muted-foreground">{provenanceLine(source)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {EXTRACTION_LABEL[source.extractionState]}
                     {source.extractionNote ? ` · ${source.extractionNote}` : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <MetaPill>{source.kind}</MetaPill>
-                  {readable ? (
-                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        checked={selected[source.id] !== false}
-                        onChange={(event) =>
-                          setSelected((current) => ({
-                            ...current,
-                            [source.id]: event.target.checked,
-                          }))
-                        }
-                      />
-                      Use in this run
-                    </label>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="text-xs underline text-muted-foreground"
-                    onClick={() => onRemoveSource(source.id)}
-                  >
-                    Remove
-                  </button>
+                <div className="flex shrink-0 items-center gap-3">
+                  <MetaPill>{KIND_LABEL[source.kind]}</MetaPill>
+                  <MetaPill>{active ? "Active for this request" : "Not in this request"}</MetaPill>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </TTCard>
+              <div className="mt-3 flex flex-wrap items-center gap-4">
+                {readable ? (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={active}
+                      onChange={(event) => onToggle(source.id, event.target.checked)}
+                    />
+                    Use in this request
+                  </label>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    Held as a reference only, because no text could be read from it.
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="text-xs underline text-muted-foreground"
+                  onClick={() => onRemove(source.id)}
+                >
+                  Remove from library
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

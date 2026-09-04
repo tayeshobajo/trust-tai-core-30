@@ -7,7 +7,13 @@ import {
   readCount,
   requestBlockers,
 } from "@/domain/content-request";
-import { extractionPlan, kindForFile, usableAsVoice, voiceExcerpts } from "@/domain/content-source";
+import {
+  extractionPlan,
+  kindForFile,
+  provenanceLine,
+  usableAsVoice,
+  voiceExcerpts,
+} from "@/domain/content-source";
 import type { ContentSource } from "@/domain/content-source";
 
 function source(patch: Partial<ContentSource>): ContentSource {
@@ -82,5 +88,30 @@ describe("reading attached material honestly", () => {
     const long = source({ extractedText: "x".repeat(9000) });
     const [excerpt] = voiceExcerpts([long], { perSource: 100, total: 100 });
     expect(excerpt?.excerpt).toHaveLength(100);
+  });
+});
+
+describe("a link is a reference, not a page that was read", () => {
+  it("never claims to have fetched a URL", () => {
+    const plan = extractionPlan("url");
+    expect(plan.readable).toBe(false);
+    expect(plan.note).toContain("did not open this link");
+  });
+
+  it("keeps a link out of the voice references", () => {
+    const link = source({
+      kind: "url",
+      extractedText: "",
+      extractionState: "not_configured",
+    });
+    expect(usableAsVoice(link)).toBe(false);
+    expect(voiceExcerpts([link])).toHaveLength(0);
+  });
+
+  it("says where a source came from and when", () => {
+    const line = provenanceLine(source({ origin: "pasted into Studio", byteSize: 2048 }));
+    expect(line).toContain("pasted into Studio");
+    expect(line).toContain("added");
+    expect(line).toContain("KB");
   });
 });

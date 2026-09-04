@@ -812,7 +812,34 @@ export const approvalsService = {
     }
     return ((data ?? []) as Row[]).map(toEvent);
   },
+
+  /**
+   * The decision that governs a given piece of work.
+   *
+   * Used so a person reading an article can walk straight to the approval it
+   * belongs to, instead of guessing which card it came from.
+   */
+  async findForEntity(
+    context: ApprovalsContext,
+    entity: { type: string; id: ID },
+  ): Promise<ApprovalRequest | null> {
+    const { data, error } = await supabase
+      .from("approval_requests")
+      .select("*")
+      .eq("organization_id", context.organizationId)
+      .eq("source_entity->>type", entity.type)
+      .eq("source_entity->>id", entity.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      if (missingTable(error)) return null;
+      throw new Error(error.message);
+    }
+    return data ? toRequest(data as Row) : null;
+  },
 };
+
 
 /**
  * Is the ledger actually in this database?

@@ -81,8 +81,17 @@ export function extractionPlan(kind: ContentSourceKind): {
   state: ExtractionState;
   note: string;
 } {
-  if (kind === "text" || kind === "markdown" || kind === "linkedin" || kind === "article" || kind === "url") {
+  if (kind === "text" || kind === "markdown" || kind === "linkedin" || kind === "article") {
     return { readable: true, state: "extracted", note: "" };
+  }
+  /* A link is kept as a reference. Studio does not fetch web pages, so it
+     must never look as though the page was read. */
+  if (kind === "url") {
+    return {
+      readable: false,
+      state: "not_configured",
+      note: "Studio did not open this link, so the page text was not read. The link is kept as a reference. Paste the text to use it as voice.",
+    };
   }
   if (kind === "audio" || kind === "video") {
     return {
@@ -97,6 +106,17 @@ export function extractionPlan(kind: ContentSourceKind): {
     note: "Trust Tai cannot read this file type yet. Paste the text instead and it will be used as a voice reference.",
   };
 }
+
+/** One plain line a person can read about where a source came from. */
+export function provenanceLine(source: ContentSource): string {
+  const when = new Date(source.createdAt);
+  const date = Number.isNaN(when.getTime())
+    ? "unknown date"
+    : when.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  const size = source.byteSize > 0 ? `${Math.max(1, Math.round(source.byteSize / 1024))} KB` : "";
+  return [source.origin || "unknown origin", `added ${date}`, size].filter(Boolean).join(" · ");
+}
+
 
 /** Only a source with real text can influence a draft. */
 export function usableAsVoice(source: ContentSource): boolean {
