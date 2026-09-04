@@ -86,7 +86,9 @@ function Card({
         </div>
 
         {request.sourceEntity.label ? (
-          <p className="mt-1 truncate text-xs text-muted-foreground">{request.sourceEntity.label}</p>
+          <p className="mt-1 truncate text-xs text-muted-foreground">
+            {request.sourceEntity.label}
+          </p>
         ) : null}
 
         <p className="mt-3 text-sm text-muted-foreground">
@@ -196,9 +198,7 @@ export function ApprovalBoard({
                   onClick={() => onLoadMore(column)}
                   disabled={view.loading}
                 >
-                  {view.loading
-                    ? "Loading…"
-                    : `Load more (${view.total - view.rows.length} more)`}
+                  {view.loading ? "Loading…" : `Load more (${view.total - view.rows.length} more)`}
                 </TTButton>
               ) : null}
             </div>

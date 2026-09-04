@@ -224,7 +224,6 @@ async function loadItems(context: ApprovalsContext, requestId: ID): Promise<Appr
   return ((data ?? []) as Row[]).map(toItem);
 }
 
-
 /* ------------------------------------------------------- paged board reads */
 
 /**
@@ -279,11 +278,9 @@ function applySearch(query: PostgrestLike, search: string | undefined): Postgres
   const term = safeTerm(search ?? "");
   if (term.length === 0) return query;
   return query.or(
-    [
-      `title.ilike.%${term}%`,
-      `summary.ilike.%${term}%`,
-      `why_it_needs_you.ilike.%${term}%`,
-    ].join(","),
+    [`title.ilike.%${term}%`, `summary.ilike.%${term}%`, `why_it_needs_you.ilike.%${term}%`].join(
+      ",",
+    ),
   );
 }
 
@@ -471,7 +468,10 @@ export const approvalsService = {
             .eq("organization_id", context.organizationId)
             .eq("id", known.id);
           if (error) throw new Error(missingTable(error) ? MISSING : error.message);
-          items.push({ ...known, ...toItem({ ...row, id: known.id, created_at: known.createdAt }) });
+          items.push({
+            ...known,
+            ...toItem({ ...row, id: known.id, created_at: known.createdAt }),
+          });
         } else {
           const itemId = id("api");
           const { error } = await supabase

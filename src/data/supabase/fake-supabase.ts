@@ -91,7 +91,10 @@ function parseOr(expression: string): Filter[] {
       return {
         column: column!,
         value: null,
-        anyOf: value.replace(/^\(|\)$/g, "").split(",").map((entry) => entry.replace(/^"|"$/g, "")),
+        anyOf: value
+          .replace(/^\(|\)$/g, "")
+          .split(",")
+          .map((entry) => entry.replace(/^"|"$/g, "")),
       };
     }
     return { column: column!, value };
@@ -182,7 +185,9 @@ class Query implements PromiseLike<FakeResult> {
   }
 
   private filtered(): FakeRow[] {
-    let rows = this.rows.filter((row) => this.filters.every((filter) => matchesFilter(row, filter)));
+    let rows = this.rows.filter((row) =>
+      this.filters.every((filter) => matchesFilter(row, filter)),
+    );
     for (const { column, ascending } of [...this.orderBy].reverse()) {
       rows = [...rows].sort((a, b) => {
         const left = String(a[column] ?? "");

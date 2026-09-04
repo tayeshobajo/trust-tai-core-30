@@ -143,8 +143,7 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
 
   const columnTotals = useQuery({
     queryKey: ["approvals", "column-totals", identity.organizationId, tab, search],
-    queryFn: () =>
-      approvalsService.columnTotals(context, { tab, ...(search ? { search } : {}) }),
+    queryFn: () => approvalsService.columnTotals(context, { tab, ...(search ? { search } : {}) }),
   });
 
   /* One bounded page per column. Nothing off screen is ever fetched. */
@@ -218,35 +217,33 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
   }
 
   const decide = useMutation({
-    mutationFn: async ({
-      request,
-      input,
-    }: {
-      request: ApprovalRequest;
-      input: DecisionInput;
-    }) => {
+    mutationFn: async ({ request, input }: { request: ApprovalRequest; input: DecisionInput }) => {
       const decidedBy = { id: identity.userId, label: identity.name || "You" };
       const at = new Date().toISOString();
 
       if (input.action.id === "reject") {
-        return { request: await approvalsService.decide(context, {
-          requestId: request.id,
-          to: "rejected",
-          decision: { decision: "reject", decidedBy, decidedAt: at, reason: input.reason },
-        }) };
+        return {
+          request: await approvalsService.decide(context, {
+            requestId: request.id,
+            to: "rejected",
+            decision: { decision: "reject", decidedBy, decidedAt: at, reason: input.reason },
+          }),
+        };
       }
 
       if (input.action.id === "request_revision") {
-        return { request: await approvalsService.decide(context, {
-          requestId: request.id,
-          to: "revision_requested",
-          decision: {
-            decision: "request_revision",
-            decidedBy,
-            decidedAt: at,
-            reason: input.reason,
-          },
-        }) };
+        return {
+          request: await approvalsService.decide(context, {
+            requestId: request.id,
+            to: "revision_requested",
+            decision: {
+              decision: "request_revision",
+              decidedBy,
+              decidedAt: at,
+              reason: input.reason,
+            },
+          }),
+        };
       }
 
       /* Approval records authority and nothing else. The handover to the

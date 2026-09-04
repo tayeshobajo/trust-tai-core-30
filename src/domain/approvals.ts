@@ -32,14 +32,7 @@ import type { Permission } from "./access";
 
 /** The room that prepared the work and still owns it. */
 export type ApprovalSourceApp =
-  | "scout"
-  | "comms"
-  | "roadmap"
-  | "website"
-  | "projects"
-  | "ops"
-  | "studio"
-  | "content";
+  "scout" | "comms" | "roadmap" | "website" | "projects" | "ops" | "studio" | "content";
 
 export const SOURCE_APP_LABEL: Record<ApprovalSourceApp, string> = {
   scout: "Scout",
@@ -192,7 +185,9 @@ export function assertApprovalTransition(from: ApprovalStatus, to: ApprovalStatu
 
 /** True once a human has authorised the work, whatever happened afterwards. */
 export function isHumanAuthorised(status: ApprovalStatus): boolean {
-  return status === "approved" || status === "queued" || status === "executed" || status === "verified";
+  return (
+    status === "approved" || status === "queued" || status === "executed" || status === "verified"
+  );
 }
 
 /* ------------------------------------------------------------ board states */
@@ -232,11 +227,7 @@ export function columnFor(status: ApprovalStatus): BoardColumn | null {
 
 /** The approval types with a registered renderer in V1. */
 export type ApprovalType =
-  | "comms_draft"
-  | "scout_relationship"
-  | "blog_batch"
-  | "roadmap_change"
-  | "delivery_change";
+  "comms_draft" | "scout_relationship" | "blog_batch" | "roadmap_change" | "delivery_change";
 
 export const APPROVAL_TYPE_LABEL: Record<ApprovalType, string> = {
   comms_draft: "Message draft",
@@ -256,10 +247,7 @@ export interface ApprovalSubmitter {
   label: string;
 }
 
-export type ApprovalDecisionKind =
-  | "approve"
-  | "reject"
-  | "request_revision";
+export type ApprovalDecisionKind = "approve" | "reject" | "request_revision";
 
 export interface ApprovalDecision {
   decision: ApprovalDecisionKind;
@@ -343,12 +331,7 @@ export interface BatchSummary {
 }
 
 export type ApprovalItemState =
-  | "ready"
-  | "exception"
-  | "failed"
-  | "approved"
-  | "rejected"
-  | "executed";
+  "ready" | "exception" | "failed" | "approved" | "rejected" | "executed";
 
 export const ITEM_STATE_LABEL: Record<ApprovalItemState, string> = {
   ready: "Ready",
@@ -438,12 +421,7 @@ export interface DownstreamResult {
 /* ----------------------------------------------------------------- notes */
 
 export type ApprovalEventKind =
-  | "submitted"
-  | "resubmitted"
-  | "note"
-  | "decision"
-  | "state_changed"
-  | "downstream";
+  "submitted" | "resubmitted" | "note" | "decision" | "state_changed" | "downstream";
 
 /** Append-only. A note always carries who wrote it and when. */
 export interface ApprovalEvent {
@@ -763,10 +741,9 @@ export function dropNeedsConfirmation(request: {
 }
 
 export function dropOutcome(
-  request: Pick<
-    ApprovalRequest,
-    "approvalType" | "status" | "boundary"
-  > & { batch?: BatchSummary | undefined },
+  request: Pick<ApprovalRequest, "approvalType" | "status" | "boundary"> & {
+    batch?: BatchSummary | undefined;
+  },
   column: BoardColumn,
 ): DropOutcome {
   const from = columnFor(request.status);
@@ -851,7 +828,8 @@ function appDetermined(sourceApp: ApprovalSourceApp): boolean {
 
 export function tabFilter(tab: Exclude<CategoryTab, "all">): TabFilter {
   const sourceApps = ALL_SOURCE_APPS.filter(
-    (sourceApp) => appDetermined(sourceApp) && tabFor({ sourceApp, category: "operations" }) === tab,
+    (sourceApp) =>
+      appDetermined(sourceApp) && tabFor({ sourceApp, category: "operations" }) === tab,
   );
   const otherApps = ALL_SOURCE_APPS.filter((sourceApp) => !appDetermined(sourceApp));
   const categories = ALL_CATEGORIES.filter((category) =>
