@@ -72,6 +72,28 @@ function clientFor(token: string): SupabaseClient {
   });
 }
 
+/**
+ * The attempt ledger is written with a privileged, server-only client.
+ *
+ * Members may read the ledger and nothing else: an attempt record is evidence
+ * about what the system did, so the system writes it and a person cannot. The
+ * key lives only in this process and is read at call time, never at module
+ * scope and never anywhere the browser can reach.
+ */
+function ledgerClient(): SupabaseClient {
+  const key =
+    process.env["TRUST_TAI_SUPABASE_SERVICE_KEY"] || process.env["SUPABASE_SERVICE_ROLE_KEY"];
+  if (!key) {
+    throw new Error(
+      "The publish attempt ledger cannot be written, so nothing was sent to trusttai.com. Set TRUST_TAI_SUPABASE_SERVICE_KEY.",
+    );
+  }
+  return createClient(trustTaiSupabaseUrl(), key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+  });
+}
+
 async function loadItem(
   client: SupabaseClient,
   organizationId: string,
@@ -102,14 +124,21 @@ async function patchItem(
   if (error) throw new Error(error.message);
 }
 
-/** Every attempt is written, successful or not. The ledger is the evidence. */
+/**
+ * Every attempt is written, successful or not, and the write is not optional.
+ *
+ * No durable attempt record means no external publish call: if this throws,
+ * the caller aborts before the transport, because an unrecorded send is a
+ * publish nobody can prove or undo.
+ */
 async function recordAttempt(
-  client: SupabaseClient,
+  ledger: SupabaseClient,
   organizationId: string,
   item: Row,
   input: { state: "attempted" | "executed" | "failed"; because: string; receipt?: Row },
 ): Promise<void> {
-  const { error } = await client.from("content_publish_attempts").insert({
+  const { error } = await ledger.from("content_publish_attempts").insert({
+    id: `cpa_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`,
     organization_id: organizationId,
     item_id: String(item["id"]),
     publish_key: String(item["publish_key"] ?? item["id"]),
@@ -119,8 +148,44 @@ async function recordAttempt(
     receipt: input.receipt ?? {},
     created_at: new Date().toISOString(),
   });
-  if (error) console.warn("[content] attempt ledger write deferred:", error.message);
+  if (error) {
+    throw new Error(`The publish attempt could not be recorded, so nothing was sent: ${error.message}`);
+  }
 }
+
+/**
+ * Has this exact publish key already gone out?
+ *
+ * Idempotency lives on the publish key, not on a click. An executed attempt
+ * carries the receipt, and a duplicate request resolves to that receipt
+ * rather than becoming a second article.
+ */
+async function executedAttempt(
+  ledger: SupabaseClient,
+  organizationId: string,
+  publishKey: string,
+): Promise<ProviderReceipt | null> {
+  const { data, error } = await ledger
+    .from("content_publish_attempts")
+    .select("receipt")
+    .eq("organization_id", organizationId)
+    .eq("publish_key", publishKey)
+    .eq("state", "executed")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const receipt = (data?.["receipt"] ?? null) as Row | null;
+  const canonicalUrl = String(receipt?.["canonicalUrl"] ?? "").trim();
+  const externalPostId = String(receipt?.["externalPostId"] ?? "").trim();
+  if (!canonicalUrl || !externalPostId) return null;
+  return {
+    canonicalUrl,
+    externalPostId,
+    publishedAt: String(receipt?.["publishedAt"] ?? new Date().toISOString()),
+  };
+}
+
 
 /* ------------------------------------------------------------- transport */
 
