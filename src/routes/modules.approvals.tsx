@@ -12,14 +12,14 @@
  *   - Anything the system cannot honestly do is said plainly, not hidden.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { ApprovalBoard } from "@/components/tt/approvals/approval-board";
+import { ApprovalBoard, type BoardColumnView } from "@/components/tt/approvals/approval-board";
 import {
   ApprovalWorkspace,
   type DecisionInput,
@@ -32,17 +32,17 @@ import {
 } from "@/data/supabase/approvals-service";
 import { executeApprovedRequest } from "@/data/approvals/execution";
 import { backfillCommsApprovals } from "@/data/approvals/intake";
+import { backfillScoutApprovals } from "@/data/approvals/scout-intake";
 import { accessContext, can } from "@/domain/access";
 import {
+  BOARD_COLUMNS,
+  BOARD_COLUMN_LABEL,
   CATEGORY_TAB_LABEL,
-  OPEN_STATUSES,
   approvalRefusal,
-  inTab,
-  matchesSearch,
-  sortApprovals,
-  tabCounts,
+  dropOutcome,
   type ApprovalRequest,
   type ApprovalSort,
+  type BoardColumn,
   type CategoryTab,
 } from "@/domain/approvals";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -100,8 +100,16 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const [tab, setTab] = useState<CategoryTab>("all");
   const [sort, setSort] = useState<ApprovalSort>("priority");
   const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [showDecided, setShowDecided] = useState(false);
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [pageSize, setPageSize] = useState<Record<BoardColumn, number>>({
+    needs_review: PAGE,
+    needs_context: PAGE,
+    ready: PAGE,
+    approved: PAGE,
+  });
 
   const context = {
     organizationId: identity.organizationId,
@@ -114,36 +122,88 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
     role: identity.role,
   });
 
-  const queue = useQuery({
-    queryKey: ["approvals", identity.organizationId],
-    queryFn: () => approvalsService.list(context),
-  });
+  /* Searching is a database question, asked once the typing settles, so the
+     board stays responsive with hundreds of rows behind it. */
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const schema = useQuery({
     queryKey: ["approvals-schema", identity.organizationId],
     queryFn: () => approvalsSchemaReady(identity.organizationId),
   });
 
+  const totals = useQuery({
+    queryKey: ["approvals", "tab-totals", identity.organizationId, search],
+    queryFn: () => approvalsService.tabTotals(context, search ? { search } : {}),
+  });
+
+  const columnTotals = useQuery({
+    queryKey: ["approvals", "column-totals", identity.organizationId, tab, search],
+    queryFn: () =>
+      approvalsService.columnTotals(context, { tab, ...(search ? { search } : {}) }),
+  });
+
+  /* One bounded page per column. Nothing off screen is ever fetched. */
+  const pages = useQueries({
+    queries: BOARD_COLUMNS.map((column) => ({
+      queryKey: [
+        "approvals",
+        "page",
+        identity.organizationId,
+        tab,
+        search,
+        sort,
+        column,
+        pageSize[column],
+      ],
+      queryFn: () =>
+        approvalsService.listPage(context, {
+          tab,
+          column,
+          sort,
+          limit: pageSize[column],
+          ...(search ? { search } : {}),
+        }),
+      placeholderData: (previous: unknown) => previous,
+    })),
+  });
+
+  const columns = useMemo(() => {
+    const view = {} as Record<BoardColumn, BoardColumnView>;
+    BOARD_COLUMNS.forEach((column, index) => {
+      const page = pages[index];
+      view[column] = {
+        rows: page?.data?.rows ?? [],
+        total: columnTotals.data?.[column] ?? page?.data?.total ?? 0,
+        hasMore: page?.data?.hasMore ?? false,
+        loading: page?.isFetching ?? false,
+      };
+    });
+    return view;
+  }, [pages, columnTotals.data]);
+
+  const counts = totals.data ?? {
+    all: 0,
+    marketing: 0,
+    comms: 0,
+    scout: 0,
+    roadmap: 0,
+    delivery: 0,
+  };
+
+  const loading = pages.some((page) => page.isLoading);
+  const empty = !loading && BOARD_COLUMNS.every((column) => columns[column].total === 0);
+  const now = new Date().toISOString();
+
+  /* The selected card survives paging: its detail is read by id, not from the
+     rows currently on screen. */
   const detail = useQuery({
     queryKey: ["approval", identity.organizationId, openId],
     queryFn: () => (openId ? approvalsService.get(context, openId) : null),
     enabled: Boolean(openId),
   });
-
-  const now = new Date().toISOString();
-  const all = useMemo(() => queue.data ?? [], [queue.data]);
-
-  const visible = useMemo(() => {
-    const filtered = all.filter(
-      (request) =>
-        inTab(request, tab) &&
-        matchesSearch(request, query) &&
-        (showDecided || OPEN_STATUSES.includes(request.status)),
-    );
-    return sortApprovals(filtered, sort, now);
-  }, [all, tab, query, sort, showDecided, now]);
-
-  const counts = useMemo(() => tabCounts(all), [all]);
 
   function refusalFor(request: ApprovalRequest): string | null {
     return approvalRefusal({
