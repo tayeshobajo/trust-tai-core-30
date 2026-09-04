@@ -21,11 +21,17 @@ import {
   SectionHeading,
   TTButton,
   TTCard,
-  TTInput,
 } from "@/components/tt/primitives";
+import {
+  StudioComposer,
+  readFileAsSource,
+  type ComposerSubmission,
+  type PastedSource,
+} from "@/components/tt/studio/composer";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { submitContentBatchForApproval, submitContentBatchQuietly } from "@/data/content/intake";
 import { contentService } from "@/data/supabase/content-service";
+import { contentCommandService } from "@/data/supabase/content-request-service";
 import { listWebsitePages } from "@/data/supabase/website-analytics-service";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
@@ -36,8 +42,11 @@ import {
   type ContentBatch,
   type ContentItem,
 } from "@/domain/content";
+import { voiceExcerpts } from "@/domain/content-source";
+import type { ContentRequestSettings } from "@/domain/content-request";
 import type { PreparedItem, PreparedPlan } from "@/lib/content-engine.server";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+
 
 const TITLE = "Studio · The content room · Trust Tai OS";
 const DESCRIPTION =
@@ -69,15 +78,41 @@ async function accessToken(): Promise<string> {
   return token;
 }
 
+/** Settings travel to the engine as plain label/value pairs a person could read. */
+function settingPairs(settings: ContentRequestSettings): { label: string; value: string }[] {
+  return Object.entries(settings)
+    .filter(([, setting]) => setting.value.trim())
+    .map(([label, setting]) => ({ label, value: setting.value }));
+}
+
 function Studio({ identity }: { identity: WorkspaceIdentity }) {
   const { organizationId, userId } = identity;
   const context = useMemo(() => ({ organizationId, userId }), [organizationId, userId]);
   const queryClient = useQueryClient();
 
-  const [keyword, setKeyword] = useState("");
-  const [count, setCount] = useState(10);
   const [progress, setProgress] = useState<string[]>([]);
   const [openBatchId, setOpenBatchId] = useState<string | null>(null);
+
+  const sources = useQuery({
+    queryKey: ["studio", "sources", organizationId],
+    queryFn: () => contentCommandService.listSources(organizationId),
+  });
+
+  const addSource = useMutation({
+    mutationFn: async (input: PastedSource) => contentCommandService.addSource(context, input),
+    onSuccess: (source) => {
+      toast.success(`Kept "${source.label}" as a reference.`);
+      void queryClient.invalidateQueries({ queryKey: ["studio", "sources"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const removeSource = useMutation({
+    mutationFn: async (sourceId: string) => contentCommandService.removeSource(context, sourceId),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["studio", "sources"] }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
 
   const batches = useQuery({
     queryKey: ["studio", "batches", organizationId],
@@ -107,52 +142,97 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
 
   /* The run streams, so the room says which article is being written. */
   const generate = useMutation({
-    mutationFn: async () => {
-      const term = keyword.trim();
-      if (!term) throw new Error("Give Studio a keyword to work from.");
+    mutationFn: async (submission: ComposerSubmission) => {
+      const { request } = submission;
       setProgress([]);
 
-      const token = await accessToken();
-      const response = await fetch("/api/public/content/generate", {
-        method: "POST",
-        headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          organization_id: organizationId,
-          keyword: term,
-          count,
-          known_paths: (pages.data?.value ?? []).map((page) => ({
-            path: page.path,
-            title: page.title,
-          })),
-        }),
+      const chosen = (sources.data ?? []).filter((source) =>
+        submission.sourceIds.includes(source.id),
+      );
+
+      /* The request is recorded before the work starts, so what was asked for
+         survives even if the run fails. */
+      const record = await contentCommandService.recordRequest(context, {
+        prompt: request.prompt,
+        keyword: request.keyword,
+        postCount: request.count,
+        settings: request.settings,
+        sourceIds: submission.sourceIds,
       });
 
-      const payload = await readNdjsonStream(response, (stage) => {
-        setProgress((current) => [...current, stage.message]);
-      });
-      if (!payload) throw new Error("The run ended without returning a batch.");
+      try {
+        const token = await accessToken();
+        const response = await fetch("/api/public/content/generate", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            organization_id: organizationId,
+            keyword: request.keyword,
+            count: request.count,
+            instructions: request.instructions,
+            settings: settingPairs(request.settings),
+            voice_references: voiceExcerpts(chosen),
+            known_paths: (pages.data?.value ?? []).map((page) => ({
+              path: page.path,
+              title: page.title,
+            })),
+          }),
+        });
 
-      const plan = payload["plan"] as PreparedPlan;
-      const items = (payload["items"] ?? []) as PreparedItem[];
+        const payload = await readNdjsonStream(response, (stage) => {
+          setProgress((current) => [...current, stage.message]);
+        });
+        if (!payload) throw new Error("The run ended without returning a batch.");
 
-      /* The room writes its own truth, under its own membership. */
-      const batch = await contentService.createBatch(context, {
-        keyword: plan.keyword,
-        topicCluster: plan.topicCluster,
-        searchIntent: plan.searchIntent,
-        audienceProblem: plan.audienceProblem,
-        whyTogether: plan.whyTogether,
-        editorialPlan: plan.editorialPlan,
-        provenance: plan.provenance,
-      });
-      for (const item of items) {
-        await contentService.saveItem(context, batch.id, { ...item, generation: item.generation ?? null });
+        const plan = payload["plan"] as PreparedPlan;
+        const items = (payload["items"] ?? []) as PreparedItem[];
+
+        /* The room writes its own truth, under its own membership. */
+        const batch = await contentService.createBatch(context, {
+          keyword: plan.keyword,
+          topicCluster: plan.topicCluster,
+          searchIntent: plan.searchIntent,
+          audienceProblem: plan.audienceProblem,
+          whyTogether: plan.whyTogether,
+          editorialPlan: plan.editorialPlan,
+          provenance: {
+            ...plan.provenance,
+            requestId: record.id,
+            requestPrompt: request.prompt,
+            settings: request.settings,
+            sources: chosen.map((source) => ({
+              id: source.id,
+              label: source.label,
+              kind: source.kind,
+              origin: source.origin,
+            })),
+          },
+        });
+        for (const item of items) {
+          await contentService.saveItem(context, batch.id, {
+            ...item,
+            generation: item.generation ?? null,
+          });
+        }
+        await contentService.setBatchState(context, batch.id, "prepared");
+        await contentCommandService.settleRequest(context, record.id, {
+          state: "prepared",
+          because: "Studio prepared the batch and sent it for one decision.",
+          batchId: batch.id,
+        });
+        /* One prepared batch is one decision. Submitting is idempotent on the
+           batch id, so this never becomes a second card. */
+        await submitContentBatchQuietly(batch.id, context);
+        return batch;
+      } catch (error) {
+        await contentCommandService
+          .settleRequest(context, record.id, {
+            state: "failed",
+            because: (error as Error).message,
+          })
+          .catch(() => undefined);
+        throw error;
       }
-      await contentService.setBatchState(context, batch.id, "prepared");
-      /* One prepared batch is one decision. Submitting is idempotent on the
-         batch id, so this never becomes a second card. */
-      await submitContentBatchQuietly(batch.id, context);
-      return batch;
     },
     onSuccess: (batch) => {
       toast.success("The batch is prepared and waiting in Approvals. Nothing publishes until you decide.");
@@ -161,6 +241,7 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
 
   const submit = useMutation({
     mutationFn: async (batchId: string) => submitContentBatchForApproval(batchId, context),
@@ -209,46 +290,21 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
         supporting="Studio plans the cluster, writes each article in Trust Tai's voice and says why it should exist. You approve the batch in Approvals, and only then does anything reach trusttai.com."
       />
 
-      <TTCard className="p-6">
-        <SectionHeading
-          title="One command"
-          description="For example: ten posts around fractional operations for founders."
-        />
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <TTInput
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            placeholder="Keyword or theme"
-            className="flex-1"
-            disabled={running}
-          />
-          <TTInput
-            type="number"
-            min={1}
-            max={12}
-            value={count}
-            onChange={(event) => setCount(Number(event.target.value) || 10)}
-            className="sm:w-28"
-            disabled={running}
-            aria-label="How many posts"
-          />
-          <TTButton onClick={() => generate.mutate()} disabled={running}>
-            {running ? "Writing" : "Prepare the batch"}
-          </TTButton>
-        </div>
+      <StudioComposer
+        sources={sources.data ?? []}
+        onAddPasted={(input) => addSource.mutate(input)}
+        onAddFile={(file) => {
+          void readFileAsSource(file).then((source) => addSource.mutate(source));
+        }}
+        onRemoveSource={(sourceId) => removeSource.mutate(sourceId)}
+        onSubmit={(submission) => generate.mutate(submission)}
+        running={running}
+        progress={progress}
+        {...(publisher.data && !publisher.data.configured
+          ? { publisherNote: publisher.data.because }
+          : {})}
+      />
 
-        {progress.length > 0 ? (
-          <ol className="mt-4 space-y-1 text-sm text-muted-foreground">
-            {progress.slice(-6).map((line, index) => (
-              <li key={`${line}-${index}`}>{line}</li>
-            ))}
-          </ol>
-        ) : null}
-
-        {publisher.data && !publisher.data.configured ? (
-          <p className="mt-4 text-sm text-muted-foreground">{publisher.data.because}</p>
-        ) : null}
-      </TTCard>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[22rem_1fr]">
         <TTCard className="p-5">

@@ -16,6 +16,9 @@
 - [x] Prepared batches submit themselves to Approvals, idempotently on the batch id
 - [x] Article page at `/modules/studio/$itemId`, linked from each approval child
 - [x] First real production batch: `cbat_ffebutsjmtn2ydym`, 10 articles, one approval card
+- [x] Publish boundary hardened: attempts written with a server-only key, no ledger write means no send, idempotent on the publish key
+- [x] Studio composer: plain-language request read back as a correctable plan, with sources and provenance
+- [ ] Deploy `docs/content-engine-maya-schema.sql` to Supabase (sources and requests; Studio reads empty until then)
 - [ ] Connect a featured image provider (every article is an exception until then)
 - [ ] Set `TRUST_TAI_PUBLISH_ENDPOINT` and `TRUST_TAI_PUBLISH_TOKEN`, then publish one controlled article and verify its canonical URL
 

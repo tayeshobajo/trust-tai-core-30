@@ -29,7 +29,10 @@ import {
 
 export interface PublishProviderStatus {
   configured: boolean;
-  endpoint: string | null;
+  /** Whether the endpoint exists at all. Never its value. */
+  endpointConfigured: boolean;
+  /** Whether the attempt ledger can be written. No ledger, no publish. */
+  ledgerConfigured: boolean;
   because: string;
 }
 
@@ -45,20 +48,46 @@ function transportToken(): string | null {
   return value && value.trim() ? value.trim() : null;
 }
 
-/** What the room may honestly say about publishing being wired at all. */
+function ledgerConfigured(): boolean {
+  const key =
+    process.env["TRUST_TAI_SUPABASE_SERVICE_KEY"] || process.env["SUPABASE_SERVICE_ROLE_KEY"];
+  return Boolean(key && key.trim());
+}
+
+/**
+ * What the room may honestly say about publishing being wired at all.
+ *
+ * Presence only. No endpoint, token or key value ever leaves this process.
+ */
 export function publishProviderStatus(): PublishProviderStatus {
-  const url = endpoint();
-  const token = transportToken();
-  if (!url || !token) {
+  const hasEndpoint = Boolean(endpoint() && transportToken());
+  const hasLedger = ledgerConfigured();
+  if (!hasEndpoint) {
     return {
       configured: false,
-      endpoint: url,
+      endpointConfigured: false,
+      ledgerConfigured: hasLedger,
       because:
         "No publishing endpoint is connected yet, so approved posts stay queued in Studio rather than pretending to go live.",
     };
   }
-  return { configured: true, endpoint: url, because: "Connected to the trusttai.com publisher." };
+  if (!hasLedger) {
+    return {
+      configured: false,
+      endpointConfigured: true,
+      ledgerConfigured: false,
+      because:
+        "Publishing is held closed: the attempt ledger cannot be written, and nothing is sent to trusttai.com that cannot be recorded first.",
+    };
+  }
+  return {
+    configured: true,
+    endpointConfigured: true,
+    ledgerConfigured: true,
+    because: "Connected to the trusttai.com publisher.",
+  };
 }
+
 
 /* -------------------------------------------------------------- database */
 
@@ -69,6 +98,28 @@ function clientFor(token: string): SupabaseClient {
   return createClient(trustTaiSupabaseUrl(), trustTaiSupabaseKey(), {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+}
+
+/**
+ * The attempt ledger is written with a privileged, server-only client.
+ *
+ * Members may read the ledger and nothing else: an attempt record is evidence
+ * about what the system did, so the system writes it and a person cannot. The
+ * key lives only in this process and is read at call time, never at module
+ * scope and never anywhere the browser can reach.
+ */
+function ledgerClient(): SupabaseClient {
+  const key =
+    process.env["TRUST_TAI_SUPABASE_SERVICE_KEY"] || process.env["SUPABASE_SERVICE_ROLE_KEY"];
+  if (!key) {
+    throw new Error(
+      "The publish attempt ledger cannot be written, so nothing was sent to trusttai.com. Set TRUST_TAI_SUPABASE_SERVICE_KEY.",
+    );
+  }
+  return createClient(trustTaiSupabaseUrl(), key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { apikey: key, Authorization: `Bearer ${key}` } },
   });
 }
 
@@ -102,14 +153,21 @@ async function patchItem(
   if (error) throw new Error(error.message);
 }
 
-/** Every attempt is written, successful or not. The ledger is the evidence. */
+/**
+ * Every attempt is written, successful or not, and the write is not optional.
+ *
+ * No durable attempt record means no external publish call: if this throws,
+ * the caller aborts before the transport, because an unrecorded send is a
+ * publish nobody can prove or undo.
+ */
 async function recordAttempt(
-  client: SupabaseClient,
+  ledger: SupabaseClient,
   organizationId: string,
   item: Row,
   input: { state: "attempted" | "executed" | "failed"; because: string; receipt?: Row },
 ): Promise<void> {
-  const { error } = await client.from("content_publish_attempts").insert({
+  const { error } = await ledger.from("content_publish_attempts").insert({
+    id: `cpa_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`,
     organization_id: organizationId,
     item_id: String(item["id"]),
     publish_key: String(item["publish_key"] ?? item["id"]),
@@ -119,8 +177,44 @@ async function recordAttempt(
     receipt: input.receipt ?? {},
     created_at: new Date().toISOString(),
   });
-  if (error) console.warn("[content] attempt ledger write deferred:", error.message);
+  if (error) {
+    throw new Error(`The publish attempt could not be recorded, so nothing was sent: ${error.message}`);
+  }
 }
+
+/**
+ * Has this exact publish key already gone out?
+ *
+ * Idempotency lives on the publish key, not on a click. An executed attempt
+ * carries the receipt, and a duplicate request resolves to that receipt
+ * rather than becoming a second article.
+ */
+async function executedAttempt(
+  ledger: SupabaseClient,
+  organizationId: string,
+  publishKey: string,
+): Promise<ProviderReceipt | null> {
+  const { data, error } = await ledger
+    .from("content_publish_attempts")
+    .select("receipt")
+    .eq("organization_id", organizationId)
+    .eq("publish_key", publishKey)
+    .eq("state", "executed")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const receipt = (data?.["receipt"] ?? null) as Row | null;
+  const canonicalUrl = String(receipt?.["canonicalUrl"] ?? "").trim();
+  const externalPostId = String(receipt?.["externalPostId"] ?? "").trim();
+  if (!canonicalUrl || !externalPostId) return null;
+  return {
+    canonicalUrl,
+    externalPostId,
+    publishedAt: String(receipt?.["publishedAt"] ?? new Date().toISOString()),
+  };
+}
+
 
 /* ------------------------------------------------------------- transport */
 
@@ -244,6 +338,28 @@ export async function publishQueuedItem(input: {
     };
   }
 
+  /* The ledger has to be reachable before anything else is considered. No
+     durable attempt record means no external publish call. */
+  const ledger = ledgerClient();
+
+  /* Idempotency on the publish key: a second request resolves to the receipt
+     the first one already earned, rather than becoming a second article. */
+  const already = await executedAttempt(ledger, input.organizationId, publishKey);
+  if (already) {
+    await patchItem(client, input.organizationId, input.itemId, {
+      state: "published",
+      external_post_id: already.externalPostId,
+      canonical_url: already.canonicalUrl,
+      published_at: already.publishedAt,
+    });
+    return {
+      itemId: input.itemId,
+      state: "executed",
+      because: "This post was already published under the same publish key, so nothing was sent again.",
+      canonicalUrl: already.canonicalUrl,
+    };
+  }
+
   const refusal = publishRefusal(
     {
       state: state as never,
@@ -271,14 +387,17 @@ export async function publishQueuedItem(input: {
     provider: PROVIDER,
     because: "Sent to the publisher.",
   };
+  /* Written before the transport, so a crash mid-flight is visible as an
+     attempt rather than as silence. */
+  await recordAttempt(ledger, input.organizationId, item, {
+    state: "attempted",
+    because: "Sent to the publisher.",
+  });
   await patchItem(client, input.organizationId, input.itemId, {
     state: "publishing",
     publish: attempting,
   });
-  await recordAttempt(client, input.organizationId, item, {
-    state: "attempted",
-    because: "Sent to the publisher.",
-  });
+
 
   const sent = await sendToPublisher(item, publishKey);
 
@@ -293,7 +412,7 @@ export async function publishQueuedItem(input: {
       state: "queued",
       publish: failed,
     });
-    await recordAttempt(client, input.organizationId, item, {
+    await recordAttempt(ledger, input.organizationId, item, {
       state: "failed",
       because: sent.because,
     });
@@ -321,7 +440,7 @@ export async function publishQueuedItem(input: {
     publish: executed,
     verification: unverified,
   });
-  await recordAttempt(client, input.organizationId, item, {
+  await recordAttempt(ledger, input.organizationId, item, {
     state: "executed",
     because: executed.because ?? "Published.",
     receipt: { ...sent.receipt },
