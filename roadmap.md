@@ -53,14 +53,21 @@ the percentages above are unchanged.
 
 ## P1, commercial truth
 
+Slice P1-001 laid the foundation only: contracts, derivation law, additive
+migration, tests. `docs/commercial-truth-schema.sql` has **not** been applied to
+production (there is no SQL execution path from here, only PostgREST), and no
+commercial row has ever been written, so nothing rises above Code/Test Verified
+and the percentages are unchanged. Design and law: `docs/commercial-truth.md`.
+
 | ID | Gate | Required level | Status |
 | --- | --- | --- | --- |
-| P1-01 | Client commercial state: tier, mrr in cents, engagement dates, provenance | Production Verified | Not started |
-| P1-02 | Proposals with sent and signed events on the existing prospect and roadmap lineage | Production Verified | Not started |
-| P1-03 | `client.tier_changed` with a human-entered Build phase amount | Production Verified | Not started |
-| P1-04 | Org-level weekly targets | Production Verified | Not started |
-| P1-05 | Revenue derived at read time by the locked rules, never persisted weekly | Code/Test Verified | Not started |
-| P1-06 | `meeting_kind` on a logged meeting, human set only | Production Verified | Not started |
+| P1-01 | Client commercial state: tier, mrr in cents, engagement dates, provenance | Production Verified | Code/Test Verified. Nullable `tier`, `mrr_cents`, `renewal_at`, `next_review_at`, `tier_changed_at` and commercial provenance columns written for `public.clients` in the migration; readers and guards in `src/domain/commercial.ts`. Migration not applied, no row written |
+| P1-02 | Proposals with sent and signed events on the existing prospect and roadmap lineage | Production Verified | Code/Test Verified. Proposal columns on `public.roadmaps` plus `proposal.sent`, `proposal.signed`, `proposal.declined` in the shared vocabulary. No deal object, no second pipeline. Migration not applied, no event emitted |
+| P1-03 | `client.tier_changed` with a human-entered Build phase amount | Production Verified | Code/Test Verified. Event defined and its amount carried in the payload; recognition tested. No emitter wired, nothing emitted in production |
+| P1-04 | Org-level weekly targets | Production Verified | Code/Test Verified. `public.organization_weekly_targets` defined with member read and admin write over the existing `private.is_org_member` / `private.is_org_admin` helpers; defaults in `src/domain/weekly-targets.ts`. Table not created in production |
+| P1-05 | Revenue derived at read time by the locked rules, never persisted weekly | Code/Test Verified | **Code/Test Verified**. `src/domain/revenue.ts` with 11 tests: `mrr_cents * 12 / 52`, explicit refusal of `/4` and `/4.345`, one-off recognition in the week of the event, and Run reading tier state only so a signed proposal cannot inflate it |
+| P1-06 | `meeting_kind` on a logged meeting, human set only | Production Verified | Code/Test Verified. Nullable constrained `meeting_kind` on `public.comms_touches`, plus discovery counting that ignores future and withdrawn records. Migration not applied, no meeting classified |
+
 
 ## P2, Clients and Home
 
