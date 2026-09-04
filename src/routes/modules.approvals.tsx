@@ -36,7 +36,6 @@ import { backfillScoutApprovals } from "@/data/approvals/scout-intake";
 import { accessContext, can } from "@/domain/access";
 import {
   BOARD_COLUMNS,
-  BOARD_COLUMN_LABEL,
   CATEGORY_TAB_LABEL,
   approvalRefusal,
   dropOutcome,
