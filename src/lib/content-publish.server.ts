@@ -383,7 +383,7 @@ export async function publishQueuedItem(input: {
       state: "queued",
       publish: failed,
     });
-    await recordAttempt(client, input.organizationId, item, {
+    await recordAttempt(ledger, input.organizationId, item, {
       state: "failed",
       because: sent.because,
     });
