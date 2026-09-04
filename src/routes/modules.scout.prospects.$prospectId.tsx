@@ -8,7 +8,7 @@
 
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/tt/app-shell";
@@ -88,6 +88,7 @@ import { buildPersonPlan } from "@/data/person-priority";
 import { buildMoveBlockers } from "@/data/scout/move-blockers";
 import { composeProspectPage } from "@/data/prospect-modules";
 import { buildHandoffDraft, developmentFromBrief } from "@/data/comms-handoff";
+import { submitScoutHandoffQuietly } from "@/data/approvals/intake";
 import { buildRelationshipBrief } from "@/data/relationship-development";
 import { buildScoutCompanySummary } from "@/data/scout/company-summary";
 import { readIcpFactors } from "@/data/scout/icp-factors";
@@ -593,6 +594,33 @@ function CompanyDetail({
     fitConfidence: composition.confidence,
     ...(firstMessageDevelopment ? { development: firstMessageDevelopment } : {}),
   });
+
+  /* Scout owns the prospect; Approvals owns the decision. When the brief is
+     ready and nothing has been handed over yet, whether this company becomes
+     a relationship is a human judgment, so it joins the queue by itself. */
+  const submittedForApproval = useRef<string | null>(null);
+  useEffect(() => {
+    if (!firstMessageDraft.ready) return;
+    if (prospect.status === "ready_for_comms") return;
+    if (submittedForApproval.current === prospect.id) return;
+    submittedForApproval.current = prospect.id;
+    void submitScoutHandoffQuietly(
+      {
+        handoff: firstMessageDraft,
+        fitScore: candidate.evaluation.score ?? 0,
+        fitReasons: [candidate.fit.whyItFits].filter(Boolean),
+      },
+      { organizationId, userId },
+    );
+  }, [
+    firstMessageDraft,
+    prospect.id,
+    prospect.status,
+    candidate.evaluation.score,
+    candidate.fit.whyItFits,
+    organizationId,
+    userId,
+  ]);
 
   // The guided flow behind "Resolve N blockers": the same structured blockers
   // the handoff draft lists, each carrying its own governed next action.
