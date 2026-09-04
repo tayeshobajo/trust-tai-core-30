@@ -92,6 +92,15 @@ describe("comms intake", () => {
     expect(db.tables["approval_requests"]).toHaveLength(1);
   });
 
+  it("leaves the record untouched when the identical draft is offered twice", async () => {
+    await submitCommsDraftIfAwaitingHuman(draft(), relationship, CONTEXT);
+    const afterFirst = (db.tables["approval_events"] ?? []).length;
+    await submitCommsDraftIfAwaitingHuman(draft(), relationship, CONTEXT);
+
+    expect(db.tables["approval_events"]).toHaveLength(afterFirst);
+  });
+
+
   it("does not reopen a decision a person already made", async () => {
     const request = await submitCommsDraftIfAwaitingHuman(draft(), relationship, CONTEXT);
     await approvalsService.decide(CONTEXT, {

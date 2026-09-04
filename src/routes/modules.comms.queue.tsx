@@ -123,6 +123,29 @@ async function rejectDraft(draftId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * A send that failed leaves the draft where a person can decide again, and
+ * Approvals must know: re-parking at the human boundary is the same boundary,
+ * so it goes back through the one governed intake rather than quietly sitting
+ * in Comms alone.
+ */
+async function reopenDraft(draftId: string, identity: WorkspaceIdentity): Promise<void> {
+  await supabase
+    .from("comms_drafts")
+    .update({ review_state: "needs_human_review", updated_at: new Date().toISOString() })
+    .eq("id", draftId)
+    .eq("review_state", "approved");
+  try {
+    const { submitCommsDraftForApproval } = await import("@/data/approvals/sources");
+    await submitCommsDraftForApproval(draftId, {
+      organizationId: identity.organizationId,
+      userId: identity.userId,
+    });
+  } catch (error) {
+    console.warn("[approvals] reopen intake deferred:", (error as Error).message);
+  }
+}
+
 async function sendDraft(draftId: string): Promise<void> {
   const {
     data: { session },
@@ -181,12 +204,7 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
           results.push({ id, ok: true });
         } catch (err) {
           results.push({ id, ok: false, error: err instanceof Error ? err.message : "Failed." });
-          // Roll back to needs_human_review on send failure
-          await supabase
-            .from("comms_drafts")
-            .update({ review_state: "needs_human_review", updated_at: new Date().toISOString() })
-            .eq("id", id)
-            .eq("review_state", "approved");
+          await reopenDraft(id, identity);
         }
       }
       return results;
@@ -222,11 +240,7 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
     },
     onError: async (err: Error, id: string) => {
       toast.error(err.message);
-      await supabase
-        .from("comms_drafts")
-        .update({ review_state: "needs_human_review", updated_at: new Date().toISOString() })
-        .eq("id", id)
-        .eq("review_state", "approved");
+      await reopenDraft(id, identity);
     },
   });
 
