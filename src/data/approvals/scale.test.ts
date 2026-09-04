@@ -6,7 +6,7 @@
  * answer a search without dragging the queue into the browser first.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { createFakeSupabase } from "@/data/supabase/fake-supabase";
 import { BOARD_COLUMNS } from "@/domain/approvals";
