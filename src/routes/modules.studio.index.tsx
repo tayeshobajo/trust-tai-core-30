@@ -78,6 +78,13 @@ async function accessToken(): Promise<string> {
   return token;
 }
 
+/** Settings travel to the engine as plain label/value pairs a person could read. */
+function settingPairs(settings: ContentRequestSettings): { label: string; value: string }[] {
+  return Object.entries(settings)
+    .filter(([, setting]) => setting.value.trim())
+    .map(([label, setting]) => ({ label, value: setting.value }));
+}
+
 function Studio({ identity }: { identity: WorkspaceIdentity }) {
   const { organizationId, userId } = identity;
   const context = useMemo(() => ({ organizationId, userId }), [organizationId, userId]);
