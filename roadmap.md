@@ -8,18 +8,24 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 3%** (P0 to P7)
+**Production Readiness: 7%** (P0 to P7)
 **Full Engine: 6%** (P0 to P9)
 
-Working:
+Working (corrected in slice P0-001A):
 
-- P0 weight 12 (readiness) / 10 (engine), 9 gates, 2 met -> 12 x 2/9 = 2.7 and
-  10 x 2/9 = 2.2
-- P8 weight 8 (engine only), 5 gates, 2 met -> 8 x 2/5 = 3.2
+- P0 weight 12 (readiness) / 10 (engine), 9 gates, 5 met -> 12 x 5/9 = 6.7 and
+  10 x 5/9 = 5.6
+- P8 weight 8 (engine only), 5 gates, **0 met**. P8-01 and P8-02 were previously
+  scored as Production Verified on table existence and code existence. Neither is
+  supported: `content_sources` and `content_requests` hold 0 rows, so the composer
+  and provenance path has never run in production, and `content_publish_attempts`
+  holds 0 rows, so the hardened boundary has never been exercised. Both are now
+  Code/Test Verified -> 8 x 0/5 = 0
 - P1 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 2.7, rounded to 3. Engine 2.2 + 3.2 = 5.4, rounded to 6.
+- Readiness 6.7, rounded to 7. Engine 5.6 + 0 = 5.6, rounded to 6.
 
 No phase is complete, so no phase has received its completion weight.
+
 
 ## P0, prove the existing build
 
