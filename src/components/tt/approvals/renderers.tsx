@@ -11,6 +11,7 @@
  * hundred approval types feeling like one room.
  */
 
+import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { MetaPill } from "@/components/tt/primitives";
@@ -173,6 +174,17 @@ function BlogBatch({ request, items, selected, onToggle }: RendererProps) {
                   {item.exceptionReasons.length > 0 ? (
                     <p className="mt-2 text-sm text-muted-foreground">
                       {item.exceptionReasons.map((reason) => EXCEPTION_LABEL[reason]).join(". ")}.
+                    </p>
+                  ) : null}
+                  {item.facts["contentItemId"] ? (
+                    <p className="mt-2 text-sm">
+                      <Link
+                        to="/modules/studio/$itemId"
+                        params={{ itemId: String(item.facts["contentItemId"]) }}
+                        className="underline"
+                      >
+                        Read the article
+                      </Link>
                     </p>
                   ) : null}
                 </div>

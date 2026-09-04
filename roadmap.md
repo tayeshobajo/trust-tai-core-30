@@ -11,7 +11,12 @@
 - [x] Marketing source adapter: one batch, one approval card, one child per post
 - [x] Content Engine v1 in Studio at `/modules/studio` (`docs/content-engine.md`)
 - [x] Publish queue states: approved -> queued -> publishing -> published -> verified, with an attempt ledger
-- [ ] Deploy `docs/content-engine-schema.sql` to Supabase (Studio shows the migration notice until then)
+- [x] Deploy `docs/content-engine-schema.sql` to Supabase (live)
+- [x] Studio resolves internal links against the real `website_pages` inventory
+- [x] Prepared batches submit themselves to Approvals, idempotently on the batch id
+- [x] Article page at `/modules/studio/$itemId`, linked from each approval child
+- [x] First real production batch: `cbat_ffebutsjmtn2ydym`, 10 articles, one approval card
+- [ ] Connect a featured image provider (every article is an exception until then)
 - [ ] Set `TRUST_TAI_PUBLISH_ENDPOINT` and `TRUST_TAI_PUBLISH_TOKEN`, then publish one controlled article and verify its canonical URL
 
 

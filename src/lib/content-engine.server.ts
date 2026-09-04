@@ -58,6 +58,7 @@ const VOICE = [
 const PLAN_INSTRUCTIONS = [
   "You are the editorial planner for Trust Tai, a small services business that builds operating systems for founders.",
   "You are given one keyword and the number of posts wanted. Return json only.",
+  'Return exactly these keys: {"topic_cluster":[],"search_intent","audience_problem","why_together","posts":[{"slug","title","angle","reader_job","outline":[]}]}.',
   "Plan a topic cluster that a real reader searching that keyword would move through, not ten rewrites of one idea.",
   "Name the search intent and the audience problem plainly. Say why these pieces belong together as one cluster.",
   "For each post give: slug (kebab case, no dates), title, angle, reader_job (the job the reader is hiring the article to do), and outline (4 to 7 steps).",
@@ -67,6 +68,7 @@ const PLAN_INSTRUCTIONS = [
 
 const POST_INSTRUCTIONS = [
   "You write one blog post for Trust Tai and return json only.",
+  'Return exactly these keys: {"draft_markdown","hit_rationale","seo_title","meta_description","slug","internal_links":[{"anchor","path"}],"cta":{"reader_need","offer","line"},"category","tags":[],"image_brief","alt_text","must_cover":[]}. The article itself goes in draft_markdown.',
   "You are given the cluster plan and this post's brief. Write the full article in markdown, 700 to 1200 words.",
   "Do not invent statistics, client names, case studies, prices or figures. Where a number would help and you do not have one, describe the mechanism instead.",
   "hit_rationale: two or three sentences on why this piece should feel familiar to the reader, useful, and worth finishing. No scores, no percentages, no invented measurement.",
@@ -184,6 +186,9 @@ async function planCluster(
   const { raw, provider, model } = await callModel({
     instructions: PLAN_INSTRUCTIONS,
     input: JSON.stringify({
+      /* The provider requires the word json in the input to return a json
+         object, so the request carries the format it expects back. */
+      respond_with: "json",
       keyword: input.keyword,
       count: input.count,
       known_paths: input.knownPaths.slice(0, 60),
@@ -264,6 +269,7 @@ async function writePost(
     const { raw, provider, model } = await callModel({
       instructions: POST_INSTRUCTIONS,
       input: JSON.stringify({
+        respond_with: "json",
         keyword: plan.keyword,
         cluster: plan.topicCluster,
         search_intent: plan.searchIntent,
