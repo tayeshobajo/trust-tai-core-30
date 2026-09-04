@@ -25,6 +25,8 @@ interface Filter {
   not?: boolean;
   /** A disjunction: the row matches when any branch matches. */
   or?: Filter[];
+  /** A conjunction: the row matches when every branch matches. */
+  and?: Filter[];
 }
 
 /** How much this fake database was actually asked to hand back. */
@@ -37,6 +39,7 @@ export interface FakeStats {
 
 function matchesFilter(row: FakeRow, filter: Filter): boolean {
   if (filter.or) return filter.or.some((branch) => matchesFilter(row, branch));
+  if (filter.and) return filter.and.every((branch) => matchesFilter(row, branch));
   if (filter.ilike !== undefined) {
     const pattern = new RegExp(
       `^${filter.ilike.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*")}$`,
@@ -75,6 +78,12 @@ function parseOr(expression: string): Filter[] {
   if (current) parts.push(current);
 
   return parts.map((part) => {
+    if (part.startsWith("and(")) {
+      return { column: "", value: null, and: parseOr(part.slice(4, -1)) };
+    }
+    if (part.startsWith("or(")) {
+      return { column: "", value: null, or: parseOr(part.slice(3, -1)) };
+    }
     const [column, operator, ...rest] = part.split(".");
     const value = rest.join(".");
     if (operator === "ilike") return { column: column!, value: null, ilike: value };
