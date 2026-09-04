@@ -62,7 +62,7 @@ export function roadmapDecisionSubmissionFor(
     affects: [
       ...(stage ? [stage.title] : []),
       ...(roadmap.subjectLabel ? [roadmap.subjectLabel] : []),
-      ...decision.labels,
+      ...(decision.labels ?? []),
     ].slice(0, 6),
     evidence: decision.evidence,
     provenance: {

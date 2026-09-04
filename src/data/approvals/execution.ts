@@ -215,7 +215,7 @@ async function executeRoadmapChange(
 
   return {
     result: {
-      state: "executed",
+      state: "accepted",
       adapterId: "roadmap.decision_log",
       because: "Roadmap recorded the change and the reason it was made, with your name on it.",
       reference: `roadmap_decision:${decision.id}`,
