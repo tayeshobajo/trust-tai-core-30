@@ -96,7 +96,19 @@ export type ActivityAction =
  * governance history only. This is a naming scope, never a licence to create a
  * parallel entity store.
  */
-export type ActivityScope = EntityType | "ops" | "studio" | "conductor" | "website" | "linki";
+/**
+ * `proposal` is a naming scope for commercial state that already lives on the
+ * prospect -> roadmap lineage. It is not a licence to create a deal entity or
+ * a second pipeline.
+ */
+export type ActivityScope =
+  | EntityType
+  | "ops"
+  | "studio"
+  | "conductor"
+  | "website"
+  | "linki"
+  | "proposal";
 
 /** Event name is always `scope.action`, e.g. "project.status_changed". */
 export type ActivityName = `${ActivityScope}.${ActivityAction}`;
