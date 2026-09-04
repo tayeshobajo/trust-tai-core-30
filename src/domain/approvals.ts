@@ -723,3 +723,85 @@ export function tabCounts(requests: ApprovalRequest[]): Record<CategoryTab, numb
   }
   return counts;
 }
+
+/* ------------------------------------------------------- board pagination */
+
+/** The statuses a board column contains. The inverse of `columnFor`. */
+export const BOARD_COLUMN_STATUSES: Record<BoardColumn, ApprovalStatus[]> = {
+  needs_review: ["needs_review", "revision_requested"],
+  needs_context: ["needs_context"],
+  ready: ["ready"],
+  approved: ["approved", "queued", "executed"],
+};
+
+/* ------------------------------------------------------------ drag to decide */
+
+/**
+ * What dragging a card into a column means.
+ *
+ * Drag is a gesture, never a second decision path: it resolves to the same
+ * authorising action the card's own decision bar offers, and refuses anything
+ * the state machine or the renderer contract would refuse. Where approval can
+ * later trigger something irreversible outside Trust Tai, the gesture asks for
+ * a confirmation first rather than committing on a mouse release.
+ */
+export type DropOutcome =
+  | { ok: false; because: string }
+  | { ok: true; action: ApprovalAction; confirm: boolean; itemIds?: ID[] };
+
+/** True when approving this could later reach outside Trust Tai irreversibly. */
+export function dropNeedsConfirmation(request: {
+  approvalType: ApprovalType;
+  batch?: BatchSummary | undefined;
+  boundary: { willDo: string[] };
+}): boolean {
+  if (request.batch) return true;
+  if (request.approvalType === "blog_batch" || request.approvalType === "delivery_change") {
+    return true;
+  }
+  return request.boundary.willDo.some((line) => /publish|deploy|pay|charge/i.test(line));
+}
+
+export function dropOutcome(
+  request: Pick<
+    ApprovalRequest,
+    "approvalType" | "status" | "boundary"
+  > & { batch?: BatchSummary | undefined },
+  column: BoardColumn,
+): DropOutcome {
+  const from = columnFor(request.status);
+  if (from === column) return { ok: false, because: "It is already there." };
+
+  if (column !== "approved") {
+    return {
+      ok: false,
+      because:
+        "Approvals only records a decision. Moving work back is the owning room's call, so use Request revision or Not now.",
+    };
+  }
+
+  if (!canApprovalTransition(request.status, "approved")) {
+    return {
+      ok: false,
+      because: `An approval cannot move from "${STATUS_LABEL[request.status]}" to "${STATUS_LABEL.approved}".`,
+    };
+  }
+
+  const action = availableActions({
+    approvalType: request.approvalType,
+    status: request.status,
+    ...(request.batch ? { batch: request.batch } : {}),
+  }).find((entry) => entry.authorising && entry.id !== "reject");
+
+  if (!action) {
+    return {
+      ok: false,
+      because:
+        request.status === "needs_context"
+          ? "This one is still missing context, so it cannot be approved yet."
+          : "There is nothing to authorise on this request.",
+    };
+  }
+
+  return { ok: true, action, confirm: dropNeedsConfirmation(request) };
+}
