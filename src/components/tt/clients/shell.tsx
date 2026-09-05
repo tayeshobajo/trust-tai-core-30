@@ -115,6 +115,37 @@ export function ClientHeader({
   );
 }
 
+/**
+ * A real image, chosen by a person. Nothing is generated and nothing is
+ * fetched from the web: an unrecorded logo stays two initials.
+ */
+function LogoUpload({ control, hasLogo }: { control: ClientLogoControl; hasLogo: boolean }) {
+  return (
+    <div className="mt-2">
+      <label className="block cursor-pointer text-center text-[12px] font-medium text-royal hover:underline">
+        {control.pending ? "Uploading" : hasLogo ? "Replace logo" : "Upload logo"}
+        <input
+          type="file"
+          accept={CLIENT_LOGO_ACCEPT}
+          className="sr-only"
+          disabled={control.pending}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) control.onSelect(file);
+          }}
+        />
+      </label>
+      {control.problem ? (
+        <p className="mt-1 text-[12px] text-foreground">{control.problem}</p>
+      ) : (
+        <p className="mt-1 text-center text-[11px] text-muted-foreground">PNG, JPG or SVG, 2 MB</p>
+      )}
+    </div>
+  );
+}
+
+
 function hostOf(url: string): string | null {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
