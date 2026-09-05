@@ -388,7 +388,7 @@ export interface ClientSiteIdentity {
 
 export interface SiteSubmissionLike {
   submittedAt: ISODateTime;
-  company: { name: string | null; website: string | null };
+  company: { name?: string | null; website?: string | null };
 }
 
 /** Submissions this company actually made, newest first. */

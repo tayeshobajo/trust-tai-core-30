@@ -60,23 +60,27 @@ export interface OverviewReads {
   approvals: RoomRead<ClientApprovalsRead> | null;
   relationship: RoomRead<RelationshipSnapshot> | null;
   history: RoomRead<ActivityEvent[]> | null;
+  site: RoomRead<ClientSiteRead> | null;
   loading: {
     roadmap: boolean;
     projects: boolean;
     approvals: boolean;
     relationship: boolean;
     history: boolean;
+    site: boolean;
   };
 }
 
 export function OverviewTab({
   reads,
   cadence,
+  client,
   now,
   timeZone,
 }: {
   reads: OverviewReads;
   cadence: ReviewCadence;
+  client: ClientSiteIdentity;
   now: Date;
   timeZone: string;
 }) {
@@ -223,7 +227,23 @@ export function OverviewTab({
             </Link>
           }
         >
-          <Absent line={SITE_UNLINKED} because={SITE_UNLINKED_BECAUSE} />
+          <ReadOrSay read={reads.site} loading={reads.loading.site} what="Site records">
+            {(site) => {
+              if (!site.provisioned) {
+                return <Unreadable what="The Website room" because={SITE_UNPROVISIONED_BECAUSE} />;
+              }
+              const matched = siteSubmissionsFor(site.submissions, client);
+              return matched.length === 0 ? (
+                <Absent line={SITE_NO_SUBMISSIONS} because={SITE_NO_SUBMISSIONS_BECAUSE} />
+              ) : (
+                <Fact
+                  label="Intake from this company"
+                  value={`${matched.length} recorded`}
+                  note={`Last on ${formatDay(matched[0]!.submittedAt, timeZone) ?? "an unknown day"}.`}
+                />
+              );
+            }}
+          </ReadOrSay>
         </RoomSection>
       </div>
 

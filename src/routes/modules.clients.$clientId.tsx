@@ -383,15 +383,18 @@ function ClientShell({
                 approvals: approvalsRead,
                 relationship: relationshipRead,
                 history: historyRead,
+                site: readOf(siteQuery),
                 loading: {
                   roadmap: roadmapsQuery.isLoading,
                   projects: projectsQuery.isLoading,
                   approvals: !linksSettled || approvalsQuery.isLoading,
                   relationship: relationshipsQuery.isLoading,
                   history: historyQuery.isLoading,
+                  site: siteQuery.isLoading,
                 },
               }}
               cadence={cadence}
+              client={{ name: record.name, websiteUrl: record.websiteUrl }}
               now={now}
               timeZone={timeZone}
             />
