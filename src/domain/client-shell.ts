@@ -285,7 +285,10 @@ export function relationshipSnapshotFor(
       return (b.lastTouchAt ?? "").localeCompare(a.lastTouchAt ?? "") || a.fullName.localeCompare(b.fullName);
     });
 
-  const touched = people.filter((person) => person.lastTouchAt);
+  /* The lead is whoever was touched last, whatever the list order says. */
+  const touched = people
+    .filter((person) => person.lastTouchAt)
+    .sort((a, b) => (b.lastTouchAt ?? "").localeCompare(a.lastTouchAt ?? ""));
   const lead = touched[0] ?? people[0] ?? null;
   return {
     people,
