@@ -115,6 +115,117 @@ export async function listClientCommercialState(
   return ((data ?? []) as Row[]).map(toClientRecord);
 }
 
+/**
+ * Add a company as a client, by hand.
+ *
+ * This is the only way a client is born outside the Scout -> Comms -> Roadmap
+ * lineage, and it stays honest about that: the row is marked as manually
+ * created in its provenance, every amount is the one a person typed, and a
+ * client created in Build carries the agreed phase amount as a dated event
+ * rather than a recurring number.
+ *
+ * Creating the same company twice is not an error and never doubles it: a
+ * client already recorded under the same name in this organization is
+ * returned as it stands, untouched.
+ */
+export async function createClientRecord(
+  input: NewClientInput,
+  context: CommercialContext,
+): Promise<ClientCommercialRecord> {
+  const problems = validateNewClient(input);
+  if (problems.length > 0) throw new Error(problems.join(" "));
+
+  const name = input.name.trim();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("clients")
+    .select(CLIENT_COLUMNS)
+    .eq("organization_id", context.organizationId)
+    .ilike("name", name)
+    .limit(1)
+    .maybeSingle();
+  assertOk(existingError);
+  if (existing) return toClientRecord(existing as Row);
+
+  const at = new Date().toISOString();
+  const logoUrl = input.logoUrl?.trim() ? input.logoUrl.trim() : null;
+  const phaseAmountCents =
+    input.tier === "build" && typeof input.buildPhaseAmountCents === "number"
+      ? Math.trunc(input.buildPhaseAmountCents)
+      : null;
+
+  const payload: Row = {
+    organization_id: context.organizationId,
+    name,
+    status: "active",
+    website_url: input.websiteUrl?.trim() || null,
+    created_by: context.userId,
+    metadata: logoUrl ? { logo_url: logoUrl } : {},
+    tier: input.tier,
+    mrr_cents: input.tier === "run" ? (input.mrrCents ?? null) : null,
+    renewal_at: input.renewalAt ?? null,
+    next_review_at: input.nextReviewAt ?? null,
+    tier_changed_at: input.tier === "none" ? null : at,
+    commercial_updated_by: context.userId,
+    commercial_updated_at: at,
+    commercial_provenance: {
+      app_key: "clients",
+      created_manually: true,
+      actor: context.userId,
+      ...(context.userLabel ? { actor_label: context.userLabel } : {}),
+      updated_at: at,
+    },
+  };
+
+  const { data, error } = await supabase
+    .from("clients")
+    .insert(payload)
+    .select(CLIENT_COLUMNS)
+    .single();
+  assertOk(error);
+  if (!data) throw new Error("That client could not be saved.");
+  const client = toClientRecord(data as Row);
+
+  await emitSuiteEvent({
+    key: "CLIENT_CREATED",
+    organizationId: context.organizationId,
+    actor: { type: "user", id: context.userId },
+    subject: { type: "client", id: client.id, label: client.name },
+    summary: `${client.name} was added as a client.`,
+    metadata: {
+      tier: input.tier,
+      created_manually: true,
+      ...(input.tier === "run" && typeof input.mrrCents === "number"
+        ? { mrr_cents: input.mrrCents }
+        : {}),
+    },
+    sourceEventKey: `client.created:${client.id}`,
+    occurredAt: at,
+  });
+
+  // A client that starts in Build recognises one-off revenue on day one, so
+  // the dated event carries the amount a person actually agreed.
+  if (input.tier !== "none") {
+    await emitSuiteEvent({
+      key: "CLIENT_TIER_CHANGED",
+      organizationId: context.organizationId,
+      actor: { type: "user", id: context.userId },
+      subject: { type: "client", id: client.id, label: client.name },
+      summary: `${client.name} was created in ${input.tier}.`,
+      metadata: {
+        tier: input.tier,
+        previous_tier: null,
+        ...(phaseAmountCents !== null ? { phase_amount_cents: phaseAmountCents } : {}),
+      },
+      sourceEventKey: `client.tier_changed:${client.id}:${at}`,
+      occurredAt: at,
+    });
+  }
+
+  return client;
+}
+
+
 export interface ClientCommercialPatch {
   clientId: ID;
   /** Only the keys present are written. An absent key leaves the fact alone. */
