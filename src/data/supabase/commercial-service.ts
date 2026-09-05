@@ -413,137 +413,223 @@ export async function saveOrganizationWeeklyTargets(
 
 /* --------------------------------------------------------- weekly scoreboard */
 
+/**
+ * Whether a number on the board is a real answer or an unknown. An empty table
+ * is a real zero; a source we could not read is not a zero and must never be
+ * shown as one.
+ */
+export interface ScoreboardSource {
+  available: boolean;
+  because?: string;
+}
+
 export interface WeeklyScoreboard {
   week: WeekWindow;
+  /** The organization's own timezone, which is what defined the week. */
+  timeZone: string;
+  /** True when the organization had no usable timezone and the fallback was used. */
+  timeZoneFallback: boolean;
+  timeZoneBecause?: string;
   targets: WeeklyTargets;
-  revenue: WeeklyRevenue;
+  /** Null when a source the number depends on could not be read. */
+  revenue: WeeklyRevenue | null;
   /** Companies currently on the Run tier. State, not an event. */
-  runClients: number;
+  runClients: number | null;
   /** Proposals sent this week. */
-  proposalsSent: number;
+  proposalsSent: number | null;
   /** Discovery calls that have already happened this week. */
-  discoveryCalls: number;
+  discoveryCalls: number | null;
   /** Roadmap reviews that have already happened this week. */
-  roadmapReviews: number;
-  /** Relationships whose very first logged interaction happened this week. */
-  firstTouches: number;
+  roadmapReviews: number | null;
+  /** Relationships that received their first human outreach this week. */
+  firstTouches: number | null;
+  sources: {
+    organization: ScoreboardSource;
+    clients: ScoreboardSource;
+    proposals: ScoreboardSource;
+    targets: ScoreboardSource;
+    touches: ScoreboardSource;
+    tierChanges: ScoreboardSource;
+    firstTouches: ScoreboardSource;
+  };
 }
+
+const TOUCH_SELECT =
+  "id, relationship_id, occurred_at, channel, direction, logged_by, meeting_kind, provenance";
 
 async function readTouchesInWeek(organizationId: ID, week: WeekWindow): Promise<Row[]> {
-  return safe(async () => {
-    const { data, error } = await supabase
-      .from("comms_touches")
-      .select("id, relationship_id, occurred_at, direction, meeting_kind, provenance")
-      .eq("organization_id", organizationId)
-      .gte("occurred_at", week.start)
-      .lt("occurred_at", week.end);
-    assertOk(error);
-    return (data ?? []) as Row[];
-  }, [] as Row[]);
+  const { data, error } = await supabase
+    .from("comms_touches")
+    .select(TOUCH_SELECT)
+    .eq("organization_id", organizationId)
+    .gte("occurred_at", week.start)
+    .lt("occurred_at", week.end);
+  assertOk(error);
+  return (data ?? []) as Row[];
 }
 
-/** Of the relationships touched this week, how many had never been touched before. */
-async function countFirstTouches(
+/** Everything outbound we had already sent these relationships before this week. */
+async function readEarlierOutbound(
   organizationId: ID,
   week: WeekWindow,
-  touches: Row[],
-): Promise<number> {
-  const ids = [...new Set(touches.map((touch) => String(touch["relationship_id"] ?? "")))].filter(
-    Boolean,
-  );
-  if (ids.length === 0) return 0;
-  return safe(async () => {
-    const { data, error } = await supabase
-      .from("comms_touches")
-      .select("relationship_id")
-      .eq("organization_id", organizationId)
-      .in("relationship_id", ids)
-      .lt("occurred_at", week.start);
-    assertOk(error);
-    const earlier = new Set(
-      ((data ?? []) as Row[]).map((row) => String(row["relationship_id"] ?? "")),
-    );
-    return ids.filter((id) => !earlier.has(id)).length;
-  }, 0);
+  relationshipIds: string[],
+): Promise<Row[]> {
+  if (relationshipIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("comms_touches")
+    .select(TOUCH_SELECT)
+    .eq("organization_id", organizationId)
+    .in("relationship_id", relationshipIds)
+    .lt("occurred_at", week.start);
+  assertOk(error);
+  return (data ?? []) as Row[];
+}
+
+function toFirstTouchCandidate(row: Row): FirstTouchCandidate {
+  return {
+    relationshipId: String(row["relationship_id"] ?? ""),
+    channel: row["channel"],
+    direction: row["direction"],
+    occurredAt: String(row["occurred_at"] ?? ""),
+    loggedBy: typeof row["logged_by"] === "string" ? row["logged_by"] : null,
+    retracted: readTouchRecord(row["provenance"]).retracted,
+  };
 }
 
 async function readTierChangeEvents(
   organizationId: ID,
   week: WeekWindow,
 ): Promise<BuildPhaseEvent[]> {
-  return safe(async () => {
-    const { data, error } = await supabase
-      .from("activities")
-      .select("occurred_at, payload")
-      .eq("organization_id", organizationId)
-      .eq("event_type", "client.tier_changed")
-      .gte("occurred_at", week.start)
-      .lt("occurred_at", week.end);
-    assertOk(error);
-    return ((data ?? []) as Row[])
-      .map((row) => {
-        const payload = (row["payload"] ?? {}) as Row;
-        if (payload["tier"] !== "build") return null;
-        const amount = payload["phase_amount_cents"];
-        return {
-          occurredAt: String(row["occurred_at"] ?? ""),
-          phaseAmountCents: typeof amount === "number" ? Math.trunc(amount) : null,
-        } satisfies BuildPhaseEvent;
-      })
-      .filter((event): event is BuildPhaseEvent => event !== null);
-  }, [] as BuildPhaseEvent[]);
+  const { data, error } = await supabase
+    .from("activities")
+    .select("occurred_at, payload")
+    .eq("organization_id", organizationId)
+    .eq("event_type", "client.tier_changed")
+    .gte("occurred_at", week.start)
+    .lt("occurred_at", week.end);
+  assertOk(error);
+  return ((data ?? []) as Row[])
+    .map((row) => {
+      const payload = (row["payload"] ?? {}) as Row;
+      if (payload["tier"] !== "build") return null;
+      const amount = payload["phase_amount_cents"];
+      return {
+        occurredAt: String(row["occurred_at"] ?? ""),
+        phaseAmountCents: typeof amount === "number" ? Math.trunc(amount) : null,
+      } satisfies BuildPhaseEvent;
+    })
+    .filter((event): event is BuildPhaseEvent => event !== null);
+}
+
+/** The organization's own timezone, which is what a week means to the people in it. */
+async function readOrganizationTimeZone(organizationId: ID): Promise<unknown> {
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("timezone")
+    .eq("id", organizationId)
+    .maybeSingle();
+  assertOk(error);
+  return (data as Row | null)?.["timezone"] ?? null;
 }
 
 /**
  * Everything the week actually is, derived at read time from state and dated
- * events. Nothing computed here is written back anywhere.
+ * events, in the organization's own timezone. Nothing computed here is written
+ * back anywhere, and nothing unreadable is reported as a zero.
  */
 export async function readWeeklyScoreboard(
   organizationId: ID,
   now: Date | string = new Date(),
+  options: { timeZone?: string } = {},
 ): Promise<WeeklyScoreboard> {
-  const week = weekWindow(now);
+  const organizationSource = await sourced(() => readOrganizationTimeZone(organizationId));
+  const zone = resolveBusinessTimeZone(options.timeZone ?? organizationSource.value);
+  const week = businessWeek(now, zone.timeZone);
+
   const [clients, proposals, targets, touches, buildPhases] = await Promise.all([
-    listClientCommercialState(organizationId),
-    listProposals(organizationId),
-    readOrganizationWeeklyTargets(organizationId),
-    readTouchesInWeek(organizationId, week),
-    readTierChangeEvents(organizationId, week),
+    sourced(() => listClientCommercialState(organizationId)),
+    sourced(() => listProposals(organizationId)),
+    sourced(() => readOrganizationWeeklyTargets(organizationId)),
+    sourced(() => readTouchesInWeek(organizationId, week)),
+    sourced(() => readTierChangeEvents(organizationId, week)),
   ]);
 
-  const signedProposals: SignedProposalEvent[] = proposals
+  const weekTouches = touches.value ?? [];
+  const relationshipIds = [
+    ...new Set(weekTouches.map((touch) => String(touch["relationship_id"] ?? ""))),
+  ].filter(Boolean);
+
+  const earlier = touches.available
+    ? await sourced(() => readEarlierOutbound(organizationId, week, relationshipIds))
+    : ({ available: false, value: null, because: touches.because } satisfies Sourced<Row[]>);
+
+  const signedProposals: SignedProposalEvent[] = (proposals.value ?? [])
     .filter((proposal) => proposal.proposalOutcome === "signed" && proposal.proposalOutcomeAt)
     .map((proposal) => ({
       occurredAt: proposal.proposalOutcomeAt as ISODateTime,
       amountCents: proposal.proposalAmountCents,
     }));
 
-  const countable: CountableTouch[] = touches.map((touch) => ({
+  const countable: CountableTouch[] = weekTouches.map((touch) => ({
     meetingKind: (touch["meeting_kind"] ?? null) as CountableTouch["meetingKind"],
     occurredAt: String(touch["occurred_at"] ?? ""),
     retracted: readTouchRecord(touch["provenance"]).retracted,
   }));
 
-  const firstTouches = await countFirstTouches(organizationId, week, touches);
+  const revenueReadable = clients.available && proposals.available && buildPhases.available;
+  const firstTouchReadable = touches.available && earlier.available;
 
   return {
     week,
-    targets,
-    revenue: weeklyRevenue({
-      week,
-      clients: clients.map((client) => ({ tier: client.tier, mrrCents: client.mrrCents })),
-      signedProposals,
-      buildPhases,
-    }),
-    runClients: clients.filter((client) => client.tier === "run").length,
-    proposalsSent: proposals.filter(
-      (proposal) =>
-        proposal.proposalSentAt !== null &&
-        proposal.proposalSentAt >= week.start &&
-        proposal.proposalSentAt < week.end,
-    ).length,
-    discoveryCalls: countDiscoveryCalls(countable, { now, week }),
-    roadmapReviews: countRoadmapReviews(countable, { now, week }),
-    firstTouches,
+    timeZone: zone.timeZone,
+    timeZoneFallback: zone.fallback,
+    ...(zone.because ? { timeZoneBecause: zone.because } : {}),
+    targets: targets.value ?? { ...DEFAULT_WEEKLY_TARGETS },
+    revenue: revenueReadable
+      ? weeklyRevenue({
+          week,
+          clients: (clients.value ?? []).map((client) => ({
+            tier: client.tier,
+            mrrCents: client.mrrCents,
+          })),
+          signedProposals,
+          buildPhases: buildPhases.value ?? [],
+        })
+      : null,
+    runClients: clients.available
+      ? (clients.value ?? []).filter((client) => client.tier === "run").length
+      : null,
+    proposalsSent: proposals.available
+      ? (proposals.value ?? []).filter(
+          (proposal) =>
+            proposal.proposalSentAt !== null &&
+            proposal.proposalSentAt >= week.start &&
+            proposal.proposalSentAt < week.end,
+        ).length
+      : null,
+    discoveryCalls: touches.available ? countDiscoveryCalls(countable, { now, week }) : null,
+    roadmapReviews: touches.available ? countRoadmapReviews(countable, { now, week }) : null,
+    firstTouches: firstTouchReadable
+      ? countFirstTouches(
+          [...weekTouches, ...(earlier.value ?? [])].map(toFirstTouchCandidate),
+          week,
+        )
+      : null,
+    sources: {
+      organization: asSource(organizationSource),
+      clients: asSource(clients),
+      proposals: asSource(proposals),
+      targets: asSource(targets),
+      touches: asSource(touches),
+      tierChanges: asSource(buildPhases),
+      firstTouches: asSource(earlier.available ? touches : earlier),
+    },
   };
 }
+
+function asSource(result: Sourced<unknown>): ScoreboardSource {
+  return result.available
+    ? { available: true }
+    : { available: false, ...(result.because ? { because: result.because } : {}) };
+}
+
