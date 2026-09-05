@@ -151,6 +151,9 @@ export const APP_REGISTRY: AppRegistration[] = [
     route: "/modules/roadmap",
     icon: "Route",
     capabilities: ["projects", "decisions"],
+    // Reached through the client it belongs to. Still owns its state, its
+    // permissions, its routes and its events.
+    navigation: "deep_link",
   },
   {
     id: "projects",
@@ -162,6 +165,7 @@ export const APP_REGISTRY: AppRegistration[] = [
     route: "/modules/projects",
     icon: "SquareStack",
     capabilities: ["projects", "tasks"],
+    navigation: "deep_link",
   },
   {
     id: "steward",
