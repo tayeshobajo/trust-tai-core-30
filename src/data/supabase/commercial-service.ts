@@ -56,14 +56,29 @@ function assertOk(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
 }
 
-/** A table may be absent in a workspace that has not migrated yet. */
-async function safe<T>(run: () => Promise<T>, fallback: T): Promise<T> {
+/**
+ * A read that either answered or did not. An empty answer is a real zero; a
+ * failed read is an unknown, and the difference is never collapsed, because a
+ * source that is down must not be shown to a person as a quiet zero.
+ */
+export interface Sourced<T> {
+  available: boolean;
+  value: T | null;
+  because?: string;
+}
+
+async function sourced<T>(run: () => Promise<T>): Promise<Sourced<T>> {
   try {
-    return await run();
-  } catch {
-    return fallback;
+    return { available: true, value: await run() };
+  } catch (error) {
+    return {
+      available: false,
+      value: null,
+      because: error instanceof Error ? error.message : "That source could not be read.",
+    };
   }
 }
+
 
 const CLIENT_COLUMNS =
   "id, organization_id, name, status, tier, mrr_cents, renewal_at, next_review_at, tier_changed_at, commercial_updated_by, commercial_updated_at, commercial_provenance";
