@@ -324,6 +324,7 @@ function RoadmapOutcomeCard({ outcome, compact = false }: { outcome: RoadmapOutc
         <Link
           to="/modules/roadmap/$roadmapId"
           params={{ roadmapId: outcome.roadmapId }}
+          search={{ view: "overview" as const }}
           className="shrink-0 text-[13px] font-medium text-royal"
         >
           <OpenIn>Open in Roadmap</OpenIn>
