@@ -8,13 +8,13 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 11%** (P0 to P7)
-**Full Engine: 9%** (P0 to P9)
+**Production Readiness: 12%** (P0 to P7)
+**Full Engine: 10%** (P0 to P9)
 
-Working (corrected in slice P0-001A, extended in P1-002):
+Working (corrected in slice P0-001A, extended in P1-002, P0-07 verified 2026-09-05):
 
-- P0 weight 12 (readiness) / 10 (engine), 9 gates, 5 met -> 12 x 5/9 = 6.7 and
-  10 x 5/9 = 5.6
+- P0 weight 12 (readiness) / 10 (engine), 9 gates, **6 met** -> 12 x 6/9 = 8.0 and
+  10 x 6/9 = 6.7
 - P1 weight 12 / 10, 6 gates, **2 met**. P1-04 is Production Verified: the
   `organization_weekly_targets` table exists in the production project and holds
   the real Trust Tai row, read back with the service key. P1-05 requires only
@@ -28,7 +28,7 @@ Working (corrected in slice P0-001A, extended in P1-002):
   holds 0 rows, so the hardened boundary has never been exercised. Both are now
   Code/Test Verified -> 8 x 0/5 = 0
 - P2 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 6.7 + 4.0 = 10.7, rounded to 11. Engine 5.6 + 3.3 = 8.9, rounded to 9.
+- Readiness 8.0 + 4.0 = 12.0. Engine 6.7 + 3.3 = 10.0.
 
 
 No phase is complete, so no phase has received its completion weight.
