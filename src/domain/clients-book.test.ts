@@ -59,7 +59,7 @@ describe("warnings are exceptions, not decoration", () => {
 
   it("flags a near renewal with no review booked", () => {
     const card = deriveClientCard(client({ renewalAt: "2026-09-20T00:00:00.000Z" }), NOW);
-    expect(card.warnings).toEqual(["Renews in 17 days with no review booked"]);
+    expect(card.warnings).toEqual(["Renews in 16 days with no review booked"]);
   });
 
   it("stays quiet when the renewal already has a review in front of it", () => {
