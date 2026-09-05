@@ -205,6 +205,42 @@ describe("the headline counts real things", () => {
     expect(headline.proposalsAwaiting).toBe(1);
     expect(headline.sentence).toBe("2 Run clients · 2 reviews due · 1 proposal awaiting your decision");
   });
+
+  it("never counts a renewal as a review due", () => {
+    const headline = clientsHeadline(
+      [
+        deriveClientCard(
+          client({ id: "1", renewalAt: "2026-09-05T05:00:00.000Z", nextReviewAt: null }),
+          NOW,
+          CHICAGO,
+        ),
+      ],
+      NOW,
+      CHICAGO,
+    );
+    expect(headline.reviewsDue).toBe(0);
+  });
+
+  it("carries the recorded review and renewal days on the card", () => {
+    const card = deriveClientCard(
+      client({ renewalAt: "2026-10-03T05:00:00.000Z", nextReviewAt: "2026-09-19T05:00:00.000Z" }),
+      NOW,
+      CHICAGO,
+    );
+    expect(card.nextReviewAt).toBe("2026-09-19T05:00:00.000Z");
+    expect(card.renewalAt).toBe("2026-10-03T05:00:00.000Z");
+  });
+
+  it("names an unreadable proposal source instead of showing zero", () => {
+    const headline = clientsHeadline(
+      [deriveClientCard(client({ id: "1" }), NOW, CHICAGO)],
+      NOW,
+      CHICAGO,
+      { proposalsAvailable: false },
+    );
+    expect(headline.proposalsAwaiting).toBeNull();
+    expect(headline.sentence).toBe("1 Run client · 0 reviews due · proposals could not be read just now");
+  });
 });
 
 describe("initials stand in for a logo without inventing an image", () => {
