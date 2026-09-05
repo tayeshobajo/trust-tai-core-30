@@ -43,6 +43,16 @@ export type CapabilityTag =
   | "analytics"
   | "intelligence";
 
+/**
+ * How a room is reached.
+ * - `primary` · sits in the ordinary left navigation.
+ * - `deep_link` · a real room with its own route, permissions and event
+ *   ownership, reached from the surfaces that compose it (the Clients shell,
+ *   Home, Approvals) rather than from the rail. Leaving the rail is a
+ *   navigation decision, never a demotion of ownership.
+ */
+export type AppNavigation = "primary" | "deep_link";
+
 export interface AppRegistration {
   id: ID;
   name: string;
@@ -61,7 +71,29 @@ export interface AppRegistration {
   /** Lucide icon name, resolved by the navigation component. */
   icon: string;
   capabilities: CapabilityTag[];
+  /** Absent means `primary`. */
+  navigation?: AppNavigation;
 }
+
+/**
+ * The ordinary top-level navigation, in the order the charter fixes it
+ * (docs/production-plan.md, "Navigation target"). Settings is secondary and
+ * lives in the account menu, not here. Roadmap and Projects are deliberately
+ * absent: they remain registered, routed and deep-linkable.
+ */
+export const PRIMARY_NAVIGATION: readonly ID[] = [
+  "home",
+  "clients",
+  "scout",
+  "comms",
+  "website",
+  "ops",
+  "studio",
+  "pulse",
+  "conductor",
+  "approvals",
+  "steward",
+];
 
 export const APP_REGISTRY: AppRegistration[] = [
   {
