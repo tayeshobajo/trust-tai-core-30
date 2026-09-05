@@ -108,7 +108,7 @@ export function ClientTile({ card }: { card: ClientCard }) {
                   key={warning}
                   className="flex items-center gap-2 text-[13px] font-medium text-foreground"
                 >
-                  <AlertTriangle className="size-4 text-caution" aria-hidden />
+                  <AlertTriangle className="size-4 text-warning" aria-hidden />
                   {warning}
                 </li>
               ))}
