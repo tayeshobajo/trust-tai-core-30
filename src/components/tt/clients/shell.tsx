@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 
 import { ClientVisual } from "@/components/tt/clients/card";
 import { TTCard } from "@/components/tt/primitives";
+import { CLIENT_LOGO_ACCEPT } from "@/data/clients/logo";
 import type { ClientHeaderFacts, ClientTab, RoomRead } from "@/domain/client-shell";
 import { CLIENT_TAB_LABEL, CLIENT_TABS } from "@/domain/client-shell";
 import type { ClientCard } from "@/domain/clients-book";
