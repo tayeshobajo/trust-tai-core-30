@@ -165,11 +165,14 @@ export interface TouchRow {
   summary: string;
   body: string | null;
   logged_by: string | null;
+  /** Human set only. Never inferred from a subject line or a transcript. */
+  meeting_kind?: string | null;
   provenance?: unknown;
 }
 
 export const TOUCH_COLUMNS =
-  "id, organization_id, relationship_id, thread_id, channel, direction, occurred_at, summary, body, logged_by, provenance";
+  "id, organization_id, relationship_id, thread_id, channel, direction, occurred_at, summary, body, logged_by, meeting_kind, provenance";
+
 
 export function toTouch(row: TouchRow): Touch {
   return {
