@@ -39,12 +39,12 @@ export type ClientApprovalsRead =
  * in this database is reported as not ready, never as an empty list.
  */
 export async function readClientApprovals(
-  organizationId: ID,
+  context: { organizationId: ID; userId: ID },
   entityIds: ID[],
 ): Promise<ClientApprovalsRead> {
-  const ready = await approvalsSchemaReady(organizationId);
+  const ready = await approvalsSchemaReady(context.organizationId);
   if (!ready) return { ready: false };
-  const requests = await approvalsService.listForEntities({ organizationId }, entityIds);
+  const requests = await approvalsService.listForEntities(context, entityIds);
   return { ready: true, requests };
 }
 
