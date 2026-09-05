@@ -432,6 +432,11 @@ export const commsService = {
        * otherwise-outbound interaction as their evidence.
        */
       theirWords?: boolean;
+      /**
+       * What this meeting was, when the person logging it said so. Optional,
+       * human set only, and never inferred from the summary or the body.
+       */
+      meetingKind?: MeetingKind;
     },
     context: CommsContext,
   ): Promise<Touch> {
@@ -446,12 +451,17 @@ export const commsService = {
         occurred_at: occurredAt,
         summary: input.summary.trim(),
         body: input.body?.trim() || null,
+        ...(input.meetingKind ? { meeting_kind: input.meetingKind } : {}),
         provenance: {
           app_key: "comms",
           actor: context.userId,
           logged_at: occurredAt,
           ...(input.theirWords ? { their_words: true } : {}),
+          ...(input.meetingKind
+            ? { meeting_kind_set_by: context.userId, meeting_kind_set_at: occurredAt }
+            : {}),
         },
+
         logged_by: context.userId,
       })
       .select(TOUCH_COLUMNS)
