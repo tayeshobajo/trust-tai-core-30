@@ -8,21 +8,28 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 7%** (P0 to P7)
-**Full Engine: 6%** (P0 to P9)
+**Production Readiness: 11%** (P0 to P7)
+**Full Engine: 9%** (P0 to P9)
 
-Working (corrected in slice P0-001A):
+Working (corrected in slice P0-001A, extended in P1-002):
 
 - P0 weight 12 (readiness) / 10 (engine), 9 gates, 5 met -> 12 x 5/9 = 6.7 and
   10 x 5/9 = 5.6
+- P1 weight 12 / 10, 6 gates, **2 met**. P1-04 is Production Verified: the
+  `organization_weekly_targets` table exists in the production project and holds
+  the real Trust Tai row, read back with the service key. P1-05 requires only
+  Code/Test Verified and has been at that level since P1-001; the previous
+  entry withheld its share by mistake, which rule 2 does not allow.
+  -> 12 x 2/6 = 4.0 and 10 x 2/6 = 3.3
 - P8 weight 8 (engine only), 5 gates, **0 met**. P8-01 and P8-02 were previously
   scored as Production Verified on table existence and code existence. Neither is
   supported: `content_sources` and `content_requests` hold 0 rows, so the composer
   and provenance path has never run in production, and `content_publish_attempts`
   holds 0 rows, so the hardened boundary has never been exercised. Both are now
   Code/Test Verified -> 8 x 0/5 = 0
-- P1 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 6.7, rounded to 7. Engine 5.6 + 0 = 5.6, rounded to 6.
+- P2 to P7 and P9: no gate met at its required level yet -> 0
+- Readiness 6.7 + 4.0 = 10.7, rounded to 11. Engine 5.6 + 3.3 = 8.9, rounded to 9.
+
 
 No phase is complete, so no phase has received its completion weight.
 
