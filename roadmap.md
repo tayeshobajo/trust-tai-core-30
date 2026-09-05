@@ -8,21 +8,28 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 7%** (P0 to P7)
-**Full Engine: 6%** (P0 to P9)
+**Production Readiness: 11%** (P0 to P7)
+**Full Engine: 9%** (P0 to P9)
 
-Working (corrected in slice P0-001A):
+Working (corrected in slice P0-001A, extended in P1-002):
 
 - P0 weight 12 (readiness) / 10 (engine), 9 gates, 5 met -> 12 x 5/9 = 6.7 and
   10 x 5/9 = 5.6
+- P1 weight 12 / 10, 6 gates, **2 met**. P1-04 is Production Verified: the
+  `organization_weekly_targets` table exists in the production project and holds
+  the real Trust Tai row, read back with the service key. P1-05 requires only
+  Code/Test Verified and has been at that level since P1-001; the previous
+  entry withheld its share by mistake, which rule 2 does not allow.
+  -> 12 x 2/6 = 4.0 and 10 x 2/6 = 3.3
 - P8 weight 8 (engine only), 5 gates, **0 met**. P8-01 and P8-02 were previously
   scored as Production Verified on table existence and code existence. Neither is
   supported: `content_sources` and `content_requests` hold 0 rows, so the composer
   and provenance path has never run in production, and `content_publish_attempts`
   holds 0 rows, so the hardened boundary has never been exercised. Both are now
   Code/Test Verified -> 8 x 0/5 = 0
-- P1 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 6.7, rounded to 7. Engine 5.6 + 0 = 5.6, rounded to 6.
+- P2 to P7 and P9: no gate met at its required level yet -> 0
+- Readiness 6.7 + 4.0 = 10.7, rounded to 11. Engine 5.6 + 3.3 = 8.9, rounded to 9.
+
 
 No phase is complete, so no phase has received its completion weight.
 
@@ -53,20 +60,28 @@ the percentages above are unchanged.
 
 ## P1, commercial truth
 
-Slice P1-001 laid the foundation only: contracts, derivation law, additive
-migration, tests. `docs/commercial-truth-schema.sql` has **not** been applied to
-production (there is no SQL execution path from here, only PostgREST), and no
-commercial row has ever been written, so nothing rises above Code/Test Verified
-and the percentages are unchanged. Design and law: `docs/commercial-truth.md`.
+Slice P1-001 laid the foundation: contracts, derivation law, additive migration,
+tests. Slice P1-002 wired it to production services. The migration is now applied
+in the production project: every new column on `public.clients`, `public.roadmaps`
+and `public.comms_touches` answers 200 with the service key, and
+`public.organization_weekly_targets` exists and holds the real Trust Tai row. No
+commercial fact has been invented: no tier, no MRR, no proposal amount and no
+meeting kind has been written by this project, because every one of them is a
+human entry. Design and law: `docs/commercial-truth.md`.
+
+Writes go through `src/data/supabase/commercial-service.ts` using the
+authenticated client, so RLS applies as the signed-in person. No service-role key
+is used on any commercial path.
 
 | ID | Gate | Required level | Status |
 | --- | --- | --- | --- |
-| P1-01 | Client commercial state: tier, mrr in cents, engagement dates, provenance | Production Verified | Code/Test Verified. Nullable `tier`, `mrr_cents`, `renewal_at`, `next_review_at`, `tier_changed_at` and commercial provenance columns written for `public.clients` in the migration; readers and guards in `src/domain/commercial.ts`. Migration not applied, no row written |
-| P1-02 | Proposals with sent and signed events on the existing prospect and roadmap lineage | Production Verified | Code/Test Verified. Proposal columns on `public.roadmaps` plus `proposal.sent`, `proposal.signed`, `proposal.declined` in the shared vocabulary. No deal object, no second pipeline. Migration not applied, no event emitted |
-| P1-03 | `client.tier_changed` with a human-entered Build phase amount | Production Verified | Code/Test Verified. Event defined and its amount carried in the payload; recognition tested. No emitter wired, nothing emitted in production |
-| P1-04 | Org-level weekly targets | Production Verified | Code/Test Verified. `public.organization_weekly_targets` defined with member read and admin write over the existing `private.is_org_member` / `private.is_org_admin` helpers; defaults in `src/domain/weekly-targets.ts`. Table not created in production |
-| P1-05 | Revenue derived at read time by the locked rules, never persisted weekly | Code/Test Verified | **Code/Test Verified**. `src/domain/revenue.ts` with 11 tests: `mrr_cents * 12 / 52`, explicit refusal of `/4` and `/4.345`, one-off recognition in the week of the event, and Run reading tier state only so a signed proposal cannot inflate it |
-| P1-06 | `meeting_kind` on a logged meeting, human set only | Production Verified | Code/Test Verified. Nullable constrained `meeting_kind` on `public.comms_touches`, plus discovery counting that ignores future and withdrawn records. Migration not applied, no meeting classified |
+| P1-01 | Client commercial state: tier, mrr in cents, engagement dates, provenance | Production Verified | Code/Test Verified, schema live in production. Columns confirmed on `public.clients` by a live read; `setClientCommercialState()` writes only the facts it is given and stamps actor, time and reason into `commercial_provenance`. No client has been given a tier or an MRR yet, so no production row proves the write |
+| P1-02 | Proposals with sent and signed events on the existing prospect and roadmap lineage | Production Verified | Code/Test Verified, schema live in production. Proposal columns confirmed on `public.roadmaps` by a live read; `recordProposalSent()` and `recordProposalOutcome()` write state on the existing lineage node and emit `proposal.sent`, `proposal.signed` or `proposal.declined`. No deal object, no second pipeline. No proposal recorded in production |
+| P1-03 | `client.tier_changed` with a human-entered Build phase amount | Production Verified | Code/Test Verified. Emitted exactly once per real tier change, with `phase_amount_cents` only when the new tier is Build; re-writing the same tier emits nothing. Tested. Nothing emitted in production, because no tier has changed |
+| P1-04 | Org-level weekly targets | Production Verified | **Production Verified**. `public.organization_weekly_targets` exists in the production project with member read and admin write over `private.is_org_member` / `private.is_org_admin`, and holds the Trust Tai row (targets 10-12 first touches, 2-3 discovery, 1-2 Diagnose proposals, 20 Run clients, revenue target 2,100,000 cents), read back live. `readOrganizationWeeklyTargets()` falls back to the locked defaults when an organization has no row |
+| P1-05 | Revenue derived at read time by the locked rules, never persisted weekly | Code/Test Verified | **Code/Test Verified**. `src/domain/revenue.ts` with 11 tests: `mrr_cents * 12 / 52`, explicit refusal of `/4` and `/4.345`, one-off recognition in the week of the event, and Run reading tier state only so a signed proposal cannot inflate it. `readWeeklyScoreboard()` composes the week from live state and dated events and writes nothing back |
+| P1-06 | `meeting_kind` on a logged meeting, human set only | Production Verified | Code/Test Verified, schema live in production. `meeting_kind` confirmed on `public.comms_touches` by a live read; set only by a person through `logTouch({ meetingKind })` or `setMeetingKind()`, each recording who said so and when. Never read from a subject line, a calendar entry, Fathom or a transcript. No meeting classified in production |
+
 
 
 ## P2, Clients and Home

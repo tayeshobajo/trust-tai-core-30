@@ -10,7 +10,9 @@
  *  3. Nothing is sent. Comms drafts and holds; a human approves and sends.
  */
 
+import type { MeetingKind } from "./commercial";
 import type { EvidenceRef } from "./confidence";
+
 import type { ID, ISODateTime } from "./entities";
 import { intentOf, type RelationshipIntent } from "./comms-interactions";
 
@@ -158,6 +160,12 @@ export interface Touch {
   summary: string;
   body?: string;
   loggedBy?: ID;
+  /**
+   * What the meeting was, when a person said so. Never inferred from a subject
+   * line, a calendar entry, Fathom or a transcript.
+   */
+  meetingKind?: MeetingKind;
+
   /**
    * How this entry came to read as it does: who logged it, and any later
    * correction or retraction. Read with `readTouchRecord`.

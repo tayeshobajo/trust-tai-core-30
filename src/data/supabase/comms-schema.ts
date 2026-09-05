@@ -20,7 +20,9 @@ import type {
   Touch,
 } from "@/domain/comms";
 import { RELATIONSHIP_STAGES } from "@/domain/comms";
+import { readMeetingKind, type MeetingKind } from "@/domain/commercial";
 import type { EvidenceRef } from "@/domain/confidence";
+
 
 export type Row = Record<string, unknown>;
 
@@ -165,11 +167,14 @@ export interface TouchRow {
   summary: string;
   body: string | null;
   logged_by: string | null;
+  /** Human set only. Never inferred from a subject line or a transcript. */
+  meeting_kind?: string | null;
   provenance?: unknown;
 }
 
 export const TOUCH_COLUMNS =
-  "id, organization_id, relationship_id, thread_id, channel, direction, occurred_at, summary, body, logged_by, provenance";
+  "id, organization_id, relationship_id, thread_id, channel, direction, occurred_at, summary, body, logged_by, meeting_kind, provenance";
+
 
 export function toTouch(row: TouchRow): Touch {
   return {
@@ -185,6 +190,10 @@ export function toTouch(row: TouchRow): Touch {
     summary: row.summary,
     ...(row.body ? { body: row.body } : {}),
     ...(row.logged_by ? { loggedBy: row.logged_by } : {}),
+    ...(readMeetingKind(row.meeting_kind)
+      ? { meetingKind: readMeetingKind(row.meeting_kind) as MeetingKind }
+      : {}),
+
     ...(row.provenance && typeof row.provenance === "object"
       ? { provenance: row.provenance as Record<string, unknown> }
       : {}),
