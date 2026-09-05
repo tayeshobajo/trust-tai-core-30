@@ -53,9 +53,9 @@ No phase is complete, so no phase has received its completion weight.
 
 Agents remain paused for the whole of P0.
 
-The four human gates (P0-03, P0-04, P0-07, P0-08) have exact actions and evidence
-lists in `docs/p0-human-verification-runbook.md`. No gate closed in this slice, so
-the percentages above are unchanged.
+The remaining human gates are P0-03, P0-04 and P0-08. P0-07 is closed at
+Production Verified. They have exact actions and evidence lists in
+`docs/p0-human-verification-runbook.md`. No phase completion weight is awarded.
 
 
 ## P1, commercial truth
