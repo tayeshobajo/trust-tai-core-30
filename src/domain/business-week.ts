@@ -140,3 +140,59 @@ export function businessWeek(at: Date | string | number, timeZone: string): Week
 
   return { start: new Date(start).toISOString(), end: new Date(end).toISOString() };
 }
+
+/* ------------------------------------------------------------ local days */
+
+const LOCAL_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * A date a person typed ("2026-09-19") is a day in the organization's zone,
+ * not a UTC midnight. This returns the UTC instant that local day begins, so
+ * the same value can be stored once and read back as the same day.
+ */
+export function localDayStart(day: string, timeZone: string): string | null {
+  const match = LOCAL_DAY.exec(day.trim());
+  if (!match || !isValidTimeZone(timeZone)) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const date = Number(match[3]);
+  if (month < 1 || month > 12 || date < 1 || date > 31) return null;
+  const instant = startOfLocalDay(year, month, date, timeZone);
+  const check = wallClockAt(instant, timeZone);
+  // Reject days that do not exist (Feb 30) rather than letting them roll over.
+  if (check.year !== year || check.month !== month || check.day !== date) return null;
+  return new Date(instant).toISOString();
+}
+
+export interface LocalDate {
+  year: number;
+  month: number;
+  day: number;
+}
+
+/** The wall date of an instant in the organization's zone. */
+export function localDateOf(at: Date | string | number, timeZone: string): LocalDate | null {
+  if (!isValidTimeZone(timeZone)) return null;
+  const instant = typeof at === "number" ? at : new Date(at).getTime();
+  if (Number.isNaN(instant)) return null;
+  const wall = wallClockAt(instant, timeZone);
+  return { year: wall.year, month: wall.month, day: wall.day };
+}
+
+/**
+ * Whole local days from one instant to another, by calendar date in the zone,
+ * so "renews in 16 days" means sixteen sleeps for the people in that zone and
+ * never shifts by one across a DST change.
+ */
+export function localDaysBetween(
+  from: Date | string | number,
+  to: Date | string | number,
+  timeZone: string,
+): number | null {
+  const a = localDateOf(from, timeZone);
+  const b = localDateOf(to, timeZone);
+  if (!a || !b) return null;
+  return Math.round(
+    (Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day)) / 86_400_000,
+  );
+}

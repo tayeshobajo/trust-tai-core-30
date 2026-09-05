@@ -23,7 +23,7 @@ import { useState, type ReactNode } from "react";
 
 import { usePresence } from "@/hooks/use-presence";
 
-import { APP_REGISTRY, type AppRegistration } from "@/domain/registry";
+import { APP_REGISTRY, primaryNavigation, type AppRegistration } from "@/domain/registry";
 import { initialsOf } from "@/domain/steward-accountability";
 import { cn } from "@/lib/utils";
 import { signOut, type WorkspaceIdentity } from "@/lib/workspace";
@@ -66,8 +66,10 @@ function NavList({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   /* The rail is derived, never a static list: an app the organization has
-     switched off, or one hidden for this person, is simply not here. */
-  const rooms = allowed ? APP_REGISTRY.filter((app) => allowed.includes(app.id)) : APP_REGISTRY;
+     switched off, or one hidden for this person, is simply not here. Rooms
+     registered as deep links (Roadmap, Projects) keep their routes and their
+     ownership and are reached from the client they belong to. */
+  const rooms = primaryNavigation(allowed);
 
   return (
     <nav aria-label="Trust Tai suite" className="space-y-0.5">

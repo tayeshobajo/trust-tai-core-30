@@ -5,12 +5,17 @@ import type { ClientCommercialRecord, ProposalRecord } from "@/data/supabase/com
 import type { ExecutionProject } from "@/domain/projects";
 
 const NOW = new Date("2026-09-03T12:00:00.000Z");
+const CHICAGO = "America/Chicago";
 
 function clientRecord(overrides: Partial<ClientCommercialRecord> = {}): ClientCommercialRecord {
   return {
     id: "client-1",
     name: "Northlight Systems",
     status: "active",
+    websiteUrl: null,
+    logoUrl: null,
+    createdAt: "2026-08-01T00:00:00.000Z",
+    createdManually: false,
     tier: "run",
     mrrCents: 350_000,
     renewalAt: null,
@@ -85,6 +90,7 @@ describe("the book assembles from sources that already own their truth", () => {
         proposals: [proposal()],
       },
       NOW,
+      CHICAGO,
     );
     expect(cards.map((card) => card.kind)).toEqual(["active", "proposed"]);
     expect(cards[1]?.commercialLine).toBe("Proposed · $12,000");
@@ -98,20 +104,49 @@ describe("the book assembles from sources that already own their truth", () => {
         proposals: [proposal({ clientId: "client-1", proposalOutcome: "declined" })],
       },
       NOW,
+      CHICAGO,
     );
     expect(cards[0]?.kind).toBe("active");
+  });
+
+  it("carries the recorded logo and website onto the card, never a guessed one", () => {
+    const cards = buildClientBook(
+      {
+        ...BASE,
+        clients: [
+          clientRecord({ logoUrl: "https://cdn.example.com/n.png", websiteUrl: "https://northlight.example" }),
+        ],
+      },
+      NOW,
+      CHICAGO,
+    );
+    expect(cards[0]?.logoUrl).toBe("https://cdn.example.com/n.png");
+    expect(cards[0]?.websiteUrl).toBe("https://northlight.example");
+    expect(buildClientBook(BASE, NOW, CHICAGO)[0]?.logoUrl).toBeNull();
   });
 });
 
 describe("a source that could not be read is never a healthy zero", () => {
   it("says delivery could not be read rather than showing nothing in flight", () => {
-    const cards = buildClientBook({ ...BASE, projects: null }, NOW);
+    const cards = buildClientBook({ ...BASE, projects: null }, NOW, CHICAGO);
     expect(cards[0]?.deliveryLine).toBe("Delivery could not be read just now.");
     expect(cards[0]?.warnings).toEqual([]);
   });
 
   it("shows no delivery line at all when delivery genuinely has nothing", () => {
-    const cards = buildClientBook(BASE, NOW);
+    const cards = buildClientBook(BASE, NOW, CHICAGO);
     expect(cards[0]?.deliveryLine).toBeNull();
+  });
+
+  it("treats an unreadable proposal lineage as unknown, not as no proposals", () => {
+    const cards = buildClientBook(
+      { ...BASE, clients: [clientRecord({ tier: null, mrrCents: null })], proposals: null },
+      NOW,
+      CHICAGO,
+    );
+    // With no lineage to read, the company cannot be called proposed; it stays
+    // an active record with no tier, and the page says the lineage was unread.
+    expect(cards[0]?.kind).toBe("active");
+    expect(cards[0]?.commercialLine).toBe("No tier · value not recorded");
   });
 });

@@ -9,7 +9,7 @@
  *   * one delivery line per company, in Projects' words (`projects`)
  *
  * A source that could not be read is never shown as a healthy zero: the caller
- * passes `available: false` and the affected line says so.
+ * passes `null` for that source and the affected line says so.
  */
 
 import type { ClientCommercialRecord, ProposalRecord } from "@/data/supabase/commercial-service";
@@ -29,8 +29,6 @@ export interface ClientBookSources {
   proposals: ProposalRecord[] | null;
   /** Projects, or null when delivery could not be read. */
   projects: ExecutionProject[] | null;
-  /** Logo per client id, when a canonical image is recorded. */
-  logos?: Record<ID, string | null>;
 }
 
 const BLOCKED_STATES = new Set(["blocked"]);
@@ -58,8 +56,29 @@ export function deliveryLineFor(projects: ExecutionProject[]): ClientDeliveryPro
   return { line: detail ? `${latest.name} · ${detail}` : latest.name, blocked: false };
 }
 
-/** The book, ordered. Reads only; nothing here writes or infers state. */
-export function buildClientBook(sources: ClientBookSources, now: Date): ClientCard[] {
+/** The open proposal per client, newest sending wins. */
+export function openProposalsByClient(proposals: ProposalRecord[]): Map<ID, ProposalRecord> {
+  const open = new Map<ID, ProposalRecord>();
+  for (const proposal of proposals) {
+    if (!proposal.clientId) continue;
+    if (proposal.proposalOutcome !== null && proposal.proposalOutcome !== "open") continue;
+    const existing = open.get(proposal.clientId);
+    if (!existing || (proposal.proposalSentAt ?? "") > (existing.proposalSentAt ?? "")) {
+      open.set(proposal.clientId, proposal);
+    }
+  }
+  return open;
+}
+
+/**
+ * The book, ordered. Reads only; nothing here writes or infers state. Every
+ * day on every card is a day in `timeZone`, the organization's own.
+ */
+export function buildClientBook(
+  sources: ClientBookSources,
+  now: Date,
+  timeZone: string,
+): ClientCard[] {
   const projectsByClient = new Map<ID, ExecutionProject[]>();
   for (const project of sources.projects ?? []) {
     if (!project.clientId) continue;
@@ -68,15 +87,7 @@ export function buildClientBook(sources: ClientBookSources, now: Date): ClientCa
     projectsByClient.set(project.clientId, bucket);
   }
 
-  const openProposalByClient = new Map<ID, ProposalRecord>();
-  for (const proposal of sources.proposals ?? []) {
-    if (!proposal.clientId) continue;
-    if (proposal.proposalOutcome !== null && proposal.proposalOutcome !== "open") continue;
-    const existing = openProposalByClient.get(proposal.clientId);
-    if (!existing || (proposal.proposalSentAt ?? "") > (existing.proposalSentAt ?? "")) {
-      openProposalByClient.set(proposal.clientId, proposal);
-    }
-  }
+  const openProposalByClient = openProposalsByClient(sources.proposals ?? []);
 
   const cards = sources.clients.map((client) => {
     const proposal = openProposalByClient.get(client.id) ?? null;
@@ -92,7 +103,8 @@ export function buildClientBook(sources: ClientBookSources, now: Date): ClientCa
       mrrCents: client.mrrCents,
       renewalAt: client.renewalAt,
       nextReviewAt: client.nextReviewAt,
-      logoUrl: sources.logos?.[client.id] ?? null,
+      websiteUrl: client.websiteUrl,
+      logoUrl: client.logoUrl,
       delivery,
       proposal: proposal
         ? {
@@ -103,7 +115,7 @@ export function buildClientBook(sources: ClientBookSources, now: Date): ClientCa
           }
         : null,
     };
-    return deriveClientCard(input, now);
+    return deriveClientCard(input, now, timeZone);
   });
 
   return sortClientCards(cards);
