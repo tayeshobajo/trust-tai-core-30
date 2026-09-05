@@ -155,6 +155,22 @@ export async function setClientCommercialState(
   const at = new Date().toISOString();
   const tierChanged = patch.tier !== undefined && patch.tier !== before.tier;
 
+  // A move into Build recognises one-off revenue, so the amount is part of the
+  // move, not an afterthought. Without it, nothing is written and nothing is
+  // claimed: an event with no amount would be a silent zero.
+  const movingIntoBuild = tierChanged && patch.tier === "build";
+  const buildPhaseAmountCents =
+    typeof patch.buildPhaseAmountCents === "number" && Number.isFinite(patch.buildPhaseAmountCents)
+      ? Math.trunc(patch.buildPhaseAmountCents)
+      : null;
+  if (movingIntoBuild && (buildPhaseAmountCents === null || buildPhaseAmountCents < 0)) {
+    throw new Error(
+      "Moving a client into Build needs the phase amount a person actually agreed, in cents.",
+    );
+  }
+
+
+
   const update: Row = {
     commercial_updated_by: context.userId,
     commercial_updated_at: at,
