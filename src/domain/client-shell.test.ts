@@ -110,7 +110,7 @@ function approval(overrides: Partial<ApprovalRequest>): ApprovalRequest {
     urgency: "soon" as ApprovalRequest["urgency"],
     impact: "medium" as ApprovalRequest["impact"],
     sourceEntity: { type: "roadmap", id: "rm-1" },
-    submittedBy: { type: "human", id: "u", label: "Tai" } as ApprovalRequest["submittedBy"],
+    submittedBy: { type: "user", id: "u", label: "Tai" },
     sourceKey: "k",
     requiredCapability: "roadmap.write",
     boundary: { willDo: [], willNotDo: [] },
