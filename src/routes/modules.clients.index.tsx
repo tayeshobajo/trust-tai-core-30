@@ -154,28 +154,32 @@ function ClientsBook({ identity }: { identity: WorkspaceIdentity }) {
       <div className="space-y-8">
         <RoomHero
           eyebrow="Clients"
-          title="Everyone you serve, one door each."
-          supporting={
-            reading
-              ? "Reading the book."
-              : clientsQuery.isError
-                ? "The client book could not be read just now."
-                : (headline?.sentence ?? "Reading the book.")
-          }
+          title="Clients"
+          supporting="Everyone you serve, one door each."
           actions={
             <TTButton onClick={() => setModalOpen(true)} type="button" disabled={!zone}>
               Add client
             </TTButton>
           }
           footer={
-            zone?.fallback ? (
-              <p className="text-[12px] text-muted-foreground">
-                Days are shown in {zone.timeZone} because the organization has no timezone recorded
-                yet. Set one in Settings so review dates land on the right day.
+            <div className="space-y-1">
+              <p className="text-[13px] text-foreground">
+                {reading
+                  ? "Reading the book."
+                  : clientsQuery.isError
+                    ? "The client book could not be read just now."
+                    : (headline?.sentence ?? "Reading the book.")}
               </p>
-            ) : null
+              {zone?.fallback ? (
+                <p className="text-[12px] text-muted-foreground">
+                  Days are shown in {zone.timeZone} because the organization has no timezone
+                  recorded yet. Set one in Settings so review dates land on the right day.
+                </p>
+              ) : null}
+            </div>
           }
         />
+
 
         {zoneQuery.isError ? (
           <EmptyState
