@@ -28,7 +28,7 @@ function project(overrides: Partial<ExecutionProject> = {}): ExecutionProject {
     id: "project-1",
     organizationId: "org-1",
     name: "Checkout rebuild",
-    state: "in_progress",
+    state: "in_flight",
     clientId: "client-1",
     pointA: "Manual checkout",
     pointB: "Automated checkout",
