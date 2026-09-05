@@ -86,7 +86,9 @@ function ClientRoute() {
   const { tab } = Route.useSearch();
   return (
     <WorkspaceGate appId="clients">
-      {(identity) => <ClientShell identity={identity} clientId={clientId} tab={tab} />}
+      {(identity) => (
+        <ClientShell identity={identity} clientId={clientId} tab={tab ?? "overview"} />
+      )}
     </WorkspaceGate>
   );
 }
