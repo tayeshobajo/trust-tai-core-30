@@ -3,12 +3,7 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import {
-  APP_REGISTRY,
-  deepLinkedApps,
-  PRIMARY_NAVIGATION,
-  primaryNavigation,
-} from "./registry";
+import { APP_REGISTRY, deepLinkedApps, PRIMARY_NAVIGATION, primaryNavigation } from "./registry";
 
 const ROUTES_DIR = resolve(__dirname, "../routes");
 

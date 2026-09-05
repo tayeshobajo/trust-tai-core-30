@@ -11,7 +11,14 @@
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 
-import { Absent, Fact, OpenIn, ReadOrSay, RoomSection, Unreadable } from "@/components/tt/clients/shell";
+import {
+  Absent,
+  Fact,
+  OpenIn,
+  ReadOrSay,
+  RoomSection,
+  Unreadable,
+} from "@/components/tt/clients/shell";
 import { TTCard } from "@/components/tt/primitives";
 import type { ClientApprovalsRead } from "@/data/clients/shell-reads";
 import type { ActivityEvent } from "@/domain/activity";
@@ -162,7 +169,11 @@ export function OverviewTab({
             </Link>
           }
         >
-          <ReadOrSay read={reads.relationship} loading={reads.loading.relationship} what="Relationships">
+          <ReadOrSay
+            read={reads.relationship}
+            loading={reads.loading.relationship}
+            what="Relationships"
+          >
             {(snapshot) =>
               snapshot.people.length === 0 ? (
                 <Absent
@@ -305,7 +316,13 @@ export function RoadmapTab({
   );
 }
 
-function RoadmapOutcomeCard({ outcome, compact = false }: { outcome: RoadmapOutcome; compact?: boolean }) {
+function RoadmapOutcomeCard({
+  outcome,
+  compact = false,
+}: {
+  outcome: RoadmapOutcome;
+  compact?: boolean;
+}) {
   return (
     <TTCard className="p-4">
       <div className="flex items-start justify-between gap-3">
@@ -339,7 +356,12 @@ function RoadmapOutcomeCard({ outcome, compact = false }: { outcome: RoadmapOutc
         </div>
         <div>
           <dt className="text-muted-foreground">Milestone</dt>
-          <dd className={cn("flex items-center gap-2 text-foreground", outcome.milestoneBlocked && "font-medium")}>
+          <dd
+            className={cn(
+              "flex items-center gap-2 text-foreground",
+              outcome.milestoneBlocked && "font-medium",
+            )}
+          >
             {outcome.milestoneBlocked ? (
               <AlertTriangle className="size-4 text-warning" aria-hidden />
             ) : null}
@@ -411,7 +433,8 @@ function ProjectRow({ project, timeZone }: { project: ExecutionProject; timeZone
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-foreground">{project.name}</p>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
-            {projectStateLabel(project)} · moved {formatDay(project.lastMovedAt, timeZone) ?? "on an unknown day"}
+            {projectStateLabel(project)} · moved{" "}
+            {formatDay(project.lastMovedAt, timeZone) ?? "on an unknown day"}
           </p>
         </div>
         <Link

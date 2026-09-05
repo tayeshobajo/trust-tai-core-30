@@ -30,9 +30,7 @@ export async function readClientRoadmaps(organizationId: ID): Promise<ClientRoad
   return { roadmaps, stagesByRoadmap, openDecisions };
 }
 
-export type ClientApprovalsRead =
-  | { ready: false }
-  | { ready: true; requests: ApprovalRequest[] };
+export type ClientApprovalsRead = { ready: false } | { ready: true; requests: ApprovalRequest[] };
 
 /**
  * Decisions filed against this client's canonical ids. A ledger that is not

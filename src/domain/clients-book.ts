@@ -69,20 +69,7 @@ export function formatMoney(cents: number | null | undefined): string | null {
   })}`;
 }
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** `Sep 19`, as a calendar day in the organization's timezone. */
 export function formatDay(iso: ISODateTime | null | undefined, timeZone: string): string | null {
@@ -370,7 +357,11 @@ export function matchesClientSearch(card: ClientCard, query: string): boolean {
 }
 
 /** The active grid: one view, one local search, order preserved. */
-export function filterClientCards(cards: ClientCard[], view: ClientsView, query = ""): ClientCard[] {
+export function filterClientCards(
+  cards: ClientCard[],
+  view: ClientsView,
+  query = "",
+): ClientCard[] {
   return cards.filter((card) => {
     if (card.kind !== "active") return false;
     if (view !== "all" && card.tier !== view) return false;
@@ -398,7 +389,9 @@ export interface NewClientInput {
 }
 
 function validCents(value: unknown): boolean {
-  return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0;
+  return (
+    typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0
+  );
 }
 
 function validHttpUrl(value: string): boolean {

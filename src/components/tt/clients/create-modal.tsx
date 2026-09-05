@@ -110,7 +110,11 @@ export function CreateClientModal({
                 inputMode="url"
               />
             </TTField>
-            <TTField label="Logo" optional hint="A full image address. Otherwise initials are shown.">
+            <TTField
+              label="Logo"
+              optional
+              hint="A full image address. Otherwise initials are shown."
+            >
               <TTInput
                 value={logoUrl}
                 onChange={(event) => setLogoUrl(event.target.value)}
@@ -142,7 +146,10 @@ export function CreateClientModal({
           </TTField>
 
           {tier === "run" ? (
-            <TTField label="Monthly value" hint="Recurring, in dollars. Leave empty if not agreed yet.">
+            <TTField
+              label="Monthly value"
+              hint="Recurring, in dollars. Leave empty if not agreed yet."
+            >
               <TTInput
                 value={mrr}
                 onChange={(event) => setMrr(event.target.value)}

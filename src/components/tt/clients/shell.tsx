@@ -54,7 +54,11 @@ export function ClientHeader({
           <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
             <div className="flex gap-1.5">
               <dt className="text-muted-foreground">Review</dt>
-              <dd className={cn(facts.reviewOverdue ? "font-medium text-foreground" : "text-foreground")}>
+              <dd
+                className={cn(
+                  facts.reviewOverdue ? "font-medium text-foreground" : "text-foreground",
+                )}
+              >
                 {facts.nextReview}
               </dd>
             </div>
@@ -167,7 +171,10 @@ export function RoomSection({
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="tt-eyebrow">{eyebrow}</p>
-          <h2 id={`section-${slug(title)}`} className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+          <h2
+            id={`section-${slug(title)}`}
+            className="mt-1 text-lg font-semibold tracking-tight text-foreground"
+          >
             {title}
           </h2>
           {description ? (
@@ -232,7 +239,9 @@ export function Fact({
   return (
     <TTCard className="p-4">
       <p className="tt-eyebrow">{label}</p>
-      <p className={cn("mt-2 text-sm", emphasis ? "font-medium text-foreground" : "text-foreground")}>
+      <p
+        className={cn("mt-2 text-sm", emphasis ? "font-medium text-foreground" : "text-foreground")}
+      >
         {value}
       </p>
       {note ? <p className="mt-1 text-[12px] text-muted-foreground">{note}</p> : null}

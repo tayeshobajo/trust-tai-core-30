@@ -34,7 +34,12 @@ function roadmap(overrides: Partial<Roadmap> = {}): Roadmap {
     objective: "Ship the booking flow",
     status: "in_progress",
     pointA: [],
-    pointB: { statement: "Bookings taken online without a phone call", tier: "inferred", because: "", evidence: [] },
+    pointB: {
+      statement: "Bookings taken online without a phone call",
+      tier: "inferred",
+      because: "",
+      evidence: [],
+    },
     nextMove: { action: "Confirm the scope of phase two", because: "", tier: "decided" },
     metadata: {},
     createdAt: "2026-08-01T00:00:00.000Z",
@@ -125,7 +130,14 @@ function approval(overrides: Partial<ApprovalRequest>): ApprovalRequest {
 
 describe("the client shell has exactly six tabs, in order", () => {
   it("names Overview, Roadmap, Projects, Relationship, Site, Files", () => {
-    expect(CLIENT_TABS).toEqual(["overview", "roadmap", "projects", "relationship", "site", "files"]);
+    expect(CLIENT_TABS).toEqual([
+      "overview",
+      "roadmap",
+      "projects",
+      "relationship",
+      "site",
+      "files",
+    ]);
   });
 
   it("opens Overview for anything it does not recognise", () => {
@@ -215,7 +227,12 @@ describe("Projects and Comms are read, never re-stated", () => {
     const ordered = projectsForClient(
       [
         project({ id: "quiet", lastMovedAt: "2026-08-01T00:00:00.000Z" }),
-        project({ id: "blocked", state: "blocked", blockedBecause: "Waiting on copy", lastMovedAt: "2026-07-01T00:00:00.000Z" }),
+        project({
+          id: "blocked",
+          state: "blocked",
+          blockedBecause: "Waiting on copy",
+          lastMovedAt: "2026-07-01T00:00:00.000Z",
+        }),
         project({ id: "fresh", lastMovedAt: "2026-09-01T00:00:00.000Z" }),
         project({ id: "elsewhere", clientId: "client-2" }),
       ],
@@ -263,7 +280,11 @@ describe("Approvals are matched on canonical ids only", () => {
         approval({ id: "project", sourceEntity: { type: "project", id: "p-1" } }),
         approval({ id: "person", sourceEntity: { type: "comms_relationship", id: "r-1" } }),
         approval({ id: "someone-else", sourceEntity: { type: "roadmap", id: "rm-2" } }),
-        approval({ id: "named-alike", sourceEntity: { type: "prospect", id: "pr-1" }, title: "Northlight Systems" }),
+        approval({
+          id: "named-alike",
+          sourceEntity: { type: "prospect", id: "pr-1" },
+          title: "Northlight Systems",
+        }),
       ],
       links,
     );

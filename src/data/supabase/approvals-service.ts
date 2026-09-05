@@ -861,7 +861,6 @@ export const approvalsService = {
   },
 };
 
-
 /**
  * Is the ledger actually in this database?
  *

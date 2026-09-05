@@ -255,7 +255,6 @@ export const APP_REGISTRY: AppRegistration[] = [
   },
 ];
 
-
 export function getApp(slug: string): AppRegistration | undefined {
   return APP_REGISTRY.find((app) => app.slug === slug);
 }

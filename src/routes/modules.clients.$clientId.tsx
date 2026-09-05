@@ -94,7 +94,11 @@ function ClientRoute() {
 }
 
 /** Turn a query into a room read: answered, unreadable, or still on its way. */
-function readOf<T>(query: { data: T | undefined; isError: boolean; error: unknown }): RoomRead<T> | null {
+function readOf<T>(query: {
+  data: T | undefined;
+  isError: boolean;
+  error: unknown;
+}): RoomRead<T> | null {
   if (query.isError) {
     return unreadable(query.error instanceof Error ? query.error.message : "The read failed.");
   }
@@ -206,7 +210,15 @@ function ClientShell({
         timeZone,
       )[0] ?? null
     );
-  }, [record, timeZone, proposalsQuery.data, proposalsQuery.isError, projectsQuery.data, projectsQuery.isError, now]);
+  }, [
+    record,
+    timeZone,
+    proposalsQuery.data,
+    proposalsQuery.isError,
+    projectsQuery.data,
+    projectsQuery.isError,
+    now,
+  ]);
 
   if (zoneQuery.isLoading || clientQuery.isLoading) {
     return (
@@ -349,7 +361,11 @@ function ClientShell({
             <RoadmapTab read={roadmapOutcomes} loading={roadmapsQuery.isLoading} />
           ) : null}
           {tab === "projects" ? (
-            <ProjectsTab read={projectsForTab} loading={projectsQuery.isLoading} timeZone={timeZone} />
+            <ProjectsTab
+              read={projectsForTab}
+              loading={projectsQuery.isLoading}
+              timeZone={timeZone}
+            />
           ) : null}
           {tab === "relationship" ? (
             <RelationshipTab

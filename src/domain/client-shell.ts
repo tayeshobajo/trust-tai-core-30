@@ -61,9 +61,7 @@ export function parseClientTab(value: unknown): ClientTab {
  * What an owning room said, or the fact that it could not be asked. The two
  * are kept apart on purpose: a failed read is an unknown, never a zero.
  */
-export type RoomRead<T> =
-  | { available: true; value: T }
-  | { available: false; because: string };
+export type RoomRead<T> = { available: true; value: T } | { available: false; because: string };
 
 export function answered<T>(value: T): RoomRead<T> {
   return { available: true, value };
@@ -85,7 +83,11 @@ export interface ClientHeaderFacts {
   reviewOverdue: boolean;
 }
 
-export function clientHeaderFacts(card: ClientCard, now: Date, timeZone: string): ClientHeaderFacts {
+export function clientHeaderFacts(
+  card: ClientCard,
+  now: Date,
+  timeZone: string,
+): ClientHeaderFacts {
   const reviewDays = card.nextReviewAt ? localDaysBetween(now, card.nextReviewAt, timeZone) : null;
   const reviewOverdue = reviewDays !== null && reviewDays < 0;
   const nextReview = card.nextReviewAt
@@ -282,7 +284,10 @@ export function relationshipSnapshotFor(
     }))
     .sort((a, b) => {
       if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
-      return (b.lastTouchAt ?? "").localeCompare(a.lastTouchAt ?? "") || a.fullName.localeCompare(b.fullName);
+      return (
+        (b.lastTouchAt ?? "").localeCompare(a.lastTouchAt ?? "") ||
+        a.fullName.localeCompare(b.fullName)
+      );
     });
 
   /* The lead is whoever was touched last, whatever the list order says. */

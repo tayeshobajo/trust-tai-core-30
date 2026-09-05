@@ -61,7 +61,9 @@ export const Route = createFileRoute("/modules/clients/")({
 
 function ClientsRoute() {
   return (
-    <WorkspaceGate appId="clients">{(identity) => <ClientsBook identity={identity} />}</WorkspaceGate>
+    <WorkspaceGate appId="clients">
+      {(identity) => <ClientsBook identity={identity} />}
+    </WorkspaceGate>
   );
 }
 
@@ -168,8 +170,8 @@ function ClientsBook({ identity }: { identity: WorkspaceIdentity }) {
           footer={
             zone?.fallback ? (
               <p className="text-[12px] text-muted-foreground">
-                Days are shown in {zone.timeZone} because the organization has no timezone
-                recorded yet. Set one in Settings so review dates land on the right day.
+                Days are shown in {zone.timeZone} because the organization has no timezone recorded
+                yet. Set one in Settings so review dates land on the right day.
               </p>
             ) : null
           }
@@ -251,7 +253,9 @@ function ClientsBook({ identity }: { identity: WorkspaceIdentity }) {
 
         {create.isError ? (
           <p className="text-sm text-destructive" role="alert">
-            {create.error instanceof Error ? create.error.message : "That client could not be saved."}
+            {create.error instanceof Error
+              ? create.error.message
+              : "That client could not be saved."}
           </p>
         ) : null}
       </div>
