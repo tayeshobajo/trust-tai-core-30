@@ -186,6 +186,8 @@ export function deriveClientCard(input: ClientBookInput, now: Date, timeZone: st
       websiteUrl,
       commercialLine: line,
       reviewLine: "Becomes a client on signature",
+      nextReviewAt: input.nextReviewAt ?? null,
+      renewalAt: input.renewalAt ?? null,
       deliveryLine: null,
       warnings: [],
       needsAttention: false,
