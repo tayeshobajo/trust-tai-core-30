@@ -247,17 +247,27 @@ function toProposalRecord(row: Row): ProposalRecord {
 }
 
 export async function listProposals(organizationId: ID): Promise<ProposalRecord[]> {
-  return safe(async () => {
-    const { data, error } = await supabase
-      .from("roadmaps")
-      .select(PROPOSAL_COLUMNS)
-      .eq("organization_id", organizationId)
-      .order("proposal_sent_at", { ascending: false });
-    assertOk(error);
-    return ((data ?? []) as Row[])
-      .map(toProposalRecord)
-      .filter((proposal) => proposal.proposalSentAt !== null);
-  }, [] as ProposalRecord[]);
+  const { data, error } = await supabase
+    .from("roadmaps")
+    .select(PROPOSAL_COLUMNS)
+    .eq("organization_id", organizationId)
+    .order("proposal_sent_at", { ascending: false });
+  assertOk(error);
+  return ((data ?? []) as Row[])
+    .map(toProposalRecord)
+    .filter((proposal) => proposal.proposalSentAt !== null);
+}
+
+async function readProposal(roadmapId: ID, context: CommercialContext): Promise<ProposalRecord> {
+  const { data, error } = await supabase
+    .from("roadmaps")
+    .select(PROPOSAL_COLUMNS)
+    .eq("id", roadmapId)
+    .eq("organization_id", context.organizationId)
+    .single();
+  assertOk(error);
+  if (!data) throw new Error("That proposal could not be found.");
+  return toProposalRecord(data as Row);
 }
 
 async function writeProposal(
@@ -277,17 +287,46 @@ async function writeProposal(
   return toProposalRecord(data as Row);
 }
 
-/** A person sent a proposal, at a stated amount. Nothing is recognised yet. */
+/**
+ * A person sent a proposal, at a stated amount. Nothing is recognised yet.
+ *
+ * This is a transition, not a blind write. Recording the same sending twice
+ * (the same date and the same amount, still open) replays the fact it already
+ * knows and emits nothing further, so a double click cannot double count. A
+ * proposal that has already been answered is never quietly reopened.
+ */
 export async function recordProposalSent(
   input: { roadmapId: ID; amountCents: number; sentAt?: ISODateTime },
   context: CommercialContext,
 ): Promise<ProposalRecord> {
+  const amountCents =
+    typeof input.amountCents === "number" && Number.isFinite(input.amountCents)
+      ? Math.trunc(input.amountCents)
+      : null;
+  if (amountCents === null || amountCents < 0) {
+    throw new Error("A sent proposal needs the amount a person actually put in it, in cents.");
+  }
+
+  const before = await readProposal(input.roadmapId, context);
   const sentAt = input.sentAt ?? new Date().toISOString();
+
+  if (before.proposalOutcome === "signed" || before.proposalOutcome === "declined") {
+    throw new Error(
+      "That proposal has already been answered. Recording it as sent again would erase the answer.",
+    );
+  }
+
+  const alreadyRecorded =
+    before.proposalSentAt === sentAt &&
+    before.proposalAmountCents === amountCents &&
+    before.proposalOutcome === "open";
+  if (alreadyRecorded) return before;
+
   const proposal = await writeProposal(
     input.roadmapId,
     {
       proposal_sent_at: sentAt,
-      proposal_amount_cents: Math.trunc(input.amountCents),
+      proposal_amount_cents: amountCents,
       proposal_outcome: "open",
       proposal_outcome_at: null,
     },
@@ -301,6 +340,8 @@ export async function recordProposalSent(
     subject: { type: "roadmap", id: proposal.id, label: proposal.title },
     summary: `Proposal sent for ${proposal.title}.`,
     metadata: { amount_cents: proposal.proposalAmountCents, sent_at: sentAt },
+    // Tied to the transition itself: the same proposal sent on the same date
+    // is the same fact, however many times the action is repeated.
     sourceEventKey: `proposal.sent:${proposal.id}:${sentAt}`,
     occurredAt: sentAt,
   });
