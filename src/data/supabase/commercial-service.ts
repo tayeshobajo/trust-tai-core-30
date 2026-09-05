@@ -82,7 +82,7 @@ async function sourced<T>(run: () => Promise<T>): Promise<Sourced<T>> {
 
 
 const CLIENT_COLUMNS =
-  "id, organization_id, name, status, tier, mrr_cents, renewal_at, next_review_at, tier_changed_at, commercial_updated_by, commercial_updated_at, commercial_provenance";
+  "id, organization_id, name, status, website_url, metadata, created_at, tier, mrr_cents, renewal_at, next_review_at, tier_changed_at, commercial_updated_by, commercial_updated_at, commercial_provenance";
 
 const PROPOSAL_COLUMNS =
   "id, organization_id, title, client_id, prospect_id, relationship_id, proposal_sent_at, proposal_amount_cents, proposal_outcome, proposal_outcome_at, proposal_updated_by";
@@ -93,14 +93,33 @@ export interface ClientCommercialRecord extends ClientCommercialState {
   id: ID;
   name: string;
   status: string | null;
+  websiteUrl: string | null;
+  /** A real image a person recorded, kept in the row's metadata. Never guessed. */
+  logoUrl: string | null;
+  createdAt: string | null;
+  /** True when this row was born in the Clients room by hand. */
+  createdManually: boolean;
+}
+
+function textOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function toClientRecord(row: Row): ClientCommercialRecord {
+  const metadata =
+    row["metadata"] && typeof row["metadata"] === "object" && !Array.isArray(row["metadata"])
+      ? (row["metadata"] as Row)
+      : {};
+  const commercial = readClientCommercialState(row);
   return {
     id: String(row["id"]),
     name: String(row["name"] ?? "Client"),
     status: typeof row["status"] === "string" ? row["status"] : null,
-    ...readClientCommercialState(row),
+    websiteUrl: textOrNull(row["website_url"]),
+    logoUrl: textOrNull(metadata["logo_url"]),
+    createdAt: textOrNull(row["created_at"]),
+    createdManually: commercial.commercialProvenance?.["created_manually"] === true,
+    ...commercial,
   };
 }
 
@@ -114,6 +133,21 @@ export async function listClientCommercialState(
     .order("name", { ascending: true });
   assertOk(error);
   return ((data ?? []) as Row[]).map(toClientRecord);
+}
+
+/** One client, or null when it is not in this organization's book. */
+export async function readClientCommercialRecord(
+  clientId: ID,
+  organizationId: ID,
+): Promise<ClientCommercialRecord | null> {
+  const { data, error } = await supabase
+    .from("clients")
+    .select(CLIENT_COLUMNS)
+    .eq("organization_id", organizationId)
+    .eq("id", clientId)
+    .maybeSingle();
+  assertOk(error);
+  return data ? toClientRecord(data as Row) : null;
 }
 
 /**
