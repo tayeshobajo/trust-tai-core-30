@@ -65,6 +65,14 @@ interface AppPermissions {
 
 const APP_PERMISSIONS: Record<string, AppPermissions> = {
   home: { read: "workspace.read" },
+  /*
+   * Clients has no permission of its own yet. Reading the book is workspace
+   * membership; writing a client record borrows `roadmap.write` because the
+   * client record is the head of the prospect -> roadmap lineage and the same
+   * people carry both. This is a deliberate, temporary reuse, not a rule:
+   * a canonical `clients.write` replaces it once the permission list grows.
+   * Row-level security on `clients` governs the actual write either way.
+   */
   clients: { read: "workspace.read", write: "roadmap.write" },
   scout: { read: "scout.read", write: "scout.write" },
   comms: { read: "comms.read", write: "comms.write" },
