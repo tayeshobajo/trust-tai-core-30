@@ -63,6 +63,7 @@ import { Route as ModulesStewardTasksRouteImport } from './routes/modules.stewar
 import { Route as ModulesStudioIndexRouteImport } from './routes/modules.studio.index'
 import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio.$itemId'
 import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
+import { Route as ApiPublicClientsLogoRouteImport } from './routes/api/public/clients.logo'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
 import { Route as ApiPublicContentGenerateRouteImport } from './routes/api/public/content.generate'
 import { Route as ApiPublicContentImageRouteImport } from './routes/api/public/content.image'
@@ -370,6 +371,11 @@ const ModulesWebsitePageRoute = ModulesWebsitePageRouteImport.update({
   path: '/modules/website/page',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicClientsLogoRoute = ApiPublicClientsLogoRouteImport.update({
+  id: '/api/public/clients/logo',
+  path: '/api/public/clients/logo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCommsDraftRoute = ApiPublicCommsDraftRouteImport.update({
   id: '/api/public/comms/draft',
   path: '/api/public/comms/draft',
@@ -617,6 +623,7 @@ export interface FileRoutesByFullPath {
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/modules/studio/': typeof ModulesStudioIndexRoute
+  '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
@@ -698,6 +705,7 @@ export interface FileRoutesByTo {
   '/modules/scout': typeof ModulesScoutIndexRoute
   '/modules/steward': typeof ModulesStewardIndexRoute
   '/modules/studio': typeof ModulesStudioIndexRoute
+  '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
@@ -789,6 +797,7 @@ export interface FileRoutesById {
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/modules/steward/': typeof ModulesStewardIndexRoute
   '/modules/studio/': typeof ModulesStudioIndexRoute
+  '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
@@ -881,6 +890,7 @@ export interface FileRouteTypes {
     | '/modules/scout/'
     | '/modules/steward/'
     | '/modules/studio/'
+    | '/api/public/clients/logo'
     | '/api/public/comms/draft'
     | '/api/public/content/generate'
     | '/api/public/content/image'
@@ -962,6 +972,7 @@ export interface FileRouteTypes {
     | '/modules/scout'
     | '/modules/steward'
     | '/modules/studio'
+    | '/api/public/clients/logo'
     | '/api/public/comms/draft'
     | '/api/public/content/generate'
     | '/api/public/content/image'
@@ -1052,6 +1063,7 @@ export interface FileRouteTypes {
     | '/modules/scout/'
     | '/modules/steward/'
     | '/modules/studio/'
+    | '/api/public/clients/logo'
     | '/api/public/comms/draft'
     | '/api/public/content/generate'
     | '/api/public/content/image'
@@ -1108,6 +1120,7 @@ export interface RootRouteChildren {
   ModulesWebsiteRoute: typeof ModulesWebsiteRoute
   ApiLinkiExecuteRoute: typeof ApiLinkiExecuteRoute
   ModulesWebsitePageRoute: typeof ModulesWebsitePageRoute
+  ApiPublicClientsLogoRoute: typeof ApiPublicClientsLogoRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
   ApiPublicContentGenerateRoute: typeof ApiPublicContentGenerateRoute
   ApiPublicContentImageRoute: typeof ApiPublicContentImageRoute
@@ -1519,6 +1532,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/website/page'
       fullPath: '/modules/website/page'
       preLoaderRoute: typeof ModulesWebsitePageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/clients/logo': {
+      id: '/api/public/clients/logo'
+      path: '/api/public/clients/logo'
+      fullPath: '/api/public/clients/logo'
+      preLoaderRoute: typeof ApiPublicClientsLogoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/comms/draft': {
@@ -1959,6 +1979,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesWebsiteRoute: ModulesWebsiteRoute,
   ApiLinkiExecuteRoute: ApiLinkiExecuteRoute,
   ModulesWebsitePageRoute: ModulesWebsitePageRoute,
+  ApiPublicClientsLogoRoute: ApiPublicClientsLogoRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
   ApiPublicContentGenerateRoute: ApiPublicContentGenerateRoute,
   ApiPublicContentImageRoute: ApiPublicContentImageRoute,
