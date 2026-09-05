@@ -85,13 +85,13 @@ export function ClientVisual({
           src={card.logoUrl}
           alt={`${card.name} logo`}
           loading="lazy"
-          className="max-h-[56%] max-w-[64%] object-contain"
+          className="max-h-[56%] max-w-[64%] object-contain transition-transform duration-200 ease-out motion-safe:group-hover:scale-[1.03] motion-safe:group-focus-visible:scale-[1.03]"
         />
       ) : (
         <span
           aria-hidden
           className={cn(
-            "tt-display text-3xl tracking-tight sm:text-4xl",
+            "tt-display text-3xl tracking-tight transition-transform duration-200 ease-out sm:text-4xl motion-safe:group-hover:scale-[1.03] motion-safe:group-focus-visible:scale-[1.03]",
             muted ? "text-muted-foreground" : "text-foreground",
           )}
         >
@@ -104,8 +104,9 @@ export function ClientVisual({
 
 const TILE =
   "group tt-surface tt-rise block p-4 transition-[transform,border-color,box-shadow] duration-200 ease-out " +
-  "motion-safe:hover:-translate-y-0.5 motion-safe:hover:scale-[1.02] hover:border-royal " +
-  "focus-visible:outline-none focus-visible:-translate-y-0.5 focus-visible:border-royal focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+  "motion-safe:hover:-translate-y-[2px] hover:border-royal hover:bg-royal/[0.03] " +
+  "focus-visible:outline-none motion-safe:focus-visible:-translate-y-[2px] focus-visible:border-royal focus-visible:bg-royal/[0.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
 
 function OpenAffordance() {
   return (
