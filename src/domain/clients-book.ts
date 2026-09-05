@@ -127,6 +127,9 @@ export interface ClientCard {
   commercialLine: string;
   /** `Next review Sep 19`, `Renews Oct 3`, or `No review scheduled`. */
   reviewLine: string;
+  /** The recorded dates themselves, so a reader never has to parse a line. */
+  nextReviewAt: ISODateTime | null;
+  renewalAt: ISODateTime | null;
   /** One line owned by Projects, or null when Projects said nothing. */
   deliveryLine: string | null;
   /** True exceptions only. Empty on a normal card. */
