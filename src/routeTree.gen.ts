@@ -40,6 +40,7 @@ import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
 import { Route as ApiLinkiExecuteRouteImport } from './routes/api/linki/execute'
 import { Route as ModulesClientsIndexRouteImport } from './routes/modules.clients.index'
+import { Route as ModulesClientsClientIdRouteImport } from './routes/modules.clients.$clientId'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsDashboardRouteImport } from './routes/modules.comms.dashboard'
 import { Route as ModulesCommsInboxRouteImport } from './routes/modules.comms.inbox'
@@ -250,6 +251,11 @@ const ApiLinkiExecuteRoute = ApiLinkiExecuteRouteImport.update({
 const ModulesClientsIndexRoute = ModulesClientsIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => ModulesClientsRoute,
+} as any)
+const ModulesClientsClientIdRoute = ModulesClientsClientIdRouteImport.update({
+  id: '/$clientId',
+  path: '/$clientId',
   getParentRoute: () => ModulesClientsRoute,
 } as any)
 const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
@@ -587,6 +593,7 @@ export interface FileRoutesByFullPath {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -668,6 +675,7 @@ export interface FileRoutesByTo {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -757,6 +765,7 @@ export interface FileRoutesById {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -848,6 +857,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings/'
     | '/api/linki/execute'
+    | '/modules/clients/$clientId'
     | '/modules/comms/dashboard'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
@@ -929,6 +939,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings'
     | '/api/linki/execute'
+    | '/modules/clients/$clientId'
     | '/modules/comms/dashboard'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
@@ -1017,6 +1028,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings/'
     | '/api/linki/execute'
+    | '/modules/clients/$clientId'
     | '/modules/comms/dashboard'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
@@ -1346,6 +1358,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/modules/clients/'
       preLoaderRoute: typeof ModulesClientsIndexRouteImport
+      parentRoute: typeof ModulesClientsRoute
+    }
+    '/modules/clients/$clientId': {
+      id: '/modules/clients/$clientId'
+      path: '/$clientId'
+      fullPath: '/modules/clients/$clientId'
+      preLoaderRoute: typeof ModulesClientsClientIdRouteImport
       parentRoute: typeof ModulesClientsRoute
     }
     '/modules/comms/': {
@@ -1786,10 +1805,12 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 )
 
 interface ModulesClientsRouteChildren {
+  ModulesClientsClientIdRoute: typeof ModulesClientsClientIdRoute
   ModulesClientsIndexRoute: typeof ModulesClientsIndexRoute
 }
 
 const ModulesClientsRouteChildren: ModulesClientsRouteChildren = {
+  ModulesClientsClientIdRoute: ModulesClientsClientIdRoute,
   ModulesClientsIndexRoute: ModulesClientsIndexRoute,
 }
 
