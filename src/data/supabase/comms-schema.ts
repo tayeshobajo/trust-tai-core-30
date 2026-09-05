@@ -20,7 +20,9 @@ import type {
   Touch,
 } from "@/domain/comms";
 import { RELATIONSHIP_STAGES } from "@/domain/comms";
+import { readMeetingKind, type MeetingKind } from "@/domain/commercial";
 import type { EvidenceRef } from "@/domain/confidence";
+
 
 export type Row = Record<string, unknown>;
 
