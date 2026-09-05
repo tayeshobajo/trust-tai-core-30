@@ -10,7 +10,9 @@
  *  3. Nothing is sent. Comms drafts and holds; a human approves and sends.
  */
 
+import type { MeetingKind } from "./commercial";
 import type { EvidenceRef } from "./confidence";
+
 import type { ID, ISODateTime } from "./entities";
 import { intentOf, type RelationshipIntent } from "./comms-interactions";
 
