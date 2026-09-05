@@ -106,15 +106,13 @@ function toClientRecord(row: Row): ClientCommercialRecord {
 export async function listClientCommercialState(
   organizationId: ID,
 ): Promise<ClientCommercialRecord[]> {
-  return safe(async () => {
-    const { data, error } = await supabase
-      .from("clients")
-      .select(CLIENT_COLUMNS)
-      .eq("organization_id", organizationId)
-      .order("name", { ascending: true });
-    assertOk(error);
-    return ((data ?? []) as Row[]).map(toClientRecord);
-  }, [] as ClientCommercialRecord[]);
+  const { data, error } = await supabase
+    .from("clients")
+    .select(CLIENT_COLUMNS)
+    .eq("organization_id", organizationId)
+    .order("name", { ascending: true });
+  assertOk(error);
+  return ((data ?? []) as Row[]).map(toClientRecord);
 }
 
 export interface ClientCommercialPatch {
