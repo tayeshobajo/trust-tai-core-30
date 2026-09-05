@@ -32,7 +32,9 @@ import {
   writeOutgoingExtras,
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
+import type { MeetingKind } from "@/domain/commercial";
 import type { EvidenceRef } from "@/domain/confidence";
+
 import type { VoiceRegister } from "@/domain/voice";
 
 import { supabaseActivity } from "./activities";
