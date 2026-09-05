@@ -26,9 +26,10 @@ import {
   type ProposalCommercialState,
 } from "@/domain/commercial";
 import { countDiscoveryCalls, countRoadmapReviews, type CountableTouch } from "@/domain/discovery";
+import { businessWeek, resolveBusinessTimeZone } from "@/domain/business-week";
+import { countFirstTouches, type FirstTouchCandidate } from "@/domain/first-touch";
 import { readTouchRecord } from "@/domain/comms-touch-record";
 import {
-  weekWindow,
   weeklyRevenue,
   type BuildPhaseEvent,
   type SignedProposalEvent,
@@ -36,6 +37,7 @@ import {
   type WeekWindow,
 } from "@/domain/revenue";
 import {
+  assertWeeklyTargets,
   DEFAULT_WEEKLY_TARGETS,
   readWeeklyTargets,
   type WeeklyTargets,
