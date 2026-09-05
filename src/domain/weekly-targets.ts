@@ -78,3 +78,60 @@ export function readWeeklyTargets(row: Record<string, unknown> | null): WeeklyTa
       typeof revenue === "number" && Number.isFinite(revenue) ? Math.trunc(revenue) : null,
   };
 }
+
+/* ------------------------------------------------------------- validation */
+
+/**
+ * A target that does not make sense is refused before it can be saved. Counts
+ * are whole numbers of things, so nothing negative and nothing fractional; a
+ * low is never above its high; and a revenue goal is either absent or a whole
+ * number of cents that is not negative.
+ */
+export function validateWeeklyTargets(targets: WeeklyTargets): string[] {
+  const problems: string[] = [];
+
+  const counts: [string, unknown][] = [
+    ["First touches (low)", targets.firstTouchTargetLow],
+    ["First touches (high)", targets.firstTouchTargetHigh],
+    ["Discovery calls (low)", targets.discoveryTargetLow],
+    ["Discovery calls (high)", targets.discoveryTargetHigh],
+    ["Diagnose proposals (low)", targets.diagnoseProposalsTargetLow],
+    ["Diagnose proposals (high)", targets.diagnoseProposalsTargetHigh],
+    ["Run clients", targets.runClientsTarget],
+  ];
+  for (const [label, value] of counts) {
+    if (typeof value !== "number" || !Number.isFinite(value) || !Number.isInteger(value)) {
+      problems.push(`${label} must be a whole number.`);
+    } else if (value < 0) {
+      problems.push(`${label} cannot be negative.`);
+    }
+  }
+
+  const pairs: [string, unknown, unknown][] = [
+    ["First touches", targets.firstTouchTargetLow, targets.firstTouchTargetHigh],
+    ["Discovery calls", targets.discoveryTargetLow, targets.discoveryTargetHigh],
+    ["Diagnose proposals", targets.diagnoseProposalsTargetLow, targets.diagnoseProposalsTargetHigh],
+  ];
+  for (const [label, low, high] of pairs) {
+    if (typeof low === "number" && typeof high === "number" && Number.isFinite(low) && Number.isFinite(high) && low > high) {
+      problems.push(`${label}: the lower target cannot be above the higher one.`);
+    }
+  }
+
+  const revenue = targets.revenueTargetCents;
+  if (revenue !== null && revenue !== undefined) {
+    if (typeof revenue !== "number" || !Number.isFinite(revenue) || !Number.isInteger(revenue)) {
+      problems.push("The revenue target must be a whole number of cents.");
+    } else if (revenue < 0) {
+      problems.push("The revenue target cannot be negative.");
+    }
+  }
+
+  return problems;
+}
+
+/** Throws with everything that is wrong, so a person can fix it in one pass. */
+export function assertWeeklyTargets(targets: WeeklyTargets): void {
+  const problems = validateWeeklyTargets(targets);
+  if (problems.length > 0) throw new Error(problems.join(" "));
+}

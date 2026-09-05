@@ -13,10 +13,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase } from "./fake-supabase";
 
 const db = createFakeSupabase();
+/** Tables the stand-in should refuse to answer, so a real outage can be tested. */
+const unavailable = new Set<string>();
 
 vi.mock("@/integrations/trust-tai/supabase", () => ({
   supabase: {
-    from: (table: string) => db.from(table),
+    from: (table: string) => {
+      if (unavailable.has(table)) throw new Error(`${table} is unavailable.`);
+      return db.from(table);
+    },
   },
 }));
 
@@ -68,6 +73,7 @@ function seedRoadmap(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   for (const key of Object.keys(db.tables)) db.tables[key] = [];
+  unavailable.clear();
 });
 
 describe("client commercial state", () => {
@@ -151,7 +157,7 @@ describe("proposals on the roadmap lineage", () => {
       CONTEXT,
     );
     const board = await service.readWeeklyScoreboard("org-1", NOW);
-    expect(board.revenue.diagnoseCents).toBe(0);
+    expect(board.revenue!.diagnoseCents).toBe(0);
   });
 });
 
@@ -231,9 +237,9 @@ describe("weekly scoreboard", () => {
 
     const board = await service.readWeeklyScoreboard("org-1", NOW);
     expect(board.runClients).toBe(1);
-    expect(board.revenue.runCents).toBeCloseTo((520_000 * 12) / 52, 10);
-    expect(board.revenue.diagnoseCents).toBe(300_000);
-    expect(board.revenue.buildCents).toBe(100_000);
+    expect(board.revenue!.runCents).toBeCloseTo((520_000 * 12) / 52, 10);
+    expect(board.revenue!.diagnoseCents).toBe(300_000);
+    expect(board.revenue!.buildCents).toBe(100_000);
     expect(board.proposalsSent).toBe(1);
     // Nothing derived is written back.
     expect(db.tables["clients"]?.[0]?.["mrr_cents"]).toBe(520_000);
@@ -246,7 +252,9 @@ describe("weekly scoreboard", () => {
         organization_id: "org-1",
         relationship_id: "rel-1",
         occurred_at: "2026-09-01T10:00:00.000Z",
+        channel: "meeting",
         direction: "inbound",
+        logged_by: "user-1",
         meeting_kind: "discovery",
         provenance: {},
       },
@@ -255,7 +263,9 @@ describe("weekly scoreboard", () => {
         organization_id: "org-1",
         relationship_id: "rel-2",
         occurred_at: "2026-09-05T10:00:00.000Z",
+        channel: "meeting",
         direction: "inbound",
+        logged_by: "user-1",
         meeting_kind: "discovery",
         provenance: {},
       },
@@ -264,7 +274,9 @@ describe("weekly scoreboard", () => {
         organization_id: "org-1",
         relationship_id: "rel-3",
         occurred_at: "2026-09-02T10:00:00.000Z",
+        channel: "meeting",
         direction: "inbound",
+        logged_by: "user-1",
         meeting_kind: "roadmap_review",
         provenance: {},
       },
@@ -273,7 +285,9 @@ describe("weekly scoreboard", () => {
         organization_id: "org-1",
         relationship_id: "rel-4",
         occurred_at: "2026-09-02T11:00:00.000Z",
+        channel: "email",
         direction: "outbound",
+        logged_by: "user-1",
         meeting_kind: null,
         provenance: {},
       },
@@ -292,7 +306,9 @@ describe("weekly scoreboard", () => {
         organization_id: "org-1",
         relationship_id: "rel-new",
         occurred_at: "2026-09-01T10:00:00.000Z",
+        channel: "email",
         direction: "outbound",
+        logged_by: "user-1",
         provenance: {},
       },
       {
@@ -300,7 +316,9 @@ describe("weekly scoreboard", () => {
         organization_id: "org-1",
         relationship_id: "rel-old",
         occurred_at: "2026-09-01T11:00:00.000Z",
+        channel: "email",
         direction: "outbound",
+        logged_by: "user-1",
         provenance: {},
       },
       {
@@ -308,7 +326,9 @@ describe("weekly scoreboard", () => {
         organization_id: "org-1",
         relationship_id: "rel-old",
         occurred_at: "2026-08-20T11:00:00.000Z",
+        channel: "email",
         direction: "outbound",
+        logged_by: "user-1",
         provenance: {},
       },
     ];
@@ -324,7 +344,9 @@ describe("weekly scoreboard", () => {
         organization_id: "org-1",
         relationship_id: "rel-1",
         occurred_at: "2026-09-01T10:00:00.000Z",
+        channel: "meeting",
         direction: "inbound",
+        logged_by: "user-1",
         meeting_kind: "discovery",
         provenance: { retracted_at: "2026-09-02T10:00:00.000Z" },
       },
@@ -342,7 +364,9 @@ describe("meeting kind", () => {
         organization_id: "org-1",
         relationship_id: "rel-1",
         occurred_at: "2026-09-01T10:00:00.000Z",
+        channel: "meeting",
         direction: "inbound",
+        logged_by: "user-1",
         meeting_kind: null,
         provenance: { app_key: "comms" },
       },
@@ -354,5 +378,216 @@ describe("meeting kind", () => {
     const provenance = row["provenance"] as Record<string, unknown>;
     expect(provenance["meeting_kind_set_by"]).toBe("user-1");
     expect(provenance["app_key"]).toBe("comms");
+  });
+});
+
+
+describe("Build fails closed without a human-entered phase amount", () => {
+  it("refuses the move, leaves the client untouched and emits nothing", async () => {
+    seedClient({ tier: "diagnose" });
+    await expect(
+      service.setClientCommercialState({ clientId: "client-1", tier: "build" }, CONTEXT),
+    ).rejects.toThrow(/phase amount/i);
+
+    const row = db.tables["clients"]?.[0] as Record<string, unknown>;
+    expect(row["tier"]).toBe("diagnose");
+    expect(row["tier_changed_at"]).toBeNull();
+    expect(row["commercial_updated_at"]).toBeNull();
+    expect(db.tables["activities"] ?? []).toHaveLength(0);
+  });
+
+  it("refuses an amount that is not a real number of cents", async () => {
+    seedClient({ tier: "diagnose" });
+    await expect(
+      service.setClientCommercialState(
+        { clientId: "client-1", tier: "build", buildPhaseAmountCents: Number.NaN },
+        CONTEXT,
+      ),
+    ).rejects.toThrow(/phase amount/i);
+    await expect(
+      service.setClientCommercialState(
+        { clientId: "client-1", tier: "build", buildPhaseAmountCents: -1 },
+        CONTEXT,
+      ),
+    ).rejects.toThrow(/phase amount/i);
+    expect(db.tables["activities"] ?? []).toHaveLength(0);
+  });
+
+  it("needs no amount when the tier is not moving", async () => {
+    seedClient({ tier: "build" });
+    const after = await service.setClientCommercialState(
+      { clientId: "client-1", tier: "build", mrrCents: 100_000 },
+      CONTEXT,
+    );
+    expect(after.mrrCents).toBe(100_000);
+    expect(db.tables["activities"] ?? []).toHaveLength(0);
+  });
+});
+
+describe("commercial transitions happen once", () => {
+  it("replays an identical sending instead of recording it twice", async () => {
+    seedRoadmap();
+    const sent = {
+      roadmapId: "roadmap-1",
+      amountCents: 250_000,
+      sentAt: "2026-09-01T09:00:00.000Z",
+    };
+    const first = await service.recordProposalSent(sent, CONTEXT);
+    const second = await service.recordProposalSent(sent, CONTEXT);
+
+    expect(second).toEqual(first);
+    expect(db.tables["activities"] ?? []).toHaveLength(1);
+  });
+
+  it("refuses to reopen a proposal that has already been answered", async () => {
+    seedRoadmap({
+      proposal_sent_at: "2026-09-01T09:00:00.000Z",
+      proposal_amount_cents: 250_000,
+      proposal_outcome: "signed",
+      proposal_outcome_at: "2026-09-02T10:00:00.000Z",
+    });
+    await expect(
+      service.recordProposalSent(
+        { roadmapId: "roadmap-1", amountCents: 250_000, sentAt: "2026-09-03T09:00:00.000Z" },
+        CONTEXT,
+      ),
+    ).rejects.toThrow(/already been answered/i);
+    expect(db.tables["activities"] ?? []).toHaveLength(0);
+  });
+
+  it("replays the same answer instead of recognising it twice", async () => {
+    seedRoadmap({ proposal_sent_at: "2026-09-01T09:00:00.000Z", proposal_amount_cents: 250_000 });
+    const outcome = {
+      roadmapId: "roadmap-1",
+      outcome: "signed" as const,
+      at: "2026-09-02T10:00:00.000Z",
+    };
+    await service.recordProposalOutcome(outcome, CONTEXT);
+    const replay = await service.recordProposalOutcome(outcome, CONTEXT);
+
+    expect(replay.proposalOutcome).toBe("signed");
+    expect(db.tables["activities"] ?? []).toHaveLength(1);
+  });
+
+  it("refuses to turn a signed proposal into a declined one on its own", async () => {
+    seedRoadmap({
+      proposal_sent_at: "2026-09-01T09:00:00.000Z",
+      proposal_amount_cents: 250_000,
+      proposal_outcome: "signed",
+      proposal_outcome_at: "2026-09-02T10:00:00.000Z",
+    });
+    await expect(
+      service.recordProposalOutcome({ roadmapId: "roadmap-1", outcome: "declined" }, CONTEXT),
+    ).rejects.toThrow(/already recorded as signed/i);
+    expect(db.tables["activities"] ?? []).toHaveLength(0);
+  });
+
+  it("refuses an answer to a proposal that was never sent", async () => {
+    seedRoadmap();
+    await expect(
+      service.recordProposalOutcome({ roadmapId: "roadmap-1", outcome: "signed" }, CONTEXT),
+    ).rejects.toThrow(/has to have been sent/i);
+  });
+});
+
+describe("meeting kind belongs to meetings", () => {
+  it("refuses to classify an email as a kind of meeting", async () => {
+    db.tables["comms_touches"] = [
+      {
+        id: "touch-1",
+        organization_id: "org-1",
+        relationship_id: "rel-1",
+        channel: "email",
+        direction: "outbound",
+        logged_by: "user-1",
+        occurred_at: "2026-09-01T10:00:00.000Z",
+        meeting_kind: null,
+        provenance: {},
+      },
+    ];
+    await expect(
+      service.setMeetingKind({ touchId: "touch-1", meetingKind: "discovery" }, CONTEXT),
+    ).rejects.toThrow(/only a meeting/i);
+    expect((db.tables["comms_touches"]?.[0] as Record<string, unknown>)["meeting_kind"]).toBeNull();
+  });
+});
+
+describe("weekly targets validate before they are saved", () => {
+  const valid = {
+    firstTouchTargetLow: 10,
+    firstTouchTargetHigh: 12,
+    discoveryTargetLow: 2,
+    discoveryTargetHigh: 3,
+    diagnoseProposalsTargetLow: 1,
+    diagnoseProposalsTargetHigh: 2,
+    runClientsTarget: 20,
+    revenueTargetCents: 2_100_000,
+  };
+
+  it("refuses a low above its high, and writes nothing", async () => {
+    await expect(
+      service.saveOrganizationWeeklyTargets({ ...valid, discoveryTargetLow: 9 }, CONTEXT),
+    ).rejects.toThrow(/lower target/i);
+    expect(db.tables["organization_weekly_targets"] ?? []).toHaveLength(0);
+  });
+
+  it("refuses negative and fractional counts", async () => {
+    await expect(
+      service.saveOrganizationWeeklyTargets({ ...valid, runClientsTarget: -1 }, CONTEXT),
+    ).rejects.toThrow(/cannot be negative/i);
+    await expect(
+      service.saveOrganizationWeeklyTargets({ ...valid, firstTouchTargetLow: 1.5 }, CONTEXT),
+    ).rejects.toThrow(/whole number/i);
+    await expect(
+      service.saveOrganizationWeeklyTargets(
+        { ...valid, revenueTargetCents: Number.NaN },
+        CONTEXT,
+      ),
+    ).rejects.toThrow(/whole number of cents/i);
+    expect(db.tables["organization_weekly_targets"] ?? []).toHaveLength(0);
+  });
+});
+
+describe("the week belongs to the organization", () => {
+  it("reads the organization's own timezone and starts the week there", async () => {
+    db.tables["organizations"] = [
+      { id: "org-1", name: "Trust Tai", timezone: "America/Chicago" },
+    ];
+    const board = await service.readWeeklyScoreboard("org-1", NOW);
+    expect(board.timeZone).toBe("America/Chicago");
+    expect(board.timeZoneFallback).toBe(false);
+    expect(board.week.start).toBe("2026-08-31T05:00:00.000Z");
+    expect(board.week.end).toBe("2026-09-07T05:00:00.000Z");
+  });
+
+  it("says out loud when it had to fall back, instead of using the server's clock", async () => {
+    db.tables["organizations"] = [{ id: "org-1", name: "Trust Tai", timezone: null }];
+    const board = await service.readWeeklyScoreboard("org-1", NOW);
+    expect(board.timeZone).toBe("UTC");
+    expect(board.timeZoneFallback).toBe(true);
+    expect(board.timeZoneBecause).toMatch(/no timezone set/i);
+  });
+});
+
+describe("a source that cannot be read is not a zero", () => {
+  it("reports revenue and Run clients as unknown when the client table is unavailable", async () => {
+    unavailable.add("clients");
+    const board = await service.readWeeklyScoreboard("org-1", NOW);
+
+    expect(board.runClients).toBeNull();
+    expect(board.revenue).toBeNull();
+    expect(board.sources.clients.available).toBe(false);
+    expect(board.sources.clients.because).toMatch(/unavailable/i);
+    // Everything still readable keeps its real answer.
+    expect(board.proposalsSent).toBe(0);
+    expect(board.sources.proposals.available).toBe(true);
+  });
+
+  it("keeps a genuinely empty week as a real zero", async () => {
+    const board = await service.readWeeklyScoreboard("org-1", NOW);
+    expect(board.runClients).toBe(0);
+    expect(board.firstTouches).toBe(0);
+    expect(board.revenue?.totalCents).toBe(0);
+    expect(board.sources.clients.available).toBe(true);
   });
 });

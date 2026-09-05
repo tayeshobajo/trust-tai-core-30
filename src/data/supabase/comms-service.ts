@@ -443,6 +443,11 @@ export const commsService = {
     context: CommsContext,
   ): Promise<Touch> {
     const occurredAt = input.occurredAt ?? new Date().toISOString();
+    // Only something that actually was a meeting can be said to be a kind of
+    // meeting. An email has no kind of meeting to have.
+    if (input.meetingKind && input.channel !== "meeting") {
+      throw new Error("Only a meeting can be given a kind of meeting.");
+    }
     const { data, error } = await supabase
       .from("comms_touches")
       .insert({
