@@ -159,6 +159,12 @@ export interface Touch {
   body?: string;
   loggedBy?: ID;
   /**
+   * What the meeting was, when a person said so. Never inferred from a subject
+   * line, a calendar entry, Fathom or a transcript.
+   */
+  meetingKind?: MeetingKind;
+
+  /**
    * How this entry came to read as it does: who logged it, and any later
    * correction or retraction. Read with `readTouchRecord`.
    */
