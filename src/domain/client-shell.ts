@@ -430,4 +430,3 @@ export const FILES_NO_PROJECTS_BECAUSE =
 export const FILES_NONE = "No files on this company's projects";
 export const FILES_NONE_BECAUSE =
   "Projects exist for this company, but nothing has been uploaded to them yet.";
-

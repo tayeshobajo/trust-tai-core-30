@@ -146,7 +146,6 @@ function LogoUpload({ control, hasLogo }: { control: ClientLogoControl; hasLogo:
   );
 }
 
-
 function hostOf(url: string): string | null {
   try {
     return new URL(url).hostname.replace(/^www\./, "");

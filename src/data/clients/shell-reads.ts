@@ -74,8 +74,7 @@ export function eventsAbout(events: ActivityEvent[], ids: ID[]): ActivityEvent[]
 /* ------------------------------------------------------------------- site */
 
 export type ClientSiteRead =
-  | { provisioned: false }
-  | { provisioned: true; submissions: WebsiteSubmission[] };
+  { provisioned: false } | { provisioned: true; submissions: WebsiteSubmission[] };
 
 /**
  * Everything the Website room recorded for this organization. The page keeps

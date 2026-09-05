@@ -703,7 +703,6 @@ export function FilesTab({
   );
 }
 
-
 /* --------------------------------------------------------------- approvals */
 
 function ApprovalList({ requests, timeZone }: { requests: ApprovalRequest[]; timeZone: string }) {

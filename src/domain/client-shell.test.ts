@@ -313,18 +313,24 @@ describe("site matching", () => {
   });
 
   it("matches on the exact company name when no address was recorded", () => {
-    const matched = siteSubmissionsFor([sub(null, "northlight systems", "2026-01-02T00:00:00.000Z")], {
-      name: "Northlight Systems",
-      websiteUrl: null,
-    });
+    const matched = siteSubmissionsFor(
+      [sub(null, "northlight systems", "2026-01-02T00:00:00.000Z")],
+      {
+        name: "Northlight Systems",
+        websiteUrl: null,
+      },
+    );
     expect(matched).toHaveLength(1);
   });
 
   it("never matches on resemblance", () => {
-    const matched = siteSubmissionsFor([sub("https://northlight.co", "Northlight", "2026-01-02T00:00:00.000Z")], {
-      name: "Northlight Systems",
-      websiteUrl: "https://northlight.io",
-    });
+    const matched = siteSubmissionsFor(
+      [sub("https://northlight.co", "Northlight", "2026-01-02T00:00:00.000Z")],
+      {
+        name: "Northlight Systems",
+        websiteUrl: "https://northlight.io",
+      },
+    );
     expect(matched).toHaveLength(0);
   });
 

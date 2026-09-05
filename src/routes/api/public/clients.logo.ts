@@ -32,9 +32,8 @@ export const Route = createFileRoute("/api/public/clients/logo")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       POST: async ({ request }) => {
-        const { bearerToken, clientForToken, requireMember } = await import(
-          "@/lib/context-packet.server"
-        );
+        const { bearerToken, clientForToken, requireMember } =
+          await import("@/lib/context-packet.server");
         const { storeClientLogo, CLIENT_LOGO_MAX_BYTES } = await import("@/lib/client-logo.server");
 
         const token = bearerToken(request);
