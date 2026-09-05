@@ -27,7 +27,11 @@ import {
 } from "@/domain/commercial";
 import { validateNewClient, type NewClientInput } from "@/domain/clients-book";
 import { countDiscoveryCalls, countRoadmapReviews, type CountableTouch } from "@/domain/discovery";
-import { businessWeek, resolveBusinessTimeZone } from "@/domain/business-week";
+import {
+  businessWeek,
+  resolveBusinessTimeZone,
+  type ResolvedTimeZone,
+} from "@/domain/business-week";
 import { countFirstTouches, type FirstTouchCandidate } from "@/domain/first-touch";
 import { readTouchRecord } from "@/domain/comms-touch-record";
 import {
@@ -775,6 +779,23 @@ async function readOrganizationTimeZone(organizationId: ID): Promise<unknown> {
     .maybeSingle();
   assertOk(error);
   return (data as Row | null)?.["timezone"] ?? null;
+}
+
+/**
+ * The organization's timezone, resolved for display. A day a person typed is
+ * a day in this zone, and a day shown back to them is read in it too. When
+ * the row cannot be read, the fallback is reported as a fallback, never
+ * silently adopted.
+ */
+export async function readOrganizationTimeZoneResolved(organizationId: ID): Promise<ResolvedTimeZone> {
+  const source = await sourced(() => readOrganizationTimeZone(organizationId));
+  const zone = resolveBusinessTimeZone(source.value);
+  if (source.available) return zone;
+  return {
+    ...zone,
+    fallback: true,
+    because: `The organization's timezone could not be read (${source.because ?? "no detail"}), so days are shown in ${zone.timeZone}.`,
+  };
 }
 
 /**
