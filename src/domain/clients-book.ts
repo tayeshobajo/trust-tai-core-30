@@ -305,26 +305,47 @@ export const CLIENTS_VIEWS: ClientsView[] = ["all", "run", "build", "diagnose"];
 export interface ClientsHeadline {
   runClients: number;
   reviewsDue: number;
-  proposalsAwaiting: number;
+  /** Null when the proposal lineage could not be read: unknown, not zero. */
+  proposalsAwaiting: number | null;
   /** The sentence itself, so the page never assembles its own wording. */
   sentence: string;
 }
 
-export function clientsHeadline(cards: ClientCard[], now: Date, timeZone: string): ClientsHeadline {
+export interface ClientsHeadlineSources {
+  /** False when the proposal lineage failed to read. Defaults to available. */
+  proposalsAvailable?: boolean;
+}
+
+/**
+ * The calm banner above the book. A review is due when its own recorded day
+ * is overdue or falls inside the next week; a renewal is never counted as a
+ * review. A source that could not be read is named as unreadable in the
+ * sentence rather than shown as a healthy zero.
+ */
+export function clientsHeadline(
+  cards: ClientCard[],
+  now: Date,
+  timeZone: string,
+  sources: ClientsHeadlineSources = {},
+): ClientsHeadline {
   const active = cards.filter((card) => card.kind === "active");
   const runClients = active.filter((card) => card.tier === "run").length;
   const reviewsDue = active.filter((card) => {
-    if (card.warnings.some((warning) => warning.startsWith("Review overdue"))) return true;
-    if (!card.soonestAt) return false;
-    const days = localDaysBetween(now, card.soonestAt, timeZone);
-    return days !== null && days >= 0 && days <= REVIEW_DUE_DAYS;
+    if (!card.nextReviewAt) return false;
+    const days = localDaysBetween(now, card.nextReviewAt, timeZone);
+    return days !== null && days <= REVIEW_DUE_DAYS;
   }).length;
-  const proposalsAwaiting = cards.filter((card) => card.kind === "proposed").length;
+  const proposalsAvailable = sources.proposalsAvailable ?? true;
+  const proposalsAwaiting = proposalsAvailable
+    ? cards.filter((card) => card.kind === "proposed").length
+    : null;
 
   const parts = [
     `${runClients} Run client${runClients === 1 ? "" : "s"}`,
     `${reviewsDue} review${reviewsDue === 1 ? "" : "s"} due`,
-    `${proposalsAwaiting} proposal${proposalsAwaiting === 1 ? "" : "s"} awaiting your decision`,
+    proposalsAwaiting === null
+      ? "proposals could not be read just now"
+      : `${proposalsAwaiting} proposal${proposalsAwaiting === 1 ? "" : "s"} awaiting your decision`,
   ];
 
   return { runClients, reviewsDue, proposalsAwaiting, sentence: parts.join(" · ") };
