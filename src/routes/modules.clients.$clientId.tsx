@@ -11,8 +11,8 @@
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { ClientHeader, ClientTabs } from "@/components/tt/clients/shell";
@@ -27,11 +27,14 @@ import {
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { buildClientBook } from "@/data/clients/book-projection";
+import { uploadClientLogo } from "@/data/clients/logo";
 import {
   eventsAbout,
   readClientApprovals,
+  readClientFiles,
   readClientHistory,
   readClientRoadmaps,
+  readClientSite,
 } from "@/data/clients/shell-reads";
 import {
   listProposals,
@@ -39,6 +42,7 @@ import {
   readOrganizationTimeZoneResolved,
 } from "@/data/supabase/commercial-service";
 import { commsService } from "@/data/supabase/comms-service";
+import { projectDelivery } from "@/data/supabase/project-delivery";
 import { projectsService } from "@/data/supabase/projects-service";
 import {
   answered,
@@ -150,6 +154,11 @@ function ClientShell({
     queryFn: () => commsService.list(organizationId),
     retry: false,
   });
+  const siteQuery = useQuery({
+    queryKey: ["clients", "site", organizationId],
+    queryFn: () => readClientSite(organizationId),
+    retry: false,
+  });
   const historyQuery = useQuery({
     queryKey: ["clients", "history", organizationId],
     queryFn: () => readClientHistory(organizationId),
@@ -157,6 +166,8 @@ function ClientShell({
   });
 
   const record = clientQuery.data ?? null;
+  const queryClient = useQueryClient();
+  const [logoProblem, setLogoProblem] = useState<string | null>(null);
 
   /* Canonical ids this company is known by across rooms. */
   const roadmaps = useMemo(
@@ -184,6 +195,29 @@ function ClientShell({
     [clientId, roadmaps, projects, relationshipIds],
   );
   const entityIds = useMemo(() => approvalEntityIds(links), [links]);
+  const projectIds = links.projectIds;
+  const projectNames = useMemo(
+    () => Object.fromEntries(projects.map((project) => [project.id, project.name])),
+    [projects],
+  );
+
+  const filesQuery = useQuery({
+    queryKey: ["clients", "files", organizationId, projectIds],
+    queryFn: () => readClientFiles(organizationId, projectIds),
+    enabled: projectsQuery.isSuccess,
+    retry: false,
+  });
+
+  /* A company image is a real file a person uploaded, never a guess. */
+  const uploadLogo = useMutation({
+    mutationFn: (file: File) => uploadClientLogo({ organizationId, clientId, file }),
+    onSuccess: () => {
+      setLogoProblem(null);
+      void queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (error: unknown) =>
+      setLogoProblem(error instanceof Error ? error.message : "That image could not be saved."),
+  });
 
   /* Approvals are asked only once the ids they could be filed under are known. */
   const linksSettled =
@@ -326,6 +360,11 @@ function ClientShell({
           facts={facts}
           websiteUrl={record.websiteUrl}
           warnings={card.warnings}
+          logo={{
+            pending: uploadLogo.isPending,
+            problem: logoProblem,
+            onSelect: (file) => uploadLogo.mutate(file),
+          }}
         />
 
         <ClientTabs clientId={clientId} active={tab} />
@@ -344,15 +383,18 @@ function ClientShell({
                 approvals: approvalsRead,
                 relationship: relationshipRead,
                 history: historyRead,
+                site: readOf(siteQuery),
                 loading: {
                   roadmap: roadmapsQuery.isLoading,
                   projects: projectsQuery.isLoading,
                   approvals: !linksSettled || approvalsQuery.isLoading,
                   relationship: relationshipsQuery.isLoading,
                   history: historyQuery.isLoading,
+                  site: siteQuery.isLoading,
                 },
               }}
               cadence={cadence}
+              client={{ name: record.name, websiteUrl: record.websiteUrl }}
               now={now}
               timeZone={timeZone}
             />
@@ -375,8 +417,28 @@ function ClientShell({
               timeZone={timeZone}
             />
           ) : null}
-          {tab === "site" ? <SiteTab /> : null}
-          {tab === "files" ? <FilesTab /> : null}
+          {tab === "site" ? (
+            <SiteTab
+              read={readOf(siteQuery)}
+              loading={siteQuery.isLoading}
+              client={{ name: record.name, websiteUrl: record.websiteUrl }}
+              timeZone={timeZone}
+            />
+          ) : null}
+          {tab === "files" ? (
+            <FilesTab
+              read={readOf(filesQuery)}
+              loading={projectsQuery.isLoading || filesQuery.isLoading}
+              hasProjects={projects.length > 0}
+              projectNames={projectNames}
+              timeZone={timeZone}
+              onOpen={(file) => {
+                void projectDelivery.fileUrl(file).then((url) => {
+                  window.open(url, "_blank", "noopener,noreferrer");
+                });
+              }}
+            />
+          ) : null}
         </div>
       </div>
     </AppShell>

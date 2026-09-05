@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 
 import { ClientVisual } from "@/components/tt/clients/card";
 import { TTCard } from "@/components/tt/primitives";
+import { CLIENT_LOGO_ACCEPT } from "@/data/clients/logo";
 import type { ClientHeaderFacts, ClientTab, RoomRead } from "@/domain/client-shell";
 import { CLIENT_TAB_LABEL, CLIENT_TABS } from "@/domain/client-shell";
 import type { ClientCard } from "@/domain/clients-book";
@@ -21,16 +22,25 @@ import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ header */
 
+export interface ClientLogoControl {
+  pending: boolean;
+  problem: string | null;
+  onSelect: (file: File) => void;
+}
+
 export function ClientHeader({
   card,
   facts,
   websiteUrl,
   warnings,
+  logo,
 }: {
   card: ClientCard;
   facts: ClientHeaderFacts;
   websiteUrl: string | null;
   warnings: string[];
+  /** Present when this person may record a real company image. */
+  logo?: ClientLogoControl;
 }) {
   const host = websiteUrl ? hostOf(websiteUrl) : null;
   return (
@@ -44,7 +54,11 @@ export function ClientHeader({
         }}
       />
       <div className="relative flex flex-col gap-6 sm:flex-row sm:items-start">
-        <ClientVisual card={card} className="w-28 shrink-0 rounded-xl sm:w-32" />
+        <div className="w-28 shrink-0 sm:w-32">
+          <ClientVisual card={card} className="rounded-xl" />
+          {logo ? <LogoUpload control={logo} hasLogo={Boolean(card.logoUrl)} /> : null}
+        </div>
+
         <div className="min-w-0 flex-1">
           <p className="tt-eyebrow text-royal">Client</p>
           <h1 className="mt-2 font-display text-3xl leading-tight tracking-tight text-foreground sm:text-4xl">
@@ -99,6 +113,36 @@ export function ClientHeader({
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * A real image, chosen by a person. Nothing is generated and nothing is
+ * fetched from the web: an unrecorded logo stays two initials.
+ */
+function LogoUpload({ control, hasLogo }: { control: ClientLogoControl; hasLogo: boolean }) {
+  return (
+    <div className="mt-2">
+      <label className="block cursor-pointer text-center text-[12px] font-medium text-royal hover:underline">
+        {control.pending ? "Uploading" : hasLogo ? "Replace logo" : "Upload logo"}
+        <input
+          type="file"
+          accept={CLIENT_LOGO_ACCEPT}
+          className="sr-only"
+          disabled={control.pending}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) control.onSelect(file);
+          }}
+        />
+      </label>
+      {control.problem ? (
+        <p className="mt-1 text-[12px] text-foreground">{control.problem}</p>
+      ) : (
+        <p className="mt-1 text-center text-[11px] text-muted-foreground">PNG, JPG or SVG, 2 MB</p>
+      )}
+    </div>
   );
 }
 

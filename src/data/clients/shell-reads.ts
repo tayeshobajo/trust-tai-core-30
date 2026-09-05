@@ -8,11 +8,15 @@
 
 import { supabaseActivity } from "@/data/supabase/activities";
 import { approvalsSchemaReady, approvalsService } from "@/data/supabase/approvals-service";
+import { projectDelivery } from "@/data/supabase/project-delivery";
 import { roadmapService } from "@/data/supabase/roadmap-service";
+import { listWebsiteSubmissions } from "@/data/supabase/website-service";
 import type { ActivityEvent } from "@/domain/activity";
 import type { ApprovalRequest } from "@/domain/approvals";
 import type { ID } from "@/domain/entities";
+import type { ProjectFile } from "@/domain/project-delivery";
 import type { Roadmap, RoadmapDecision, RoadmapStage } from "@/domain/roadmap";
+import type { WebsiteSubmission } from "@/domain/website";
 
 export interface ClientRoadmapRead {
   roadmaps: Roadmap[];
@@ -65,4 +69,32 @@ export function eventsAbout(events: ActivityEvent[], ids: ID[]): ActivityEvent[]
       wanted.has(event.subject.id) ||
       (event.related ?? []).some((related) => wanted.has(related.id)),
   );
+}
+
+/* ------------------------------------------------------------------- site */
+
+export type ClientSiteRead =
+  { provisioned: false } | { provisioned: true; submissions: WebsiteSubmission[] };
+
+/**
+ * Everything the Website room recorded for this organization. The page keeps
+ * only the submissions whose recorded address or company name is this
+ * client's own. Tables that were never applied report as not provisioned,
+ * never as an empty, healthy site.
+ */
+export async function readClientSite(organizationId: ID): Promise<ClientSiteRead> {
+  const result = await listWebsiteSubmissions(organizationId);
+  if (!result.provisioned) return { provisioned: false };
+  return { provisioned: true, submissions: result.value };
+}
+
+/* ------------------------------------------------------------------ files */
+
+/** Every file on the projects that name this company. Projects owns them. */
+export async function readClientFiles(
+  organizationId: ID,
+  projectIds: ID[],
+): Promise<ProjectFile[]> {
+  if (projectIds.length === 0) return [];
+  return projectDelivery.listFilesForProjects(organizationId, projectIds);
 }

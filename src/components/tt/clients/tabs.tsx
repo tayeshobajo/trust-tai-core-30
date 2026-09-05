@@ -20,25 +20,35 @@ import {
   Unreadable,
 } from "@/components/tt/clients/shell";
 import { TTCard } from "@/components/tt/primitives";
-import type { ClientApprovalsRead } from "@/data/clients/shell-reads";
+import type { ClientApprovalsRead, ClientSiteRead } from "@/data/clients/shell-reads";
 import type { ActivityEvent } from "@/domain/activity";
 import type { ApprovalRequest } from "@/domain/approvals";
 import {
   approvalStatusLabel,
+  FILES_NO_PROJECTS,
+  FILES_NO_PROJECTS_BECAUSE,
   FILES_NONE,
   FILES_NONE_BECAUSE,
   isOpenApproval,
   isOpenProject,
   lastTouchLine,
   projectStateLabel,
-  SITE_UNLINKED,
-  SITE_UNLINKED_BECAUSE,
+  siteHost,
+  siteSubmissionsFor,
+  SITE_NO_ADDRESS,
+  SITE_NO_ADDRESS_BECAUSE,
+  SITE_NO_SUBMISSIONS,
+  SITE_NO_SUBMISSIONS_BECAUSE,
+  SITE_UNPROVISIONED,
+  SITE_UNPROVISIONED_BECAUSE,
+  type ClientSiteIdentity,
   type RelationshipSnapshot,
   type ReviewCadence,
   type RoadmapOutcome,
   type RoomRead,
 } from "@/domain/client-shell";
 import { formatDay } from "@/domain/clients-book";
+import { FILE_KIND_LABEL, type ProjectFile } from "@/domain/project-delivery";
 import type { ExecutionProject } from "@/domain/projects";
 import { cn } from "@/lib/utils";
 
@@ -50,23 +60,27 @@ export interface OverviewReads {
   approvals: RoomRead<ClientApprovalsRead> | null;
   relationship: RoomRead<RelationshipSnapshot> | null;
   history: RoomRead<ActivityEvent[]> | null;
+  site: RoomRead<ClientSiteRead> | null;
   loading: {
     roadmap: boolean;
     projects: boolean;
     approvals: boolean;
     relationship: boolean;
     history: boolean;
+    site: boolean;
   };
 }
 
 export function OverviewTab({
   reads,
   cadence,
+  client,
   now,
   timeZone,
 }: {
   reads: OverviewReads;
   cadence: ReviewCadence;
+  client: ClientSiteIdentity;
   now: Date;
   timeZone: string;
 }) {
@@ -213,7 +227,23 @@ export function OverviewTab({
             </Link>
           }
         >
-          <Absent line={SITE_UNLINKED} because={SITE_UNLINKED_BECAUSE} />
+          <ReadOrSay read={reads.site} loading={reads.loading.site} what="Site records">
+            {(site) => {
+              if (!site.provisioned) {
+                return <Unreadable what="The Website room" because={SITE_UNPROVISIONED_BECAUSE} />;
+              }
+              const matched = siteSubmissionsFor(site.submissions, client);
+              return matched.length === 0 ? (
+                <Absent line={SITE_NO_SUBMISSIONS} because={SITE_NO_SUBMISSIONS_BECAUSE} />
+              ) : (
+                <Fact
+                  label="Intake from this company"
+                  value={`${matched.length} recorded`}
+                  note={`Last on ${formatDay(matched[0]!.submittedAt, timeZone) ?? "an unknown day"}.`}
+                />
+              );
+            }}
+          </ReadOrSay>
         </RoomSection>
       </div>
 
@@ -516,28 +546,159 @@ export function RelationshipTab({
   );
 }
 
-/* ------------------------------------------------------------- site, files */
+/* -------------------------------------------------------------------- site */
 
-export function SiteTab() {
+export function SiteTab({
+  read,
+  loading,
+  client,
+  timeZone,
+}: {
+  read: RoomRead<ClientSiteRead> | null;
+  loading: boolean;
+  client: ClientSiteIdentity;
+  timeZone: string;
+}) {
+  const host = siteHost(client.websiteUrl);
   return (
     <RoomSection
       eyebrow="Owned by Website"
       title="This company's site"
+      description="Matched only by the address or company name a person recorded. Nothing is matched by resemblance."
       openTo={
         <Link to="/modules/website">
           <OpenIn>Open in Website</OpenIn>
         </Link>
       }
     >
-      <Absent line={SITE_UNLINKED} because={SITE_UNLINKED_BECAUSE} />
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Fact
+            label="Recorded address"
+            value={host ?? "None recorded"}
+            note={client.websiteUrl ?? "Add a website on this client to match its site records."}
+          />
+          <ReadOrSay read={read} loading={loading} what="Site records">
+            {(site) => (
+              <Fact
+                label="Intake from this company"
+                value={
+                  site.provisioned
+                    ? `${siteSubmissionsFor(site.submissions, client).length} recorded`
+                    : "Cannot be counted"
+                }
+                note={site.provisioned ? "From the Website room." : SITE_UNPROVISIONED}
+              />
+            )}
+          </ReadOrSay>
+        </div>
+
+        <ReadOrSay read={read} loading={loading} what="Site records">
+          {(site) => {
+            if (!site.provisioned) {
+              return <Unreadable what="The Website room" because={SITE_UNPROVISIONED_BECAUSE} />;
+            }
+            if (!host && !client.name.trim()) {
+              return <Absent line={SITE_NO_ADDRESS} because={SITE_NO_ADDRESS_BECAUSE} />;
+            }
+            const matched = siteSubmissionsFor(site.submissions, client);
+            if (matched.length === 0) {
+              return <Absent line={SITE_NO_SUBMISSIONS} because={SITE_NO_SUBMISSIONS_BECAUSE} />;
+            }
+            return (
+              <ul className="space-y-2">
+                {matched.slice(0, 8).map((submission) => (
+                  <li key={submission.id}>
+                    <TTCard className="p-4">
+                      <p className="text-sm font-medium text-foreground">
+                        {submission.person.name ?? "Someone"}
+                        {submission.person.role ? ` · ${submission.person.role}` : ""}
+                      </p>
+                      <p className="mt-0.5 text-[12px] text-muted-foreground">
+                        {formatDay(submission.submittedAt, timeZone) ?? "On an unknown day"} ·{" "}
+                        {submission.sourceType.replace(/_/g, " ")} ·{" "}
+                        {submission.linkState === "linked" ? "Linked in Scout" : "Not linked"}
+                      </p>
+                      {submission.structured.goals[0] ? (
+                        <p className="mt-2 text-[13px] text-muted-foreground">
+                          {submission.structured.goals[0]}
+                        </p>
+                      ) : null}
+                    </TTCard>
+                  </li>
+                ))}
+              </ul>
+            );
+          }}
+        </ReadOrSay>
+      </div>
     </RoomSection>
   );
 }
 
-export function FilesTab() {
+/* ------------------------------------------------------------------- files */
+
+export function FilesTab({
+  read,
+  loading,
+  hasProjects,
+  projectNames,
+  timeZone,
+  onOpen,
+}: {
+  read: RoomRead<ProjectFile[]> | null;
+  loading: boolean;
+  hasProjects: boolean;
+  projectNames: Record<string, string>;
+  timeZone: string;
+  onOpen: (file: ProjectFile) => void;
+}) {
   return (
-    <RoomSection eyebrow="Owned by Clients" title="Files">
-      <Absent line={FILES_NONE} because={FILES_NONE_BECAUSE} />
+    <RoomSection
+      eyebrow="Owned by Projects"
+      title="Files on this company's work"
+      description="Everything uploaded to the projects that name this company. Files are private and opened through a short-lived link."
+      openTo={
+        <Link to="/modules/projects">
+          <OpenIn>Open in Projects</OpenIn>
+        </Link>
+      }
+    >
+      {!hasProjects ? (
+        <Absent line={FILES_NO_PROJECTS} because={FILES_NO_PROJECTS_BECAUSE} />
+      ) : (
+        <ReadOrSay read={read} loading={loading} what="Files">
+          {(files) =>
+            files.length === 0 ? (
+              <Absent line={FILES_NONE} because={FILES_NONE_BECAUSE} />
+            ) : (
+              <ul className="space-y-2">
+                {files.map((file) => (
+                  <li key={file.id}>
+                    <TTCard className="flex items-start justify-between gap-3 p-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-foreground">{file.name}</p>
+                        <p className="mt-0.5 text-[12px] text-muted-foreground">
+                          {FILE_KIND_LABEL[file.kind]} ·{" "}
+                          {projectNames[file.projectId] ?? "A project"} ·{" "}
+                          {formatDay(file.createdAt, timeZone) ?? "on an unknown day"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onOpen(file)}
+                        className="shrink-0 text-[13px] font-medium text-royal"
+                      >
+                        Open
+                      </button>
+                    </TTCard>
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+        </ReadOrSay>
+      )}
     </RoomSection>
   );
 }

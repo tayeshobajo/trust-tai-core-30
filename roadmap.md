@@ -140,6 +140,35 @@ move, since no gate reached a new required level. Verified this pass: `tsgo
 --noEmit` clean, `vitest run` 1925 passing across 162 files, eslint clean on the
 two changed files, `bun run build` succeeded.
 
+Slice P2-001A, Site, Files and company imagery (this pass). Three gaps closed
+without moving ownership. Site now reads the Website room for real: intake
+recorded by this company, matched only on the exact web address a person typed
+(host compared without scheme or `www.`) or the exact company name, never on
+resemblance; a Website schema that was never applied reports as unreadable, an
+applied schema with no matching intake reports as an absence, and the two are
+never conflated. Files now read the Projects room for real: every file on the
+projects that name this company, opened through a short-lived signed link, with
+"no project names this company" and "projects exist but nothing uploaded" kept
+as separate, honest sentences. Company imagery became a real upload: the public
+`client-logos` bucket was created in the production project, the new signed
+endpoint `POST /api/public/clients/logo` proves active membership from the
+caller's own token, re-reads the client row under that same session, stores the
+file with the service key (the bucket is not writable by a person's session)
+and records the durable address on the canonical client row, removing the
+object again if the record cannot be written. `docs/clients-image-schema.sql`
+promotes that address to a first-class `clients.logo_url` column when Tai runs
+it; the read path prefers the metadata value, so applying it is safe at any
+time. Deviation: DDL cannot be executed from this environment (no management
+credential and no SQL RPC on the shared project), so the column itself is
+documented, not applied. Status unchanged: P2-01 to P2-03 stay Runtime Verified
+awaiting human acceptance, and the 11% / 9% baselines do not move. Verified this
+pass: `bunx tsgo --noEmit` clean, `bunx vitest run` 1930 passing across 162
+files (5 new site-matching tests), eslint clean on the nine changed files,
+`bun run build` succeeded, and the new endpoint refuses an anonymous caller with
+401 in the running preview. The upload itself has not been exercised against
+production, so it remains Code/Test Verified.
+
+
 
 ## P3, Roadmap and Projects handoff
 
