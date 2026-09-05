@@ -11,12 +11,15 @@
  * Warnings are exceptions, not decoration: a review that is overdue, a renewal
  * inside thirty days with no review booked, or delivery a person recorded as
  * blocked. A normal client carries no warning at all.
+ *
+ * Every day shown here is a day in the organization's own timezone. A review
+ * booked for the 19th is the 19th to the people who booked it, whatever the
+ * server's clock says.
  */
 
+import { localDateOf, localDaysBetween } from "./business-week";
 import type { ClientTier } from "./commercial";
 import type { ID, ISODateTime } from "./entities";
-
-const DAY = 86_400_000;
 
 /** A renewal closer than this, with no review booked, is a real exception. */
 export const RENEWAL_RISK_DAYS = 30;
@@ -81,15 +84,23 @@ const MONTHS = [
   "Dec",
 ];
 
-export function formatDay(iso: ISODateTime | null | undefined): string | null {
+/** `Sep 19`, as a calendar day in the organization's timezone. */
+export function formatDay(iso: ISODateTime | null | undefined, timeZone: string): string | null {
   if (!iso) return null;
-  const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return null;
-  return `${MONTHS[at.getUTCMonth()]} ${at.getUTCDate()}`;
+  const local = localDateOf(iso, timeZone);
+  if (!local) return null;
+  return `${MONTHS[local.month - 1]} ${local.day}`;
 }
 
-function daysBetween(from: number, to: number): number {
-  return Math.floor((to - from) / DAY);
+/** `Sep 19, 2026`, for places where the year is not obvious from context. */
+export function formatDayWithYear(
+  iso: ISODateTime | null | undefined,
+  timeZone: string,
+): string | null {
+  if (!iso) return null;
+  const local = localDateOf(iso, timeZone);
+  if (!local) return null;
+  return `${MONTHS[local.month - 1]} ${local.day}, ${local.year}`;
 }
 
 export const TIER_LABEL: Record<ClientTier, string> = {
@@ -111,6 +122,7 @@ export interface ClientCard {
   /** Two initials, used when no canonical image exists. Never a stock photo. */
   initials: string;
   logoUrl: string | null;
+  websiteUrl: string | null;
   /** `Run · $3,500/mo`, or the honest absence of a recorded value. */
   commercialLine: string;
   /** `Next review Sep 19`, `Renews Oct 3`, or `No review scheduled`. */
@@ -143,17 +155,24 @@ function isProposed(input: ClientBookInput): boolean {
   return noTier && Boolean(input.proposal?.open);
 }
 
-export function deriveClientCard(input: ClientBookInput, now: Date): ClientCard {
-  const at = now.getTime();
+function daysFrom(now: Date, iso: ISODateTime | null | undefined, timeZone: string): number | null {
+  if (!iso) return null;
+  return localDaysBetween(now, iso, timeZone);
+}
+
+export function deriveClientCard(input: ClientBookInput, now: Date, timeZone: string): ClientCard {
   const initials = initialsOfCompany(input.name);
   const logoUrl = input.logoUrl?.trim() ? input.logoUrl.trim() : null;
+  const websiteUrl = input.websiteUrl?.trim() ? input.websiteUrl.trim() : null;
 
   if (isProposed(input)) {
     const amount = formatMoney(input.proposal?.amountCents ?? null);
     const tierLabel = input.proposal?.tier ? TIER_LABEL[input.proposal.tier] : null;
-    const sentDays = input.proposal?.sentAt
-      ? daysBetween(new Date(input.proposal.sentAt).getTime(), at)
+    const sentDaysAgo = input.proposal?.sentAt
+      ? daysFrom(now, input.proposal.sentAt, timeZone)
       : null;
+    const sentDays = sentDaysAgo === null ? null : Math.max(0, -sentDaysAgo);
+    const line = ["Proposed", tierLabel, amount].filter(Boolean).join(" · ") || "Proposed";
     return {
       id: input.id,
       name: input.name,
@@ -161,13 +180,14 @@ export function deriveClientCard(input: ClientBookInput, now: Date): ClientCard 
       tier: input.tier,
       initials,
       logoUrl,
-      commercialLine: ["Proposed", tierLabel, amount].filter(Boolean).join(" · ") || "Proposed",
+      websiteUrl,
+      commercialLine: line,
       reviewLine: "Becomes a client on signature",
       deliveryLine: null,
       warnings: [],
       needsAttention: false,
       soonestAt: input.proposal?.sentAt ?? null,
-      proposalLine: ["Proposed", tierLabel, amount].filter(Boolean).join(" · ") || "Proposed",
+      proposalLine: line,
       proposalNote:
         sentDays === null
           ? null
@@ -184,28 +204,40 @@ export function deriveClientCard(input: ClientBookInput, now: Date): ClientCard 
         ? `${tierLabel} · ${value}`
         : `${tierLabel} · value not recorded`;
 
-  const reviewAt = input.nextReviewAt ? new Date(input.nextReviewAt).getTime() : null;
-  const renewalAt = input.renewalAt ? new Date(input.renewalAt).getTime() : null;
-  const reviewOverdue = reviewAt !== null && reviewAt < at;
-  const reviewBooked = reviewAt !== null && reviewAt >= at;
-  const renewalDays = renewalAt === null ? null : daysBetween(at, renewalAt);
+  const reviewDays = daysFrom(now, input.nextReviewAt, timeZone);
+  const renewalDays = daysFrom(now, input.renewalAt, timeZone);
+  // A review is overdue once its calendar day has passed in the organization's
+  // zone. On the day itself it is still due, not late.
+  const reviewOverdue = reviewDays !== null && reviewDays < 0;
+  const reviewBooked = reviewDays !== null && reviewDays >= 0;
   const renewalAtRisk =
     renewalDays !== null && renewalDays >= 0 && renewalDays <= RENEWAL_RISK_DAYS && !reviewBooked;
 
   const warnings: string[] = [];
-  if (reviewOverdue) warnings.push(`Review overdue since ${formatDay(input.nextReviewAt)}`);
-  if (renewalAtRisk) warnings.push(`Renews in ${renewalDays} days with no review booked`);
+  if (reviewOverdue) {
+    warnings.push(`Review overdue since ${formatDay(input.nextReviewAt, timeZone)}`);
+  }
+  if (renewalAtRisk) {
+    warnings.push(
+      renewalDays === 0
+        ? "Renews today with no review booked"
+        : `Renews in ${renewalDays} day${renewalDays === 1 ? "" : "s"} with no review booked`,
+    );
+  }
   if (input.delivery?.blocked) warnings.push("Delivery blocked");
 
   const reviewLine = reviewBooked
-    ? `Next review ${formatDay(input.nextReviewAt)}`
+    ? `Next review ${formatDay(input.nextReviewAt, timeZone)}`
     : reviewOverdue
-      ? `Review overdue since ${formatDay(input.nextReviewAt)}`
-      : renewalAt !== null
-        ? `Renews ${formatDay(input.renewalAt)}`
+      ? `Review overdue since ${formatDay(input.nextReviewAt, timeZone)}`
+      : input.renewalAt
+        ? `Renews ${formatDay(input.renewalAt, timeZone)}`
         : "No review scheduled";
 
-  const soonest = [reviewAt, renewalAt].filter((value): value is number => value !== null).sort();
+  const dated = [input.nextReviewAt, input.renewalAt]
+    .map((iso) => (iso ? Date.parse(iso) : Number.NaN))
+    .filter((at) => !Number.isNaN(at))
+    .sort((a, b) => a - b);
 
   return {
     id: input.id,
@@ -214,12 +246,13 @@ export function deriveClientCard(input: ClientBookInput, now: Date): ClientCard 
     tier: input.tier,
     initials,
     logoUrl,
+    websiteUrl,
     commercialLine,
     reviewLine,
     deliveryLine: input.delivery?.line ?? null,
     warnings,
     needsAttention: warnings.length > 0,
-    soonestAt: soonest[0] !== undefined ? new Date(soonest[0]).toISOString() : null,
+    soonestAt: dated[0] !== undefined ? new Date(dated[0]).toISOString() : null,
     proposalLine: null,
     proposalNote: null,
   };
@@ -249,9 +282,18 @@ export function sortClientCards(cards: ClientCard[]): ClientCard[] {
   });
 }
 
+/** The one sentence that tells a person how the grid is ordered. */
+export const SORT_LABEL = "Sorted by what's soonest";
+
 /* ------------------------------------------------------------- the totals */
 
-export type ClientsView = "all" | "run" | "build" | "diagnose" | "proposed";
+/**
+ * The views above the active grid. Proposed companies are not a view: they
+ * are not clients yet, so they sit in their own quieter section below.
+ */
+export type ClientsView = "all" | "run" | "build" | "diagnose";
+
+export const CLIENTS_VIEWS: ClientsView[] = ["all", "run", "build", "diagnose"];
 
 export interface ClientsHeadline {
   runClients: number;
@@ -261,15 +303,14 @@ export interface ClientsHeadline {
   sentence: string;
 }
 
-export function clientsHeadline(cards: ClientCard[], now: Date): ClientsHeadline {
-  const at = now.getTime();
+export function clientsHeadline(cards: ClientCard[], now: Date, timeZone: string): ClientsHeadline {
   const active = cards.filter((card) => card.kind === "active");
   const runClients = active.filter((card) => card.tier === "run").length;
   const reviewsDue = active.filter((card) => {
     if (card.warnings.some((warning) => warning.startsWith("Review overdue"))) return true;
     if (!card.soonestAt) return false;
-    const days = daysBetween(at, Date.parse(card.soonestAt));
-    return days >= 0 && days <= REVIEW_DUE_DAYS;
+    const days = localDaysBetween(now, card.soonestAt, timeZone);
+    return days !== null && days >= 0 && days <= REVIEW_DUE_DAYS;
   }).length;
   const proposalsAwaiting = cards.filter((card) => card.kind === "proposed").length;
 
@@ -282,7 +323,7 @@ export function clientsHeadline(cards: ClientCard[], now: Date): ClientsHeadline
   return { runClients, reviewsDue, proposalsAwaiting, sentence: parts.join(" · ") };
 }
 
-/** Counts per view. Proposed companies are never counted as active clients. */
+/** Counts per view, active clients only. Proposed companies are never counted. */
 export function viewCounts(cards: ClientCard[]): Record<ClientsView, number> {
   const active = cards.filter((card) => card.kind === "active");
   return {
@@ -290,14 +331,28 @@ export function viewCounts(cards: ClientCard[]): Record<ClientsView, number> {
     run: active.filter((card) => card.tier === "run").length,
     build: active.filter((card) => card.tier === "build").length,
     diagnose: active.filter((card) => card.tier === "diagnose").length,
-    proposed: cards.filter((card) => card.kind === "proposed").length,
   };
 }
 
-export function filterClientCards(cards: ClientCard[], view: ClientsView): ClientCard[] {
-  if (view === "all") return cards;
-  if (view === "proposed") return cards.filter((card) => card.kind === "proposed");
-  return cards.filter((card) => card.kind === "active" && card.tier === view);
+/** Case- and whitespace-insensitive match on the company name only. */
+export function matchesClientSearch(card: ClientCard, query: string): boolean {
+  const needle = query.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!needle) return true;
+  return card.name.toLowerCase().replace(/\s+/g, " ").includes(needle);
+}
+
+/** The active grid: one view, one local search, order preserved. */
+export function filterClientCards(cards: ClientCard[], view: ClientsView, query = ""): ClientCard[] {
+  return cards.filter((card) => {
+    if (card.kind !== "active") return false;
+    if (view !== "all" && card.tier !== view) return false;
+    return matchesClientSearch(card, query);
+  });
+}
+
+/** The proposed section, searched by the same rule so it never disagrees. */
+export function proposedCards(cards: ClientCard[], query = ""): ClientCard[] {
+  return cards.filter((card) => card.kind === "proposed" && matchesClientSearch(card, query));
 }
 
 /* ------------------------------------------------------- manual creation */
@@ -318,10 +373,25 @@ function validCents(value: unknown): boolean {
   return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0;
 }
 
+function validHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 /** Every reason this client cannot be saved, in the person's language. */
 export function validateNewClient(input: NewClientInput): string[] {
   const problems: string[] = [];
   if (!input.name || !input.name.trim()) problems.push("A client needs a company name.");
+  if (input.websiteUrl?.trim() && !validHttpUrl(input.websiteUrl.trim())) {
+    problems.push("The website needs to be a full address, starting with https://.");
+  }
+  if (input.logoUrl?.trim() && !validHttpUrl(input.logoUrl.trim())) {
+    problems.push("The logo needs to be a full image address, starting with https://.");
+  }
   if (input.mrrCents !== null && input.mrrCents !== undefined && !validCents(input.mrrCents)) {
     problems.push("Monthly value must be a whole amount of zero or more.");
   }
