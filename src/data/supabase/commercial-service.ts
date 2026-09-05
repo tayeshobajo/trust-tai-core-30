@@ -352,11 +352,27 @@ export async function recordProposalSent(
 /**
  * A person recorded the answer. A signed proposal recognises Diagnose revenue
  * in full in the week of the outcome; a declined one recognises nothing.
+ *
+ * Recording the same answer twice replays it and emits nothing further, so an
+ * answer cannot be recognised twice. Changing a recorded answer into a
+ * different one is refused here: no such correction exists in the canon yet,
+ * and quietly allowing it would move money between weeks.
  */
 export async function recordProposalOutcome(
   input: { roadmapId: ID; outcome: "signed" | "declined"; at?: ISODateTime },
   context: CommercialContext,
 ): Promise<ProposalRecord> {
+  const before = await readProposal(input.roadmapId, context);
+  if (!before.proposalSentAt) {
+    throw new Error("A proposal has to have been sent before it can be answered.");
+  }
+  if (before.proposalOutcome === input.outcome) return before;
+  if (before.proposalOutcome === "signed" || before.proposalOutcome === "declined") {
+    throw new Error(
+      `That proposal was already recorded as ${before.proposalOutcome}. Changing a recorded answer is not something this system does on its own.`,
+    );
+  }
+
   const at = input.at ?? new Date().toISOString();
   const proposal = await writeProposal(
     input.roadmapId,
@@ -374,7 +390,9 @@ export async function recordProposalOutcome(
         ? `Proposal signed for ${proposal.title}.`
         : `Proposal declined for ${proposal.title}.`,
     metadata: { amount_cents: proposal.proposalAmountCents, outcome: input.outcome },
-    sourceEventKey: `proposal.${input.outcome}:${proposal.id}:${at}`,
+    // The transition, not the moment the button was pressed: one proposal can
+    // reach one outcome once.
+    sourceEventKey: `proposal.${input.outcome}:${proposal.id}`,
     occurredAt: at,
   });
 
@@ -383,9 +401,13 @@ export async function recordProposalOutcome(
 
 /* ------------------------------------------------------------ meeting kind */
 
+/** Only an interaction that actually was a meeting can be said to be a kind of meeting. */
+export const MEETING_CHANNEL = "meeting";
+
 /**
  * Say what a logged meeting was. Human set only: this is never called by an
- * importer, a transcript reader or a model.
+ * importer, a transcript reader or a model, and it refuses anything that was
+ * not a meeting, because an email has no kind of meeting to have.
  */
 export async function setMeetingKind(
   input: { touchId: ID; meetingKind: MeetingKind | null },
@@ -394,11 +416,17 @@ export async function setMeetingKind(
   const at = new Date().toISOString();
   const { data: current, error: readError } = await supabase
     .from("comms_touches")
-    .select("id, provenance")
+    .select("id, channel, provenance")
     .eq("id", input.touchId)
     .eq("organization_id", context.organizationId)
     .single();
   assertOk(readError);
+  if (!current) throw new Error("That interaction could not be found.");
+
+  const channel = (current as Row)["channel"];
+  if (input.meetingKind !== null && channel !== MEETING_CHANNEL) {
+    throw new Error("Only a meeting can be given a kind of meeting.");
+  }
 
   const provenance =
     current && typeof (current as Row)["provenance"] === "object"
@@ -423,15 +451,13 @@ export async function setMeetingKind(
 /* --------------------------------------------------------- weekly targets */
 
 export async function readOrganizationWeeklyTargets(organizationId: ID): Promise<WeeklyTargets> {
-  return safe(async () => {
-    const { data, error } = await supabase
-      .from("organization_weekly_targets")
-      .select("*")
-      .eq("organization_id", organizationId)
-      .maybeSingle();
-    assertOk(error);
-    return readWeeklyTargets((data as Row) ?? null);
-  }, { ...DEFAULT_WEEKLY_TARGETS });
+  const { data, error } = await supabase
+    .from("organization_weekly_targets")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  assertOk(error);
+  return readWeeklyTargets((data as Row) ?? null);
 }
 
 /** Configuration only. Admin write is enforced by RLS, not by this file. */
@@ -439,7 +465,10 @@ export async function saveOrganizationWeeklyTargets(
   targets: WeeklyTargets,
   context: CommercialContext,
 ): Promise<WeeklyTargets> {
+  // A target that contradicts itself is refused before it can reach the table.
+  assertWeeklyTargets(targets);
   const at = new Date().toISOString();
+
   const row: Row = {
     organization_id: context.organizationId,
     first_touch_target_low: targets.firstTouchTargetLow,
