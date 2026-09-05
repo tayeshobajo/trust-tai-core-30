@@ -5,6 +5,7 @@ import { AppLink } from "@/components/tt/app-link";
 import { BrandLogo } from "@/components/tt/brand-logo";
 import {
   Activity,
+  Building2,
   Compass,
   HeartHandshake,
   MessagesSquare,
@@ -29,6 +30,7 @@ import { signOut, type WorkspaceIdentity } from "@/lib/workspace";
 import { AmbientDot } from "@/components/tt/ambient";
 
 const ICONS: Record<string, LucideIcon> = {
+  Building2,
   Compass,
   Search,
   MessagesSquare,

@@ -161,6 +161,37 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
       "roadmap intelligence records + canon outcomes (src/data/intelligence/canon)",
     ),
   }),
+  manifest("clients", {
+    evidence_grounding: r(
+      "every line on a client card is derived from canonical client state, the roadmap proposal lineage and Projects, with a failed source shown as unknown rather than zero (src/data/clients/book-projection.ts)",
+    ),
+    retrieval: d(
+      "the book reads the owning rooms directly rather than composing its own knowledge",
+      "src/data/clients/book-projection.ts",
+      "Clients holds no knowledge of its own: retrieval belongs to the rooms that own the state it displays",
+    ),
+    domain_patterns: d(
+      "the only judgments here are the commercial law's own rules: tier, recurring value, review and renewal",
+      "src/domain/clients-book.ts",
+      "a book of record needs stated rules, not a pattern library; the rules are code and tested",
+    ),
+    safe_diagnostic_loop: d(
+      "the room takes one consequential action, creating a client, and it validates before it writes",
+      "src/domain/clients-book.ts",
+      "with a single bounded write there is no multi-step attempt to diagnose; a refused input is returned in the person's words",
+    ),
+    verification: r(
+      "creation is idempotent on the company name and every amount is human-entered, so a written client is verified by the row it returns (src/data/supabase/commercial-service.ts)",
+    ),
+    approval_boundary: r(
+      "the room writes only when a person submits the form; no agent path creates a client (src/routes/modules.clients.index.tsx)",
+    ),
+    outcome_learning: d(
+      "commercial outcomes are learned from the dated events this room emits, not from the book itself",
+      "src/domain/events.ts",
+      "client.created and client.tier_changed feed the commercial truth readers; the book stores no second history",
+    ),
+  }),
   manifest("projects", {
     evidence_grounding: r(
       "context packets with tier-preserving provenance (src/data/projects/context-packet.ts)",

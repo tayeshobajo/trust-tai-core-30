@@ -16,6 +16,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesActivityRouteImport } from './routes/modules.activity'
 import { Route as ModulesApprovalsRouteImport } from './routes/modules.approvals'
+import { Route as ModulesClientsRouteImport } from './routes/modules.clients'
 import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
 import { Route as ModulesConductorRouteImport } from './routes/modules.conductor'
 import { Route as ModulesOpsRouteImport } from './routes/modules.ops'
@@ -38,6 +39,8 @@ import { Route as SettingsPeopleRouteImport } from './routes/settings.people'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
 import { Route as ApiLinkiExecuteRouteImport } from './routes/api/linki/execute'
+import { Route as ModulesClientsIndexRouteImport } from './routes/modules.clients.index'
+import { Route as ModulesClientsClientIdRouteImport } from './routes/modules.clients.$clientId'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsDashboardRouteImport } from './routes/modules.comms.dashboard'
 import { Route as ModulesCommsInboxRouteImport } from './routes/modules.comms.inbox'
@@ -128,6 +131,11 @@ const ModulesActivityRoute = ModulesActivityRouteImport.update({
 const ModulesApprovalsRoute = ModulesApprovalsRouteImport.update({
   id: '/modules/approvals',
   path: '/modules/approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesClientsRoute = ModulesClientsRouteImport.update({
+  id: '/modules/clients',
+  path: '/modules/clients',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesCommsRoute = ModulesCommsRouteImport.update({
@@ -239,6 +247,16 @@ const ApiLinkiExecuteRoute = ApiLinkiExecuteRouteImport.update({
   id: '/api/linki/execute',
   path: '/api/linki/execute',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesClientsIndexRoute = ModulesClientsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ModulesClientsRoute,
+} as any)
+const ModulesClientsClientIdRoute = ModulesClientsClientIdRouteImport.update({
+  id: '/$clientId',
+  path: '/$clientId',
+  getParentRoute: () => ModulesClientsRoute,
 } as any)
 const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
   id: '/',
@@ -552,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
   '/modules/approvals': typeof ModulesApprovalsRoute
+  '/modules/clients': typeof ModulesClientsRouteWithChildren
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
@@ -574,6 +593,7 @@ export interface FileRoutesByFullPath {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -590,6 +610,7 @@ export interface FileRoutesByFullPath {
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
+  '/modules/clients/': typeof ModulesClientsIndexRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -654,6 +675,7 @@ export interface FileRoutesByTo {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -669,6 +691,7 @@ export interface FileRoutesByTo {
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
+  '/modules/clients': typeof ModulesClientsIndexRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
   '/modules/projects': typeof ModulesProjectsIndexRoute
   '/modules/roadmap': typeof ModulesRoadmapIndexRoute
@@ -719,6 +742,7 @@ export interface FileRoutesById {
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
   '/modules/approvals': typeof ModulesApprovalsRoute
+  '/modules/clients': typeof ModulesClientsRouteWithChildren
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
@@ -741,6 +765,7 @@ export interface FileRoutesById {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -757,6 +782,7 @@ export interface FileRoutesById {
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
   '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/website_/page': typeof ModulesWebsitePageRoute
+  '/modules/clients/': typeof ModulesClientsIndexRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
@@ -808,6 +834,7 @@ export interface FileRouteTypes {
     | '/modules/$slug'
     | '/modules/activity'
     | '/modules/approvals'
+    | '/modules/clients'
     | '/modules/comms'
     | '/modules/conductor'
     | '/modules/ops'
@@ -830,6 +857,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings/'
     | '/api/linki/execute'
+    | '/modules/clients/$clientId'
     | '/modules/comms/dashboard'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
@@ -846,6 +874,7 @@ export interface FileRouteTypes {
     | '/modules/steward/tasks'
     | '/modules/studio/$itemId'
     | '/modules/website/page'
+    | '/modules/clients/'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
@@ -910,6 +939,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings'
     | '/api/linki/execute'
+    | '/modules/clients/$clientId'
     | '/modules/comms/dashboard'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
@@ -925,6 +955,7 @@ export interface FileRouteTypes {
     | '/modules/steward/tasks'
     | '/modules/studio/$itemId'
     | '/modules/website/page'
+    | '/modules/clients'
     | '/modules/comms'
     | '/modules/projects'
     | '/modules/roadmap'
@@ -974,6 +1005,7 @@ export interface FileRouteTypes {
     | '/modules/$slug'
     | '/modules/activity'
     | '/modules/approvals'
+    | '/modules/clients'
     | '/modules/comms'
     | '/modules/conductor'
     | '/modules/ops'
@@ -996,6 +1028,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings/'
     | '/api/linki/execute'
+    | '/modules/clients/$clientId'
     | '/modules/comms/dashboard'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
@@ -1012,6 +1045,7 @@ export interface FileRouteTypes {
     | '/modules/steward/tasks'
     | '/modules/studio/$itemId'
     | '/modules/website_/page'
+    | '/modules/clients/'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
@@ -1061,6 +1095,7 @@ export interface RootRouteChildren {
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesActivityRoute: typeof ModulesActivityRoute
   ModulesApprovalsRoute: typeof ModulesApprovalsRoute
+  ModulesClientsRoute: typeof ModulesClientsRouteWithChildren
   ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
   ModulesConductorRoute: typeof ModulesConductorRoute
   ModulesOpsRoute: typeof ModulesOpsRoute
@@ -1155,6 +1190,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/approvals'
       fullPath: '/modules/approvals'
       preLoaderRoute: typeof ModulesApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/clients': {
+      id: '/modules/clients'
+      path: '/modules/clients'
+      fullPath: '/modules/clients'
+      preLoaderRoute: typeof ModulesClientsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/comms': {
@@ -1310,6 +1352,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/linki/execute'
       preLoaderRoute: typeof ApiLinkiExecuteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/modules/clients/': {
+      id: '/modules/clients/'
+      path: '/'
+      fullPath: '/modules/clients/'
+      preLoaderRoute: typeof ModulesClientsIndexRouteImport
+      parentRoute: typeof ModulesClientsRoute
+    }
+    '/modules/clients/$clientId': {
+      id: '/modules/clients/$clientId'
+      path: '/$clientId'
+      fullPath: '/modules/clients/$clientId'
+      preLoaderRoute: typeof ModulesClientsClientIdRouteImport
+      parentRoute: typeof ModulesClientsRoute
     }
     '/modules/comms/': {
       id: '/modules/comms/'
@@ -1748,6 +1804,20 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
   SettingsRouteChildren,
 )
 
+interface ModulesClientsRouteChildren {
+  ModulesClientsClientIdRoute: typeof ModulesClientsClientIdRoute
+  ModulesClientsIndexRoute: typeof ModulesClientsIndexRoute
+}
+
+const ModulesClientsRouteChildren: ModulesClientsRouteChildren = {
+  ModulesClientsClientIdRoute: ModulesClientsClientIdRoute,
+  ModulesClientsIndexRoute: ModulesClientsIndexRoute,
+}
+
+const ModulesClientsRouteWithChildren = ModulesClientsRoute._addFileChildren(
+  ModulesClientsRouteChildren,
+)
+
 interface ModulesCommsRouteChildren {
   ModulesCommsDashboardRoute: typeof ModulesCommsDashboardRoute
   ModulesCommsInboxRoute: typeof ModulesCommsInboxRoute
@@ -1876,6 +1946,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesActivityRoute: ModulesActivityRoute,
   ModulesApprovalsRoute: ModulesApprovalsRoute,
+  ModulesClientsRoute: ModulesClientsRouteWithChildren,
   ModulesCommsRoute: ModulesCommsRouteWithChildren,
   ModulesConductorRoute: ModulesConductorRoute,
   ModulesOpsRoute: ModulesOpsRoute,

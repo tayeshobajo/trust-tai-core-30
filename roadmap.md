@@ -110,9 +110,10 @@ no gate newly reached its required level.
 
 | ID | Gate | Required level | Status |
 | --- | --- | --- | --- |
-| P2-01 | Clients book grid with the fixed hierarchy, proposed companies separate | Human Accepted | Not started |
-| P2-02 | Manual Add Client | Human Accepted | Not started |
-| P2-03 | Client page shell: Overview, Roadmap, Projects, Relationship, Site, Files, owning no state | Human Accepted | Not started |
+| P2-01 | Clients book grid with the fixed hierarchy, proposed companies separate | Human Accepted | Code/Test Verified, awaiting human acceptance. `/modules/clients` renders Run, Build, Diagnose and a separate Proposed view from `buildClientBook()`; a source that could not be read shows as unknown, never as zero. 7 projection tests pass |
+| P2-02 | Manual Add Client | Human Accepted | Code/Test Verified, awaiting human acceptance. `CreateClientModal` + `createClientRecord()` write name, site, logo, tier, human-entered MRR in cents, renewal and review; idempotent on company name; emits `client.created` and, when a tier is set, `client.tier_changed`. No client created in production yet |
+| P2-03 | Client page shell: Overview, Roadmap, Projects, Relationship, Site, Files, owning no state | Human Accepted | Partial, awaiting human acceptance. `/modules/clients/$clientId` shows commercial state, delivery from Projects, people from Comms and the filtered shared event stream. It owns no state. Files and Site sections are not built yet |
+
 | P2-04 | Home This Week, four numbers, derived only, no charts | Human Accepted | Not started |
 | P2-05 | Today ordering: obligation at risk, floor breach, decision opportunity | Code/Test Verified | Not started |
 

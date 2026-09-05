@@ -65,6 +65,7 @@ interface AppPermissions {
 
 const APP_PERMISSIONS: Record<string, AppPermissions> = {
   home: { read: "workspace.read" },
+  clients: { read: "workspace.read", write: "roadmap.write" },
   scout: { read: "scout.read", write: "scout.write" },
   comms: { read: "comms.read", write: "comms.write" },
   roadmap: { read: "roadmap.read", write: "roadmap.write" },

@@ -20,6 +20,8 @@ import type { EntityRef, ID, ISODateTime } from "./entities";
  * memory history stays local to Steward's ledger.
  */
 export type SuiteAppId =
+  /** The book of clients: the company record itself, created by a person. */
+  | "clients"
   | "scout"
   | "comms"
   | "roadmap"
@@ -122,12 +124,19 @@ export const SUITE_EVENTS = {
     emittedBy: "roadmap",
     meaning: "A person recorded that a proposal was declined. Nothing is recognised.",
   },
+  CLIENT_CREATED: {
+    name: "client.created",
+    emittedBy: "clients",
+    meaning:
+      "A person added a company as a client by hand, with the tier they agreed. Nothing about it is inferred.",
+  },
   CLIENT_TIER_CHANGED: {
     name: "client.tier_changed",
     emittedBy: "roadmap",
     meaning:
       "A person moved a company between Diagnose, Build and Run. A change into Build carries the human-entered phase amount.",
   },
+
 
   PROJECT_STARTED: {
     name: "project.started",
