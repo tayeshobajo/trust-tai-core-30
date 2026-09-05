@@ -121,6 +121,26 @@ P2-00 is a slice-added gate, not a charter gate; it carries no weight in the
 percentages. P2-01 to P2-03 require Human Accepted, so P2 still contributes 0
 until Tai accepts them in the preview.
 
+Slice P2-001A, presentation correction (this pass). The listing header now reads
+"Clients" with the charter's exact subtitle, "Everyone you serve, one door each.",
+and the real-data outcome line (Run clients, reviews due, proposals awaiting a
+decision) sits below it, derived from the same `buildClientBook()` snapshot the
+grid and the view counts use, so no number on this page can contradict another.
+Card hover and keyboard focus were brought to the specified restraint: a 2px lift
+on the tile, the identity image alone scaling to 1.03, a 200ms transition, a
+royal border with a faint royal tint, and "Open client ->" revealed; no fact
+moves or hides, and focus-visible receives the same treatment as hover, so touch
+never depends on hover. Deviations: no card overflow menu exists in this room, so
+no glyph correction was required (no four-dot glyph is present anywhere in the
+Clients surface); featured imagery remains the recorded logo or the monogram
+fallback, because the client schema carries no OG/featured image column and
+inventing a parallel store is forbidden. Status is unchanged: P2-01 to P2-03 stay
+Runtime Verified, awaiting human acceptance, and the 11% / 9% baselines do not
+move, since no gate reached a new required level. Verified this pass: `tsgo
+--noEmit` clean, `vitest run` 1925 passing across 162 files, eslint clean on the
+two changed files, `bun run build` succeeded.
+
+
 ## P3, Roadmap and Projects handoff
 
 | ID | Gate | Required level | Status |
