@@ -107,7 +107,6 @@ const TILE =
   "motion-safe:hover:-translate-y-[2px] hover:border-royal hover:bg-royal/[0.03] " +
   "focus-visible:outline-none motion-safe:focus-visible:-translate-y-[2px] focus-visible:border-royal focus-visible:bg-royal/[0.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
-
 function OpenAffordance() {
   return (
     <span

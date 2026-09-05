@@ -180,7 +180,6 @@ function ClientsBook({ identity }: { identity: WorkspaceIdentity }) {
           }
         />
 
-
         {zoneQuery.isError ? (
           <EmptyState
             title="The organization's timezone could not be read"
