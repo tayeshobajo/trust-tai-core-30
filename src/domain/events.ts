@@ -20,6 +20,8 @@ import type { EntityRef, ID, ISODateTime } from "./entities";
  * memory history stays local to Steward's ledger.
  */
 export type SuiteAppId =
+  /** The book of clients: the company record itself, created by a person. */
+  | "clients"
   | "scout"
   | "comms"
   | "roadmap"

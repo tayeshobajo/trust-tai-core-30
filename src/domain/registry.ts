@@ -76,6 +76,18 @@ export const APP_REGISTRY: AppRegistration[] = [
     capabilities: ["decisions", "intelligence"],
   },
   {
+    id: "clients",
+    layer: "business",
+    name: "Clients",
+    slug: "clients",
+    description:
+      "The book of companies Trust Tai is responsible for: tier, value, review and delivery, in one place.",
+    status: "live",
+    route: "/modules/clients",
+    icon: "Building2",
+    capabilities: ["clients", "contacts"],
+  },
+  {
     id: "scout",
     layer: "business",
     name: "Scout",
