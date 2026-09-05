@@ -295,3 +295,50 @@ describe("Approvals are matched on canonical ids only", () => {
     expect(approvalEntityIds(links).sort()).toEqual(["client-1", "p-1", "r-1", "rm-1"]);
   });
 });
+
+describe("site matching", () => {
+  const sub = (website: string | null, name: string | null, submittedAt: string) => ({
+    submittedAt,
+    company: { website, name },
+  });
+
+  it("matches on the same host, ignoring www and scheme", () => {
+    const matched = siteSubmissionsFor(
+      [sub("https://www.northlight.io/contact", null, "2026-01-02T00:00:00.000Z")],
+      { name: "Northlight Systems", websiteUrl: "northlight.io" },
+    );
+    expect(matched).toHaveLength(1);
+  });
+
+  it("matches on the exact company name when no address was recorded", () => {
+    const matched = siteSubmissionsFor([sub(null, "northlight systems", "2026-01-02T00:00:00.000Z")], {
+      name: "Northlight Systems",
+      websiteUrl: null,
+    });
+    expect(matched).toHaveLength(1);
+  });
+
+  it("never matches on resemblance", () => {
+    const matched = siteSubmissionsFor([sub("https://northlight.co", "Northlight", "2026-01-02T00:00:00.000Z")], {
+      name: "Northlight Systems",
+      websiteUrl: "https://northlight.io",
+    });
+    expect(matched).toHaveLength(0);
+  });
+
+  it("returns the newest submission first", () => {
+    const matched = siteSubmissionsFor(
+      [
+        sub("northlight.io", null, "2026-01-02T00:00:00.000Z"),
+        sub("northlight.io", null, "2026-03-02T00:00:00.000Z"),
+      ],
+      { name: "Northlight Systems", websiteUrl: "northlight.io" },
+    );
+    expect(matched[0]?.submittedAt).toBe("2026-03-02T00:00:00.000Z");
+  });
+
+  it("reads no host from an empty address", () => {
+    expect(siteHost(null)).toBeNull();
+    expect(siteHost("   ")).toBeNull();
+  });
+});
