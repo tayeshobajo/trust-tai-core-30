@@ -25,6 +25,7 @@ import {
   type MeetingKind,
   type ProposalCommercialState,
 } from "@/domain/commercial";
+import { validateNewClient, type NewClientInput } from "@/domain/clients-book";
 import { countDiscoveryCalls, countRoadmapReviews, type CountableTouch } from "@/domain/discovery";
 import { businessWeek, resolveBusinessTimeZone } from "@/domain/business-week";
 import { countFirstTouches, type FirstTouchCandidate } from "@/domain/first-touch";
