@@ -47,8 +47,25 @@ Roadmap because Roadmap owns the prospect -> roadmap commercial lineage:
 Every amount is human-entered. Nothing here reads a document, a transcript or a
 model output to decide money.
 
+## The write path
+
+`src/data/supabase/commercial-service.ts` is the only place commercial state is
+written. It uses the authenticated client, so RLS applies as the signed-in
+person and the organization boundary is enforced by the database. No
+service-role key touches a commercial path.
+
+| Function | What it does |
+| --- | --- |
+| `setClientCommercialState()` | Writes only the facts it is given onto the canonical client row, stamps actor, time and reason into `commercial_provenance`, and emits `client.tier_changed` exactly once when the tier actually moves. A change into Build carries the human-entered phase amount; every other tier carries none |
+| `recordProposalSent()` / `recordProposalOutcome()` | Proposal state on the existing roadmap lineage node, plus `proposal.sent`, `proposal.signed` or `proposal.declined`. A declined proposal recognises nothing |
+| `setMeetingKind()`, `logTouch({ meetingKind })` | A person says what a meeting was, and the record keeps who said so and when |
+| `readOrganizationWeeklyTargets()` / `saveOrganizationWeeklyTargets()` | Configuration only, admin write enforced by RLS, defaults when an organization has no row |
+| `readWeeklyScoreboard()` | The whole week derived at read time: Run from tier state, Diagnose from signed proposals dated in the week, Build from `client.tier_changed` events dated in the week, plus discovery calls, roadmap reviews, first touches and proposals sent. Nothing it computes is written back |
+
 ## Not in this slice
 
-No commercial UI, no writes, no backfill, no seeded rows, and the migration has
-not been applied to production. Applying it is the next step; until an actual
-production write and read-back exists, these gates stay Code/Test Verified.
+No commercial UI and no backfill. The migration is applied in production and the
+service is wired and tested, but no tier, MRR, proposal amount or meeting kind
+has been written, because every one of those is a human entry and this project
+does not invent them.
+
