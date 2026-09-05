@@ -376,6 +376,22 @@ export const projectDelivery = {
     return (data ?? []).map((row) => toFile(row as Row));
   },
 
+  /**
+   * Every file across a set of projects. Used by a client page, which reads
+   * delivery files without owning them. A read that fails is a failure.
+   */
+  async listFilesForProjects(organizationId: ID, projectIds: ID[]): Promise<ProjectFile[]> {
+    if (projectIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from("project_files")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .in("project_id", projectIds)
+      .order("created_at", { ascending: false });
+    if (error) fail("The files on this company's projects could not be read.", error);
+    return (data ?? []).map((row) => toFile(row as Row));
+  },
+
   async uploadFile(
     file: File,
     options: { kind: ProjectFileKind; workItemId?: ID },
