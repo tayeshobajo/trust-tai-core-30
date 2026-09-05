@@ -8,13 +8,13 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 11%** (P0 to P7)
-**Full Engine: 9%** (P0 to P9)
+**Production Readiness: 12%** (P0 to P7)
+**Full Engine: 10%** (P0 to P9)
 
-Working (corrected in slice P0-001A, extended in P1-002):
+Working (corrected in slice P0-001A, extended in P1-002, P0-07 verified 2026-09-05):
 
-- P0 weight 12 (readiness) / 10 (engine), 9 gates, 5 met -> 12 x 5/9 = 6.7 and
-  10 x 5/9 = 5.6
+- P0 weight 12 (readiness) / 10 (engine), 9 gates, **6 met** -> 12 x 6/9 = 8.0 and
+  10 x 6/9 = 6.7
 - P1 weight 12 / 10, 6 gates, **2 met**. P1-04 is Production Verified: the
   `organization_weekly_targets` table exists in the production project and holds
   the real Trust Tai row, read back with the service key. P1-05 requires only
@@ -28,7 +28,7 @@ Working (corrected in slice P0-001A, extended in P1-002):
   holds 0 rows, so the hardened boundary has never been exercised. Both are now
   Code/Test Verified -> 8 x 0/5 = 0
 - P2 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 6.7 + 4.0 = 10.7, rounded to 11. Engine 5.6 + 3.3 = 8.9, rounded to 9.
+- Readiness 8.0 + 4.0 = 12.0. Engine 6.7 + 3.3 = 10.0.
 
 
 No phase is complete, so no phase has received its completion weight.
@@ -45,17 +45,17 @@ No phase is complete, so no phase has received its completion weight.
 
 | P0-05 | Add-to-Comms production proof | Production Verified | **Production Verified** | Two real `prospect.handed_over` events in the production stream (Mull IT 2026-08-25, Schaefer Marketing 2026-08-27), each with a human actor and "Nothing was sent"; matching `comms_relationships` rows carry `source=scout_handoff`, the originating `prospect_id`, the named contact and the observed/inferred/decided tiers intact. Read-only verification, nothing created |
 | P0-06 | Public `content-images` bucket | Production Verified | **Production Verified** | Bucket created in the production project: public, 10 MB limit, images only. A probe object uploaded with the server key was readable anonymously at the public URL (200) and then deleted; anonymous list and anonymous upload were both refused (400). No other bucket or policy touched. `TRUST_TAI_IMAGE_BUCKET_PUBLIC` now set |
-| P0-07 | Publish endpoint configured | Production Verified | Not started, blocked on external configuration | `TRUST_TAI_PUBLISH_ENDPOINT` and `TRUST_TAI_PUBLISH_TOKEN` are absent and `GET /api/public/content/publish` reports `endpointConfigured:false`. There is no safe in-repo implementation path: trusttai.com is a Next.js site served from Cloudflare, is not part of this repository, and is not a project on this account, so no CMS or API adapter exists to reuse. The full external contract (endpoint, bearer auth, idempotency-key behaviour, request and receipt schema, verification expectation) is written in `docs/p0-human-verification-runbook.md`; once the route exists only the two secrets are needed, no code change |
-| P0-08 | One controlled article published and independently verified | Human Accepted | Pending, human gate, blocked by P0-07 only | Nothing published. P8-03 is **not** a blocker: `image.url` is nullable in the publish payload and `publishQueuedItem()` never requires an image. A batch of 10 posts is already awaiting review (`apr_pm7t4kmdmtn2ygo1`); `content_publish_attempts` holds 0 rows. Exact sequence and evidence in `docs/p0-human-verification-runbook.md` |
+| P0-07 | Publish endpoint configured | Production Verified | **Production Verified** | Both `TRUST_TAI_PUBLISH_ENDPOINT` and `TRUST_TAI_PUBLISH_TOKEN` are present and non-empty in the runtime; values never exposed. `GET https://cmd.trusttai.com/api/public/content/publish` returned 200 with `configured:true`, `endpointConfigured:true`, `ledgerConfigured:true`. A safe authenticated production handshake to the existing trusttai.com endpoint with deliberately invalid `{}` returned 400 `idempotency_key is required`, proving bearer authentication reached validation; the no-auth control returned 401. `content_publish_attempts` was 0 before and 0 after the direct probe. `public.published_insights` on the trusttai.com database was independently read after the probe and remains 0. The website endpoint/table implementation is in the existing trusttai.com project `b3555ed3-b0dc-4def-8fee-77ff34a2cb82` / GitHub `tayeshobajo/strategy-code-canvas`; migration applied there with unique `idempotency_key` + `slug`, RLS, service-role-only. `publishQueuedItem()` writes durable `attempted` ledger state before `sendToPublisher()` and refuses if the ledger insert fails. Human approval path only queues approved items via `queueApproved()`; no unapproved item can publish. No article was published during verification. |
+| P0-08 | One controlled article published and independently verified | Human Accepted | Pending the human gate / ready for controlled publish | Nothing published. P0-07 is now closed, so P0-08 is no longer blocked by configuration. P8-03 is **not** a blocker: `image.url` is nullable in the publish payload and `publishQueuedItem()` never requires an image. A batch of 10 posts is already awaiting review (`apr_pm7t4kmdmtn2ygo1`); `content_publish_attempts` holds 0 rows. Tai's explicit approval is required before the controlled test. Exact sequence and evidence in `docs/p0-human-verification-runbook.md` |
 
 | P0-09 | Paperclip bridge verified | Production Verified | **Production Verified**, synchronized path only | `paperclip_sync_state` in production advanced twice while observed (22:15:16 -> 22:20:00 -> 22:20:21 UTC) with `consecutive_failures=0` and `last_error=null`, so the reconciliation bridge is genuinely running and writing production truth. Direct live mode is still unavailable: `PAPERCLIP_API_URL` is unset, so the app reads the projection and correctly labels itself synchronized (`docs/paperclip-hosting.md`). Agents remained paused; no reconcile or wake was triggered |
 
 
 Agents remain paused for the whole of P0.
 
-The four human gates (P0-03, P0-04, P0-07, P0-08) have exact actions and evidence
-lists in `docs/p0-human-verification-runbook.md`. No gate closed in this slice, so
-the percentages above are unchanged.
+The remaining human gates are P0-03, P0-04 and P0-08. P0-07 is closed at
+Production Verified. They have exact actions and evidence lists in
+`docs/p0-human-verification-runbook.md`. No phase completion weight is awarded.
 
 
 ## P1, commercial truth
