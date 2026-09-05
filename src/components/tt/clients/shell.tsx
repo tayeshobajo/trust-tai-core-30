@@ -122,7 +122,7 @@ export function ClientTabs({ clientId, active }: { clientId: string; active: Cli
             key={tab}
             to="/modules/clients/$clientId"
             params={{ clientId }}
-            search={{ tab }}
+            search={tab === "overview" ? {} : { tab }}
             role="tab"
             aria-selected={selected}
             resetScroll={false}
