@@ -254,6 +254,8 @@ export function deriveClientCard(input: ClientBookInput, now: Date, timeZone: st
     websiteUrl,
     commercialLine,
     reviewLine,
+    nextReviewAt: input.nextReviewAt ?? null,
+    renewalAt: input.renewalAt ?? null,
     deliveryLine: input.delivery?.line ?? null,
     warnings,
     needsAttention: warnings.length > 0,
