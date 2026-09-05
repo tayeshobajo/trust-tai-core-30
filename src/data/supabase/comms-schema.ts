@@ -188,6 +188,10 @@ export function toTouch(row: TouchRow): Touch {
     summary: row.summary,
     ...(row.body ? { body: row.body } : {}),
     ...(row.logged_by ? { loggedBy: row.logged_by } : {}),
+    ...(readMeetingKind(row.meeting_kind)
+      ? { meetingKind: readMeetingKind(row.meeting_kind) as MeetingKind }
+      : {}),
+
     ...(row.provenance && typeof row.provenance === "object"
       ? { provenance: row.provenance as Record<string, unknown> }
       : {}),
