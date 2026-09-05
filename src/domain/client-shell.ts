@@ -365,14 +365,69 @@ export function approvalStatusLabel(request: ApprovalRequest): string {
 /* ------------------------------------------------------------ site, files */
 
 /**
- * Website records carry no client link today, so no site can be claimed for a
- * client. Said plainly; never shown as a healthy site.
+ * Website records carry no client column, so a site is matched to a company
+ * only by two explicit facts a person recorded: the same web address, or the
+ * exact same company name. Nothing is matched by resemblance.
  */
-export const SITE_UNLINKED = "No site record linked yet";
-export const SITE_UNLINKED_BECAUSE =
-  "Website submissions and analytics are not yet attached to a client record, so nothing here can be read for this company.";
+export function siteHost(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const raw = url.trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw.includes("://") ? raw : `https://${raw}`);
+    return parsed.hostname.toLowerCase().replace(/^www\./, "") || null;
+  } catch {
+    return null;
+  }
+}
 
-/** There is no file store on a client yet. Nothing is faked to fill the tab. */
-export const FILES_NONE = "No files linked yet";
+export interface ClientSiteIdentity {
+  name: string;
+  websiteUrl: string | null;
+}
+
+export interface SiteSubmissionLike {
+  submittedAt: ISODateTime;
+  company: { name: string | null; website: string | null };
+}
+
+/** Submissions this company actually made, newest first. */
+export function siteSubmissionsFor<T extends SiteSubmissionLike>(
+  submissions: T[],
+  client: ClientSiteIdentity,
+): T[] {
+  const host = siteHost(client.websiteUrl);
+  const name = client.name.trim().toLowerCase();
+  return submissions
+    .filter((submission) => {
+      const submissionHost = siteHost(submission.company.website);
+      if (host && submissionHost && submissionHost === host) return true;
+      const submissionName = (submission.company.name ?? "").trim().toLowerCase();
+      return Boolean(name) && submissionName === name;
+    })
+    .slice()
+    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+}
+
+/** No web address was ever recorded for this company, so nothing can be matched. */
+export const SITE_NO_ADDRESS = "No web address recorded";
+export const SITE_NO_ADDRESS_BECAUSE =
+  "A site is matched to a company by the address or company name a person recorded. Neither is on this client yet.";
+
+export const SITE_NO_SUBMISSIONS = "Nothing from this company on the site";
+export const SITE_NO_SUBMISSIONS_BECAUSE =
+  "The Website room has no intake from this address or company name. That is an absence of records, not a healthy site.";
+
+export const SITE_UNPROVISIONED = "The Website room is not applied here";
+export const SITE_UNPROVISIONED_BECAUSE =
+  "Website tables have not been created in this workspace, so no site record can be read for anyone.";
+
+/** Files live with the delivery work that produced them. Projects owns them. */
+export const FILES_NO_PROJECTS = "No files yet";
+export const FILES_NO_PROJECTS_BECAUSE =
+  "Files arrive with delivery work. No project names this company, so there is nothing to list.";
+
+export const FILES_NONE = "No files on this company's projects";
 export const FILES_NONE_BECAUSE =
-  "Files will attach to a client once a store exists for them. Until then, nothing is listed here.";
+  "Projects exist for this company, but nothing has been uploaded to them yet.";
+
