@@ -202,10 +202,8 @@ export async function setClientCommercialState(
   const after = toClientRecord(data as Row);
 
   if (tierChanged) {
-    const phaseAmountCents =
-      patch.tier === "build" && typeof patch.buildPhaseAmountCents === "number"
-        ? Math.trunc(patch.buildPhaseAmountCents)
-        : null;
+    const phaseAmountCents = movingIntoBuild ? buildPhaseAmountCents : null;
+
     await emitSuiteEvent({
       key: "CLIENT_TIER_CHANGED",
       organizationId: context.organizationId,
