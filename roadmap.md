@@ -73,6 +73,28 @@ Writes go through `src/data/supabase/commercial-service.ts` using the
 authenticated client, so RLS applies as the signed-in person. No service-role key
 is used on any commercial path.
 
+Slice P1-002A hardened that truth and corrected the week. The business week is now
+organization-local: `src/domain/business-week.ts` finds Monday 00:00 in an IANA
+timezone and returns UTC instants, tested across both DST transitions (a 167 hour
+spring week and a 169 hour autumn week), and `readWeeklyScoreboard()` reads
+`organizations.timezone` rather than any server clock, saying out loud when it had
+to fall back to the documented canonical fallback of UTC. The Trust Tai production
+organization `ee683a64-e045-4226-a8ff-4ae6590d6789` was corrected from
+`Europe/London` to `America/Chicago` and read back live. Moving a client into Build
+without a human-entered phase amount now throws before the client row is touched
+and emits nothing. Repeating a commercial transition replays it instead of
+recording it twice, and an already answered proposal cannot be reopened or
+reanswered by this system. `meeting_kind` is refused on anything that was not a
+meeting, on both `logTouch()` and `setMeetingKind()`. First touches now mean real
+human outbound first outreach only, defined in `src/domain/first-touch.ts`: earlier
+inbound contact does not disqualify a first outbound touch, earlier outbound does,
+and several outbound touches to one relationship count once. Weekly targets
+validate and fail closed before any write. Most importantly, a source that cannot
+be read is no longer displayed as zero: `readWeeklyScoreboard()` returns a
+`Sourced` result per source, so an empty table is a real 0 and a failed query is
+unknown. No percentage moves on this slice: it corrects code and configuration, and
+no gate newly reached its required level.
+
 | ID | Gate | Required level | Status |
 | --- | --- | --- | --- |
 | P1-01 | Client commercial state: tier, mrr in cents, engagement dates, provenance | Production Verified | Code/Test Verified, schema live in production. Columns confirmed on `public.clients` by a live read; `setClientCommercialState()` writes only the facts it is given and stamps actor, time and reason into `commercial_provenance`. No client has been given a tier or an MRR yet, so no production row proves the write |
