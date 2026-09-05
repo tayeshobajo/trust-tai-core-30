@@ -69,20 +69,7 @@ export function formatMoney(cents: number | null | undefined): string | null {
   })}`;
 }
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** `Sep 19`, as a calendar day in the organization's timezone. */
 export function formatDay(iso: ISODateTime | null | undefined, timeZone: string): string | null {
@@ -127,6 +114,9 @@ export interface ClientCard {
   commercialLine: string;
   /** `Next review Sep 19`, `Renews Oct 3`, or `No review scheduled`. */
   reviewLine: string;
+  /** The recorded dates themselves, so a reader never has to parse a line. */
+  nextReviewAt: ISODateTime | null;
+  renewalAt: ISODateTime | null;
   /** One line owned by Projects, or null when Projects said nothing. */
   deliveryLine: string | null;
   /** True exceptions only. Empty on a normal card. */
@@ -183,6 +173,8 @@ export function deriveClientCard(input: ClientBookInput, now: Date, timeZone: st
       websiteUrl,
       commercialLine: line,
       reviewLine: "Becomes a client on signature",
+      nextReviewAt: input.nextReviewAt ?? null,
+      renewalAt: input.renewalAt ?? null,
       deliveryLine: null,
       warnings: [],
       needsAttention: false,
@@ -249,6 +241,8 @@ export function deriveClientCard(input: ClientBookInput, now: Date, timeZone: st
     websiteUrl,
     commercialLine,
     reviewLine,
+    nextReviewAt: input.nextReviewAt ?? null,
+    renewalAt: input.renewalAt ?? null,
     deliveryLine: input.delivery?.line ?? null,
     warnings,
     needsAttention: warnings.length > 0,
@@ -298,26 +292,47 @@ export const CLIENTS_VIEWS: ClientsView[] = ["all", "run", "build", "diagnose"];
 export interface ClientsHeadline {
   runClients: number;
   reviewsDue: number;
-  proposalsAwaiting: number;
+  /** Null when the proposal lineage could not be read: unknown, not zero. */
+  proposalsAwaiting: number | null;
   /** The sentence itself, so the page never assembles its own wording. */
   sentence: string;
 }
 
-export function clientsHeadline(cards: ClientCard[], now: Date, timeZone: string): ClientsHeadline {
+export interface ClientsHeadlineSources {
+  /** False when the proposal lineage failed to read. Defaults to available. */
+  proposalsAvailable?: boolean;
+}
+
+/**
+ * The calm banner above the book. A review is due when its own recorded day
+ * is overdue or falls inside the next week; a renewal is never counted as a
+ * review. A source that could not be read is named as unreadable in the
+ * sentence rather than shown as a healthy zero.
+ */
+export function clientsHeadline(
+  cards: ClientCard[],
+  now: Date,
+  timeZone: string,
+  sources: ClientsHeadlineSources = {},
+): ClientsHeadline {
   const active = cards.filter((card) => card.kind === "active");
   const runClients = active.filter((card) => card.tier === "run").length;
   const reviewsDue = active.filter((card) => {
-    if (card.warnings.some((warning) => warning.startsWith("Review overdue"))) return true;
-    if (!card.soonestAt) return false;
-    const days = localDaysBetween(now, card.soonestAt, timeZone);
-    return days !== null && days >= 0 && days <= REVIEW_DUE_DAYS;
+    if (!card.nextReviewAt) return false;
+    const days = localDaysBetween(now, card.nextReviewAt, timeZone);
+    return days !== null && days <= REVIEW_DUE_DAYS;
   }).length;
-  const proposalsAwaiting = cards.filter((card) => card.kind === "proposed").length;
+  const proposalsAvailable = sources.proposalsAvailable ?? true;
+  const proposalsAwaiting = proposalsAvailable
+    ? cards.filter((card) => card.kind === "proposed").length
+    : null;
 
   const parts = [
     `${runClients} Run client${runClients === 1 ? "" : "s"}`,
     `${reviewsDue} review${reviewsDue === 1 ? "" : "s"} due`,
-    `${proposalsAwaiting} proposal${proposalsAwaiting === 1 ? "" : "s"} awaiting your decision`,
+    proposalsAwaiting === null
+      ? "proposals could not be read just now"
+      : `${proposalsAwaiting} proposal${proposalsAwaiting === 1 ? "" : "s"} awaiting your decision`,
   ];
 
   return { runClients, reviewsDue, proposalsAwaiting, sentence: parts.join(" · ") };
@@ -342,7 +357,11 @@ export function matchesClientSearch(card: ClientCard, query: string): boolean {
 }
 
 /** The active grid: one view, one local search, order preserved. */
-export function filterClientCards(cards: ClientCard[], view: ClientsView, query = ""): ClientCard[] {
+export function filterClientCards(
+  cards: ClientCard[],
+  view: ClientsView,
+  query = "",
+): ClientCard[] {
   return cards.filter((card) => {
     if (card.kind !== "active") return false;
     if (view !== "all" && card.tier !== view) return false;
@@ -370,7 +389,9 @@ export interface NewClientInput {
 }
 
 function validCents(value: unknown): boolean {
-  return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0;
+  return (
+    typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0
+  );
 }
 
 function validHttpUrl(value: string): boolean {

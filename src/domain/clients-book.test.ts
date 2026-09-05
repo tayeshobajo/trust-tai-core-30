@@ -50,7 +50,9 @@ describe("a client card states tier, value, review and delivery", () => {
 
   it("carries the delivery line Projects owns, and warns when it is blocked", () => {
     const card = deriveClientCard(
-      client({ delivery: { line: "Checkout rebuild is blocked: waiting on API keys", blocked: true } }),
+      client({
+        delivery: { line: "Checkout rebuild is blocked: waiting on API keys", blocked: true },
+      }),
       NOW,
       CHICAGO,
     );
@@ -60,7 +62,10 @@ describe("a client card states tier, value, review and delivery", () => {
 
   it("keeps the real logo and website when a person recorded them", () => {
     const card = deriveClientCard(
-      client({ logoUrl: " https://cdn.example.com/n.png ", websiteUrl: "https://northlight.example" }),
+      client({
+        logoUrl: " https://cdn.example.com/n.png ",
+        websiteUrl: "https://northlight.example",
+      }),
       NOW,
       CHICAGO,
     );
@@ -98,7 +103,11 @@ describe("every day is a day in the organization's timezone", () => {
 
 describe("warnings are exceptions, not decoration", () => {
   it("flags an overdue review", () => {
-    const card = deriveClientCard(client({ nextReviewAt: "2026-08-20T05:00:00.000Z" }), NOW, CHICAGO);
+    const card = deriveClientCard(
+      client({ nextReviewAt: "2026-08-20T05:00:00.000Z" }),
+      NOW,
+      CHICAGO,
+    );
     expect(card.warnings).toEqual(["Review overdue since Aug 20"]);
     expect(card.needsAttention).toBe(true);
   });
@@ -125,7 +134,12 @@ describe("a proposed company is not a client", () => {
       name: "Ridgeway Foods",
       tier: null,
       mrrCents: null,
-      proposal: { amountCents: 1_200_000, sentAt: "2026-09-01T12:00:00.000Z", tier: "build", open: true },
+      proposal: {
+        amountCents: 1_200_000,
+        sentAt: "2026-09-01T12:00:00.000Z",
+        tier: "build",
+        open: true,
+      },
     }),
     NOW,
     CHICAGO,
@@ -150,13 +164,21 @@ describe("search is local, by company name, and applies to both sections", () =>
   const active = deriveClientCard(client(), NOW, CHICAGO);
   const other = deriveClientCard(client({ id: "o", name: "Orchard Labs" }), NOW, CHICAGO);
   const proposed = deriveClientCard(
-    client({ id: "p", name: "North Ridge Foods", tier: null, mrrCents: null, proposal: { amountCents: null, sentAt: null, tier: null, open: true } }),
+    client({
+      id: "p",
+      name: "North Ridge Foods",
+      tier: null,
+      mrrCents: null,
+      proposal: { amountCents: null, sentAt: null, tier: null, open: true },
+    }),
     NOW,
     CHICAGO,
   );
 
   it("matches on the name only, ignoring case and spacing", () => {
-    expect(filterClientCards([active, other], "all", "  NORTH ").map((c) => c.id)).toEqual(["client-1"]);
+    expect(filterClientCards([active, other], "all", "  NORTH ").map((c) => c.id)).toEqual([
+      "client-1",
+    ]);
     expect(filterClientCards([active, other], "all", "labs").map((c) => c.id)).toEqual(["o"]);
     expect(filterClientCards([active, other], "all", "3,500")).toEqual([]);
   });
@@ -171,14 +193,32 @@ describe("search is local, by company name, and applies to both sections", () =>
 describe("the order is stable and puts exceptions first", () => {
   it("sorts attention, then the soonest obligation, then the name", () => {
     const cards = sortClientCards([
-      deriveClientCard(client({ id: "c", name: "Calm Co", nextReviewAt: "2026-10-01T05:00:00.000Z" }), NOW, CHICAGO),
       deriveClientCard(
-        client({ id: "p", name: "Proposed Co", tier: null, mrrCents: null, proposal: { amountCents: null, sentAt: null, tier: null, open: true } }),
+        client({ id: "c", name: "Calm Co", nextReviewAt: "2026-10-01T05:00:00.000Z" }),
         NOW,
         CHICAGO,
       ),
-      deriveClientCard(client({ id: "a", name: "Aging Co", nextReviewAt: "2026-08-01T05:00:00.000Z" }), NOW, CHICAGO),
-      deriveClientCard(client({ id: "s", name: "Soon Co", nextReviewAt: "2026-09-06T05:00:00.000Z" }), NOW, CHICAGO),
+      deriveClientCard(
+        client({
+          id: "p",
+          name: "Proposed Co",
+          tier: null,
+          mrrCents: null,
+          proposal: { amountCents: null, sentAt: null, tier: null, open: true },
+        }),
+        NOW,
+        CHICAGO,
+      ),
+      deriveClientCard(
+        client({ id: "a", name: "Aging Co", nextReviewAt: "2026-08-01T05:00:00.000Z" }),
+        NOW,
+        CHICAGO,
+      ),
+      deriveClientCard(
+        client({ id: "s", name: "Soon Co", nextReviewAt: "2026-09-06T05:00:00.000Z" }),
+        NOW,
+        CHICAGO,
+      ),
     ]);
     expect(cards.map((card) => card.id)).toEqual(["a", "s", "c", "p"]);
   });
@@ -188,11 +228,34 @@ describe("the headline counts real things", () => {
   it("counts Run clients, reviews due and proposals awaiting a decision", () => {
     const headline = clientsHeadline(
       [
-        deriveClientCard(client({ id: "1", nextReviewAt: "2026-09-05T05:00:00.000Z" }), NOW, CHICAGO),
-        deriveClientCard(client({ id: "2", name: "Beta", nextReviewAt: "2026-08-01T05:00:00.000Z" }), NOW, CHICAGO),
-        deriveClientCard(client({ id: "3", name: "Gamma", tier: "build", mrrCents: null }), NOW, CHICAGO),
         deriveClientCard(
-          client({ id: "4", name: "Delta", tier: null, mrrCents: null, proposal: { amountCents: 500_000, sentAt: "2026-09-02T12:00:00.000Z", tier: null, open: true } }),
+          client({ id: "1", nextReviewAt: "2026-09-05T05:00:00.000Z" }),
+          NOW,
+          CHICAGO,
+        ),
+        deriveClientCard(
+          client({ id: "2", name: "Beta", nextReviewAt: "2026-08-01T05:00:00.000Z" }),
+          NOW,
+          CHICAGO,
+        ),
+        deriveClientCard(
+          client({ id: "3", name: "Gamma", tier: "build", mrrCents: null }),
+          NOW,
+          CHICAGO,
+        ),
+        deriveClientCard(
+          client({
+            id: "4",
+            name: "Delta",
+            tier: null,
+            mrrCents: null,
+            proposal: {
+              amountCents: 500_000,
+              sentAt: "2026-09-02T12:00:00.000Z",
+              tier: null,
+              open: true,
+            },
+          }),
           NOW,
           CHICAGO,
         ),
@@ -203,7 +266,47 @@ describe("the headline counts real things", () => {
     expect(headline.runClients).toBe(2);
     expect(headline.reviewsDue).toBe(2);
     expect(headline.proposalsAwaiting).toBe(1);
-    expect(headline.sentence).toBe("2 Run clients · 2 reviews due · 1 proposal awaiting your decision");
+    expect(headline.sentence).toBe(
+      "2 Run clients · 2 reviews due · 1 proposal awaiting your decision",
+    );
+  });
+
+  it("never counts a renewal as a review due", () => {
+    const headline = clientsHeadline(
+      [
+        deriveClientCard(
+          client({ id: "1", renewalAt: "2026-09-05T05:00:00.000Z", nextReviewAt: null }),
+          NOW,
+          CHICAGO,
+        ),
+      ],
+      NOW,
+      CHICAGO,
+    );
+    expect(headline.reviewsDue).toBe(0);
+  });
+
+  it("carries the recorded review and renewal days on the card", () => {
+    const card = deriveClientCard(
+      client({ renewalAt: "2026-10-03T05:00:00.000Z", nextReviewAt: "2026-09-19T05:00:00.000Z" }),
+      NOW,
+      CHICAGO,
+    );
+    expect(card.nextReviewAt).toBe("2026-09-19T05:00:00.000Z");
+    expect(card.renewalAt).toBe("2026-10-03T05:00:00.000Z");
+  });
+
+  it("names an unreadable proposal source instead of showing zero", () => {
+    const headline = clientsHeadline(
+      [deriveClientCard(client({ id: "1" }), NOW, CHICAGO)],
+      NOW,
+      CHICAGO,
+      { proposalsAvailable: false },
+    );
+    expect(headline.proposalsAwaiting).toBeNull();
+    expect(headline.sentence).toBe(
+      "1 Run client · 0 reviews due · proposals could not be read just now",
+    );
   });
 });
 
@@ -216,7 +319,9 @@ describe("initials stand in for a logo without inventing an image", () => {
 
 describe("manual creation refuses to guess money", () => {
   it("requires a name", () => {
-    expect(validateNewClient({ name: "  ", tier: "none" })).toContain("A client needs a company name.");
+    expect(validateNewClient({ name: "  ", tier: "none" })).toContain(
+      "A client needs a company name.",
+    );
   });
 
   it("accepts a company with no tier and nothing else", () => {
@@ -236,7 +341,9 @@ describe("manual creation refuses to guess money", () => {
     expect(validateNewClient({ name: "Acme", tier: "build" })).toContain(
       "Creating a client in Build needs the phase amount that was agreed.",
     );
-    expect(validateNewClient({ name: "Acme", tier: "build", buildPhaseAmountCents: 900_000 })).toEqual([]);
+    expect(
+      validateNewClient({ name: "Acme", tier: "build", buildPhaseAmountCents: 900_000 }),
+    ).toEqual([]);
   });
 
   it("only accepts a real address for a website or a logo", () => {
@@ -247,7 +354,12 @@ describe("manual creation refuses to guess money", () => {
       "The website needs to be a full address, starting with https://.",
     );
     expect(
-      validateNewClient({ name: "Acme", tier: "none", websiteUrl: "https://acme.com", logoUrl: "https://acme.com/logo.svg" }),
+      validateNewClient({
+        name: "Acme",
+        tier: "none",
+        websiteUrl: "https://acme.com",
+        logoUrl: "https://acme.com/logo.svg",
+      }),
     ).toEqual([]);
   });
 });

@@ -1,10 +1,13 @@
 /**
  * One client, the shell every other room hangs off.
  *
- * The page answers, in order: who this company is, what they are worth and
- * when they are next reviewed, what delivery is doing for them, who we know
- * there, and what has actually happened. Nothing on this page is invented: a
- * section with no recorded truth says so plainly rather than filling itself.
+ * The page answers, in order: who this company is, what they are on and
+ * worth, when they are next reviewed and renew, and then, tab by tab, what
+ * each owning room has recorded about them. Nothing on this page is invented:
+ * a room that could not be read says so, and a room with nothing recorded
+ * says that instead, never dressed as health.
+ *
+ * Every day here is a day in the organization's own timezone.
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -12,17 +15,46 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { EmptyState, PageHeader, SectionHeading, TTCard } from "@/components/tt/primitives";
+import { ClientHeader, ClientTabs } from "@/components/tt/clients/shell";
+import {
+  FilesTab,
+  OverviewTab,
+  ProjectsTab,
+  RelationshipTab,
+  RoadmapTab,
+  SiteTab,
+} from "@/components/tt/clients/tabs";
+import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { buildClientBook } from "@/data/clients/book-projection";
-import { readSuiteEvents } from "@/data/events/suite-events";
 import {
-  listClientCommercialState,
+  eventsAbout,
+  readClientApprovals,
+  readClientHistory,
+  readClientRoadmaps,
+} from "@/data/clients/shell-reads";
+import {
   listProposals,
+  readClientCommercialRecord,
+  readOrganizationTimeZoneResolved,
 } from "@/data/supabase/commercial-service";
 import { commsService } from "@/data/supabase/comms-service";
 import { projectsService } from "@/data/supabase/projects-service";
-import { formatDay } from "@/domain/clients-book";
+import {
+  answered,
+  approvalEntityIds,
+  approvalsForClient,
+  clientHeaderFacts,
+  parseClientTab,
+  projectsForClient,
+  relationshipSnapshotFor,
+  reviewCadenceFor,
+  roadmapOutcomeFor,
+  roadmapsForClient,
+  unreadable,
+  type ClientTab,
+  type RoomRead,
+} from "@/domain/client-shell";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Client · Trust Tai OS";
@@ -30,6 +62,11 @@ const DESCRIPTION =
   "One company: tier, commercial value, next review, delivery in flight, the people we know there, and what has happened.";
 
 export const Route = createFileRoute("/modules/clients/$clientId")({
+  /* Overview is the door; it carries no `tab` so plain client links stay clean. */
+  validateSearch: (search: Record<string, unknown>): { tab?: ClientTab } => {
+    const tab = parseClientTab(search["tab"]);
+    return tab === "overview" ? {} : { tab };
+  },
   head: () => ({
     meta: [
       { title: TITLE },
@@ -46,20 +83,51 @@ export const Route = createFileRoute("/modules/clients/$clientId")({
 
 function ClientRoute() {
   const { clientId } = Route.useParams();
+  const { tab } = Route.useSearch();
   return (
     <WorkspaceGate appId="clients">
-      {(identity) => <ClientShell identity={identity} clientId={clientId} />}
+      {(identity) => (
+        <ClientShell identity={identity} clientId={clientId} tab={tab ?? "overview"} />
+      )}
     </WorkspaceGate>
   );
 }
 
-function ClientShell({ identity, clientId }: { identity: WorkspaceIdentity; clientId: string }) {
+/** Turn a query into a room read: answered, unreadable, or still on its way. */
+function readOf<T>(query: {
+  data: T | undefined;
+  isError: boolean;
+  error: unknown;
+}): RoomRead<T> | null {
+  if (query.isError) {
+    return unreadable(query.error instanceof Error ? query.error.message : "The read failed.");
+  }
+  return query.data === undefined ? null : answered(query.data);
+}
+
+function ClientShell({
+  identity,
+  clientId,
+  tab,
+}: {
+  identity: WorkspaceIdentity;
+  clientId: string;
+  tab: ClientTab;
+}) {
   const now = useMemo(() => new Date(), []);
   const organizationId = identity.organizationId;
 
-  const clientsQuery = useQuery({
-    queryKey: ["clients", "book", organizationId],
-    queryFn: () => listClientCommercialState(organizationId),
+  const zoneQuery = useQuery({
+    queryKey: ["organization", "timezone", organizationId],
+    queryFn: () => readOrganizationTimeZoneResolved(organizationId),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  const timeZone = zoneQuery.data?.timeZone ?? null;
+
+  const clientQuery = useQuery({
+    queryKey: ["clients", "record", organizationId, clientId],
+    queryFn: () => readClientCommercialRecord(clientId, organizationId),
     retry: false,
   });
   const proposalsQuery = useQuery({
@@ -72,21 +140,65 @@ function ClientShell({ identity, clientId }: { identity: WorkspaceIdentity; clie
     queryFn: () => projectsService.list(organizationId),
     retry: false,
   });
+  const roadmapsQuery = useQuery({
+    queryKey: ["clients", "roadmaps", organizationId],
+    queryFn: () => readClientRoadmaps(organizationId),
+    retry: false,
+  });
   const relationshipsQuery = useQuery({
     queryKey: ["clients", "relationships", organizationId],
     queryFn: () => commsService.list(organizationId),
     retry: false,
   });
-  const eventsQuery = useQuery({
-    queryKey: ["clients", "events", organizationId],
-    queryFn: () => readSuiteEvents(organizationId, 120),
+  const historyQuery = useQuery({
+    queryKey: ["clients", "history", organizationId],
+    queryFn: () => readClientHistory(organizationId),
     retry: false,
   });
 
-  const record = (clientsQuery.data ?? []).find((client) => client.id === clientId) ?? null;
+  const record = clientQuery.data ?? null;
+
+  /* Canonical ids this company is known by across rooms. */
+  const roadmaps = useMemo(
+    () => roadmapsForClient(roadmapsQuery.data?.roadmaps ?? [], clientId),
+    [roadmapsQuery.data, clientId],
+  );
+  const projects = useMemo(
+    () => projectsForClient(projectsQuery.data ?? [], clientId),
+    [projectsQuery.data, clientId],
+  );
+  const relationshipIds = useMemo(
+    () =>
+      (relationshipsQuery.data ?? [])
+        .filter((relationship) => relationship.clientId === clientId)
+        .map((relationship) => relationship.id),
+    [relationshipsQuery.data, clientId],
+  );
+  const links = useMemo(
+    () => ({
+      clientId,
+      roadmapIds: roadmaps.map((roadmap) => roadmap.id),
+      projectIds: projects.map((project) => project.id),
+      relationshipIds,
+    }),
+    [clientId, roadmaps, projects, relationshipIds],
+  );
+  const entityIds = useMemo(() => approvalEntityIds(links), [links]);
+
+  /* Approvals are asked only once the ids they could be filed under are known. */
+  const linksSettled =
+    (roadmapsQuery.isSuccess || roadmapsQuery.isError) &&
+    (projectsQuery.isSuccess || projectsQuery.isError) &&
+    (relationshipsQuery.isSuccess || relationshipsQuery.isError);
+  const approvalsQuery = useQuery({
+    queryKey: ["clients", "approvals", organizationId, clientId, entityIds],
+    queryFn: () => readClientApprovals({ organizationId, userId: identity.userId }, entityIds),
+    enabled: linksSettled,
+    retry: false,
+  });
 
   const card = useMemo(() => {
-    if (!record) return null;
+    if (!record || !timeZone) return null;
     return (
       buildClientBook(
         {
@@ -95,26 +207,53 @@ function ClientShell({ identity, clientId }: { identity: WorkspaceIdentity; clie
           projects: projectsQuery.isError ? null : (projectsQuery.data ?? []),
         },
         now,
+        timeZone,
       )[0] ?? null
     );
-  }, [record, proposalsQuery.data, proposalsQuery.isError, projectsQuery.data, projectsQuery.isError, now]);
+  }, [
+    record,
+    timeZone,
+    proposalsQuery.data,
+    proposalsQuery.isError,
+    projectsQuery.data,
+    projectsQuery.isError,
+    now,
+  ]);
 
-  const projects = (projectsQuery.data ?? []).filter((project) => project.clientId === clientId);
-  const people = (relationshipsQuery.data ?? []).filter(
-    (relationship) => relationship.clientId === clientId,
-  );
-  const events = (eventsQuery.data ?? [])
-    .filter(
-      (event) =>
-        event.subject.id === clientId ||
-        (event.related ?? []).some((related) => related.id === clientId),
-    )
-    .slice(0, 8);
-
-  if (clientsQuery.isLoading) {
+  if (zoneQuery.isLoading || clientQuery.isLoading) {
     return (
       <AppShell identity={identity}>
         <p className="text-sm text-muted-foreground">Reading this company.</p>
+      </AppShell>
+    );
+  }
+
+  if (zoneQuery.isError || !timeZone) {
+    return (
+      <AppShell identity={identity}>
+        <EmptyState
+          title="The organization's timezone could not be read"
+          belongsHere="Every date on a client page is a day in your organization's own timezone."
+          whyItMatters="Without it a review date could land on the wrong day, so nothing is shown instead."
+          action={<BackToClients />}
+        />
+      </AppShell>
+    );
+  }
+
+  if (clientQuery.isError) {
+    return (
+      <AppShell identity={identity}>
+        <EmptyState
+          title="This company could not be read"
+          belongsHere="This page reads the canonical client record for your organization."
+          whyItMatters={
+            clientQuery.error instanceof Error
+              ? clientQuery.error.message
+              : "The client record did not answer, so nothing here is guessed."
+          }
+          action={<BackToClients />}
+        />
       </AppShell>
     );
   }
@@ -126,141 +265,128 @@ function ClientShell({ identity, clientId }: { identity: WorkspaceIdentity; clie
           title="That company is not in the book"
           belongsHere="This page reads the canonical client record for your organization."
           whyItMatters="A client you cannot see here is either not recorded yet, or belongs to another organization."
-          action={
-            <Link to="/modules/clients" className="text-sm font-medium text-royal">
-              Back to clients
-            </Link>
-          }
+          action={<BackToClients />}
         />
       </AppShell>
     );
   }
 
+  const facts = clientHeaderFacts(card, now, timeZone);
+  const cadence = reviewCadenceFor(record, now, timeZone);
+
+  /* Each room's answer, or the fact that it could not be asked. */
+  const roadmapRead = readOf(roadmapsQuery);
+  const roadmapOutcomes: RoomRead<ReturnType<typeof roadmapOutcomeFor>[]> | null =
+    roadmapRead === null
+      ? null
+      : roadmapRead.available
+        ? answered(
+            roadmaps.map((roadmap) =>
+              roadmapOutcomeFor(
+                roadmap,
+                roadmapRead.value.stagesByRoadmap[roadmap.id] ?? [],
+                roadmapRead.value.openDecisions,
+              ),
+            ),
+          )
+        : roadmapRead;
+  const projectsRead = readOf(projectsQuery);
+  const projectsForTab: RoomRead<typeof projects> | null =
+    projectsRead === null ? null : projectsRead.available ? answered(projects) : projectsRead;
+  const relationshipsRead = readOf(relationshipsQuery);
+  const relationshipRead: RoomRead<ReturnType<typeof relationshipSnapshotFor>> | null =
+    relationshipsRead === null
+      ? null
+      : relationshipsRead.available
+        ? answered(relationshipSnapshotFor(relationshipsRead.value, clientId, now, timeZone))
+        : relationshipsRead;
+  const approvalsRaw = readOf(approvalsQuery);
+  const approvalsRead: typeof approvalsRaw =
+    approvalsRaw === null
+      ? null
+      : approvalsRaw.available && approvalsRaw.value.ready
+        ? answered({
+            ready: true as const,
+            requests: approvalsForClient(approvalsRaw.value.requests, links),
+          })
+        : approvalsRaw;
+  const historyRaw = readOf(historyQuery);
+  const historyRead: typeof historyRaw =
+    historyRaw === null
+      ? null
+      : historyRaw.available
+        ? answered(eventsAbout(historyRaw.value, entityIds))
+        : historyRaw;
+
   return (
     <AppShell identity={identity}>
       <div className="space-y-8">
-        <PageHeader
-          eyebrow="Client"
-          title={record.name}
-          supporting={`${card.commercialLine} · ${card.reviewLine}`}
-          appId="clients"
+        <ClientHeader
+          card={card}
+          facts={facts}
+          websiteUrl={record.websiteUrl}
+          warnings={card.warnings}
         />
 
-        {card.warnings.length > 0 ? (
-          <TTCard className="border-warning/30 bg-warning/8">
-            <h2 className="text-sm font-semibold text-foreground">Needs you</h2>
-            <ul className="mt-2 space-y-1 text-sm text-foreground">
-              {card.warnings.map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
-            </ul>
-          </TTCard>
-        ) : null}
+        <ClientTabs clientId={clientId} active={tab} />
 
-        <section>
-          <SectionHeading
-            eyebrow="Commercial"
-            title="What this engagement is"
-            description="Recurring value is state on the client record. One-off amounts stay dated events on the roadmap lineage."
-          />
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Fact label="Tier and value" value={card.commercialLine} />
-            <Fact label="Review" value={card.reviewLine} />
-            <Fact
-              label="Renews"
-              value={formatDay(record.renewalAt) ?? "No renewal date recorded"}
+        <div role="tabpanel" aria-label={tab}>
+          {tab === "overview" ? (
+            <OverviewTab
+              reads={{
+                roadmap:
+                  roadmapOutcomes === null
+                    ? null
+                    : roadmapOutcomes.available
+                      ? answered(roadmapOutcomes.value[0] ?? null)
+                      : roadmapOutcomes,
+                projects: projectsForTab,
+                approvals: approvalsRead,
+                relationship: relationshipRead,
+                history: historyRead,
+                loading: {
+                  roadmap: roadmapsQuery.isLoading,
+                  projects: projectsQuery.isLoading,
+                  approvals: !linksSettled || approvalsQuery.isLoading,
+                  relationship: relationshipsQuery.isLoading,
+                  history: historyQuery.isLoading,
+                },
+              }}
+              cadence={cadence}
+              now={now}
+              timeZone={timeZone}
             />
-          </div>
-        </section>
-
-        <section>
-          <SectionHeading
-            eyebrow="Delivery"
-            title="What is in flight"
-            description="Owned by Projects. This is a read, not a second copy."
-          />
-          {projectsQuery.isError ? (
-            <p className="text-sm text-muted-foreground">Delivery could not be read just now.</p>
-          ) : projects.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No delivery work is recorded yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {projects.map((project) => (
-                <li key={project.id}>
-                  <TTCard className="p-4">
-                    <p className="text-sm font-medium text-foreground">{project.name}</p>
-                    <p className="mt-1 text-[13px] text-muted-foreground">
-                      {project.currentWork || project.nextMove || project.pointB}
-                    </p>
-                    {project.blockedBecause ? (
-                      <p className="mt-1 text-[13px] text-warning">
-                        Blocked: {project.blockedBecause}
-                      </p>
-                    ) : null}
-                  </TTCard>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section>
-          <SectionHeading
-            eyebrow="People"
-            title="Who we know there"
-            description="Owned by Comms. One person, one memory."
-          />
-          {people.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No relationship at this company is tracked yet.
-            </p>
-          ) : (
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {people.map((person) => (
-                <li key={person.id}>
-                  <TTCard className="p-4">
-                    <p className="text-sm font-medium text-foreground">{person.fullName}</p>
-                    <p className="mt-1 text-[13px] text-muted-foreground">
-                      {person.nextAction ?? "No next move recorded."}
-                    </p>
-                  </TTCard>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section>
-          <SectionHeading
-            eyebrow="History"
-            title="What has actually happened"
-            description="The shared stream, filtered to this company."
-          />
-          {events.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing has been recorded here yet.</p>
-          ) : (
-            <ol className="space-y-2">
-              {events.map((event) => (
-                <li key={event.id} className="flex gap-3 text-sm">
-                  <span className="w-16 shrink-0 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                    {formatDay(event.occurredAt)}
-                  </span>
-                  <span className="text-muted-foreground">{event.summary}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
+          ) : null}
+          {tab === "roadmap" ? (
+            <RoadmapTab read={roadmapOutcomes} loading={roadmapsQuery.isLoading} />
+          ) : null}
+          {tab === "projects" ? (
+            <ProjectsTab
+              read={projectsForTab}
+              loading={projectsQuery.isLoading}
+              timeZone={timeZone}
+            />
+          ) : null}
+          {tab === "relationship" ? (
+            <RelationshipTab
+              read={relationshipRead}
+              loading={relationshipsQuery.isLoading}
+              now={now}
+              timeZone={timeZone}
+            />
+          ) : null}
+          {tab === "site" ? <SiteTab /> : null}
+          {tab === "files" ? <FilesTab /> : null}
+        </div>
       </div>
     </AppShell>
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function BackToClients() {
   return (
-    <TTCard className="p-4">
-      <p className="tt-eyebrow">{label}</p>
-      <p className="mt-2 text-sm text-foreground">{value}</p>
-    </TTCard>
+    <Link to="/modules/clients" className="text-sm font-medium text-royal">
+      Back to clients
+    </Link>
   );
 }

@@ -86,7 +86,10 @@ describe("the book assembles from sources that already own their truth", () => {
     const cards = buildClientBook(
       {
         ...BASE,
-        clients: [clientRecord(), clientRecord({ id: "client-2", name: "Ridgeway Foods", tier: null, mrrCents: null })],
+        clients: [
+          clientRecord(),
+          clientRecord({ id: "client-2", name: "Ridgeway Foods", tier: null, mrrCents: null }),
+        ],
         proposals: [proposal()],
       },
       NOW,
@@ -114,7 +117,10 @@ describe("the book assembles from sources that already own their truth", () => {
       {
         ...BASE,
         clients: [
-          clientRecord({ logoUrl: "https://cdn.example.com/n.png", websiteUrl: "https://northlight.example" }),
+          clientRecord({
+            logoUrl: "https://cdn.example.com/n.png",
+            websiteUrl: "https://northlight.example",
+          }),
         ],
       },
       NOW,

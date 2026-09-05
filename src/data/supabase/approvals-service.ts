@@ -838,8 +838,28 @@ export const approvalsService = {
     }
     return data ? toRequest(data as Row) : null;
   },
-};
 
+  /**
+   * Every decision recorded against a bounded set of source entities, newest
+   * first. Read-only. A client page uses this to show the decisions that
+   * touched its roadmaps, projects and relationships without loading the
+   * whole ledger. A missing ledger is reported by the caller through
+   * `approvalsSchemaReady`, never hidden behind an empty answer here.
+   */
+  async listForEntities(context: ApprovalsContext, entityIds: ID[]): Promise<ApprovalRequest[]> {
+    const ids = Array.from(new Set(entityIds.filter(Boolean))).slice(0, 200);
+    if (ids.length === 0) return [];
+    const { data, error } = await supabase
+      .from("approval_requests")
+      .select("*")
+      .eq("organization_id", context.organizationId)
+      .in("source_entity->>id", ids)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as Row[]).map((row) => toRequest(row));
+  },
+};
 
 /**
  * Is the ledger actually in this database?
