@@ -20,25 +20,35 @@ import {
   Unreadable,
 } from "@/components/tt/clients/shell";
 import { TTCard } from "@/components/tt/primitives";
-import type { ClientApprovalsRead } from "@/data/clients/shell-reads";
+import type { ClientApprovalsRead, ClientSiteRead } from "@/data/clients/shell-reads";
 import type { ActivityEvent } from "@/domain/activity";
 import type { ApprovalRequest } from "@/domain/approvals";
 import {
   approvalStatusLabel,
+  FILES_NO_PROJECTS,
+  FILES_NO_PROJECTS_BECAUSE,
   FILES_NONE,
   FILES_NONE_BECAUSE,
   isOpenApproval,
   isOpenProject,
   lastTouchLine,
   projectStateLabel,
-  SITE_UNLINKED,
-  SITE_UNLINKED_BECAUSE,
+  siteHost,
+  siteSubmissionsFor,
+  SITE_NO_ADDRESS,
+  SITE_NO_ADDRESS_BECAUSE,
+  SITE_NO_SUBMISSIONS,
+  SITE_NO_SUBMISSIONS_BECAUSE,
+  SITE_UNPROVISIONED,
+  SITE_UNPROVISIONED_BECAUSE,
+  type ClientSiteIdentity,
   type RelationshipSnapshot,
   type ReviewCadence,
   type RoadmapOutcome,
   type RoomRead,
 } from "@/domain/client-shell";
 import { formatDay } from "@/domain/clients-book";
+import { FILE_KIND_LABEL, type ProjectFile } from "@/domain/project-delivery";
 import type { ExecutionProject } from "@/domain/projects";
 import { cn } from "@/lib/utils";
 
