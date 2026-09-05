@@ -268,3 +268,24 @@ export function businessApps(): AppRegistration[] {
 export function isBusinessApp(appId: string): boolean {
   return APP_REGISTRY.some((app) => app.id === appId && app.layer === "business");
 }
+
+/**
+ * The rooms that belong in the ordinary left navigation, in charter order,
+ * narrowed to the ids this person may actually see. A room that is registered
+ * as `deep_link` never appears here, whatever the person's access.
+ */
+export function primaryNavigation(allowed?: readonly string[]): AppRegistration[] {
+  const rooms: AppRegistration[] = [];
+  for (const id of PRIMARY_NAVIGATION) {
+    const app = APP_REGISTRY.find((candidate) => candidate.id === id);
+    if (!app || app.navigation === "deep_link") continue;
+    if (allowed && !allowed.includes(app.id)) continue;
+    rooms.push(app);
+  }
+  return rooms;
+}
+
+/** Rooms reached only by deep link. Real rooms, just not on the rail. */
+export function deepLinkedApps(): AppRegistration[] {
+  return APP_REGISTRY.filter((app) => app.navigation === "deep_link");
+}
