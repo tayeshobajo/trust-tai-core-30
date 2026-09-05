@@ -658,9 +658,13 @@ export async function readWeeklyScoreboard(
     ...new Set(weekTouches.map((touch) => String(touch["relationship_id"] ?? ""))),
   ].filter(Boolean);
 
-  const earlier = touches.available
+  const earlier: Sourced<Row[]> = touches.available
     ? await sourced(() => readEarlierOutbound(organizationId, week, relationshipIds))
-    : ({ available: false, value: null, because: touches.because } satisfies Sourced<Row[]>);
+    : {
+        available: false,
+        value: null,
+        ...(touches.because ? { because: touches.because } : {}),
+      };
 
   const signedProposals: SignedProposalEvent[] = (proposals.value ?? [])
     .filter((proposal) => proposal.proposalOutcome === "signed" && proposal.proposalOutcomeAt)

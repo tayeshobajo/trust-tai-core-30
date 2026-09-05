@@ -157,7 +157,7 @@ describe("proposals on the roadmap lineage", () => {
       CONTEXT,
     );
     const board = await service.readWeeklyScoreboard("org-1", NOW);
-    expect(board.revenue.diagnoseCents).toBe(0);
+    expect(board.revenue!.diagnoseCents).toBe(0);
   });
 });
 
@@ -237,9 +237,9 @@ describe("weekly scoreboard", () => {
 
     const board = await service.readWeeklyScoreboard("org-1", NOW);
     expect(board.runClients).toBe(1);
-    expect(board.revenue.runCents).toBeCloseTo((520_000 * 12) / 52, 10);
-    expect(board.revenue.diagnoseCents).toBe(300_000);
-    expect(board.revenue.buildCents).toBe(100_000);
+    expect(board.revenue!.runCents).toBeCloseTo((520_000 * 12) / 52, 10);
+    expect(board.revenue!.diagnoseCents).toBe(300_000);
+    expect(board.revenue!.buildCents).toBe(100_000);
     expect(board.proposalsSent).toBe(1);
     // Nothing derived is written back.
     expect(db.tables["clients"]?.[0]?.["mrr_cents"]).toBe(520_000);
