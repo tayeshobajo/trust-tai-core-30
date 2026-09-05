@@ -62,9 +62,11 @@ const DESCRIPTION =
   "One company: tier, commercial value, next review, delivery in flight, the people we know there, and what has happened.";
 
 export const Route = createFileRoute("/modules/clients/$clientId")({
-  validateSearch: (search: Record<string, unknown>): { tab: ClientTab } => ({
-    tab: parseClientTab(search.tab),
-  }),
+  /* Overview is the door; it carries no `tab` so plain client links stay clean. */
+  validateSearch: (search: Record<string, unknown>): { tab?: ClientTab } => {
+    const tab = parseClientTab(search["tab"]);
+    return tab === "overview" ? {} : { tab };
+  },
   head: () => ({
     meta: [
       { title: TITLE },
