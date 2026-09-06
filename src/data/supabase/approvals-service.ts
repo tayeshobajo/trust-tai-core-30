@@ -39,6 +39,8 @@ import {
   type ApprovalType,
   type DownstreamResult,
   type ExceptionReason,
+  type ItemOverride,
+
   type ImpactLevel,
   type SourceEntityRef,
   type UrgencyLevel,
