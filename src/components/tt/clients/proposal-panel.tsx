@@ -21,8 +21,10 @@ import {
 import {
   answered,
   proposalOutcomeRefusal,
+  readProposalOutcomeForm,
   readProposalSentForm,
   type ProposalFormCurrent,
+  type ProposalOutcomeIntent,
   type ProposalSentIntent,
 } from "@/domain/proposal-form";
 
@@ -38,8 +40,9 @@ export interface ProposalPanelProps {
   problem: string | null;
   savedRoadmapId: string | null;
   onSend: (input: { roadmapId: string } & ProposalSentIntent) => void;
-  onAnswer: (input: { roadmapId: string; outcome: "signed" | "declined" }) => void;
+  onAnswer: (input: { roadmapId: string } & ProposalOutcomeIntent) => void;
 }
+
 
 function money(cents: number | null): string {
   if (cents === null) return "amount not recorded";
