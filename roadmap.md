@@ -281,3 +281,11 @@ production, so it remains Code/Test Verified.
 ## Carried forward, not yet placed in a phase
 
 - [ ] First sign-in lifecycle event in the shared activity stream
+
+## Open operability items (no weight, no percentage effect)
+
+- **Move a project to a different client.** No safe path exists. A reassignment
+  would have to carry commercial truth, roadmap lineage and delivery history
+  across, and nothing does that today. Current safe recovery, stated in the
+  manage panel: close the project on the wrong client and start it under the
+  right one. Recorded 2026-09-06 during the operability slice.

@@ -85,7 +85,7 @@ Manage project has two halves, because they are two different decisions.
 | Point B | Projects | Cannot be blanked once the work is Delivered or Closed, because that claim was made against it. |
 | Agreed date | Projects | Canonical (`dueDate`, column with metadata mirror). Clearing it says no date was really agreed. |
 | Delivery items | Projects | Edited as one line each. Labels that survive an edit keep whether they were ticked off. |
-| Company this serves | Projects, manual work only | `origin.subjectLabel`. Read-only when the work came from an approved milestone, because Roadmap owns that lineage. |
+| Company this serves | Projects, unlinked manual work only | `origin.subjectLabel`, editable only when the project has no `clientId` and no roadmap origin. Then it is a description Projects owns, not an attachment. |
 | Owner | Projects | Changed on the rail owner picker, from active members. |
 
 Intentionally immutable, and the panel says so:
@@ -95,10 +95,33 @@ Intentionally immutable, and the panel says so:
 - **Client attachment** (`clientId`). Moving delivery between companies is a
   correction made in Clients, never a dropdown here.
 
+### The company label is not a client reassignment
+
+When a project has a `clientId`, the Client record is the company. The label is
+shown read-only and says so, with a link to that client's page. Editing it is
+refused by `checkDetailEdit` in the same words on the panel and in the service,
+so the visible label can never drift from the real attachment.
+
+**Open operability item.** There is no safe way to move an existing project to a
+different client. Doing it would have to carry commercial truth, roadmap
+lineage and delivery history across with it, and nothing in the system does
+that today. The current safe recovery, stated in the UI: close the project on
+the wrong client and start it under the right one. This is recorded as an open
+item rather than solved with a dropdown that would silently corrupt lineage.
+
+### Dates
+
+The agreed date uses the same calendar-day law as proposal dates: a day from a
+date input becomes noon UTC through `agreedDayToIso`, so the recorded day never
+slides backwards or forwards with the reader's timezone. Both the create form
+and the manage panel go through it.
+
 **Move the work** keeps state, block, waiting and next move exactly as canon 15
 requires. Waiting stays derived from `waitingOn`.
 
 Every correction is refused before it is written by `checkDetailEdit`
 (`src/domain/projects.ts`), written through `projectsService.update`, and
 recorded as `project.updated` with the changed field names and their previous
-values. Saves confirm on screen and refresh the read.
+values. Delivery-item corrections count as corrections: they are classified with
+the other detail edits, never as a change of next move. A real state transition
+still takes precedence and is recorded as the transition. Saves confirm on screen and refresh the read.

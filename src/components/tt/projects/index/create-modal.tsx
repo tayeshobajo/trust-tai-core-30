@@ -26,6 +26,7 @@ import {
   type ThinkingSourceInput,
   type ThinkingSourceType,
 } from "@/domain/project-intelligence";
+import { agreedDayToIso } from "@/domain/projects";
 import type { ProjectInput, ProjectOrigin } from "@/domain/projects";
 
 export interface CreateProjectSeed {
@@ -200,7 +201,7 @@ export function CreateProjectModal({
         ...(base.nextMove ? { nextMove: base.nextMove } : {}),
         ...(owner.trim() ? { ownerLabel: owner.trim() } : {}),
         ...(base.ownerUserId ? { ownerUserId: base.ownerUserId } : {}),
-        ...(dueDate ? { dueDate: new Date(`${dueDate}T12:00:00`).toISOString() } : {}),
+        ...(dueDate ? { dueDate: agreedDayToIso(dueDate) } : {}),
         ...(deliveryItems.length > 0 ? { deliveryItems } : {}),
         origin: {
           ...base.origin,

@@ -205,6 +205,11 @@ function payloadFor(input: ProjectInput, state: ExecutionState, now: string): Ro
   };
 }
 
+/** Delivery items as one comparable string, so "changed" means really changed. */
+function itemsSignature(items: { label: string; done: boolean }[] | undefined): string {
+  return (items ?? []).map((item) => `${item.done ? "1" : "0"}:${item.label}`).join("\n");
+}
+
 export const projectsService = {
   /** Every project this organization can read, newest movement first. */
   async list(organizationId: ID): Promise<ExecutionProject[]> {
@@ -350,8 +355,14 @@ export const projectsService = {
       ...(changes.dueDate !== undefined ? { dueDate: changes.dueDate } : {}),
       ...(changes.subjectLabel !== undefined ? { subjectLabel: changes.subjectLabel } : {}),
     };
-    const detailKeys = Object.keys(detailEdit);
-    if (detailKeys.length > 0) {
+    // A delivery-item correction is a correction to what a person typed, not a
+    // change of next move. It is classified with the other detail edits so the
+    // history says what actually happened.
+    const deliveryChanged =
+      changes.deliveryItems !== undefined &&
+      itemsSignature(changes.deliveryItems) !== itemsSignature(project.deliveryItems);
+    const detailKeys = [...Object.keys(detailEdit), ...(deliveryChanged ? ["deliveryItems"] : [])];
+    if (Object.keys(detailEdit).length > 0) {
       const detailCheck = checkDetailEdit(project, detailEdit);
       if (!detailCheck.ok) throw new Error(detailCheck.because);
     }
@@ -471,6 +482,7 @@ export const projectsService = {
             ...(changes.subjectLabel !== undefined
               ? { subjectLabel: project.origin.subjectLabel ?? null }
               : {}),
+            ...(deliveryChanged ? { deliveryItems: (project.deliveryItems ?? []) as unknown } : {}),
           },
         },
       );

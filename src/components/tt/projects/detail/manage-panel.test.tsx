@@ -1,4 +1,11 @@
 // @vitest-environment jsdom
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -81,6 +88,19 @@ describe("ManageProjectPanel", () => {
     });
   });
 
+  it("cannot create a label that disagrees with the real client, and offers the client's page", async () => {
+    const linked = project({ clientId: "client-1" });
+    await renderInRouter(
+      <ManageProjectPanel project={linked} busy={false} savedLabel={null} onUpdate={vi.fn()} />,
+    );
+
+    const field = screen.getByDisplayValue("Mental Dental") as HTMLInputElement;
+    expect(field.readOnly).toBe(true);
+    expect(screen.getByText(/attached to a Client record/i)).toBeTruthy();
+    const link = screen.getByRole("link", { name: "Open the client" }) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toContain("/modules/clients/client-1");
+  });
+
   it("says who owns the company field when it came from a roadmap", () => {
     render(
       <ManageProjectPanel
@@ -115,3 +135,20 @@ describe("ManageProjectPanel", () => {
     expect(onUpdate).toHaveBeenCalledWith({ nextMove: "Send the draft" });
   });
 });
+
+/** The panel deep-links, so a router has to exist around it. */
+async function renderInRouter(ui: React.ReactElement) {
+  const root = createRootRoute({ component: () => ui });
+  const index = createRoute({ getParentRoute: () => root, path: "/", component: () => ui });
+  const client = createRoute({
+    getParentRoute: () => root,
+    path: "/modules/clients/$clientId",
+    component: () => null,
+  });
+  const router = createRouter({
+    routeTree: root.addChildren([index, client]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  render(<RouterProvider router={router as never} />);
+  await screen.findByText("Project details");
+}
