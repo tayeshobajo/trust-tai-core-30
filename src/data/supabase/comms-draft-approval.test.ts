@@ -98,7 +98,7 @@ describe("comms draft approval provenance", () => {
     expect(approved.rationale?.["send"]).toBeUndefined();
 
     const decided = db.tables["activities"]!.filter((row) =>
-      String(row["kind"]).includes("conversation.decided"),
+      String(row["event_type"]).includes("conversation.decided"),
     );
     expect(decided).toHaveLength(1);
   });
