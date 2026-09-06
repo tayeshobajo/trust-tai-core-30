@@ -31,15 +31,26 @@ delivery evidence must come from the recipient inbox plus our own `activities`
 row. If Tai wants us to see domain status directly, the Resend key needs read
 permission added in the Resend dashboard, or a full-access key linked instead.
 
+**What the screen now shows (2026-09-06).** Settings, People reads the durable
+`user.invite_emailed` activity for each pending invitation and names the state
+on the row itself: Prepared, Emailed, Email blocked, Email off, or Email
+refused. A sender-authorisation refusal renders as an amber, actionable row
+that says the invitation is saved and the wiring is healthy, quotes the exact
+provider reason, and asks for the sending domain to be verified before trying
+again. The retry button reuses the same invitation identity, so no duplicate
+invitation or membership is created, and nothing retries by itself.
+
 **What Tai must do**
 
 1. In Resend, add and verify `trusttai.com` (or a subdomain such as
    `mail.trusttai.com`) as a sending domain, and add the DNS records it asks for.
    If the sending address becomes a subdomain, set `INVITE_EMAIL_FROM` to match.
 2. In Settings, People, open the pending invitation for `diamond@trusttai.com`
-   and press Resend, or create a fresh invitation to an address you control.
+   and press Try sending again, or create a fresh invitation to an address you
+   control.
 3. Confirm the email arrives, and that the sign-in link opens
    `https://cmd.trusttai.com` and signs the recipient in.
+
 
 **Evidence we capture to upgrade to Human Accepted**
 
