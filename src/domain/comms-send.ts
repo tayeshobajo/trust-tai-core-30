@@ -197,6 +197,14 @@ export function decideSendClaim(
     return stale ? { kind: "claim" } : { kind: "in_flight" };
   }
 
+  // The person already answered from Gmail and the mailbox proves it. The
+  // conversation moved on without this draft; sending it now would repeat.
+  if (readExternalSend(draft.rationale)) {
+    return { kind: "not_sendable", reason: EXTERNAL_SEND_REFUSAL };
+  }
+
+
+
   // Approved has to mean a person decided, with a name and a time on it.
   // An approval we cannot attribute is not one we may act on: the draft
   // stays exactly as it is and a person approves it again.
