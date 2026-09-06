@@ -150,7 +150,6 @@ describe("comms draft approval provenance", () => {
         {
           reviewState: reapproved.reviewState,
           rationale: reapproved.rationale ?? {},
-          updatedAt: reapproved.updatedAt,
         },
         new Date(),
       ).kind,

@@ -68,9 +68,24 @@ describe("decideSendClaim", () => {
   const now = new Date("2026-08-01T12:00:00.000Z");
 
   it("claims a draft a person is looking at, in any pre-send state", () => {
-    for (const reviewState of ["draft", "needs_human_review", "approved", "send_failed"]) {
+    for (const reviewState of ["draft", "needs_human_review", "send_failed"]) {
       expect(decideSendClaim({ reviewState }, now)).toEqual({ kind: "claim" });
     }
+    // Approved counts only once the approval names a person and a time.
+    expect(
+      decideSendClaim(
+        {
+          reviewState: "approved",
+          rationale: { approval: { state: "approved", by: { id: "u1" }, at: now.toISOString() } },
+        },
+        now,
+      ),
+    ).toEqual({ kind: "claim" });
+  });
+
+  it("refuses to send an approval with no record of who made it", () => {
+    const decision = decideSendClaim({ reviewState: "approved" }, now);
+    expect(decision.kind).toBe("not_sendable");
   });
 
   it("replays a completed send instead of ever sending twice", () => {
