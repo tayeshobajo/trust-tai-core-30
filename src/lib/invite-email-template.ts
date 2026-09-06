@@ -5,24 +5,26 @@
  * the exact subject and body an admin is about to send, and the server
  * transport sends the very same output. One template, no drift.
  *
- * Brand. The literal hex values below are the canonical Trust Tai palette
- * (ink, paper, royal, rule, muted, secondary) written out because email
- * clients support neither CSS variables nor oklch(). They are the same values
- * documented in the Trust Tai brand system and mirrored in src/styles.css;
- * change them there and here together, never here alone.
+ * Brand. Colours come from EMAIL_COLORS in the brand contract, which is the
+ * sRGB conversion of the very tokens src/styles.css uses on screen; a test
+ * reconverts them, so the letter in an inbox cannot drift from the product.
+ * They are written as literal hex here only because email clients understand
+ * neither oklch, CSS variables nor color-mix().
  *
  * Layout is table based with inline styles only, so Gmail, Outlook and Apple
  * Mail all render the same calm letter. No dark-theme dependency, no tracking,
  * no web fonts: system fonts degrade gracefully everywhere.
  */
 
-/** Canonical Trust Tai palette, email-safe literals. */
-const INK = "#01051b";
-const PAPER = "#ffffff";
-const ROYAL = "#1d54c1";
-const RULE = "#dadee5";
-const MUTED = "#596475";
-const SECONDARY = "#edf2f8";
+import { BRAND_LOGO, EMAIL_COLORS, EMAIL_LOGO_WIDTH } from "@/brand/brand-contract";
+
+const INK = EMAIL_COLORS.ink;
+const PAPER = EMAIL_COLORS.paper;
+const ROYAL = EMAIL_COLORS.royal;
+const RULE = EMAIL_COLORS.rule;
+const MUTED = EMAIL_COLORS.muted;
+const SECONDARY = EMAIL_COLORS.secondary;
+
 
 export interface InviteEmailInput {
   to: string;
