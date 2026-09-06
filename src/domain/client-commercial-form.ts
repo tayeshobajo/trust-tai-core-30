@@ -115,7 +115,8 @@ export function readCommercialForm(
 
   if (tierChanged && tier === "build") {
     const phase = readMoneyCents(input.buildPhaseAmount);
-    if (!phase.ok || phase.cents === null) {
+    // Zero is not an amount a person agreed, it is a silent zero. Refused.
+    if (!phase.ok || phase.cents === null || phase.cents <= 0) {
       return {
         ok: false,
         because: "Moving this company into Build needs the phase amount a person actually agreed.",
