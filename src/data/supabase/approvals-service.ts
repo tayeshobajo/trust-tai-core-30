@@ -148,17 +148,19 @@ function toItem(row: Row): ApprovalItem {
 }
 
 function toEvent(row: Row): ApprovalEvent {
+  const metadata = json<Record<string, unknown>>(row, "metadata", {});
   return {
     id: String(row["id"]),
     organizationId: String(row["organization_id"]),
     requestId: String(row["request_id"]),
-    kind: (text(row, "kind") ?? "note") as ApprovalEventKind,
+    kind: readEventKind(text(row, "kind") ?? "note", metadata),
     body: text(row, "body") ?? "",
     actor: json(row, "actor", { type: "system" as const, id: "system", label: "Trust Tai" }),
-    metadata: json<Record<string, unknown>>(row, "metadata", {}),
+    metadata,
     createdAt: String(row["created_at"] ?? new Date().toISOString()),
   };
 }
+
 
 /* ------------------------------------------------------------ submission */
 
