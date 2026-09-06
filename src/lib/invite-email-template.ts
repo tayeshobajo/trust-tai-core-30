@@ -127,7 +127,7 @@ export function inviteEmailBody(input: InviteEmailInput): InviteEmailContent {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td align="left" style="vertical-align:middle">${headerLockup(input.logoUrl)}</td>
-          <td align="right" style="vertical-align:middle;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:${MUTED};white-space:nowrap">Trust Tai OS</td>
+          <td align="right" style="vertical-align:middle;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:${MUTED}">Trust Tai OS</td>
         </tr>
       </table>
     </td></tr>
