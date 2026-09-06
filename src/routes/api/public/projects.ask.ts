@@ -81,18 +81,38 @@ export const Route = createFileRoute("/api/public/projects/ask")({
         }
 
         const gateway = createLovableAiGatewayRunIdFetch(getLovableAiGatewayRunId(request));
-        const { askProject } = await import("@/lib/project-intelligence.server");
+        const { askProject, readProjectMessage } = await import(
+          "@/lib/project-intelligence.server"
+        );
+        // "prepare" reads the message and names a bounded project-owned action.
+        // It still writes nothing: a person approves, and the write happens
+        // through the Projects service.
+        const prepare = String(body["mode"] ?? "ask").trim() === "prepare";
+        const members = Array.isArray(body["members"])
+          ? (body["members"] as unknown[]).map((entry) => String(entry ?? "").trim()).filter(Boolean)
+          : [];
 
         try {
-          const result = await askProject({
-            token,
-            organizationId,
-            projectLabel,
-            question,
-            packet,
-            ...(pasted ? { pasted } : {}),
-            gateway,
-          });
+          const result = prepare
+            ? await readProjectMessage({
+                token,
+                organizationId,
+                projectLabel,
+                message: question,
+                packet,
+                members,
+                gateway,
+              })
+            : await askProject({
+                token,
+                organizationId,
+                projectLabel,
+                question,
+                packet,
+                ...(pasted ? { pasted } : {}),
+                gateway,
+              });
+
           return withLovableAiGatewayRunIdHeader(
             new Response(JSON.stringify(result), {
               headers: {
