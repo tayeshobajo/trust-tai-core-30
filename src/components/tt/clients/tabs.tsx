@@ -626,7 +626,6 @@ export function RelationshipTab({
                     >
                       Open this conversation in Comms
                     </Link>
-
                   </TTCard>
                 </li>
               ))}

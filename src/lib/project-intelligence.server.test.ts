@@ -58,13 +58,18 @@ describe("answerProjectQuestion", () => {
   it("passes the pasted turn context and never asks for web search", async () => {
     const model = caller(JSON.stringify({ answer: "ok" }));
     await answerProjectQuestion({ ...INPUT, pasted: "client email" }, model);
-    const call = model.mock.calls[0]![0] as { input: string; webSearch?: boolean };
+    const call = model.mock.calls[0]?.[0] as unknown as { input: string; webSearch?: boolean };
     expect(call.webSearch).toBe(false);
     expect(call.input).toContain("client email");
   });
 
   it("calls no project state service from Chat", () => {
-    const source = readFileSync(new URL("./project-intelligence.server.ts", import.meta.url), "utf8");
-    expect(source).not.toMatch(/projects-service|projectsService|supabaseAdmin|\.insert\(|\.update\(/);
+    const source = readFileSync(
+      new URL("./project-intelligence.server.ts", import.meta.url),
+      "utf8",
+    );
+    expect(source).not.toMatch(
+      /projects-service|projectsService|supabaseAdmin|\.insert\(|\.update\(/,
+    );
   });
 });

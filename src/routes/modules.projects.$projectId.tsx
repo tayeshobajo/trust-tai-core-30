@@ -515,7 +515,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
                 : "Nothing is on hold here. Waiting is read from this sentence, never set as a status."}
             </p>
           </div>
-
         </section>
       ) : null}
 
