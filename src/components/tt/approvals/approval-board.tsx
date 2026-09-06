@@ -80,6 +80,11 @@ function Card({
   onApprove: () => void;
 }) {
   const approvable = columnFor(request.status) !== "approved";
+  /* A batch is a set of individual judgments, so its button opens the card
+     rather than approving it. The label says which one it is. */
+  const isBatch = Boolean(request.batch);
+  const flagged = request.batch?.exceptions ?? 0;
+  const tone: StateTone = COLUMN_TONE[columnFor(request.status)];
 
   return (
     <div
@@ -88,14 +93,21 @@ function Card({
         event.dataTransfer.setData("text/plain", request.id);
         event.dataTransfer.effectAllowed = "move";
       }}
-      className={`tt-level-secondary rounded-xl transition-all ${
-        active ? "ring-1 ring-foreground/25" : ""
-      } ${moving ? "opacity-60" : "hover:-translate-y-0.5 hover:shadow-sm"}`}
+      data-status={request.status}
+      className={`tt-level-secondary group rounded-xl transition-all duration-200 ${
+        active ? "ring-1 ring-royal/40" : ""
+      } ${moving ? "opacity-60" : "hover:-translate-y-0.5 hover:border-royal/35 hover:shadow-md"}`}
     >
-      <button type="button" onClick={onOpen} className="w-full p-4 text-left">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open ${request.title}`}
+        className="w-full cursor-pointer rounded-t-xl p-4 text-left"
+      >
         <div className="flex items-start justify-between gap-3">
-          <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground">
-            {request.title}
+          <p className="flex min-w-0 flex-1 items-start gap-2 text-sm font-semibold leading-snug text-foreground">
+            <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${TONE_DOT[tone]}`} />
+            <span className="min-w-0">{request.title}</span>
           </p>
           {request.urgency === "now" ? (
             <span className="tt-eyebrow shrink-0 text-foreground">Now</span>
@@ -103,7 +115,7 @@ function Card({
         </div>
 
         {request.sourceEntity.label ? (
-          <p className="mt-1 truncate text-xs text-muted-foreground">
+          <p className="mt-1 truncate pl-4 text-xs text-muted-foreground">
             {request.sourceEntity.label}
           </p>
         ) : null}
@@ -117,10 +129,13 @@ function Card({
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <MetaPill>{SOURCE_APP_LABEL[request.sourceApp]}</MetaPill>
           {request.batch ? (
-            <MetaPill>
-              {request.batch.total} items
-              {request.batch.exceptions > 0 ? `, ${request.batch.exceptions} flagged` : ""}
-            </MetaPill>
+            flagged > 0 ? (
+              <TonePill tone="caution" dot>
+                {flagged} of {request.batch.total} need review
+              </TonePill>
+            ) : (
+              <MetaPill>{request.batch.total} items</MetaPill>
+            )
           ) : null}
           <MetaPill>{waited(request.createdAt, now)}</MetaPill>
         </div>
@@ -128,9 +143,21 @@ function Card({
 
       {approvable ? (
         <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-2">
-          <span className="text-[10px] text-muted-foreground">Drag to Approved, or</span>
-          <TTButton variant="quiet" size="sm" onClick={onApprove} disabled={moving}>
-            {moving ? "Recording…" : "Approve"}
+          <span className="text-[10px] text-muted-foreground">
+            {isBatch ? "Decide each item inside" : "Click to read, or drag to Approved"}
+          </span>
+          <TTButton
+            variant="secondary"
+            size="sm"
+            onClick={isBatch ? onOpen : onApprove}
+            disabled={moving}
+            className="h-8 px-3 group-hover:border-royal/40 active:scale-[0.98]"
+          >
+            {moving
+              ? "Recording…"
+              : isBatch
+                ? `Review ${request.batch?.total ?? ""}`.trim()
+                : "Approve"}
           </TTButton>
         </div>
       ) : null}
