@@ -54,8 +54,9 @@ plus the recipient's inbox.
    screenshot evidence from Tai: the invitation email is in Diamond's Gmail
    inbox, from `invites@trusttai.com`, subject "Tai invited you to Trust Tai
    on Trust Tai OS", 11:58 AM, content and button visible.
-4. Have the recipient open the sign-in link and sign in; confirm the
-   invitation leaves `pending`.
+4. ~~Have the recipient open the sign-in link and sign in; confirm the
+   invitation leaves `pending`~~ — done 2026-09-06 via the alternate-address
+   run: Tai signed in with the magic link and the workspace opened.
 
 **2026-09-06, acceptance path repaired.** Step 4 was blocked: the emailed link
 landed on the generic sign-in screen, and because Tai's own session was still
@@ -92,8 +93,10 @@ needed; `status`, `accepted_at` and `app_access` already exist.
   **Met 2026-09-06** (Tai-provided screenshot of the email in Diamond's Gmail
   inbox, 11:58 AM, from `invites@trusttai.com`).
 - The invitation row moving from `pending` once the person signs in.
-  **Outstanding.** Direct read of the row is refused by RLS to anonymous
-  callers; sign-in is not yet evidenced, so the gate stays open.
+  **Met 2026-09-06**: Tai's invited sign-in succeeded end to end in
+  production — the magic link authenticated the invited address, the
+  invitation claim created/recognized the membership, and the workspace
+  opened — confirmed in his own words. Gate closed, Human Accepted.
 
 ---
 
