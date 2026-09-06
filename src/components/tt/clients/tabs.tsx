@@ -598,12 +598,35 @@ export function RelationshipTab({
                       timeZone={timeZone}
                     />
 
+                    {/* Comms' own obligation, repeated. Clients derives none. */}
+                    {(() => {
+                      const owed =
+                        exchange?.people.find((entry) => entry.relationshipId === person.id)
+                          ?.obligation ?? null;
+                      return owed ? (
+                        <p className="mt-2 text-[13px] text-foreground">
+                          {owed.action}
+                          <span className="text-muted-foreground"> · {owed.whyNow}</span>
+                        </p>
+                      ) : null;
+                    })()}
+
                     {person.overdue ? (
                       <p className="mt-2 flex items-center gap-2 text-[13px] font-medium text-foreground">
                         <AlertTriangle className="size-4 text-warning" aria-hidden />
                         Follow-up past due
                       </p>
                     ) : null}
+
+                    {/* Acting on this conversation happens in Comms, never here. */}
+                    <Link
+                      to="/modules/comms"
+                      search={{ relationship: person.id }}
+                      className="mt-3 inline-flex text-[13px] text-foreground underline underline-offset-4"
+                    >
+                      Open this conversation in Comms
+                    </Link>
+
                   </TTCard>
                 </li>
               ))}
