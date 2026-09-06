@@ -405,118 +405,14 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
       />
 
       {updating ? (
-        <section aria-label="Update project" className="tt-surface space-y-4 p-6">
-          <p className="tt-eyebrow">Move this project</p>
-          <div className="flex flex-wrap gap-2">
-            {nextStates(project).map((state) => {
-              const check = checkTransition(
-                project,
-                state,
-                blockedReason.trim() ? { blockedBecause: blockedReason.trim() } : {},
-              );
-              return (
-                <TTButton
-                  key={state}
-                  size="sm"
-                  variant={state === "blocked" ? "quiet" : "secondary"}
-                  disabled={busy || !check.ok}
-                  title={check.because}
-                  onClick={() =>
-                    updateProject.mutate({
-                      state: state as ExecutionState,
-                      ...(state === "blocked" && blockedReason.trim()
-                        ? { blockedBecause: blockedReason.trim() }
-                        : {}),
-                    })
-                  }
-                >
-                  {EXECUTION_STATE_LABEL[state]}
-                </TTButton>
-              );
-            })}
-            {nextStates(project).length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">
-                Closed work does not move again. Start it fresh if it is genuinely back.
-              </p>
-            ) : null}
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <TTInput
-                value={nextMove}
-                onChange={(event) => setNextMove(event.target.value)}
-                placeholder="Write the next move in one sentence"
-                aria-label="Next move"
-              />
-              <TTButton
-                size="sm"
-                disabled={busy || nextMove.trim().length === 0}
-                onClick={() => updateProject.mutate({ nextMove: nextMove.trim() })}
-              >
-                Record next move
-              </TTButton>
-            </div>
-            <div className="space-y-2">
-              <TTInput
-                value={blockedReason}
-                onChange={(event) => setBlockedReason(event.target.value)}
-                placeholder="What is blocking this"
-                aria-label="Blocking reason"
-              />
-              <TTButton
-                size="sm"
-                variant="secondary"
-                disabled={busy || blockedReason.trim().length === 0}
-                onClick={() =>
-                  updateProject.mutate({
-                    state: "blocked",
-                    blockedBecause: blockedReason.trim(),
-                  })
-                }
-              >
-                Record a block
-              </TTButton>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <TTInput
-              value={waitingOn}
-              onChange={(event) => setWaitingOn(event.target.value)}
-              placeholder={project.waitingOn?.trim() || "What this work is waiting on"}
-              aria-label="Waiting on"
-            />
-            <div className="flex flex-wrap gap-2">
-              <TTButton
-                size="sm"
-                variant="secondary"
-                disabled={busy || waitingOn.trim().length === 0}
-                onClick={() => {
-                  updateProject.mutate({ waitingOn: waitingOn.trim() });
-                  setWaitingOn("");
-                }}
-              >
-                Record what it waits on
-              </TTButton>
-              <TTButton
-                size="sm"
-                variant="quiet"
-                disabled={busy || !project.waitingOn?.trim()}
-                onClick={() => {
-                  updateProject.mutate({ waitingOn: "" });
-                  setWaitingOn("");
-                }}
-              >
-                The wait is over
-              </TTButton>
-            </div>
-            <p className="text-[13px] text-muted-foreground">
-              {project.waitingOn?.trim()
-                ? `Waiting on ${project.waitingOn.trim()}. Clearing this is how the wait ends.`
-                : "Nothing is on hold here. Waiting is read from this sentence, never set as a status."}
-            </p>
-          </div>
-        </section>
+        <ManageProjectPanel
+          project={project}
+          busy={busy}
+          savedLabel={savedLabel}
+          onUpdate={(changes) => updateProject.mutate(changes)}
+        />
       ) : null}
+
 
       <OutcomeStrip outcome={completion.outcome} />
 
