@@ -71,3 +71,33 @@ or cannot move. Ask Trust Tai answers about delivery from those blocks only.
   `projectsService.update`, under RLS with the same provenance as every other
   project write. In-flight and in-review work cannot be left with nobody
   (`checkOwnerAssignment`).
+
+## Correcting a project (canon 16, 2026-09-06)
+
+Manage project has two halves, because they are two different decisions.
+
+**Project details** corrects what a person typed. Editable:
+
+| Field | Owned by | Notes |
+| ----- | -------- | ----- |
+| Project name | Projects | Cannot be blanked. |
+| Point A | Projects | Free to correct, may be emptied. |
+| Point B | Projects | Cannot be blanked once the work is Delivered or Closed, because that claim was made against it. |
+| Agreed date | Projects | Canonical (`dueDate`, column with metadata mirror). Clearing it says no date was really agreed. |
+| Company this serves | Projects, manual work only | `origin.subjectLabel`. Read-only when the work came from an approved milestone, because Roadmap owns that lineage. |
+| Owner | Projects | Changed on the rail owner picker, from active members. |
+
+Intentionally immutable, and the panel says so:
+
+- **Roadmap lineage** (`origin.roadmapId`, `origin.milestoneId`). Rewriting it
+  would rewrite where a decision came from.
+- **Client attachment** (`clientId`). Moving delivery between companies is a
+  correction made in Clients, never a dropdown here.
+
+**Move the work** keeps state, block, waiting and next move exactly as canon 15
+requires. Waiting stays derived from `waitingOn`.
+
+Every correction is refused before it is written by `checkDetailEdit`
+(`src/domain/projects.ts`), written through `projectsService.update`, and
+recorded as `project.updated` with the changed field names and their previous
+values. Saves confirm on screen and refresh the read.
