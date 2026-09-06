@@ -1,12 +1,17 @@
 # P0 human verification runbook
 
-One gate in P0 remains open and cannot be closed by the app: P0-04. Its
-section below states the exact human action and the exact production evidence
-we will capture to upgrade the ledger entry. Section 1 (P0-03) and sections 3
-and 4 (P0-07 and P0-08) are now closed and kept only as the record of what
-was verified; no action remains there.
+One gate in P0 remains open and cannot be closed by the app: P0-04, and it is
+**deferred by explicit human decision on 2026-09-06**. Deferral changes sequence
+only: the gate stays open at Code/Test Verified with its human gate intact, it is
+not counted as met, and it stays in the charter. Active implementation focus is now
+P1 by Tai's explicit override, with P0-04 carried forward. The P0 agent-pause law
+stands unchanged. Its section below states the exact human action and the exact
+production evidence we will capture to upgrade the ledger entry. Section 1 (P0-03)
+and sections 3 and 4 (P0-07 and P0-08) are now closed and kept only as the record of
+what was verified; no action remains there.
 
 Last reconciled with production state on 2026-09-06.
+
 
 ---
 
