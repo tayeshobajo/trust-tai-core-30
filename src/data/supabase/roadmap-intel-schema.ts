@@ -28,6 +28,7 @@ import type {
   WalkthroughEntryKind,
 } from "@/domain/roadmap-intel";
 import { MILESTONE_STATUSES } from "@/domain/roadmap-intel";
+import { readOutcomeMetric } from "@/domain/milestone-metric";
 
 export type Row = Record<string, unknown>;
 
@@ -243,6 +244,9 @@ export function toMilestone(row: Row): RoadmapMilestone {
     ...(text(row["decision_note"]) ? { decisionNote: text(row["decision_note"])! } : {}),
     ...(text(row["decided_by"]) ? { decidedBy: text(row["decided_by"])! } : {}),
     ...(text(row["decided_at"]) ? { decidedAt: text(row["decided_at"])! } : {}),
+    // Honest absence: an environment without the column, or a milestone nobody
+    // has given a metric, both read as no metric at all.
+    outcomeMetric: readOutcomeMetric(row["outcome_metric"]),
     createdAt: str(row["created_at"], new Date().toISOString()),
     updatedAt: str(row["updated_at"], new Date().toISOString()),
   };
