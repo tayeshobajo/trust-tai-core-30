@@ -389,6 +389,9 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
         row={row}
         brand={brandQuery.data ?? null}
         updatedLabel={new Date(project.updatedAt).toLocaleDateString()}
+        busy={busy}
+        savedLabel={updating ? null : savedLabel}
+        onRename={(name) => updateProject.mutate({ name })}
         onUpdate={() => {
           setSavedLabel(null);
           setUpdating((open) => !open);

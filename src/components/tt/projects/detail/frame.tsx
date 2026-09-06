@@ -9,6 +9,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, ExternalLink, Target } from "lucide-react";
 
 import { AmbientSurface } from "@/components/tt/ambient";
+import { InlineProjectName } from "@/components/tt/projects/detail/inline-name";
 import { MetaPill, TTButton } from "@/components/tt/primitives";
 import {
   SURFACE_STATUS_LABEL,
