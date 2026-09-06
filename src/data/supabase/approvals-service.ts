@@ -228,6 +228,77 @@ async function writeEvent(
   if (error && !missingTable(error)) throw new Error(error.message);
 }
 
+/** The audit facts of one accepted flagged item. Shared by write and backfill. */
+function overrideMetadata(
+  item: ApprovalItem,
+  reason: string,
+  at: ISODateTime,
+): Record<string, unknown> {
+  return {
+    scope: ITEM_OVERRIDE_SCOPE,
+    itemId: item.id,
+    itemKey: item.itemKey,
+    contentItemId: item.facts["contentItemId"] ?? null,
+    decision: "approve",
+    exceptionReasons: item.exceptionReasons,
+    reason,
+    at,
+  };
+}
+
+/** True when this trail row already records the acceptance of that item. */
+function isOverrideEventFor(event: ApprovalEvent, itemId: ID): boolean {
+  return event.kind === "item_override" && event.metadata["itemId"] === itemId;
+}
+
+function missingFunction(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code;
+  const message = String((error as { message?: string } | null)?.message ?? "");
+  return (
+    code === "PGRST202" ||
+    code === "42883" ||
+    /could not find the function|does not exist|schema cache/i.test(message)
+  );
+}
+
+/**
+ * The transactional path, when the database has it. `available: false` means
+ * the function is not deployed here and the caller must compensate instead.
+ */
+async function callOverrideRpc(input: {
+  organizationId: ID;
+  requestId: ID;
+  itemId: ID;
+  reason: string;
+  actor: ApprovalEvent["actor"];
+  body: string;
+  metadata: Record<string, unknown>;
+  at: ISODateTime;
+}): Promise<{ available: boolean; error?: string }> {
+  const client = supabase as unknown as {
+    rpc?: (
+      name: string,
+      args: Record<string, unknown>,
+    ) => PromiseLike<{ data: unknown; error: unknown }>;
+  };
+  if (typeof client.rpc !== "function") return { available: false };
+
+  const { error } = await client.rpc("approvals_override_item", {
+    p_organization_id: input.organizationId,
+    p_request_id: input.requestId,
+    p_item_id: input.itemId,
+    p_reason: input.reason,
+    p_actor: input.actor,
+    p_event_id: id("apev"),
+    p_body: input.body,
+    p_metadata: input.metadata,
+    p_at: input.at,
+  });
+  if (error && (missingFunction(error) || missingTable(error))) return { available: false };
+  if (error) return { available: true, error: String((error as { message?: string }).message) };
+  return { available: true };
+}
+
 
 async function loadItems(context: ApprovalsContext, requestId: ID): Promise<ApprovalItem[]> {
   const { data, error } = await supabase
