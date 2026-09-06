@@ -208,11 +208,21 @@ export function ProjectsTab({
   );
 }
 
-export function ProjectRow({ project, timeZone }: { project: ExecutionProject; timeZone: string }) {
+export function ProjectRow({
+  project,
+  timeZone,
+  flat = false,
+}: {
+  project: ExecutionProject;
+  timeZone: string;
+  /** Render without its own card chrome when nested inside a parent card. */
+  flat?: boolean;
+}) {
   const blocked = project.state === "blocked";
   const detail = project.currentWork || project.nextMove || project.pointB || null;
+  const Wrapper = flat ? "div" : TTCard;
   return (
-    <TTCard className={cn("p-4", blocked && "border-warning/40")}>
+    <Wrapper className={cn("p-4", flat && "px-0 py-4", blocked && !flat && "border-warning/40")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-foreground">{project.name}</p>
