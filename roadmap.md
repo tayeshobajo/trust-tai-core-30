@@ -8,14 +8,14 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 13%** (P0 to P7)
-**Full Engine: 11%** (P0 to P9)
+**Production Readiness: 15%** (P0 to P7)
+**Full Engine: 12%** (P0 to P9)
 
 Working (corrected in slice P0-001A, extended in P1-002, P0-07 verified 2026-09-05,
-P0-08 Human Accepted 2026-09-06):
+P0-08 and P0-03 Human Accepted 2026-09-06):
 
-- P0 weight 12 (readiness) / 10 (engine), 9 gates, **7 met** -> 12 x 7/9 = 9.3 and
-  10 x 7/9 = 7.8
+- P0 weight 12 (readiness) / 10 (engine), 9 gates, **8 met** -> 12 x 8/9 = 10.7 and
+  10 x 8/9 = 8.9
 - P1 weight 12 / 10, 6 gates, **2 met**. P1-04 is Production Verified: the
   `organization_weekly_targets` table exists in the production project and holds
   the real Trust Tai row, read back with the service key. P1-05 requires only
@@ -29,7 +29,7 @@ P0-08 Human Accepted 2026-09-06):
   holds 0 rows, so the hardened boundary has never been exercised. Both are now
   Code/Test Verified -> 8 x 0/5 = 0
 - P2 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 9.3 + 4.0 = 13.3. Engine 7.8 + 3.3 = 11.1.
+- Readiness 10.7 + 4.0 = 14.7. Engine 8.9 + 3.3 = 12.2.
 
 
 No phase is complete, so no phase has received its completion weight.
@@ -41,7 +41,7 @@ No phase is complete, so no phase has received its completion weight.
 | --- | --- | --- | --- | --- |
 | P0-01 | People and activity schema live | Production Verified | **Production Verified** | `member_activity` answers 200 in the production project with the service key |
 | P0-02 | Approvals schema live | Production Verified | **Production Verified** | `approval_requests` answers 200 in the production project |
-| P0-03 | Invite email end to end | Human Accepted | Pending, human gate; provider accepted the send and recipient receipt is confirmed, awaiting recipient sign-in | The path has executed in production twice. 2026-08-24: `user.invited` then `user.invite_emailed` for `diamond@trusttai.com` with `delivered: false` and the provider's exact refusal, "This API key is not authorized to send emails from trusttai.com". 2026-09-06: a new Resend connection with a replacement sending key was linked, the key passed a live gateway credential check (no email sent), and Send again on the same invitation recorded a durable `user.invite_emailed` with `delivered: true` — the row shows Emailed, "The email provider accepted this invitation email.", a state the UI renders only from that stored outcome. The retry reused the existing invitation by id (no duplicate possible; non-pending rows are refused) and the invitation remains `pending` until the recipient signs in. 2026-09-06: recipient receipt confirmed — Tai provided screenshot evidence of the invitation email in Diamond's Gmail inbox, from `invites@trusttai.com`, subject "Tai invited you to Trust Tai on Trust Tai OS", 11:58 AM, with the invite content and button visible. Direct read of the invitation row is refused by RLS to anonymous callers (by design), so sign-in is not yet evidenced; the invitation is presumed still `pending`. 2026-09-06: the acceptance path was repaired. The emailed link previously landed on the generic sign-in screen and, with Tai's own session active, showed "no Trust Tai organization membership exists for this account", so the invitation could not be consumed. The link now carries the invited address and invitation id, `/auth` refuses a wrong active session without granting anything, and a session on the invited address accepts through `/api/public/settings/invite-accept` (idempotent membership upsert, invitation marked accepted). No migration. Still outstanding for Human Accepted: the invitation leaving `pending` once the recipient signs in. See `docs/p0-human-verification-runbook.md` |
+| P0-03 | Invite email end to end | Human Accepted | **Human Accepted**, full end-to-end production login verified 2026-09-06 | Closed by Tai's explicit confirmation: "All good now, i'm able to login after receiving the invite and the sign in links work as well." A real production invitation to Tai's alternate address `tayeshobajo@gmail.com` arrived in the inbox, the branded Supabase magic-link sign-in email arrived, the magic link authenticated the invited address, the repaired identity-driven claim created/recognized the workspace membership, and the Trust Tai OS production workspace opened. History: 2026-08-24 the first attempt to `diamond@trusttai.com` was refused by the provider ("This API key is not authorized to send emails from trusttai.com"). 2026-09-06 a replacement Resend key was linked, Send again on that invitation recorded a durable `user.invite_emailed` with `delivered: true`, and Tai provided screenshot evidence of the email in Diamond's Gmail inbox from `invites@trusttai.com`, 11:58 AM. Diamond's sign-in exposed the broken acceptance path (wrong-session handling on the generic sign-in screen); it was repaired the same day: the link carries the invited address and invitation id, `/auth` refuses a wrong active session without granting anything, and a session on the invited address accepts through `/api/public/settings/invite-accept` (idempotent membership upsert, invitation marked accepted). The gate is the invite email end-to-end workflow, which the alternate-address run proves; no specific recipient identity is required. See `docs/p0-human-verification-runbook.md` |
 | P0-04 | Gmail send re-consent plus one real governed reply | Human Accepted | Code/Test Verified, human gate | Re-consent is no longer required: all three connected mailboxes (`tayeshobajo@gmail.com`, `hello@trust-tai.com`, `tai@trust-tai.com`) are `connected` and hold `gmail.readonly` plus `gmail.send` in production, all synced within the hour, so `sendCapability()` reports `canSend: true`. Human-send law stands: Comms drafts, flags and prepares, and only a human click sends; approved drafts without durable approval provenance are legacy-unverified and refuse Send until a person re-approves. Drafts now ground in bounded, ordered client/project/thread context with facts separated from interpretation, and only confirmed sent messages become durable relationship memory, once, via the shared event stream. External-send reconciliation is built (commit `be63741d`, 1,993 tests passing, 21 new; typecheck, lint, build clean; no migration): a reply sent manually in Gmail is matched to a waiting draft only on provable thread/person/time evidence, ambiguous matches fail closed, repeats are idempotent, and a matched draft closes as replied-from-Gmail with Send suppressed. Live read-only check: the Megan and Mental Dental drafts are unchanged, no draft carries a replied-from-Gmail mark yet, and a dry run over the production mailbox correctly matched nothing because no later outbound message exists; the reconciliation write path has therefore never executed against production. No draft anywhere carries a `rationale.send` record, so nothing has ever been sent through Gmail in production. The remaining gate is one real human send (in Comms or in Gmail) observed and reconciled, plus its idempotent replay. See `docs/p0-human-verification-runbook.md` |
 
 | P0-05 | Add-to-Comms production proof | Production Verified | **Production Verified** | Two real `prospect.handed_over` events in the production stream (Mull IT 2026-08-25, Schaefer Marketing 2026-08-27), each with a human actor and "Nothing was sent"; matching `comms_relationships` rows carry `source=scout_handoff`, the originating `prospect_id`, the named contact and the observed/inferred/decided tiers intact. Read-only verification, nothing created |
@@ -54,9 +54,9 @@ No phase is complete, so no phase has received its completion weight.
 
 Agents remain paused for the whole of P0.
 
-The remaining human gates are P0-03 and P0-04, both still parked. P0-07 is
-closed at Production Verified and P0-08 at Human Accepted. They have exact actions and evidence lists in
-`docs/p0-human-verification-runbook.md`. No phase completion weight is awarded.
+The one remaining human gate is P0-04, still parked. P0-07 is
+closed at Production Verified, P0-08 and P0-03 at Human Accepted. P0-04 has exact actions and an evidence list in
+`docs/p0-human-verification-runbook.md`. No phase completion weight is awarded: P0 is not complete until P0-04 closes, and agents remain paused throughout P0.
 
 
 ## P1, commercial truth
