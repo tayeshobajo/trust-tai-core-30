@@ -21,6 +21,11 @@ import {
 } from "@/components/tt/clients/shell";
 import { TTCard } from "@/components/tt/primitives";
 import type { ClientApprovalsRead, ClientSiteRead } from "@/data/clients/shell-reads";
+import type {
+  RelationshipWindow,
+  RelationshipWindowPerson,
+} from "@/data/clients/relationship-window";
+
 import type { ActivityEvent } from "@/domain/activity";
 import type { ClientLinkedSource } from "@/domain/client-linked-sources";
 import type { ApprovalRequest } from "@/domain/approvals";
