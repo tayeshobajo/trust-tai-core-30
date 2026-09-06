@@ -198,7 +198,6 @@ export async function interpretProjectMessage(
       },
     }),
     webSearch: false,
-    ...(input.gatewayUnused ?? {}),
   });
 
   let parsed: Record<string, unknown>;
