@@ -75,7 +75,7 @@ function seed(current: ExecutionProject) {
 
 /** Every activity name written during a call, oldest first. */
 function activityNames(): string[] {
-  return (db.tables["activities"] ?? []).map((row) => String((row as Record<string, unknown>)["name"]));
+  return (db.tables["activities"] ?? []).map((row) => String((row as Record<string, unknown>)["event_type"]));
 }
 
 function lastActivity(): Record<string, unknown> {
@@ -101,7 +101,7 @@ describe("projectsService.update provenance", () => {
 
     expect(activityNames()).not.toContain("project.next_move_changed");
     const entry = lastActivity();
-    expect(entry["name"]).toBe("project.updated");
+    expect(entry["event_type"]).toBe("project.updated");
     const payload = entry["payload"] as Record<string, unknown>;
     expect(payload["fields"]).toEqual(["deliveryItems"]);
     expect((payload["before"] as Record<string, unknown>)["deliveryItems"]).toEqual(
@@ -138,7 +138,7 @@ describe("projectsService.update provenance", () => {
     await projectsService.update(current, { name: "Mental Dental Academy v2" }, CONTEXT);
 
     const payload = lastActivity()["payload"] as Record<string, unknown>;
-    expect(lastActivity()["name"]).toBe("project.updated");
+    expect(lastActivity()["event_type"]).toBe("project.updated");
     expect(payload["fields"]).toEqual(["name"]);
     expect((payload["before"] as Record<string, unknown>)["name"]).toBe("Mental Dental Academy");
   });
