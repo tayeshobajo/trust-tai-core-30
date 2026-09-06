@@ -720,15 +720,36 @@ export const commsService = {
     return toDraft(data as unknown as DraftRow);
   },
 
+  /**
+   * Move a draft to a new review state.
+   *
+   * Approval is the one state that has to carry provenance: who decided and
+   * when. State and provenance go in a single update, so a draft can never
+   * end up saying "approved" with nothing behind it. Nothing is sent here.
+   */
   async setDraftState(
     draft: CommsDraft,
     reviewState: CommsDraft["reviewState"],
     relationship: Relationship,
     context: CommsContext,
+    approval?: { reason?: string | undefined; actorLabel?: string | undefined },
   ): Promise<CommsDraft> {
+    const payload: Row = { review_state: reviewState, updated_at: new Date().toISOString() };
+    let stamp: DraftApproval | null = null;
+    if (reviewState === "approved") {
+      // Throws before any write when there is no signed-in human: the agent
+      // that wrote the draft is never the approver.
+      stamp = buildDraftApproval({
+        actorId: context.userId,
+        ...(approval?.actorLabel ? { actorLabel: approval.actorLabel } : {}),
+        ...(approval?.reason ? { reason: approval.reason } : {}),
+      });
+      payload["rationale"] = writeDraftApproval(draft.rationale, stamp);
+    }
+
     const { data, error } = await supabase
       .from("comms_drafts")
-      .update({ review_state: reviewState, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq("id", draft.id)
       .eq("organization_id", context.organizationId)
       .select(DRAFT_COLUMNS)
@@ -741,7 +762,13 @@ export const commsService = {
       "conversation.decided",
       { id: relationship.id, label: relationship.fullName },
       `A draft for ${relationship.fullName} was marked ${reviewState.replace(/_/g, " ")}.`,
-      { review_state: reviewState, register: draft.register },
+      {
+        draft_id: draft.id,
+        review_state: reviewState,
+        register: draft.register,
+        sent: false,
+        ...(stamp ? { approval: { by: stamp.by, at: stamp.at, ...(stamp.reason ? { reason: stamp.reason } : {}) } } : {}),
+      },
     );
     const updated = toDraft(data as unknown as DraftRow);
 
