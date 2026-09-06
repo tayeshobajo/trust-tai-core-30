@@ -14,8 +14,9 @@ export interface TodayItem {
  * Three compact cards, one number each. No charts, no second metric.
  * A card that has no truthful number is simply not passed in.
  */
-export function TodaySummary({ items }: { items: TodayItem[] }) {
-  if (items.length === 0) return null;
+export function TodaySummary({ items, empty }: { items: TodayItem[]; empty?: string | undefined }) {
+  if (items.length === 0 && !empty) return null;
+
 
   return (
     <section aria-labelledby="today-heading">
