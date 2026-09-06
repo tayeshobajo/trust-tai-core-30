@@ -15,7 +15,22 @@ export const BRAND_LOGO = {
   shellHeight: { mobile: 26, desktop: 30 },
   /** Allowed deviation from the natural aspect ratio when rendered. */
   aspectTolerance: 0.02,
+  /**
+   * The same lockup, served from a public path so an inbox can load it.
+   * `publicPath` is a byte-for-byte copy of the bundled asset, kept honest by
+   * a test, and `emailHeight` is the rendered height in an email header.
+   */
+  bundledAsset: "src/assets/brand/trust-tai-logo.png",
+  publicPath: "/brand/trust-tai-logo.png",
+  publicFile: "public/brand/trust-tai-logo.png",
+  emailHeight: 24,
 } as const;
+
+/** Width the email lockup must declare, derived so the ratio can never drift. */
+export const EMAIL_LOGO_WIDTH = Math.round(
+  (BRAND_LOGO.emailHeight * BRAND_LOGO.naturalWidth) / BRAND_LOGO.naturalHeight,
+);
+
 
 export const LOGO_ASPECT = BRAND_LOGO.naturalWidth / BRAND_LOGO.naturalHeight;
 
