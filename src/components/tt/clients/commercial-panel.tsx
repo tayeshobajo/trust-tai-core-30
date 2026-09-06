@@ -54,7 +54,7 @@ export function CommercialPanel({
     <TTCard className="p-6">
       <SectionHeading
         title="Commercial state"
-        subtitle="Entered by a person. Nothing here is inferred from a document, a message or a model."
+        description="Entered by a person. Nothing here is inferred from a document, a message or a model."
       />
 
       <form
