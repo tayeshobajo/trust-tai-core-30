@@ -339,3 +339,51 @@ problem-solving protocol, same completion gate.
    `src/data/projects/operator-read.ts`): missing context, pattern knowledge,
    risks, dependencies, proposed acceptance criteria, capability fit and the
    verification plan, grounded in the milestone's context packet.
+
+## 12. Commercial tier and delivery execution are independent (locked 2026-09-06)
+
+A client's commercial tier (`build`, `run`, `dormant`) is commercial truth,
+entered by a person on the Clients commercial panel. A project's execution
+state (`not_started`, `in_flight`, `in_review`, `blocked`, `delivered`) is
+delivery truth, moved on the project. Neither derives, implies or moves the
+other. A client on Run may hold projects in flight; a client on Build may hold
+none. No screen may infer tier from delivery, or delivery from tier, and no
+service may write one as a side effect of the other.
+
+## 13. Project Chat law (locked 2026-09-06)
+
+**Chat is how you talk to the project. Projects remains where project truth
+lives.**
+
+- Chat runs on the shared Intelligence Runtime boundary
+  (`runtimeModelCaller`, room `projects`, existing purpose `research`). There is
+  no per-project model, no per-project configuration and no second brain.
+- Its only ground is that project's context packet, read under the caller's own
+  session, plus whatever the person pasted for that turn.
+- Chat performs no autonomous writes. Work, blockers, decisions, owner,
+  waiting, files and state all change through the Projects services and their
+  human gates.
+- A chat transcript, if it is ever persisted, is interaction context. It is
+  never business truth and never evidence.
+- An outcome only counts once a person accepts it and it is recorded through
+  the owning service, at which point it compounds into existing Project
+  knowledge and state. Proof of anything comes from owning services, activity
+  events and evidence, never from what the chat said.
+- No duplicate task, note or chat CRM is created for projects.
+
+## 14. Client Relationship is a read-only window onto Comms (locked 2026-09-06)
+
+The Relationship tab on a client is a client-scoped read of Comms: who is
+known, what has actually been exchanged, the last thing said in each
+direction, and the one obligation Comms already derived. Comms owns
+conversations, threads, replies, promises and sends. Clients adds no reply
+control, no send, no second obligation system, and deep-links into Comms for
+anything that acts.
+
+## 15. Project Update resolves what the page flags (locked 2026-09-06)
+
+If the project page flags a condition, the same Update project experience must
+carry the control that resolves it: a state that can be moved, a block that can
+be recorded, an owner that can be handed over, a wait that can be set and
+cleared. Waiting is not a status. It stays derived from `waitingOn` on an
+in-flight project, and clearing `waitingOn` is how a wait ends.

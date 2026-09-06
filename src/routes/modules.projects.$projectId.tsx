@@ -107,6 +107,13 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
   const [updating, setUpdating] = useState(false);
   const [blockedReason, setBlockedReason] = useState("");
   const [nextMove, setNextMove] = useState("");
+  /**
+   * What this work is waiting on. Waiting is not a status: it is derived from
+   * this sentence on in-flight work, so the same panel that shows the wait is
+   * the panel that ends it.
+   */
+  const [waitingOn, setWaitingOn] = useState("");
+
   const [fileError, setFileError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
   // Project chat is session scoped for now, and the panel says so.
@@ -470,6 +477,43 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
                 Record a block
               </TTButton>
             </div>
+          </div>
+          <div className="space-y-2">
+            <TTInput
+              value={waitingOn}
+              onChange={(event) => setWaitingOn(event.target.value)}
+              placeholder={project.waitingOn?.trim() || "What this work is waiting on"}
+              aria-label="Waiting on"
+            />
+            <div className="flex flex-wrap gap-2">
+              <TTButton
+                size="sm"
+                variant="secondary"
+                disabled={busy || waitingOn.trim().length === 0}
+                onClick={() => {
+                  updateProject.mutate({ waitingOn: waitingOn.trim() });
+                  setWaitingOn("");
+                }}
+              >
+                Record what it waits on
+              </TTButton>
+              <TTButton
+                size="sm"
+                variant="quiet"
+                disabled={busy || !project.waitingOn?.trim()}
+                onClick={() => {
+                  updateProject.mutate({ waitingOn: "" });
+                  setWaitingOn("");
+                }}
+              >
+                The wait is over
+              </TTButton>
+            </div>
+            <p className="text-[13px] text-muted-foreground">
+              {project.waitingOn?.trim()
+                ? `Waiting on ${project.waitingOn.trim()}. Clearing this is how the wait ends.`
+                : "Nothing is on hold here. Waiting is read from this sentence, never set as a status."}
+            </p>
           </div>
         </section>
       ) : null}
