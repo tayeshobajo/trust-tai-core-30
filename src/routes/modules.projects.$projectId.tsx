@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { EmptyState, TTButton, TTInput } from "@/components/tt/primitives";
+import { EmptyState, TTButton } from "@/components/tt/primitives";
 import { LaunchOpsButton } from "@/components/tt/ops/launch-ops";
 import { RouteWork } from "@/components/tt/projects/route-work";
 import {
@@ -26,6 +26,7 @@ import {
 import { OverviewTab } from "@/components/tt/projects/detail/overview";
 import { AssetsTab, ContextTab, KnowledgeTab } from "@/components/tt/projects/detail/intelligence";
 import { DetailRail } from "@/components/tt/projects/detail/rail";
+import { ManageProjectPanel } from "@/components/tt/projects/detail/manage-panel";
 import {
   ActivityTab,
   BlockersTab,
@@ -50,14 +51,7 @@ import { roadmapService } from "@/data/supabase/roadmap-service";
 import { supabaseActivity } from "@/data/supabase/activities";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
-import {
-  EXECUTION_STATE_LABEL,
-  checkOwnerAssignment,
-  checkTransition,
-  isOpenProject,
-  nextStates,
-  type ExecutionState,
-} from "@/domain/projects";
+import { checkOwnerAssignment, isOpenProject } from "@/domain/projects";
 
 import type { ProjectFileKind, WorkItemStatus } from "@/domain/project-delivery";
 import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
@@ -273,9 +267,9 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
       if (!project) throw new Error("This project is no longer readable.");
       return projectsService.update(project, changes, projectsContext);
     },
+    onMutate: () => setSavedLabel(null),
     onSuccess: async () => {
-      setBlockedReason("");
-      setNextMove("");
+      setSavedLabel("Saved.");
       await refresh();
     },
   });
@@ -396,7 +390,10 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
         row={row}
         brand={brandQuery.data ?? null}
         updatedLabel={new Date(project.updatedAt).toLocaleDateString()}
-        onUpdate={() => setUpdating((open) => !open)}
+        onUpdate={() => {
+          setSavedLabel(null);
+          setUpdating((open) => !open);
+        }}
       />
 
       {updating ? (
