@@ -63,13 +63,21 @@ function expiryLine(expiresAt: string | null): string {
   return `This invitation expires on ${date.toLocaleDateString("en-US", { dateStyle: "long" })}.`;
 }
 
-/** The header lockup: real logo when we have a public URL, wordmark when not. */
+/**
+ * The header lockup: the official Trust Tai mark when we have a public URL,
+ * the wordmark when we do not. Its size is derived from the lockup's natural
+ * geometry in the brand contract, so the mark can never be squashed, and the
+ * image is served at twice the rendered height for retina inboxes.
+ */
 function headerLockup(logoUrl: string | null | undefined): string {
   if (logoUrl && /^https:\/\//i.test(logoUrl)) {
-    return `<img src="${escapeHtml(logoUrl)}" width="132" height="24" alt="Trust Tai" style="display:block;border:0;outline:none;text-decoration:none;height:24px;width:132px" />`;
+    const h = BRAND_LOGO.emailHeight;
+    const w = EMAIL_LOGO_WIDTH;
+    return `<img src="${escapeHtml(logoUrl)}" width="${w}" height="${h}" alt="Trust Tai" style="display:block;border:0;outline:none;text-decoration:none;height:${h}px;width:${w}px" />`;
   }
   return `<span style="font-size:18px;font-weight:600;letter-spacing:.01em;color:${INK}">Trust&nbsp;Tai</span>`;
 }
+
 
 export function inviteEmailBody(input: InviteEmailInput): InviteEmailContent {
   const org = escapeHtml(input.organizationName);
