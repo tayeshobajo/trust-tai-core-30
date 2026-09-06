@@ -797,11 +797,15 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
           {tab === "chat" ? (
             <ChatTab
               projectName={project.name}
-              turns={chatTurns}
-              pending={askProject.isPending}
+              entries={chatEntries}
+              pending={sendChat.isPending}
+              applying={applying}
               error={chatError}
-              onAsk={(question, pasted) => askProject.mutate({ question, pasted })}
+              onSend={onSendChat}
+              onApprove={(id) => void approveProposal(id)}
+              onDiscard={(id) => settle(id, "discarded", "Discarded. Nothing was changed.")}
             />
+
           ) : null}
         </div>
 
