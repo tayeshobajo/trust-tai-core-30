@@ -260,6 +260,37 @@ function ClientShell({
         .map((relationship) => relationship.id),
     [relationshipsQuery.data, clientId],
   );
+  /**
+   * What has actually been exchanged with these people. Read from Comms, whose
+   * messages remain Comms' own record; Clients only reports the counts and the
+   * last thing said in each direction.
+   */
+  const exchangeQuery = useQuery({
+    queryKey: ["clients", "exchange", organizationId, relationshipIds.join(",")],
+    enabled: relationshipIds.length > 0,
+    retry: false,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        relationshipIds.map(async (id) => [
+          id,
+          await listRelationshipMessages(organizationId, id),
+        ] as const),
+      );
+      return Object.fromEntries(entries);
+    },
+  });
+  const exchangeWindow = useMemo(() => {
+    const relationships = (relationshipsQuery.data ?? []).filter(
+      (relationship) => relationship.clientId === clientId,
+    );
+    if (relationships.length === 0) return null;
+    return relationshipWindow({
+      relationships,
+      messagesByRelationship: exchangeQuery.data ?? {},
+      now,
+    });
+  }, [relationshipsQuery.data, clientId, exchangeQuery.data, now]);
+
   const links = useMemo(
     () => ({
       clientId,
