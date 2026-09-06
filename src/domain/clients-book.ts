@@ -419,7 +419,10 @@ export function validateNewClient(input: NewClientInput): string[] {
   if (input.tier !== "run" && validCents(input.mrrCents)) {
     problems.push("Only a Run client carries a recurring monthly value.");
   }
-  if (input.tier === "build" && !validCents(input.buildPhaseAmountCents)) {
+  if (
+    input.tier === "build" &&
+    (!validCents(input.buildPhaseAmountCents) || !input.buildPhaseAmountCents)
+  ) {
     problems.push("Creating a client in Build needs the phase amount that was agreed.");
   }
   if (input.tier !== "build" && input.buildPhaseAmountCents) {
