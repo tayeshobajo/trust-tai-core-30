@@ -8,20 +8,21 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 15%** (P0 to P7)
-**Full Engine: 12%** (P0 to P9)
+**Production Readiness: 17%** (P0 to P7)
+**Full Engine: 14%** (P0 to P9)
 
 Working (corrected in slice P0-001A, extended in P1-002, P0-07 verified 2026-09-05,
 P0-08 and P0-03 Human Accepted 2026-09-06):
 
 - P0 weight 12 (readiness) / 10 (engine), 9 gates, **8 met** -> 12 x 8/9 = 10.7 and
   10 x 8/9 = 8.9
-- P1 weight 12 / 10, 6 gates, **2 met**. P1-04 is Production Verified: the
+- P1 weight 12 / 10, 6 gates, **3 met** (P1-01 Production Verified 2026-09-06 on
+  the real Mental Dental row). P1-04 is Production Verified: the
   `organization_weekly_targets` table exists in the production project and holds
   the real Trust Tai row, read back with the service key. P1-05 requires only
   Code/Test Verified and has been at that level since P1-001; the previous
   entry withheld its share by mistake, which rule 2 does not allow.
-  -> 12 x 2/6 = 4.0 and 10 x 2/6 = 3.3
+  -> 12 x 3/6 = 6.0 and 10 x 3/6 = 5.0
 - P8 weight 8 (engine only), 5 gates, **0 met**. P8-01 and P8-02 were previously
   scored as Production Verified on table existence and code existence. Neither is
   supported: `content_sources` and `content_requests` hold 0 rows, so the composer
@@ -29,7 +30,9 @@ P0-08 and P0-03 Human Accepted 2026-09-06):
   holds 0 rows, so the hardened boundary has never been exercised. Both are now
   Code/Test Verified -> 8 x 0/5 = 0
 - P2 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 10.7 + 4.0 = 14.7. Engine 8.9 + 3.3 = 12.2.
+- Readiness 12 x 8/9 + 12 x 3/6 = 10.6667 + 6.0 = 16.6667 -> 17%.
+  Engine 10 x 8/9 + 10 x 3/6 = 8.8889 + 5.0 = 13.8889 -> 14%. P0-04 stays open and
+  uncounted, deferred by explicit human decision on 2026-09-06; agents remain paused.
 
 
 No phase is complete, so no phase has received its completion weight.
@@ -105,13 +108,26 @@ no gate newly reached its required level.
 
 | ID | Gate | Required level | Status |
 | --- | --- | --- | --- |
-| P1-01 | Client commercial state: tier, mrr in cents, engagement dates, provenance | Production Verified | Code/Test Verified, schema live in production, **human write path now reachable (slice P1-003, 2026-09-06)**: the client page's Overview carries a Commercial state panel where a person sets tier, monthly recurring amount, renewal and next review, with a required reason kept in `commercial_provenance`; a move into Build refuses without a human-entered phase amount; `src/domain/client-commercial-form.ts` (10 tests) writes only the facts that actually changed and invents no defaults. Still not Production Verified: no production row has been written, because every value is a real commercial fact only Tai can supply. Columns confirmed on `public.clients` by a live read; `setClientCommercialState()` writes only the facts it is given and stamps actor, time and reason into `commercial_provenance`. No client has been given a tier or an MRR yet, so no production row proves the write |
+| P1-01 | Client commercial state: tier, mrr in cents, engagement dates, provenance | Production Verified | **Production Verified**, real production row written through the human UI path 2026-09-06 | Mental Dental (`4a8e054c-d0f3-4ca4-a1d8-5595cfd74a19`) read back live with `tier=run`, `mrr_cents=350000`, `renewal_at=null`, `next_review_at=null`, `commercial_updated_by=241e0261-f2f6-4f0e-bcb1-c3f84de1a76e`, `commercial_updated_at=2026-09-06T19:07:51.149Z`, and `commercial_provenance` carrying `created_manually=true`, `actor_label=tayeshobajo@gmail.com`, `because="signed retainer"`. Entered by a signed-in human in the Commercial state panel on the client page under RLS, not by service role and not by any agent. Dates were left empty because none is a real fact yet, so nothing was invented. Write path: `src/domain/client-commercial-form.ts` (10 tests) plus `setClientCommercialState()`, which writes only the facts that changed and stamps actor, time and reason |
 | P1-02 | Proposals with sent and signed events on the existing prospect and roadmap lineage | Production Verified | Code/Test Verified, schema live in production. Proposal columns confirmed on `public.roadmaps` by a live read; `recordProposalSent()` and `recordProposalOutcome()` write state on the existing lineage node and emit `proposal.sent`, `proposal.signed` or `proposal.declined`. No deal object, no second pipeline. No proposal recorded in production |
 | P1-03 | `client.tier_changed` with a human-entered Build phase amount | Production Verified | Code/Test Verified. Emitted exactly once per real tier change, with `phase_amount_cents` only when the new tier is Build; re-writing the same tier emits nothing. Tested. Nothing emitted in production, because no tier has changed |
 | P1-04 | Org-level weekly targets | Production Verified | **Production Verified**. `public.organization_weekly_targets` exists in the production project with member read and admin write over `private.is_org_member` / `private.is_org_admin`, and holds the Trust Tai row (targets 10-12 first touches, 2-3 discovery, 1-2 Diagnose proposals, 20 Run clients, revenue target 2,100,000 cents), read back live. `readOrganizationWeeklyTargets()` falls back to the locked defaults when an organization has no row |
 | P1-05 | Revenue derived at read time by the locked rules, never persisted weekly | Code/Test Verified | **Code/Test Verified**. `src/domain/revenue.ts` with 11 tests: `mrr_cents * 12 / 52`, explicit refusal of `/4` and `/4.345`, one-off recognition in the week of the event, and Run reading tier state only so a signed proposal cannot inflate it. `readWeeklyScoreboard()` composes the week from live state and dated events and writes nothing back |
 | P1-06 | `meeting_kind` on a logged meeting, human set only | Production Verified | Code/Test Verified, schema live in production. `meeting_kind` confirmed on `public.comms_touches` by a live read; set only by a person through `logTouch({ meetingKind })` or `setMeetingKind()`, each recording who said so and when. Never read from a subject line, a calendar entry, Fathom or a transcript. No meeting classified in production |
 
+
+Slice P1-004, linked working sources (this pass). Mental Dental's two working
+documents were shared as a Google Doc URL and a Google Sheet URL, not as
+uploaded binaries, so no `project_files` row is owed and no upload is being
+asked for. The Files tab on a client page now shows "Linked working sources"
+above uploaded files, read from the two canonical Projects stores
+(`project_thinking_sources` and `project_connections`) with no parallel file
+store: each row says External link, its kind, its honest state, its project and
+the day it was linked, and opens the address in a new tab. The Figma prototype
+and the development site already saved on the Mental Dental Academy project
+appear there unchanged. The only missing inputs are the two Google URLs
+themselves; nothing was invented for them. No schema change, no percentage
+moves on this part.
 
 
 ## P2, Clients and Home

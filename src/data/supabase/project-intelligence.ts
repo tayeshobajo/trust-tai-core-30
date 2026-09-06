@@ -540,6 +540,38 @@ const service = {
     return (data ?? []).map((row) => toConnection(row as Row));
   },
 
+  /**
+   * Every linked thinking room across a set of projects, for a client page
+   * that reads across the company's work. Read only, same RLS, no new store.
+   */
+  async listThinkingForProjects(organizationId: ID, projectIds: ID[]): Promise<ThinkingSource[]> {
+    if (projectIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from("project_thinking_sources")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .in("project_id", projectIds)
+      .order("created_at", { ascending: false });
+    if (error) fail("The thinking rooms could not be read.", error);
+    return (data ?? []).map((row) => toThinking(row as Row));
+  },
+
+  /** Every saved connection across a set of projects. Read only. */
+  async listConnectionsForProjects(
+    organizationId: ID,
+    projectIds: ID[],
+  ): Promise<ProjectConnection[]> {
+    if (projectIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from("project_connections")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .in("project_id", projectIds)
+      .order("created_at", { ascending: false });
+    if (error) fail("Connections could not be read.", error);
+    return (data ?? []).map((row) => toConnection(row as Row));
+  },
+
   /** A saved URL is Linked. Only a real reader may ever write Connected. */
   async addConnection(
     input: ConnectionInput,
@@ -671,6 +703,8 @@ export const projectIntelligence = guardRoomWrites("projects", "Projects", servi
   "listKnowledge",
   "listAssets",
   "listConnections",
+  "listThinkingForProjects",
+  "listConnectionsForProjects",
   "listEffectiveness",
 ]);
 
