@@ -75,7 +75,9 @@ function seed(current: ExecutionProject) {
 
 /** Every activity name written during a call, oldest first. */
 function activityNames(): string[] {
-  return (db.tables["activities"] ?? []).map((row) => String((row as Record<string, unknown>)["event_type"]));
+  return (db.tables["activities"] ?? []).map((row) =>
+    String((row as Record<string, unknown>)["event_type"]),
+  );
 }
 
 function lastActivity(): Record<string, unknown> {
@@ -95,7 +97,12 @@ describe("projectsService.update provenance", () => {
 
     await projectsService.update(
       current,
-      { deliveryItems: [{ label: "Scope agreed", done: true }, { label: "Handed over", done: false }] },
+      {
+        deliveryItems: [
+          { label: "Scope agreed", done: true },
+          { label: "Handed over", done: false },
+        ],
+      },
       CONTEXT,
     );
 
