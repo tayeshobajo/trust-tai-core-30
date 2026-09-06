@@ -841,7 +841,38 @@ export const approvalsService = {
     const at = new Date().toISOString();
     const reason = input.reason.trim();
     const override: ItemOverride = { itemId: item.id, reason, by: input.actor, at };
+    const actor = { type: "user" as const, id: input.actor.id, label: input.actor.label };
+    const body = `${input.actor.label} accepted "${item.title}" despite the flag. ${reason}`;
+    const metadata = overrideMetadata(item, reason, at);
 
+    /*
+     * One transaction where the database offers one. `approvals_override_item`
+     * (docs/approvals-item-override-rpc.sql) runs as the signed-in caller, so
+     * RLS still governs the write; it moves the item and appends the decision
+     * together or does neither.
+     */
+    const viaRpc = await callOverrideRpc({
+      organizationId: context.organizationId,
+      requestId: input.requestId,
+      itemId: item.id,
+      reason,
+      actor,
+      body,
+      metadata,
+      at,
+    });
+    if (viaRpc.available) {
+      if (viaRpc.error) throw new Error(viaRpc.error);
+      const after = await loadItems(context, input.requestId);
+      return after.find((entry) => entry.id === item.id) ?? { ...item, state: "approved" };
+    }
+
+    /*
+     * Without that function the two writes are compensated instead: if the
+     * trail refuses the decision, the item is put straight back to `exception`
+     * so an approval can never outlive its audit record. This is the exact
+     * failure that left one article approved with no event behind it.
+     */
     const { error } = await supabase
       .from("approval_items")
       .update({
@@ -854,26 +885,61 @@ export const approvalsService = {
       .eq("state", "exception");
     if (error) throw new Error(missingTable(error) ? MISSING : error.message);
 
-    await writeEvent(
-      context,
-      input.requestId,
-      "item_override",
-      `${input.actor.label} accepted "${item.title}" despite the flag. ${reason}`,
-      { type: "user", id: input.actor.id, label: input.actor.label },
-      {
-        itemId: item.id,
-        itemKey: item.itemKey,
-        contentItemId: item.facts["contentItemId"] ?? null,
-        decision: "approve",
-        exceptionReasons: item.exceptionReasons,
-        reason,
-        at,
-      },
-    );
+    try {
+      await writeEvent(context, input.requestId, "item_override", body, actor, metadata, at);
+    } catch (cause) {
+      await supabase
+        .from("approval_items")
+        .update({
+          state: "exception" satisfies ApprovalItemState,
+          facts: item.facts,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("organization_id", context.organizationId)
+        .eq("id", item.id);
+      throw new Error(
+        `That approval was not recorded, so nothing was changed. ${(cause as Error).message}`,
+      );
+    }
 
     const after = await loadItems(context, input.requestId);
     return after.find((entry) => entry.id === item.id) ?? { ...item, state: "approved" };
   },
+
+  /**
+   * Restore the missing decision event for an item that was approved while the
+   * trail write failed.
+   *
+   * The `facts.override` written by the person's own action is the only source
+   * of actor, reason and time: nothing here re-decides anything. Idempotent by
+   * item, so a replay adds no second event, and it never queues or publishes.
+   */
+  async backfillItemOverrideEvent(
+    context: ApprovalsContext,
+    input: { requestId: ID; itemId: ID },
+  ): Promise<"written" | "already_recorded" | "not_applicable"> {
+    const current = await this.get(context, input.requestId);
+    const item = current?.items.find((entry) => entry.id === input.itemId);
+    if (!item || item.state !== "approved") return "not_applicable";
+
+    const override = item.facts["override"] as ItemOverride | undefined;
+    if (!override?.reason || !override.by?.id) return "not_applicable";
+
+    const existing = await this.events(context, input.requestId);
+    if (existing.some((event) => isOverrideEventFor(event, item.id))) return "already_recorded";
+
+    await writeEvent(
+      context,
+      input.requestId,
+      "item_override",
+      `${override.by.label} accepted "${item.title}" despite the flag. ${override.reason}`,
+      { type: "user", id: override.by.id, label: override.by.label },
+      { ...overrideMetadata(item, override.reason, override.at), backfilled: true },
+      override.at,
+    );
+    return "written";
+  },
+
 
   async addNote(
     context: ApprovalsContext,
