@@ -115,7 +115,7 @@ export async function loadRelationshipContext(
       .eq("client_id", input.clientId)
       .order("updated_at", { ascending: false })
       .limit(MAX_PROJECTS);
-    for (const project of ((projects ?? []) as Record<string, unknown>[])) {
+    for (const project of (projects ?? []) as Record<string, unknown>[]) {
       const name = text(project["name"]);
       if (!name) continue;
       const parts = [
@@ -142,7 +142,7 @@ export async function loadRelationshipContext(
     .eq("event_type", "COMMS_MESSAGE_VERIFIED")
     .order("occurred_at", { ascending: false })
     .limit(MAX_COMMUNICATIONS);
-  for (const row of ((verified ?? []) as Record<string, unknown>[])) {
+  for (const row of (verified ?? []) as Record<string, unknown>[]) {
     const summary = text(row["summary"]);
     if (!summary) continue;
     lines.push({

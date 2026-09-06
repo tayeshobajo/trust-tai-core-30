@@ -120,9 +120,7 @@ export function matchExternalSend(
   // Strongest evidence: the provider's own thread identity.
   if (draft.providerThreadId) {
     if (!message.providerThreadId) return null;
-    return draft.providerThreadId === message.providerThreadId
-      ? ["thread", "recipient"]
-      : null;
+    return draft.providerThreadId === message.providerThreadId ? ["thread", "recipient"] : null;
   }
 
   // Fallback, allowed only when the draft has no thread of its own: an exact
@@ -158,10 +156,7 @@ export function planExternalReconciliations(
       const matchedBy = matchExternalSend(draft, message);
       if (!matchedBy) continue;
       matches.push({ message, matchedBy });
-      claimants.set(
-        message.providerMessageId,
-        (claimants.get(message.providerMessageId) ?? 0) + 1,
-      );
+      claimants.set(message.providerMessageId, (claimants.get(message.providerMessageId) ?? 0) + 1);
     }
     candidates.set(draft.id, matches);
   }
