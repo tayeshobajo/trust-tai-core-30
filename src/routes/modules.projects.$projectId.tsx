@@ -216,6 +216,22 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
     enabled,
     retry: false,
   });
+  // Who this work can be handed to: active members of this workspace, read
+  // under the signed-in person's own access. Never a free text name.
+  const membersQuery = useQuery({
+    queryKey: ["delivery", "members", org],
+    queryFn: () => listMembers(org),
+    retry: false,
+  });
+  const assignableMembers = useMemo(
+    () =>
+      (membersQuery.data ?? [])
+        .filter((member) => member.status === "active")
+        .map((member) => ({ userId: member.userId, name: member.name || member.email })),
+    [membersQuery.data],
+  );
+
+
 
   const roadmaps = roadmapsQuery.data ?? [];
   const row = useMemo(
