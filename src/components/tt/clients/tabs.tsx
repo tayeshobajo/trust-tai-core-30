@@ -21,6 +21,11 @@ import {
 } from "@/components/tt/clients/shell";
 import { TTCard } from "@/components/tt/primitives";
 import type { ClientApprovalsRead, ClientSiteRead } from "@/data/clients/shell-reads";
+import type {
+  RelationshipWindow,
+  RelationshipWindowPerson,
+} from "@/data/clients/relationship-window";
+
 import type { ActivityEvent } from "@/domain/activity";
 import type { ClientLinkedSource } from "@/domain/client-linked-sources";
 import type { ApprovalRequest } from "@/domain/approvals";
@@ -489,16 +494,71 @@ function ProjectRow({ project, timeZone }: { project: ExecutionProject; timeZone
 
 /* ------------------------------------------------------------ relationship */
 
+/**
+ * What has actually been exchanged with this person, read from Comms. When
+ * Comms has no messages stored, this says exactly that rather than implying
+ * the relationship is silent.
+ */
+function ExchangeLines({
+  person,
+  now,
+  timeZone,
+}: {
+  person: RelationshipWindowPerson | null;
+  now: Date;
+  timeZone: string;
+}) {
+  if (!person) return null;
+  if (person.messageCount === 0) {
+    return (
+      <p className="mt-2 text-[12px] text-muted-foreground">No messages synced from Comms yet.</p>
+    );
+  }
+  return (
+    <div className="mt-2 space-y-1 text-[12px] text-muted-foreground">
+      <p>
+        {person.messageCount} message{person.messageCount === 1 ? "" : "s"} in {person.threadCount}{" "}
+        thread{person.threadCount === 1 ? "" : "s"} · {person.inboundCount} in ·{" "}
+        {person.outboundCount} out
+      </p>
+      {person.latestInbound ? (
+        <p>
+          They last wrote{" "}
+          {lastTouchLine(person.latestInbound.at, now, timeZone)
+            .toLowerCase()
+            .replace("last touch ", "")}
+          : {person.latestInbound.subject}
+        </p>
+      ) : null}
+      {person.latestOutbound ? (
+        <p>
+          You last wrote{" "}
+          {lastTouchLine(person.latestOutbound.at, now, timeZone)
+            .toLowerCase()
+            .replace("last touch ", "")}
+          : {person.latestOutbound.subject}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function RelationshipTab({
   read,
   loading,
   now,
   timeZone,
+  window: exchange,
 }: {
   read: RoomRead<RelationshipSnapshot> | null;
   loading: boolean;
   now: Date;
   timeZone: string;
+  /**
+   * What has actually been exchanged, read from Comms. Null while Comms has
+   * not answered; we say nothing rather than imply silence.
+   */
+  window?: RelationshipWindow | null;
 }) {
   return (
     <RoomSection
@@ -530,6 +590,14 @@ export function RelationshipTab({
                     <p className="mt-2 text-[13px] text-muted-foreground">
                       {person.nextAction ?? "No next move recorded."}
                     </p>
+                    <ExchangeLines
+                      person={
+                        exchange?.people.find((entry) => entry.relationshipId === person.id) ?? null
+                      }
+                      now={now}
+                      timeZone={timeZone}
+                    />
+
                     {person.overdue ? (
                       <p className="mt-2 flex items-center gap-2 text-[13px] font-medium text-foreground">
                         <AlertTriangle className="size-4 text-warning" aria-hidden />

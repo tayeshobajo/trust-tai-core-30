@@ -52,13 +52,18 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import {
   EXECUTION_STATE_LABEL,
+  checkOwnerAssignment,
   checkTransition,
   isOpenProject,
   nextStates,
   type ExecutionState,
 } from "@/domain/projects";
+
 import type { ProjectFileKind, WorkItemStatus } from "@/domain/project-delivery";
 import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
+import { ChatTab, type ProjectChatTurn } from "@/components/tt/projects/detail/chat";
+import { listMembers } from "@/data/supabase/settings-service";
+import { supabase } from "@/integrations/trust-tai/supabase";
 
 export const Route = createFileRoute("/modules/projects/$projectId")({
   head: () => ({
@@ -104,6 +109,9 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
   const [nextMove, setNextMove] = useState("");
   const [fileError, setFileError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
+  // Project chat is session scoped for now, and the panel says so.
+  const [chatTurns, setChatTurns] = useState<ProjectChatTurn[]>([]);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   const org = identity.organizationId;
   const projectsContext: ProjectsContext = {
@@ -205,6 +213,20 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
     enabled,
     retry: false,
   });
+  // Who this work can be handed to: active members of this workspace, read
+  // under the signed-in person's own access. Never a free text name.
+  const membersQuery = useQuery({
+    queryKey: ["delivery", "members", org],
+    queryFn: () => listMembers(org),
+    retry: false,
+  });
+  const assignableMembers = useMemo(
+    () =>
+      (membersQuery.data ?? [])
+        .filter((member) => member.status === "active")
+        .map((member) => ({ userId: member.userId, name: member.name || member.email })),
+    [membersQuery.data],
+  );
 
   const roadmaps = roadmapsQuery.data ?? [];
   const row = useMemo(
@@ -253,6 +275,43 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
       setBlockedReason("");
       setNextMove("");
       await refresh();
+    },
+  });
+
+  /**
+   * Ask this project. The answer is read only: the endpoint reads this
+   * project's packet under the caller's own session and writes nothing, so
+   * every real change still happens on the tabs above.
+   */
+  const askProject = useMutation({
+    mutationFn: async ({ question, pasted }: { question: string; pasted: string }) => {
+      setChatError(null);
+      setChatTurns((turns) => [...turns, { question, pasted, answer: null }]);
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Your session expired. Sign in again to ask.");
+      const response = await fetch("/api/public/projects/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          organization_id: org,
+          project_id: projectId,
+          question,
+          pasted,
+        }),
+      });
+      const body = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) throw new Error(String(body["error"] ?? "This project could not answer."));
+      return body as unknown as ProjectChatTurn["answer"];
+    },
+    onSuccess: (answer) => {
+      setChatTurns((turns) =>
+        turns.map((turn, index) => (index === turns.length - 1 ? { ...turn, answer } : turn)),
+      );
+    },
+    onError: (cause: unknown) => {
+      setChatError(cause instanceof Error ? cause.message : "This project could not answer.");
+      setChatTurns((turns) => turns.slice(0, -1));
     },
   });
 
@@ -654,11 +713,31 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
           ) : null}
 
           {tab === "activity" ? <ActivityTab events={activityQuery.data ?? []} /> : null}
+
+          {tab === "chat" ? (
+            <ChatTab
+              projectName={project.name}
+              turns={chatTurns}
+              pending={askProject.isPending}
+              error={chatError}
+              onAsk={(question, pasted) => askProject.mutate({ question, pasted })}
+            />
+          ) : null}
         </div>
 
         <DetailRail
           ownerLabel={row.ownerLabel}
+          owner={{
+            userId: project.ownerUserId ?? null,
+            label: project.ownerLabel ?? row.ownerLabel,
+          }}
+          members={assignableMembers}
+          unassignRefusal={
+            checkOwnerAssignment(project, {}).ok ? null : checkOwnerAssignment(project, {}).because
+          }
+          onAssign={(nextOwner) => updateProject.mutate(nextOwner)}
           attention={attention}
+
           signals={healthSignals(project, items, blockers)}
           people={peopleOnProject(project, items)}
           lineage={row.lineage}
