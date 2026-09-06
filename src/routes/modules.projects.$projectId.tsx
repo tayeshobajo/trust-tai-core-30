@@ -55,7 +55,21 @@ import { checkOwnerAssignment, isOpenProject } from "@/domain/projects";
 
 import type { ProjectFileKind, WorkItemStatus } from "@/domain/project-delivery";
 import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
-import { ChatTab, type ProjectChatTurn } from "@/components/tt/projects/detail/chat";
+import {
+  ChatTab,
+  type ChatEntry,
+  type ProjectChatAnswer,
+  type ProposalState,
+} from "@/components/tt/projects/detail/chat";
+import {
+  alreadyApplied,
+  prepareProposal,
+  receiptFor,
+  staleReason,
+  type ChatChangeIntent,
+  type OtherRoom,
+} from "@/domain/project-chat-proposal";
+
 import { listMembers } from "@/data/supabase/settings-service";
 import { supabase } from "@/integrations/trust-tai/supabase";
 
@@ -104,9 +118,11 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
 
   const [fileError, setFileError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
-  // Project chat is session scoped for now, and the panel says so.
-  const [chatTurns, setChatTurns] = useState<ProjectChatTurn[]>([]);
+  // The conversation is session scoped, and the panel says so. Proposals live
+  // here too: they are a reading of a message, never a store.
+  const [chatEntries, setChatEntries] = useState<ChatEntry[]>([]);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [applying, setApplying] = useState<string | null>(null);
 
   const org = identity.organizationId;
   const projectsContext: ProjectsContext = {
@@ -273,15 +289,26 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
     },
   });
 
+  const entryId = () => `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
   /**
-   * Ask this project. The answer is read only: the endpoint reads this
-   * project's packet under the caller's own session and writes nothing, so
-   * every real change still happens on the tabs above.
+   * One message. "ask" answers from this project's packet. "change" reads the
+   * message and prepares a bounded proposal. Both are read only: the endpoint
+   * reads under the caller's own session and writes nothing, so every real
+   * change still goes through the Projects service after a person approves.
    */
-  const askProject = useMutation({
-    mutationFn: async ({ question, pasted }: { question: string; pasted: string }) => {
-      setChatError(null);
-      setChatTurns((turns) => [...turns, { question, pasted, answer: null }]);
+  const sendChat = useMutation({
+    mutationFn: async ({
+      message,
+      pasted,
+      mode,
+      pendingId,
+    }: {
+      message: string;
+      pasted: string;
+      mode: "ask" | "change";
+      pendingId: string;
+    }) => {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
       if (!token) throw new Error("Your session expired. Sign in again to ask.");
@@ -291,24 +318,149 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
         body: JSON.stringify({
           organization_id: org,
           project_id: projectId,
-          question,
+          question: message,
           pasted,
+          mode: mode === "change" ? "prepare" : "ask",
+          members: assignableMembers.map((member) => member.name),
         }),
       });
       const body = (await response.json()) as Record<string, unknown>;
       if (!response.ok) throw new Error(String(body["error"] ?? "This project could not answer."));
-      return body as unknown as ProjectChatTurn["answer"];
+      return { body, mode, message, pendingId };
     },
-    onSuccess: (answer) => {
-      setChatTurns((turns) =>
-        turns.map((turn, index) => (index === turns.length - 1 ? { ...turn, answer } : turn)),
+    onSuccess: ({ body, mode, message, pendingId }) => {
+      const resolve = (entry: ChatEntry): ChatEntry => {
+        if (mode === "ask") {
+          return {
+            ...entry,
+            pending: false,
+            answer: body as unknown as ProjectChatAnswer,
+          };
+        }
+        const kind = String(body["kind"] ?? "unclear");
+        const because = String(body["because"] ?? "").trim();
+        if (kind === "other_room") {
+          return {
+            ...entry,
+            pending: false,
+            room: body["room"] as OtherRoom,
+            text: because || "That truth belongs to another room.",
+          };
+        }
+        if (kind !== "change" || !project) {
+          return {
+            ...entry,
+            pending: false,
+            text:
+              because ||
+              "That is not a change Projects can make from here. Say what should change, and what it should say.",
+          };
+        }
+        const intent: ChatChangeIntent = {
+          action: String(body["action"] ?? "") as ChatChangeIntent["action"],
+          ...(body["value"] ? { value: String(body["value"]) } : {}),
+          ...(Array.isArray(body["items"]) ? { items: body["items"] as string[] } : {}),
+          ...(body["source"]
+            ? { source: body["source"] as NonNullable<ChatChangeIntent["source"]> }
+            : {}),
+          ...(body["reason"] ? { reason: String(body["reason"]) } : {}),
+        };
+        // An owner is a member of this workspace, resolved here against the
+        // people this person can actually see. Never a name the model invented.
+        if (intent.action === "owner") {
+          const wanted = (intent.value ?? "").trim().toLowerCase();
+          const match = assignableMembers.find(
+            (member) => member.name.trim().toLowerCase() === wanted,
+          );
+          if (!match) {
+            return {
+              ...entry,
+              pending: false,
+              text: `Nobody in this workspace is called "${intent.value ?? ""}". Hand it to someone who is a member, or invite them first.`,
+            };
+          }
+          intent.owner = { userId: match.userId, label: match.name };
+        }
+        const prepared = prepareProposal(project, intent, message);
+        if (!prepared.ok) {
+          return {
+            ...entry,
+            pending: false,
+            text: prepared.because,
+            ...(prepared.room ? { room: prepared.room } : {}),
+          };
+        }
+        return { ...entry, pending: false, proposal: prepared.proposal, proposalState: "open" };
+      };
+      setChatEntries((entries) =>
+        entries.map((entry) => (entry.id === pendingId ? resolve(entry) : entry)),
       );
     },
-    onError: (cause: unknown) => {
+    onError: (cause: unknown, variables) => {
       setChatError(cause instanceof Error ? cause.message : "This project could not answer.");
-      setChatTurns((turns) => turns.slice(0, -1));
+      setChatEntries((entries) => entries.filter((entry) => entry.id !== variables.pendingId));
     },
   });
+
+  const onSendChat = (message: string, pasted: string, mode: "ask" | "change") => {
+    setChatError(null);
+    const pendingId = entryId();
+    setChatEntries((entries) => [
+      ...entries,
+      { id: entryId(), role: "you", text: message, ...(pasted ? { pasted } : {}) },
+      { id: pendingId, role: "project", pending: true },
+    ]);
+    sendChat.mutate({ message, pasted, mode, pendingId });
+  };
+
+  const settle = (id: string, state: ProposalState, outcome: string) =>
+    setChatEntries((entries) =>
+      entries.map((entry) =>
+        entry.id === id ? { ...entry, proposalState: state, outcome } : entry,
+      ),
+    );
+
+  /**
+   * The only place Chat writes. It re-reads the project first, refuses a
+   * proposal prepared against truth that has since moved, and does nothing at
+   * all if the record already says what was proposed.
+   */
+  const approveProposal = async (id: string) => {
+    const entry = chatEntries.find((candidate) => candidate.id === id);
+    const proposal = entry?.proposal;
+    if (!proposal || entry?.proposalState !== "open" || applying) return;
+    setApplying(id);
+    setChatError(null);
+    try {
+      const fresh = await projectsService.get(projectId, org);
+      if (!fresh) throw new Error("This project is no longer readable.");
+      const stale = staleReason(proposal, fresh);
+      if (stale) {
+        settle(id, "stale", stale);
+        return;
+      }
+      if (alreadyApplied(proposal, fresh)) {
+        settle(id, "applied", "The record already says this. Nothing was written twice.");
+        return;
+      }
+      if (proposal.source) {
+        await projectIntelligence.addThinking(proposal.source, delivery);
+      } else if (proposal.changes) {
+        await projectsService.update(fresh, proposal.changes, projectsContext);
+      }
+      await refresh();
+      settle(id, "applied", receiptFor(proposal));
+    } catch (cause) {
+      settle(
+        id,
+        "open",
+        cause instanceof Error ? cause.message : "That change could not be recorded.",
+      );
+      setChatError(cause instanceof Error ? cause.message : "That change could not be recorded.");
+    } finally {
+      setApplying(null);
+    }
+  };
 
   if (projectQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Reading this work…</p>;
@@ -650,10 +802,13 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
           {tab === "chat" ? (
             <ChatTab
               projectName={project.name}
-              turns={chatTurns}
-              pending={askProject.isPending}
+              entries={chatEntries}
+              pending={sendChat.isPending}
+              applying={applying}
               error={chatError}
-              onAsk={(question, pasted) => askProject.mutate({ question, pasted })}
+              onSend={onSendChat}
+              onApprove={(id) => void approveProposal(id)}
+              onDiscard={(id) => settle(id, "discarded", "Discarded. Nothing was changed.")}
             />
           ) : null}
         </div>

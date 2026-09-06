@@ -119,3 +119,160 @@ export async function askProject(input: ProjectAskInput): Promise<ProjectAskResu
   }
   return answerProjectQuestion(input, callModel);
 }
+
+/* ------------------------------------------------------------ preparing a change */
+
+export interface ProjectIntentResult {
+  /** What the message was: a question, a change to prepare, or another room's truth. */
+  kind: "question" | "change" | "other_room" | "unclear";
+  /** Present when kind is "change". Bounded to project-owned actions. */
+  action?: string;
+  value?: string;
+  items?: string[];
+  source?: { title?: string; url?: string; sourceType?: string };
+  reason?: string;
+  /** Present when kind is "other_room". */
+  room?: string;
+  /** Plain words for the person, always. */
+  because: string;
+}
+
+const CHAT_ACTIONS = [
+  "name",
+  "point_a",
+  "point_b",
+  "due_date",
+  "owner",
+  "next_move",
+  "waiting_on",
+  "block",
+  "delivery_items",
+  "link_source",
+] as const;
+
+const OTHER_ROOMS = ["clients", "roadmap", "comms", "commercial"] as const;
+
+/**
+ * Read one message and say what it is asking for. This never writes and never
+ * decides: it names a bounded project-owned action, or names the room that
+ * owns the truth instead, and a person still has to approve.
+ */
+export async function interpretProjectMessage(
+  input: {
+    projectLabel: string;
+    message: string;
+    packet: unknown;
+    members?: string[];
+  },
+  callModel: RuntimeModelCaller,
+): Promise<ProjectIntentResult> {
+  const message = input.message.trim();
+  if (!message) throw new Error("A message is required.");
+
+  const { raw } = await callModel({
+    instructions: [
+      "You read one message about one delivery project and you return json.",
+      "Decide the kind: question, change, other_room, or unclear.",
+      `A change may only name one of these actions: ${CHAT_ACTIONS.join(", ")}.`,
+      "Projects does not own client reassignment, roadmap lineage, commercial tier, proposal amounts or sending messages.",
+      `If the message asks for one of those, kind is other_room and room is one of: ${OTHER_ROOMS.join(", ")}.`,
+      "due_date value is a calendar day as YYYY-MM-DD. owner value is the person's name exactly as written.",
+      "delivery_items returns the full intended list in items. link_source returns source.title, source.url and source.sourceType.",
+      "Never invent a value the message did not give. If it is not clear, kind is unclear and because says what is missing.",
+      VOICE,
+    ].join(" "),
+    input: JSON.stringify({
+      project: input.projectLabel,
+      message,
+      project_record: input.packet,
+      workspace_members: input.members ?? [],
+      json_shape: {
+        kind: "change",
+        action: "next_move",
+        value: "",
+        items: [""],
+        source: { title: "", url: "", sourceType: "other" },
+        reason: "",
+        room: "",
+        because: "",
+      },
+    }),
+    webSearch: false,
+  });
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = extractJsonObject(raw);
+  } catch {
+    throw new Error("That message could not be read. Nothing was changed.");
+  }
+
+  const kindRaw = String(parsed["kind"] ?? "").trim();
+  const kind = (["question", "change", "other_room", "unclear"] as string[]).includes(kindRaw)
+    ? (kindRaw as ProjectIntentResult["kind"])
+    : "unclear";
+  const action = String(parsed["action"] ?? "").trim();
+  const room = String(parsed["room"] ?? "").trim();
+
+  const result: ProjectIntentResult = {
+    kind,
+    because: String(parsed["because"] ?? "").trim(),
+  };
+  if (kind === "change") {
+    if (!(CHAT_ACTIONS as readonly string[]).includes(action)) {
+      return {
+        kind: "unclear",
+        because:
+          result.because || "That is not a change Projects can make from here. Say it another way.",
+      };
+    }
+    result.action = action;
+    const value = String(parsed["value"] ?? "").trim();
+    if (value) result.value = value;
+    const items = lines(parsed["items"]);
+    if (items.length > 0) result.items = items;
+    const source = parsed["source"];
+    if (source && typeof source === "object") {
+      const row = source as Record<string, unknown>;
+      result.source = {
+        title: String(row["title"] ?? "").trim(),
+        url: String(row["url"] ?? "").trim(),
+        sourceType: String(row["sourceType"] ?? "other").trim(),
+      };
+    }
+    const reason = String(parsed["reason"] ?? "").trim();
+    if (reason) result.reason = reason;
+  }
+  if (kind === "other_room" && (OTHER_ROOMS as readonly string[]).includes(room)) {
+    result.room = room;
+  }
+  return result;
+}
+
+/** Verify access at the shared boundary, then read the message. Fails closed. */
+export async function readProjectMessage(
+  input: Omit<ProjectAskInput, "question" | "pasted"> & { message: string; members?: string[] },
+): Promise<ProjectIntentResult> {
+  let callModel: RuntimeModelCaller;
+  try {
+    callModel = await runtimeModelCaller({
+      token: input.token,
+      organizationId: input.organizationId,
+      room: "projects",
+      purpose: "research",
+    });
+  } catch {
+    throw new Error("You do not have access to this workspace.");
+  }
+  const gatewayCaller: RuntimeModelCaller = (request) =>
+    callModel({ ...request, ...(input.gateway ? { gateway: input.gateway } : {}) });
+  return interpretProjectMessage(
+    {
+      projectLabel: input.projectLabel,
+      message: input.message,
+      packet: input.packet,
+      ...(input.members ? { members: input.members } : {}),
+    },
+    gatewayCaller,
+  );
+}

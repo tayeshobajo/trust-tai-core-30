@@ -371,6 +371,29 @@ lives.**
   events and evidence, never from what the chat said.
 - No duplicate task, note or chat CRM is created for projects.
 
+**The proposal loop (locked 2026-09-06).** Chat may ask for a change; it may
+never make one.
+
+- A message is read into at most one bounded, project-owned action
+  (`src/domain/project-chat-proposal.ts`). Anything outside that set is refused
+  by name, and the room that does own the truth is named and linked: Clients
+  for the company and commercial tier, Roadmap for lineage, Comms for sending.
+- A proposal shows the field, the store that holds it, what the record says
+  now and what would be recorded instead. It is session state, never a row.
+- Approval is explicit and human. Discarding writes nothing.
+- On approval the record is re-read. If the field moved since the proposal was
+  prepared, the write is refused and the person is asked again against current
+  truth. If the record already says the proposed value, nothing is written a
+  second time.
+- The write itself goes through the same Projects service, the same
+  `checkDetailEdit` and `checkTransition` refusals and the same activity events
+  as the Manage panel. Chat is a doorway into that path, never beside it.
+- An owner is resolved to a member of this workspace, never a typed name.
+- Sources link through the existing `project_thinking_sources` path, and the
+  honest sync state is said out loud: a link is a link until something reads it.
+- Success is claimed only after the canonical write lands.
+
+
 ## 14. Client Relationship is a read-only window onto Comms (locked 2026-09-06)
 
 The Relationship tab on a client is a client-scoped read of Comms: who is
