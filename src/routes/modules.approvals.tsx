@@ -40,6 +40,7 @@ import {
   BOARD_COLUMNS,
   CATEGORY_TAB_LABEL,
   approvalRefusal,
+  approvesWork,
   dropOutcome,
   type ApprovalRequest,
   type ApprovalSort,
@@ -264,6 +265,15 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
             },
           }),
         };
+      }
+
+      /* Only an approving act may reach this path. Anything else that arrives
+         here is a wiring mistake, and it fails closed rather than approving. */
+      if (!approvesWork(input.action)) {
+        throw new Error(`"${input.action.label}" does not record a decision.`);
+      }
+      if (request.batch && input.itemIds.length === 0) {
+        throw new Error("Choose at least one ready article to approve.");
       }
 
       /* Approval records authority and nothing else. The handover to the

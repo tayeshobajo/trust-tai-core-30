@@ -45,6 +45,23 @@ export const SOURCE_APP_LABEL: Record<ApprovalSourceApp, string> = {
   content: "Content",
 };
 
+/**
+ * Where "Open source" goes: the room that prepared the work.
+ *
+ * A room route, not a record route, on purpose. Approvals never assumes it
+ * knows a room's inner URL scheme; it knows which door to send you to.
+ */
+export const SOURCE_APP_ROUTE = {
+  scout: "/modules/scout",
+  comms: "/modules/comms",
+  roadmap: "/modules/roadmap",
+  website: "/modules/website",
+  projects: "/modules/projects",
+  ops: "/modules/ops",
+  studio: "/modules/studio",
+  content: "/modules/studio",
+} as const satisfies Record<ApprovalSourceApp, string>;
+
 /* -------------------------------------------------------------- categories */
 
 /**
@@ -133,7 +150,7 @@ export const STATUS_LABEL: Record<ApprovalStatus, string> = {
 
 /** Plain-language meaning, shown wherever a state could be misread. */
 export const STATUS_MEANING: Record<ApprovalStatus, string> = {
-  needs_review: "Waiting on your judgment.",
+  needs_review: "A person has to look at this before anything can be approved.",
   needs_context: "Cannot be safely recommended yet.",
   ready: "The source app finished its own checks.",
   revision_requested: "Returned to the source app for another pass.",
@@ -401,6 +418,84 @@ export function readyItemIds(items: ApprovalItem[]): ID[] {
 }
 
 /**
+ * The semantic cue an item state carries. Meaning, never decoration:
+ * amber for "a person must look", green for "a person said yes", red for
+ * "closed or broken", royal for "ready to act on", grey for the rest.
+ */
+export type StateTone = "neutral" | "active" | "good" | "caution" | "risk";
+
+export const ITEM_STATE_TONE: Record<ApprovalItemState, StateTone> = {
+  ready: "active",
+  exception: "caution",
+  failed: "risk",
+  approved: "good",
+  rejected: "risk",
+  executed: "good",
+};
+
+export const STATUS_TONE: Record<ApprovalStatus, StateTone> = {
+  needs_review: "caution",
+  needs_context: "neutral",
+  ready: "active",
+  revision_requested: "risk",
+  approved: "good",
+  rejected: "risk",
+  queued: "good",
+  executed: "good",
+  verified: "good",
+};
+
+function plural(count: number, noun: string): string {
+  return `${count} ${count === 1 ? noun : `${noun}s`}`;
+}
+
+/**
+ * What a batch is asking of the person, in one plain sentence.
+ *
+ * "0 ready, 10 need review" is a count, not an instruction. This says what to
+ * do: approve the ready ones together, look at the flagged ones one by one.
+ */
+export function batchReviewLine(items: ApprovalItem[], noun = "article"): string {
+  const summary = summariseBatch(items);
+  if (summary.total === 0) return `This batch has no ${noun}s in it.`;
+
+  const parts: string[] = [];
+  if (summary.ready > 0) {
+    parts.push(`${plural(summary.ready, noun)} ready to approve together.`);
+  }
+  if (summary.exceptions > 0) {
+    parts.push(
+      summary.exceptions === 1
+        ? `1 ${noun} needs your review before it can be approved.`
+        : `${summary.exceptions} ${noun}s need your review before they can be approved.`,
+    );
+  }
+  if (parts.length > 0) return parts.join(" ");
+
+  const settled: string[] = [];
+  if (summary.approved > 0) settled.push(`${summary.approved} approved`);
+  if (summary.executed > 0) settled.push(`${summary.executed} published`);
+  if (summary.failed > 0) settled.push(`${summary.failed} failed`);
+  const rejected = items.filter((item) => item.state === "rejected").length;
+  if (rejected > 0) settled.push(`${rejected} declined`);
+  return `Every ${noun} here has been decided: ${settled.join(", ")}.`;
+}
+
+/**
+ * Why bulk approval is closed on this batch, or null when it is open.
+ * Shown where the bulk button would otherwise sit, so the bar never offers
+ * "Approve 0 of 10" as if it were a thing you could do.
+ */
+export function bulkApprovalClosedBecause(items: ApprovalItem[], noun = "article"): string | null {
+  const summary = summariseBatch(items);
+  if (summary.ready > 0) return null;
+  if (summary.exceptions > 0) {
+    return `Flagged ${noun}s are approved one at a time, above. Each needs a reason on the record.`;
+  }
+  return `Nothing in this batch is waiting on a bulk decision.`;
+}
+
+/**
  * A single flagged item, accepted by a named person, on the record.
  *
  * An exception is exactly the case bulk approval refuses, so the only way past
@@ -549,6 +644,24 @@ const ACTION: Record<ApprovalActionId, ApprovalAction> = {
 
 export function approvalAction(id: ApprovalActionId): ApprovalAction {
   return ACTION[id];
+}
+
+/** The acts that say yes to work. Only these may ever reach the approve path. */
+const APPROVING: ReadonlySet<ApprovalActionId> = new Set<ApprovalActionId>([
+  "approve",
+  "approve_and_queue",
+  "approve_and_send",
+  "approve_and_execute",
+  "approve_ready",
+]);
+
+export function approvesWork(action: Pick<ApprovalAction, "id">): boolean {
+  return APPROVING.has(action.id);
+}
+
+/** The acts that record a decision at all: yes, not now, or send it back. */
+export function recordsDecision(action: Pick<ApprovalAction, "id">): boolean {
+  return approvesWork(action) || action.id === "reject" || action.id === "request_revision";
 }
 
 /**
