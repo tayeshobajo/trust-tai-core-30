@@ -23,6 +23,7 @@ import {
   readRoleAppAccess,
 } from "@/data/supabase/settings-service";
 
+import { displayName } from "@/lib/identity-name";
 import { clearRoomAuthority, setRoomAuthority } from "@/lib/room-authority";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import {
@@ -107,11 +108,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   return <SessionContext.Provider value={{ session, loading }}>{children}</SessionContext.Provider>;
 }
 
-function displayName(profile: ProfileRow | null, email: string): string {
-  const candidate =
-    profile?.full_name ?? profile?.display_name ?? profile?.name ?? email.split("@")[0] ?? "there";
-  return String(candidate).trim();
-}
+/* The display name rule lives in @/lib/identity-name: explicit profile name
+   fields win, and the truthful fallback is the verified email itself, never
+   a name guessed from the email local-part. */
 
 function activeMembership(rows: MembershipRow[]): MembershipRow | null {
   const usable = rows.filter((row) => !row.status || row.status === "active");
