@@ -447,6 +447,25 @@ function ClientShell({
       : null;
 
   const facts = clientHeaderFacts(card, now, timeZone);
+
+  /* Who last said this commercial truth, resolved once for read and edit. */
+  const commercialProvenance = {
+    by:
+      typeof record.commercialProvenance?.["actor_label"] === "string"
+        ? String(record.commercialProvenance["actor_label"])
+        : null,
+    at: record.commercialUpdatedAt,
+    because:
+      typeof record.commercialProvenance?.["because"] === "string"
+        ? String(record.commercialProvenance["because"])
+        : null,
+  };
+  const commercialProvenanceLine = commercialProvenance.at
+    ? `Last recorded ${commercialProvenance.at.slice(0, 10)}${
+        commercialProvenance.by ? ` by ${commercialProvenance.by}` : ""
+      }${commercialProvenance.because ? `. Reason given: ${commercialProvenance.because}` : "."}`
+    : "No commercial state recorded yet.";
+
   const cadence = reviewCadenceFor(record, now, timeZone);
 
   /* Each room's answer, or the fact that it could not be asked. */
