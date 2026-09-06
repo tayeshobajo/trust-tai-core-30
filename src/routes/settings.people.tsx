@@ -734,81 +734,89 @@ function PeopleSettings() {
           <p className="text-sm text-muted-foreground">No invitations are waiting.</p>
         ) : (
           <div className="divide-y divide-border rounded-xl border border-border">
-            {pendingInvitations.map((invitation) => (
-              <div key={invitation.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-foreground">{invitation.email}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {ROLE_LABEL[invitation.role]} · invited {whenText(invitation.createdAt)}
-                  </p>
+            {pendingInvitations.map((invitation) => {
+              const delivery = deliveryFor(invitation.id);
+              const blocked =
+                delivery.state === "sender_unverified" ||
+                delivery.state === "refused" ||
+                delivery.state === "not_configured";
+              const action = INVITE_DELIVERY_ACTION[delivery.state];
+              const busy = retryingId === invitation.id;
+              return (
+                <div
+                  key={invitation.id}
+                  className={cn(
+                    "flex flex-wrap items-start gap-3 px-4 py-3 transition-colors",
+                    delivery.state === "sender_unverified" ? "bg-warning/5" : null,
+                  )}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm text-foreground">{invitation.email}</p>
+                      <TonePill tone={INVITE_DELIVERY_TONE[delivery.state]} dot>
+                        {INVITE_DELIVERY_LABEL[delivery.state]}
+                      </TonePill>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {ROLE_LABEL[invitation.role]} · invited {whenText(invitation.createdAt)}
+                    </p>
+                    <p
+                      className={cn(
+                        "mt-1 text-xs",
+                        delivery.state === "refused"
+                          ? "text-destructive"
+                          : blocked
+                            ? "text-warning"
+                            : "text-muted-foreground",
+                      )}
+                      role={blocked ? "status" : undefined}
+                    >
+                      {INVITE_DELIVERY_MEANING[delivery.state]}
+                    </p>
+                    {action ? (
+                      <p className="mt-1 text-xs font-medium text-foreground">{action}</p>
+                    ) : null}
+                    {blocked && delivery.because ? (
+                      <p className="mt-1 text-xs text-muted-foreground">{delivery.because}</p>
+                    ) : null}
+                  </div>
+                  {identity.canManage ? (
+                    <div className="flex shrink-0 items-center gap-3">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className={cn(
+                          "rounded-lg border px-3 py-2 text-[13px] transition-colors disabled:opacity-60",
+                          blocked
+                            ? "border-warning/40 bg-warning/10 text-warning hover:bg-warning/20"
+                            : "border-border text-royal hover:bg-secondary",
+                        )}
+                        onClick={() => void retryDelivery(invitation.id, invitation.email)}
+                      >
+                        {busy ? "Sending…" : blocked ? "Try sending again" : "Send again"}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[13px] text-muted-foreground transition-colors hover:text-destructive hover:underline"
+                        onClick={() =>
+                          void cancelInvitation({
+                            organizationId: identity.organizationId,
+                            invitationId: invitation.id,
+                            email: invitation.email,
+                            actorUserId: identity.userId,
+                          }).then(refresh)
+                        }
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
-                {identity.canManage ? (
-                  <>
-                    <button
-                      type="button"
-                      className="text-[13px] text-royal hover:underline"
-                      onClick={() => {
-                        void (async () => {
-                          await resendInvitation({
-                            organizationId: identity.organizationId,
-                            invitationId: invitation.id,
-                            email: invitation.email,
-                            actorUserId: identity.userId,
-                          });
-                          const result = await deliverInvitationEmail({
-                            organizationId: identity.organizationId,
-                            invitationId: invitation.id,
-                            email: invitation.email,
-                            actorUserId: identity.userId,
-                          });
-                          setDeliveryById((previous) => ({
-                            ...previous,
-                            [invitation.id]: result,
-                          }));
-                          refresh();
-                        })();
-                      }}
-                    >
-                      Send again
-                    </button>
-                    <button
-                      type="button"
-                      className="text-[13px] text-muted-foreground hover:text-destructive hover:underline"
-                      onClick={() =>
-                        void cancelInvitation({
-                          organizationId: identity.organizationId,
-                          invitationId: invitation.id,
-                          email: invitation.email,
-                          actorUserId: identity.userId,
-                        }).then(refresh)
-                      }
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
-        {pendingInvitations.map((invitation) => {
-          const status = deliveryById[invitation.id];
-          if (!status) return null;
-          return (
-            <p
-              key={invitation.id}
-              className={cn(
-                "mt-3 text-xs",
-                status.delivered ? "text-emerald-700" : "text-amber-700",
-              )}
-              role="status"
-            >
-              {status.delivered
-                ? `Emailed ${invitation.email}: ${status.because}`
-                : `Could not email ${invitation.email}: ${status.because}`}
-            </p>
-          );
-        })}
+
       </div>
 
       {identity.canManage ? (
