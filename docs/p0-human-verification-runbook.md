@@ -53,9 +53,11 @@ plus the recipient's inbox.
   `payload.provider_id` present. **Met in substance 2026-09-06** (the Emailed
   state proves `delivered = true`; `provider_id` still to be read back).
 - The recipient's confirmation that the message arrived (screenshot or reply).
-  **Outstanding.**
+  **Met 2026-09-06** (Tai-provided screenshot of the email in Diamond's Gmail
+  inbox, 11:58 AM, from `invites@trusttai.com`).
 - The invitation row moving from `pending` once the person signs in.
-  **Outstanding.**
+  **Outstanding.** Direct read of the row is refused by RLS to anonymous
+  callers; sign-in is not yet evidenced, so the gate stays open.
 
 ---
 
