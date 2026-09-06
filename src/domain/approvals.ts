@@ -150,7 +150,7 @@ export const STATUS_LABEL: Record<ApprovalStatus, string> = {
 
 /** Plain-language meaning, shown wherever a state could be misread. */
 export const STATUS_MEANING: Record<ApprovalStatus, string> = {
-  needs_review: "Waiting on your judgment.",
+  needs_review: "A person has to look at this before anything can be approved.",
   needs_context: "Cannot be safely recommended yet.",
   ready: "The source app finished its own checks.",
   revision_requested: "Returned to the source app for another pass.",
