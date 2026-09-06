@@ -94,9 +94,7 @@ export function ApprovalWorkspace({
   const approving = actions.filter(
     (action) => approvesWork(action) && !(action.id === "approve_ready" && bulkClosed),
   );
-  const returning = actions.filter(
-    (action) => recordsDecision(action) && !approvesWork(action),
-  );
+  const returning = actions.filter((action) => recordsDecision(action) && !approvesWork(action));
   const canOpenSource = actions.some((action) => action.id === "open_source");
   const needsReason = returning.length > 0 && !refusal;
   /* A batch's stored summary is a count. The live line says what to do. */

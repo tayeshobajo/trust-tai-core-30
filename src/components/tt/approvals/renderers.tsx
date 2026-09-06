@@ -110,7 +110,9 @@ function ItemFacts({ item }: { item: ApprovalItem }) {
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
       <TonePill tone={tone}>{ITEM_STATE_LABEL[item.state]}</TonePill>
-      {item.facts["hitScore"] != null ? <MetaPill>HIT {String(item.facts["hitScore"])}</MetaPill> : null}
+      {item.facts["hitScore"] != null ? (
+        <MetaPill>HIT {String(item.facts["hitScore"])}</MetaPill>
+      ) : null}
       {item.facts["wordCount"] != null ? (
         <MetaPill>{String(item.facts["wordCount"])} words</MetaPill>
       ) : null}
@@ -348,8 +350,7 @@ function ReadyItem({
 function SettledItem({ item }: { item: ApprovalItem }) {
   const tone = ITEM_STATE_TONE[item.state];
   const override = item.facts["override"] as
-    | { reason?: unknown; by?: { label?: unknown } }
-    | undefined;
+    { reason?: unknown; by?: { label?: unknown } } | undefined;
   const acceptedBy = override && typeof override.by?.label === "string" ? override.by.label : null;
   const acceptedWhy = override && typeof override.reason === "string" ? override.reason : null;
 
