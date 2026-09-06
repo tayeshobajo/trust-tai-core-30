@@ -101,11 +101,17 @@ export function ProjectIdentityHeader({
   row,
   brand,
   updatedLabel,
+  busy = false,
+  savedLabel = null,
+  onRename,
   onUpdate,
 }: {
   row: ProjectRowModel;
   brand: { accent?: string; logoUrl?: string } | null;
   updatedLabel: string;
+  busy?: boolean;
+  savedLabel?: string | null;
+  onRename?: (name: string) => void;
   onUpdate: () => void;
 }) {
   const { project, lineage } = row;
@@ -114,6 +120,7 @@ export function ProjectIdentityHeader({
     : lineage.fromRoadmap
       ? "From an approved roadmap milestone"
       : "Started in Projects";
+
 
   return (
     <AmbientSurface
