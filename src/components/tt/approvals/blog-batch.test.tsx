@@ -71,20 +71,30 @@ function build(
     })),
   });
 
-  const items: ApprovalItem[] = submission.items.map((item, index) => {
+  const items: ApprovalItem[] = (submission.items ?? []).map((item, index) => {
     const wanted = spec[index]!;
     return {
       id: `item-${wanted.slug}`,
+      organizationId: "org-1",
       requestId: "apr_test",
+      itemKey: item.itemKey,
       position: index,
       title: item.title,
       state: wanted.state,
       exceptionReasons: item.exceptionReasons ?? [],
+      createdAt: NOW,
+      updatedAt: NOW,
       facts: {
         ...item.facts,
         contentItemId: `citm_${wanted.slug}`,
         ...(wanted.state === "approved" && wanted.by
-          ? { override: { reason: "Read it end to end.", by: { id: "u1", label: wanted.by }, at: NOW } }
+          ? {
+              override: {
+                reason: "Read it end to end.",
+                by: { id: "u1", label: wanted.by },
+                at: NOW,
+              },
+            }
           : {}),
       },
     } as ApprovalItem;
@@ -93,6 +103,8 @@ function build(
   const exceptions = items.filter((item) => item.state === "exception").length;
   const request = {
     id: "apr_test",
+    category: submission.category,
+    requiredCapability: submission.requiredCapability,
     organizationId: "org-1",
     sourceApp: submission.sourceApp,
     sourceEntity: submission.sourceEntity,
@@ -131,7 +143,7 @@ function renderBatch(
     selected: Set<string>;
   }> = {},
 ) {
-  const Renderer = rendererFor("content_batch");
+  const Renderer = rendererFor("blog_batch");
   const onSubmit = overrides.onSubmit ?? vi.fn();
   const onToggle = overrides.onToggle ?? vi.fn();
   const view = render(
@@ -150,8 +162,7 @@ function renderBatch(
   return { ...view, onSubmit, onToggle };
 }
 
-const card = (title: string) =>
-  screen.getByText(title).closest("[data-item-state]") as HTMLElement;
+const card = (title: string) => screen.getByText(title).closest("[data-item-state]") as HTMLElement;
 
 /* ---------------------------------------------------------------- tests */
 
@@ -320,7 +331,9 @@ describe("an accepted article", () => {
     ]);
     renderBatch(items, request);
 
-    expect(screen.getByTestId("batch-review-line").textContent).toMatch(/1 article needs your review/i);
+    expect(screen.getByTestId("batch-review-line").textContent).toMatch(
+      /1 article needs your review/i,
+    );
   });
 });
 
@@ -351,10 +364,12 @@ describe("the decision bar", () => {
     expect(within(bar).queryByRole("button", { name: /approve 0/i })).toBeNull();
     expect(within(bar).queryByRole("button", { name: /^approve/i })).toBeNull();
     expect(within(bar).getByTestId("bulk-closed").textContent).toMatch(/one at a time/i);
-    expect(within(bar).getByRole("button", { name: /send back/i })).toBeTruthy();
+    expect(within(bar).getByRole("button", { name: /request revision/i })).toBeTruthy();
     expect(within(bar).getByRole("button", { name: /not now/i })).toBeTruthy();
     expect(within(bar).getByRole("link", { name: /open source/i })).toBeTruthy();
-    expect(screen.getByText(/3 articles need your review before they can be approved/i)).toBeTruthy();
+    expect(
+      screen.getByText(/3 articles need your review before they can be approved/i),
+    ).toBeTruthy();
   });
 
   it("shows the bulk count when ready articles exist", () => {
@@ -403,14 +418,14 @@ describe("the decision bar", () => {
     );
 
     const bar = screen.getByTestId("decision-bar");
-    expect(within(bar).getByRole("button", { name: /send back/i })).toBeDisabled();
+    expect(within(bar).getByRole("button", { name: /request revision/i })).toBeDisabled();
     expect(within(bar).getByRole("button", { name: /not now/i })).toBeDisabled();
 
     fireEvent.click(within(bar).getByRole("link", { name: /open source/i }));
     expect(onDecide).not.toHaveBeenCalled();
 
     fireEvent.change(within(bar).getByRole("textbox"), { target: { value: "Voice is off." } });
-    fireEvent.click(within(bar).getByRole("button", { name: /send back/i }));
+    fireEvent.click(within(bar).getByRole("button", { name: /request revision/i }));
     expect(onDecide).toHaveBeenCalledTimes(1);
     expect(onDecide.mock.calls[0]![0].action.id).toBe("request_revision");
     expect(onDecide.mock.calls[0]![0].reason).toBe("Voice is off.");
