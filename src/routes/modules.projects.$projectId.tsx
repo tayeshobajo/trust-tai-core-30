@@ -107,6 +107,13 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
   const [updating, setUpdating] = useState(false);
   const [blockedReason, setBlockedReason] = useState("");
   const [nextMove, setNextMove] = useState("");
+  /**
+   * What this work is waiting on. Waiting is not a status: it is derived from
+   * this sentence on in-flight work, so the same panel that shows the wait is
+   * the panel that ends it.
+   */
+  const [waitingOn, setWaitingOn] = useState("");
+
   const [fileError, setFileError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
   // Project chat is session scoped for now, and the panel says so.
