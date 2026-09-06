@@ -52,11 +52,13 @@ import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import {
   EXECUTION_STATE_LABEL,
+  checkOwnerAssignment,
   checkTransition,
   isOpenProject,
   nextStates,
   type ExecutionState,
 } from "@/domain/projects";
+
 import type { ProjectFileKind, WorkItemStatus } from "@/domain/project-delivery";
 import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
 import { ChatTab, type ProjectChatTurn } from "@/components/tt/projects/detail/chat";
