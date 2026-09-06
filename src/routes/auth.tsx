@@ -5,6 +5,7 @@ import { BrandLogo } from "@/components/tt/brand-logo";
 import { PageHeader, MetaPill, TTButton, TTInput } from "@/components/tt/primitives";
 import { evaluateInviteAcceptance, normalizeEmail, sameEmail } from "@/domain/invite-acceptance";
 import { supabase } from "@/integrations/trust-tai/supabase";
+import { claimInvitation } from "@/lib/invite-claim";
 import { authRedirectUrl, sanitizeReturnPath } from "@/lib/auth-origin";
 import { useWorkspace } from "@/lib/workspace";
 
@@ -102,45 +103,37 @@ function AuthRoute() {
 
   const consume = useCallback(async () => {
     setAccept({ phase: "working" });
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) {
-      setAccept({ phase: "idle" });
-      return;
-    }
-    const response = await fetch("/api/public/settings/invite-accept", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ invitationId: invite }),
-    }).catch(() => null);
-    const body = (await response?.json().catch(() => null)) as {
-      ok?: boolean;
-      outcome?: string;
-      because?: string;
-    } | null;
+    /* The id is passed when the link carried one. When it did not, the claim
+       is resolved from the signed-in address instead, so an older email or a
+       stripped query string still reaches the person's own invitation. */
+    const result = await claimInvitation(invite || null);
 
-    if (body?.ok) {
+    if (result.ok) {
       /* Membership changed, so the workspace boundary must read it again. */
       await supabase.auth.refreshSession().catch(() => null);
       window.location.assign(redirect || "/");
       return;
     }
-    setAccept({
-      phase: "failed",
-      outcome: body?.outcome ?? "unknown",
-      because: body?.because ?? "This invitation could not be accepted right now.",
-    });
+    setAccept({ phase: "failed", outcome: result.outcome, because: result.because });
   }, [invite, redirect]);
 
   /* Signed in as the invited address: consume the invitation once, through the
-     canonical endpoint. Never runs for a different account. */
+     canonical endpoint. Never runs for a different account.
+
+     This also runs when the link carried no invitation context at all, but
+     only once the workspace boundary has confirmed this verified account has
+     no membership yet. That is the case Tai hit: a real invitation existed,
+     the person was signed in as exactly the invited address, and the screen
+     simply said no membership existed instead of accepting. */
+  const claimable = hasInvite || workspace.status === "no_membership";
+
   useEffect(() => {
-    if (!hasInvite || !sessionKnown || wrongSession) return;
+    if (!claimable || !sessionKnown || wrongSession) return;
     if (!sessionEmail || accept.phase !== "idle") return;
     if (workspace.status === "ready") return;
     void consume();
   }, [
-    hasInvite,
+    claimable,
     sessionKnown,
     wrongSession,
     sessionEmail,
@@ -278,7 +271,7 @@ function AuthRoute() {
         </form>
       )}
 
-      {workspace.status === "no_membership" && !hasInvite ? (
+      {workspace.status === "no_membership" && !hasInvite && accept.phase === "idle" ? (
         <p className="mt-8 text-sm text-muted-foreground">
           You are signed in as {workspace.email}, but no Trust Tai organization membership exists
           for this account yet.

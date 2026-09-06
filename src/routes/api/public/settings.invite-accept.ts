@@ -153,7 +153,6 @@ export const Route = createFileRoute("/api/public/settings/invite-accept")({
         const rows = await serviceGet<InvitationRow[]>(query, secret);
         const invitation = rows?.[0] ?? null;
 
-
         const decision = evaluateInviteAcceptance({
           invitation: invitation
             ? {
