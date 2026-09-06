@@ -105,7 +105,13 @@ needed; `status`, `accepted_at` and `app_access` already exist.
 
 ---
 
-## 2. Gmail governed reply (P0-04)
+## 2. Gmail governed reply (P0-04) — OPEN, deferred by Tai 2026-09-06
+
+**Deferred, not passed.** Tai chose on 2026-09-06 to move implementation focus to
+P1 before this gate closes. The gate remains open at Code/Test Verified, its human
+send action is unchanged, and it is not counted toward P0. P0 stays 8/9 and
+incomplete.
+
 
 **Current production evidence.** Re-consent is already done and does not need
 repeating. All three connected mailboxes
