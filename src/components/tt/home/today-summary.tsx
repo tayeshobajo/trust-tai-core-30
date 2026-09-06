@@ -29,7 +29,6 @@ export function TodaySummary({ items, empty }: { items: TodayItem[]; empty?: str
       ) : null}
 
       <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-
         {items.map((item) => {
           const Icon = item.icon;
           return (

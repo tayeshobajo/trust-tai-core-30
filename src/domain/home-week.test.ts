@@ -33,12 +33,7 @@ describe("the four canonical Home numbers", () => {
 
   it("reads a good week as on pace", () => {
     const numbers = homeWeekNumbers(input());
-    expect(numbers.map((n) => n.state)).toEqual([
-      "on_pace",
-      "on_pace",
-      "on_pace",
-      "on_pace",
-    ]);
+    expect(numbers.map((n) => n.state)).toEqual(["on_pace", "on_pace", "on_pace", "on_pace"]);
     expect(numbers[0]?.display).toBe("$21,000");
     expect(numbers[1]?.targetLabel).toBe("Target 10 to 12");
   });

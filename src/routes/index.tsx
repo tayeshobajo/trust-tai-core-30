@@ -22,7 +22,6 @@ import { floorBreaches, orderToday, type TodayCandidate } from "@/domain/today-o
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-
 const TITLE = "Trust Tai OS · one operating system for how Trust Tai works";
 const DESCRIPTION =
   "Welcome home: one shared foundation for clients, projects, conversations, operations, and intelligence across the Trust Tai suite.";
@@ -121,8 +120,7 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
     if (!weekInput || !week.data) return [];
     const sources = week.data.sources;
     return homeWeekNumbers(weekInput, {
-      revenue:
-        sources.clients.because ?? sources.proposals.because ?? sources.tierChanges.because,
+      revenue: sources.clients.because ?? sources.proposals.because ?? sources.tierChanges.because,
       firstTouches: sources.firstTouches.because ?? sources.touches.because,
       discoveryCalls: sources.touches.because,
       proposalsSent: sources.proposals.because,
@@ -216,5 +214,4 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
       </div>
     </div>
   );
-
 }
