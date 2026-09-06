@@ -33,6 +33,7 @@ import {
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
 import { readDraftSend } from "@/domain/comms-send";
+import { LEGACY_APPROVAL_NOTICE, isLegacyApproved } from "@/domain/comms-approval";
 import {
   judgmentSummaryLines,
   readCommunicationJudgment,
@@ -90,7 +91,7 @@ export function SendComposer({
   const [body, setBody] = useState(draft.body);
   const [ccText, setCcText] = useState(extras.cc.join(", "));
   const [bccText, setBccText] = useState(extras.bcc.join(", "));
-  const [busy, setBusy] = useState<"save" | "send" | "upload" | null>(null);
+  const [busy, setBusy] = useState<"save" | "send" | "upload" | "approve" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -587,6 +588,11 @@ export function SendComposer({
       {failed && sendRecord?.error ? (
         <p className="rounded-lg border border-ember/30 bg-ember/8 px-3 py-2 text-[12px] text-ember">
           Last attempt failed: {sendRecord.error}
+        </p>
+      ) : null}
+      {legacyApproved ? (
+        <p className="rounded-lg border border-amber/30 bg-amber/8 px-3 py-2 text-[12px] text-foreground">
+          {LEGACY_APPROVAL_NOTICE}
         </p>
       ) : null}
       {notice ? (
