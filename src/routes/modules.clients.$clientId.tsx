@@ -538,35 +538,31 @@ function ClientShell({
               client={{ name: record.name, websiteUrl: record.websiteUrl }}
               now={now}
               timeZone={timeZone}
+              exchange={exchangeWindow}
+              commercial={{
+                headline: card.commercialLine,
+                review: cadence.line,
+                renewal: cadence.renewalLine,
+                provenance: commercialProvenanceLine,
+              }}
+              commercialForm={
+                <CommercialPanel
+                  current={{
+                    tier: record.tier,
+                    mrrCents: record.mrrCents,
+                    renewalAt: record.renewalAt,
+                    nextReviewAt: record.nextReviewAt,
+                  }}
+                  provenance={commercialProvenance}
+                  pending={saveCommercial.isPending}
+                  problem={commercialProblem}
+                  saved={commercialSaved}
+                  onSave={(patch) => saveCommercial.mutate(patch)}
+                />
+              }
             />
           ) : null}
-          {tab === "overview" ? (
-            <div className="mt-8">
-              <CommercialPanel
-                current={{
-                  tier: record.tier,
-                  mrrCents: record.mrrCents,
-                  renewalAt: record.renewalAt,
-                  nextReviewAt: record.nextReviewAt,
-                }}
-                provenance={{
-                  by:
-                    typeof record.commercialProvenance?.["actor_label"] === "string"
-                      ? String(record.commercialProvenance["actor_label"])
-                      : null,
-                  at: record.commercialUpdatedAt,
-                  because:
-                    typeof record.commercialProvenance?.["because"] === "string"
-                      ? String(record.commercialProvenance["because"])
-                      : null,
-                }}
-                pending={saveCommercial.isPending}
-                problem={commercialProblem}
-                saved={commercialSaved}
-                onSave={(patch) => saveCommercial.mutate(patch)}
-              />
-            </div>
-          ) : null}
+
           {tab === "roadmap" ? (
             <div className="space-y-8">
               <RoadmapTab read={roadmapOutcomes} loading={roadmapsQuery.isLoading} />
