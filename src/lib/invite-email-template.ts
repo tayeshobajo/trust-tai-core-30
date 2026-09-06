@@ -5,24 +5,25 @@
  * the exact subject and body an admin is about to send, and the server
  * transport sends the very same output. One template, no drift.
  *
- * Brand. The literal hex values below are the canonical Trust Tai palette
- * (ink, paper, royal, rule, muted, secondary) written out because email
- * clients support neither CSS variables nor oklch(). They are the same values
- * documented in the Trust Tai brand system and mirrored in src/styles.css;
- * change them there and here together, never here alone.
+ * Brand. Colours come from EMAIL_COLORS in the brand contract, which is the
+ * sRGB conversion of the very tokens src/styles.css uses on screen; a test
+ * reconverts them, so the letter in an inbox cannot drift from the product.
+ * They are written as literal hex here only because email clients understand
+ * neither oklch, CSS variables nor color-mix().
  *
  * Layout is table based with inline styles only, so Gmail, Outlook and Apple
  * Mail all render the same calm letter. No dark-theme dependency, no tracking,
  * no web fonts: system fonts degrade gracefully everywhere.
  */
 
-/** Canonical Trust Tai palette, email-safe literals. */
-const INK = "#01051b";
-const PAPER = "#ffffff";
-const ROYAL = "#1d54c1";
-const RULE = "#dadee5";
-const MUTED = "#596475";
-const SECONDARY = "#edf2f8";
+import { BRAND_LOGO, EMAIL_COLORS, EMAIL_LOGO_WIDTH } from "@/brand/brand-contract";
+
+const INK = EMAIL_COLORS.ink;
+const PAPER = EMAIL_COLORS.paper;
+const ROYAL = EMAIL_COLORS.royal;
+const RULE = EMAIL_COLORS.rule;
+const MUTED = EMAIL_COLORS.muted;
+const SECONDARY = EMAIL_COLORS.secondary;
 
 export interface InviteEmailInput {
   to: string;
@@ -61,10 +62,17 @@ function expiryLine(expiresAt: string | null): string {
   return `This invitation expires on ${date.toLocaleDateString("en-US", { dateStyle: "long" })}.`;
 }
 
-/** The header lockup: real logo when we have a public URL, wordmark when not. */
+/**
+ * The header lockup: the official Trust Tai mark when we have a public URL,
+ * the wordmark when we do not. Its size is derived from the lockup's natural
+ * geometry in the brand contract, so the mark can never be squashed, and the
+ * image is served at twice the rendered height for retina inboxes.
+ */
 function headerLockup(logoUrl: string | null | undefined): string {
   if (logoUrl && /^https:\/\//i.test(logoUrl)) {
-    return `<img src="${escapeHtml(logoUrl)}" width="132" height="24" alt="Trust Tai" style="display:block;border:0;outline:none;text-decoration:none;height:24px;width:132px" />`;
+    const h = BRAND_LOGO.emailHeight;
+    const w = EMAIL_LOGO_WIDTH;
+    return `<img src="${escapeHtml(logoUrl)}" width="${w}" height="${h}" alt="Trust Tai" style="display:block;border:0;outline:none;text-decoration:none;height:${h}px;width:${w}px" />`;
   }
   return `<span style="font-size:18px;font-weight:600;letter-spacing:.01em;color:${INK}">Trust&nbsp;Tai</span>`;
 }
@@ -114,13 +122,18 @@ export function inviteEmailBody(input: InviteEmailInput): InviteEmailContent {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px">${escapeHtml(preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${SECONDARY};padding:32px 12px">
 <tr><td align="center">
-  <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:100%;background:${PAPER};border:1px solid ${RULE};border-radius:16px">
-    <tr><td style="padding:28px 32px 0 32px">
-      ${headerLockup(input.logoUrl)}
-      <p style="margin:18px 0 0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:${MUTED}">Trust Tai OS</p>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background:${PAPER};border:1px solid ${RULE};border-radius:16px">
+    <tr><td style="padding:30px 32px 0 32px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td align="left" style="vertical-align:middle">${headerLockup(input.logoUrl)}</td>
+          <td align="right" style="vertical-align:middle;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:${MUTED}">Trust Tai OS</td>
+        </tr>
+      </table>
     </td></tr>
+    <tr><td style="padding:22px 32px 0 32px"><div style="height:1px;line-height:1px;font-size:0;background:${RULE}">&nbsp;</div></td></tr>
     <tr><td style="padding:0 32px">
-      <h1 style="margin:10px 0 0;font-size:24px;line-height:1.25;font-weight:600;color:${INK}">${by} invited you to ${org}.</h1>
+      <h1 style="margin:24px 0 0;font-size:24px;line-height:1.25;font-weight:600;color:${INK}">${by} invited you to ${org}.</h1>
       <p style="margin:14px 0 0;font-size:15px;line-height:1.65;color:${INK}">Trust Tai OS is the workspace where clients, projects, communication and decisions sit together, so the next move is always clear.</p>
       <p style="margin:14px 0 0;font-size:15px;line-height:1.65;color:${INK}">You have been invited as <strong style="color:${INK}">${role}</strong>. Accepting creates your place in ${org} and opens the rooms your role carries. Nothing is shared with you until you sign in.</p>
     </td></tr>
