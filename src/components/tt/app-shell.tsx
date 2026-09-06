@@ -182,21 +182,35 @@ export function AppShell({
               >
                 <Settings className="size-[18px]" aria-hidden />
               </Link>
-              {identity.avatarUrl ? (
-                <img
-                  src={identity.avatarUrl}
-                  alt={`${identity.name}, profile photo`}
-                  className="size-9 rounded-full object-cover"
-                />
-              ) : (
-                <span
-                  className="flex size-9 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
-                  aria-label={`Signed in as ${identity.name}`}
-                  title={identity.email}
-                >
-                  {initialsOf(identity.name)}
-                </span>
-              )}
+              {/* Who is in the room, said once. The name is primary; the email
+                  appears only when it adds clarity beyond the name. */}
+              <div className="flex items-center gap-2.5">
+                <div className="hidden text-right sm:block">
+                  <p className="max-w-[180px] truncate text-[13px] font-medium leading-tight text-foreground">
+                    {identity.name}
+                  </p>
+                  {identity.email !== identity.name ? (
+                    <p className="max-w-[180px] truncate text-[11px] leading-tight text-muted-foreground">
+                      {identity.email}
+                    </p>
+                  ) : null}
+                </div>
+                {identity.avatarUrl ? (
+                  <img
+                    src={identity.avatarUrl}
+                    alt={`${identity.name}, profile photo`}
+                    className="size-9 rounded-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className="flex size-9 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
+                    aria-label={`Signed in as ${identity.name}`}
+                    title={identity.email}
+                  >
+                    {initialsOf(identity.name)}
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => void handleSignOut()}
