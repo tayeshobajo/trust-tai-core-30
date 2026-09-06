@@ -59,6 +59,7 @@ import {
   projectsForClient,
   relationshipSnapshotFor,
 
+
   reviewCadenceFor,
   roadmapOutcomeFor,
   roadmapsForClient,
@@ -66,6 +67,9 @@ import {
   type ClientTab,
   type RoomRead,
 } from "@/domain/client-shell";
+import { relationshipWindow } from "@/data/clients/relationship-window";
+import { listRelationshipMessages } from "@/data/supabase/comms-messages";
+
 import type { CommercialFormPatch } from "@/domain/client-commercial-form";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
