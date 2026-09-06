@@ -50,7 +50,9 @@ describe("matchExternalSend", () => {
   });
 
   it("refuses a message that predates the draft", () => {
-    expect(matchExternalSend(DRAFT, message({ occurredAt: "2026-01-09T09:00:00.000Z" }))).toBeNull();
+    expect(
+      matchExternalSend(DRAFT, message({ occurredAt: "2026-01-09T09:00:00.000Z" })),
+    ).toBeNull();
   });
 
   it("refuses inbound mail", () => {
