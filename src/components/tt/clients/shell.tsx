@@ -44,17 +44,9 @@ export function ClientHeader({
 }) {
   const host = websiteUrl ? hostOf(websiteUrl) : null;
   return (
-    <header className="relative overflow-hidden rounded-2xl border border-border bg-card px-6 py-6 sm:px-8">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(180deg, color-mix(in oklab, var(--royal) 6%, transparent) 0%, transparent 190px)",
-        }}
-      />
-      <div className="relative flex flex-col gap-6 sm:flex-row sm:items-start">
-        <div className="w-28 shrink-0 sm:w-32">
+    <header className="tt-surface rounded-2xl px-6 py-7 sm:px-8 sm:py-8">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
+        <div className="w-24 shrink-0 sm:w-28">
           <ClientVisual card={card} className="rounded-xl" />
           {logo ? <LogoUpload control={logo} hasLogo={Boolean(card.logoUrl)} /> : null}
         </div>
@@ -64,8 +56,8 @@ export function ClientHeader({
           <h1 className="mt-2 font-display text-3xl leading-tight tracking-tight text-foreground sm:text-4xl">
             {card.name}
           </h1>
-          <p className="mt-2 text-[15px] text-foreground">{facts.tierAndValue}</p>
-          <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
+          <p className="mt-2.5 text-[15px] font-medium text-foreground">{facts.tierAndValue}</p>
+          <dl className="mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-1.5 border-t border-border pt-3 text-[13px]">
             <div className="flex gap-1.5">
               <dt className="text-muted-foreground">Review</dt>
               <dd
