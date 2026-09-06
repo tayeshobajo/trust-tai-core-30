@@ -229,7 +229,7 @@ function ClientShell({
     },
   });
   const answerProposal = useMutation({
-    mutationFn: (input: { roadmapId: string; outcome: "signed" | "declined" }) =>
+    mutationFn: (input: { roadmapId: string; outcome: "signed" | "declined"; at: string }) =>
       recordProposalOutcome(input, proposalContext),
     onSuccess: (_result, input) => {
       setProposalProblem(null);
@@ -403,6 +403,7 @@ function ClientShell({
         sentAt: state?.proposalSentAt ?? null,
         amountCents: state?.proposalAmountCents ?? null,
         outcome: state?.proposalOutcome ?? null,
+        outcomeAt: state?.proposalOutcomeAt ?? null,
       },
     };
   });

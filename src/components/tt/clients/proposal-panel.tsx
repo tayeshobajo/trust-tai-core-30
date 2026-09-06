@@ -21,8 +21,10 @@ import {
 import {
   answered,
   proposalOutcomeRefusal,
+  readProposalOutcomeForm,
   readProposalSentForm,
   type ProposalFormCurrent,
+  type ProposalOutcomeIntent,
   type ProposalSentIntent,
 } from "@/domain/proposal-form";
 
@@ -38,7 +40,7 @@ export interface ProposalPanelProps {
   problem: string | null;
   savedRoadmapId: string | null;
   onSend: (input: { roadmapId: string } & ProposalSentIntent) => void;
-  onAnswer: (input: { roadmapId: string; outcome: "signed" | "declined" }) => void;
+  onAnswer: (input: { roadmapId: string } & ProposalOutcomeIntent) => void;
 }
 
 function money(cents: number | null): string {
@@ -63,6 +65,8 @@ function NodeCard({
 }) {
   const [amount, setAmount] = useState("");
   const [sentOn, setSentOn] = useState("");
+  const [answeredOn, setAnsweredOn] = useState("");
+
   const [refusal, setRefusal] = useState<string | null>(null);
 
   const current = node.current;
@@ -118,36 +122,48 @@ function NodeCard({
       ) : null}
 
       {sent && !isAnswered ? (
-        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
           <span className="tt-eyebrow">What came back</span>
-          {(["signed", "declined"] as const).map((outcome) => {
-            const because = proposalOutcomeRefusal(current, outcome);
-            return (
+          <div className="sm:max-w-xs">
+            <TTField
+              label="Day it was answered"
+              hint="The day it was actually signed or declined, not today."
+            >
+              <TTInput
+                type="date"
+                value={answeredOn}
+                onChange={(event) => setAnsweredOn(event.target.value)}
+              />
+            </TTField>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {(["signed", "declined"] as const).map((outcome) => (
               <TTButton
                 key={outcome}
                 type="button"
                 variant={outcome === "signed" ? "primary" : "secondary"}
-                disabled={pending || because !== null}
+                disabled={pending || proposalOutcomeRefusal(current, outcome) !== null}
                 onClick={() => {
-                  if (because) {
-                    setRefusal(because);
+                  const result = readProposalOutcomeForm({ answeredOn }, current, outcome);
+                  if (!result.ok) {
+                    setRefusal(result.because);
                     return;
                   }
                   setRefusal(null);
-                  onAnswer({ roadmapId: node.roadmapId, outcome });
+                  onAnswer({ roadmapId: node.roadmapId, ...result.intent });
                 }}
               >
                 {outcome === "signed" ? "Record signed" : "Record declined"}
               </TTButton>
-            );
-          })}
+            ))}
+          </div>
         </div>
       ) : null}
 
       {isAnswered ? (
         <p className="mt-4 text-xs text-muted-foreground">
-          Answered {current.outcome} on {current.sentAt?.slice(0, 10)}. A recorded answer is not
-          rewritten here.
+          Answered {current.outcome} on {current.outcomeAt?.slice(0, 10) ?? "a day not recorded"}. A
+          recorded answer is not rewritten here.
         </p>
       ) : null}
 

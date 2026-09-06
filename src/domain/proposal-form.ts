@@ -26,6 +26,8 @@ export interface ProposalFormCurrent {
   sentAt: string | null;
   amountCents: number | null;
   outcome: ProposalOutcome | null;
+  /** The day the answer actually happened, never the moment a button was pressed. */
+  outcomeAt: string | null;
 }
 
 export interface ProposalSentIntent {
@@ -33,8 +35,17 @@ export interface ProposalSentIntent {
   sentAt: string;
 }
 
+/** What a person said about the answer: which answer, and the day it happened. */
+export interface ProposalOutcomeIntent {
+  outcome: "signed" | "declined";
+  at: string;
+}
+
 export type ProposalSentResult =
   { ok: true; intent: ProposalSentIntent } | { ok: false; because: string };
+
+export type ProposalOutcomeResult =
+  { ok: true; intent: ProposalOutcomeIntent } | { ok: false; because: string };
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -94,4 +105,25 @@ export function proposalOutcomeRefusal(
     return "A proposal is answered as signed or declined.";
   }
   return null;
+}
+
+/**
+ * Read the answering form. The day a proposal was signed or declined decides
+ * which week the revenue belongs to, so it is asked for and never defaulted to
+ * the moment somebody pressed a button.
+ */
+export function readProposalOutcomeForm(
+  input: { answeredOn: string },
+  current: ProposalFormCurrent,
+  outcome: "signed" | "declined",
+): ProposalOutcomeResult {
+  const because = proposalOutcomeRefusal(current, outcome);
+  if (because) return { ok: false, because };
+
+  const day = input.answeredOn.trim();
+  if (!DAY.test(day) || Number.isNaN(new Date(`${day}T00:00:00Z`).getTime())) {
+    return { ok: false, because: "Say the day this proposal was actually answered." };
+  }
+
+  return { ok: true, intent: { outcome, at: `${day}T12:00:00.000Z` } };
 }
