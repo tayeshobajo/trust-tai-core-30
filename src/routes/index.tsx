@@ -92,11 +92,49 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
+  /**
+   * The one canonical weekly snapshot every room already uses. Home derives
+   * its four numbers from it at read time and writes nothing back, so Home
+   * and Clients can never disagree about the same week.
+   */
+  const week = useQuery({
+    queryKey: ["home-week", organizationId],
+    queryFn: () => readWeeklyScoreboard(organizationId),
+  });
+
+  const weekInput = useMemo<HomeWeekInput | null>(() => {
+    const board = week.data;
+    if (!board) return null;
+    return {
+      targets: board.targets,
+      revenue: board.revenue,
+      firstTouches: board.firstTouches,
+      discoveryCalls: board.discoveryCalls,
+      proposalsSent: board.proposalsSent,
+      timeZone: board.timeZone,
+      timeZoneFallback: board.timeZoneFallback,
+      timeZoneBecause: board.timeZoneBecause,
+    };
+  }, [week.data]);
+
+  const weekNumbers = useMemo(() => {
+    if (!weekInput || !week.data) return [];
+    const sources = week.data.sources;
+    return homeWeekNumbers(weekInput, {
+      revenue:
+        sources.clients.because ?? sources.proposals.because ?? sources.tierChanges.because,
+      firstTouches: sources.firstTouches.because ?? sources.touches.because,
+      discoveryCalls: sources.touches.because,
+      proposalsSent: sources.proposals.because,
+    });
+  }, [weekInput, week.data]);
+
   const todayItems = useMemo<TodayItem[]>(() => {
     /**
      * Today obeys one order (P2-05): an obligation already at risk, then a
      * breached weekly floor, then a decision worth making. Nothing is invented,
-     * and an absence produces no card at all.
+     * an absence produces no card at all, and a source that could not be read
+     * produces no card either, because unknown is not a breach.
      */
     const candidates: TodayCandidate[] = [];
 
@@ -111,18 +149,7 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
       });
     }
 
-    const activeProjects = (data?.projects ?? []).filter(
-      (p) => p.status === "in_build" || p.status === "live",
-    ).length;
-    if (activeProjects > 0) {
-      candidates.push({
-        key: "projects",
-        kind: "obligation_at_risk",
-        count: activeProjects,
-        label: activeProjects === 1 ? "project in motion" : "projects in motion",
-        slug: "projects",
-      });
-    }
+    if (weekInput) candidates.push(...floorBreaches(homeFloorReadings(weekInput)));
 
     const openDecisions = (data?.decisions ?? []).filter((d) => d.status === "open").length;
     if (openDecisions > 0) {
@@ -131,31 +158,13 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
         kind: "decision_opportunity",
         count: openDecisions,
         label: openDecisions === 1 ? "decision waiting on you" : "decisions waiting on you",
-        slug: "conductor",
-      });
-    }
-
-    const conversationSignals = (data?.activity ?? []).filter(
-      (event) => event.provenance.appId === "comms",
-    ).length;
-    if (conversationSignals > 0) {
-      candidates.push({
-        key: "comms",
-        kind: "decision_opportunity",
-        count: conversationSignals,
-        label:
-          conversationSignals === 1
-            ? "conversation moved recently"
-            : "conversations moved recently",
-        slug: "comms",
+        slug: "approvals",
       });
     }
 
     const icons: Record<string, typeof ScrollText> = {
       "blocked-projects": SquareStack,
-      projects: SquareStack,
       decisions: ScrollText,
-      comms: MessagesSquare,
     };
 
     return orderToday(candidates)
@@ -164,10 +173,10 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
         key: entry.key,
         count: entry.count,
         label: entry.label,
-        icon: icons[entry.key] ?? ScrollText,
+        icon: icons[entry.key] ?? Gauge,
         slug: entry.slug,
       }));
-  }, [data]);
+  }, [data, weekInput]);
 
   const continueItems = useMemo<ContinueItem[]>(
     () =>
@@ -186,6 +195,12 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
 
       <TodaySummary items={todayItems} />
 
+      <ThisWeek
+        numbers={weekNumbers}
+        note={weekInput ? homeWeekNote(weekInput) : null}
+        loading={week.isPending}
+      />
+
       <SuiteRoomsGrid />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -194,4 +209,5 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
       </div>
     </div>
   );
+
 }
