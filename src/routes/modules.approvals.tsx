@@ -40,6 +40,7 @@ import {
   BOARD_COLUMNS,
   CATEGORY_TAB_LABEL,
   approvalRefusal,
+  approvesWork,
   dropOutcome,
   type ApprovalRequest,
   type ApprovalSort,
