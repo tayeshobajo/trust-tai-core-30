@@ -193,7 +193,14 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
     <div className="w-full space-y-16 pb-8">
       <HomeHero firstName={identity.firstName} />
 
-      <TodaySummary items={todayItems} />
+      <TodaySummary
+        items={todayItems}
+        empty={
+          week.isSuccess && data
+            ? "Nothing is at risk, no floor is breached and no decision is waiting. Open Clients to pick the next move."
+            : undefined
+        }
+      />
 
       <ThisWeek
         numbers={weekNumbers}
