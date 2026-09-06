@@ -280,6 +280,25 @@ export function SendComposer({
     }
   }
 
+  /**
+   * Re-approve a draft whose approval predates the approval record. This
+   * writes who decided and when, and sends nothing.
+   */
+  async function handleApproveAgain() {
+    setBusy("approve");
+    setError(null);
+    setNotice(null);
+    try {
+      await commsService.setDraftState(draft, "approved", relationship, context);
+      setNotice("Approved, with your name and the time on it. Nothing has been sent.");
+      onChanged();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "That approval could not be recorded.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   /** The one irreversible act, a person's click, recorded and idempotent. */
   async function handleSend() {
     setBusy("send");
