@@ -642,7 +642,6 @@ export interface InvitationAuditEntry {
   because: string | null;
 }
 
-
 function lifecycleOf(event: string): InvitationAuditEntry["lifecycle"] {
   if (event === "user.invited") return "created";
   if (event === "user.invite_resent") return "resent";
@@ -696,7 +695,6 @@ export async function listInvitationAudit(
         typeof payload["invitation_id"] === "string" ? (payload["invitation_id"] as string) : null,
       because: typeof payload["because"] === "string" ? (payload["because"] as string) : null,
     } satisfies InvitationAuditEntry;
-
   });
   return { provisioned: true, value: entries };
 }

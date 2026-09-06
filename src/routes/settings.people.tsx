@@ -390,8 +390,6 @@ function PeopleSettings() {
     }
   };
 
-
-
   return (
     <>
       <AccessOverview
@@ -856,7 +854,6 @@ function PeopleSettings() {
             })}
           </div>
         )}
-
       </div>
 
       {identity.canManage ? (
