@@ -642,6 +642,8 @@ export interface SyncResult {
   eventsEmitted: number;
   /** Sent drafts the mailbox proved this pass. */
   draftsVerified: number;
+  /** Open drafts closed this pass because the person replied from Gmail. */
+  externalSendsReconciled: number;
   lastSyncAt: string;
 }
 
@@ -1658,8 +1660,15 @@ async function runSyncPass(input: {
   const eventsEmitted = await emitInboundEvents(client, organizationId, newInbound);
 
   let draftsVerified = 0;
+  let externalSendsReconciled = 0;
   for (const bucket of perRelationship.values()) {
     draftsVerified += await verifySentDrafts(client, organizationId, bucket.relationship);
+    // Reads and reconciliation only. This pass can never send.
+    externalSendsReconciled += await reconcileExternalSends(
+      client,
+      organizationId,
+      bucket.relationship,
+    );
   }
 
   // Exceptions carry across passes: an unresolved ambiguity stays visible,
@@ -1697,6 +1706,7 @@ async function runSyncPass(input: {
       pending_people: exceptions.length,
       events_emitted: eventsEmitted,
       drafts_verified: draftsVerified,
+      external_sends_reconciled: externalSendsReconciled,
       approved_threads_watched: approvedThreadIds.length,
       approved_threads_refreshed: refresh.refreshed,
       approved_threads_unavailable: refresh.missing,
@@ -1725,6 +1735,7 @@ async function runSyncPass(input: {
     pendingPeople: exceptions.length,
     eventsEmitted,
     draftsVerified,
+    externalSendsReconciled,
     lastSyncAt: nowIso,
   };
 }
