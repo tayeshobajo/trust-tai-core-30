@@ -142,6 +142,12 @@ export function SendComposer({
   const sending = draft.reviewState === "sending";
   const failed = draft.reviewState === "send_failed";
 
+  // An approval with no name and no time on it is not one Comms will act on.
+  const legacyApproved = useMemo(
+    () => isLegacyApproved(draft.reviewState, draft.rationale),
+    [draft.reviewState, draft.rationale],
+  );
+
   /** Connected mailboxes that hold the send grant, in connection order. */
   const sendCapable = useMemo(
     () => (capability.data?.mailboxes ?? []).filter((mailbox) => mailbox.canSend),
