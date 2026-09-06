@@ -42,6 +42,7 @@ import {
   type VoiceRegister,
 } from "@/domain/voice";
 import { COMMITMENT_CATEGORY } from "@/domain/comms-interactions";
+import { loadRelationshipContext } from "@/lib/comms-context.server";
 import {
   assessDraftGrounding,
   parseCommunicationJudgment,
@@ -338,6 +339,16 @@ observation, a natural question, or no ask at all is often the best move. A
 relationship can be moving even when there is no ask. Never treat "would you
 be open to a call" as a default.
 
+Beneath the surface. The evidence packet may carry projectContext: the client,
+the work in flight, and the communications that have actually gone out. Read it
+before deciding anything, and hold four questions at once: what is explicitly
+being said, what is implied but unsaid, what matters to where this work is
+going, and what response advances it without overreaching. projectContext.evidence
+may be referenced as fact. projectContext.trajectory is a reading, not a record:
+it may shape the angle and must never be stated back as fact, and it may never
+be used to assert a direction, a commitment or a decision nobody made. When the
+context is thin, say less rather than inventing continuity.
+
 Return strict JSON only:
 {
   "whyNow": "one plain sentence: why Tai is writing now, grounded in the evidence",
@@ -496,7 +507,7 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
   const { data: relationship, error } = await supabase
     .from("comms_relationships")
     .select(
-      "id, organization_id, full_name, email, company_name, stage, met_where, next_action, observed, inferred, decided",
+      "id, organization_id, client_id, full_name, email, company_name, stage, met_where, next_action, observed, inferred, decided",
     )
     .eq("id", request.relationshipId)
     .maybeSingle();
@@ -530,9 +541,16 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
   const register = request.register;
 
   // The governed evidence packet both passes reason over.
-  const [thread, voiceExamples] = await Promise.all([
+  const [thread, voiceExamples, projectContext] = await Promise.all([
     loadThread(supabase, request.relationshipId),
     loadVoiceExamples(supabase, organizationId),
+    /* The bounded project layer: direction, work in flight, and what has
+       actually gone out. Selected and capped, never a history dump. */
+    loadRelationshipContext(supabase, {
+      organizationId,
+      clientId: (row["client_id"] as string | null) ?? null,
+      relationshipId: request.relationshipId,
+    }),
   ]);
 
   /* The grounding gate. A real thread plus a known identity grounds a reply;
@@ -598,6 +616,12 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
         at: entry.occurredAt,
         latestFromThisSide: entry.latestForSide,
       })),
+    },
+    projectContext: {
+      evidence: projectContext.lines
+        .filter((line) => line.kind === "evidence")
+        .map((line) => `${line.source}: ${line.text}`),
+      trajectoryInterpretationOnly: projectContext.trajectory,
     },
     brandVoiceDna: voiceDocument,
     learnedStyleExamples: voiceExamples,

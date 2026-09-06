@@ -35,6 +35,11 @@ import {
 import { readDraftSend } from "@/domain/comms-send";
 import { LEGACY_APPROVAL_NOTICE, isLegacyApproved } from "@/domain/comms-approval";
 import {
+  EXTERNAL_SEND_LABEL,
+  EXTERNAL_SEND_REFUSAL,
+  readExternalSend,
+} from "@/domain/comms-external-send";
+import {
   judgmentSummaryLines,
   readCommunicationJudgment,
   readDraftGrounding,
@@ -148,6 +153,10 @@ export function SendComposer({
     () => isLegacyApproved(draft.reviewState, draft.rationale),
     [draft.reviewState, draft.rationale],
   );
+
+  /* The person answered from Gmail and the mailbox proves it. The draft stays
+     readable, Send does not: the reply already went. */
+  const externalSend = useMemo(() => readExternalSend(draft.rationale), [draft.rationale]);
 
   /** Connected mailboxes that hold the send grant, in connection order. */
   const sendCapable = useMemo(
@@ -595,6 +604,13 @@ export function SendComposer({
           {LEGACY_APPROVAL_NOTICE}
         </p>
       ) : null}
+      {externalSend ? (
+        <p className="rounded-lg border border-fern/30 bg-fern/8 px-3 py-2 text-[12px] text-foreground">
+          {EXTERNAL_SEND_LABEL}
+          {externalSend.sentAt ? ` on ${externalSend.sentAt.slice(0, 10)}` : ""}.{" "}
+          {EXTERNAL_SEND_REFUSAL}
+        </p>
+      ) : null}
       {notice ? (
         <p className="rounded-lg border border-fern/30 bg-fern/8 px-3 py-2 text-[12px] text-fern">
           {notice}
@@ -625,7 +641,7 @@ export function SendComposer({
           >
             {busy === "save" ? "Saving…" : "Save changes"}
           </TTButton>
-          {legacyApproved ? (
+          {externalSend ? null : legacyApproved ? (
             <TTButton
               variant="primary"
               size="sm"

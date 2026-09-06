@@ -80,6 +80,13 @@ import {
   type ObservedMessageLike,
   type SentDraftLike,
 } from "@/domain/comms-verification";
+import {
+  planExternalReconciliations,
+  readExternalSend,
+  writeExternalSend,
+  type ObservedOutboundLike,
+  type OpenDraftLike,
+} from "@/domain/comms-external-send";
 
 const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
@@ -635,6 +642,8 @@ export interface SyncResult {
   eventsEmitted: number;
   /** Sent drafts the mailbox proved this pass. */
   draftsVerified: number;
+  /** Open drafts closed this pass because the person replied from Gmail. */
+  externalSendsReconciled: number;
   lastSyncAt: string;
 }
 
@@ -1125,9 +1134,202 @@ export async function verifySentDrafts(
       console.warn(`[comms-gmail] draft verification write failed: ${error.message}`);
       continue;
     }
-    if ((count ?? 0) > 0) verified += 1;
+    if ((count ?? 0) > 0) {
+      verified += 1;
+      await recordVerifiedCommunication(client, organizationId, relationship, {
+        providerMessageId: entry.providerMessageId,
+        occurredAt: new Date().toISOString(),
+        subject: draft.subject ?? null,
+        channel: "trust_tai",
+      });
+    }
   }
   return verified;
+}
+
+/**
+ * Knowledge compounding, on evidence only.
+ *
+ * A communication the provider has proven leaves one durable line on the
+ * relationship's stream, so the next draft can build on what was actually
+ * said rather than starting from the latest email alone. An unsent draft
+ * writes nothing: speculation must not become memory. The dedupe key is the
+ * provider message id, so repeated passes never duplicate the line.
+ */
+async function recordVerifiedCommunication(
+  client: SupabaseClient,
+  organizationId: string,
+  relationship: RelationshipRow,
+  entry: {
+    providerMessageId: string;
+    occurredAt: string;
+    subject: string | null;
+    channel: "trust_tai" | "gmail";
+  },
+): Promise<void> {
+  const key = `comms:verified-send:${organizationId}:${entry.providerMessageId}`;
+  const where = entry.channel === "gmail" ? "from Gmail" : "from Comms";
+  const summary = `You replied ${where}: ${entry.subject?.trim() || "a message on this thread"}`;
+  const { error } = await client.from("activities").insert({
+    organization_id: organizationId,
+    app_key: "comms",
+    event_type: "COMMS_MESSAGE_VERIFIED",
+    actor_user_id: null,
+    entity_type: "relationship",
+    entity_id: relationship.id,
+    summary,
+    occurred_at: entry.occurredAt,
+    source_event_key: key,
+    payload: {
+      label: relationship.full_name,
+      provider: "gmail",
+      direction: "outbound",
+      channel: entry.channel,
+      provider_message_id: entry.providerMessageId,
+      source_event_key: key,
+      provenance: {
+        appId: "comms",
+        actor: { type: "system", id: "comms-gmail-sync", label: "Gmail sync" },
+        observedAt: new Date().toISOString(),
+        externalRef: key,
+        confidence: "observed",
+        dedupe_key: key,
+      },
+    },
+  });
+  if (error && error.code !== "23505") {
+    console.warn(`[comms-gmail] verified-send memory write failed: ${error.message}`);
+  }
+}
+
+/**
+ * Reconcile replies a person sent straight from Gmail.
+ *
+ * Comms never sends by itself, so a prepared draft can sit open while the
+ * person answers in their mailbox instead. This pass reads the still-open
+ * drafts for a relationship, matches them against observed outbound mail
+ * under the strict rules in `comms-external-send`, and stamps only the
+ * unambiguous ones. Ambiguity is left untouched: telling someone a thread is
+ * handled when it is not is worse than leaving the draft open.
+ *
+ * The write is conditional on the stamp being absent, so a repeated sync
+ * changes nothing, and the draft's own `review_state` is not rewritten: the
+ * words that went out were typed in Gmail, not approved here.
+ */
+export async function reconcileExternalSends(
+  client: SupabaseClient,
+  organizationId: string,
+  relationship: RelationshipRow,
+): Promise<number> {
+  if (!relationship.email) return 0;
+
+  const { data: draftRows, error: draftError } = await client
+    .from("comms_drafts")
+    .select("id, subject, rationale, created_at")
+    .eq("organization_id", organizationId)
+    .eq("relationship_id", relationship.id)
+    .in("review_state", ["draft", "needs_human_review", "approved"]);
+  if (draftError) {
+    console.warn(`[comms-gmail] open draft read failed: ${draftError.message}`);
+    return 0;
+  }
+
+  const open = (
+    (draftRows ?? []) as {
+      id: string;
+      subject: string | null;
+      rationale: Record<string, unknown> | null;
+      created_at: string;
+    }[]
+  ).filter((row) => !readExternalSend(row.rationale));
+  if (open.length === 0) return 0;
+
+  const earliest = open
+    .map((row) => new Date(row.created_at).getTime())
+    .reduce((left, right) => Math.min(left, right), Number.POSITIVE_INFINITY);
+  if (!Number.isFinite(earliest)) return 0;
+  const windowStart = new Date(earliest - 60 * 60 * 1000).toISOString();
+
+  const { data: messageRows, error: messageError } = await client
+    .from("comms_messages")
+    .select(
+      "provider_message_id, provider_thread_id, direction, occurred_at, subject, to_emails, cc_emails",
+    )
+    .eq("organization_id", organizationId)
+    .eq("relationship_id", relationship.id)
+    .eq("provider", "gmail")
+    .eq("direction", "outbound")
+    .gte("occurred_at", windowStart)
+    .order("occurred_at", { ascending: true })
+    .limit(100);
+  if (messageError) {
+    console.warn(`[comms-gmail] outbound read failed: ${messageError.message}`);
+    return 0;
+  }
+
+  const drafts: OpenDraftLike[] = open.map((row) => {
+    const threadId = (row.rationale ?? {})["provider_thread_id"];
+    return {
+      id: row.id,
+      ...(row.subject ? { subject: row.subject } : {}),
+      createdAt: row.created_at,
+      ...(typeof threadId === "string" && threadId ? { providerThreadId: threadId } : {}),
+      recipientEmail: relationship.email!,
+    };
+  });
+  const messages: ObservedOutboundLike[] = (
+    (messageRows ?? []) as {
+      provider_message_id: string;
+      provider_thread_id: string | null;
+      direction: string;
+      occurred_at: string;
+      subject: string | null;
+      to_emails: unknown;
+      cc_emails: unknown;
+    }[]
+  ).map((row) => ({
+    providerMessageId: row.provider_message_id,
+    ...(row.provider_thread_id ? { providerThreadId: row.provider_thread_id } : {}),
+    direction: row.direction === "outbound" ? ("outbound" as const) : ("inbound" as const),
+    occurredAt: row.occurred_at,
+    ...(row.subject ? { subject: row.subject } : {}),
+    toEmails: Array.isArray(row.to_emails) ? row.to_emails.map(String) : [],
+    ccEmails: Array.isArray(row.cc_emails) ? row.cc_emails.map(String) : [],
+  }));
+
+  let reconciled = 0;
+  for (const entry of planExternalReconciliations(drafts, messages)) {
+    const draft = open.find((row) => row.id === entry.draftId);
+    if (!draft) continue;
+    const rationale = writeExternalSend(draft.rationale, {
+      state: "sent_externally",
+      providerMessageId: entry.providerMessageId,
+      ...(entry.providerThreadId ? { providerThreadId: entry.providerThreadId } : {}),
+      sentAt: entry.sentAt,
+      reconciledAt: new Date().toISOString(),
+      matchedBy: entry.matchedBy,
+    });
+    const { error, count } = await client
+      .from("comms_drafts")
+      .update({ rationale, updated_at: new Date().toISOString() }, { count: "exact" })
+      .eq("id", entry.draftId)
+      .in("review_state", ["draft", "needs_human_review", "approved"])
+      .is("rationale->external_send", null);
+    if (error) {
+      console.warn(`[comms-gmail] external send write failed: ${error.message}`);
+      continue;
+    }
+    if ((count ?? 0) > 0) {
+      reconciled += 1;
+      await recordVerifiedCommunication(client, organizationId, relationship, {
+        providerMessageId: entry.providerMessageId,
+        occurredAt: entry.sentAt,
+        subject: draft.subject ?? null,
+        channel: "gmail",
+      });
+    }
+  }
+  return reconciled;
 }
 
 /**
@@ -1457,8 +1659,15 @@ async function runSyncPass(input: {
   const eventsEmitted = await emitInboundEvents(client, organizationId, newInbound);
 
   let draftsVerified = 0;
+  let externalSendsReconciled = 0;
   for (const bucket of perRelationship.values()) {
     draftsVerified += await verifySentDrafts(client, organizationId, bucket.relationship);
+    // Reads and reconciliation only. This pass can never send.
+    externalSendsReconciled += await reconcileExternalSends(
+      client,
+      organizationId,
+      bucket.relationship,
+    );
   }
 
   // Exceptions carry across passes: an unresolved ambiguity stays visible,
@@ -1496,6 +1705,7 @@ async function runSyncPass(input: {
       pending_people: exceptions.length,
       events_emitted: eventsEmitted,
       drafts_verified: draftsVerified,
+      external_sends_reconciled: externalSendsReconciled,
       approved_threads_watched: approvedThreadIds.length,
       approved_threads_refreshed: refresh.refreshed,
       approved_threads_unavailable: refresh.missing,
@@ -1524,6 +1734,7 @@ async function runSyncPass(input: {
     pendingPeople: exceptions.length,
     eventsEmitted,
     draftsVerified,
+    externalSendsReconciled,
     lastSyncAt: nowIso,
   };
 }

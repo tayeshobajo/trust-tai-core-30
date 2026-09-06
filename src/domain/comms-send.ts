@@ -21,6 +21,7 @@ import type { AttachmentMeta } from "./comms-integrations";
 import type { DraftReviewState } from "./comms";
 import type { ISODateTime } from "./entities";
 import { LEGACY_APPROVAL_REFUSAL, isLegacyApproved } from "./comms-approval";
+import { EXTERNAL_SEND_REFUSAL, readExternalSend } from "./comms-external-send";
 
 /** Where a message goes: continue the Gmail thread, or open a new one. */
 export type SendThreadTarget = { mode: "reply"; providerThreadId: string } | { mode: "new" };
@@ -194,6 +195,12 @@ export function decideSendClaim(
       !Number.isNaN(new Date(draft.updatedAt).getTime()) &&
       now.getTime() - new Date(draft.updatedAt).getTime() > STALE_SENDING_MS;
     return stale ? { kind: "claim" } : { kind: "in_flight" };
+  }
+
+  // The person already answered from Gmail and the mailbox proves it. The
+  // conversation moved on without this draft; sending it now would repeat.
+  if (readExternalSend(draft.rationale)) {
+    return { kind: "not_sendable", reason: EXTERNAL_SEND_REFUSAL };
   }
 
   // Approved has to mean a person decided, with a name and a time on it.
