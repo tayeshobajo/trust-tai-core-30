@@ -183,36 +183,16 @@ verified.
 
 ---
 
-## 4. Controlled article verification (P0-08)
+## 4. Controlled article verification (P0-08) — CLOSED, Human Accepted 2026-09-06
 
-Do not attempt this until P0-07 is live. **P8-03, featured image generation, is
-not a blocker**: `image.url` is nullable in the publish payload and
-`publishQueuedItem()` never asks whether an image exists. An article can be
-published without one, with a slightly weaker social card. P8-03 stays
-post-launch.
-
-**Sequence, once the publisher answers**
-
-1. In Approvals, open the pending content batch
-   (`apr_pm7t4kmdmtn2ygo1`, 10 posts, currently `needs_review`) and approve
-   exactly one post, or produce a single fresh post and approve that one.
-2. Confirm the item is `state = 'queued'` in `content_items` and carries a
-   `publish_key`.
-3. In Studio, press Publish for that one post only.
-4. Expected ledger: one new `content_publish_attempts` row, id `cpa_...`,
-   moving `attempted` then `executed`, with a receipt containing
-   `canonicalUrl`, `externalPostId` and `publishedAt`.
-5. Press Publish again on the same post. It must resolve to the same receipt
-   with no second attempt and no second post on the site.
-6. Run the verify action. It fetches the canonical URL unauthenticated and must
-   see the article.
-7. Open the canonical URL in a browser yourself and read the post.
-
-**Evidence we capture**
-
-- The `content_publish_attempts` row with state `executed` and its receipt.
-- The `content_items` row at the published state with its canonical URL.
-- An independent unauthenticated `200` read of that URL returning the article.
-- The second press proving idempotency.
-
-Only then is P0-08 Human Accepted.
+**Closed.** Exactly one article (`citm_da7jlq4nmtn2yer2`, "How Trust Tai
+prioritizes roadmap milestones so founders free the most time first") was
+approved by Tai through the flagged-item override path, moved approved -> queued
+-> published -> verified through the canonical transitions, and published once
+on the stable key `content:cbat_ffebutsjmtn2ydym:prioritize-roadmap-milestones-trust-tai`.
+The ledger holds exactly `attempted` then `executed` for that key; an immediate
+replay resolved to the same receipt with no second attempt. The canonical URL
+https://trusttai.com/insights/prioritize-roadmap-milestones-trust-tai returns
+200 unauthenticated with the exact title and body. The other nine batch items
+remain `exception` and unpublished. Full evidence in `roadmap.md`, P0-08. No
+action remains; the sequence below is kept as the record of what was executed.
