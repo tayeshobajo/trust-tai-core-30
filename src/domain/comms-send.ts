@@ -196,6 +196,13 @@ export function decideSendClaim(
     return stale ? { kind: "claim" } : { kind: "in_flight" };
   }
 
+  // Approved has to mean a person decided, with a name and a time on it.
+  // An approval we cannot attribute is not one we may act on: the draft
+  // stays exactly as it is and a person approves it again.
+  if (isLegacyApproved(draft.reviewState, draft.rationale)) {
+    return { kind: "not_sendable", reason: LEGACY_APPROVAL_REFUSAL };
+  }
+
   if ((SENDABLE_STATES as string[]).includes(draft.reviewState)) return { kind: "claim" };
 
   if (draft.reviewState === "sent") {
