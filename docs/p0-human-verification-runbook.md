@@ -117,15 +117,14 @@ Path B, manual send in Gmail:
 
 ---
 
-## 3. Publisher endpoint handoff contract (P0-07)
+## 3. Publisher endpoint handoff contract (P0-07) — CLOSED, Production Verified 2026-09-05
 
-**Why this stays blocked.** `trusttai.com` is a Next.js site served from
-Cloudflare and is not part of this repository or of any Lovable project on this
-account. `TRUST_TAI_PUBLISH_ENDPOINT` and `TRUST_TAI_PUBLISH_TOKEN` are absent,
-and `GET /api/public/content/publish` correctly reports
-`endpointConfigured: false`. There is no safe way to invent this publisher from
-inside Trust Tai OS. What follows is the exact contract the external
-implementation must satisfy; nothing else needs to change here.
+**Closed.** Both secrets are present and non-empty in the runtime; the
+`cmd.trusttai.com` publisher status endpoint reports configured; an
+authenticated handshake to the trusttai.com endpoint with an invalid body
+returned the exact validation refusal, proving auth reaches validation. No
+action remains. The contract below is kept as the reference for what the
+external endpoint satisfies.
 
 **Endpoint.** One HTTPS POST route on trusttai.com, for example
 `https://trusttai.com/api/trust-tai/publish`.
