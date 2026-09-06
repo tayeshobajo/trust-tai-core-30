@@ -320,3 +320,19 @@ Phase weights:
 | P8 | n/a | 8 |
 | P9 | n/a | 8 |
 | Total | 100 | 100 |
+
+## Implementation laws in force (2026-09-06)
+
+Recorded here so plan slices do not drift from canon 12-15
+(`docs/architecture-canon.md`):
+
+1. Commercial tier and delivery execution are independent.
+2. Chat is how you talk to the project. Projects remains where project truth
+   lives: shared runtime, project context packet, no autonomous writes, no
+   transcript as business truth, proof only through owning services.
+3. Client Relationship is a read-only client-scoped window onto Comms; Comms
+   owns conversations, replies, promises and sends.
+4. Project Update must carry controls for whatever the page flags; Waiting
+   stays derived.
+
+These are implementation laws. They move no gate and change no percentage.

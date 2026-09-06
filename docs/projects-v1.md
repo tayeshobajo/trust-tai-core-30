@@ -57,3 +57,17 @@ or cannot move. Ask Trust Tai answers about delivery from those blocks only.
 
 - `/modules/projects`, the room: asking for you, incomplete, in flight, landed.
 - `/modules/projects/$projectId`, one piece of work, its evidence, and its move.
+
+## Canon laws that bind this room (2026-09-06)
+
+- Execution state never derives from, or moves, the client's commercial tier
+  (canon 12).
+- Chat is how you talk to the project; Projects remains where project truth
+  lives (canon 13). The Chat tab is session scoped and writes nothing.
+- Anything the page flags is resolvable from the Update project panel: state,
+  block, owner, and the wait itself. Waiting stays derived from `waitingOn`,
+  which the panel can set and clear (canon 15).
+- Owner is picked from active workspace members and written through
+  `projectsService.update`, under RLS with the same provenance as every other
+  project write. In-flight and in-review work cannot be left with nobody
+  (`checkOwnerAssignment`).
