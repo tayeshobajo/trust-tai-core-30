@@ -45,6 +45,23 @@ export const SOURCE_APP_LABEL: Record<ApprovalSourceApp, string> = {
   content: "Content",
 };
 
+/**
+ * Where "Open source" goes: the room that prepared the work.
+ *
+ * A room route, not a record route, on purpose. Approvals never assumes it
+ * knows a room's inner URL scheme; it knows which door to send you to.
+ */
+export const SOURCE_APP_ROUTE: Record<ApprovalSourceApp, string> = {
+  scout: "/modules/scout",
+  comms: "/modules/comms",
+  roadmap: "/modules/roadmap",
+  website: "/modules/website",
+  projects: "/modules/projects",
+  ops: "/modules/ops",
+  studio: "/modules/studio",
+  content: "/modules/studio",
+};
+
 /* -------------------------------------------------------------- categories */
 
 /**
