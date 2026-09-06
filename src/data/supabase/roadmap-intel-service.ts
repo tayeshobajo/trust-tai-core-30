@@ -28,6 +28,13 @@ import type {
   StrategyItem,
   WalkthroughEntry,
 } from "@/domain/roadmap-intel";
+import type { OutcomeMetric, OutcomeMetricInput } from "@/domain/milestone-metric";
+import {
+  checkOutcomeMetric,
+  metricEventKey,
+  metricSummary,
+  sameMetric,
+} from "@/domain/milestone-metric";
 import { rankMilestones, type MilestoneScoreInput } from "@/data/roadmap-milestones";
 import type { NormalizedResearch } from "@/data/roadmap-research-parse";
 
@@ -494,6 +501,71 @@ const roadmapIntelRaw = {
       .select(MILESTONE_COLUMNS)
       .single();
     assertOk(error);
+    return toMilestone(data as Row);
+  },
+
+  /**
+   * Record or correct the milestone outcome metric (P3-01).
+   *
+   * Roadmap owns this truth, so this is the only write path. It is manual by
+   * design: a person types the key, label, unit, direction, baseline and
+   * target, and the metric is stored as Decided with who recorded it. Invalid
+   * or partial input is refused outright, nothing is defaulted, and setting the
+   * same metric again changes nothing and records no second event.
+   */
+  async setMilestoneMetric(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    input: Partial<OutcomeMetricInput> | null,
+    label: string,
+  ): Promise<RoadmapMilestone> {
+    const current = milestone.outcomeMetric ?? null;
+    let next: OutcomeMetric | null = null;
+
+    if (input) {
+      const checked = checkOutcomeMetric(input);
+      if (!checked.ok) throw new Error(checked.refusal);
+      if (sameMetric(current, checked.metric)) return milestone;
+      next = {
+        ...checked.metric,
+        tier: "decided",
+        recordedBy: context.userId,
+        recordedAt: new Date().toISOString(),
+      };
+    } else if (!current) {
+      return milestone;
+    }
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .update({ outcome_metric: next, updated_at: at })
+      .eq("id", milestone.id)
+      .select(MILESTONE_COLUMNS)
+      .single();
+
+    if (error?.message && /outcome_metric/.test(error.message)) {
+      throw new Error(
+        "Outcome metrics are not available in this environment yet: the roadmap_milestones.outcome_metric column has not been applied.",
+      );
+    }
+    assertOk(error);
+
+    await record(
+      context,
+      "roadmap.updated",
+      milestone.roadmapId,
+      label,
+      next
+        ? `${milestone.name} now measures ${metricSummary(next)}.`
+        : `The outcome metric on ${milestone.name} was removed by a person.`,
+      {
+        milestoneId: milestone.id,
+        scope: "outcome_metric",
+        ...(next ? { metric: next } : { cleared: true }),
+        source_event_key: metricEventKey(milestone.id, next),
+      },
+    );
     return toMilestone(data as Row);
   },
 
