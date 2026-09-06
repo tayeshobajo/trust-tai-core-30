@@ -155,6 +155,33 @@ export function MetaPill({ children, className }: { children: ReactNode; classNa
   return <span className={cn(statusPill({ tone: "neutral" }), className)}>{children}</span>;
 }
 
+export type PillTone = NonNullable<VariantProps<typeof statusPill>["tone"]>;
+
+/**
+ * A pill that carries meaning through colour: amber for "look at this",
+ * green for "said yes", red for "closed or broken", royal for "act on this".
+ * Same shape as MetaPill so a row of pills never changes rhythm.
+ */
+export function TonePill({
+  tone,
+  dot = false,
+  children,
+  className,
+}: {
+  tone: PillTone;
+  /** A small filled dot before the text, for states worth spotting at a glance. */
+  dot?: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <span data-tone={tone} className={cn(statusPill({ tone }), className)}>
+      {dot ? <span aria-hidden className="size-1.5 rounded-full bg-current" /> : null}
+      {children}
+    </span>
+  );
+}
+
 /* ---------------------------------- Card ----------------------------------- */
 
 export function TTCard({ className, ...props }: ComponentProps<"div">) {
