@@ -159,7 +159,31 @@ export function checkTransition(
   return { ok: true, because: `Moves to ${EXECUTION_STATE_LABEL[to]}.` };
 }
 
+/**
+ * Can this work change hands, and why not. Naming an owner is always allowed;
+ * taking the last owner off work that is already moving is not, because
+ * In flight and In review both require somebody carrying it. Pure, so the
+ * picker and the write refuse for the same reason in the same words.
+ */
+export function checkOwnerAssignment(
+  project: Pick<ExecutionProject, "state">,
+  owner: { ownerUserId?: ID; ownerLabel?: string },
+): TransitionCheck {
+  const named = Boolean((owner.ownerUserId ?? "").trim() || (owner.ownerLabel ?? "").trim());
+  if (named) {
+    return { ok: true, because: `Hands this work to ${owner.ownerLabel ?? "them"}.` };
+  }
+  if (project.state === "in_flight" || project.state === "in_review") {
+    return {
+      ok: false,
+      because: `${EXECUTION_STATE_LABEL[project.state]} work cannot be left with nobody. Name someone else, or move it back to ${EXECUTION_STATE_LABEL.not_started} first.`,
+    };
+  }
+  return { ok: true, because: "Leaves this work with nobody carrying it." };
+}
+
 /** The legal next states for this project, in the order the room offers them. */
+
 export function nextStates(project: ExecutionProject): ExecutionState[] {
   return ALLOWED_TRANSITIONS[project.state];
 }
