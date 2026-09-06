@@ -84,6 +84,7 @@ Manage project has two halves, because they are two different decisions.
 | Point A | Projects | Free to correct, may be emptied. |
 | Point B | Projects | Cannot be blanked once the work is Delivered or Closed, because that claim was made against it. |
 | Agreed date | Projects | Canonical (`dueDate`, column with metadata mirror). Clearing it says no date was really agreed. |
+| Delivery items | Projects | Edited as one line each. Labels that survive an edit keep whether they were ticked off. |
 | Company this serves | Projects, manual work only | `origin.subjectLabel`. Read-only when the work came from an approved milestone, because Roadmap owns that lineage. |
 | Owner | Projects | Changed on the rail owner picker, from active members. |
 

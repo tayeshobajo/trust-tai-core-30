@@ -33,7 +33,9 @@ function project(overrides: Partial<ExecutionProject> = {}): ExecutionProject {
 describe("ManageProjectPanel", () => {
   it("saves a corrected name through the projects service contract", () => {
     const onUpdate = vi.fn();
-    render(<ManageProjectPanel project={project()} busy={false} savedLabel={null} onUpdate={onUpdate} />);
+    render(
+      <ManageProjectPanel project={project()} busy={false} savedLabel={null} onUpdate={onUpdate} />,
+    );
 
     fireEvent.change(screen.getByDisplayValue("Mental Dental Academy"), {
       target: { value: "Mental Dental Academy v2" },
@@ -45,19 +47,25 @@ describe("ManageProjectPanel", () => {
 
   it("refuses a blank name before anything is written", () => {
     const onUpdate = vi.fn();
-    render(<ManageProjectPanel project={project()} busy={false} savedLabel={null} onUpdate={onUpdate} />);
-
-    fireEvent.change(screen.getByDisplayValue("Mental Dental Academy"), { target: { value: "  " } });
-
-    expect((screen.getByRole("button", { name: "Save details" }) as HTMLButtonElement).disabled).toBe(
-      true,
+    render(
+      <ManageProjectPanel project={project()} busy={false} savedLabel={null} onUpdate={onUpdate} />,
     );
+
+    fireEvent.change(screen.getByDisplayValue("Mental Dental Academy"), {
+      target: { value: "  " },
+    });
+
+    expect(
+      (screen.getByRole("button", { name: "Save details" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
     expect(screen.getByRole("alert").textContent).toMatch(/needs a name/i);
   });
 
   it("keeps ticks on delivery items that survive an edit", () => {
     const onUpdate = vi.fn();
-    render(<ManageProjectPanel project={project()} busy={false} savedLabel={null} onUpdate={onUpdate} />);
+    render(
+      <ManageProjectPanel project={project()} busy={false} savedLabel={null} onUpdate={onUpdate} />,
+    );
 
     fireEvent.change(screen.getByPlaceholderText(/Scope agreed/), {
       target: { value: "Scope agreed\nFirst build\nHanded over" },
@@ -76,7 +84,9 @@ describe("ManageProjectPanel", () => {
   it("says who owns the company field when it came from a roadmap", () => {
     render(
       <ManageProjectPanel
-        project={project({ origin: { kind: "roadmap_milestone", roadmapId: "r1", subjectLabel: "X" } })}
+        project={project({
+          origin: { kind: "roadmap_milestone", roadmapId: "r1", subjectLabel: "X" },
+        })}
         busy={false}
         savedLabel={null}
         onUpdate={vi.fn()}
@@ -87,7 +97,14 @@ describe("ManageProjectPanel", () => {
 
   it("still carries the move controls and the wait", () => {
     const onUpdate = vi.fn();
-    render(<ManageProjectPanel project={project()} busy={false} savedLabel="Saved." onUpdate={onUpdate} />);
+    render(
+      <ManageProjectPanel
+        project={project()}
+        busy={false}
+        savedLabel="Saved."
+        onUpdate={onUpdate}
+      />,
+    );
 
     expect(screen.getByRole("status").textContent).toBe("Saved.");
     fireEvent.click(screen.getByRole("button", { name: "In review" }));
