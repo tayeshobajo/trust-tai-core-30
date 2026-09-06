@@ -51,7 +51,7 @@ export const SOURCE_APP_LABEL: Record<ApprovalSourceApp, string> = {
  * A room route, not a record route, on purpose. Approvals never assumes it
  * knows a room's inner URL scheme; it knows which door to send you to.
  */
-export const SOURCE_APP_ROUTE: Record<ApprovalSourceApp, string> = {
+export const SOURCE_APP_ROUTE = {
   scout: "/modules/scout",
   comms: "/modules/comms",
   roadmap: "/modules/roadmap",
@@ -60,7 +60,7 @@ export const SOURCE_APP_ROUTE: Record<ApprovalSourceApp, string> = {
   ops: "/modules/ops",
   studio: "/modules/studio",
   content: "/modules/studio",
-};
+} as const satisfies Record<ApprovalSourceApp, string>;
 
 /* -------------------------------------------------------------- categories */
 
