@@ -15,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
+import { CommercialPanel } from "@/components/tt/clients/commercial-panel";
 import { ClientHeader, ClientTabs } from "@/components/tt/clients/shell";
 import {
   FilesTab,
@@ -40,6 +41,7 @@ import {
   listProposals,
   readClientCommercialRecord,
   readOrganizationTimeZoneResolved,
+  setClientCommercialState,
 } from "@/data/supabase/commercial-service";
 import { commsService } from "@/data/supabase/comms-service";
 import { projectDelivery } from "@/data/supabase/project-delivery";
@@ -59,6 +61,7 @@ import {
   type ClientTab,
   type RoomRead,
 } from "@/domain/client-shell";
+import type { CommercialFormPatch } from "@/domain/client-commercial-form";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Client · Trust Tai OS";
@@ -168,6 +171,32 @@ function ClientShell({
   const record = clientQuery.data ?? null;
   const queryClient = useQueryClient();
   const [logoProblem, setLogoProblem] = useState<string | null>(null);
+  const [commercialProblem, setCommercialProblem] = useState<string | null>(null);
+  const [commercialSaved, setCommercialSaved] = useState(false);
+
+  /* The one write path into commercial truth, as the signed-in person, under RLS. */
+  const saveCommercial = useMutation({
+    mutationFn: (patch: CommercialFormPatch) =>
+      setClientCommercialState(
+        { clientId, ...patch },
+        {
+          organizationId,
+          userId: identity.userId,
+          userLabel: identity.name,
+        },
+      ),
+    onSuccess: () => {
+      setCommercialProblem(null);
+      setCommercialSaved(true);
+      void queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (error: unknown) => {
+      setCommercialSaved(false);
+      setCommercialProblem(
+        error instanceof Error ? error.message : "That commercial state could not be saved.",
+      );
+    },
+  });
 
   /* Canonical ids this company is known by across rooms. */
   const roadmaps = useMemo(
@@ -398,6 +427,33 @@ function ClientShell({
               now={now}
               timeZone={timeZone}
             />
+          ) : null}
+          {tab === "overview" ? (
+            <div className="mt-8">
+              <CommercialPanel
+                current={{
+                  tier: record.tier,
+                  mrrCents: record.mrrCents,
+                  renewalAt: record.renewalAt,
+                  nextReviewAt: record.nextReviewAt,
+                }}
+                provenance={{
+                  by:
+                    typeof record.commercialProvenance?.["actor_label"] === "string"
+                      ? String(record.commercialProvenance["actor_label"])
+                      : null,
+                  at: record.commercialUpdatedAt,
+                  because:
+                    typeof record.commercialProvenance?.["because"] === "string"
+                      ? String(record.commercialProvenance["because"])
+                      : null,
+                }}
+                pending={saveCommercial.isPending}
+                problem={commercialProblem}
+                saved={commercialSaved}
+                onSave={(patch) => saveCommercial.mutate(patch)}
+              />
+            </div>
           ) : null}
           {tab === "roadmap" ? (
             <RoadmapTab read={roadmapOutcomes} loading={roadmapsQuery.isLoading} />
