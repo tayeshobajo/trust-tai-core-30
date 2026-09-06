@@ -72,6 +72,7 @@ import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/pu
 import { Route as ApiPublicIntelligenceReconcileRouteImport } from './routes/api/public/intelligence.reconcile'
 import { Route as ApiPublicIntelligenceStatusRouteImport } from './routes/api/public/intelligence.status'
 import { Route as ApiPublicLinkiLookupRouteImport } from './routes/api/public/linki.lookup'
+import { Route as ApiPublicProjectsAskRouteImport } from './routes/api/public/projects.ask'
 import { Route as ApiPublicProjectsContextPacketRouteImport } from './routes/api/public/projects.context-packet'
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
 import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/public/roadmap.research'
@@ -421,6 +422,11 @@ const ApiPublicLinkiLookupRoute = ApiPublicLinkiLookupRouteImport.update({
   path: '/api/public/linki/lookup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicProjectsAskRoute = ApiPublicProjectsAskRouteImport.update({
+  id: '/api/public/projects/ask',
+  path: '/api/public/projects/ask',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicProjectsContextPacketRoute =
   ApiPublicProjectsContextPacketRouteImport.update({
     id: '/api/public/projects/context-packet',
@@ -639,6 +645,7 @@ export interface FileRoutesByFullPath {
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
   '/api/public/linki/lookup': typeof ApiPublicLinkiLookupRoute
+  '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
@@ -722,6 +729,7 @@ export interface FileRoutesByTo {
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
   '/api/public/linki/lookup': typeof ApiPublicLinkiLookupRoute
+  '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
@@ -815,6 +823,7 @@ export interface FileRoutesById {
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
   '/api/public/linki/lookup': typeof ApiPublicLinkiLookupRoute
+  '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
@@ -909,6 +918,7 @@ export interface FileRouteTypes {
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
     | '/api/public/linki/lookup'
+    | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
@@ -992,6 +1002,7 @@ export interface FileRouteTypes {
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
     | '/api/public/linki/lookup'
+    | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
@@ -1084,6 +1095,7 @@ export interface FileRouteTypes {
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
     | '/api/public/linki/lookup'
+    | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
@@ -1142,6 +1154,7 @@ export interface RootRouteChildren {
   ApiPublicIntelligenceReconcileRoute: typeof ApiPublicIntelligenceReconcileRoute
   ApiPublicIntelligenceStatusRoute: typeof ApiPublicIntelligenceStatusRoute
   ApiPublicLinkiLookupRoute: typeof ApiPublicLinkiLookupRoute
+  ApiPublicProjectsAskRoute: typeof ApiPublicProjectsAskRoute
   ApiPublicProjectsContextPacketRoute: typeof ApiPublicProjectsContextPacketRoute
   ApiPublicRoadmapAskRoute: typeof ApiPublicRoadmapAskRoute
   ApiPublicRoadmapResearchRoute: typeof ApiPublicRoadmapResearchRoute
@@ -1611,6 +1624,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicLinkiLookupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/projects/ask': {
+      id: '/api/public/projects/ask'
+      path: '/api/public/projects/ask'
+      fullPath: '/api/public/projects/ask'
+      preLoaderRoute: typeof ApiPublicProjectsAskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/projects/context-packet': {
       id: '/api/public/projects/context-packet'
       path: '/api/public/projects/context-packet'
@@ -2009,6 +2029,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicIntelligenceReconcileRoute: ApiPublicIntelligenceReconcileRoute,
   ApiPublicIntelligenceStatusRoute: ApiPublicIntelligenceStatusRoute,
   ApiPublicLinkiLookupRoute: ApiPublicLinkiLookupRoute,
+  ApiPublicProjectsAskRoute: ApiPublicProjectsAskRoute,
   ApiPublicProjectsContextPacketRoute: ApiPublicProjectsContextPacketRoute,
   ApiPublicRoadmapAskRoute: ApiPublicRoadmapAskRoute,
   ApiPublicRoadmapResearchRoute: ApiPublicRoadmapResearchRoute,
