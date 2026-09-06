@@ -102,22 +102,27 @@ export function overviewSignals(input: OverviewComposeInput): OverviewSignal[] {
     };
   });
 
-  const relationship = signalFrom(input.relationship, "relationship", "Relationship", (snapshot) => {
-    if (snapshot.people.length === 0) return { line: "No one tracked here yet", note: null };
-    const owed = input.exchange?.people.find((person) => person.obligation)?.obligation ?? null;
-    const lead = snapshot.lead;
-    const line = lead
-      ? `${lead.fullName} · ${lastTouchLine(lead.lastTouchAt, input.now, input.timeZone).toLowerCase()}`
-      : lastTouchLine(snapshot.lastTouchAt, input.now, input.timeZone);
-    if (snapshot.overdue > 0) {
-      return {
-        line,
-        note: `${snapshot.overdue} follow-up${snapshot.overdue === 1 ? "" : "s"} past due`,
-        tone: "attention" as const,
-      };
-    }
-    return { line, note: owed?.action ?? null };
-  });
+  const relationship = signalFrom(
+    input.relationship,
+    "relationship",
+    "Relationship",
+    (snapshot) => {
+      if (snapshot.people.length === 0) return { line: "No one tracked here yet", note: null };
+      const owed = input.exchange?.people.find((person) => person.obligation)?.obligation ?? null;
+      const lead = snapshot.lead;
+      const line = lead
+        ? `${lead.fullName} · ${lastTouchLine(lead.lastTouchAt, input.now, input.timeZone).toLowerCase()}`
+        : lastTouchLine(snapshot.lastTouchAt, input.now, input.timeZone);
+      if (snapshot.overdue > 0) {
+        return {
+          line,
+          note: `${snapshot.overdue} follow-up${snapshot.overdue === 1 ? "" : "s"} past due`,
+          tone: "attention" as const,
+        };
+      }
+      return { line, note: owed?.action ?? null };
+    },
+  );
 
   const direction = signalFrom(input.roadmap, "direction", "Direction", (outcome) => {
     if (!outcome) return { line: "No roadmap yet", note: null };

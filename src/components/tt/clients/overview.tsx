@@ -186,13 +186,20 @@ function SectionTitle({
         <h2 className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
         {explain ? <p className="mt-1 text-[13px] text-muted-foreground">{explain}</p> : null}
       </div>
-      {action ?? (source ? <div className="text-[13px] text-muted-foreground">{source}</div> : null)}
+      {action ??
+        (source ? <div className="text-[13px] text-muted-foreground">{source}</div> : null)}
     </div>
   );
 }
 
 /** A quiet source attribution with the door into the owning room. */
-function Source({ room, to }: { room: string; to: "/modules/roadmap" | "/modules/projects" | "/modules/comms" | "/modules/website" }) {
+function Source({
+  room,
+  to,
+}: {
+  room: string;
+  to: "/modules/roadmap" | "/modules/projects" | "/modules/comms" | "/modules/website";
+}) {
   return (
     <Link to={to} className="text-[12px] text-muted-foreground underline-offset-4 hover:underline">
       {room}
@@ -314,7 +321,9 @@ function Direction({
           >
             Direction
           </h2>
-          <p className="mt-1 text-[13px] text-muted-foreground">Where we are taking this company.</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Where we are taking this company.
+          </p>
         </div>
         <Source room="Roadmap" to="/modules/roadmap" />
       </div>
@@ -365,12 +374,7 @@ function Line({ term, detail, warn = false }: { term: string; detail: string; wa
   return (
     <div>
       <dt className="text-[12px] text-muted-foreground">{term}</dt>
-      <dd
-        className={cn(
-          "mt-0.5 flex items-start gap-1.5 text-foreground",
-          warn && "font-medium",
-        )}
-      >
+      <dd className={cn("mt-0.5 flex items-start gap-1.5 text-foreground", warn && "font-medium")}>
         {warn ? (
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" aria-hidden />
         ) : null}
@@ -496,7 +500,10 @@ function Commercial({ lines, form }: { lines: CommercialReadLines; form: ReactNo
           className="inline-flex items-center gap-1.5 text-[13px] font-medium text-royal"
         >
           {editing ? "Close" : "Update commercial state"}
-          <ChevronDown className={cn("size-3.5 transition-transform", editing && "rotate-180")} aria-hidden />
+          <ChevronDown
+            className={cn("size-3.5 transition-transform", editing && "rotate-180")}
+            aria-hidden
+          />
         </button>
       </div>
 

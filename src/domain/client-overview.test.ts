@@ -65,7 +65,12 @@ describe("overviewSignals", () => {
       input({
         projects: answered([
           project({ id: "a", name: "Site" }),
-          project({ id: "b", name: "Academy", state: "blocked", blockedBecause: "Waiting on copy" }),
+          project({
+            id: "b",
+            name: "Academy",
+            state: "blocked",
+            blockedBecause: "Waiting on copy",
+          }),
         ]),
       }),
     );
@@ -90,7 +95,11 @@ describe("overviewSignals", () => {
   it("marks an overdue review for attention", () => {
     const signals = overviewSignals(
       input({
-        cadence: { state: "overdue", line: "Review overdue since Aug 20", renewalLine: "Renews Oct 3" },
+        cadence: {
+          state: "overdue",
+          line: "Review overdue since Aug 20",
+          renewalLine: "Renews Oct 3",
+        },
       }),
     );
     expect(signals.find((signal) => signal.key === "commercial")?.tone).toBe("attention");
@@ -106,7 +115,12 @@ describe("attentionItems", () => {
     const items = attentionItems(
       input({
         projects: answered([
-          project({ id: "b", name: "Academy", state: "blocked", blockedBecause: "Waiting on copy" }),
+          project({
+            id: "b",
+            name: "Academy",
+            state: "blocked",
+            blockedBecause: "Waiting on copy",
+          }),
         ]),
       }),
     );
@@ -118,7 +132,11 @@ describe("attentionItems", () => {
   it("raises an overdue review", () => {
     const items = attentionItems(
       input({
-        cadence: { state: "overdue", line: "Review overdue since Aug 20", renewalLine: "Renews Oct 3" },
+        cadence: {
+          state: "overdue",
+          line: "Review overdue since Aug 20",
+          renewalLine: "Renews Oct 3",
+        },
       }),
     );
     expect(items[0]?.line).toBe("Review overdue since Aug 20");
