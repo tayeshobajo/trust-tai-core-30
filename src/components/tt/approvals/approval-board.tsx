@@ -211,8 +211,14 @@ export function ApprovalBoard({
               over === column ? "bg-royal/10 ring-1 ring-royal/40" : ""
             }`}
           >
-            <header className="mb-3 flex items-baseline justify-between gap-2 px-1">
-              <h3 className="tt-eyebrow">{BOARD_COLUMN_LABEL[column]}</h3>
+            <header className="mb-3 flex items-center justify-between gap-2 px-1">
+              <h3 className="tt-eyebrow flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className={`size-1.5 rounded-full ${TONE_DOT[COLUMN_TONE[column]]}`}
+                />
+                {BOARD_COLUMN_LABEL[column]}
+              </h3>
               <span className="font-mono text-[10px] text-muted-foreground">{view.total}</span>
             </header>
             <div className="space-y-2">
