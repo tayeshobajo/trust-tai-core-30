@@ -1,18 +1,29 @@
 # P0 human verification runbook
 
-Two gates in P0 remain open and cannot be closed by the app: P0-03 and P0-04.
-Each open section below states the exact human action and the exact production
-evidence we will capture to upgrade the ledger entry. Sections 3 and 4 (P0-07
-and P0-08) are now closed and kept only as the record of what was verified; no
-action remains there.
+One gate in P0 remains open and cannot be closed by the app: P0-04. Its
+section below states the exact human action and the exact production evidence
+we will capture to upgrade the ledger entry. Section 1 (P0-03) and sections 3
+and 4 (P0-07 and P0-08) are now closed and kept only as the record of what
+was verified; no action remains there.
 
 Last reconciled with production state on 2026-09-06.
 
 ---
 
-## 1. Invite email (P0-03)
+## 1. Invite email (P0-03) — CLOSED, Human Accepted 2026-09-06
 
-**Current production evidence.** The path has run for real, twice. On
+**Closed by Tai's explicit confirmation:** "All good now, i'm able to login
+after receiving the invite and the sign in links work as well." A real
+production invitation to Tai's alternate address `tayeshobajo@gmail.com`
+arrived in the inbox, the branded Supabase magic-link sign-in email arrived,
+the magic link authenticated the invited address, the repaired
+identity-driven invitation claim created/recognized the workspace membership
+correctly, and the Trust Tai OS production workspace opened. The gate is the
+invite email end-to-end workflow, not a specific recipient identity, so the
+alternate-address run closes it. The Diamond run below is kept as the
+historical record of the path and its repair. No action remains.
+
+**Historical production evidence.** The path has run for real. On
 2026-08-24 an invitation to `diamond@trusttai.com` was created (`user.invited`)
 and the first email attempt was recorded one second later (`user.invite_emailed`,
 `delivered: false`) with the exact refusal:
