@@ -208,7 +208,7 @@ export function ProjectsTab({
   );
 }
 
-function ProjectRow({ project, timeZone }: { project: ExecutionProject; timeZone: string }) {
+export function ProjectRow({ project, timeZone }: { project: ExecutionProject; timeZone: string }) {
   const blocked = project.state === "blocked";
   const detail = project.currentWork || project.nextMove || project.pointB || null;
   return (
