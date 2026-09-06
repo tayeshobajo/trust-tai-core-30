@@ -588,7 +588,7 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 items={open.items}
                 events={open.events}
                 refusal={refusalFor(open.request)}
-                pending={decide.isPending}
+                pending={decide.isPending || overrideItem.isPending}
                 onDecide={(input) => decide.mutate({ request: open.request, input })}
                 onNote={(body) => addNote.mutate({ requestId: open.request.id, body })}
                 onOverrideItem={(itemId, reason) =>
