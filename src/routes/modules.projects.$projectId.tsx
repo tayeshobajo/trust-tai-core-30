@@ -113,9 +113,12 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
 
   const [fileError, setFileError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
-  // Project chat is session scoped for now, and the panel says so.
-  const [chatTurns, setChatTurns] = useState<ProjectChatTurn[]>([]);
+  // The conversation is session scoped, and the panel says so. Proposals live
+  // here too: they are a reading of a message, never a store.
+  const [chatEntries, setChatEntries] = useState<ChatEntry[]>([]);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [applying, setApplying] = useState<string | null>(null);
+
 
   const org = identity.organizationId;
   const projectsContext: ProjectsContext = {
