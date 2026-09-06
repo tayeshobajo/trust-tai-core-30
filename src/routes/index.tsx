@@ -1,18 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CircleCheck, MessagesSquare, ScrollText, SquareStack } from "lucide-react";
+import { CircleCheck, Gauge, ScrollText, SquareStack } from "lucide-react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { ContinueSection, type ContinueItem } from "@/components/tt/home/continue-section";
 import { GuidanceCard } from "@/components/tt/home/guidance-card";
 import { HomeHero } from "@/components/tt/home/home-hero";
 import { SuiteRoomsGrid } from "@/components/tt/home/suite-rooms-grid";
+import { ThisWeek } from "@/components/tt/home/this-week";
 import { TodaySummary, type TodayItem } from "@/components/tt/home/today-summary";
 import { memorySource } from "@/data/memory-source";
-import { orderToday, type TodayCandidate } from "@/domain/today-ordering";
+import { readWeeklyScoreboard } from "@/data/supabase/commercial-service";
+import {
+  homeFloorReadings,
+  homeWeekNote,
+  homeWeekNumbers,
+  type HomeWeekInput,
+} from "@/domain/home-week";
+import { floorBreaches, orderToday, type TodayCandidate } from "@/domain/today-ordering";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import type { WorkspaceIdentity } from "@/lib/workspace";
+
 
 const TITLE = "Trust Tai OS · one operating system for how Trust Tai works";
 const DESCRIPTION =
