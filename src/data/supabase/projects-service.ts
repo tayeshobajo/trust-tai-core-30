@@ -350,8 +350,14 @@ export const projectsService = {
       ...(changes.dueDate !== undefined ? { dueDate: changes.dueDate } : {}),
       ...(changes.subjectLabel !== undefined ? { subjectLabel: changes.subjectLabel } : {}),
     };
-    const detailKeys = Object.keys(detailEdit);
-    if (detailKeys.length > 0) {
+    // A delivery-item correction is a correction to what a person typed, not a
+    // change of next move. It is classified with the other detail edits so the
+    // history says what actually happened.
+    const deliveryChanged =
+      changes.deliveryItems !== undefined &&
+      itemsSignature(changes.deliveryItems) !== itemsSignature(project.deliveryItems);
+    const detailKeys = [...Object.keys(detailEdit), ...(deliveryChanged ? ["deliveryItems"] : [])];
+    if (Object.keys(detailEdit).length > 0) {
       const detailCheck = checkDetailEdit(project, detailEdit);
       if (!detailCheck.ok) throw new Error(detailCheck.because);
     }
@@ -471,6 +477,7 @@ export const projectsService = {
             ...(changes.subjectLabel !== undefined
               ? { subjectLabel: project.origin.subjectLabel ?? null }
               : {}),
+            ...(deliveryChanged ? { deliveryItems: (project.deliveryItems ?? []) as unknown } : {}),
           },
         },
       );

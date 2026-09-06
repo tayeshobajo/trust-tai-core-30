@@ -407,9 +407,20 @@ export const IMMUTABLE_PROJECT_FACTS: { field: string; because: string }[] = [
   },
 ];
 
+/**
+ * A calendar day from a date input as the instant the system records, using
+ * the same law as proposal dates: noon UTC, so the day never slides by
+ * timezone. Empty in, empty out, which says no date is agreed.
+ */
+export function agreedDayToIso(day: string): string {
+  const trimmed = day.trim();
+  if (!trimmed) return "";
+  return `${trimmed}T12:00:00.000Z`;
+}
+
 /** Is this correction honest, and if not, why not. Pure, so panel and write agree. */
 export function checkDetailEdit(
-  project: Pick<ExecutionProject, "state" | "origin">,
+  project: Pick<ExecutionProject, "state" | "origin"> & { clientId?: ID },
   edit: ProjectDetailEdit,
 ): TransitionCheck {
   if (edit.name !== undefined && !edit.name.trim()) {
@@ -431,6 +442,13 @@ export function checkDetailEdit(
     }
   }
   if (edit.subjectLabel !== undefined) {
+    if (project.clientId) {
+      return {
+        ok: false,
+        because:
+          "This project is attached to a Client record, so the company it serves is Clients truth. Renaming it here would leave the label and the real attachment saying different things.",
+      };
+    }
     if (project.origin.kind === "roadmap_milestone") {
       return {
         ok: false,
