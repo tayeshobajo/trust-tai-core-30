@@ -596,7 +596,9 @@ function ClientShell({
               loading={relationshipsQuery.isLoading}
               now={now}
               timeZone={timeZone}
+              window={exchangeWindow}
             />
+
           ) : null}
           {tab === "site" ? (
             <SiteTab
