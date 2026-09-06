@@ -443,75 +443,72 @@ function ScoutRelationship({ request }: RendererProps) {
 
 /* ---------------------------------------------------------- blog batch */
 
+/**
+ * A batch is a list of individual judgments. Ready items keep the familiar
+ * tick box and go together; flagged items each open into their own compact
+ * decision, one at a time, so ten flagged posts never look like ten forms.
+ */
 function BlogBatch({ items, selected, onToggle, override }: RendererProps) {
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground">This batch has no posts in it.</p>;
+    return <p className="text-sm text-muted-foreground">{batchReviewLine(items)}</p>;
   }
+
+  const summary = summariseBatch(items);
+  /* Derived, not stored: the moment an item stops being an exception (it was
+     just accepted), its panel is gone and the card reads as approved. */
+  const reviewing = items.some((item) => item.id === reviewingId && item.state === "exception")
+    ? reviewingId
+    : null;
+  const canOverride = Boolean(override) && !override?.refusal;
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Tick what you want published. Exceptions cannot be approved in bulk: they are here because
-        something needed you specifically.
-      </p>
+      <div>
+        <p className="text-sm font-medium text-foreground" data-testid="batch-review-line">
+          {batchReviewLine(items)}
+        </p>
+        {summary.exceptions > 0 ? (
+          <p className="mt-1 text-sm text-muted-foreground">
+            {canOverride
+              ? "Flagged articles cannot be approved in bulk. Open one to see why it was flagged and approve it on the record."
+              : (override?.refusal ??
+                "Flagged articles cannot be approved in bulk. An owner or admin can accept each one on the record.")}
+          </p>
+        ) : null}
+        {summary.ready > 0 ? (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Tick the ready articles you want published, then approve them together below.
+          </p>
+        ) : null}
+      </div>
+
       <ul className="space-y-2">
         {items.map((item) => {
-          const decidable = item.state === "ready";
-          const checked = selected.has(item.id);
-          return (
-            <li
-              key={item.id}
-              className={`tt-level-secondary rounded-xl p-4 ${decidable ? "" : "opacity-90"}`}
-            >
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  className="mt-1 size-4 accent-[var(--tt-accent,currentColor)]"
-                  checked={checked}
-                  disabled={!decidable}
-                  onChange={() => onToggle(item.id)}
-                  aria-label={`Approve ${item.title}`}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    <MetaPill>{ITEM_STATE_LABEL[item.state]}</MetaPill>
-                    {item.facts["hitScore"] != null ? (
-                      <MetaPill>HIT {String(item.facts["hitScore"])}</MetaPill>
-                    ) : null}
-                    {item.facts["wordCount"] != null ? (
-                      <MetaPill>{String(item.facts["wordCount"])} words</MetaPill>
-                    ) : null}
-                    {item.facts["imageState"] && item.facts["imageState"] !== "ready" ? (
-                      <MetaPill>Image {String(item.facts["imageState"])}</MetaPill>
-                    ) : null}
-                    {item.facts["seoState"] && item.facts["seoState"] !== "ready" ? (
-                      <MetaPill>SEO {String(item.facts["seoState"])}</MetaPill>
-                    ) : null}
-                  </div>
-                  {item.exceptionReasons.length > 0 ? (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {item.exceptionReasons.map((reason) => EXCEPTION_LABEL[reason]).join(". ")}.
-                    </p>
-                  ) : null}
-                  {item.facts["contentItemId"] ? (
-                    <p className="mt-2 text-sm">
-                      <Link
-                        to="/modules/studio/$itemId"
-                        params={{ itemId: String(item.facts["contentItemId"]) }}
-                        className="underline"
-                      >
-                        Read the article
-                      </Link>
-                    </p>
-                  ) : null}
-                  {item.state === "exception" && override ? (
-                    <ExceptionOverride item={item} override={override} />
-                  ) : null}
-                </div>
-              </div>
-            </li>
-          );
+          if (item.state === "exception") {
+            return (
+              <FlaggedItem
+                key={item.id}
+                item={item}
+                override={override}
+                reviewing={reviewing === item.id}
+                onOpen={() => setReviewingId(item.id)}
+                onClose={() => setReviewingId(null)}
+              />
+            );
+          }
+          if (item.state === "ready") {
+            return (
+              <ReadyItem
+                key={item.id}
+                item={item}
+                checked={selected.has(item.id)}
+                onToggle={() => onToggle(item.id)}
+              />
+            );
+          }
+          return <SettledItem key={item.id} item={item} />;
         })}
       </ul>
     </div>
