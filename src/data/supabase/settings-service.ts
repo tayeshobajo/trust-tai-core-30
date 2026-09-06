@@ -692,7 +692,11 @@ export async function listInvitationAudit(
       summary: String(row["summary"] ?? ""),
       actorUserId: (row["actor_user_id"] as string | null) ?? null,
       delivered: typeof delivered === "boolean" ? delivered : null,
+      invitationId:
+        typeof payload["invitation_id"] === "string" ? (payload["invitation_id"] as string) : null,
+      because: typeof payload["because"] === "string" ? (payload["because"] as string) : null,
     } satisfies InvitationAuditEntry;
+
   });
   return { provisioned: true, value: entries };
 }
