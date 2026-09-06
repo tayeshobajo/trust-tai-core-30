@@ -66,6 +66,8 @@ function NodeCard({
 }) {
   const [amount, setAmount] = useState("");
   const [sentOn, setSentOn] = useState("");
+  const [answeredOn, setAnsweredOn] = useState("");
+
   const [refusal, setRefusal] = useState<string | null>(null);
 
   const current = node.current;
