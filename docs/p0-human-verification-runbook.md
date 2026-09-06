@@ -1,18 +1,29 @@
 # P0 human verification runbook
 
-Two gates in P0 remain open and cannot be closed by the app: P0-03 and P0-04.
-Each open section below states the exact human action and the exact production
-evidence we will capture to upgrade the ledger entry. Sections 3 and 4 (P0-07
-and P0-08) are now closed and kept only as the record of what was verified; no
-action remains there.
+One gate in P0 remains open and cannot be closed by the app: P0-04. Its
+section below states the exact human action and the exact production evidence
+we will capture to upgrade the ledger entry. Section 1 (P0-03) and sections 3
+and 4 (P0-07 and P0-08) are now closed and kept only as the record of what
+was verified; no action remains there.
 
 Last reconciled with production state on 2026-09-06.
 
 ---
 
-## 1. Invite email (P0-03)
+## 1. Invite email (P0-03) — CLOSED, Human Accepted 2026-09-06
 
-**Current production evidence.** The path has run for real, twice. On
+**Closed by Tai's explicit confirmation:** "All good now, i'm able to login
+after receiving the invite and the sign in links work as well." A real
+production invitation to Tai's alternate address `tayeshobajo@gmail.com`
+arrived in the inbox, the branded Supabase magic-link sign-in email arrived,
+the magic link authenticated the invited address, the repaired
+identity-driven invitation claim created/recognized the workspace membership
+correctly, and the Trust Tai OS production workspace opened. The gate is the
+invite email end-to-end workflow, not a specific recipient identity, so the
+alternate-address run closes it. The Diamond run below is kept as the
+historical record of the path and its repair. No action remains.
+
+**Historical production evidence.** The path has run for real. On
 2026-08-24 an invitation to `diamond@trusttai.com` was created (`user.invited`)
 and the first email attempt was recorded one second later (`user.invite_emailed`,
 `delivered: false`) with the exact refusal:
@@ -43,8 +54,9 @@ plus the recipient's inbox.
    screenshot evidence from Tai: the invitation email is in Diamond's Gmail
    inbox, from `invites@trusttai.com`, subject "Tai invited you to Trust Tai
    on Trust Tai OS", 11:58 AM, content and button visible.
-4. Have the recipient open the sign-in link and sign in; confirm the
-   invitation leaves `pending`.
+4. ~~Have the recipient open the sign-in link and sign in; confirm the
+   invitation leaves `pending`~~ — done 2026-09-06 via the alternate-address
+   run: Tai signed in with the magic link and the workspace opened.
 
 **2026-09-06, acceptance path repaired.** Step 4 was blocked: the emailed link
 landed on the generic sign-in screen, and because Tai's own session was still
@@ -81,8 +93,10 @@ needed; `status`, `accepted_at` and `app_access` already exist.
   **Met 2026-09-06** (Tai-provided screenshot of the email in Diamond's Gmail
   inbox, 11:58 AM, from `invites@trusttai.com`).
 - The invitation row moving from `pending` once the person signs in.
-  **Outstanding.** Direct read of the row is refused by RLS to anonymous
-  callers; sign-in is not yet evidenced, so the gate stays open.
+  **Met 2026-09-06**: Tai's invited sign-in succeeded end to end in
+  production — the magic link authenticated the invited address, the
+  invitation claim created/recognized the membership, and the workspace
+  opened — confirmed in his own words. Gate closed, Human Accepted.
 
 ---
 
