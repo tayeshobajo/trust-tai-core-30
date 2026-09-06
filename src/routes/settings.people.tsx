@@ -338,6 +338,20 @@ function PeopleSettings() {
     enabled: identity.canManage,
   });
 
+  /* What the record says happened to each invitation email, before this visit. */
+  const recordedDelivery = useMemo(
+    () => latestDeliveryByInvitation(invitationAudit.data?.value ?? []),
+    [invitationAudit.data?.value],
+  );
+  const deliveryFor = (invitationId: string): InviteDelivery => {
+    const live = deliveryById[invitationId];
+    if (live) {
+      return { state: deliveryStateOf(live), because: live.because, at: "" };
+    }
+    return recordedDelivery[invitationId] ?? { state: "prepared", because: null, at: "" };
+  };
+
+
   return (
     <>
       <AccessOverview
