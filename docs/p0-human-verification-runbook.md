@@ -257,3 +257,16 @@ https://trusttai.com/insights/prioritize-roadmap-milestones-trust-tai returns
 200 unauthenticated with the exact title and body. The other nine batch items
 remain `exception` and unpublished. Full evidence in `roadmap.md`, P0-08. No
 action remains; the sequence below is kept as the record of what was executed.
+
+## P2-04 Home / This Week, human verification checklist
+
+Signed in on the live site, on Home:
+
+1. Home shows exactly four This Week numbers, in this order: revenue this week, first touches, discovery calls, Diagnose proposals sent. No charts.
+2. Today's cards obey the order: an obligation already at risk, then a breached weekly floor, then a decision waiting. A source that could not be read shows Unknown and raises no card.
+3. Mental Dental still reads Run at $3,500/mo on Clients while its project can be in flight. A signed proposal never inflates recurring revenue.
+4. Project counts and blocked states on Home match what Projects shows.
+5. Reply and relationship obligations shown on Home match Comms.
+6. Every number links to the room that owns it, and the link opens that room.
+
+If all six hold, P2-04 can move to Human Accepted.
