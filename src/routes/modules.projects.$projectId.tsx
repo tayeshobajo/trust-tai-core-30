@@ -656,9 +656,32 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
           {tab === "activity" ? <ActivityTab events={activityQuery.data ?? []} /> : null}
         </div>
 
+          {tab === "chat" ? (
+            <ChatTab
+              projectName={project.name}
+              turns={chatTurns}
+              pending={askProject.isPending}
+              error={chatError}
+              onAsk={(question, pasted) => askProject.mutate({ question, pasted })}
+            />
+          ) : null}
+        </div>
+
         <DetailRail
           ownerLabel={row.ownerLabel}
+          owner={{
+            userId: project.ownerUserId ?? null,
+            label: project.ownerLabel ?? row.ownerLabel,
+          }}
+          members={assignableMembers}
+          unassignRefusal={
+            checkOwnerAssignment(project, {}).ok
+              ? null
+              : checkOwnerAssignment(project, {}).because
+          }
+          onAssign={(nextOwner) => updateProject.mutate(nextOwner)}
           attention={attention}
+
           signals={healthSignals(project, items, blockers)}
           people={peopleOnProject(project, items)}
           lineage={row.lineage}
