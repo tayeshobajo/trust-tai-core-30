@@ -109,7 +109,7 @@ no gate newly reached its required level.
 | ID | Gate | Required level | Status |
 | --- | --- | --- | --- |
 | P1-01 | Client commercial state: tier, mrr in cents, engagement dates, provenance | Production Verified | **Production Verified**, real production row written through the human UI path 2026-09-06 | Mental Dental (`4a8e054c-d0f3-4ca4-a1d8-5595cfd74a19`) read back live with `tier=run`, `mrr_cents=350000`, `renewal_at=null`, `next_review_at=null`, `commercial_updated_by=241e0261-f2f6-4f0e-bcb1-c3f84de1a76e`, `commercial_updated_at=2026-09-06T19:07:51.149Z`, and `commercial_provenance` carrying `created_manually=true`, `actor_label=tayeshobajo@gmail.com`, `because="signed retainer"`. Entered by a signed-in human in the Commercial state panel on the client page under RLS, not by service role and not by any agent. Dates were left empty because none is a real fact yet, so nothing was invented. Write path: `src/domain/client-commercial-form.ts` (10 tests) plus `setClientCommercialState()`, which writes only the facts that changed and stamps actor, time and reason |
-| P1-02 | Proposals with sent and signed events on the existing prospect and roadmap lineage | Production Verified | Code/Test Verified, schema live in production. Proposal columns confirmed on `public.roadmaps` by a live read; `recordProposalSent()` and `recordProposalOutcome()` write state on the existing lineage node and emit `proposal.sent`, `proposal.signed` or `proposal.declined`. No deal object, no second pipeline. No proposal recorded in production |
+| P1-02 | Proposals with sent and signed events on the existing prospect and roadmap lineage | Production Verified | Code/Test Verified, schema live in production. Proposal columns confirmed on `public.roadmaps` by a live read; `recordProposalSent()` and `recordProposalOutcome()` write state on the existing lineage node and emit `proposal.sent`, `proposal.signed` or `proposal.declined`. No deal object, no second pipeline. Slice P1-005 added the missing human path: the Proposal panel on the client page Roadmap tab, where a signed-in person records the amount and the day a proposal went out and later records signed or declined, under RLS as themselves. Still **Code/Test Verified**: a live read of `public.roadmaps` on 2026-09-06 found no proposal anywhere in the organization and no roadmap at all on Mental Dental, so there is nothing real to record and nothing was invented |
 | P1-03 | `client.tier_changed` with a human-entered Build phase amount | Production Verified | Code/Test Verified. Emitted exactly once per real tier change, with `phase_amount_cents` only when the new tier is Build; re-writing the same tier emits nothing. Tested. Nothing emitted in production, because no tier has changed |
 | P1-04 | Org-level weekly targets | Production Verified | **Production Verified**. `public.organization_weekly_targets` exists in the production project with member read and admin write over `private.is_org_member` / `private.is_org_admin`, and holds the Trust Tai row (targets 10-12 first touches, 2-3 discovery, 1-2 Diagnose proposals, 20 Run clients, revenue target 2,100,000 cents), read back live. `readOrganizationWeeklyTargets()` falls back to the locked defaults when an organization has no row |
 | P1-05 | Revenue derived at read time by the locked rules, never persisted weekly | Code/Test Verified | **Code/Test Verified**. `src/domain/revenue.ts` with 11 tests: `mrr_cents * 12 / 52`, explicit refusal of `/4` and `/4.345`, one-off recognition in the week of the event, and Run reading tier state only so a signed proposal cannot inflate it. `readWeeklyScoreboard()` composes the week from live state and dated events and writes nothing back |
@@ -128,6 +128,20 @@ and the development site already saved on the Mental Dental Academy project
 appear there unchanged. The only missing inputs are the two Google URLs
 themselves; nothing was invented for them. No schema change, no percentage
 moves on this part.
+
+
+Slice P1-005, the human path into a proposal (this pass). P1-02 had the law and
+the service but no way for a person to use it: no screen anywhere read or wrote
+proposal state. It now lives on the surface that already owns this company's
+lineage, the Roadmap tab of the client page, not in a new room and not as a
+second commercial store. `src/domain/proposal-form.ts` refuses what it cannot
+honestly record: no amount is guessed, a missing day is not defaulted to today,
+a proposal for nothing is refused, and a proposal already answered is never
+reopened. Answers use the canonical vocabulary only, open, signed and declined,
+and both writes stay idempotent and provenance-stamped through the existing
+service. Production verification is held at a human-data gate: it needs a real
+roadmap for a real company and real proposal terms, and neither exists. No
+percentage moves.
 
 
 ## P2, Clients and Home

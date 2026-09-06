@@ -16,6 +16,7 @@ import { useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { CommercialPanel } from "@/components/tt/clients/commercial-panel";
+import { ProposalPanel } from "@/components/tt/clients/proposal-panel";
 import { ClientHeader, ClientTabs } from "@/components/tt/clients/shell";
 import {
   FilesTab,
@@ -39,9 +40,11 @@ import {
   readClientSite,
 } from "@/data/clients/shell-reads";
 import {
-  listProposals,
+  listProposalNodes,
   readClientCommercialRecord,
   readOrganizationTimeZoneResolved,
+  recordProposalOutcome,
+  recordProposalSent,
   setClientCommercialState,
 } from "@/data/supabase/commercial-service";
 import { commsService } from "@/data/supabase/comms-service";
@@ -140,7 +143,7 @@ function ClientShell({
   });
   const proposalsQuery = useQuery({
     queryKey: ["clients", "proposals", organizationId],
-    queryFn: () => listProposals(organizationId),
+    queryFn: () => listProposalNodes(organizationId),
     retry: false,
   });
   const projectsQuery = useQuery({
@@ -174,6 +177,8 @@ function ClientShell({
   const [logoProblem, setLogoProblem] = useState<string | null>(null);
   const [commercialProblem, setCommercialProblem] = useState<string | null>(null);
   const [commercialSaved, setCommercialSaved] = useState(false);
+  const [proposalProblem, setProposalProblem] = useState<string | null>(null);
+  const [proposalSavedId, setProposalSavedId] = useState<string | null>(null);
 
   /* The one write path into commercial truth, as the signed-in person, under RLS. */
   const saveCommercial = useMutation({
@@ -195,6 +200,46 @@ function ClientShell({
       setCommercialSaved(false);
       setCommercialProblem(
         error instanceof Error ? error.message : "That commercial state could not be saved.",
+      );
+    },
+  });
+
+  /* The human path into proposal truth, on the lineage node that owns it. */
+  const proposalContext = {
+    organizationId,
+    userId: identity.userId,
+    userLabel: identity.name,
+  };
+  const sendProposal = useMutation({
+    mutationFn: (input: { roadmapId: string; amountCents: number; sentAt: string }) =>
+      recordProposalSent(
+        { roadmapId: input.roadmapId, amountCents: input.amountCents, sentAt: input.sentAt },
+        proposalContext,
+      ),
+    onSuccess: (_result, input) => {
+      setProposalProblem(null);
+      setProposalSavedId(input.roadmapId);
+      void queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (error: unknown) => {
+      setProposalSavedId(null);
+      setProposalProblem(
+        error instanceof Error ? error.message : "That proposal could not be recorded.",
+      );
+    },
+  });
+  const answerProposal = useMutation({
+    mutationFn: (input: { roadmapId: string; outcome: "signed" | "declined" }) =>
+      recordProposalOutcome(input, proposalContext),
+    onSuccess: (_result, input) => {
+      setProposalProblem(null);
+      setProposalSavedId(input.roadmapId);
+      void queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (error: unknown) => {
+      setProposalSavedId(null);
+      setProposalProblem(
+        error instanceof Error ? error.message : "That answer could not be recorded.",
       );
     },
   });
@@ -274,7 +319,9 @@ function ClientShell({
       buildClientBook(
         {
           clients: [record],
-          proposals: proposalsQuery.isError ? null : (proposalsQuery.data ?? []),
+          proposals: proposalsQuery.isError
+            ? null
+            : (proposalsQuery.data ?? []).filter((proposal) => proposal.proposalSentAt !== null),
           projects: projectsQuery.isError ? null : (projectsQuery.data ?? []),
         },
         now,
@@ -341,6 +388,29 @@ function ClientShell({
       </AppShell>
     );
   }
+
+  /* One entry per roadmap this company already has, with whatever proposal
+     state is recorded on it. A roadmap with no proposal says so. */
+  const proposalStates = new Map(
+    (proposalsQuery.data ?? []).map((proposal) => [proposal.id, proposal]),
+  );
+  const proposalNodes = roadmaps.map((roadmap) => {
+    const state = proposalStates.get(roadmap.id);
+    return {
+      roadmapId: roadmap.id,
+      title: roadmap.title,
+      current: {
+        sentAt: state?.proposalSentAt ?? null,
+        amountCents: state?.proposalAmountCents ?? null,
+        outcome: state?.proposalOutcome ?? null,
+      },
+    };
+  });
+  const pendingProposalId = sendProposal.isPending
+    ? (sendProposal.variables?.roadmapId ?? null)
+    : answerProposal.isPending
+      ? (answerProposal.variables?.roadmapId ?? null)
+      : null;
 
   const facts = clientHeaderFacts(card, now, timeZone);
   const cadence = reviewCadenceFor(record, now, timeZone);
@@ -464,7 +534,17 @@ function ClientShell({
             </div>
           ) : null}
           {tab === "roadmap" ? (
-            <RoadmapTab read={roadmapOutcomes} loading={roadmapsQuery.isLoading} />
+            <div className="space-y-8">
+              <RoadmapTab read={roadmapOutcomes} loading={roadmapsQuery.isLoading} />
+              <ProposalPanel
+                nodes={proposalNodes}
+                pendingRoadmapId={pendingProposalId}
+                problem={proposalProblem}
+                savedRoadmapId={proposalSavedId}
+                onSend={(input) => sendProposal.mutate(input)}
+                onAnswer={(input) => answerProposal.mutate(input)}
+              />
+            </div>
           ) : null}
           {tab === "projects" ? (
             <ProjectsTab
