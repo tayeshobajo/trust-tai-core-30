@@ -68,8 +68,20 @@ describe("floors", () => {
 
   it("reports the shortfall, not the actual", () => {
     const breaches = floorBreaches([
-      { key: "first-touch", label: "first touches short of the week", actual: 6, floor: 10, slug: "comms" },
-      { key: "discovery", label: "discovery calls short of the week", actual: 3, floor: 2, slug: "comms" },
+      {
+        key: "first-touch",
+        label: "first touches short of the week",
+        actual: 6,
+        floor: 10,
+        slug: "comms",
+      },
+      {
+        key: "discovery",
+        label: "discovery calls short of the week",
+        actual: 3,
+        floor: 2,
+        slug: "comms",
+      },
     ]);
     expect(breaches).toHaveLength(1);
     expect(breaches[0]?.count).toBe(4);

@@ -10,6 +10,7 @@ import { HomeHero } from "@/components/tt/home/home-hero";
 import { SuiteRoomsGrid } from "@/components/tt/home/suite-rooms-grid";
 import { TodaySummary, type TodayItem } from "@/components/tt/home/today-summary";
 import { memorySource } from "@/data/memory-source";
+import { orderToday, type TodayCandidate } from "@/domain/today-ordering";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -83,15 +84,21 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   const todayItems = useMemo<TodayItem[]>(() => {
-    const items: TodayItem[] = [];
-    const openDecisions = (data?.decisions ?? []).filter((d) => d.status === "open").length;
-    if (openDecisions > 0) {
-      items.push({
-        key: "decisions",
-        count: openDecisions,
-        label: openDecisions === 1 ? "decision waiting on you" : "decisions waiting on you",
-        icon: ScrollText,
-        slug: "conductor",
+    /**
+     * Today obeys one order (P2-05): an obligation already at risk, then a
+     * breached weekly floor, then a decision worth making. Nothing is invented,
+     * and an absence produces no card at all.
+     */
+    const candidates: TodayCandidate[] = [];
+
+    const blocked = (data?.projects ?? []).filter((p) => p.status === "blocked").length;
+    if (blocked > 0) {
+      candidates.push({
+        key: "blocked-projects",
+        kind: "obligation_at_risk",
+        count: blocked,
+        label: blocked === 1 ? "promise blocked in delivery" : "promises blocked in delivery",
+        slug: "projects",
       });
     }
 
@@ -99,12 +106,23 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
       (p) => p.status === "in_build" || p.status === "live",
     ).length;
     if (activeProjects > 0) {
-      items.push({
+      candidates.push({
         key: "projects",
+        kind: "obligation_at_risk",
         count: activeProjects,
         label: activeProjects === 1 ? "project in motion" : "projects in motion",
-        icon: SquareStack,
         slug: "projects",
+      });
+    }
+
+    const openDecisions = (data?.decisions ?? []).filter((d) => d.status === "open").length;
+    if (openDecisions > 0) {
+      candidates.push({
+        key: "decisions",
+        kind: "decision_opportunity",
+        count: openDecisions,
+        label: openDecisions === 1 ? "decision waiting on you" : "decisions waiting on you",
+        slug: "conductor",
       });
     }
 
@@ -112,19 +130,34 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
       (event) => event.provenance.appId === "comms",
     ).length;
     if (conversationSignals > 0) {
-      items.push({
+      candidates.push({
         key: "comms",
+        kind: "decision_opportunity",
         count: conversationSignals,
         label:
           conversationSignals === 1
             ? "conversation moved recently"
             : "conversations moved recently",
-        icon: MessagesSquare,
         slug: "comms",
       });
     }
 
-    return items.slice(0, 3);
+    const icons: Record<string, typeof ScrollText> = {
+      "blocked-projects": SquareStack,
+      projects: SquareStack,
+      decisions: ScrollText,
+      comms: MessagesSquare,
+    };
+
+    return orderToday(candidates)
+      .slice(0, 3)
+      .map((entry) => ({
+        key: entry.key,
+        count: entry.count,
+        label: entry.label,
+        icon: icons[entry.key] ?? ScrollText,
+        slug: entry.slug,
+      }));
   }, [data]);
 
   const continueItems = useMemo<ContinueItem[]>(

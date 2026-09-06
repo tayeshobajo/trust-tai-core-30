@@ -58,8 +58,8 @@ export function orderToday(candidates: TodayCandidate[]): TodayCandidate[] {
     .sort((a, b) => {
       const byKind = todayRank(a.kind) - todayRank(b.kind);
       if (byKind !== 0) return byKind;
-      const byOverdue = (b.overdueDays ?? Number.NEGATIVE_INFINITY) -
-        (a.overdueDays ?? Number.NEGATIVE_INFINITY);
+      const byOverdue =
+        (b.overdueDays ?? Number.NEGATIVE_INFINITY) - (a.overdueDays ?? Number.NEGATIVE_INFINITY);
       if (byOverdue !== 0 && Number.isFinite(byOverdue)) return byOverdue;
       if (b.count !== a.count) return b.count - a.count;
       return a.key.localeCompare(b.key);
