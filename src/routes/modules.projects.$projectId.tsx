@@ -654,7 +654,7 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
           ) : null}
 
           {tab === "activity" ? <ActivityTab events={activityQuery.data ?? []} /> : null}
-        </div>
+
 
           {tab === "chat" ? (
             <ChatTab
