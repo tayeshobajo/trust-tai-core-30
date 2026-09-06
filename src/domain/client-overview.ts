@@ -48,7 +48,7 @@ export interface OverviewComposeInput {
   projects: RoomRead<ExecutionProject[]> | null;
   relationship: RoomRead<RelationshipSnapshot> | null;
   roadmap: RoomRead<RoadmapOutcome | null> | null;
-  approvals: RoomRead<{ ready: boolean; requests: ApprovalRequest[] }> | null;
+  approvals: RoomRead<{ ready: false } | { ready: true; requests: ApprovalRequest[] }> | null;
   exchange: RelationshipWindow | null;
   cadence: ReviewCadence;
   commercialLine: string;
