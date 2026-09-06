@@ -191,6 +191,13 @@ export interface ApprovalSubmission {
   }>;
 }
 
+/**
+ * Append one row to the trail.
+ *
+ * `kind` is the domain kind; what reaches Postgres is `storedEventKind`, so a
+ * client-side vocabulary can never collide with `approval_events_kind_check`.
+ * An item override travels as a `decision` narrowed by `metadata.scope`.
+ */
 async function writeEvent(
   context: ApprovalsContext,
   requestId: ID,
@@ -198,19 +205,23 @@ async function writeEvent(
   body: string,
   actor: ApprovalEvent["actor"],
   metadata: Record<string, unknown> = {},
+  createdAt: ISODateTime = new Date().toISOString(),
 ): Promise<void> {
+  const scoped =
+    kind === "item_override" ? { ...metadata, scope: ITEM_OVERRIDE_SCOPE } : { ...metadata };
   const { error } = await supabase.from("approval_events").insert({
     id: id("apev"),
     organization_id: context.organizationId,
     request_id: requestId,
-    kind,
+    kind: storedEventKind(kind),
     body,
     actor,
-    metadata,
-    created_at: new Date().toISOString(),
+    metadata: scoped,
+    created_at: createdAt,
   });
   if (error && !missingTable(error)) throw new Error(error.message);
 }
+
 
 async function loadItems(context: ApprovalsContext, requestId: ID): Promise<ApprovalItem[]> {
   const { data, error } = await supabase
