@@ -55,7 +55,16 @@ import { checkOwnerAssignment, isOpenProject } from "@/domain/projects";
 
 import type { ProjectFileKind, WorkItemStatus } from "@/domain/project-delivery";
 import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
-import { ChatTab, type ProjectChatTurn } from "@/components/tt/projects/detail/chat";
+import { ChatTab, type ChatEntry, type ProjectChatAnswer } from "@/components/tt/projects/detail/chat";
+import {
+  alreadyApplied,
+  prepareProposal,
+  receiptFor,
+  staleReason,
+  type ChatChangeIntent,
+  type OtherRoom,
+} from "@/domain/project-chat-proposal";
+
 import { listMembers } from "@/data/supabase/settings-service";
 import { supabase } from "@/integrations/trust-tai/supabase";
 
