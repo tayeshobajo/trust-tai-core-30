@@ -1,8 +1,12 @@
 # P0 human verification runbook
 
-Four gates in P0 cannot be closed by the app. Each section below states the exact
-human action, and the exact production evidence we will capture to upgrade the
-ledger entry. Nothing here has been executed; this document only removes ambiguity.
+Two gates in P0 remain open and cannot be closed by the app: P0-03 and P0-04.
+Each open section below states the exact human action and the exact production
+evidence we will capture to upgrade the ledger entry. Sections 3 and 4 (P0-07
+and P0-08) are now closed and kept only as the record of what was verified; no
+action remains there.
+
+Last reconciled with production state on 2026-09-06.
 
 ---
 
@@ -20,9 +24,12 @@ failure is sender-domain authorisation, not wiring.
 
 The stored `RESEND_API_KEY` is a **send-only restricted key**: a read-only
 `GET /domains` through the connector gateway returns
-`401 restricted_api_key`. There is therefore no safe provider-side log we can
-read; delivery evidence must come from the recipient inbox plus our own
-`activities` row.
+`401 restricted_api_key`. Re-checked on 2026-09-06 through the linked Resend
+connection (`tayeshobajo@gmail.com`): still `401`, "This API key is restricted
+to only send emails". There is therefore no safe provider-side log we can read;
+delivery evidence must come from the recipient inbox plus our own `activities`
+row. If Tai wants us to see domain status directly, the Resend key needs read
+permission added in the Resend dashboard, or a full-access key linked instead.
 
 **What Tai must do**
 
