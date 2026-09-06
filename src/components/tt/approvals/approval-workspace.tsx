@@ -205,54 +205,70 @@ export function ApprovalWorkspace({
         </section>
       </div>
 
-      <footer className="border-t border-border bg-card/80 px-6 py-4 backdrop-blur">
+      <footer
+        data-testid="decision-bar"
+        className="border-t border-border bg-card/85 px-6 py-4 backdrop-blur"
+      >
         {refusal ? (
           <p className="mb-3 text-sm text-muted-foreground">{refusal}</p>
-        ) : (
+        ) : needsReason ? (
           <input
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="Reason (required to reject or request a revision)"
-            className="tt-level-secondary mb-3 w-full rounded-lg px-3 py-2 text-sm outline-none"
+            placeholder="Reason, needed to send it back or say not now"
+            aria-label="Reason for sending back or declining"
+            className="tt-level-secondary mb-3 h-9 w-full rounded-lg px-3 text-sm outline-none transition-colors focus-visible:border-royal"
           />
-        )}
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-2">
-          {authorising.map((action) => (
+          {approving.map((action) => (
             <TTButton
               key={action.id}
-              variant={action.tone === "primary" ? "primary" : "secondary"}
+              variant="primary"
+              size="sm"
               disabled={
                 Boolean(refusal) ||
                 pending ||
-                (action.id === "approve_ready" && selected.size === 0) ||
-                (action.id === "reject" && !reason.trim())
+                (action.id === "approve_ready" && selected.size === 0)
               }
               onClick={() =>
                 onDecide({ action, reason: reason.trim(), itemIds: Array.from(selected) })
               }
             >
               {action.id === "approve_ready"
-                ? `Approve ${selected.size} of ${items.length}`
+                ? `Approve ${selected.size} of ${readyCount} ready`
                 : action.label}
             </TTButton>
           ))}
 
-          {supporting.map((action) => (
-            <TTButton
-              key={action.id}
-              variant="quiet"
-              disabled={
-                pending ||
-                (action.id === "request_revision" && (Boolean(refusal) || !reason.trim()))
-              }
-              onClick={() =>
-                onDecide({ action, reason: reason.trim(), itemIds: Array.from(selected) })
-              }
-            >
-              {action.label}
-            </TTButton>
-          ))}
+          {approving.length === 0 && bulkClosed && !refusal ? (
+            <p className="text-sm text-muted-foreground" data-testid="bulk-closed">
+              {bulkClosed}
+            </p>
+          ) : null}
+
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            {returning.map((action) => (
+              <TTButton
+                key={action.id}
+                variant={action.id === "reject" ? "secondary" : "quiet"}
+                size="sm"
+                disabled={Boolean(refusal) || pending || !reason.trim()}
+                title={reason.trim() ? undefined : "Add a reason first"}
+                onClick={() =>
+                  onDecide({ action, reason: reason.trim(), itemIds: Array.from(selected) })
+                }
+              >
+                {action.label}
+              </TTButton>
+            ))}
+            {canOpenSource ? (
+              <TTButton variant="quiet" size="sm" asChild>
+                <Link to={SOURCE_APP_ROUTE[request.sourceApp]}>Open source</Link>
+              </TTButton>
+            ) : null}
+          </div>
         </div>
       </footer>
     </div>
