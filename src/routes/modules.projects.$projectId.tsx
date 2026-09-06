@@ -283,6 +283,45 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
     },
   });
 
+  /**
+   * Ask this project. The answer is read only: the endpoint reads this
+   * project's packet under the caller's own session and writes nothing, so
+   * every real change still happens on the tabs above.
+   */
+  const askProject = useMutation({
+    mutationFn: async ({ question, pasted }: { question: string; pasted: string }) => {
+      setChatError(null);
+      setChatTurns((turns) => [...turns, { question, pasted, answer: null }]);
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Your session expired. Sign in again to ask.");
+      const response = await fetch("/api/public/projects/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          organization_id: org,
+          project_id: projectId,
+          question,
+          pasted,
+        }),
+      });
+      const body = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) throw new Error(String(body["error"] ?? "This project could not answer."));
+      return body as unknown as ProjectChatTurn["answer"];
+    },
+    onSuccess: (answer) => {
+      setChatTurns((turns) =>
+        turns.map((turn, index) => (index === turns.length - 1 ? { ...turn, answer } : turn)),
+      );
+    },
+    onError: (cause: unknown) => {
+      setChatError(cause instanceof Error ? cause.message : "This project could not answer.");
+      setChatTurns((turns) => turns.slice(0, -1));
+    },
+  });
+
+
+
   if (projectQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Reading this work…</p>;
   }
