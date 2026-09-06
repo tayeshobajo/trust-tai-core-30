@@ -18,14 +18,15 @@ import { AppShell } from "@/components/tt/app-shell";
 import { CommercialPanel } from "@/components/tt/clients/commercial-panel";
 import { ProposalPanel } from "@/components/tt/clients/proposal-panel";
 import { ClientHeader, ClientTabs } from "@/components/tt/clients/shell";
+import { OverviewTab } from "@/components/tt/clients/overview";
 import {
   FilesTab,
-  OverviewTab,
   ProjectsTab,
   RelationshipTab,
   RoadmapTab,
   SiteTab,
 } from "@/components/tt/clients/tabs";
+
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { buildClientBook } from "@/data/clients/book-projection";
@@ -447,6 +448,25 @@ function ClientShell({
       : null;
 
   const facts = clientHeaderFacts(card, now, timeZone);
+
+  /* Who last said this commercial truth, resolved once for read and edit. */
+  const commercialProvenance = {
+    by:
+      typeof record.commercialProvenance?.["actor_label"] === "string"
+        ? String(record.commercialProvenance["actor_label"])
+        : null,
+    at: record.commercialUpdatedAt,
+    because:
+      typeof record.commercialProvenance?.["because"] === "string"
+        ? String(record.commercialProvenance["because"])
+        : null,
+  };
+  const commercialProvenanceLine = commercialProvenance.at
+    ? `Last recorded ${commercialProvenance.at.slice(0, 10)}${
+        commercialProvenance.by ? ` by ${commercialProvenance.by}` : ""
+      }${commercialProvenance.because ? `. Reason given: ${commercialProvenance.because}` : "."}`
+    : "No commercial state recorded yet.";
+
   const cadence = reviewCadenceFor(record, now, timeZone);
 
   /* Each room's answer, or the fact that it could not be asked. */
@@ -538,35 +558,31 @@ function ClientShell({
               client={{ name: record.name, websiteUrl: record.websiteUrl }}
               now={now}
               timeZone={timeZone}
+              exchange={exchangeWindow}
+              commercial={{
+                headline: card.commercialLine,
+                review: cadence.line,
+                renewal: cadence.renewalLine,
+                provenance: commercialProvenanceLine,
+              }}
+              commercialForm={
+                <CommercialPanel
+                  current={{
+                    tier: record.tier,
+                    mrrCents: record.mrrCents,
+                    renewalAt: record.renewalAt,
+                    nextReviewAt: record.nextReviewAt,
+                  }}
+                  provenance={commercialProvenance}
+                  pending={saveCommercial.isPending}
+                  problem={commercialProblem}
+                  saved={commercialSaved}
+                  onSave={(patch) => saveCommercial.mutate(patch)}
+                />
+              }
             />
           ) : null}
-          {tab === "overview" ? (
-            <div className="mt-8">
-              <CommercialPanel
-                current={{
-                  tier: record.tier,
-                  mrrCents: record.mrrCents,
-                  renewalAt: record.renewalAt,
-                  nextReviewAt: record.nextReviewAt,
-                }}
-                provenance={{
-                  by:
-                    typeof record.commercialProvenance?.["actor_label"] === "string"
-                      ? String(record.commercialProvenance["actor_label"])
-                      : null,
-                  at: record.commercialUpdatedAt,
-                  because:
-                    typeof record.commercialProvenance?.["because"] === "string"
-                      ? String(record.commercialProvenance["because"])
-                      : null,
-                }}
-                pending={saveCommercial.isPending}
-                problem={commercialProblem}
-                saved={commercialSaved}
-                onSave={(patch) => saveCommercial.mutate(patch)}
-              />
-            </div>
-          ) : null}
+
           {tab === "roadmap" ? (
             <div className="space-y-8">
               <RoadmapTab read={roadmapOutcomes} loading={roadmapsQuery.isLoading} />
