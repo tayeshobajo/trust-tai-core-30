@@ -80,6 +80,13 @@ import {
   type ObservedMessageLike,
   type SentDraftLike,
 } from "@/domain/comms-verification";
+import {
+  planExternalReconciliations,
+  readExternalSend,
+  writeExternalSend,
+  type ObservedOutboundLike,
+  type OpenDraftLike,
+} from "@/domain/comms-external-send";
 
 const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
