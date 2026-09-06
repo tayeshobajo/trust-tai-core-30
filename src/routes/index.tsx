@@ -1,16 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CircleCheck, MessagesSquare, ScrollText, SquareStack } from "lucide-react";
+import { CircleCheck, Gauge, ScrollText, SquareStack } from "lucide-react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { ContinueSection, type ContinueItem } from "@/components/tt/home/continue-section";
 import { GuidanceCard } from "@/components/tt/home/guidance-card";
 import { HomeHero } from "@/components/tt/home/home-hero";
 import { SuiteRoomsGrid } from "@/components/tt/home/suite-rooms-grid";
+import { ThisWeek } from "@/components/tt/home/this-week";
 import { TodaySummary, type TodayItem } from "@/components/tt/home/today-summary";
 import { memorySource } from "@/data/memory-source";
-import { orderToday, type TodayCandidate } from "@/domain/today-ordering";
+import { readWeeklyScoreboard } from "@/data/supabase/commercial-service";
+import {
+  homeFloorReadings,
+  homeWeekNote,
+  homeWeekNumbers,
+  type HomeWeekInput,
+} from "@/domain/home-week";
+import { floorBreaches, orderToday, type TodayCandidate } from "@/domain/today-ordering";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -83,11 +91,48 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
+  /**
+   * The one canonical weekly snapshot every room already uses. Home derives
+   * its four numbers from it at read time and writes nothing back, so Home
+   * and Clients can never disagree about the same week.
+   */
+  const week = useQuery({
+    queryKey: ["home-week", organizationId],
+    queryFn: () => readWeeklyScoreboard(organizationId),
+  });
+
+  const weekInput = useMemo<HomeWeekInput | null>(() => {
+    const board = week.data;
+    if (!board) return null;
+    return {
+      targets: board.targets,
+      revenue: board.revenue,
+      firstTouches: board.firstTouches,
+      discoveryCalls: board.discoveryCalls,
+      proposalsSent: board.proposalsSent,
+      timeZone: board.timeZone,
+      timeZoneFallback: board.timeZoneFallback,
+      timeZoneBecause: board.timeZoneBecause,
+    };
+  }, [week.data]);
+
+  const weekNumbers = useMemo(() => {
+    if (!weekInput || !week.data) return [];
+    const sources = week.data.sources;
+    return homeWeekNumbers(weekInput, {
+      revenue: sources.clients.because ?? sources.proposals.because ?? sources.tierChanges.because,
+      firstTouches: sources.firstTouches.because ?? sources.touches.because,
+      discoveryCalls: sources.touches.because,
+      proposalsSent: sources.proposals.because,
+    });
+  }, [weekInput, week.data]);
+
   const todayItems = useMemo<TodayItem[]>(() => {
     /**
      * Today obeys one order (P2-05): an obligation already at risk, then a
      * breached weekly floor, then a decision worth making. Nothing is invented,
-     * and an absence produces no card at all.
+     * an absence produces no card at all, and a source that could not be read
+     * produces no card either, because unknown is not a breach.
      */
     const candidates: TodayCandidate[] = [];
 
@@ -102,18 +147,7 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
       });
     }
 
-    const activeProjects = (data?.projects ?? []).filter(
-      (p) => p.status === "in_build" || p.status === "live",
-    ).length;
-    if (activeProjects > 0) {
-      candidates.push({
-        key: "projects",
-        kind: "obligation_at_risk",
-        count: activeProjects,
-        label: activeProjects === 1 ? "project in motion" : "projects in motion",
-        slug: "projects",
-      });
-    }
+    if (weekInput) candidates.push(...floorBreaches(homeFloorReadings(weekInput)));
 
     const openDecisions = (data?.decisions ?? []).filter((d) => d.status === "open").length;
     if (openDecisions > 0) {
@@ -122,31 +156,13 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
         kind: "decision_opportunity",
         count: openDecisions,
         label: openDecisions === 1 ? "decision waiting on you" : "decisions waiting on you",
-        slug: "conductor",
-      });
-    }
-
-    const conversationSignals = (data?.activity ?? []).filter(
-      (event) => event.provenance.appId === "comms",
-    ).length;
-    if (conversationSignals > 0) {
-      candidates.push({
-        key: "comms",
-        kind: "decision_opportunity",
-        count: conversationSignals,
-        label:
-          conversationSignals === 1
-            ? "conversation moved recently"
-            : "conversations moved recently",
-        slug: "comms",
+        slug: "approvals",
       });
     }
 
     const icons: Record<string, typeof ScrollText> = {
       "blocked-projects": SquareStack,
-      projects: SquareStack,
       decisions: ScrollText,
-      comms: MessagesSquare,
     };
 
     return orderToday(candidates)
@@ -155,10 +171,10 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
         key: entry.key,
         count: entry.count,
         label: entry.label,
-        icon: icons[entry.key] ?? ScrollText,
+        icon: icons[entry.key] ?? Gauge,
         slug: entry.slug,
       }));
-  }, [data]);
+  }, [data, weekInput]);
 
   const continueItems = useMemo<ContinueItem[]>(
     () =>
@@ -175,7 +191,20 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
     <div className="w-full space-y-16 pb-8">
       <HomeHero firstName={identity.firstName} />
 
-      <TodaySummary items={todayItems} />
+      <TodaySummary
+        items={todayItems}
+        empty={
+          week.isSuccess && data
+            ? "Nothing is at risk, no floor is breached and no decision is waiting. Open Clients to pick the next move."
+            : undefined
+        }
+      />
+
+      <ThisWeek
+        numbers={weekNumbers}
+        note={weekInput ? homeWeekNote(weekInput) : null}
+        loading={week.isPending}
+      />
 
       <SuiteRoomsGrid />
 
