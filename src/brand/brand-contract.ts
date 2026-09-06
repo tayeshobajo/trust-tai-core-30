@@ -23,7 +23,7 @@ export const BRAND_LOGO = {
   bundledAsset: "src/assets/brand/trust-tai-logo.png",
   publicPath: "/brand/trust-tai-logo.png",
   publicFile: "public/brand/trust-tai-logo.png",
-  emailHeight: 24,
+  emailHeight: 28,
 } as const;
 
 /** Width the email lockup must declare, derived so the ratio can never drift. */

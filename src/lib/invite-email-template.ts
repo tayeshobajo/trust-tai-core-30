@@ -123,12 +123,17 @@ export function inviteEmailBody(input: InviteEmailInput): InviteEmailContent {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${SECONDARY};padding:32px 12px">
 <tr><td align="center">
   <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:100%;background:${PAPER};border:1px solid ${RULE};border-radius:16px">
-    <tr><td style="padding:28px 32px 0 32px">
-      ${headerLockup(input.logoUrl)}
-      <p style="margin:18px 0 0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:${MUTED}">Trust Tai OS</p>
+    <tr><td style="padding:30px 32px 0 32px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td align="left" style="vertical-align:middle">${headerLockup(input.logoUrl)}</td>
+          <td align="right" style="vertical-align:middle;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:${MUTED};white-space:nowrap">Trust Tai OS</td>
+        </tr>
+      </table>
     </td></tr>
+    <tr><td style="padding:22px 32px 0 32px"><div style="height:1px;line-height:1px;font-size:0;background:${RULE}">&nbsp;</div></td></tr>
     <tr><td style="padding:0 32px">
-      <h1 style="margin:10px 0 0;font-size:24px;line-height:1.25;font-weight:600;color:${INK}">${by} invited you to ${org}.</h1>
+      <h1 style="margin:24px 0 0;font-size:24px;line-height:1.25;font-weight:600;color:${INK}">${by} invited you to ${org}.</h1>
       <p style="margin:14px 0 0;font-size:15px;line-height:1.65;color:${INK}">Trust Tai OS is the workspace where clients, projects, communication and decisions sit together, so the next move is always clear.</p>
       <p style="margin:14px 0 0;font-size:15px;line-height:1.65;color:${INK}">You have been invited as <strong style="color:${INK}">${role}</strong>. Accepting creates your place in ${org} and opens the rooms your role carries. Nothing is shared with you until you sign in.</p>
     </td></tr>
