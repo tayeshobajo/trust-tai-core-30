@@ -8,8 +8,8 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 19%** (P0 to P7)
-**Full Engine: 16%** (P0 to P9)
+**Production Readiness: 22%** (P0 to P7)
+**Full Engine: 18%** (P0 to P9)
 
 Working (corrected in slice P0-001A, extended in P1-002, P0-07 verified 2026-09-05,
 P0-08 and P0-03 Human Accepted 2026-09-06):
@@ -30,9 +30,12 @@ P0-08 and P0-03 Human Accepted 2026-09-06):
   and provenance path has never run in production, and `content_publish_attempts`
   holds 0 rows, so the hardened boundary has never been exercised. Both are now
   Code/Test Verified -> 8 x 0/5 = 0
-- P2 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 12 x 8/9 + 12 x 4/6 = 10.6667 + 8.0 = 18.6667 -> 19%.
-  Engine 10 x 8/9 + 10 x 4/6 = 8.8889 + 6.6667 = 15.5556 -> 16%. P0-04 stays open and
+- P2 weight 16 / 14, 5 charter gates, **1 met** (P2-05 Code/Test Verified on
+  2026-09-06, which is its required level; P2-00 carries no weight)
+  -> 16 x 1/5 = 3.2 and 14 x 1/5 = 2.8
+- P3 to P7 and P9: no gate met at its required level yet -> 0
+- Readiness 12 x 8/9 + 12 x 4/6 + 16 x 1/5 = 10.6667 + 8.0 + 3.2 = 21.8667 -> 22%.
+  Engine 10 x 8/9 + 10 x 4/6 + 14 x 1/5 = 8.8889 + 6.6667 + 2.8 = 18.3556 -> 18%. P0-04 stays open and
   uncounted, deferred by explicit human decision on 2026-09-06; agents remain paused.
 
 
