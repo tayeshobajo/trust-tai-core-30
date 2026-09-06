@@ -86,8 +86,21 @@ export function ApprovalWorkspace({
     });
   }
 
-  const authorising = actions.filter((action) => action.authorising);
-  const supporting = actions.filter((action) => !action.authorising);
+  /* The bar carries decisions only. Reading the source and asking why are
+     ways of looking, not deciding, so they never travel through onDecide. */
+  const isBatch = Boolean(request.batch);
+  const readyCount = readyItemIds(items).length;
+  const bulkClosed = isBatch ? bulkApprovalClosedBecause(items) : null;
+  const approving = actions.filter(
+    (action) => approvesWork(action) && !(action.id === "approve_ready" && bulkClosed),
+  );
+  const returning = actions.filter(
+    (action) => recordsDecision(action) && !approvesWork(action),
+  );
+  const canOpenSource = actions.some((action) => action.id === "open_source");
+  const needsReason = returning.length > 0 && !refusal;
+  /* A batch's stored summary is a count. The live line says what to do. */
+  const summary = isBatch ? batchReviewLine(items) : request.summary;
 
   return (
     <div className="flex h-full flex-col">
@@ -98,9 +111,11 @@ export function ApprovalWorkspace({
         <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
           {request.title}
         </h2>
-        <p className="mt-2 max-w-reading text-sm text-muted-foreground">{request.summary}</p>
+        <p className="mt-2 max-w-reading text-sm text-muted-foreground">{summary}</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <MetaPill>{STATUS_LABEL[request.status]}</MetaPill>
+          <TonePill tone={STATUS_TONE[request.status]} dot>
+            {STATUS_LABEL[request.status]}
+          </TonePill>
           <MetaPill>{URGENCY_LABEL[request.urgency]}</MetaPill>
           <MetaPill>{IMPACT_LABEL[request.impact]}</MetaPill>
           {request.revision > 1 ? <MetaPill>Revision {request.revision}</MetaPill> : null}
