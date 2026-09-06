@@ -32,6 +32,11 @@ import {
   writeOutgoingExtras,
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
+import {
+  buildDraftApproval,
+  writeDraftApproval,
+  type DraftApproval,
+} from "@/domain/comms-approval";
 import type { MeetingKind } from "@/domain/commercial";
 import type { EvidenceRef } from "@/domain/confidence";
 
