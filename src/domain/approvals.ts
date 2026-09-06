@@ -646,6 +646,24 @@ export function approvalAction(id: ApprovalActionId): ApprovalAction {
   return ACTION[id];
 }
 
+/** The acts that say yes to work. Only these may ever reach the approve path. */
+const APPROVING: ReadonlySet<ApprovalActionId> = new Set<ApprovalActionId>([
+  "approve",
+  "approve_and_queue",
+  "approve_and_send",
+  "approve_and_execute",
+  "approve_ready",
+]);
+
+export function approvesWork(action: Pick<ApprovalAction, "id">): boolean {
+  return APPROVING.has(action.id);
+}
+
+/** The acts that record a decision at all: yes, not now, or send it back. */
+export function recordsDecision(action: Pick<ApprovalAction, "id">): boolean {
+  return approvesWork(action) || action.id === "reject" || action.id === "request_revision";
+}
+
 /**
  * Which acts make sense for this request, right now.
  *
