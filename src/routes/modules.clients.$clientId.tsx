@@ -18,14 +18,15 @@ import { AppShell } from "@/components/tt/app-shell";
 import { CommercialPanel } from "@/components/tt/clients/commercial-panel";
 import { ProposalPanel } from "@/components/tt/clients/proposal-panel";
 import { ClientHeader, ClientTabs } from "@/components/tt/clients/shell";
+import { OverviewTab } from "@/components/tt/clients/overview";
 import {
   FilesTab,
-  OverviewTab,
   ProjectsTab,
   RelationshipTab,
   RoadmapTab,
   SiteTab,
 } from "@/components/tt/clients/tabs";
+
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { buildClientBook } from "@/data/clients/book-projection";
