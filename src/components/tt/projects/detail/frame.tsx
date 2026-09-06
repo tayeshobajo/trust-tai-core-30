@@ -122,7 +122,6 @@ export function ProjectIdentityHeader({
       ? "From an approved roadmap milestone"
       : "Started in Projects";
 
-
   return (
     <AmbientSurface
       as="header"
@@ -228,7 +227,6 @@ export const PROJECT_TABS = [
   { value: "files", label: "Files" },
   { value: "activity", label: "Activity" },
   { value: "chat", label: "Chat" },
-
 ] as const;
 
 export type ProjectTab = (typeof PROJECT_TABS)[number]["value"];
