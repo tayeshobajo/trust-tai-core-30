@@ -537,6 +537,16 @@ export function RelationshipTab({
                     <p className="mt-2 text-[13px] text-muted-foreground">
                       {person.nextAction ?? "No next move recorded."}
                     </p>
+                    <ExchangeLines
+                      person={
+                        exchange?.people.find(
+                          (entry) => entry.relationshipId === person.id,
+                        ) ?? null
+                      }
+                      now={now}
+                      timeZone={timeZone}
+                    />
+
                     {person.overdue ? (
                       <p className="mt-2 flex items-center gap-2 text-[13px] font-medium text-foreground">
                         <AlertTriangle className="size-4 text-warning" aria-hidden />
