@@ -591,7 +591,7 @@ export function SendComposer({
         </p>
       ) : null}
       {legacyApproved ? (
-        <p className="rounded-lg border border-amber/30 bg-amber/8 px-3 py-2 text-[12px] text-foreground">
+        <p className="rounded-lg border border-ember/30 bg-ember/8 px-3 py-2 text-[12px] text-foreground">
           {LEGACY_APPROVAL_NOTICE}
         </p>
       ) : null}
