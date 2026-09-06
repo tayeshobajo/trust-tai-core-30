@@ -21,7 +21,11 @@ import {
   type ExecutionProject,
   type ExecutionState,
 } from "./projects";
-import { syncStateFor, type ThinkingSourceInput, type ThinkingSourceType } from "./project-intelligence";
+import {
+  syncStateFor,
+  type ThinkingSourceInput,
+  type ThinkingSourceType,
+} from "./project-intelligence";
 
 /** The bounded set of project-owned changes Chat may prepare. */
 export type ChatProposalAction =
@@ -134,8 +138,7 @@ export interface ProjectChatChanges {
 }
 
 export type PrepareResult =
-  | { ok: true; proposal: ChatProposal }
-  | { ok: false; because: string; room?: OtherRoom };
+  { ok: true; proposal: ChatProposal } | { ok: false; because: string; room?: OtherRoom };
 
 const SOURCE_TYPES: ThinkingSourceType[] = ["chatgpt", "claude", "google_doc", "notion", "other"];
 
@@ -234,7 +237,10 @@ export function prepareProposal(
     proposedValue = owner.label;
   } else if (action === "block") {
     if (!raw) {
-      return { ok: false, because: "Say what is blocking it. A block nobody named cannot be cleared." };
+      return {
+        ok: false,
+        because: "Say what is blocking it. A block nobody named cannot be cleared.",
+      };
     }
     const check = checkTransition(project, "blocked", { blockedBecause: raw });
     if (!check.ok) return { ok: false, because: check.because };

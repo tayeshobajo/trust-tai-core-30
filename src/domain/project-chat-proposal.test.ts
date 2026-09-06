@@ -130,7 +130,11 @@ describe("prepareProposal", () => {
       PROJECT,
       {
         action: "link_source",
-        source: { title: "Course thinking", url: "https://chat.openai.com/x", sourceType: "chatgpt" },
+        source: {
+          title: "Course thinking",
+          url: "https://chat.openai.com/x",
+          sourceType: "chatgpt",
+        },
       },
       "link my chatgpt thread",
     );
@@ -179,8 +183,9 @@ describe("approval safety", () => {
   it("reads the current value from the record, never from the proposal", () => {
     expect(currentValueFor(PROJECT, "point_a")).toBe("Course outline drafted");
     expect(currentValueFor(PROJECT, "waiting_on")).toBe("");
-    expect(currentValueFor({ ...PROJECT, state: "blocked", blockedBecause: "No assets" }, "block"))
-      .toBe("No assets");
+    expect(
+      currentValueFor({ ...PROJECT, state: "blocked", blockedBecause: "No assets" }, "block"),
+    ).toBe("No assets");
   });
 
   it("claims a receipt only in the store that actually holds it", () => {

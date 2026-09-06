@@ -124,7 +124,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
   const [chatError, setChatError] = useState<string | null>(null);
   const [applying, setApplying] = useState<string | null>(null);
 
-
   const org = identity.organizationId;
   const projectsContext: ProjectsContext = {
     organizationId: org,
@@ -360,8 +359,10 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
         const intent: ChatChangeIntent = {
           action: String(body["action"] ?? "") as ChatChangeIntent["action"],
           ...(body["value"] ? { value: String(body["value"]) } : {}),
-          ...(Array.isArray(body["items"]) ? { items: (body["items"] as string[]) } : {}),
-          ...(body["source"] ? { source: body["source"] as NonNullable<ChatChangeIntent["source"]> } : {}),
+          ...(Array.isArray(body["items"]) ? { items: body["items"] as string[] } : {}),
+          ...(body["source"]
+            ? { source: body["source"] as NonNullable<ChatChangeIntent["source"]> }
+            : {}),
           ...(body["reason"] ? { reason: String(body["reason"]) } : {}),
         };
         // An owner is a member of this workspace, resolved here against the
@@ -460,7 +461,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
       setApplying(null);
     }
   };
-
 
   if (projectQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Reading this work…</p>;
@@ -810,7 +810,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
               onApprove={(id) => void approveProposal(id)}
               onDiscard={(id) => settle(id, "discarded", "Discarded. Nothing was changed.")}
             />
-
           ) : null}
         </div>
 

@@ -17,7 +17,11 @@
 import { useEffect, useRef, useState } from "react";
 
 import { TTButton } from "@/components/tt/primitives";
-import { OTHER_ROOM_TRUTH, type ChatProposal, type OtherRoom } from "@/domain/project-chat-proposal";
+import {
+  OTHER_ROOM_TRUTH,
+  type ChatProposal,
+  type OtherRoom,
+} from "@/domain/project-chat-proposal";
 
 export interface ProjectChatAnswer {
   answer: string;
@@ -176,8 +180,8 @@ export function ChatTab({
       <div className="tt-surface p-5">
         <p className="tt-eyebrow">Talk to this project</p>
         <p className="mt-2 text-[14px] text-muted-foreground">
-          Answers come from what {projectName} already holds. You can also ask for a change here:
-          it is shown to you first, and only written to Projects when you approve it.
+          Answers come from what {projectName} already holds. You can also ask for a change here: it
+          is shown to you first, and only written to Projects when you approve it.
         </p>
         <p className="mt-1 text-[13px] text-muted-foreground">
           This conversation is not saved. It is gone when you leave the page. The record is not.
@@ -215,9 +219,7 @@ export function ChatTab({
                     <p className="text-[14px] text-muted-foreground">Reading the project…</p>
                   ) : null}
 
-                  {entry.text ? (
-                    <p className="text-[14px] text-foreground">{entry.text}</p>
-                  ) : null}
+                  {entry.text ? <p className="text-[14px] text-foreground">{entry.text}</p> : null}
 
                   {room ? (
                     <p className="text-[13px] text-muted-foreground">
