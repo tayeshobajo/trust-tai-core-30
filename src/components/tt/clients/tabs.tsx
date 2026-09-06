@@ -246,7 +246,7 @@ export function ProjectRow({
           {project.blockedBecause ? `Blocked: ${project.blockedBecause}` : "Blocked"}
         </p>
       ) : null}
-    </TTCard>
+    </Wrapper>
   );
 }
 
