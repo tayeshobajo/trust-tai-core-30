@@ -494,12 +494,19 @@ export function RelationshipTab({
   loading,
   now,
   timeZone,
+  window: exchange,
 }: {
   read: RoomRead<RelationshipSnapshot> | null;
   loading: boolean;
   now: Date;
   timeZone: string;
+  /**
+   * What has actually been exchanged, read from Comms. Null while Comms has
+   * not answered; we say nothing rather than imply silence.
+   */
+  window?: RelationshipWindow | null;
 }) {
+
   return (
     <RoomSection
       eyebrow="Owned by Comms"
