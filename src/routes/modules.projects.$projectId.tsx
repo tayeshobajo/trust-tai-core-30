@@ -102,7 +102,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
   /** Set after a save lands, so a change visibly confirms instead of just vanishing. */
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
 
-
   const [fileError, setFileError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
   // Project chat is session scoped for now, and the panel says so.
@@ -404,7 +403,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
           onUpdate={(changes) => updateProject.mutate(changes)}
         />
       ) : null}
-
 
       <OutcomeStrip outcome={completion.outcome} />
 

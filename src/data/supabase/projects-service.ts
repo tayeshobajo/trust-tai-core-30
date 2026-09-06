@@ -31,7 +31,6 @@ import {
   stateFromLifecycle,
 } from "@/domain/projects";
 
-
 import { can, type AccessContext } from "@/domain/access";
 import {
   ROUTE_EVENT_KEY,
@@ -319,7 +318,6 @@ export const projectsService = {
     },
     context: ProjectsContext,
   ): Promise<ExecutionProject> {
-
     const now = new Date().toISOString();
     const state = changes.state ?? project.state;
     if (changes.state && changes.state !== project.state) {
@@ -359,9 +357,7 @@ export const projectsService = {
     }
 
     const dueDate =
-      changes.dueDate !== undefined
-        ? changes.dueDate.trim() || undefined
-        : project.dueDate;
+      changes.dueDate !== undefined ? changes.dueDate.trim() || undefined : project.dueDate;
     const currentWork = changes.currentWork ?? project.currentWork;
     const deliveryItems = changes.deliveryItems ?? project.deliveryItems;
     const origin: ProjectOrigin =
@@ -391,12 +387,11 @@ export const projectsService = {
       origin,
     };
 
-
     const body = payloadFor(next, state, now);
     // Clearing an agreed date has to clear the column too, or the read would
     // keep showing a date nobody agreed to any more.
     if (changes.dueDate !== undefined) body["due_date"] = dueDate ?? null;
-    
+
     if (changes.pointA !== undefined) body["point_a"] = next.pointA;
     if (changes.pointB !== undefined) body["point_b"] = next.pointB;
     const metadata = body["metadata"] as Row;

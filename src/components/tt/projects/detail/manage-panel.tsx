@@ -208,7 +208,8 @@ export function ManageProjectPanel({
         <ul className="space-y-1 border-t border-border pt-3">
           {IMMUTABLE_PROJECT_FACTS.map((fact) => (
             <li key={fact.field} className="max-w-reading text-[12px] text-muted-foreground">
-              <span className="text-foreground">{fact.field} stays as recorded.</span> {fact.because}
+              <span className="text-foreground">{fact.field} stays as recorded.</span>{" "}
+              {fact.because}
             </li>
           ))}
         </ul>
