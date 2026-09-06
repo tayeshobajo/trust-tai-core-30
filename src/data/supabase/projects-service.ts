@@ -340,13 +340,35 @@ export const projectsService = {
       if (!owned.ok) throw new Error(owned.because);
     }
 
-    const dueDate = changes.dueDate ?? project.dueDate;
+    // A correction to what a person typed is refused before it is written, in
+    // the same words the panel uses to refuse it.
+    const detailEdit: ProjectDetailEdit = {
+      ...(changes.name !== undefined ? { name: changes.name } : {}),
+      ...(changes.pointA !== undefined ? { pointA: changes.pointA } : {}),
+      ...(changes.pointB !== undefined ? { pointB: changes.pointB } : {}),
+      ...(changes.dueDate !== undefined ? { dueDate: changes.dueDate } : {}),
+      ...(changes.subjectLabel !== undefined ? { subjectLabel: changes.subjectLabel } : {}),
+    };
+    const detailKeys = Object.keys(detailEdit);
+    if (detailKeys.length > 0) {
+      const detailCheck = checkDetailEdit(project, detailEdit);
+      if (!detailCheck.ok) throw new Error(detailCheck.because);
+    }
+
+    const dueDate =
+      changes.dueDate !== undefined
+        ? changes.dueDate.trim() || undefined
+        : project.dueDate;
     const currentWork = changes.currentWork ?? project.currentWork;
     const deliveryItems = changes.deliveryItems ?? project.deliveryItems;
+    const origin: ProjectOrigin =
+      changes.subjectLabel !== undefined
+        ? { ...project.origin, subjectLabel: changes.subjectLabel.trim() }
+        : project.origin;
     const next: ProjectInput = {
-      name: project.name,
-      pointA: project.pointA,
-      pointB: changes.pointB ?? project.pointB,
+      name: changes.name !== undefined ? changes.name.trim() : project.name,
+      pointA: changes.pointA !== undefined ? changes.pointA.trim() : project.pointA,
+      pointB: changes.pointB !== undefined ? changes.pointB.trim() : project.pointB,
       ...((changes.nextMove ?? project.nextMove)
         ? { nextMove: changes.nextMove ?? project.nextMove }
         : {}),
@@ -363,8 +385,9 @@ export const projectsService = {
       ...(dueDate ? { dueDate } : {}),
       ...(currentWork ? { currentWork } : {}),
       ...(deliveryItems ? { deliveryItems } : {}),
-      origin: project.origin,
+      origin,
     };
+
 
     const body = payloadFor(next, state, now);
     const metadata = body["metadata"] as Row;
