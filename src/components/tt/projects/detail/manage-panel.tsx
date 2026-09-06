@@ -11,12 +11,14 @@
  * pretends to be the other.
  */
 
+import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { TTButton, TTInput } from "@/components/tt/primitives";
 import {
   EXECUTION_STATE_LABEL,
   IMMUTABLE_PROJECT_FACTS,
+  agreedDayToIso,
   checkDetailEdit,
   checkTransition,
   nextStates,
@@ -105,14 +107,18 @@ export function ManageProjectPanel({
     project.updatedAt,
   ]);
 
-  const companyEditable = project.origin.kind === "manual";
+  // The label is only Projects' own descriptive truth when nothing canonical
+  // owns it. A project attached to a Client record takes its company from that
+  // record, so editing the label here could only create two versions of one fact.
+  const clientLinked = Boolean(project.clientId);
+  const companyEditable = project.origin.kind === "manual" && !clientLinked;
 
   const edit: ProjectDetailEdit = {
     ...(name !== project.name ? { name } : {}),
     ...(pointA !== project.pointA ? { pointA } : {}),
     ...(pointB !== project.pointB ? { pointB } : {}),
     ...(dueDate !== dateValue(project.dueDate)
-      ? { dueDate: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : "" }
+      ? { dueDate: agreedDayToIso(dueDate) }
       : {}),
     ...(companyEditable && company !== (project.origin.subjectLabel ?? "")
       ? { subjectLabel: company }
@@ -166,11 +172,28 @@ export function ManageProjectPanel({
               placeholder={companyEditable ? "Who this work is for" : ""}
               onChange={(event) => setCompany(event.target.value)}
             />
-            {!companyEditable ? (
+            {clientLinked ? (
+              <span className="block text-[12px] text-muted-foreground">
+                This project is attached to a Client record, and that record is the company. There
+                is no safe way to move delivery to a different company yet, so if this is attached
+                to the wrong one, close this project and start it under the right client.{" "}
+                <Link
+                  to="/modules/clients/$clientId"
+                  params={{ clientId: project.clientId ?? "" }}
+                  className="text-royal underline underline-offset-2"
+                >
+                  Open the client
+                </Link>
+              </span>
+            ) : !companyEditable ? (
               <span className="block text-[12px] text-muted-foreground">
                 Roadmap owns this. It came across with the approved milestone.
               </span>
-            ) : null}
+            ) : (
+              <span className="block text-[12px] text-muted-foreground">
+                Nothing canonical owns this yet, so it is a description you can correct.
+              </span>
+            )}
           </label>
           <label className="block space-y-1.5">
             <span className="text-[12px] text-muted-foreground">Agreed date</span>
