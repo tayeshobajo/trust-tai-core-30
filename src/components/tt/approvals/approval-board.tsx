@@ -19,7 +19,7 @@
 
 import { useState } from "react";
 
-import { MetaPill, TTButton } from "@/components/tt/primitives";
+import { MetaPill, TonePill, TTButton } from "@/components/tt/primitives";
 import {
   BOARD_COLUMNS,
   BOARD_COLUMN_LABEL,
@@ -29,7 +29,24 @@ import {
   columnFor,
   type ApprovalRequest,
   type BoardColumn,
+  type StateTone,
 } from "@/domain/approvals";
+
+/** The cue each column carries. Amber says "look", green says "done". */
+const COLUMN_TONE: Record<BoardColumn, StateTone> = {
+  needs_review: "caution",
+  needs_context: "neutral",
+  ready: "active",
+  approved: "good",
+};
+
+const TONE_DOT: Record<StateTone, string> = {
+  neutral: "bg-border",
+  active: "bg-royal",
+  good: "bg-success",
+  caution: "bg-warning",
+  risk: "bg-destructive",
+};
 
 export interface BoardColumnView {
   rows: ApprovalRequest[];
