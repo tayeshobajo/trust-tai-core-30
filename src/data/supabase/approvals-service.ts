@@ -18,6 +18,7 @@ import {
   assertApprovalTransition,
   approvalSourceKey,
   summariseBatch,
+  itemOverrideRefusal,
   tabFilter,
   BOARD_COLUMNS,
   BOARD_COLUMN_STATUSES,
@@ -37,6 +38,7 @@ import {
   type ApprovalType,
   type DownstreamResult,
   type ExceptionReason,
+  type ItemOverride,
   type ImpactLevel,
   type SourceEntityRef,
   type UrgencyLevel,
@@ -784,6 +786,76 @@ export const approvalsService = {
       id: result.adapterId,
       label: result.adapterId,
     });
+  },
+
+  /**
+   * Accept one flagged item, and only that one.
+   *
+   * The item moves from `exception` to `approved`, nothing is queued and
+   * nothing is published: this records authority exactly like every other
+   * decision here does. The actor, the moment and the reason are written to
+   * the item's own provenance and to the append-only trail, so the record can
+   * always answer who took the exception and why.
+   */
+  async overrideItem(
+    context: ApprovalsContext,
+    input: {
+      requestId: ID;
+      itemId: ID;
+      reason: string;
+      actor: { id: ID; label: string };
+      /** The authority answer for the whole card. Non-null closes the write. */
+      refusal: string | null;
+    },
+  ): Promise<ApprovalItem> {
+    const current = await this.get(context, input.requestId);
+    if (!current) throw new Error("That approval no longer exists.");
+
+    const item = current.items.find((entry) => entry.id === input.itemId);
+    if (!item) throw new Error("That item is not part of this approval.");
+
+    const refused = itemOverrideRefusal({
+      refusal: input.refusal,
+      itemState: item.state,
+      reason: input.reason,
+    });
+    if (refused) throw new Error(refused);
+
+    const at = new Date().toISOString();
+    const reason = input.reason.trim();
+    const override: ItemOverride = { itemId: item.id, reason, by: input.actor, at };
+
+    const { error } = await supabase
+      .from("approval_items")
+      .update({
+        state: "approved" satisfies ApprovalItemState,
+        facts: { ...item.facts, override },
+        updated_at: at,
+      })
+      .eq("organization_id", context.organizationId)
+      .eq("id", item.id)
+      .eq("state", "exception");
+    if (error) throw new Error(missingTable(error) ? MISSING : error.message);
+
+    await writeEvent(
+      context,
+      input.requestId,
+      "item_override",
+      `${input.actor.label} accepted "${item.title}" despite the flag. ${reason}`,
+      { type: "user", id: input.actor.id, label: input.actor.label },
+      {
+        itemId: item.id,
+        itemKey: item.itemKey,
+        contentItemId: item.facts["contentItemId"] ?? null,
+        decision: "approve",
+        exceptionReasons: item.exceptionReasons,
+        reason,
+        at,
+      },
+    );
+
+    const after = await loadItems(context, input.requestId);
+    return after.find((entry) => entry.id === item.id) ?? { ...item, state: "approved" };
   },
 
   async addNote(

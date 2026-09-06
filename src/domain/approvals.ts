@@ -400,6 +400,44 @@ export function readyItemIds(items: ApprovalItem[]): ID[] {
   return items.filter((item) => item.state === "ready").map((item) => item.id);
 }
 
+/**
+ * A single flagged item, accepted by a named person, on the record.
+ *
+ * An exception is exactly the case bulk approval refuses, so the only way past
+ * it is one person taking one item deliberately and saying why. The reason is
+ * not decoration: it is the durable justification the trail keeps.
+ */
+export interface ItemOverride {
+  itemId: ID;
+  reason: string;
+  by: { id: ID; label: string };
+  at: ISODateTime;
+}
+
+/** The shortest reason that still says something. */
+export const MIN_OVERRIDE_REASON = 4;
+
+/**
+ * Why this person cannot accept this flagged item right now, or null.
+ *
+ * `refusal` is the same authority answer the whole card is governed by, so an
+ * override can never be a way around the two gates in `approvalRefusal`.
+ */
+export function itemOverrideRefusal(input: {
+  refusal: string | null;
+  itemState: ApprovalItemState;
+  reason: string;
+}): string | null {
+  if (input.refusal) return input.refusal;
+  if (input.itemState !== "exception") {
+    return "Only an item that needs you specifically can be accepted this way.";
+  }
+  if (input.reason.trim().length < MIN_OVERRIDE_REASON) {
+    return "Say briefly why you are accepting this one. The reason is kept on the record.";
+  }
+  return null;
+}
+
 /* ---------------------------------------------------------- downstream */
 
 export type DownstreamState = "pending" | "queued" | "accepted" | "unavailable" | "failed";
@@ -421,7 +459,14 @@ export interface DownstreamResult {
 /* ----------------------------------------------------------------- notes */
 
 export type ApprovalEventKind =
-  "submitted" | "resubmitted" | "note" | "decision" | "state_changed" | "downstream";
+  | "submitted"
+  | "resubmitted"
+  | "note"
+  | "decision"
+  | "state_changed"
+  | "downstream"
+  /** One flagged item accepted by a named person, with their reason. */
+  | "item_override";
 
 /** Append-only. A note always carries who wrote it and when. */
 export interface ApprovalEvent {

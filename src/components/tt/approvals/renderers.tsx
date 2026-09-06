@@ -12,12 +12,13 @@
  */
 
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
-import { MetaPill } from "@/components/tt/primitives";
+import { MetaPill, TTButton } from "@/components/tt/primitives";
 import {
   EXCEPTION_LABEL,
   ITEM_STATE_LABEL,
+  MIN_OVERRIDE_REASON,
   type ApprovalItem,
   type ApprovalRequest,
   type ApprovalType,
@@ -64,6 +65,63 @@ export interface RendererProps {
   /** Which batch items the person has chosen to authorise. */
   selected: Set<string>;
   onToggle: (itemId: string) => void;
+  /**
+   * Accepting one flagged item, deliberately and with a reason. Absent when
+   * the surface has no such act to offer.
+   */
+  override?: {
+    /** Non-null when this person may not decide here at all. */
+    refusal: string | null;
+    pending: boolean;
+    onSubmit: (itemId: string, reason: string) => void;
+  };
+}
+
+/**
+ * The one way past an exception: a named person, one item, one reason.
+ *
+ * Bulk approval stays closed for these on purpose. This is deliberately more
+ * work than a tick box, because taking an exception should cost a sentence.
+ */
+function ExceptionOverride({
+  item,
+  override,
+}: {
+  item: ApprovalItem;
+  override: NonNullable<RendererProps["override"]>;
+}) {
+  const [reason, setReason] = useState("");
+  const short = reason.trim().length < MIN_OVERRIDE_REASON;
+
+  if (override.refusal) {
+    return <p className="mt-3 text-xs text-muted-foreground">{override.refusal}</p>;
+  }
+
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <p className="tt-eyebrow mb-2">Accept this one anyway</p>
+      <div className="flex flex-wrap gap-2">
+        <input
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="Why you are accepting it (kept on the record)"
+          aria-label={`Reason for accepting ${item.title}`}
+          className="tt-level-primary min-w-0 flex-1 rounded-lg px-3 py-2 text-sm outline-none"
+        />
+        <TTButton
+          variant="secondary"
+          size="sm"
+          disabled={short || override.pending}
+          onClick={() => override.onSubmit(item.id, reason.trim())}
+        >
+          Accept this item
+        </TTButton>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        This records your decision on this item only. Nothing is queued or published.
+      </p>
+    </div>
+  );
 }
 
 /* ------------------------------------------------------- comms draft */
@@ -125,7 +183,7 @@ function ScoutRelationship({ request }: RendererProps) {
 
 /* ---------------------------------------------------------- blog batch */
 
-function BlogBatch({ request, items, selected, onToggle }: RendererProps) {
+function BlogBatch({ items, selected, onToggle, override }: RendererProps) {
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">This batch has no posts in it.</p>;
   }
@@ -133,8 +191,8 @@ function BlogBatch({ request, items, selected, onToggle }: RendererProps) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Tick what you want published. Exceptions cannot be approved in bulk: they are here
-        because something needed you specifically.
+        Tick what you want published. Exceptions cannot be approved in bulk: they are here because
+        something needed you specifically.
       </p>
       <ul className="space-y-2">
         {items.map((item) => {
@@ -186,6 +244,9 @@ function BlogBatch({ request, items, selected, onToggle }: RendererProps) {
                         Read the article
                       </Link>
                     </p>
+                  ) : null}
+                  {item.state === "exception" && override ? (
+                    <ExceptionOverride item={item} override={override} />
                   ) : null}
                 </div>
               </div>
@@ -239,9 +300,7 @@ function DeliveryChange({ request }: RendererProps) {
           {str(payload, "costImpact") ? (
             <MetaPill>Cost: {str(payload, "costImpact")}</MetaPill>
           ) : null}
-          <MetaPill>
-            {payload["clientVisible"] ? "Client will see this" : "Internal only"}
-          </MetaPill>
+          <MetaPill>{payload["clientVisible"] ? "Client will see this" : "Internal only"}</MetaPill>
         </div>
       </Block>
       <Block label="Why">
