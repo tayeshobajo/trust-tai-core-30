@@ -9,7 +9,7 @@
  */
 
 import { nextRelationshipMove, type MoveUrgency } from "@/data/comms-next-move";
-import type { StoredMailboxMessage } from "@/data/supabase/comms-messages";
+import type { StoredMailboxMessage } from "@/domain/comms-integrations";
 import type { Relationship } from "@/domain/comms";
 
 export interface RelationshipMessageMark {
