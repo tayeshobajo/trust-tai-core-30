@@ -33,6 +33,7 @@ import {
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
 import { readDraftSend } from "@/domain/comms-send";
+import { LEGACY_APPROVAL_NOTICE, isLegacyApproved } from "@/domain/comms-approval";
 import {
   judgmentSummaryLines,
   readCommunicationJudgment,
@@ -90,7 +91,7 @@ export function SendComposer({
   const [body, setBody] = useState(draft.body);
   const [ccText, setCcText] = useState(extras.cc.join(", "));
   const [bccText, setBccText] = useState(extras.bcc.join(", "));
-  const [busy, setBusy] = useState<"save" | "send" | "upload" | null>(null);
+  const [busy, setBusy] = useState<"save" | "send" | "upload" | "approve" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -141,6 +142,12 @@ export function SendComposer({
 
   const sending = draft.reviewState === "sending";
   const failed = draft.reviewState === "send_failed";
+
+  // An approval with no name and no time on it is not one Comms will act on.
+  const legacyApproved = useMemo(
+    () => isLegacyApproved(draft.reviewState, draft.rationale),
+    [draft.reviewState, draft.rationale],
+  );
 
   /** Connected mailboxes that hold the send grant, in connection order. */
   const sendCapable = useMemo(
@@ -277,6 +284,25 @@ export function SendComposer({
       onChanged();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "That file could not be removed.");
+    }
+  }
+
+  /**
+   * Re-approve a draft whose approval predates the approval record. This
+   * writes who decided and when, and sends nothing.
+   */
+  async function handleApproveAgain() {
+    setBusy("approve");
+    setError(null);
+    setNotice(null);
+    try {
+      await commsService.setDraftState(draft, "approved", relationship, context);
+      setNotice("Approved, with your name and the time on it. Nothing has been sent.");
+      onChanged();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "That approval could not be recorded.");
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -564,6 +590,11 @@ export function SendComposer({
           Last attempt failed: {sendRecord.error}
         </p>
       ) : null}
+      {legacyApproved ? (
+        <p className="rounded-lg border border-ember/30 bg-ember/8 px-3 py-2 text-[12px] text-foreground">
+          {LEGACY_APPROVAL_NOTICE}
+        </p>
+      ) : null}
       {notice ? (
         <p className="rounded-lg border border-fern/30 bg-fern/8 px-3 py-2 text-[12px] text-fern">
           {notice}
@@ -594,7 +625,17 @@ export function SendComposer({
           >
             {busy === "save" ? "Saving…" : "Save changes"}
           </TTButton>
-          {capability.data?.canSend ? (
+          {legacyApproved ? (
+            <TTButton
+              variant="primary"
+              size="sm"
+              type="button"
+              onClick={() => void handleApproveAgain()}
+              disabled={sending || busy !== null}
+            >
+              {busy === "approve" ? "Recording…" : "Approve this draft"}
+            </TTButton>
+          ) : capability.data?.canSend ? (
             <TTButton
               variant="primary"
               size="sm"

@@ -20,6 +20,7 @@
 import type { AttachmentMeta } from "./comms-integrations";
 import type { DraftReviewState } from "./comms";
 import type { ISODateTime } from "./entities";
+import { LEGACY_APPROVAL_REFUSAL, isLegacyApproved } from "./comms-approval";
 
 /** Where a message goes: continue the Gmail thread, or open a new one. */
 export type SendThreadTarget = { mode: "reply"; providerThreadId: string } | { mode: "new" };
@@ -193,6 +194,13 @@ export function decideSendClaim(
       !Number.isNaN(new Date(draft.updatedAt).getTime()) &&
       now.getTime() - new Date(draft.updatedAt).getTime() > STALE_SENDING_MS;
     return stale ? { kind: "claim" } : { kind: "in_flight" };
+  }
+
+  // Approved has to mean a person decided, with a name and a time on it.
+  // An approval we cannot attribute is not one we may act on: the draft
+  // stays exactly as it is and a person approves it again.
+  if (isLegacyApproved(draft.reviewState, draft.rationale)) {
+    return { kind: "not_sendable", reason: LEGACY_APPROVAL_REFUSAL };
   }
 
   if ((SENDABLE_STATES as string[]).includes(draft.reviewState)) return { kind: "claim" };
