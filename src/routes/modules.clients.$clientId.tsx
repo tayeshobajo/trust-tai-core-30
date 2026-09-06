@@ -33,6 +33,7 @@ import {
   eventsAbout,
   readClientApprovals,
   readClientFiles,
+  readClientLinkedSources,
   readClientHistory,
   readClientRoadmaps,
   readClientSite,
@@ -233,6 +234,13 @@ function ClientShell({
   const filesQuery = useQuery({
     queryKey: ["clients", "files", organizationId, projectIds],
     queryFn: () => readClientFiles(organizationId, projectIds),
+    enabled: projectsQuery.isSuccess,
+    retry: false,
+  });
+
+  const linkedSourcesQuery = useQuery({
+    queryKey: ["clients", "linked-sources", organizationId, projectIds],
+    queryFn: () => readClientLinkedSources(organizationId, projectIds),
     enabled: projectsQuery.isSuccess,
     retry: false,
   });
@@ -484,7 +492,9 @@ function ClientShell({
           {tab === "files" ? (
             <FilesTab
               read={readOf(filesQuery)}
+              linkedRead={readOf(linkedSourcesQuery)}
               loading={projectsQuery.isLoading || filesQuery.isLoading}
+              linkedLoading={projectsQuery.isLoading || linkedSourcesQuery.isLoading}
               hasProjects={projects.length > 0}
               projectNames={projectNames}
               timeZone={timeZone}

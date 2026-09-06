@@ -22,6 +22,7 @@ import {
 import { TTCard } from "@/components/tt/primitives";
 import type { ClientApprovalsRead, ClientSiteRead } from "@/data/clients/shell-reads";
 import type { ActivityEvent } from "@/domain/activity";
+import type { ClientLinkedSource } from "@/domain/client-linked-sources";
 import type { ApprovalRequest } from "@/domain/approvals";
 import {
   approvalStatusLabel,
@@ -640,66 +641,120 @@ export function SiteTab({
 
 export function FilesTab({
   read,
+  linkedRead,
   loading,
+  linkedLoading,
   hasProjects,
   projectNames,
   timeZone,
   onOpen,
 }: {
   read: RoomRead<ProjectFile[]> | null;
+  linkedRead: RoomRead<ClientLinkedSource[]> | null;
   loading: boolean;
+  linkedLoading: boolean;
   hasProjects: boolean;
   projectNames: Record<string, string>;
   timeZone: string;
   onOpen: (file: ProjectFile) => void;
 }) {
   return (
-    <RoomSection
-      eyebrow="Owned by Projects"
-      title="Files on this company's work"
-      description="Everything uploaded to the projects that name this company. Files are private and opened through a short-lived link."
-      openTo={
-        <Link to="/modules/projects">
-          <OpenIn>Open in Projects</OpenIn>
-        </Link>
-      }
-    >
-      {!hasProjects ? (
-        <Absent line={FILES_NO_PROJECTS} because={FILES_NO_PROJECTS_BECAUSE} />
-      ) : (
-        <ReadOrSay read={read} loading={loading} what="Files">
-          {(files) =>
-            files.length === 0 ? (
-              <Absent line={FILES_NONE} because={FILES_NONE_BECAUSE} />
-            ) : (
-              <ul className="space-y-2">
-                {files.map((file) => (
-                  <li key={file.id}>
-                    <TTCard className="flex items-start justify-between gap-3 p-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm text-foreground">{file.name}</p>
-                        <p className="mt-0.5 text-[12px] text-muted-foreground">
-                          {FILE_KIND_LABEL[file.kind]} ·{" "}
-                          {projectNames[file.projectId] ?? "A project"} ·{" "}
-                          {formatDay(file.createdAt, timeZone) ?? "on an unknown day"}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => onOpen(file)}
-                        className="shrink-0 text-[13px] font-medium text-royal"
-                      >
-                        Open
-                      </button>
-                    </TTCard>
-                  </li>
-                ))}
-              </ul>
-            )
+    <>
+      {hasProjects ? (
+        <RoomSection
+          eyebrow="Owned by Projects"
+          title="Linked working sources"
+          description="Documents that live outside Trust Tai and are linked from the projects on this company: Google Docs and Sheets, prototypes, staging sites. These are links, not uploaded files."
+          openTo={
+            <Link to="/modules/projects">
+              <OpenIn>Open in Projects</OpenIn>
+            </Link>
           }
-        </ReadOrSay>
-      )}
-    </RoomSection>
+        >
+          <ReadOrSay read={linkedRead} loading={linkedLoading} what="Linked sources">
+            {(sources) =>
+              sources.length === 0 ? (
+                <Absent
+                  line="No external document is linked yet."
+                  because="A link is saved on the project in Projects, so it stays owned there."
+                />
+              ) : (
+                <ul className="space-y-2">
+                  {sources.map((source) => (
+                    <li key={`${source.store}-${source.id}`}>
+                      <TTCard className="flex items-start justify-between gap-3 p-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm text-foreground">{source.title}</p>
+                          <p className="mt-0.5 text-[12px] text-muted-foreground">
+                            External link · {source.kindLabel} · {source.stateLabel} ·{" "}
+                            {projectNames[source.projectId] ?? "A project"} ·{" "}
+                            {formatDay(source.addedAt, timeZone) ?? "on an unknown day"}
+                          </p>
+                        </div>
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 text-[13px] font-medium text-royal"
+                        >
+                          Open link
+                        </a>
+                      </TTCard>
+                    </li>
+                  ))}
+                </ul>
+              )
+            }
+          </ReadOrSay>
+        </RoomSection>
+      ) : null}
+      <RoomSection
+        eyebrow="Owned by Projects"
+        title="Files on this company's work"
+        description="Everything uploaded to the projects that name this company. Files are private and opened through a short-lived link."
+        openTo={
+          <Link to="/modules/projects">
+            <OpenIn>Open in Projects</OpenIn>
+          </Link>
+        }
+      >
+        {!hasProjects ? (
+          <Absent line={FILES_NO_PROJECTS} because={FILES_NO_PROJECTS_BECAUSE} />
+        ) : (
+          <ReadOrSay read={read} loading={loading} what="Files">
+            {(files) =>
+              files.length === 0 ? (
+                <Absent line={FILES_NONE} because={FILES_NONE_BECAUSE} />
+              ) : (
+                <ul className="space-y-2">
+                  {files.map((file) => (
+                    <li key={file.id}>
+                      <TTCard className="flex items-start justify-between gap-3 p-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm text-foreground">{file.name}</p>
+                          <p className="mt-0.5 text-[12px] text-muted-foreground">
+                            {FILE_KIND_LABEL[file.kind]} ·{" "}
+                            {projectNames[file.projectId] ?? "A project"} ·{" "}
+                            {formatDay(file.createdAt, timeZone) ?? "on an unknown day"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onOpen(file)}
+                          className="shrink-0 text-[13px] font-medium text-royal"
+                        >
+                          Open
+                        </button>
+                      </TTCard>
+                    </li>
+                  ))}
+                </ul>
+              )
+            }
+          </ReadOrSay>
+        )}
+      </RoomSection>
+    </>
   );
 }
 

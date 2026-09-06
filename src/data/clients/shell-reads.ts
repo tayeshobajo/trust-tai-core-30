@@ -9,11 +9,13 @@
 import { supabaseActivity } from "@/data/supabase/activities";
 import { approvalsSchemaReady, approvalsService } from "@/data/supabase/approvals-service";
 import { projectDelivery } from "@/data/supabase/project-delivery";
+import { projectIntelligence } from "@/data/supabase/project-intelligence";
 import { roadmapService } from "@/data/supabase/roadmap-service";
 import { listWebsiteSubmissions } from "@/data/supabase/website-service";
 import type { ActivityEvent } from "@/domain/activity";
 import type { ApprovalRequest } from "@/domain/approvals";
 import type { ID } from "@/domain/entities";
+import { linkedSourcesFrom, type ClientLinkedSource } from "@/domain/client-linked-sources";
 import type { ProjectFile } from "@/domain/project-delivery";
 import type { Roadmap, RoadmapDecision, RoadmapStage } from "@/domain/roadmap";
 import type { WebsiteSubmission } from "@/domain/website";
@@ -97,4 +99,21 @@ export async function readClientFiles(
 ): Promise<ProjectFile[]> {
   if (projectIds.length === 0) return [];
   return projectDelivery.listFilesForProjects(organizationId, projectIds);
+}
+
+/**
+ * Externally linked working documents on this company's projects: Google Docs
+ * and Sheets, Figma prototypes, staging sites. Read from the two canonical
+ * Projects stores, never copied into a second file store.
+ */
+export async function readClientLinkedSources(
+  organizationId: ID,
+  projectIds: ID[],
+): Promise<ClientLinkedSource[]> {
+  if (projectIds.length === 0) return [];
+  const [thinking, connections] = await Promise.all([
+    projectIntelligence.listThinkingForProjects(organizationId, projectIds),
+    projectIntelligence.listConnectionsForProjects(organizationId, projectIds),
+  ]);
+  return linkedSourcesFrom(thinking, connections);
 }
