@@ -17,7 +17,6 @@ export interface TodayItem {
 export function TodaySummary({ items, empty }: { items: TodayItem[]; empty?: string | undefined }) {
   if (items.length === 0 && !empty) return null;
 
-
   return (
     <section aria-labelledby="today-heading">
       <h2 id="today-heading" className="font-display text-2xl text-foreground">
@@ -25,7 +24,12 @@ export function TodaySummary({ items, empty }: { items: TodayItem[]; empty?: str
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">What needs your attention.</p>
 
+      {items.length === 0 && empty ? (
+        <p className="tt-surface mt-5 px-7 py-7 text-sm text-muted-foreground">{empty}</p>
+      ) : null}
+
       <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
         {items.map((item) => {
           const Icon = item.icon;
           return (
