@@ -311,7 +311,8 @@ export async function setClientCommercialState(
     typeof patch.buildPhaseAmountCents === "number" && Number.isFinite(patch.buildPhaseAmountCents)
       ? Math.trunc(patch.buildPhaseAmountCents)
       : null;
-  if (movingIntoBuild && (buildPhaseAmountCents === null || buildPhaseAmountCents < 0)) {
+  // Zero recognises nothing, so it is not a phase amount a person agreed.
+  if (movingIntoBuild && (buildPhaseAmountCents === null || buildPhaseAmountCents <= 0)) {
     throw new Error(
       "Moving a client into Build needs the phase amount a person actually agreed, in cents.",
     );
