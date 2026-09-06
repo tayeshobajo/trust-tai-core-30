@@ -79,12 +79,13 @@ function Card({
   onOpen: () => void;
   onApprove: () => void;
 }) {
-  const approvable = columnFor(request.status) !== "approved";
+  const column = columnFor(request.status);
+  const approvable = column !== "approved";
   /* A batch is a set of individual judgments, so its button opens the card
      rather than approving it. The label says which one it is. */
   const isBatch = Boolean(request.batch);
   const flagged = request.batch?.exceptions ?? 0;
-  const tone: StateTone = COLUMN_TONE[columnFor(request.status)];
+  const tone: StateTone = column ? COLUMN_TONE[column] : "neutral";
 
   return (
     <div
