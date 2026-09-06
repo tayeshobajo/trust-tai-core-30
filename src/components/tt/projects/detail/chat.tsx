@@ -105,9 +105,7 @@ export function ChatTab({
       </div>
 
       {turns.length === 0 ? (
-        <p className="text-[14px] text-muted-foreground">
-          No questions asked yet in this session.
-        </p>
+        <p className="text-[14px] text-muted-foreground">No questions asked yet in this session.</p>
       ) : (
         <ul className="space-y-4">
           {turns.map((turn, index) => (

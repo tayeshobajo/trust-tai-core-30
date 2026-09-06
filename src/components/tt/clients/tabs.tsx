@@ -523,14 +523,18 @@ function ExchangeLines({
       </p>
       {person.latestInbound ? (
         <p>
-          They last wrote {lastTouchLine(person.latestInbound.at, now, timeZone).toLowerCase()
+          They last wrote{" "}
+          {lastTouchLine(person.latestInbound.at, now, timeZone)
+            .toLowerCase()
             .replace("last touch ", "")}
           : {person.latestInbound.subject}
         </p>
       ) : null}
       {person.latestOutbound ? (
         <p>
-          You last wrote {lastTouchLine(person.latestOutbound.at, now, timeZone).toLowerCase()
+          You last wrote{" "}
+          {lastTouchLine(person.latestOutbound.at, now, timeZone)
+            .toLowerCase()
             .replace("last touch ", "")}
           : {person.latestOutbound.subject}
         </p>
@@ -540,7 +544,6 @@ function ExchangeLines({
 }
 
 export function RelationshipTab({
-
   read,
   loading,
   now,
@@ -557,7 +560,6 @@ export function RelationshipTab({
    */
   window?: RelationshipWindow | null;
 }) {
-
   return (
     <RoomSection
       eyebrow="Owned by Comms"
@@ -590,9 +592,7 @@ export function RelationshipTab({
                     </p>
                     <ExchangeLines
                       person={
-                        exchange?.people.find(
-                          (entry) => entry.relationshipId === person.id,
-                        ) ?? null
+                        exchange?.people.find((entry) => entry.relationshipId === person.id) ?? null
                       }
                       now={now}
                       timeZone={timeZone}

@@ -58,8 +58,6 @@ import {
   parseClientTab,
   projectsForClient,
   relationshipSnapshotFor,
-
-
   reviewCadenceFor,
   roadmapOutcomeFor,
   roadmapsForClient,
@@ -276,10 +274,9 @@ function ClientShell({
     retry: false,
     queryFn: async () => {
       const entries = await Promise.all(
-        relationshipIds.map(async (id) => [
-          id,
-          await listRelationshipMessages(organizationId, id),
-        ] as const),
+        relationshipIds.map(
+          async (id) => [id, await listRelationshipMessages(organizationId, id)] as const,
+        ),
       );
       return Object.fromEntries(entries);
     },
@@ -598,7 +595,6 @@ function ClientShell({
               timeZone={timeZone}
               window={exchangeWindow}
             />
-
           ) : null}
           {tab === "site" ? (
             <SiteTab

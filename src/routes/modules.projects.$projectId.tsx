@@ -65,8 +65,6 @@ import { ChatTab, type ProjectChatTurn } from "@/components/tt/projects/detail/c
 import { listMembers } from "@/data/supabase/settings-service";
 import { supabase } from "@/integrations/trust-tai/supabase";
 
-
-
 export const Route = createFileRoute("/modules/projects/$projectId")({
   head: () => ({
     meta: [
@@ -114,7 +112,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
   // Project chat is session scoped for now, and the panel says so.
   const [chatTurns, setChatTurns] = useState<ProjectChatTurn[]>([]);
   const [chatError, setChatError] = useState<string | null>(null);
-
 
   const org = identity.organizationId;
   const projectsContext: ProjectsContext = {
@@ -231,8 +228,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
     [membersQuery.data],
   );
 
-
-
   const roadmaps = roadmapsQuery.data ?? [];
   const row = useMemo(
     () =>
@@ -319,8 +314,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
       setChatTurns((turns) => turns.slice(0, -1));
     },
   });
-
-
 
   if (projectQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Reading this work…</p>;
@@ -721,7 +714,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
 
           {tab === "activity" ? <ActivityTab events={activityQuery.data ?? []} /> : null}
 
-
           {tab === "chat" ? (
             <ChatTab
               projectName={project.name}
@@ -741,9 +733,7 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
           }}
           members={assignableMembers}
           unassignRefusal={
-            checkOwnerAssignment(project, {}).ok
-              ? null
-              : checkOwnerAssignment(project, {}).because
+            checkOwnerAssignment(project, {}).ok ? null : checkOwnerAssignment(project, {}).because
           }
           onAssign={(nextOwner) => updateProject.mutate(nextOwner)}
           attention={attention}

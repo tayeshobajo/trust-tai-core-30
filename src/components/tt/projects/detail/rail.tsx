@@ -58,7 +58,6 @@ export function DetailRail({
   onAskDecision: () => void;
   onComplete: () => void;
 }) {
-
   return (
     <aside className="space-y-5">
       <RailCard title={`Needs ${ownerLabel || "a person"}`}>
@@ -129,7 +128,6 @@ export function DetailRail({
       </RailCard>
 
       <RailCard title="People">
-
         {people.length === 0 ? (
           <p className="text-[14px] text-muted-foreground">Nobody is on the record yet.</p>
         ) : (
