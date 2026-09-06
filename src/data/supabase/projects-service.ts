@@ -205,6 +205,11 @@ function payloadFor(input: ProjectInput, state: ExecutionState, now: string): Ro
   };
 }
 
+/** Delivery items as one comparable string, so "changed" means really changed. */
+function itemsSignature(items: { label: string; done: boolean }[] | undefined): string {
+  return (items ?? []).map((item) => `${item.done ? "1" : "0"}:${item.label}`).join("\n");
+}
+
 export const projectsService = {
   /** Every project this organization can read, newest movement first. */
   async list(organizationId: ID): Promise<ExecutionProject[]> {
