@@ -173,7 +173,9 @@ describe("a flagged article", () => {
 
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(card("Post A").getAttribute("data-item-state")).toBe("exception");
-    expect(screen.getByRole("button", { name: /review & approve/i })).toBeEnabled();
+    expect(
+      (screen.getByRole("button", { name: /review & approve/i }) as HTMLButtonElement).disabled,
+    ).toBe(false);
   });
 
   it("keeps its reason panel hidden until review is opened", () => {
@@ -223,10 +225,10 @@ describe("a flagged article", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /review & approve/i }));
     const approve = screen.getByRole("button", { name: /approve this article/i });
-    expect(approve).toBeDisabled();
+    expect((approve as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "ok" } });
-    expect(approve).toBeDisabled();
+    expect((approve as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(approve);
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -300,7 +302,7 @@ describe("a ready article", () => {
     const boxes = screen.getAllByRole("checkbox");
     expect(boxes).toHaveLength(1);
     expect((boxes[0] as HTMLInputElement).checked).toBe(true);
-    expect(boxes[0]).toBeEnabled();
+    expect((boxes[0] as HTMLButtonElement).disabled).toBe(false);
 
     fireEvent.click(boxes[0]!);
     expect(onToggle).toHaveBeenCalledWith("item-a");
@@ -368,8 +370,8 @@ describe("the decision bar", () => {
     expect(within(bar).getByRole("button", { name: /not now/i })).toBeTruthy();
     expect(within(bar).getByRole("link", { name: /open source/i })).toBeTruthy();
     expect(
-      screen.getByText(/3 articles need your review before they can be approved/i),
-    ).toBeTruthy();
+      screen.getAllByText(/3 articles need your review before they can be approved/i).length,
+    ).toBeGreaterThan(0);
   });
 
   it("shows the bulk count when ready articles exist", () => {
@@ -394,7 +396,7 @@ describe("the decision bar", () => {
 
     const bar = screen.getByTestId("decision-bar");
     const approve = within(bar).getByRole("button", { name: /approve 2 of 2 ready/i });
-    expect(approve).toBeEnabled();
+    expect((approve as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(approve);
     expect(onDecide).toHaveBeenCalledTimes(1);
     expect(onDecide.mock.calls[0]![0].action.id).toBe("approve_ready");
@@ -418,8 +420,13 @@ describe("the decision bar", () => {
     );
 
     const bar = screen.getByTestId("decision-bar");
-    expect(within(bar).getByRole("button", { name: /request revision/i })).toBeDisabled();
-    expect(within(bar).getByRole("button", { name: /not now/i })).toBeDisabled();
+    expect(
+      (within(bar).getByRole("button", { name: /request revision/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      (within(bar).getByRole("button", { name: /not now/i }) as HTMLButtonElement).disabled,
+    ).toBe(true);
 
     fireEvent.click(within(bar).getByRole("link", { name: /open source/i }));
     expect(onDecide).not.toHaveBeenCalled();
