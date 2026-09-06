@@ -129,12 +129,27 @@ export const Route = createFileRoute("/api/public/settings/invite-accept")({
         /* 2. The invitation itself. Read with the service key because an
               invitee is, by definition, not yet a member and so cannot read
               this row through RLS. Nothing about it is returned to a caller
-              who is not its subject. */
-        const rows = await serviceGet<InvitationRow[]>(
-          `organization_invitations?id=eq.${encodeURIComponent(parsed.data.invitationId)}&select=id,organization_id,email,role,status,expires_at,app_access`,
-          secret,
-        );
+              who is not its subject.
+
+              Two ways in, one rule. When the emailed link carried an id we
+              read that exact row. When it did not (an older email, a
+              forwarded link, a stripped query string, or somebody simply
+              opening the app), we resolve the pending invitation issued to
+              the address Supabase Auth just verified for this session. The
+              claim therefore follows WHO IS SIGNED IN, never what a URL
+              claims, and both routes are decided by the same domain rule
+              below. The by-address lookup is filtered on the verified email
+              server side, so it can only ever surface this person's own
+              invitation, in the organization that issued it. */
+        const wanted = parsed.data.invitationId;
+        const sessionEmail = user.email.trim().toLowerCase();
+        const select = "id,organization_id,email,role,status,expires_at,app_access";
+        const query = wanted
+          ? `organization_invitations?id=eq.${encodeURIComponent(wanted)}&select=${select}`
+          : `organization_invitations?email=eq.${encodeURIComponent(sessionEmail)}&status=eq.pending&select=${select}&order=created_at.desc&limit=1`;
+        const rows = await serviceGet<InvitationRow[]>(query, secret);
         const invitation = rows?.[0] ?? null;
+
 
         const decision = evaluateInviteAcceptance({
           invitation: invitation
