@@ -594,7 +594,17 @@ export function SendComposer({
           >
             {busy === "save" ? "Saving…" : "Save changes"}
           </TTButton>
-          {capability.data?.canSend ? (
+          {legacyApproved ? (
+            <TTButton
+              variant="primary"
+              size="sm"
+              type="button"
+              onClick={() => void handleApproveAgain()}
+              disabled={sending || busy !== null}
+            >
+              {busy === "approve" ? "Recording…" : "Approve this draft"}
+            </TTButton>
+          ) : capability.data?.canSend ? (
             <TTButton
               variant="primary"
               size="sm"
