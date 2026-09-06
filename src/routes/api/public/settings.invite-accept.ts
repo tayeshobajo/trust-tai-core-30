@@ -6,8 +6,9 @@
  *
  *   1. the caller's own bearer token is verified against Supabase Auth, so the
  *      email being measured is the one Supabase says the session holds
- *   2. the invitation is read by id and evaluated by the shared domain rule in
- *      src/domain/invite-acceptance.ts
+ *   2. the invitation is read either by the id the emailed link carried or, if
+ *      it carried none, by the verified session address, and is then evaluated
+ *      by the shared domain rule in src/domain/invite-acceptance.ts
  *   3. only an "accept" decision may write anything
  *
  * A session signed in as somebody else is refused before any membership is
@@ -28,8 +29,10 @@ import { z } from "zod";
 import { evaluateInviteAcceptance, mayConsumeInvitation } from "@/domain/invite-acceptance";
 import { normalizeRole } from "@/domain/access";
 
+/* The id is optional on purpose. Without it the endpoint resolves the pending
+   invitation belonging to the verified session address; see step 2. */
 const Body = z.object({
-  invitationId: z.string().min(1).max(64),
+  invitationId: z.string().min(1).max(64).optional(),
 });
 
 const PROJECT_REF = "okydosoacqdnursmmenf";
@@ -146,7 +149,7 @@ export const Route = createFileRoute("/api/public/settings/invite-accept")({
         const select = "id,organization_id,email,role,status,expires_at,app_access";
         const query = wanted
           ? `organization_invitations?id=eq.${encodeURIComponent(wanted)}&select=${select}`
-          : `organization_invitations?email=eq.${encodeURIComponent(sessionEmail)}&status=eq.pending&select=${select}&order=created_at.desc&limit=1`;
+          : `organization_invitations?email=ilike.${encodeURIComponent(sessionEmail)}&status=eq.pending&select=${select}&order=created_at.desc&limit=1`;
         const rows = await serviceGet<InvitationRow[]>(query, secret);
         const invitation = rows?.[0] ?? null;
 
@@ -165,11 +168,17 @@ export const Route = createFileRoute("/api/public/settings/invite-accept")({
         if (!mayConsumeInvitation(decision)) {
           const status =
             decision.outcome === "wrong_account" ? 403 : decision.outcome === "unknown" ? 404 : 409;
+          /* Nobody asked for a specific invitation and none is waiting: say
+             exactly that, rather than implying a link went stale. */
+          const because =
+            !wanted && decision.outcome === "unknown"
+              ? `No invitation is waiting for ${sessionEmail}. Ask whoever invited you to send one.`
+              : decision.because;
           return Response.json(
             {
               ok: false,
               outcome: decision.outcome,
-              because: decision.because,
+              because,
               invitedEmail: decision.invitedEmail,
               signedInEmail: decision.signedInEmail,
             },
