@@ -393,7 +393,7 @@ export const projectsService = {
     // Clearing an agreed date has to clear the column too, or the read would
     // keep showing a date nobody agreed to any more.
     if (changes.dueDate !== undefined) body["due_date"] = dueDate ?? null;
-    if (changes.name !== undefined) body["title"] = next.name;
+    
     if (changes.pointA !== undefined) body["point_a"] = next.pointA;
     if (changes.pointB !== undefined) body["point_b"] = next.pointB;
     const metadata = body["metadata"] as Row;
