@@ -94,8 +94,27 @@ export function authRedirectUrl(returnPath: unknown, currentOrigin?: string | nu
   return `${origin}${AUTH_CALLBACK_PATH}?redirect=${encodeURIComponent(path)}`;
 }
 
-/** The sign-in URL used in invitation email copy. */
-export function signInUrlFor(email: string, currentOrigin?: string | null): string {
+/**
+ * The sign-in URL used in invitation email copy.
+ *
+ * It carries the invited address and, when we have one, the invitation's id.
+ * Neither is a credential: the id alone grants nothing, because acceptance
+ * still requires a verified session on that exact address. Carrying them lets
+ * the sign-in screen say which account this invitation belongs to instead of
+ * showing a generic form.
+ */
+export function signInUrlFor(
+  email: string,
+  currentOrigin?: string | null,
+  invitationId?: string | null,
+): string {
   const origin = resolveAuthOrigin(currentOrigin ?? browserOrigin());
-  return `${origin}/auth?email=${encodeURIComponent(email)}`;
+  const invite = invitationId ? `&invite=${encodeURIComponent(invitationId)}` : "";
+  return `${origin}/auth?email=${encodeURIComponent(email)}${invite}`;
+}
+
+/** Where the Trust Tai lockup is publicly served, for email clients. */
+export function brandLogoUrl(currentOrigin?: string | null): string {
+  const origin = resolveAuthOrigin(currentOrigin ?? browserOrigin());
+  return `${origin}/brand/trust-tai-logo.png`;
 }

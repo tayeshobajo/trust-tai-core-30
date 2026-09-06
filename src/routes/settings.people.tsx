@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
-import { browserOrigin, signInUrlFor } from "@/lib/auth-origin";
+import { brandLogoUrl, browserOrigin, signInUrlFor } from "@/lib/auth-origin";
 import { inviteEmailBody } from "@/lib/invite-email-template";
 
 import { SectionHeading, TonePill, TTButton, TTField, TTInput } from "@/components/tt/primitives";
@@ -1309,6 +1309,7 @@ function InvitePanel({
         roleLabel: ROLE_LABEL[role],
         invitedByName,
         signInUrl: signInUrlFor(previewTo, browserOrigin()),
+        logoUrl: brandLogoUrl(browserOrigin()),
         expiresAt: null,
       }),
     [previewTo, organizationName, role, invitedByName],
