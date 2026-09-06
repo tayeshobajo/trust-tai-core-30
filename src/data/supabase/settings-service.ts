@@ -636,6 +636,10 @@ export interface InvitationAuditEntry {
   summary: string;
   actorUserId: string | null;
   delivered: boolean | null;
+  /** Which invitation this entry belongs to, when the payload recorded one. */
+  invitationId: string | null;
+  /** The provider's reason, exactly as it was recorded at the time. */
+  because: string | null;
 }
 
 function lifecycleOf(event: string): InvitationAuditEntry["lifecycle"] {
@@ -687,6 +691,9 @@ export async function listInvitationAudit(
       summary: String(row["summary"] ?? ""),
       actorUserId: (row["actor_user_id"] as string | null) ?? null,
       delivered: typeof delivered === "boolean" ? delivered : null,
+      invitationId:
+        typeof payload["invitation_id"] === "string" ? (payload["invitation_id"] as string) : null,
+      because: typeof payload["because"] === "string" ? (payload["because"] as string) : null,
     } satisfies InvitationAuditEntry;
   });
   return { provisioned: true, value: entries };
