@@ -39,8 +39,12 @@ plus the recipient's inbox.
 1. ~~Verify the sending domain / replace the sending key~~ — done 2026-09-06.
 2. ~~Press Send again on the pending invitation~~ — done 2026-09-06, provider
    accepted.
-3. Confirm the email arrives in Diamond's inbox, and that the sign-in link
-   opens `https://cmd.trusttai.com` and signs the recipient in.
+3. ~~Confirm the email arrives in Diamond's inbox~~ — done 2026-09-06,
+   screenshot evidence from Tai: the invitation email is in Diamond's Gmail
+   inbox, from `invites@trusttai.com`, subject "Tai invited you to Trust Tai
+   on Trust Tai OS", 11:58 AM, content and button visible.
+4. Have the recipient open the sign-in link and sign in; confirm the
+   invitation leaves `pending`.
 
 
 **Evidence we capture to upgrade to Human Accepted**
@@ -49,9 +53,11 @@ plus the recipient's inbox.
   `payload.provider_id` present. **Met in substance 2026-09-06** (the Emailed
   state proves `delivered = true`; `provider_id` still to be read back).
 - The recipient's confirmation that the message arrived (screenshot or reply).
-  **Outstanding.**
+  **Met 2026-09-06** (Tai-provided screenshot of the email in Diamond's Gmail
+  inbox, 11:58 AM, from `invites@trusttai.com`).
 - The invitation row moving from `pending` once the person signs in.
-  **Outstanding.**
+  **Outstanding.** Direct read of the row is refused by RLS to anonymous
+  callers; sign-in is not yet evidenced, so the gate stays open.
 
 ---
 
