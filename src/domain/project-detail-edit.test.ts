@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { checkDetailEdit, type ExecutionProject } from "./projects";
+import { agreedDayToIso, checkDetailEdit, type ExecutionProject } from "./projects";
 
 function project(overrides: Partial<ExecutionProject> = {}): ExecutionProject {
   return {
@@ -55,6 +55,15 @@ describe("checkDetailEdit", () => {
     expect(checkDetailEdit(project(), { subjectLabel: " " }).ok).toBe(false);
   });
 
+  it("refuses relabelling the company on a client-linked project, and says who owns it", () => {
+    const linked = project({ clientId: "c1" });
+    const check = checkDetailEdit(linked, { subjectLabel: "Someone else" });
+    expect(check.ok).toBe(false);
+    expect(check.because).toMatch(/Client record/);
+    // The rest of the record is still correctable on a client-linked project.
+    expect(checkDetailEdit(linked, { name: "Renamed" }).ok).toBe(true);
+  });
+
   it("refuses reassigning the company on roadmap work, and says who owns it", () => {
     const fromRoadmap = project({
       origin: { kind: "roadmap_milestone", roadmapId: "r1", milestoneId: "m1" },
@@ -66,5 +75,16 @@ describe("checkDetailEdit", () => {
 
   it("is a no-op when nothing was edited", () => {
     expect(checkDetailEdit(project(), {}).ok).toBe(true);
+  });
+});
+
+describe("agreedDayToIso", () => {
+  it("records a calendar day at noon UTC, so the day never slides by timezone", () => {
+    expect(agreedDayToIso("2026-10-01")).toBe("2026-10-01T12:00:00.000Z");
+    expect(agreedDayToIso(" 2026-10-01 ")).toBe("2026-10-01T12:00:00.000Z");
+  });
+
+  it("returns nothing for no day, which says no date is agreed", () => {
+    expect(agreedDayToIso("")).toBe("");
   });
 });
