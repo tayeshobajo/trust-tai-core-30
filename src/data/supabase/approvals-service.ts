@@ -20,7 +20,6 @@ import {
   summariseBatch,
   itemOverrideRefusal,
   tabFilter,
-
   BOARD_COLUMNS,
   BOARD_COLUMN_STATUSES,
   OPEN_STATUSES,
@@ -40,7 +39,6 @@ import {
   type DownstreamResult,
   type ExceptionReason,
   type ItemOverride,
-
   type ImpactLevel,
   type SourceEntityRef,
   type UrgencyLevel,
@@ -861,7 +859,6 @@ export const approvalsService = {
   },
 
   async addNote(
-
     context: ApprovalsContext,
     requestId: ID,
     body: string,

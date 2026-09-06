@@ -438,7 +438,6 @@ export function itemOverrideRefusal(input: {
   return null;
 }
 
-
 /* ---------------------------------------------------------- downstream */
 
 export type DownstreamState = "pending" | "queued" | "accepted" | "unavailable" | "failed";
@@ -468,7 +467,6 @@ export type ApprovalEventKind =
   | "downstream"
   /** One flagged item accepted by a named person, with their reason. */
   | "item_override";
-
 
 /** Append-only. A note always carries who wrote it and when. */
 export interface ApprovalEvent {

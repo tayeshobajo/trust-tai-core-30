@@ -191,8 +191,8 @@ function BlogBatch({ items, selected, onToggle, override }: RendererProps) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Tick what you want published. Exceptions cannot be approved in bulk: they are here
-        because something needed you specifically.
+        Tick what you want published. Exceptions cannot be approved in bulk: they are here because
+        something needed you specifically.
       </p>
       <ul className="space-y-2">
         {items.map((item) => {
@@ -300,9 +300,7 @@ function DeliveryChange({ request }: RendererProps) {
           {str(payload, "costImpact") ? (
             <MetaPill>Cost: {str(payload, "costImpact")}</MetaPill>
           ) : null}
-          <MetaPill>
-            {payload["clientVisible"] ? "Client will see this" : "Internal only"}
-          </MetaPill>
+          <MetaPill>{payload["clientVisible"] ? "Client will see this" : "Internal only"}</MetaPill>
         </div>
       </Block>
       <Block label="Why">

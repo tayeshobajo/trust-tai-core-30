@@ -115,9 +115,7 @@ export function ApprovalWorkspace({
           items={items}
           selected={selected}
           onToggle={toggle}
-          {...(onOverrideItem
-            ? { override: { refusal, pending, onSubmit: onOverrideItem } }
-            : {})}
+          {...(onOverrideItem ? { override: { refusal, pending, onSubmit: onOverrideItem } } : {})}
         />
 
         <section className="grid gap-4 sm:grid-cols-2">
