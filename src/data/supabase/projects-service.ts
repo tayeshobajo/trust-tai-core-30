@@ -390,7 +390,14 @@ export const projectsService = {
 
 
     const body = payloadFor(next, state, now);
+    // Clearing an agreed date has to clear the column too, or the read would
+    // keep showing a date nobody agreed to any more.
+    if (changes.dueDate !== undefined) body["due_date"] = dueDate ?? null;
+    if (changes.name !== undefined) body["title"] = next.name;
+    if (changes.pointA !== undefined) body["point_a"] = next.pointA;
+    if (changes.pointB !== undefined) body["point_b"] = next.pointB;
     const metadata = body["metadata"] as Row;
+
     metadata["blocked_because"] =
       state === "blocked" ? (changes.blockedBecause ?? project.blockedBecause ?? null) : null;
     // "Blocked for N days" is only honest if the clock starts when it first stopped.
