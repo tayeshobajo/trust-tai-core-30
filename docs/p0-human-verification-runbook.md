@@ -12,52 +12,46 @@ Last reconciled with production state on 2026-09-06.
 
 ## 1. Invite email (P0-03)
 
-**Current production evidence.** The path has already run for real. On
+**Current production evidence.** The path has run for real, twice. On
 2026-08-24 an invitation to `diamond@trusttai.com` was created (`user.invited`)
-and the email attempt was recorded one second later (`user.invite_emailed`,
-`delivered: false`). The recorded refusal is exact:
+and the first email attempt was recorded one second later (`user.invite_emailed`,
+`delivered: false`) with the exact refusal:
 
 > This API key is not authorized to send emails from trusttai.com
 
-So the code path, the audit trail and the provider call are all proven. The only
-failure is sender-domain authorisation, not wiring.
+On 2026-09-06 Tai created a new Resend connection with a replacement sending
+key, it was linked to this project, the key passed a live gateway credential
+check (no email sent), and Tai pressed Send again on the same invitation. The
+row now shows **Emailed** with "The email provider accepted this invitation
+email." That sentence renders only from a durable `user.invite_emailed`
+activity with `delivered = true` recorded against that invitation id, so a
+successful attempt is now in the audit stream. The retry reuses the existing
+invitation by id and the send route refuses anything not `pending`, so no
+duplicate invitation can have been created, and the invitation stays `pending`
+until Diamond accepts and signs in.
 
-The stored `RESEND_API_KEY` is a **send-only restricted key**: a read-only
-`GET /domains` through the connector gateway returns
-`401 restricted_api_key`. Re-checked on 2026-09-06 through the linked Resend
-connection (`tayeshobajo@gmail.com`): still `401`, "This API key is restricted
-to only send emails". There is therefore no safe provider-side log we can read;
-delivery evidence must come from the recipient inbox plus our own `activities`
-row. If Tai wants us to see domain status directly, the Resend key needs read
-permission added in the Resend dashboard, or a full-access key linked instead.
-
-**What the screen now shows (2026-09-06).** Settings, People reads the durable
-`user.invite_emailed` activity for each pending invitation and names the state
-on the row itself: Prepared, Emailed, Email blocked, Email off, or Email
-refused. A sender-authorisation refusal renders as an amber, actionable row
-that says the invitation is saved and the wiring is healthy, quotes the exact
-provider reason, and asks for the sending domain to be verified before trying
-again. The retry button reuses the same invitation identity, so no duplicate
-invitation or membership is created, and nothing retries by itself.
+The Resend key in play is send-only by design; there is no provider-side log
+we can read. Delivery evidence therefore comes from our own `activities` row
+plus the recipient's inbox.
 
 **What Tai must do**
 
-1. In Resend, add and verify `trusttai.com` (or a subdomain such as
-   `mail.trusttai.com`) as a sending domain, and add the DNS records it asks for.
-   If the sending address becomes a subdomain, set `INVITE_EMAIL_FROM` to match.
-2. In Settings, People, open the pending invitation for `diamond@trusttai.com`
-   and press Try sending again, or create a fresh invitation to an address you
-   control.
-3. Confirm the email arrives, and that the sign-in link opens
-   `https://cmd.trusttai.com` and signs the recipient in.
+1. ~~Verify the sending domain / replace the sending key~~ — done 2026-09-06.
+2. ~~Press Send again on the pending invitation~~ — done 2026-09-06, provider
+   accepted.
+3. Confirm the email arrives in Diamond's inbox, and that the sign-in link
+   opens `https://cmd.trusttai.com` and signs the recipient in.
 
 
 **Evidence we capture to upgrade to Human Accepted**
 
 - A new `user.invite_emailed` activity row with `payload.delivered = true` and a
-  `payload.provider_id` present.
+  `payload.provider_id` present. **Met in substance 2026-09-06** (the Emailed
+  state proves `delivered = true`; `provider_id` still to be read back).
 - The recipient's confirmation that the message arrived (screenshot or reply).
+  **Outstanding.**
 - The invitation row moving from `pending` once the person signs in.
+  **Outstanding.**
 
 ---
 
