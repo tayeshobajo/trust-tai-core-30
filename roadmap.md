@@ -8,21 +8,22 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 17%** (P0 to P7)
-**Full Engine: 14%** (P0 to P9)
+**Production Readiness: 19%** (P0 to P7)
+**Full Engine: 16%** (P0 to P9)
 
 Working (corrected in slice P0-001A, extended in P1-002, P0-07 verified 2026-09-05,
 P0-08 and P0-03 Human Accepted 2026-09-06):
 
 - P0 weight 12 (readiness) / 10 (engine), 9 gates, **8 met** -> 12 x 8/9 = 10.7 and
   10 x 8/9 = 8.9
-- P1 weight 12 / 10, 6 gates, **3 met** (P1-01 Production Verified 2026-09-06 on
-  the real Mental Dental row). P1-04 is Production Verified: the
+- P1 weight 12 / 10, 6 gates, **4 met** (P1-01 Production Verified 2026-09-06 on
+  the real Mental Dental row; P1-02 Production Verified 2026-09-06 on the real
+  Mental Dental proposal). P1-04 is Production Verified: the
   `organization_weekly_targets` table exists in the production project and holds
   the real Trust Tai row, read back with the service key. P1-05 requires only
   Code/Test Verified and has been at that level since P1-001; the previous
   entry withheld its share by mistake, which rule 2 does not allow.
-  -> 12 x 3/6 = 6.0 and 10 x 3/6 = 5.0
+  -> 12 x 4/6 = 8.0 and 10 x 4/6 = 6.6667
 - P8 weight 8 (engine only), 5 gates, **0 met**. P8-01 and P8-02 were previously
   scored as Production Verified on table existence and code existence. Neither is
   supported: `content_sources` and `content_requests` hold 0 rows, so the composer
@@ -30,8 +31,8 @@ P0-08 and P0-03 Human Accepted 2026-09-06):
   holds 0 rows, so the hardened boundary has never been exercised. Both are now
   Code/Test Verified -> 8 x 0/5 = 0
 - P2 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 12 x 8/9 + 12 x 3/6 = 10.6667 + 6.0 = 16.6667 -> 17%.
-  Engine 10 x 8/9 + 10 x 3/6 = 8.8889 + 5.0 = 13.8889 -> 14%. P0-04 stays open and
+- Readiness 12 x 8/9 + 12 x 4/6 = 10.6667 + 8.0 = 18.6667 -> 19%.
+  Engine 10 x 8/9 + 10 x 4/6 = 8.8889 + 6.6667 = 15.5556 -> 16%. P0-04 stays open and
   uncounted, deferred by explicit human decision on 2026-09-06; agents remain paused.
 
 
@@ -109,7 +110,7 @@ no gate newly reached its required level.
 | ID | Gate | Required level | Status |
 | --- | --- | --- | --- |
 | P1-01 | Client commercial state: tier, mrr in cents, engagement dates, provenance | Production Verified | **Production Verified**, real production row written through the human UI path 2026-09-06 | Mental Dental (`4a8e054c-d0f3-4ca4-a1d8-5595cfd74a19`) read back live with `tier=run`, `mrr_cents=350000`, `renewal_at=null`, `next_review_at=null`, `commercial_updated_by=241e0261-f2f6-4f0e-bcb1-c3f84de1a76e`, `commercial_updated_at=2026-09-06T19:07:51.149Z`, and `commercial_provenance` carrying `created_manually=true`, `actor_label=tayeshobajo@gmail.com`, `because="signed retainer"`. Entered by a signed-in human in the Commercial state panel on the client page under RLS, not by service role and not by any agent. Dates were left empty because none is a real fact yet, so nothing was invented. Write path: `src/domain/client-commercial-form.ts` (10 tests) plus `setClientCommercialState()`, which writes only the facts that changed and stamps actor, time and reason |
-| P1-02 | Proposals with sent and signed events on the existing prospect and roadmap lineage | Code/Test Verified | Schema live in production. Proposal columns confirmed on `public.roadmaps` by a live read; `recordProposalSent()` and `recordProposalOutcome()` write state on the existing lineage node and emit `proposal.sent`, `proposal.signed` or `proposal.declined`. No deal object, no second pipeline. Slice P1-005 added the human path: the Proposal panel on the client page Roadmap tab, where a signed-in person records the amount and the day a proposal went out and later records signed or declined, under RLS as themselves. **Open data-correction gate (2026-09-06):** Mental Dental roadmap `e51bd651-ecd5-4137-bbfa-4004ab3124e7` carries a real proposal (`proposal_sent_at` 2026-08-01T12:00:00Z, `proposal_amount_cents` 350000, outcome `signed`), but `proposal_outcome_at` recorded as `2026-09-06T20:32:59.739Z`, the click moment, because the answer form did not ask for the day. Slice P1-006 fixed the form: the day a proposal was signed or declined is now required and parsed with the same midday UTC law as the sent day, and the answered line reads `proposal_outcome_at` rather than `proposal_sent_at`. The production row is deliberately **not** corrected: Diagnose revenue is recognised in the week of `proposal.signed`, so only Tai can state the actual answer day. P1-02 stays Code/Test Verified until Tai gives that day, the row and its `proposal.signed` activity are corrected once (no duplicate event; the existing `proposal.signed:e51bd651-…` key stands), and the corrected state is read back from production |
+| P1-02 | Proposals with sent and signed events on the existing prospect and roadmap lineage | Production Verified | **Production Verified 2026-09-06** on the real Mental Dental proposal. Roadmap `e51bd651-ecd5-4137-bbfa-4004ab3124e7` reads back live with `proposal_sent_at` 2026-08-01T12:00:00Z, `proposal_amount_cents` 350000, `proposal_outcome` signed, `proposal_outcome_at` 2026-08-01T12:00:00Z, `proposal_updated_by` 241e0261-f2f6-4f0e-bcb1-c3f84de1a76e. `activities` holds exactly one `proposal.sent` and exactly one `proposal.signed` event for this roadmap, both `occurred_at` 2026-08-01T12:00:00Z; existing `source_event_key`s were preserved, no duplicate event was created, and the `proposal.signed` activity provenance `observedAt` was corrected to 2026-08-01T12:00:00.000Z. The actual answer day, 2026-08-01, was stated by Tai and the row was corrected under his explicit authority, closing the data-correction gate opened 2026-09-06. Schema live in production; `recordProposalSent()` and `recordProposalOutcome()` write state on the existing lineage node and emit `proposal.sent`, `proposal.signed` or `proposal.declined`. No deal object, no second pipeline. Slice P1-005 added the human path: the Proposal panel on the client page Roadmap tab, under RLS as the signed-in person. Slice P1-006 fixed the form: the day a proposal was signed or declined is required, parsed with the same midday UTC law as the sent day, and the answered line reads `proposal_outcome_at` rather than `proposal_sent_at` |
 | P1-03 | `client.tier_changed` with a human-entered Build phase amount | Production Verified | Code/Test Verified. Emitted exactly once per real tier change, with `phase_amount_cents` only when the new tier is Build; re-writing the same tier emits nothing. Tested. Nothing emitted in production, because no tier has changed |
 | P1-04 | Org-level weekly targets | Production Verified | **Production Verified**. `public.organization_weekly_targets` exists in the production project with member read and admin write over `private.is_org_member` / `private.is_org_admin`, and holds the Trust Tai row (targets 10-12 first touches, 2-3 discovery, 1-2 Diagnose proposals, 20 Run clients, revenue target 2,100,000 cents), read back live. `readOrganizationWeeklyTargets()` falls back to the locked defaults when an organization has no row |
 | P1-05 | Revenue derived at read time by the locked rules, never persisted weekly | Code/Test Verified | **Code/Test Verified**. `src/domain/revenue.ts` with 11 tests: `mrr_cents * 12 / 52`, explicit refusal of `/4` and `/4.345`, one-off recognition in the week of the event, and Run reading tier state only so a signed proposal cannot inflate it. `readWeeklyScoreboard()` composes the week from live state and dated events and writes nothing back |
