@@ -41,6 +41,7 @@ export function ApprovalWorkspace({
   pending,
   onDecide,
   onNote,
+  onOverrideItem,
 }: {
   request: ApprovalRequest;
   items: ApprovalItem[];
@@ -50,6 +51,8 @@ export function ApprovalWorkspace({
   pending: boolean;
   onDecide: (input: DecisionInput) => void;
   onNote: (body: string) => void;
+  /** Accepting one flagged item, with a reason, on the record. */
+  onOverrideItem?: (itemId: string, reason: string) => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set(readyItemIds(items)));
   const [reason, setReason] = useState("");
@@ -107,7 +110,15 @@ export function ApprovalWorkspace({
           </p>
         </section>
 
-        <Renderer request={request} items={items} selected={selected} onToggle={toggle} />
+        <Renderer
+          request={request}
+          items={items}
+          selected={selected}
+          onToggle={toggle}
+          {...(onOverrideItem
+            ? { override: { refusal, pending, onSubmit: onOverrideItem } }
+            : {})}
+        />
 
         <section className="grid gap-4 sm:grid-cols-2">
           <div>

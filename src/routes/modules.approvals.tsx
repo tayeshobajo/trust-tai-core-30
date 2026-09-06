@@ -344,6 +344,25 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
     [decide, access, identity.organizationId],
   );
 
+  /* Accepting a single flagged item. Same authority gate as any decision here,
+     and it records authority only: nothing is queued and nothing is sent. */
+  const overrideItem = useMutation({
+    mutationFn: (input: { request: ApprovalRequest; itemId: string; reason: string }) =>
+      approvalsService.overrideItem(context, {
+        requestId: input.request.id,
+        itemId: input.itemId,
+        reason: input.reason,
+        actor: { id: identity.userId, label: identity.name || "You" },
+        refusal: refusalFor(input.request),
+      }),
+    onSuccess: () => {
+      toast.success("Recorded. That item is approved, and nothing has been published.");
+      void queryClient.invalidateQueries({ queryKey: ["approvals"] });
+      void queryClient.invalidateQueries({ queryKey: ["approval"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const addNote = useMutation({
     mutationFn: (input: { requestId: string; body: string }) =>
       approvalsService.addNote(context, input.requestId, input.body, {
@@ -572,6 +591,9 @@ function ApprovalsRoom({ identity }: { identity: WorkspaceIdentity }) {
                 pending={decide.isPending}
                 onDecide={(input) => decide.mutate({ request: open.request, input })}
                 onNote={(body) => addNote.mutate({ requestId: open.request.id, body })}
+                onOverrideItem={(itemId, reason) =>
+                  overrideItem.mutate({ request: open.request, itemId, reason })
+                }
               />
             ) : (
               <p className="p-6 text-sm text-muted-foreground">Opening…</p>
