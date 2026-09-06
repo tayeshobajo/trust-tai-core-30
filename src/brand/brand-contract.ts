@@ -69,6 +69,41 @@ export const COLOR_TOKENS: Record<string, string> = {
   "--card": "oklch(1 0 0)",
 };
 
+/**
+ * The email palette.
+ *
+ * Email clients understand neither oklch, CSS variables nor color-mix(), so a
+ * letter has to carry literal hex. These are not hand-picked: each one is the
+ * sRGB conversion of the token named beside it, and a test reconverts the
+ * tokens and fails if this table drifts from the screen palette. Change a
+ * token in src/styles.css and this table has to follow, deliberately.
+ */
+export const EMAIL_COLORS = {
+  /** --ink, the deep navy the whole brand rests on. */
+  ink: "#0a1229",
+  /** --paper, the letter's own surface. */
+  paper: "#ffffff",
+  /** --royal, reserved for the single primary action. */
+  royal: "#2755c7",
+  /** --rule, hairline borders. */
+  rule: "#d8e1ea",
+  /** --muted-foreground, supporting copy. */
+  muted: "#4d586c",
+  /** --secondary, the calm wash behind the letter and its quiet panel. */
+  secondary: "#e9f4ff",
+} as const;
+
+/** The screen tokens each email colour is converted from. */
+export const EMAIL_COLOR_SOURCES: Record<keyof typeof EMAIL_COLORS, string> = {
+  ink: "oklch(0.19 0.048 266)",
+  paper: "oklch(1 0 0)",
+  royal: "oklch(0.49 0.185 264)",
+  rule: "oklch(0.906 0.016 250)",
+  muted: "oklch(0.46 0.035 262)",
+  secondary: "oklch(0.962 0.02 250)",
+};
+
+
 /** Per-room ambient accents. Atmosphere only, never status or control colour. */
 export const AMBIENT_TOKENS: Record<string, string> = {
   "--tt-app-home": "#1d54c1",
