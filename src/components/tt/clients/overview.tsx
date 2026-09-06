@@ -166,7 +166,9 @@ function CardHeader({
         {explain ? <p className="mt-0.5 text-[13px] text-muted-foreground">{explain}</p> : null}
       </div>
       {action ??
-        (source ? <div className="shrink-0 text-[13px] text-muted-foreground">{source}</div> : null)}
+        (source ? (
+          <div className="shrink-0 text-[13px] text-muted-foreground">{source}</div>
+        ) : null)}
     </div>
   );
 }
@@ -548,8 +550,8 @@ function SiteLine({
   return (
     <section aria-label="Site intake" className={cn(CARD, "px-6 py-4")}>
       <p className="text-[13px] text-muted-foreground">
-        {matched.length} intake{matched.length === 1 ? "" : "s"} from this company on the site,
-        last on {formatDay(matched[0]!.submittedAt, timeZone) ?? "an unknown day"}.{" "}
+        {matched.length} intake{matched.length === 1 ? "" : "s"} from this company on the site, last
+        on {formatDay(matched[0]!.submittedAt, timeZone) ?? "an unknown day"}.{" "}
         <Link to="/modules/website" className="text-royal underline-offset-4 hover:underline">
           Open in Website
         </Link>
@@ -581,8 +583,7 @@ function Activity({
           <p className="text-sm text-muted-foreground">Reading history.</p>
         ) : !read.available ? (
           <p className="text-sm text-foreground">
-            History could not be read.{" "}
-            <span className="text-muted-foreground">{read.because}</span>
+            History could not be read. <span className="text-muted-foreground">{read.because}</span>
           </p>
         ) : read.value.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing recorded here yet.</p>
