@@ -117,9 +117,7 @@ export function ManageProjectPanel({
     ...(name !== project.name ? { name } : {}),
     ...(pointA !== project.pointA ? { pointA } : {}),
     ...(pointB !== project.pointB ? { pointB } : {}),
-    ...(dueDate !== dateValue(project.dueDate)
-      ? { dueDate: agreedDayToIso(dueDate) }
-      : {}),
+    ...(dueDate !== dateValue(project.dueDate) ? { dueDate: agreedDayToIso(dueDate) } : {}),
     ...(companyEditable && company !== (project.origin.subjectLabel ?? "")
       ? { subjectLabel: company }
       : {}),

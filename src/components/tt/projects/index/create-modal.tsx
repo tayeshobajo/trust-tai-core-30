@@ -26,6 +26,7 @@ import {
   type ThinkingSourceInput,
   type ThinkingSourceType,
 } from "@/domain/project-intelligence";
+import { agreedDayToIso } from "@/domain/projects";
 import type { ProjectInput, ProjectOrigin } from "@/domain/projects";
 
 export interface CreateProjectSeed {
