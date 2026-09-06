@@ -467,7 +467,7 @@ function BlogBatch({ items, selected, onToggle, override }: RendererProps) {
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-sm font-medium text-foreground" data-testid="batch-review-line">
+        <p className="tt-eyebrow" data-testid="batch-review-line">
           {batchReviewLine(items)}
         </p>
         {summary.exceptions > 0 ? (

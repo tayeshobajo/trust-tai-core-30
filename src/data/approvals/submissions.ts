@@ -146,7 +146,6 @@ export interface BlogBatchItemInput {
   unresolvedLinks?: number;
 }
 
-
 export interface BlogBatchInput {
   batchId: string;
   campaignName: string;
@@ -164,7 +163,7 @@ export function blogBatchSubmission(input: BlogBatchInput): ApprovalSubmission {
     summary: `${input.items.length - exceptions - failed} ready, ${exceptions} need review, ${failed} failed.`,
     whyItNeedsYou:
       exceptions > 0
-        ? `${exceptions} posts fell below the bar the agent can clear on its own.`
+        ? `${exceptions} ${exceptions === 1 ? "post" : "posts"} fell below the bar the agent can clear on its own.`
         : "Publishing under the Trust Tai name is yours to authorise.",
     status: exceptions > 0 ? "needs_review" : "ready",
     urgency: "whenever",
@@ -198,7 +197,6 @@ export function blogBatchSubmission(input: BlogBatchInput): ApprovalSubmission {
         ? { type: "content_item", id: item.itemId, label: item.title }
         : { type: "blog_post", id: item.slug, label: item.title },
     })),
-
   };
 }
 
