@@ -26,8 +26,6 @@ describe("displayName", () => {
     expect(displayName({ full_name: null, display_name: "" }, "diamond@trusttai.com")).toBe(
       "diamond@trusttai.com",
     );
-    expect(displayName({ full_name: "   " }, "diamond@trusttai.com")).toBe(
-      "diamond@trusttai.com",
-    );
+    expect(displayName({ full_name: "   " }, "diamond@trusttai.com")).toBe("diamond@trusttai.com");
   });
 });
