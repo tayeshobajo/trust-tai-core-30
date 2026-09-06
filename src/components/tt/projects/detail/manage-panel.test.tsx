@@ -49,7 +49,9 @@ describe("ManageProjectPanel", () => {
 
     fireEvent.change(screen.getByDisplayValue("Mental Dental Academy"), { target: { value: "  " } });
 
-    expect(screen.getByRole("button", { name: "Save details" })).toBeDisabled();
+    expect((screen.getByRole("button", { name: "Save details" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
     expect(screen.getByRole("alert").textContent).toMatch(/needs a name/i);
   });
 
@@ -57,7 +59,7 @@ describe("ManageProjectPanel", () => {
     const onUpdate = vi.fn();
     render(<ManageProjectPanel project={project()} busy={false} savedLabel={null} onUpdate={onUpdate} />);
 
-    fireEvent.change(screen.getByDisplayValue("Scope agreed\nFirst build"), {
+    fireEvent.change(screen.getByPlaceholderText(/Scope agreed/), {
       target: { value: "Scope agreed\nFirst build\nHanded over" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save details" }));
