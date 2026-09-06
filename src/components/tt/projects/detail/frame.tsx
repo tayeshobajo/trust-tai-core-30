@@ -9,6 +9,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, ExternalLink, Target } from "lucide-react";
 
 import { AmbientSurface } from "@/components/tt/ambient";
+import { InlineProjectName } from "@/components/tt/projects/detail/inline-name";
 import { MetaPill, TTButton } from "@/components/tt/primitives";
 import {
   SURFACE_STATUS_LABEL,
@@ -101,11 +102,17 @@ export function ProjectIdentityHeader({
   row,
   brand,
   updatedLabel,
+  busy = false,
+  savedLabel = null,
+  onRename,
   onUpdate,
 }: {
   row: ProjectRowModel;
   brand: { accent?: string; logoUrl?: string } | null;
   updatedLabel: string;
+  busy?: boolean;
+  savedLabel?: string | null;
+  onRename?: (name: string) => void;
   onUpdate: () => void;
 }) {
   const { project, lineage } = row;
@@ -142,9 +149,19 @@ export function ProjectIdentityHeader({
 
           <div className="min-w-0 space-y-3">
             <p className="text-[13px] font-medium text-muted-foreground">{lineage.company}</p>
-            <h1 className="font-display text-[34px] leading-[1.1] text-foreground">
-              {project.name}
-            </h1>
+            {onRename ? (
+              <InlineProjectName
+                project={project}
+                busy={busy}
+                savedLabel={savedLabel}
+                onRename={onRename}
+              />
+            ) : (
+              <h1 className="font-display text-[34px] leading-[1.1] text-foreground">
+                {project.name}
+              </h1>
+            )}
+
             <div className="flex flex-wrap items-center gap-3">
               <span
                 className={cn(
@@ -210,7 +227,6 @@ export const PROJECT_TABS = [
   { value: "files", label: "Files" },
   { value: "activity", label: "Activity" },
   { value: "chat", label: "Chat" },
-
 ] as const;
 
 export type ProjectTab = (typeof PROJECT_TABS)[number]["value"];

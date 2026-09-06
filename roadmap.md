@@ -8,8 +8,8 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 19%** (P0 to P7)
-**Full Engine: 16%** (P0 to P9)
+**Production Readiness: 22%** (P0 to P7)
+**Full Engine: 18%** (P0 to P9)
 
 Working (corrected in slice P0-001A, extended in P1-002, P0-07 verified 2026-09-05,
 P0-08 and P0-03 Human Accepted 2026-09-06):
@@ -30,9 +30,12 @@ P0-08 and P0-03 Human Accepted 2026-09-06):
   and provenance path has never run in production, and `content_publish_attempts`
   holds 0 rows, so the hardened boundary has never been exercised. Both are now
   Code/Test Verified -> 8 x 0/5 = 0
-- P2 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 12 x 8/9 + 12 x 4/6 = 10.6667 + 8.0 = 18.6667 -> 19%.
-  Engine 10 x 8/9 + 10 x 4/6 = 8.8889 + 6.6667 = 15.5556 -> 16%. P0-04 stays open and
+- P2 weight 16 / 14, 5 charter gates, **1 met** (P2-05 Code/Test Verified on
+  2026-09-06, which is its required level; P2-00 carries no weight)
+  -> 16 x 1/5 = 3.2 and 14 x 1/5 = 2.8
+- P3 to P7 and P9: no gate met at its required level yet -> 0
+- Readiness 12 x 8/9 + 12 x 4/6 + 16 x 1/5 = 10.6667 + 8.0 + 3.2 = 21.8667 -> 22%.
+  Engine 10 x 8/9 + 10 x 4/6 + 14 x 1/5 = 8.8889 + 6.6667 + 2.8 = 18.3556 -> 18%. P0-04 stays open and
   uncounted, deferred by explicit human decision on 2026-09-06; agents remain paused.
 
 
@@ -154,7 +157,7 @@ percentage moves.
 | P2-02 | Manual Add Client | Human Accepted | Runtime Verified, awaiting human acceptance. `CreateClientModal` + `createClientRecord()` write name, site, logo, tier, renewal and review; idempotent on company name; emits `client.created` and, when a tier is set, `client.tier_changed`. `Add client` is shown only to people whose access level allows a write. The dialog opens, validates and cancels in the signed-in preview; it was **not** submitted, so no client has been created in production and the write itself remains Code/Test Verified. Writing borrows `roadmap.write` until a canonical `clients.write` permission exists (comment in `src/domain/app-access.ts`); RLS governs the actual insert |
 | P2-03 | Client page shell: Overview, Roadmap, Projects, Relationship, Site, Files, owning no state | Human Accepted | Runtime Verified, awaiting human acceptance (slice P2-001A). `/modules/clients/$clientId` carries all six tabs, addressed by `?tab=`. Every section names its owning room and offers `Open in <room>`: Roadmap outcome, current stage and next move from Roadmap; delivery from Projects; decisions from Approvals read-only with no deciding controls; review cadence from the client record; relationship snapshot from Comms; site health from Website; the shared event stream filtered to this company and its roadmaps, projects and people. A source that could not be read says "could not be read just now"; a source with nothing says "not recorded yet"; the two are never conflated. Site and Files are honest about ownership: no site record or file is linked to a client yet, and the tabs say so rather than inventing one. 10 shell tests. All six tabs read back live in the signed-in preview against the real production client, nothing written |
 | P2-04 | Home This Week, four numbers, derived only, no charts | Human Accepted | Not started |
-| P2-05 | Today ordering: obligation at risk, floor breach, decision opportunity | Code/Test Verified | Not started |
+| P2-05 | Today ordering: obligation at risk, floor breach, decision opportunity | Code/Test Verified | **Code/Test Verified** (slice P2-002). `src/domain/today-ordering.ts` holds the charter order as the only ranking: an obligation already at risk, then a breached weekly floor, then a decision opportunity. Inside one kind, the most overdue obligation leads, then the larger number, then the key, so the same day always reads the same way. A floor is breached only below the agreed low end, a floor of zero can never be breached, and an item with nothing to count produces no card rather than a zero. Home's Today list now orders through it. 8 domain tests. No new store, no percentage moved by the UX slice that preceded it |
 
 P2-00 is a slice-added gate, not a charter gate; it carries no weight in the
 percentages. P2-01 to P2-03 require Human Accepted, so P2 still contributes 0
