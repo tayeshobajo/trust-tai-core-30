@@ -636,7 +636,12 @@ export interface InvitationAuditEntry {
   summary: string;
   actorUserId: string | null;
   delivered: boolean | null;
+  /** Which invitation this entry belongs to, when the payload recorded one. */
+  invitationId: string | null;
+  /** The provider's reason, exactly as it was recorded at the time. */
+  because: string | null;
 }
+
 
 function lifecycleOf(event: string): InvitationAuditEntry["lifecycle"] {
   if (event === "user.invited") return "created";
