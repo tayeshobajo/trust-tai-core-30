@@ -418,6 +418,84 @@ export function readyItemIds(items: ApprovalItem[]): ID[] {
 }
 
 /**
+ * The semantic cue an item state carries. Meaning, never decoration:
+ * amber for "a person must look", green for "a person said yes", red for
+ * "closed or broken", royal for "ready to act on", grey for the rest.
+ */
+export type StateTone = "neutral" | "active" | "good" | "caution" | "risk";
+
+export const ITEM_STATE_TONE: Record<ApprovalItemState, StateTone> = {
+  ready: "active",
+  exception: "caution",
+  failed: "risk",
+  approved: "good",
+  rejected: "risk",
+  executed: "good",
+};
+
+export const STATUS_TONE: Record<ApprovalStatus, StateTone> = {
+  needs_review: "caution",
+  needs_context: "neutral",
+  ready: "active",
+  revision_requested: "risk",
+  approved: "good",
+  rejected: "risk",
+  queued: "good",
+  executed: "good",
+  verified: "good",
+};
+
+function plural(count: number, noun: string): string {
+  return `${count} ${count === 1 ? noun : `${noun}s`}`;
+}
+
+/**
+ * What a batch is asking of the person, in one plain sentence.
+ *
+ * "0 ready, 10 need review" is a count, not an instruction. This says what to
+ * do: approve the ready ones together, look at the flagged ones one by one.
+ */
+export function batchReviewLine(items: ApprovalItem[], noun = "article"): string {
+  const summary = summariseBatch(items);
+  if (summary.total === 0) return `This batch has no ${noun}s in it.`;
+
+  const parts: string[] = [];
+  if (summary.ready > 0) {
+    parts.push(`${plural(summary.ready, noun)} ready to approve together.`);
+  }
+  if (summary.exceptions > 0) {
+    parts.push(
+      summary.exceptions === 1
+        ? `1 ${noun} needs your review before it can be approved.`
+        : `${summary.exceptions} ${noun}s need your review before they can be approved.`,
+    );
+  }
+  if (parts.length > 0) return parts.join(" ");
+
+  const settled: string[] = [];
+  if (summary.approved > 0) settled.push(`${summary.approved} approved`);
+  if (summary.executed > 0) settled.push(`${summary.executed} published`);
+  if (summary.failed > 0) settled.push(`${summary.failed} failed`);
+  const rejected = items.filter((item) => item.state === "rejected").length;
+  if (rejected > 0) settled.push(`${rejected} declined`);
+  return `Every ${noun} here has been decided: ${settled.join(", ")}.`;
+}
+
+/**
+ * Why bulk approval is closed on this batch, or null when it is open.
+ * Shown where the bulk button would otherwise sit, so the bar never offers
+ * "Approve 0 of 10" as if it were a thing you could do.
+ */
+export function bulkApprovalClosedBecause(items: ApprovalItem[], noun = "article"): string | null {
+  const summary = summariseBatch(items);
+  if (summary.ready > 0) return null;
+  if (summary.exceptions > 0) {
+    return `Flagged ${noun}s are approved one at a time, above. Each needs a reason on the record.`;
+  }
+  return `Nothing in this batch is waiting on a bulk decision.`;
+}
+
+/**
  * A single flagged item, accepted by a named person, on the record.
  *
  * An exception is exactly the case bulk approval refuses, so the only way past
