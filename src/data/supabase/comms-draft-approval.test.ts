@@ -60,7 +60,9 @@ describe("comms draft approval provenance", () => {
   it("reads nothing back from an approval missing an actor or a time", () => {
     expect(readDraftApproval(null)).toBeNull();
     expect(readDraftApproval({ approval: { state: "approved" } })).toBeNull();
-    expect(readDraftApproval({ approval: { state: "approved", at: "2026-09-04T13:36:00Z" } })).toBeNull();
+    expect(
+      readDraftApproval({ approval: { state: "approved", at: "2026-09-04T13:36:00Z" } }),
+    ).toBeNull();
     expect(readDraftApproval({ approval: { state: "approved", by: { id: "u1" } } })).toBeNull();
     expect(
       readDraftApproval({ approval: { state: "approved", by: { id: "u1" }, at: "not a date" } }),

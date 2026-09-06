@@ -772,7 +772,15 @@ export const commsService = {
         review_state: reviewState,
         register: draft.register,
         sent: false,
-        ...(stamp ? { approval: { by: stamp.by, at: stamp.at, ...(stamp.reason ? { reason: stamp.reason } : {}) } } : {}),
+        ...(stamp
+          ? {
+              approval: {
+                by: stamp.by,
+                at: stamp.at,
+                ...(stamp.reason ? { reason: stamp.reason } : {}),
+              },
+            }
+          : {}),
       },
     );
     const updated = toDraft(data as unknown as DraftRow);
