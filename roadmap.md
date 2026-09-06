@@ -54,9 +54,16 @@ No phase is complete, so no phase has received its completion weight.
 
 Agents remain paused for the whole of P0.
 
-The one remaining human gate is P0-04, still parked. P0-07 is
-closed at Production Verified, P0-08 and P0-03 at Human Accepted. P0-04 has exact actions and an evidence list in
-`docs/p0-human-verification-runbook.md`. No phase completion weight is awarded: P0 is not complete until P0-04 closes, and agents remain paused throughout P0.
+The one remaining human gate is P0-04, **deferred by explicit human decision on
+2026-09-06**. Deferral is an execution-sequence override only: the gate stays open at
+Code/Test Verified with its human gate intact, it is not counted as met, and it is not
+removed from the charter. Active implementation focus moves to P1 by Tai's explicit
+override, carrying the deferred P0-04 gate forward. P0-07 is closed at Production
+Verified, P0-08 and P0-03 at Human Accepted. P0-04 has exact actions and an evidence
+list in `docs/p0-human-verification-runbook.md`. No phase completion weight is awarded:
+P0 is not complete until P0-04 closes, and the P0 agent-pause law stands unchanged;
+moving focus does not unpause agents.
+
 
 
 ## P1, commercial truth
