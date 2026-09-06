@@ -107,3 +107,24 @@ export function proposalOutcomeRefusal(
   }
   return null;
 }
+
+/**
+ * Read the answering form. The day a proposal was signed or declined decides
+ * which week the revenue belongs to, so it is asked for and never defaulted to
+ * the moment somebody pressed a button.
+ */
+export function readProposalOutcomeForm(
+  input: { answeredOn: string },
+  current: ProposalFormCurrent,
+  outcome: "signed" | "declined",
+): ProposalOutcomeResult {
+  const because = proposalOutcomeRefusal(current, outcome);
+  if (because) return { ok: false, because };
+
+  const day = input.answeredOn.trim();
+  if (!DAY.test(day) || Number.isNaN(new Date(`${day}T00:00:00Z`).getTime())) {
+    return { ok: false, because: "Say the day this proposal was actually answered." };
+  }
+
+  return { ok: true, intent: { outcome, at: `${day}T12:00:00.000Z` } };
+}
