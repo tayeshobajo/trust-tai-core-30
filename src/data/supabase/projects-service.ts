@@ -301,8 +301,14 @@ export const projectsService = {
       blockedBecause?: string;
       ownerLabel?: string;
       ownerUserId?: ID;
+      /** Human-entered project truth, correctable after creation. */
+      name?: string;
+      pointA?: string;
       pointB?: string;
+      /** Pass "" to say no date is agreed after all. */
       dueDate?: string;
+      /** Manual work only: the company this serves. */
+      subjectLabel?: string;
       currentWork?: string;
       deliveryItems?: { label: string; done: boolean }[];
       /** Pass "" to say the wait is over. */
@@ -310,6 +316,7 @@ export const projectsService = {
     },
     context: ProjectsContext,
   ): Promise<ExecutionProject> {
+
     const now = new Date().toISOString();
     const state = changes.state ?? project.state;
     if (changes.state && changes.state !== project.state) {
