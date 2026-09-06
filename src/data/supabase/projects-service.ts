@@ -19,11 +19,13 @@ import type { ID } from "@/domain/entities";
 import type {
   ExecutionProject,
   ExecutionState,
+  ProjectDetailEdit,
   ProjectInput,
   ProjectOrigin,
 } from "@/domain/projects";
 import {
   STATUS_COLUMN_FOR_STATE,
+  checkDetailEdit,
   checkOwnerAssignment,
   checkTransition,
   stateFromLifecycle,
@@ -301,8 +303,14 @@ export const projectsService = {
       blockedBecause?: string;
       ownerLabel?: string;
       ownerUserId?: ID;
+      /** Human-entered project truth, correctable after creation. */
+      name?: string;
+      pointA?: string;
       pointB?: string;
+      /** Pass "" to say no date is agreed after all. */
       dueDate?: string;
+      /** Manual work only: the company this serves. */
+      subjectLabel?: string;
       currentWork?: string;
       deliveryItems?: { label: string; done: boolean }[];
       /** Pass "" to say the wait is over. */
@@ -333,13 +341,33 @@ export const projectsService = {
       if (!owned.ok) throw new Error(owned.because);
     }
 
-    const dueDate = changes.dueDate ?? project.dueDate;
+    // A correction to what a person typed is refused before it is written, in
+    // the same words the panel uses to refuse it.
+    const detailEdit: ProjectDetailEdit = {
+      ...(changes.name !== undefined ? { name: changes.name } : {}),
+      ...(changes.pointA !== undefined ? { pointA: changes.pointA } : {}),
+      ...(changes.pointB !== undefined ? { pointB: changes.pointB } : {}),
+      ...(changes.dueDate !== undefined ? { dueDate: changes.dueDate } : {}),
+      ...(changes.subjectLabel !== undefined ? { subjectLabel: changes.subjectLabel } : {}),
+    };
+    const detailKeys = Object.keys(detailEdit);
+    if (detailKeys.length > 0) {
+      const detailCheck = checkDetailEdit(project, detailEdit);
+      if (!detailCheck.ok) throw new Error(detailCheck.because);
+    }
+
+    const dueDate =
+      changes.dueDate !== undefined ? changes.dueDate.trim() || undefined : project.dueDate;
     const currentWork = changes.currentWork ?? project.currentWork;
     const deliveryItems = changes.deliveryItems ?? project.deliveryItems;
+    const origin: ProjectOrigin =
+      changes.subjectLabel !== undefined
+        ? { ...project.origin, subjectLabel: changes.subjectLabel.trim() }
+        : project.origin;
     const next: ProjectInput = {
-      name: project.name,
-      pointA: project.pointA,
-      pointB: changes.pointB ?? project.pointB,
+      name: changes.name !== undefined ? changes.name.trim() : project.name,
+      pointA: changes.pointA !== undefined ? changes.pointA.trim() : project.pointA,
+      pointB: changes.pointB !== undefined ? changes.pointB.trim() : project.pointB,
       ...((changes.nextMove ?? project.nextMove)
         ? { nextMove: changes.nextMove ?? project.nextMove }
         : {}),
@@ -356,11 +384,18 @@ export const projectsService = {
       ...(dueDate ? { dueDate } : {}),
       ...(currentWork ? { currentWork } : {}),
       ...(deliveryItems ? { deliveryItems } : {}),
-      origin: project.origin,
+      origin,
     };
 
     const body = payloadFor(next, state, now);
+    // Clearing an agreed date has to clear the column too, or the read would
+    // keep showing a date nobody agreed to any more.
+    if (changes.dueDate !== undefined) body["due_date"] = dueDate ?? null;
+
+    if (changes.pointA !== undefined) body["point_a"] = next.pointA;
+    if (changes.pointB !== undefined) body["point_b"] = next.pointB;
     const metadata = body["metadata"] as Row;
+
     metadata["blocked_because"] =
       state === "blocked" ? (changes.blockedBecause ?? project.blockedBecause ?? null) : null;
     // "Blocked for N days" is only honest if the clock starts when it first stopped.
@@ -418,9 +453,31 @@ export const projectsService = {
           { from: project.state, to: changes.state },
         );
       }
+    } else if (detailKeys.length > 0) {
+      // A correction is its own kind of history: what was fixed, and what it
+      // used to say, so nobody has to wonder when the record changed.
+      await record(
+        context,
+        "project.updated",
+        saved,
+        `${saved.name} had its recorded detail corrected.`,
+        {
+          fields: detailKeys,
+          before: {
+            ...(changes.name !== undefined ? { name: project.name } : {}),
+            ...(changes.pointA !== undefined ? { pointA: project.pointA } : {}),
+            ...(changes.pointB !== undefined ? { pointB: project.pointB } : {}),
+            ...(changes.dueDate !== undefined ? { dueDate: project.dueDate ?? null } : {}),
+            ...(changes.subjectLabel !== undefined
+              ? { subjectLabel: project.origin.subjectLabel ?? null }
+              : {}),
+          },
+        },
+      );
     } else {
       await record(context, "project.next_move_changed", saved, `${saved.name} was updated.`);
     }
+
     return saved;
   },
 

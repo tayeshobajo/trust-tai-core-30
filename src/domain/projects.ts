@@ -369,3 +369,78 @@ export interface ProjectInput {
   currentWork?: string;
   origin: ProjectOrigin;
 }
+
+/* --------------------------------------------- correcting what a person typed */
+
+/**
+ * The human-entered project truth that can be corrected after creation.
+ *
+ * Operability law: anything a person is asked to type must have a way back.
+ * Everything here was typed by a person, so everything here can be fixed.
+ * Pass an empty string to clear a field that is allowed to be empty.
+ */
+export interface ProjectDetailEdit {
+  name?: string;
+  pointA?: string;
+  pointB?: string;
+  /** ISO date, or "" to say no date is agreed after all. */
+  dueDate?: string;
+  /** The company this serves. Correctable only on manually started work. */
+  subjectLabel?: string;
+}
+
+/**
+ * What stays fixed after creation, and why. Read by the panel so a read-only
+ * field can say it is read-only because of ownership, not because the screen
+ * forgot a control.
+ */
+export const IMMUTABLE_PROJECT_FACTS: { field: string; because: string }[] = [
+  {
+    field: "Roadmap lineage",
+    because:
+      "The roadmap and milestone behind this work are Roadmap truth. Reassigning them here would rewrite where a decision came from.",
+  },
+  {
+    field: "Client",
+    because:
+      "The company a project is attached to is Clients truth. Moving delivery between companies is a correction made in Clients, never a dropdown here.",
+  },
+];
+
+/** Is this correction honest, and if not, why not. Pure, so panel and write agree. */
+export function checkDetailEdit(
+  project: Pick<ExecutionProject, "state" | "origin">,
+  edit: ProjectDetailEdit,
+): TransitionCheck {
+  if (edit.name !== undefined && !edit.name.trim()) {
+    return { ok: false, because: "A project needs a name people can recognise it by." };
+  }
+  if (edit.pointB !== undefined && !edit.pointB.trim()) {
+    if (project.state === "delivered" || project.state === "closed") {
+      return {
+        ok: false,
+        because:
+          "This work was called done against its destination. Removing Point B now would make that claim unreadable.",
+      };
+    }
+  }
+  if (edit.dueDate !== undefined && edit.dueDate.trim()) {
+    const parsed = new Date(edit.dueDate);
+    if (Number.isNaN(parsed.getTime())) {
+      return { ok: false, because: "That date could not be read. Use a real calendar date." };
+    }
+  }
+  if (edit.subjectLabel !== undefined) {
+    if (project.origin.kind === "roadmap_milestone") {
+      return {
+        ok: false,
+        because:
+          "This work came from an approved roadmap milestone, so the company it serves is Roadmap truth. Correct it on the roadmap.",
+      };
+    }
+    if (!edit.subjectLabel.trim()) {
+      return { ok: false, because: "Say who this work is for, or leave it as it stands." };
+    }
+  }
+  return { ok: true, because: "Records the correction." };
+}

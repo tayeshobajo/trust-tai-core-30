@@ -387,3 +387,41 @@ carry the control that resolves it: a state that can be moved, a block that can
 be recorded, an owner that can be handed over, a wait that can be set and
 cleared. Waiting is not a status. It stays derived from `waitingOn` on an
 in-flight project, and clearing `waitingOn` is how a wait ends.
+
+## 16. Operability. No dead ends (locked 2026-09-06)
+
+**The house should be doors and windows, not just a frame.** A surface is not
+complete because it can display or create a record.
+
+- Every human-owned truth shown in a working room has an intentional lifecycle:
+  create, read, update or correct, resolve or close where that applies, and a
+  way back from a mistake.
+- If the room owns the truth, the control that changes it is reachable in that
+  room. If another room owns it, the surface deep-links to the owning room. A
+  diagnosis with no action is a defect, not a design.
+- Every empty, warning, waiting, blocked or incomplete state answers "what can
+  I do next?" whenever a legitimate human action exists.
+- Read-only is a statement about ownership or authority, said out loud. A field
+  is never read-only because the screen forgot a control.
+- Changes go through the owning service, under RLS, with the existing
+  provenance and activity trail. No parallel stores, no hidden mutation paths.
+- Acceptance covers lifecycle, not only render.
+
+### Captain acceptance checklist
+
+Every new or changed surface answers these nine, in the slice that ships it:
+
+| # | Question | Pass means |
+| - | -------- | ---------- |
+| 1 | Owner | One room owns this truth, and it is named. |
+| 2 | Read | A person can see the current recorded value. |
+| 3 | Create | A person can record it, or it is explicitly derived. |
+| 4 | Edit / correct | A person can fix what they typed, here or via a named deep link. |
+| 5 | Resolve / archive | Closable things can be closed, when that applies. |
+| 6 | Empty / error recovery | Every empty or failed state offers the next legitimate action. |
+| 7 | Provenance | The change lands in activity with actor and time. |
+| 8 | Runtime proof | The path was exercised in a running build. |
+| 9 | Production proof | The human gate was met, or the gate is recorded as still open. |
+
+Rows that genuinely do not apply are marked "not applicable, because ...".
+Silence is not a pass.
