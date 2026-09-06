@@ -1,8 +1,12 @@
 # P0 human verification runbook
 
-Four gates in P0 cannot be closed by the app. Each section below states the exact
-human action, and the exact production evidence we will capture to upgrade the
-ledger entry. Nothing here has been executed; this document only removes ambiguity.
+Two gates in P0 remain open and cannot be closed by the app: P0-03 and P0-04.
+Each open section below states the exact human action and the exact production
+evidence we will capture to upgrade the ledger entry. Sections 3 and 4 (P0-07
+and P0-08) are now closed and kept only as the record of what was verified; no
+action remains there.
+
+Last reconciled with production state on 2026-09-06.
 
 ---
 
@@ -20,9 +24,12 @@ failure is sender-domain authorisation, not wiring.
 
 The stored `RESEND_API_KEY` is a **send-only restricted key**: a read-only
 `GET /domains` through the connector gateway returns
-`401 restricted_api_key`. There is therefore no safe provider-side log we can
-read; delivery evidence must come from the recipient inbox plus our own
-`activities` row.
+`401 restricted_api_key`. Re-checked on 2026-09-06 through the linked Resend
+connection (`tayeshobajo@gmail.com`): still `401`, "This API key is restricted
+to only send emails". There is therefore no safe provider-side log we can read;
+delivery evidence must come from the recipient inbox plus our own `activities`
+row. If Tai wants us to see domain status directly, the Resend key needs read
+permission added in the Resend dashboard, or a full-access key linked instead.
 
 **What Tai must do**
 
@@ -49,44 +56,75 @@ read; delivery evidence must come from the recipient inbox plus our own
 repeating. All three connected mailboxes
 (`tayeshobajo@gmail.com`, `hello@trust-tai.com`, `tai@trust-tai.com`) are
 `status = connected` and hold both
-`gmail.readonly` and `gmail.send`, and all three synced within the last hour.
-So `sendCapability()` will report `canSend: true`.
+`gmail.readonly` and `gmail.send`. So `sendCapability()` reports
+`canSend: true`.
 
-One draft is already `review_state = approved` and unsent (the Megan reply,
-`Re: Enquiries for Aspen New Zealand [#835]`). No draft has ever reached
-`sent`: no `rationale.send` record exists anywhere, so no message has left
-Trust Tai through Gmail in production.
+The human-send law now stands end to end: Comms drafts, flags and prepares, and
+only a human click sends. Since 2026-09-06, approving a draft writes durable
+approval provenance (`rationale.approval`: who approved and when) in the same
+operation as the state change, and a draft marked approved **without** that
+provenance is legacy-unverified and refuses Send until a person re-approves it.
+The previously approved Megan reply (`Re: Enquiries for Aspen New Zealand
+[#835]`, draft `cdb7166f-6fec-4d71-9aca-cd77c4ace3eb`) is in exactly that
+state: approved before provenance existed, so opening it will ask for a fresh
+approval before Send unlocks. Its thread has also moved on, so it is not the
+recommended candidate.
 
-**What Tai must do** (one real, low-risk governed reply)
+A governed draft is already prepared and waiting for review on the live Mental
+Dental thread: draft `2ea4925f-ae67-4fda-9252-0c74787dfcd4`,
+`Re: Input Items`, `review_state = needs_human_review`, bound to relationship
+`0e0f3565-a436-4cbf-9523-a519aa21b4d4` and Gmail thread `19f437572010740d`,
+with no approval and no send record. No draft anywhere carries a
+`rationale.send` record, so no message has ever left Trust Tai through Gmail in
+production.
 
-1. Open Comms, pick a real relationship whose reply is genuinely wanted.
-2. Read the draft, edit it if needed, and approve it. Approval is the gate; the
-   agent never sends on its own.
-3. Press Send. Confirm the mailbox the composer names is the one that owns the
-   thread.
+Manual replies sent in Gmail outside Trust Tai are now reconciled on sync
+(commit `be63741d`): when a later outbound message uniquely matches a waiting
+draft on thread, person and time, the draft closes as replied-from-Gmail and
+Send is suppressed on it. Ambiguous matches fail closed and do nothing; repeats
+are idempotent.
+
+**What Tai must do.** Either path closes the gate; path A is the fuller proof.
+
+Path A, governed send from Comms:
+
+1. Open Comms and open the Mental Dental draft (`Re: Input Items`).
+2. Read it against Lauryn's latest email, edit if needed, then approve it. Your
+   name and the time are recorded as the approval. The agent never sends on its
+   own.
+3. Press Send. Confirm the composer names `tayeshobajo@gmail.com`, the mailbox
+   that owns the thread.
 4. Press Send a second time on the same draft. It must replay the recorded
    outcome, not send a second message.
 
+Path B, manual send in Gmail:
+
+1. Reply to the Mental Dental thread directly in Gmail.
+2. Let the next Comms sync run (or trigger one). The waiting draft should close
+   as replied-from-Gmail with the message date, and Send on it stays closed.
+
 **Evidence we capture**
 
-- The draft row at `review_state = 'sent'` with `rationale.send.state = 'sent'`,
-  a `providerMessageId` and `providerThreadId`.
-- The message visible in the sending mailbox's Gmail Sent folder with the same
-  provider message id.
-- The second press returning `replayed: true` and no second Gmail message.
-- The corresponding activity row in the shared stream.
+- Path A: the draft at `review_state = 'sent'` with `rationale.send.state =
+  'sent'`, a `providerMessageId` and `providerThreadId`; the durable
+  `rationale.approval` naming Tai; the message visible in the mailbox's Gmail
+  Sent folder with the same provider id; the second press returning
+  `replayed: true` with no second Gmail message; the corresponding activity row
+  in the shared stream.
+- Path B: the draft carrying `rationale.external_send` with the provider message
+  id and timestamp; no `rationale.send`; a repeated sync creating no second
+  record; the relationship memory line written exactly once.
 
 ---
 
-## 3. Publisher endpoint handoff contract (P0-07)
+## 3. Publisher endpoint handoff contract (P0-07) — CLOSED, Production Verified 2026-09-05
 
-**Why this stays blocked.** `trusttai.com` is a Next.js site served from
-Cloudflare and is not part of this repository or of any Lovable project on this
-account. `TRUST_TAI_PUBLISH_ENDPOINT` and `TRUST_TAI_PUBLISH_TOKEN` are absent,
-and `GET /api/public/content/publish` correctly reports
-`endpointConfigured: false`. There is no safe way to invent this publisher from
-inside Trust Tai OS. What follows is the exact contract the external
-implementation must satisfy; nothing else needs to change here.
+**Closed.** Both secrets are present and non-empty in the runtime; the
+`cmd.trusttai.com` publisher status endpoint reports configured; an
+authenticated handshake to the trusttai.com endpoint with an invalid body
+returned the exact validation refusal, proving auth reaches validation. No
+action remains. The contract below is kept as the reference for what the
+external endpoint satisfies.
 
 **Endpoint.** One HTTPS POST route on trusttai.com, for example
 `https://trusttai.com/api/trust-tai/publish`.
@@ -145,36 +183,16 @@ verified.
 
 ---
 
-## 4. Controlled article verification (P0-08)
+## 4. Controlled article verification (P0-08) — CLOSED, Human Accepted 2026-09-06
 
-Do not attempt this until P0-07 is live. **P8-03, featured image generation, is
-not a blocker**: `image.url` is nullable in the publish payload and
-`publishQueuedItem()` never asks whether an image exists. An article can be
-published without one, with a slightly weaker social card. P8-03 stays
-post-launch.
-
-**Sequence, once the publisher answers**
-
-1. In Approvals, open the pending content batch
-   (`apr_pm7t4kmdmtn2ygo1`, 10 posts, currently `needs_review`) and approve
-   exactly one post, or produce a single fresh post and approve that one.
-2. Confirm the item is `state = 'queued'` in `content_items` and carries a
-   `publish_key`.
-3. In Studio, press Publish for that one post only.
-4. Expected ledger: one new `content_publish_attempts` row, id `cpa_...`,
-   moving `attempted` then `executed`, with a receipt containing
-   `canonicalUrl`, `externalPostId` and `publishedAt`.
-5. Press Publish again on the same post. It must resolve to the same receipt
-   with no second attempt and no second post on the site.
-6. Run the verify action. It fetches the canonical URL unauthenticated and must
-   see the article.
-7. Open the canonical URL in a browser yourself and read the post.
-
-**Evidence we capture**
-
-- The `content_publish_attempts` row with state `executed` and its receipt.
-- The `content_items` row at the published state with its canonical URL.
-- An independent unauthenticated `200` read of that URL returning the article.
-- The second press proving idempotency.
-
-Only then is P0-08 Human Accepted.
+**Closed.** Exactly one article (`citm_da7jlq4nmtn2yer2`, "How Trust Tai
+prioritizes roadmap milestones so founders free the most time first") was
+approved by Tai through the flagged-item override path, moved approved -> queued
+-> published -> verified through the canonical transitions, and published once
+on the stable key `content:cbat_ffebutsjmtn2ydym:prioritize-roadmap-milestones-trust-tai`.
+The ledger holds exactly `attempted` then `executed` for that key; an immediate
+replay resolved to the same receipt with no second attempt. The canonical URL
+https://trusttai.com/insights/prioritize-roadmap-milestones-trust-tai returns
+200 unauthenticated with the exact title and body. The other nine batch items
+remain `exception` and unpublished. Full evidence in `roadmap.md`, P0-08. No
+action remains; the sequence below is kept as the record of what was executed.
