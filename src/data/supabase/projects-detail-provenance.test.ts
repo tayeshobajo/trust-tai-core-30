@@ -84,7 +84,8 @@ function lastActivity(): Record<string, unknown> {
 }
 
 beforeEach(() => {
-  db.reset();
+  for (const table of Object.keys(db.tables)) db.tables[table] = [];
+  db.resetStats();
 });
 
 describe("projectsService.update provenance", () => {
