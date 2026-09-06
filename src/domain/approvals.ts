@@ -563,6 +563,44 @@ export type ApprovalEventKind =
   /** One flagged item accepted by a named person, with their reason. */
   | "item_override";
 
+/**
+ * The kinds the ledger itself accepts. `approval_events_kind_check` in
+ * docs/approvals-v1-schema.sql is the authority; anything outside this list is
+ * rejected by Postgres, so a new domain kind must be *expressed* in terms of
+ * one of these rather than invented at the client.
+ */
+export const STORED_EVENT_KINDS = [
+  "submitted",
+  "resubmitted",
+  "note",
+  "decision",
+  "state_changed",
+  "downstream",
+] as const;
+
+export type StoredEventKind = (typeof STORED_EVENT_KINDS)[number];
+
+/**
+ * Accepting one flagged item is a human approval decision, so it is stored as
+ * a `decision` and narrowed by this scope. It adds no semantics the canonical
+ * kind lacks, which is why it earns no new database kind.
+ */
+export const ITEM_OVERRIDE_SCOPE = "item_override";
+
+/** Domain kind to the kind the check constraint allows. */
+export function storedEventKind(kind: ApprovalEventKind): StoredEventKind {
+  return kind === "item_override" ? "decision" : kind;
+}
+
+/** The stored row read back as the domain kind that wrote it. */
+export function readEventKind(kind: string, metadata: Record<string, unknown>): ApprovalEventKind {
+  if (kind === "decision" && metadata["scope"] === ITEM_OVERRIDE_SCOPE) return "item_override";
+  return (STORED_EVENT_KINDS as readonly string[]).includes(kind)
+    ? (kind as ApprovalEventKind)
+    : "note";
+}
+
+
 /** Append-only. A note always carries who wrote it and when. */
 export interface ApprovalEvent {
   id: ID;
