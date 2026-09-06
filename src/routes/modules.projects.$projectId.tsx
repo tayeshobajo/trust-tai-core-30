@@ -55,7 +55,12 @@ import { checkOwnerAssignment, isOpenProject } from "@/domain/projects";
 
 import type { ProjectFileKind, WorkItemStatus } from "@/domain/project-delivery";
 import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
-import { ChatTab, type ChatEntry, type ProjectChatAnswer } from "@/components/tt/projects/detail/chat";
+import {
+  ChatTab,
+  type ChatEntry,
+  type ProjectChatAnswer,
+  type ProposalState,
+} from "@/components/tt/projects/detail/chat";
 import {
   alreadyApplied,
   prepareProposal,
@@ -356,7 +361,7 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
           action: String(body["action"] ?? "") as ChatChangeIntent["action"],
           ...(body["value"] ? { value: String(body["value"]) } : {}),
           ...(Array.isArray(body["items"]) ? { items: (body["items"] as string[]) } : {}),
-          ...(body["source"] ? { source: body["source"] as ChatChangeIntent["source"] } : {}),
+          ...(body["source"] ? { source: body["source"] as NonNullable<ChatChangeIntent["source"]> } : {}),
           ...(body["reason"] ? { reason: String(body["reason"]) } : {}),
         };
         // An owner is a member of this workspace, resolved here against the
@@ -407,7 +412,7 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
     sendChat.mutate({ message, pasted, mode, pendingId });
   };
 
-  const settle = (id: string, state: ChatEntry["proposalState"], outcome: string) =>
+  const settle = (id: string, state: ProposalState, outcome: string) =>
     setChatEntries((entries) =>
       entries.map((entry) =>
         entry.id === id ? { ...entry, proposalState: state, outcome } : entry,
