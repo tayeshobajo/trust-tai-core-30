@@ -28,6 +28,24 @@ import {
 const FIELD =
   "w-full rounded-xl border border-border bg-card px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
+/** The recorded delivery items as one editable line each. */
+function itemsText(items: { label: string; done: boolean }[] | undefined): string {
+  return (items ?? []).map((item) => item.label).join("\n");
+}
+
+/** Typed lines back into delivery items, keeping the ticks of labels that survived. */
+function parseItems(
+  text: string,
+  existing: { label: string; done: boolean }[],
+): { label: string; done: boolean }[] {
+  const done = new Set(existing.filter((item) => item.done).map((item) => item.label));
+  return text
+    .split("\n")
+    .map((line) => line.replace(/^[-*]\s*/, "").trim())
+    .filter((line) => line.length > 0)
+    .map((label) => ({ label, done: done.has(label) }));
+}
+
 /** An ISO instant as the value a date input can hold. */
 function dateValue(iso: string | undefined): string {
   if (!iso) return "";
@@ -37,6 +55,7 @@ function dateValue(iso: string | undefined): string {
 }
 
 export type ProjectUpdateChanges = ProjectDetailEdit & {
+  deliveryItems?: { label: string; done: boolean }[];
   state?: ExecutionState;
   nextMove?: string;
   blockedBecause?: string;
@@ -60,6 +79,7 @@ export function ManageProjectPanel({
   const [pointB, setPointB] = useState(project.pointB);
   const [dueDate, setDueDate] = useState(dateValue(project.dueDate));
   const [company, setCompany] = useState(project.origin.subjectLabel ?? "");
+  const [items, setItems] = useState(itemsText(project.deliveryItems));
 
   const [blockedReason, setBlockedReason] = useState("");
   const [nextMove, setNextMove] = useState("");
@@ -73,6 +93,7 @@ export function ManageProjectPanel({
     setPointB(project.pointB);
     setDueDate(dateValue(project.dueDate));
     setCompany(project.origin.subjectLabel ?? "");
+    setItems(itemsText(project.deliveryItems));
   }, [
     project.id,
     project.name,
@@ -80,6 +101,7 @@ export function ManageProjectPanel({
     project.pointB,
     project.dueDate,
     project.origin.subjectLabel,
+    project.deliveryItems,
     project.updatedAt,
   ]);
 
@@ -96,7 +118,11 @@ export function ManageProjectPanel({
       ? { subjectLabel: company }
       : {}),
   };
-  const changedFields = Object.keys(edit);
+  // Delivery items were typed on the way in, so they are correctable here too.
+  // What is already ticked stays ticked: only labels that survive keep their state.
+  const itemsChanged = items !== itemsText(project.deliveryItems);
+  const nextItems = parseItems(items, project.deliveryItems ?? []);
+  const changedFields = [...Object.keys(edit), ...(itemsChanged ? ["deliveryItems"] : [])];
   const check = checkDetailEdit(project, edit);
   const canSave = changedFields.length > 0 && check.ok && !busy;
 
@@ -106,6 +132,7 @@ export function ManageProjectPanel({
     setPointB(project.pointB);
     setDueDate(dateValue(project.dueDate));
     setCompany(project.origin.subjectLabel ?? "");
+    setItems(itemsText(project.deliveryItems));
   }
 
   return (
@@ -180,6 +207,20 @@ export function ManageProjectPanel({
           />
         </label>
 
+        <label className="block space-y-1.5">
+          <span className="text-[12px] text-muted-foreground">Delivery items, one per line</span>
+          <textarea
+            rows={4}
+            className={FIELD}
+            value={items}
+            onChange={(event) => setItems(event.target.value)}
+            placeholder={"Scope agreed\nFirst build\nHanded to client"}
+          />
+          <span className="block text-[12px] text-muted-foreground">
+            Rewrite, reorder or remove them. Anything already ticked off keeps its tick.
+          </span>
+        </label>
+
         {changedFields.length > 0 && !check.ok ? (
           <p role="alert" className="text-[13px] text-destructive">
             {check.because}
@@ -187,7 +228,13 @@ export function ManageProjectPanel({
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2">
-          <TTButton size="sm" disabled={!canSave} onClick={() => onUpdate(edit)}>
+          <TTButton
+            size="sm"
+            disabled={!canSave}
+            onClick={() =>
+              onUpdate({ ...edit, ...(itemsChanged ? { deliveryItems: nextItems } : {}) })
+            }
+          >
             Save details
           </TTButton>
           <TTButton
