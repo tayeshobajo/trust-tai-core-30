@@ -413,6 +413,21 @@ describe("Build fails closed without a human-entered phase amount", () => {
     expect(db.tables["activities"] ?? []).toHaveLength(0);
   });
 
+  it("refuses a zero phase amount and writes nothing", async () => {
+    seedClient({ tier: "diagnose" });
+    await expect(
+      service.setClientCommercialState(
+        { clientId: "client-1", tier: "build", buildPhaseAmountCents: 0 },
+        CONTEXT,
+      ),
+    ).rejects.toThrow(/phase amount/i);
+    const row = (db.tables["clients"] ?? [])[0] as Record<string, unknown>;
+    expect(row["tier"]).toBe("diagnose");
+    expect(db.tables["activities"] ?? []).toHaveLength(0);
+  });
+
+
+
   it("needs no amount when the tier is not moving", async () => {
     seedClient({ tier: "build" });
     const after = await service.setClientCommercialState(
