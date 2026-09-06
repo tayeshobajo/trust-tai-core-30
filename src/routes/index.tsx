@@ -11,14 +11,8 @@ import { SuiteRoomsGrid } from "@/components/tt/home/suite-rooms-grid";
 import { ThisWeek } from "@/components/tt/home/this-week";
 import { TodaySummary, type TodayItem } from "@/components/tt/home/today-summary";
 import { memorySource } from "@/data/memory-source";
-import { readWeeklyScoreboard } from "@/data/supabase/commercial-service";
-import {
-  homeFloorReadings,
-  homeWeekNote,
-  homeWeekNumbers,
-  type HomeWeekInput,
-} from "@/domain/home-week";
-import { floorBreaches, orderToday, type TodayCandidate } from "@/domain/today-ordering";
+import { readWeeklySnapshot, weeklySnapshotKey } from "@/data/weekly-snapshot";
+import { orderToday, type TodayCandidate } from "@/domain/today-ordering";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -92,40 +86,16 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
   });
 
   /**
-   * The one canonical weekly snapshot every room already uses. Home derives
-   * its four numbers from it at read time and writes nothing back, so Home
-   * and Clients can never disagree about the same week.
+   * The one canonical weekly snapshot every room reads, composed once by the
+   * shared adapter. Home derives nothing of its own from the week, so Home,
+   * Clients and any later room cannot disagree about the same seven days.
    */
   const week = useQuery({
-    queryKey: ["home-week", organizationId],
-    queryFn: () => readWeeklyScoreboard(organizationId),
+    queryKey: weeklySnapshotKey(organizationId),
+    queryFn: () => readWeeklySnapshot(organizationId),
   });
 
-  const weekInput = useMemo<HomeWeekInput | null>(() => {
-    const board = week.data;
-    if (!board) return null;
-    return {
-      targets: board.targets,
-      revenue: board.revenue,
-      firstTouches: board.firstTouches,
-      discoveryCalls: board.discoveryCalls,
-      proposalsSent: board.proposalsSent,
-      timeZone: board.timeZone,
-      timeZoneFallback: board.timeZoneFallback,
-      timeZoneBecause: board.timeZoneBecause,
-    };
-  }, [week.data]);
-
-  const weekNumbers = useMemo(() => {
-    if (!weekInput || !week.data) return [];
-    const sources = week.data.sources;
-    return homeWeekNumbers(weekInput, {
-      revenue: sources.clients.because ?? sources.proposals.because ?? sources.tierChanges.because,
-      firstTouches: sources.firstTouches.because ?? sources.touches.because,
-      discoveryCalls: sources.touches.because,
-      proposalsSent: sources.proposals.because,
-    });
-  }, [weekInput, week.data]);
+  const snapshot = week.data ?? null;
 
   const todayItems = useMemo<TodayItem[]>(() => {
     /**
@@ -147,7 +117,7 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
       });
     }
 
-    if (weekInput) candidates.push(...floorBreaches(homeFloorReadings(weekInput)));
+    if (snapshot) candidates.push(...snapshot.floorCandidates);
 
     const openDecisions = (data?.decisions ?? []).filter((d) => d.status === "open").length;
     if (openDecisions > 0) {
@@ -174,7 +144,7 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
         icon: icons[entry.key] ?? Gauge,
         slug: entry.slug,
       }));
-  }, [data, weekInput]);
+  }, [data, snapshot]);
 
   const continueItems = useMemo<ContinueItem[]>(
     () =>
@@ -201,8 +171,8 @@ function Home({ identity }: { identity: WorkspaceIdentity }) {
       />
 
       <ThisWeek
-        numbers={weekNumbers}
-        note={weekInput ? homeWeekNote(weekInput) : null}
+        numbers={snapshot?.numbers ?? []}
+        note={snapshot?.note ?? null}
         loading={week.isPending}
       />
 
