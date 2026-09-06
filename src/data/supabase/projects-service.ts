@@ -19,15 +19,18 @@ import type { ID } from "@/domain/entities";
 import type {
   ExecutionProject,
   ExecutionState,
+  ProjectDetailEdit,
   ProjectInput,
   ProjectOrigin,
 } from "@/domain/projects";
 import {
   STATUS_COLUMN_FOR_STATE,
+  checkDetailEdit,
   checkOwnerAssignment,
   checkTransition,
   stateFromLifecycle,
 } from "@/domain/projects";
+
 
 import { can, type AccessContext } from "@/domain/access";
 import {
