@@ -31,7 +31,6 @@ export const EMAIL_LOGO_WIDTH = Math.round(
   (BRAND_LOGO.emailHeight * BRAND_LOGO.naturalWidth) / BRAND_LOGO.naturalHeight,
 );
 
-
 export const LOGO_ASPECT = BRAND_LOGO.naturalWidth / BRAND_LOGO.naturalHeight;
 
 /** Font families, in the order the shell declares them. */
@@ -102,7 +101,6 @@ export const EMAIL_COLOR_SOURCES: Record<keyof typeof EMAIL_COLORS, string> = {
   muted: "oklch(0.46 0.035 262)",
   secondary: "oklch(0.962 0.02 250)",
 };
-
 
 /** Per-room ambient accents. Atmosphere only, never status or control colour. */
 export const AMBIENT_TOKENS: Record<string, string> = {

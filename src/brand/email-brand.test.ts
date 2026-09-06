@@ -48,9 +48,11 @@ describe("email palette", () => {
     // paper and secondary are declared through other names, so check the four
     // tokens that appear verbatim in :root.
     for (const token of ["--ink", "--royal", "--rule"] as const) {
-      expect(styles).toContain(`${token}: ${EMAIL_COLOR_SOURCES[
-        token === "--ink" ? "ink" : token === "--royal" ? "royal" : "rule"
-      ]};`);
+      expect(styles).toContain(
+        `${token}: ${
+          EMAIL_COLOR_SOURCES[token === "--ink" ? "ink" : token === "--royal" ? "royal" : "rule"]
+        };`,
+      );
     }
     expect(styles).toContain(`--muted-foreground: ${EMAIL_COLOR_SOURCES.muted};`);
     expect(styles).toContain(`--secondary: ${EMAIL_COLOR_SOURCES.secondary};`);
@@ -58,7 +60,9 @@ describe("email palette", () => {
 
   it("is the only palette the letter uses", () => {
     const allowed = new Set(Object.values(EMAIL_COLORS).map((hex) => hex.toLowerCase()));
-    const used = new Set((EMAIL.html.match(/#[0-9a-fA-F]{6}/g) ?? []).map((hex) => hex.toLowerCase()));
+    const used = new Set(
+      (EMAIL.html.match(/#[0-9a-fA-F]{6}/g) ?? []).map((hex) => hex.toLowerCase()),
+    );
     expect([...used].filter((hex) => !allowed.has(hex))).toEqual([]);
   });
 

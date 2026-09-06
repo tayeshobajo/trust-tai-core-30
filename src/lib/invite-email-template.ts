@@ -25,7 +25,6 @@ const RULE = EMAIL_COLORS.rule;
 const MUTED = EMAIL_COLORS.muted;
 const SECONDARY = EMAIL_COLORS.secondary;
 
-
 export interface InviteEmailInput {
   to: string;
   organizationName: string;
@@ -77,7 +76,6 @@ function headerLockup(logoUrl: string | null | undefined): string {
   }
   return `<span style="font-size:18px;font-weight:600;letter-spacing:.01em;color:${INK}">Trust&nbsp;Tai</span>`;
 }
-
 
 export function inviteEmailBody(input: InviteEmailInput): InviteEmailContent {
   const org = escapeHtml(input.organizationName);
