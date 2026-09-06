@@ -20,6 +20,7 @@
 import type { AttachmentMeta } from "./comms-integrations";
 import type { DraftReviewState } from "./comms";
 import type { ISODateTime } from "./entities";
+import { LEGACY_APPROVAL_REFUSAL, isLegacyApproved } from "./comms-approval";
 
 /** Where a message goes: continue the Gmail thread, or open a new one. */
 export type SendThreadTarget = { mode: "reply"; providerThreadId: string } | { mode: "new" };
