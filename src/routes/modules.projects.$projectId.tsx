@@ -59,6 +59,11 @@ import {
 } from "@/domain/projects";
 import type { ProjectFileKind, WorkItemStatus } from "@/domain/project-delivery";
 import { workspaceAccess, type WorkspaceIdentity } from "@/lib/workspace";
+import { ChatTab, type ProjectChatTurn } from "@/components/tt/projects/detail/chat";
+import { checkOwnerAssignment } from "@/domain/projects";
+import { listMembers } from "@/data/supabase/settings-service";
+import { supabase } from "@/integrations/trust-tai/supabase";
+
 
 export const Route = createFileRoute("/modules/projects/$projectId")({
   head: () => ({
