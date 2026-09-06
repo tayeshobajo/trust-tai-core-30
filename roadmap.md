@@ -8,21 +8,22 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 17%** (P0 to P7)
-**Full Engine: 14%** (P0 to P9)
+**Production Readiness: 19%** (P0 to P7)
+**Full Engine: 16%** (P0 to P9)
 
 Working (corrected in slice P0-001A, extended in P1-002, P0-07 verified 2026-09-05,
 P0-08 and P0-03 Human Accepted 2026-09-06):
 
 - P0 weight 12 (readiness) / 10 (engine), 9 gates, **8 met** -> 12 x 8/9 = 10.7 and
   10 x 8/9 = 8.9
-- P1 weight 12 / 10, 6 gates, **3 met** (P1-01 Production Verified 2026-09-06 on
-  the real Mental Dental row). P1-04 is Production Verified: the
+- P1 weight 12 / 10, 6 gates, **4 met** (P1-01 Production Verified 2026-09-06 on
+  the real Mental Dental row; P1-02 Production Verified 2026-09-06 on the real
+  Mental Dental proposal). P1-04 is Production Verified: the
   `organization_weekly_targets` table exists in the production project and holds
   the real Trust Tai row, read back with the service key. P1-05 requires only
   Code/Test Verified and has been at that level since P1-001; the previous
   entry withheld its share by mistake, which rule 2 does not allow.
-  -> 12 x 3/6 = 6.0 and 10 x 3/6 = 5.0
+  -> 12 x 4/6 = 8.0 and 10 x 4/6 = 6.6667
 - P8 weight 8 (engine only), 5 gates, **0 met**. P8-01 and P8-02 were previously
   scored as Production Verified on table existence and code existence. Neither is
   supported: `content_sources` and `content_requests` hold 0 rows, so the composer
@@ -30,8 +31,8 @@ P0-08 and P0-03 Human Accepted 2026-09-06):
   holds 0 rows, so the hardened boundary has never been exercised. Both are now
   Code/Test Verified -> 8 x 0/5 = 0
 - P2 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 12 x 8/9 + 12 x 3/6 = 10.6667 + 6.0 = 16.6667 -> 17%.
-  Engine 10 x 8/9 + 10 x 3/6 = 8.8889 + 5.0 = 13.8889 -> 14%. P0-04 stays open and
+- Readiness 12 x 8/9 + 12 x 4/6 = 10.6667 + 8.0 = 18.6667 -> 19%.
+  Engine 10 x 8/9 + 10 x 4/6 = 8.8889 + 6.6667 = 15.5556 -> 16%. P0-04 stays open and
   uncounted, deferred by explicit human decision on 2026-09-06; agents remain paused.
 
 
