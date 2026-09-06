@@ -15,7 +15,11 @@ import { describe, expect, it, vi } from "vitest";
 import { answerProjectQuestion } from "./project-intelligence.server";
 
 function caller(raw: string) {
-  return vi.fn(async () => ({ raw, provider: "test", model: "test" }));
+  return vi.fn(async (_request: { input: string; webSearch?: boolean }) => ({
+    raw,
+    provider: "test",
+    model: "test",
+  }));
 }
 
 const INPUT = {
@@ -58,7 +62,7 @@ describe("answerProjectQuestion", () => {
   it("passes the pasted turn context and never asks for web search", async () => {
     const model = caller(JSON.stringify({ answer: "ok" }));
     await answerProjectQuestion({ ...INPUT, pasted: "client email" }, model);
-    const call = model.mock.calls[0]?.[0] as unknown as { input: string; webSearch?: boolean };
+    const call = model.mock.calls[0]![0];
     expect(call.webSearch).toBe(false);
     expect(call.input).toContain("client email");
   });
