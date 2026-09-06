@@ -76,6 +76,17 @@ describe("readCommercialForm", () => {
     });
   });
 
+  it("refuses a zero Build phase amount, because zero recognises nothing", () => {
+    const result = readCommercialForm(
+      form({ tier: "build", mrr: "", buildPhaseAmount: "0" }),
+      EMPTY,
+    );
+    expect(result).toEqual({
+      ok: false,
+      because: "Moving this company into Build needs the phase amount a person actually agreed.",
+    });
+  });
+
   it("carries the human-entered Build phase amount on a real tier move", () => {
     const result = readCommercialForm(
       form({ tier: "build", mrr: "", buildPhaseAmount: "12,000" }),
