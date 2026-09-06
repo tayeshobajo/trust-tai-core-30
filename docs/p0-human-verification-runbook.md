@@ -56,32 +56,64 @@ permission added in the Resend dashboard, or a full-access key linked instead.
 repeating. All three connected mailboxes
 (`tayeshobajo@gmail.com`, `hello@trust-tai.com`, `tai@trust-tai.com`) are
 `status = connected` and hold both
-`gmail.readonly` and `gmail.send`, and all three synced within the last hour.
-So `sendCapability()` will report `canSend: true`.
+`gmail.readonly` and `gmail.send`. So `sendCapability()` reports
+`canSend: true`.
 
-One draft is already `review_state = approved` and unsent (the Megan reply,
-`Re: Enquiries for Aspen New Zealand [#835]`). No draft has ever reached
-`sent`: no `rationale.send` record exists anywhere, so no message has left
-Trust Tai through Gmail in production.
+The human-send law now stands end to end: Comms drafts, flags and prepares, and
+only a human click sends. Since 2026-09-06, approving a draft writes durable
+approval provenance (`rationale.approval`: who approved and when) in the same
+operation as the state change, and a draft marked approved **without** that
+provenance is legacy-unverified and refuses Send until a person re-approves it.
+The previously approved Megan reply (`Re: Enquiries for Aspen New Zealand
+[#835]`, draft `cdb7166f-6fec-4d71-9aca-cd77c4ace3eb`) is in exactly that
+state: approved before provenance existed, so opening it will ask for a fresh
+approval before Send unlocks. Its thread has also moved on, so it is not the
+recommended candidate.
 
-**What Tai must do** (one real, low-risk governed reply)
+A governed draft is already prepared and waiting for review on the live Mental
+Dental thread: draft `2ea4925f-ae67-4fda-9252-0c74787dfcd4`,
+`Re: Input Items`, `review_state = needs_human_review`, bound to relationship
+`0e0f3565-a436-4cbf-9523-a519aa21b4d4` and Gmail thread `19f437572010740d`,
+with no approval and no send record. No draft anywhere carries a
+`rationale.send` record, so no message has ever left Trust Tai through Gmail in
+production.
 
-1. Open Comms, pick a real relationship whose reply is genuinely wanted.
-2. Read the draft, edit it if needed, and approve it. Approval is the gate; the
-   agent never sends on its own.
-3. Press Send. Confirm the mailbox the composer names is the one that owns the
-   thread.
+Manual replies sent in Gmail outside Trust Tai are now reconciled on sync
+(commit `be63741d`): when a later outbound message uniquely matches a waiting
+draft on thread, person and time, the draft closes as replied-from-Gmail and
+Send is suppressed on it. Ambiguous matches fail closed and do nothing; repeats
+are idempotent.
+
+**What Tai must do.** Either path closes the gate; path A is the fuller proof.
+
+Path A, governed send from Comms:
+
+1. Open Comms and open the Mental Dental draft (`Re: Input Items`).
+2. Read it against Lauryn's latest email, edit if needed, then approve it. Your
+   name and the time are recorded as the approval. The agent never sends on its
+   own.
+3. Press Send. Confirm the composer names `tayeshobajo@gmail.com`, the mailbox
+   that owns the thread.
 4. Press Send a second time on the same draft. It must replay the recorded
    outcome, not send a second message.
 
+Path B, manual send in Gmail:
+
+1. Reply to the Mental Dental thread directly in Gmail.
+2. Let the next Comms sync run (or trigger one). The waiting draft should close
+   as replied-from-Gmail with the message date, and Send on it stays closed.
+
 **Evidence we capture**
 
-- The draft row at `review_state = 'sent'` with `rationale.send.state = 'sent'`,
-  a `providerMessageId` and `providerThreadId`.
-- The message visible in the sending mailbox's Gmail Sent folder with the same
-  provider message id.
-- The second press returning `replayed: true` and no second Gmail message.
-- The corresponding activity row in the shared stream.
+- Path A: the draft at `review_state = 'sent'` with `rationale.send.state =
+  'sent'`, a `providerMessageId` and `providerThreadId`; the durable
+  `rationale.approval` naming Tai; the message visible in the mailbox's Gmail
+  Sent folder with the same provider id; the second press returning
+  `replayed: true` with no second Gmail message; the corresponding activity row
+  in the shared stream.
+- Path B: the draft carrying `rationale.external_send` with the provider message
+  id and timestamp; no `rationale.send`; a repeated sync creating no second
+  record; the relationship memory line written exactly once.
 
 ---
 
