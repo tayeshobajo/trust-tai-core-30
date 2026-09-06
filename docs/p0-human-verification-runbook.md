@@ -46,6 +46,31 @@ plus the recipient's inbox.
 4. Have the recipient open the sign-in link and sign in; confirm the
    invitation leaves `pending`.
 
+**2026-09-06, acceptance path repaired.** Step 4 was blocked: the emailed link
+landed on the generic sign-in screen, and because Tai's own session was still
+active in that browser the recipient saw "no Trust Tai organization membership
+exists for this account". Nothing consumed the invitation. The link now carries
+the invited address and the invitation id (neither is a credential: acceptance
+still requires a verified Supabase session on that exact address), and `/auth`
+reads them:
+
+- signed in as a different address: the screen names the invited address and
+  the current one, grants nothing, and offers sign out and switch account
+- not signed in: the invited address is shown and locked, and the one-time link
+  returns to the same invitation
+- signed in as the invited address: `POST /api/public/settings/invite-accept`
+  verifies the bearer token against Supabase Auth, evaluates the invitation
+  through `src/domain/invite-acceptance.ts`, upserts the membership once with
+  the invited role and app access, marks the invitation `accepted`, and opens
+  the workspace
+
+Acceptance is idempotent: the membership write is an upsert on
+`(organization_id, user_id)`, an existing membership keeps its current role, and
+the invitation is patched only while it is still `pending`. Expired, cancelled
+and already accepted invitations keep telling the truth. No migration was
+needed; `status`, `accepted_at` and `app_access` already exist.
+
+
 
 **Evidence we capture to upgrade to Human Accepted**
 

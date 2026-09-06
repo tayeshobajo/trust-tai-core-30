@@ -79,6 +79,7 @@ import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/
 import { Route as ApiPublicRoutingNotifyRouteImport } from './routes/api/public/routing.notify'
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
 import { Route as ApiPublicSettingsAdminPasswordRouteImport } from './routes/api/public/settings.admin-password'
+import { Route as ApiPublicSettingsInviteAcceptRouteImport } from './routes/api/public/settings.invite-accept'
 import { Route as ApiPublicSettingsInviteEmailRouteImport } from './routes/api/public/settings.invite-email'
 import { Route as ApiPublicStewardConversationRouteImport } from './routes/api/public/steward.conversation'
 import { Route as ApiPublicStewardInterpretRouteImport } from './routes/api/public/steward.interpret'
@@ -458,6 +459,12 @@ const ApiPublicSettingsAdminPasswordRoute =
     path: '/api/public/settings/admin-password',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicSettingsInviteAcceptRoute =
+  ApiPublicSettingsInviteAcceptRouteImport.update({
+    id: '/api/public/settings/invite-accept',
+    path: '/api/public/settings/invite-accept',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicSettingsInviteEmailRoute =
   ApiPublicSettingsInviteEmailRouteImport.update({
     id: '/api/public/settings/invite-email',
@@ -639,6 +646,7 @@ export interface FileRoutesByFullPath {
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
+  '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
@@ -721,6 +729,7 @@ export interface FileRoutesByTo {
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
+  '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
@@ -813,6 +822,7 @@ export interface FileRoutesById {
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
+  '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
@@ -906,6 +916,7 @@ export interface FileRouteTypes {
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
     | '/api/public/settings/admin-password'
+    | '/api/public/settings/invite-accept'
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
@@ -988,6 +999,7 @@ export interface FileRouteTypes {
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
     | '/api/public/settings/admin-password'
+    | '/api/public/settings/invite-accept'
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
@@ -1079,6 +1091,7 @@ export interface FileRouteTypes {
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
     | '/api/public/settings/admin-password'
+    | '/api/public/settings/invite-accept'
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
@@ -1136,6 +1149,7 @@ export interface RootRouteChildren {
   ApiPublicRoutingNotifyRoute: typeof ApiPublicRoutingNotifyRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
   ApiPublicSettingsAdminPasswordRoute: typeof ApiPublicSettingsAdminPasswordRoute
+  ApiPublicSettingsInviteAcceptRoute: typeof ApiPublicSettingsInviteAcceptRoute
   ApiPublicSettingsInviteEmailRoute: typeof ApiPublicSettingsInviteEmailRoute
   ApiPublicStewardConversationRoute: typeof ApiPublicStewardConversationRoute
   ApiPublicStewardInterpretRoute: typeof ApiPublicStewardInterpretRoute
@@ -1646,6 +1660,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSettingsAdminPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/settings/invite-accept': {
+      id: '/api/public/settings/invite-accept'
+      path: '/api/public/settings/invite-accept'
+      fullPath: '/api/public/settings/invite-accept'
+      preLoaderRoute: typeof ApiPublicSettingsInviteAcceptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/settings/invite-email': {
       id: '/api/public/settings/invite-email'
       path: '/api/public/settings/invite-email'
@@ -1995,6 +2016,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRoutingNotifyRoute: ApiPublicRoutingNotifyRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
   ApiPublicSettingsAdminPasswordRoute: ApiPublicSettingsAdminPasswordRoute,
+  ApiPublicSettingsInviteAcceptRoute: ApiPublicSettingsInviteAcceptRoute,
   ApiPublicSettingsInviteEmailRoute: ApiPublicSettingsInviteEmailRoute,
   ApiPublicStewardConversationRoute: ApiPublicStewardConversationRoute,
   ApiPublicStewardInterpretRoute: ApiPublicStewardInterpretRoute,
