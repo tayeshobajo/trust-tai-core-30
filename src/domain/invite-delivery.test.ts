@@ -18,6 +18,12 @@ describe("classifyDeliveryFailure", () => {
     expect(classifyDeliveryFailure(SENDER_REFUSAL)).toBe("sender_unverified");
   });
 
+  it("recognises the exact refusal recorded in production on 2026-08-24", () => {
+    expect(
+      classifyDeliveryFailure("This API key is not authorized to send emails from trusttai.com"),
+    ).toBe("sender_unverified");
+  });
+
   it("recognises the provider's own phrasing", () => {
     expect(classifyDeliveryFailure("You are not authorized to send from this address")).toBe(
       "sender_unverified",
