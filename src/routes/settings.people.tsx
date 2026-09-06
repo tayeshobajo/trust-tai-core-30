@@ -351,6 +351,36 @@ function PeopleSettings() {
     return recordedDelivery[invitationId] ?? { state: "prepared", because: null, at: "" };
   };
 
+  /**
+   * Send the email for an invitation that already exists. The same invitation
+   * identity is reused, so no second invitation or membership is created, and
+   * nothing retries on its own: this only runs when a person asks for it.
+   */
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  const retryDelivery = async (invitationId: string, email: string) => {
+    if (retryingId) return;
+    setRetryingId(invitationId);
+    try {
+      await resendInvitation({
+        organizationId: identity.organizationId,
+        invitationId,
+        email,
+        actorUserId: identity.userId,
+      });
+      const result = await deliverInvitationEmail({
+        organizationId: identity.organizationId,
+        invitationId,
+        email,
+        actorUserId: identity.userId,
+      });
+      setDeliveryById((previous) => ({ ...previous, [invitationId]: result }));
+    } finally {
+      setRetryingId(null);
+      refresh();
+    }
+  };
+
+
 
   return (
     <>
