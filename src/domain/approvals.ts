@@ -600,7 +600,6 @@ export function readEventKind(kind: string, metadata: Record<string, unknown>): 
     : "note";
 }
 
-
 /** Append-only. A note always carries who wrote it and when. */
 export interface ApprovalEvent {
   id: ID;

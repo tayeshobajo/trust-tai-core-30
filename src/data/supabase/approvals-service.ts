@@ -24,7 +24,6 @@ import {
   tabFilter,
   ITEM_OVERRIDE_SCOPE,
   BOARD_COLUMNS,
-
   BOARD_COLUMN_STATUSES,
   OPEN_STATUSES,
   type ApprovalSort,
@@ -165,7 +164,6 @@ function toEvent(row: Row): ApprovalEvent {
   };
 }
 
-
 /* ------------------------------------------------------------ submission */
 
 /** What a source room hands to Approvals. Everything else is derived here. */
@@ -298,7 +296,6 @@ async function callOverrideRpc(input: {
   if (error) return { available: true, error: String((error as { message?: string }).message) };
   return { available: true };
 }
-
 
 async function loadItems(context: ApprovalsContext, requestId: ID): Promise<ApprovalItem[]> {
   const { data, error } = await supabase
@@ -1010,7 +1007,6 @@ export const approvalsService = {
     );
     return "written";
   },
-
 
   async addNote(
     context: ApprovalsContext,
