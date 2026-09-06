@@ -7,20 +7,27 @@
  * fifty-post content batch feel like the same room.
  */
 
+import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
-import { MetaPill, TTButton } from "@/components/tt/primitives";
+import { MetaPill, TonePill, TTButton } from "@/components/tt/primitives";
 import { rendererFor } from "@/components/tt/approvals/renderers";
 import { downstreamAdapter } from "@/data/approvals/downstream";
 import {
   APPROVAL_TYPE_LABEL,
   IMPACT_LABEL,
   SOURCE_APP_LABEL,
+  SOURCE_APP_ROUTE,
   STATUS_LABEL,
   STATUS_MEANING,
+  STATUS_TONE,
   URGENCY_LABEL,
+  approvesWork,
   availableActions,
+  batchReviewLine,
+  bulkApprovalClosedBecause,
   readyItemIds,
+  recordsDecision,
   type ApprovalAction,
   type ApprovalEvent,
   type ApprovalItem,
