@@ -47,7 +47,6 @@ export type ProposalSentResult =
 export type ProposalOutcomeResult =
   { ok: true; intent: ProposalOutcomeIntent } | { ok: false; because: string };
 
-
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** A proposal that has already been answered is closed to further sending. */

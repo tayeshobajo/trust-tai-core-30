@@ -66,7 +66,12 @@ describe("recording that a proposal was sent", () => {
   it("lets an open proposal be corrected", () => {
     const result = readProposalSentForm(
       { amount: "4000", sentOn: "2026-09-06" },
-      { sentAt: "2026-09-01T12:00:00.000Z", amountCents: 300_000, outcome: "open", outcomeAt: null },
+      {
+        sentAt: "2026-09-01T12:00:00.000Z",
+        amountCents: 300_000,
+        outcome: "open",
+        outcomeAt: null,
+      },
     );
     expect(result.ok).toBe(true);
   });
@@ -139,7 +144,13 @@ describe("recording the day the answer happened", () => {
   });
 
   it("will not change an answer that is already recorded", () => {
-    const signed: ProposalFormCurrent = { ...OPEN, outcome: "signed", outcomeAt: "2026-08-14T12:00:00.000Z" };
-    expect(readProposalOutcomeForm({ answeredOn: "2026-08-20" }, signed, "declined").ok).toBe(false);
+    const signed: ProposalFormCurrent = {
+      ...OPEN,
+      outcome: "signed",
+      outcomeAt: "2026-08-14T12:00:00.000Z",
+    };
+    expect(readProposalOutcomeForm({ answeredOn: "2026-08-20" }, signed, "declined").ok).toBe(
+      false,
+    );
   });
 });

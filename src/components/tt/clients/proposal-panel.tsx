@@ -43,7 +43,6 @@ export interface ProposalPanelProps {
   onAnswer: (input: { roadmapId: string } & ProposalOutcomeIntent) => void;
 }
 
-
 function money(cents: number | null): string {
   if (cents === null) return "amount not recorded";
   return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
@@ -167,7 +166,6 @@ function NodeCard({
           recorded answer is not rewritten here.
         </p>
       ) : null}
-
 
       {refusal ? (
         <p role="alert" className="mt-3 text-sm font-medium text-destructive">
