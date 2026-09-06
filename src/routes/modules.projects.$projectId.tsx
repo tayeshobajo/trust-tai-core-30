@@ -478,6 +478,44 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
               </TTButton>
             </div>
           </div>
+          <div className="space-y-2">
+            <TTInput
+              value={waitingOn}
+              onChange={(event) => setWaitingOn(event.target.value)}
+              placeholder={project.waitingOn?.trim() || "What this work is waiting on"}
+              aria-label="Waiting on"
+            />
+            <div className="flex flex-wrap gap-2">
+              <TTButton
+                size="sm"
+                variant="secondary"
+                disabled={busy || waitingOn.trim().length === 0}
+                onClick={() => {
+                  updateProject.mutate({ waitingOn: waitingOn.trim() });
+                  setWaitingOn("");
+                }}
+              >
+                Record what it waits on
+              </TTButton>
+              <TTButton
+                size="sm"
+                variant="quiet"
+                disabled={busy || !project.waitingOn?.trim()}
+                onClick={() => {
+                  updateProject.mutate({ waitingOn: "" });
+                  setWaitingOn("");
+                }}
+              >
+                The wait is over
+              </TTButton>
+            </div>
+            <p className="text-[13px] text-muted-foreground">
+              {project.waitingOn?.trim()
+                ? `Waiting on ${project.waitingOn.trim()}. Clearing this is how the wait ends.`
+                : "Nothing is on hold here. Waiting is read from this sentence, never set as a status."}
+            </p>
+          </div>
+
         </section>
       ) : null}
 
