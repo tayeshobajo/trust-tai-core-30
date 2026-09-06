@@ -84,7 +84,6 @@ async function sourced<T>(run: () => Promise<T>): Promise<Sourced<T>> {
   }
 }
 
-
 const CLIENT_COLUMNS =
   "id, organization_id, name, status, website_url, metadata, created_at, tier, mrr_cents, renewal_at, next_review_at, tier_changed_at, commercial_updated_by, commercial_updated_at, commercial_provenance";
 
@@ -264,7 +263,6 @@ export async function createClientRecord(
   return client;
 }
 
-
 export interface ClientCommercialPatch {
   clientId: ID;
   /** Only the keys present are written. An absent key leaves the fact alone. */
@@ -318,8 +316,6 @@ export async function setClientCommercialState(
       "Moving a client into Build needs the phase amount a person actually agreed, in cents.",
     );
   }
-
-
 
   const update: Row = {
     commercial_updated_by: context.userId,
@@ -397,15 +393,24 @@ function toProposalRecord(row: Row): ProposalRecord {
 }
 
 export async function listProposals(organizationId: ID): Promise<ProposalRecord[]> {
+  return (await listProposalNodes(organizationId)).filter(
+    (proposal) => proposal.proposalSentAt !== null,
+  );
+}
+
+/**
+ * Every lineage node, whether a proposal has been sent on it or not. The
+ * commercial book reads only the sent ones; the human path needs to see a
+ * roadmap with no proposal so a person can record the first one.
+ */
+export async function listProposalNodes(organizationId: ID): Promise<ProposalRecord[]> {
   const { data, error } = await supabase
     .from("roadmaps")
     .select(PROPOSAL_COLUMNS)
     .eq("organization_id", organizationId)
     .order("proposal_sent_at", { ascending: false });
   assertOk(error);
-  return ((data ?? []) as Row[])
-    .map(toProposalRecord)
-    .filter((proposal) => proposal.proposalSentAt !== null);
+  return ((data ?? []) as Row[]).map(toProposalRecord);
 }
 
 async function readProposal(roadmapId: ID, context: CommercialContext): Promise<ProposalRecord> {
@@ -787,7 +792,9 @@ async function readOrganizationTimeZone(organizationId: ID): Promise<unknown> {
  * the row cannot be read, the fallback is reported as a fallback, never
  * silently adopted.
  */
-export async function readOrganizationTimeZoneResolved(organizationId: ID): Promise<ResolvedTimeZone> {
+export async function readOrganizationTimeZoneResolved(
+  organizationId: ID,
+): Promise<ResolvedTimeZone> {
   const source = await sourced(() => readOrganizationTimeZone(organizationId));
   const zone = resolveBusinessTimeZone(source.value);
   if (source.available) return zone;
@@ -902,4 +909,3 @@ function asSource(result: Sourced<unknown>): ScoreboardSource {
     ? { available: true }
     : { available: false, ...(result.because ? { because: result.because } : {}) };
 }
-
