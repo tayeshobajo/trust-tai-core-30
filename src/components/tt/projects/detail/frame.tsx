@@ -149,9 +149,19 @@ export function ProjectIdentityHeader({
 
           <div className="min-w-0 space-y-3">
             <p className="text-[13px] font-medium text-muted-foreground">{lineage.company}</p>
-            <h1 className="font-display text-[34px] leading-[1.1] text-foreground">
-              {project.name}
-            </h1>
+            {onRename ? (
+              <InlineProjectName
+                project={project}
+                busy={busy}
+                savedLabel={savedLabel}
+                onRename={onRename}
+              />
+            ) : (
+              <h1 className="font-display text-[34px] leading-[1.1] text-foreground">
+                {project.name}
+              </h1>
+            )}
+
             <div className="flex flex-wrap items-center gap-3">
               <span
                 className={cn(
