@@ -7,7 +7,7 @@
  * back to the person who said it.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { SectionHeading, TTButton, TTCard, TTField, TTInput } from "@/components/tt/primitives";
 import {
@@ -39,12 +39,17 @@ export function CommercialPanel({
 }: CommercialPanelProps) {
   const [form, setForm] = useState<CommercialFormInput>(() => commercialFormFrom(current));
   const [refusal, setRefusal] = useState<string | null>(null);
+  const currentRef = useRef(current);
+  currentRef.current = current;
 
   /* When the stored truth changes, the form follows it rather than the other way round. */
+  const storedKey = [current.tier, current.mrrCents, current.renewalAt, current.nextReviewAt].join(
+    "|",
+  );
   useEffect(() => {
-    setForm(commercialFormFrom(current));
+    setForm(commercialFormFrom(currentRef.current));
     setRefusal(null);
-  }, [current.tier, current.mrrCents, current.renewalAt, current.nextReviewAt]);
+  }, [storedKey]);
 
   const movingIntoBuild = form.tier === "build" && current.tier !== "build";
   const set = (key: keyof CommercialFormInput) => (value: string) =>
@@ -85,7 +90,11 @@ export function CommercialPanel({
             </select>
           </TTField>
 
-          <TTField label="Monthly recurring" hint="In whole currency, like 3500. Leave blank if none." optional>
+          <TTField
+            label="Monthly recurring"
+            hint="In whole currency, like 3500. Leave blank if none."
+            optional
+          >
             <TTInput
               inputMode="decimal"
               value={form.mrr}

@@ -45,8 +45,7 @@ export interface CommercialFormPatch {
 }
 
 export type CommercialFormResult =
-  | { ok: true; patch: CommercialFormPatch; tierChanged: boolean }
-  | { ok: false; because: string };
+  { ok: true; patch: CommercialFormPatch; tierChanged: boolean } | { ok: false; because: string };
 
 /** A day as typed, kept as a plain date so a timezone can never shift it. */
 function readDay(value: string): { ok: true; day: string | null } | { ok: false } {
@@ -60,7 +59,10 @@ function readDay(value: string): { ok: true; day: string | null } | { ok: false 
 
 /** Money as a person types it, turned into cents. Never rounded away silently. */
 export function readMoneyCents(value: string): { ok: true; cents: number | null } | { ok: false } {
-  const text = value.trim().replace(/[,\s]/g, "").replace(/^[$£€]/, "");
+  const text = value
+    .trim()
+    .replace(/[,\s]/g, "")
+    .replace(/^[$£€]/, "");
   if (!text) return { ok: true, cents: null };
   if (!/^\d+(\.\d{1,2})?$/.test(text)) return { ok: false };
   const amount = Number(text);
