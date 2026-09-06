@@ -320,6 +320,19 @@ export const projectsService = {
       });
       if (!check.ok) throw new Error(check.because);
     }
+    // Handing work over, or taking the last person off it, is its own decision
+    // and is refused in the same words the picker uses.
+    if (changes.ownerUserId !== undefined || changes.ownerLabel !== undefined) {
+      const owned = checkOwnerAssignment(
+        { state },
+        {
+          ownerUserId: changes.ownerUserId ?? project.ownerUserId ?? "",
+          ownerLabel: changes.ownerLabel ?? project.ownerLabel ?? "",
+        },
+      );
+      if (!owned.ok) throw new Error(owned.because);
+    }
+
     const dueDate = changes.dueDate ?? project.dueDate;
     const currentWork = changes.currentWork ?? project.currentWork;
     const deliveryItems = changes.deliveryItems ?? project.deliveryItems;
