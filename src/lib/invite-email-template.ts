@@ -122,7 +122,7 @@ export function inviteEmailBody(input: InviteEmailInput): InviteEmailContent {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px">${escapeHtml(preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${SECONDARY};padding:32px 12px">
 <tr><td align="center">
-  <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:100%;background:${PAPER};border:1px solid ${RULE};border-radius:16px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background:${PAPER};border:1px solid ${RULE};border-radius:16px">
     <tr><td style="padding:30px 32px 0 32px">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
