@@ -455,9 +455,31 @@ export const projectsService = {
           { from: project.state, to: changes.state },
         );
       }
+    } else if (detailKeys.length > 0) {
+      // A correction is its own kind of history: what was fixed, and what it
+      // used to say, so nobody has to wonder when the record changed.
+      await record(
+        context,
+        "project.updated",
+        saved,
+        `${saved.name} had its recorded detail corrected.`,
+        {
+          fields: detailKeys,
+          before: {
+            ...(changes.name !== undefined ? { name: project.name } : {}),
+            ...(changes.pointA !== undefined ? { pointA: project.pointA } : {}),
+            ...(changes.pointB !== undefined ? { pointB: project.pointB } : {}),
+            ...(changes.dueDate !== undefined ? { dueDate: project.dueDate ?? null } : {}),
+            ...(changes.subjectLabel !== undefined
+              ? { subjectLabel: project.origin.subjectLabel ?? null }
+              : {}),
+          },
+        },
+      );
     } else {
       await record(context, "project.next_move_changed", saved, `${saved.name} was updated.`);
     }
+
     return saved;
   },
 
