@@ -381,7 +381,6 @@ describe("meeting kind", () => {
   });
 });
 
-
 describe("Build fails closed without a human-entered phase amount", () => {
   it("refuses the move, leaves the client untouched and emits nothing", async () => {
     seedClient({ tier: "diagnose" });
@@ -410,6 +409,19 @@ describe("Build fails closed without a human-entered phase amount", () => {
         CONTEXT,
       ),
     ).rejects.toThrow(/phase amount/i);
+    expect(db.tables["activities"] ?? []).toHaveLength(0);
+  });
+
+  it("refuses a zero phase amount and writes nothing", async () => {
+    seedClient({ tier: "diagnose" });
+    await expect(
+      service.setClientCommercialState(
+        { clientId: "client-1", tier: "build", buildPhaseAmountCents: 0 },
+        CONTEXT,
+      ),
+    ).rejects.toThrow(/phase amount/i);
+    const row = (db.tables["clients"] ?? [])[0] as Record<string, unknown>;
+    expect(row["tier"]).toBe("diagnose");
     expect(db.tables["activities"] ?? []).toHaveLength(0);
   });
 
@@ -539,10 +551,7 @@ describe("weekly targets validate before they are saved", () => {
       service.saveOrganizationWeeklyTargets({ ...valid, firstTouchTargetLow: 1.5 }, CONTEXT),
     ).rejects.toThrow(/whole number/i);
     await expect(
-      service.saveOrganizationWeeklyTargets(
-        { ...valid, revenueTargetCents: Number.NaN },
-        CONTEXT,
-      ),
+      service.saveOrganizationWeeklyTargets({ ...valid, revenueTargetCents: Number.NaN }, CONTEXT),
     ).rejects.toThrow(/whole number of cents/i);
     expect(db.tables["organization_weekly_targets"] ?? []).toHaveLength(0);
   });
@@ -550,9 +559,7 @@ describe("weekly targets validate before they are saved", () => {
 
 describe("the week belongs to the organization", () => {
   it("reads the organization's own timezone and starts the week there", async () => {
-    db.tables["organizations"] = [
-      { id: "org-1", name: "Trust Tai", timezone: "America/Chicago" },
-    ];
+    db.tables["organizations"] = [{ id: "org-1", name: "Trust Tai", timezone: "America/Chicago" }];
     const board = await service.readWeeklyScoreboard("org-1", NOW);
     expect(board.timeZone).toBe("America/Chicago");
     expect(board.timeZoneFallback).toBe(false);
