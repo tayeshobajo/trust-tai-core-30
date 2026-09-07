@@ -21,8 +21,16 @@ import {
   ProjectIdentityHeader,
   ProjectTabs,
   UtilityRow,
+  WorkroomSection,
   type ProjectTab,
 } from "@/components/tt/projects/detail/frame";
+import {
+  sectionAnchor,
+  surfaceForSection,
+  type ProjectSection,
+} from "@/domain/project-workroom-ia";
+import { runRoadmapResearch } from "@/data/roadmap/research-run";
+
 import { OverviewTab } from "@/components/tt/projects/detail/overview";
 import { AssetsTab, ContextTab, KnowledgeTab } from "@/components/tt/projects/detail/intelligence";
 import { DetailRail } from "@/components/tt/projects/detail/rail";
