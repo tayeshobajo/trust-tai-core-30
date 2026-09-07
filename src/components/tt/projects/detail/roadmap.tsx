@@ -161,6 +161,7 @@ export function ProjectRoadmapTab({
   onEvidenceAdd,
   onEvidenceRemove,
   onEvidenceOpen,
+  onEvidenceUrl,
 }: {
   roadmap: Roadmap | null;
   milestones: RoadmapMilestone[];
@@ -218,6 +219,7 @@ export function ProjectRoadmapTab({
     | undefined;
   onEvidenceRemove?: ((item: CriterionEvidence) => void) | undefined;
   onEvidenceOpen?: ((item: CriterionEvidence) => void) | undefined;
+  onEvidenceUrl?: ((item: CriterionEvidence) => Promise<string>) | undefined;
 }) {
   if (!roadmap) {
     return <LinkPanel candidates={candidates} busy={linking} error={linkError} onLink={onLink} />;
@@ -272,6 +274,7 @@ export function ProjectRoadmapTab({
             onEvidenceAdd={onEvidenceAdd}
             onEvidenceRemove={onEvidenceRemove}
             onEvidenceOpen={onEvidenceOpen}
+            onEvidenceUrl={onEvidenceUrl}
           />
         </>
       )}

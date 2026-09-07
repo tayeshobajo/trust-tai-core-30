@@ -69,6 +69,7 @@ function MilestoneCard({
   onEvidenceAdd,
   onEvidenceRemove,
   onEvidenceOpen,
+  onEvidenceUrl,
 }: {
   milestone: RoadmapMilestone;
   busyId: string | null;
@@ -99,6 +100,7 @@ function MilestoneCard({
     | undefined;
   onEvidenceRemove?: ((item: CriterionEvidence) => void) | undefined;
   onEvidenceOpen?: ((item: CriterionEvidence) => void) | undefined;
+  onEvidenceUrl?: ((item: CriterionEvidence) => Promise<string>) | undefined;
 }) {
   const read = ownedExecutionBoundary(milestone);
   const owned = {
@@ -157,6 +159,7 @@ function MilestoneCard({
             : {})}
           {...(onEvidenceRemove ? { onEvidenceRemove } : {})}
           {...(onEvidenceOpen ? { onEvidenceOpen } : {})}
+          {...(onEvidenceUrl ? { onEvidenceUrl } : {})}
         />
       ) : null}
 
@@ -285,6 +288,7 @@ export function MilestonesView({
   onEvidenceAdd,
   onEvidenceRemove,
   onEvidenceOpen,
+  onEvidenceUrl,
 }: {
   milestones: RoadmapMilestone[];
   busyId: string | null;
@@ -330,6 +334,7 @@ export function MilestonesView({
     | undefined;
   onEvidenceRemove?: ((item: CriterionEvidence) => void) | undefined;
   onEvidenceOpen?: ((item: CriterionEvidence) => void) | undefined;
+  onEvidenceUrl?: ((item: CriterionEvidence) => Promise<string>) | undefined;
 }) {
   const [filter, setFilter] = useState<MilestoneStatus | "all">("all");
   const [adding, setAdding] = useState(false);
@@ -431,6 +436,8 @@ export function MilestonesView({
               onEvidenceAdd={onEvidenceAdd}
               onEvidenceRemove={onEvidenceRemove}
               onEvidenceOpen={onEvidenceOpen}
+            onEvidenceUrl={onEvidenceUrl}
+              onEvidenceUrl={onEvidenceUrl}
             />
           ))}
         </ul>

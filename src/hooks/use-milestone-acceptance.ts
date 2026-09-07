@@ -47,6 +47,8 @@ export interface MilestoneAcceptance {
   onEvidenceRemove: (item: CriterionEvidence) => void;
   /** Open a stored evidence file through a short lived signed url. */
   onEvidenceOpen: (item: CriterionEvidence) => void;
+  /** A short lived signed url, used to preview a stored image inline. */
+  onEvidenceUrl: (item: CriterionEvidence) => Promise<string>;
 }
 
 export function useMilestoneAcceptance({
@@ -119,5 +121,6 @@ export function useMilestoneAcceptance({
         }
       })();
     },
+    onEvidenceUrl: (item) => roadmapIntel.criterionEvidenceUrl(item),
   };
 }

@@ -941,6 +941,7 @@ function RoadmapWorkspace({
                 onEvidenceAdd={acceptance.onEvidenceAdd}
                 onEvidenceRemove={acceptance.onEvidenceRemove}
                 onEvidenceOpen={acceptance.onEvidenceOpen}
+              onEvidenceUrl={acceptance.onEvidenceUrl}
                 measurements={intelQuery.data?.measurements ?? []}
                 measurementsError={measureError ?? intelQuery.data?.measurementsError ?? null}
                 onMeasure={(milestone, input) => milestoneMeasure.mutate({ milestone, input })}
