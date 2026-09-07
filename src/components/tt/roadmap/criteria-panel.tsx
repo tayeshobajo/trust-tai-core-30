@@ -236,21 +236,46 @@ export function CriteriaPanel({
         <p className="mt-3 text-sm text-foreground">{ACCEPTANCE_IS_EVIDENCE}</p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <TTInput
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") add();
-          }}
-          placeholder="Home page approved"
-          aria-label={`Add an acceptance condition to ${subject}`}
-          className="max-w-sm"
-        />
-        <TTButton size="sm" variant="secondary" disabled={busy} onClick={add}>
+      {adding ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <TTInput
+            value={text}
+            autoFocus
+            onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") add();
+            }}
+            placeholder="Home page approved"
+            aria-label={`Add an acceptance condition to ${subject}`}
+            className="max-w-sm"
+          />
+          <TTButton size="sm" variant="secondary" disabled={busy} onClick={add}>
+            Add condition
+          </TTButton>
+          <TTButton
+            size="sm"
+            variant="quiet"
+            disabled={busy}
+            onClick={() => {
+              setText("");
+              setRefusal(null);
+              setAdding(false);
+            }}
+          >
+            Cancel
+          </TTButton>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => setAdding(true)}
+          className="mt-3 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+        >
           Add condition
-        </TTButton>
-      </div>
+        </button>
+      )}
+
       {refusal ? <p className="mt-2 text-sm text-destructive">{refusal}</p> : null}
     </section>
   );
