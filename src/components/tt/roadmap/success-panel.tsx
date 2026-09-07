@@ -53,7 +53,9 @@ export function SuccessPanel({
             {success?.outcome || NO_SUCCESS}
           </p>
           {success?.targetDate ? (
-            <p className="mt-1 text-[13px] text-muted-foreground">Target date {success.targetDate}</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              Target date {success.targetDate}
+            </p>
           ) : null}
           {success?.successCheck ? (
             <p className="mt-1 max-w-reading text-[13px] text-muted-foreground">

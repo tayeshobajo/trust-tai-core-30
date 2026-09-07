@@ -282,8 +282,7 @@ export function checkMeasurableTarget(raw: Partial<MeasurableTargetInput>): Metr
     return { ok: false, refusal: "Use letters or numbers in the name, so it can be stored." };
   }
 
-  const hasBaselineValue =
-    typeof raw.baselineValue === "number" || clean(raw.baselineValue) !== "";
+  const hasBaselineValue = typeof raw.baselineValue === "number" || clean(raw.baselineValue) !== "";
   const hasBaselineDate = clean(raw.baselineAt) !== "";
   const baselineGiven = hasBaselineValue || hasBaselineDate;
 

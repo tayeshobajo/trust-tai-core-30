@@ -202,7 +202,9 @@ export function CriteriaPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="tt-eyebrow">Acceptance criteria</p>
         {rows.length > 0 ? (
-          <MetaPill>{progress.met ? ACCEPTANCE_MET : `${progress.done}/${progress.total}`}</MetaPill>
+          <MetaPill>
+            {progress.met ? ACCEPTANCE_MET : `${progress.done}/${progress.total}`}
+          </MetaPill>
         ) : null}
       </div>
 

@@ -31,9 +31,9 @@ describe("milestone success definition", () => {
 
   it("refuses a missing outcome and an unreal date", () => {
     expect(checkMilestoneSuccess({ outcome: "  " }).ok).toBe(false);
-    expect(
-      checkMilestoneSuccess({ outcome: "Pages approved", targetDate: "2026-13-40" }).ok,
-    ).toBe(false);
+    expect(checkMilestoneSuccess({ outcome: "Pages approved", targetDate: "2026-13-40" }).ok).toBe(
+      false,
+    );
   });
 
   it("reads a stored definition back, and refuses a partial one", () => {

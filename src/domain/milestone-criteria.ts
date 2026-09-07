@@ -140,7 +140,9 @@ export function reorderCriteria(
   moved[target] = a;
   return moved
     .map((row, spot) => ({ id: row.id, position: spot + 1 }))
-    .filter((entry, spot) => entry.position !== ordered[spot]!.position || entry.id !== ordered[spot]!.id);
+    .filter(
+      (entry, spot) => entry.position !== ordered[spot]!.position || entry.id !== ordered[spot]!.id,
+    );
 }
 
 /** The stable key for one written condition, used for replay protection. */

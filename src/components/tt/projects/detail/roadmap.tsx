@@ -195,8 +195,7 @@ export function ProjectRoadmapTab({
     | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, text: string) => void)
     | undefined;
   onCriterionRemove?:
-    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion) => void)
-    | undefined;
+    ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion) => void) | undefined;
   onCriterionMove?:
     | ((
         milestone: RoadmapMilestone,

@@ -38,8 +38,7 @@ export interface MilestoneSuccess extends MilestoneSuccessInput {
 }
 
 export type SuccessCheckResult =
-  | { ok: true; success: MilestoneSuccessInput }
-  | { ok: false; refusal: string };
+  { ok: true; success: MilestoneSuccessInput } | { ok: false; refusal: string };
 
 export const NO_SUCCESS = "No outcome described yet";
 
@@ -117,9 +116,7 @@ export function sameSuccess(
 ): boolean {
   if (!a || !b) return a === b;
   return (
-    a.outcome === b.outcome &&
-    a.targetDate === b.targetDate &&
-    a.successCheck === b.successCheck
+    a.outcome === b.outcome && a.targetDate === b.targetDate && a.successCheck === b.successCheck
   );
 }
 
@@ -132,8 +129,10 @@ export function successSummary(success: MilestoneSuccess | null | undefined): st
 /** The stable key for "this outcome was written", used for dedupe. */
 export function successEventKey(milestoneId: ID, success: MilestoneSuccessInput | null): string {
   if (!success) return `roadmap.outcome_cleared:${milestoneId}`;
-  const shape = [success.outcome, success.targetDate ?? "none", success.successCheck ?? "none"].join(
-    "|",
-  );
+  const shape = [
+    success.outcome,
+    success.targetDate ?? "none",
+    success.successCheck ?? "none",
+  ].join("|");
   return `roadmap.outcome_set:${milestoneId}:${shape}`;
 }

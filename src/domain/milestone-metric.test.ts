@@ -60,8 +60,11 @@ describe("milestone outcome metric", () => {
         .ok,
     ).toBe(true);
     expect(
-      checkOutcomeMetric({ ...good, direction: "maintain", target: { value: 12, at: "2026-12-01" } })
-        .ok,
+      checkOutcomeMetric({
+        ...good,
+        direction: "maintain",
+        target: { value: 12, at: "2026-12-01" },
+      }).ok,
     ).toBe(true);
     expect(checkOutcomeMetric({ ...good, direction: "maintain" }).ok).toBe(false);
   });

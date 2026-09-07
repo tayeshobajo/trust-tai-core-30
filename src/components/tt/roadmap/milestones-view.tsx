@@ -84,8 +84,7 @@ function MilestoneCard({
     | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, text: string) => void)
     | undefined;
   onCriterionRemove?:
-    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion) => void)
-    | undefined;
+    ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion) => void) | undefined;
   onCriterionMove?:
     | ((
         milestone: RoadmapMilestone,
@@ -296,8 +295,7 @@ export function MilestonesView({
     | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, text: string) => void)
     | undefined;
   onCriterionRemove?:
-    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion) => void)
-    | undefined;
+    ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion) => void) | undefined;
   onCriterionMove?:
     | ((
         milestone: RoadmapMilestone,

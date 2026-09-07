@@ -73,9 +73,7 @@ export function useMilestoneAcceptance({
     onCriterionAdd: (milestone, text) =>
       void run(milestone.id, () => roadmapIntel.addCriterion(context, milestone, text, label)),
     onCriterionToggle: (milestone, criterion, done) =>
-      void run(milestone.id, () =>
-        roadmapIntel.setCriterionDone(context, criterion, done, label),
-      ),
+      void run(milestone.id, () => roadmapIntel.setCriterionDone(context, criterion, done, label)),
     onCriterionEdit: (milestone, criterion, text) =>
       void run(milestone.id, () => roadmapIntel.editCriterion(context, criterion, text, label)),
     onCriterionRemove: (milestone, criterion) =>
