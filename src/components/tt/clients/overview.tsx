@@ -15,8 +15,8 @@
  */
 
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ChevronDown } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { AlertTriangle } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { ProjectRow } from "@/components/tt/clients/tabs";
 import type { RelationshipWindow } from "@/data/clients/relationship-window";
