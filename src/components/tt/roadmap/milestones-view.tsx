@@ -6,8 +6,9 @@
  * ranking is derived and always explains itself; the decision is a person's.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { ManualMilestoneForm } from "@/components/tt/roadmap/manual-milestone";
 import { MetricPanel } from "@/components/tt/roadmap/metric-panel";
 import { OwnershipInspector } from "@/components/tt/roadmap/ownership-inspector";
 import { EvidenceList, TierChip } from "@/components/tt/roadmap/tier";
@@ -20,6 +21,7 @@ import {
 } from "@/components/tt/primitives";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { EXECUTION_ROOM_LABEL, ownedExecutionBoundary } from "@/domain/execution-ownership";
+import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
 import { MILESTONE_STATUS_LABEL, UNKNOWN } from "@/domain/roadmap-intel";
@@ -193,6 +195,14 @@ export function MilestonesView({
 }) {
   const [filter, setFilter] = useState<MilestoneStatus | "all">("all");
   const [adding, setAdding] = useState(false);
+  const count = useRef(milestones.length);
+  /** A saved milestone closes the form. A refused one leaves it open to fix. */
+  useEffect(() => {
+    if (milestones.length !== count.current) {
+      count.current = milestones.length;
+      setAdding(false);
+    }
+  }, [milestones.length]);
   const visible =
     filter === "all" ? milestones : milestones.filter((entry) => entry.status === filter);
 
