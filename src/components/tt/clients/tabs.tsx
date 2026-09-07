@@ -6,6 +6,12 @@
  * Site and Files state, in plain words, that nothing is linked yet: there is
  * no client link on website records and no file store, and neither absence is
  * drawn as health.
+ *
+ * Product rule: Clients summarizes the company; Projects is the operating
+ * surface for project-scoped work. Milestones and delivery are never edited
+ * here — when a person has linked a project to a roadmap, this page points
+ * at that project workspace and stops. Do not duplicate the Project
+ * workroom into Clients.
  */
 
 import { Link } from "@tanstack/react-router";
