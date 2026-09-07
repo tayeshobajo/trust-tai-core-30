@@ -49,11 +49,18 @@ export function ProjectRow({
   project,
   timeZone,
   flat = false,
+  clientId,
 }: {
   project: ExecutionProject;
   timeZone: string;
   /** Render without its own card chrome when nested inside a parent card. */
   flat?: boolean;
+  /**
+   * When the row is shown inside a client workspace, the door stays inside
+   * that workspace: the project opens on this client's Projects surface
+   * instead of sending the person out to the portfolio room.
+   */
+  clientId?: string;
 }) {
   const blocked = project.state === "blocked";
   const detail = project.currentWork || project.nextMove || project.pointB || null;
@@ -64,26 +71,48 @@ export function ProjectRow({
         <div className="min-w-0">
           {/* The name itself is the door into the project workroom. */}
           <p className="truncate text-sm font-medium text-foreground">
-            <Link
-              to="/modules/projects/$projectId"
-              params={{ projectId: project.id }}
-              className="underline-offset-4 hover:underline"
-            >
-              {project.name}
-            </Link>
+            {clientId ? (
+              <Link
+                to="/modules/clients/$clientId"
+                params={{ clientId }}
+                search={{ tab: "projects", project: project.id }}
+                className="underline-offset-4 hover:underline"
+              >
+                {project.name}
+              </Link>
+            ) : (
+              <Link
+                to="/modules/projects/$projectId"
+                params={{ projectId: project.id }}
+                className="underline-offset-4 hover:underline"
+              >
+                {project.name}
+              </Link>
+            )}
           </p>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
             {projectStateLabel(project)} · moved{" "}
             {formatDay(project.lastMovedAt, timeZone) ?? "on an unknown day"}
           </p>
         </div>
-        <Link
-          to="/modules/projects/$projectId"
-          params={{ projectId: project.id }}
-          className="shrink-0 text-[13px] font-medium text-royal"
-        >
-          <OpenIn>Open project workspace</OpenIn>
-        </Link>
+        {clientId ? (
+          <Link
+            to="/modules/clients/$clientId"
+            params={{ clientId }}
+            search={{ tab: "projects", project: project.id }}
+            className="shrink-0 text-[13px] font-medium text-royal"
+          >
+            <OpenIn>Open project workspace</OpenIn>
+          </Link>
+        ) : (
+          <Link
+            to="/modules/projects/$projectId"
+            params={{ projectId: project.id }}
+            className="shrink-0 text-[13px] font-medium text-royal"
+          >
+            <OpenIn>Open project workspace</OpenIn>
+          </Link>
+        )}
       </div>
       {detail ? <p className="mt-2 text-[13px] text-muted-foreground">{detail}</p> : null}
       {blocked ? (
