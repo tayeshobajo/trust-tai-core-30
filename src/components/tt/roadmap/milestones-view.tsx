@@ -146,13 +146,46 @@ function MilestoneCard({
       */}
 
       {detail ? (
-        <ul className="mt-2 space-y-1">
-          {milestone.priorityRationale.map((line) => (
-            <li key={line} className="text-sm text-muted-foreground">
-              · {line}
-            </li>
-          ))}
-        </ul>
+        <div className="mt-5 rounded-2xl border border-border p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Line label="Confidence" value={CONFIDENCE_LEVEL_LABEL[milestone.confidence]} />
+            <Line label="Priority score" value={String(milestone.priorityScore)} />
+            <Line label="Intended user" value={milestone.intendedUser} />
+            <Line label="Supporting market direction" value={milestone.supportingMarketDirection} />
+            <Line label="Client advantage" value={milestone.clientAdvantage} />
+            <Line label="Current gap" value={milestone.currentGap} />
+            <Line label="Immediate value" value={milestone.immediateValue} />
+            <Line label="Long term value" value={milestone.longTermValue} />
+            <Line label="Dependencies" value={milestone.dependencies.join(", ")} />
+            <Line label="Owned by" value={`${owned.ownerLabel} · ${owned.because}`} />
+            <Line label="Execution boundary" value={owned.boundary} />
+          </div>
+          <OwnershipInspector
+            read={read.owner}
+            boundary={owned.boundary}
+            subject={milestone.name}
+          />
+          <EvidenceList
+            evidence={milestone.evidence.map((ref) => ({
+              label: ref.label,
+              url: ref.url,
+              kind: "page" as const,
+            }))}
+          />
+        </div>
+      ) : null}
+
+      {open ? (
+        <div className="mt-4 rounded-2xl border border-border p-4">
+          <p className="tt-eyebrow">Why it ranks here</p>
+          <ul className="mt-2 space-y-1">
+            {milestone.priorityRationale.map((line) => (
+              <li key={line} className="text-sm text-muted-foreground">
+                · {line}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {milestone.decisionNote ? (
