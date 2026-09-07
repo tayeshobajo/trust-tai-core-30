@@ -204,7 +204,7 @@ export function SectionHeading({
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
         {eyebrow ? <p className="tt-eyebrow mb-2">{eyebrow}</p> : null}
-        <h2 className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
+        <h2 className="tt-title-section text-xl">{title}</h2>
         {description ? (
           <p className="mt-1 max-w-reading text-sm text-muted-foreground">{description}</p>
         ) : null}
@@ -251,9 +251,7 @@ export function PageHeader({
             <AmbientDot appId={appId} contextAccent={contextAccent} />
           </p>
           <div className="mt-4 flex flex-wrap items-end justify-between gap-6">
-            <h1 className="tt-display max-w-[16ch] text-4xl text-foreground sm:text-5xl">
-              {title}
-            </h1>
+            <h1 className="tt-title-page max-w-[16ch] text-4xl sm:text-5xl">{title}</h1>
             {action}
           </div>
           {supporting ? (
@@ -268,9 +266,7 @@ export function PageHeader({
     <header className="tt-rise border-b border-border pb-8">
       <p className="tt-eyebrow">{eyebrow}</p>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-6">
-        <h1 className="tt-display max-w-[16ch] text-4xl text-foreground sm:text-5xl lg:text-6xl">
-          {title}
-        </h1>
+        <h1 className="tt-title-page max-w-[16ch] text-4xl sm:text-5xl lg:text-6xl">{title}</h1>
         {action}
       </div>
       {supporting ? (
