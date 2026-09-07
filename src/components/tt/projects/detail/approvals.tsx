@@ -12,7 +12,14 @@ import { TTButton, TTCard } from "@/components/tt/primitives";
 import type { ApprovalRequest } from "@/domain/approvals";
 
 export function ProjectApprovals({ requests }: { requests: ApprovalRequest[] }) {
-  const open = requests.filter((request) => request.status === "pending");
+  const open = requests.filter(
+    (request) =>
+      request.status === "needs_review" ||
+      request.status === "needs_context" ||
+      request.status === "ready" ||
+      request.status === "revision_requested",
+  );
+
   if (requests.length === 0) return null;
 
   return (
