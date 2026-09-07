@@ -468,13 +468,17 @@ export function DecisionsTab({
           </p>
         </form>
       </Panel>
+      ) : null}
 
       {decisions.length === 0 ? (
-        <Empty
-          title="No decisions waiting"
-          body="Questions that need human authority live here, separated from ordinary work."
-        />
+        showForm ? (
+          <Empty
+            title="No decisions waiting"
+            body="Questions that need human authority live here, separated from ordinary work."
+          />
+        ) : null
       ) : (
+
         <ul className="space-y-3">
           {[...open, ...answered].map((decision) => (
             <li key={decision.id} className="tt-surface p-5">
