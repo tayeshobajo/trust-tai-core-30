@@ -61,6 +61,7 @@ import {
 } from "@/domain/client-shell";
 import { formatDay } from "@/domain/clients-book";
 import { FILE_KIND_LABEL, type ProjectFile } from "@/domain/project-delivery";
+import { projectLinkedToRoadmap } from "@/domain/project-roadmap-link";
 import type { ExecutionProject } from "@/domain/projects";
 import { cn } from "@/lib/utils";
 
