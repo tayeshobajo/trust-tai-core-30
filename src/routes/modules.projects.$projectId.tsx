@@ -21,8 +21,16 @@ import {
   ProjectIdentityHeader,
   ProjectTabs,
   UtilityRow,
+  WorkroomSection,
   type ProjectTab,
 } from "@/components/tt/projects/detail/frame";
+import {
+  sectionAnchor,
+  surfaceForSection,
+  type ProjectSection,
+} from "@/domain/project-workroom-ia";
+import { runRoadmapResearch } from "@/data/roadmap/research-run";
+
 import { OverviewTab } from "@/components/tt/projects/detail/overview";
 import { AssetsTab, ContextTab, KnowledgeTab } from "@/components/tt/projects/detail/intelligence";
 import { DetailRail } from "@/components/tt/projects/detail/rail";
@@ -279,6 +287,37 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
   const [busyId, setBusyId] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [generateStage, setGenerateStage] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  /**
+   * Candidate generation runs here, but the work belongs to Roadmap: the same
+   * canonical detail read and the same research run the Roadmap room uses.
+   * Candidates land Inferred and Proposed. Nothing here can approve itself.
+   */
+  const generate = useMutation({
+    mutationFn: async () => {
+      if (!roadmap) throw new Error("Link a roadmap before generating candidates.");
+      setGenerateError(null);
+      const detail = await roadmapService.detail(roadmap.id, org);
+      if (!detail) throw new Error("That roadmap could not be read.");
+      await runRoadmapResearch({
+        detail,
+        intelContext,
+        accessToken: async () => {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (!token) throw new Error("Your session expired. Sign in again to research.");
+          return token;
+        },
+        onStage: setGenerateStage,
+      });
+    },
+    onSettled: () => setGenerateStage(null),
+    onSuccess: () => void refreshRoadmap(),
+    onError: (cause) =>
+      setGenerateError(cause instanceof Error ? cause.message : "The research run failed."),
+  });
 
   const refreshRoadmap = async () => {
     await queryClient.invalidateQueries({ queryKey: ["roadmap"] });
@@ -375,7 +414,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
   });
 
   const brandQuery = useQuery({
-
     queryKey: ["delivery", "brand", roadmap?.id ?? "none"],
     queryFn: () => (roadmap ? readRoadmapBrand(roadmap) : Promise.resolve(null)),
     enabled: Boolean(roadmap),
@@ -655,7 +693,17 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
         : "That change could not be saved."
       : null;
 
-  const openTab = (value: "work" | "blockers" | "decisions") => setTab(value);
+  /**
+   * Older tabs are now sections. Opening one opens the surface that owns it and
+   * scrolls to it, so nothing that used to be reachable became unreachable.
+   */
+  const openTab = (section: ProjectSection) => {
+    setTab(surfaceForSection(section));
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(sectionAnchor(section))?.scrollIntoView({ behavior: "smooth" });
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -688,13 +736,11 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
       <ProjectTabs
         tab={tab}
         counts={{
-          knowledge: knowledge.filter((entry) => entry.reviewState !== "superseded").length,
-          assets: assets.length,
-          work: items.length,
-          blockers: blockers.filter((entry) => entry.status === "open").length,
-          decisions: decisions.filter((entry) => entry.status === "open").length,
-          files: files.length,
+          overview: blockers.filter((entry) => entry.status === "open").length,
+          roadmap: intelQuery.data?.milestones.length ?? 0,
+          files: files.length + assets.length,
         }}
+
         onChange={setTab}
       />
 
@@ -731,7 +777,12 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
               busyId={busyId}
               creating={milestoneCreate.isPending}
               createError={createError}
+              generating={generate.isPending}
+              generateStage={generateStage}
+              generateError={generateError}
+              onGenerate={() => generate.mutate()}
               onLink={(roadmapId) => linkRoadmap.mutate(roadmapId)}
+
               onCreate={(input) => milestoneCreate.mutate(input)}
               onStatus={(milestone, status, note) =>
                 milestoneStatus.mutate({ milestone, status, note })
@@ -740,170 +791,106 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
             />
           ) : null}
 
-
-
-          {tab === "context" ? (
-            <ContextTab
-              packet={packet}
-              health={health}
-              suggestions={suggestions}
-              thinking={thinking}
-              connections={connections}
-              busy={busy}
-              onAddThinking={(input) =>
-                mutate.mutate(() => projectIntelligence.addThinking(input, delivery))
-              }
-              onPrimaryThinking={(source) =>
-                mutate.mutate(() => projectIntelligence.markPrimaryThinking(source, delivery))
-              }
-              onRemoveThinking={(source) =>
-                mutate.mutate(() => projectIntelligence.removeThinking(source, delivery))
-              }
-              onImportThinking={(source, text) =>
-                mutate.mutate(() => projectIntelligence.importThinking(source, text, delivery))
-              }
-
-              onAddConnection={(input) =>
-                mutate.mutate(() => projectIntelligence.addConnection(input, delivery))
-              }
-              onRemoveConnection={(connection) =>
-                mutate.mutate(() => projectIntelligence.removeConnection(connection, delivery))
-              }
-              onDismissSuggestion={(id) => setDismissed((current) => [...current, id])}
-            />
+          {tab === "overview" ? (
+            <WorkroomSection
+              section="work"
+              title="Work"
+              description="Everything being built for this project, in order."
+            >
+              <div className="space-y-5">
+                <WorkTab
+                  items={items}
+                  busy={busy}
+                  onAdd={(title) =>
+                    mutate.mutate(() =>
+                      projectDelivery.addWork({ title, sequence: items.length }, delivery),
+                    )
+                  }
+                  onMove={(item, status: WorkItemStatus) =>
+                    mutate.mutate(() => projectDelivery.moveWork(item, status, delivery))
+                  }
+                />
+                {isOpenProject(project) ? (
+                  <>
+                    <section
+                      aria-label="Technical stewardship"
+                      className="tt-surface space-y-3 p-6"
+                    >
+                      <p className="tt-eyebrow">Ops</p>
+                      <p className="max-w-reading text-[15px] text-foreground">
+                        Ops runs the technical work for this project. Your session is handed over
+                        securely and this project&apos;s id travels with it.
+                      </p>
+                      <LaunchOpsButton
+                        variant="secondary"
+                        label="Open in Ops"
+                        organizationId={org}
+                        returnContext="project"
+                        canonicalProjectId={project.id}
+                      />
+                    </section>
+                    <RouteWork
+                      project={project}
+                      context={projectsContext}
+                      access={workspaceAccess(identity)}
+                    />
+                  </>
+                ) : null}
+              </div>
+            </WorkroomSection>
           ) : null}
 
-          {tab === "knowledge" ? (
-            <KnowledgeTab
-              knowledge={knowledge}
-              busy={busy}
-              onAdd={(input) =>
-                mutate.mutate(() => projectIntelligence.addKnowledge(input, delivery))
-              }
-              onConfirm={(item) =>
-                mutate.mutate(() =>
-                  projectIntelligence.setKnowledgeReview(item, "confirmed", delivery),
-                )
-              }
-              onSupersede={(item) =>
-                mutate.mutate(() =>
-                  projectIntelligence.setKnowledgeReview(item, "superseded", delivery),
-                )
-              }
-            />
-          ) : null}
-
-          {tab === "assets" ? (
-            <AssetsTab
-              assets={assets}
-              items={items}
-              busy={busy}
-              onUpload={(file, assetType: AssetType, workItemId) =>
-                mutate.mutate(() =>
-                  projectIntelligence.uploadAsset(
-                    file,
-                    { assetType, ...(workItemId ? { workItemId } : {}) },
-                    delivery,
-                  ),
-                )
-              }
-              onStatus={(asset, status) =>
-                mutate.mutate(() => projectIntelligence.setAssetStatus(asset, status, delivery))
-              }
-              onOpen={(asset, download) => {
-                setFileError(null);
-                const linked = files.find((entry) => entry.id === asset.fileId);
-                if (!linked) {
-                  setFileError("That asset file is no longer readable.");
-                  return;
-                }
-                void projectDelivery
-                  .fileUrl(linked, download)
-                  .then((url) => window.open(url, "_blank", "noopener,noreferrer"))
-                  .catch((cause: unknown) => {
-                    setFileError(
-                      cause instanceof Error ? cause.message : "That asset could not be opened.",
-                    );
-                  });
-              }}
-            />
-          ) : null}
-
-          {tab === "work" ? (
-            <div className="space-y-5">
-              <WorkTab
+          {tab === "overview" ? (
+            <WorkroomSection
+              section="blockers"
+              title="Blockers"
+              description="What is stopping this from moving, and what cleared it."
+            >
+              <BlockersTab
                 items={items}
+                blockers={blockers}
                 busy={busy}
-                onAdd={(title) =>
-                  mutate.mutate(() =>
-                    projectDelivery.addWork({ title, sequence: items.length }, delivery),
-                  )
+                onRaise={(input) =>
+                  mutate.mutate(() => projectDelivery.raiseBlocker(input, delivery))
                 }
-                onMove={(item, status: WorkItemStatus) =>
-                  mutate.mutate(() => projectDelivery.moveWork(item, status, delivery))
+                onResolve={(blocker, resolution, resumeWork) =>
+                  mutate.mutate(async () => {
+                    const saved = await projectDelivery.resolveBlocker(
+                      blocker,
+                      resolution,
+                      delivery,
+                    );
+                    // Clearing a blocker may put its work item back in motion. Roadmap
+                    // truth is untouched: only the delivery record moves.
+                    const linked = blocker.workItemId
+                      ? items.find((entry) => entry.id === blocker.workItemId)
+                      : undefined;
+                    if (resumeWork && linked && linked.status === "blocked") {
+                      await projectDelivery.moveWork(linked, "in_progress", delivery);
+                    }
+                    return saved;
+                  })
                 }
               />
-              {isOpenProject(project) ? (
-                <>
-                  <section aria-label="Technical stewardship" className="tt-surface space-y-3 p-6">
-                    <p className="tt-eyebrow">Ops</p>
-                    <p className="max-w-reading text-[15px] text-foreground">
-                      Ops runs the technical work for this project. Your session is handed over
-                      securely and this project&apos;s id travels with it.
-                    </p>
-                    <LaunchOpsButton
-                      variant="secondary"
-                      label="Open in Ops"
-                      organizationId={org}
-                      returnContext="project"
-                      canonicalProjectId={project.id}
-                    />
-                  </section>
-                  <RouteWork
-                    project={project}
-                    context={projectsContext}
-                    access={workspaceAccess(identity)}
-                  />
-                </>
-              ) : null}
-            </div>
+            </WorkroomSection>
           ) : null}
 
-          {tab === "blockers" ? (
-            <BlockersTab
-              items={items}
-              blockers={blockers}
-              busy={busy}
-              onRaise={(input) =>
-                mutate.mutate(() => projectDelivery.raiseBlocker(input, delivery))
-              }
-              onResolve={(blocker, resolution, resumeWork) =>
-                mutate.mutate(async () => {
-                  const saved = await projectDelivery.resolveBlocker(blocker, resolution, delivery);
-                  // Clearing a blocker may put its work item back in motion. Roadmap
-                  // truth is untouched: only the delivery record moves.
-                  const linked = blocker.workItemId
-                    ? items.find((entry) => entry.id === blocker.workItemId)
-                    : undefined;
-                  if (resumeWork && linked && linked.status === "blocked") {
-                    await projectDelivery.moveWork(linked, "in_progress", delivery);
-                  }
-                  return saved;
-                })
-              }
-            />
-          ) : null}
-
-          {tab === "decisions" ? (
-            <DecisionsTab
-              items={items}
-              decisions={decisions}
-              busy={busy}
-              onAsk={(input) => mutate.mutate(() => projectDelivery.askDecision(input, delivery))}
-              onAnswer={(decision, answer) =>
-                mutate.mutate(() => projectDelivery.answerDecision(decision, answer, delivery))
-              }
-            />
+          {tab === "overview" ? (
+            <WorkroomSection
+              section="decisions"
+              title="Decisions"
+              description="Questions this work is waiting on, and the answers people gave."
+            >
+              <DecisionsTab
+                items={items}
+                decisions={decisions}
+                busy={busy}
+                onAsk={(input) => mutate.mutate(() => projectDelivery.askDecision(input, delivery))}
+                onAnswer={(decision, answer) =>
+                  mutate.mutate(() => projectDelivery.answerDecision(decision, answer, delivery))
+                }
+              />
+            </WorkroomSection>
           ) : null}
 
           {tab === "files" ? (
@@ -946,6 +933,110 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
             />
           ) : null}
 
+          {tab === "files" ? (
+            <div className="mt-8 space-y-8">
+              <WorkroomSection
+                section="assets"
+                title="Assets"
+                description="Deliverable material produced for this work."
+              >
+                <AssetsTab
+                  assets={assets}
+                  items={items}
+                  busy={busy}
+                  onUpload={(file, assetType: AssetType, workItemId) =>
+                    mutate.mutate(() =>
+                      projectIntelligence.uploadAsset(
+                        file,
+                        { assetType, ...(workItemId ? { workItemId } : {}) },
+                        delivery,
+                      ),
+                    )
+                  }
+                  onStatus={(asset, status) =>
+                    mutate.mutate(() => projectIntelligence.setAssetStatus(asset, status, delivery))
+                  }
+                  onOpen={(asset, download) => {
+                    setFileError(null);
+                    const linked = files.find((entry) => entry.id === asset.fileId);
+                    if (!linked) {
+                      setFileError("That asset file is no longer readable.");
+                      return;
+                    }
+                    void projectDelivery
+                      .fileUrl(linked, download)
+                      .then((url) => window.open(url, "_blank", "noopener,noreferrer"))
+                      .catch((cause: unknown) => {
+                        setFileError(
+                          cause instanceof Error
+                            ? cause.message
+                            : "That asset could not be opened.",
+                        );
+                      });
+                  }}
+                />
+              </WorkroomSection>
+
+              <WorkroomSection
+                section="knowledge"
+                title="Knowledge"
+                description="What this project knows, and who confirmed it."
+              >
+                <KnowledgeTab
+                  knowledge={knowledge}
+                  busy={busy}
+                  onAdd={(input) =>
+                    mutate.mutate(() => projectIntelligence.addKnowledge(input, delivery))
+                  }
+                  onConfirm={(item) =>
+                    mutate.mutate(() =>
+                      projectIntelligence.setKnowledgeReview(item, "confirmed", delivery),
+                    )
+                  }
+                  onSupersede={(item) =>
+                    mutate.mutate(() =>
+                      projectIntelligence.setKnowledgeReview(item, "superseded", delivery),
+                    )
+                  }
+                />
+              </WorkroomSection>
+
+              <WorkroomSection
+                section="context"
+                title="Context and sources"
+                description="Linked sources and the thinking this work is built on."
+              >
+                <ContextTab
+                  packet={packet}
+                  health={health}
+                  suggestions={suggestions}
+                  thinking={thinking}
+                  connections={connections}
+                  busy={busy}
+                  onAddThinking={(input) =>
+                    mutate.mutate(() => projectIntelligence.addThinking(input, delivery))
+                  }
+                  onPrimaryThinking={(source) =>
+                    mutate.mutate(() => projectIntelligence.markPrimaryThinking(source, delivery))
+                  }
+                  onRemoveThinking={(source) =>
+                    mutate.mutate(() => projectIntelligence.removeThinking(source, delivery))
+                  }
+                  onImportThinking={(source, text) =>
+                    mutate.mutate(() => projectIntelligence.importThinking(source, text, delivery))
+                  }
+                  onAddConnection={(input) =>
+                    mutate.mutate(() => projectIntelligence.addConnection(input, delivery))
+                  }
+                  onRemoveConnection={(connection) =>
+                    mutate.mutate(() => projectIntelligence.removeConnection(connection, delivery))
+                  }
+                  onDismissSuggestion={(id) => setDismissed((current) => [...current, id])}
+                />
+              </WorkroomSection>
+            </div>
+          ) : null}
+
           {tab === "activity" ? <ActivityTab events={activityQuery.data ?? []} /> : null}
 
           {tab === "chat" ? (
@@ -980,9 +1071,9 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
           lineage={row.lineage}
           busy={busy}
           onOpenTab={openTab}
-          onAddWork={() => setTab("work")}
-          onRaiseBlocker={() => setTab("blockers")}
-          onAskDecision={() => setTab("decisions")}
+          onAddWork={() => openTab("work")}
+          onRaiseBlocker={() => openTab("blockers")}
+          onAskDecision={() => openTab("decisions")}
           onComplete={() => updateProject.mutate({ state: "delivered" })}
         />
       </div>

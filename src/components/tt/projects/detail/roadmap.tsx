@@ -132,6 +132,10 @@ export function ProjectRoadmapTab({
   busyId,
   creating,
   createError,
+  generating,
+  generateStage,
+  generateError,
+  onGenerate,
   onLink,
   onCreate,
   onStatus,
@@ -146,15 +150,17 @@ export function ProjectRoadmapTab({
   busyId: string | null;
   creating: boolean;
   createError: string | null;
+  generating: boolean;
+  generateStage: string | null;
+  generateError: string | null;
+  onGenerate: () => void;
   onLink: (roadmapId: string) => void;
   onCreate: (input: ManualMilestoneInput) => void;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
   onMetric: (milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void;
 }) {
   if (!roadmap) {
-    return (
-      <LinkPanel candidates={candidates} busy={linking} error={linkError} onLink={onLink} />
-    );
+    return <LinkPanel candidates={candidates} busy={linking} error={linkError} onLink={onLink} />;
   }
 
   return (
@@ -170,15 +176,23 @@ export function ProjectRoadmapTab({
             title="Milestones"
             description="Added, approved and measured through Roadmap's own service. This page is where the work is, not a second copy of it."
           />
+          {generateStage ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {generateStage}
+            </p>
+          ) : null}
+          {generateError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {generateError}
+            </p>
+          ) : null}
           <MilestonesView
             milestones={milestones}
             busyId={busyId}
-            generating={false}
+            generating={generating}
             creating={creating}
             createError={createError}
-            onGenerate={() => {
-              window.location.assign(`/modules/roadmap/${roadmap.id}?view=milestones`);
-            }}
+            onGenerate={onGenerate}
             onCreate={onCreate}
             onStatus={onStatus}
             onMetric={onMetric}
@@ -188,3 +202,4 @@ export function ProjectRoadmapTab({
     </div>
   );
 }
+

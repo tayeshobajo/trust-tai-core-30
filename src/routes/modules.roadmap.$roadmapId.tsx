@@ -71,11 +71,8 @@ import { WalkthroughView } from "@/components/tt/roadmap/walkthrough-view";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { roadmapService, type RoadmapContext } from "@/data/supabase/roadmap-service";
 import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-service";
-import {
-  normalizeMilestones,
-  normalizeResearch,
-  normalizeStrategy,
-} from "@/data/roadmap-research-parse";
+import { runRoadmapResearch } from "@/data/roadmap/research-run";
+
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
@@ -268,82 +265,19 @@ function RoadmapWorkspace({
       const detail = detailQuery.data;
       if (!detail) throw new Error("This roadmap could not be read.");
       setResearchError(null);
-      setResearchStage("Starting");
-
-      const response = await fetch("/api/public/roadmap/research", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await accessToken()}`,
-        },
-        body: JSON.stringify({
-          organization_id: identity.organizationId,
-          subject_label: detail.roadmap.subjectLabel,
-          objective: detail.roadmap.objective,
-          known: detail.roadmap.pointA.map((entry) => `${entry.label}: ${entry.value}`),
-        }),
-      });
-
-      if (!response.ok || !response.body) {
-        const detailText = await response.text();
-        throw new Error(detailText.slice(0, 300) || "The research run could not start.");
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let payload: Record<string, unknown> | null = null;
-
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const stage = JSON.parse(line) as { stage: string; message: string; data?: unknown };
-          setResearchStage(stage.message);
-          if (stage.stage === "error") throw new Error(stage.message);
-          if (stage.stage === "complete") payload = stage.data as Record<string, unknown>;
-        }
-      }
-
-      if (!payload) throw new Error("The research run returned nothing. Nothing was changed.");
-
-      const provenance = {
-        provider: String(payload["provider"] ?? "unknown"),
-        model: String(payload["model"] ?? "unknown"),
-        checkedAt: String(payload["checkedAt"] ?? new Date().toISOString()),
-      };
-      const label = detail.roadmap.subjectLabel;
-
-      await roadmapIntel.saveResearch(
+      await runRoadmapResearch({
+        detail,
         intelContext,
-        roadmapId,
-        label,
-        normalizeResearch(payload["research"], provenance),
-        provenance,
-      );
-
-      const strategy = normalizeStrategy(payload["strategy"], provenance);
-      await roadmapIntel.saveStrategy(intelContext, roadmapId, label, {
-        ...strategy,
-        provider: provenance.provider,
-        model: provenance.model,
-        generatedAt: provenance.checkedAt,
+        accessToken,
+        onStage: setResearchStage,
       });
-
-      const candidates = normalizeMilestones(payload["milestones"], provenance);
-      if (candidates.length > 0) {
-        await roadmapIntel.replaceCandidates(intelContext, roadmapId, label, candidates);
-      }
     },
     onSettled: () => setResearchStage(null),
     onSuccess: refresh,
     onError: (error) =>
       setResearchError(error instanceof Error ? error.message : "The research run failed."),
   });
+
 
   const approval = useMutation({
     mutationFn: async ({ key, state }: { key: string; state: ApprovalState }) => {

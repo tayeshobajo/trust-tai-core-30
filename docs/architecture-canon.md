@@ -454,3 +454,37 @@ Every new or changed surface answers these nine, in the slice that ships it:
 
 Rows that genuinely do not apply are marked "not applicable, because ...".
 Silence is not a pass.
+
+## Canon 17: The Project Workroom
+
+The Project is where the work comes together. Other rooms own truth; the
+Project composes and operates that truth through the owning room's canonical
+service. A person is not sent to another room for a legitimate project-scoped
+action when the owning service can be invoked safely from here.
+
+Consequences:
+
+- Roadmap owns milestones. Project reads and writes them only through
+  `roadmapIntel` and `roadmapService`. Projects never stores a milestone.
+- Candidate generation from a Project uses the same research run as the
+  Roadmap room (`runRoadmapResearch`). There is no second generator and no
+  second store. Candidates land Inferred and Proposed; a human approves.
+- Manual creation stays the primary human path. AI generation is secondary.
+- Clients summarizes the company. It never duplicates the Project workroom.
+
+### Human navigation model: five surfaces
+
+The Project detail page presents five surfaces, not a list of internal
+subsystems. Data ownership is unchanged; only navigation is:
+
+| Surface | Contains |
+| ------- | -------- |
+| Overview | Identity, execution state, Point A / Point B, approvals summary, Work, Blockers, Decisions |
+| Chat | Project Chat and its bounded proposal flow |
+| Roadmap | Linked roadmap, destination, milestones, add / generate / approve / metric |
+| Files | Files, Assets, Knowledge, Context and linked sources |
+| Activity | The event stream |
+
+Re-homed sections keep stable anchors (`project-section-<section>`) so any
+deep link or in-page jump still lands on them. `surfaceForSection` in
+`src/domain/project-workroom-ia.ts` is the single mapping.
