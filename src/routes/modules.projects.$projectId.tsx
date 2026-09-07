@@ -878,30 +878,41 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
             </div>
           ) : null}
 
-          {tab === "blockers" ? (
-            <BlockersTab
-              items={items}
-              blockers={blockers}
-              busy={busy}
-              onRaise={(input) =>
-                mutate.mutate(() => projectDelivery.raiseBlocker(input, delivery))
-              }
-              onResolve={(blocker, resolution, resumeWork) =>
-                mutate.mutate(async () => {
-                  const saved = await projectDelivery.resolveBlocker(blocker, resolution, delivery);
-                  // Clearing a blocker may put its work item back in motion. Roadmap
-                  // truth is untouched: only the delivery record moves.
-                  const linked = blocker.workItemId
-                    ? items.find((entry) => entry.id === blocker.workItemId)
-                    : undefined;
-                  if (resumeWork && linked && linked.status === "blocked") {
-                    await projectDelivery.moveWork(linked, "in_progress", delivery);
-                  }
-                  return saved;
-                })
-              }
-            />
+          {tab === "overview" ? (
+            <WorkroomSection
+              section="blockers"
+              title="Blockers"
+              description="What is stopping this from moving, and what cleared it."
+            >
+              <BlockersTab
+                items={items}
+                blockers={blockers}
+                busy={busy}
+                onRaise={(input) =>
+                  mutate.mutate(() => projectDelivery.raiseBlocker(input, delivery))
+                }
+                onResolve={(blocker, resolution, resumeWork) =>
+                  mutate.mutate(async () => {
+                    const saved = await projectDelivery.resolveBlocker(
+                      blocker,
+                      resolution,
+                      delivery,
+                    );
+                    // Clearing a blocker may put its work item back in motion. Roadmap
+                    // truth is untouched: only the delivery record moves.
+                    const linked = blocker.workItemId
+                      ? items.find((entry) => entry.id === blocker.workItemId)
+                      : undefined;
+                    if (resumeWork && linked && linked.status === "blocked") {
+                      await projectDelivery.moveWork(linked, "in_progress", delivery);
+                    }
+                    return saved;
+                  })
+                }
+              />
+            </WorkroomSection>
           ) : null}
+
 
           {tab === "overview" ? (
             <WorkroomSection
