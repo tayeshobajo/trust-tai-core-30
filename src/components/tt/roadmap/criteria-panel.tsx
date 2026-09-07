@@ -41,6 +41,7 @@ function Row({
   onEvidenceAdd,
   onEvidenceRemove,
   onEvidenceOpen,
+  onEvidenceUrl,
 }: {
   criterion: AcceptanceCriterion;
   busy: boolean;
@@ -55,6 +56,7 @@ function Row({
   onEvidenceAdd?: ((criterion: AcceptanceCriterion, draft: EvidenceDraft) => void) | undefined;
   onEvidenceRemove?: ((item: CriterionEvidence) => void) | undefined;
   onEvidenceOpen?: ((item: CriterionEvidence) => void) | undefined;
+  onEvidenceUrl?: ((item: CriterionEvidence) => Promise<string>) | undefined;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(criterion.text);
@@ -137,6 +139,7 @@ function Row({
             onAdd={(draft) => onEvidenceAdd(criterion, draft)}
             {...(onEvidenceRemove ? { onRemove: onEvidenceRemove } : {})}
             {...(onEvidenceOpen ? { onOpenFile: onEvidenceOpen } : {})}
+            {...(onEvidenceUrl ? { resolveUrl: onEvidenceUrl } : {})}
           />
         ) : null}
         {refusal ? <p className="mt-1 text-xs text-destructive">{refusal}</p> : null}
@@ -200,6 +203,7 @@ export function CriteriaPanel({
   onEvidenceAdd,
   onEvidenceRemove,
   onEvidenceOpen,
+  onEvidenceUrl,
 }: {
   criteria: AcceptanceCriterion[];
   criteriaError?: string | null;
@@ -216,6 +220,7 @@ export function CriteriaPanel({
   onEvidenceAdd?: ((criterion: AcceptanceCriterion, draft: EvidenceDraft) => void) | undefined;
   onEvidenceRemove?: ((item: CriterionEvidence) => void) | undefined;
   onEvidenceOpen?: ((item: CriterionEvidence) => void) | undefined;
+  onEvidenceUrl?: ((item: CriterionEvidence) => Promise<string>) | undefined;
 }) {
   const [text, setText] = useState("");
   const [adding, setAdding] = useState(false);
@@ -271,6 +276,7 @@ export function CriteriaPanel({
               {...(onEvidenceAdd ? { onEvidenceAdd } : {})}
               {...(onEvidenceRemove ? { onEvidenceRemove } : {})}
               {...(onEvidenceOpen ? { onEvidenceOpen } : {})}
+              {...(onEvidenceUrl ? { onEvidenceUrl } : {})}
             />
           ))}
         </ul>

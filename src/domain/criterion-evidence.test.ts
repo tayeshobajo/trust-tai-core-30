@@ -7,7 +7,11 @@ import {
   evidenceEventKey,
   evidenceFor,
   evidenceRequired,
+  evidenceLinkDomain,
+  evidenceMetaLine,
   evidenceSummary,
+  formatEvidenceSize,
+  isImageEvidence,
   type CriterionEvidence,
 } from "./criterion-evidence";
 
@@ -80,5 +84,40 @@ describe("replay safety and storage", () => {
     const path = criterionEvidencePath("org", "mile", "crit", "screen shot.png");
     expect(path.startsWith("org/criterion-evidence/mile/crit/")).toBe(true);
     expect(path.endsWith("-screen-shot.png")).toBe(true);
+  });
+});
+
+describe("criterion evidence presentation", () => {
+  it("treats a stored picture as something to show, not describe", () => {
+    expect(isImageEvidence(evidence({ type: "file", label: "proof.PNG" }))).toBe(true);
+    expect(
+      isImageEvidence(evidence({ type: "file", label: "proof", contentType: "image/webp" })),
+    ).toBe(true);
+    expect(isImageEvidence(evidence({ type: "file", label: "report.pdf" }))).toBe(false);
+    expect(isImageEvidence(evidence({ type: "link", url: "https://a.com/b.png" }))).toBe(false);
+  });
+
+  it("names a link by the place it points at", () => {
+    expect(evidenceLinkDomain("https://www.example.com/page")).toBe("example.com");
+    expect(evidenceLinkDomain("nowhere")).toBeNull();
+    expect(evidenceLinkDomain(undefined)).toBeNull();
+  });
+
+  it("reads a size the way a person would", () => {
+    expect(formatEvidenceSize(0)).toBeNull();
+    expect(formatEvidenceSize(900)).toBe("900 B");
+    expect(formatEvidenceSize(2048)).toBe("2 KB");
+    expect(formatEvidenceSize(3 * 1024 * 1024)).toBe("3.0 MB");
+  });
+
+  it("writes one quiet line under a card", () => {
+    expect(
+      evidenceMetaLine(
+        evidence({ type: "file", label: "proof.png", sizeBytes: 2048, contentType: "image/png" }),
+      ),
+    ).toBe("File · 2 KB · 1 Sep 2026");
+    expect(evidenceMetaLine(evidence({ type: "link", url: "https://example.com/page" }))).toBe(
+      "example.com · 1 Sep 2026",
+    );
   });
 });
