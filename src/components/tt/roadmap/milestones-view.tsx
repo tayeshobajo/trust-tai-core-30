@@ -366,9 +366,13 @@ export function MilestonesView({
                 <option key={entry.key} value={entry.key}>
                   {entry.label}
                 </option>
-          ))}
-        </select>
-      </div>
+              ))}
+            </select>
+          </div>
+        }
+      />
+
+      {adding ? form : null}
 
       {visible.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing in this state yet.</p>
