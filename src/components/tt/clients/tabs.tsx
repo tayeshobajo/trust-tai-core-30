@@ -69,9 +69,12 @@ import { cn } from "@/lib/utils";
 export function RoadmapTab({
   read,
   loading,
+  projects = [],
 }: {
   read: RoomRead<RoadmapOutcome[]> | null;
   loading: boolean;
+  /** This company's projects, used only to surface a recorded roadmap link. */
+  projects?: ExecutionProject[];
 }) {
   return (
     <RoomSection
@@ -95,7 +98,10 @@ export function RoadmapTab({
             <ul className="space-y-4">
               {outcomes.map((outcome) => (
                 <li key={outcome.roadmapId}>
-                  <RoadmapOutcomeCard outcome={outcome} />
+                  <RoadmapOutcomeCard
+                    outcome={outcome}
+                    linkedProject={projectLinkedToRoadmap(projects, outcome.roadmapId)}
+                  />
                 </li>
               ))}
             </ul>
