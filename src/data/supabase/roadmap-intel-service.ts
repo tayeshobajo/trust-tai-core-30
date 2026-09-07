@@ -1163,7 +1163,189 @@ const roadmapIntelRaw = {
     );
   },
 
+  /* ------------------------------------------------ criterion evidence */
+
+  /**
+   * Proof attached to the conditions on one roadmap.
+   *
+   * An unreadable table is a different fact from an empty one, so a missing
+   * relation is reported rather than shown as "nothing attached".
+   */
+  async listCriterionEvidence(roadmapId: ID): Promise<CriterionEvidence[]> {
+    const { data, error } = await supabase
+      .from("roadmap_criterion_evidence")
+      .select("*")
+      .eq("roadmap_id", roadmapId)
+      .order("created_at", { ascending: true })
+      .limit(1000);
+    if (error && missingCriterionEvidence(error)) {
+      throw new Error(EVIDENCE_NOT_APPLIED);
+    }
+    assertOk(error);
+    return ((data ?? []) as Row[]).map(toCriterionEvidence);
+  },
+
+  /**
+   * Attach one piece of proof to one condition.
+   *
+   * A file is uploaded into the existing private project files bucket, under
+   * an organization scoped path, before anything is recorded. If the row
+   * cannot be written, the object is removed rather than left orphaned.
+   *
+   * Nothing here checks the criterion. That stays a person's act.
+   */
+  async addCriterionEvidence(
+    context: IntelContext,
+    criterion: AcceptanceCriterion,
+    raw: { type: CriterionEvidenceType; label?: string; url?: string; note?: string; file?: File },
+    label: string,
+  ): Promise<CriterionEvidence> {
+    const checked = checkEvidenceInput({
+      type: raw.type,
+      label: raw.type === "file" ? (raw.file?.name ?? raw.label) : raw.label,
+      url: raw.url,
+      note: raw.note,
+    });
+    if (!checked.ok) throw new Error(checked.refusal);
+    const input = checked.input;
+
+    let storagePath: string | null = null;
+    let contentType: string | null = null;
+    let sizeBytes: number | null = null;
+
+    if (input.type === "file") {
+      const file = raw.file;
+      if (!file) throw new Error("Choose a file to attach.");
+      const path = criterionEvidencePath(
+        criterion.organizationId,
+        criterion.milestoneId,
+        criterion.id,
+        file.name,
+      );
+      const upload = await supabase.storage
+        .from(PROJECT_FILES_BUCKET)
+        .upload(path, file, {
+          contentType: file.type || "application/octet-stream",
+          upsert: false,
+        });
+      if (upload.error) throw new Error("That file could not be uploaded.");
+      storagePath = path;
+      contentType = file.type || null;
+      sizeBytes = file.size;
+    }
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_criterion_evidence")
+      .insert({
+        organization_id: criterion.organizationId,
+        roadmap_id: criterion.roadmapId,
+        milestone_id: criterion.milestoneId,
+        criterion_id: criterion.id,
+        type: input.type,
+        label: input.label,
+        url: input.url ?? null,
+        storage_path: storagePath,
+        content_type: contentType,
+        size_bytes: sizeBytes,
+        note: input.note ?? null,
+        created_by: context.userId,
+        created_by_label: context.userLabel ?? null,
+        created_at: at,
+        source_event_key: evidenceEventKey(criterion.id, input),
+        provenance: {
+          appId: "roadmap",
+          actor: { type: "user", id: context.userId, label: context.userLabel ?? null },
+          observedAt: at,
+          confidence: "observed",
+        },
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      if (storagePath) {
+        await supabase.storage.from(PROJECT_FILES_BUCKET).remove([storagePath]);
+      }
+      if (missingCriterionEvidence(error)) throw new Error(EVIDENCE_NOT_APPLIED);
+      // The same proof attached twice is the same fact, not a failure.
+      if (/duplicate key|23505/i.test(`${error.code ?? ""} ${error.message ?? ""}`)) {
+        const existing = await supabase
+          .from("roadmap_criterion_evidence")
+          .select("*")
+          .eq("criterion_id", criterion.id)
+          .eq("source_event_key", evidenceEventKey(criterion.id, input))
+          .maybeSingle();
+        if (existing.data) return toCriterionEvidence(existing.data as Row);
+      }
+      throw new Error("That evidence could not be saved.");
+    }
+
+    const saved = toCriterionEvidence(data as Row);
+    await record(
+      context,
+      "roadmap.updated",
+      criterion.roadmapId,
+      label,
+      `Evidence was attached to an acceptance condition: ${saved.label}`,
+      {
+        milestoneId: criterion.milestoneId,
+        scope: "acceptance_evidence",
+        criterionId: criterion.id,
+        evidenceId: saved.id,
+        evidenceType: saved.type,
+        action: "attached",
+        source_event_key: saved.id,
+      },
+    );
+    return saved;
+  },
+
+  /** Remove one piece of proof, explicitly, with the file it stood on. */
+  async removeCriterionEvidence(
+    context: IntelContext,
+    evidence: CriterionEvidence,
+    label: string,
+  ): Promise<void> {
+    const { error } = await supabase
+      .from("roadmap_criterion_evidence")
+      .delete()
+      .eq("id", evidence.id);
+    if (error && missingCriterionEvidence(error)) throw new Error(EVIDENCE_NOT_APPLIED);
+    assertOk(error);
+
+    if (evidence.storagePath) {
+      await supabase.storage.from(PROJECT_FILES_BUCKET).remove([evidence.storagePath]);
+    }
+
+    await record(
+      context,
+      "roadmap.updated",
+      evidence.roadmapId,
+      label,
+      `Evidence was removed from an acceptance condition: ${evidence.label}`,
+      {
+        milestoneId: evidence.milestoneId,
+        scope: "acceptance_evidence",
+        criterionId: evidence.criterionId,
+        evidenceId: evidence.id,
+        action: "removed",
+      },
+    );
+  },
+
+  /** A short lived signed url. Evidence files are private; nothing is public. */
+  async criterionEvidenceUrl(evidence: CriterionEvidence): Promise<string> {
+    if (!evidence.storagePath) throw new Error("That evidence is not a stored file.");
+    const { data, error } = await supabase.storage
+      .from(PROJECT_FILES_BUCKET)
+      .createSignedUrl(evidence.storagePath, 60);
+    if (error || !data?.signedUrl) throw new Error("That file could not be opened.");
+    return data.signedUrl;
+  },
+
   /* ----------------------------------------------------------- studio */
+
 
   /**
    * Save a composed artifact.
