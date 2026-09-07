@@ -70,10 +70,7 @@ export const PACKET_BOUNDARIES = [
   "The only change that can be prepared here is commercial: monthly amount, renewal date, next review date. A person still approves it.",
 ];
 
-function read<T, R>(
-  source: RoomRead<T> | null,
-  map: (value: T) => R,
-): R | { unreadable: string } {
+function read<T, R>(source: RoomRead<T> | null, map: (value: T) => R): R | { unreadable: string } {
   if (source === null) return { unreadable: "Not read yet." };
   if (!source.available) return { unreadable: source.because };
   return map(source.value);
@@ -121,9 +118,13 @@ export function clientContextPacket(input: ClientPacketInput): ClientContextPack
         .slice(0, PACKET_LIMITS.sources)
         .map((source) => `${source.title} · ${source.kindLabel} · ${source.url}`),
     ),
-    attention: input.attention.map((item) => `${item.line}${item.because ? ` · ${item.because}` : ""}`),
+    attention: input.attention.map(
+      (item) => `${item.line}${item.because ? ` · ${item.because}` : ""}`,
+    ),
     recentActivity: read(input.history, (events) =>
-      events.slice(0, PACKET_LIMITS.activity).map((event) => `${event.occurredAt.slice(0, 10)} · ${event.summary}`),
+      events
+        .slice(0, PACKET_LIMITS.activity)
+        .map((event) => `${event.occurredAt.slice(0, 10)} · ${event.summary}`),
     ),
     boundaries: PACKET_BOUNDARIES,
   };
