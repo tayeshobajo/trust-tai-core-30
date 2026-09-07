@@ -181,6 +181,7 @@ export function CriteriaPanel({
   onMove: (criterion: AcceptanceCriterion, direction: "up" | "down") => void;
 }) {
   const [text, setText] = useState("");
+  const [adding, setAdding] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
 
   const rows = sortCriteria(criteria);
@@ -194,6 +195,7 @@ export function CriteriaPanel({
     }
     setRefusal(null);
     setText("");
+    setAdding(false);
     onAdd(checked.text);
   };
 
