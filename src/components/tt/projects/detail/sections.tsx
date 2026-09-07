@@ -190,12 +190,15 @@ export function BlockersTab({
   items,
   blockers,
   busy,
+  showForm = true,
   onRaise,
   onResolve,
 }: {
   items: WorkItem[];
   blockers: ProjectBlocker[];
   busy: boolean;
+  /** The recording form only appears when a person asked to record something. */
+  showForm?: boolean;
   onRaise: (input: BlockerInput) => void;
   onResolve: (blocker: ProjectBlocker, resolution: string, resumeWork: boolean) => void;
 }) {
@@ -217,9 +220,13 @@ export function BlockersTab({
     setResumeWork(Boolean(blocker.workItemId));
   };
 
+  if (!showForm && blockers.length === 0) return null;
+
   return (
     <div className="space-y-5">
+      {showForm ? (
       <Panel title="Record a blocker">
+
         <form
           className="space-y-3"
           onSubmit={(event) => {
