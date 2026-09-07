@@ -75,20 +75,23 @@ export function SuccessPanel({
             </p>
           ) : null}
         </div>
-        <TTButton
-          size="sm"
-          variant="secondary"
-          disabled={busy}
-          onClick={() => {
-            setOutcome(success?.outcome ?? "");
-            setTargetDate(success?.targetDate ?? "");
-            setSuccessCheck(success?.successCheck ?? "");
-            setRefusal(null);
-            setOpen((value) => !value);
-          }}
-        >
-          {open ? "Cancel" : success ? "Edit outcome" : "Describe success"}
-        </TTButton>
+        {controlled ? null : (
+          <TTButton
+            size="sm"
+            variant="secondary"
+            disabled={busy}
+            onClick={() => {
+              setOutcome(success?.outcome ?? "");
+              setTargetDate(success?.targetDate ?? "");
+              setSuccessCheck(success?.successCheck ?? "");
+              setRefusal(null);
+              setOpen(!open);
+            }}
+          >
+            {open ? "Cancel" : success ? "Edit outcome" : "Describe success"}
+          </TTButton>
+        )}
+
       </div>
 
       {open ? (
