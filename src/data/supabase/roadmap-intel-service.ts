@@ -35,6 +35,14 @@ import {
   metricSummary,
   sameMetric,
 } from "@/domain/milestone-metric";
+import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import {
+  MANUAL_PRIORITY_RATIONALE,
+  checkManualMilestone,
+  findSameName,
+  manualMilestoneKey,
+  nextSequence,
+} from "@/domain/milestone-create";
 import { rankMilestones, type MilestoneScoreInput } from "@/data/roadmap-milestones";
 import type { NormalizedResearch } from "@/data/roadmap-research-parse";
 
