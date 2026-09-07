@@ -288,13 +288,17 @@ export function BlockersTab({
           </p>
         </form>
       </Panel>
+      ) : null}
 
       {blockers.length === 0 ? (
-        <Empty
-          title="Nothing is blocked"
-          body="When delivery stops, record why here so the reason and its age stay visible."
-        />
+        showForm ? (
+          <Empty
+            title="Nothing is blocked"
+            body="When delivery stops, record why here so the reason and its age stay visible."
+          />
+        ) : null
       ) : (
+
         <ul className="space-y-3">
           {[...open, ...cleared].map((blocker) => (
             <li
