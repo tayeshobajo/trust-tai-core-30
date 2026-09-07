@@ -16,6 +16,7 @@
 
 import type { ConfidenceLevel } from "./confidence";
 import type { OutcomeMetric } from "./milestone-metric";
+import type { MilestoneSuccess } from "./milestone-success";
 import type { ID, ISODateTime } from "./entities";
 import type { Tier } from "./roadmap";
 
@@ -205,6 +206,12 @@ export interface RoadmapMilestone {
    * a person sets it by hand; `null` means no metric yet, never zero.
    */
   outcomeMetric?: OutcomeMetric | null;
+  /**
+   * The plain language success definition a delivery team actually reads:
+   * outcome, optional target date, optional success check. `null` means nobody
+   * has described success yet, never an empty promise.
+   */
+  success?: MilestoneSuccess | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }
