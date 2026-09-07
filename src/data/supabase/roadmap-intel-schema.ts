@@ -28,6 +28,7 @@ import type {
   WalkthroughEntryKind,
 } from "@/domain/roadmap-intel";
 import { MILESTONE_STATUSES } from "@/domain/roadmap-intel";
+import { readOutcomeMetric } from "@/domain/milestone-metric";
 
 export type Row = Record<string, unknown>;
 
@@ -37,8 +38,9 @@ export const RESEARCH_COLUMNS =
 export const STRATEGY_COLUMNS =
   "id, organization_id, roadmap_id, point_a, anchor_proof, horizon, point_b, point_c, central_truth, gaps, leverage_point, provider, model, generated_at, created_at, updated_at";
 
-export const MILESTONE_COLUMNS =
-  "id, organization_id, roadmap_id, name, what_we_build, intended_user, supporting_market_direction, client_advantage, current_gap, evidence, immediate_value, long_term_value, dependencies, execution_boundary, confidence, priority_score, priority_rationale, recommended_sequence, status, tier, owner_user_id, owner_label, decision_note, decided_by, decided_at, created_at, updated_at";
+// Selected with "*" so the additive `outcome_metric` column can exist in some
+// environments and not yet in others without this read failing.
+export const MILESTONE_COLUMNS = "*";
 
 export const ARTIFACT_COLUMNS =
   "id, organization_id, roadmap_id, kind, title, sections, accent, logo_url, provider, model, rejected, human_edited, version, edited_at, edited_by, generated_at, created_at, updated_at";
@@ -241,6 +243,9 @@ export function toMilestone(row: Row): RoadmapMilestone {
     ...(text(row["decision_note"]) ? { decisionNote: text(row["decision_note"])! } : {}),
     ...(text(row["decided_by"]) ? { decidedBy: text(row["decided_by"])! } : {}),
     ...(text(row["decided_at"]) ? { decidedAt: text(row["decided_at"])! } : {}),
+    // Honest absence: an environment without the column, or a milestone nobody
+    // has given a metric, both read as no metric at all.
+    outcomeMetric: readOutcomeMetric(row["outcome_metric"]),
     createdAt: str(row["created_at"], new Date().toISOString()),
     updatedAt: str(row["updated_at"], new Date().toISOString()),
   };

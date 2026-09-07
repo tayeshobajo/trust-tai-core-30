@@ -15,6 +15,7 @@
  */
 
 import type { ConfidenceLevel } from "./confidence";
+import type { OutcomeMetric } from "./milestone-metric";
 import type { ID, ISODateTime } from "./entities";
 import type { Tier } from "./roadmap";
 
@@ -199,6 +200,11 @@ export interface RoadmapMilestone {
   decisionNote?: string;
   decidedBy?: ID;
   decidedAt?: ISODateTime;
+  /**
+   * The outcome this milestone is accountable for (P3-01). Roadmap owns it and
+   * a person sets it by hand; `null` means no metric yet, never zero.
+   */
+  outcomeMetric?: OutcomeMetric | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }

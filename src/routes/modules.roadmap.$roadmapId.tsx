@@ -76,6 +76,7 @@ import {
   normalizeResearch,
   normalizeStrategy,
 } from "@/data/roadmap-research-parse";
+import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
 import type {
   ApprovalState,
@@ -378,6 +379,32 @@ function RoadmapWorkspace({
         status,
         detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
         note || undefined,
+      );
+    },
+    onSettled: () => setBusyId(null),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  /**
+   * The manual outcome metric path. Roadmap owns this truth, so it is written
+   * here through the canonical service, with the same provenance as any other
+   * milestone decision. Setting the same metric twice records nothing new.
+   */
+  const milestoneMetric = useMutation({
+    mutationFn: async ({
+      milestone,
+      metric,
+    }: {
+      milestone: RoadmapMilestone;
+      metric: OutcomeMetricInput | null;
+    }) => {
+      setBusyId(milestone.id);
+      return roadmapIntel.setMilestoneMetric(
+        intelContext,
+        milestone,
+        metric,
+        detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
       );
     },
     onSettled: () => setBusyId(null),
@@ -895,6 +922,7 @@ function RoadmapWorkspace({
                 onStatus={(milestone, status, note) =>
                   milestoneStatus.mutate({ milestone, status, note })
                 }
+                onMetric={(milestone, metric) => milestoneMetric.mutate({ milestone, metric })}
               />
               <ExecutionHandoffCard
                 path={path}

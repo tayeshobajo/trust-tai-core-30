@@ -285,6 +285,79 @@ describe("milestones", () => {
     expect(approved.ownerLabel).toBe("Tai");
   });
 
+  it("records an outcome metric as decided truth with provenance", async () => {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Method page"),
+    ]);
+    const updated = await roadmapIntel.setMilestoneMetric(
+      CONTEXT,
+      written[0]!,
+      {
+        key: "Demo to close rate",
+        label: "Demo to close rate",
+        unit: "%",
+        direction: "increase",
+        baseline: { value: 12, at: "2026-09-01" },
+        target: { value: 25, at: "2026-12-01" },
+      },
+      "Northbeam",
+    );
+
+    expect(updated.outcomeMetric?.key).toBe("demo_to_close_rate");
+    expect(updated.outcomeMetric?.tier).toBe("decided");
+    expect(updated.outcomeMetric?.recordedBy).toBe("user-1");
+    expect(updated.outcomeMetric?.baseline.value).toBe(12);
+  });
+
+  it("a milestone with no metric reads as absence, not zero", async () => {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Method page"),
+    ]);
+    expect(written[0]!.outcomeMetric).toBeNull();
+  });
+
+  it("refuses an incomplete metric instead of inventing a default", async () => {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Method page"),
+    ]);
+    await expect(
+      roadmapIntel.setMilestoneMetric(
+        CONTEXT,
+        written[0]!,
+        {
+          key: "rate",
+          label: "Rate",
+          unit: "%",
+          direction: "increase",
+          baseline: { value: 12, at: "2026-09-01" },
+          target: { value: 4, at: "2026-12-01" },
+        },
+        "Northbeam",
+      ),
+    ).rejects.toThrow();
+    const intel = await roadmapIntel.load(ROADMAP);
+    expect(intel.milestones[0]!.outcomeMetric).toBeNull();
+  });
+
+  it("setting the same metric again records no second event", async () => {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Method page"),
+    ]);
+    const input = {
+      key: "demo_to_close_rate",
+      label: "Demo to close rate",
+      unit: "%",
+      direction: "increase" as const,
+      baseline: { value: 12, at: "2026-09-01" },
+      target: { value: 25, at: "2026-12-01" },
+    };
+    const first = await roadmapIntel.setMilestoneMetric(CONTEXT, written[0]!, input, "Northbeam");
+    const before = (db.tables["activities"] ?? []).length;
+    const again = await roadmapIntel.setMilestoneMetric(CONTEXT, first, input, "Northbeam");
+    expect((db.tables["activities"] ?? []).length).toBe(before);
+    expect(again.outcomeMetric?.recordedAt).toBe(first.outcomeMetric?.recordedAt);
+  });
+
   it("an owner can be set explicitly", async () => {
     const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
       candidate("Method page"),

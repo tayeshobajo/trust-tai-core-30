@@ -8,6 +8,7 @@
 
 import { useState } from "react";
 
+import { MetricPanel } from "@/components/tt/roadmap/metric-panel";
 import { OwnershipInspector } from "@/components/tt/roadmap/ownership-inspector";
 import { EvidenceList, TierChip } from "@/components/tt/roadmap/tier";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@/components/tt/primitives";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { EXECUTION_ROOM_LABEL, ownedExecutionBoundary } from "@/domain/execution-ownership";
+import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
 import { MILESTONE_STATUS_LABEL, UNKNOWN } from "@/domain/roadmap-intel";
 
@@ -44,10 +46,12 @@ function MilestoneCard({
   milestone,
   busyId,
   onStatus,
+  onMetric,
 }: {
   milestone: RoadmapMilestone;
   busyId: string | null;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
+  onMetric: (milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void;
 }) {
   const read = ownedExecutionBoundary(milestone);
   const owned = {
@@ -83,6 +87,14 @@ function MilestoneCard({
         <Line label="Owned by" value={`${owned.ownerLabel} · ${owned.because}`} />
         <Line label="Execution boundary" value={owned.boundary} />
       </div>
+
+      <MetricPanel
+        metric={milestone.outcomeMetric ?? null}
+        subject={milestone.name}
+        busy={busy}
+        onSave={(metric) => onMetric(milestone, metric)}
+        onClear={() => onMetric(milestone, null)}
+      />
 
       <OwnershipInspector read={read.owner} boundary={owned.boundary} subject={milestone.name} />
 
@@ -164,12 +176,14 @@ export function MilestonesView({
   generating,
   onGenerate,
   onStatus,
+  onMetric,
 }: {
   milestones: RoadmapMilestone[];
   busyId: string | null;
   generating: boolean;
   onGenerate: () => void;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
+  onMetric: (milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void;
 }) {
   const [filter, setFilter] = useState<MilestoneStatus | "all">("all");
   const visible =
@@ -230,6 +244,7 @@ export function MilestonesView({
               milestone={milestone}
               busyId={busyId}
               onStatus={onStatus}
+              onMetric={onMetric}
             />
           ))}
         </ul>
