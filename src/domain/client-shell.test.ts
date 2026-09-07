@@ -131,23 +131,26 @@ function approval(overrides: Partial<ApprovalRequest>): ApprovalRequest {
 }
 
 describe("the client shell has exactly six tabs, in order", () => {
-  it("names Overview, Roadmap, Projects, Relationship, Site, Files", () => {
+  it("names Overview, Projects, Relationship, Commercial, Files, Chat", () => {
     expect(CLIENT_TABS).toEqual([
       "overview",
-      "roadmap",
       "projects",
       "relationship",
-      "site",
+      "commercial",
       "files",
+      "chat",
     ]);
   });
 
-  it("opens Overview for anything it does not recognise", () => {
-    expect(parseClientTab("roadmap")).toBe("roadmap");
+  it("opens Overview for anything it does not recognise, including the old tabs", () => {
+    expect(parseClientTab("commercial")).toBe("commercial");
+    expect(parseClientTab("roadmap")).toBe("overview");
+    expect(parseClientTab("site")).toBe("overview");
     expect(parseClientTab("billing")).toBe("overview");
     expect(parseClientTab(undefined)).toBe("overview");
   });
 });
+
 
 describe("the header states only what is recorded, in the organization's day", () => {
   it("shows Sep 19 as Sep 19 in Chicago and names a missing renewal plainly", () => {

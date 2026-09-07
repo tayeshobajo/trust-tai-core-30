@@ -19,13 +19,14 @@ import { CommercialPanel } from "@/components/tt/clients/commercial-panel";
 import { ProposalPanel } from "@/components/tt/clients/proposal-panel";
 import { ClientHeader, ClientTabs } from "@/components/tt/clients/shell";
 import { OverviewTab } from "@/components/tt/clients/overview";
+import { CommercialTab } from "@/components/tt/clients/commercial-tab";
 import {
-  FilesTab,
-  ProjectsTab,
-  RelationshipTab,
-  RoadmapTab,
-  SiteTab,
-} from "@/components/tt/clients/tabs";
+  ClientChatTab,
+  type ClientChatAnswer,
+  type ClientChatEntry,
+  type ClientProposalState,
+} from "@/components/tt/clients/chat";
+import { FilesTab, ProjectsTab, RelationshipTab } from "@/components/tt/clients/tabs";
 
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -68,6 +69,18 @@ import {
 } from "@/domain/client-shell";
 import { relationshipWindow } from "@/data/clients/relationship-window";
 import { listRelationshipMessages } from "@/data/supabase/comms-messages";
+
+import { attentionItems } from "@/domain/client-overview";
+import { clientContextPacket } from "@/domain/client-context-packet";
+import {
+  clientProposalAlreadyApplied,
+  clientProposalReceipt,
+  clientProposalStale,
+  prepareClientProposal,
+  type ClientChangeIntent,
+  type ClientOtherRoom,
+} from "@/domain/client-chat-proposal";
+import { supabase } from "@/integrations/trust-tai/supabase";
 
 import type { CommercialFormPatch } from "@/domain/client-commercial-form";
 import { projectLinkedToRoadmap } from "@/domain/project-roadmap-link";
@@ -336,6 +349,168 @@ function ClientShell({
       setLogoProblem(error instanceof Error ? error.message : "That image could not be saved."),
   });
 
+  /* ------------------------------------------------------------------ chat */
+  /* Session scoped, on purpose: there is no durable client chat store, so the
+     conversation lives in this page and says so. What survives is the client
+     record and its activity. */
+  const [chatEntries, setChatEntries] = useState<ClientChatEntry[]>([]);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [applying, setApplying] = useState<string | null>(null);
+
+  const entryId = () => `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  /**
+   * One message. "ask" answers from this account's bounded packet. "change"
+   * reads the message and prepares one bounded commercial proposal. Both are
+   * read only: the endpoint writes nothing, so every real change still goes
+   * through the commercial service after a person approves it.
+   */
+  const sendChat = useMutation({
+    mutationFn: async ({
+      message,
+      pasted,
+      mode,
+      pendingId,
+      packet,
+      clientLabel,
+    }: {
+      message: string;
+      pasted: string;
+      mode: "ask" | "change";
+      pendingId: string;
+      packet: unknown;
+      clientLabel: string;
+    }) => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Your session expired. Sign in again to ask.");
+      const response = await fetch("/api/public/clients/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          organization_id: organizationId,
+          client_label: clientLabel,
+          question: message,
+          pasted,
+          packet,
+          mode: mode === "change" ? "prepare" : "ask",
+        }),
+      });
+      const body = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) throw new Error(String(body["error"] ?? "This account could not answer."));
+      return { body, mode, message, pendingId };
+    },
+    onSuccess: ({ body, mode, message, pendingId }) => {
+      const resolve = (entry: ClientChatEntry): ClientChatEntry => {
+        if (mode === "ask") {
+          return { ...entry, pending: false, answer: body as unknown as ClientChatAnswer };
+        }
+        const kind = String(body["kind"] ?? "unclear");
+        const because = String(body["because"] ?? "").trim();
+        if (kind === "other_room") {
+          return {
+            ...entry,
+            pending: false,
+            room: body["room"] as ClientOtherRoom,
+            text: because || "That truth belongs to another room.",
+          };
+        }
+        if (kind !== "change" || !clientQuery.data) {
+          return {
+            ...entry,
+            pending: false,
+            text:
+              because ||
+              "That is not a change the account can make from here. Say what should change, what it should say, and why.",
+          };
+        }
+        const intent: ClientChangeIntent = {
+          action: String(body["action"] ?? "") as ClientChangeIntent["action"],
+          ...(body["value"] !== undefined ? { value: String(body["value"] ?? "") } : {}),
+          ...(body["reason"] ? { reason: String(body["reason"]) } : {}),
+        };
+        const prepared = prepareClientProposal(
+          {
+            mrrCents: clientQuery.data.mrrCents,
+            renewalAt: clientQuery.data.renewalAt,
+            nextReviewAt: clientQuery.data.nextReviewAt,
+          },
+          intent,
+          message,
+        );
+        if (!prepared.ok) {
+          return {
+            ...entry,
+            pending: false,
+            text: prepared.because,
+            ...(prepared.room ? { room: prepared.room } : {}),
+          };
+        }
+        return { ...entry, pending: false, proposal: prepared.proposal, proposalState: "open" };
+      };
+      setChatEntries((entries) =>
+        entries.map((entry) => (entry.id === pendingId ? resolve(entry) : entry)),
+      );
+    },
+    onError: (cause: unknown, variables) => {
+      setChatError(cause instanceof Error ? cause.message : "This account could not answer.");
+      setChatEntries((entries) => entries.filter((entry) => entry.id !== variables.pendingId));
+    },
+  });
+
+  const settle = (id: string, state: ClientProposalState, outcome: string) =>
+    setChatEntries((entries) =>
+      entries.map((entry) =>
+        entry.id === id ? { ...entry, proposalState: state, outcome } : entry,
+      ),
+    );
+
+  /**
+   * The only place Chat writes. It re-reads the client first, refuses a
+   * proposal prepared against truth that has since moved, and does nothing at
+   * all if the record already says what was proposed. The write itself is the
+   * same commercial service the Commercial panel uses.
+   */
+  const approveProposal = async (id: string) => {
+    const entry = chatEntries.find((candidate) => candidate.id === id);
+    const proposal = entry?.proposal;
+    if (!proposal || entry?.proposalState !== "open" || applying) return;
+    setApplying(id);
+    setChatError(null);
+    try {
+      const fresh = await readClientCommercialRecord(clientId, organizationId);
+      if (!fresh) throw new Error("This client is no longer readable.");
+      const now = {
+        mrrCents: fresh.mrrCents,
+        renewalAt: fresh.renewalAt,
+        nextReviewAt: fresh.nextReviewAt,
+      };
+      const stale = clientProposalStale(proposal, now);
+      if (stale) {
+        settle(id, "stale", stale);
+        return;
+      }
+      if (clientProposalAlreadyApplied(proposal, now)) {
+        settle(id, "applied", "The record already says this. Nothing was written twice.");
+        return;
+      }
+      await setClientCommercialState(
+        { clientId, ...proposal.patch },
+        { organizationId, userId: identity.userId, userLabel: identity.name },
+      );
+      await queryClient.invalidateQueries({ queryKey: ["clients"] });
+      settle(id, "applied", clientProposalReceipt(proposal));
+    } catch (cause) {
+      settle(
+        id,
+        "open",
+        cause instanceof Error ? cause.message : "That change could not be recorded.",
+      );
+    } finally {
+      setApplying(null);
+    }
+  };
+
   /* Approvals are asked only once the ids they could be filed under are known. */
   const linksSettled =
     (roadmapsQuery.isSuccess || roadmapsQuery.isError) &&
@@ -519,6 +694,43 @@ function ClientShell({
         ? answered(eventsAbout(historyRaw.value, entityIds))
         : historyRaw;
 
+  /**
+   * The bounded account packet Chat reasons over. Composed only from the reads
+   * this page already made under the signed-in person's own session, so row
+   * level security has already decided what it may contain. No raw Comms
+   * message text, no file bytes, no second copy of any store.
+   */
+  const packet = clientContextPacket({
+    identity: { clientId, name: record.name, websiteUrl: record.websiteUrl },
+    commercial: {
+      headline: card.commercialLine,
+      review: cadence.line,
+      renewal: cadence.renewalLine,
+      provenance: commercialProvenanceLine,
+    },
+    projects: projectsForTab,
+    relationship: relationshipRead,
+    roadmap: roadmapOutcomes,
+    sources: readOf(linkedSourcesQuery),
+    history: historyRead,
+    attention: attentionItems({
+      projects: projectsForTab,
+      relationship: relationshipRead,
+      roadmap:
+        roadmapOutcomes === null
+          ? null
+          : roadmapOutcomes.available
+            ? answered(roadmapOutcomes.value[0] ?? null)
+            : roadmapOutcomes,
+      approvals: approvalsRead,
+      exchange: exchangeWindow,
+      cadence,
+      commercialLine: card.commercialLine,
+      now,
+      timeZone,
+    }),
+  });
+
   return (
     <AppShell identity={identity}>
       <div className="space-y-8">
@@ -572,41 +784,9 @@ function ClientShell({
                 renewal: cadence.renewalLine,
                 provenance: commercialProvenanceLine,
               }}
-              commercialForm={
-                <CommercialPanel
-                  current={{
-                    tier: record.tier,
-                    mrrCents: record.mrrCents,
-                    renewalAt: record.renewalAt,
-                    nextReviewAt: record.nextReviewAt,
-                  }}
-                  provenance={commercialProvenance}
-                  pending={saveCommercial.isPending}
-                  problem={commercialProblem}
-                  saved={commercialSaved}
-                  onSave={(patch) => saveCommercial.mutate(patch)}
-                />
-              }
             />
           ) : null}
 
-          {tab === "roadmap" ? (
-            <div className="space-y-8">
-              <RoadmapTab
-                read={roadmapOutcomes}
-                loading={roadmapsQuery.isLoading}
-                projects={projects}
-              />
-              <ProposalPanel
-                nodes={proposalNodes}
-                pendingRoadmapId={pendingProposalId}
-                problem={proposalProblem}
-                savedRoadmapId={proposalSavedId}
-                onSend={(input) => sendProposal.mutate(input)}
-                onAnswer={(input) => answerProposal.mutate(input)}
-              />
-            </div>
-          ) : null}
           {tab === "projects" ? (
             <ProjectsTab
               read={projectsForTab}
@@ -623,12 +803,39 @@ function ClientShell({
               window={exchangeWindow}
             />
           ) : null}
-          {tab === "site" ? (
-            <SiteTab
-              read={readOf(siteQuery)}
-              loading={siteQuery.isLoading}
-              client={{ name: record.name, websiteUrl: record.websiteUrl }}
-              timeZone={timeZone}
+          {tab === "commercial" ? (
+            <CommercialTab
+              lines={{
+                headline: card.commercialLine,
+                review: cadence.line,
+                renewal: cadence.renewalLine,
+                provenance: commercialProvenanceLine,
+              }}
+              form={
+                <CommercialPanel
+                  current={{
+                    tier: record.tier,
+                    mrrCents: record.mrrCents,
+                    renewalAt: record.renewalAt,
+                    nextReviewAt: record.nextReviewAt,
+                  }}
+                  provenance={commercialProvenance}
+                  pending={saveCommercial.isPending}
+                  problem={commercialProblem}
+                  saved={commercialSaved}
+                  onSave={(patch) => saveCommercial.mutate(patch)}
+                />
+              }
+              proposals={
+                <ProposalPanel
+                  nodes={proposalNodes}
+                  pendingRoadmapId={pendingProposalId}
+                  problem={proposalProblem}
+                  savedRoadmapId={proposalSavedId}
+                  onSend={(input) => sendProposal.mutate(input)}
+                  onAnswer={(input) => answerProposal.mutate(input)}
+                />
+              }
             />
           ) : null}
           {tab === "files" ? (
@@ -645,6 +852,34 @@ function ClientShell({
                   window.open(url, "_blank", "noopener,noreferrer");
                 });
               }}
+            />
+          ) : null}
+          {tab === "chat" ? (
+            <ClientChatTab
+              clientName={record.name}
+              entries={chatEntries}
+              pending={sendChat.isPending}
+              applying={applying}
+              error={chatError}
+              onSend={(message, pasted, mode) => {
+                setChatError(null);
+                const pendingId = entryId();
+                setChatEntries((entries) => [
+                  ...entries,
+                  { id: entryId(), role: "you", text: message, ...(pasted ? { pasted } : {}) },
+                  { id: pendingId, role: "client", pending: true },
+                ]);
+                sendChat.mutate({
+                  message,
+                  pasted,
+                  mode,
+                  pendingId,
+                  packet,
+                  clientLabel: record.name,
+                });
+              }}
+              onApprove={(id) => void approveProposal(id)}
+              onDiscard={(id) => settle(id, "discarded", "Discarded. Nothing was changed.")}
             />
           ) : null}
         </div>

@@ -27,26 +27,40 @@ import { isActiveRoadmap, ROADMAP_STATUS_LABEL, STAGE_STATE_LABEL } from "./road
 
 /* -------------------------------------------------------------------- tabs */
 
-export type ClientTab = "overview" | "roadmap" | "projects" | "relationship" | "site" | "files";
+/**
+ * Client is the account. Project is the work. Roadmap is the plan.
+ *
+ * These six surfaces answer "what is the state of this relationship?" and
+ * nothing more. Roadmap and Site are read on Overview and operated in their
+ * own rooms; project-scoped work is operated in the project workspace.
+ */
+export type ClientTab =
+  | "overview"
+  | "projects"
+  | "relationship"
+  | "commercial"
+  | "files"
+  | "chat";
 
 /** Exactly these, in exactly this order. The shell has no other sections. */
 export const CLIENT_TABS: ClientTab[] = [
   "overview",
-  "roadmap",
   "projects",
   "relationship",
-  "site",
+  "commercial",
   "files",
+  "chat",
 ];
 
 export const CLIENT_TAB_LABEL: Record<ClientTab, string> = {
   overview: "Overview",
-  roadmap: "Roadmap",
   projects: "Projects",
   relationship: "Relationship",
-  site: "Site",
+  commercial: "Commercial",
   files: "Files",
+  chat: "Chat",
 };
+
 
 /** Anything unrecognised opens Overview. A bad link never opens a blank tab. */
 export function parseClientTab(value: unknown): ClientTab {

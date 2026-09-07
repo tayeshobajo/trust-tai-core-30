@@ -15,8 +15,8 @@
  */
 
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ChevronDown } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { AlertTriangle } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { ProjectRow } from "@/components/tt/clients/tabs";
 import type { RelationshipWindow } from "@/data/clients/relationship-window";
@@ -77,7 +77,6 @@ export function OverviewTab({
   timeZone,
   exchange,
   commercial,
-  commercialForm,
   roadmapProject = null,
 }: {
   reads: OverviewReads;
@@ -87,8 +86,6 @@ export function OverviewTab({
   timeZone: string;
   exchange: RelationshipWindow | null;
   commercial: CommercialReadLines;
-  /** The existing commercial form, revealed only when a person asks to edit. */
-  commercialForm: ReactNode;
   /**
    * The project a person linked to the shown roadmap, when one exists.
    * Never inferred; null means no handoff line is drawn.
@@ -134,8 +131,6 @@ export function OverviewTab({
           timeZone={timeZone}
         />
       </div>
-
-      <Commercial lines={commercial} form={commercialForm} />
 
       <SiteLine
         read={reads.site}
@@ -493,55 +488,6 @@ function RelationshipContext({
             );
           })()
         )}
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------- commercial */
-
-/**
- * Commercial truth reads first. The existing form, with its existing
- * validation and write path, is revealed only when a person asks to edit.
- */
-function Commercial({ lines, form }: { lines: CommercialReadLines; form: ReactNode }) {
-  const [editing, setEditing] = useState(false);
-  return (
-    <section aria-labelledby="overview-commercial" className={CARD}>
-      <CardHeader
-        id="overview-commercial"
-        title="Commercial"
-        explain="Entered by a person. Nothing here is inferred."
-        action={
-          <button
-            type="button"
-            aria-expanded={editing}
-            aria-controls="overview-commercial-form"
-            onClick={() => setEditing((open) => !open)}
-            className="inline-flex shrink-0 items-center gap-1.5 text-[13px] font-medium text-royal"
-          >
-            {editing ? "Close" : "Update commercial state"}
-            <ChevronDown
-              className={cn("size-3.5 transition-transform", editing && "rotate-180")}
-              aria-hidden
-            />
-          </button>
-        }
-      />
-      <div className="px-6 py-5">
-        <p className="text-[15px] font-medium text-foreground">{lines.headline}</p>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          {lines.review} · {lines.renewal}
-        </p>
-        <p className="mt-2 text-[12px] text-muted-foreground">{lines.provenance}</p>
-      </div>
-
-      <div
-        id="overview-commercial-form"
-        hidden={!editing}
-        className="border-t border-border px-6 py-5"
-      >
-        {editing ? form : null}
       </div>
     </section>
   );
