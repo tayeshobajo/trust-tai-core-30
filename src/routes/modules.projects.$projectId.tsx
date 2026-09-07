@@ -16,6 +16,13 @@ import { EmptyState, TTButton } from "@/components/tt/primitives";
 import { LaunchOpsButton } from "@/components/tt/ops/launch-ops";
 import { RouteWork } from "@/components/tt/projects/route-work";
 import {
+  CONTEXTUAL_PANELS,
+  PANEL_DOORWAY,
+  panelVisibility,
+  type ContextualPanel,
+} from "@/domain/project-workroom-contextual";
+
+import {
   OutcomeStrip,
   PROJECT_TABS,
   ProjectIdentityHeader,
