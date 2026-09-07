@@ -183,13 +183,44 @@ export function OverviewTab({
         <div className="max-w-reading space-y-4 text-[15px] leading-relaxed">
           <div>
             <p className="tt-eyebrow">Point A</p>
-            <p className="mt-1 text-foreground">
-              {project.pointA.trim() || "No current truth was recorded."}
-            </p>
+            {roadmap ? (
+              roadmap.pointA.length ? (
+                <ul className="mt-1 space-y-1 text-foreground">
+                  {roadmap.pointA.map((note) => (
+                    <li key={`${note.label}-${note.at}`}>{note.value}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-muted-foreground">No current truth was recorded.</p>
+              )
+            ) : (
+              <p className="mt-1 text-foreground">
+                {project.pointA.trim() || "No current truth was recorded."}
+              </p>
+            )}
+            {roadmap && onSavePointA ? (
+              <PointAEditor notes={roadmap.pointA} busy={savingPoints} onSave={onSavePointA} />
+            ) : null}
           </div>
           <div>
             <p className="tt-eyebrow">Point B</p>
-            <p className="mt-1 text-foreground">{completion.outcome}</p>
+            <p className="mt-1 text-foreground">
+              {roadmap
+                ? (roadmap.pointB?.statement ?? "No destination has been written yet.")
+                : completion.outcome}
+            </p>
+            {roadmap?.pointB?.because ? (
+              <p className="mt-1 text-[13px] text-muted-foreground">{roadmap.pointB.because}</p>
+            ) : null}
+            {roadmap && onSaveDestination ? (
+              <PointBEditor
+                statement={roadmap.pointB?.statement ?? ""}
+                because={roadmap.pointB?.because ?? ""}
+                present={Boolean(roadmap.pointB)}
+                busy={savingPoints}
+                onSave={onSaveDestination}
+              />
+            ) : null}
           </div>
           <p className="text-[13px] text-muted-foreground">
             {lineage.fromRoadmap
