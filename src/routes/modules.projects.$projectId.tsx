@@ -62,6 +62,7 @@ import { ProjectRoadmapTab } from "@/components/tt/projects/detail/roadmap";
 import { ProjectApprovals } from "@/components/tt/projects/detail/approvals";
 import { linkableRoadmaps } from "@/domain/project-roadmap-link";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import { useMilestoneAcceptance } from "@/hooks/use-milestone-acceptance";
 import type { MeasurementInput } from "@/domain/milestone-measurement";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
@@ -425,6 +426,18 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
       setMeasureError(
         cause instanceof Error ? cause.message : "That measurement could not be recorded.",
       ),
+  });
+
+  /**
+   * Outcomes and acceptance criteria are Roadmap truth, operated here through
+   * the same Roadmap service and the same hook the Roadmap room uses.
+   */
+  const acceptance = useMilestoneAcceptance({
+    context: intelContext,
+    criteria: intelQuery.data?.criteria ?? [],
+    label: roadmap?.subjectLabel ?? "This roadmap",
+    refresh: refreshRoadmap,
+    setBusyId,
   });
 
   const linkCandidates = useMemo(
@@ -819,6 +832,14 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
                 milestoneStatus.mutate({ milestone, status, note })
               }
               onMetric={(milestone, metric) => milestoneMetric.mutate({ milestone, metric })}
+              criteria={intelQuery.data?.criteria ?? []}
+              criteriaError={acceptance.error ?? intelQuery.data?.criteriaError ?? null}
+              onSuccess={acceptance.onSuccess}
+              onCriterionAdd={acceptance.onCriterionAdd}
+              onCriterionToggle={acceptance.onCriterionToggle}
+              onCriterionEdit={acceptance.onCriterionEdit}
+              onCriterionRemove={acceptance.onCriterionRemove}
+              onCriterionMove={acceptance.onCriterionMove}
               measurements={intelQuery.data?.measurements ?? []}
               measurementsError={measureError ?? intelQuery.data?.measurementsError ?? null}
               onMeasure={(milestone, input) => milestoneMeasure.mutate({ milestone, input })}

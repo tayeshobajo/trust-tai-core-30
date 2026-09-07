@@ -1,10 +1,13 @@
 /**
- * Milestone outcome metric panel (P3-01).
+ * The optional measurable target on a milestone (P3-01), and the readings
+ * recorded against it (P3-02).
  *
- * The manual path. Roadmap owns the outcome metric, so it is typed here by a
- * person: key, label, unit, direction, baseline with its date, target with its
- * date. Nothing is prefilled with a guess, and a milestone with no metric says
- * so plainly instead of showing a zero.
+ * Product law: people describe success, the system structures measurement.
+ * Most milestones never come here. The ones that carry a real number do, and
+ * even then nobody is asked for a metric key, a direction the numbers already
+ * state, a unit a count does not need, or a starting value they do not have.
+ *
+ * The stored contract is unchanged. It is composed from what a person typed.
  */
 
 import { useState } from "react";
@@ -22,8 +25,7 @@ import {
 import {
   METRIC_DIRECTIONS,
   METRIC_DIRECTION_LABEL,
-  NO_METRIC,
-  checkOutcomeMetric,
+  checkMeasurableTarget,
   metricSummary,
   type MetricDirection,
   type OutcomeMetric,
@@ -31,38 +33,35 @@ import {
 } from "@/domain/milestone-metric";
 
 interface Draft {
-  key: string;
   label: string;
   unit: string;
-  direction: MetricDirection | "";
-  baselineValue: string;
-  baselineAt: string;
   targetValue: string;
   targetAt: string;
+  baselineValue: string;
+  baselineAt: string;
+  direction: MetricDirection | "";
 }
 
 const EMPTY: Draft = {
-  key: "",
   label: "",
   unit: "",
-  direction: "",
-  baselineValue: "",
-  baselineAt: "",
   targetValue: "",
   targetAt: "",
+  baselineValue: "",
+  baselineAt: "",
+  direction: "",
 };
 
 function draftFrom(metric: OutcomeMetric | null): Draft {
   if (!metric) return EMPTY;
   return {
-    key: metric.key,
     label: metric.label,
     unit: metric.unit,
-    direction: metric.direction,
-    baselineValue: String(metric.baseline.value),
-    baselineAt: metric.baseline.at,
     targetValue: String(metric.target.value),
     targetAt: metric.target.at,
+    baselineValue: metric.baseline ? String(metric.baseline.value) : "",
+    baselineAt: metric.baseline ? metric.baseline.at : "",
+    direction: metric.direction,
   };
 }
 
@@ -79,7 +78,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
  * The measurement history and its manual entry form (P3-02).
  *
  * Evidence, not a dashboard. Every line is something a person typed, newest
- * first, and the derived distance to target is plain arithmetic on the metric
+ * first, and the derived distance to target is plain arithmetic on the target
  * a person already set, labelled as derived.
  */
 function MeasurementHistory({
@@ -131,7 +130,7 @@ function MeasurementHistory({
   return (
     <div className="mt-4 border-t border-border pt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="tt-eyebrow">Measurements</p>
+        <p className="tt-eyebrow">Readings</p>
         <TTButton
           size="sm"
           variant="secondary"
@@ -236,15 +235,18 @@ export function MetricPanel({
   const [refusal, setRefusal] = useState<string | null>(null);
 
   const set = (patch: Partial<Draft>) => setDraft((value) => ({ ...value, ...patch }));
+  /** Only ask for a direction when there is no starting point to read it from. */
+  const needsDirection = draft.baselineValue.trim() === "";
 
   const submit = () => {
-    const checked = checkOutcomeMetric({
-      key: draft.key,
+    const checked = checkMeasurableTarget({
       label: draft.label,
       unit: draft.unit,
-      direction: draft.direction as MetricDirection,
-      baseline: { value: draft.baselineValue as unknown as number, at: draft.baselineAt },
-      target: { value: draft.targetValue as unknown as number, at: draft.targetAt },
+      targetValue: draft.targetValue,
+      targetAt: draft.targetAt,
+      baselineValue: draft.baselineValue,
+      baselineAt: draft.baselineAt,
+      direction: draft.direction,
     });
     if (!checked.ok) {
       setRefusal(checked.refusal);
@@ -255,15 +257,41 @@ export function MetricPanel({
     setOpen(false);
   };
 
+  /** Nothing measurable yet: one quiet, optional doorway, and no analytics. */
+  if (!metric && !open) {
+    return (
+      <div className="mt-5">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setDraft(EMPTY);
+            setRefusal(null);
+            setOpen(true);
+          }}
+          className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+        >
+          + Add measurable target
+        </button>
+      </div>
+    );
+  }
+
   return (
     <section className="mt-5 rounded-2xl border border-border p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="tt-eyebrow">Outcome metric</p>
-          <p className="mt-1 max-w-reading text-sm text-foreground">{metricSummary(metric)}</p>
+          <p className="tt-eyebrow">Measurable target</p>
+          {metric ? (
+            <p className="mt-1 max-w-reading text-sm text-foreground">{metricSummary(metric)}</p>
+          ) : (
+            <p className="mt-1 max-w-reading text-sm text-muted-foreground">
+              Only for milestones that carry a real number.
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          {metric ? <MetaPill>Decided</MetaPill> : <MetaPill>{NO_METRIC}</MetaPill>}
+          {metric ? <MetaPill>Decided</MetaPill> : null}
           <TTButton
             size="sm"
             variant="secondary"
@@ -274,7 +302,7 @@ export function MetricPanel({
               setOpen((value) => !value);
             }}
           >
-            {open ? "Cancel" : metric ? "Edit metric" : "Set metric"}
+            {open ? "Cancel" : "Edit target"}
           </TTButton>
         </div>
       </div>
@@ -282,60 +310,20 @@ export function MetricPanel({
       {open ? (
         <div className="mt-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Metric key">
-              <TTInput
-                value={draft.key}
-                onChange={(event) => set({ key: event.target.value })}
-                placeholder="demo_to_close_rate"
-                aria-label={`Metric key for ${subject}`}
-              />
-            </Field>
-            <Field label="Label">
+            <Field label="What you are measuring">
               <TTInput
                 value={draft.label}
                 onChange={(event) => set({ label: event.target.value })}
                 placeholder="Demo to close rate"
-                aria-label={`Metric label for ${subject}`}
+                aria-label={`What is measured for ${subject}`}
               />
             </Field>
-            <Field label="Unit">
+            <Field label="Unit, optional">
               <TTInput
                 value={draft.unit}
                 onChange={(event) => set({ unit: event.target.value })}
                 placeholder="%"
-                aria-label={`Metric unit for ${subject}`}
-              />
-            </Field>
-            <Field label="Direction">
-              <select
-                value={draft.direction}
-                onChange={(event) => set({ direction: event.target.value as MetricDirection })}
-                aria-label={`Metric direction for ${subject}`}
-                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground"
-              >
-                <option value="">Choose a direction</option>
-                {METRIC_DIRECTIONS.map((entry) => (
-                  <option key={entry} value={entry}>
-                    {METRIC_DIRECTION_LABEL[entry]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Baseline value">
-              <TTInput
-                value={draft.baselineValue}
-                onChange={(event) => set({ baselineValue: event.target.value })}
-                placeholder="12"
-                inputMode="decimal"
-                aria-label={`Baseline value for ${subject}`}
-              />
-            </Field>
-            <Field label="Baseline date">
-              <TTInput
-                type="date"
-                value={draft.baselineAt}
-                onChange={(event) => set({ baselineAt: event.target.value })}
-                aria-label={`Baseline date for ${subject}`}
+                aria-label={`Unit for ${subject}`}
               />
             </Field>
             <Field label="Target value">
@@ -355,46 +343,77 @@ export function MetricPanel({
                 aria-label={`Target date for ${subject}`}
               />
             </Field>
+            <Field label="Where it stands today, optional">
+              <TTInput
+                value={draft.baselineValue}
+                onChange={(event) => set({ baselineValue: event.target.value })}
+                placeholder="12"
+                inputMode="decimal"
+                aria-label={`Starting value for ${subject}`}
+              />
+            </Field>
+            <Field label="As at, optional">
+              <TTInput
+                type="date"
+                value={draft.baselineAt}
+                onChange={(event) => set({ baselineAt: event.target.value })}
+                aria-label={`Starting date for ${subject}`}
+              />
+            </Field>
+            {needsDirection ? (
+              <Field label="Should this go up or down">
+                <select
+                  value={draft.direction}
+                  onChange={(event) => set({ direction: event.target.value as MetricDirection })}
+                  aria-label={`Direction for ${subject}`}
+                  className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground"
+                >
+                  <option value="">Choose</option>
+                  {METRIC_DIRECTIONS.map((entry) => (
+                    <option key={entry} value={entry}>
+                      {METRIC_DIRECTION_LABEL[entry]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            ) : null}
           </div>
+
+          <p className="text-xs text-muted-foreground">
+            With a starting point, which way better points is read from your numbers. Nothing is
+            filled in for you.
+          </p>
 
           {refusal ? <p className="text-sm text-destructive">{refusal}</p> : null}
 
           <div className="flex flex-wrap gap-2">
             <TTButton size="sm" disabled={busy} onClick={submit}>
-              Save metric
+              Save target
             </TTButton>
-            {metric ? (
-              <TTButton
-                size="sm"
-                variant="quiet"
-                disabled={busy}
-                onClick={() => {
-                  setOpen(false);
-                  onClear();
-                }}
-              >
-                Remove metric
-              </TTButton>
-            ) : null}
+            <TTButton
+              size="sm"
+              variant="quiet"
+              disabled={busy}
+              onClick={() => {
+                setOpen(false);
+                if (metric) onClear();
+              }}
+            >
+              {metric ? "Remove target" : "Cancel"}
+            </TTButton>
           </div>
         </div>
       ) : null}
 
-      {onRecord ? (
-        metric ? (
-          <MeasurementHistory
-            metric={metric}
-            subject={subject}
-            busy={busy}
-            measurements={measurements}
-            measurementsError={measurementsError}
-            onRecord={onRecord}
-          />
-        ) : (
-          <p className="mt-4 border-t border-border pt-4 text-sm text-muted-foreground">
-            Add an outcome metric before recording a measurement.
-          </p>
-        )
+      {onRecord && metric ? (
+        <MeasurementHistory
+          metric={metric}
+          subject={subject}
+          busy={busy}
+          measurements={measurements}
+          measurementsError={measurementsError}
+          onRecord={onRecord}
+        />
       ) : null}
     </section>
   );

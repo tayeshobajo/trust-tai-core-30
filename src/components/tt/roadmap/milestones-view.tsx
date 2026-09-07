@@ -9,7 +9,9 @@
 import { useEffect, useRef, useState } from "react";
 
 import { ManualMilestoneForm } from "@/components/tt/roadmap/manual-milestone";
+import { CriteriaPanel } from "@/components/tt/roadmap/criteria-panel";
 import { MetricPanel } from "@/components/tt/roadmap/metric-panel";
+import { SuccessPanel } from "@/components/tt/roadmap/success-panel";
 import { OwnershipInspector } from "@/components/tt/roadmap/ownership-inspector";
 import { EvidenceList, TierChip } from "@/components/tt/roadmap/tier";
 import {
@@ -23,7 +25,9 @@ import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { EXECUTION_ROOM_LABEL, ownedExecutionBoundary } from "@/domain/execution-ownership";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import type { MeasurementInput, MilestoneMeasurement } from "@/domain/milestone-measurement";
+import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
+import type { MilestoneSuccessInput } from "@/domain/milestone-success";
 import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
 import { MILESTONE_STATUS_LABEL, UNKNOWN } from "@/domain/roadmap-intel";
 
@@ -50,17 +54,44 @@ function MilestoneCard({
   busyId,
   measurements,
   measurementsError,
+  criteria,
+  criteriaError,
   onStatus,
   onMetric,
   onMeasure,
+  onSuccess,
+  onCriterionAdd,
+  onCriterionToggle,
+  onCriterionEdit,
+  onCriterionRemove,
+  onCriterionMove,
 }: {
   milestone: RoadmapMilestone;
   busyId: string | null;
   measurements: MilestoneMeasurement[];
   measurementsError: string | null;
+  criteria: AcceptanceCriterion[];
+  criteriaError: string | null;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
   onMetric: (milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void;
   onMeasure?: ((milestone: RoadmapMilestone, input: MeasurementInput) => void) | undefined;
+  onSuccess?: ((milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void) | undefined;
+  onCriterionAdd?: ((milestone: RoadmapMilestone, text: string) => void) | undefined;
+  onCriterionToggle?:
+    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, done: boolean) => void)
+    | undefined;
+  onCriterionEdit?:
+    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, text: string) => void)
+    | undefined;
+  onCriterionRemove?:
+    ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion) => void) | undefined;
+  onCriterionMove?:
+    | ((
+        milestone: RoadmapMilestone,
+        criterion: AcceptanceCriterion,
+        direction: "up" | "down",
+      ) => void)
+    | undefined;
 }) {
   const read = ownedExecutionBoundary(milestone);
   const owned = {
@@ -70,6 +101,7 @@ function MilestoneCard({
   };
   const [note, setNote] = useState("");
   const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState(false);
   const busy = busyId === milestone.id;
 
   return (
@@ -85,17 +117,28 @@ function MilestoneCard({
       <h3 className="mt-3 font-display text-2xl text-foreground">{milestone.name}</h3>
       <p className="mt-1 max-w-reading text-sm text-muted-foreground">{milestone.whatWeBuild}</p>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <Line label="Intended user" value={milestone.intendedUser} />
-        <Line label="Supporting market direction" value={milestone.supportingMarketDirection} />
-        <Line label="Client advantage" value={milestone.clientAdvantage} />
-        <Line label="Current gap" value={milestone.currentGap} />
-        <Line label="Immediate value" value={milestone.immediateValue} />
-        <Line label="Long term value" value={milestone.longTermValue} />
-        <Line label="Dependencies" value={milestone.dependencies.join(", ")} />
-        <Line label="Owned by" value={`${owned.ownerLabel} · ${owned.because}`} />
-        <Line label="Execution boundary" value={owned.boundary} />
-      </div>
+      {onSuccess ? (
+        <SuccessPanel
+          success={milestone.success ?? null}
+          subject={milestone.name}
+          busy={busy}
+          onSave={(input) => onSuccess(milestone, input)}
+        />
+      ) : null}
+
+      {onCriterionAdd ? (
+        <CriteriaPanel
+          criteria={criteria}
+          criteriaError={criteriaError}
+          subject={milestone.name}
+          busy={busy}
+          onAdd={(text) => onCriterionAdd(milestone, text)}
+          onToggle={(criterion, done) => onCriterionToggle?.(milestone, criterion, done)}
+          onEdit={(criterion, text) => onCriterionEdit?.(milestone, criterion, text)}
+          onRemove={(criterion) => onCriterionRemove?.(milestone, criterion)}
+          onMove={(criterion, direction) => onCriterionMove?.(milestone, criterion, direction)}
+        />
+      ) : null}
 
       <MetricPanel
         metric={milestone.outcomeMetric ?? null}
@@ -108,7 +151,30 @@ function MilestoneCard({
         onRecord={onMeasure ? (input) => onMeasure(milestone, input) : undefined}
       />
 
-      <OwnershipInspector read={read.owner} boundary={owned.boundary} subject={milestone.name} />
+      <button
+        type="button"
+        onClick={() => setDetail((value) => !value)}
+        className="mt-5 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+      >
+        {detail ? "Hide milestone detail" : "Milestone detail"}
+      </button>
+      {detail ? (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Line label="Intended user" value={milestone.intendedUser} />
+          <Line label="Supporting market direction" value={milestone.supportingMarketDirection} />
+          <Line label="Client advantage" value={milestone.clientAdvantage} />
+          <Line label="Current gap" value={milestone.currentGap} />
+          <Line label="Immediate value" value={milestone.immediateValue} />
+          <Line label="Long term value" value={milestone.longTermValue} />
+          <Line label="Dependencies" value={milestone.dependencies.join(", ")} />
+          <Line label="Owned by" value={`${owned.ownerLabel} · ${owned.because}`} />
+          <Line label="Execution boundary" value={owned.boundary} />
+        </div>
+      ) : null}
+
+      {detail ? (
+        <OwnershipInspector read={read.owner} boundary={owned.boundary} subject={milestone.name} />
+      ) : null}
 
       <EvidenceList
         evidence={milestone.evidence.map((ref) => ({
@@ -195,6 +261,14 @@ export function MilestonesView({
   measurements = [],
   measurementsError = null,
   onMeasure,
+  criteria = [],
+  criteriaError = null,
+  onSuccess,
+  onCriterionAdd,
+  onCriterionToggle,
+  onCriterionEdit,
+  onCriterionRemove,
+  onCriterionMove,
 }: {
   milestones: RoadmapMilestone[];
   busyId: string | null;
@@ -209,6 +283,26 @@ export function MilestonesView({
   measurements?: MilestoneMeasurement[];
   measurementsError?: string | null;
   onMeasure?: ((milestone: RoadmapMilestone, input: MeasurementInput) => void) | undefined;
+  /** Acceptance criteria across this roadmap, read from Roadmap only. */
+  criteria?: AcceptanceCriterion[];
+  criteriaError?: string | null;
+  onSuccess?: ((milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void) | undefined;
+  onCriterionAdd?: ((milestone: RoadmapMilestone, text: string) => void) | undefined;
+  onCriterionToggle?:
+    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, done: boolean) => void)
+    | undefined;
+  onCriterionEdit?:
+    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, text: string) => void)
+    | undefined;
+  onCriterionRemove?:
+    ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion) => void) | undefined;
+  onCriterionMove?:
+    | ((
+        milestone: RoadmapMilestone,
+        criterion: AcceptanceCriterion,
+        direction: "up" | "down",
+      ) => void)
+    | undefined;
 }) {
   const [filter, setFilter] = useState<MilestoneStatus | "all">("all");
   const [adding, setAdding] = useState(false);
@@ -300,9 +394,17 @@ export function MilestonesView({
               busyId={busyId}
               measurements={measurements.filter((row) => row.milestoneId === milestone.id)}
               measurementsError={measurementsError}
+              criteria={criteria.filter((row) => row.milestoneId === milestone.id)}
+              criteriaError={criteriaError}
               onStatus={onStatus}
               onMetric={onMetric}
               onMeasure={onMeasure}
+              onSuccess={onSuccess}
+              onCriterionAdd={onCriterionAdd}
+              onCriterionToggle={onCriterionToggle}
+              onCriterionEdit={onCriterionEdit}
+              onCriterionRemove={onCriterionRemove}
+              onCriterionMove={onCriterionMove}
             />
           ))}
         </ul>

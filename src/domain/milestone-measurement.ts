@@ -185,13 +185,14 @@ export function sortMeasurements(rows: MilestoneMeasurement[]): MilestoneMeasure
  *
  * Deterministic arithmetic on two numbers a person typed, never a trend and
  * never a forecast. A maintain metric has no distance to travel, so it returns
- * nothing rather than a made up 100.
+ * nothing rather than a made up 100, and a metric with no starting point has
+ * nothing to measure progress from.
  */
 export function progressTowardTarget(
   metric: OutcomeMetric | null | undefined,
   value: number,
 ): number | null {
-  if (!metric) return null;
+  if (!metric || !metric.baseline) return null;
   const span = metric.target.value - metric.baseline.value;
   if (span === 0) return null;
   const travelled = (value - metric.baseline.value) / span;

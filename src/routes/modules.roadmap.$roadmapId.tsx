@@ -74,6 +74,7 @@ import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-s
 import { runRoadmapResearch } from "@/data/roadmap/research-run";
 
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import { useMilestoneAcceptance } from "@/hooks/use-milestone-acceptance";
 import type { MeasurementInput } from "@/domain/milestone-measurement";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
@@ -378,6 +379,18 @@ function RoadmapWorkspace({
       );
       fail(cause);
     },
+  });
+
+  /**
+   * Outcomes and acceptance criteria (the everyday path). Same Roadmap service
+   * the Project workroom calls, through the same hook.
+   */
+  const acceptance = useMilestoneAcceptance({
+    context: intelContext,
+    criteria: intelQuery.data?.criteria ?? [],
+    label: detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
+    refresh,
+    setBusyId,
   });
 
   /**
@@ -915,6 +928,14 @@ function RoadmapWorkspace({
                   milestoneStatus.mutate({ milestone, status, note })
                 }
                 onMetric={(milestone, metric) => milestoneMetric.mutate({ milestone, metric })}
+                criteria={intelQuery.data?.criteria ?? []}
+                criteriaError={acceptance.error ?? intelQuery.data?.criteriaError ?? null}
+                onSuccess={acceptance.onSuccess}
+                onCriterionAdd={acceptance.onCriterionAdd}
+                onCriterionToggle={acceptance.onCriterionToggle}
+                onCriterionEdit={acceptance.onCriterionEdit}
+                onCriterionRemove={acceptance.onCriterionRemove}
+                onCriterionMove={acceptance.onCriterionMove}
                 measurements={intelQuery.data?.measurements ?? []}
                 measurementsError={measureError ?? intelQuery.data?.measurementsError ?? null}
                 onMeasure={(milestone, input) => milestoneMeasure.mutate({ milestone, input })}

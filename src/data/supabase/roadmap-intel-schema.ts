@@ -29,6 +29,7 @@ import type {
 } from "@/domain/roadmap-intel";
 import { MILESTONE_STATUSES } from "@/domain/roadmap-intel";
 import { readOutcomeMetric } from "@/domain/milestone-metric";
+import { readMilestoneSuccess } from "@/domain/milestone-success";
 
 export type Row = Record<string, unknown>;
 
@@ -246,6 +247,7 @@ export function toMilestone(row: Row): RoadmapMilestone {
     // Honest absence: an environment without the column, or a milestone nobody
     // has given a metric, both read as no metric at all.
     outcomeMetric: readOutcomeMetric(row["outcome_metric"]),
+    success: readMilestoneSuccess(row["success_definition"]),
     createdAt: str(row["created_at"], new Date().toISOString()),
     updatedAt: str(row["updated_at"], new Date().toISOString()),
   };
