@@ -61,6 +61,13 @@ import {
   reorderCriteria,
   sortCriteria,
 } from "@/domain/milestone-criteria";
+import type { CriterionEvidence, CriterionEvidenceType } from "@/domain/criterion-evidence";
+import {
+  checkEvidenceInput,
+  criterionEvidencePath,
+  evidenceEventKey,
+} from "@/domain/criterion-evidence";
+import { PROJECT_FILES_BUCKET } from "@/domain/project-delivery";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import {
   MANUAL_PRIORITY_RATIONALE,
