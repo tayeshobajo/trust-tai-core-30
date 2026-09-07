@@ -94,18 +94,30 @@ describe("milestoneLifecycle", () => {
     ]);
     expect(read.step).toBe("acceptance");
     expect(read.ready).toBe(true);
-    expect(read.decided).toBe(false);
-    expect(read.headline).toContain("still yours");
+    expect(read.headline).toContain("ready for your acceptance");
   });
 
-  it("reads as decided only after a person approved it", () => {
+  it("never reads roadmap approval as delivery completion", () => {
+    // The real Mental Dental shape: approved into the roadmap, no outcome
+    // written, one open condition, evidence attached.
+    const read = milestoneLifecycle(
+      milestone({ status: "approved", tier: "decided", evidence: [] }),
+      [criterion({ done: false })],
+    );
+    expect(read.step).toBe("outcome");
+    expect(read.ready).toBe(false);
+    expect(read.fix).toBe("outcome");
+    expect(read.headline).toContain("success looks like");
+  });
+
+  it("stays unready for an approved milestone whose conditions are open", () => {
     const read = milestoneLifecycle(
       milestone({ ...withOutcome, status: "approved", tier: "decided" }),
-      [criterion({ done: true })],
+      [criterion({ done: false })],
     );
-    expect(read.step).toBe("decided");
+    expect(read.step).toBe("criteria");
     expect(read.ready).toBe(false);
-    expect(read.decided).toBe(true);
+    expect(read.progressLabel).toBe("0/1");
   });
 
   it("ignores criteria that belong to another milestone", () => {

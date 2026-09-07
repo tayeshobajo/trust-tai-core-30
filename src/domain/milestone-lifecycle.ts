@@ -12,15 +12,16 @@
  *   1. Progress is derived from acceptance criteria only. Attached proof never
  *      counts towards it.
  *   2. A full checklist is readiness, never a decision. Nothing in this module
- *      completes a milestone; only a person does, through the existing status
- *      service.
+ *      completes a milestone, and roadmap approval (status `approved` at
+ *      `decided` tier) means the milestone was selected into the roadmap, not
+ *      that delivery was accepted. No completion truth exists yet.
  */
 
 import { criteriaProgress, type AcceptanceCriterion } from "./milestone-criteria";
 import type { RoadmapMilestone } from "./roadmap-intel";
 
 /** Where the milestone stands, in the order a person works through it. */
-export type LifecycleStep = "outcome" | "criteria" | "acceptance" | "decided";
+export type LifecycleStep = "outcome" | "criteria" | "acceptance";
 
 /** What a person can do next, when something is missing. */
 export type LifecycleFix = "outcome" | "criteria" | null;
@@ -35,8 +36,6 @@ export interface MilestoneLifecycle {
   progressLabel: string;
   /** True only when a person may make the final call now. */
   ready: boolean;
-  /** True once a person has already decided this milestone. */
-  decided: boolean;
   /** One plain line for the current state. */
   headline: string;
   /** What still has to be true, or null when nothing does. */
@@ -50,11 +49,11 @@ export interface MilestoneLifecycle {
 const STEP_LABEL: Record<LifecycleStep, string> = {
   outcome: "Describe success",
   criteria: "Work through the conditions",
-  acceptance: "Ready for your decision",
-  decided: "Decided",
+  acceptance: "Ready for acceptance",
 };
 
-export const ACCEPTANCE_READY = "Every condition is checked. The decision is still yours.";
+export const ACCEPTANCE_READY =
+  "Every condition is checked. This is ready for your acceptance; there is no place to record that decision yet.";
 
 export function milestoneLifecycle(
   milestone: RoadmapMilestone,
@@ -64,22 +63,8 @@ export function milestoneLifecycle(
   const progress = criteriaProgress(rows);
   const progressLabel = progress.total > 0 ? `${progress.done}/${progress.total}` : "";
   const outcome = milestone.success?.outcome?.trim() ?? "";
-  const decided = milestone.status === "approved" && milestone.tier === "decided";
 
-  const base = { progress, progressLabel, decided };
-
-  if (decided) {
-    return {
-      ...base,
-      step: "decided",
-      stepLabel: STEP_LABEL.decided,
-      ready: false,
-      headline: "A person has accepted this milestone.",
-      remaining: null,
-      fix: null,
-      fixLabel: null,
-    };
-  }
+  const base = { progress, progressLabel };
 
   if (!outcome) {
     return {

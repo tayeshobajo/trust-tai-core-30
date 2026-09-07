@@ -762,11 +762,14 @@ never substitutes for judgment.
 - Acceptance progress is derived from acceptance criteria only. Attached proof
   never counts towards it, and no new stored status exists merely to show
   progress.
-- Completion reuses the existing milestone status service exactly. `approved`
-  at `decided` tier is the human acceptance; no `accepted` or `complete`
-  status is invented, and no second lifecycle store exists.
-- The final action is offered only when every current condition is checked,
-  and it still requires an explicit confirmation. Checking the last box never
-  completes anything.
+- Roadmap approval and delivery acceptance are different things. `approved` at
+  `decided` tier means a person selected this milestone into the roadmap path;
+  it does NOT mean the work was delivered or accepted. Nothing may render an
+  approved milestone as complete.
+- No canonical completion truth exists yet. Until one is explicitly defined,
+  the surface may say a milestone is ready for acceptance when every condition
+  is checked, and MUST NOT offer an action that writes the approval status as
+  if it completed the milestone. No `accepted` or `complete` status is
+  invented, and no second lifecycle store exists.
 - When something is missing, the surface says which thing and offers the
   action that resolves it on the same Client > Work page (Canon 16).

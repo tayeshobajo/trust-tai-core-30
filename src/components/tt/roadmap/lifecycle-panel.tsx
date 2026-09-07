@@ -2,9 +2,11 @@
  * The milestone lifecycle strip: where this milestone stands, what still has
  * to be true, and the one human decision at the end of it.
  *
- * Nothing here decides anything. When every condition is checked it offers a
- * person one clear action; when something is missing it says what, and offers
- * the action that resolves it on this same surface.
+ * Nothing here decides anything. When every condition is checked it says the
+ * milestone is ready for acceptance, and stops: there is no canonical place to
+ * record delivery acceptance yet, and roadmap approval is not that. When
+ * something is missing it says what, and offers the action that resolves it on
+ * this same surface.
  */
 
 import { MetaPill, TTButton } from "@/components/tt/primitives";
@@ -15,15 +17,12 @@ export function LifecyclePanel({
   subject,
   busy,
   onFix,
-  onAccept,
 }: {
   lifecycle: MilestoneLifecycle;
   subject: string;
   busy: boolean;
   /** Opens the outcome editor, when that is what is missing. */
   onFix?: (() => void) | undefined;
-  /** Proposes the final human decision. It still has to be confirmed. */
-  onAccept?: (() => void) | undefined;
 }) {
   const { progress } = lifecycle;
   const percent = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
@@ -53,13 +52,7 @@ export function LifecyclePanel({
         <p className="mt-1 max-w-reading text-sm text-muted-foreground">{lifecycle.remaining}</p>
       ) : null}
 
-      {lifecycle.ready && onAccept ? (
-        <div className="mt-4">
-          <TTButton size="sm" disabled={busy} onClick={onAccept}>
-            Accept and complete
-          </TTButton>
-        </div>
-      ) : lifecycle.fix === "outcome" && lifecycle.fixLabel && onFix ? (
+      {!lifecycle.ready && lifecycle.fix === "outcome" && lifecycle.fixLabel && onFix ? (
         <div className="mt-4">
           <TTButton size="sm" variant="secondary" disabled={busy} onClick={onFix}>
             {lifecycle.fixLabel}
