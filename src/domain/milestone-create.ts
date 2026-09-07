@@ -29,16 +29,13 @@ export interface ManualMilestone {
 }
 
 export type ManualMilestoneCheck =
-  | { ok: true; milestone: ManualMilestone }
-  | { ok: false; refusal: string };
+  { ok: true; milestone: ManualMilestone } | { ok: false; refusal: string };
 
 export const MIN_MILESTONE_NAME = 4;
 export const MAX_MILESTONE_NAME = 160;
 
 /** Why a manual milestone carries no research score. Stated, not implied. */
-export const MANUAL_PRIORITY_RATIONALE = [
-  "Created by a person, not ranked by a research pass.",
-];
+export const MANUAL_PRIORITY_RATIONALE = ["Created by a person, not ranked by a research pass."];
 
 function clean(value: string | undefined): string {
   return (value ?? "").replace(/\s+/g, " ").trim();

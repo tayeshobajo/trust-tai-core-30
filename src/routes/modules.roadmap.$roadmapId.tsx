@@ -431,9 +431,7 @@ function RoadmapWorkspace({
     },
     onSuccess: refresh,
     onError: (error) =>
-      setCreateError(
-        error instanceof Error ? error.message : "The milestone could not be saved.",
-      ),
+      setCreateError(error instanceof Error ? error.message : "The milestone could not be saved."),
   });
 
   /**

@@ -516,8 +516,6 @@ const roadmapIntelRaw = {
     return toMilestone(data as Row);
   },
 
-
-
   /** Only this path can make a milestone Decided, and only a person calls it. */
   async setMilestoneStatus(
     context: IntelContext,

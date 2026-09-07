@@ -255,7 +255,6 @@ export function MilestonesView({
 
       {adding ? form : null}
 
-
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((entry) => (
           <button
