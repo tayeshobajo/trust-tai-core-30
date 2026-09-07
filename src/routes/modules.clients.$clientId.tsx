@@ -564,6 +564,7 @@ function ClientShell({
               client={{ name: record.name, websiteUrl: record.websiteUrl }}
               now={now}
               timeZone={timeZone}
+              roadmapProject={overviewRoadmapProject}
               exchange={exchangeWindow}
               commercial={{
                 headline: card.commercialLine,
@@ -591,7 +592,11 @@ function ClientShell({
 
           {tab === "roadmap" ? (
             <div className="space-y-8">
-              <RoadmapTab read={roadmapOutcomes} loading={roadmapsQuery.isLoading} />
+              <RoadmapTab
+                read={roadmapOutcomes}
+                loading={roadmapsQuery.isLoading}
+                projects={projects}
+              />
               <ProposalPanel
                 nodes={proposalNodes}
                 pendingRoadmapId={pendingProposalId}
