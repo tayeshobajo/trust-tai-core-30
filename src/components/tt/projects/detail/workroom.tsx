@@ -747,7 +747,7 @@ export function ProjectWorkroom({
 
   return (
     <div className="space-y-6">
-      <UtilityRow row={row} previous={previous} next={next} />
+      {embedded ? null : <UtilityRow row={row} previous={previous} next={next} />}
 
       <ProjectIdentityHeader
         row={row}
