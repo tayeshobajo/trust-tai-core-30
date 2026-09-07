@@ -655,7 +655,18 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
         : "That change could not be saved."
       : null;
 
-  const openTab = (value: "work" | "blockers" | "decisions") => setTab(value);
+  /**
+   * Older tabs are now sections. Opening one opens the surface that owns it and
+   * scrolls to it, so nothing that used to be reachable became unreachable.
+   */
+  const openTab = (section: ProjectSection) => {
+    setTab(surfaceForSection(section));
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(sectionAnchor(section))?.scrollIntoView({ behavior: "smooth" });
+    });
+  };
+
 
   return (
     <div className="space-y-6">
