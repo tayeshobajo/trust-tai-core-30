@@ -372,6 +372,12 @@ const roadmapIntelRaw = {
           .eq("roadmap_id", roadmapId)
           .order("position", { ascending: true })
           .limit(500),
+        supabase
+          .from("roadmap_criterion_evidence")
+          .select("*")
+          .eq("roadmap_id", roadmapId)
+          .order("created_at", { ascending: true })
+          .limit(1000),
       ]);
 
     assertOk(research.error);
@@ -399,7 +405,12 @@ const roadmapIntelRaw = {
       criteriaError: criteria.error
         ? "The acceptance checklist could not be read here yet, so nothing is shown rather than an empty checklist."
         : null,
+      criterionEvidence: ((criterionEvidence.data ?? []) as Row[]).map(toCriterionEvidence),
+      criterionEvidenceError: criterionEvidence.error
+        ? "Attached evidence could not be read here yet, so nothing is shown rather than an empty list."
+        : null,
     };
+
   },
 
   /* ---------------------------------------------------------- research */
