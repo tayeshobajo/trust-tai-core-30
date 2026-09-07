@@ -893,7 +893,7 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
                   )}
                   {isOpenProject(project) ? (
                     <LaunchOpsButton
-                      variant="quiet"
+                      variant="secondary"
                       label="Open in Ops"
                       organizationId={org}
                       returnContext="project"
