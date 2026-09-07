@@ -874,88 +874,99 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
                     mutate.mutate(() => projectDelivery.moveWork(item, status, delivery))
                   }
                 />
-                {isOpenProject(project) ? (
-                  <>
-                    <section
-                      aria-label="Technical stewardship"
-                      className="tt-surface space-y-3 p-6"
-                    >
-                      <p className="tt-eyebrow">Ops</p>
-                      <p className="max-w-reading text-[15px] text-foreground">
-                        Ops runs the technical work for this project. Your session is handed over
-                        securely and this project&apos;s id travels with it.
-                      </p>
-                      <LaunchOpsButton
-                        variant="secondary"
-                        label="Open in Ops"
-                        organizationId={org}
-                        returnContext="project"
-                        canonicalProjectId={project.id}
-                      />
-                    </section>
-                    <RouteWork
-                      project={project}
-                      context={projectsContext}
-                      access={workspaceAccess(identity)}
+
+                {/* Small doorways, not permanent forms. Every capability stays
+                    one click away, and none of them holds the page open. */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {CONTEXTUAL_PANELS.map((entry) =>
+                    entry === "route" && !isOpenProject(project) ? null : (
+                      <TTButton
+                        key={entry}
+                        size="sm"
+                        variant={panel === entry ? "primary" : "quiet"}
+                        onClick={() => setPanel(panel === entry ? null : entry)}
+                        disabled={busy}
+                      >
+                        {panel === entry ? "Close" : PANEL_DOORWAY[entry]}
+                      </TTButton>
+                    ),
+                  )}
+                  {isOpenProject(project) ? (
+                    <LaunchOpsButton
+                      variant="quiet"
+                      label="Open in Ops"
+                      organizationId={org}
+                      returnContext="project"
+                      canonicalProjectId={project.id}
                     />
-                  </>
+                  ) : null}
+                </div>
+
+                <BlockersTab
+                  items={items}
+                  blockers={blockers}
+                  busy={busy}
+                  showForm={
+                    panelVisibility({
+                      active: blockers.length,
+                      opened: panel,
+                      panel: "blocker",
+                    }) === "form"
+                  }
+                  onRaise={(input) =>
+                    mutate.mutate(() => projectDelivery.raiseBlocker(input, delivery))
+                  }
+                  onResolve={(blocker, resolution, resumeWork) =>
+                    mutate.mutate(async () => {
+                      const saved = await projectDelivery.resolveBlocker(
+                        blocker,
+                        resolution,
+                        delivery,
+                      );
+                      // Clearing a blocker may put its work item back in motion. Roadmap
+                      // truth is untouched: only the delivery record moves.
+                      const linked = blocker.workItemId
+                        ? items.find((entry) => entry.id === blocker.workItemId)
+                        : undefined;
+                      if (resumeWork && linked && linked.status === "blocked") {
+                        await projectDelivery.moveWork(linked, "in_progress", delivery);
+                      }
+                      return saved;
+                    })
+                  }
+                />
+
+                <DecisionsTab
+                  items={items}
+                  decisions={decisions}
+                  busy={busy}
+                  showForm={
+                    panelVisibility({
+                      active: decisions.length,
+                      opened: panel,
+                      panel: "decision",
+                    }) === "form"
+                  }
+                  onAsk={(input) =>
+                    mutate.mutate(() => projectDelivery.askDecision(input, delivery))
+                  }
+                  onAnswer={(decision, answer) =>
+                    mutate.mutate(() => projectDelivery.answerDecision(decision, answer, delivery))
+                  }
+                />
+
+                {isOpenProject(project) ? (
+                  <RouteWork
+                    project={project}
+                    context={projectsContext}
+                    access={workspaceAccess(identity)}
+                    showForm={panel === "route"}
+                  />
                 ) : null}
               </div>
             </WorkroomSection>
           ) : null}
 
-          {tab === "overview" ? (
-            <WorkroomSection
-              section="blockers"
-              title="Blockers"
-              description="What is stopping this from moving, and what cleared it."
-            >
-              <BlockersTab
-                items={items}
-                blockers={blockers}
-                busy={busy}
-                onRaise={(input) =>
-                  mutate.mutate(() => projectDelivery.raiseBlocker(input, delivery))
-                }
-                onResolve={(blocker, resolution, resumeWork) =>
-                  mutate.mutate(async () => {
-                    const saved = await projectDelivery.resolveBlocker(
-                      blocker,
-                      resolution,
-                      delivery,
-                    );
-                    // Clearing a blocker may put its work item back in motion. Roadmap
-                    // truth is untouched: only the delivery record moves.
-                    const linked = blocker.workItemId
-                      ? items.find((entry) => entry.id === blocker.workItemId)
-                      : undefined;
-                    if (resumeWork && linked && linked.status === "blocked") {
-                      await projectDelivery.moveWork(linked, "in_progress", delivery);
-                    }
-                    return saved;
-                  })
-                }
-              />
-            </WorkroomSection>
-          ) : null}
-
-          {tab === "overview" ? (
-            <WorkroomSection
-              section="decisions"
-              title="Decisions"
-              description="Questions this work is waiting on, and the answers people gave."
-            >
-              <DecisionsTab
-                items={items}
-                decisions={decisions}
-                busy={busy}
-                onAsk={(input) => mutate.mutate(() => projectDelivery.askDecision(input, delivery))}
-                onAnswer={(decision, answer) =>
-                  mutate.mutate(() => projectDelivery.answerDecision(decision, answer, delivery))
-                }
-              />
-            </WorkroomSection>
-          ) : null}
 
           {tab === "files" ? (
             <FilesTab
