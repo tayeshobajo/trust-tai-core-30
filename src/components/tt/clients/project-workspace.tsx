@@ -1,18 +1,18 @@
 /**
- * The client's projects, operated without leaving the client.
+ * Work: all delivery for one company, operated inside the client workspace.
  *
- * Serving one company should not mean walking between rooms. The list on the
- * left is this company's delivery work; picking one loads that project's own
- * workroom in place, from the same component and the same canonical services
- * the standalone Projects room uses. Nothing here holds a second copy of a
- * project, a roadmap, a milestone or a conversation.
+ * The Client page is Home for that company, so there is exactly one primary
+ * navigation. This surface adds no second menu: a compact switcher chooses the
+ * current work context when the company has more than one project, and the
+ * selected project's own operating page renders in place, composed from the
+ * same canonical Projects and Roadmap services the standalone rooms use.
+ * Nothing here holds a second copy of a project, a roadmap or a milestone.
  */
 
 import { Link } from "@tanstack/react-router";
 
 import { ProjectWorkroom } from "@/components/tt/projects/detail/workroom";
 import { EmptyState, MetaPill } from "@/components/tt/primitives";
-import type { ProjectTab } from "@/components/tt/projects/detail/frame";
 import type { ExecutionProject } from "@/domain/projects";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
@@ -26,19 +26,15 @@ export function ClientProjectWorkspace({
   identity,
   projects,
   selectedId,
-  surface,
   loading,
   onSelect,
-  onSurfaceChange,
 }: {
   identity: WorkspaceIdentity;
   projects: ExecutionProject[];
   /** The project currently open in this client workspace, if any. */
   selectedId: string | null;
-  surface: ProjectTab;
   loading: boolean;
   onSelect: (projectId: string) => void;
-  onSurfaceChange: (tab: ProjectTab) => void;
 }) {
   if (loading) {
     return <p className="text-sm text-muted-foreground">Reading delivery work…</p>;
@@ -62,48 +58,35 @@ export function ClientProjectWorkspace({
   const selected = projects.find((project) => project.id === selectedId) ?? projects[0]!;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
-      <nav aria-label="Projects for this company" className="lg:sticky lg:top-24 lg:self-start">
-        <p className="tt-eyebrow">This company&apos;s projects</p>
-        <ul className="mt-3 space-y-1">
+    <div className="space-y-6">
+      {projects.length > 1 ? (
+        <div className="tt-surface flex flex-wrap items-center gap-2 px-4 py-3">
+          <span className="tt-eyebrow mr-1">Current work</span>
           {projects.map((project) => {
             const active = project.id === selected.id;
             const state = STATE_LABEL[project.state];
             return (
-              <li key={project.id}>
-                <button
-                  type="button"
-                  aria-current={active ? "true" : undefined}
-                  onClick={() => onSelect(project.id)}
-                  className={cn(
-                    "w-full rounded-lg border px-3 py-2.5 text-left transition-colors",
-                    active
-                      ? "border-royal/40 bg-secondary"
-                      : "border-transparent hover:bg-secondary/60",
-                  )}
-                >
-                  <span className="block truncate text-[14px] text-foreground">{project.name}</span>
-                  {state ? <MetaPill className="mt-1">{state}</MetaPill> : null}
-                </button>
-              </li>
+              <button
+                key={project.id}
+                type="button"
+                aria-current={active ? "true" : undefined}
+                onClick={() => onSelect(project.id)}
+                className={cn(
+                  "inline-flex max-w-[18rem] items-center gap-2 rounded-full border px-3 py-1.5 text-[13px] transition-colors",
+                  active
+                    ? "border-royal/40 bg-secondary font-medium text-foreground"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span className="truncate">{project.name}</span>
+                {state ? <MetaPill>{state}</MetaPill> : null}
+              </button>
             );
           })}
-        </ul>
-        <p className="mt-4 text-[12px] text-muted-foreground">
-          Switching projects keeps you inside this company.
-        </p>
-      </nav>
+        </div>
+      ) : null}
 
-      <div className="min-w-0">
-        <ProjectWorkroom
-          key={selected.id}
-          identity={identity}
-          projectId={selected.id}
-          embedded
-          surface={surface}
-          onSurfaceChange={onSurfaceChange}
-        />
-      </div>
+      <ProjectWorkroom key={selected.id} identity={identity} projectId={selected.id} embedded mode="composed" />
     </div>
   );
 }
