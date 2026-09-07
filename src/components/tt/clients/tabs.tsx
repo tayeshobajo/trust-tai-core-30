@@ -75,7 +75,7 @@ export function ProjectRow({
               <Link
                 to="/modules/clients/$clientId"
                 params={{ clientId }}
-                search={{ tab: "projects", project: project.id }}
+                search={{ tab: "work", project: project.id }}
                 className="underline-offset-4 hover:underline"
               >
                 {project.name}
@@ -99,7 +99,7 @@ export function ProjectRow({
           <Link
             to="/modules/clients/$clientId"
             params={{ clientId }}
-            search={{ tab: "projects", project: project.id }}
+            search={{ tab: "work", project: project.id }}
             className="shrink-0 text-[13px] font-medium text-royal"
           >
             <OpenIn>Open project workspace</OpenIn>
