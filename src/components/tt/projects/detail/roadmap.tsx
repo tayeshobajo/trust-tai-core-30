@@ -153,6 +153,7 @@ export function ProjectRoadmapTab({
   criteriaError = null,
   evidence = [],
   evidenceError = null,
+  deliveryProject,
   onSuccess,
   onAccept,
   onReopen,
