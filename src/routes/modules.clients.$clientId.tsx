@@ -19,13 +19,14 @@ import { CommercialPanel } from "@/components/tt/clients/commercial-panel";
 import { ProposalPanel } from "@/components/tt/clients/proposal-panel";
 import { ClientHeader, ClientTabs } from "@/components/tt/clients/shell";
 import { OverviewTab } from "@/components/tt/clients/overview";
+import { CommercialTab } from "@/components/tt/clients/commercial-tab";
 import {
-  FilesTab,
-  ProjectsTab,
-  RelationshipTab,
-  RoadmapTab,
-  SiteTab,
-} from "@/components/tt/clients/tabs";
+  ClientChatTab,
+  type ClientChatAnswer,
+  type ClientChatEntry,
+  type ClientProposalState,
+} from "@/components/tt/clients/chat";
+import { FilesTab, ProjectsTab, RelationshipTab } from "@/components/tt/clients/tabs";
 
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -68,6 +69,18 @@ import {
 } from "@/domain/client-shell";
 import { relationshipWindow } from "@/data/clients/relationship-window";
 import { listRelationshipMessages } from "@/data/supabase/comms-messages";
+
+import { attentionItems } from "@/domain/client-overview";
+import { clientContextPacket } from "@/domain/client-context-packet";
+import {
+  clientProposalAlreadyApplied,
+  clientProposalReceipt,
+  clientProposalStale,
+  prepareClientProposal,
+  type ClientChangeIntent,
+  type ClientOtherRoom,
+} from "@/domain/client-chat-proposal";
+import { supabase } from "@/integrations/trust-tai/supabase";
 
 import type { CommercialFormPatch } from "@/domain/client-commercial-form";
 import { projectLinkedToRoadmap } from "@/domain/project-roadmap-link";
