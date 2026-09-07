@@ -71,11 +71,8 @@ import { WalkthroughView } from "@/components/tt/roadmap/walkthrough-view";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { roadmapService, type RoadmapContext } from "@/data/supabase/roadmap-service";
 import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-service";
-import {
-  normalizeMilestones,
-  normalizeResearch,
-  normalizeStrategy,
-} from "@/data/roadmap-research-parse";
+import { runRoadmapResearch } from "@/data/roadmap/research-run";
+
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
