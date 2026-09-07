@@ -240,6 +240,7 @@ export function CriteriaPanel({
     setText("");
     setAdding(false);
     onAdd(checked.text);
+    toast.success("Condition added");
   };
 
   return (
