@@ -386,12 +386,15 @@ export function DecisionsTab({
   items,
   decisions,
   busy,
+  showForm = true,
   onAsk,
   onAnswer,
 }: {
   items: WorkItem[];
   decisions: ProjectDecision[];
   busy: boolean;
+  /** The asking form only appears when a person asked to raise a question. */
+  showForm?: boolean;
   onAsk: (input: ProjectDecisionInput) => void;
   onAnswer: (decision: ProjectDecision, answer: string) => void;
 }) {
@@ -405,9 +408,13 @@ export function DecisionsTab({
   const open = decisions.filter((entry) => entry.status === "open");
   const answered = decisions.filter((entry) => entry.status === "answered");
 
+  if (!showForm && decisions.length === 0) return null;
+
   return (
     <div className="space-y-5">
+      {showForm ? (
       <Panel title="Ask for a decision">
+
         <form
           className="space-y-3"
           onSubmit={(event) => {
