@@ -9,6 +9,7 @@
  */
 
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { MetaPill, TTButton, TTInput } from "@/components/tt/primitives";
 import {
@@ -239,6 +240,7 @@ export function CriteriaPanel({
     setText("");
     setAdding(false);
     onAdd(checked.text);
+    toast.success("Condition added");
   };
 
   return (

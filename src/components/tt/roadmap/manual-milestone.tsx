@@ -7,7 +7,10 @@
  * stays empty rather than being invented for them.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import { useReveal } from "@/lib/reveal";
 
 import { TTButton, TTInput } from "@/components/tt/primitives";
 import { checkManualMilestone, type ManualMilestoneInput } from "@/domain/milestone-create";
@@ -27,6 +30,13 @@ export function ManualMilestoneForm({
   const [whatWeBuild, setWhatWeBuild] = useState("");
   const [executionBoundary, setExecutionBoundary] = useState("");
   const [refusal, setRefusal] = useState<string | null>(null);
+  const panel = useReveal<HTMLDivElement>();
+
+  // The form appears in response to a click elsewhere on the page, so it
+  // announces itself: into view, briefly emphasised, cursor in the first field.
+  useEffect(() => {
+    panel.reveal();
+  }, [panel]);
 
   function submit() {
     const checked = checkManualMilestone({ name, whatWeBuild, executionBoundary });
@@ -36,10 +46,11 @@ export function ManualMilestoneForm({
     }
     setRefusal(null);
     onCreate(checked.milestone);
+    toast.success("Milestone added", { description: checked.milestone.name });
   }
 
   return (
-    <div className="tt-surface space-y-4 p-5">
+    <div ref={panel.ref} className="tt-surface tt-panel-enter tt-reveal-target space-y-4 p-5">
       <div>
         <p className="tt-eyebrow">Add milestone</p>
         <p className="mt-1 max-w-reading text-sm text-muted-foreground">
