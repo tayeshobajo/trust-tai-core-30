@@ -767,3 +767,122 @@ describe("errors", () => {
     spy.mockRestore();
   });
 });
+
+/**
+ * Outcomes and acceptance criteria: the everyday milestone path.
+ *
+ * People describe success, the system structures measurement. Nothing here
+ * completes a milestone on its own, and both the Roadmap room and the Project
+ * workroom reach these through this one service.
+ */
+describe("milestone outcome and acceptance criteria", () => {
+  async function milestone() {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Front facing pages"),
+    ]);
+    return written[0]!;
+  }
+
+  it("records a plain outcome with no numbers anywhere", async () => {
+    const updated = await roadmapIntel.setMilestoneSuccess(
+      CONTEXT,
+      await milestone(),
+      { outcome: "Front facing pages redesigned and approved", targetDate: "2026-09-30" },
+      "Northbeam",
+    );
+    expect(updated.success?.outcome).toBe("Front facing pages redesigned and approved");
+    expect(updated.success?.targetDate).toBe("2026-09-30");
+    expect(updated.success?.tier).toBe("decided");
+    expect(updated.success?.recordedBy).toBe("user-1");
+    expect(updated.outcomeMetric).toBeNull();
+  });
+
+  it("refuses an outcome nobody wrote", async () => {
+    await expect(
+      roadmapIntel.setMilestoneSuccess(CONTEXT, await milestone(), { outcome: " " }, "Northbeam"),
+    ).rejects.toThrow(/what success looks like/i);
+  });
+
+  it("adds, rewords, checks, unchecks and removes a condition", async () => {
+    const subject = await milestone();
+    const first = await roadmapIntel.addCriterion(CONTEXT, subject, "Home page approved", "N");
+    expect(first.position).toBe(1);
+    expect(first.done).toBe(false);
+
+    const second = await roadmapIntel.addCriterion(CONTEXT, subject, "About page approved", "N");
+    expect(second.position).toBe(2);
+
+    const reworded = await roadmapIntel.editCriterion(CONTEXT, first, "Home page signed off", "N");
+    expect(reworded.text).toBe("Home page signed off");
+
+    const checked = await roadmapIntel.setCriterionDone(CONTEXT, reworded, true, "N");
+    expect(checked.done).toBe(true);
+    expect(checked.completedBy).toBe("user-1");
+
+    await expect(roadmapIntel.removeCriterion(CONTEXT, checked, "N")).rejects.toThrow(/Uncheck/i);
+
+    const reopened = await roadmapIntel.setCriterionDone(CONTEXT, checked, false, "N");
+    expect(reopened.done).toBe(false);
+    await roadmapIntel.removeCriterion(CONTEXT, reopened, "N");
+
+    const left = await roadmapIntel.listCriteria(subject.id);
+    expect(left.map((row) => row.text)).toEqual(["About page approved"]);
+  });
+
+  it("writes the same condition once", async () => {
+    const subject = await milestone();
+    const first = await roadmapIntel.addCriterion(CONTEXT, subject, "Home page approved", "N");
+    const again = await roadmapIntel.addCriterion(CONTEXT, subject, " home page approved ", "N");
+    expect(again.id).toBe(first.id);
+    expect((await roadmapIntel.listCriteria(subject.id)).length).toBe(1);
+  });
+
+  it("refuses a condition nobody can check", async () => {
+    await expect(
+      roadmapIntel.addCriterion(CONTEXT, await milestone(), "  ", "N"),
+    ).rejects.toThrow(/condition/i);
+  });
+
+  it("never completes a milestone because every box is checked", async () => {
+    const subject = await milestone();
+    const one = await roadmapIntel.addCriterion(CONTEXT, subject, "Home page approved", "N");
+    await roadmapIntel.setCriterionDone(CONTEXT, one, true, "N");
+
+    const read = await roadmapIntel.load(ROADMAP);
+    const after = read.milestones.find((row) => row.id === subject.id)!;
+    expect(after.status).toBe(subject.status);
+    expect(after.status).not.toBe("approved");
+    expect(read.criteria.every((row) => row.done)).toBe(true);
+  });
+
+  it("reads the checklist back in order for the whole roadmap", async () => {
+    const subject = await milestone();
+    await roadmapIntel.addCriterion(CONTEXT, subject, "Home page approved", "N");
+    await roadmapIntel.addCriterion(CONTEXT, subject, "About page approved", "N");
+    const read = await roadmapIntel.load(ROADMAP);
+    expect(read.criteria.map((row) => row.text)).toEqual([
+      "Home page approved",
+      "About page approved",
+    ]);
+    expect(read.criteriaError).toBeNull();
+  });
+});
+
+/**
+ * Canon 17: the Project workroom operates Roadmap truth through Roadmap's own
+ * service and Roadmap's own component. There is no second implementation.
+ */
+describe("one service for both rooms", () => {
+  it("wires the Project workroom and the Roadmap room to the same hook", async () => {
+    const fs = await import("node:fs/promises");
+    const roadmapRoom = await fs.readFile("src/routes/modules.roadmap.$roadmapId.tsx", "utf8");
+    const workroom = await fs.readFile("src/routes/modules.projects.$projectId.tsx", "utf8");
+    for (const source of [roadmapRoom, workroom]) {
+      expect(source).toContain("useMilestoneAcceptance");
+      expect(source).toContain("roadmapIntel");
+    }
+    const tab = await fs.readFile("src/components/tt/projects/detail/roadmap.tsx", "utf8");
+    expect(tab).toContain("MilestonesView");
+    expect(tab).not.toContain("supabase");
+  });
+});
