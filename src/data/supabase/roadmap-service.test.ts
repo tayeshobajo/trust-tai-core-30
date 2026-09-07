@@ -313,3 +313,67 @@ describe("delete", () => {
     expect(second.roadmap.id).not.toBe(first.roadmap.id);
   });
 });
+
+/**
+ * P3-03: a person writing Point A and Point B by hand. Same store, same
+ * activity stream, no model in the path. A human sentence is decided truth,
+ * so Point B written this way never waits for a second approval.
+ */
+describe("human-written Point A and Point B", () => {
+  async function draft() {
+    seedProspect();
+    return roadmapService.create(
+      { subject: { kind: "prospect", id: "prospect-1" }, objective: "Win the rebuild" },
+      CONTEXT,
+    );
+  }
+
+  it("records Point A facts as observed truth", async () => {
+    const detail = await draft();
+    const updated = await roadmapService.setPointA(
+      detail.roadmap.id,
+      detail.roadmap.subjectLabel,
+      [{ value: "Two clinics, one operator." }, { value: "No intake process." }],
+      CONTEXT,
+    );
+    expect(updated.pointA.map((note) => note.value)).toEqual([
+      "Two clinics, one operator.",
+      "No intake process.",
+    ]);
+    expect(updated.pointA.every((note) => note.tier === "observed")).toBe(true);
+  });
+
+  it("records nothing new when Point A is unchanged", async () => {
+    const detail = await draft();
+    const facts = [{ value: "Two clinics, one operator." }];
+    await roadmapService.setPointA(detail.roadmap.id, detail.roadmap.subjectLabel, facts, CONTEXT);
+    const before = (db.tables["activities"] ?? []).length;
+    await roadmapService.setPointA(detail.roadmap.id, detail.roadmap.subjectLabel, facts, CONTEXT);
+    expect((db.tables["activities"] ?? []).length).toBe(before);
+  });
+
+  it("treats a destination written by a person as decided", async () => {
+    const detail = await draft();
+    const updated = await roadmapService.setDestination(
+      detail.roadmap.id,
+      detail.roadmap.subjectLabel,
+      { statement: "Fifty paid seats by December.", because: "It funds the second clinic." },
+      CONTEXT,
+    );
+    expect(updated.pointB?.tier).toBe("decided");
+    expect(updated.pointB?.statement).toBe("Fifty paid seats by December.");
+    expect(updated.pointB?.approvedBy).toBe("user-1");
+  });
+
+  it("refuses an empty destination", async () => {
+    const detail = await draft();
+    await expect(
+      roadmapService.setDestination(
+        detail.roadmap.id,
+        detail.roadmap.subjectLabel,
+        { statement: "   " },
+        CONTEXT,
+      ),
+    ).rejects.toThrow();
+  });
+});

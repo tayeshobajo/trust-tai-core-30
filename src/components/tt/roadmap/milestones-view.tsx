@@ -18,6 +18,7 @@ import { LifecyclePanel } from "@/components/tt/roadmap/lifecycle-panel";
 import { DeliveryLine } from "@/components/tt/roadmap/delivery-line";
 import { deliveryProjection, type DeliveryProject } from "@/domain/delivery-projection";
 import { milestoneLifecycle } from "@/domain/milestone-lifecycle";
+import { MetricPanel } from "@/components/tt/roadmap/metric-panel";
 import { SuccessPanel } from "@/components/tt/roadmap/success-panel";
 import { OwnershipInspector } from "@/components/tt/roadmap/ownership-inspector";
 import { EvidenceList } from "@/components/tt/roadmap/tier";
@@ -67,6 +68,11 @@ function MilestoneCard({
   evidence,
   evidenceError,
   deliveryProject,
+  onMetric,
+  measurements = [],
+  measurementsError = null,
+  onMeasure,
+
   onStatus,
   onAccept,
   onReopen,
@@ -89,6 +95,14 @@ function MilestoneCard({
   evidenceError: string | null;
   /** Which project carries this milestone, as Projects records it. */
   deliveryProject?: DeliveryProject | null | undefined;
+  /**
+   * Advanced numeric measurement. Never on the everyday card: it is only
+   * reachable behind the quiet disclosure inside the outcome editor.
+   */
+  onMetric?: ((milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void) | undefined;
+  measurements?: MilestoneMeasurement[];
+  measurementsError?: string | null;
+  onMeasure?: ((milestone: RoadmapMilestone, input: MeasurementInput) => void) | undefined;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
   onAccept?: ((milestone: RoadmapMilestone, note: string) => void) | undefined;
   onReopen?: ((milestone: RoadmapMilestone, reason: string) => void) | undefined;
@@ -131,6 +145,7 @@ function MilestoneCard({
   const [reason, setReason] = useState("");
   const busy = busyId === milestone.id;
   const lifecycle = milestoneLifecycle(milestone, criteria);
+  const [measuring, setMeasuring] = useState(false);
   const outcomeEditor = useReveal<HTMLDivElement>();
   const openOutcomeEditor = () => {
     setEditing(true);
@@ -172,6 +187,39 @@ function MilestoneCard({
           editorRef={outcomeEditor.ref}
           onSave={(input) => onSuccess(milestone, input)}
         />
+      ) : null}
+
+      {/*
+        Advanced numeric measurement (P3-01, P3-02). It is deliberately not
+        part of the everyday milestone card, which is Outcome, Target date and
+        Acceptance criteria. It appears only while the outcome editor is open,
+        and only behind this quiet disclosure, so a metric key, a unit, a
+        baseline and a reading are never asked of someone who does not want
+        them. No metric means no metric; it is never shown as zero.
+      */}
+      {editing && onMetric ? (
+        <div className="mt-4">
+          <button
+            type="button"
+            aria-expanded={measuring}
+            onClick={() => setMeasuring((value) => !value)}
+            className="text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+          >
+            {measuring ? "Hide advanced measurement" : "Advanced measurement"}
+          </button>
+          {measuring ? (
+            <MetricPanel
+              metric={milestone.outcomeMetric ?? null}
+              subject={milestone.name}
+              busy={busy}
+              measurements={measurements.filter((row) => row.milestoneId === milestone.id)}
+              measurementsError={measurementsError}
+              onSave={(input) => onMetric(milestone, input)}
+              onClear={() => onMetric(milestone, null)}
+              onRecord={onMeasure ? (input) => onMeasure(milestone, input) : undefined}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {onCriterionAdd ? (
@@ -373,6 +421,10 @@ export function MilestonesView({
   criteria = [],
   criteriaError = null,
   deliveryProjectFor,
+  onMetric,
+  measurements = [],
+  measurementsError = null,
+  onMeasure,
   evidence = [],
   evidenceError = null,
   onSuccess,
@@ -526,6 +578,10 @@ export function MilestonesView({
               criteria={criteria.filter((row) => row.milestoneId === milestone.id)}
               criteriaError={criteriaError}
               deliveryProject={deliveryProjectFor?.(milestone.id) ?? null}
+              onMetric={onMetric}
+              measurements={measurements}
+              measurementsError={measurementsError}
+              onMeasure={onMeasure}
               evidence={evidence.filter((row) => row.milestoneId === milestone.id)}
               evidenceError={evidenceError}
               onStatus={onStatus}

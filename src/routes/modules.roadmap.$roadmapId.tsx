@@ -9,6 +9,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 import { useCallback, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
@@ -175,6 +176,47 @@ function RoadmapWorkspace({
       );
     },
     onSuccess: refresh,
+    onError: fail,
+  });
+
+  /**
+   * Point A and Point B written by hand (P3-03). The same roadmap service the
+   * draft engine writes through, so there is no second store and no model call
+   * behind a person's own sentence.
+   */
+  const pointA = useMutation({
+    mutationFn: async (lines: string[]) => {
+      const detail = detailQuery.data;
+      if (!detail) throw new Error("This roadmap could not be read.");
+      return roadmapService.setPointA(
+        detail.roadmap.id,
+        detail.roadmap.subjectLabel,
+        lines.map((value) => ({ value })),
+        context,
+      );
+    },
+    onSuccess: async () => {
+      toast.success("Point A saved");
+      await refresh();
+    },
+    onError: fail,
+  });
+
+  const destination = useMutation({
+    mutationFn: async (input: { statement: string; because: string }) => {
+      const detail = detailQuery.data;
+      if (!detail) throw new Error("This roadmap could not be read.");
+      return roadmapService.setDestination(
+        detail.roadmap.id,
+        detail.roadmap.subjectLabel,
+        input,
+        context,
+      );
+    },
+    onSuccess: async () => {
+      toast.success("Point B saved");
+      await refresh();
+    },
     onError: fail,
   });
 
@@ -911,7 +953,11 @@ function RoadmapWorkspace({
                 roadmap={roadmap}
                 approving={approve.isPending}
                 onApprove={() => approve.mutate()}
+                saving={pointA.isPending || destination.isPending}
+                onSavePointA={(lines) => pointA.mutate(lines)}
+                onSaveDestination={(input) => destination.mutate(input)}
               />
+
               <PathSection path={path} activeId={current?.id ?? null} />
               <CurrentMilestoneCard
                 entry={current}

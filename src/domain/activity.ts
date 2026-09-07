@@ -25,6 +25,11 @@ export type ActivityAction =
   | "decision_requested"
   | "decision_resolved"
   | "next_move_changed"
+  /** Roadmap: a person wrote or corrected the current-state facts (Point A). */
+  | "point_a_recorded"
+  /** Roadmap: a person wrote or corrected the destination (Point B) by hand.
+   *  Direct decided truth, never a candidate awaiting a second approval. */
+  | "destination_recorded"
   | "flagged"
   /** Roadmap: a person recorded a reading of a milestone outcome metric.
    *  Evidence, never an inference (see src/domain/milestone-measurement.ts). */
