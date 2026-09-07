@@ -27,7 +27,6 @@ import { milestoneActionPrompt, milestoneActions } from "@/domain/milestone-acti
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import type { MeasurementInput, MilestoneMeasurement } from "@/domain/milestone-measurement";
 import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
-import { evidenceForMilestone } from "@/domain/criterion-evidence-view";
 import type { CriterionEvidence } from "@/domain/criterion-evidence";
 import type { EvidenceDraft } from "@/components/tt/roadmap/criterion-evidence";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
@@ -275,12 +274,17 @@ export function MilestonesView({
   onStatus,
   criteria = [],
   criteriaError = null,
+  evidence = [],
+  evidenceError = null,
   onSuccess,
   onCriterionAdd,
   onCriterionToggle,
   onCriterionEdit,
   onCriterionRemove,
   onCriterionMove,
+  onEvidenceAdd,
+  onEvidenceRemove,
+  onEvidenceOpen,
 }: {
   milestones: RoadmapMilestone[];
   busyId: string | null;
@@ -301,6 +305,9 @@ export function MilestonesView({
   /** Acceptance criteria across this roadmap, read from Roadmap only. */
   criteria?: AcceptanceCriterion[];
   criteriaError?: string | null;
+  /** Proof attached to those conditions. Optional by default, never a decision. */
+  evidence?: CriterionEvidence[];
+  evidenceError?: string | null;
   onSuccess?: ((milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void) | undefined;
   onCriterionAdd?: ((milestone: RoadmapMilestone, text: string) => void) | undefined;
   onCriterionToggle?:
@@ -318,6 +325,11 @@ export function MilestonesView({
         direction: "up" | "down",
       ) => void)
     | undefined;
+  onEvidenceAdd?:
+    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, draft: EvidenceDraft) => void)
+    | undefined;
+  onEvidenceRemove?: ((item: CriterionEvidence) => void) | undefined;
+  onEvidenceOpen?: ((item: CriterionEvidence) => void) | undefined;
 }) {
   const [filter, setFilter] = useState<MilestoneStatus | "all">("all");
   const [adding, setAdding] = useState(false);
@@ -407,6 +419,8 @@ export function MilestonesView({
               busyId={busyId}
               criteria={criteria.filter((row) => row.milestoneId === milestone.id)}
               criteriaError={criteriaError}
+              evidence={evidence.filter((row) => row.milestoneId === milestone.id)}
+              evidenceError={evidenceError}
               onStatus={onStatus}
               onSuccess={onSuccess}
               onCriterionAdd={onCriterionAdd}
@@ -414,6 +428,9 @@ export function MilestonesView({
               onCriterionEdit={onCriterionEdit}
               onCriterionRemove={onCriterionRemove}
               onCriterionMove={onCriterionMove}
+              onEvidenceAdd={onEvidenceAdd}
+              onEvidenceRemove={onEvidenceRemove}
+              onEvidenceOpen={onEvidenceOpen}
             />
           ))}
         </ul>
