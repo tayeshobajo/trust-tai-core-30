@@ -11,6 +11,15 @@ import { useState } from "react";
 
 import { MetaPill, TTButton, TTInput } from "@/components/tt/primitives";
 import {
+  NO_MEASUREMENTS,
+  checkMeasurement,
+  measurementSummary,
+  progressTowardTarget,
+  sortMeasurements,
+  type MeasurementInput,
+  type MilestoneMeasurement,
+} from "@/domain/milestone-measurement";
+import {
   METRIC_DIRECTIONS,
   METRIC_DIRECTION_LABEL,
   NO_METRIC,
@@ -66,18 +75,161 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export function MetricPanel({
+/**
+ * The measurement history and its manual entry form (P3-02).
+ *
+ * Evidence, not a dashboard. Every line is something a person typed, newest
+ * first, and the derived distance to target is plain arithmetic on the metric
+ * a person already set, labelled as derived.
+ */
+function MeasurementHistory({
   metric,
   subject,
   busy,
-  onSave,
-  onClear,
+  measurements,
+  measurementsError,
+  onRecord,
 }: {
   metric: OutcomeMetric | null;
   subject: string;
   busy: boolean;
+  measurements: MilestoneMeasurement[];
+  measurementsError: string | null;
+  onRecord: (input: MeasurementInput) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const [measuredAt, setMeasuredAt] = useState("");
+  const [source, setSource] = useState("");
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+
+  const rows = sortMeasurements(measurements);
+
+  const submit = () => {
+    const checked = checkMeasurement(metric, {
+      value: value as unknown as number,
+      measuredAt,
+      source,
+    });
+    if (!checked.ok) {
+      setRefusal(checked.refusal);
+      setSaved(null);
+      return;
+    }
+    setRefusal(null);
+    onRecord(checked.measurement);
+    setSaved(
+      `Recorded ${checked.measurement.value}${metric?.unit ? ` ${metric.unit}` : ""} on ${checked.measurement.measuredAt}.`,
+    );
+    setValue("");
+    setMeasuredAt("");
+    setSource("");
+    setOpen(false);
+  };
+
+  return (
+    <div className="mt-4 border-t border-border pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="tt-eyebrow">Measurements</p>
+        <TTButton
+          size="sm"
+          variant="secondary"
+          disabled={busy}
+          onClick={() => {
+            setRefusal(null);
+            setSaved(null);
+            setOpen((current) => !current);
+          }}
+        >
+          {open ? "Cancel" : "Record measurement"}
+        </TTButton>
+      </div>
+
+      {open ? (
+        <div className="mt-3 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label={`Value${metric?.unit ? ` (${metric.unit})` : ""}`}>
+              <TTInput
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                placeholder="18"
+                inputMode="decimal"
+                aria-label={`Measured value for ${subject}`}
+              />
+            </Field>
+            <Field label="Measured on">
+              <TTInput
+                type="date"
+                value={measuredAt}
+                onChange={(event) => setMeasuredAt(event.target.value)}
+                aria-label={`Measured date for ${subject}`}
+              />
+            </Field>
+            <Field label="Source">
+              <TTInput
+                value={source}
+                onChange={(event) => setSource(event.target.value)}
+                placeholder="Stripe dashboard, 7 Sep"
+                aria-label={`Measurement source for ${subject}`}
+              />
+            </Field>
+          </div>
+          {refusal ? <p className="text-sm text-destructive">{refusal}</p> : null}
+          <TTButton size="sm" disabled={busy} onClick={submit}>
+            Save measurement
+          </TTButton>
+        </div>
+      ) : null}
+
+      {saved ? <p className="mt-3 text-sm text-foreground">{saved}</p> : null}
+
+      {measurementsError ? (
+        <p className="mt-3 text-sm text-muted-foreground">{measurementsError}</p>
+      ) : rows.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          {NO_MEASUREMENTS}. Record one when you have read the number somewhere you can name.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {rows.map((row) => {
+            const progress = progressTowardTarget(metric, row.value);
+            return (
+              <li key={row.id} className="text-sm text-foreground">
+                {measurementSummary(row, metric)}
+                {progress === null ? null : (
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {progress}% of the way to target (derived)
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export function MetricPanel({
+  metric,
+  subject,
+  busy,
+  measurements = [],
+  measurementsError = null,
+  onSave,
+  onClear,
+  onRecord,
+}: {
+  metric: OutcomeMetric | null;
+  subject: string;
+  busy: boolean;
+  measurements?: MilestoneMeasurement[];
+  measurementsError?: string | null;
   onSave: (input: OutcomeMetricInput) => void;
   onClear: () => void;
+  onRecord?: ((input: MeasurementInput) => void) | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(() => draftFrom(metric));
@@ -226,6 +378,23 @@ export function MetricPanel({
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      {onRecord ? (
+        metric ? (
+          <MeasurementHistory
+            metric={metric}
+            subject={subject}
+            busy={busy}
+            measurements={measurements}
+            measurementsError={measurementsError}
+            onRecord={onRecord}
+          />
+        ) : (
+          <p className="mt-4 border-t border-border pt-4 text-sm text-muted-foreground">
+            Add an outcome metric before recording a measurement.
+          </p>
+        )
       ) : null}
     </section>
   );

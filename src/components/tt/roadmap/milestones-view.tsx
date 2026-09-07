@@ -22,6 +22,7 @@ import {
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { EXECUTION_ROOM_LABEL, ownedExecutionBoundary } from "@/domain/execution-ownership";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import type { MeasurementInput, MilestoneMeasurement } from "@/domain/milestone-measurement";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
 import { MILESTONE_STATUS_LABEL, UNKNOWN } from "@/domain/roadmap-intel";
@@ -47,13 +48,19 @@ function Line({ label, value }: { label: string; value: string }) {
 function MilestoneCard({
   milestone,
   busyId,
+  measurements,
+  measurementsError,
   onStatus,
   onMetric,
+  onMeasure,
 }: {
   milestone: RoadmapMilestone;
   busyId: string | null;
+  measurements: MilestoneMeasurement[];
+  measurementsError: string | null;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
   onMetric: (milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void;
+  onMeasure?: ((milestone: RoadmapMilestone, input: MeasurementInput) => void) | undefined;
 }) {
   const read = ownedExecutionBoundary(milestone);
   const owned = {
@@ -94,8 +101,11 @@ function MilestoneCard({
         metric={milestone.outcomeMetric ?? null}
         subject={milestone.name}
         busy={busy}
+        measurements={measurements}
+        measurementsError={measurementsError}
         onSave={(metric) => onMetric(milestone, metric)}
         onClear={() => onMetric(milestone, null)}
+        onRecord={onMeasure ? (input) => onMeasure(milestone, input) : undefined}
       />
 
       <OwnershipInspector read={read.owner} boundary={owned.boundary} subject={milestone.name} />
@@ -182,6 +192,9 @@ export function MilestonesView({
   onCreate,
   onStatus,
   onMetric,
+  measurements = [],
+  measurementsError = null,
+  onMeasure,
 }: {
   milestones: RoadmapMilestone[];
   busyId: string | null;
@@ -192,6 +205,10 @@ export function MilestonesView({
   onCreate: (input: ManualMilestoneInput) => void;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
   onMetric: (milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void;
+  /** P3-02 measurement history for this roadmap, read from Roadmap only. */
+  measurements?: MilestoneMeasurement[];
+  measurementsError?: string | null;
+  onMeasure?: ((milestone: RoadmapMilestone, input: MeasurementInput) => void) | undefined;
 }) {
   const [filter, setFilter] = useState<MilestoneStatus | "all">("all");
   const [adding, setAdding] = useState(false);
@@ -281,8 +298,11 @@ export function MilestonesView({
               key={milestone.id}
               milestone={milestone}
               busyId={busyId}
+              measurements={measurements.filter((row) => row.milestoneId === milestone.id)}
+              measurementsError={measurementsError}
               onStatus={onStatus}
               onMetric={onMetric}
+              onMeasure={onMeasure}
             />
           ))}
         </ul>
