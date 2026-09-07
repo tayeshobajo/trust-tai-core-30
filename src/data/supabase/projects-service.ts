@@ -279,6 +279,55 @@ export const projectsService = {
     return project;
   },
 
+  /**
+   * Record which roadmap this work executes.
+   *
+   * This writes no roadmap truth at all. It stores one id on the project's own
+   * origin so the Project workroom can read Roadmap through Roadmap's own
+   * services. A person chooses the roadmap; nothing is inferred from a company
+   * name, and a project carried across from a milestone is refused.
+   */
+  async linkRoadmap(
+    project: ExecutionProject,
+    roadmap: LinkableRoadmap,
+    context: ProjectsContext,
+  ): Promise<ExecutionProject> {
+    const check = checkRoadmapLink(project, roadmap);
+    if (!check.ok) throw new Error(check.because);
+
+    const origin: ProjectOrigin = { ...project.origin, roadmapId: roadmap.id };
+    const { data, error } = await supabase
+      .from("projects")
+      .select("metadata")
+      .eq("id", project.id)
+      .eq("organization_id", context.organizationId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error("This project is no longer readable.");
+
+    const metadata = { ...((data as Row)["metadata"] as Row | null), origin };
+    const saved = await supabase
+      .from("projects")
+      .update({ metadata, updated_at: new Date().toISOString() })
+      .eq("id", project.id)
+      .eq("organization_id", context.organizationId)
+      .select("*")
+      .single();
+    if (saved.error || !saved.data) {
+      throw new Error(saved.error?.message ?? "That roadmap could not be linked.");
+    }
+
+    const next = toProject(saved.data as Row);
+    await record(context, "project.updated", next, `${next.name} now reads its roadmap.`, {
+      roadmapId: roadmap.id,
+      roadmapLabel: roadmap.subjectLabel,
+      source_event_key: roadmapLinkKey(project.id, roadmap.id),
+    });
+    return next;
+  },
+
+
+
   async findByMilestone(milestoneId: ID, organizationId: ID): Promise<ExecutionProject | null> {
     const { data, error } = await supabase
       .from("projects")
