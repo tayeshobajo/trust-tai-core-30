@@ -121,7 +121,7 @@ export function clientContextPacket(input: ClientPacketInput): ClientContextPack
         .slice(0, PACKET_LIMITS.sources)
         .map((source) => `${source.title} · ${source.kindLabel} · ${source.url}`),
     ),
-    attention: input.attention.map((item) => `${item.line}${item.note ? ` · ${item.note}` : ""}`),
+    attention: input.attention.map((item) => `${item.line}${item.because ? ` · ${item.because}` : ""}`),
     recentActivity: read(input.history, (events) =>
       events.slice(0, PACKET_LIMITS.activity).map((event) => `${event.occurredAt.slice(0, 10)} · ${event.summary}`),
     ),
