@@ -78,6 +78,7 @@ export function OverviewTab({
   exchange,
   commercial,
   commercialForm,
+  roadmapProject = null,
 }: {
   reads: OverviewReads;
   cadence: ReviewCadence;
@@ -88,6 +89,11 @@ export function OverviewTab({
   commercial: CommercialReadLines;
   /** The existing commercial form, revealed only when a person asks to edit. */
   commercialForm: ReactNode;
+  /**
+   * The project a person linked to the shown roadmap, when one exists.
+   * Never inferred; null means no handoff line is drawn.
+   */
+  roadmapProject?: Pick<ExecutionProject, "id" | "name"> | null;
 }) {
   const compose: OverviewComposeInput = {
     projects: reads.projects,
@@ -115,7 +121,11 @@ export function OverviewTab({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-        <Direction read={reads.roadmap} loading={reads.loading.roadmap} />
+        <Direction
+          read={reads.roadmap}
+          loading={reads.loading.roadmap}
+          linkedProject={roadmapProject}
+        />
         <RelationshipContext
           read={reads.relationship}
           loading={reads.loading.relationship}
@@ -322,9 +332,12 @@ function NeedsAttention({ items, loading }: { items: AttentionItem[]; loading: b
 function Direction({
   read,
   loading,
+  linkedProject = null,
 }: {
   read: RoomRead<RoadmapOutcome | null> | null;
   loading: boolean;
+  /** The project operating this roadmap, when a person recorded the link. */
+  linkedProject?: Pick<ExecutionProject, "id" | "name"> | null;
 }) {
   return (
     <section aria-labelledby="overview-direction" className={CARD}>
@@ -372,6 +385,18 @@ function Direction({
             >
               Open in Roadmap
             </Link>
+            {linkedProject ? (
+              <p className="pt-1 text-[12px] text-muted-foreground">
+                <Link
+                  to="/modules/projects/$projectId"
+                  params={{ projectId: linkedProject.id }}
+                  className="font-medium text-royal underline-offset-4 hover:underline"
+                >
+                  Open the project workspace
+                </Link>{" "}
+                to move this work.
+              </p>
+            ) : null}
           </dl>
         )}
       </div>

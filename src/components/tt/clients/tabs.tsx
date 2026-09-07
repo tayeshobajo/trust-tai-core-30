@@ -6,6 +6,12 @@
  * Site and Files state, in plain words, that nothing is linked yet: there is
  * no client link on website records and no file store, and neither absence is
  * drawn as health.
+ *
+ * Product rule: Clients summarizes the company; Projects is the operating
+ * surface for project-scoped work. Milestones and delivery are never edited
+ * here — when a person has linked a project to a roadmap, this page points
+ * at that project workspace and stops. Do not duplicate the Project
+ * workroom into Clients.
  */
 
 import { Link } from "@tanstack/react-router";
@@ -55,6 +61,7 @@ import {
 } from "@/domain/client-shell";
 import { formatDay } from "@/domain/clients-book";
 import { FILE_KIND_LABEL, type ProjectFile } from "@/domain/project-delivery";
+import { projectLinkedToRoadmap } from "@/domain/project-roadmap-link";
 import type { ExecutionProject } from "@/domain/projects";
 import { cn } from "@/lib/utils";
 
@@ -63,9 +70,12 @@ import { cn } from "@/lib/utils";
 export function RoadmapTab({
   read,
   loading,
+  projects = [],
 }: {
   read: RoomRead<RoadmapOutcome[]> | null;
   loading: boolean;
+  /** This company's projects, used only to surface a recorded roadmap link. */
+  projects?: ExecutionProject[];
 }) {
   return (
     <RoomSection
@@ -89,7 +99,10 @@ export function RoadmapTab({
             <ul className="space-y-4">
               {outcomes.map((outcome) => (
                 <li key={outcome.roadmapId}>
-                  <RoadmapOutcomeCard outcome={outcome} />
+                  <RoadmapOutcomeCard
+                    outcome={outcome}
+                    linkedProject={projectLinkedToRoadmap(projects, outcome.roadmapId)}
+                  />
                 </li>
               ))}
             </ul>
@@ -103,9 +116,12 @@ export function RoadmapTab({
 function RoadmapOutcomeCard({
   outcome,
   compact = false,
+  linkedProject = null,
 }: {
   outcome: RoadmapOutcome;
   compact?: boolean;
+  /** Set only from a recorded project → roadmap link; never inferred. */
+  linkedProject?: Pick<ExecutionProject, "id" | "name"> | null;
 }) {
   return (
     <TTCard className="p-4">
@@ -163,6 +179,19 @@ function RoadmapOutcomeCard({
           </div>
         ) : null}
       </dl>
+      {linkedProject ? (
+        <p className="mt-3 border-t border-border pt-3 text-[12px] text-muted-foreground">
+          Milestones and delivery are operated in{" "}
+          <Link
+            to="/modules/projects/$projectId"
+            params={{ projectId: linkedProject.id }}
+            className="font-medium text-royal underline-offset-4 hover:underline"
+          >
+            {linkedProject.name}
+          </Link>
+          .
+        </p>
+      ) : null}
     </TTCard>
   );
 }
@@ -225,7 +254,16 @@ export function ProjectRow({
     <Wrapper className={cn("p-4", flat && "px-0 py-4", blocked && !flat && "border-warning/40")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">{project.name}</p>
+          {/* The name itself is the door into the project workroom. */}
+          <p className="truncate text-sm font-medium text-foreground">
+            <Link
+              to="/modules/projects/$projectId"
+              params={{ projectId: project.id }}
+              className="underline-offset-4 hover:underline"
+            >
+              {project.name}
+            </Link>
+          </p>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
             {projectStateLabel(project)} · moved{" "}
             {formatDay(project.lastMovedAt, timeZone) ?? "on an unknown day"}
@@ -236,7 +274,7 @@ export function ProjectRow({
           params={{ projectId: project.id }}
           className="shrink-0 text-[13px] font-medium text-royal"
         >
-          <OpenIn>Open in Projects</OpenIn>
+          <OpenIn>Open project workspace</OpenIn>
         </Link>
       </div>
       {detail ? <p className="mt-2 text-[13px] text-muted-foreground">{detail}</p> : null}
