@@ -329,6 +329,7 @@ const roadmapIntelRaw = {
       questions,
       measurements,
       criteria,
+      criterionEvidence,
     ] =
       await Promise.all([
         supabase
