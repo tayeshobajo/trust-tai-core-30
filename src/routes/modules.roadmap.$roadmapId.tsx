@@ -279,7 +279,6 @@ function RoadmapWorkspace({
       setResearchError(error instanceof Error ? error.message : "The research run failed."),
   });
 
-
   const approval = useMutation({
     mutationFn: async ({ key, state }: { key: string; state: ApprovalState }) => {
       const strategy = intelQuery.data?.strategy;

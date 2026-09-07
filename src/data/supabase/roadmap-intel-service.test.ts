@@ -27,7 +27,8 @@ function failingQuery(error: { code: string; message: string }) {
     limit: () => query,
     single: () => Promise.resolve({ data: null, error }),
     maybeSingle: () => Promise.resolve({ data: null, error }),
-    then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: null, error }).then(resolve),
+    then: (resolve: (value: unknown) => unknown) =>
+      Promise.resolve({ data: null, error }).then(resolve),
   };
   return query;
 }
