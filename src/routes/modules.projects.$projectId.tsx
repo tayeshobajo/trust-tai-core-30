@@ -707,15 +707,40 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
           {tab === "overview" ? (
-            <OverviewTab
-              project={project}
-              lineage={row.lineage}
-              items={items}
-              blockers={blockers}
-              completion={completion}
-              onOpenTab={openTab}
+            <div className="space-y-6">
+              <OverviewTab
+                project={project}
+                lineage={row.lineage}
+                items={items}
+                blockers={blockers}
+                completion={completion}
+                onOpenTab={openTab}
+              />
+              <ProjectApprovals requests={approvalsQuery.data ?? []} />
+            </div>
+          ) : null}
+
+          {tab === "roadmap" ? (
+            <ProjectRoadmapTab
+              roadmap={roadmap}
+              milestones={intelQuery.data?.milestones ?? []}
+              loading={intelQuery.isLoading}
+              candidates={linkCandidates}
+              linking={linkRoadmap.isPending}
+              linkError={linkError}
+              busyId={busyId}
+              creating={milestoneCreate.isPending}
+              createError={createError}
+              onLink={(roadmapId) => linkRoadmap.mutate(roadmapId)}
+              onCreate={(input) => milestoneCreate.mutate(input)}
+              onStatus={(milestone, status, note) =>
+                milestoneStatus.mutate({ milestone, status, note })
+              }
+              onMetric={(milestone, metric) => milestoneMetric.mutate({ milestone, metric })}
             />
           ) : null}
+
+
 
           {tab === "context" ? (
             <ContextTab
