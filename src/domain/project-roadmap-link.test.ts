@@ -76,3 +76,20 @@ describe("roadmapLinkKey", () => {
     expect(roadmapLinkKey("p1", "r1")).not.toBe(roadmapLinkKey("p1", "r2"));
   });
 });
+
+describe("projectLinkedToRoadmap", () => {
+  it("finds the project a person linked to the roadmap", () => {
+    const linked = { id: "p2", origin: { kind: "manual" as const, roadmapId: "r1" } };
+    expect(projectLinkedToRoadmap([project, linked], "r1")?.id).toBe("p2");
+  });
+
+  it("returns null when no canonical link exists", () => {
+    expect(projectLinkedToRoadmap([project], "r1")).toBeNull();
+    expect(projectLinkedToRoadmap([], "r1")).toBeNull();
+  });
+
+  it("never infers a link from a different roadmap id", () => {
+    const linked = { id: "p2", origin: { kind: "manual" as const, roadmapId: "r2" } };
+    expect(projectLinkedToRoadmap([linked], "r1")).toBeNull();
+  });
+});
