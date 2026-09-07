@@ -319,8 +319,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
       setGenerateError(cause instanceof Error ? cause.message : "The research run failed."),
   });
 
-
-
   const refreshRoadmap = async () => {
     await queryClient.invalidateQueries({ queryKey: ["roadmap"] });
     await queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -416,7 +414,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
   });
 
   const brandQuery = useQuery({
-
     queryKey: ["delivery", "brand", roadmap?.id ?? "none"],
     queryFn: () => (roadmap ? readRoadmapBrand(roadmap) : Promise.resolve(null)),
     enabled: Boolean(roadmap),
@@ -708,7 +705,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
     });
   };
 
-
   return (
     <div className="space-y-6">
       <UtilityRow row={row} previous={previous} next={next} />
@@ -795,9 +791,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
             />
           ) : null}
 
-
-
-
           {tab === "overview" ? (
             <WorkroomSection
               section="work"
@@ -819,7 +812,10 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
                 />
                 {isOpenProject(project) ? (
                   <>
-                    <section aria-label="Technical stewardship" className="tt-surface space-y-3 p-6">
+                    <section
+                      aria-label="Technical stewardship"
+                      className="tt-surface space-y-3 p-6"
+                    >
                       <p className="tt-eyebrow">Ops</p>
                       <p className="max-w-reading text-[15px] text-foreground">
                         Ops runs the technical work for this project. Your session is handed over
@@ -843,7 +839,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
               </div>
             </WorkroomSection>
           ) : null}
-
 
           {tab === "overview" ? (
             <WorkroomSection
@@ -880,7 +875,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
             </WorkroomSection>
           ) : null}
 
-
           {tab === "overview" ? (
             <WorkroomSection
               section="decisions"
@@ -898,7 +892,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
               />
             </WorkroomSection>
           ) : null}
-
 
           {tab === "files" ? (
             <FilesTab
@@ -1043,8 +1036,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
               </WorkroomSection>
             </div>
           ) : null}
-
-
 
           {tab === "activity" ? <ActivityTab events={activityQuery.data ?? []} /> : null}
 

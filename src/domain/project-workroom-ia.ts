@@ -19,13 +19,7 @@ export type ProjectSurface = (typeof PROJECT_SURFACES)[number]["value"];
 
 /** Sections that used to be top-level tabs and now live inside a surface. */
 export type ProjectSection =
-  | ProjectSurface
-  | "work"
-  | "blockers"
-  | "decisions"
-  | "context"
-  | "knowledge"
-  | "assets";
+  ProjectSurface | "work" | "blockers" | "decisions" | "context" | "knowledge" | "assets";
 
 const HOME: Record<ProjectSection, ProjectSurface> = {
   overview: "overview",
