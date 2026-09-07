@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { milestoneActions } from "@/domain/milestone-actions";
@@ -22,10 +23,19 @@ export function MilestoneOverflow({
   milestone,
   busy,
   onPick,
+  detailOpen = false,
+  rankingOpen = false,
+  onDetail,
+  onRanking,
 }: {
   milestone: RoadmapMilestone;
   busy: boolean;
   onPick: (status: MilestoneStatus) => void;
+  /** Ranking and evidence plumbing lives here, never in the everyday scan. */
+  detailOpen?: boolean;
+  rankingOpen?: boolean;
+  onDetail?: (() => void) | undefined;
+  onRanking?: (() => void) | undefined;
 }) {
   return (
     <DropdownMenu>
@@ -42,6 +52,17 @@ export function MilestoneOverflow({
             {action.label}
           </DropdownMenuItem>
         ))}
+        {onDetail || onRanking ? <DropdownMenuSeparator /> : null}
+        {onDetail ? (
+          <DropdownMenuItem onSelect={() => onDetail()}>
+            {detailOpen ? "Hide milestone detail" : "Milestone detail"}
+          </DropdownMenuItem>
+        ) : null}
+        {onRanking ? (
+          <DropdownMenuItem onSelect={() => onRanking()}>
+            {rankingOpen ? "Hide why it ranks here" : "Why it ranks here"}
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

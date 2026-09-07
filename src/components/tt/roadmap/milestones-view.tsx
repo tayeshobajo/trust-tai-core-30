@@ -145,56 +145,47 @@ function MilestoneCard({
         The metric domain and its stored history remain intact underneath.
       */}
 
-      <button
-        type="button"
-        onClick={() => setDetail((value) => !value)}
-        className="mt-5 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-      >
-        {detail ? "Hide milestone detail" : "Milestone detail"}
-      </button>
       {detail ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Line label="Confidence" value={CONFIDENCE_LEVEL_LABEL[milestone.confidence]} />
-          <Line label="Priority score" value={String(milestone.priorityScore)} />
-          <Line label="Intended user" value={milestone.intendedUser} />
-          <Line label="Supporting market direction" value={milestone.supportingMarketDirection} />
-          <Line label="Client advantage" value={milestone.clientAdvantage} />
-          <Line label="Current gap" value={milestone.currentGap} />
-          <Line label="Immediate value" value={milestone.immediateValue} />
-          <Line label="Long term value" value={milestone.longTermValue} />
-          <Line label="Dependencies" value={milestone.dependencies.join(", ")} />
-          <Line label="Owned by" value={`${owned.ownerLabel} · ${owned.because}`} />
-          <Line label="Execution boundary" value={owned.boundary} />
+        <div className="mt-5 rounded-2xl border border-border p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Line label="Confidence" value={CONFIDENCE_LEVEL_LABEL[milestone.confidence]} />
+            <Line label="Priority score" value={String(milestone.priorityScore)} />
+            <Line label="Intended user" value={milestone.intendedUser} />
+            <Line label="Supporting market direction" value={milestone.supportingMarketDirection} />
+            <Line label="Client advantage" value={milestone.clientAdvantage} />
+            <Line label="Current gap" value={milestone.currentGap} />
+            <Line label="Immediate value" value={milestone.immediateValue} />
+            <Line label="Long term value" value={milestone.longTermValue} />
+            <Line label="Dependencies" value={milestone.dependencies.join(", ")} />
+            <Line label="Owned by" value={`${owned.ownerLabel} · ${owned.because}`} />
+            <Line label="Execution boundary" value={owned.boundary} />
+          </div>
+          <OwnershipInspector
+            read={read.owner}
+            boundary={owned.boundary}
+            subject={milestone.name}
+          />
+          <EvidenceList
+            evidence={milestone.evidence.map((ref) => ({
+              label: ref.label,
+              url: ref.url,
+              kind: "page" as const,
+            }))}
+          />
         </div>
       ) : null}
 
-      {detail ? (
-        <OwnershipInspector read={read.owner} boundary={owned.boundary} subject={milestone.name} />
-      ) : null}
-
-      <EvidenceList
-        evidence={milestone.evidence.map((ref) => ({
-          label: ref.label,
-          url: ref.url,
-          kind: "page" as const,
-        }))}
-      />
-
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="mt-4 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
-      >
-        {open ? "Hide why it ranks here" : "Why it ranks here"}
-      </button>
       {open ? (
-        <ul className="mt-2 space-y-1">
-          {milestone.priorityRationale.map((line) => (
-            <li key={line} className="text-sm text-muted-foreground">
-              · {line}
-            </li>
-          ))}
-        </ul>
+        <div className="mt-4 rounded-2xl border border-border p-4">
+          <p className="tt-eyebrow">Why it ranks here</p>
+          <ul className="mt-2 space-y-1">
+            {milestone.priorityRationale.map((line) => (
+              <li key={line} className="text-sm text-muted-foreground">
+                · {line}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {milestone.decisionNote ? (
@@ -214,6 +205,10 @@ function MilestoneCard({
             setPending(status);
             setNote("");
           }}
+          detailOpen={detail}
+          rankingOpen={open}
+          onDetail={() => setDetail((value) => !value)}
+          onRanking={() => setOpen((value) => !value)}
         />
       </div>
 
@@ -351,36 +346,33 @@ export function MilestonesView({
         title="Milestones"
         description="Ranked by evidence, market direction, advantage and boundary. Only a person changes a status."
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <TTButton onClick={() => setAdding(true)} disabled={adding}>
               Add milestone
             </TTButton>
             <TTButton variant="secondary" onClick={onGenerate} disabled={generating}>
-              {generating ? "Researching…" : "Regenerate candidates"}
+              {generating ? "Researching…" : "Generate candidates"}
             </TTButton>
+            <label htmlFor="milestone-view" className="sr-only">
+              View
+            </label>
+            <select
+              id="milestone-view"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value as MilestoneStatus | "all")}
+              className="h-9 rounded-lg border border-input bg-card px-3 text-sm text-foreground"
+            >
+              {FILTERS.map((entry) => (
+                <option key={entry.key} value={entry.key}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
           </div>
         }
       />
 
       {adding ? form : null}
-
-      <div className="flex items-center gap-2">
-        <label htmlFor="milestone-view" className="tt-eyebrow">
-          View
-        </label>
-        <select
-          id="milestone-view"
-          value={filter}
-          onChange={(event) => setFilter(event.target.value as MilestoneStatus | "all")}
-          className="h-9 rounded-lg border border-input bg-card px-3 text-sm text-foreground"
-        >
-          {FILTERS.map((entry) => (
-            <option key={entry.key} value={entry.key}>
-              {entry.label}
-            </option>
-          ))}
-        </select>
-      </div>
 
       {visible.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing in this state yet.</p>

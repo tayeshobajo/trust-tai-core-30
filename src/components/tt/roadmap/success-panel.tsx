@@ -11,6 +11,7 @@ import { useState } from "react";
 import { TTButton, TTInput } from "@/components/tt/primitives";
 import {
   NO_SUCCESS,
+  NO_TARGET_DATE,
   checkMilestoneSuccess,
   type MilestoneSuccess,
   type MilestoneSuccessInput,
@@ -58,18 +59,31 @@ export function SuccessPanel({
   return (
     <section className="mt-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="tt-eyebrow">Outcome</p>
-          <p className="mt-1 max-w-reading text-[15px] leading-relaxed text-foreground">
-            {success?.outcome || NO_SUCCESS}
-          </p>
-          {success?.targetDate ? (
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              Target date {success.targetDate}
-            </p>
-          ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="min-w-0">
+              <p className="tt-eyebrow">Outcome</p>
+              <p
+                className={`mt-1 max-w-reading text-[15px] leading-relaxed ${
+                  success?.outcome ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {success?.outcome || NO_SUCCESS}
+              </p>
+            </div>
+            <div className="sm:text-right">
+              <p className="tt-eyebrow">Target date</p>
+              <p
+                className={`mt-1 text-[15px] leading-relaxed ${
+                  success?.targetDate ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {success?.targetDate || NO_TARGET_DATE}
+              </p>
+            </div>
+          </div>
           {success?.successCheck ? (
-            <p className="mt-1 max-w-reading text-[13px] text-muted-foreground">
+            <p className="mt-2 max-w-reading text-[13px] text-muted-foreground">
               How we will know: {success.successCheck}
             </p>
           ) : null}
