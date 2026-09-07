@@ -70,6 +70,7 @@ import { relationshipWindow } from "@/data/clients/relationship-window";
 import { listRelationshipMessages } from "@/data/supabase/comms-messages";
 
 import type { CommercialFormPatch } from "@/domain/client-commercial-form";
+import { projectLinkedToRoadmap } from "@/domain/project-roadmap-link";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const TITLE = "Client · Trust Tai OS";
@@ -488,6 +489,11 @@ function ClientShell({
   const projectsRead = readOf(projectsQuery);
   const projectsForTab: RoomRead<typeof projects> | null =
     projectsRead === null ? null : projectsRead.available ? answered(projects) : projectsRead;
+  /* The project a person linked to the overview roadmap, when one exists. */
+  const overviewRoadmapProject =
+    roadmapOutcomes?.available && roadmapOutcomes.value[0]
+      ? projectLinkedToRoadmap(projects, roadmapOutcomes.value[0].roadmapId)
+      : null;
   const relationshipsRead = readOf(relationshipsQuery);
   const relationshipRead: RoomRead<ReturnType<typeof relationshipSnapshotFor>> | null =
     relationshipsRead === null
