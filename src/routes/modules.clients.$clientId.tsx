@@ -91,10 +91,24 @@ const DESCRIPTION =
   "One company: tier, commercial value, next review, delivery in flight, the people we know there, and what has happened.";
 
 export const Route = createFileRoute("/modules/clients/$clientId")({
-  /* Overview is the door; it carries no `tab` so plain client links stay clean. */
-  validateSearch: (search: Record<string, unknown>): { tab?: ClientTab } => {
+  /**
+   * Overview is the door; it carries no `tab` so plain client links stay clean.
+   * `project` and `view` remember which project is open inside this client and
+   * which of its surfaces is showing, so refresh, back/forward and a shared
+   * link all land in the same place without leaving the client.
+   */
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: ClientTab; project?: string; view?: ProjectTab } => {
     const tab = parseClientTab(search["tab"]);
-    return tab === "overview" ? {} : { tab };
+    const project = typeof search["project"] === "string" ? search["project"] : undefined;
+    const rawView = search["view"];
+    const view = isProjectSurface(rawView) ? rawView : undefined;
+    return {
+      ...(tab === "overview" ? {} : { tab }),
+      ...(project ? { project } : {}),
+      ...(view && view !== "overview" ? { view } : {}),
+    };
   },
   head: () => ({
     meta: [
@@ -112,15 +126,29 @@ export const Route = createFileRoute("/modules/clients/$clientId")({
 
 function ClientRoute() {
   const { clientId } = Route.useParams();
-  const { tab } = Route.useSearch();
+  const { tab, project, view } = Route.useSearch();
+  const navigate = Route.useNavigate();
   return (
     <WorkspaceGate appId="clients">
       {(identity) => (
-        <ClientShell identity={identity} clientId={clientId} tab={tab ?? "overview"} />
+        <ClientShell
+          identity={identity}
+          clientId={clientId}
+          tab={tab ?? "overview"}
+          selectedProjectId={project ?? null}
+          projectSurface={view ?? "overview"}
+          onSelectProject={(projectId) =>
+            void navigate({ search: (prev) => ({ ...prev, project: projectId }) })
+          }
+          onProjectSurface={(next) =>
+            void navigate({ search: (prev) => ({ ...prev, view: next }) })
+          }
+        />
       )}
     </WorkspaceGate>
   );
 }
+
 
 /** Turn a query into a room read: answered, unreadable, or still on its way. */
 function readOf<T>(query: {
