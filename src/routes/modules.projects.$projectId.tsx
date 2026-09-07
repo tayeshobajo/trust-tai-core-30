@@ -967,7 +967,6 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
             </WorkroomSection>
           ) : null}
 
-
           {tab === "files" ? (
             <FilesTab
               items={items}

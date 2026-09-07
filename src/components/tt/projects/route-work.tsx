@@ -29,7 +29,6 @@ export function RouteWork({
   /** The routing form only appears when a person asked to hand work across. */
   showForm?: boolean;
 }) {
-
   const [target, setTarget] = useState<RouteTarget>("ops");
   const [outcome, setOutcome] = useState("");
   const [because, setBecause] = useState("");
@@ -146,7 +145,6 @@ export function RouteWork({
         <div className="space-y-3 border-t border-border/60 pt-4">
           <p className="tt-eyebrow">Already asked</p>
           {entries.map((entry) => (
-
             <RouteRow
               key={entry.key}
               entry={entry}
