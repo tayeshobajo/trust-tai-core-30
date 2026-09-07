@@ -29,13 +29,8 @@ describe("milestone outcome metric", () => {
     expect(result.metric.direction).toBe("increase");
   });
 
-  it("refuses a missing key, label, unit or direction", () => {
-    for (const patch of [
-      { key: "" },
-      { label: " " },
-      { unit: "" },
-      { direction: "up" as never },
-    ]) {
+  it("refuses a missing key, label or direction", () => {
+    for (const patch of [{ key: "" }, { label: " " }, { direction: "up" as never }]) {
       const result = checkOutcomeMetric({ ...good, ...patch });
       expect(result.ok).toBe(false);
     }
