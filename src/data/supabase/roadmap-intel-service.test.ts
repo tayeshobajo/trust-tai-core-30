@@ -339,6 +339,67 @@ describe("milestones", () => {
     expect(intel.milestones[0]!.outcomeMetric).toBeNull();
   });
 
+  it("creates a manual milestone as decided truth with the person on it", async () => {
+    const created = await roadmapIntel.createManualMilestone(CONTEXT, ROADMAP, "Northbeam", {
+      name: "  Launch the question bank ",
+    });
+    expect(created.name).toBe("Launch the question bank");
+    expect(created.status).toBe("approved");
+    expect(created.tier).toBe("decided");
+    expect(created.ownerLabel).toBe("Tai");
+    expect(created.decidedBy).toBe("user-1");
+    expect(created.outcomeMetric).toBeNull();
+  });
+
+  it("a manual milestone invents nothing a person did not type", async () => {
+    const created = await roadmapIntel.createManualMilestone(CONTEXT, ROADMAP, "Northbeam", {
+      name: "Question bank",
+    });
+    expect(created.whatWeBuild).toBe("");
+    expect(created.executionBoundary).toBe("");
+    expect(created.priorityScore).toBe(0);
+    expect(created.evidence).toEqual([]);
+  });
+
+  it("a manual milestone records one activity with a replay key", async () => {
+    const before = (db.tables["activities"] ?? []).length;
+    await roadmapIntel.createManualMilestone(CONTEXT, ROADMAP, "Northbeam", {
+      name: "Question bank",
+    });
+    const rows = db.tables["activities"] ?? [];
+    expect(rows.length).toBe(before + 1);
+    const payload = (rows[rows.length - 1] as Record<string, unknown>)["payload"] as Record<
+      string,
+      unknown
+    >;
+    expect(payload["origin"]).toBe("manual");
+    expect(String(payload["source_event_key"])).toContain("roadmap.milestone_created");
+  });
+
+  it("refuses a nameless manual milestone instead of naming it", async () => {
+    await expect(
+      roadmapIntel.createManualMilestone(CONTEXT, ROADMAP, "Northbeam", { name: "  " }),
+    ).rejects.toThrow(/name/i);
+    const intel = await roadmapIntel.load(ROADMAP);
+    expect(intel.milestones.length).toBe(0);
+  });
+
+  it("a repeat save of the same name returns the existing milestone", async () => {
+    const first = await roadmapIntel.createManualMilestone(CONTEXT, ROADMAP, "Northbeam", {
+      name: "Question bank",
+    });
+    const before = (db.tables["activities"] ?? []).length;
+    const again = await roadmapIntel.createManualMilestone(
+      CONTEXT,
+      ROADMAP,
+      "Northbeam",
+      { name: "  question   BANK " },
+      [first],
+    );
+    expect(again.id).toBe(first.id);
+    expect((db.tables["activities"] ?? []).length).toBe(before);
+  });
+
   it("setting the same metric again records no second event", async () => {
     const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
       candidate("Method page"),

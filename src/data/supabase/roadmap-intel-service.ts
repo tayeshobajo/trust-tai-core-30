@@ -35,6 +35,14 @@ import {
   metricSummary,
   sameMetric,
 } from "@/domain/milestone-metric";
+import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import {
+  MANUAL_PRIORITY_RATIONALE,
+  checkManualMilestone,
+  findSameName,
+  manualMilestoneKey,
+  nextSequence,
+} from "@/domain/milestone-create";
 import { rankMilestones, type MilestoneScoreInput } from "@/data/roadmap-milestones";
 import type { NormalizedResearch } from "@/data/roadmap-research-parse";
 
@@ -444,6 +452,68 @@ const roadmapIntelRaw = {
       { count: ranked.length },
     );
     return ((data ?? []) as Row[]).map(toMilestone);
+  },
+
+  /**
+   * Create a milestone by hand (manual create is first class).
+   *
+   * A person who already knows the milestone does not need a model to state it.
+   * Because typing it is itself the decision, the row lands Approved and
+   * Decided with the actor and the time on it. Nothing is guessed: research
+   * fields a person did not type stay empty, and the priority score stays 0
+   * with a rationale that says why. Saving the same name twice on the same
+   * roadmap returns the existing milestone instead of duplicating truth.
+   */
+  async createManualMilestone(
+    context: IntelContext,
+    roadmapId: ID,
+    label: string,
+    input: Partial<ManualMilestoneInput>,
+    existing: RoadmapMilestone[] = [],
+  ): Promise<RoadmapMilestone> {
+    const checked = checkManualMilestone(input);
+    if (!checked.ok) throw new Error(checked.refusal);
+
+    const duplicate = findSameName(existing, checked.milestone.name);
+    if (duplicate) return duplicate;
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .insert({
+        organization_id: context.organizationId,
+        roadmap_id: roadmapId,
+        name: checked.milestone.name,
+        what_we_build: checked.milestone.whatWeBuild,
+        execution_boundary: checked.milestone.executionBoundary,
+        priority_rationale: MANUAL_PRIORITY_RATIONALE,
+        recommended_sequence: nextSequence(existing),
+        status: "approved",
+        tier: "decided",
+        owner_user_id: context.userId,
+        ...(context.userLabel ? { owner_label: context.userLabel } : {}),
+        decided_by: context.userId,
+        decided_at: at,
+        created_by: context.userId,
+      })
+      .select(MILESTONE_COLUMNS)
+      .single();
+
+    assertOk(error);
+
+    await record(
+      context,
+      "roadmap.approved",
+      roadmapId,
+      label,
+      `${checked.milestone.name} was created by a person as a decided milestone.`,
+      {
+        milestoneId: (data as Row)["id"],
+        origin: "manual",
+        source_event_key: manualMilestoneKey(roadmapId, checked.milestone.name),
+      },
+    );
+    return toMilestone(data as Row);
   },
 
   /** Only this path can make a milestone Decided, and only a person calls it. */

@@ -76,6 +76,7 @@ import {
   normalizeResearch,
   normalizeStrategy,
 } from "@/data/roadmap-research-parse";
+import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
 import type {
@@ -410,6 +411,27 @@ function RoadmapWorkspace({
     onSettled: () => setBusyId(null),
     onSuccess: refresh,
     onError: fail,
+  });
+
+  /**
+   * Manual milestone creation. Generation is assistance, not the only doorway:
+   * a person who already knows the milestone types it and it lands Decided.
+   */
+  const [createError, setCreateError] = useState<string | null>(null);
+  const milestoneCreate = useMutation({
+    mutationFn: async (input: ManualMilestoneInput) => {
+      setCreateError(null);
+      return roadmapIntel.createManualMilestone(
+        intelContext,
+        roadmapId,
+        detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
+        input,
+        intelQuery.data?.milestones ?? [],
+      );
+    },
+    onSuccess: refresh,
+    onError: (error) =>
+      setCreateError(error instanceof Error ? error.message : "The milestone could not be saved."),
   });
 
   /**
@@ -918,7 +940,10 @@ function RoadmapWorkspace({
                 milestones={milestones}
                 busyId={busyId}
                 generating={research.isPending}
+                creating={milestoneCreate.isPending}
+                createError={createError}
                 onGenerate={() => research.mutate()}
+                onCreate={(input) => milestoneCreate.mutate(input)}
                 onStatus={(milestone, status, note) =>
                   milestoneStatus.mutate({ milestone, status, note })
                 }
