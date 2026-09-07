@@ -26,6 +26,9 @@ export type ActivityAction =
   | "decision_resolved"
   | "next_move_changed"
   | "flagged"
+  /** Roadmap: a person recorded a reading of a milestone outcome metric.
+   *  Evidence, never an inference (see src/domain/milestone-measurement.ts). */
+  | "measured"
   /* --- commercial truth (see src/domain/commercial.ts) ---
    * Human-entered only. Amounts are never derived and never inferred. */
   | "tier_changed"
