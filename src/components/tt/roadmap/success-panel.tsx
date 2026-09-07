@@ -21,13 +21,24 @@ export function SuccessPanel({
   subject,
   busy,
   onSave,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   success: MilestoneSuccess | null;
   subject: string;
   busy: boolean;
   onSave: (input: MilestoneSuccessInput) => void;
+  /** When given, the card owns the one primary action and this panel hides its own. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : ownOpen;
+  const setOpen = (next: boolean) => {
+    if (controlled) onOpenChange?.(next);
+    else setOwnOpen(next);
+  };
   const [outcome, setOutcome] = useState(success?.outcome ?? "");
   const [targetDate, setTargetDate] = useState(success?.targetDate ?? "");
   const [successCheck, setSuccessCheck] = useState(success?.successCheck ?? "");
@@ -43,6 +54,7 @@ export function SuccessPanel({
     onSave(checked.success);
     setOpen(false);
   };
+
 
   return (
     <section className="mt-4">
