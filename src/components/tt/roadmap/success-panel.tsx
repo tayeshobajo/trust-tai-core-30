@@ -112,7 +112,10 @@ export function SuccessPanel({
       </div>
 
       {open ? (
-        <div className="mt-4 space-y-3 rounded-2xl border border-border p-4">
+        <div
+          ref={editorRef ?? null}
+          className="tt-panel-enter tt-reveal-target mt-4 space-y-3 rounded-2xl border border-border p-4"
+        >
           <label className="block">
             <span className="tt-eyebrow">What success looks like</span>
             <span className="mt-1 block">
