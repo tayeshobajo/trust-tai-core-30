@@ -5,6 +5,8 @@
 import { AlertTriangle, ArrowRight, CheckCircle2, Circle, Clock } from "lucide-react";
 
 import { TTButton } from "@/components/tt/primitives";
+import { PointAEditor, PointBEditor } from "@/components/tt/roadmap/detail/point-editors";
+import type { Roadmap } from "@/domain/roadmap";
 import {
   blockerAgeDays,
   currentWorkItem,
@@ -77,6 +79,10 @@ export function OverviewTab({
   blockers,
   completion,
   onOpenTab,
+  roadmap = null,
+  savingPoints = false,
+  onSavePointA,
+  onSaveDestination,
 }: {
   project: ExecutionProject;
   lineage: ProjectLineage;
@@ -84,6 +90,15 @@ export function OverviewTab({
   blockers: ProjectBlocker[];
   completion: CompletionModel;
   onOpenTab: (tab: "work" | "blockers" | "decisions") => void;
+  /**
+   * The linked roadmap, when there is one. Point A and Point B below read and
+   * correct that roadmap's truth through the same editors and service the
+   * Roadmap room uses, so a person serving one company never leaves it.
+   */
+  roadmap?: Roadmap | null;
+  savingPoints?: boolean;
+  onSavePointA?: ((lines: string[]) => void) | undefined;
+  onSaveDestination?: ((input: { statement: string; because: string }) => void) | undefined;
 }) {
   const stands = standsModel(project, items, blockers);
   const current = currentWorkItem(items);
