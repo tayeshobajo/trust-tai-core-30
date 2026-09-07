@@ -115,9 +115,12 @@ export function RoadmapTab({
 function RoadmapOutcomeCard({
   outcome,
   compact = false,
+  linkedProject = null,
 }: {
   outcome: RoadmapOutcome;
   compact?: boolean;
+  /** Set only from a recorded project → roadmap link; never inferred. */
+  linkedProject?: Pick<ExecutionProject, "id" | "name"> | null;
 }) {
   return (
     <TTCard className="p-4">
@@ -175,6 +178,19 @@ function RoadmapOutcomeCard({
           </div>
         ) : null}
       </dl>
+      {linkedProject ? (
+        <p className="mt-3 border-t border-border pt-3 text-[12px] text-muted-foreground">
+          Milestones and delivery are operated in{" "}
+          <Link
+            to="/modules/projects/$projectId"
+            params={{ projectId: linkedProject.id }}
+            className="font-medium text-royal underline-offset-4 hover:underline"
+          >
+            {linkedProject.name}
+          </Link>
+          .
+        </p>
+      ) : null}
     </TTCard>
   );
 }
