@@ -11,6 +11,8 @@ import { useEffect, useRef, useState } from "react";
 import { ManualMilestoneForm } from "@/components/tt/roadmap/manual-milestone";
 import { MilestoneOverflow } from "@/components/tt/roadmap/milestone-overflow";
 import { CriteriaPanel } from "@/components/tt/roadmap/criteria-panel";
+import { LifecyclePanel } from "@/components/tt/roadmap/lifecycle-panel";
+import { milestoneLifecycle } from "@/domain/milestone-lifecycle";
 import { SuccessPanel } from "@/components/tt/roadmap/success-panel";
 import { OwnershipInspector } from "@/components/tt/roadmap/ownership-inspector";
 import { EvidenceList } from "@/components/tt/roadmap/tier";
@@ -160,6 +162,19 @@ function MilestoneCard({
           {...(onEvidenceRemove ? { onEvidenceRemove } : {})}
           {...(onEvidenceOpen ? { onEvidenceOpen } : {})}
           {...(onEvidenceUrl ? { onEvidenceUrl } : {})}
+        />
+      ) : null}
+
+      {onCriterionAdd ? (
+        <LifecyclePanel
+          lifecycle={lifecycle}
+          subject={milestone.name}
+          busy={busy}
+          onFix={() => setEditing(true)}
+          onAccept={() => {
+            setPending("approved");
+            setNote("");
+          }}
         />
       ) : null}
 
