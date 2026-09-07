@@ -614,13 +614,28 @@ This refines Canon 18 without contradicting it. Ownership is unchanged:
 
 ### What this means in the product
 
-Client -> Projects is not a list with a door out. It is the embedded project
-workspace for this company: a compact selector of the company's projects, and
-the selected project's own workroom rendered in place, from the same component
-(`ProjectWorkroom`) and the same services the standalone room uses. Switching
-projects happens inside the client. Roadmap direction, milestones, candidate
-generation, approve/reject/defer, success sentence, target date, acceptance
-criteria and any measurable target are all operated there without leaving.
+**One workspace, one primary navigation.** The Client page is Home for that
+company: Overview · Work · Relationship · Commercial · Files · Chat. There is
+no second navigation inside it. The former `Projects` tab is now **Work**.
+
+Work is a single client-scoped operating page:
+
+- a compact project switcher, shown only when the company has more than one
+  project; it changes the current work context, it does not navigate;
+- the selected project's summary, direction and outcome;
+- milestones as the main body, operated through the Roadmap service and the
+  same Roadmap components the standalone room renders: add milestone, generate
+  candidates, approve/defer/reject, success sentence, target date, acceptance
+  criteria, optional measurable target and readings;
+- current work, next move, blockers and decisions only when real state exists;
+- a compact activity timeline at the foot.
+
+`ProjectWorkroom` renders in two modes. `room` is the standalone Projects page
+with its five surfaces. `composed` is the Client workspace: the same component
+and the same services, stacked into one page with no tab bar. Files and Chat
+are not repeated inside Work: the client-level Files tab is the canonical file
+browser, and the client-level Chat is the single AI doorway, which carries the
+currently selected project in its context packet.
 
 A person leaves the Client workspace only to change client, or to look across
 the portfolio on purpose.
@@ -628,11 +643,12 @@ the portfolio on purpose.
 ### What it forbids
 
 No second project store, no second milestone store, no second chat truth, no
-copy of a workroom surface written for the client shell. If a surface needs to
-exist in both places, it is one component rendered twice.
+copy of a workroom surface written for the client shell, and no nested tab bar
+inside a client surface. If a surface needs to exist in both places, it is one
+component rendered twice.
 
 ### Where the state lives
 
-The client route carries `tab`, `project` and `view` in its search params, so a
-refresh, back/forward and a shared link all land on the same client, the same
-project and the same surface, inside the same shell.
+The client route carries `tab` and `project` in its search params, so a
+refresh, back/forward and a shared link all land on the same client with the
+same current work, inside the same shell.

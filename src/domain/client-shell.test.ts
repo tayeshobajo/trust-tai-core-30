@@ -134,7 +134,7 @@ describe("the client shell has exactly six tabs, in order", () => {
   it("names Overview, Projects, Relationship, Commercial, Files, Chat", () => {
     expect(CLIENT_TABS).toEqual([
       "overview",
-      "projects",
+      "work",
       "relationship",
       "commercial",
       "files",

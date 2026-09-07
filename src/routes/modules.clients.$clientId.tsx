@@ -28,8 +28,6 @@ import {
 } from "@/components/tt/clients/chat";
 import { FilesTab, RelationshipTab } from "@/components/tt/clients/tabs";
 import { ClientProjectWorkspace } from "@/components/tt/clients/project-workspace";
-import type { ProjectTab } from "@/components/tt/projects/detail/frame";
-import { isProjectSurface } from "@/domain/project-workroom-ia";
 
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -96,21 +94,16 @@ const DESCRIPTION =
 export const Route = createFileRoute("/modules/clients/$clientId")({
   /**
    * Overview is the door; it carries no `tab` so plain client links stay clean.
-   * `project` and `view` remember which project is open inside this client and
-   * which of its surfaces is showing, so refresh, back/forward and a shared
-   * link all land in the same place without leaving the client.
+   * `project` remembers which project is the current work context inside this
+   * client, so refresh, back/forward and a shared link all land in the same
+   * place without ever leaving the client.
    */
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { tab?: ClientTab; project?: string; view?: ProjectTab } => {
+  validateSearch: (search: Record<string, unknown>): { tab?: ClientTab; project?: string } => {
     const tab = parseClientTab(search["tab"]);
     const project = typeof search["project"] === "string" ? search["project"] : undefined;
-    const rawView = search["view"];
-    const view = isProjectSurface(rawView) ? rawView : undefined;
     return {
       ...(tab === "overview" ? {} : { tab }),
       ...(project ? { project } : {}),
-      ...(view && view !== "overview" ? { view } : {}),
     };
   },
   head: () => ({
@@ -129,7 +122,7 @@ export const Route = createFileRoute("/modules/clients/$clientId")({
 
 function ClientRoute() {
   const { clientId } = Route.useParams();
-  const { tab, project, view } = Route.useSearch();
+  const { tab, project } = Route.useSearch();
   const navigate = Route.useNavigate();
   return (
     <WorkspaceGate appId="clients">
@@ -139,12 +132,8 @@ function ClientRoute() {
           clientId={clientId}
           tab={tab ?? "overview"}
           selectedProjectId={project ?? null}
-          projectSurface={view ?? "overview"}
           onSelectProject={(projectId) =>
             void navigate({ search: (prev) => ({ ...prev, project: projectId }) })
-          }
-          onProjectSurface={(next) =>
-            void navigate({ search: (prev) => ({ ...prev, view: next }) })
           }
         />
       )}
@@ -169,17 +158,13 @@ function ClientShell({
   clientId,
   tab,
   selectedProjectId,
-  projectSurface,
   onSelectProject,
-  onProjectSurface,
 }: {
   identity: WorkspaceIdentity;
   clientId: string;
   tab: ClientTab;
   selectedProjectId: string | null;
-  projectSurface: ProjectTab;
   onSelectProject: (projectId: string) => void;
-  onProjectSurface: (tab: ProjectTab) => void;
 }) {
   const now = useMemo(() => new Date(), []);
   const organizationId = identity.organizationId;
@@ -767,6 +752,7 @@ function ClientShell({
       now,
       timeZone,
     }),
+    currentProjectId: selectedProjectId,
   });
 
   return (
@@ -826,7 +812,7 @@ function ClientShell({
             />
           ) : null}
 
-          {tab === "projects" ? (
+          {tab === "work" ? (
             projectsForTab && !projectsForTab.available ? (
               <p className="text-sm text-muted-foreground">
                 Delivery could not be read: {projectsForTab.because}
@@ -839,10 +825,8 @@ function ClientShell({
                 identity={identity}
                 projects={projects}
                 selectedId={selectedProjectId}
-                surface={projectSurface}
                 loading={projectsQuery.isLoading}
                 onSelect={onSelectProject}
-                onSurfaceChange={onProjectSurface}
               />
             )
           ) : null}

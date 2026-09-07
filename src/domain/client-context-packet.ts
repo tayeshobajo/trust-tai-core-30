@@ -47,6 +47,8 @@ export interface ClientPacketInput {
   sources: RoomRead<ClientLinkedSource[]> | null;
   history: RoomRead<ActivityEvent[]> | null;
   attention: AttentionItem[];
+  /** The project currently open in Work, so Chat answers in that context. */
+  currentProjectId?: string | null;
 }
 
 export interface ClientContextPacket {
@@ -58,6 +60,8 @@ export interface ClientContextPacket {
   direction: string[] | { unreadable: string };
   sources: string[] | { unreadable: string };
   attention: string[];
+  /** `Mental Dental Academy · In flight`, or null when no project is open. */
+  currentWork: string | null;
   recentActivity: string[] | { unreadable: string };
   /** Said in the packet itself so an answer never claims it can act. */
   boundaries: string[];
@@ -78,7 +82,12 @@ function read<T, R>(source: RoomRead<T> | null, map: (value: T) => R): R | { unr
 
 /** Compose the packet. Pure: it reads what the page already has and nothing else. */
 export function clientContextPacket(input: ClientPacketInput): ClientContextPacket {
+  const current =
+    input.currentProjectId && input.projects?.available
+      ? (input.projects.value.find((project) => project.id === input.currentProjectId) ?? null)
+      : null;
   return {
+    currentWork: current ? `${current.name} · ${projectStateLabel(current)}` : null,
     client: {
       name: input.identity.name,
       website: input.identity.websiteUrl,

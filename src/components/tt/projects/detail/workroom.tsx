@@ -106,6 +106,7 @@ export function ProjectWorkroom({
   identity,
   projectId,
   embedded = false,
+  mode = "room",
   surface,
   onSurfaceChange,
 }: {
@@ -113,14 +114,28 @@ export function ProjectWorkroom({
   projectId: string;
   /** Rendered inside another room's shell: no Projects breadcrumb, no sibling paging. */
   embedded?: boolean;
+  /**
+   * `room` is the standalone Projects page, with its own five surfaces.
+   * `composed` is the Client workspace: one page, no second navigation. Work,
+   * direction, milestones and activity are stacked; Chat and Files stay with
+   * the Client shell, which owns the single doorway to each.
+   */
+  mode?: "room" | "composed";
   /** When the host owns the selected surface (a Client workspace does), pass it here. */
   surface?: ProjectTab;
   onSurfaceChange?: (tab: ProjectTab) => void;
 }) {
   const queryClient = useQueryClient();
+  const composed = mode === "composed";
   const [ownTab, setOwnTab] = useState<ProjectTab>("overview");
   const tab = surface ?? ownTab;
+  /** Composed inside a Client: the page shows its own sections, never a menu. */
+  const shows = (candidate: ProjectTab) =>
+    composed
+      ? candidate === "overview" || candidate === "roadmap" || candidate === "activity"
+      : tab === candidate;
   const setTab = (next: ProjectTab) => {
+    if (composed) return;
     setOwnTab(next);
     onSurfaceChange?.(next);
   };
@@ -737,7 +752,7 @@ export function ProjectWorkroom({
    * scrolls to it, so nothing that used to be reachable became unreachable.
    */
   const openTab = (section: ProjectSection) => {
-    setTab(surfaceForSection(section));
+    if (!composed) setTab(surfaceForSection(section));
     if (typeof window === "undefined") return;
     window.requestAnimationFrame(() => {
       document.getElementById(sectionAnchor(section))?.scrollIntoView({ behavior: "smooth" });
@@ -772,16 +787,18 @@ export function ProjectWorkroom({
 
       <OutcomeStrip outcome={completion.outcome} />
 
-      <ProjectTabs
-        tab={tab}
-        counts={{
-          overview: blockers.filter((entry) => entry.status === "open").length,
-          roadmap: intelQuery.data?.milestones.length ?? 0,
-          files: files.length + assets.length,
-        }}
+      {composed ? null : (
+        <ProjectTabs
+          tab={tab}
+          counts={{
+            overview: blockers.filter((entry) => entry.status === "open").length,
+            roadmap: intelQuery.data?.milestones.length ?? 0,
+            files: files.length + assets.length,
+          }}
 
-        onChange={setTab}
-      />
+          onChange={setTab}
+        />
+      )}
 
       {errorMessage ? (
         <p role="alert" className="text-sm text-destructive">
@@ -791,7 +808,7 @@ export function ProjectWorkroom({
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
-          {tab === "overview" ? (
+          {shows("overview") ? (
             <div className="space-y-6">
               <OverviewTab
                 project={project}
@@ -805,7 +822,7 @@ export function ProjectWorkroom({
             </div>
           ) : null}
 
-          {tab === "roadmap" ? (
+          {shows("roadmap") ? (
             <ProjectRoadmapTab
               roadmap={roadmap}
               milestones={intelQuery.data?.milestones ?? []}
@@ -841,7 +858,7 @@ export function ProjectWorkroom({
             />
           ) : null}
 
-          {tab === "overview" ? (
+          {shows("overview") ? (
             <WorkroomSection
               section="work"
               title="Work"
@@ -953,7 +970,7 @@ export function ProjectWorkroom({
             </WorkroomSection>
           ) : null}
 
-          {tab === "files" ? (
+          {shows("files") ? (
             <FilesTab
               items={items}
               files={files}
@@ -993,7 +1010,7 @@ export function ProjectWorkroom({
             />
           ) : null}
 
-          {tab === "files" ? (
+          {shows("files") ? (
             <div className="mt-8 space-y-8">
               <WorkroomSection
                 section="assets"
@@ -1097,9 +1114,9 @@ export function ProjectWorkroom({
             </div>
           ) : null}
 
-          {tab === "activity" ? <ActivityTab events={activityQuery.data ?? []} /> : null}
+          {shows("activity") ? <ActivityTab events={activityQuery.data ?? []} /> : null}
 
-          {tab === "chat" ? (
+          {shows("chat") ? (
             <ChatTab
               projectName={project.name}
               entries={chatEntries}
@@ -1138,10 +1155,12 @@ export function ProjectWorkroom({
         />
       </div>
 
-      <p className="text-[13px] text-muted-foreground">
-        {PROJECT_TABS.length} sections, one record. Everything here is written to the shared
-        activity stream so Pulse and Ask Trust Tai read the same truth.
-      </p>
+      {composed ? null : (
+        <p className="text-[13px] text-muted-foreground">
+          {PROJECT_TABS.length} sections, one record. Everything here is written to the shared
+          activity stream so Pulse and Ask Trust Tai read the same truth.
+        </p>
+      )}
     </div>
   );
 }
