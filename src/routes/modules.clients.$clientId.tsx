@@ -747,41 +747,9 @@ function ClientShell({
                 renewal: cadence.renewalLine,
                 provenance: commercialProvenanceLine,
               }}
-              commercialForm={
-                <CommercialPanel
-                  current={{
-                    tier: record.tier,
-                    mrrCents: record.mrrCents,
-                    renewalAt: record.renewalAt,
-                    nextReviewAt: record.nextReviewAt,
-                  }}
-                  provenance={commercialProvenance}
-                  pending={saveCommercial.isPending}
-                  problem={commercialProblem}
-                  saved={commercialSaved}
-                  onSave={(patch) => saveCommercial.mutate(patch)}
-                />
-              }
             />
           ) : null}
 
-          {tab === "roadmap" ? (
-            <div className="space-y-8">
-              <RoadmapTab
-                read={roadmapOutcomes}
-                loading={roadmapsQuery.isLoading}
-                projects={projects}
-              />
-              <ProposalPanel
-                nodes={proposalNodes}
-                pendingRoadmapId={pendingProposalId}
-                problem={proposalProblem}
-                savedRoadmapId={proposalSavedId}
-                onSend={(input) => sendProposal.mutate(input)}
-                onAnswer={(input) => answerProposal.mutate(input)}
-              />
-            </div>
-          ) : null}
           {tab === "projects" ? (
             <ProjectsTab
               read={projectsForTab}
@@ -798,12 +766,39 @@ function ClientShell({
               window={exchangeWindow}
             />
           ) : null}
-          {tab === "site" ? (
-            <SiteTab
-              read={readOf(siteQuery)}
-              loading={siteQuery.isLoading}
-              client={{ name: record.name, websiteUrl: record.websiteUrl }}
-              timeZone={timeZone}
+          {tab === "commercial" ? (
+            <CommercialTab
+              lines={{
+                headline: card.commercialLine,
+                review: cadence.line,
+                renewal: cadence.renewalLine,
+                provenance: commercialProvenanceLine,
+              }}
+              form={
+                <CommercialPanel
+                  current={{
+                    tier: record.tier,
+                    mrrCents: record.mrrCents,
+                    renewalAt: record.renewalAt,
+                    nextReviewAt: record.nextReviewAt,
+                  }}
+                  provenance={commercialProvenance}
+                  pending={saveCommercial.isPending}
+                  problem={commercialProblem}
+                  saved={commercialSaved}
+                  onSave={(patch) => saveCommercial.mutate(patch)}
+                />
+              }
+              proposals={
+                <ProposalPanel
+                  nodes={proposalNodes}
+                  pendingRoadmapId={pendingProposalId}
+                  problem={proposalProblem}
+                  savedRoadmapId={proposalSavedId}
+                  onSend={(input) => sendProposal.mutate(input)}
+                  onAnswer={(input) => answerProposal.mutate(input)}
+                />
+              }
             />
           ) : null}
           {tab === "files" ? (
@@ -820,6 +815,34 @@ function ClientShell({
                   window.open(url, "_blank", "noopener,noreferrer");
                 });
               }}
+            />
+          ) : null}
+          {tab === "chat" ? (
+            <ClientChatTab
+              clientName={record.name}
+              entries={chatEntries}
+              pending={sendChat.isPending}
+              applying={applying}
+              error={chatError}
+              onSend={(message, pasted, mode) => {
+                setChatError(null);
+                const pendingId = entryId();
+                setChatEntries((entries) => [
+                  ...entries,
+                  { id: entryId(), role: "you", text: message, ...(pasted ? { pasted } : {}) },
+                  { id: pendingId, role: "client", pending: true },
+                ]);
+                sendChat.mutate({
+                  message,
+                  pasted,
+                  mode,
+                  pendingId,
+                  packet,
+                  clientLabel: record.name,
+                });
+              }}
+              onApprove={(id) => void approveProposal(id)}
+              onDiscard={(id) => settle(id, "discarded", "Discarded. Nothing was changed.")}
             />
           ) : null}
         </div>
