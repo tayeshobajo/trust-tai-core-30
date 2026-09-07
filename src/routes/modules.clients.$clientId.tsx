@@ -829,12 +829,26 @@ function ClientShell({
           ) : null}
 
           {tab === "projects" ? (
-            <ProjectsTab
-              read={projectsForTab}
-              loading={projectsQuery.isLoading}
-              timeZone={timeZone}
-            />
+            projectsForTab && !projectsForTab.available ? (
+              <p className="text-sm text-muted-foreground">
+                Delivery could not be read: {projectsForTab.because}
+              </p>
+            ) : (
+              /* The project's own workroom, in place. Projects and Roadmap still
+                 own the truth underneath; this is the same component the
+                 standalone room renders. */
+              <ClientProjectWorkspace
+                identity={identity}
+                projects={projects}
+                selectedId={selectedProjectId}
+                surface={projectSurface}
+                loading={projectsQuery.isLoading}
+                onSelect={onSelectProject}
+                onSurfaceChange={onProjectSurface}
+              />
+            )
           ) : null}
+
           {tab === "relationship" ? (
             <RelationshipTab
               read={relationshipRead}
