@@ -72,6 +72,7 @@ import {
   manualMilestoneKey,
   nextSequence,
 } from "@/domain/milestone-create";
+import { acceptanceEventKey, reopenEventKey } from "@/domain/milestone-acceptance";
 import { rankMilestones, type MilestoneScoreInput } from "@/data/roadmap-milestones";
 import type { NormalizedResearch } from "@/data/roadmap-research-parse";
 
@@ -721,6 +722,117 @@ const roadmapIntelRaw = {
       label,
       `${milestone.name} was ${status} by a person.`,
       { milestoneId: milestone.id, status, ...(note ? { note } : {}) },
+    );
+    return toMilestone(data as Row);
+  },
+
+  /**
+   * Record delivery acceptance on a milestone (the one definition of
+   * complete). Roadmap owns it, so this is the only write path, and only a
+   * person calls it. Roadmap approval is not touched here: it already meant
+   * "selected into the roadmap" and keeps meaning exactly that.
+   *
+   * Replay safe by construction: an already accepted milestone is returned
+   * unchanged, `accepted_at` is written once, and the receipt carries a stable
+   * key so a retry adds no second event.
+   */
+  async acceptMilestone(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    note: string | undefined,
+    label: string,
+  ): Promise<RoadmapMilestone> {
+    if (milestone.acceptance?.acceptedAt) return milestone;
+
+    const at = new Date().toISOString();
+    const clean = note?.trim() ? note.trim() : null;
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .update({
+        accepted_at: at,
+        accepted_by: context.userId,
+        accepted_by_label: context.userLabel ?? null,
+        acceptance_note: clean,
+        updated_at: at,
+      })
+      .eq("id", milestone.id)
+      // Only an unaccepted milestone can be accepted, so two concurrent
+      // clicks cannot rewrite the moment of acceptance.
+      .is("accepted_at", null)
+      .select(MILESTONE_COLUMNS)
+      .maybeSingle();
+
+    if (error?.message && /accepted_at|accepted_by|acceptance_note/.test(error.message)) {
+      throw new Error(
+        "Milestone acceptance is not available in this environment yet: the roadmap_milestones acceptance columns have not been applied.",
+      );
+    }
+    assertOk(error);
+    if (!data) return milestone;
+
+    await record(
+      context,
+      "roadmap.completed",
+      milestone.roadmapId,
+      label,
+      `${milestone.name} was accepted as delivered by a person.`,
+      {
+        milestoneId: milestone.id,
+        scope: "acceptance",
+        ...(clean ? { note: clean } : {}),
+        source_event_key: acceptanceEventKey(milestone.id),
+      },
+    );
+    return toMilestone(data as Row);
+  },
+
+  /**
+   * Reopen an accepted milestone. Explicit, human, and narrow: it clears the
+   * acceptance fields and nothing else. Conditions and their evidence stay
+   * exactly as they are.
+   */
+  async reopenMilestone(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    reason: string | undefined,
+    label: string,
+  ): Promise<RoadmapMilestone> {
+    const previous = milestone.acceptance?.acceptedAt;
+    if (!previous) return milestone;
+
+    const at = new Date().toISOString();
+    const clean = reason?.trim() ? reason.trim() : null;
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .update({
+        accepted_at: null,
+        accepted_by: null,
+        accepted_by_label: null,
+        acceptance_note: null,
+        updated_at: at,
+      })
+      .eq("id", milestone.id)
+      .not("accepted_at", "is", null)
+      .select(MILESTONE_COLUMNS)
+      .maybeSingle();
+
+    assertOk(error);
+    if (!data) return milestone;
+
+    await record(
+      context,
+      "roadmap.updated",
+      milestone.roadmapId,
+      label,
+      `${milestone.name} was reopened by a person.`,
+      {
+        milestoneId: milestone.id,
+        scope: "acceptance",
+        reopened: true,
+        previousAcceptedAt: previous,
+        ...(clean ? { reason: clean } : {}),
+        source_event_key: reopenEventKey(milestone.id, previous),
+      },
     );
     return toMilestone(data as Row);
   },

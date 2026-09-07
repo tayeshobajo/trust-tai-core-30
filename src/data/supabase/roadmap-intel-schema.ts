@@ -30,6 +30,7 @@ import type {
 import { MILESTONE_STATUSES } from "@/domain/roadmap-intel";
 import { readOutcomeMetric } from "@/domain/milestone-metric";
 import { readMilestoneSuccess } from "@/domain/milestone-success";
+import type { MilestoneAcceptance } from "@/domain/milestone-acceptance";
 
 export type Row = Record<string, unknown>;
 
@@ -214,6 +215,24 @@ export function toStrategy(row: Row): RoadmapStrategy {
   };
 }
 
+/**
+ * Delivery acceptance, read from the milestone row itself. An environment
+ * without the columns and a milestone nobody has accepted both read as null.
+ */
+function readAcceptance(row: Row): MilestoneAcceptance | null {
+  const at = text(row["accepted_at"]);
+  const by = text(row["accepted_by"]);
+  if (!at || !by) return null;
+  const label = text(row["accepted_by_label"]);
+  const note = text(row["acceptance_note"]);
+  return {
+    acceptedAt: at,
+    acceptedBy: by,
+    ...(label ? { acceptedByLabel: label } : {}),
+    ...(note ? { note } : {}),
+  };
+}
+
 export function toMilestone(row: Row): RoadmapMilestone {
   const status = MILESTONE_STATUSES.includes(row["status"] as MilestoneStatus)
     ? (row["status"] as MilestoneStatus)
@@ -248,6 +267,7 @@ export function toMilestone(row: Row): RoadmapMilestone {
     // has given a metric, both read as no metric at all.
     outcomeMetric: readOutcomeMetric(row["outcome_metric"]),
     success: readMilestoneSuccess(row["success_definition"]),
+    acceptance: readAcceptance(row),
     createdAt: str(row["created_at"], new Date().toISOString()),
     updatedAt: str(row["updated_at"], new Date().toISOString()),
   };

@@ -153,6 +153,8 @@ export function ProjectRoadmapTab({
   evidence = [],
   evidenceError = null,
   onSuccess,
+  onAccept,
+  onReopen,
   onCriterionAdd,
   onCriterionToggle,
   onCriterionEdit,
@@ -198,6 +200,8 @@ export function ProjectRoadmapTab({
   evidence?: CriterionEvidence[];
   evidenceError?: string | null;
   onSuccess?: ((milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void) | undefined;
+  onAccept?: ((milestone: RoadmapMilestone, note: string) => void) | undefined;
+  onReopen?: ((milestone: RoadmapMilestone, reason: string) => void) | undefined;
   onCriterionAdd?: ((milestone: RoadmapMilestone, text: string) => void) | undefined;
   onCriterionToggle?:
     | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, done: boolean) => void)
@@ -266,6 +270,8 @@ export function ProjectRoadmapTab({
             evidence={evidence}
             evidenceError={evidenceError}
             onSuccess={onSuccess}
+            onAccept={onAccept}
+            onReopen={onReopen}
             onCriterionAdd={onCriterionAdd}
             onCriterionToggle={onCriterionToggle}
             onCriterionEdit={onCriterionEdit}

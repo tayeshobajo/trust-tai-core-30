@@ -27,6 +27,7 @@ export function MilestoneOverflow({
   rankingOpen = false,
   onDetail,
   onRanking,
+  onReopen,
 }: {
   milestone: RoadmapMilestone;
   busy: boolean;
@@ -36,6 +37,8 @@ export function MilestoneOverflow({
   rankingOpen?: boolean;
   onDetail?: (() => void) | undefined;
   onRanking?: (() => void) | undefined;
+  /** Only offered on an accepted milestone; still asks for confirmation. */
+  onReopen?: (() => void) | undefined;
 }) {
   return (
     <DropdownMenu>
@@ -52,6 +55,12 @@ export function MilestoneOverflow({
             {action.label}
           </DropdownMenuItem>
         ))}
+        {onReopen ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => onReopen()}>Reopen milestone</DropdownMenuItem>
+          </>
+        ) : null}
         {onDetail || onRanking ? <DropdownMenuSeparator /> : null}
         {onDetail ? (
           <DropdownMenuItem onSelect={() => onDetail()}>

@@ -773,3 +773,23 @@ never substitutes for judgment.
   invented, and no second lifecycle store exists.
 - When something is missing, the surface says which thing and offers the
   action that resolves it on the same Client > Work page (Canon 16).
+
+### Canon 24 addendum: delivery acceptance (locked 2026-09-07)
+
+Roadmap approval is not delivery acceptance.
+
+- `status = approved` at `tier = decided` means the milestone was selected into
+  the roadmap. It says nothing about whether the work was delivered.
+- Delivery acceptance is its own explicit human fact, recorded on the milestone
+  row as `accepted_at`, `accepted_by`, `accepted_by_label` and
+  `acceptance_note` (docs/milestone-acceptance-schema.sql). No new status and no
+  second lifecycle store exists.
+- Complete is derived from the presence of `accepted_at`, never from a roadmap
+  status. Checking the last condition never accepts anything.
+- Acceptance is offered only when the lifecycle is genuinely ready (outcome
+  written, every condition checked) and still requires an explicit
+  confirmation.
+- Reopening is explicit, lives in the milestone overflow, clears the acceptance
+  fields only, and records its own activity receipt. Conditions and their
+  evidence are never touched. Both acceptance and reopening carry a stable
+  event key, so a retry writes no second receipt.

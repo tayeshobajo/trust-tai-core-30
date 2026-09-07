@@ -18,6 +18,10 @@ import type { RoadmapMilestone } from "@/domain/roadmap-intel";
 export interface MilestoneAcceptance {
   error: string | null;
   onSuccess: (milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void;
+  /** The explicit human acceptance of delivered work. Never automatic. */
+  onAccept: (milestone: RoadmapMilestone, note: string) => void;
+  /** Clears acceptance only. Conditions and evidence are untouched. */
+  onReopen: (milestone: RoadmapMilestone, reason: string) => void;
   onCriterionAdd: (milestone: RoadmapMilestone, text: string) => void;
   onCriterionToggle: (
     milestone: RoadmapMilestone,
@@ -82,6 +86,10 @@ export function useMilestoneAcceptance({
 
   return {
     error,
+    onAccept: (milestone, note) =>
+      void run(milestone.id, () => roadmapIntel.acceptMilestone(context, milestone, note, label)),
+    onReopen: (milestone, reason) =>
+      void run(milestone.id, () => roadmapIntel.reopenMilestone(context, milestone, reason, label)),
     onSuccess: (milestone, input) =>
       void run(milestone.id, () =>
         roadmapIntel.setMilestoneSuccess(context, milestone, input, label),
