@@ -11,6 +11,8 @@ import { useEffect, useRef, useState } from "react";
 import { ManualMilestoneForm } from "@/components/tt/roadmap/manual-milestone";
 import { MilestoneOverflow } from "@/components/tt/roadmap/milestone-overflow";
 import { CriteriaPanel } from "@/components/tt/roadmap/criteria-panel";
+import { LifecyclePanel } from "@/components/tt/roadmap/lifecycle-panel";
+import { milestoneLifecycle } from "@/domain/milestone-lifecycle";
 import { SuccessPanel } from "@/components/tt/roadmap/success-panel";
 import { OwnershipInspector } from "@/components/tt/roadmap/ownership-inspector";
 import { EvidenceList } from "@/components/tt/roadmap/tier";
@@ -114,6 +116,7 @@ function MilestoneCard({
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState<MilestoneStatus | null>(null);
   const busy = busyId === milestone.id;
+  const lifecycle = milestoneLifecycle(milestone, criteria);
 
   return (
     <li className="tt-surface p-6">
@@ -160,6 +163,19 @@ function MilestoneCard({
           {...(onEvidenceRemove ? { onEvidenceRemove } : {})}
           {...(onEvidenceOpen ? { onEvidenceOpen } : {})}
           {...(onEvidenceUrl ? { onEvidenceUrl } : {})}
+        />
+      ) : null}
+
+      {onCriterionAdd ? (
+        <LifecyclePanel
+          lifecycle={lifecycle}
+          subject={milestone.name}
+          busy={busy}
+          onFix={() => setEditing(true)}
+          onAccept={() => {
+            setPending("approved");
+            setNote("");
+          }}
         />
       ) : null}
 
@@ -238,7 +254,11 @@ function MilestoneCard({
 
       {pending ? (
         <div className="mt-4 space-y-3 rounded-2xl border border-border p-4">
-          <p className="text-sm text-foreground">{milestoneActionPrompt(pending)}.</p>
+          <p className="text-sm text-foreground">
+            {pending === "approved" && lifecycle.ready
+              ? "Complete this milestone. Every condition is checked and this is your call."
+              : `${milestoneActionPrompt(pending)}.`}
+          </p>
           <TTInput
             value={note}
             onChange={(event) => setNote(event.target.value)}

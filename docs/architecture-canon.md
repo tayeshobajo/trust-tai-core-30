@@ -748,3 +748,25 @@ the presentation law:
   optional note, and exactly one primary `Attach evidence` action.
 - The acceptance checklist stays visually primary. Evidence never checks a
   condition and never completes a milestone.
+
+## Canon 24: Milestone lifecycle (locked 2026-09-07)
+
+A milestone is complete only when its intended outcome and target are clear,
+its acceptance criteria have been human checked, available evidence can be
+reviewed, and a person explicitly completes it. Evidence supports judgment; it
+never substitutes for judgment.
+
+- The everyday lifecycle is Outcome, Target date, Acceptance criteria,
+  Evidence, human decision. Nothing else belongs on the everyday surface, and
+  numeric measurement stays advanced and out of it (Canon 19).
+- Acceptance progress is derived from acceptance criteria only. Attached proof
+  never counts towards it, and no new stored status exists merely to show
+  progress.
+- Completion reuses the existing milestone status service exactly. `approved`
+  at `decided` tier is the human acceptance; no `accepted` or `complete`
+  status is invented, and no second lifecycle store exists.
+- The final action is offered only when every current condition is checked,
+  and it still requires an explicit confirmation. Checking the last box never
+  completes anything.
+- When something is missing, the surface says which thing and offers the
+  action that resolves it on the same Client > Work page (Canon 16).
