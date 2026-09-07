@@ -57,7 +57,6 @@ export function ClientProjectWorkspace({
         }
       />
     );
-
   }
 
   const selected = projects.find((project) => project.id === selectedId) ?? projects[0]!;
