@@ -9,7 +9,14 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, FileText, Image as ImageIcon, Link2, StickyNote, Trash2 } from "lucide-react";
+import {
+  ExternalLink,
+  FileText,
+  Image as ImageIcon,
+  Link2,
+  StickyNote,
+  Trash2,
+} from "lucide-react";
 
 import { TTButton } from "@/components/tt/primitives";
 import {
