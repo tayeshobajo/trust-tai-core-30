@@ -57,8 +57,8 @@ const FOCUSABLE =
 export function firstFocusable(root: {
   querySelector: (selector: string) => Element | null;
 }): HTMLElement | null {
-  const found = root.querySelector(FOCUSABLE);
-  return found instanceof HTMLElement ? found : null;
+  const found = root.querySelector(FOCUSABLE) as HTMLElement | null;
+  return typeof found?.focus === "function" ? found : null;
 }
 
 export type RevealOptions = {
