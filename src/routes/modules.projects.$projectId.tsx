@@ -48,6 +48,15 @@ import { buildProjectRow, lineageSourcesFrom } from "@/data/projects/index-proje
 import { projectDelivery, type DeliveryContext } from "@/data/supabase/project-delivery";
 import { readRoadmapBrand } from "@/data/supabase/roadmap-brand";
 import { roadmapService } from "@/data/supabase/roadmap-service";
+import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-service";
+import { approvalsService } from "@/data/supabase/approvals-service";
+import { ProjectRoadmapTab } from "@/components/tt/projects/detail/roadmap";
+import { ProjectApprovals } from "@/components/tt/projects/detail/approvals";
+import { linkableRoadmaps } from "@/domain/project-roadmap-link";
+import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import type { OutcomeMetricInput } from "@/domain/milestone-metric";
+import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
+
 import { supabaseActivity } from "@/data/supabase/activities";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
