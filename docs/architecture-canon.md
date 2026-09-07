@@ -596,3 +596,43 @@ only what they can already say out loud.
 `src/domain/milestone-metric.ts` and `src/domain/milestone-measurement.ts`
 hold this law. `docs/milestone-success-criteria-schema.sql` is its canonical
 additive schema record.
+
+## Canon 19: The Client Workspace (locked 2026-09-07)
+
+Client is the account shell. Projects and Roadmap remain the truth owners
+underneath. **When a person is serving one company, project work and roadmap
+execution are operated inside the Client workspace.** The standalone Projects
+and Roadmap rooms are portfolio and global views, not required navigation.
+
+This refines Canon 18 without contradicting it. Ownership is unchanged:
+
+- Roadmap owns roadmap direction, milestones, acceptance criteria, metrics and
+  measurements.
+- Projects owns project state and work execution.
+- Comms owns message truth.
+- Client is the operating shell and projection for one account.
+
+### What this means in the product
+
+Client -> Projects is not a list with a door out. It is the embedded project
+workspace for this company: a compact selector of the company's projects, and
+the selected project's own workroom rendered in place, from the same component
+(`ProjectWorkroom`) and the same services the standalone room uses. Switching
+projects happens inside the client. Roadmap direction, milestones, candidate
+generation, approve/reject/defer, success sentence, target date, acceptance
+criteria and any measurable target are all operated there without leaving.
+
+A person leaves the Client workspace only to change client, or to look across
+the portfolio on purpose.
+
+### What it forbids
+
+No second project store, no second milestone store, no second chat truth, no
+copy of a workroom surface written for the client shell. If a surface needs to
+exist in both places, it is one component rendered twice.
+
+### Where the state lives
+
+The client route carries `tab`, `project` and `view` in its search params, so a
+refresh, back/forward and a shared link all land on the same client, the same
+project and the same surface, inside the same shell.
