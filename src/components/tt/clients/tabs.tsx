@@ -1,32 +1,23 @@
 /**
- * The six tabs of a client page. Each one reads a room and says which.
+ * The reading surfaces of a client page. Each one reads a room and says which.
  *
- * Overview composes one honest line per room. Roadmap, Projects and
- * Relationship list what their owning room recorded and deep-link into it.
- * Site and Files state, in plain words, that nothing is linked yet: there is
- * no client link on website records and no file store, and neither absence is
- * drawn as health.
+ * Product rule, locked in canon: Clients summarizes the company. Projects is
+ * the operating surface for project-scoped work. Roadmap is the planning
+ * engine. Client Chat reasons over account context but never becomes a second
+ * source of truth.
  *
- * Product rule: Clients summarizes the company; Projects is the operating
- * surface for project-scoped work. Milestones and delivery are never edited
- * here — when a person has linked a project to a roadmap, this page points
- * at that project workspace and stops. Do not duplicate the Project
- * workroom into Clients.
+ * So milestones, work items, blockers and project decisions are never edited
+ * here: a project card is a door into the project workspace, and direction and
+ * site are read on Overview and operated in their own rooms. Absence is stated
+ * plainly and never drawn as health.
  */
 
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 
-import {
-  Absent,
-  Fact,
-  OpenIn,
-  ReadOrSay,
-  RoomSection,
-  Unreadable,
-} from "@/components/tt/clients/shell";
+import { Absent, OpenIn, ReadOrSay, RoomSection } from "@/components/tt/clients/shell";
 import { TTCard } from "@/components/tt/primitives";
-import type { ClientApprovalsRead, ClientSiteRead } from "@/data/clients/shell-reads";
+import type { ClientApprovalsRead } from "@/data/clients/shell-reads";
 import type {
   RelationshipWindow,
   RelationshipWindowPerson,
@@ -42,26 +33,13 @@ import {
   FILES_NONE,
   FILES_NONE_BECAUSE,
   isOpenApproval,
-  isOpenProject,
   lastTouchLine,
   projectStateLabel,
-  siteHost,
-  siteSubmissionsFor,
-  SITE_NO_ADDRESS,
-  SITE_NO_ADDRESS_BECAUSE,
-  SITE_NO_SUBMISSIONS,
-  SITE_NO_SUBMISSIONS_BECAUSE,
-  SITE_UNPROVISIONED,
-  SITE_UNPROVISIONED_BECAUSE,
-  type ClientSiteIdentity,
   type RelationshipSnapshot,
-  type ReviewCadence,
-  type RoadmapOutcome,
   type RoomRead,
 } from "@/domain/client-shell";
 import { formatDay } from "@/domain/clients-book";
 import { FILE_KIND_LABEL, type ProjectFile } from "@/domain/project-delivery";
-import { projectLinkedToRoadmap } from "@/domain/project-roadmap-link";
 import type { ExecutionProject } from "@/domain/projects";
 import { cn } from "@/lib/utils";
 
