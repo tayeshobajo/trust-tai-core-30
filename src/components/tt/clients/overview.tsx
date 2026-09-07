@@ -78,6 +78,7 @@ export function OverviewTab({
   exchange,
   commercial,
   commercialForm,
+  roadmapProject = null,
 }: {
   reads: OverviewReads;
   cadence: ReviewCadence;
@@ -88,6 +89,11 @@ export function OverviewTab({
   commercial: CommercialReadLines;
   /** The existing commercial form, revealed only when a person asks to edit. */
   commercialForm: ReactNode;
+  /**
+   * The project a person linked to the shown roadmap, when one exists.
+   * Never inferred; null means no handoff line is drawn.
+   */
+  roadmapProject?: Pick<ExecutionProject, "id" | "name"> | null;
 }) {
   const compose: OverviewComposeInput = {
     projects: reads.projects,
@@ -115,7 +121,11 @@ export function OverviewTab({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-        <Direction read={reads.roadmap} loading={reads.loading.roadmap} />
+        <Direction
+          read={reads.roadmap}
+          loading={reads.loading.roadmap}
+          linkedProject={roadmapProject}
+        />
         <RelationshipContext
           read={reads.relationship}
           loading={reads.loading.relationship}
