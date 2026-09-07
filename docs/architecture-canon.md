@@ -561,3 +561,38 @@ truth.
 `src/domain/client-shell.ts` holds the single tab list, `CLIENT_TABS`.
 `src/domain/client-chat-proposal.ts` holds the whole proposal law and
 `src/domain/client-context-packet.ts` the whole packet law.
+
+## Canon 19: Milestone success (locked 2026-09-07)
+
+**People describe success. The system structures measurement.**
+
+A milestone is a promise about an outcome, so the everyday path asks a person
+only what they can already say out loud.
+
+- **The outcome is the milestone's first fact.** One sentence for what will be
+  true, an optional target date, an optional way of checking. It is typed by a
+  person, so it is stored as Decided with their name and the moment on it.
+  Nothing is inferred and nothing is filled in for them.
+- **Acceptance criteria are the working checklist.** Plain conditions in a
+  stable order, checked and unchecked by a person, with who completed each one
+  and when. A full checklist is evidence that the work is done; it is never a
+  reason for the system to complete the milestone. Only a person changes a
+  milestone's status.
+- **A measurable target is optional, and it is second.** Only a person who
+  wants a number opens it. They type a label and the numbers they care about;
+  the metric key is generated from the label and the direction is read from
+  the baseline and target when the two numbers already say it. A starting
+  point may be left out, in which case the direction is asked for once. A unit
+  is optional and is never invented.
+- **Measurement stays Roadmap's truth** under Canon 17. Readings are
+  append-only evidence, never mutate baseline or target, and any progress line
+  is deterministic from direction plus the reading and is labelled as derived.
+- **One implementation.** The Roadmap room and the Project workroom render the
+  same Roadmap components and call the same Roadmap service through
+  `useMilestoneAcceptance`. There is no second milestone, criteria or
+  measurement store.
+
+`src/domain/milestone-success.ts`, `src/domain/milestone-criteria.ts`,
+`src/domain/milestone-metric.ts` and `src/domain/milestone-measurement.ts`
+hold this law. `docs/milestone-success-criteria-schema.sql` is its canonical
+additive schema record.
