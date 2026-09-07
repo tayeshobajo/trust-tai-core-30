@@ -55,6 +55,25 @@ export interface RoadmapContext {
   userLabel?: string | undefined;
 }
 
+/** One current-state fact as a person types it. */
+export interface PointAFactInput {
+  label?: string | undefined;
+  value: string;
+}
+
+/** The current roadmap row, read before a human correction is written. */
+async function readRoadmap(id: ID, organizationId: ID): Promise<Roadmap> {
+  const { data, error } = await supabase
+    .from("roadmaps")
+    .select(ROADMAP_COLUMNS)
+    .eq("id", id)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  assertOk(error);
+  if (!data) throw new Error("That roadmap could not be read.");
+  return toRoadmap(data as Row);
+}
+
 async function record(
   context: RoadmapContext,
   name: ActivityName,
@@ -487,6 +506,122 @@ const roadmapServiceRaw = {
     return toRoadmap(data as Row);
   },
 
+  /**
+   * Point A, written by a person (P3-03).
+   *
+   * The same `point_a` column the draft engine writes; there is no second
+   * store. A human line is observed truth, stated plainly, with no evidence
+   * invented for it. Empty lines are dropped, and an unchanged list is a
+   * no-op so a second save never writes a second history entry.
+   */
+  async setPointA(
+    id: ID,
+    label: string,
+    facts: PointAFactInput[],
+    context: RoadmapContext,
+  ): Promise<Roadmap> {
+    const current = await readRoadmap(id, context.organizationId);
+    const at = new Date().toISOString();
+    const notes: RoadmapNote[] = facts
+      .map((fact) => ({ ...fact, value: fact.value.trim() }))
+      .filter((fact) => fact.value.length > 0)
+      .map((fact, index) => {
+        const existing = current.pointA[index];
+        return {
+          label: (fact.label ?? existing?.label ?? "Current state").trim() || "Current state",
+          value: fact.value,
+          tier: "observed" as const,
+          evidence: existing && existing.value === fact.value ? existing.evidence : [],
+          at: existing && existing.value === fact.value ? existing.at : at,
+        };
+      });
+
+    const unchanged =
+      notes.length === current.pointA.length &&
+      notes.every(
+        (note, index) =>
+          note.value === current.pointA[index]?.value &&
+          note.label === current.pointA[index]?.label,
+      );
+    if (unchanged) return current;
+
+    const { data, error } = await supabase
+      .from("roadmaps")
+      .update({ point_a: notePayload(notes), updated_at: at })
+      .eq("id", id)
+      .eq("organization_id", context.organizationId)
+      .select(ROADMAP_COLUMNS)
+      .single();
+    assertOk(error);
+    if (!data) throw new Error("Point A could not be saved.");
+    await record(
+      context,
+      "roadmap.point_a_recorded",
+      { id, label },
+      `Point A for ${label} was written by a person: ${notes.length} ${notes.length === 1 ? "fact" : "facts"}.`,
+      { facts: notes.map((note) => note.value), recorded_by: context.userId, recorded_at: at },
+    );
+    return toRoadmap(data as Row);
+  },
+
+  /**
+   * Point B, written by a person (P3-03).
+   *
+   * A destination a person types is decided truth immediately: there is
+   * nothing left to approve. `approveDestination` stays exactly as it was for
+   * destinations the system proposed. Evidence already attached to a proposal
+   * is carried forward, never discarded, and never fabricated.
+   */
+  async setDestination(
+    id: ID,
+    label: string,
+    input: { statement: string; because?: string | undefined },
+    context: RoadmapContext,
+  ): Promise<Roadmap> {
+    const statement = input.statement.trim();
+    if (!statement) throw new Error("A destination needs a sentence a person can read.");
+    const because = (input.because ?? "").trim();
+    const current = await readRoadmap(id, context.organizationId);
+    const existing = current.pointB;
+    if (
+      existing &&
+      existing.tier === "decided" &&
+      existing.statement === statement &&
+      existing.because === because
+    ) {
+      return current;
+    }
+
+    const at = new Date().toISOString();
+    const decided: Destination = {
+      statement,
+      tier: "decided",
+      because,
+      evidence: existing?.evidence ?? [],
+      approvedBy: context.userId,
+      approvedAt: at,
+    };
+    const status: RoadmapStatus =
+      current.status === "draft" || current.status === "proposed" ? "approved" : current.status;
+    const { data, error } = await supabase
+      .from("roadmaps")
+      .update({ point_b: decided, status, updated_at: at })
+      .eq("id", id)
+      .eq("organization_id", context.organizationId)
+      .select(ROADMAP_COLUMNS)
+      .single();
+    assertOk(error);
+    if (!data) throw new Error("That destination could not be saved.");
+    await record(
+      context,
+      "roadmap.destination_recorded",
+      { id, label },
+      `Point B for ${label} was written by a person: ${statement}`,
+      { statement, recorded_by: context.userId, recorded_at: at },
+    );
+    return toRoadmap(data as Row);
+  },
+
   /** Approving Point B is the moment an inference becomes a human decision. */
   async approveDestination(
     id: ID,
@@ -655,8 +790,7 @@ const roadmapServiceRaw = {
     const roadmap = await this.detail(roadmapId, context.organizationId);
     if (roadmap) {
       const { submitRoadmapDecisionQuietly } = await import("@/data/approvals/roadmap-intake");
-      const stage =
-        roadmap.stages.find((entry) => entry.id === decision.stageId) ?? null;
+      const stage = roadmap.stages.find((entry) => entry.id === decision.stageId) ?? null;
       await submitRoadmapDecisionQuietly(
         decision,
         roadmap.roadmap,
