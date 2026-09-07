@@ -57,13 +57,7 @@ function draftFrom(metric: OutcomeMetric | null): Draft {
   };
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className="tt-eyebrow">{label}</span>

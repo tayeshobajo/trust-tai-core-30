@@ -42,7 +42,6 @@ export const STRATEGY_COLUMNS =
 // environments and not yet in others without this read failing.
 export const MILESTONE_COLUMNS = "*";
 
-
 export const ARTIFACT_COLUMNS =
   "id, organization_id, roadmap_id, kind, title, sections, accent, logo_url, provider, model, rejected, human_edited, version, edited_at, edited_by, generated_at, created_at, updated_at";
 

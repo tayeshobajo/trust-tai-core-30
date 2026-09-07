@@ -59,9 +59,7 @@ export interface OutcomeMetric extends OutcomeMetricInput {
   recordedAt: ISODateTime;
 }
 
-export type MetricCheck =
-  | { ok: true; metric: OutcomeMetricInput }
-  | { ok: false; refusal: string };
+export type MetricCheck = { ok: true; metric: OutcomeMetricInput } | { ok: false; refusal: string };
 
 export const NO_METRIC = "No outcome metric yet";
 
@@ -108,15 +106,20 @@ function point(raw: unknown, name: string): MetricPoint | string {
  */
 export function checkOutcomeMetric(raw: Partial<OutcomeMetricInput>): MetricCheck {
   const key = normalizeMetricKey(clean(raw.key));
-  if (!key) return { ok: false, refusal: "A metric key is required, for example `demo_to_close_rate`." };
-  if (!KEY_SHAPE.test(key)) return { ok: false, refusal: "That metric key is not a legible identity." };
+  if (!key)
+    return { ok: false, refusal: "A metric key is required, for example `demo_to_close_rate`." };
+  if (!KEY_SHAPE.test(key))
+    return { ok: false, refusal: "That metric key is not a legible identity." };
 
   const label = clean(raw.label);
-  if (!label) return { ok: false, refusal: "A label is required, so the number can be read by a person." };
+  if (!label)
+    return { ok: false, refusal: "A label is required, so the number can be read by a person." };
 
   const unit = clean(raw.unit);
-  if (!unit) return { ok: false, refusal: "A unit is required. A number without a unit is not a metric." };
-  if (unit.length > 24) return { ok: false, refusal: "Keep the unit short, for example %, hours or GBP." };
+  if (!unit)
+    return { ok: false, refusal: "A unit is required. A number without a unit is not a metric." };
+  if (unit.length > 24)
+    return { ok: false, refusal: "Keep the unit short, for example %, hours or GBP." };
 
   const direction = raw.direction as MetricDirection;
   if (!METRIC_DIRECTIONS.includes(direction)) {
