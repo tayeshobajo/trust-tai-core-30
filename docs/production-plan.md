@@ -124,8 +124,13 @@ then a decision opportunity.
 next review or renewal; delivery status. Proposed companies are muted and separate.
 Add Client is manual and required.
 
-**Client page**: Overview, Roadmap, Projects, Relationship, Site, Files. No Tasks tab
-and no Milestones tab. The client page owns nothing; it reads the owning rooms.
+**Client page**: Overview, Projects, Relationship, Commercial, Files, Chat, as locked
+by Canon 18 (this supersedes the earlier Overview / Roadmap / Projects / Relationship /
+Site / Files list). No Tasks tab and no Milestones tab. Roadmap and Site are not
+top-level Client tabs: Direction and a website summary are read on Overview and the
+work is done in Roadmap, the Project workroom and Website. The client page owns
+nothing but the account's own commercial fields; everything else it reads from the
+owning rooms.
 
 **Scout**: "Who can I truthfully reach today?" Outcome first. Views: Ready, Movement,
 Needs a person, All, plus Watchlist and Settings. Fit is supporting evidence only. A
