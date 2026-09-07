@@ -27,6 +27,9 @@ import { milestoneActionPrompt, milestoneActions } from "@/domain/milestone-acti
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import type { MeasurementInput, MilestoneMeasurement } from "@/domain/milestone-measurement";
 import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
+import { evidenceForMilestone } from "@/domain/criterion-evidence-view";
+import type { CriterionEvidence } from "@/domain/criterion-evidence";
+import type { EvidenceDraft } from "@/components/tt/roadmap/criterion-evidence";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import type { MilestoneSuccessInput } from "@/domain/milestone-success";
 import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
@@ -55,6 +58,8 @@ function MilestoneCard({
   busyId,
   criteria,
   criteriaError,
+  evidence,
+  evidenceError,
   onStatus,
   onSuccess,
   onCriterionAdd,
@@ -62,11 +67,16 @@ function MilestoneCard({
   onCriterionEdit,
   onCriterionRemove,
   onCriterionMove,
+  onEvidenceAdd,
+  onEvidenceRemove,
+  onEvidenceOpen,
 }: {
   milestone: RoadmapMilestone;
   busyId: string | null;
   criteria: AcceptanceCriterion[];
   criteriaError: string | null;
+  evidence: CriterionEvidence[];
+  evidenceError: string | null;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
   onSuccess?: ((milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void) | undefined;
   onCriterionAdd?: ((milestone: RoadmapMilestone, text: string) => void) | undefined;
@@ -85,6 +95,11 @@ function MilestoneCard({
         direction: "up" | "down",
       ) => void)
     | undefined;
+  onEvidenceAdd?:
+    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, draft: EvidenceDraft) => void)
+    | undefined;
+  onEvidenceRemove?: ((item: CriterionEvidence) => void) | undefined;
+  onEvidenceOpen?: ((item: CriterionEvidence) => void) | undefined;
 }) {
   const read = ownedExecutionBoundary(milestone);
   const owned = {
@@ -129,6 +144,8 @@ function MilestoneCard({
         <CriteriaPanel
           criteria={criteria}
           criteriaError={criteriaError}
+          evidence={evidence}
+          evidenceError={evidenceError}
           subject={milestone.name}
           busy={busy}
           onAdd={(text) => onCriterionAdd(milestone, text)}
@@ -136,6 +153,11 @@ function MilestoneCard({
           onEdit={(criterion, text) => onCriterionEdit?.(milestone, criterion, text)}
           onRemove={(criterion) => onCriterionRemove?.(milestone, criterion)}
           onMove={(criterion, direction) => onCriterionMove?.(milestone, criterion, direction)}
+          {...(onEvidenceAdd
+            ? { onEvidenceAdd: (criterion, draft) => onEvidenceAdd(milestone, criterion, draft) }
+            : {})}
+          {...(onEvidenceRemove ? { onEvidenceRemove } : {})}
+          {...(onEvidenceOpen ? { onEvidenceOpen } : {})}
         />
       ) : null}
 
