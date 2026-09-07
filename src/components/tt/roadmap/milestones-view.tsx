@@ -12,7 +12,7 @@ import { ManualMilestoneForm } from "@/components/tt/roadmap/manual-milestone";
 import { CriteriaPanel } from "@/components/tt/roadmap/criteria-panel";
 import { SuccessPanel } from "@/components/tt/roadmap/success-panel";
 import { OwnershipInspector } from "@/components/tt/roadmap/ownership-inspector";
-import { EvidenceList, TierChip } from "@/components/tt/roadmap/tier";
+import { EvidenceList } from "@/components/tt/roadmap/tier";
 import {
   EmptyState,
   MetaPill,
@@ -22,6 +22,7 @@ import {
 } from "@/components/tt/primitives";
 import { CONFIDENCE_LEVEL_LABEL } from "@/domain/confidence";
 import { EXECUTION_ROOM_LABEL, ownedExecutionBoundary } from "@/domain/execution-ownership";
+import { milestoneActionPrompt, milestoneActions } from "@/domain/milestone-actions";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import type { MeasurementInput, MilestoneMeasurement } from "@/domain/milestone-measurement";
 import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
@@ -31,7 +32,7 @@ import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
 import { MILESTONE_STATUS_LABEL, UNKNOWN } from "@/domain/roadmap-intel";
 
 const FILTERS: { key: MilestoneStatus | "all"; label: string }[] = [
-  { key: "all", label: "All" },
+  { key: "all", label: "All milestones" },
   { key: "candidate", label: "Candidates" },
   { key: "shortlisted", label: "Shortlisted" },
   { key: "approved", label: "Approved" },
@@ -93,26 +94,32 @@ function MilestoneCard({
   const [note, setNote] = useState("");
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [pending, setPending] = useState<MilestoneStatus | null>(null);
   const busy = busyId === milestone.id;
 
   return (
     <li className="tt-surface p-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <TierChip tier={milestone.tier} />
-        <MetaPill>{MILESTONE_STATUS_LABEL[milestone.status]}</MetaPill>
-        <MetaPill>Priority {milestone.priorityScore}</MetaPill>
-        <MetaPill>Sequence {milestone.recommendedSequence}</MetaPill>
-        <MetaPill>{CONFIDENCE_LEVEL_LABEL[milestone.confidence]}</MetaPill>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-display text-2xl text-foreground">{milestone.name}</h3>
+          <p className="mt-1 max-w-reading text-sm text-muted-foreground">
+            {milestone.whatWeBuild}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <MetaPill>{MILESTONE_STATUS_LABEL[milestone.status]}</MetaPill>
+          <MetaPill>Step {milestone.recommendedSequence}</MetaPill>
+        </div>
       </div>
-
-      <h3 className="mt-3 font-display text-2xl text-foreground">{milestone.name}</h3>
-      <p className="mt-1 max-w-reading text-sm text-muted-foreground">{milestone.whatWeBuild}</p>
 
       {onSuccess ? (
         <SuccessPanel
           success={milestone.success ?? null}
           subject={milestone.name}
           busy={busy}
+          open={editing}
+          onOpenChange={setEditing}
           onSave={(input) => onSuccess(milestone, input)}
         />
       ) : null}
@@ -146,6 +153,8 @@ function MilestoneCard({
       </button>
       {detail ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Line label="Confidence" value={CONFIDENCE_LEVEL_LABEL[milestone.confidence]} />
+          <Line label="Priority score" value={String(milestone.priorityScore)} />
           <Line label="Intended user" value={milestone.intendedUser} />
           <Line label="Supporting market direction" value={milestone.supportingMarketDirection} />
           <Line label="Client advantage" value={milestone.clientAdvantage} />
@@ -193,43 +202,47 @@ function MilestoneCard({
         </p>
       ) : null}
 
-      <div className="mt-5 space-y-3">
-        <TTInput
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          placeholder="Why this decision (optional)"
-          aria-label={`Decision note for ${milestone.name}`}
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <TTButton size="sm" disabled={busy} onClick={() => setEditing((value) => !value)}>
+          {editing ? "Close" : "Update milestone"}
+        </TTButton>
+        <MilestoneOverflow
+          milestone={milestone}
+          busy={busy}
+          onPick={(status) => {
+            setPending(status);
+            setNote("");
+          }}
         />
-        <div className="flex flex-wrap gap-2">
-          <TTButton size="sm" disabled={busy} onClick={() => onStatus(milestone, "approved", note)}>
-            Approve
-          </TTButton>
-          <TTButton
-            size="sm"
-            variant="secondary"
-            disabled={busy}
-            onClick={() => onStatus(milestone, "shortlisted", note)}
-          >
-            Shortlist
-          </TTButton>
-          <TTButton
-            size="sm"
-            variant="secondary"
-            disabled={busy}
-            onClick={() => onStatus(milestone, "deferred", note)}
-          >
-            Defer
-          </TTButton>
-          <TTButton
-            size="sm"
-            variant="quiet"
-            disabled={busy}
-            onClick={() => onStatus(milestone, "rejected", note)}
-          >
-            Reject
-          </TTButton>
-        </div>
       </div>
+
+      {pending ? (
+        <div className="mt-4 space-y-3 rounded-2xl border border-border p-4">
+          <p className="text-sm text-foreground">{milestoneActionPrompt(pending)}.</p>
+          <TTInput
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Why this decision (optional)"
+            aria-label={`Decision note for ${milestone.name}`}
+          />
+          <div className="flex flex-wrap gap-2">
+            <TTButton
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                onStatus(milestone, pending, note);
+                setPending(null);
+              }}
+            >
+              Confirm
+            </TTButton>
+            <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => setPending(null)}>
+              Cancel
+            </TTButton>
+          </div>
+        </div>
+      ) : null}
+
     </li>
   );
 }
@@ -351,21 +364,22 @@ export function MilestonesView({
 
       {adding ? form : null}
 
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((entry) => (
-          <button
-            key={entry.key}
-            type="button"
-            onClick={() => setFilter(entry.key)}
-            className={
-              filter === entry.key
-                ? "rounded-full border border-foreground px-3 py-1 text-xs text-foreground"
-                : "rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
-            }
-          >
-            {entry.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-2">
+        <label htmlFor="milestone-view" className="tt-eyebrow">
+          View
+        </label>
+        <select
+          id="milestone-view"
+          value={filter}
+          onChange={(event) => setFilter(event.target.value as MilestoneStatus | "all")}
+          className="h-9 rounded-lg border border-input bg-card px-3 text-sm text-foreground"
+        >
+          {FILTERS.map((entry) => (
+            <option key={entry.key} value={entry.key}>
+              {entry.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {visible.length === 0 ? (
