@@ -250,9 +250,7 @@ function MilestoneCard({
 
       {pending ? (
         <div className="mt-4 space-y-3 rounded-2xl border border-border p-4">
-          <p className="text-sm text-foreground">
-            {`${milestoneActionPrompt(pending)}.`}
-          </p>
+          <p className="text-sm text-foreground">{`${milestoneActionPrompt(pending)}.`}</p>
           <TTInput
             value={note}
             onChange={(event) => setNote(event.target.value)}
