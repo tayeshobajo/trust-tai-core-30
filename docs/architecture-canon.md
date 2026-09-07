@@ -578,15 +578,20 @@ only what they can already say out loud.
   and when. A full checklist is evidence that the work is done; it is never a
   reason for the system to complete the milestone. Only a person changes a
   milestone's status.
-- **A measurable target is optional, and it is second.** Only a person who
-  wants a number opens it. They type a label and the numbers they care about;
-  the metric key is generated from the label and the direction is read from
-  the baseline and target when the two numbers already say it. A starting
-  point may be left out, in which case the direction is asked for once. A unit
-  is optional and is never invented.
-- **Measurement stays Roadmap's truth** under Canon 17. Readings are
-  append-only evidence, never mutate baseline or target, and any progress line
-  is deterministic from direction plus the reading and is labelled as derived.
+- **Numeric measurement is advanced, and it is not part of the everyday
+  milestone contract (amended 2026-09-07).** The everyday milestone surface, in
+  the Roadmap room and in the Client workspace alike, shows only the outcome,
+  the target date, the acceptance criteria and the optional success check. It
+  never asks for a metric label, unit, baseline, baseline date, target value,
+  direction, metric key or readings. `src/domain/milestone-metric.ts`,
+  `src/domain/milestone-measurement.ts`, their services, their stored rows and
+  `src/components/tt/roadmap/metric-panel.tsx` all remain intact for a future
+  advanced surface; none of them is rendered by default.
+- **Measurement stays Roadmap's truth** under Canon 17 wherever it is used
+  later. Readings are append-only evidence, never mutate baseline or target,
+  and any progress line is deterministic from direction plus the reading and is
+  labelled as derived.
+- **Target date belongs to the outcome**, never to a second numeric form.
 - **One implementation.** The Roadmap room and the Project workroom render the
   same Roadmap components and call the same Roadmap service through
   `useMilestoneAcceptance`. There is no second milestone, criteria or
