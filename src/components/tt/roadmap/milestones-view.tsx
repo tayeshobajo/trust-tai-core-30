@@ -174,31 +174,52 @@ export function MilestonesView({
   milestones,
   busyId,
   generating,
+  creating,
+  createError,
   onGenerate,
+  onCreate,
   onStatus,
   onMetric,
 }: {
   milestones: RoadmapMilestone[];
   busyId: string | null;
   generating: boolean;
+  creating?: boolean;
+  createError?: string | null;
   onGenerate: () => void;
+  onCreate: (input: ManualMilestoneInput) => void;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
   onMetric: (milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void;
 }) {
   const [filter, setFilter] = useState<MilestoneStatus | "all">("all");
+  const [adding, setAdding] = useState(false);
   const visible =
     filter === "all" ? milestones : milestones.filter((entry) => entry.status === filter);
 
+  const form = (
+    <ManualMilestoneForm
+      busy={Boolean(creating)}
+      error={createError ?? null}
+      onCreate={(input) => onCreate(input)}
+      onCancel={() => setAdding(false)}
+    />
+  );
+
   if (milestones.length === 0) {
-    return (
+    return adding ? (
+      form
+    ) : (
       <EmptyState
-        title="No milestone candidates yet."
-        belongsHere="Candidates are generated from the research pass, ranked, and then decided one by one."
-        whyItMatters="More candidates than the roadmap needs is the point. The choosing is the work."
+        title="No milestones yet."
+        belongsHere="Add one yourself when you already know it, or generate candidates from a research pass and decide between them."
+        whyItMatters="A milestone you can name is worth more than one you have to be told."
         action={
-          <TTButton onClick={onGenerate} disabled={generating}>
-            {generating ? "Researching…" : "Generate candidates"}
-          </TTButton>
+          <div className="flex flex-wrap gap-2">
+            <TTButton onClick={() => setAdding(true)}>Add milestone</TTButton>
+            <TTButton variant="secondary" onClick={onGenerate} disabled={generating}>
+              {generating ? "Researching…" : "Generate candidates"}
+            </TTButton>
+          </div>
         }
       />
     );
@@ -207,15 +228,23 @@ export function MilestonesView({
   return (
     <div className="space-y-6">
       <SectionHeading
-        eyebrow={`${milestones.length} candidates`}
-        title="Milestone candidates"
+        eyebrow={`${milestones.length} milestones`}
+        title="Milestones"
         description="Ranked by evidence, market direction, advantage and boundary. Only a person changes a status."
         action={
-          <TTButton variant="secondary" onClick={onGenerate} disabled={generating}>
-            {generating ? "Researching…" : "Regenerate candidates"}
-          </TTButton>
+          <div className="flex flex-wrap gap-2">
+            <TTButton onClick={() => setAdding(true)} disabled={adding}>
+              Add milestone
+            </TTButton>
+            <TTButton variant="secondary" onClick={onGenerate} disabled={generating}>
+              {generating ? "Researching…" : "Regenerate candidates"}
+            </TTButton>
+          </div>
         }
       />
+
+      {adding ? form : null}
+
 
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((entry) => (
