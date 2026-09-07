@@ -55,7 +55,6 @@ export function SuccessPanel({
     setOpen(false);
   };
 
-
   return (
     <section className="mt-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -91,7 +90,6 @@ export function SuccessPanel({
             {open ? "Cancel" : success ? "Edit outcome" : "Describe success"}
           </TTButton>
         )}
-
       </div>
 
       {open ? (
@@ -142,7 +140,6 @@ export function SuccessPanel({
               </TTButton>
             ) : null}
           </div>
-
         </div>
       ) : null}
     </section>

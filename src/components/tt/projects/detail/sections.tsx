@@ -67,12 +67,12 @@ export function WorkTab({
           <TTInput
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="What needs doing?"
+            placeholder="What needs to be done?"
             aria-label="Work item"
           />
           <TTButton type="submit" disabled={busy || !title.trim()} className="shrink-0">
             <Plus aria-hidden />
-            Add item
+            Add work item
           </TTButton>
         </form>
       </Panel>

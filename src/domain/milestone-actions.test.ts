@@ -4,7 +4,13 @@ import { milestoneActionPrompt, milestoneActions } from "./milestone-actions";
 
 describe("milestoneActions", () => {
   it("never offers the status a milestone already holds", () => {
-    for (const status of ["candidate", "shortlisted", "approved", "rejected", "deferred"] as const) {
+    for (const status of [
+      "candidate",
+      "shortlisted",
+      "approved",
+      "rejected",
+      "deferred",
+    ] as const) {
       expect(milestoneActions(status).some((action) => action.status === status)).toBe(false);
     }
   });

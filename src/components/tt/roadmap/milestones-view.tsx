@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { ManualMilestoneForm } from "@/components/tt/roadmap/manual-milestone";
+import { MilestoneOverflow } from "@/components/tt/roadmap/milestone-overflow";
 import { CriteriaPanel } from "@/components/tt/roadmap/criteria-panel";
 import { SuccessPanel } from "@/components/tt/roadmap/success-panel";
 import { OwnershipInspector } from "@/components/tt/roadmap/ownership-inspector";
@@ -242,7 +243,6 @@ function MilestoneCard({
           </div>
         </div>
       ) : null}
-
     </li>
   );
 }
