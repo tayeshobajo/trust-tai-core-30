@@ -16,6 +16,12 @@ import {
   SURFACE_STATUS_TONE,
   type ProjectRowModel,
 } from "@/data/projects/index-projection";
+import {
+  PROJECT_SURFACES,
+  sectionAnchor,
+  type ProjectSection,
+  type ProjectSurface,
+} from "@/domain/project-workroom-ia";
 import { cn } from "@/lib/utils";
 
 export interface Neighbour {
