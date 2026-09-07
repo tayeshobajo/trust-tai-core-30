@@ -170,11 +170,20 @@ function ClientShell({
   identity,
   clientId,
   tab,
+  selectedProjectId,
+  projectSurface,
+  onSelectProject,
+  onProjectSurface,
 }: {
   identity: WorkspaceIdentity;
   clientId: string;
   tab: ClientTab;
+  selectedProjectId: string | null;
+  projectSurface: ProjectTab;
+  onSelectProject: (projectId: string) => void;
+  onProjectSurface: (tab: ProjectTab) => void;
 }) {
+
   const now = useMemo(() => new Date(), []);
   const organizationId = identity.organizationId;
 
