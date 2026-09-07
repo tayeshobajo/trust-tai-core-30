@@ -206,6 +206,10 @@ export interface RoadmapIntel {
   criteria: AcceptanceCriterion[];
   /** Why the checklist could not be read, when it could not be. */
   criteriaError: string | null;
+  /** Proof attached to those conditions. Optional by default, never a decision. */
+  criterionEvidence: CriterionEvidence[];
+  /** Why the attached proof could not be read, when it could not be. */
+  criterionEvidenceError: string | null;
 }
 
 const MEASUREMENT_COLUMNS = "*";
@@ -227,6 +231,38 @@ function missingCriteria(error: { code?: string; message?: string } | null): boo
     `${error.code ?? ""} ${error.message ?? ""}`,
   );
 }
+
+export const EVIDENCE_NOT_APPLIED =
+  "Acceptance evidence is not available in this environment yet: the roadmap_criterion_evidence table has not been applied.";
+
+/** A missing evidence table reads as unreadable proof, never as no proof. */
+function missingCriterionEvidence(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return /does not exist|schema cache|42P01|PGRST205|roadmap_criterion_evidence/i.test(
+    `${error.code ?? ""} ${error.message ?? ""}`,
+  );
+}
+
+function toCriterionEvidence(row: Row): CriterionEvidence {
+  return {
+    id: String(row["id"]),
+    organizationId: String(row["organization_id"] ?? ""),
+    roadmapId: String(row["roadmap_id"] ?? ""),
+    milestoneId: String(row["milestone_id"] ?? ""),
+    criterionId: String(row["criterion_id"] ?? ""),
+    type: (row["type"] as CriterionEvidenceType) ?? "note",
+    label: String(row["label"] ?? ""),
+    ...(row["url"] ? { url: String(row["url"]) } : {}),
+    ...(row["storage_path"] ? { storagePath: String(row["storage_path"]) } : {}),
+    ...(row["content_type"] ? { contentType: String(row["content_type"]) } : {}),
+    ...(row["size_bytes"] != null ? { sizeBytes: Number(row["size_bytes"]) } : {}),
+    ...(row["note"] ? { note: String(row["note"]) } : {}),
+    createdBy: String(row["created_by"] ?? ""),
+    ...(row["created_by_label"] ? { createdByLabel: String(row["created_by_label"]) } : {}),
+    createdAt: String(row["created_at"] ?? ""),
+  };
+}
+
 
 function toCriterion(row: Row): AcceptanceCriterion {
   return {
