@@ -691,3 +691,37 @@ The milestone card is a detail card, not a control panel.
   action is confirmed on the card, with an optional note.
 * The section header carries at most `Add milestone`, `Generate candidates`
   and one compact `View` dropdown. No row of filter chips.
+
+## Canon 22: Acceptance evidence (locked 2026-09-07)
+
+**Acceptance Evidence Law:** A checklist box records a human judgment;
+evidence records why that judgment can be trusted. Evidence is optional by
+default, but may be required for QA, approval, verification, or deliverables
+that should be proven. Evidence never auto-completes a criterion or a
+milestone. A person remains responsible for checking the criterion and
+completing the milestone.
+
+What that means in practice:
+
+- Evidence is Roadmap owned, like the criterion it hangs on (Canon 17). The
+  Project workroom and the Client workspace operate it through the same
+  Roadmap service. There is no second evidence store and no second file store.
+- Three shapes in the first slice: an uploaded file, a link, or a short note.
+  Files reuse the existing private `project-files` bucket and its organization
+  scoped storage policies. No public bucket is created.
+- Optional by default. `evidenceRequired()` in `src/domain/criterion-evidence.ts`
+  answers no for every criterion, because no canonical mechanism decides
+  otherwise yet. The seam exists so a later rule can answer differently
+  without changing what is already written.
+- Attaching evidence does not check the criterion. Checking the criterion does
+  not require evidence.
+- Removing evidence is an explicit act by a person, and it records a receipt
+  the same way attaching it does. There is no update path: a stored proof is
+  removed and re-attached rather than quietly rewritten.
+- Every write carries provenance and a replay key, so a retry is one fact, not
+  two.
+- Absence is absence. An unreadable evidence table is reported as unreadable,
+  never rendered as "nothing attached".
+
+Schema: `docs/criterion-evidence-schema.sql`
+(`public.roadmap_criterion_evidence`). Additive and idempotent.
