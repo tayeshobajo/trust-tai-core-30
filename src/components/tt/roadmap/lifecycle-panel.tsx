@@ -32,9 +32,7 @@ export function LifecyclePanel({
     <section className="mt-5 rounded-2xl border border-border p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="tt-eyebrow">{lifecycle.stepLabel}</p>
-        {lifecycle.progressLabel ? (
-          <MetaPill>{lifecycle.progressLabel} conditions</MetaPill>
-        ) : null}
+        {lifecycle.progressLabel ? <MetaPill>{lifecycle.progressLabel} conditions</MetaPill> : null}
       </div>
 
       {progress.total > 0 ? (
