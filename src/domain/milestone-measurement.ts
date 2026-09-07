@@ -45,11 +45,9 @@ export interface MilestoneMeasurement extends MeasurementInput {
 }
 
 export type MeasurementCheck =
-  | { ok: true; measurement: MeasurementInput }
-  | { ok: false; refusal: string };
+  { ok: true; measurement: MeasurementInput } | { ok: false; refusal: string };
 
-export const NO_METRIC_FOR_MEASUREMENT =
-  "Add an outcome metric before recording a measurement.";
+export const NO_METRIC_FOR_MEASUREMENT = "Add an outcome metric before recording a measurement.";
 
 export const NO_MEASUREMENTS = "No measurement recorded yet";
 

@@ -36,6 +36,7 @@ import {
   sameMetric,
 } from "@/domain/milestone-metric";
 import type { MeasurementInput, MilestoneMeasurement } from "@/domain/milestone-measurement";
+import { NO_METRIC_FOR_MEASUREMENT } from "@/domain/milestone-measurement";
 import {
   checkMeasurement,
   measuredDay,
@@ -182,6 +183,14 @@ export interface RoadmapIntel {
 
 const MEASUREMENT_COLUMNS = "*";
 
+/** A missing measurements table reads as absent history, never as a crash. */
+function missingMeasurements(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return /does not exist|schema cache|42P01|PGRST205|roadmap_measurements/i.test(
+    `${error.code ?? ""} ${error.message ?? ""}`,
+  );
+}
+
 function toMeasurement(row: Row): MilestoneMeasurement {
   return {
     id: String(row["id"]),
@@ -223,42 +232,42 @@ const roadmapIntelRaw = {
   async load(roadmapId: ID): Promise<RoadmapIntel> {
     const [research, strategy, milestones, artifacts, sessions, questions, measurements] =
       await Promise.all([
-      supabase
-        .from("roadmap_research")
-        .select(RESEARCH_COLUMNS)
-        .eq("roadmap_id", roadmapId)
-        .order("created_at", { ascending: false })
-        .limit(10),
-      supabase
-        .from("roadmap_strategies")
-        .select(STRATEGY_COLUMNS)
-        .eq("roadmap_id", roadmapId)
-        .maybeSingle(),
-      supabase
-        .from("roadmap_milestones")
-        .select(MILESTONE_COLUMNS)
-        .eq("roadmap_id", roadmapId)
-        .order("recommended_sequence", { ascending: true }),
-      supabase.from("roadmap_artifacts").select(ARTIFACT_COLUMNS).eq("roadmap_id", roadmapId),
-      supabase
-        .from("roadmap_sessions")
-        .select(SESSION_COLUMNS)
-        .eq("roadmap_id", roadmapId)
-        .order("started_at", { ascending: false })
-        .limit(20),
-      supabase
-        .from("roadmap_questions")
-        .select(QUESTION_COLUMNS)
-        .eq("roadmap_id", roadmapId)
-        .order("created_at", { ascending: false })
-        .limit(20),
-      supabase
-        .from("roadmap_measurements")
-        .select(MEASUREMENT_COLUMNS)
-        .eq("roadmap_id", roadmapId)
-        .order("measured_at", { ascending: false })
-        .limit(200),
-    ]);
+        supabase
+          .from("roadmap_research")
+          .select(RESEARCH_COLUMNS)
+          .eq("roadmap_id", roadmapId)
+          .order("created_at", { ascending: false })
+          .limit(10),
+        supabase
+          .from("roadmap_strategies")
+          .select(STRATEGY_COLUMNS)
+          .eq("roadmap_id", roadmapId)
+          .maybeSingle(),
+        supabase
+          .from("roadmap_milestones")
+          .select(MILESTONE_COLUMNS)
+          .eq("roadmap_id", roadmapId)
+          .order("recommended_sequence", { ascending: true }),
+        supabase.from("roadmap_artifacts").select(ARTIFACT_COLUMNS).eq("roadmap_id", roadmapId),
+        supabase
+          .from("roadmap_sessions")
+          .select(SESSION_COLUMNS)
+          .eq("roadmap_id", roadmapId)
+          .order("started_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("roadmap_questions")
+          .select(QUESTION_COLUMNS)
+          .eq("roadmap_id", roadmapId)
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("roadmap_measurements")
+          .select(MEASUREMENT_COLUMNS)
+          .eq("roadmap_id", roadmapId)
+          .order("measured_at", { ascending: false })
+          .limit(200),
+      ]);
 
     assertOk(research.error);
     assertOk(strategy.error);
@@ -684,6 +693,115 @@ const roadmapIntelRaw = {
       },
     );
     return toMilestone(data as Row);
+  },
+
+  /**
+   * Record one measurement against a milestone outcome metric (P3-02).
+   *
+   * Roadmap owns measurement truth, so this is the only write path, and the
+   * Project workroom calls this same method rather than keeping its own store.
+   *
+   * The reading is refused before the database is touched when the milestone
+   * has no metric, when the value is not a number, when the measured day is
+   * missing or unreal, or when the source says nothing. The metric contract is
+   * never touched: baseline and target are read here and left exactly as they
+   * were. Submitting the same reading again returns the measurement already on
+   * record and writes no second row and no second event.
+   */
+  async recordMeasurement(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    input: Partial<MeasurementInput>,
+    label: string,
+  ): Promise<MilestoneMeasurement> {
+    const metric = milestone.outcomeMetric ?? null;
+    const checked = checkMeasurement(metric, input);
+    if (!checked.ok) throw new Error(checked.refusal);
+    if (!metric) throw new Error(NO_METRIC_FOR_MEASUREMENT);
+
+    // Lineage is proven from the milestone row itself, never from the caller.
+    if (milestone.organizationId && milestone.organizationId !== context.organizationId) {
+      throw new Error("That milestone belongs to another organization.");
+    }
+    if (!milestone.roadmapId) {
+      throw new Error("That milestone is not attached to a roadmap.");
+    }
+
+    const key = measurementEventKey(milestone.id, metric.key, checked.measurement);
+
+    const existing = await supabase
+      .from("roadmap_measurements")
+      .select(MEASUREMENT_COLUMNS)
+      .eq("milestone_id", milestone.id)
+      .eq("source_event_key", key)
+      .maybeSingle();
+    if (existing.error && !missingMeasurements(existing.error)) assertOk(existing.error);
+    if (existing.data) return toMeasurement(existing.data as Row);
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_measurements")
+      .insert({
+        organization_id: context.organizationId,
+        roadmap_id: milestone.roadmapId,
+        milestone_id: milestone.id,
+        metric_key: metric.key,
+        value: checked.measurement.value,
+        measured_at: measuredInstant(checked.measurement.measuredAt),
+        source: checked.measurement.source,
+        recorded_by: context.userId,
+        recorded_at: at,
+        source_event_key: key,
+        provenance: {
+          appId: "roadmap",
+          actor: {
+            type: "user",
+            id: context.userId,
+            ...(context.userLabel ? { label: context.userLabel } : {}),
+          },
+          observedAt: at,
+          confidence: "observed",
+        },
+      })
+      .select(MEASUREMENT_COLUMNS)
+      .single();
+
+    if (error && missingMeasurements(error)) {
+      throw new Error(
+        "Measurements are not available in this environment yet: the roadmap_measurements table has not been applied.",
+      );
+    }
+    assertOk(error);
+
+    const measurement = toMeasurement(data as Row);
+    await record(
+      context,
+      "roadmap.measured",
+      milestone.roadmapId,
+      label,
+      `${milestone.name} measured ${measurementSummary(measurement, metric)}.`,
+      {
+        milestoneId: milestone.id,
+        measurementId: measurement.id,
+        metricKey: metric.key,
+        value: measurement.value,
+        measuredAt: measurement.measuredAt,
+        source: measurement.source,
+        source_event_key: key,
+      },
+    );
+    return measurement;
+  },
+
+  /** The measurement history for one milestone, newest first. */
+  async listMeasurements(milestoneId: ID): Promise<MilestoneMeasurement[]> {
+    const { data, error } = await supabase
+      .from("roadmap_measurements")
+      .select(MEASUREMENT_COLUMNS)
+      .eq("milestone_id", milestoneId)
+      .order("measured_at", { ascending: false });
+    assertOk(error);
+    return sortMeasurements(((data ?? []) as Row[]).map(toMeasurement));
   },
 
   /* ----------------------------------------------------------- studio */

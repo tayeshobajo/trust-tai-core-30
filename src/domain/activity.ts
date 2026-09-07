@@ -105,13 +105,7 @@ export type ActivityAction =
  * a second pipeline.
  */
 export type ActivityScope =
-  | EntityType
-  | "ops"
-  | "studio"
-  | "conductor"
-  | "website"
-  | "linki"
-  | "proposal";
+  EntityType | "ops" | "studio" | "conductor" | "website" | "linki" | "proposal";
 
 /** Event name is always `scope.action`, e.g. "project.status_changed". */
 export type ActivityName = `${ActivityScope}.${ActivityAction}`;
