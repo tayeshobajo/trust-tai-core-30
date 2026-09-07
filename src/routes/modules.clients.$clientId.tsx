@@ -31,7 +31,6 @@ import { ClientProjectWorkspace } from "@/components/tt/clients/project-workspac
 import type { ProjectTab } from "@/components/tt/projects/detail/frame";
 import { isProjectSurface } from "@/domain/project-workroom-ia";
 
-
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { buildClientBook } from "@/data/clients/book-projection";
@@ -153,7 +152,6 @@ function ClientRoute() {
   );
 }
 
-
 /** Turn a query into a room read: answered, unreadable, or still on its way. */
 function readOf<T>(query: {
   data: T | undefined;
@@ -183,7 +181,6 @@ function ClientShell({
   onSelectProject: (projectId: string) => void;
   onProjectSurface: (tab: ProjectTab) => void;
 }) {
-
   const now = useMemo(() => new Date(), []);
   const organizationId = identity.organizationId;
 

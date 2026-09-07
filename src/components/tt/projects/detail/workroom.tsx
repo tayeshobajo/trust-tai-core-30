@@ -127,7 +127,6 @@ export function ProjectWorkroom({
   const [panel, setPanel] = useState<ContextualPanel | null>(null);
   const [updating, setUpdating] = useState(false);
 
-
   /** Set after a save lands, so a change visibly confirms instead of just vanishing. */
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
 
