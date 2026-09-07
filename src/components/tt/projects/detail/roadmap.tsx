@@ -21,6 +21,7 @@ import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import type { LinkableRoadmap } from "@/domain/project-roadmap-link";
 import type { Roadmap } from "@/domain/roadmap";
 import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
+import type { DeliveryProject } from "@/domain/delivery-projection";
 
 const STATUS_LINE: Record<string, string> = {
   draft: "Draft",
@@ -152,6 +153,7 @@ export function ProjectRoadmapTab({
   criteriaError = null,
   evidence = [],
   evidenceError = null,
+  deliveryProject,
   onSuccess,
   onAccept,
   onReopen,
@@ -199,6 +201,8 @@ export function ProjectRoadmapTab({
   /** Evidence on those conditions. Roadmap owned, passed straight through. */
   evidence?: CriterionEvidence[];
   evidenceError?: string | null;
+  /** The project this workroom belongs to, as Projects records it. */
+  deliveryProject?: DeliveryProject | null | undefined;
   onSuccess?: ((milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void) | undefined;
   onAccept?: ((milestone: RoadmapMilestone, note: string) => void) | undefined;
   onReopen?: ((milestone: RoadmapMilestone, reason: string) => void) | undefined;
@@ -267,6 +271,7 @@ export function ProjectRoadmapTab({
             onMeasure={onMeasure}
             criteria={criteria}
             criteriaError={criteriaError}
+            deliveryProjectFor={() => deliveryProject ?? null}
             evidence={evidence}
             evidenceError={evidenceError}
             onSuccess={onSuccess}

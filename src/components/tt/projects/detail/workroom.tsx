@@ -846,6 +846,7 @@ export function ProjectWorkroom({
               onMetric={(milestone, metric) => milestoneMetric.mutate({ milestone, metric })}
               criteria={intelQuery.data?.criteria ?? []}
               criteriaError={acceptance.error ?? intelQuery.data?.criteriaError ?? null}
+              deliveryProject={{ name: project.name, state: project.state }}
               evidence={intelQuery.data?.criterionEvidence ?? []}
               evidenceError={intelQuery.data?.criterionEvidenceError ?? null}
               onSuccess={acceptance.onSuccess}

@@ -793,3 +793,12 @@ Roadmap approval is not delivery acceptance.
   fields only, and records its own activity receipt. Conditions and their
   evidence are never touched. Both acceptance and reopening carry a stable
   event key, so a retry writes no second receipt.
+
+## Canon 25: One delivery read law (P3-04)
+
+A milestone carries one compact delivery line, derived and never stored: the recorded execution state and name of the project carrying it (Projects), how far through the acceptance conditions we are (Roadmap), and the recorded target date (Roadmap outcome truth).
+
+- One helper, `src/domain/delivery-projection.ts`, serves both the Client > Work composed surface and the standalone Roadmap room. There is no second read and no second store.
+- Unknown is never zero. Conditions that could not be read say so; no conditions says so separately.
+- No health, risk, confidence or "on track" language is invented. Only the state a room actually recorded is named.
+- A missing target date offers the existing outcome editor on the same surface, never a new form (Canon 16).
