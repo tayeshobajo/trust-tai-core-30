@@ -21,11 +21,15 @@ export function RouteWork({
   project,
   context,
   access,
+  showForm = true,
 }: {
   project: ExecutionProject;
   context: ProjectsContext;
   access: AccessContext;
+  /** The routing form only appears when a person asked to hand work across. */
+  showForm?: boolean;
 }) {
+
   const [target, setTarget] = useState<RouteTarget>("ops");
   const [outcome, setOutcome] = useState("");
   const [because, setBecause] = useState("");
