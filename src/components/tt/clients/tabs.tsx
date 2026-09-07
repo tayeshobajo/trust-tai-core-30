@@ -45,45 +45,6 @@ import { cn } from "@/lib/utils";
 
 /* ---------------------------------------------------------------- projects */
 
-export function ProjectsTab({
-  read,
-  loading,
-  timeZone,
-}: {
-  read: RoomRead<ExecutionProject[]> | null;
-  loading: boolean;
-  timeZone: string;
-}) {
-  return (
-    <RoomSection
-      eyebrow="Owned by Projects"
-      title="Delivery for this company"
-      description="Blocked work first, then whatever moved last. State and words are Projects' own."
-      openTo={
-        <Link to="/modules/projects">
-          <OpenIn>Open in Projects</OpenIn>
-        </Link>
-      }
-    >
-      <ReadOrSay read={read} loading={loading} what="Delivery">
-        {(projects) =>
-          projects.length === 0 ? (
-            <Absent line="No delivery work recorded" because="No project names this company yet." />
-          ) : (
-            <ul className="space-y-3">
-              {projects.map((project) => (
-                <li key={project.id}>
-                  <ProjectRow project={project} timeZone={timeZone} />
-                </li>
-              ))}
-            </ul>
-          )
-        }
-      </ReadOrSay>
-    </RoomSection>
-  );
-}
-
 export function ProjectRow({
   project,
   timeZone,
