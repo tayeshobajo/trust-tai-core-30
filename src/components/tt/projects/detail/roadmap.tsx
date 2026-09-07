@@ -13,6 +13,8 @@ import type { MeasurementInput, MilestoneMeasurement } from "@/domain/milestone-
 import { MilestonesView } from "@/components/tt/roadmap/milestones-view";
 import { EmptyState, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
+import type { MilestoneSuccessInput } from "@/domain/milestone-success";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import type { LinkableRoadmap } from "@/domain/project-roadmap-link";
 import type { Roadmap } from "@/domain/roadmap";
@@ -144,6 +146,14 @@ export function ProjectRoadmapTab({
   measurements = [],
   measurementsError = null,
   onMeasure,
+  criteria = [],
+  criteriaError = null,
+  onSuccess,
+  onCriterionAdd,
+  onCriterionToggle,
+  onCriterionEdit,
+  onCriterionRemove,
+  onCriterionMove,
 }: {
   roadmap: Roadmap | null;
   milestones: RoadmapMilestone[];
@@ -170,6 +180,30 @@ export function ProjectRoadmapTab({
   measurements?: MilestoneMeasurement[];
   measurementsError?: string | null;
   onMeasure?: ((milestone: RoadmapMilestone, input: MeasurementInput) => void) | undefined;
+  /**
+   * Outcomes and acceptance criteria are Roadmap's truth too. The workroom
+   * passes them to the same Roadmap component and the same Roadmap service.
+   */
+  criteria?: AcceptanceCriterion[];
+  criteriaError?: string | null;
+  onSuccess?: ((milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void) | undefined;
+  onCriterionAdd?: ((milestone: RoadmapMilestone, text: string) => void) | undefined;
+  onCriterionToggle?:
+    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, done: boolean) => void)
+    | undefined;
+  onCriterionEdit?:
+    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, text: string) => void)
+    | undefined;
+  onCriterionRemove?:
+    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion) => void)
+    | undefined;
+  onCriterionMove?:
+    | ((
+        milestone: RoadmapMilestone,
+        criterion: AcceptanceCriterion,
+        direction: "up" | "down",
+      ) => void)
+    | undefined;
 }) {
   if (!roadmap) {
     return <LinkPanel candidates={candidates} busy={linking} error={linkError} onLink={onLink} />;
@@ -211,6 +245,14 @@ export function ProjectRoadmapTab({
             measurements={measurements}
             measurementsError={measurementsError}
             onMeasure={onMeasure}
+            criteria={criteria}
+            criteriaError={criteriaError}
+            onSuccess={onSuccess}
+            onCriterionAdd={onCriterionAdd}
+            onCriterionToggle={onCriterionToggle}
+            onCriterionEdit={onCriterionEdit}
+            onCriterionRemove={onCriterionRemove}
+            onCriterionMove={onCriterionMove}
           />
         </>
       )}
