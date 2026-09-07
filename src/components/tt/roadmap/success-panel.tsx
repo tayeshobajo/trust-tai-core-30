@@ -21,13 +21,24 @@ export function SuccessPanel({
   subject,
   busy,
   onSave,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   success: MilestoneSuccess | null;
   subject: string;
   busy: boolean;
   onSave: (input: MilestoneSuccessInput) => void;
+  /** When given, the card owns the one primary action and this panel hides its own. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : ownOpen;
+  const setOpen = (next: boolean) => {
+    if (controlled) onOpenChange?.(next);
+    else setOwnOpen(next);
+  };
   const [outcome, setOutcome] = useState(success?.outcome ?? "");
   const [targetDate, setTargetDate] = useState(success?.targetDate ?? "");
   const [successCheck, setSuccessCheck] = useState(success?.successCheck ?? "");
@@ -63,20 +74,22 @@ export function SuccessPanel({
             </p>
           ) : null}
         </div>
-        <TTButton
-          size="sm"
-          variant="secondary"
-          disabled={busy}
-          onClick={() => {
-            setOutcome(success?.outcome ?? "");
-            setTargetDate(success?.targetDate ?? "");
-            setSuccessCheck(success?.successCheck ?? "");
-            setRefusal(null);
-            setOpen((value) => !value);
-          }}
-        >
-          {open ? "Cancel" : success ? "Edit outcome" : "Describe success"}
-        </TTButton>
+        {controlled ? null : (
+          <TTButton
+            size="sm"
+            variant="secondary"
+            disabled={busy}
+            onClick={() => {
+              setOutcome(success?.outcome ?? "");
+              setTargetDate(success?.targetDate ?? "");
+              setSuccessCheck(success?.successCheck ?? "");
+              setRefusal(null);
+              setOpen(!open);
+            }}
+          >
+            {open ? "Cancel" : success ? "Edit outcome" : "Describe success"}
+          </TTButton>
+        )}
       </div>
 
       {open ? (
@@ -117,9 +130,16 @@ export function SuccessPanel({
             </label>
           </div>
           {refusal ? <p className="text-sm text-destructive">{refusal}</p> : null}
-          <TTButton size="sm" disabled={busy} onClick={submit}>
-            Save outcome
-          </TTButton>
+          <div className="flex flex-wrap gap-2">
+            <TTButton size="sm" disabled={busy} onClick={submit}>
+              Save outcome
+            </TTButton>
+            {controlled ? (
+              <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => setOpen(false)}>
+                Cancel
+              </TTButton>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </section>
