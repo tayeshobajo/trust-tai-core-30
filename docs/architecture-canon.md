@@ -602,7 +602,7 @@ only what they can already say out loud.
 hold this law. `docs/milestone-success-criteria-schema.sql` is its canonical
 additive schema record.
 
-## Canon 19: The Client Workspace (locked 2026-09-07)
+## Canon 20: The Client Workspace (locked 2026-09-07)
 
 Client is the account shell. Projects and Roadmap remain the truth owners
 underneath. **When a person is serving one company, project work and roadmap
@@ -657,3 +657,37 @@ component rendered twice.
 The client route carries `tab` and `project` in its search params, so a
 refresh, back/forward and a shared link all land on the same client with the
 same current work, inside the same shell.
+
+
+## Canon 21: Mockup before UI build (locked 2026-09-07)
+
+**Law: for any meaningful UX or UI change, a visual mockup is created and
+approved before implementation. The approved mockup is the comparison target
+for the build, and the build is reviewed against it before it is called done.**
+
+Exempt: copy fixes, single-value corrections, and bug fixes that do not change
+structure, hierarchy or the number of visible controls.
+
+This reconciles into the existing process, it does not start a second roadmap.
+The order is: mockup, approval, implementation, verification against the
+mockup, then the usual typecheck, lint, tests and build.
+
+### Milestone card shape (approved 2026-09-07)
+
+The milestone card is a detail card, not a control panel.
+
+* Title is prominent. Beside it only the status and the step number.
+* The everyday contract is Outcome, Target date, Acceptance criteria, and an
+  optional success check. Tier, confidence, priority score and rationale live
+  behind "Milestone detail".
+* Numeric measurement stays out of the everyday surface entirely. The metric
+  and measurement domains remain intact underneath for later use.
+* Acceptance criteria are a clean checklist with a quiet inline "Add condition"
+  affordance. Ticking every condition is evidence. It never completes the
+  milestone; a person still does that.
+* One primary action, `Update milestone`. Every lower frequency lifecycle
+  action sits in a single quiet overflow, and only transitions valid from the
+  current status appear there (`src/domain/milestone-actions.ts`). A chosen
+  action is confirmed on the card, with an optional note.
+* The section header carries at most `Add milestone`, `Generate candidates`
+  and one compact `View` dropdown. No row of filter chips.
