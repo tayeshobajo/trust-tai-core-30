@@ -725,3 +725,26 @@ What that means in practice:
 
 Schema: `docs/criterion-evidence-schema.sql`
 (`public.roadmap_criterion_evidence`). Additive and idempotent.
+
+## Canon 23: Mockup Before UI Build Law
+
+A visual change of any size beyond copy fixes and bug repairs is agreed as a
+mockup first, and the implementation is then judged against that approved
+mockup rather than against a fresh interpretation. The mockup is the
+acceptance target: density, hierarchy, and the number of visible actions are
+part of what was approved, not decoration added afterwards.
+
+Applied to acceptance criterion evidence (Canon 22), the approved mockup sets
+the presentation law:
+
+- Evidence is shown inline under its condition, never hidden behind a generic
+  count link. An image shows as a small thumbnail, a file as a card with its
+  name and type, size and date where known, a link as its domain, a note as
+  its first lines.
+- The card itself is the inspect affordance: a reviewer clicks the preview to
+  open the proof through the existing signed url path.
+- `Add evidence` stays a quiet secondary link on the condition row. Attaching
+  happens in a modal with File / Link / Note, drag and drop or choose file, an
+  optional note, and exactly one primary `Attach evidence` action.
+- The acceptance checklist stays visually primary. Evidence never checks a
+  condition and never completes a milestone.
