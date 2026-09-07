@@ -163,3 +163,60 @@ export function criterionEvidencePath(
       : String(Date.now());
   return `${organizationId}/criterion-evidence/${milestoneId}/${criterionId}/${unique}-${safe}`;
 }
+
+/** Whether this proof can be shown as a picture rather than described. */
+export function isImageEvidence(item: {
+  type: CriterionEvidenceType;
+  contentType?: string | undefined;
+  label?: string | undefined;
+}): boolean {
+  if (item.type !== "file") return false;
+  if (item.contentType && /^image\//i.test(item.contentType)) return true;
+  return /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(item.label ?? "");
+}
+
+/** The place a link points at, in the words a reader would use for it. */
+export function evidenceLinkDomain(url?: string | undefined): string | null {
+  const raw = clean(url);
+  if (!raw) return null;
+  try {
+    return new URL(raw).hostname.replace(/^www\./i, "");
+  } catch {
+    return null;
+  }
+}
+
+/** File size a person can read at a glance. */
+export function formatEvidenceSize(bytes?: number | undefined): string | null {
+  if (typeof bytes !== "number" || !Number.isFinite(bytes) || bytes <= 0) return null;
+  if (bytes < 1024) return `${Math.round(bytes)} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function evidenceDate(value?: string | undefined): string | null {
+  if (!value) return null;
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return null;
+  return at.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/** One quiet line under an evidence card: what it is, how big, when. */
+export function evidenceMetaLine(item: CriterionEvidence): string {
+  const parts: string[] = [];
+  if (item.type === "link") {
+    parts.push(evidenceLinkDomain(item.url) ?? EVIDENCE_TYPE_LABEL.link);
+  } else {
+    parts.push(EVIDENCE_TYPE_LABEL[item.type]);
+  }
+  const size = formatEvidenceSize(item.sizeBytes);
+  if (size) parts.push(size);
+  const at = evidenceDate(item.createdAt);
+  if (at) parts.push(at);
+  return parts.join(" · ");
+}
