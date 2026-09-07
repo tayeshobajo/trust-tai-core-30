@@ -156,7 +156,7 @@ export function criterionEvidencePath(
   criterionId: ID,
   fileName: string,
 ): string {
-  const safe = fileName.replace(/[^\w.\-]+/g, "-").slice(-120) || "file";
+  const safe = fileName.replace(/[^\w.-]+/g, "-").slice(-120) || "file";
   const unique =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
