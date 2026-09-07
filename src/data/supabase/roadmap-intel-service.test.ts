@@ -492,7 +492,7 @@ describe("milestones", () => {
     expect(updated.outcomeMetric?.key).toBe("demo_to_close_rate");
     expect(updated.outcomeMetric?.tier).toBe("decided");
     expect(updated.outcomeMetric?.recordedBy).toBe("user-1");
-    expect(updated.outcomeMetric?.baseline.value).toBe(12);
+    expect(updated.outcomeMetric?.baseline?.value).toBe(12);
   });
 
   it("a milestone with no metric reads as absence, not zero", async () => {
