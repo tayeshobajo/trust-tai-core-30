@@ -6,7 +6,8 @@
  * rather than quietly becoming today.
  */
 
-import { useState } from "react";
+import { useState, type RefObject } from "react";
+import { toast } from "sonner";
 
 import { TTButton, TTInput } from "@/components/tt/primitives";
 import {
@@ -24,6 +25,7 @@ export function SuccessPanel({
   onSave,
   open: controlledOpen,
   onOpenChange,
+  editorRef,
 }: {
   success: MilestoneSuccess | null;
   subject: string;
@@ -32,6 +34,8 @@ export function SuccessPanel({
   /** When given, the card owns the one primary action and this panel hides its own. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Lets the card reveal and focus this editor when an action opens it. */
+  editorRef?: RefObject<HTMLDivElement | null> | undefined;
 }) {
   const [ownOpen, setOwnOpen] = useState(false);
   const controlled = controlledOpen !== undefined;
@@ -53,6 +57,7 @@ export function SuccessPanel({
     }
     setRefusal(null);
     onSave(checked.success);
+    toast.success("Outcome saved", { description: subject });
     setOpen(false);
   };
 
