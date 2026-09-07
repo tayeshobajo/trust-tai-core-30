@@ -62,6 +62,8 @@ function MilestoneCard({
   evidence,
   evidenceError,
   onStatus,
+  onAccept,
+  onReopen,
   onSuccess,
   onCriterionAdd,
   onCriterionToggle,
@@ -80,6 +82,8 @@ function MilestoneCard({
   evidence: CriterionEvidence[];
   evidenceError: string | null;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
+  onAccept?: ((milestone: RoadmapMilestone, note: string) => void) | undefined;
+  onReopen?: ((milestone: RoadmapMilestone, reason: string) => void) | undefined;
   onSuccess?: ((milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void) | undefined;
   onCriterionAdd?: ((milestone: RoadmapMilestone, text: string) => void) | undefined;
   onCriterionToggle?:
@@ -115,6 +119,8 @@ function MilestoneCard({
   const [detail, setDetail] = useState(false);
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState<MilestoneStatus | null>(null);
+  const [reopening, setReopening] = useState(false);
+  const [reason, setReason] = useState("");
   const busy = busyId === milestone.id;
   const lifecycle = milestoneLifecycle(milestone, criteria);
 
@@ -128,6 +134,7 @@ function MilestoneCard({
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {milestone.acceptance ? <MetaPill>Accepted</MetaPill> : null}
           <MetaPill>{MILESTONE_STATUS_LABEL[milestone.status]}</MetaPill>
           <MetaPill>Step {milestone.recommendedSequence}</MetaPill>
         </div>
@@ -172,6 +179,7 @@ function MilestoneCard({
           subject={milestone.name}
           busy={busy}
           onFix={() => setEditing(true)}
+          {...(onAccept ? { onAccept: (note: string) => onAccept(milestone, note) } : {})}
         />
       ) : null}
 
@@ -245,8 +253,46 @@ function MilestoneCard({
           rankingOpen={open}
           onDetail={() => setDetail((value) => !value)}
           onRanking={() => setOpen((value) => !value)}
+          {...(onReopen && milestone.acceptance
+            ? {
+                onReopen: () => {
+                  setReopening(true);
+                  setReason("");
+                },
+              }
+            : {})}
         />
       </div>
+
+      {reopening && onReopen ? (
+        <div className="mt-4 space-y-3 rounded-2xl border border-border p-4">
+          <p className="max-w-reading text-sm text-foreground">
+            Reopening clears the acceptance on this milestone. The conditions and everything
+            attached to them stay exactly as they are.
+          </p>
+          <TTInput
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Why it is being reopened (optional)"
+            aria-label={`Reason for reopening ${milestone.name}`}
+          />
+          <div className="flex flex-wrap gap-2">
+            <TTButton
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                onReopen(milestone, reason);
+                setReopening(false);
+              }}
+            >
+              Reopen milestone
+            </TTButton>
+            <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => setReopening(false)}>
+              Cancel
+            </TTButton>
+          </div>
+        </div>
+      ) : null}
 
       {pending ? (
         <div className="mt-4 space-y-3 rounded-2xl border border-border p-4">
@@ -287,6 +333,8 @@ export function MilestonesView({
   onGenerate,
   onCreate,
   onStatus,
+  onAccept,
+  onReopen,
   criteria = [],
   criteriaError = null,
   evidence = [],
@@ -310,6 +358,9 @@ export function MilestonesView({
   onGenerate: () => void;
   onCreate: (input: ManualMilestoneInput) => void;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
+  /** The explicit human acceptance of delivered work, and its reversal. */
+  onAccept?: ((milestone: RoadmapMilestone, note: string) => void) | undefined;
+  onReopen?: ((milestone: RoadmapMilestone, reason: string) => void) | undefined;
   /**
    * Advanced numeric measurement. Accepted for backend compatibility and no
    * longer rendered in the everyday milestone surface.
@@ -439,6 +490,8 @@ export function MilestonesView({
               evidence={evidence.filter((row) => row.milestoneId === milestone.id)}
               evidenceError={evidenceError}
               onStatus={onStatus}
+              onAccept={onAccept}
+              onReopen={onReopen}
               onSuccess={onSuccess}
               onCriterionAdd={onCriterionAdd}
               onCriterionToggle={onCriterionToggle}

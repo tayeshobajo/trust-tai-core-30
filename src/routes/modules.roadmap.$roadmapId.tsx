@@ -933,6 +933,8 @@ function RoadmapWorkspace({
                 evidence={intelQuery.data?.criterionEvidence ?? []}
                 evidenceError={intelQuery.data?.criterionEvidenceError ?? null}
                 onSuccess={acceptance.onSuccess}
+                onAccept={acceptance.onAccept}
+                onReopen={acceptance.onReopen}
                 onCriterionAdd={acceptance.onCriterionAdd}
                 onCriterionToggle={acceptance.onCriterionToggle}
                 onCriterionEdit={acceptance.onCriterionEdit}
