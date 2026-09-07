@@ -45,6 +45,22 @@ import {
   measurementSummary,
   sortMeasurements,
 } from "@/domain/milestone-measurement";
+import type { MilestoneSuccess, MilestoneSuccessInput } from "@/domain/milestone-success";
+import {
+  checkMilestoneSuccess,
+  sameSuccess,
+  successEventKey,
+} from "@/domain/milestone-success";
+import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
+import {
+  canRemoveCriterion,
+  checkCriterionText,
+  criterionEventKey,
+  findSameCriterion,
+  nextCriterionPosition,
+  reorderCriteria,
+  sortCriteria,
+} from "@/domain/milestone-criteria";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import {
   MANUAL_PRIORITY_RATIONALE,
@@ -179,6 +195,10 @@ export interface RoadmapIntel {
    * so the two are kept apart all the way to the screen.
    */
   measurementsError: string | null;
+  /** Acceptance criteria for every milestone on this roadmap, in order. */
+  criteria: AcceptanceCriterion[];
+  /** Why the checklist could not be read, when it could not be. */
+  criteriaError: string | null;
 }
 
 const MEASUREMENT_COLUMNS = "*";
@@ -189,6 +209,33 @@ function missingMeasurements(error: { code?: string; message?: string } | null):
   return /does not exist|schema cache|42P01|PGRST205|roadmap_measurements/i.test(
     `${error.code ?? ""} ${error.message ?? ""}`,
   );
+}
+
+const CRITERION_COLUMNS = "*";
+
+/** A missing criteria table reads as an unreadable checklist, never an empty one. */
+function missingCriteria(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return /does not exist|schema cache|42P01|PGRST205|roadmap_milestone_criteria/i.test(
+    `${error.code ?? ""} ${error.message ?? ""}`,
+  );
+}
+
+function toCriterion(row: Row): AcceptanceCriterion {
+  return {
+    id: String(row["id"]),
+    organizationId: String(row["organization_id"] ?? ""),
+    roadmapId: String(row["roadmap_id"] ?? ""),
+    milestoneId: String(row["milestone_id"] ?? ""),
+    text: String(row["text"] ?? ""),
+    position: Number(row["position"] ?? 1),
+    done: Boolean(row["done"]),
+    createdBy: String(row["created_by"] ?? ""),
+    createdAt: String(row["created_at"] ?? ""),
+    ...(row["completed_by"] ? { completedBy: String(row["completed_by"]) } : {}),
+    ...(row["completed_at"] ? { completedAt: String(row["completed_at"]) } : {}),
+    updatedAt: String(row["updated_at"] ?? row["created_at"] ?? ""),
+  };
 }
 
 function toMeasurement(row: Row): MilestoneMeasurement {
@@ -230,7 +277,16 @@ function toAsk(row: Row): AskAnswer {
 
 const roadmapIntelRaw = {
   async load(roadmapId: ID): Promise<RoadmapIntel> {
-    const [research, strategy, milestones, artifacts, sessions, questions, measurements] =
+    const [
+      research,
+      strategy,
+      milestones,
+      artifacts,
+      sessions,
+      questions,
+      measurements,
+      criteria,
+    ] =
       await Promise.all([
         supabase
           .from("roadmap_research")
@@ -267,6 +323,12 @@ const roadmapIntelRaw = {
           .eq("roadmap_id", roadmapId)
           .order("measured_at", { ascending: false })
           .limit(200),
+        supabase
+          .from("roadmap_milestone_criteria")
+          .select(CRITERION_COLUMNS)
+          .eq("roadmap_id", roadmapId)
+          .order("position", { ascending: true })
+          .limit(500),
       ]);
 
     assertOk(research.error);
@@ -289,6 +351,10 @@ const roadmapIntelRaw = {
       measurements: sortMeasurements(((measurements.data ?? []) as Row[]).map(toMeasurement)),
       measurementsError: measurements.error
         ? "Measurement history could not be read here yet, so nothing is shown rather than an empty history."
+        : null,
+      criteria: sortCriteria(((criteria.data ?? []) as Row[]).map(toCriterion)),
+      criteriaError: criteria.error
+        ? "The acceptance checklist could not be read here yet, so nothing is shown rather than an empty checklist."
         : null,
     };
   },
@@ -665,7 +731,12 @@ const roadmapIntelRaw = {
     const at = new Date().toISOString();
     const { data, error } = await supabase
       .from("roadmap_milestones")
-      .update({ outcome_metric: next, updated_at: at })
+      .update({
+        // The stored contract always carries a baseline object, so an absent
+        // baseline is written as an empty one rather than a fake zero.
+        outcome_metric: next ? { ...next, baseline: next.baseline ?? {} } : null,
+        updated_at: at,
+      })
       .eq("id", milestone.id)
       .select(MILESTONE_COLUMNS)
       .single();
@@ -802,6 +873,294 @@ const roadmapIntelRaw = {
       .order("measured_at", { ascending: false });
     assertOk(error);
     return sortMeasurements(((data ?? []) as Row[]).map(toMeasurement));
+  },
+
+  /* ------------------------------------------- success and acceptance */
+
+  /**
+   * Write the plain language success definition on a milestone.
+   *
+   * People describe success. The system structures measurement. This is the
+   * everyday path: an outcome sentence, an optional target date, an optional
+   * success check. Nothing is defaulted, the target date is never today by
+   * accident, and writing the same words again changes nothing.
+   */
+  async setMilestoneSuccess(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    input: Partial<MilestoneSuccessInput> | null,
+    label: string,
+  ): Promise<RoadmapMilestone> {
+    const current = milestone.success ?? null;
+    let next: MilestoneSuccess | null = null;
+
+    if (input) {
+      const checked = checkMilestoneSuccess(input);
+      if (!checked.ok) throw new Error(checked.refusal);
+      if (sameSuccess(current, checked.success)) return milestone;
+      next = {
+        ...checked.success,
+        tier: "decided",
+        recordedBy: context.userId,
+        recordedAt: new Date().toISOString(),
+      };
+    } else if (!current) {
+      return milestone;
+    }
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .update({ success_definition: next, updated_at: at })
+      .eq("id", milestone.id)
+      .select(MILESTONE_COLUMNS)
+      .single();
+
+    if (error?.message && /success_definition/.test(error.message)) {
+      throw new Error(
+        "Milestone outcomes are not available in this environment yet: the roadmap_milestones.success_definition column has not been applied.",
+      );
+    }
+    assertOk(error);
+
+    await record(
+      context,
+      "roadmap.updated",
+      milestone.roadmapId,
+      label,
+      next
+        ? `${milestone.name} now succeeds when: ${next.outcome}`
+        : `The outcome on ${milestone.name} was removed by a person.`,
+      {
+        milestoneId: milestone.id,
+        scope: "success_definition",
+        ...(next ? { success: next } : { cleared: true }),
+        source_event_key: successEventKey(milestone.id, next),
+      },
+    );
+    return toMilestone(data as Row);
+  },
+
+  async listCriteria(milestoneId: ID): Promise<AcceptanceCriterion[]> {
+    const { data, error } = await supabase
+      .from("roadmap_milestone_criteria")
+      .select(CRITERION_COLUMNS)
+      .eq("milestone_id", milestoneId);
+    if (error && missingCriteria(error)) return [];
+    assertOk(error);
+    return sortCriteria(((data ?? []) as Row[]).map(toCriterion));
+  },
+
+  /**
+   * Add one acceptance criterion. Roadmap owns the checklist, so this is the
+   * only write path, and the Project workroom calls this same method.
+   */
+  async addCriterion(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    text: string,
+    label: string,
+  ): Promise<AcceptanceCriterion> {
+    const checked = checkCriterionText(text);
+    if (!checked.ok) throw new Error(checked.refusal);
+
+    const existing = await this.listCriteria(milestone.id);
+    const duplicate = findSameCriterion(existing, checked.text);
+    if (duplicate) return duplicate;
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestone_criteria")
+      .insert({
+        organization_id: milestone.organizationId,
+        roadmap_id: milestone.roadmapId,
+        milestone_id: milestone.id,
+        text: checked.text,
+        position: nextCriterionPosition(existing),
+        done: false,
+        created_by: context.userId,
+        created_at: at,
+        updated_at: at,
+        source_event_key: criterionEventKey(milestone.id, checked.text),
+        provenance: {
+          appId: "roadmap",
+          actor: { type: "user", id: context.userId, label: context.userLabel ?? null },
+          observedAt: at,
+          confidence: "observed",
+        },
+      })
+      .select(CRITERION_COLUMNS)
+      .single();
+
+    if (error && missingCriteria(error)) {
+      throw new Error(
+        "Acceptance criteria are not available in this environment yet: the roadmap_milestone_criteria table has not been applied.",
+      );
+    }
+    assertOk(error);
+
+    const criterion = toCriterion(data as Row);
+    await record(
+      context,
+      "roadmap.updated",
+      milestone.roadmapId,
+      label,
+      `An acceptance condition was added to ${milestone.name}: ${criterion.text}`,
+      {
+        milestoneId: milestone.id,
+        scope: "acceptance_criteria",
+        criterionId: criterion.id,
+        action: "added",
+        source_event_key: criterion.id,
+      },
+    );
+    return criterion;
+  },
+
+  /** Correct the wording of a condition. The text is the only thing that moves. */
+  async editCriterion(
+    context: IntelContext,
+    criterion: AcceptanceCriterion,
+    text: string,
+    label: string,
+  ): Promise<AcceptanceCriterion> {
+    const checked = checkCriterionText(text);
+    if (!checked.ok) throw new Error(checked.refusal);
+    if (checked.text === criterion.text) return criterion;
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestone_criteria")
+      .update({ text: checked.text, updated_at: at })
+      .eq("id", criterion.id)
+      .select(CRITERION_COLUMNS)
+      .single();
+    assertOk(error);
+
+    const next = toCriterion(data as Row);
+    await record(
+      context,
+      "roadmap.updated",
+      criterion.roadmapId,
+      label,
+      `An acceptance condition was reworded to: ${next.text}`,
+      {
+        milestoneId: criterion.milestoneId,
+        scope: "acceptance_criteria",
+        criterionId: criterion.id,
+        action: "edited",
+      },
+    );
+    return next;
+  },
+
+  /**
+   * Check or uncheck a condition.
+   *
+   * Checking every box never completes the milestone. It is evidence a person
+   * reads before making that call themselves.
+   */
+  async setCriterionDone(
+    context: IntelContext,
+    criterion: AcceptanceCriterion,
+    done: boolean,
+    label: string,
+  ): Promise<AcceptanceCriterion> {
+    if (criterion.done === done) return criterion;
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestone_criteria")
+      .update({
+        done,
+        completed_by: done ? context.userId : null,
+        completed_at: done ? at : null,
+        updated_at: at,
+      })
+      .eq("id", criterion.id)
+      .select(CRITERION_COLUMNS)
+      .single();
+    assertOk(error);
+
+    const next = toCriterion(data as Row);
+    await record(
+      context,
+      "roadmap.updated",
+      criterion.roadmapId,
+      label,
+      done
+        ? `An acceptance condition was met: ${next.text}`
+        : `An acceptance condition was reopened: ${next.text}`,
+      {
+        milestoneId: criterion.milestoneId,
+        scope: "acceptance_criteria",
+        criterionId: criterion.id,
+        action: done ? "checked" : "unchecked",
+      },
+    );
+    return next;
+  },
+
+  /** Remove a condition that should never have been written. */
+  async removeCriterion(
+    context: IntelContext,
+    criterion: AcceptanceCriterion,
+    label: string,
+  ): Promise<void> {
+    const allowed = canRemoveCriterion(criterion);
+    if (!allowed.ok) throw new Error(allowed.refusal);
+
+    const { error } = await supabase
+      .from("roadmap_milestone_criteria")
+      .delete()
+      .eq("id", criterion.id);
+    assertOk(error);
+
+    await record(
+      context,
+      "roadmap.updated",
+      criterion.roadmapId,
+      label,
+      `An acceptance condition was removed: ${criterion.text}`,
+      {
+        milestoneId: criterion.milestoneId,
+        scope: "acceptance_criteria",
+        criterionId: criterion.id,
+        action: "removed",
+      },
+    );
+  },
+
+  /** Move one condition up or down, keeping the checklist order readable. */
+  async moveCriterion(
+    context: IntelContext,
+    rows: AcceptanceCriterion[],
+    criterion: AcceptanceCriterion,
+    direction: "up" | "down",
+    label: string,
+  ): Promise<void> {
+    const moves = reorderCriteria(rows, criterion.id, direction);
+    if (moves.length === 0) return;
+    const at = new Date().toISOString();
+    for (const move of moves) {
+      const { error } = await supabase
+        .from("roadmap_milestone_criteria")
+        .update({ position: move.position, updated_at: at })
+        .eq("id", move.id);
+      assertOk(error);
+    }
+    await record(
+      context,
+      "roadmap.updated",
+      criterion.roadmapId,
+      label,
+      `The acceptance checklist order was changed by a person.`,
+      {
+        milestoneId: criterion.milestoneId,
+        scope: "acceptance_criteria",
+        criterionId: criterion.id,
+        action: "reordered",
+      },
+    );
   },
 
   /* ----------------------------------------------------------- studio */
