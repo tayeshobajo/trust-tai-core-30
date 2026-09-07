@@ -1080,9 +1080,9 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
           lineage={row.lineage}
           busy={busy}
           onOpenTab={openTab}
-          onAddWork={() => setTab("work")}
-          onRaiseBlocker={() => setTab("blockers")}
-          onAskDecision={() => setTab("decisions")}
+          onAddWork={() => openTab("work")}
+          onRaiseBlocker={() => openTab("blockers")}
+          onAskDecision={() => openTab("decisions")}
           onComplete={() => updateProject.mutate({ state: "delivered" })}
         />
       </div>
