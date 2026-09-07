@@ -46,11 +46,7 @@ import {
   sortMeasurements,
 } from "@/domain/milestone-measurement";
 import type { MilestoneSuccess, MilestoneSuccessInput } from "@/domain/milestone-success";
-import {
-  checkMilestoneSuccess,
-  sameSuccess,
-  successEventKey,
-} from "@/domain/milestone-success";
+import { checkMilestoneSuccess, sameSuccess, successEventKey } from "@/domain/milestone-success";
 import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
 import {
   canRemoveCriterion,
@@ -61,6 +57,13 @@ import {
   reorderCriteria,
   sortCriteria,
 } from "@/domain/milestone-criteria";
+import type { CriterionEvidence, CriterionEvidenceType } from "@/domain/criterion-evidence";
+import {
+  checkEvidenceInput,
+  criterionEvidencePath,
+  evidenceEventKey,
+} from "@/domain/criterion-evidence";
+import { PROJECT_FILES_BUCKET } from "@/domain/project-delivery";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import {
   MANUAL_PRIORITY_RATIONALE,
@@ -199,6 +202,10 @@ export interface RoadmapIntel {
   criteria: AcceptanceCriterion[];
   /** Why the checklist could not be read, when it could not be. */
   criteriaError: string | null;
+  /** Proof attached to those conditions. Optional by default, never a decision. */
+  criterionEvidence: CriterionEvidence[];
+  /** Why the attached proof could not be read, when it could not be. */
+  criterionEvidenceError: string | null;
 }
 
 const MEASUREMENT_COLUMNS = "*";
@@ -219,6 +226,37 @@ function missingCriteria(error: { code?: string; message?: string } | null): boo
   return /does not exist|schema cache|42P01|PGRST205|roadmap_milestone_criteria/i.test(
     `${error.code ?? ""} ${error.message ?? ""}`,
   );
+}
+
+export const EVIDENCE_NOT_APPLIED =
+  "Acceptance evidence is not available in this environment yet: the roadmap_criterion_evidence table has not been applied.";
+
+/** A missing evidence table reads as unreadable proof, never as no proof. */
+function missingCriterionEvidence(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return /does not exist|schema cache|42P01|PGRST205|roadmap_criterion_evidence/i.test(
+    `${error.code ?? ""} ${error.message ?? ""}`,
+  );
+}
+
+function toCriterionEvidence(row: Row): CriterionEvidence {
+  return {
+    id: String(row["id"]),
+    organizationId: String(row["organization_id"] ?? ""),
+    roadmapId: String(row["roadmap_id"] ?? ""),
+    milestoneId: String(row["milestone_id"] ?? ""),
+    criterionId: String(row["criterion_id"] ?? ""),
+    type: (row["type"] as CriterionEvidenceType) ?? "note",
+    label: String(row["label"] ?? ""),
+    ...(row["url"] ? { url: String(row["url"]) } : {}),
+    ...(row["storage_path"] ? { storagePath: String(row["storage_path"]) } : {}),
+    ...(row["content_type"] ? { contentType: String(row["content_type"]) } : {}),
+    ...(row["size_bytes"] != null ? { sizeBytes: Number(row["size_bytes"]) } : {}),
+    ...(row["note"] ? { note: String(row["note"]) } : {}),
+    createdBy: String(row["created_by"] ?? ""),
+    ...(row["created_by_label"] ? { createdByLabel: String(row["created_by_label"]) } : {}),
+    createdAt: String(row["created_at"] ?? ""),
+  };
 }
 
 function toCriterion(row: Row): AcceptanceCriterion {
@@ -286,50 +324,56 @@ const roadmapIntelRaw = {
       questions,
       measurements,
       criteria,
-    ] =
-      await Promise.all([
-        supabase
-          .from("roadmap_research")
-          .select(RESEARCH_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("created_at", { ascending: false })
-          .limit(10),
-        supabase
-          .from("roadmap_strategies")
-          .select(STRATEGY_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .maybeSingle(),
-        supabase
-          .from("roadmap_milestones")
-          .select(MILESTONE_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("recommended_sequence", { ascending: true }),
-        supabase.from("roadmap_artifacts").select(ARTIFACT_COLUMNS).eq("roadmap_id", roadmapId),
-        supabase
-          .from("roadmap_sessions")
-          .select(SESSION_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("started_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("roadmap_questions")
-          .select(QUESTION_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("created_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("roadmap_measurements")
-          .select(MEASUREMENT_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("measured_at", { ascending: false })
-          .limit(200),
-        supabase
-          .from("roadmap_milestone_criteria")
-          .select(CRITERION_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("position", { ascending: true })
-          .limit(500),
-      ]);
+      criterionEvidence,
+    ] = await Promise.all([
+      supabase
+        .from("roadmap_research")
+        .select(RESEARCH_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("roadmap_strategies")
+        .select(STRATEGY_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .maybeSingle(),
+      supabase
+        .from("roadmap_milestones")
+        .select(MILESTONE_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("recommended_sequence", { ascending: true }),
+      supabase.from("roadmap_artifacts").select(ARTIFACT_COLUMNS).eq("roadmap_id", roadmapId),
+      supabase
+        .from("roadmap_sessions")
+        .select(SESSION_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("started_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("roadmap_questions")
+        .select(QUESTION_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("roadmap_measurements")
+        .select(MEASUREMENT_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("measured_at", { ascending: false })
+        .limit(200),
+      supabase
+        .from("roadmap_milestone_criteria")
+        .select(CRITERION_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("position", { ascending: true })
+        .limit(500),
+      supabase
+        .from("roadmap_criterion_evidence")
+        .select("*")
+        .eq("roadmap_id", roadmapId)
+        .order("created_at", { ascending: true })
+        .limit(1000),
+    ]);
 
     assertOk(research.error);
     assertOk(strategy.error);
@@ -355,6 +399,10 @@ const roadmapIntelRaw = {
       criteria: sortCriteria(((criteria.data ?? []) as Row[]).map(toCriterion)),
       criteriaError: criteria.error
         ? "The acceptance checklist could not be read here yet, so nothing is shown rather than an empty checklist."
+        : null,
+      criterionEvidence: ((criterionEvidence.data ?? []) as Row[]).map(toCriterionEvidence),
+      criterionEvidenceError: criterionEvidence.error
+        ? "Attached evidence could not be read here yet, so nothing is shown rather than an empty list."
         : null,
     };
   },
@@ -1161,6 +1209,185 @@ const roadmapIntelRaw = {
         action: "reordered",
       },
     );
+  },
+
+  /* ------------------------------------------------ criterion evidence */
+
+  /**
+   * Proof attached to the conditions on one roadmap.
+   *
+   * An unreadable table is a different fact from an empty one, so a missing
+   * relation is reported rather than shown as "nothing attached".
+   */
+  async listCriterionEvidence(roadmapId: ID): Promise<CriterionEvidence[]> {
+    const { data, error } = await supabase
+      .from("roadmap_criterion_evidence")
+      .select("*")
+      .eq("roadmap_id", roadmapId)
+      .order("created_at", { ascending: true })
+      .limit(1000);
+    if (error && missingCriterionEvidence(error)) {
+      throw new Error(EVIDENCE_NOT_APPLIED);
+    }
+    assertOk(error);
+    return ((data ?? []) as Row[]).map(toCriterionEvidence);
+  },
+
+  /**
+   * Attach one piece of proof to one condition.
+   *
+   * A file is uploaded into the existing private project files bucket, under
+   * an organization scoped path, before anything is recorded. If the row
+   * cannot be written, the object is removed rather than left orphaned.
+   *
+   * Nothing here checks the criterion. That stays a person's act.
+   */
+  async addCriterionEvidence(
+    context: IntelContext,
+    criterion: AcceptanceCriterion,
+    raw: { type: CriterionEvidenceType; label?: string; url?: string; note?: string; file?: File },
+    label: string,
+  ): Promise<CriterionEvidence> {
+    const checked = checkEvidenceInput({
+      type: raw.type,
+      label: raw.type === "file" ? (raw.file?.name ?? raw.label) : raw.label,
+      url: raw.url,
+      note: raw.note,
+    });
+    if (!checked.ok) throw new Error(checked.refusal);
+    const input = checked.input;
+
+    let storagePath: string | null = null;
+    let contentType: string | null = null;
+    let sizeBytes: number | null = null;
+
+    if (input.type === "file") {
+      const file = raw.file;
+      if (!file) throw new Error("Choose a file to attach.");
+      const path = criterionEvidencePath(
+        criterion.organizationId,
+        criterion.milestoneId,
+        criterion.id,
+        file.name,
+      );
+      const upload = await supabase.storage.from(PROJECT_FILES_BUCKET).upload(path, file, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
+      if (upload.error) throw new Error("That file could not be uploaded.");
+      storagePath = path;
+      contentType = file.type || null;
+      sizeBytes = file.size;
+    }
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_criterion_evidence")
+      .insert({
+        organization_id: criterion.organizationId,
+        roadmap_id: criterion.roadmapId,
+        milestone_id: criterion.milestoneId,
+        criterion_id: criterion.id,
+        type: input.type,
+        label: input.label,
+        url: input.url ?? null,
+        storage_path: storagePath,
+        content_type: contentType,
+        size_bytes: sizeBytes,
+        note: input.note ?? null,
+        created_by: context.userId,
+        created_by_label: context.userLabel ?? null,
+        created_at: at,
+        source_event_key: evidenceEventKey(criterion.id, input),
+        provenance: {
+          appId: "roadmap",
+          actor: { type: "user", id: context.userId, label: context.userLabel ?? null },
+          observedAt: at,
+          confidence: "observed",
+        },
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      if (storagePath) {
+        await supabase.storage.from(PROJECT_FILES_BUCKET).remove([storagePath]);
+      }
+      if (missingCriterionEvidence(error)) throw new Error(EVIDENCE_NOT_APPLIED);
+      // The same proof attached twice is the same fact, not a failure.
+      if (/duplicate key|23505/i.test(`${error.code ?? ""} ${error.message ?? ""}`)) {
+        const existing = await supabase
+          .from("roadmap_criterion_evidence")
+          .select("*")
+          .eq("criterion_id", criterion.id)
+          .eq("source_event_key", evidenceEventKey(criterion.id, input))
+          .maybeSingle();
+        if (existing.data) return toCriterionEvidence(existing.data as Row);
+      }
+      throw new Error("That evidence could not be saved.");
+    }
+
+    const saved = toCriterionEvidence(data as Row);
+    await record(
+      context,
+      "roadmap.updated",
+      criterion.roadmapId,
+      label,
+      `Evidence was attached to an acceptance condition: ${saved.label}`,
+      {
+        milestoneId: criterion.milestoneId,
+        scope: "acceptance_evidence",
+        criterionId: criterion.id,
+        evidenceId: saved.id,
+        evidenceType: saved.type,
+        action: "attached",
+        source_event_key: saved.id,
+      },
+    );
+    return saved;
+  },
+
+  /** Remove one piece of proof, explicitly, with the file it stood on. */
+  async removeCriterionEvidence(
+    context: IntelContext,
+    evidence: CriterionEvidence,
+    label: string,
+  ): Promise<void> {
+    const { error } = await supabase
+      .from("roadmap_criterion_evidence")
+      .delete()
+      .eq("id", evidence.id);
+    if (error && missingCriterionEvidence(error)) throw new Error(EVIDENCE_NOT_APPLIED);
+    assertOk(error);
+
+    if (evidence.storagePath) {
+      await supabase.storage.from(PROJECT_FILES_BUCKET).remove([evidence.storagePath]);
+    }
+
+    await record(
+      context,
+      "roadmap.updated",
+      evidence.roadmapId,
+      label,
+      `Evidence was removed from an acceptance condition: ${evidence.label}`,
+      {
+        milestoneId: evidence.milestoneId,
+        scope: "acceptance_evidence",
+        criterionId: evidence.criterionId,
+        evidenceId: evidence.id,
+        action: "removed",
+      },
+    );
+  },
+
+  /** A short lived signed url. Evidence files are private; nothing is public. */
+  async criterionEvidenceUrl(evidence: CriterionEvidence): Promise<string> {
+    if (!evidence.storagePath) throw new Error("That evidence is not a stored file.");
+    const { data, error } = await supabase.storage
+      .from(PROJECT_FILES_BUCKET)
+      .createSignedUrl(evidence.storagePath, 60);
+    if (error || !data?.signedUrl) throw new Error("That file could not be opened.");
+    return data.signedUrl;
   },
 
   /* ----------------------------------------------------------- studio */

@@ -14,6 +14,8 @@ import { MilestonesView } from "@/components/tt/roadmap/milestones-view";
 import { EmptyState, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
+import type { CriterionEvidence } from "@/domain/criterion-evidence";
+import type { EvidenceDraft } from "@/components/tt/roadmap/criterion-evidence";
 import type { MilestoneSuccessInput } from "@/domain/milestone-success";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import type { LinkableRoadmap } from "@/domain/project-roadmap-link";
@@ -148,12 +150,17 @@ export function ProjectRoadmapTab({
   onMeasure,
   criteria = [],
   criteriaError = null,
+  evidence = [],
+  evidenceError = null,
   onSuccess,
   onCriterionAdd,
   onCriterionToggle,
   onCriterionEdit,
   onCriterionRemove,
   onCriterionMove,
+  onEvidenceAdd,
+  onEvidenceRemove,
+  onEvidenceOpen,
 }: {
   roadmap: Roadmap | null;
   milestones: RoadmapMilestone[];
@@ -186,6 +193,9 @@ export function ProjectRoadmapTab({
    */
   criteria?: AcceptanceCriterion[];
   criteriaError?: string | null;
+  /** Evidence on those conditions. Roadmap owned, passed straight through. */
+  evidence?: CriterionEvidence[];
+  evidenceError?: string | null;
   onSuccess?: ((milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void) | undefined;
   onCriterionAdd?: ((milestone: RoadmapMilestone, text: string) => void) | undefined;
   onCriterionToggle?:
@@ -203,6 +213,11 @@ export function ProjectRoadmapTab({
         direction: "up" | "down",
       ) => void)
     | undefined;
+  onEvidenceAdd?:
+    | ((milestone: RoadmapMilestone, criterion: AcceptanceCriterion, draft: EvidenceDraft) => void)
+    | undefined;
+  onEvidenceRemove?: ((item: CriterionEvidence) => void) | undefined;
+  onEvidenceOpen?: ((item: CriterionEvidence) => void) | undefined;
 }) {
   if (!roadmap) {
     return <LinkPanel candidates={candidates} busy={linking} error={linkError} onLink={onLink} />;
@@ -246,12 +261,17 @@ export function ProjectRoadmapTab({
             onMeasure={onMeasure}
             criteria={criteria}
             criteriaError={criteriaError}
+            evidence={evidence}
+            evidenceError={evidenceError}
             onSuccess={onSuccess}
             onCriterionAdd={onCriterionAdd}
             onCriterionToggle={onCriterionToggle}
             onCriterionEdit={onCriterionEdit}
             onCriterionRemove={onCriterionRemove}
             onCriterionMove={onCriterionMove}
+            onEvidenceAdd={onEvidenceAdd}
+            onEvidenceRemove={onEvidenceRemove}
+            onEvidenceOpen={onEvidenceOpen}
           />
         </>
       )}

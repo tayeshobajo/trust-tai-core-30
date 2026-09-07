@@ -10,6 +10,8 @@ import { useState } from "react";
 
 import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-service";
 import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
+import type { CriterionEvidence } from "@/domain/criterion-evidence";
+import type { EvidenceDraft } from "@/components/tt/roadmap/criterion-evidence";
 import type { MilestoneSuccessInput } from "@/domain/milestone-success";
 import type { RoadmapMilestone } from "@/domain/roadmap-intel";
 
@@ -33,6 +35,18 @@ export interface MilestoneAcceptance {
     criterion: AcceptanceCriterion,
     direction: "up" | "down",
   ) => void;
+  /**
+   * Attach proof to one condition. Optional by default: this never checks the
+   * criterion and never completes the milestone.
+   */
+  onEvidenceAdd: (
+    milestone: RoadmapMilestone,
+    criterion: AcceptanceCriterion,
+    draft: EvidenceDraft,
+  ) => void;
+  onEvidenceRemove: (item: CriterionEvidence) => void;
+  /** Open a stored evidence file through a short lived signed url. */
+  onEvidenceOpen: (item: CriterionEvidence) => void;
 }
 
 export function useMilestoneAcceptance({
@@ -88,5 +102,22 @@ export function useMilestoneAcceptance({
           label,
         ),
       ),
+    onEvidenceAdd: (milestone, criterion, draft) =>
+      void run(milestone.id, () =>
+        roadmapIntel.addCriterionEvidence(context, criterion, draft, label),
+      ),
+    onEvidenceRemove: (item) =>
+      void run(item.milestoneId, () => roadmapIntel.removeCriterionEvidence(context, item, label)),
+    onEvidenceOpen: (item) => {
+      void (async () => {
+        setError(null);
+        try {
+          const url = await roadmapIntel.criterionEvidenceUrl(item);
+          window.open(url, "_blank", "noopener,noreferrer");
+        } catch (cause) {
+          setError(cause instanceof Error ? cause.message : "That file could not be opened.");
+        }
+      })();
+    },
   };
 }
