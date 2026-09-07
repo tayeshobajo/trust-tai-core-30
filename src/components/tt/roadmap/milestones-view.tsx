@@ -15,6 +15,8 @@ import { ManualMilestoneForm } from "@/components/tt/roadmap/manual-milestone";
 import { MilestoneOverflow } from "@/components/tt/roadmap/milestone-overflow";
 import { CriteriaPanel } from "@/components/tt/roadmap/criteria-panel";
 import { LifecyclePanel } from "@/components/tt/roadmap/lifecycle-panel";
+import { DeliveryLine } from "@/components/tt/roadmap/delivery-line";
+import { deliveryProjection, type DeliveryProject } from "@/domain/delivery-projection";
 import { milestoneLifecycle } from "@/domain/milestone-lifecycle";
 import { SuccessPanel } from "@/components/tt/roadmap/success-panel";
 import { OwnershipInspector } from "@/components/tt/roadmap/ownership-inspector";
@@ -64,6 +66,7 @@ function MilestoneCard({
   criteriaError,
   evidence,
   evidenceError,
+  deliveryProject,
   onStatus,
   onAccept,
   onReopen,
@@ -84,6 +87,8 @@ function MilestoneCard({
   criteriaError: string | null;
   evidence: CriterionEvidence[];
   evidenceError: string | null;
+  /** Which project carries this milestone, as Projects records it. */
+  deliveryProject?: DeliveryProject | null | undefined;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
   onAccept?: ((milestone: RoadmapMilestone, note: string) => void) | undefined;
   onReopen?: ((milestone: RoadmapMilestone, reason: string) => void) | undefined;
@@ -140,6 +145,15 @@ function MilestoneCard({
           <p className="mt-1 max-w-reading text-sm text-muted-foreground">
             {milestone.whatWeBuild}
           </p>
+          <DeliveryLine
+            projection={deliveryProjection({
+              milestone,
+              project: deliveryProject ?? null,
+              criteria: criteriaError && criteria.length === 0 ? null : criteria,
+            })}
+            subject={milestone.name}
+            {...(onSuccess ? { onAddTargetDate: openOutcomeEditor } : {})}
+          />
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {milestone.acceptance ? <MetaPill>Accepted</MetaPill> : null}
@@ -358,6 +372,7 @@ export function MilestonesView({
   onReopen,
   criteria = [],
   criteriaError = null,
+  deliveryProjectFor,
   evidence = [],
   evidenceError = null,
   onSuccess,
@@ -393,6 +408,8 @@ export function MilestonesView({
   /** Acceptance criteria across this roadmap, read from Roadmap only. */
   criteria?: AcceptanceCriterion[];
   criteriaError?: string | null;
+  /** Projects' own read of which project carries each milestone. */
+  deliveryProjectFor?: ((milestoneId: string) => DeliveryProject | null) | undefined;
   /** Proof attached to those conditions. Optional by default, never a decision. */
   evidence?: CriterionEvidence[];
   evidenceError?: string | null;
@@ -508,6 +525,7 @@ export function MilestonesView({
               busyId={busyId}
               criteria={criteria.filter((row) => row.milestoneId === milestone.id)}
               criteriaError={criteriaError}
+              deliveryProject={deliveryProjectFor?.(milestone.id) ?? null}
               evidence={evidence.filter((row) => row.milestoneId === milestone.id)}
               evidenceError={evidenceError}
               onStatus={onStatus}
