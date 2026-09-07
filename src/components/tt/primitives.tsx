@@ -10,13 +10,14 @@ import type { LifecycleStatus } from "@/domain/entities";
 /* ---------------------------------- Button --------------------------------- */
 
 export const ttButtonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors duration-200 disabled:pointer-events-none disabled:opacity-60 [&_svg]:size-4 [&_svg]:shrink-0",
+  "tt-pressable inline-flex items-center justify-center gap-2 rounded-full text-sm font-medium disabled:pointer-events-none disabled:opacity-60 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         primary: "bg-royal text-primary-foreground shadow-action hover:bg-royal/90",
-        secondary: "border border-border bg-card text-foreground hover:bg-secondary",
-        quiet: "text-muted-foreground hover:text-foreground",
+        secondary:
+          "border border-border bg-card text-foreground hover:border-royal/35 hover:bg-secondary",
+        quiet: "text-muted-foreground hover:bg-secondary hover:text-foreground",
         signal: "bg-royal text-primary-foreground shadow-action hover:bg-royal/90",
       },
       size: {
