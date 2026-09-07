@@ -488,3 +488,76 @@ subsystems. Data ownership is unchanged; only navigation is:
 Re-homed sections keep stable anchors (`project-section-<section>`) so any
 deep link or in-page jump still lands on them. `surfaceForSection` in
 `src/domain/project-workroom-ia.ts` is the single mapping.
+
+## Canon 18: The Client Account (locked 2026-09-07)
+
+Client is the account. Project is the work. Roadmap is the plan.
+
+The Client page answers one question: **what is the state of this relationship
+and this company?** It composes the account from the rooms that own the truth
+and it operates only what the account itself owns. It is never a second CRM, a
+second project store, a second roadmap, a second message store or a second
+chat truth.
+
+### Human navigation model: six surfaces
+
+The Client detail page presents exactly these, in this order:
+
+| Surface | Contains |
+| ------- | -------- |
+| Overview | Identity, commercial state, what needs attention, a compact Direction read, a website summary, the projects line |
+| Projects | The projects that name this company, each a door into its project workspace |
+| Relationship | The client-scoped read of Comms, under Canon 14 |
+| Commercial | The human-entered commercial controls for this account, and proposals |
+| Files | Files on this company's projects and its genuinely linked working sources |
+| Chat | Client Chat and its bounded proposal flow |
+
+Consequences:
+
+- **Roadmap is not a Client top-level tab.** A compact Direction summary may be
+  read on Overview; Point B, stages, milestones and metrics are operated in
+  Roadmap and, for project-scoped milestone work, in the Project workroom under
+  Canon 17.
+- **Site is not a Client top-level tab.** A website summary may be read on
+  Overview; intake, signals and technical site work stay in the Website room.
+- **Project-scoped execution is never duplicated into Client.** Work items,
+  blockers, delivery, project decisions and project files are operated in the
+  Project workroom. Clients shows the project and the door, then stops.
+- **Relationship stays read-only**, exactly as Canon 14 fixed it: no reply, no
+  send, no second obligation system.
+- **Commercial owns the account's human-entered commercial controls**: tier,
+  monthly amount, renewal date, next review date, with the existing provenance
+  law, plus the roadmap proposal lineage this room already displayed.
+
+### Client Chat
+
+Chat is how a person talks to the account. It reasons; it does not become
+truth.
+
+- **Session scoped.** There is no durable client chat store, and none may be
+  added without a later canon. What survives a conversation is the client row
+  and its activity event, never the transcript.
+- **Bounded packet.** Chat reasons over one small composed picture built from
+  reads the page already made under the caller's own session: identity and
+  commercial state, known people, projects and their state, Direction as
+  read-only context, linked sources, what needs attention, recent account
+  events. Never a raw Comms message body, never file bytes, never a room that
+  failed presented as an absence.
+- **No autonomous writes.** The endpoint reads and answers. Nothing is sent,
+  replied to, generated, uploaded or published from Chat.
+- **Proposals only, through owning services.** A message may prepare one
+  bounded proposal: the field, the store that owns it, the value today, the
+  value proposed and the person's own reason. A human approves. On approval the
+  record is re-read, a proposal prepared against moved truth is refused, an
+  already-true value is not written twice, and the write goes through
+  `setClientCommercialState`, the same service and refusals as the Commercial
+  panel.
+- **The bounded set is exactly three fields**: monthly recurring amount,
+  renewal date, next review date. **A tier change is not one of them**, because
+  a tier move can recognise revenue; it fails closed to the Commercial tab.
+- Everything else fails closed by name to its owning room: Projects, Roadmap,
+  Comms, Website, Commercial.
+
+`src/domain/client-shell.ts` holds the single tab list, `CLIENT_TABS`.
+`src/domain/client-chat-proposal.ts` holds the whole proposal law and
+`src/domain/client-context-packet.ts` the whole packet law.
