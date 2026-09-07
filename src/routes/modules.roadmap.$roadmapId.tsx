@@ -42,6 +42,7 @@ import { projectFromMilestone } from "@/data/projects-handoff";
 import type { PathMilestone } from "@/data/roadmap/detail/projection";
 import type { RoadmapEvidenceInput, RoadmapExport } from "@/domain/roadmap-exports";
 import type { ExecutionState } from "@/domain/projects";
+import type { DeliveryProject } from "@/domain/delivery-projection";
 import { ActivityView } from "@/components/tt/roadmap/detail/activity-view";
 import {
   anchorProof,
@@ -619,14 +620,29 @@ function RoadmapWorkspace({
     enabled: linkedProjectIds.length > 0,
     retry: false,
     queryFn: async () => {
-      const states: Record<string, ExecutionState> = {};
+      const states: Record<string, { name: string; state: ExecutionState }> = {};
       for (const id of linkedProjectIds) {
         const project = await projectsService.get(id, identity.organizationId);
-        if (project) states[id] = project.state;
+        if (project) states[id] = { name: project.name, state: project.state };
       }
       return states;
     },
   });
+
+  /**
+   * One read law for delivery: Projects owns which project carries a milestone
+   * and what state it is in; Roadmap only reads it back through the link.
+   */
+  const deliveryProjectFor = useCallback(
+    (milestoneId: string): DeliveryProject | null => {
+      const link = (linksQuery.data?.items ?? []).find(
+        (item) => item.milestoneId === milestoneId && item.projectId,
+      );
+      const carrier = link?.projectId ? projectStatesQuery.data?.[link.projectId] : undefined;
+      return carrier ?? null;
+    },
+    [linksQuery.data, projectStatesQuery.data],
+  );
 
   const milestones = useMemo(() => intelQuery.data?.milestones ?? [], [intelQuery.data]);
   const decisionList = useMemo(() => detailQuery.data?.decisions ?? [], [detailQuery.data]);
@@ -928,6 +944,7 @@ function RoadmapWorkspace({
                   milestoneStatus.mutate({ milestone, status, note })
                 }
                 onMetric={(milestone, metric) => milestoneMetric.mutate({ milestone, metric })}
+                deliveryProjectFor={deliveryProjectFor}
                 criteria={intelQuery.data?.criteria ?? []}
                 criteriaError={acceptance.error ?? intelQuery.data?.criteriaError ?? null}
                 evidence={intelQuery.data?.criterionEvidence ?? []}
