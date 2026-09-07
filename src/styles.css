@@ -335,3 +335,95 @@
     transform: translateX(360%);
   }
 }
+
+/*
+ * Motion and feedback system.
+ *
+ * Everything here is blue, quiet and short. Panels enter with a small fade and
+ * slide, a freshly opened panel carries a temporary blue emphasis so the eye
+ * lands on it, and every one of these effects collapses to nothing for readers
+ * who asked for less motion (handled by the reduced-motion rule in base).
+ */
+
+@keyframes tt-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A panel that has just opened in place. */
+@utility tt-panel-enter {
+  animation: tt-panel-in 220ms var(--ease-tt) both;
+}
+
+/*
+ * Reveal emphasis. Set by the shared reveal helper for a moment after an
+ * action opens something elsewhere on the page. Blue only.
+ */
+@utility tt-reveal-target {
+  transition:
+    border-color var(--duration-fast) var(--ease-tt),
+    box-shadow var(--duration-fast) var(--ease-tt),
+    background-color var(--duration-fast) var(--ease-tt);
+
+  &[data-tt-reveal="on"] {
+    border-color: color-mix(in oklab, var(--royal) 46%, var(--border));
+    background-color: color-mix(in oklab, var(--royal) 4%, transparent);
+    box-shadow:
+      0 0 0 3px color-mix(in oklab, var(--royal) 14%, transparent),
+      var(--shadow-card);
+  }
+}
+
+/* A card or panel that is currently the active/open one. */
+@utility tt-active-surface {
+  border-color: color-mix(in oklab, var(--royal) 38%, var(--border));
+  background-color: color-mix(in oklab, var(--royal) 3%, transparent);
+}
+
+/* Interactive polish: quiet hover lift, honest pressed state. */
+@utility tt-pressable {
+  transition:
+    background-color var(--duration-fast) var(--ease-tt),
+    border-color var(--duration-fast) var(--ease-tt),
+    box-shadow var(--duration-fast) var(--ease-tt),
+    transform var(--duration-fast) var(--ease-tt);
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+}
+
+/*
+ * Title hierarchy. Parent titles carry real weight and full ink contrast,
+ * section titles are deliberate, metadata stays light so the order is obvious.
+ */
+@utility tt-title-page {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+@utility tt-title-section {
+  font-family: var(--font-display);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+@utility tt-title-card {
+  font-family: var(--font-display);
+  font-weight: 620;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
+  color: var(--ink);
+}
