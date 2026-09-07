@@ -218,16 +218,18 @@ export function OutcomeStrip({ outcome }: { outcome: string }) {
 
 export const PROJECT_TABS = [
   { value: "overview", label: "Overview" },
-  { value: "context", label: "Context" },
-  { value: "knowledge", label: "Knowledge" },
-  { value: "assets", label: "Assets" },
+  { value: "chat", label: "Chat" },
+  { value: "roadmap", label: "Roadmap" },
   { value: "work", label: "Work" },
   { value: "blockers", label: "Blockers" },
   { value: "decisions", label: "Decisions" },
+  { value: "context", label: "Context" },
+  { value: "knowledge", label: "Knowledge" },
+  { value: "assets", label: "Assets" },
   { value: "files", label: "Files" },
   { value: "activity", label: "Activity" },
-  { value: "chat", label: "Chat" },
 ] as const;
+
 
 export type ProjectTab = (typeof PROJECT_TABS)[number]["value"];
 

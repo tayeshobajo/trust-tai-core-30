@@ -48,6 +48,15 @@ import { buildProjectRow, lineageSourcesFrom } from "@/data/projects/index-proje
 import { projectDelivery, type DeliveryContext } from "@/data/supabase/project-delivery";
 import { readRoadmapBrand } from "@/data/supabase/roadmap-brand";
 import { roadmapService } from "@/data/supabase/roadmap-service";
+import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-service";
+import { approvalsService } from "@/data/supabase/approvals-service";
+import { ProjectRoadmapTab } from "@/components/tt/projects/detail/roadmap";
+import { ProjectApprovals } from "@/components/tt/projects/detail/approvals";
+import { linkableRoadmaps } from "@/domain/project-roadmap-link";
+import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import type { OutcomeMetricInput } from "@/domain/milestone-metric";
+import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
+
 import { supabaseActivity } from "@/data/supabase/activities";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
@@ -251,7 +260,122 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
   const roadmap = row?.lineage.roadmapId
     ? (roadmaps.find((entry) => entry.id === row.lineage.roadmapId) ?? null)
     : null;
+
+  /**
+   * Roadmap truth, read where the work is. Milestone writes below all call the
+   * Roadmap service: Projects never stores a milestone of its own.
+   */
+  const intelContext: IntelContext = {
+    organizationId: org,
+    userId: identity.userId,
+    userLabel: identity.name,
+  };
+  const intelQuery = useQuery({
+    queryKey: ["roadmap", "intel", roadmap?.id ?? "none"],
+    queryFn: () => roadmapIntel.load(roadmap!.id),
+    enabled: Boolean(roadmap),
+    retry: false,
+  });
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  const refreshRoadmap = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["roadmap"] });
+    await queryClient.invalidateQueries({ queryKey: ["projects"] });
+  };
+
+  const linkRoadmap = useMutation({
+    mutationFn: async (roadmapId: string) => {
+      setLinkError(null);
+      const chosen = roadmaps.find((entry) => entry.id === roadmapId);
+      if (!project || !chosen) throw new Error("That roadmap could not be read.");
+      return projectsService.linkRoadmap(project, chosen, projectsContext);
+    },
+    onSuccess: refreshRoadmap,
+    onError: (cause) =>
+      setLinkError(cause instanceof Error ? cause.message : "That roadmap could not be linked."),
+  });
+
+  const milestoneCreate = useMutation({
+    mutationFn: async (input: ManualMilestoneInput) => {
+      setCreateError(null);
+      if (!roadmap) throw new Error("No roadmap is linked to this project.");
+      return roadmapIntel.createManualMilestone(
+        intelContext,
+        roadmap.id,
+        roadmap.subjectLabel,
+        input,
+        intelQuery.data?.milestones ?? [],
+      );
+    },
+    onSuccess: refreshRoadmap,
+    onError: (cause) =>
+      setCreateError(cause instanceof Error ? cause.message : "The milestone could not be saved."),
+  });
+
+  const milestoneStatus = useMutation({
+    mutationFn: async ({
+      milestone,
+      status,
+      note,
+    }: {
+      milestone: RoadmapMilestone;
+      status: MilestoneStatus;
+      note: string;
+    }) => {
+      setBusyId(milestone.id);
+      return roadmapIntel.setMilestoneStatus(
+        intelContext,
+        milestone,
+        status,
+        roadmap?.subjectLabel ?? "This roadmap",
+        note || undefined,
+      );
+    },
+    onSettled: () => setBusyId(null),
+    onSuccess: refreshRoadmap,
+  });
+
+  const milestoneMetric = useMutation({
+    mutationFn: async ({
+      milestone,
+      metric,
+    }: {
+      milestone: RoadmapMilestone;
+      metric: OutcomeMetricInput | null;
+    }) => {
+      setBusyId(milestone.id);
+      return roadmapIntel.setMilestoneMetric(
+        intelContext,
+        milestone,
+        metric,
+        roadmap?.subjectLabel ?? "This roadmap",
+      );
+    },
+    onSettled: () => setBusyId(null),
+    onSuccess: refreshRoadmap,
+  });
+
+  const linkCandidates = useMemo(
+    () => (project ? linkableRoadmaps(project, roadmaps) : []),
+    [project, roadmaps],
+  );
+
+  /** Decisions Approvals is holding for this work. Read only, decided there. */
+  const approvalsQuery = useQuery({
+    queryKey: ["delivery", "approvals", projectId, org],
+    queryFn: () =>
+      approvalsService.listForEntities({ organizationId: org, userId: identity.userId }, [
+        projectId,
+        ...(roadmap ? [roadmap.id] : []),
+      ]),
+    enabled,
+    retry: false,
+  });
+
   const brandQuery = useQuery({
+
     queryKey: ["delivery", "brand", roadmap?.id ?? "none"],
     queryFn: () => (roadmap ? readRoadmapBrand(roadmap) : Promise.resolve(null)),
     enabled: Boolean(roadmap),
@@ -583,15 +707,40 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
           {tab === "overview" ? (
-            <OverviewTab
-              project={project}
-              lineage={row.lineage}
-              items={items}
-              blockers={blockers}
-              completion={completion}
-              onOpenTab={openTab}
+            <div className="space-y-6">
+              <OverviewTab
+                project={project}
+                lineage={row.lineage}
+                items={items}
+                blockers={blockers}
+                completion={completion}
+                onOpenTab={openTab}
+              />
+              <ProjectApprovals requests={approvalsQuery.data ?? []} />
+            </div>
+          ) : null}
+
+          {tab === "roadmap" ? (
+            <ProjectRoadmapTab
+              roadmap={roadmap}
+              milestones={intelQuery.data?.milestones ?? []}
+              loading={intelQuery.isLoading}
+              candidates={linkCandidates}
+              linking={linkRoadmap.isPending}
+              linkError={linkError}
+              busyId={busyId}
+              creating={milestoneCreate.isPending}
+              createError={createError}
+              onLink={(roadmapId) => linkRoadmap.mutate(roadmapId)}
+              onCreate={(input) => milestoneCreate.mutate(input)}
+              onStatus={(milestone, status, note) =>
+                milestoneStatus.mutate({ milestone, status, note })
+              }
+              onMetric={(milestone, metric) => milestoneMetric.mutate({ milestone, metric })}
             />
           ) : null}
+
+
 
           {tab === "context" ? (
             <ContextTab
