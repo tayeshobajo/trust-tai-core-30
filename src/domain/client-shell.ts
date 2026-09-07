@@ -34,13 +34,7 @@ import { isActiveRoadmap, ROADMAP_STATUS_LABEL, STAGE_STATE_LABEL } from "./road
  * primary navigation: Work composes Projects and Roadmap truth for this
  * company in place, so nothing about the account requires leaving here.
  */
-export type ClientTab =
-  | "overview"
-  | "work"
-  | "relationship"
-  | "commercial"
-  | "files"
-  | "chat";
+export type ClientTab = "overview" | "work" | "relationship" | "commercial" | "files" | "chat";
 
 /** Exactly these, in exactly this order. The shell has no other sections. */
 export const CLIENT_TABS: ClientTab[] = [
@@ -60,7 +54,6 @@ export const CLIENT_TAB_LABEL: Record<ClientTab, string> = {
   files: "Files",
   chat: "Chat",
 };
-
 
 /** Anything unrecognised opens Overview. A bad link never opens a blank tab. */
 export function parseClientTab(value: unknown): ClientTab {

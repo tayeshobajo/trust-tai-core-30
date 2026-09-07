@@ -788,16 +788,16 @@ export function ProjectWorkroom({
       <OutcomeStrip outcome={completion.outcome} />
 
       {composed ? null : (
-      <ProjectTabs
-        tab={tab}
-        counts={{
-          overview: blockers.filter((entry) => entry.status === "open").length,
-          roadmap: intelQuery.data?.milestones.length ?? 0,
-          files: files.length + assets.length,
-        }}
+        <ProjectTabs
+          tab={tab}
+          counts={{
+            overview: blockers.filter((entry) => entry.status === "open").length,
+            roadmap: intelQuery.data?.milestones.length ?? 0,
+            files: files.length + assets.length,
+          }}
 
-        onChange={setTab}
-      />
+          onChange={setTab}
+        />
       )}
 
       {errorMessage ? (

@@ -749,10 +749,10 @@ function ClientShell({
       exchange: exchangeWindow,
       cadence,
       commercialLine: card.commercialLine,
-      currentProjectId: selectedProjectId,
       now,
       timeZone,
     }),
+    currentProjectId: selectedProjectId,
   });
 
   return (

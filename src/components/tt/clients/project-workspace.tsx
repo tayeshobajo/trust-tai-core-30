@@ -86,7 +86,13 @@ export function ClientProjectWorkspace({
         </div>
       ) : null}
 
-      <ProjectWorkroom key={selected.id} identity={identity} projectId={selected.id} embedded mode="composed" />
+      <ProjectWorkroom
+        key={selected.id}
+        identity={identity}
+        projectId={selected.id}
+        embedded
+        mode="composed"
+      />
     </div>
   );
 }
