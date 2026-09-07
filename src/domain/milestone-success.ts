@@ -42,6 +42,9 @@ export type SuccessCheckResult =
 
 export const NO_SUCCESS = "No outcome described yet";
 
+/** Absence of a target date, said plainly, so the read state is never blank. */
+export const NO_TARGET_DATE = "No target date yet";
+
 const DATE_SHAPE = /^\d{4}-\d{2}-\d{2}$/;
 
 function clean(value: unknown): string {
