@@ -838,45 +838,52 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
             />
           ) : null}
 
-          {tab === "work" ? (
-            <div className="space-y-5">
-              <WorkTab
-                items={items}
-                busy={busy}
-                onAdd={(title) =>
-                  mutate.mutate(() =>
-                    projectDelivery.addWork({ title, sequence: items.length }, delivery),
-                  )
-                }
-                onMove={(item, status: WorkItemStatus) =>
-                  mutate.mutate(() => projectDelivery.moveWork(item, status, delivery))
-                }
-              />
-              {isOpenProject(project) ? (
-                <>
-                  <section aria-label="Technical stewardship" className="tt-surface space-y-3 p-6">
-                    <p className="tt-eyebrow">Ops</p>
-                    <p className="max-w-reading text-[15px] text-foreground">
-                      Ops runs the technical work for this project. Your session is handed over
-                      securely and this project&apos;s id travels with it.
-                    </p>
-                    <LaunchOpsButton
-                      variant="secondary"
-                      label="Open in Ops"
-                      organizationId={org}
-                      returnContext="project"
-                      canonicalProjectId={project.id}
+          {tab === "overview" ? (
+            <WorkroomSection
+              section="work"
+              title="Work"
+              description="Everything being built for this project, in order."
+            >
+              <div className="space-y-5">
+                <WorkTab
+                  items={items}
+                  busy={busy}
+                  onAdd={(title) =>
+                    mutate.mutate(() =>
+                      projectDelivery.addWork({ title, sequence: items.length }, delivery),
+                    )
+                  }
+                  onMove={(item, status: WorkItemStatus) =>
+                    mutate.mutate(() => projectDelivery.moveWork(item, status, delivery))
+                  }
+                />
+                {isOpenProject(project) ? (
+                  <>
+                    <section aria-label="Technical stewardship" className="tt-surface space-y-3 p-6">
+                      <p className="tt-eyebrow">Ops</p>
+                      <p className="max-w-reading text-[15px] text-foreground">
+                        Ops runs the technical work for this project. Your session is handed over
+                        securely and this project&apos;s id travels with it.
+                      </p>
+                      <LaunchOpsButton
+                        variant="secondary"
+                        label="Open in Ops"
+                        organizationId={org}
+                        returnContext="project"
+                        canonicalProjectId={project.id}
+                      />
+                    </section>
+                    <RouteWork
+                      project={project}
+                      context={projectsContext}
+                      access={workspaceAccess(identity)}
                     />
-                  </section>
-                  <RouteWork
-                    project={project}
-                    context={projectsContext}
-                    access={workspaceAccess(identity)}
-                  />
-                </>
-              ) : null}
-            </div>
+                  </>
+                ) : null}
+              </div>
+            </WorkroomSection>
           ) : null}
+
 
           {tab === "overview" ? (
             <WorkroomSection
