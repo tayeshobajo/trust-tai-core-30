@@ -190,12 +190,15 @@ export function BlockersTab({
   items,
   blockers,
   busy,
+  showForm = true,
   onRaise,
   onResolve,
 }: {
   items: WorkItem[];
   blockers: ProjectBlocker[];
   busy: boolean;
+  /** The recording form only appears when a person asked to record something. */
+  showForm?: boolean;
   onRaise: (input: BlockerInput) => void;
   onResolve: (blocker: ProjectBlocker, resolution: string, resumeWork: boolean) => void;
 }) {
@@ -217,76 +220,82 @@ export function BlockersTab({
     setResumeWork(Boolean(blocker.workItemId));
   };
 
+  if (!showForm && blockers.length === 0) return null;
+
   return (
     <div className="space-y-5">
-      <Panel title="Record a blocker">
-        <form
-          className="space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!reason.trim()) return;
-            onRaise({
-              reason: reason.trim(),
-              ...(impact.trim() ? { impact: impact.trim() } : {}),
-              ...(owner.trim() ? { ownerLabel: owner.trim() } : {}),
-              ...(nextMove.trim() ? { nextMove: nextMove.trim() } : {}),
-              ...(workItemId ? { workItemId } : {}),
-            });
-            setReason("");
-            setNextMove("");
-            setImpact("");
-            setOwner("");
-            setWorkItemId("");
-          }}
-        >
-          <TTInput
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="What is stopping this work?"
-            aria-label="Blocker reason"
-          />
-          <div className="grid gap-3 sm:grid-cols-2">
+      {showForm ? (
+        <Panel title="Record a blocker">
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!reason.trim()) return;
+              onRaise({
+                reason: reason.trim(),
+                ...(impact.trim() ? { impact: impact.trim() } : {}),
+                ...(owner.trim() ? { ownerLabel: owner.trim() } : {}),
+                ...(nextMove.trim() ? { nextMove: nextMove.trim() } : {}),
+                ...(workItemId ? { workItemId } : {}),
+              });
+              setReason("");
+              setNextMove("");
+              setImpact("");
+              setOwner("");
+              setWorkItemId("");
+            }}
+          >
             <TTInput
-              value={impact}
-              onChange={(event) => setImpact(event.target.value)}
-              placeholder="What it costs us (optional)"
-              aria-label="Impact"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="What is stopping this work?"
+              aria-label="Blocker reason"
             />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TTInput
+                value={impact}
+                onChange={(event) => setImpact(event.target.value)}
+                placeholder="What it costs us (optional)"
+                aria-label="Impact"
+              />
+              <TTInput
+                value={owner}
+                onChange={(event) => setOwner(event.target.value)}
+                placeholder="Who owns clearing it (optional)"
+                aria-label="Blocker owner"
+              />
+            </div>
             <TTInput
-              value={owner}
-              onChange={(event) => setOwner(event.target.value)}
-              placeholder="Who owns clearing it (optional)"
-              aria-label="Blocker owner"
+              value={nextMove}
+              onChange={(event) => setNextMove(event.target.value)}
+              placeholder="Next move to clear it (optional)"
+              aria-label="Next move"
             />
-          </div>
-          <TTInput
-            value={nextMove}
-            onChange={(event) => setNextMove(event.target.value)}
-            placeholder="Next move to clear it (optional)"
-            aria-label="Next move"
-          />
-          <WorkItemSelect
-            id="blocker-work-item"
-            label="Work item this blocks"
-            items={items}
-            value={workItemId}
-            onChange={setWorkItemId}
-          />
-          <TTButton type="submit" disabled={busy || !reason.trim()}>
-            Record blocker
-          </TTButton>
-          <p className="text-[13px] text-muted-foreground">
-            A blocker is delivery truth. It never changes the roadmap; it says why this milestone is
-            not moving.
-          </p>
-        </form>
-      </Panel>
+            <WorkItemSelect
+              id="blocker-work-item"
+              label="Work item this blocks"
+              items={items}
+              value={workItemId}
+              onChange={setWorkItemId}
+            />
+            <TTButton type="submit" disabled={busy || !reason.trim()}>
+              Record blocker
+            </TTButton>
+            <p className="text-[13px] text-muted-foreground">
+              A blocker is delivery truth. It never changes the roadmap; it says why this milestone
+              is not moving.
+            </p>
+          </form>
+        </Panel>
+      ) : null}
 
       {blockers.length === 0 ? (
-        <Empty
-          title="Nothing is blocked"
-          body="When delivery stops, record why here so the reason and its age stay visible."
-        />
+        showForm ? (
+          <Empty
+            title="Nothing is blocked"
+            body="When delivery stops, record why here so the reason and its age stay visible."
+          />
+        ) : null
       ) : (
         <ul className="space-y-3">
           {[...open, ...cleared].map((blocker) => (
@@ -375,12 +384,15 @@ export function DecisionsTab({
   items,
   decisions,
   busy,
+  showForm = true,
   onAsk,
   onAnswer,
 }: {
   items: WorkItem[];
   decisions: ProjectDecision[];
   busy: boolean;
+  /** The asking form only appears when a person asked to raise a question. */
+  showForm?: boolean;
   onAsk: (input: ProjectDecisionInput) => void;
   onAnswer: (decision: ProjectDecision, answer: string) => void;
 }) {
@@ -394,68 +406,74 @@ export function DecisionsTab({
   const open = decisions.filter((entry) => entry.status === "open");
   const answered = decisions.filter((entry) => entry.status === "answered");
 
+  if (!showForm && decisions.length === 0) return null;
+
   return (
     <div className="space-y-5">
-      <Panel title="Ask for a decision">
-        <form
-          className="space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!question.trim()) return;
-            onAsk({
-              question: question.trim(),
-              ...(why.trim() ? { whyItMatters: why.trim() } : {}),
-              ...(owner.trim() ? { ownerLabel: owner.trim() } : {}),
-              ...(workItemId ? { workItemId } : {}),
-            });
-            setQuestion("");
-            setWhy("");
-            setOwner("");
-            setWorkItemId("");
-          }}
-        >
-          <TTInput
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="What needs a human answer?"
-            aria-label="Decision question"
-          />
-          <div className="grid gap-3 sm:grid-cols-2">
+      {showForm ? (
+        <Panel title="Ask for a decision">
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!question.trim()) return;
+              onAsk({
+                question: question.trim(),
+                ...(why.trim() ? { whyItMatters: why.trim() } : {}),
+                ...(owner.trim() ? { ownerLabel: owner.trim() } : {}),
+                ...(workItemId ? { workItemId } : {}),
+              });
+              setQuestion("");
+              setWhy("");
+              setOwner("");
+              setWorkItemId("");
+            }}
+          >
             <TTInput
-              value={why}
-              onChange={(event) => setWhy(event.target.value)}
-              placeholder="Why it matters (optional)"
-              aria-label="Why it matters"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              placeholder="What needs a human answer?"
+              aria-label="Decision question"
             />
-            <TTInput
-              value={owner}
-              onChange={(event) => setOwner(event.target.value)}
-              placeholder="Who should answer (optional)"
-              aria-label="Decision owner"
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TTInput
+                value={why}
+                onChange={(event) => setWhy(event.target.value)}
+                placeholder="Why it matters (optional)"
+                aria-label="Why it matters"
+              />
+              <TTInput
+                value={owner}
+                onChange={(event) => setOwner(event.target.value)}
+                placeholder="Who should answer (optional)"
+                aria-label="Decision owner"
+              />
+            </div>
+            <WorkItemSelect
+              id="decision-work-item"
+              label="Work item this holds up"
+              items={items}
+              value={workItemId}
+              onChange={setWorkItemId}
             />
-          </div>
-          <WorkItemSelect
-            id="decision-work-item"
-            label="Work item this holds up"
-            items={items}
-            value={workItemId}
-            onChange={setWorkItemId}
-          />
-          <TTButton type="submit" disabled={busy || !question.trim()}>
-            Request decision
-          </TTButton>
-          <p className="text-[13px] text-muted-foreground">
-            Delivery decisions only. Direction still belongs to Roadmap, and nothing here rewrites
-            it.
-          </p>
-        </form>
-      </Panel>
+            <TTButton type="submit" disabled={busy || !question.trim()}>
+              Request decision
+            </TTButton>
+            <p className="text-[13px] text-muted-foreground">
+              Delivery decisions only. Direction still belongs to Roadmap, and nothing here rewrites
+              it.
+            </p>
+          </form>
+        </Panel>
+      ) : null}
 
       {decisions.length === 0 ? (
-        <Empty
-          title="No decisions waiting"
-          body="Questions that need human authority live here, separated from ordinary work."
-        />
+        showForm ? (
+          <Empty
+            title="No decisions waiting"
+            body="Questions that need human authority live here, separated from ordinary work."
+          />
+        ) : null
       ) : (
         <ul className="space-y-3">
           {[...open, ...answered].map((decision) => (
