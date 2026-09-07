@@ -274,9 +274,10 @@
 
 @utility tt-display {
   font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.025em;
+  font-weight: 680;
+  letter-spacing: -0.028em;
   line-height: 1.12;
+  color: var(--ink);
   text-wrap: balance;
 }
 
