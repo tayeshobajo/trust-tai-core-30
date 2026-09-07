@@ -216,22 +216,40 @@ export function OutcomeStrip({ outcome }: { outcome: string }) {
   );
 }
 
-export const PROJECT_TABS = [
-  { value: "overview", label: "Overview" },
-  { value: "chat", label: "Chat" },
-  { value: "roadmap", label: "Roadmap" },
-  { value: "work", label: "Work" },
-  { value: "blockers", label: "Blockers" },
-  { value: "decisions", label: "Decisions" },
-  { value: "context", label: "Context" },
-  { value: "knowledge", label: "Knowledge" },
-  { value: "assets", label: "Assets" },
-  { value: "files", label: "Files" },
-  { value: "activity", label: "Activity" },
-] as const;
+/**
+ * Five surfaces, not eleven subsystems. Work, Blockers and Decisions live in
+ * Overview; Context, Knowledge and Assets live in Files. Nothing was deleted:
+ * see `surfaceForSection` for where each former tab now lives.
+ */
+export const PROJECT_TABS = PROJECT_SURFACES;
 
+export type ProjectTab = ProjectSurface;
 
-export type ProjectTab = (typeof PROJECT_TABS)[number]["value"];
+/** A re-homed section inside a surface: anchored, titled, quietly separated. */
+export function WorkroomSection({
+  section,
+  title,
+  description,
+  children,
+}: {
+  section: ProjectSection;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={sectionAnchor(section)} aria-label={title} className="scroll-mt-24 space-y-3">
+      <div>
+        <h2 className="font-display text-xl text-foreground">{title}</h2>
+        {description ? (
+          <p className="mt-1 max-w-reading text-[13px] text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 
 export function ProjectTabs({
   tab,
