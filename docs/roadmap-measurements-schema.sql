@@ -71,3 +71,9 @@ create policy "Members record measurements"
 
 comment on table public.roadmap_measurements is
   'P3-02 outcome measurements. Append only human evidence against a milestone outcome metric. Roadmap owns this truth; no room keeps a second copy.';
+
+-- Append only by construction: no update or delete policy exists, so a
+-- recorded reading cannot be edited or removed by a member. A measurement is
+-- historical evidence of what a person read on a day. Correcting a mistaken
+-- reading is an open operability item (see roadmap.md); until a correction law
+-- exists, the honest move is to record the true reading as a later row.
