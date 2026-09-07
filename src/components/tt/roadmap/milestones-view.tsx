@@ -436,7 +436,6 @@ export function MilestonesView({
               onEvidenceAdd={onEvidenceAdd}
               onEvidenceRemove={onEvidenceRemove}
               onEvidenceOpen={onEvidenceOpen}
-            onEvidenceUrl={onEvidenceUrl}
               onEvidenceUrl={onEvidenceUrl}
             />
           ))}
