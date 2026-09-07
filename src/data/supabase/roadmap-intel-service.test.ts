@@ -15,9 +15,29 @@ import { createFakeSupabase } from "./fake-supabase";
 
 const db = createFakeSupabase();
 
+/** When set, the measurements table answers with a Postgrest error instead. */
+let measurementsFail: { code: string; message: string } | null = null;
+
+function failingQuery(error: { code: string; message: string }) {
+  const query = {
+    select: () => query,
+    insert: () => query,
+    eq: () => query,
+    order: () => query,
+    limit: () => query,
+    single: () => Promise.resolve({ data: null, error }),
+    maybeSingle: () => Promise.resolve({ data: null, error }),
+    then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: null, error }).then(resolve),
+  };
+  return query;
+}
+
 vi.mock("@/integrations/trust-tai/supabase", () => ({
   supabase: {
-    from: (table: string) => db.from(table),
+    from: (table: string) =>
+      table === "roadmap_measurements" && measurementsFail
+        ? (failingQuery(measurementsFail) as unknown as ReturnType<typeof db.from>)
+        : db.from(table),
   },
 }));
 
@@ -75,6 +95,175 @@ function candidate(name: string, overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   for (const key of Object.keys(db.tables)) db.tables[key] = [];
+  measurementsFail = null;
+});
+
+const METRIC = {
+  key: "demo_to_close_rate",
+  label: "Demo to close rate",
+  unit: "%",
+  direction: "increase" as const,
+  baseline: { value: 12, at: "2026-09-01" },
+  target: { value: 25, at: "2026-12-01" },
+};
+
+/** One approved milestone that already carries an outcome metric. */
+async function measured() {
+  const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+    candidate("Method page"),
+  ]);
+  return roadmapIntel.setMilestoneMetric(CONTEXT, written[0]!, METRIC, "Northbeam");
+}
+
+describe("measurements", () => {
+  const READING = { value: 18, measuredAt: "2026-09-15", source: "Stripe dashboard" };
+
+  it("records a reading as human evidence with the actor on it", async () => {
+    const milestone = await measured();
+    const saved = await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
+
+    expect(saved.value).toBe(18);
+    expect(saved.measuredAt).toBe("2026-09-15");
+    expect(saved.source).toBe("Stripe dashboard");
+    expect(saved.recordedBy).toBe("user-1");
+    expect(saved.metricKey).toBe("demo_to_close_rate");
+    expect(saved.milestoneId).toBe(milestone.id);
+    expect(saved.roadmapId).toBe(ROADMAP);
+  });
+
+  it("accepts zero as a real reading", async () => {
+    const milestone = await measured();
+    const saved = await roadmapIntel.recordMeasurement(
+      CONTEXT,
+      milestone,
+      { ...READING, value: 0 },
+      "Northbeam",
+    );
+    expect(saved.value).toBe(0);
+  });
+
+  it("refuses a reading when the milestone has no metric, before any write", async () => {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Method page"),
+    ]);
+    await expect(
+      roadmapIntel.recordMeasurement(CONTEXT, written[0]!, READING, "Northbeam"),
+    ).rejects.toThrow(/outcome metric/i);
+    expect(db.tables["roadmap_measurements"] ?? []).toHaveLength(0);
+  });
+
+  it("refuses a missing value, an unreal date and an empty source", async () => {
+    const milestone = await measured();
+    for (const bad of [
+      { ...READING, value: "" as unknown as number },
+      { ...READING, measuredAt: "" },
+      { ...READING, measuredAt: "2026-02-31" },
+      { ...READING, source: " " },
+      { ...READING, source: "manual" },
+    ]) {
+      await expect(
+        roadmapIntel.recordMeasurement(CONTEXT, milestone, bad, "Northbeam"),
+      ).rejects.toThrow();
+    }
+    expect(db.tables["roadmap_measurements"] ?? []).toHaveLength(0);
+  });
+
+  it("refuses a milestone that belongs to another organization", async () => {
+    const milestone = await measured();
+    await expect(
+      roadmapIntel.recordMeasurement(
+        { ...CONTEXT, organizationId: "org-2" },
+        milestone,
+        READING,
+        "Northbeam",
+      ),
+    ).rejects.toThrow(/another organization/i);
+    expect(db.tables["roadmap_measurements"] ?? []).toHaveLength(0);
+  });
+
+  it("replays as one measurement and one event", async () => {
+    const milestone = await measured();
+    const first = await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
+    const events = (db.tables["activities"] ?? []).filter(
+      (row) => (row as Record<string, unknown>)["name"] === "roadmap.measured",
+    ).length;
+
+    const again = await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
+    expect(again.id).toBe(first.id);
+    expect(db.tables["roadmap_measurements"]).toHaveLength(1);
+    expect(
+      (db.tables["activities"] ?? []).filter(
+        (row) => (row as Record<string, unknown>)["name"] === "roadmap.measured",
+      ),
+    ).toHaveLength(events);
+  });
+
+  it("records exactly one event, carrying the reading and its replay key", async () => {
+    const milestone = await measured();
+    const saved = await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
+    const events = (db.tables["activities"] ?? []).filter(
+      (row) => (row as Record<string, unknown>)["name"] === "roadmap.measured",
+    );
+    expect(events).toHaveLength(1);
+    const payload = (events[0] as Record<string, unknown>)["payload"] as Record<string, unknown>;
+    expect(payload["measurementId"]).toBe(saved.id);
+    expect(payload["milestoneId"]).toBe(milestone.id);
+    expect(payload["metricKey"]).toBe("demo_to_close_rate");
+    expect(payload["value"]).toBe(18);
+    expect(payload["source"]).toBe("Stripe dashboard");
+    expect(String(payload["source_event_key"])).toContain("roadmap.measured:");
+    const provenance = (events[0] as Record<string, unknown>)["provenance"] as Record<
+      string,
+      unknown
+    >;
+    expect((provenance["actor"] as Record<string, unknown>)["id"]).toBe("user-1");
+  });
+
+  it("never touches the metric baseline or target", async () => {
+    const milestone = await measured();
+    await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
+    const intel = await roadmapIntel.load(ROADMAP);
+    const metric = intel.milestones[0]!.outcomeMetric;
+    expect(metric?.baseline).toEqual({ value: 12, at: "2026-09-01" });
+    expect(metric?.target).toEqual({ value: 25, at: "2026-12-01" });
+  });
+
+  it("reads history newest first", async () => {
+    const milestone = await measured();
+    await roadmapIntel.recordMeasurement(
+      CONTEXT,
+      milestone,
+      { ...READING, measuredAt: "2026-09-01", value: 12 },
+      "Northbeam",
+    );
+    await roadmapIntel.recordMeasurement(
+      CONTEXT,
+      milestone,
+      { ...READING, measuredAt: "2026-09-20", value: 21 },
+      "Northbeam",
+    );
+    const history = await roadmapIntel.listMeasurements(milestone.id);
+    expect(history.map((entry) => entry.measuredAt)).toEqual(["2026-09-20", "2026-09-01"]);
+
+    const intel = await roadmapIntel.load(ROADMAP);
+    expect(intel.measurements.map((entry) => entry.value)).toEqual([21, 12]);
+    expect(intel.measurementsError).toBeNull();
+  });
+
+  it("an unreadable measurement store is said out loud, not read as an empty history", async () => {
+    measurementsFail = { code: "42P01", message: "relation roadmap_measurements does not exist" };
+    const intel = await roadmapIntel.load(ROADMAP);
+    expect(intel.measurements).toEqual([]);
+    expect(intel.measurementsError).toContain("could not be read");
+  });
+
+  it("says the store is missing rather than pretending the reading saved", async () => {
+    const milestone = await measured();
+    measurementsFail = { code: "42P01", message: "relation roadmap_measurements does not exist" };
+    await expect(
+      roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam"),
+    ).rejects.toThrow(/not available in this environment/i);
+  });
 });
 
 describe("research", () => {
