@@ -132,9 +132,17 @@ export function SuccessPanel({
             </label>
           </div>
           {refusal ? <p className="text-sm text-destructive">{refusal}</p> : null}
-          <TTButton size="sm" disabled={busy} onClick={submit}>
-            Save outcome
-          </TTButton>
+          <div className="flex flex-wrap gap-2">
+            <TTButton size="sm" disabled={busy} onClick={submit}>
+              Save outcome
+            </TTButton>
+            {controlled ? (
+              <TTButton size="sm" variant="quiet" disabled={busy} onClick={() => setOpen(false)}>
+                Cancel
+              </TTButton>
+            ) : null}
+          </div>
+
         </div>
       ) : null}
     </section>
