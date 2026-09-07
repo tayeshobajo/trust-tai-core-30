@@ -102,11 +102,31 @@ import {
 import { listMembers } from "@/data/supabase/settings-service";
 import { supabase } from "@/integrations/trust-tai/supabase";
 
-function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; projectId: string }) {
+export function ProjectWorkroom({
+  identity,
+  projectId,
+  embedded = false,
+  surface,
+  onSurfaceChange,
+}: {
+  identity: WorkspaceIdentity;
+  projectId: string;
+  /** Rendered inside another room's shell: no Projects breadcrumb, no sibling paging. */
+  embedded?: boolean;
+  /** When the host owns the selected surface (a Client workspace does), pass it here. */
+  surface?: ProjectTab;
+  onSurfaceChange?: (tab: ProjectTab) => void;
+}) {
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<ProjectTab>("overview");
+  const [ownTab, setOwnTab] = useState<ProjectTab>("overview");
+  const tab = surface ?? ownTab;
+  const setTab = (next: ProjectTab) => {
+    setOwnTab(next);
+    onSurfaceChange?.(next);
+  };
   const [panel, setPanel] = useState<ContextualPanel | null>(null);
   const [updating, setUpdating] = useState(false);
+
 
   /** Set after a save lands, so a change visibly confirms instead of just vanishing. */
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
