@@ -225,7 +225,16 @@ export function ProjectRow({
     <Wrapper className={cn("p-4", flat && "px-0 py-4", blocked && !flat && "border-warning/40")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">{project.name}</p>
+          {/* The name itself is the door into the project workroom. */}
+          <p className="truncate text-sm font-medium text-foreground">
+            <Link
+              to="/modules/projects/$projectId"
+              params={{ projectId: project.id }}
+              className="underline-offset-4 hover:underline"
+            >
+              {project.name}
+            </Link>
+          </p>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
             {projectStateLabel(project)} · moved{" "}
             {formatDay(project.lastMovedAt, timeZone) ?? "on an unknown day"}
@@ -236,7 +245,7 @@ export function ProjectRow({
           params={{ projectId: project.id }}
           className="shrink-0 text-[13px] font-medium text-royal"
         >
-          <OpenIn>Open in Projects</OpenIn>
+          <OpenIn>Open project workspace</OpenIn>
         </Link>
       </div>
       {detail ? <p className="mt-2 text-[13px] text-muted-foreground">{detail}</p> : null}
