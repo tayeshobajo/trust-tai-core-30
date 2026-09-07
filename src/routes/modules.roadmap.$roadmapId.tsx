@@ -930,12 +930,17 @@ function RoadmapWorkspace({
                 onMetric={(milestone, metric) => milestoneMetric.mutate({ milestone, metric })}
                 criteria={intelQuery.data?.criteria ?? []}
                 criteriaError={acceptance.error ?? intelQuery.data?.criteriaError ?? null}
+                evidence={intelQuery.data?.criterionEvidence ?? []}
+                evidenceError={intelQuery.data?.criterionEvidenceError ?? null}
                 onSuccess={acceptance.onSuccess}
                 onCriterionAdd={acceptance.onCriterionAdd}
                 onCriterionToggle={acceptance.onCriterionToggle}
                 onCriterionEdit={acceptance.onCriterionEdit}
                 onCriterionRemove={acceptance.onCriterionRemove}
                 onCriterionMove={acceptance.onCriterionMove}
+                onEvidenceAdd={acceptance.onEvidenceAdd}
+                onEvidenceRemove={acceptance.onEvidenceRemove}
+                onEvidenceOpen={acceptance.onEvidenceOpen}
                 measurements={intelQuery.data?.measurements ?? []}
                 measurementsError={measureError ?? intelQuery.data?.measurementsError ?? null}
                 onMeasure={(milestone, input) => milestoneMeasure.mutate({ milestone, input })}

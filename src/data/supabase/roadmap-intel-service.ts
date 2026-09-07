@@ -46,11 +46,7 @@ import {
   sortMeasurements,
 } from "@/domain/milestone-measurement";
 import type { MilestoneSuccess, MilestoneSuccessInput } from "@/domain/milestone-success";
-import {
-  checkMilestoneSuccess,
-  sameSuccess,
-  successEventKey,
-} from "@/domain/milestone-success";
+import { checkMilestoneSuccess, sameSuccess, successEventKey } from "@/domain/milestone-success";
 import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
 import {
   canRemoveCriterion,
@@ -263,7 +259,6 @@ function toCriterionEvidence(row: Row): CriterionEvidence {
   };
 }
 
-
 function toCriterion(row: Row): AcceptanceCriterion {
   return {
     id: String(row["id"]),
@@ -330,56 +325,55 @@ const roadmapIntelRaw = {
       measurements,
       criteria,
       criterionEvidence,
-    ] =
-      await Promise.all([
-        supabase
-          .from("roadmap_research")
-          .select(RESEARCH_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("created_at", { ascending: false })
-          .limit(10),
-        supabase
-          .from("roadmap_strategies")
-          .select(STRATEGY_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .maybeSingle(),
-        supabase
-          .from("roadmap_milestones")
-          .select(MILESTONE_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("recommended_sequence", { ascending: true }),
-        supabase.from("roadmap_artifacts").select(ARTIFACT_COLUMNS).eq("roadmap_id", roadmapId),
-        supabase
-          .from("roadmap_sessions")
-          .select(SESSION_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("started_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("roadmap_questions")
-          .select(QUESTION_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("created_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("roadmap_measurements")
-          .select(MEASUREMENT_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("measured_at", { ascending: false })
-          .limit(200),
-        supabase
-          .from("roadmap_milestone_criteria")
-          .select(CRITERION_COLUMNS)
-          .eq("roadmap_id", roadmapId)
-          .order("position", { ascending: true })
-          .limit(500),
-        supabase
-          .from("roadmap_criterion_evidence")
-          .select("*")
-          .eq("roadmap_id", roadmapId)
-          .order("created_at", { ascending: true })
-          .limit(1000),
-      ]);
+    ] = await Promise.all([
+      supabase
+        .from("roadmap_research")
+        .select(RESEARCH_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("roadmap_strategies")
+        .select(STRATEGY_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .maybeSingle(),
+      supabase
+        .from("roadmap_milestones")
+        .select(MILESTONE_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("recommended_sequence", { ascending: true }),
+      supabase.from("roadmap_artifacts").select(ARTIFACT_COLUMNS).eq("roadmap_id", roadmapId),
+      supabase
+        .from("roadmap_sessions")
+        .select(SESSION_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("started_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("roadmap_questions")
+        .select(QUESTION_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("roadmap_measurements")
+        .select(MEASUREMENT_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("measured_at", { ascending: false })
+        .limit(200),
+      supabase
+        .from("roadmap_milestone_criteria")
+        .select(CRITERION_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("position", { ascending: true })
+        .limit(500),
+      supabase
+        .from("roadmap_criterion_evidence")
+        .select("*")
+        .eq("roadmap_id", roadmapId)
+        .order("created_at", { ascending: true })
+        .limit(1000),
+    ]);
 
     assertOk(research.error);
     assertOk(strategy.error);
@@ -411,7 +405,6 @@ const roadmapIntelRaw = {
         ? "Attached evidence could not be read here yet, so nothing is shown rather than an empty list."
         : null,
     };
-
   },
 
   /* ---------------------------------------------------------- research */
@@ -1277,12 +1270,10 @@ const roadmapIntelRaw = {
         criterion.id,
         file.name,
       );
-      const upload = await supabase.storage
-        .from(PROJECT_FILES_BUCKET)
-        .upload(path, file, {
-          contentType: file.type || "application/octet-stream",
-          upsert: false,
-        });
+      const upload = await supabase.storage.from(PROJECT_FILES_BUCKET).upload(path, file, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
       if (upload.error) throw new Error("That file could not be uploaded.");
       storagePath = path;
       contentType = file.type || null;
@@ -1400,7 +1391,6 @@ const roadmapIntelRaw = {
   },
 
   /* ----------------------------------------------------------- studio */
-
 
   /**
    * Save a composed artifact.

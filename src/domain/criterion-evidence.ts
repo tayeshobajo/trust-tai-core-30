@@ -60,8 +60,7 @@ export interface CriterionEvidenceInput {
 }
 
 export type EvidenceCheck =
-  | { ok: true; input: CriterionEvidenceInput }
-  | { ok: false; refusal: string };
+  { ok: true; input: CriterionEvidenceInput } | { ok: false; refusal: string };
 
 export const NO_EVIDENCE = "No evidence yet";
 
@@ -122,7 +121,9 @@ export function checkEvidenceInput(raw: {
 export function evidenceFor(rows: CriterionEvidence[], criterionId: ID): CriterionEvidence[] {
   return rows
     .filter((row) => row.criterionId === criterionId)
-    .sort((a, b) => (a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1));
+    .sort((a, b) =>
+      a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1,
+    );
 }
 
 /** One quiet line for a criterion row. */
