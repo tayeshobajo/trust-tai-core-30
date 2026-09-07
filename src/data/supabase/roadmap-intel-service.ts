@@ -35,6 +35,15 @@ import {
   metricSummary,
   sameMetric,
 } from "@/domain/milestone-metric";
+import type { MeasurementInput, MilestoneMeasurement } from "@/domain/milestone-measurement";
+import {
+  checkMeasurement,
+  measuredDay,
+  measuredInstant,
+  measurementEventKey,
+  measurementSummary,
+  sortMeasurements,
+} from "@/domain/milestone-measurement";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
 import {
   MANUAL_PRIORITY_RATIONALE,
@@ -160,6 +169,33 @@ export interface RoadmapIntel {
   artifacts: RoadmapArtifact[];
   sessions: RoadmapSession[];
   questions: AskAnswer[];
+  /** Outcome measurements (P3-02), newest first, across this roadmap. */
+  measurements: MilestoneMeasurement[];
+  /**
+   * Why the measurement history could not be read, when it could not be.
+   *
+   * An unreadable table is not the same fact as "no measurement recorded yet",
+   * so the two are kept apart all the way to the screen.
+   */
+  measurementsError: string | null;
+}
+
+const MEASUREMENT_COLUMNS = "*";
+
+function toMeasurement(row: Row): MilestoneMeasurement {
+  return {
+    id: String(row["id"]),
+    organizationId: String(row["organization_id"] ?? ""),
+    roadmapId: String(row["roadmap_id"] ?? ""),
+    milestoneId: String(row["milestone_id"] ?? ""),
+    metricKey: String(row["metric_key"] ?? ""),
+    value: Number(row["value"] ?? 0),
+    measuredAt: measuredDay(row["measured_at"]),
+    source: String(row["source"] ?? ""),
+    recordedBy: String(row["recorded_by"] ?? ""),
+    recordedAt: String(row["recorded_at"] ?? row["created_at"] ?? ""),
+    sourceEventKey: String(row["source_event_key"] ?? ""),
+  };
 }
 
 function toAsk(row: Row): AskAnswer {
@@ -185,7 +221,8 @@ function toAsk(row: Row): AskAnswer {
 
 const roadmapIntelRaw = {
   async load(roadmapId: ID): Promise<RoadmapIntel> {
-    const [research, strategy, milestones, artifacts, sessions, questions] = await Promise.all([
+    const [research, strategy, milestones, artifacts, sessions, questions, measurements] =
+      await Promise.all([
       supabase
         .from("roadmap_research")
         .select(RESEARCH_COLUMNS)
@@ -215,6 +252,12 @@ const roadmapIntelRaw = {
         .eq("roadmap_id", roadmapId)
         .order("created_at", { ascending: false })
         .limit(20),
+      supabase
+        .from("roadmap_measurements")
+        .select(MEASUREMENT_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("measured_at", { ascending: false })
+        .limit(200),
     ]);
 
     assertOk(research.error);
@@ -234,6 +277,10 @@ const roadmapIntelRaw = {
       artifacts: ((artifacts.data ?? []) as Row[]).map(toArtifact),
       sessions: ((sessions.data ?? []) as Row[]).map(toSession),
       questions: ((questions.data ?? []) as Row[]).map(toAsk),
+      measurements: sortMeasurements(((measurements.data ?? []) as Row[]).map(toMeasurement)),
+      measurementsError: measurements.error
+        ? "Measurement history could not be read here yet, so nothing is shown rather than an empty history."
+        : null,
     };
   },
 
