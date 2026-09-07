@@ -694,6 +694,43 @@ function ClientShell({
         ? answered(eventsAbout(historyRaw.value, entityIds))
         : historyRaw;
 
+  /**
+   * The bounded account packet Chat reasons over. Composed only from the reads
+   * this page already made under the signed-in person's own session, so row
+   * level security has already decided what it may contain. No raw Comms
+   * message text, no file bytes, no second copy of any store.
+   */
+  const packet = clientContextPacket({
+    identity: { clientId, name: record.name, websiteUrl: record.websiteUrl },
+    commercial: {
+      headline: card.commercialLine,
+      review: cadence.line,
+      renewal: cadence.renewalLine,
+      provenance: commercialProvenanceLine,
+    },
+    projects: projectsForTab,
+    relationship: relationshipRead,
+    roadmap: roadmapOutcomes,
+    sources: readOf(linkedSourcesQuery),
+    history: historyRead,
+    attention: attentionItems({
+      projects: projectsForTab,
+      relationship: relationshipRead,
+      roadmap:
+        roadmapOutcomes === null
+          ? null
+          : roadmapOutcomes.available
+            ? answered(roadmapOutcomes.value[0] ?? null)
+            : roadmapOutcomes,
+      approvals: approvalsRead,
+      exchange: exchangeWindow,
+      cadence,
+      commercialLine: card.commercialLine,
+      now,
+      timeZone,
+    }),
+  });
+
   return (
     <AppShell identity={identity}>
       <div className="space-y-8">
