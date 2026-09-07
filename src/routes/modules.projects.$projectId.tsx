@@ -62,6 +62,7 @@ import { ProjectRoadmapTab } from "@/components/tt/projects/detail/roadmap";
 import { ProjectApprovals } from "@/components/tt/projects/detail/approvals";
 import { linkableRoadmaps } from "@/domain/project-roadmap-link";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import type { MeasurementInput } from "@/domain/milestone-measurement";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import type { MilestoneStatus, RoadmapMilestone } from "@/domain/roadmap-intel";
 
@@ -394,6 +395,36 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
     },
     onSettled: () => setBusyId(null),
     onSuccess: refreshRoadmap,
+  });
+
+  /**
+   * Measurements (P3-02) belong to Roadmap. The workroom calls the same
+   * Roadmap service, so there is no project side measurement store.
+   */
+  const [measureError, setMeasureError] = useState<string | null>(null);
+  const milestoneMeasure = useMutation({
+    mutationFn: async ({
+      milestone,
+      input,
+    }: {
+      milestone: RoadmapMilestone;
+      input: MeasurementInput;
+    }) => {
+      setMeasureError(null);
+      setBusyId(milestone.id);
+      return roadmapIntel.recordMeasurement(
+        intelContext,
+        milestone,
+        input,
+        roadmap?.subjectLabel ?? "This roadmap",
+      );
+    },
+    onSettled: () => setBusyId(null),
+    onSuccess: refreshRoadmap,
+    onError: (cause) =>
+      setMeasureError(
+        cause instanceof Error ? cause.message : "That measurement could not be recorded.",
+      ),
   });
 
   const linkCandidates = useMemo(
@@ -788,6 +819,9 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
                 milestoneStatus.mutate({ milestone, status, note })
               }
               onMetric={(milestone, metric) => milestoneMetric.mutate({ milestone, metric })}
+              measurements={intelQuery.data?.measurements ?? []}
+              measurementsError={measureError ?? intelQuery.data?.measurementsError ?? null}
+              onMeasure={(milestone, input) => milestoneMeasure.mutate({ milestone, input })}
             />
           ) : null}
 

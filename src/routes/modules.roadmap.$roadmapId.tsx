@@ -74,6 +74,7 @@ import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-s
 import { runRoadmapResearch } from "@/data/roadmap/research-run";
 
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import type { MeasurementInput } from "@/domain/milestone-measurement";
 import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
 import type {
@@ -345,6 +346,39 @@ function RoadmapWorkspace({
     onSettled: () => setBusyId(null),
     onSuccess: refresh,
     onError: fail,
+  });
+
+  /**
+   * The manual measurement path (P3-02). Roadmap owns measurement truth, so
+   * every reading, from here or from the Project workroom, lands through this
+   * one service with the person on it.
+   */
+  const [measureError, setMeasureError] = useState<string | null>(null);
+  const milestoneMeasure = useMutation({
+    mutationFn: async ({
+      milestone,
+      input,
+    }: {
+      milestone: RoadmapMilestone;
+      input: MeasurementInput;
+    }) => {
+      setMeasureError(null);
+      setBusyId(milestone.id);
+      return roadmapIntel.recordMeasurement(
+        intelContext,
+        milestone,
+        input,
+        detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
+      );
+    },
+    onSettled: () => setBusyId(null),
+    onSuccess: refresh,
+    onError: (cause) => {
+      setMeasureError(
+        cause instanceof Error ? cause.message : "That measurement could not be recorded.",
+      );
+      fail(cause);
+    },
   });
 
   /**
@@ -882,6 +916,9 @@ function RoadmapWorkspace({
                   milestoneStatus.mutate({ milestone, status, note })
                 }
                 onMetric={(milestone, metric) => milestoneMetric.mutate({ milestone, metric })}
+                measurements={intelQuery.data?.measurements ?? []}
+                measurementsError={measureError ?? intelQuery.data?.measurementsError ?? null}
+                onMeasure={(milestone, input) => milestoneMeasure.mutate({ milestone, input })}
               />
               <ExecutionHandoffCard
                 path={path}
