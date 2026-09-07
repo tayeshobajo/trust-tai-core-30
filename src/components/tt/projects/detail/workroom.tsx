@@ -15,6 +15,7 @@
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { EmptyState, TTButton } from "@/components/tt/primitives";
 import { LaunchOpsButton } from "@/components/tt/ops/launch-ops";
@@ -388,6 +389,45 @@ export function ProjectWorkroom({
     onSuccess: refreshRoadmap,
   });
 
+  /**
+   * Point A and Point B written by hand, here where the work happens (P3-03).
+   * The same Roadmap service the Roadmap room uses: a person serving one
+   * company corrects its truth without leaving the company.
+   */
+  const [pointError, setPointError] = useState<string | null>(null);
+  const pointA = useMutation({
+    mutationFn: async (lines: string[]) => {
+      setPointError(null);
+      if (!roadmap) throw new Error("Link a roadmap before writing Point A.");
+      return roadmapService.setPointA(
+        roadmap.id,
+        roadmap.subjectLabel,
+        lines.map((value) => ({ value })),
+        intelContext,
+      );
+    },
+    onSuccess: async () => {
+      toast.success("Point A saved");
+      await refreshRoadmap();
+    },
+    onError: (cause) =>
+      setPointError(cause instanceof Error ? cause.message : "Point A could not be saved."),
+  });
+
+  const destination = useMutation({
+    mutationFn: async (input: { statement: string; because: string }) => {
+      setPointError(null);
+      if (!roadmap) throw new Error("Link a roadmap before writing the destination.");
+      return roadmapService.setDestination(roadmap.id, roadmap.subjectLabel, input, intelContext);
+    },
+    onSuccess: async () => {
+      toast.success("Point B saved");
+      await refreshRoadmap();
+    },
+    onError: (cause) =>
+      setPointError(cause instanceof Error ? cause.message : "Point B could not be saved."),
+  });
+
   const milestoneMetric = useMutation({
     mutationFn: async ({
       milestone,
@@ -739,13 +779,15 @@ export function ProjectWorkroom({
   const attention = needsJudgment(project, items, blockers, decisions);
   const busy = mutate.isPending || updateProject.isPending;
   const error = mutate.error ?? updateProject.error;
-  const errorMessage = fileError
-    ? fileError
-    : error
-      ? error instanceof Error
-        ? error.message
-        : "That change could not be saved."
-      : null;
+  const errorMessage = pointError
+    ? pointError
+    : fileError
+      ? fileError
+      : error
+        ? error instanceof Error
+          ? error.message
+          : "That change could not be saved."
+        : null;
 
   /**
    * Older tabs are now sections. Opening one opens the surface that owns it and
@@ -817,6 +859,10 @@ export function ProjectWorkroom({
                 blockers={blockers}
                 completion={completion}
                 onOpenTab={openTab}
+                roadmap={roadmap}
+                savingPoints={pointA.isPending || destination.isPending}
+                onSavePointA={(lines) => pointA.mutate(lines)}
+                onSaveDestination={(input) => destination.mutate(input)}
               />
               <ProjectApprovals requests={approvalsQuery.data ?? []} />
             </div>

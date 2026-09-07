@@ -5,6 +5,8 @@
 import { AlertTriangle, ArrowRight, CheckCircle2, Circle, Clock } from "lucide-react";
 
 import { TTButton } from "@/components/tt/primitives";
+import { PointAEditor, PointBEditor } from "@/components/tt/roadmap/detail/point-editors";
+import type { Roadmap } from "@/domain/roadmap";
 import {
   blockerAgeDays,
   currentWorkItem,
@@ -77,6 +79,10 @@ export function OverviewTab({
   blockers,
   completion,
   onOpenTab,
+  roadmap = null,
+  savingPoints = false,
+  onSavePointA,
+  onSaveDestination,
 }: {
   project: ExecutionProject;
   lineage: ProjectLineage;
@@ -84,6 +90,15 @@ export function OverviewTab({
   blockers: ProjectBlocker[];
   completion: CompletionModel;
   onOpenTab: (tab: "work" | "blockers" | "decisions") => void;
+  /**
+   * The linked roadmap, when there is one. Point A and Point B below read and
+   * correct that roadmap's truth through the same editors and service the
+   * Roadmap room uses, so a person serving one company never leaves it.
+   */
+  roadmap?: Roadmap | null;
+  savingPoints?: boolean;
+  onSavePointA?: ((lines: string[]) => void) | undefined;
+  onSaveDestination?: ((input: { statement: string; because: string }) => void) | undefined;
 }) {
   const stands = standsModel(project, items, blockers);
   const current = currentWorkItem(items);
@@ -168,13 +183,44 @@ export function OverviewTab({
         <div className="max-w-reading space-y-4 text-[15px] leading-relaxed">
           <div>
             <p className="tt-eyebrow">Point A</p>
-            <p className="mt-1 text-foreground">
-              {project.pointA.trim() || "No current truth was recorded."}
-            </p>
+            {roadmap ? (
+              roadmap.pointA.length ? (
+                <ul className="mt-1 space-y-1 text-foreground">
+                  {roadmap.pointA.map((note) => (
+                    <li key={`${note.label}-${note.at}`}>{note.value}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-muted-foreground">No current truth was recorded.</p>
+              )
+            ) : (
+              <p className="mt-1 text-foreground">
+                {project.pointA.trim() || "No current truth was recorded."}
+              </p>
+            )}
+            {roadmap && onSavePointA ? (
+              <PointAEditor notes={roadmap.pointA} busy={savingPoints} onSave={onSavePointA} />
+            ) : null}
           </div>
           <div>
             <p className="tt-eyebrow">Point B</p>
-            <p className="mt-1 text-foreground">{completion.outcome}</p>
+            <p className="mt-1 text-foreground">
+              {roadmap
+                ? (roadmap.pointB?.statement ?? "No destination has been written yet.")
+                : completion.outcome}
+            </p>
+            {roadmap?.pointB?.because ? (
+              <p className="mt-1 text-[13px] text-muted-foreground">{roadmap.pointB.because}</p>
+            ) : null}
+            {roadmap && onSaveDestination ? (
+              <PointBEditor
+                statement={roadmap.pointB?.statement ?? ""}
+                because={roadmap.pointB?.because ?? ""}
+                present={Boolean(roadmap.pointB)}
+                busy={savingPoints}
+                onSave={onSaveDestination}
+              />
+            ) : null}
           </div>
           <p className="text-[13px] text-muted-foreground">
             {lineage.fromRoadmap
