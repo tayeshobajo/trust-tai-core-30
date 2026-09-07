@@ -903,17 +903,24 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
             />
           ) : null}
 
-          {tab === "decisions" ? (
-            <DecisionsTab
-              items={items}
-              decisions={decisions}
-              busy={busy}
-              onAsk={(input) => mutate.mutate(() => projectDelivery.askDecision(input, delivery))}
-              onAnswer={(decision, answer) =>
-                mutate.mutate(() => projectDelivery.answerDecision(decision, answer, delivery))
-              }
-            />
+          {tab === "overview" ? (
+            <WorkroomSection
+              section="decisions"
+              title="Decisions"
+              description="Questions this work is waiting on, and the answers people gave."
+            >
+              <DecisionsTab
+                items={items}
+                decisions={decisions}
+                busy={busy}
+                onAsk={(input) => mutate.mutate(() => projectDelivery.askDecision(input, delivery))}
+                onAnswer={(decision, answer) =>
+                  mutate.mutate(() => projectDelivery.answerDecision(decision, answer, delivery))
+                }
+              />
+            </WorkroomSection>
           ) : null}
+
 
           {tab === "files" ? (
             <FilesTab
