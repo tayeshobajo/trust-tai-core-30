@@ -7,6 +7,9 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+
+import { useReveal } from "@/lib/reveal";
 
 import { ManualMilestoneForm } from "@/components/tt/roadmap/manual-milestone";
 import { MilestoneOverflow } from "@/components/tt/roadmap/milestone-overflow";
@@ -123,12 +126,17 @@ function MilestoneCard({
   const [reason, setReason] = useState("");
   const busy = busyId === milestone.id;
   const lifecycle = milestoneLifecycle(milestone, criteria);
+  const outcomeEditor = useReveal<HTMLDivElement>();
+  const openOutcomeEditor = () => {
+    setEditing(true);
+    outcomeEditor.reveal();
+  };
 
   return (
     <li className="tt-surface p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-display text-2xl text-foreground">{milestone.name}</h3>
+          <h3 className="tt-title-card text-2xl">{milestone.name}</h3>
           <p className="mt-1 max-w-reading text-sm text-muted-foreground">
             {milestone.whatWeBuild}
           </p>
@@ -147,6 +155,7 @@ function MilestoneCard({
           busy={busy}
           open={editing}
           onOpenChange={setEditing}
+          editorRef={outcomeEditor.ref}
           onSave={(input) => onSuccess(milestone, input)}
         />
       ) : null}
@@ -178,8 +187,15 @@ function MilestoneCard({
           lifecycle={lifecycle}
           subject={milestone.name}
           busy={busy}
-          onFix={() => setEditing(true)}
-          {...(onAccept ? { onAccept: (note: string) => onAccept(milestone, note) } : {})}
+          onFix={openOutcomeEditor}
+          {...(onAccept
+            ? {
+                onAccept: (note: string) => {
+                  onAccept(milestone, note);
+                  toast.success("Milestone accepted", { description: milestone.name });
+                },
+              }
+            : {})}
         />
       ) : null}
 
@@ -239,7 +255,11 @@ function MilestoneCard({
       ) : null}
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
-        <TTButton size="sm" disabled={busy} onClick={() => setEditing((value) => !value)}>
+        <TTButton
+          size="sm"
+          disabled={busy}
+          onClick={() => (editing ? setEditing(false) : openOutcomeEditor())}
+        >
           {editing ? "Close" : "Update milestone"}
         </TTButton>
         <MilestoneOverflow
@@ -265,7 +285,7 @@ function MilestoneCard({
       </div>
 
       {reopening && onReopen ? (
-        <div className="mt-4 space-y-3 rounded-2xl border border-border p-4">
+        <div className="tt-panel-enter mt-4 space-y-3 rounded-2xl border border-border p-4">
           <p className="max-w-reading text-sm text-foreground">
             Reopening clears the acceptance on this milestone. The conditions and everything
             attached to them stay exactly as they are.
@@ -282,6 +302,7 @@ function MilestoneCard({
               disabled={busy}
               onClick={() => {
                 onReopen(milestone, reason);
+                toast("Milestone reopened", { description: milestone.name });
                 setReopening(false);
               }}
             >
