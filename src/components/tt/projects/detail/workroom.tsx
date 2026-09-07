@@ -859,6 +859,10 @@ export function ProjectWorkroom({
                 blockers={blockers}
                 completion={completion}
                 onOpenTab={openTab}
+                roadmap={roadmap}
+                savingPoints={pointA.isPending || destination.isPending}
+                onSavePointA={(lines) => pointA.mutate(lines)}
+                onSaveDestination={(input) => destination.mutate(input)}
               />
               <ProjectApprovals requests={approvalsQuery.data ?? []} />
             </div>
