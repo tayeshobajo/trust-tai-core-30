@@ -185,7 +185,7 @@ describe("measurements", () => {
     const milestone = await measured();
     const first = await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
     const events = (db.tables["activities"] ?? []).filter(
-      (row) => (row as Record<string, unknown>)["name"] === "roadmap.measured",
+      (row) => (row as Record<string, unknown>)["event_type"] === "roadmap.measured",
     ).length;
 
     const again = await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
@@ -193,7 +193,7 @@ describe("measurements", () => {
     expect(db.tables["roadmap_measurements"]).toHaveLength(1);
     expect(
       (db.tables["activities"] ?? []).filter(
-        (row) => (row as Record<string, unknown>)["name"] === "roadmap.measured",
+        (row) => (row as Record<string, unknown>)["event_type"] === "roadmap.measured",
       ),
     ).toHaveLength(events);
   });
@@ -202,7 +202,7 @@ describe("measurements", () => {
     const milestone = await measured();
     const saved = await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
     const events = (db.tables["activities"] ?? []).filter(
-      (row) => (row as Record<string, unknown>)["name"] === "roadmap.measured",
+      (row) => (row as Record<string, unknown>)["event_type"] === "roadmap.measured",
     );
     expect(events).toHaveLength(1);
     const payload = (events[0] as Record<string, unknown>)["payload"] as Record<string, unknown>;
@@ -212,11 +212,7 @@ describe("measurements", () => {
     expect(payload["value"]).toBe(18);
     expect(payload["source"]).toBe("Stripe dashboard");
     expect(String(payload["source_event_key"])).toContain("roadmap.measured:");
-    const provenance = (events[0] as Record<string, unknown>)["provenance"] as Record<
-      string,
-      unknown
-    >;
-    expect((provenance["actor"] as Record<string, unknown>)["id"]).toBe("user-1");
+    expect((events[0] as Record<string, unknown>)["actor_user_id"]).toBe("user-1");
   });
 
   it("never touches the metric baseline or target", async () => {
