@@ -12,6 +12,11 @@ import { useState } from "react";
 
 import { MetaPill, TTButton, TTInput } from "@/components/tt/primitives";
 import {
+  CriterionEvidencePanel,
+  type EvidenceDraft,
+} from "@/components/tt/roadmap/criterion-evidence";
+import { evidenceFor, type CriterionEvidence } from "@/domain/criterion-evidence";
+import {
   ACCEPTANCE_IS_EVIDENCE,
   ACCEPTANCE_MET,
   NO_CRITERIA,
@@ -27,19 +32,29 @@ function Row({
   busy,
   first,
   last,
+  evidence,
+  evidenceError,
   onToggle,
   onEdit,
   onRemove,
   onMove,
+  onEvidenceAdd,
+  onEvidenceRemove,
+  onEvidenceOpen,
 }: {
   criterion: AcceptanceCriterion;
   busy: boolean;
   first: boolean;
   last: boolean;
+  evidence: CriterionEvidence[];
+  evidenceError: string | null;
   onToggle: (criterion: AcceptanceCriterion, done: boolean) => void;
   onEdit: (criterion: AcceptanceCriterion, text: string) => void;
   onRemove: (criterion: AcceptanceCriterion) => void;
   onMove: (criterion: AcceptanceCriterion, direction: "up" | "down") => void;
+  onEvidenceAdd?: ((criterion: AcceptanceCriterion, draft: EvidenceDraft) => void) | undefined;
+  onEvidenceRemove?: ((item: CriterionEvidence) => void) | undefined;
+  onEvidenceOpen?: ((item: CriterionEvidence) => void) | undefined;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(criterion.text);
@@ -113,6 +128,17 @@ function Row({
             {criterion.text}
           </p>
         )}
+        {!editing && onEvidenceAdd ? (
+          <CriterionEvidencePanel
+            criterionText={criterion.text}
+            items={evidence}
+            evidenceError={evidenceError}
+            busy={busy}
+            onAdd={(draft) => onEvidenceAdd(criterion, draft)}
+            {...(onEvidenceRemove ? { onRemove: onEvidenceRemove } : {})}
+            {...(onEvidenceOpen ? { onOpenFile: onEvidenceOpen } : {})}
+          />
+        ) : null}
         {refusal ? <p className="mt-1 text-xs text-destructive">{refusal}</p> : null}
       </div>
       {editing ? null : (
@@ -162,6 +188,8 @@ function Row({
 export function CriteriaPanel({
   criteria,
   criteriaError = null,
+  evidence = [],
+  evidenceError = null,
   subject,
   busy,
   onAdd,
@@ -169,9 +197,15 @@ export function CriteriaPanel({
   onEdit,
   onRemove,
   onMove,
+  onEvidenceAdd,
+  onEvidenceRemove,
+  onEvidenceOpen,
 }: {
   criteria: AcceptanceCriterion[];
   criteriaError?: string | null;
+  /** Proof attached across this milestone's conditions. Optional by default. */
+  evidence?: CriterionEvidence[];
+  evidenceError?: string | null;
   subject: string;
   busy: boolean;
   onAdd: (text: string) => void;
@@ -179,6 +213,9 @@ export function CriteriaPanel({
   onEdit: (criterion: AcceptanceCriterion, text: string) => void;
   onRemove: (criterion: AcceptanceCriterion) => void;
   onMove: (criterion: AcceptanceCriterion, direction: "up" | "down") => void;
+  onEvidenceAdd?: ((criterion: AcceptanceCriterion, draft: EvidenceDraft) => void) | undefined;
+  onEvidenceRemove?: ((item: CriterionEvidence) => void) | undefined;
+  onEvidenceOpen?: ((item: CriterionEvidence) => void) | undefined;
 }) {
   const [text, setText] = useState("");
   const [adding, setAdding] = useState(false);
@@ -225,10 +262,15 @@ export function CriteriaPanel({
               busy={busy}
               first={index === 0}
               last={index === rows.length - 1}
+              evidence={evidenceFor(evidence, criterion.id)}
+              evidenceError={evidenceError}
               onToggle={onToggle}
               onEdit={onEdit}
               onRemove={onRemove}
               onMove={onMove}
+              {...(onEvidenceAdd ? { onEvidenceAdd } : {})}
+              {...(onEvidenceRemove ? { onEvidenceRemove } : {})}
+              {...(onEvidenceOpen ? { onEvidenceOpen } : {})}
             />
           ))}
         </ul>
