@@ -145,49 +145,7 @@ function MilestoneCard({
         The metric domain and its stored history remain intact underneath.
       */}
 
-      <button
-        type="button"
-        onClick={() => setDetail((value) => !value)}
-        className="mt-5 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-      >
-        {detail ? "Hide milestone detail" : "Milestone detail"}
-      </button>
       {detail ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Line label="Confidence" value={CONFIDENCE_LEVEL_LABEL[milestone.confidence]} />
-          <Line label="Priority score" value={String(milestone.priorityScore)} />
-          <Line label="Intended user" value={milestone.intendedUser} />
-          <Line label="Supporting market direction" value={milestone.supportingMarketDirection} />
-          <Line label="Client advantage" value={milestone.clientAdvantage} />
-          <Line label="Current gap" value={milestone.currentGap} />
-          <Line label="Immediate value" value={milestone.immediateValue} />
-          <Line label="Long term value" value={milestone.longTermValue} />
-          <Line label="Dependencies" value={milestone.dependencies.join(", ")} />
-          <Line label="Owned by" value={`${owned.ownerLabel} · ${owned.because}`} />
-          <Line label="Execution boundary" value={owned.boundary} />
-        </div>
-      ) : null}
-
-      {detail ? (
-        <OwnershipInspector read={read.owner} boundary={owned.boundary} subject={milestone.name} />
-      ) : null}
-
-      <EvidenceList
-        evidence={milestone.evidence.map((ref) => ({
-          label: ref.label,
-          url: ref.url,
-          kind: "page" as const,
-        }))}
-      />
-
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="mt-4 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
-      >
-        {open ? "Hide why it ranks here" : "Why it ranks here"}
-      </button>
-      {open ? (
         <ul className="mt-2 space-y-1">
           {milestone.priorityRationale.map((line) => (
             <li key={line} className="text-sm text-muted-foreground">
