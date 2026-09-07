@@ -781,7 +781,12 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
               busyId={busyId}
               creating={milestoneCreate.isPending}
               createError={createError}
+              generating={generate.isPending}
+              generateStage={generateStage}
+              generateError={generateError}
+              onGenerate={() => generate.mutate()}
               onLink={(roadmapId) => linkRoadmap.mutate(roadmapId)}
+
               onCreate={(input) => milestoneCreate.mutate(input)}
               onStatus={(milestone, status, note) =>
                 milestoneStatus.mutate({ milestone, status, note })
