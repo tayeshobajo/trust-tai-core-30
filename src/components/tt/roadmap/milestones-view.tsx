@@ -346,33 +346,26 @@ export function MilestonesView({
         title="Milestones"
         description="Ranked by evidence, market direction, advantage and boundary. Only a person changes a status."
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <TTButton onClick={() => setAdding(true)} disabled={adding}>
               Add milestone
             </TTButton>
             <TTButton variant="secondary" onClick={onGenerate} disabled={generating}>
-              {generating ? "Researching…" : "Regenerate candidates"}
+              {generating ? "Researching…" : "Generate candidates"}
             </TTButton>
-          </div>
-        }
-      />
-
-      {adding ? form : null}
-
-      <div className="flex items-center gap-2">
-        <label htmlFor="milestone-view" className="tt-eyebrow">
-          View
-        </label>
-        <select
-          id="milestone-view"
-          value={filter}
-          onChange={(event) => setFilter(event.target.value as MilestoneStatus | "all")}
-          className="h-9 rounded-lg border border-input bg-card px-3 text-sm text-foreground"
-        >
-          {FILTERS.map((entry) => (
-            <option key={entry.key} value={entry.key}>
-              {entry.label}
-            </option>
+            <label htmlFor="milestone-view" className="sr-only">
+              View
+            </label>
+            <select
+              id="milestone-view"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value as MilestoneStatus | "all")}
+              className="h-9 rounded-lg border border-input bg-card px-3 text-sm text-foreground"
+            >
+              {FILTERS.map((entry) => (
+                <option key={entry.key} value={entry.key}>
+                  {entry.label}
+                </option>
           ))}
         </select>
       </div>
