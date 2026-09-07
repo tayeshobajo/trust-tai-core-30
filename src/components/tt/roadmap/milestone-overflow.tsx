@@ -52,6 +52,17 @@ export function MilestoneOverflow({
             {action.label}
           </DropdownMenuItem>
         ))}
+        {onDetail || onRanking ? <DropdownMenuSeparator /> : null}
+        {onDetail ? (
+          <DropdownMenuItem onSelect={() => onDetail()}>
+            {detailOpen ? "Hide milestone detail" : "Milestone detail"}
+          </DropdownMenuItem>
+        ) : null}
+        {onRanking ? (
+          <DropdownMenuItem onSelect={() => onRanking()}>
+            {rankingOpen ? "Hide why it ranks here" : "Why it ranks here"}
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
