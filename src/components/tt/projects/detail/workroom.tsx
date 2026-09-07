@@ -779,7 +779,9 @@ export function ProjectWorkroom({
   const attention = needsJudgment(project, items, blockers, decisions);
   const busy = mutate.isPending || updateProject.isPending;
   const error = mutate.error ?? updateProject.error;
-  const errorMessage = fileError
+  const errorMessage = pointError
+    ? pointError
+    : fileError
     ? fileError
     : error
       ? error instanceof Error
