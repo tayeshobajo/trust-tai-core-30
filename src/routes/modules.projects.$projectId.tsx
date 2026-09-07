@@ -699,13 +699,11 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
       <ProjectTabs
         tab={tab}
         counts={{
-          knowledge: knowledge.filter((entry) => entry.reviewState !== "superseded").length,
-          assets: assets.length,
-          work: items.length,
-          blockers: blockers.filter((entry) => entry.status === "open").length,
-          decisions: decisions.filter((entry) => entry.status === "open").length,
-          files: files.length,
+          overview: blockers.filter((entry) => entry.status === "open").length,
+          roadmap: intelQuery.data?.milestones.length ?? 0,
+          files: files.length + assets.length,
         }}
+
         onChange={setTab}
       />
 
