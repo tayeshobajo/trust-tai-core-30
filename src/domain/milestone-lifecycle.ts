@@ -56,8 +56,7 @@ const STEP_LABEL: Record<LifecycleStep, string> = {
   accepted: "Accepted",
 };
 
-export const ACCEPTANCE_READY =
-  "Every condition is checked. This is ready for your acceptance.";
+export const ACCEPTANCE_READY = "Every condition is checked. This is ready for your acceptance.";
 
 export function milestoneLifecycle(
   milestone: RoadmapMilestone,
