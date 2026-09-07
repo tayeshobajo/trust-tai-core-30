@@ -9,7 +9,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState } from "@/components/tt/primitives";
@@ -970,7 +970,12 @@ function RoadmapWorkspace({
                 links={linksQuery.data?.items ?? []}
                 available={linksQuery.data?.available ?? false}
                 busy={confirmHandoff.isPending}
-                projectStates={projectStatesQuery.data ?? {}}
+                projectStates={Object.fromEntries(
+                  Object.entries(projectStatesQuery.data ?? {}).map(([id, carrier]) => [
+                    id,
+                    carrier.state,
+                  ]),
+                )}
                 onConfirm={(entries) => confirmHandoff.mutate(entries)}
               />
               <BuildOrderView
