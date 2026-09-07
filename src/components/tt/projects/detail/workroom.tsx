@@ -782,12 +782,12 @@ export function ProjectWorkroom({
   const errorMessage = pointError
     ? pointError
     : fileError
-    ? fileError
-    : error
-      ? error instanceof Error
-        ? error.message
-        : "That change could not be saved."
-      : null;
+      ? fileError
+      : error
+        ? error instanceof Error
+          ? error.message
+          : "That change could not be saved."
+        : null;
 
   /**
    * Older tabs are now sections. Opening one opens the surface that owns it and
