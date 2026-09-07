@@ -42,10 +42,7 @@ export const NO_CARRIER = "No project is carrying this work yet";
 export const CRITERIA_UNREADABLE = "Acceptance conditions could not be read";
 export const NO_CONDITIONS = "No acceptance conditions yet";
 
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** `2026-09-11` reads as `Sep 11`. An unreal date is simply not shown. */
 export function shortTargetDate(raw: string | null | undefined): string | null {
@@ -84,7 +81,9 @@ export function deliveryProjection(input: {
       segments.push(NO_CONDITIONS);
     } else {
       const { done, total } = criteriaProgress(rows);
-      segments.push(`${done} of ${total} acceptance ${total === 1 ? "condition" : "conditions"} met`);
+      segments.push(
+        `${done} of ${total} acceptance ${total === 1 ? "condition" : "conditions"} met`,
+      );
     }
   }
 
