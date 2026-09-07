@@ -26,7 +26,11 @@ import {
   type ClientChatEntry,
   type ClientProposalState,
 } from "@/components/tt/clients/chat";
-import { FilesTab, ProjectsTab, RelationshipTab } from "@/components/tt/clients/tabs";
+import { FilesTab, RelationshipTab } from "@/components/tt/clients/tabs";
+import { ClientProjectWorkspace } from "@/components/tt/clients/project-workspace";
+import type { ProjectTab } from "@/components/tt/projects/detail/frame";
+import { isProjectSurface } from "@/domain/project-workroom-ia";
+
 
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
