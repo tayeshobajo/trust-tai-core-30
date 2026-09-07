@@ -10,7 +10,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { ManualMilestoneForm } from "@/components/tt/roadmap/manual-milestone";
 import { CriteriaPanel } from "@/components/tt/roadmap/criteria-panel";
-import { MetricPanel } from "@/components/tt/roadmap/metric-panel";
 import { SuccessPanel } from "@/components/tt/roadmap/success-panel";
 import { OwnershipInspector } from "@/components/tt/roadmap/ownership-inspector";
 import { EvidenceList, TierChip } from "@/components/tt/roadmap/tier";
@@ -52,13 +51,9 @@ function Line({ label, value }: { label: string; value: string }) {
 function MilestoneCard({
   milestone,
   busyId,
-  measurements,
-  measurementsError,
   criteria,
   criteriaError,
   onStatus,
-  onMetric,
-  onMeasure,
   onSuccess,
   onCriterionAdd,
   onCriterionToggle,
@@ -68,13 +63,9 @@ function MilestoneCard({
 }: {
   milestone: RoadmapMilestone;
   busyId: string | null;
-  measurements: MilestoneMeasurement[];
-  measurementsError: string | null;
   criteria: AcceptanceCriterion[];
   criteriaError: string | null;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
-  onMetric: (milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void;
-  onMeasure?: ((milestone: RoadmapMilestone, input: MeasurementInput) => void) | undefined;
   onSuccess?: ((milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void) | undefined;
   onCriterionAdd?: ((milestone: RoadmapMilestone, text: string) => void) | undefined;
   onCriterionToggle?:
@@ -140,16 +131,11 @@ function MilestoneCard({
         />
       ) : null}
 
-      <MetricPanel
-        metric={milestone.outcomeMetric ?? null}
-        subject={milestone.name}
-        busy={busy}
-        measurements={measurements}
-        measurementsError={measurementsError}
-        onSave={(metric) => onMetric(milestone, metric)}
-        onClear={() => onMetric(milestone, null)}
-        onRecord={onMeasure ? (input) => onMeasure(milestone, input) : undefined}
-      />
+      {/*
+        Numeric measurement is advanced, not the everyday contract. The
+        everyday milestone is Outcome, Target date and Acceptance criteria.
+        The metric domain and its stored history remain intact underneath.
+      */}
 
       <button
         type="button"
@@ -257,10 +243,6 @@ export function MilestonesView({
   onGenerate,
   onCreate,
   onStatus,
-  onMetric,
-  measurements = [],
-  measurementsError = null,
-  onMeasure,
   criteria = [],
   criteriaError = null,
   onSuccess,
@@ -278,8 +260,11 @@ export function MilestonesView({
   onGenerate: () => void;
   onCreate: (input: ManualMilestoneInput) => void;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
-  onMetric: (milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void;
-  /** P3-02 measurement history for this roadmap, read from Roadmap only. */
+  /**
+   * Advanced numeric measurement. Accepted for backend compatibility and no
+   * longer rendered in the everyday milestone surface.
+   */
+  onMetric?: ((milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void) | undefined;
   measurements?: MilestoneMeasurement[];
   measurementsError?: string | null;
   onMeasure?: ((milestone: RoadmapMilestone, input: MeasurementInput) => void) | undefined;
@@ -392,13 +377,9 @@ export function MilestonesView({
               key={milestone.id}
               milestone={milestone}
               busyId={busyId}
-              measurements={measurements.filter((row) => row.milestoneId === milestone.id)}
-              measurementsError={measurementsError}
               criteria={criteria.filter((row) => row.milestoneId === milestone.id)}
               criteriaError={criteriaError}
               onStatus={onStatus}
-              onMetric={onMetric}
-              onMeasure={onMeasure}
               onSuccess={onSuccess}
               onCriterionAdd={onCriterionAdd}
               onCriterionToggle={onCriterionToggle}
