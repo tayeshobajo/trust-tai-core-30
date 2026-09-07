@@ -30,6 +30,7 @@ import type {
 import { MILESTONE_STATUSES } from "@/domain/roadmap-intel";
 import { readOutcomeMetric } from "@/domain/milestone-metric";
 import { readMilestoneSuccess } from "@/domain/milestone-success";
+import type { MilestoneAcceptance } from "@/domain/milestone-acceptance";
 
 export type Row = Record<string, unknown>;
 
