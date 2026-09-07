@@ -424,6 +424,12 @@ complete because it can display or create a record.
   diagnosis with no action is a defect, not a design.
 - Every empty, warning, waiting, blocked or incomplete state answers "what can
   I do next?" whenever a legitimate human action exists.
+- Manual create is first class. Where a model can generate a record, a person
+  must be able to create the same record by hand, without a model call, and the
+  manual path may write Decided truth directly because typing it is the
+  decision. Generation stays assistance, never the only doorway. A manual path
+  asks only for what the store genuinely requires and leaves everything else
+  honestly empty rather than defaulting it.
 - Read-only is a statement about ownership or authority, said out loud. A field
   is never read-only because the screen forgot a control.
 - Changes go through the owning service, under RLS, with the existing
