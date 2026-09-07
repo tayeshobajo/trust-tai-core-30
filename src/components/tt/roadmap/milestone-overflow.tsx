@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { milestoneActions } from "@/domain/milestone-actions";
@@ -22,10 +23,19 @@ export function MilestoneOverflow({
   milestone,
   busy,
   onPick,
+  detailOpen = false,
+  rankingOpen = false,
+  onDetail,
+  onRanking,
 }: {
   milestone: RoadmapMilestone;
   busy: boolean;
   onPick: (status: MilestoneStatus) => void;
+  /** Ranking and evidence plumbing lives here, never in the everyday scan. */
+  detailOpen?: boolean;
+  rankingOpen?: boolean;
+  onDetail?: (() => void) | undefined;
+  onRanking?: (() => void) | undefined;
 }) {
   return (
     <DropdownMenu>
