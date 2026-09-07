@@ -72,10 +72,10 @@ export function ClientProjectWorkspace({
                 aria-current={active ? "true" : undefined}
                 onClick={() => onSelect(project.id)}
                 className={cn(
-                  "inline-flex max-w-[18rem] items-center gap-2 rounded-full border px-3 py-1.5 text-[13px] transition-colors",
+                  "tt-pressable inline-flex max-w-[18rem] items-center gap-2 rounded-full border px-3 py-1.5 text-[13px]",
                   active
-                    ? "border-royal/40 bg-secondary font-medium text-foreground"
-                    : "border-border text-muted-foreground hover:text-foreground",
+                    ? "tt-active-surface font-medium text-foreground shadow-action"
+                    : "border-border text-muted-foreground hover:border-royal/30 hover:bg-secondary hover:text-foreground",
                 )}
               >
                 <span className="truncate">{project.name}</span>
