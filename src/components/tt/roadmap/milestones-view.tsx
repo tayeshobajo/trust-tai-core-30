@@ -298,8 +298,11 @@ export function MilestonesView({
               key={milestone.id}
               milestone={milestone}
               busyId={busyId}
+              measurements={measurements.filter((row) => row.milestoneId === milestone.id)}
+              measurementsError={measurementsError}
               onStatus={onStatus}
               onMetric={onMetric}
+              onMeasure={onMeasure}
             />
           ))}
         </ul>
