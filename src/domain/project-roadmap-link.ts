@@ -62,3 +62,16 @@ export function linkableRoadmaps<T extends LinkableRoadmap>(
 ): T[] {
   return roadmaps.filter((roadmap) => checkRoadmapLink(project, roadmap).ok);
 }
+
+/**
+ * The project a person linked to this roadmap, when one exists. Read only
+ * from the recorded link (`origin.roadmapId`); a matching company name is
+ * never treated as an association. Returns null when no canonical link
+ * exists, so callers say nothing rather than imply one.
+ */
+export function projectLinkedToRoadmap<T extends Pick<ExecutionProject, "id" | "origin">>(
+  projects: T[],
+  roadmapId: ID,
+): T | null {
+  return projects.find((project) => project.origin.roadmapId === roadmapId) ?? null;
+}

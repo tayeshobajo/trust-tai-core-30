@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   checkRoadmapLink,
   linkableRoadmaps,
+  projectLinkedToRoadmap,
   roadmapLinkKey,
   type LinkableRoadmap,
 } from "@/domain/project-roadmap-link";
