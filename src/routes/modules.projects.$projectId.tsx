@@ -287,6 +287,39 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
   const [busyId, setBusyId] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [generateStage, setGenerateStage] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  /**
+   * Candidate generation runs here, but the work belongs to Roadmap: the same
+   * canonical detail read and the same research run the Roadmap room uses.
+   * Candidates land Inferred and Proposed. Nothing here can approve itself.
+   */
+  const generate = useMutation({
+    mutationFn: async () => {
+      if (!roadmap) throw new Error("Link a roadmap before generating candidates.");
+      setGenerateError(null);
+      const detail = await roadmapService.detail(roadmap.id, org);
+      if (!detail) throw new Error("That roadmap could not be read.");
+      await runRoadmapResearch({
+        detail,
+        intelContext,
+        accessToken: async () => {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (!token) throw new Error("Your session expired. Sign in again to research.");
+          return token;
+        },
+        onStage: setGenerateStage,
+      });
+    },
+    onSettled: () => setGenerateStage(null),
+    onSuccess: () => void refreshRoadmap(),
+    onError: (cause) =>
+      setGenerateError(cause instanceof Error ? cause.message : "The research run failed."),
+  });
+
+
 
   const refreshRoadmap = async () => {
     await queryClient.invalidateQueries({ queryKey: ["roadmap"] });
