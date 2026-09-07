@@ -876,7 +876,10 @@ describe("one service for both rooms", () => {
   it("wires the Project workroom and the Roadmap room to the same hook", async () => {
     const fs = await import("node:fs/promises");
     const roadmapRoom = await fs.readFile("src/routes/modules.roadmap.$roadmapId.tsx", "utf8");
-    const workroom = await fs.readFile("src/routes/modules.projects.$projectId.tsx", "utf8");
+    const workroom = await fs.readFile(
+      "src/components/tt/projects/detail/workroom.tsx",
+      "utf8",
+    );
     for (const source of [roadmapRoom, workroom]) {
       expect(source).toContain("useMilestoneAcceptance");
       expect(source).toContain("roadmapIntel");

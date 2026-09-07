@@ -78,6 +78,7 @@ export function OverviewTab({
   exchange,
   commercial,
   roadmapProject = null,
+  clientId,
 }: {
   reads: OverviewReads;
   cadence: ReviewCadence;
@@ -91,6 +92,8 @@ export function OverviewTab({
    * Never inferred; null means no handoff line is drawn.
    */
   roadmapProject?: Pick<ExecutionProject, "id" | "name"> | null;
+  /** Keeps project doors inside this client's workspace. */
+  clientId: string;
 }) {
   const compose: OverviewComposeInput = {
     projects: reads.projects,
@@ -112,7 +115,12 @@ export function OverviewTab({
 
       <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
         <div className="lg:col-span-2">
-          <InMotion read={reads.projects} loading={reads.loading.projects} timeZone={timeZone} />
+          <InMotion
+            read={reads.projects}
+            loading={reads.loading.projects}
+            timeZone={timeZone}
+            clientId={clientId}
+          />
         </div>
         <NeedsAttention items={attention} loading={reads.loading.approvals} />
       </div>
@@ -230,10 +238,12 @@ function InMotion({
   read,
   loading,
   timeZone,
+  clientId,
 }: {
   read: RoomRead<ExecutionProject[]> | null;
   loading: boolean;
   timeZone: string;
+  clientId: string;
 }) {
   return (
     <section aria-labelledby="overview-in-motion" className={CARD}>
@@ -271,7 +281,7 @@ function InMotion({
               <ul className="divide-y divide-border">
                 {open.map((project) => (
                   <li key={project.id}>
-                    <ProjectRow project={project} timeZone={timeZone} flat />
+                    <ProjectRow project={project} timeZone={timeZone} flat clientId={clientId} />
                   </li>
                 ))}
               </ul>

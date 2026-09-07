@@ -26,7 +26,10 @@ import {
   type ClientChatEntry,
   type ClientProposalState,
 } from "@/components/tt/clients/chat";
-import { FilesTab, ProjectsTab, RelationshipTab } from "@/components/tt/clients/tabs";
+import { FilesTab, RelationshipTab } from "@/components/tt/clients/tabs";
+import { ClientProjectWorkspace } from "@/components/tt/clients/project-workspace";
+import type { ProjectTab } from "@/components/tt/projects/detail/frame";
+import { isProjectSurface } from "@/domain/project-workroom-ia";
 
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
@@ -91,10 +94,24 @@ const DESCRIPTION =
   "One company: tier, commercial value, next review, delivery in flight, the people we know there, and what has happened.";
 
 export const Route = createFileRoute("/modules/clients/$clientId")({
-  /* Overview is the door; it carries no `tab` so plain client links stay clean. */
-  validateSearch: (search: Record<string, unknown>): { tab?: ClientTab } => {
+  /**
+   * Overview is the door; it carries no `tab` so plain client links stay clean.
+   * `project` and `view` remember which project is open inside this client and
+   * which of its surfaces is showing, so refresh, back/forward and a shared
+   * link all land in the same place without leaving the client.
+   */
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: ClientTab; project?: string; view?: ProjectTab } => {
     const tab = parseClientTab(search["tab"]);
-    return tab === "overview" ? {} : { tab };
+    const project = typeof search["project"] === "string" ? search["project"] : undefined;
+    const rawView = search["view"];
+    const view = isProjectSurface(rawView) ? rawView : undefined;
+    return {
+      ...(tab === "overview" ? {} : { tab }),
+      ...(project ? { project } : {}),
+      ...(view && view !== "overview" ? { view } : {}),
+    };
   },
   head: () => ({
     meta: [
@@ -112,11 +129,24 @@ export const Route = createFileRoute("/modules/clients/$clientId")({
 
 function ClientRoute() {
   const { clientId } = Route.useParams();
-  const { tab } = Route.useSearch();
+  const { tab, project, view } = Route.useSearch();
+  const navigate = Route.useNavigate();
   return (
     <WorkspaceGate appId="clients">
       {(identity) => (
-        <ClientShell identity={identity} clientId={clientId} tab={tab ?? "overview"} />
+        <ClientShell
+          identity={identity}
+          clientId={clientId}
+          tab={tab ?? "overview"}
+          selectedProjectId={project ?? null}
+          projectSurface={view ?? "overview"}
+          onSelectProject={(projectId) =>
+            void navigate({ search: (prev) => ({ ...prev, project: projectId }) })
+          }
+          onProjectSurface={(next) =>
+            void navigate({ search: (prev) => ({ ...prev, view: next }) })
+          }
+        />
       )}
     </WorkspaceGate>
   );
@@ -138,10 +168,18 @@ function ClientShell({
   identity,
   clientId,
   tab,
+  selectedProjectId,
+  projectSurface,
+  onSelectProject,
+  onProjectSurface,
 }: {
   identity: WorkspaceIdentity;
   clientId: string;
   tab: ClientTab;
+  selectedProjectId: string | null;
+  projectSurface: ProjectTab;
+  onSelectProject: (projectId: string) => void;
+  onProjectSurface: (tab: ProjectTab) => void;
 }) {
   const now = useMemo(() => new Date(), []);
   const organizationId = identity.organizationId;
@@ -751,6 +789,7 @@ function ClientShell({
         <div role="tabpanel" aria-label={tab}>
           {tab === "overview" ? (
             <OverviewTab
+              clientId={clientId}
               reads={{
                 roadmap:
                   roadmapOutcomes === null
@@ -788,12 +827,26 @@ function ClientShell({
           ) : null}
 
           {tab === "projects" ? (
-            <ProjectsTab
-              read={projectsForTab}
-              loading={projectsQuery.isLoading}
-              timeZone={timeZone}
-            />
+            projectsForTab && !projectsForTab.available ? (
+              <p className="text-sm text-muted-foreground">
+                Delivery could not be read: {projectsForTab.because}
+              </p>
+            ) : (
+              /* The project's own workroom, in place. Projects and Roadmap still
+                 own the truth underneath; this is the same component the
+                 standalone room renders. */
+              <ClientProjectWorkspace
+                identity={identity}
+                projects={projects}
+                selectedId={selectedProjectId}
+                surface={projectSurface}
+                loading={projectsQuery.isLoading}
+                onSelect={onSelectProject}
+                onSurfaceChange={onProjectSurface}
+              />
+            )
           ) : null}
+
           {tab === "relationship" ? (
             <RelationshipTab
               read={relationshipRead}
