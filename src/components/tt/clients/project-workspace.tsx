@@ -48,7 +48,8 @@ export function ClientProjectWorkspace({
     return (
       <EmptyState
         title="No delivery work recorded"
-        body="No project names this company yet. Projects still owns that record; start one there and it will appear here."
+        belongsHere="Delivery for this company is operated here."
+        whyItMatters="No project names this company yet. Projects still owns that record; start one there and it will appear here."
         action={
           <Link to="/modules/projects" className="text-sm font-medium text-royal">
             Open the Projects room
@@ -56,6 +57,7 @@ export function ClientProjectWorkspace({
         }
       />
     );
+
   }
 
   const selected = projects.find((project) => project.id === selectedId) ?? projects[0]!;
