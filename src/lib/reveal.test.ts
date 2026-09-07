@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  firstFocusable,
-  needsScroll,
-  prefersReducedMotion,
-  revealBehavior,
-} from "@/lib/reveal";
+import { firstFocusable, needsScroll, prefersReducedMotion, revealBehavior } from "@/lib/reveal";
 
 describe("revealBehavior", () => {
   it("scrolls smoothly by default and instantly under reduced motion", () => {
