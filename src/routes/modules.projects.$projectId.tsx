@@ -955,6 +955,112 @@ function DeliveryRoom({ identity, projectId }: { identity: WorkspaceIdentity; pr
             />
           ) : null}
 
+          {tab === "files" ? (
+            <div className="mt-8 space-y-8">
+              <WorkroomSection
+                section="assets"
+                title="Assets"
+                description="Deliverable material produced for this work."
+              >
+                <AssetsTab
+                  assets={assets}
+                  items={items}
+                  busy={busy}
+                  onUpload={(file, assetType: AssetType, workItemId) =>
+                    mutate.mutate(() =>
+                      projectIntelligence.uploadAsset(
+                        file,
+                        { assetType, ...(workItemId ? { workItemId } : {}) },
+                        delivery,
+                      ),
+                    )
+                  }
+                  onStatus={(asset, status) =>
+                    mutate.mutate(() => projectIntelligence.setAssetStatus(asset, status, delivery))
+                  }
+                  onOpen={(asset, download) => {
+                    setFileError(null);
+                    const linked = files.find((entry) => entry.id === asset.fileId);
+                    if (!linked) {
+                      setFileError("That asset file is no longer readable.");
+                      return;
+                    }
+                    void projectDelivery
+                      .fileUrl(linked, download)
+                      .then((url) => window.open(url, "_blank", "noopener,noreferrer"))
+                      .catch((cause: unknown) => {
+                        setFileError(
+                          cause instanceof Error
+                            ? cause.message
+                            : "That asset could not be opened.",
+                        );
+                      });
+                  }}
+                />
+              </WorkroomSection>
+
+              <WorkroomSection
+                section="knowledge"
+                title="Knowledge"
+                description="What this project knows, and who confirmed it."
+              >
+                <KnowledgeTab
+                  knowledge={knowledge}
+                  busy={busy}
+                  onAdd={(input) =>
+                    mutate.mutate(() => projectIntelligence.addKnowledge(input, delivery))
+                  }
+                  onConfirm={(item) =>
+                    mutate.mutate(() =>
+                      projectIntelligence.setKnowledgeReview(item, "confirmed", delivery),
+                    )
+                  }
+                  onSupersede={(item) =>
+                    mutate.mutate(() =>
+                      projectIntelligence.setKnowledgeReview(item, "superseded", delivery),
+                    )
+                  }
+                />
+              </WorkroomSection>
+
+              <WorkroomSection
+                section="context"
+                title="Context and sources"
+                description="Linked sources and the thinking this work is built on."
+              >
+                <ContextTab
+                  packet={packet}
+                  health={health}
+                  suggestions={suggestions}
+                  thinking={thinking}
+                  connections={connections}
+                  busy={busy}
+                  onAddThinking={(input) =>
+                    mutate.mutate(() => projectIntelligence.addThinking(input, delivery))
+                  }
+                  onPrimaryThinking={(source) =>
+                    mutate.mutate(() => projectIntelligence.markPrimaryThinking(source, delivery))
+                  }
+                  onRemoveThinking={(source) =>
+                    mutate.mutate(() => projectIntelligence.removeThinking(source, delivery))
+                  }
+                  onImportThinking={(source, text) =>
+                    mutate.mutate(() => projectIntelligence.importThinking(source, text, delivery))
+                  }
+                  onAddConnection={(input) =>
+                    mutate.mutate(() => projectIntelligence.addConnection(input, delivery))
+                  }
+                  onRemoveConnection={(connection) =>
+                    mutate.mutate(() => projectIntelligence.removeConnection(connection, delivery))
+                  }
+                  onDismissSuggestion={(id) => setDismissed((current) => [...current, id])}
+                />
+              </WorkroomSection>
+            </div>
+          ) : null}
+
+
+
           {tab === "activity" ? <ActivityTab events={activityQuery.data ?? []} /> : null}
 
           {tab === "chat" ? (
