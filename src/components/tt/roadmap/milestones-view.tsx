@@ -205,6 +205,10 @@ function MilestoneCard({
             setPending(status);
             setNote("");
           }}
+          detailOpen={detail}
+          rankingOpen={open}
+          onDetail={() => setDetail((value) => !value)}
+          onRanking={() => setOpen((value) => !value)}
         />
       </div>
 
