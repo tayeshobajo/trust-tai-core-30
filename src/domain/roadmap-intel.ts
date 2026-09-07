@@ -17,6 +17,7 @@
 import type { ConfidenceLevel } from "./confidence";
 import type { OutcomeMetric } from "./milestone-metric";
 import type { MilestoneSuccess } from "./milestone-success";
+import type { MilestoneAcceptance } from "./milestone-acceptance";
 import type { ID, ISODateTime } from "./entities";
 import type { Tier } from "./roadmap";
 
@@ -212,6 +213,11 @@ export interface RoadmapMilestone {
    * has described success yet, never an empty promise.
    */
   success?: MilestoneSuccess | null;
+  /**
+   * Delivery acceptance: the explicit human fact that the work was accepted.
+   * Distinct from roadmap approval, and the only definition of complete.
+   */
+  acceptance?: MilestoneAcceptance | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }

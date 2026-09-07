@@ -18,10 +18,11 @@
  */
 
 import { criteriaProgress, type AcceptanceCriterion } from "./milestone-criteria";
+import { acceptanceSummary, isAccepted } from "./milestone-acceptance";
 import type { RoadmapMilestone } from "./roadmap-intel";
 
 /** Where the milestone stands, in the order a person works through it. */
-export type LifecycleStep = "outcome" | "criteria" | "acceptance";
+export type LifecycleStep = "outcome" | "criteria" | "acceptance" | "accepted";
 
 /** What a person can do next, when something is missing. */
 export type LifecycleFix = "outcome" | "criteria" | null;
@@ -36,6 +37,8 @@ export interface MilestoneLifecycle {
   progressLabel: string;
   /** True only when a person may make the final call now. */
   ready: boolean;
+  /** True once a person has explicitly accepted the delivered work. */
+  accepted: boolean;
   /** One plain line for the current state. */
   headline: string;
   /** What still has to be true, or null when nothing does. */
@@ -50,10 +53,11 @@ const STEP_LABEL: Record<LifecycleStep, string> = {
   outcome: "Describe success",
   criteria: "Work through the conditions",
   acceptance: "Ready for acceptance",
+  accepted: "Accepted",
 };
 
 export const ACCEPTANCE_READY =
-  "Every condition is checked. This is ready for your acceptance; there is no place to record that decision yet.";
+  "Every condition is checked. This is ready for a person to accept.";
 
 export function milestoneLifecycle(
   milestone: RoadmapMilestone,
@@ -64,7 +68,20 @@ export function milestoneLifecycle(
   const progressLabel = progress.total > 0 ? `${progress.done}/${progress.total}` : "";
   const outcome = milestone.success?.outcome?.trim() ?? "";
 
-  const base = { progress, progressLabel };
+  const base = { progress, progressLabel, accepted: isAccepted(milestone) };
+
+  if (milestone.acceptance) {
+    return {
+      ...base,
+      step: "accepted",
+      stepLabel: STEP_LABEL.accepted,
+      ready: false,
+      headline: acceptanceSummary(milestone.acceptance),
+      remaining: milestone.acceptance.note?.trim() || null,
+      fix: null,
+      fixLabel: null,
+    };
+  }
 
   if (!outcome) {
     return {
