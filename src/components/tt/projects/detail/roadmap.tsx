@@ -9,6 +9,7 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
+import type { MeasurementInput, MilestoneMeasurement } from "@/domain/milestone-measurement";
 import { MilestonesView } from "@/components/tt/roadmap/milestones-view";
 import { EmptyState, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
 import type { ManualMilestoneInput } from "@/domain/milestone-create";
@@ -140,6 +141,9 @@ export function ProjectRoadmapTab({
   onCreate,
   onStatus,
   onMetric,
+  measurements = [],
+  measurementsError = null,
+  onMeasure,
 }: {
   roadmap: Roadmap | null;
   milestones: RoadmapMilestone[];
@@ -158,6 +162,14 @@ export function ProjectRoadmapTab({
   onCreate: (input: ManualMilestoneInput) => void;
   onStatus: (milestone: RoadmapMilestone, status: MilestoneStatus, note: string) => void;
   onMetric: (milestone: RoadmapMilestone, metric: OutcomeMetricInput | null) => void;
+  /**
+   * Measurements are Roadmap's truth (Canon 17). The workroom passes them
+   * through to the same Roadmap component and the same Roadmap service; it
+   * keeps no measurement store of its own.
+   */
+  measurements?: MilestoneMeasurement[];
+  measurementsError?: string | null;
+  onMeasure?: ((milestone: RoadmapMilestone, input: MeasurementInput) => void) | undefined;
 }) {
   if (!roadmap) {
     return <LinkPanel candidates={candidates} busy={linking} error={linkError} onLink={onLink} />;
@@ -196,6 +208,9 @@ export function ProjectRoadmapTab({
             onCreate={onCreate}
             onStatus={onStatus}
             onMetric={onMetric}
+            measurements={measurements}
+            measurementsError={measurementsError}
+            onMeasure={onMeasure}
           />
         </>
       )}
