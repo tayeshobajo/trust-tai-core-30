@@ -127,3 +127,33 @@ describe("milestoneLifecycle", () => {
     expect(read.progress.total).toBe(0);
   });
 });
+
+describe("milestoneLifecycle delivery acceptance", () => {
+  const accepted = milestone({
+    ...withOutcome,
+    acceptance: {
+      acceptedAt: "2026-09-07T10:00:00.000Z",
+      acceptedBy: "u1",
+      acceptedByLabel: "Tai",
+      note: "Client signed off on the call.",
+    },
+  });
+
+  it("reads complete from acceptance, not from roadmap approval", () => {
+    const read = milestoneLifecycle(accepted, [criterion({ done: true })]);
+    expect(read.step).toBe("accepted");
+    expect(read.accepted).toBe(true);
+    expect(read.ready).toBe(false);
+    expect(read.headline).toContain("Accepted by Tai");
+  });
+
+  it("leaves an approved but unaccepted milestone merely ready", () => {
+    const read = milestoneLifecycle(
+      milestone({ ...withOutcome, status: "approved", tier: "decided" }),
+      [criterion({ done: true })],
+    );
+    expect(read.accepted).toBe(false);
+    expect(read.ready).toBe(true);
+    expect(read.step).toBe("acceptance");
+  });
+});
