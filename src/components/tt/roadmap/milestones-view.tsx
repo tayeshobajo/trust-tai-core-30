@@ -116,6 +116,7 @@ function MilestoneCard({
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState<MilestoneStatus | null>(null);
   const busy = busyId === milestone.id;
+  const lifecycle = milestoneLifecycle(milestone, criteria);
 
   return (
     <li className="tt-surface p-6">
