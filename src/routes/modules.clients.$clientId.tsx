@@ -789,6 +789,7 @@ function ClientShell({
         <div role="tabpanel" aria-label={tab}>
           {tab === "overview" ? (
             <OverviewTab
+              clientId={clientId}
               reads={{
                 roadmap:
                   roadmapOutcomes === null

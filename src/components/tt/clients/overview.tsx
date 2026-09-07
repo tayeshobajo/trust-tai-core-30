@@ -78,6 +78,7 @@ export function OverviewTab({
   exchange,
   commercial,
   roadmapProject = null,
+  clientId,
 }: {
   reads: OverviewReads;
   cadence: ReviewCadence;
@@ -91,6 +92,8 @@ export function OverviewTab({
    * Never inferred; null means no handoff line is drawn.
    */
   roadmapProject?: Pick<ExecutionProject, "id" | "name"> | null;
+  /** Keeps project doors inside this client's workspace. */
+  clientId: string;
 }) {
   const compose: OverviewComposeInput = {
     projects: reads.projects,
@@ -271,7 +274,7 @@ function InMotion({
               <ul className="divide-y divide-border">
                 {open.map((project) => (
                   <li key={project.id}>
-                    <ProjectRow project={project} timeZone={timeZone} flat />
+                    <ProjectRow project={project} timeZone={timeZone} flat clientId={clientId} />
                   </li>
                 ))}
               </ul>
