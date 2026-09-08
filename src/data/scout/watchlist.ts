@@ -72,8 +72,7 @@ export const SUPPORTED_IMPORT_EXTENSIONS = [".csv", ".tsv", ".txt"] as const;
 export const IMPORT_FILE_ACCEPT = ".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain";
 
 export type ImportFileSupport =
-  | { readable: true; extension: string }
-  | { readable: false; because: string };
+  { readable: true; extension: string } | { readable: false; because: string };
 
 /** Whether a chosen file is one we can honestly read, by its name alone. */
 export function importFileSupport(fileName: string): ImportFileSupport {
@@ -175,7 +174,8 @@ export function parseDelimitedRows(text: string, delimiter?: string): DelimitedR
   return rows;
 }
 
-const HEADER_WORDS = /^(company|company name|name|business|organisation|organization|website|site|url|domain|web address|notes?)$/i;
+const HEADER_WORDS =
+  /^(company|company name|name|business|organisation|organization|website|site|url|domain|web address|notes?)$/i;
 
 /** True when the first row names its columns rather than listing a company. */
 export function looksLikeHeader(row: DelimitedRow | undefined): boolean {

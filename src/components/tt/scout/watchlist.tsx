@@ -349,12 +349,7 @@ export function ScoutWatchlist({
               Review list
             </TTButton>
             {staged ? (
-              <TTButton
-                type="button"
-                size="sm"
-                variant="quiet"
-                onClick={discardStaged}
-              >
+              <TTButton type="button" size="sm" variant="quiet" onClick={discardStaged}>
                 Discard
               </TTButton>
             ) : null}
