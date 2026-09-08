@@ -16,6 +16,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { trustTaiSupabaseUrl } from "./trust-tai-backend.server";
 import { mergeObservedRows } from "@/data/scout/research-run";
+import { appendObservationLog, diffObservations } from "@/data/scout/movement";
 import {
   DEFAULT_SWEEP_SETTINGS,
   cadenceDue,
