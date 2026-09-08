@@ -18,6 +18,7 @@ import type { ProspectRow, Row } from "./schema";
 import { toProspect } from "./prospects";
 import { readCompanyIdentity } from "@/lib/company-identity";
 import { readResearchHistory } from "@/data/prospect-modules";
+import { readObservationLog } from "@/data/scout/movement";
 import { readScoutIntel } from "@/data/scout-intel";
 import { companyProfile } from "@/data/scout-profile";
 
@@ -276,6 +277,7 @@ export function candidateFromResearchRow(
     profile: companyProfile(inferred, observationFacts(observed)),
 
     history: readResearchHistory(row.metadata),
+    movement: readObservationLog(row.metadata),
     intel: readScoutIntel(row.metadata),
   };
 }

@@ -38,6 +38,7 @@ import type { RelationshipResearchMarker } from "@/domain/relationship-developme
 import type { DecisionMoveKey } from "@/data/scout/decision-state";
 
 import { areasCovered, mergeObservedRows, type ResearchRunPlan } from "@/data/scout/research-run";
+import { appendObservationLog, diffObservations } from "@/data/scout/movement";
 import {
   planSweep,
   summarizeSweep,
@@ -661,6 +662,13 @@ export const scoutService = {
     });
     const observed = merge.merged;
 
+    // What this pass observed differently from what was held. Recorded here
+    // because the prior observations do not survive the merge. Evidence only.
+    const observationLog = appendObservationLog(existing?.metadata, {
+      at: new Date().toISOString(),
+      changes: diffObservations({ previous: priorObserved, incoming: payload.observed ?? [] }),
+    });
+
     const evaluation = evaluateScoutFit({
       observed,
       inferred: payload.inferred ?? {},
@@ -691,6 +699,7 @@ export const scoutService = {
           existing?.metadata,
           runFromEvaluation(evaluation, evaluation.evaluatedAt),
         ),
+        ...(observationLog.length > 0 ? { observation_log: observationLog } : {}),
       },
 
       existing,

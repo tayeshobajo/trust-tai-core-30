@@ -16,6 +16,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { trustTaiSupabaseUrl } from "./trust-tai-backend.server";
 import { mergeObservedRows } from "@/data/scout/research-run";
+import { appendObservationLog, diffObservations } from "@/data/scout/movement";
 import {
   DEFAULT_SWEEP_SETTINGS,
   cadenceDue,
@@ -264,6 +265,13 @@ async function writeObservation(
     runFromEvaluation(evaluation, evaluation.evaluatedAt),
   );
 
+  // What this read actually observed differently, recorded now because the
+  // previous observations are not kept anywhere else after the merge. Evidence
+  // only: fit, criteria and page counts are deliberately not consulted.
+  const observedChanges = diffObservations({ previous, incoming: payload.observed ?? [] });
+  const log = appendObservationLog(row["metadata"], { at, changes: observedChanges });
+  if (log.length > 0) metadata["observation_log"] = log;
+
   const { error } = await db
     .from("prospects")
     .update({
@@ -285,7 +293,9 @@ async function writeObservation(
     .eq("id", row["id"] as string);
   if (error) throw new Error(error.message);
 
-  const changed = merge.added > 0 || merge.replaced > 0;
+  // A re-read that returned the same words is not a change, even though the
+  // row was rewritten.
+  const changed = observedChanges.length > 0;
 
   await db.from("activities").upsert(
     {
