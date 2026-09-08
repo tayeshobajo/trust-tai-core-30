@@ -24,9 +24,9 @@ describe("observed evidence delta", () => {
 
   it("ignores whitespace and case", () => {
     const previous = [row("offer", "We help clinics")];
-    expect(
-      diffObservations({ previous, incoming: [row("offer", "  we  HELP clinics ")] }),
-    ).toEqual([]);
+    expect(diffObservations({ previous, incoming: [row("offer", "  we  HELP clinics ")] })).toEqual(
+      [],
+    );
   });
 
   it("treats a first-ever read as coverage, never movement", () => {
@@ -38,7 +38,10 @@ describe("observed evidence delta", () => {
   it("reports an added observation with its statement and page", () => {
     const changes = diffObservations({
       previous: [row("offer", "We help clinics")],
-      incoming: [row("offer", "We help clinics"), row("pricing", "From 400 a month", "https://x/p")],
+      incoming: [
+        row("offer", "We help clinics"),
+        row("pricing", "From 400 a month", "https://x/p"),
+      ],
     });
     expect(changes).toHaveLength(1);
     expect(changes[0]!.kind).toBe("added");
@@ -160,7 +163,12 @@ describe("the Movement projection", () => {
         log: [
           {
             at: "2026-09-05T10:00:00Z",
-            changes: [change({ key: "a" }), change({ key: "b" }), change({ key: "c" }), change({ key: "d" })],
+            changes: [
+              change({ key: "a" }),
+              change({ key: "b" }),
+              change({ key: "c" }),
+              change({ key: "d" }),
+            ],
           },
         ],
       },
@@ -182,9 +190,9 @@ describe("the Movement projection", () => {
 
   it("words each change plainly, with no urgency or score", () => {
     expect(describeChange(change())).toBe("Now says: We help clinics");
-    expect(describeChange(change({ kind: "changed", label: "Pricing", statement: "From 400" }))).toBe(
-      "Pricing now reads: From 400",
-    );
+    expect(
+      describeChange(change({ kind: "changed", label: "Pricing", statement: "From 400" })),
+    ).toBe("Pricing now reads: From 400");
     expect(describeChange(change({ kind: "removed", label: "Pricing" }))).toBe(
       "Pricing is no longer stated on the page it was read from",
     );

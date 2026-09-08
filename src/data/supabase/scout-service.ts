@@ -669,7 +669,6 @@ export const scoutService = {
       changes: diffObservations({ previous: priorObserved, incoming: payload.observed ?? [] }),
     });
 
-
     const evaluation = evaluateScoutFit({
       observed,
       inferred: payload.inferred ?? {},
