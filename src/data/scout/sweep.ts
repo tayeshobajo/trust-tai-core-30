@@ -14,6 +14,7 @@ import type { ProspectCandidate } from "@/domain/scout";
 import { lastResearchedAt } from "./research-brief";
 import { researchPermission } from "./research-consent";
 import { RESEARCH_STALE_DAYS } from "./research-run";
+import { computeCoverage } from "@/data/prospect-modules";
 
 /** How many companies one run may read. Bounded, always. */
 export const SWEEP_PER_RUN_CAP = 10;
@@ -277,4 +278,35 @@ export function summarizeSweep(input: { plan: SweepPlan; outcomes: SweepOutcome[
     countsLine: counts.join(" · "),
     quietLine,
   };
+}
+
+/* --------------------------------------------------------- coverage --- */
+
+export interface WatchlistCoverageCounts {
+  watched: number;
+  read: number;
+  neverRead: number;
+  unreadable: number;
+  /** Counts only. Never a percentage, never a completeness label. */
+  line: string;
+}
+
+/**
+ * How much of the watched list has actually been read. Counts only, and a
+ * company that has never been read is said in words, never scored as a zero.
+ */
+export function watchlistCoverage(candidates: ProspectCandidate[]): WatchlistCoverageCounts {
+  const watched = watchedCandidates(candidates);
+  let read = 0;
+  let unreadable = 0;
+  let neverRead = 0;
+  for (const candidate of watched) {
+    const state = computeCoverage(candidate).state;
+    if (state === "read") read += 1;
+    else if (state === "unreadable") unreadable += 1;
+    else neverRead += 1;
+  }
+  const parts = [`${watched.length} watched`, `${read} read`, `${neverRead} never read`];
+  if (unreadable > 0) parts.push(`${unreadable} could not be read`);
+  return { watched: watched.length, read, neverRead, unreadable, line: parts.join(" · ") };
 }

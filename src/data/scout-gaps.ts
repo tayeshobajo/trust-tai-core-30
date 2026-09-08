@@ -28,7 +28,7 @@ export function buildGapPlan({ candidate, intel, plan, coverage }: GapInput): Ga
       autonomous: true,
     });
   } else {
-    if (coverage?.thin) {
+    if (coverage?.sparse) {
       gaps.push({
         key: "coverage",
         label: "Only part of the public site has been read",

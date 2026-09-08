@@ -9,23 +9,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 
 import type { ScoutGlance } from "@/components/tt/scout/sidebar";
 
-function share(value: number, total: number): string | null {
-  if (!total) return null;
-  return `${Math.round((value / total) * 100)}% of total`;
-}
-
-function GlanceCard({
-  label,
-  value,
-  total,
-  tone,
-}: {
-  label: string;
-  value: number;
-  total: number;
-  tone: string;
-}) {
-  const pct = share(value, total);
+function GlanceCard({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
     <div className="rounded-xl border border-border bg-card px-4 py-3">
       <div className="flex items-center justify-between gap-3">
@@ -35,30 +19,18 @@ function GlanceCard({
         </span>
         <span className="shrink-0 font-mono text-[15px] text-foreground">{value}</span>
       </div>
-      {pct ? <p className="mt-1 pl-3.5 text-[11px] text-muted-foreground">{pct}</p> : null}
     </div>
   );
 }
 
 export function ScoutSupportRail({ glance }: { glance: ScoutGlance }) {
-  const total = glance.onBoard;
   return (
     <aside className="hidden w-[300px] shrink-0 space-y-3 xl:block" aria-label="Scout support">
       <p className="tt-eyebrow px-1">Scout at a glance</p>
-      <GlanceCard label="Qualified" value={glance.qualified} total={total} tone="bg-success" />
-      <GlanceCard label="In ICP" value={glance.inIcp} total={total} tone="bg-royal" />
-      <GlanceCard
-        label="High potential"
-        value={glance.highPotential}
-        total={total}
-        tone="bg-warning"
-      />
-      <GlanceCard
-        label="Needs review"
-        value={glance.needsReview}
-        total={total}
-        tone="bg-destructive"
-      />
+      <GlanceCard label="Qualified" value={glance.qualified} tone="bg-success" />
+      <GlanceCard label="In ICP" value={glance.inIcp} tone="bg-royal" />
+      <GlanceCard label="High potential" value={glance.highPotential} tone="bg-warning" />
+      <GlanceCard label="Needs review" value={glance.needsReview} tone="bg-destructive" />
 
       <section className="rounded-xl border border-border bg-cloud px-4 py-4">
         <div className="flex items-start gap-2.5">

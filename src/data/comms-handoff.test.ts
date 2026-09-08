@@ -135,9 +135,12 @@ describe("buildHandoffDraft", () => {
       { key: "team", label: "Team page", reached: true },
       { key: "contact", label: "Contact page", reached: true },
     ],
-    percent: 80,
+    facts: 6,
+    reached: 4,
+    lastReadAt: "2026-09-01T00:00:00.000Z",
+    state: "read" as const,
     note: "Team and contact pages were reached.",
-    thin: false,
+    sparse: false,
   };
 
   const fitConfidence = {
@@ -263,9 +266,12 @@ describe("canonical reachability (LinkedIn route)", () => {
       { key: "team", label: "Team page", reached: true },
       { key: "contact", label: "Contact page", reached: true },
     ],
-    percent: 80,
+    facts: 6,
+    reached: 4,
+    lastReadAt: "2026-09-01T00:00:00.000Z",
+    state: "read" as const,
     note: "Team and contact pages were reached.",
-    thin: false,
+    sparse: false,
   };
 
   it("a confirmed LinkedIn route clears the no_email and email_unverified blockers", () => {

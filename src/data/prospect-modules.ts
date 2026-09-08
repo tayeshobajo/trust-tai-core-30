@@ -88,49 +88,71 @@ export function computeCoverage(candidate: ProspectCandidate): ResearchCoverage 
   const facts = candidate.facts ?? {};
   const pages =
     candidate.evaluation.pagesResearched ?? candidate.source.pagesResearched?.length ?? 0;
+  const factCount = candidate.signals.length;
   const known = PAGE_KINDS.filter((kind) => kind.key in facts);
   const checked = PAGE_KINDS.map((kind) => ({
     key: kind.key,
     label: kind.label,
     reached: facts[kind.key] === true,
   }));
+  const lastReadAt = candidate.lastCheckedAt ?? null;
 
   if (candidate.source.kind !== "live_website") {
     return {
-      pages,
+      pages: 0,
+      facts: factCount,
       checked: [],
-      percent: null,
-      note: "Preview records are not researched, so there is no coverage to report.",
-      thin: true,
+      reached: 0,
+      lastReadAt: null,
+      state: "never_read",
+      note: "Preview records are not researched, so there is nothing to report.",
+      sparse: true,
+    };
+  }
+
+  if (pages === 0 && factCount === 0) {
+    return {
+      pages: 0,
+      facts: 0,
+      checked: [],
+      reached: 0,
+      lastReadAt: lastReadAt,
+      state: lastReadAt ? "unreadable" : "never_read",
+      note: lastReadAt
+        ? "The website could not be read on the last attempt."
+        : "Not researched yet. Nothing has been read from this website, so there is nothing to report.",
+      sparse: true,
     };
   }
 
   if (known.length === 0) {
     return {
       pages,
+      facts: factCount,
       checked: [],
-      percent: null,
-      note:
-        pages > 0
-          ? `${pages} public ${pages === 1 ? "page" : "pages"} were read. This research pass predates page-level coverage reporting.`
-          : "No public pages have been read yet.",
-      thin: pages < 3,
+      reached: 0,
+      lastReadAt,
+      state: "read",
+      note: `${pages} public ${pages === 1 ? "page" : "pages"} read. Page kinds were not recorded on this pass.`,
+      sparse: pages < 3,
     };
   }
 
   const reached = checked.filter((kind) => kind.reached);
   const missed = checked.filter((kind) => !kind.reached).map((kind) => kind.label);
-  const percent = Math.round((reached.length / checked.length) * 100);
 
   return {
     pages,
+    facts: factCount,
     checked,
-    percent,
+    reached: reached.length,
+    lastReadAt,
+    state: "read",
     note:
       missed.length === 0
         ? `Every page kind was reached across ${pages} public ${pages === 1 ? "page" : "pages"}.`
         : `${missed.join(", ")} ${missed.length === 1 ? "was" : "were"} never reached. Absence there is not treated as a gap.`,
-    thin: percent < 50 || pages < 3,
+    sparse: reached.length * 2 < checked.length || pages < 3,
   };
 }
 
@@ -244,7 +266,7 @@ export function criterionConfidence(
             evidence,
           };
 
-  return coverage.thin
+  return coverage.sparse
     ? {
         ...base,
         level: base.level === "high" ? "moderate" : base.level,
@@ -298,7 +320,7 @@ export function fitConfidence(
       evidence,
     };
   }
-  if (coverage.thin) {
+  if (coverage.sparse) {
     return {
       level: "moderate",
       because: coverage.note,
@@ -355,7 +377,7 @@ export function computeNextMove(
     return {
       ...base,
       confidence: {
-        level: coverage.thin ? "moderate" : "high",
+        level: coverage.sparse ? "moderate" : "high",
         because: `Fit, evidence, and ${contacts} named ${contacts === 1 ? "person" : "people"} are on record.`,
         evidence: [
           { label: `${contacts} people on record`, kind: "computed" },
@@ -421,7 +443,7 @@ function nextMoveBase(
     };
   }
 
-  if (coverage.thin && coverage.percent !== null) {
+  if (coverage.sparse && coverage.state === "read") {
     return {
       action: "research",
       headline: "Research is still thin",
@@ -508,7 +530,7 @@ export function emphasisFor(
   }
 
   // Evidence is not trustworthy enough to lead with a judgement yet.
-  if (input.needsRescore || input.coverage.thin) {
+  if (input.needsRescore || input.coverage.sparse) {
     if (id === "coverage") {
       return { emphasis: "primary", reason: "Coverage decides how far the rest can be trusted." };
     }

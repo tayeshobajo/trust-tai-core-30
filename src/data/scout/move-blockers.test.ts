@@ -31,8 +31,8 @@ const candidate = (over: { scoreable?: boolean } = {}): ProspectCandidate =>
     evaluation: { scoreable: over.scoreable ?? true, score: 86, light: "green" },
   }) as unknown as ProspectCandidate;
 
-const full = { thin: false } as ResearchCoverage;
-const thin = { thin: true } as ResearchCoverage;
+const full = { sparse: false } as unknown as ResearchCoverage;
+const thin = { sparse: true } as unknown as ResearchCoverage;
 
 describe("buildMoveBlockers", () => {
   it("an unverified email gets the inline confirm action, bound to its person", () => {
