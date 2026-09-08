@@ -18,12 +18,15 @@ import { trustTaiSupabaseUrl } from "./trust-tai-backend.server";
 import { mergeObservedRows } from "@/data/scout/research-run";
 import {
   DEFAULT_SWEEP_SETTINGS,
+  cadenceDue,
   planSweep,
   summarizeSweep,
+  type SweepCadence,
   type SweepCandidate,
   type SweepOutcome,
   type SweepSummary,
 } from "@/data/scout/sweep";
+
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
 
