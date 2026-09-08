@@ -261,8 +261,8 @@ export function ScoutWatchlist({
             variant="secondary"
             onClick={() => setImportOpen((open) => !open)}
           >
-            <Upload aria-hidden className="size-3.5" />
-            {importOpen ? "Close import" : "Import list"}
+            <Sparkles aria-hidden className="size-3.5" />
+            {importOpen ? "Close" : "Add from source"}
           </TTButton>
         </div>
 
