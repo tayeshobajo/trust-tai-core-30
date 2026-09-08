@@ -9,6 +9,7 @@
  */
 
 import type { ID, ISODateTime } from "./entities";
+import type { ExtractedCompany } from "./scout-smart-import";
 
 /** How a company got onto the watchlist. Both are human decisions. */
 export type WatchlistMethod = "manual" | "import";
