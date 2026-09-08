@@ -293,7 +293,9 @@ async function writeObservation(
     .eq("id", row["id"] as string);
   if (error) throw new Error(error.message);
 
-  const changed = merge.added > 0 || merge.replaced > 0;
+  // A re-read that returned the same words is not a change, even though the
+  // row was rewritten.
+  const changed = observedChanges.length > 0;
 
   await db.from("activities").upsert(
     {
