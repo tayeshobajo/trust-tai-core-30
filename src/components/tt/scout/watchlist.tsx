@@ -29,6 +29,7 @@ import {
   stagedCounts,
 } from "@/data/scout/watchlist";
 import { LINK_KIND_LABEL, readLink, stageExtracted } from "@/data/scout/smart-import";
+import { ScoutSweepStrip } from "@/components/tt/scout/sweep-strip";
 import { readSource } from "@/data/supabase/scout-smart-import";
 import { scoutService } from "@/data/supabase/scout-service";
 import type { ProspectCandidate } from "@/domain/scout";
@@ -613,7 +614,11 @@ export function ScoutWatchlist({
         </div>
       ) : null}
 
+      {/* The quiet background check. Refresh in place, never a new workflow. */}
+      <ScoutSweepStrip candidates={candidates} identity={identity} />
+
       {/* The watchlist itself. */}
+
       <div className="flex flex-wrap items-center gap-3">
         <TTInput
           value={search}
