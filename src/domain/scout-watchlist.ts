@@ -40,6 +40,11 @@ export interface StagedCompany {
   because: string;
   /** A person can drop a row from the batch without deleting the evidence. */
   keep: boolean;
+  /**
+   * Present when the row came from Smart Import: what Scout read, where it
+   * read it, and which parts it inferred. Never written to storage.
+   */
+  extraction?: ExtractedCompany;
 }
 
 export const STAGED_STATE_LABEL: Record<StagedState, string> = {
