@@ -1,101 +1,110 @@
-# Comms P0-04: human-only send, manual-send reconciliation, relationship memory
+# Scout Smart Import (P4-01 correction)
 
-Nothing is sent in this work. No migration. Megan's and Mental Dental's drafts are not touched.
+Replace the generic CSV importer doorway with **Smart Import**: hand Scout a source, Scout reads it, extracts candidate companies with the shared intelligence runtime, and returns a staged set a person reviews before anything is saved.
 
-## What the map shows today
+No P4-02, no P5, no percentage movement. Mockup first, no code this turn.
 
-The flow already exists end to end:
+## 1. What already exists and gets reused
 
-```text
-Gmail sync (label-gated, bounded)
-  -> comms_messages (provider ids, direction, occurred_at, snippet/body)
-  -> relationship touch/thread reading (who owes whom, when late)
-  -> drafting (judgment pass, then writing pass, grounded in
-     thread + memory + open commitments + approved/sent examples)
-  -> approvals intake (needs_human_review)
-  -> human approval with durable provenance
-  -> human-clicked Gmail send
-  -> mailbox verification of drafts already marked sent
-```
+- **One reasoning boundary**: `src/lib/intelligence-runtime.server.ts` (`runtimeModelCaller`, `extractJsonObject`, typed provider failures). Rooms are forbidden by CI (`intelligence-runtime-boundary.ts`) from touching providers directly, so extraction must go through this. No new per-feature model.
+- **Streaming AI route pattern**: `src/routes/api/public/scout.discover.ts` already does bearer-token + membership fail-closed auth and NDJSON stage streaming. Smart Import copies that shape.
+- **Canonical store**: watchlist membership is a marker in `prospects.metadata.scout_watchlist` (`src/data/scout/watchlist.ts`), with `watchlistSourceKey` replay keys and activity events. No second store, unchanged.
+- **Staging model**: `StagedCompany` / `StagedState` in `src/domain/scout-watchlist.ts` and the review UI in `src/components/tt/scout/watchlist.tsx`. Smart Import feeds the same staged review, it does not build a parallel one.
+- **CSV/TSV parser**: `parseDelimitedRows` / `parseWatchlistImport`, kept.
+- **Google auth today**: the only Google OAuth in the project is Gmail (`comms-gmail.server.ts`, `comms_integrations`), Gmail scopes only. There is **no** Drive/Docs/Sheets connection, and no `google_drive` workspace connector is available to this project. We will not invent Drive access.
+- **Runtime limits**: the server runs on a Worker; no PDF/DOCX library is installed and native ones cannot run there.
 
-Already built, and staying as is:
+## 2. Recommended Smart Import flow
 
-- Send is human-triggered only. There is no background or agent send path: the send route requires a signed-in member's token, an approved draft with approval provenance, and a per-mailbox send capability check.
-- Drafting is already grounded in more than the latest email: up to 40 prior messages in chronological order, observed/inferred/decided memory tiers, open commitments, and recent approved/sent wording as voice proof.
-- A judgment layer already runs before writing (notice, understand, reflect, build, decide, with an ask gate) and is persisted on the draft's rationale.
-- Mailbox verification already exists and is idempotent, and it already refuses ambiguous matches.
+1. Watchlist header action becomes **Add from source** (Smart Import). **Add company** stays first-class next to it.
+2. One panel, three doorways: **Upload a file** · **Paste a link** · **Paste text**.
+3. Scout first says what it can read: file name/type or resolved link kind, plus an honest refusal line when it cannot read it. Nothing is sent anywhere on selection.
+4. Person presses **Read this source**. Only then does the source text leave the browser, to `POST /api/public/scout/import` (bearer token + membership verified server-side).
+5. The route extracts text, then calls the runtime once with a strict JSON response format, streaming stages: `reading source` → `extracting companies` → `checking against the board`.
+6. Response is staged candidates only. Duplicates are computed against the canonical prospect store, rows are marked `new` / `duplicate` / `unreadable`.
+7. Person reviews: edit name/website/note, remove, keep, then **Save N to watchlist** through the existing `addToWatchlist` path with actor/time provenance and replay key.
+8. Discard leaves no durable trace: no source text, no extraction, no row.
 
-## The three real gaps
+## 3. Source types: v1 vs later
 
-1. **Manual Gmail replies do not clear anything.** Verification only looks at drafts whose state is already `sent` inside Trust Tai. If Tai replies straight from Gmail, the prepared draft stays in `draft` / `needs_human_review` / `approved` forever and the relationship keeps showing "needs reply", even though the outbound message is sitting in `comms_messages`.
-2. **Memory is per relationship only.** The relationship row carries `client_id`, but drafting never reads the client/project direction, decisions or commitments attached to it, so a project conversation is grounded in its own emails and nothing else.
-3. **Nothing compounds after a verified send.** A verified outbound message leaves a stamp on the draft and no durable line in relationship/client memory, so the next draft cannot build on it.
+**v1 (feasible now, text-readable)**
+- Pasted text (prose or list).
+- Uploaded `.csv`, `.tsv`, `.txt`, `.md` (read in browser as text).
+- **Public / "anyone with the link"** Google Sheet: server fetches the sheet's CSV export endpoint.
+- **Public / "anyone with the link"** Google Doc: server fetches the doc's plain-text export endpoint.
+- Public web page or plain-text file URL: server fetches and strips to text (same-shape fetch, size-capped).
 
-## Plan
+**Later (named, not faked)**
+- Private Google Docs/Sheets/Drive files: needs a Drive-scoped connection. None exists. Path: add Drive scope via the existing connector infrastructure or a new in-app Google connection, as its own slice.
+- PDF: needs a pure-JS, Worker-safe extractor (e.g. `unpdf`); an added dependency, so it is its own decision.
+- DOCX: needs a Worker-safe unzip + XML text pass (e.g. `mammoth`/manual); same.
+- `.xlsx` / `.numbers` / `.ods` workbooks: still refused honestly with "export as CSV".
 
-### 1. Human send policy (confirm and pin)
+Every not-yet-supported source is refused in words, never silently parsed as garbage.
 
-No behaviour change. Add tests that pin the law so it cannot regress: no send is reachable without a signed-in caller, an approved draft, and approval provenance; the scheduled sync pass performs reads and reconciliation only and can never call the send path.
+## 4. Smallest data/state changes
 
-### 2. Manual send reconciliation (the main change)
+- **No schema change. No migration. No new bucket.** The source is transient; only saved companies persist, exactly as today.
+- New in-memory/domain types only:
+  - `SmartImportSource` = `{ kind: "file" | "link" | "text"; label: string }` (label is filename or link, shown on the banner, never stored).
+  - `ExtractedCompany` extends the existing staged row with `confidence: "observed" | "inferred"`, `because: string`, `excerpt: string` (verbatim snippet from the source), and per-field inference flags for website/name.
+  - `StagedCompany` gains optional `extraction?: ExtractedCompany` so the existing review UI can show evidence without a new store.
+- New modules: `src/data/scout/smart-import.ts` (pure: prompt shape, response verification, grounding check, duplicate marking), `src/lib/scout-import.server.ts` (source fetch + runtime call), `src/routes/api/public/scout.import.ts` (auth + stream).
 
-Extend the existing verification pass rather than adding a parallel system.
+## 5. Trust and provenance rules
 
-- Widen the candidate set from "drafts marked sent" to "open drafts" (`draft`, `needs_human_review`, `approved`) alongside the existing sent ones, per relationship.
-- Add a second matcher in `src/domain/comms-verification.ts` for open drafts. It is deliberately stricter than the sent-draft matcher, because here nobody claimed a send:
-  - the outbound message must be newer than the draft's creation,
-  - it must be addressed to the relationship's email,
-  - it must agree on the Gmail thread when the draft carries a `provider_thread_id`, or on subject otherwise,
-  - if two open drafts could claim the same message, or one draft could claim two, nothing is matched.
-- Matched drafts get an additive `rationale.external_send` stamp: state `sent_externally`, provider message id, provider thread id, the observed send time, the signals that carried the match, and reconciled-at. The `review_state` column is not extended and no check constraint is touched (the P0-08 lesson). The write is conditional on the stamp being absent, so repeated syncs are idempotent.
-- Verification vocabulary is preserved: an external send is Executed and Verified by provider evidence, never Human Accepted, and the stamp says so.
+- Extraction is **grounded**: every returned company must carry an excerpt that actually appears in the source text. A row whose excerpt is not found is dropped with a reason, never reshaped (same discipline as `verifyRuntimeRead`).
+- A website not literally present in the source is marked **inferred**, shown as inferred, and never auto-completed into a domain guess.
+- Unknown is never zero: missing website stays empty with "no website found in the source", not a fabricated one.
+- Nothing is durable until explicit save. Save writes the existing watchlist marker with actor, time, method `import`, and the replay key.
+- The source itself does not become memory. If we later want it attached, it goes through the existing canonical source/file rule, as a separate decision.
+- No research, no scoring, no outreach is triggered by importing.
 
-### 3. Relationship and project memory layer
+## 6. Mockup specification
 
-Add one bounded context builder, `src/lib/comms-context.server.ts`, used by drafting:
+**Panel: Add from source** (opens in place, above the watchlist table)
 
-- selects, with the caller's token: the chronological thread already loaded, the linked client/project direction and current decisions, open commitments on both sides, the last verified outbound messages (including externally sent ones), and the relationship's recorded preferences,
-- bounds it: newest-first selection inside per-source caps, then re-sorted into chronology, with a total character budget, so no history dump reaches the model,
-- labels every line as evidence (observed / decided / human) or interpretation, and the drafting instructions keep interpretation out of `factsAllowed`,
-- produces a short trajectory summary: what was promised, what is still open, what changed, what looks like the next step. This feeds the existing judgment pass; it does not become new UI.
+- Title `Add from source`, sub-line `Scout reads what you give it and shows you what it found. Nothing is saved until you save it.`
+- Three stacked doorways, equal weight, soft-blue bordered cards:
+  1. `Upload a file` — button + accepted-types line `CSV, TSV, text and Markdown. Spreadsheet workbooks: export as CSV first.`
+  2. `Paste a link` — single input, helper `A public Google Sheet, Google Doc or web page. Private Google files cannot be read yet.`
+  3. `Paste text` — textarea, helper `A list or a paragraph. Scout will pick out the companies.`
+- Primary action `Read this source`, secondary `Cancel`.
+- Readable check appears inline under the chosen doorway before reading: green `Can read: uk-dental-groups.csv` or amber `Cannot read: .xlsx workbook. Export as CSV.`
 
-Drafting keeps failing closed: when the layer is thin, the grounding gate refuses as it does now.
+**Reading state**
 
-### 4. Knowledge compounding
+- Same panel, replaced by three stage lines with a quiet spinner: `Reading source` → `Extracting companies` → `Checking against the board`. 150-250ms fades, reduced-motion respected.
 
-Only on evidence. When a draft becomes verified (Trust Tai send verified in the mailbox, or externally reconciled), write one durable line through the existing memory/activity primitives on the relationship, and to the linked client when there is one: what was communicated, when, and the provider message id. Unsent drafts write nothing.
+**Staged result**
 
-### 5. UI and state
+- Banner: `14 companies staged from uk-dental-groups.csv` with the loud pill `STAGED · NOT SAVED` (existing treatment kept).
+- Counts line: `11 new · 2 already on the board · 1 cannot be read`.
+- Rows, one per candidate:
+  - Company name (editable inline), website below (editable, empty allowed).
+  - State chip: `New` (green) / `Already on the board` (neutral) / `Cannot read` (amber).
+  - Evidence line, muted, small: `"…acquired by Bright Dental Group in March…"` with `Observed` or `Inferred` tag on the website when guessed.
+  - Row actions: keep toggle, remove.
+- Fit is not shown here. A watchlist row is a decision, not a score.
+- Honesty note at the foot, unchanged: Scout reports what it observed. No change stays quiet, missing evidence stays unknown, and nothing becomes urgent because Scout wants something to report.
+- Actions: `Save 11 to watchlist` (primary), `Discard` (quiet). Save shows a brief confirmation, then rows land in the table.
 
-Small, evidence-backed additions only:
+Palette stays Trust Tai blues on white/soft-blue/cream; green only for new/success, amber only for human attention, red only for real failure.
 
-- the draft shows "Sent outside Trust Tai, seen in the mailbox" with its date when the external stamp exists, using the existing provenance label function,
-- a reconciled draft no longer counts as an open reply obligation in the queue, inbox views and attention list,
-- no new pages.
+## 7. Auth and migration implications
 
-### 6. Tests
+- No database migration.
+- No new secrets for v1: public link fetch is unauthenticated; extraction uses the existing runtime provider selection (`OPENAI_API_KEY` or `LOVABLE_API_KEY`).
+- The import route is under `/api/public/`, so it authenticates itself: bearer token + active membership, fail closed, same as `scout.discover`.
+- Private Google files are explicitly out of scope until a Drive-scoped connection exists; the UI says so rather than failing mysteriously.
+- Link fetch is size-capped and content-type checked, so a link cannot be used to pull an unbounded body into the model.
 
-- external matcher: matches on thread id, matches on subject plus recipient, refuses when the message predates the draft, refuses when two drafts are plausible, refuses inbound,
-- reconciliation write: sets the stamp once, a second pass changes nothing, only the matched draft changes, no send call is made,
-- verification law: an externally reconciled draft is Verified and not Human Accepted, and cannot be sent afterwards,
-- context layer: stays inside its caps, keeps chronology, keeps interpretation out of facts, omits absent sources without inventing them,
-- compounding: writes one memory line per verified send, nothing for unsent drafts,
-- send law: unchanged, still refuses without a human and provenance.
+## 8. What happens to the CSV parser
 
-### 7. Runtime verification
+Kept, demoted. `parseDelimitedRows` / `parseWatchlistImport` stay as the deterministic path used when the source is clearly delimited, and as the fallback when the model is unavailable (`ProviderNotConfiguredError` / `ProviderCallFailedError`) so a CSV import still works with no provider. Its tests stay. What goes away is the "Import list" wording and the paste-only doorway as the primary UX; paste becomes one of three doorways inside Smart Import.
 
-Read-only against production after the change: run one sync pass for a relationship with a known manual Gmail reply, then read the draft row and confirm the stamp, its provider ids, and that no send attempt exists; run the pass again and confirm the row is byte-identical; confirm Megan's and Mental Dental's drafts are unchanged unless a genuine provider match exists, and report it before anything is treated as resolved.
+## 9. Verification when built
 
-## Migration
+Typecheck, lint on changed files, watchlist/import tests plus new grounding and refusal tests, full suite, build. New tests must prove: selecting a file or link writes nothing; ungrounded extractions are dropped; inferred websites are labelled; duplicates cannot be saved; only approved rows reach `addToWatchlist`; discard leaves no trace; provider-down falls back to the delimited parser for CSV and refuses honestly otherwise.
 
-None. Everything lands in the existing `rationale` JSON and existing memory/activity primitives. No enum or check-constraint change, no destructive DDL.
-
-## Files
-
-- `src/domain/comms-verification.ts` (new external matcher, additive types)
-- `src/lib/comms-gmail.server.ts` (widen the reconciliation pass)
-- `src/lib/comms-context.server.ts` (new bounded context layer)
-- `src/lib/comms-draft.server.ts` (consume the layer)
-- `src/data/comms-queue.ts`, `src/data/comms-inbox.ts`, `src/data/comms-attention.ts` (treat reconciled drafts as resolved)
-- `src/components/tt/comms/send-composer.tsx` and the draft card (status line)
-- new/extended test files alongside each
+P4-01 stays below Production Verified until Tai exercises manual add and a real smart import in production.
