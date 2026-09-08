@@ -345,8 +345,8 @@ export function ScoutWatchlist({
             >
               {[
                 { key: "reading", label: "Reading source" },
-                { key: "extracting", label: "Extracting companies" },
-                { key: "checking", label: "Checking against the board" },
+                { key: "extracting", label: "Finding companies" },
+                { key: "checking", label: "Checking against Scout" },
               ].map((step) => {
                 const active = stage?.stage === step.key;
                 return (

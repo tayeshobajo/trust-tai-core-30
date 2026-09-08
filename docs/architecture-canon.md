@@ -802,3 +802,15 @@ A milestone carries one compact delivery line, derived and never stored: the rec
 - Unknown is never zero. Conditions that could not be read say so; no conditions says so separately.
 - No health, risk, confidence or "on track" language is invented. Only the state a room actually recorded is named.
 - A missing target date offers the existing outcome editor on the same surface, never a new form (Canon 16).
+
+## Canon 26: Smart Import (locked 2026-09-08)
+
+People provide sources. Scout finds the structure. Humans decide what becomes truth.
+
+- Scout accepts a source, not a schema. A file, a public link or pasted text is enough; no one has to satisfy columns before Scout will try to read it.
+- Reading is not saving. Selecting or reading a source writes nothing durable. What comes back is a staged proposal, marked STAGED / NOT SAVED, that a person reviews and explicitly saves through the canonical watchlist path.
+- Every extracted company carries a verbatim excerpt from the source. A row Scout cannot point at in the source is dropped with a reason, never reshaped into something plausible.
+- A website is observed only when it literally appears in the source. Otherwise it is labelled inferred or left blank. Unknown stays unknown.
+- Refusal is spoken plainly. Private Google files, workbooks and unreadable formats say they cannot be read and what to do instead.
+- One intelligence boundary. Smart Import reasons through the shared runtime; when no provider answers, the deterministic delimited reader answers for clearly delimited sources and says so.
+- Importing triggers nothing else: no research, no scoring, no outreach.

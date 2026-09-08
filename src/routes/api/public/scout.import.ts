@@ -69,7 +69,7 @@ export const Route = createFileRoute("/api/public/scout/import")({
               send({ stage: "reading", message: "Reading source" });
               const source = link ? await fetchSourceText(link) : { text: pasted, label: "text" };
 
-              send({ stage: "extracting", message: "Extracting companies" });
+              send({ stage: "extracting", message: "Finding companies" });
               const outcome = await extractCompanies({
                 token,
                 organizationId,
@@ -77,6 +77,7 @@ export const Route = createFileRoute("/api/public/scout/import")({
                 gateway,
               });
 
+              send({ stage: "checking", message: "Checking against Scout" });
               send({
                 stage: "done",
                 message: `${outcome.companies.length} ${
