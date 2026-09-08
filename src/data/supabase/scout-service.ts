@@ -700,6 +700,7 @@ export const scoutService = {
           existing?.metadata,
           runFromEvaluation(evaluation, evaluation.evaluatedAt),
         ),
+        ...(observationLog.length > 0 ? { observation_log: observationLog } : {}),
       },
 
       existing,
