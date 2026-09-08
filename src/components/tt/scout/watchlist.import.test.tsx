@@ -125,7 +125,7 @@ describe("watchlist file import", () => {
     renderWatchlist();
     await chooseFile(csvFile("uk-dental-groups.csv", CSV));
 
-    await waitFor(() => expect(screen.getByText(/Already on the board/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText(/Already on the board/i).length).toBeGreaterThan(0));
     expect(screen.getByText(/Cannot read/i)).toBeTruthy();
     expect(screen.getByText(/This company is already on the Scout board\./i)).toBeTruthy();
     // The header row is not treated as a company.
