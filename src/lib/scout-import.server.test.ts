@@ -76,7 +76,7 @@ describe("fetching a source", () => {
   });
 
   it("reads a shared Google Sheet through its export address", async () => {
-    const call = vi.fn(async () => respond(CSV));
+    const call = vi.fn(async (_url: unknown) => respond(CSV));
     vi.stubGlobal("fetch", call);
     const source = await fetchSourceText("https://docs.google.com/spreadsheets/d/abc/edit#gid=0");
     expect(source.text).toContain("Northfield Dental");
