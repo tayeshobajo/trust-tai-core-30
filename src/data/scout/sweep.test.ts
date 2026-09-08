@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_SWEEP_SETTINGS,
   SWEEP_PER_RUN_CAP,
+  cadenceDue,
   SWEEP_WATCHLIST_SOFT_CAP,
   planSweep,
   summarizeSweep,
@@ -169,5 +170,39 @@ describe("reporting what a sweep did", () => {
       now: NOW,
     });
     expect(summarizeSweep({ plan: quiet, outcomes: [] }).quietLine).toMatch(/last 30 days/i);
+  });
+});
+
+describe("honouring the chosen cadence", () => {
+  it("is due when automatic checking has never run", () => {
+    expect(cadenceDue({ cadence: "daily", lastRunAt: null, now: NOW })).toBe(true);
+    expect(cadenceDue({ cadence: "weekly", lastRunAt: null, now: NOW })).toBe(true);
+  });
+
+  it("daily waits a full 24 hours", () => {
+    const justUnder = new Date(Date.parse(NOW) - (DAY - 60_000)).toISOString();
+    expect(cadenceDue({ cadence: "daily", lastRunAt: justUnder, now: NOW })).toBe(false);
+    expect(cadenceDue({ cadence: "daily", lastRunAt: daysAgo(1), now: NOW })).toBe(true);
+  });
+
+  it("weekly waits a full 7 days, so a daily schedule cannot sweep it daily", () => {
+    expect(cadenceDue({ cadence: "weekly", lastRunAt: daysAgo(1), now: NOW })).toBe(false);
+    expect(cadenceDue({ cadence: "weekly", lastRunAt: daysAgo(6), now: NOW })).toBe(false);
+    expect(cadenceDue({ cadence: "weekly", lastRunAt: daysAgo(7), now: NOW })).toBe(true);
+  });
+
+  it("measures elapsed time, never a local calendar day", () => {
+    // 23 hours later is a new calendar day in UTC, but still not 24 hours.
+    expect(
+      cadenceDue({
+        cadence: "daily",
+        lastRunAt: "2026-09-07T23:00:00.000Z",
+        now: "2026-09-08T22:00:00.000Z",
+      }),
+    ).toBe(false);
+  });
+
+  it("treats an unreadable timestamp as due rather than blocking forever", () => {
+    expect(cadenceDue({ cadence: "daily", lastRunAt: "not a date", now: NOW })).toBe(true);
   });
 });

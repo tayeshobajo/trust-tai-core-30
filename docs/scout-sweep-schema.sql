@@ -93,7 +93,14 @@ create index if not exists scout_sweep_state_org_idx
 
 -- ---------------------------------------------------------------- schedule --
 --
--- Cadence: once a day. Each run reads at most 10 watched companies per
+-- Cadence: the cron fires once a day for everyone; the organization's own
+-- setting is enforced server-side against `last_run_at` (daily = at most once
+-- per 24h, weekly = at most once per 7 days), so a weekly organization is
+-- simply not due on the other six days and nothing is written on those days.
+-- A person pressing "Check watched companies now" is independent of all of
+-- this and always runs.
+--
+-- Each run reads at most 10 watched companies per
 -- organization, oldest first, and only when their evidence is missing or older
 -- than 30 days. A run holds a single-flight lease, so a second run exits
 -- instead of sweeping the same watchlist twice.
@@ -101,6 +108,13 @@ create index if not exists scout_sweep_state_org_idx
 -- Auth: SCOUT_SWEEP_CRON_SECRET, a project env secret the endpoint compares in
 -- constant time. No secret configured means the endpoint answers 503 and no
 -- sweep can run. Never commit the real value.
+--
+-- Server credentials: nobody is signed in during a scheduled run, so the
+-- endpoint needs a service-role key to read watchlist rows and write evidence
+-- under RLS. Accepted env var names, first one found wins:
+--   TRUST_TAI_SUPABASE_SERVICE_KEY
+--   SUPABASE_SERVICE_ROLE_KEY
+-- Without one the endpoint answers 503 rather than half-running.
 
 -- select cron.schedule(
 --   'scout-watchlist-sweep',

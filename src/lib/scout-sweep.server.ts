@@ -18,12 +18,15 @@ import { trustTaiSupabaseUrl } from "./trust-tai-backend.server";
 import { mergeObservedRows } from "@/data/scout/research-run";
 import {
   DEFAULT_SWEEP_SETTINGS,
+  cadenceDue,
   planSweep,
   summarizeSweep,
+  type SweepCadence,
   type SweepCandidate,
   type SweepOutcome,
   type SweepSummary,
 } from "@/data/scout/sweep";
+
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
 
@@ -156,11 +159,21 @@ async function organizationsWithWatchlist(db: SupabaseClient): Promise<string[]>
   return [...new Set((data ?? []).map((row) => String((row as Row)["organization_id"])))];
 }
 
+export type LeaseDecision = { taken: true } | { taken: false; because: string };
+
 /**
- * Take this organization's sweep lease. Returns false when automatic checking
- * is off, or when another run already holds it.
+ * Take this organization's sweep lease.
+ *
+ * Refuses when automatic checking is off, when the chosen cadence says the last
+ * run was too recent, or when another run already holds the lease. A refusal
+ * writes nothing at all, so last-run counts keep describing the last real
+ * sweep.
  */
-async function takeLease(db: SupabaseClient, organizationId: string, at: Date): Promise<boolean> {
+export async function takeLease(
+  db: SupabaseClient,
+  organizationId: string,
+  at: Date,
+): Promise<LeaseDecision> {
   const { data } = await db
     .from("scout_sweep_state")
     .select("*")
@@ -168,10 +181,24 @@ async function takeLease(db: SupabaseClient, organizationId: string, at: Date): 
     .maybeSingle();
   const state = (data ?? null) as Row | null;
   const enabled = state ? state["enabled"] !== false : DEFAULT_SWEEP_SETTINGS.enabled;
-  if (!enabled) return false;
+  if (!enabled) return { taken: false, because: "Automatic checking is off." };
+
+  const cadence: SweepCadence = state?.["cadence"] === "weekly" ? "weekly" : "daily";
+  const lastRunAt = typeof state?.["last_run_at"] === "string" ? state["last_run_at"] : null;
+  if (!cadenceDue({ cadence, lastRunAt, now: at })) {
+    return {
+      taken: false,
+      because:
+        cadence === "weekly"
+          ? "Automatic checking is weekly here, and this watchlist was checked in the last 7 days."
+          : "Automatic checking is daily here, and this watchlist was checked in the last 24 hours.",
+    };
+  }
 
   const held = typeof state?.["lease_until"] === "string" ? Date.parse(state["lease_until"]) : 0;
-  if (held && held > at.getTime()) return false;
+  if (held && held > at.getTime()) {
+    return { taken: false, because: "A run is already in progress." };
+  }
 
   const leaseUntil = new Date(at.getTime() + SWEEP_LEASE_MINUTES * 60 * 1000).toISOString();
   const { error } = await db.from("scout_sweep_state").upsert(
@@ -185,7 +212,7 @@ async function takeLease(db: SupabaseClient, organizationId: string, at: Date): 
   );
   // A missing state table must not silently double-sweep, so treat it as taken
   // only when the write succeeded.
-  return !error;
+  return error ? { taken: false, because: error.message } : { taken: true };
 }
 
 async function releaseLease(
@@ -284,14 +311,17 @@ async function writeObservation(
   return changed;
 }
 
+export type SweepOrganizationResult =
+  { status: "swept"; summary: SweepSummary } | { status: "skipped"; because: string };
+
 /** Sweep one organization's watchlist. Bounded, sequential, lease-protected. */
 export async function sweepOrganization(
   db: SupabaseClient,
   organizationId: string,
-): Promise<SweepSummary | null> {
+): Promise<SweepOrganizationResult> {
   const at = new Date();
-  const taken = await takeLease(db, organizationId, at);
-  if (!taken) return null;
+  const lease = await takeLease(db, organizationId, at);
+  if (!lease.taken) return { status: "skipped", because: lease.because };
 
   const rows = await watchedRows(db, organizationId);
   const byId = new Map(rows.map((row) => [String(row["id"]), row]));
@@ -320,7 +350,7 @@ export async function sweepOrganization(
 
   const summary = summarizeSweep({ plan, outcomes });
   await releaseLease(db, organizationId, summary);
-  return summary;
+  return { status: "swept", summary };
 }
 
 /** The whole scheduled pass: every organization that curates a watchlist. */
@@ -331,19 +361,16 @@ export async function runScheduledSweep(): Promise<SweepRunReport> {
 
   for (const organizationId of organizations) {
     try {
-      const summary = await sweepOrganization(db, organizationId);
-      if (!summary) {
-        report.skipped.push({
-          organizationId,
-          because: "Automatic checking is off, or a run is already in progress.",
-        });
+      const result = await sweepOrganization(db, organizationId);
+      if (result.status === "skipped") {
+        report.skipped.push({ organizationId, because: result.because });
         continue;
       }
       report.swept.push({
         organizationId,
-        read: summary.read,
-        changed: summary.changed,
-        unreadable: summary.unreadable,
+        read: result.summary.read,
+        changed: result.summary.changed,
+        unreadable: result.summary.unreadable,
       });
     } catch (error) {
       report.skipped.push({ organizationId, because: (error as Error).message });
