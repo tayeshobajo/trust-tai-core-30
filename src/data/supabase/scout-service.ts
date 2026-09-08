@@ -60,11 +60,7 @@ import type { HandoffDraft, HandoffRecord } from "@/domain/comms-handoff";
 import { HANDOFF_INTENT_LABEL } from "@/domain/comms-handoff";
 
 import { readWatchlistMarker } from "@/data/scout/watchlist";
-import {
-  addToWatchlist,
-  removeFromWatchlist,
-  type WatchlistAddResult,
-} from "./scout-watchlist";
+import { addToWatchlist, removeFromWatchlist, type WatchlistAddResult } from "./scout-watchlist";
 
 import { supabaseActivity } from "./activities";
 import { emitSuiteEvent } from "@/data/events/suite-events";
@@ -261,10 +257,7 @@ export const scoutService = {
   },
 
   /** Take a company off the watchlist. The company and its history remain. */
-  async removeFromWatchlist(
-    input: { prospectId: ID; companyName: string },
-    context: ScoutContext,
-  ) {
+  async removeFromWatchlist(input: { prospectId: ID; companyName: string }, context: ScoutContext) {
     await removeFromWatchlist(input.prospectId);
     const at = new Date().toISOString();
     await supabaseActivity.record({
@@ -866,8 +859,6 @@ export const scoutService = {
     await recordSweepRun(context.organizationId, summary, "manual");
     return { plan, outcomes, summary };
   },
-
-
 
   /**
    * Route a prepared brief to Comms. The brief is stored on the prospect with
