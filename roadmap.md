@@ -8,8 +8,8 @@ Production Verified, Human Accepted. Lovable saying done is at most Implemented.
 
 ## Progress
 
-**Production Readiness: 24%** (P0 to P7)
-**Full Engine: 20%** (P0 to P9)
+**Production Readiness: 27%** (P0 to P7)
+**Full Engine: 22%** (P0 to P9)
 
 Working (corrected in slice P0-001A, extended in P1-002, P0-07 verified 2026-09-05,
 P0-08 and P0-03 Human Accepted 2026-09-06):
@@ -35,9 +35,12 @@ P0-08 and P0-03 Human Accepted 2026-09-06):
   -> 16 x 1/5 = 3.2 and 14 x 1/5 = 2.8
 - P3 weight 12 / 10, 5 gates, **1 met** (P3-04 Runtime Verified 2026-09-07 on the
   real Mental Dental project/milestone projection). -> 12 x 1/5 = 2.4 and 10 x 1/5 = 2.0
-- P4 to P7 and P9: no gate met at its required level yet -> 0
-- Readiness 12 x 8/9 + 12 x 4/6 + 16 x 1/5 + 12 x 1/5 = 10.6667 + 8.0 + 3.2 + 2.4 = 24.2667 -> 24%.
-  Engine 10 x 8/9 + 10 x 4/6 + 14 x 1/5 + 10 x 1/5 = 8.8889 + 6.6667 + 2.8 + 2.0 = 20.3556 -> 20%. P0-04 stays open and
+- P4 weight 12 / 10, 5 gates, **1 met** (P4-03 Code/Test Verified 2026-09-08, which is its
+  required level). P4-01 and P4-02 remain open and uncounted; P4-05 is not counted because the
+  ledger does not record it at its required level. -> 12 x 1/5 = 2.4 and 10 x 1/5 = 2.0
+- P5 to P7 and P9: no gate met at its required level yet -> 0
+- Readiness 12 x 8/9 + 12 x 4/6 + 16 x 1/5 + 12 x 1/5 + 12 x 1/5 = 10.6667 + 8.0 + 3.2 + 2.4 + 2.4 = 26.6667 -> 27%.
+  Engine 10 x 8/9 + 10 x 4/6 + 14 x 1/5 + 10 x 1/5 + 10 x 1/5 = 8.8889 + 6.6667 + 2.8 + 2.0 + 2.0 = 22.3556 -> 22%. P0-04 stays open and
   uncounted, deferred by explicit human decision on 2026-09-06; agents remain paused.
 
 
@@ -230,7 +233,7 @@ production, so it remains Code/Test Verified.
 | --- | --- | --- | --- |
 | P4-01 | Curated watchlist, staged upload before an explicit save | Production Verified | Not started |
 | P4-02 | Bounded scheduled sweep, refresh in place | Production Verified | Not started |
-| P4-03 | Movement only on an observed evidence change, with what changed and when | Code/Test Verified | Not started |
+| P4-03 | Movement only on an observed evidence change, with what changed and when | Code/Test Verified | **Code/Test Verified** 2026-09-08, commit `831ba17f488ad8c7eead1179a88dbb111d78667f`. Movement is derived only from observed evidence deltas recorded at merge time on `prospects.metadata.observation_log`; fit, scores, ICP version, page counts and freshness cannot produce movement. 2,449 tests passing, typecheck / lint / build clean, no schema change. |
 | P4-04 | Coverage reported as counts only | Runtime Verified | Not started |
 | P4-05 | Existing Scout laws unchanged and passing | Code/Test Verified | Holds today, re-checked per slice |
 
