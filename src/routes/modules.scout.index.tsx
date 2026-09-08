@@ -13,6 +13,9 @@ import { ScoutPagination } from "@/components/tt/scout/pagination";
 import { ScoutSidebar } from "@/components/tt/scout/sidebar";
 import { ScoutSupportRail } from "@/components/tt/scout/support-rail";
 import { WorthKnowingQueue } from "@/components/tt/scout/worth-knowing";
+import { ScoutWatchlist } from "@/components/tt/scout/watchlist";
+import { ScoutMovement } from "@/components/tt/scout/movement";
+import { NeedsAPerson } from "@/components/tt/scout/needs-person";
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { scoutService } from "@/data/supabase/scout-service";
@@ -37,12 +40,24 @@ const TITLE = "Scout · Trust Tai OS";
 const DESCRIPTION =
   "Source real companies from a plain-English target, rank them against the active ICP, and see the evidence behind every read.";
 
-type Tab = "scout" | "worth_knowing" | "qualified" | "research";
+type Tab = "ready" | "movement" | "needs_person" | "all" | "watchlist";
 
+/**
+ * Canonical sections, with the older values older links still carry mapped
+ * onto them so no existing link breaks.
+ */
 function parseSection(value: unknown): Tab {
-  return value === "worth_knowing" || value === "qualified" || value === "research"
-    ? value
-    : "scout";
+  if (
+    value === "ready" ||
+    value === "movement" ||
+    value === "needs_person" ||
+    value === "all" ||
+    value === "watchlist"
+  ) {
+    return value;
+  }
+  if (value === "worth_knowing") return "ready";
+  return "all";
 }
 
 function parseFit(value: unknown): FitFilter {
@@ -173,12 +188,9 @@ function Scout({
   const all = useMemo(() => saved.data ?? [], [saved.data]);
 
   const board = useMemo(() => {
-    const active =
-      tab === "qualified"
-        ? all.filter(
-            (c) => c.prospect.status === "qualified" || c.prospect.status === "ready_for_comms",
-          )
-        : all.filter((c) => c.prospect.status !== "passed" && c.prospect.status !== "archived");
+    const active = all.filter(
+      (c) => c.prospect.status !== "passed" && c.prospect.status !== "archived",
+    );
     const filtered =
       filter === "all" ? active : active.filter((c) => c.evaluation.light === filter);
     // Fit still leads the board, but within a colour the priority score decides
@@ -199,7 +211,7 @@ function Scout({
       if (score !== 0) return score;
       return b.lastCheckedAt.localeCompare(a.lastCheckedAt);
     });
-  }, [all, tab, filter]);
+  }, [all, filter]);
 
   /** Scout at a glance, counts read from live board state only. */
   const glance = useMemo(() => {
@@ -347,7 +359,7 @@ function Scout({
                 )}
                 {status.data?.model ? <MetaPill>{status.data.model}</MetaPill> : null}
               </div>
-              {tab === "scout" ? (
+              {tab === "all" ? (
                 <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
                   {SCOUT_STARTER_PROMPTS.map((prompt) => (
                     <button
@@ -403,13 +415,18 @@ function Scout({
             ) : null}
           </section>
 
-          {tab === "research" ? (
-            <>
-              <DiscoveryRuns runs={runs.data ?? []} />
-              <ResearchHistory candidates={all} linkSearch={{ section: tab, fit: filter }} />
-            </>
-          ) : tab === "worth_knowing" ? (
+          {tab === "ready" ? (
             <WorthKnowingQueue
+              candidates={all}
+              identity={identity}
+              linkSearch={{ section: tab, fit: filter }}
+            />
+          ) : tab === "movement" ? (
+            <ScoutMovement candidates={all} linkSearch={{ section: tab, fit: filter }} />
+          ) : tab === "needs_person" ? (
+            <NeedsAPerson candidates={all} linkSearch={{ section: tab, fit: filter }} />
+          ) : tab === "watchlist" ? (
+            <ScoutWatchlist
               candidates={all}
               identity={identity}
               linkSearch={{ section: tab, fit: filter }}
@@ -431,12 +448,8 @@ function Scout({
               {/* 5, The main paginated company table. */}
               {board.length === 0 ? (
                 <EmptyState
-                  title={tab === "qualified" ? "Nothing qualified yet" : "The board is empty"}
-                  belongsHere={
-                    tab === "qualified"
-                      ? "Companies you qualify in Scout appear here with their next move."
-                      : "Describe a market above and Scout sources real companies, each with the sources it read."
-                  }
+                  title="The board is empty"
+                  belongsHere="Describe a market above and Scout sources real companies, each with the sources it read."
                   whyItMatters="Fit is judged conservatively: thin evidence never reads green, and unknown is never treated as a mismatch."
                 />
               ) : rows.length === 0 ? (
@@ -459,6 +472,17 @@ function Scout({
                   }
                 />
               )}
+
+              {/* Research history stays reachable, quietly, under the board. */}
+              <details className="rounded-xl border border-border bg-card p-4">
+                <summary className="cursor-pointer text-sm font-medium text-foreground">
+                  Research history
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <DiscoveryRuns runs={runs.data ?? []} />
+                  <ResearchHistory candidates={all} linkSearch={{ section: tab, fit: filter }} />
+                </div>
+              </details>
             </section>
           )}
         </div>

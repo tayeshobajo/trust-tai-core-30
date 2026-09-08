@@ -187,7 +187,7 @@ function SubmissionBody({
               <Link
                 to="/modules/scout/prospects/$prospectId"
                 params={{ prospectId: submission.scoutProspectId as string }}
-                search={{ section: "scout" as const, fit: "all" as const }}
+                search={{ section: "all" as const, fit: "all" as const }}
                 className="inline-flex items-center gap-1.5 text-[13px] text-royal hover:underline"
               >
                 Open in Scout
@@ -304,7 +304,7 @@ function SubmissionBody({
               <Link
                 to="/modules/scout/prospects/$prospectId"
                 params={{ prospectId: submission.scoutProspectId as string }}
-                search={{ section: "scout" as const, fit: "all" as const }}
+                search={{ section: "all" as const, fit: "all" as const }}
                 className="mt-4 inline-flex items-center gap-1.5 text-[13px] text-royal hover:underline"
               >
                 Open in Scout

@@ -44,6 +44,10 @@ export type ActivityAction =
   | "question_drafted"
   /** Scout: a person marked a company as worth exploring in Roadmap. */
   | "roadmap_intent"
+  /** Scout (Sentinel): a person curated a company onto the watchlist. */
+  | "watchlisted"
+  /** Scout (Sentinel): a person took a company off the watchlist. */
+  | "watchlist_removed"
   /** Scout: deeper relationship research was prepared for a newly eligible
    *  prospect. Research only, nothing was sent and no relationship created. */
   | "relationship_brief_prepared"

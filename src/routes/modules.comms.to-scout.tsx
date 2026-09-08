@@ -85,7 +85,7 @@ function ToScout({ identity }: { identity: WorkspaceIdentity }) {
       void navigate({
         to: "/modules/scout/prospects/$prospectId",
         params: { prospectId: result.prospect.id },
-        search: { section: "scout" as const, fit: "all" as const },
+        search: { section: "all" as const, fit: "all" as const },
       });
     },
   });

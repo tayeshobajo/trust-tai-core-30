@@ -14,6 +14,7 @@ import type { ResearchRun } from "./prospect-modules";
 import type { ScoutIntel } from "./scout-intel";
 import type { RelationshipDevelopmentMarker } from "./relationship-development";
 import type { FounderSignalPacket } from "./stated";
+import type { WatchlistMarker } from "./scout-watchlist";
 
 import type { CompanyIdentity } from "@/lib/company-identity";
 import type { CompanyProfile } from "@/data/scout-profile";
@@ -103,6 +104,8 @@ export interface ProspectCandidate {
   researchConsent?: ResearchConsentRecord;
   /** A person's pacing decision on developing this relationship (watch / not now). */
   development?: RelationshipDevelopmentMarker;
+  /** Curated watchlist membership, when a person put this company there. */
+  watchlist?: WatchlistMarker;
 }
 
 export interface ScoutSearchRequest {

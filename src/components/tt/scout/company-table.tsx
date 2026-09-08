@@ -18,8 +18,12 @@ import type { ProspectStatus } from "@/domain/entities";
 import type { FitLight } from "@/domain/scout-fit";
 import { cn } from "@/lib/utils";
 
+/** Canonical Scout sections. Older values in existing links are mapped by the
+ * route itself, so link props always carry a canonical section. */
+export type ScoutSectionParam = "ready" | "movement" | "needs_person" | "all" | "watchlist";
+
 export type ScoutLinkSearch = {
-  section: "scout" | "worth_knowing" | "qualified" | "research";
+  section: ScoutSectionParam;
   fit: "all" | FitLight;
 };
 
@@ -77,6 +81,17 @@ export function CompanyCell({ candidate }: { candidate: ProspectCandidate }) {
   );
 }
 
+/** One short line of what the fit read rests on. Absence stays absence. */
+function fitEvidence(candidate: ProspectCandidate): string {
+  const strongest = candidate.evaluation.strongestSignal?.trim();
+  if (strongest) return strongest;
+  const why = candidate.fit.whyItFits?.trim();
+  if (why) return why;
+  return candidate.evaluation.scoreable
+    ? "No single signal stands out yet."
+    : "No evidence read yet.";
+}
+
 function Cell({ value }: { value?: string | undefined }) {
   return (
     <span className="hidden truncate text-[13px] text-muted-foreground xl:block">
@@ -86,7 +101,7 @@ function Cell({ value }: { value?: string | undefined }) {
 }
 
 const HEAD =
-  "hidden grid-cols-[minmax(0,1.4fr)_auto_auto_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto_auto_auto] items-center gap-4 border-b border-border bg-cloud px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground xl:grid";
+  "hidden grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto_auto_auto] items-center gap-4 border-b border-border bg-cloud px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground xl:grid";
 
 export function ScoutCompanyTable({
   candidates,
@@ -101,8 +116,7 @@ export function ScoutCompanyTable({
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className={HEAD}>
         <span>Company</span>
-        <span>ICP match</span>
-        <span>Score</span>
+        <span>Fit</span>
         <span>Industry</span>
         <span>Size</span>
         <span>Location</span>
@@ -122,17 +136,24 @@ export function ScoutCompanyTable({
                 params={{ prospectId: prospect.id }}
                 search={linkSearch}
                 aria-label={`Open ${prospect.name}`}
-                className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-cloud focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring xl:grid-cols-[minmax(0,1.4fr)_auto_auto_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto_auto_auto]"
+                className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-cloud focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto_auto_auto]"
               >
                 <CompanyCell candidate={candidate} />
 
-                <span className="hidden items-center gap-2 xl:inline-flex">
-                  <FitDot light={evaluation.light} />
-                  <span className="sr-only">{FIT_LIGHT_LABEL[evaluation.light]}</span>
-                </span>
-
-                <span className="hidden font-mono text-[12px] text-foreground xl:block">
-                  {evaluation.scoreable ? `${evaluation.score}%` : "-"}
+                {/* Fit is supporting evidence: the reading leads, the number
+                    lives in the company's own evidence view. */}
+                <span className="hidden min-w-0 xl:block">
+                  <span className="flex items-center gap-2">
+                    <FitDot light={evaluation.light} />
+                    <span className="truncate text-[13px] text-foreground">
+                      {evaluation.scoreable
+                        ? FIT_LIGHT_LABEL[evaluation.light]
+                        : "Not researched yet"}
+                    </span>
+                  </span>
+                  <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
+                    {fitEvidence(candidate)}
+                  </span>
                 </span>
 
                 <Cell value={profile?.industry} />
@@ -142,8 +163,10 @@ export function ScoutCompanyTable({
                 <span className="flex items-center gap-2 justify-self-end xl:justify-self-auto">
                   <span className="inline-flex items-center gap-2 xl:hidden">
                     <FitDot light={evaluation.light} />
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      {evaluation.scoreable ? `${evaluation.score}%` : "-"}
+                    <span className="text-[12px] text-muted-foreground">
+                      {evaluation.scoreable
+                        ? FIT_LIGHT_LABEL[evaluation.light]
+                        : "Not researched yet"}
                     </span>
                   </span>
                   <ScoutStatusPill status={prospect.status} />

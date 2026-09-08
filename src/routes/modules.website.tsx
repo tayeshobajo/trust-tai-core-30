@@ -844,7 +844,7 @@ function Submission({
             <Link
               to="/modules/scout/prospects/$prospectId"
               params={{ prospectId: submission.scoutProspectId }}
-              search={{ section: "scout" as const, fit: "all" as const }}
+              search={{ section: "all" as const, fit: "all" as const }}
               className="text-royal hover:underline"
             >
               Open in Scout
