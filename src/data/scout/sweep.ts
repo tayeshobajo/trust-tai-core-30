@@ -38,6 +38,36 @@ export const SWEEP_CADENCE_LABEL: Record<SweepCadence, string> = {
   weekly: "Weekly",
 };
 
+/** How long automatic checking waits between scheduled runs, per cadence. */
+export const SWEEP_CADENCE_MS: Record<SweepCadence, number> = {
+  daily: 24 * 60 * 60 * 1000,
+  weekly: 7 * 24 * 60 * 60 * 1000,
+};
+
+/**
+ * Whether the automatic half is allowed to run again yet.
+ *
+ * The database cron fires daily for everyone, so the chosen cadence is honoured
+ * here rather than in the schedule: a weekly organization is simply not due on
+ * six of those days. Deterministic and UTC-safe: both sides are epoch
+ * milliseconds, so no local calendar day is involved.
+ */
+export function cadenceDue(input: {
+  cadence: SweepCadence;
+  lastRunAt: string | null;
+  now?: string | Date;
+}): boolean {
+  if (!input.lastRunAt) return true;
+  const last = Date.parse(input.lastRunAt);
+  if (Number.isNaN(last)) return true;
+  const now =
+    input.now instanceof Date
+      ? input.now.getTime()
+      : Date.parse(input.now ?? new Date().toISOString());
+  return now - last >= SWEEP_CADENCE_MS[input.cadence];
+}
+
+
 /** The one sentence describing the bound, shown wherever the setting lives. */
 export const SWEEP_BOUND_NOTE = `Scout re-reads up to ${SWEEP_PER_RUN_CAP} watched companies a run, oldest first, and only when their evidence is missing or older than ${RESEARCH_STALE_DAYS} days.`;
 
