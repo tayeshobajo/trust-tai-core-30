@@ -312,14 +312,18 @@ async function writeObservation(
   return changed;
 }
 
+export type SweepOrganizationResult =
+  | { status: "swept"; summary: SweepSummary }
+  | { status: "skipped"; because: string };
+
 /** Sweep one organization's watchlist. Bounded, sequential, lease-protected. */
 export async function sweepOrganization(
   db: SupabaseClient,
   organizationId: string,
-): Promise<SweepSummary | null> {
+): Promise<SweepOrganizationResult> {
   const at = new Date();
-  const taken = await takeLease(db, organizationId, at);
-  if (!taken) return null;
+  const lease = await takeLease(db, organizationId, at);
+  if (!lease.taken) return { status: "skipped", because: lease.because };
 
   const rows = await watchedRows(db, organizationId);
   const byId = new Map(rows.map((row) => [String(row["id"]), row]));
@@ -348,7 +352,7 @@ export async function sweepOrganization(
 
   const summary = summarizeSweep({ plan, outcomes });
   await releaseLease(db, organizationId, summary);
-  return summary;
+  return { status: "swept", summary };
 }
 
 /** The whole scheduled pass: every organization that curates a watchlist. */
@@ -359,24 +363,22 @@ export async function runScheduledSweep(): Promise<SweepRunReport> {
 
   for (const organizationId of organizations) {
     try {
-      const summary = await sweepOrganization(db, organizationId);
-      if (!summary) {
-        report.skipped.push({
-          organizationId,
-          because: "Automatic checking is off, or a run is already in progress.",
-        });
+      const result = await sweepOrganization(db, organizationId);
+      if (result.status === "skipped") {
+        report.skipped.push({ organizationId, because: result.because });
         continue;
       }
       report.swept.push({
         organizationId,
-        read: summary.read,
-        changed: summary.changed,
-        unreadable: summary.unreadable,
+        read: result.summary.read,
+        changed: result.summary.changed,
+        unreadable: result.summary.unreadable,
       });
     } catch (error) {
       report.skipped.push({ organizationId, because: (error as Error).message });
     }
   }
+
 
   return report;
 }
