@@ -215,7 +215,6 @@ export async function takeLease(
   return error ? { taken: false, because: error.message } : { taken: true };
 }
 
-
 async function releaseLease(
   db: SupabaseClient,
   organizationId: string,
@@ -313,8 +312,7 @@ async function writeObservation(
 }
 
 export type SweepOrganizationResult =
-  | { status: "swept"; summary: SweepSummary }
-  | { status: "skipped"; because: string };
+  { status: "swept"; summary: SweepSummary } | { status: "skipped"; because: string };
 
 /** Sweep one organization's watchlist. Bounded, sequential, lease-protected. */
 export async function sweepOrganization(
@@ -378,7 +376,6 @@ export async function runScheduledSweep(): Promise<SweepRunReport> {
       report.skipped.push({ organizationId, because: (error as Error).message });
     }
   }
-
 
   return report;
 }

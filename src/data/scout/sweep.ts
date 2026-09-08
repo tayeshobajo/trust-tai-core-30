@@ -67,7 +67,6 @@ export function cadenceDue(input: {
   return now - last >= SWEEP_CADENCE_MS[input.cadence];
 }
 
-
 /** The one sentence describing the bound, shown wherever the setting lives. */
 export const SWEEP_BOUND_NOTE = `Scout re-reads up to ${SWEEP_PER_RUN_CAP} watched companies a run, oldest first, and only when their evidence is missing or older than ${RESEARCH_STALE_DAYS} days.`;
 
