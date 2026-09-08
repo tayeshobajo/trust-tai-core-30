@@ -60,14 +60,131 @@ export function watchlistSourceKey(organizationId: string, identity: string): st
   return `scout.watchlist:${organizationId}:${identity.trim().toLowerCase()}`;
 }
 
+/* -------------------------------------------------------------- file text */
+
+/**
+ * What a person can actually hand us. These are read as text in the browser,
+ * nothing else. A spreadsheet workbook (.xlsx / .xls / .numbers) is a binary
+ * format we do not read, and we say so rather than pretending.
+ */
+export const SUPPORTED_IMPORT_EXTENSIONS = [".csv", ".tsv", ".txt"] as const;
+
+export const IMPORT_FILE_ACCEPT = ".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain";
+
+export type ImportFileSupport =
+  { readable: true; extension: string } | { readable: false; because: string };
+
+/** Whether a chosen file is one we can honestly read, by its name alone. */
+export function importFileSupport(fileName: string): ImportFileSupport {
+  const lowered = fileName.trim().toLowerCase();
+  const extension = SUPPORTED_IMPORT_EXTENSIONS.find((ext) => lowered.endsWith(ext));
+  if (extension) return { readable: true, extension };
+  if (/\.(xlsx|xls|numbers|ods)$/.test(lowered)) {
+    return {
+      readable: false,
+      because:
+        "Spreadsheet workbooks cannot be read here. Export the sheet as CSV and choose that file.",
+    };
+  }
+  return {
+    readable: false,
+    because: "Only CSV, TSV and plain text lists can be read. Nothing was staged.",
+  };
+}
+
 /* ---------------------------------------------------------------- staging */
 
-/** Split "Acme Dental, acme.com" style lines into name and website parts. */
-function splitLine(line: string): { name: string; site: string | null } {
-  const parts = line
-    .split(/[\t,;|]/)
-    .map((part) => part.trim())
-    .filter(Boolean);
+/** Delimiter used by the file, sniffed from the first non-empty line. */
+function sniffDelimiter(text: string): string {
+  const line = text.split(/\r?\n/).find((entry) => entry.trim()) ?? "";
+  const counts: [string, number][] = [
+    [",", (line.match(/,/g) ?? []).length],
+    ["\t", (line.match(/\t/g) ?? []).length],
+    [";", (line.match(/;/g) ?? []).length],
+    ["|", (line.match(/\|/g) ?? []).length],
+  ];
+  counts.sort((a, b) => b[1] - a[1]);
+  return (counts[0]?.[1] ?? 0) > 0 ? (counts[0]?.[0] ?? ",") : ",";
+}
+
+export interface DelimitedRow {
+  raw: string;
+  fields: string[];
+}
+
+/**
+ * Quote-aware CSV/TSV reading. Handles "Smith, Jones & Co", escaped quotes and
+ * newlines inside quoted fields. Blank rows are dropped, nothing is guessed.
+ */
+export function parseDelimitedRows(text: string, delimiter?: string): DelimitedRow[] {
+  const sep = delimiter ?? sniffDelimiter(text);
+  const rows: DelimitedRow[] = [];
+  let fields: string[] = [];
+  let field = "";
+  let raw = "";
+  let quoted = false;
+
+  const endField = () => {
+    fields.push(field.trim());
+    field = "";
+  };
+  const endRow = () => {
+    endField();
+    if (fields.some((entry) => entry.length > 0)) {
+      rows.push({ raw: raw.trim(), fields: fields.filter((entry) => entry.length > 0) });
+    }
+    fields = [];
+    raw = "";
+  };
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i] as string;
+    if (quoted) {
+      if (char === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          raw += '""';
+          i += 1;
+        } else {
+          quoted = false;
+          raw += char;
+        }
+      } else {
+        field += char;
+        raw += char;
+      }
+      continue;
+    }
+    if (char === '"') {
+      quoted = true;
+      raw += char;
+    } else if (char === sep) {
+      raw += char;
+      endField();
+    } else if (char === "\n") {
+      endRow();
+    } else if (char === "\r") {
+      // handled by the newline that follows
+    } else {
+      field += char;
+      raw += char;
+    }
+  }
+  if (field.trim() || fields.length > 0 || raw.trim()) endRow();
+  return rows;
+}
+
+const HEADER_WORDS =
+  /^(company|company name|name|business|organisation|organization|website|site|url|domain|web address|notes?)$/i;
+
+/** True when the first row names its columns rather than listing a company. */
+export function looksLikeHeader(row: DelimitedRow | undefined): boolean {
+  if (!row || row.fields.length === 0) return false;
+  return row.fields.every((field) => HEADER_WORDS.test(field.trim()));
+}
+
+/** Split a row's fields into a name and a website. */
+function splitFields(parts: string[]): { name: string; site: string | null } {
   if (parts.length === 0) return { name: "", site: null };
 
   let site: string | null = null;
@@ -117,18 +234,20 @@ function matches(existing: ExistingCompany[], name: string, site: string | null)
 }
 
 /**
- * Turn pasted text into staged rows. Nothing is saved: every row carries its
- * own state so a person decides what happens to it.
+ * Turn pasted text or a chosen CSV/TSV file into staged rows. Nothing is
+ * saved: every row carries its own state so a person decides what happens to
+ * it. This function touches no storage of any kind.
  */
 export function parseWatchlistImport(text: string, existing: ExistingCompany[]): StagedCompany[] {
   const seen: ExistingCompany[] = [];
   const staged: StagedCompany[] = [];
-  const lines = text.split(/\r?\n/);
+  const rows = parseDelimitedRows(text);
+  const body = looksLikeHeader(rows[0]) ? rows.slice(1) : rows;
 
-  lines.forEach((line, index) => {
-    const raw = line.trim();
+  body.forEach((row, index) => {
+    const raw = row.raw;
     if (!raw) return;
-    const { name, site } = splitLine(raw);
+    const { name, site } = splitFields(row.fields);
     let state: StagedState = "new";
     let because = "Not on the board yet.";
 
