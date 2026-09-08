@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   approvedRows,
+  importFileSupport,
   parseWatchlistImport,
   readWatchlistMarker,
   restageRow,
@@ -100,5 +101,38 @@ describe("watchlist marker", () => {
     expect(watchlistSourceKey("org", "https://Acme.com ")).toBe(
       watchlistSourceKey("org", "https://acme.com"),
     );
+  });
+});
+
+describe("delimited file text", () => {
+  it("skips a header row and reads name/website columns", () => {
+    const rows = parseWatchlistImport(
+      "Company,Website\nNorthfield Dental,northfielddental.com",
+      [],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.name).toBe("Northfield Dental");
+    expect(rows[0]?.websiteUrl).toBe("https://northfielddental.com");
+  });
+
+  it("keeps a comma inside a quoted company name", () => {
+    const [row] = parseWatchlistImport('"Smith, Jones & Co",smithjones.co.uk', []);
+    expect(row?.name).toBe("Smith, Jones & Co");
+    expect(row?.state).toBe("new");
+  });
+
+  it("reads tab separated text", () => {
+    const [row] = parseWatchlistImport("Acme Dental\tacme.com", []);
+    expect(row?.name).toBe("Acme Dental");
+    expect(row?.websiteUrl).toBe("https://acme.com");
+  });
+
+  it("says plainly which files it cannot read", () => {
+    expect(importFileSupport("uk-dental-groups.csv").readable).toBe(true);
+    expect(importFileSupport("list.TSV").readable).toBe(true);
+    const workbook = importFileSupport("companies.xlsx");
+    expect(workbook.readable).toBe(false);
+    expect(workbook.readable === false && workbook.because).toMatch(/export the sheet as csv/i);
+    expect(importFileSupport("logo.png").readable).toBe(false);
   });
 });
