@@ -21,6 +21,7 @@ import type { ProspectCandidate } from "@/domain/scout";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 const addToWatchlist = vi.fn();
+const readSource = vi.fn();
 const removeFromWatchlist = vi.fn();
 
 vi.mock("@/data/supabase/scout-service", () => ({
@@ -28,6 +29,10 @@ vi.mock("@/data/supabase/scout-service", () => ({
     addToWatchlist: (...args: unknown[]) => addToWatchlist(...args),
     removeFromWatchlist: (...args: unknown[]) => removeFromWatchlist(...args),
   },
+}));
+
+vi.mock("@/data/supabase/scout-smart-import", () => ({
+  readSource: (...args: unknown[]) => readSource(...args),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -48,6 +53,8 @@ afterEach(cleanup);
 beforeEach(() => {
   addToWatchlist.mockReset();
   addToWatchlist.mockResolvedValue({ companyName: "Saved", alreadyWatched: false });
+  readSource.mockReset();
+  readSource.mockResolvedValue({ companies: READ_COMPANIES, deterministic: false });
 });
 
 const identity = {
@@ -101,8 +108,36 @@ const CSV = [
   "!!!!,",
 ].join("\n");
 
+/** What Scout says it read from the source. Grounded, with excerpts. */
+const READ_COMPANIES = [
+  {
+    name: "Northfield Dental",
+    websiteUrl: "https://northfielddental.com",
+    websiteConfidence: "observed" as const,
+    note: null,
+    because: "Listed with its website in the source.",
+    excerpt: "Northfield Dental,northfielddental.com",
+  },
+  {
+    name: "Smith, Jones & Co",
+    websiteUrl: "https://smithjones.co.uk",
+    websiteConfidence: "inferred" as const,
+    note: null,
+    because: "Named in the source; the website was read from the same row.",
+    excerpt: '"Smith, Jones & Co",smithjones.co.uk',
+  },
+  {
+    name: "Mental Dental",
+    websiteUrl: "https://mentaldental.com",
+    websiteConfidence: "observed" as const,
+    note: null,
+    because: "Listed with its website in the source.",
+    excerpt: "Mental Dental,mentaldental.com",
+  },
+];
+
 async function chooseFile(file: File) {
-  fireEvent.click(screen.getByRole("button", { name: /import list/i }));
+  fireEvent.click(screen.getByRole("button", { name: /add from source/i }));
   const input = document.querySelector("#watch-file") as HTMLInputElement;
   Object.defineProperty(input, "files", { value: [file], configurable: true });
   await act(async () => {
@@ -121,17 +156,28 @@ describe("watchlist file import", () => {
     expect(addToWatchlist).not.toHaveBeenCalled();
   });
 
-  it("stages a duplicate and an unreadable row honestly", async () => {
+  it("stages a duplicate honestly and shows what was read", async () => {
     renderWatchlist();
     await chooseFile(csvFile("uk-dental-groups.csv", CSV));
 
     await waitFor(() =>
       expect(screen.getAllByText(/Already on the board/i).length).toBeGreaterThan(0),
     );
-    expect(screen.getByText(/Cannot read/i)).toBeTruthy();
     expect(screen.getByText(/This company is already on the Scout board\./i)).toBeTruthy();
-    // The header row is not treated as a company.
+    // Scout shows the source line it read, and admits an inferred website.
+    expect(screen.getByText(/Northfield Dental,northfielddental\.com/)).toBeTruthy();
+    expect(screen.getByText(/Website inferred/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Save 2 to watchlist/i })).toBeTruthy();
+  });
+
+  it("sends only the file text to be read, never the file itself", async () => {
+    renderWatchlist();
+    await chooseFile(csvFile("uk-dental-groups.csv", CSV));
+
+    await waitFor(() => expect(readSource).toHaveBeenCalledTimes(1));
+    const call = readSource.mock.calls[0]?.[0] as { text?: string; link?: string };
+    expect(call.text).toContain("Northfield Dental");
+    expect(call.link).toBeUndefined();
   });
 
   it("saves only the approved new rows, and only when a person saves", async () => {
@@ -160,6 +206,7 @@ describe("watchlist file import", () => {
       expect(screen.getByText(/Spreadsheet workbooks cannot be read here/i)).toBeTruthy(),
     );
     expect(screen.queryByText(/Staged · not saved/i)).toBeNull();
+    expect(readSource).not.toHaveBeenCalled();
     expect(addToWatchlist).not.toHaveBeenCalled();
   });
 
