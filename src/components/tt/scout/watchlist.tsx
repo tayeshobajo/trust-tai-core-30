@@ -160,11 +160,48 @@ export function ScoutWatchlist({
     setStaged(null);
     setStagedFrom(null);
     setPasted("");
+    setLink("");
+    setStage(null);
+    setDeterministic(false);
     setImportError(null);
     if (fileInput.current) fileInput.current.value = "";
   }
 
-  /** Read a chosen file into staged rows, in the browser only. */
+  /**
+   * Hand one source to Scout. A file is read here on screen and only its text
+   * is sent; a link is fetched by Scout. Either way nothing is written: what
+   * comes back is staged for review.
+   */
+  async function readFrom(source: SmartImportSource, payload: { text?: string; link?: string }) {
+    setImportError(null);
+    setStaged(null);
+    setStagedFrom(null);
+    setStage(null);
+    setDeterministic(false);
+    setReading(true);
+    try {
+      const outcome = await readSource({
+        organizationId,
+        ...(payload.text ? { text: payload.text } : {}),
+        ...(payload.link ? { link: payload.link } : {}),
+        onStage: (next) => setStage(next),
+      });
+      if (outcome.companies.length === 0) {
+        setImportError(`No companies could be read from ${source.label}. Nothing was staged.`);
+        return;
+      }
+      setStaged(stageExtracted(outcome.companies, existing, source));
+      setStagedFrom(source.kind === "text" ? "the pasted text" : source.label);
+      setDeterministic(outcome.deterministic);
+    } catch (readError) {
+      setImportError((readError as Error).message);
+    } finally {
+      setReading(false);
+      setStage(null);
+    }
+  }
+
+  /** Read a chosen file. Choosing a file writes nothing anywhere. */
   async function stageFile(file: File) {
     setImportError(null);
     const support = importFileSupport(file.name);
@@ -175,25 +212,31 @@ export function ScoutWatchlist({
       if (fileInput.current) fileInput.current.value = "";
       return;
     }
-    setReading(true);
+    let text = "";
     try {
-      const text = await file.text();
-      const rows = parseWatchlistImport(text, existing);
-      if (rows.length === 0) {
-        setStaged(null);
-        setStagedFrom(null);
-        setImportError(`No companies could be read from ${file.name}. Nothing was staged.`);
-        return;
-      }
-      setStaged(rows);
-      setStagedFrom(file.name);
+      text = await file.text();
     } catch {
-      setStaged(null);
-      setStagedFrom(null);
       setImportError(`${file.name} could not be read. Nothing was staged.`);
-    } finally {
-      setReading(false);
+      return;
     }
+    if (!text.trim()) {
+      setImportError(`${file.name} is empty. Nothing was staged.`);
+      return;
+    }
+    await readFrom({ kind: "file", label: file.name }, { text });
+  }
+
+  /** Read a pasted link. Only public documents can be read. */
+  async function stageLink() {
+    const read = readLink(link);
+    if (!read.readable) {
+      setImportError(read.because);
+      return;
+    }
+    await readFrom(
+      { kind: "link", label: `${LINK_KIND_LABEL[read.kind]}: ${link.trim()}` },
+      { link: link.trim() },
+    );
   }
 
   const counts = staged ? stagedCounts(staged) : null;
