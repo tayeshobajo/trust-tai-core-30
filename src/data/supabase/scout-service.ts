@@ -662,6 +662,14 @@ export const scoutService = {
     });
     const observed = merge.merged;
 
+    // What this pass observed differently from what was held. Recorded here
+    // because the prior observations do not survive the merge. Evidence only.
+    const observationLog = appendObservationLog(existing?.metadata, {
+      at: new Date().toISOString(),
+      changes: diffObservations({ previous: priorObserved, incoming: payload.observed ?? [] }),
+    });
+
+
     const evaluation = evaluateScoutFit({
       observed,
       inferred: payload.inferred ?? {},
