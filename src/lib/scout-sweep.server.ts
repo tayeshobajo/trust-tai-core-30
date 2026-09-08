@@ -265,6 +265,13 @@ async function writeObservation(
     runFromEvaluation(evaluation, evaluation.evaluatedAt),
   );
 
+  // What this read actually observed differently, recorded now because the
+  // previous observations are not kept anywhere else after the merge. Evidence
+  // only: fit, criteria and page counts are deliberately not consulted.
+  const observedChanges = diffObservations({ previous, incoming: payload.observed ?? [] });
+  const log = appendObservationLog(row["metadata"], { at, changes: observedChanges });
+  if (log.length > 0) metadata["observation_log"] = log;
+
   const { error } = await db
     .from("prospects")
     .update({
