@@ -12,8 +12,8 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Check, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Check, FileUp, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
 
 import { CompanyMark } from "@/components/tt/company-identity";
 import { FIT_LIGHT_LABEL, FitDot, formatChecked } from "@/components/tt/fit-light";
@@ -23,6 +23,8 @@ import {
   approvedRows,
   existingCompanies,
   filterWatchlist,
+  IMPORT_FILE_ACCEPT,
+  importFileSupport,
   parseWatchlistImport,
   restageRow,
   stagedCounts,
@@ -62,6 +64,11 @@ export function ScoutWatchlist({
   const [importOpen, setImportOpen] = useState(false);
   const [pasted, setPasted] = useState("");
   const [staged, setStaged] = useState<StagedCompany[] | null>(null);
+  /** Where the staged batch came from, shown on the banner. Never stored. */
+  const [stagedFrom, setStagedFrom] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
+  const fileInput = useRef<HTMLInputElement | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
   const watched = useMemo(
@@ -118,8 +125,7 @@ export function ScoutWatchlist({
       return batch.length;
     },
     onSuccess: async (count) => {
-      setStaged(null);
-      setPasted("");
+      discardStaged();
       setImportOpen(false);
       setSaved(`${count} ${count === 1 ? "company" : "companies"} saved to the watchlist.`);
       await refresh();
@@ -134,6 +140,48 @@ export function ScoutWatchlist({
       ),
     onSuccess: refresh,
   });
+
+  /** Drop the staged batch. Nothing durable was ever written, so this leaves
+   * no trace of the file or the paste. */
+  function discardStaged() {
+    setStaged(null);
+    setStagedFrom(null);
+    setPasted("");
+    setImportError(null);
+    if (fileInput.current) fileInput.current.value = "";
+  }
+
+  /** Read a chosen file into staged rows, in the browser only. */
+  async function stageFile(file: File) {
+    setImportError(null);
+    const support = importFileSupport(file.name);
+    if (!support.readable) {
+      setStaged(null);
+      setStagedFrom(null);
+      setImportError(support.because);
+      if (fileInput.current) fileInput.current.value = "";
+      return;
+    }
+    setReading(true);
+    try {
+      const text = await file.text();
+      const rows = parseWatchlistImport(text, existing);
+      if (rows.length === 0) {
+        setStaged(null);
+        setStagedFrom(null);
+        setImportError(`No companies could be read from ${file.name}. Nothing was staged.`);
+        return;
+      }
+      setStaged(rows);
+      setStagedFrom(file.name);
+    } catch {
+      setStaged(null);
+      setStagedFrom(null);
+      setImportError(`${file.name} could not be read. Nothing was staged.`);
+    } finally {
+      setReading(false);
+    }
+  }
 
   const counts = staged ? stagedCounts(staged) : null;
   const ready = staged ? approvedRows(staged) : [];
@@ -232,8 +280,52 @@ export function ScoutWatchlist({
         <div className="rounded-xl border border-border bg-card p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200">
           <h3 className="text-sm font-semibold text-foreground">Import a list</h3>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            One company per line. Either "Company name, website" or just a website. Nothing is saved
-            until you review the list and save it.
+            Choose a CSV or TSV file, or paste the list below. One company per row: either "Company
+            name, website" or just a website. Nothing is saved until you review the list and save
+            it.
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-border bg-cloud/50 p-3">
+            <input
+              ref={fileInput}
+              id="watch-file"
+              type="file"
+              accept={IMPORT_FILE_ACCEPT}
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void stageFile(file);
+              }}
+            />
+            <TTButton
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={reading}
+              onClick={() => fileInput.current?.click()}
+            >
+              {reading ? (
+                <Loader2 aria-hidden className="size-3.5 animate-spin" />
+              ) : (
+                <FileUp aria-hidden className="size-3.5" />
+              )}
+              Choose a file
+            </TTButton>
+            <span className="text-[12px] text-muted-foreground">
+              CSV, TSV or plain text. The file is read here on your screen only, and nothing is
+              saved until you save it. Spreadsheet workbooks (.xlsx) cannot be read: export the
+              sheet as CSV first.
+            </span>
+          </div>
+
+          {importError ? (
+            <p role="alert" className="mt-2 text-[13px] text-destructive">
+              {importError}
+            </p>
+          ) : null}
+
+          <p className="mt-4 text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            Or paste the list
           </p>
           <textarea
             value={pasted}
@@ -248,7 +340,11 @@ export function ScoutWatchlist({
               type="button"
               size="sm"
               disabled={!pasted.trim()}
-              onClick={() => setStaged(parseWatchlistImport(pasted, existing))}
+              onClick={() => {
+                setImportError(null);
+                setStaged(parseWatchlistImport(pasted, existing));
+                setStagedFrom(null);
+              }}
             >
               Review list
             </TTButton>
@@ -257,10 +353,7 @@ export function ScoutWatchlist({
                 type="button"
                 size="sm"
                 variant="quiet"
-                onClick={() => {
-                  setStaged(null);
-                  setPasted("");
-                }}
+                onClick={discardStaged}
               >
                 Discard
               </TTButton>
@@ -277,8 +370,10 @@ export function ScoutWatchlist({
                 Staged · not saved
               </span>
               <span className="text-[13px] text-muted-foreground">
-                {counts.total} read · {counts.ready} ready to save · {counts.duplicate} already on
-                the board · {counts.unreadable} cannot be read
+                {counts.total} {counts.total === 1 ? "company" : "companies"} staged
+                {stagedFrom ? ` from ${stagedFrom}` : " from the pasted list"} · {counts.ready}{" "}
+                ready to save · {counts.duplicate} already on the board · {counts.unreadable} cannot
+                be read
               </span>
             </div>
             <div className="flex gap-2">
@@ -299,7 +394,7 @@ export function ScoutWatchlist({
                 type="button"
                 size="sm"
                 variant="quiet"
-                onClick={() => setStaged(null)}
+                onClick={discardStaged}
                 disabled={saveStaged.isPending}
               >
                 Cancel
