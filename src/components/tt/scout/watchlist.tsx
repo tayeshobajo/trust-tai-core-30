@@ -485,6 +485,9 @@ export function ScoutWatchlist({
                 {stagedFrom ? ` from ${stagedFrom}` : " from the pasted list"} · {counts.ready}{" "}
                 ready to save · {counts.duplicate} already on the board · {counts.unreadable} cannot
                 be read
+                {deterministic
+                  ? " · read line by line, no intelligence provider answered"
+                  : ""}
               </span>
             </div>
             <div className="flex gap-2">
@@ -566,6 +569,20 @@ export function ScoutWatchlist({
                     {STAGED_STATE_LABEL[row.state]}
                   </span>
                   <span className="text-[12px] text-muted-foreground">{row.because}</span>
+                  {row.extraction ? (
+                    <span className="flex flex-col gap-1">
+                      {row.extraction.excerpt ? (
+                        <span className="text-[12px] italic text-muted-foreground">
+                          "{row.extraction.excerpt}"
+                        </span>
+                      ) : null}
+                      {row.extraction.websiteBasis === "inferred" ? (
+                        <span className="w-fit rounded-full border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                          Website inferred
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
                 </span>
                 <span className="flex items-center gap-2 justify-self-end">
                   {row.state === "new" ? (
