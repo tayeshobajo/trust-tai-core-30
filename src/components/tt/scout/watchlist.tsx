@@ -13,7 +13,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
-import { Check, FileUp, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { Check, FileUp, Link2, Loader2, Plus, Sparkles, Trash2, X } from "lucide-react";
 
 import { CompanyMark } from "@/components/tt/company-identity";
 import { FIT_LIGHT_LABEL, FitDot, formatChecked } from "@/components/tt/fit-light";
@@ -25,10 +25,11 @@ import {
   filterWatchlist,
   IMPORT_FILE_ACCEPT,
   importFileSupport,
-  parseWatchlistImport,
   restageRow,
   stagedCounts,
 } from "@/data/scout/watchlist";
+import { LINK_KIND_LABEL, readLink, stageExtracted } from "@/data/scout/smart-import";
+import { readSource } from "@/data/supabase/scout-smart-import";
 import { scoutService } from "@/data/supabase/scout-service";
 import type { ProspectCandidate } from "@/domain/scout";
 import {
@@ -36,6 +37,13 @@ import {
   WATCHLIST_HONESTY_NOTE,
   type StagedCompany,
 } from "@/domain/scout-watchlist";
+import {
+  SMART_IMPORT_FILE_HELP,
+  SMART_IMPORT_LEAD,
+  SMART_IMPORT_LINK_HELP,
+  type SmartImportSource,
+  type SmartImportStage,
+} from "@/domain/scout-smart-import";
 import { cn } from "@/lib/utils";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -63,6 +71,11 @@ export function ScoutWatchlist({
   const [note, setNote] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [pasted, setPasted] = useState("");
+  const [link, setLink] = useState("");
+  /** What Scout is doing right now. Cleared when the read finishes. */
+  const [stage, setStage] = useState<SmartImportStage | null>(null);
+  /** True when the delimited reader answered because no provider did. */
+  const [deterministic, setDeterministic] = useState(false);
   const [staged, setStaged] = useState<StagedCompany[] | null>(null);
   /** Where the staged batch came from, shown on the banner. Never stored. */
   const [stagedFrom, setStagedFrom] = useState<string | null>(null);
