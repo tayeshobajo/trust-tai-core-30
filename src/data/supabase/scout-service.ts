@@ -43,6 +43,13 @@ import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
 import type { HandoffDraft, HandoffRecord } from "@/domain/comms-handoff";
 import { HANDOFF_INTENT_LABEL } from "@/domain/comms-handoff";
 
+import { readWatchlistMarker } from "@/data/scout/watchlist";
+import {
+  addToWatchlist,
+  removeFromWatchlist,
+  type WatchlistAddResult,
+} from "./scout-watchlist";
+
 import { supabaseActivity } from "./activities";
 import { emitSuiteEvent } from "@/data/events/suite-events";
 import { fetchCompanyIdentity } from "./company-identity";
@@ -117,9 +124,11 @@ function toCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandi
   const candidate = origin ? withInboundOrigin(base, origin) : base;
   const consent = readResearchConsent(row.metadata);
   const development = readRelationshipDevelopment(row.metadata);
+  const watchlist = readWatchlistMarker(row.metadata);
   return {
     ...(consent ? { ...candidate, researchConsent: consent } : candidate),
     ...(development.watch || development.research ? { development } : {}),
+    ...(watchlist ? { watchlist } : {}),
   };
 }
 
@@ -182,6 +191,80 @@ export const scoutService = {
       getCurrentIcp(organizationId),
     ]);
     return rows.map((row) => toCandidate(row, icp?.version ?? null));
+  },
+
+  /**
+   * Curate one company onto the watchlist. Human decision only: it records who
+   * decided and when, researches nothing, and scores nothing. Replaying the
+   * same save never adds a company twice.
+   */
+  async addToWatchlist(
+    input: {
+      name: string;
+      websiteUrl?: string | null;
+      method: "manual" | "import";
+      note?: string | null;
+      userLabel?: string | null;
+    },
+    context: ScoutContext,
+  ): Promise<WatchlistAddResult> {
+    const result = await addToWatchlist({
+      organizationId: context.organizationId,
+      userId: context.userId,
+      userLabel: input.userLabel ?? null,
+      name: input.name,
+      websiteUrl: input.websiteUrl ?? null,
+      method: input.method,
+      note: input.note ?? null,
+    });
+    if (result.alreadyWatched) return result;
+
+    const at = new Date().toISOString();
+    await supabaseActivity.record({
+      organizationId: context.organizationId,
+      name: "prospect.watchlisted",
+      subject: { type: "prospect", id: result.prospectId, label: result.companyName },
+      summary:
+        input.method === "manual"
+          ? `${result.companyName} was added to the Scout watchlist by a person here.`
+          : `${result.companyName} was saved to the Scout watchlist from a reviewed list.`,
+      payload: {
+        method: input.method,
+        created_company: result.created,
+        note: input.note?.trim() || null,
+      },
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: context.userId },
+        observedAt: at,
+        confidence: "observed",
+      },
+      occurredAt: at,
+    });
+    return result;
+  },
+
+  /** Take a company off the watchlist. The company and its history remain. */
+  async removeFromWatchlist(
+    input: { prospectId: ID; companyName: string },
+    context: ScoutContext,
+  ) {
+    await removeFromWatchlist(input.prospectId);
+    const at = new Date().toISOString();
+    await supabaseActivity.record({
+      organizationId: context.organizationId,
+      name: "prospect.watchlist_removed",
+      subject: { type: "prospect", id: input.prospectId, label: input.companyName },
+      summary: `${input.companyName} was taken off the Scout watchlist by a person here.`,
+      payload: {},
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: context.userId },
+        observedAt: at,
+        confidence: "observed",
+      },
+      occurredAt: at,
+    });
   },
 
   /** Recorded history for one company: research, decisions, overrides. */

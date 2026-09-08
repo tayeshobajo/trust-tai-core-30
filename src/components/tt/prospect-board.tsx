@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
+import type { ScoutLinkSearch } from "@/components/tt/scout/company-table";
 import type { ProspectCandidate } from "@/domain/scout";
 import type { FitLight } from "@/domain/scout-fit";
 import { cn } from "@/lib/utils";
@@ -56,7 +57,7 @@ export function ProspectBoard({
 }: {
   candidates: ProspectCandidate[];
   /** Board state carried into the prospect route so Back returns here. */
-  linkSearch: { section: "scout" | "qualified" | "research"; fit: FitFilter };
+  linkSearch: ScoutLinkSearch;
   emphasizeNextMove?: boolean;
 }) {
   return (

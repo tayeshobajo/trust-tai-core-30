@@ -23,6 +23,7 @@ import type { HandoffDraft } from "@/domain/comms-handoff";
 import type { ActivityEvent } from "@/domain/activity";
 import type { PeopleProviderInfo, Person } from "@/domain/people";
 
+import type { ScoutLinkSearch } from "@/components/tt/scout/company-table";
 import type { ProspectCandidate } from "@/domain/scout";
 import type { FitLight } from "@/domain/scout-fit";
 
@@ -64,7 +65,7 @@ export function ProspectWorkspace({
 }: {
   candidate: ProspectCandidate;
   activeIcpVersion: number | null;
-  backSearch: { section: "scout" | "qualified" | "research"; fit: "all" | FitLight };
+  backSearch: ScoutLinkSearch;
   /** Recorded events for this prospect, newest first. */
   events?: ActivityEvent[];
   /** People on record for this company. */
