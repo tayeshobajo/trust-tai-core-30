@@ -80,6 +80,7 @@ import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/publi
 import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/roadmap.studio'
 import { Route as ApiPublicRoutingNotifyRouteImport } from './routes/api/public/routing.notify'
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
+import { Route as ApiPublicScoutImportRouteImport } from './routes/api/public/scout.import'
 import { Route as ApiPublicSettingsAdminPasswordRouteImport } from './routes/api/public/settings.admin-password'
 import { Route as ApiPublicSettingsInviteAcceptRouteImport } from './routes/api/public/settings.invite-accept'
 import { Route as ApiPublicSettingsInviteEmailRouteImport } from './routes/api/public/settings.invite-email'
@@ -465,6 +466,11 @@ const ApiPublicScoutDiscoverRoute = ApiPublicScoutDiscoverRouteImport.update({
   path: '/api/public/scout/discover',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicScoutImportRoute = ApiPublicScoutImportRouteImport.update({
+  id: '/api/public/scout/import',
+  path: '/api/public/scout/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicSettingsAdminPasswordRoute =
   ApiPublicSettingsAdminPasswordRouteImport.update({
     id: '/api/public/settings/admin-password',
@@ -659,6 +665,7 @@ export interface FileRoutesByFullPath {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
+  '/api/public/scout/import': typeof ApiPublicScoutImportRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
   '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
@@ -744,6 +751,7 @@ export interface FileRoutesByTo {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
+  '/api/public/scout/import': typeof ApiPublicScoutImportRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
   '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
@@ -839,6 +847,7 @@ export interface FileRoutesById {
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
+  '/api/public/scout/import': typeof ApiPublicScoutImportRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
   '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
@@ -935,6 +944,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
+    | '/api/public/scout/import'
     | '/api/public/settings/admin-password'
     | '/api/public/settings/invite-accept'
     | '/api/public/settings/invite-email'
@@ -1020,6 +1030,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
+    | '/api/public/scout/import'
     | '/api/public/settings/admin-password'
     | '/api/public/settings/invite-accept'
     | '/api/public/settings/invite-email'
@@ -1114,6 +1125,7 @@ export interface FileRouteTypes {
     | '/api/public/roadmap/studio'
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
+    | '/api/public/scout/import'
     | '/api/public/settings/admin-password'
     | '/api/public/settings/invite-accept'
     | '/api/public/settings/invite-email'
@@ -1174,6 +1186,7 @@ export interface RootRouteChildren {
   ApiPublicRoadmapStudioRoute: typeof ApiPublicRoadmapStudioRoute
   ApiPublicRoutingNotifyRoute: typeof ApiPublicRoutingNotifyRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
+  ApiPublicScoutImportRoute: typeof ApiPublicScoutImportRoute
   ApiPublicSettingsAdminPasswordRoute: typeof ApiPublicSettingsAdminPasswordRoute
   ApiPublicSettingsInviteAcceptRoute: typeof ApiPublicSettingsInviteAcceptRoute
   ApiPublicSettingsInviteEmailRoute: typeof ApiPublicSettingsInviteEmailRoute
@@ -1693,6 +1706,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicScoutDiscoverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/scout/import': {
+      id: '/api/public/scout/import'
+      path: '/api/public/scout/import'
+      fullPath: '/api/public/scout/import'
+      preLoaderRoute: typeof ApiPublicScoutImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/settings/admin-password': {
       id: '/api/public/settings/admin-password'
       path: '/api/public/settings/admin-password'
@@ -2057,6 +2077,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRoadmapStudioRoute: ApiPublicRoadmapStudioRoute,
   ApiPublicRoutingNotifyRoute: ApiPublicRoutingNotifyRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
+  ApiPublicScoutImportRoute: ApiPublicScoutImportRoute,
   ApiPublicSettingsAdminPasswordRoute: ApiPublicSettingsAdminPasswordRoute,
   ApiPublicSettingsInviteAcceptRoute: ApiPublicSettingsInviteAcceptRoute,
   ApiPublicSettingsInviteEmailRoute: ApiPublicSettingsInviteEmailRoute,
