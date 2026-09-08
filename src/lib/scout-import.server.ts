@@ -121,7 +121,12 @@ export async function extractCompanies(input: {
     });
   } catch (error) {
     if ((error as Error).message === "forbidden") throw error;
-    return { ...deterministicExtraction(text), deterministic: true, provider: "none", model: "none" };
+    return {
+      ...deterministicExtraction(text),
+      deterministic: true,
+      provider: "none",
+      model: "none",
+    };
   }
 
   try {

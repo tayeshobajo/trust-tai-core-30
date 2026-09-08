@@ -401,10 +401,7 @@ export function ScoutWatchlist({
 
               {/* 2. Paste a link. Public documents only, said plainly. */}
               <div className="rounded-lg border border-border bg-cloud/50 p-3">
-                <label
-                  htmlFor="watch-link"
-                  className="text-[13px] font-medium text-foreground"
-                >
+                <label htmlFor="watch-link" className="text-[13px] font-medium text-foreground">
                   Paste a link
                 </label>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -430,10 +427,7 @@ export function ScoutWatchlist({
 
               {/* 3. Paste text. A list or a paragraph, both are fine. */}
               <div className="rounded-lg border border-border bg-cloud/50 p-3">
-                <label
-                  htmlFor="watch-paste"
-                  className="text-[13px] font-medium text-foreground"
-                >
+                <label htmlFor="watch-paste" className="text-[13px] font-medium text-foreground">
                   Paste text
                 </label>
                 <textarea
@@ -485,9 +479,7 @@ export function ScoutWatchlist({
                 {stagedFrom ? ` from ${stagedFrom}` : " from the pasted list"} · {counts.ready}{" "}
                 ready to save · {counts.duplicate} already on the board · {counts.unreadable} cannot
                 be read
-                {deterministic
-                  ? " · read line by line, no intelligence provider answered"
-                  : ""}
+                {deterministic ? " · read line by line, no intelligence provider answered" : ""}
               </span>
             </div>
             <div className="flex gap-2">
