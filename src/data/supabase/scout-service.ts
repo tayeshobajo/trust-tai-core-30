@@ -38,17 +38,29 @@ import type { RelationshipResearchMarker } from "@/domain/relationship-developme
 import type { DecisionMoveKey } from "@/data/scout/decision-state";
 
 import { areasCovered, mergeObservedRows, type ResearchRunPlan } from "@/data/scout/research-run";
+import {
+  planSweep,
+  summarizeSweep,
+  sweepCandidate,
+  watchedCandidates,
+  type SweepOutcome,
+  type SweepPlan,
+  type SweepSettings,
+  type SweepSummary,
+} from "@/data/scout/sweep";
+import {
+  readSweepState,
+  recordSweepRun,
+  saveSweepSettings,
+  type SweepState,
+} from "./scout-sweep-state";
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
 import type { HandoffDraft, HandoffRecord } from "@/domain/comms-handoff";
 import { HANDOFF_INTENT_LABEL } from "@/domain/comms-handoff";
 
 import { readWatchlistMarker } from "@/data/scout/watchlist";
-import {
-  addToWatchlist,
-  removeFromWatchlist,
-  type WatchlistAddResult,
-} from "./scout-watchlist";
+import { addToWatchlist, removeFromWatchlist, type WatchlistAddResult } from "./scout-watchlist";
 
 import { supabaseActivity } from "./activities";
 import { emitSuiteEvent } from "@/data/events/suite-events";
@@ -245,10 +257,7 @@ export const scoutService = {
   },
 
   /** Take a company off the watchlist. The company and its history remain. */
-  async removeFromWatchlist(
-    input: { prospectId: ID; companyName: string },
-    context: ScoutContext,
-  ) {
+  async removeFromWatchlist(input: { prospectId: ID; companyName: string }, context: ScoutContext) {
     await removeFromWatchlist(input.prospectId);
     const at = new Date().toISOString();
     await supabaseActivity.record({
@@ -781,6 +790,74 @@ export const scoutService = {
       userId: context.userId,
       websiteUrl,
     });
+  },
+
+  /** Sweep settings and the last run's counts for this organization. */
+  async sweepState(organizationId: ID): Promise<SweepState> {
+    return readSweepState(organizationId);
+  },
+
+  /** A person turns automatic checking on or off, or changes its cadence. */
+  async saveSweepSettings(organizationId: ID, settings: SweepSettings): Promise<SweepSettings> {
+    return saveSweepSettings(organizationId, settings);
+  },
+
+  /**
+   * Refresh the watchlist in place.
+   *
+   * The same bounded pass the schedule runs, started by a person. It reads
+   * only watched companies, only those missing or stale evidence, and never
+   * more than the per-run cap. It discovers nothing, adds no company, sends
+   * nothing, and decides nothing about movement: it records what was observed
+   * and reports counts.
+   */
+  async sweepWatchlist(
+    input: {
+      candidates: ProspectCandidate[];
+      force?: boolean;
+      onProgress?: (progress: { name: string; index: number; total: number }) => void;
+    },
+    context: ScoutContext,
+  ): Promise<{ plan: SweepPlan; outcomes: SweepOutcome[]; summary: SweepSummary }> {
+    const watched = watchedCandidates(input.candidates);
+    const plan = planSweep({
+      candidates: watched.map(sweepCandidate),
+      ...(input.force === undefined ? {} : { force: input.force }),
+    });
+
+    const outcomes: SweepOutcome[] = [];
+    for (const [index, target] of plan.due.entries()) {
+      input.onProgress?.({ name: target.name, index: index + 1, total: plan.due.length });
+      const before = new Set(
+        (watched.find((c) => c.prospect.id === target.prospectId)?.signals ?? []).map(
+          (signal) => signal.statement,
+        ),
+      );
+      try {
+        const result = await this.research({
+          organizationId: context.organizationId,
+          userId: context.userId,
+          websiteUrl: target.websiteUrl ?? "",
+        });
+        const after = result.candidate.signals.map((signal) => signal.statement);
+        // "Changed" here means the evidence itself is different, nothing more.
+        // Whether that amounts to movement is a separate, later judgement.
+        const changed = after.length !== before.size || after.some((s) => !before.has(s));
+        outcomes.push({ prospectId: target.prospectId, name: target.name, state: "read", changed });
+      } catch (error) {
+        outcomes.push({
+          prospectId: target.prospectId,
+          name: target.name,
+          state: "unreadable",
+          changed: false,
+          because: (error as Error).message,
+        });
+      }
+    }
+
+    const summary = summarizeSweep({ plan, outcomes });
+    await recordSweepRun(context.organizationId, summary, "manual");
+    return { plan, outcomes, summary };
   },
 
   /**
