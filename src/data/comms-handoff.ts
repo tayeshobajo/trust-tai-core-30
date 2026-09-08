@@ -144,7 +144,7 @@ function chooseIntent(
       because: "This company has already been worked with, so the thread is being picked up.",
     };
   }
-  if (limiting && milestone && evaluation.light === "green" && !coverage.thin) {
+  if (limiting && milestone && evaluation.light === "green" && !coverage.sparse) {
     return {
       intent: "propose",
       because:
@@ -265,7 +265,7 @@ export function buildHandoffBlockers(input: {
       message: "The company has never been researched against the ICP.",
     });
   }
-  if (coverage.thin) {
+  if (coverage.sparse) {
     blockers.push({
       kind: "thin_coverage",
       message: "Research coverage is thin, so the brief rests on partial reading.",
@@ -331,7 +331,7 @@ export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
   );
 
   const confidence: ConfidenceRead = {
-    level: blockers.length === 0 ? fitConfidence.level : coverage.thin ? "low" : "moderate",
+    level: blockers.length === 0 ? fitConfidence.level : coverage.sparse ? "low" : "moderate",
     because:
       blockers.length === 0
         ? `${fitConfidence.because} A verified contact is on record.`

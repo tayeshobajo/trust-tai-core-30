@@ -108,7 +108,7 @@ const COVERAGE_BLOCKER: HandoffBlocker = {
   message: "Research coverage is thin, so the brief rests on partial reading.",
 };
 const BOTH = [EMAIL_BLOCKER, COVERAGE_BLOCKER];
-const THIN_COVERAGE = { thin: true } as ResearchCoverage;
+const THIN_COVERAGE = { sparse: true } as unknown as ResearchCoverage;
 
 const blockedMove = buildRecommendedNextMove({
   candidate,

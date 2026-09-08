@@ -19,6 +19,7 @@ import {
   planSweep,
   sweepCandidate,
   watchedCandidates,
+  watchlistCoverage,
   type SweepCadence,
   type SweepSummary,
 } from "@/data/scout/sweep";
@@ -56,6 +57,7 @@ export function ScoutSweepStrip({
   const lastRun = state.data?.lastRun ?? null;
 
   const plan = planSweep({ candidates: watchedCandidates(candidates).map(sweepCandidate) });
+  const coverage = watchlistCoverage(candidates);
 
   const saveSettings = useMutation({
     mutationFn: (next: { enabled: boolean; cadence: SweepCadence }) =>
@@ -154,6 +156,8 @@ export function ScoutSweepStrip({
           <span>Not checked yet</span>
         )}
       </div>
+
+      <p className="mt-1.5 text-[12px] text-muted-foreground">{coverage.line}</p>
 
       {progress ? (
         <p

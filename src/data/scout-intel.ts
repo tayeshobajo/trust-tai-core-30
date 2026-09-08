@@ -269,7 +269,9 @@ export function computeDecisionMetrics(input: MetricsInput): DecisionMetrics {
   const reach = reachabilityRead(people, intel);
   const opportunity = opportunityRead(intel);
   const timing = timingRead(intel, now);
-  const coveragePercent = input.coverage?.percent ?? null;
+  // Coverage is reported as counts, never as a score, so it carries no value
+  // here. Unknown stays unknown rather than becoming a zero.
+  const coveragePercent: number | null = null;
 
   const metrics: DecisionMetric[] = [
     {
