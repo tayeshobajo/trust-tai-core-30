@@ -38,6 +38,7 @@ import type { RelationshipResearchMarker } from "@/domain/relationship-developme
 import type { DecisionMoveKey } from "@/data/scout/decision-state";
 
 import { areasCovered, mergeObservedRows, type ResearchRunPlan } from "@/data/scout/research-run";
+import { appendObservationLog, diffObservations } from "@/data/scout/movement";
 import {
   planSweep,
   summarizeSweep,
