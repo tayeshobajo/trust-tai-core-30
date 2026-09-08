@@ -576,7 +576,7 @@ export function ScoutWatchlist({
                           "{row.extraction.excerpt}"
                         </span>
                       ) : null}
-                      {row.extraction.websiteBasis === "inferred" ? (
+                      {row.extraction.websiteConfidence === "inferred" ? (
                         <span className="w-fit rounded-full border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                           Website inferred
                         </span>
