@@ -331,85 +331,145 @@ export function ScoutWatchlist({
         ) : null}
       </div>
 
-      {/* Import: paste, review, then save explicitly. */}
+      {/* Add from source: hand Scout a source, review what it read, save explicitly. */}
       {importOpen ? (
         <div className="rounded-xl border border-border bg-card p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200">
-          <h3 className="text-sm font-semibold text-foreground">Import a list</h3>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            Choose a CSV or TSV file, or paste the list below. One company per row: either "Company
-            name, website" or just a website. Nothing is saved until you review the list and save
-            it.
-          </p>
+          <h3 className="text-sm font-semibold text-foreground">Add from source</h3>
+          <p className="mt-1 max-w-2xl text-[13px] text-muted-foreground">{SMART_IMPORT_LEAD}</p>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-border bg-cloud/50 p-3">
-            <input
-              ref={fileInput}
-              id="watch-file"
-              type="file"
-              accept={IMPORT_FILE_ACCEPT}
-              className="sr-only"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void stageFile(file);
-              }}
-            />
-            <TTButton
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={reading}
-              onClick={() => fileInput.current?.click()}
+          {reading ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-4 space-y-2 rounded-lg border border-royal/25 bg-royal/[0.04] p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
             >
-              {reading ? (
-                <Loader2 aria-hidden className="size-3.5 animate-spin" />
-              ) : (
-                <FileUp aria-hidden className="size-3.5" />
-              )}
-              Choose a file
-            </TTButton>
-            <span className="text-[12px] text-muted-foreground">
-              CSV, TSV or plain text. The file is read here on your screen only, and nothing is
-              saved until you save it. Spreadsheet workbooks (.xlsx) cannot be read: export the
-              sheet as CSV first.
-            </span>
-          </div>
+              {[
+                { key: "reading", label: "Reading source" },
+                { key: "extracting", label: "Extracting companies" },
+                { key: "checking", label: "Checking against the board" },
+              ].map((step) => {
+                const active = stage?.stage === step.key;
+                return (
+                  <p
+                    key={step.key}
+                    className={cn(
+                      "flex items-center gap-2 text-[13px] transition-colors",
+                      active ? "text-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {active ? (
+                      <Loader2 aria-hidden className="size-3.5 animate-spin text-royal" />
+                    ) : (
+                      <span aria-hidden className="size-1.5 rounded-full bg-border" />
+                    )}
+                    {step.label}
+                  </p>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-4 grid gap-3">
+              {/* 1. Upload a file. Read on screen, only its text is sent. */}
+              <div className="rounded-lg border border-border bg-cloud/50 p-3">
+                <p className="text-[13px] font-medium text-foreground">Upload a file</p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <input
+                    ref={fileInput}
+                    id="watch-file"
+                    type="file"
+                    accept={IMPORT_FILE_ACCEPT}
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void stageFile(file);
+                    }}
+                  />
+                  <TTButton
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    <FileUp aria-hidden className="size-3.5" />
+                    Choose a file
+                  </TTButton>
+                  <span className="text-[12px] text-muted-foreground">
+                    {SMART_IMPORT_FILE_HELP}
+                  </span>
+                </div>
+              </div>
+
+              {/* 2. Paste a link. Public documents only, said plainly. */}
+              <div className="rounded-lg border border-border bg-cloud/50 p-3">
+                <label
+                  htmlFor="watch-link"
+                  className="text-[13px] font-medium text-foreground"
+                >
+                  Paste a link
+                </label>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <TTInput
+                    id="watch-link"
+                    value={link}
+                    onChange={(event) => setLink(event.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/..."
+                    className="max-w-md"
+                  />
+                  <TTButton
+                    type="button"
+                    size="sm"
+                    disabled={!link.trim()}
+                    onClick={() => void stageLink()}
+                  >
+                    <Link2 aria-hidden className="size-3.5" />
+                    Read this link
+                  </TTButton>
+                </div>
+                <p className="mt-2 text-[12px] text-muted-foreground">{SMART_IMPORT_LINK_HELP}</p>
+              </div>
+
+              {/* 3. Paste text. A list or a paragraph, both are fine. */}
+              <div className="rounded-lg border border-border bg-cloud/50 p-3">
+                <label
+                  htmlFor="watch-paste"
+                  className="text-[13px] font-medium text-foreground"
+                >
+                  Paste text
+                </label>
+                <textarea
+                  id="watch-paste"
+                  value={pasted}
+                  onChange={(event) => setPasted(event.target.value)}
+                  rows={4}
+                  placeholder={"Northfield Dental, northfielddental.com\nacme.com"}
+                  className="mt-2 w-full rounded-lg border border-input bg-card p-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <TTButton
+                    type="button"
+                    size="sm"
+                    disabled={!pasted.trim()}
+                    onClick={() =>
+                      void readFrom({ kind: "text", label: "the pasted text" }, { text: pasted })
+                    }
+                  >
+                    Read this text
+                  </TTButton>
+                  <span className="text-[12px] text-muted-foreground">
+                    A list or a paragraph. Scout will pick out the companies.
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {importError ? (
-            <p role="alert" className="mt-2 text-[13px] text-destructive">
+            <p role="alert" className="mt-3 text-[13px] text-destructive">
               {importError}
             </p>
           ) : null}
 
-          <p className="mt-4 text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            Or paste the list
-          </p>
-          <textarea
-            value={pasted}
-            onChange={(event) => setPasted(event.target.value)}
-            rows={5}
-            aria-label="Paste companies, one per line"
-            placeholder={"Northfield Dental, northfielddental.com\nacme.com"}
-            className="mt-3 w-full rounded-lg border border-input bg-card p-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <div className="mt-3 flex flex-wrap gap-2">
-            <TTButton
-              type="button"
-              size="sm"
-              disabled={!pasted.trim()}
-              onClick={() => {
-                setImportError(null);
-                setStaged(parseWatchlistImport(pasted, existing));
-                setStagedFrom(null);
-              }}
-            >
-              Review list
-            </TTButton>
-            {staged ? (
-              <TTButton type="button" size="sm" variant="quiet" onClick={discardStaged}>
-                Discard
-              </TTButton>
-            ) : null}
-          </div>
+          <p className="mt-3 text-[12px] text-muted-foreground">{WATCHLIST_HONESTY_NOTE}</p>
         </div>
       ) : null}
 
