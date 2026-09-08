@@ -66,6 +66,7 @@ export type RuntimePurpose =
   | "meeting_interpretation"
   | "draft"
   | "discovery"
+  | "import"
   | "research"
   | "studio_generation";
 
