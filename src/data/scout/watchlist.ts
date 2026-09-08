@@ -67,9 +67,10 @@ export function watchlistSourceKey(organizationId: string, identity: string): st
  * nothing else. A spreadsheet workbook (.xlsx / .xls / .numbers) is a binary
  * format we do not read, and we say so rather than pretending.
  */
-export const SUPPORTED_IMPORT_EXTENSIONS = [".csv", ".tsv", ".txt"] as const;
+export const SUPPORTED_IMPORT_EXTENSIONS = [".csv", ".tsv", ".txt", ".md"] as const;
 
-export const IMPORT_FILE_ACCEPT = ".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain";
+export const IMPORT_FILE_ACCEPT =
+  ".csv,.tsv,.txt,.md,text/csv,text/tab-separated-values,text/plain,text/markdown";
 
 export type ImportFileSupport =
   { readable: true; extension: string } | { readable: false; because: string };
@@ -88,7 +89,8 @@ export function importFileSupport(fileName: string): ImportFileSupport {
   }
   return {
     readable: false,
-    because: "Only CSV, TSV and plain text lists can be read. Nothing was staged.",
+    because:
+      "Only CSV, TSV, text and Markdown files can be read here. Nothing was staged.",
   };
 }
 
@@ -223,7 +225,12 @@ export function existingCompanies(candidates: ProspectCandidate[]): ExistingComp
   }));
 }
 
-function matches(existing: ExistingCompany[], name: string, site: string | null): boolean {
+/** True when a company is already known, by website first and then by name. */
+export function matches(
+  existing: ExistingCompany[],
+  name: string,
+  site: string | null,
+): boolean {
   const lowered = name.trim().toLowerCase();
   return existing.some((entry) => {
     if (site && entry.websiteUrl && entry.websiteUrl.toLowerCase() === site.toLowerCase()) {
