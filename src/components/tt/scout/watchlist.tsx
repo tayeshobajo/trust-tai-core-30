@@ -638,7 +638,7 @@ export function ScoutWatchlist({
       {watched.length === 0 ? (
         <EmptyState
           title="Nothing is being watched yet"
-          belongsHere="Add a company by hand, or import a list and review it before saving."
+          belongsHere="Add a company by hand, or hand Scout a source and review what it read before saving."
           whyItMatters={WATCHLIST_HONESTY_NOTE}
         />
       ) : rows.length === 0 ? (
