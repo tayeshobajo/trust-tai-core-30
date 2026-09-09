@@ -21,9 +21,17 @@ import {
   verifyExtraction,
   type VerifiedExtraction,
 } from "@/data/scout/smart-import";
+import { readIntelligenceCases } from "@/lib/intelligence-cases.server";
+import {
+  composeScoutRetrieval,
+  scoutRetrievalPacket,
+  SCOUT_RETRIEVAL_LAWS,
+  type KnownCompany,
+} from "@/lib/scout-retrieval";
 import { parseDelimitedRows, looksLikeHeader } from "@/data/scout/watchlist";
 import type { ExtractedCompany } from "@/domain/scout-smart-import";
 import { normalizeWebsiteUrl } from "@/lib/website-url";
+
 
 /** Nothing larger is pulled into memory or handed to a model. */
 const MAX_SOURCE_BYTES = 2_000_000;
