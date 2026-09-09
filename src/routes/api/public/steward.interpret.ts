@@ -26,6 +26,7 @@ import {
 } from "@/data/steward/learning";
 
 import { toMemoryBelief } from "@/data/steward/memory-encoding";
+import { describeKnownPeople, resolveKnownPeople } from "@/data/steward/known-people";
 import { flagMemoryConflicts, selectRelevantMemory } from "@/data/steward/memory-context";
 import {
   interpretConversation,
@@ -135,27 +136,73 @@ async function readMemory(
       updatedAt: "",
     })) as Commitment[];
 
-    const [peopleResult, projectsResult] = await Promise.all([
+    /*
+     * Canonical people before Steward's own registry only. Role memory is
+     * human-recorded and still outranks a directory row; members and contacts
+     * exist so Steward stops claiming it knows nobody about people the rest of
+     * Trust Tai has already met. Each read is tolerant: an unavailable source
+     * contributes nothing rather than failing the interpretation.
+     */
+    const [roleResult, membershipResult, contactsResult, projectsResult] = await Promise.all([
       supabase
         .from("steward_role_memory")
-        .select("name, title, pod, responsibilities")
+        .select("name, email, title, pod, responsibilities")
         .eq("organization_id", organizationId)
         .limit(100),
+      supabase
+        .from("organization_memberships")
+        .select("user_id, status")
+        .eq("organization_id", organizationId)
+        .limit(200),
+      supabase
+        .from("contacts")
+        .select("full_name, email, role_title")
+        .eq("organization_id", organizationId)
+        .limit(200),
       supabase.from("projects").select("id, name").eq("organization_id", organizationId).limit(100),
     ]);
 
-    const people = (peopleResult.data ?? [])
-      .map((row) => {
-        const title = [row["title"], row["pod"]].filter(Boolean).join(" · ");
-        const responsibilities = Array.isArray(row["responsibilities"])
-          ? (row["responsibilities"] as string[]).slice(0, 4).join(", ")
-          : "";
-        const detail = [title, responsibilities].filter(Boolean).join("-");
-        return detail
-          ? { name: String(row["name"] ?? ""), title: detail }
-          : { name: String(row["name"] ?? "") };
-      })
-      .filter((person) => person.name.length > 0);
+    const memberIds = ((membershipResult.data ?? []) as Record<string, unknown>[])
+      .filter((row) => String(row["status"] ?? "active") === "active")
+      .map((row) => String(row["user_id"] ?? ""))
+      .filter(Boolean);
+    const profilesResult =
+      memberIds.length > 0
+        ? await supabase
+            .from("profiles")
+            .select("id, full_name, email, job_title")
+            .in("id", memberIds)
+        : { data: [] as Record<string, unknown>[] };
+
+    const roleMemory = ((roleResult.data ?? []) as Record<string, unknown>[]).map((row) => {
+      const title = [row["title"], row["pod"]].filter(Boolean).join(" · ");
+      const responsibilities = Array.isArray(row["responsibilities"])
+        ? (row["responsibilities"] as string[]).slice(0, 4).join(", ")
+        : "";
+      return {
+        name: String(row["name"] ?? ""),
+        email: (row["email"] as string | null) ?? null,
+        title: [title, responsibilities].filter(Boolean).join("-"),
+      };
+    });
+
+    const members = ((profilesResult.data ?? []) as Record<string, unknown>[]).map((row) => ({
+      name: String(row["full_name"] ?? ""),
+      email: (row["email"] as string | null) ?? null,
+      title: (row["job_title"] as string | null) ?? null,
+    }));
+
+    const contacts = ((contactsResult.data ?? []) as Record<string, unknown>[]).map((row) => ({
+      name: String(row["full_name"] ?? ""),
+      email: (row["email"] as string | null) ?? null,
+      title: (row["role_title"] as string | null) ?? null,
+    }));
+
+    const known = resolveKnownPeople({ roleMemory, members, contacts });
+    const people = known.map((person) => ({
+      name: person.name,
+      ...(person.title ? { title: person.title } : {}),
+    }));
 
     const projects = (projectsResult.data ?? [])
       .map((row) => ({ id: String(row["id"] ?? ""), label: String(row["name"] ?? "") }))
@@ -165,10 +212,8 @@ async function readMemory(
       commitments,
       memory: {
         available: true,
-        because:
-          people.length > 0
-            ? "Read from this workspace's open commitments and known people."
-            : "Read from this workspace's open commitments.",
+        because: describeKnownPeople(known),
+
         openCommitments: commitments.map((commitment) => ({
           id: commitment.id,
           statement: commitment.what,
