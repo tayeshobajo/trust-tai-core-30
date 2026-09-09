@@ -23,8 +23,17 @@ import type { ProspectCandidate } from "@/domain/scout";
 import { getPeopleProvider } from "@/data/people/registry";
 import { supabase } from "@/integrations/trust-tai/supabase";
 
+import { planPersonResolution } from "@/data/scout/person-resolution";
+
 import { supabaseActivity } from "./activities";
-import { insertContact, listProspectContacts, updateContact, type ContactPatch } from "./contacts";
+import {
+  insertContact,
+  listOrganizationContacts,
+  listProspectContacts,
+  updateContact,
+  type ContactPatch,
+} from "./contacts";
+import { submissionsForProspect } from "./website-service";
 
 export interface PeopleContext {
   organizationId: ID;
@@ -117,6 +126,85 @@ export interface LinkiLookupResult {
   candidates: LinkiLookupCandidate[];
   /** Non-null when nothing cleared the confidence bar (fail-closed). */
   noMatchReason: string | null;
+}
+
+
+/**
+ * Reuse the people canonical Trust Tai data already holds for this company,
+ * then read the company's people again.
+ *
+ * Deterministic and provenance preserving: an existing contact is linked, not
+ * copied; a person named in the intake is recorded in their own words as
+ * observed, with an unverified address, because stating an address is not the
+ * same as confirming it. Returns an empty list when nothing was resolved.
+ */
+async function resolveKnownPeople(
+  stored: Person[],
+  prospectId: ID,
+  context: PeopleContext,
+): Promise<Person[]> {
+  const [orgPeople, submissions, prospect] = await Promise.all([
+    listOrganizationContacts(context.organizationId),
+    submissionsForProspect(context.organizationId, prospectId),
+    supabase
+      .from("prospects")
+      .select("website_url")
+      .eq("id", prospectId)
+      .maybeSingle()
+      .then((result) => result.data as { website_url?: string | null } | null),
+  ]);
+
+  const plan = planPersonResolution({
+    prospectPeople: stored,
+    orgPeople,
+    submissions,
+    websiteUrl: prospect?.website_url ?? null,
+  });
+  if (plan.link.length === 0 && plan.create.length === 0) return [];
+
+  for (const link of plan.link) {
+    const existing = orgPeople.find((person) => person.id === link.contactId);
+    const person = await updateContact(
+      link.contactId,
+      {
+        prospectId,
+        // Only gaps are filled. A human-confirmed record keeps its own truth.
+        ...(existing && existing.confidence === "human_confirmed"
+          ? {}
+          : { confidence: "observed" as const }),
+      },
+      context.userId,
+    );
+    await record(context, "updated", person, `${person.fullName} was already known to Trust Tai and was matched to this company.`, {
+      resolution: link.reason,
+      resolution_note: link.note,
+      reused_existing_record: true,
+    });
+  }
+
+  for (const draft of plan.create) {
+    const person = await insertContact({
+      organizationId: context.organizationId,
+      prospectId,
+      userId: context.userId,
+      fullName: draft.fullName,
+      ...(draft.roleTitle ? { roleTitle: draft.roleTitle } : {}),
+      seniority: draft.seniority,
+      ...(draft.email ? { email: draft.email } : {}),
+      // Their own words: read, not verified. Nobody has checked the address.
+      emailStatus: draft.email ? "found" : "unknown",
+      confidence: "observed",
+      sourceId: "website_roadmap_intake",
+      note: draft.note,
+    });
+    await record(context, "created", person, `${person.fullName} was recorded from what they said in the roadmap intake.`, {
+      resolution: draft.reason,
+      resolution_note: draft.note,
+      submission_id: draft.submissionId,
+    });
+  }
+
+  return listProspectContacts(context.organizationId, prospectId);
 }
 
 export const peopleService = {
