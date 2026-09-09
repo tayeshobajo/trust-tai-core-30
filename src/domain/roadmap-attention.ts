@@ -12,6 +12,18 @@
 import type { RoadmapDecision, Tier } from "@/domain/roadmap";
 import type { CanonMilestone, MilestoneAttention } from "@/domain/conductor";
 
+const STATE_RANK: Record<string, number> = { blocked: 0, in_build: 1, mapped: 2, live: 3 };
+const TIER_RANK: Record<Tier, number> = { decided: 0, observed: 1, inferred: 2 };
+
+const DESTINATION_PATTERNS: RegExp[] = [
+  /\bdestination\b/i,
+  /\bpoint b\b/i,
+  /\bagree(ment|d)?\b/i,
+  /\bobjective\b/i,
+];
+
+
+
 function looksLikeDestinationWork(milestone: CanonMilestone): boolean {
   const text = `${milestone.title} ${milestone.intent ?? ""}`;
   return DESTINATION_PATTERNS.some((pattern) => pattern.test(text));
