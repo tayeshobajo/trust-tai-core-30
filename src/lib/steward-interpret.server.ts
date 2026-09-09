@@ -11,6 +11,8 @@
  * deterministic candidates are never promoted in its place.
  */
 
+import type { IntelligenceCase } from "@/domain/intelligence-canon";
+import type { WithheldSource } from "@/domain/signals";
 import type { Commitment, NormalizedConversation } from "@/domain/steward";
 import type {
   CandidatePassage,
@@ -20,6 +22,7 @@ import type {
 } from "@/domain/steward-semantic";
 import { detectCandidates } from "@/data/steward/candidates";
 import { interpretationBatchSchema, toSignal } from "@/data/steward/interpretation";
+import { composeStewardRetrieval, stewardRetrievalPacket } from "@/lib/steward-retrieval";
 
 import {
   extractJsonObject,
@@ -58,11 +61,23 @@ const LAWS = [
   "normalized_meaning is one concise operational sentence in plain English that a reader can act on without reading the transcript. Never copy raw speech.",
 ].join(" ");
 
+/** How the shared retrieval bundle must be read. Provenance, in words. */
+const RETRIEVAL_LAWS = [
+  'The packet carries "retrieval": the shared, governed read of what this workspace already knows. Read it before the candidates.',
+  "retrieval.humanCorrections are decisions a person already made about this kind of reading. They outrank every inference, permanently. Never contradict one.",
+  "retrieval.priorCases and retrieval.knowledgeProvenance are what the workspace has seen before, cited with their source. Context, never proof about this meeting.",
+  'retrieval.evidence is ordered strongest first: tier "decided" then "observed" may be relied on; tier "derived" is Steward\'s own inference and may never be stated as fact or raise truth_tier to observed.',
+  "retrieval.decided are statements a person decided. Treat them as settled and never re-litigate them.",
+  "retrieval.withheld lists sources that could not be read. They stay UNKNOWN. An unread source is never zero, never an absence, and never evidence that something did not happen.",
+  "retrieval.capabilities describes what Steward can actually do. Nothing is written or confirmed from here.",
+].join(" ");
+
 function instructions(): string {
   return [
     "You are Steward, reading one real meeting for what actually happened, and you return json only.",
     "You interpret. Rules constrain you. Human beings decide. Restraint is more useful than volume.",
     LAWS,
+    RETRIEVAL_LAWS,
     "Return json with an interpretations array holding exactly one object per candidate you were given, keyed by candidate_id.",
   ].join(" ");
 }
@@ -71,9 +86,13 @@ function payload(
   conversation: NormalizedConversation,
   candidates: CandidatePassage[],
   memory: MemoryContext,
+  retrieval: Record<string, unknown>,
 ): string {
   return JSON.stringify({
     task: "Interpret each candidate passage from this meeting and return json.",
+    /* The shared Intelligence Runtime read: one composition point, provenance
+       on every line, corrections ahead of inference, unread sources withheld. */
+    retrieval,
     meeting: {
       title: conversation.title,
       occurred_at: conversation.occurredAt,
@@ -134,6 +153,12 @@ export interface InterpretInput {
   candidates?: CandidatePassage[];
   gateway?: RuntimeModelCall["gateway"];
   initialRunId?: string | undefined;
+  /** Workspace the read belongs to, carried into the retrieval bundle. */
+  organizationId?: string;
+  /** Case ledger, where human corrections live. Corrections outrank inference. */
+  cases?: IntelligenceCase[];
+  /** Sources the caller could not read. They stay unknown, never zero. */
+  withheld?: WithheldSource[];
 }
 
 /**
@@ -155,13 +180,24 @@ export async function interpretConversation(
   let provider = "";
   let model = "";
 
+  /* One composition of the shared retrieval bundle for the whole run. */
+  const retrieval = stewardRetrievalPacket(
+    composeStewardRetrieval({
+      organizationId: input.organizationId ?? "",
+      memory: input.memory,
+      ...(input.cases ? { cases: input.cases } : {}),
+      ...(input.withheld ? { withheld: input.withheld } : {}),
+    }),
+  );
+
   for (let index = 0; index < candidates.length; index += BATCH_SIZE) {
     const batch = candidates.slice(index, index + BATCH_SIZE);
     let raw: string;
     try {
       const result = await callModel({
         instructions: instructions(),
-        input: payload(input.conversation, batch, input.memory),
+        input: payload(input.conversation, batch, input.memory, retrieval),
+
         webSearch: false,
         gateway: input.gateway,
         initialRunId: input.initialRunId,

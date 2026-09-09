@@ -14,9 +14,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import type { IntelligenceCase } from "@/domain/intelligence-canon";
+import type { WithheldSource } from "@/domain/signals";
 import type { Belief, Commitment, NormalizedConversation } from "@/domain/steward";
 import type { MemoryBelief } from "@/domain/steward-memory";
 import type { MemoryContext } from "@/domain/steward-semantic";
+
 import { detectCandidates } from "@/data/steward/candidates";
 import { proposeStateChanges } from "@/data/steward/continuity";
 import {
@@ -108,7 +111,58 @@ async function readBeliefs(
   }
 }
 
+/**
+ * The case ledger for this workspace, read as the caller. It is where human
+ * corrections live, and corrections outrank inference. When the ledger cannot
+ * be read (not migrated, no permission), the source is recorded as withheld:
+ * unknown stays unknown, it never becomes an empty fact.
+ */
+async function readCases(
+  supabase: SupabaseClient,
+  organizationId: string,
+): Promise<{ cases: IntelligenceCase[]; withheld: WithheldSource[] }> {
+  try {
+    const { data, error } = await supabase
+      .from("intelligence_cases")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+    return {
+      cases: ((data ?? []) as Record<string, unknown>[]).map((row) => {
+        const optional = (key: string) =>
+          typeof row[key] === "string" && (row[key] as string).length > 0
+            ? { [key]: row[key] as string }
+            : {};
+        return {
+          id: String(row["id"] ?? ""),
+          organizationId: String(row["organization_id"] ?? ""),
+          patternId: String(row["pattern_id"] ?? ""),
+          patternVersion: Number(row["pattern_version"] ?? 1),
+          entities: [],
+          evidenceRefs: [],
+          hypothesis: String(row["hypothesis"] ?? ""),
+          humanDecision: String(row["human_decision"] ?? ""),
+          decidedBy: String(row["decided_by"] ?? ""),
+          decidedAt: String(row["decided_at"] ?? ""),
+          diagnosisVerdict: (typeof row["diagnosis_verdict"] === "string"
+            ? row["diagnosis_verdict"]
+            : "unknown") as IntelligenceCase["diagnosisVerdict"],
+          ...(optional("correction") as { correction?: string }),
+          ...(optional("lesson") as { lesson?: string }),
+          createdAt: String(row["created_at"] ?? ""),
+        } satisfies IntelligenceCase;
+      }),
+      withheld: [],
+    };
+  } catch {
+    return { cases: [], withheld: [{ appId: "intelligence_cases", reason: "not_connected" }] };
+  }
+}
+
 /** Canonical memory, read as the caller. Unavailable is reported, never faked. */
+
 async function readMemory(
   supabase: SupabaseClient,
   organizationId: string,
@@ -274,6 +328,8 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
 
         const { memory, commitments } = await readMemory(supabase, organizationId);
         const beliefs = await readBeliefs(supabase, organizationId);
+        /* Human corrections for the shared retrieval bundle. Unreadable is withheld. */
+        const ledger = await readCases(supabase, organizationId);
         /* Readings people keep calling context stop being raised. Countable, never hidden. */
         const suppressed = suppressedPatterns(outcomeRecordsFromBeliefs(beliefs));
         const relevant = selectRelevantMemory({
@@ -311,9 +367,13 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
               candidates,
               gateway,
               initialRunId,
+              organizationId,
+              cases: ledger.cases,
+              withheld: ledger.withheld,
             },
             callModel,
           );
+
           /* Continuity and conflict are proposals for a person, never writes. */
           const stateChanges = proposeStateChanges({ signals: run.signals, commitments });
           const conflicts = flagMemoryConflicts({ signals: run.signals, beliefs });
