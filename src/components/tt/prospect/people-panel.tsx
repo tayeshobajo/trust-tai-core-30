@@ -22,7 +22,7 @@ import {
 } from "@/domain/people";
 import type { FitCriterion } from "@/domain/scout-fit";
 import type { PersonPlan } from "@/domain/scout-intel";
-import type { LinkiLookupCandidate } from "@/data/supabase/people-service";
+import type { RouteLookupCandidate } from "@/data/supabase/people-service";
 import { cn } from "@/lib/utils";
 
 import { CriterionRow, Disclosure, Panel, TierTag } from "./panel";
@@ -214,14 +214,14 @@ export function PeoplePanel({
   onIngest: (providerId: string) => void;
   onAddManual: (form: ManualPersonForm) => void;
   onConfirmEmail: (person: Person) => void;
-  onConfirmLinkedin?: ((person: Person, candidate?: LinkiLookupCandidate) => void) | undefined;
+  onConfirmLinkedin?: ((person: Person, candidate?: RouteLookupCandidate) => void) | undefined;
   onLookupLinkedin?: ((person: Person) => void) | undefined;
   busy?: boolean | undefined;
   note?: string | undefined;
   /** Who to approach first, and why. Computed, never provider-ordered. */
   plan?: PersonPlan | undefined;
   lookupTarget?: Person | null | undefined;
-  lookupCandidates?: LinkiLookupCandidate[] | undefined;
+  lookupCandidates?: RouteLookupCandidate[] | undefined;
   lookupPending?: boolean | undefined;
   lookupError?: string | null | undefined;
   /** Fail-closed signal: no candidate cleared the confidence bar. */
@@ -324,18 +324,20 @@ export function PeoplePanel({
 
           {lookupTarget && onLookupLinkedin ? (
             <div
-              id="scout-people-linki-lookup"
+              id="scout-people-route-lookup"
               tabIndex={-1}
               className="mt-4 scroll-mt-24 rounded-lg border border-border bg-surface-tertiary px-4 py-4 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-4"
             >
-              <p className="tt-eyebrow">Linki route search</p>
+              <p className="tt-eyebrow">Contact route search</p>
               <p className="mt-1 text-[13px] text-foreground">
-                Search LinkedIn for {lookupTarget.fullName}
-                {lookupTarget.roleTitle ? `, ${lookupTarget.roleTitle}` : ""}.
+                Look for {lookupTarget.fullName}
+                {lookupTarget.roleTitle ? `, ${lookupTarget.roleTitle}` : ""} among the leads
+                ZenMode has already found.
               </p>
               <p className="mt-1 text-[13px] text-muted-foreground">
-                This only suggests candidates. A human still confirms the real profile before it
-                becomes a route.
+                This searches leads we already hold — it does not go out to LinkedIn, so it only
+                finds people a ZenMode campaign has picked up. It suggests candidates only; a person
+                still confirms the real profile before it becomes a route.
               </p>
               <div className="mt-3">
                 <TTButton
@@ -343,7 +345,7 @@ export function PeoplePanel({
                   disabled={busy || lookupPending}
                   onClick={() => onLookupLinkedin(lookupTarget)}
                 >
-                  {lookupPending ? "Searching LinkedIn…" : "Find contact route"}
+                  {lookupPending ? "Searching leads…" : "Find contact route"}
                 </TTButton>
               </div>
 

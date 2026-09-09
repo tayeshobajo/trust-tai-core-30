@@ -7,7 +7,7 @@
  * session stay inside ZenMode; this side holds only `ZENMODE_BASE_URL` +
  * `ZENMODE_API_KEY` and nothing else.
  *
- * Architecture law (mirrors linki-provider.server.ts):
+ * Architecture law:
  *   - ZenMode is a hand, not the brain. It discovers ICP leads, executes
  *     outreach, and reports replies. Trust Tai owns ICP, identity, judgment,
  *     and the canonical record.

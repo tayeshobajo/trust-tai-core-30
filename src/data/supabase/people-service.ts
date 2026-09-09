@@ -90,9 +90,11 @@ export interface IngestResult {
   note?: string;
 }
 
-const LINKI_LOOKUP_ENDPOINT = "/api/public/linki/lookup";
+/** The ZenMode lead pool, searched locally. Replaced the Linki lookup on
+ * 2026-09-09 — see `zenmode-pool-lookup.server.ts` for why. */
+const ROUTE_LOOKUP_ENDPOINT = "/api/public/zenmode/lookup";
 
-export interface LinkiLookupInput {
+export interface RouteLookupInput {
   fullName: string;
   companyName?: string | undefined;
   companyDomain?: string | undefined;
@@ -101,7 +103,7 @@ export interface LinkiLookupInput {
   organizationId: ID;
 }
 
-export interface LinkiLookupCandidate {
+export interface RouteLookupCandidate {
   linkedinUrl: string;
   fullName: string;
   headline: string | null;
@@ -113,10 +115,14 @@ export interface LinkiLookupCandidate {
   score: number;
 }
 
-export interface LinkiLookupResult {
-  candidates: LinkiLookupCandidate[];
-  /** Non-null when nothing cleared the confidence bar (fail-closed). */
+export interface RouteLookupResult {
+  candidates: RouteLookupCandidate[];
+  /** Non-null when nothing cleared the confidence bar (fail-closed). Says
+   * WHICH "no" it is — an empty lead pool reads differently from a pool that
+   * held no confident match. */
   noMatchReason: string | null;
+  /** How many ZenMode leads were searched. Makes an empty answer legible. */
+  poolSize: number;
 }
 
 export const peopleService = {
@@ -300,15 +306,19 @@ export const peopleService = {
     return updated;
   },
 
-  /** Browser -> Trust Tai server -> Linki. The internal secret never leaves the server. */
-  async lookupLinkedinCandidates(input: LinkiLookupInput): Promise<LinkiLookupResult> {
+  /**
+   * Search the leads a ZenMode campaign already found. Browser -> Trust Tai
+   * server -> Supabase, and it stops there: nothing contacts LinkedIn, so this
+   * cannot be rate-limited or blocked the way the old Linki search was.
+   */
+  async lookupLinkedinCandidates(input: RouteLookupInput): Promise<RouteLookupResult> {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
     if (!token) {
-      throw new Error("Your session has expired. Sign in again to search LinkedIn routes.");
+      throw new Error("Your session has expired. Sign in again to search contact routes.");
     }
 
-    const response = await fetch(LINKI_LOOKUP_ENDPOINT, {
+    const response = await fetch(ROUTE_LOOKUP_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -328,12 +338,14 @@ export const peopleService = {
       error?: string;
       candidates?: unknown;
       no_match_reason?: unknown;
+      pool_size?: unknown;
     } = {};
     try {
       payload = (await response.json()) as {
         error?: string;
         candidates?: unknown;
         no_match_reason?: unknown;
+        pool_size?: unknown;
       };
     } catch {
       payload = {};
@@ -343,8 +355,8 @@ export const peopleService = {
       throw new Error(
         payload.error ||
           (response.status === 401
-            ? "Your session has expired. Sign in again to search LinkedIn routes."
-            : "LinkedIn route search failed. Nothing was changed."),
+            ? "Your session has expired. Sign in again to search contact routes."
+            : "The contact route search failed. Nothing was changed."),
       );
     }
 
@@ -354,16 +366,17 @@ export const peopleService = {
         : null;
     return {
       candidates: Array.isArray(payload.candidates)
-        ? (payload.candidates as LinkiLookupCandidate[])
+        ? (payload.candidates as RouteLookupCandidate[])
         : [],
       noMatchReason,
+      poolSize: typeof payload.pool_size === "number" ? payload.pool_size : 0,
     };
   },
 
   /** A human confirms which LinkedIn profile is the legitimate route. */
   async confirmLinkedinRoute(
     person: Person,
-    match: LinkiLookupCandidate,
+    match: RouteLookupCandidate,
     context: PeopleContext,
   ): Promise<Person> {
     const updated = await updateContact(
@@ -371,7 +384,7 @@ export const peopleService = {
       {
         linkedinUrl: match.linkedinUrl,
         linkedinConfirmed: true,
-        linkedinProvider: "linki",
+        linkedinProvider: "zenmode",
         linkedinConfidence: "confirmed",
         confidence: "human_confirmed",
       },
@@ -384,7 +397,7 @@ export const peopleService = {
       `${updated.fullName}'s LinkedIn route was confirmed by a Trust Tai member.`,
       {
         confirmed_by: "human",
-        linkedin_provider: "linki",
+        linkedin_provider: "zenmode",
         linkedin_url: match.linkedinUrl,
       },
     );

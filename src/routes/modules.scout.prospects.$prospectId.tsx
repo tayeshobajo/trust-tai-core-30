@@ -98,7 +98,7 @@ import {
 import { similarCompanies } from "@/data/scout/similar-companies";
 import { rankScoutSignals, topScoutSignals } from "@/data/scout/top-signals";
 import { availablePeopleProviders, peopleProviderInfo } from "@/data/people/registry";
-import { peopleService, type LinkiLookupCandidate } from "@/data/supabase/people-service";
+import { peopleService, type RouteLookupCandidate } from "@/data/supabase/people-service";
 import { scoutService } from "@/data/supabase/scout-service";
 import type { HandoffDraft } from "@/domain/comms-handoff";
 import { isDecisionMaker, isReachable, type Person } from "@/domain/people";
@@ -344,7 +344,7 @@ function CompanyDetail({
       candidateMatch,
     }: {
       person: Person;
-      candidateMatch: LinkiLookupCandidate;
+      candidateMatch: RouteLookupCandidate;
     }) => peopleService.confirmLinkedinRoute(person, candidateMatch, { organizationId, userId }),
     onSuccess: async () => {
       lookupLinkedin.reset();
@@ -643,7 +643,7 @@ function CompanyDetail({
         focusPeopleSection("scout-people-discovery");
         break;
       case "find_contact_route":
-        focusPeopleSection("scout-people-linki-lookup");
+        focusPeopleSection("scout-people-route-lookup");
         break;
       case "confirm_decision_maker":
         focusPeopleSection("scout-people-role");

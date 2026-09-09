@@ -1,8 +1,9 @@
 /**
  * Linki execution transport — server only, and SEND-capable.
  *
- * Unlike `linki-provider.server.ts` (the read-only lookup provider), this
- * adapter performs the actual LinkedIn send THROUGH Linki. That is why it is
+ * The read-only Linki lookup provider was removed on 2026-09-09 — contact-route
+ * search now reads the ZenMode lead pool and touches no network. This adapter is
+ * the last Linki surface: it performs the actual LinkedIn send. That is why it is
  * gated twice: the caller must already hold an `approved` action AND the
  * LINKI_EXECUTION_ENABLED kill switch must be on. The adapter itself never
  * decides anything — it takes the exact approved action, hands it to Linki,

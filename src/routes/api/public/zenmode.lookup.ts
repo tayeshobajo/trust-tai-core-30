@@ -1,17 +1,22 @@
 /**
- * Scout -> Linki lookup endpoint.
+ * Scout contact-route search, over the ZenMode lead pool.
  *
- * The browser never talks to Linki directly and never sees the internal
- * secret. The signed-in Trust Tai user calls this route with their Supabase
- * access token; the server verifies active workspace membership, then performs
- * the Linki lookup server-to-server.
+ * Replaces `/api/public/linki/lookup`. That endpoint asked Linki to drive a
+ * live LinkedIn session; this one reads leads a ZenMode campaign already
+ * scraped. No outbound call of any kind happens here — not to LinkedIn, not to
+ * ZenMode — so there is no session to get blocked and no secret to hold.
+ *
+ * Security: this path bypasses site auth, so the handler authenticates every
+ * request itself — valid Supabase access token, active organization membership
+ * resolved server-side, and the read performed with the CALLER'S token so RLS
+ * and the organization boundary still apply.
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { linkiFindPerson, linkiStatus, rankCandidates } from "@/lib/linki-provider.server";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
+import { zenModePoolFindPerson } from "@/lib/zenmode-pool-lookup.server";
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
@@ -35,19 +40,17 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-export const Route = createFileRoute("/api/public/linki/lookup")({
+export const Route = createFileRoute("/api/public/zenmode/lookup")({
   server: {
     handlers: {
-      // Cheap configuration probe. Never discloses the internal Linki host or
-      // any part of the secret — only whether the provider is wired and on.
-      GET: async () => {
-        const status = linkiStatus();
-        return json({ configured: status.configured, enabled: status.enabled });
-      },
+      // Configuration probe. The pool search needs no key and no provider, so
+      // it is available wherever the app is — this exists so the UI can render
+      // the same shape it did for the old provider-gated lookup.
+      GET: async () => json({ configured: true, enabled: true }),
 
       POST: async ({ request }) => {
         const token = bearer(request);
-        if (!token) return json({ error: "Sign in to search LinkedIn routes." }, 401);
+        if (!token) return json({ error: "Sign in to search contact routes." }, 401);
 
         let body: Record<string, unknown> = {};
         try {
@@ -69,7 +72,7 @@ export const Route = createFileRoute("/api/public/linki/lookup")({
           typeof body["organization_id"] === "string" ? body["organization_id"] : undefined;
 
         if (fullName.length < 2) {
-          return json({ error: "A person's full name is required before Linki can search." }, 400);
+          return json({ error: "A person's full name is required before we can search." }, 400);
         }
 
         const supabase = clientFor(token);
@@ -77,7 +80,7 @@ export const Route = createFileRoute("/api/public/linki/lookup")({
         const user = userData?.user;
         if (userError || !user) {
           return json(
-            { error: "Your session has expired. Sign in again to search LinkedIn routes." },
+            { error: "Your session has expired. Sign in again to search contact routes." },
             401,
           );
         }
@@ -95,34 +98,26 @@ export const Route = createFileRoute("/api/public/linki/lookup")({
         }
 
         try {
-          const candidates = await linkiFindPerson({
+          const result = await zenModePoolFindPerson(supabase, {
+            organizationId: membership["organization_id"] as string,
             fullName,
             ...(companyName ? { companyName } : {}),
             ...(companyDomain ? { companyDomain } : {}),
             ...(roleTitle ? { roleTitle } : {}),
             ...(personLocation ? { location: personLocation } : {}),
           });
-          // Rank BEFORE display. Company/title/location/domain are evidence
-          // here, never search tokens. Fail-closed: nobody clears the bar →
-          // empty list + explicit reason. A human still confirms identity.
-          const { ranked, noMatchReason } = rankCandidates(
-            {
-              fullName,
-              ...(companyName ? { companyName } : {}),
-              ...(companyDomain ? { companyDomain } : {}),
-              ...(roleTitle ? { roleTitle } : {}),
-              ...(personLocation ? { location: personLocation } : {}),
-            },
-            candidates,
-          );
-          return json({ candidates: ranked, no_match_reason: noMatchReason });
+          return json({
+            candidates: result.candidates,
+            no_match_reason: result.noMatchReason,
+            pool_size: result.poolSize,
+          });
         } catch (error) {
           return json(
             {
               error:
                 error instanceof Error
                   ? error.message
-                  : "LinkedIn route search failed. Nothing was changed.",
+                  : "The contact route search failed. Nothing was changed.",
             },
             503,
           );

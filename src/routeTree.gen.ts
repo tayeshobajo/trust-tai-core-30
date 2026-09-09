@@ -60,7 +60,6 @@ import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/com
 import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/public/intelligence.reason'
 import { Route as ApiPublicIntelligenceReconcileRouteImport } from './routes/api/public/intelligence.reconcile'
 import { Route as ApiPublicIntelligenceStatusRouteImport } from './routes/api/public/intelligence.status'
-import { Route as ApiPublicLinkiLookupRouteImport } from './routes/api/public/linki.lookup'
 import { Route as ApiPublicProjectsContextPacketRouteImport } from './routes/api/public/projects.context-packet'
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
 import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/public/roadmap.research'
@@ -75,6 +74,7 @@ import { Route as ApiPublicWebsiteEventsRouteImport } from './routes/api/public/
 import { Route as ApiPublicWebsiteIntakeRouteImport } from './routes/api/public/website.intake'
 import { Route as ApiPublicWebsiteSyncRouteImport } from './routes/api/public/website.sync'
 import { Route as ApiPublicZenmodeImportRouteImport } from './routes/api/public/zenmode.import'
+import { Route as ApiPublicZenmodeLookupRouteImport } from './routes/api/public/zenmode.lookup'
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
 import { Route as ModulesStewardMeetingsConversationIdRouteImport } from './routes/modules.steward.meetings.$conversationId'
@@ -349,11 +349,6 @@ const ApiPublicIntelligenceStatusRoute =
     path: '/api/public/intelligence/status',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicLinkiLookupRoute = ApiPublicLinkiLookupRouteImport.update({
-  id: '/api/public/linki/lookup',
-  path: '/api/public/linki/lookup',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicProjectsContextPacketRoute =
   ApiPublicProjectsContextPacketRouteImport.update({
     id: '/api/public/projects/context-packet',
@@ -428,6 +423,11 @@ const ApiPublicWebsiteSyncRoute = ApiPublicWebsiteSyncRouteImport.update({
 const ApiPublicZenmodeImportRoute = ApiPublicZenmodeImportRouteImport.update({
   id: '/api/public/zenmode/import',
   path: '/api/public/zenmode/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicZenmodeLookupRoute = ApiPublicZenmodeLookupRouteImport.update({
+  id: '/api/public/zenmode/lookup',
+  path: '/api/public/zenmode/lookup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesScoutProspectsProspectIdRoute =
@@ -559,7 +559,6 @@ export interface FileRoutesByFullPath {
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
-  '/api/public/linki/lookup': typeof ApiPublicLinkiLookupRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
@@ -574,6 +573,7 @@ export interface FileRoutesByFullPath {
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
   '/api/public/zenmode/import': typeof ApiPublicZenmodeImportRoute
+  '/api/public/zenmode/lookup': typeof ApiPublicZenmodeLookupRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
@@ -633,7 +633,6 @@ export interface FileRoutesByTo {
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
-  '/api/public/linki/lookup': typeof ApiPublicLinkiLookupRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
@@ -648,6 +647,7 @@ export interface FileRoutesByTo {
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
   '/api/public/zenmode/import': typeof ApiPublicZenmodeImportRoute
+  '/api/public/zenmode/lookup': typeof ApiPublicZenmodeLookupRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
@@ -715,7 +715,6 @@ export interface FileRoutesById {
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
-  '/api/public/linki/lookup': typeof ApiPublicLinkiLookupRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
@@ -730,6 +729,7 @@ export interface FileRoutesById {
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
   '/api/public/zenmode/import': typeof ApiPublicZenmodeImportRoute
+  '/api/public/zenmode/lookup': typeof ApiPublicZenmodeLookupRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website_/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
@@ -798,7 +798,6 @@ export interface FileRouteTypes {
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
-    | '/api/public/linki/lookup'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
@@ -813,6 +812,7 @@ export interface FileRouteTypes {
     | '/api/public/website/intake'
     | '/api/public/website/sync'
     | '/api/public/zenmode/import'
+    | '/api/public/zenmode/lookup'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website/submissions/$submissionId'
@@ -872,7 +872,6 @@ export interface FileRouteTypes {
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
-    | '/api/public/linki/lookup'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
@@ -887,6 +886,7 @@ export interface FileRouteTypes {
     | '/api/public/website/intake'
     | '/api/public/website/sync'
     | '/api/public/zenmode/import'
+    | '/api/public/zenmode/lookup'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website/submissions/$submissionId'
@@ -953,7 +953,6 @@ export interface FileRouteTypes {
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
-    | '/api/public/linki/lookup'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
@@ -968,6 +967,7 @@ export interface FileRouteTypes {
     | '/api/public/website/intake'
     | '/api/public/website/sync'
     | '/api/public/zenmode/import'
+    | '/api/public/zenmode/lookup'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website_/submissions/$submissionId'
@@ -1004,7 +1004,6 @@ export interface RootRouteChildren {
   ApiPublicIntelligenceReasonRoute: typeof ApiPublicIntelligenceReasonRoute
   ApiPublicIntelligenceReconcileRoute: typeof ApiPublicIntelligenceReconcileRoute
   ApiPublicIntelligenceStatusRoute: typeof ApiPublicIntelligenceStatusRoute
-  ApiPublicLinkiLookupRoute: typeof ApiPublicLinkiLookupRoute
   ApiPublicProjectsContextPacketRoute: typeof ApiPublicProjectsContextPacketRoute
   ApiPublicRoadmapAskRoute: typeof ApiPublicRoadmapAskRoute
   ApiPublicRoadmapResearchRoute: typeof ApiPublicRoadmapResearchRoute
@@ -1019,6 +1018,7 @@ export interface RootRouteChildren {
   ApiPublicWebsiteIntakeRoute: typeof ApiPublicWebsiteIntakeRoute
   ApiPublicWebsiteSyncRoute: typeof ApiPublicWebsiteSyncRoute
   ApiPublicZenmodeImportRoute: typeof ApiPublicZenmodeImportRoute
+  ApiPublicZenmodeLookupRoute: typeof ApiPublicZenmodeLookupRoute
   ModulesWebsiteSubmissionsSubmissionIdRoute: typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   ApiInternalExecutionScoutIcpRoute: typeof ApiInternalExecutionScoutIcpRoute
   ApiInternalExecutionScoutPipelineRoute: typeof ApiInternalExecutionScoutPipelineRoute
@@ -1390,13 +1390,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicIntelligenceStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/linki/lookup': {
-      id: '/api/public/linki/lookup'
-      path: '/api/public/linki/lookup'
-      fullPath: '/api/public/linki/lookup'
-      preLoaderRoute: typeof ApiPublicLinkiLookupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/projects/context-packet': {
       id: '/api/public/projects/context-packet'
       path: '/api/public/projects/context-packet'
@@ -1493,6 +1486,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/zenmode/import'
       fullPath: '/api/public/zenmode/import'
       preLoaderRoute: typeof ApiPublicZenmodeImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/zenmode/lookup': {
+      id: '/api/public/zenmode/lookup'
+      path: '/api/public/zenmode/lookup'
+      fullPath: '/api/public/zenmode/lookup'
+      preLoaderRoute: typeof ApiPublicZenmodeLookupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/scout/prospects/$prospectId': {
@@ -1759,7 +1759,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicIntelligenceReasonRoute: ApiPublicIntelligenceReasonRoute,
   ApiPublicIntelligenceReconcileRoute: ApiPublicIntelligenceReconcileRoute,
   ApiPublicIntelligenceStatusRoute: ApiPublicIntelligenceStatusRoute,
-  ApiPublicLinkiLookupRoute: ApiPublicLinkiLookupRoute,
   ApiPublicProjectsContextPacketRoute: ApiPublicProjectsContextPacketRoute,
   ApiPublicRoadmapAskRoute: ApiPublicRoadmapAskRoute,
   ApiPublicRoadmapResearchRoute: ApiPublicRoadmapResearchRoute,
@@ -1774,6 +1773,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWebsiteIntakeRoute: ApiPublicWebsiteIntakeRoute,
   ApiPublicWebsiteSyncRoute: ApiPublicWebsiteSyncRoute,
   ApiPublicZenmodeImportRoute: ApiPublicZenmodeImportRoute,
+  ApiPublicZenmodeLookupRoute: ApiPublicZenmodeLookupRoute,
   ModulesWebsiteSubmissionsSubmissionIdRoute:
     ModulesWebsiteSubmissionsSubmissionIdRoute,
   ApiInternalExecutionScoutIcpRoute: ApiInternalExecutionScoutIcpRoute,

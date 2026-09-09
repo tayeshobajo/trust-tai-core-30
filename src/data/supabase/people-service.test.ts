@@ -324,7 +324,7 @@ describe("linkedin route confirmation", () => {
 
     expect(confirmed.linkedinUrl).toBe("https://www.linkedin.com/in/ada-rowe-example/");
     expect(confirmed.linkedinConfirmed).toBe(true);
-    expect(confirmed.linkedinProvider).toBe("linki");
+    expect(confirmed.linkedinProvider).toBe("zenmode");
     expect(confirmed.linkedinConfidence).toBe("confirmed");
     expect(confirmed.linkedinCheckedAt).toBeTruthy();
     expect(confirmed.confidence).toBe("human_confirmed");
@@ -361,7 +361,9 @@ describe("linkedin route confirmation", () => {
     const row = (db.tables["contacts"] ?? []).find((r) => r["id"] === confirmed.id);
     const storedMeta = meta(row as FakeRow);
     expect(storedMeta["linkedin_confirmed"]).toBe(true);
-    expect(storedMeta["linkedin_provider"]).toBe("linki");
+    // "zenmode" since 2026-09-09, when the Linki lookup was removed. Rows written
+    // before that still read "linki" — that is real provenance and is never rewritten.
+    expect(storedMeta["linkedin_provider"]).toBe("zenmode");
   });
 });
 

@@ -96,7 +96,9 @@ export interface Person {
    */
   linkedinConfirmed?: boolean;
   linkedinCheckedAt?: ISODateTime;
-  /** "linki" when the route was found via the approved transport. */
+  /** Which source surfaced the route: "zenmode" for a match in the ZenMode
+   * lead pool, "manual" when a person pasted it. Historic rows may still read
+   * "linki" — that is real provenance and is never rewritten. */
   linkedinProvider?: string;
   linkedinExternalId?: string;
   linkedinConfidence?: "confirmed" | "likely_requires_approval" | "ambiguous" | "not_found";
