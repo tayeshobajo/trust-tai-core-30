@@ -597,7 +597,7 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
   const register = request.register;
 
   // The governed evidence packet both passes reason over.
-  const [thread, voiceExamples, projectContext] = await Promise.all([
+  const [thread, voiceExamples, projectContext, ledger] = await Promise.all([
     loadThread(supabase, request.relationshipId),
     loadVoiceExamples(supabase, organizationId),
     /* The bounded project layer: direction, work in flight, and what has
@@ -607,6 +607,7 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
       clientId: (row["client_id"] as string | null) ?? null,
       relationshipId: request.relationshipId,
     }),
+    loadCases(supabase, organizationId),
   ]);
 
   /* The grounding gate. A real thread plus a known identity grounds a reply;
