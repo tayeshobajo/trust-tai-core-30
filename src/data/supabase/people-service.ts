@@ -128,7 +128,6 @@ export interface LinkiLookupResult {
   noMatchReason: string | null;
 }
 
-
 /**
  * Reuse the people canonical Trust Tai data already holds for this company,
  * then read the company's people again.
@@ -175,11 +174,17 @@ async function resolveKnownPeople(
       },
       context.userId,
     );
-    await record(context, "updated", person, `${person.fullName} was already known to Trust Tai and was matched to this company.`, {
-      resolution: link.reason,
-      resolution_note: link.note,
-      reused_existing_record: true,
-    });
+    await record(
+      context,
+      "updated",
+      person,
+      `${person.fullName} was already known to Trust Tai and was matched to this company.`,
+      {
+        resolution: link.reason,
+        resolution_note: link.note,
+        reused_existing_record: true,
+      },
+    );
   }
 
   for (const draft of plan.create) {
@@ -197,11 +202,17 @@ async function resolveKnownPeople(
       sourceId: "website_roadmap_intake",
       note: draft.note,
     });
-    await record(context, "created", person, `${person.fullName} was recorded from what they said in the roadmap intake.`, {
-      resolution: draft.reason,
-      resolution_note: draft.note,
-      submission_id: draft.submissionId,
-    });
+    await record(
+      context,
+      "created",
+      person,
+      `${person.fullName} was recorded from what they said in the roadmap intake.`,
+      {
+        resolution: draft.reason,
+        resolution_note: draft.note,
+        submission_id: draft.submissionId,
+      },
+    );
   }
 
   return listProspectContacts(context.organizationId, prospectId);
