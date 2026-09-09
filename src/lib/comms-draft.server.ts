@@ -638,11 +638,27 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
     hasPurpose: Boolean(request.purpose?.trim()),
   });
 
+  /* The shared Intelligence Runtime retrieval bundle: the same sources, in
+     the suite's one composition point, with provenance on every line, human
+     corrections hoisted ahead of inference, and unreadable sources carried
+     as withheld rather than silently emptied. */
+  const retrieval = composeCommsRetrieval({
+    organizationId,
+    relationshipId: request.relationshipId,
+    observedAndDecided: usedEvidence,
+    inferred,
+    contextLines: projectContext.lines,
+    trajectory: projectContext.trajectory,
+    cases: ledger.cases,
+    withheld: ledger.withheld,
+  });
+
   /* The evidence packet keeps its provenance explicit: the canonical
      relationship voice is the baseline, relationship evidence is what may be
      said, the org Voice DNA is the editable brand expression, and approved
      examples are learned style influence, layered, never merged. */
   const evidencePacket = {
+    retrieval: commsRetrievalPacket(retrieval),
     draftKind: grounding.kind,
     canonicalRelationshipVoice: [...TAI_RELATIONSHIP_VOICE],
     relationshipEvidence: {
