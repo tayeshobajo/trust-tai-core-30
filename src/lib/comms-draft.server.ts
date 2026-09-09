@@ -405,6 +405,22 @@ it may shape the angle and must never be stated back as fact, and it may never
 be used to assert a direction, a commitment or a decision nobody made. When the
 context is thin, say less rather than inventing continuity.
 
+The retrieval bundle. The packet also carries "retrieval": the shared, governed
+read of what this workspace knows. Read it first and obey its provenance:
+- retrieval.humanCorrections are decisions a person already made about this kind
+  of situation. They outrank every inference, always. Never contradict one.
+- retrieval.priorCases and retrieval.knowledgeProvenance are what the workspace
+  has seen before, cited with their source. Use them as context, not as proof
+  about this relationship.
+- retrieval.evidence is ordered strongest first: tier "decided" then "observed"
+  may be stated as fact; tier "derived" is inference and belongs in factsAvoid.
+- retrieval.decided are statements a person decided. Never overwrite them.
+- retrieval.withheld lists sources that could not be read. They stay UNKNOWN.
+  An unread source is never zero, never absence of a fact, and never evidence
+  that something did not happen.
+- retrieval.capabilities describes what Comms can actually do. Nothing is sent
+  from here under any circumstances.
+
 Return strict JSON only:
 {
   "whyNow": "one plain sentence: why Tai is writing now, grounded in the evidence",
