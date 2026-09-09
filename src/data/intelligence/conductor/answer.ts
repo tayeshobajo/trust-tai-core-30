@@ -14,6 +14,7 @@ import type { EvidenceRef } from "@/domain/confidence";
 import type { ActionProposal } from "@/domain/intelligence-engine";
 import {
   CONDUCTOR_CONTROL,
+  FRICTION_THRESHOLD,
   type BlindSpot,
   type BusinessFigure,
   type BusinessIntent,
@@ -25,6 +26,7 @@ import {
   type SystemImprovement,
   type VitalReading,
 } from "@/domain/conductor";
+import { isLeakPattern } from "@/domain/signal-attention";
 
 import type { LearningRecord } from "@/domain/outcomes";
 import { learningForPacket, relevantLearning } from "@/data/conductor/learning";
