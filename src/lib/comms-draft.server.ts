@@ -333,7 +333,10 @@ async function loadCases(
       withheld: [{ appId: "intelligence_cases", reason: "not_connected" }],
     };
   }
-  return { cases: ((data ?? []) as Record<string, unknown>[]).map(toIntelligenceCase), withheld: [] };
+  return {
+    cases: ((data ?? []) as Record<string, unknown>[]).map(toIntelligenceCase),
+    withheld: [],
+  };
 }
 
 /** Row shape to canon case. Only fields the retrieval bundle actually uses. */
@@ -361,8 +364,6 @@ function toIntelligenceCase(row: Record<string, unknown>): IntelligenceCase {
     createdAt: String(row["created_at"] ?? ""),
   };
 }
-
-
 
 const JUDGMENT_INSTRUCTIONS = `You are the communication judgment of Trust Tai. You do NOT write the message.
 You read the conversation the way a perceptive person would, then return the

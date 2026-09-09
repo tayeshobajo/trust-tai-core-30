@@ -200,7 +200,6 @@ describe("executeDraftPasses", () => {
     }
   });
 
-
   it("Brooke's case succeeds with a configured provider returning valid judgment and draft", async () => {
     const result = await executeDraftPasses(callerReturning(VALID_JUDGMENT, VALID_DRAFT), {
       ...BROOKE_INPUT,

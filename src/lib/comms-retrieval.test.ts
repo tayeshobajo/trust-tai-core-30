@@ -123,9 +123,7 @@ describe("commsRetrievalPacket", () => {
         withheld: [{ appId: "intelligence_cases", reason: "not_connected" }],
       }),
     );
-    expect(packet["withheld"]).toEqual([
-      { appId: "intelligence_cases", reason: "not_connected" },
-    ]);
+    expect(packet["withheld"]).toEqual([{ appId: "intelligence_cases", reason: "not_connected" }]);
   });
 
   it("names the room's real capabilities, and sends nothing", () => {
