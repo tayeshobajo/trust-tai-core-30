@@ -212,33 +212,33 @@ export function StatedTranscript({ packet }: { packet: FounderSignalPacket }) {
         {turns.map((turn, index) => {
           const also = seen.get(normalize(turn.answerText)) ?? [];
           return (
-          <li key={index} className="rounded-xl border border-border bg-card px-4 py-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
-              <p className="text-[13px] text-muted-foreground">{turn.questionText}</p>
-            </div>
-            <p className="mt-2 flex gap-2 text-[14px] text-foreground">
-              <Quote className="mt-1 h-3.5 w-3.5 shrink-0 text-royal" aria-hidden />
-              <span>{turn.answerText}</span>
-            </p>
-            {also.length > 0 ? (
-              <p className="mt-1.5 text-[12px] text-muted-foreground">
-                They gave this same answer to {also.length}{" "}
-                {also.length === 1 ? "other question" : "other questions"}.
+            <li key={index} className="rounded-xl border border-border bg-card px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
+                <p className="text-[13px] text-muted-foreground">{turn.questionText}</p>
+              </div>
+              <p className="mt-2 flex gap-2 text-[14px] text-foreground">
+                <Quote className="mt-1 h-3.5 w-3.5 shrink-0 text-royal" aria-hidden />
+                <span>{turn.answerText}</span>
               </p>
-            ) : null}
-            {packet.submissionRowId ? (
-              <Link
-                to="/modules/website/submissions/$submissionId"
-                params={{ submissionId: packet.submissionRowId }}
-                hash={answerAnchorId(turn.questionId, index)}
-                className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-royal hover:underline"
-              >
-                Open this answer on the website record
-                <ArrowUpRight className="h-3 w-3" aria-hidden />
-              </Link>
-            ) : null}
-          </li>
+              {also.length > 0 ? (
+                <p className="mt-1.5 text-[12px] text-muted-foreground">
+                  They gave this same answer to {also.length}{" "}
+                  {also.length === 1 ? "other question" : "other questions"}.
+                </p>
+              ) : null}
+              {packet.submissionRowId ? (
+                <Link
+                  to="/modules/website/submissions/$submissionId"
+                  params={{ submissionId: packet.submissionRowId }}
+                  hash={answerAnchorId(turn.questionId, index)}
+                  className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-royal hover:underline"
+                >
+                  Open this answer on the website record
+                  <ArrowUpRight className="h-3 w-3" aria-hidden />
+                </Link>
+              ) : null}
+            </li>
           );
         })}
       </ol>
