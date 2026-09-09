@@ -95,6 +95,12 @@ export function stripMarkup(html: string): string {
 export interface ExtractionOutcome extends VerifiedExtraction {
   /** True when the delimited reader answered because no provider did. */
   deterministic: boolean;
+  /**
+   * False when no intelligence provider answered at all. A deterministic read
+   * is never presented as an AI read, and an empty deterministic read after a
+   * provider failure is reported as a failure, not as "nothing found".
+   */
+  providerAnswered: boolean;
   provider: string;
   model: string;
 }
@@ -124,6 +130,7 @@ export async function extractCompanies(input: {
     return {
       ...deterministicExtraction(text),
       deterministic: true,
+      providerAnswered: false,
       provider: "none",
       model: "none",
     };
@@ -142,15 +149,16 @@ export async function extractCompanies(input: {
       // be the last word: fall back to the reader that can read columns.
       const fallback = deterministicExtraction(text);
       if (fallback.companies.length > 0) {
-        return { ...fallback, deterministic: true, provider, model };
+        return { ...fallback, deterministic: true, providerAnswered: true, provider, model };
       }
     }
-    return { ...verified, deterministic: false, provider, model };
+    return { ...verified, deterministic: false, providerAnswered: true, provider, model };
   } catch (error) {
     if (error instanceof ProviderNotConfiguredError || error instanceof ProviderCallFailedError) {
       return {
         ...deterministicExtraction(text),
         deterministic: true,
+        providerAnswered: false,
         provider: "none",
         model: "none",
       };

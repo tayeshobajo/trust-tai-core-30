@@ -78,6 +78,18 @@ export const Route = createFileRoute("/api/public/scout/import")({
               });
 
               send({ stage: "checking", message: "Checking against Scout" });
+
+              // A deterministic read is never presented as an AI read, and an
+              // empty one after a provider failure is a failure, not a result.
+              if (!outcome.providerAnswered && outcome.companies.length === 0) {
+                send({
+                  stage: "error",
+                  message:
+                    "Scout could not reach its intelligence provider, and reading the source line by line found nothing. Nothing was staged.",
+                });
+                return;
+              }
+
               send({
                 stage: "done",
                 message: `${outcome.companies.length} ${
@@ -85,6 +97,7 @@ export const Route = createFileRoute("/api/public/scout/import")({
                 } read from the source`,
                 companies: outcome.companies,
                 deterministic: outcome.deterministic,
+                providerAnswered: outcome.providerAnswered,
               });
             } catch (error) {
               const message =

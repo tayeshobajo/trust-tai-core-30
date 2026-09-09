@@ -33,7 +33,23 @@ export type PersonResolutionReason =
   /** They filled in the roadmap intake for this company themselves. */
   | "inbound_intake"
   /** Their business email is on this company's own domain. */
-  | "same_domain";
+  | "same_domain"
+  /** They are a Trust Tai workspace member on this company's own domain. */
+  | "workspace_member"
+  /** They are already on record through client work for this same company. */
+  | "client_record";
+
+/**
+ * A person Trust Tai already knows as an account holder rather than as a
+ * contact row: a workspace member. Their own account address is canonical
+ * truth about who they are, so it outranks anything inferred from the web.
+ */
+export interface MemberIdentity {
+  userId: string;
+  fullName: string;
+  email: string;
+  roleTitle?: string | null;
+}
 
 export interface PersonLinkPlan {
   contactId: string;
@@ -50,7 +66,9 @@ export interface PersonCreatePlan {
   reason: PersonResolutionReason;
   note: string;
   /** The submission this testimony came from. Keeps the claim traceable. */
-  submissionId: string;
+  submissionId?: string;
+  /** The workspace member this identity came from, when that is the source. */
+  memberUserId?: string;
 }
 
 export interface PersonResolutionPlan {
@@ -99,17 +117,20 @@ function shortDate(value: string | null | undefined): string {
  * @param prospectPeople people already stamped with this prospect
  * @param orgPeople every contact the organization holds, for canonical reuse
  * @param submissions inbound roadmap-intake submissions behind this company
+ * @param members workspace members, who are known people too
  * @param websiteUrl the company's own website, for domain resolution
  */
 export function planPersonResolution({
   prospectPeople,
   orgPeople,
   submissions,
+  members = [],
   websiteUrl,
 }: {
   prospectPeople: Person[];
   orgPeople: Person[];
   submissions: WebsiteSubmission[];
+  members?: MemberIdentity[];
   websiteUrl?: string | null;
 }): PersonResolutionPlan {
   const plan: PersonResolutionPlan = { link: [], create: [] };
@@ -157,20 +178,58 @@ export function planPersonResolution({
 
   // 2. People whose business address is on the company's own domain. Same
   //    domain is the same company: deterministic, never a similarity guess.
+  //    A contact already held through client work for the same domain counts:
+  //    it is reused and stays that client's record, it is never moved.
   const domain = canonicalDomain(websiteUrl);
   if (domain) {
     for (const person of orgPeople) {
       if (linked.has(person.id)) continue;
-      if (person.prospectId || person.clientId) continue; // Already placed.
+      if (person.prospectId) continue; // Already placed on another company.
       if (domainFromEmail(person.email) !== domain) continue;
       if (known.some((other) => other.id === person.id)) continue;
       linked.add(person.id);
       plan.link.push({
         contactId: person.id,
-        reason: "same_domain",
-        note: `Already on record with an ${domain} business address.`,
+        reason: person.clientId ? "client_record" : "same_domain",
+        note: person.clientId
+          ? `Already on record through client work, with an ${domain} business address.`
+          : `Already on record with an ${domain} business address.`,
       });
       remember(person);
+    }
+
+    // 3. Trust Tai's own people. A workspace member whose account address is
+    //    on this company's domain is that company's person, and Scout knows
+    //    them for certain. Their account is canonical, so this is reuse of a
+    //    known human, never a guess from the web.
+    for (const member of members) {
+      const email = normalizedEmail(member.email);
+      const name = member.fullName.trim();
+      if (!email || !name) continue;
+      if (domainFromEmail(email) !== domain) continue;
+      if (known.some((person) => sameHuman(person, normalizedName(name), email))) continue;
+
+      const existing = orgPeople.find((person) => sameHuman(person, normalizedName(name), email));
+      const note = `Known to Trust Tai as a workspace member with an ${domain} address.`;
+
+      if (existing) {
+        if (linked.has(existing.id)) continue;
+        linked.add(existing.id);
+        plan.link.push({ contactId: existing.id, reason: "workspace_member", note });
+        remember(existing);
+        continue;
+      }
+
+      plan.create.push({
+        fullName: name,
+        email,
+        ...(member.roleTitle ? { roleTitle: member.roleTitle } : {}),
+        seniority: seniorityFor(member.roleTitle),
+        reason: "workspace_member",
+        note,
+        memberUserId: member.userId,
+      });
+      remember({ id: `pending:${member.userId}`, fullName: name, email } as Person);
     }
   }
 

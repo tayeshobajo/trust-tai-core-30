@@ -133,7 +133,7 @@ describe("planPersonResolution", () => {
     ]);
   });
 
-  it("leaves people who belong to another company or client alone", () => {
+  it("leaves people who belong to another company alone, but reuses client records", () => {
     const taken = person({
       id: "c3",
       fullName: "Ada Poole",
@@ -152,7 +152,10 @@ describe("planPersonResolution", () => {
       submissions: [],
       websiteUrl: "https://northgate.co",
     });
-    expect(plan).toEqual({ link: [], create: [] });
+    expect(plan.create).toEqual([]);
+    expect(plan.link).toEqual([
+      expect.objectContaining({ contactId: "c4", reason: "client_record" }),
+    ]);
   });
 
   it("never invents a person from weak similarity", () => {
@@ -211,5 +214,74 @@ describe("planPersonResolution", () => {
         websiteUrl: null,
       }),
     ).toEqual({ link: [], create: [] });
+  });
+
+  it("resolves a workspace member on the company's own domain, generically", () => {
+    // The Trust Tai Acceptance Test case: the founder is a member of the
+    // workspace, not a contact row, and has never been entered by hand.
+    const plan = planPersonResolution({
+      prospectPeople: [],
+      orgPeople: [],
+      submissions: [],
+      members: [
+        {
+          userId: "u1",
+          fullName: "Jordan Hale",
+          email: "jordan@northgate.co",
+          roleTitle: "Founder",
+        },
+      ],
+      websiteUrl: "https://northgate.co",
+    });
+    expect(plan.create).toHaveLength(1);
+    expect(plan.create[0]).toMatchObject({
+      fullName: "Jordan Hale",
+      seniority: "founder",
+      reason: "workspace_member",
+      memberUserId: "u1",
+    });
+  });
+
+  it("reuses the existing contact rather than duplicating a workspace member", () => {
+    const existing = person({ id: "c9", fullName: "Jordan Hale", email: "jordan@northgate.co" });
+    const plan = planPersonResolution({
+      prospectPeople: [],
+      orgPeople: [existing],
+      submissions: [],
+      members: [{ userId: "u1", fullName: "Jordan Hale", email: "jordan@northgate.co" }],
+      websiteUrl: "https://northgate.co",
+    });
+    expect(plan.create).toHaveLength(0);
+    expect(plan.link.map((entry) => entry.contactId)).toEqual(["c9"]);
+  });
+
+  it("ignores a workspace member whose address is on another domain", () => {
+    expect(
+      planPersonResolution({
+        prospectPeople: [],
+        orgPeople: [],
+        submissions: [],
+        members: [{ userId: "u1", fullName: "Sam Reed", email: "sam@elsewhere.io" }],
+        websiteUrl: "https://northgate.co",
+      }),
+    ).toEqual({ link: [], create: [] });
+  });
+
+  it("reuses a contact already held through client work on the same domain", () => {
+    const clientContact = person({
+      id: "c10",
+      fullName: "Ada Poole",
+      email: "ada@northgate.co",
+      clientId: "client-1",
+    });
+    const plan = planPersonResolution({
+      prospectPeople: [],
+      orgPeople: [clientContact],
+      submissions: [],
+      websiteUrl: "https://northgate.co",
+    });
+    expect(plan.link).toEqual([
+      expect.objectContaining({ contactId: "c10", reason: "client_record" }),
+    ]);
   });
 });

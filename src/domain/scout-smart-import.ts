@@ -50,4 +50,6 @@ export interface SmartImportStage {
   companies?: ExtractedCompany[];
   /** True when the deterministic delimited reader answered instead of a model. */
   deterministic?: boolean;
+  /** False when no intelligence provider answered at all. */
+  providerAnswered?: boolean;
 }

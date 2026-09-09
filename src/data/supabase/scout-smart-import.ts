@@ -22,6 +22,8 @@ export interface ReadSourceInput {
 export interface ReadSourceOutcome {
   companies: ExtractedCompany[];
   deterministic: boolean;
+  /** False when no intelligence provider answered and a plain read was used. */
+  providerAnswered: boolean;
 }
 
 export async function readSource(input: ReadSourceInput): Promise<ReadSourceOutcome> {
@@ -50,7 +52,7 @@ export async function readSource(input: ReadSourceInput): Promise<ReadSourceOutc
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  let outcome: ReadSourceOutcome = { companies: [], deterministic: false };
+  let outcome: ReadSourceOutcome = { companies: [], deterministic: false, providerAnswered: true };
   let failure: string | null = null;
 
   const handle = (line: string) => {
@@ -67,6 +69,7 @@ export async function readSource(input: ReadSourceInput): Promise<ReadSourceOutc
       outcome = {
         companies: stage.companies ?? [],
         deterministic: Boolean(stage.deterministic),
+        providerAnswered: stage.providerAnswered !== false,
       };
     }
   };
