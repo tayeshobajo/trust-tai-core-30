@@ -42,6 +42,12 @@ import {
   runtimeProviderStatus,
   type RuntimeModelCaller,
 } from "@/lib/intelligence-runtime.server";
+import { readIntelligenceCases } from "@/lib/intelligence-cases.server";
+import {
+  composeScoutRetrieval,
+  scoutRetrievalPacket,
+  SCOUT_RETRIEVAL_LAWS,
+} from "@/lib/scout-retrieval";
 
 const DEFAULT_LIMIT = 25;
 
@@ -243,17 +249,42 @@ export async function* runDiscovery(input: DiscoverInput): AsyncGenerator<Discov
   // never dies on a request timeout. The boundary resolves when the stream
   // completes, so the delta flag is polled to keep the mid-run "verifying"
   // stage honest.
+  /* One governed read of what the workspace already knows, composed once:
+     the ICP as decided truth, human decisions as corrections, unread sources
+     named. Grounding, scoring and the save path are unchanged. */
+  const ledger = await readIntelligenceCases(input.token, orgId);
+  const retrieval = scoutRetrievalPacket(
+    composeScoutRetrieval({
+      organizationId: orgId,
+      subject: query,
+      ...(icp ? { decided: [`Active ICP (version ${icpVersion}) governs fit.`] } : {}),
+      derived: (feedbackRows ?? []).length
+        ? ["Recent human fit decisions are calibration only; they never replace the ICP."]
+        : [],
+      cases: ledger.cases,
+      withheld: [
+        ...ledger.withheld,
+        ...(icp ? [] : [{ appId: "icp_profiles", reason: "no_data" as const }]),
+      ],
+    }),
+    query,
+  );
+
   let raw = "";
   try {
     let sawDelta = false;
     let settled = false;
     const pending = callModel({
-      instructions: discoveryInstructions(
+      instructions: `${discoveryInstructions(
         String(icp?.["content_markdown"] ?? ""),
         calibration,
         limit,
-      ),
-      input: `Find up to ${limit} real companies matching: ${query}`,
+      )}\n\n${SCOUT_RETRIEVAL_LAWS}`,
+      input: JSON.stringify({
+        retrieval,
+        task: `Find up to ${limit} real companies matching: ${query}`,
+      }),
+
       webSearch: true,
       responseFormat: {
         type: "json_schema",

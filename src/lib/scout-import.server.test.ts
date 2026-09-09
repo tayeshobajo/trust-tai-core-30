@@ -150,6 +150,40 @@ describe("extracting companies", () => {
     });
     expect(outcome.companies[0]?.websiteConfidence).toBe("inferred");
   });
+
+  it("hands the model the shared retrieval bundle, not only the source string", async () => {
+    const call = vi.fn(async () => ({
+      raw: JSON.stringify({ companies: [] }),
+      provider: "openai",
+      model: "test",
+    }));
+    runtimeModelCaller.mockResolvedValue(call);
+
+    await extractCompanies({
+      ...input,
+      text: "Northfield Dental is worth a look.",
+      known: [{ name: "Northfield Dental", domain: "northfielddental.com" }],
+    });
+
+    const sent = (
+      call.mock.calls as unknown as { instructions: string; input: string }[][]
+    )[0]?.[0];
+    const body = JSON.parse(String(sent?.input)) as {
+      retrieval: Record<string, unknown>;
+      source: string;
+    };
+    expect(body.retrieval["room"]).toBe("scout");
+    /* The canonical company is read as known, never re-inferred. */
+    const evidence = body.retrieval["evidence"] as { tier: string; statement: string }[];
+    expect(evidence.some((e) => e.tier === "observed" && e.statement.includes("Northfield"))).toBe(
+      true,
+    );
+    /* Unreadable sources stay withheld, never zero. */
+    expect(body.retrieval["withheld"]).toBeTruthy();
+    /* The source text is still verbatim, so grounding is unchanged. */
+    expect(body.source).toContain("Northfield Dental is worth a look.");
+    expect(String(sent?.instructions)).toContain("retrieval.humanCorrections");
+  });
 });
 
 describe("the deterministic reader", () => {

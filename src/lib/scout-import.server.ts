@@ -21,6 +21,13 @@ import {
   verifyExtraction,
   type VerifiedExtraction,
 } from "@/data/scout/smart-import";
+import { readIntelligenceCases } from "@/lib/intelligence-cases.server";
+import {
+  composeScoutRetrieval,
+  scoutRetrievalPacket,
+  SCOUT_RETRIEVAL_LAWS,
+  type KnownCompany,
+} from "@/lib/scout-retrieval";
 import { parseDelimitedRows, looksLikeHeader } from "@/data/scout/watchlist";
 import type { ExtractedCompany } from "@/domain/scout-smart-import";
 import { normalizeWebsiteUrl } from "@/lib/website-url";
@@ -108,11 +115,18 @@ export interface ExtractionOutcome extends VerifiedExtraction {
 /**
  * Read companies out of source text. Verified against the text before it
  * leaves this function: an untraceable row never reaches a person.
+ *
+ * The read reasons through the shared retrieval bundle, so what the workspace
+ * already knows (canonical companies, human corrections, unread sources) is in
+ * front of the model. Grounding, duplicate law and the explicit human save are
+ * unchanged: this function still writes nothing.
  */
 export async function extractCompanies(input: {
   token: string;
   organizationId: string;
   text: string;
+  /** Companies already on record, so a known one is read as known. */
+  known?: KnownCompany[];
   gateway?: ReturnType<typeof createLovableAiGatewayRunIdFetch> | undefined;
 }): Promise<ExtractionOutcome> {
   const text = input.text.slice(0, SMART_IMPORT_TEXT_LIMIT);
@@ -136,13 +150,29 @@ export async function extractCompanies(input: {
     };
   }
 
+  /* One governed read of what the workspace already knows, composed once. */
+  const ledger = await readIntelligenceCases(input.token, input.organizationId);
+  const retrieval = scoutRetrievalPacket(
+    composeScoutRetrieval({
+      organizationId: input.organizationId,
+      subject: "One imported source document",
+      ...(input.known ? { known: input.known } : {}),
+      cases: ledger.cases,
+      withheld: ledger.withheld,
+    }),
+    "One imported source document",
+  );
+
   try {
     const { raw, provider, model } = await callModel({
-      instructions: SMART_IMPORT_INSTRUCTIONS,
-      input: text,
+      instructions: `${SMART_IMPORT_INSTRUCTIONS}\n\n${SCOUT_RETRIEVAL_LAWS}`,
+      /* The source stays verbatim under "source"; grounding is checked
+         against that same text below, exactly as before. */
+      input: JSON.stringify({ retrieval, source: text }),
       webSearch: false,
       ...(input.gateway ? { gateway: input.gateway } : {}),
     });
+
     const verified = verifyExtraction(extractJsonObject(raw), text);
     if (verified.companies.length === 0) {
       // A model that found nothing in an obviously delimited list should not
