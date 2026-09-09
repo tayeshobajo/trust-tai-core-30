@@ -309,6 +309,59 @@ async function loadVoiceExamples(
     .filter((row) => row.excerpt.length > 0);
 }
 
+/**
+ * The case ledger for this workspace, read with the caller's token. It is
+ * where human corrections live, and corrections outrank inference. When the
+ * ledger cannot be read (not migrated, no permission), the caller records a
+ * withheld source: unknown stays unknown, it never becomes an empty fact.
+ */
+async function loadCases(
+  supabase: CallerClient,
+  organizationId: string,
+): Promise<{ cases: IntelligenceCase[]; withheld: WithheldSource[] }> {
+  const { data, error } = await supabase
+    .from("intelligence_cases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) {
+    return {
+      cases: [],
+      withheld: [{ appId: "intelligence_cases", reason: "not_readable" }],
+    };
+  }
+  return { cases: ((data ?? []) as Record<string, unknown>[]).map(toIntelligenceCase), withheld: [] };
+}
+
+/** Row shape to canon case. Only fields the retrieval bundle actually uses. */
+function toIntelligenceCase(row: Record<string, unknown>): IntelligenceCase {
+  const optional = (key: string) =>
+    typeof row[key] === "string" && (row[key] as string).length > 0
+      ? { [key]: row[key] as string }
+      : {};
+  return {
+    id: String(row["id"] ?? ""),
+    organizationId: String(row["organization_id"] ?? ""),
+    patternId: String(row["pattern_id"] ?? ""),
+    patternVersion: Number(row["pattern_version"] ?? 1),
+    entities: [],
+    evidenceRefs: [],
+    hypothesis: String(row["hypothesis"] ?? ""),
+    humanDecision: String(row["human_decision"] ?? ""),
+    decidedBy: String(row["decided_by"] ?? ""),
+    decidedAt: String(row["decided_at"] ?? ""),
+    diagnosisVerdict: (typeof row["diagnosis_verdict"] === "string"
+      ? row["diagnosis_verdict"]
+      : "unknown") as IntelligenceCase["diagnosisVerdict"],
+    ...(optional("correction") as { correction?: string }),
+    ...(optional("lesson") as { lesson?: string }),
+    createdAt: String(row["created_at"] ?? ""),
+  };
+}
+
+
+
 const JUDGMENT_INSTRUCTIONS = `You are the communication judgment of Trust Tai. You do NOT write the message.
 You read the conversation the way a perceptive person would, then return the
 judgment a draft will be written from.
