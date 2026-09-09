@@ -110,11 +110,13 @@ export function rankScoutSignals(
     return a.title.localeCompare(b.title);
   });
 
-  // The same fact often arrives twice: once as a buying signal, once as a raw
-  // observation. Keep the strongest reading of each statement, drop the echo.
+  // The same sentence often arrives several times: as a buying signal, as a
+  // raw observation, and again under a different lead-in ("Point A, as they
+  // describe it: ..." / "What is costing them: ..."). Compare the sentence
+  // itself, keep the strongest reading, drop the echoes.
   const seen = new Set<string>();
   return sorted.filter((signal) => {
-    const key = signal.explanation.trim().toLowerCase().replace(/\s+/g, " ");
+    const key = statementKey(signal.explanation);
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
