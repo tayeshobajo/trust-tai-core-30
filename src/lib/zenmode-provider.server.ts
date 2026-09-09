@@ -121,6 +121,18 @@ function str(value: unknown): string | null {
 }
 
 /**
+ * Coerce an IDENTIFIER to its string form. ZenMode sends `lead_id` and
+ * `campaign_id` as JSON NUMBERS (the `lead.replied` webhook documents
+ * `"lead_id": 37110`), so `str()` alone returns null for them and the lead is
+ * dropped — an import that silently reports zero leads and looks exactly like
+ * "no leads yet". Ids therefore go through here, never through `str()`.
+ */
+function idOf(value: unknown): string | null {
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : null;
+  return str(value);
+}
+
+/**
  * Normalize one raw ZenMode lead record. ZenMode's field naming is not
  * guaranteed stable, so several documented aliases are accepted; the raw
  * record is always kept. A lead without an id is dropped (nothing to anchor
@@ -129,11 +141,11 @@ function str(value: unknown): string | null {
 export function normalizeZenModeLead(entry: unknown): ZenModeLead | null {
   if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
   const record = entry as Record<string, unknown>;
-  const leadId = str(record["lead_id"]) ?? str(record["id"]);
+  const leadId = idOf(record["lead_id"]) ?? idOf(record["id"]);
   if (!leadId) return null;
   return {
     leadId,
-    campaignId: str(record["campaign_id"]) ?? str(record["campaignId"]),
+    campaignId: idOf(record["campaign_id"]) ?? idOf(record["campaignId"]),
     name: str(record["name"]) ?? str(record["full_name"]) ?? str(record["fullName"]),
     linkedinUrl: str(record["linkedin_url"]) ?? str(record["linkedinUrl"]),
     companyName: str(record["company_name"]) ?? str(record["company"]) ?? str(record["companyName"]),
