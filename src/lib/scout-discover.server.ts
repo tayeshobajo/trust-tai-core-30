@@ -42,6 +42,13 @@ import {
   runtimeProviderStatus,
   type RuntimeModelCaller,
 } from "@/lib/intelligence-runtime.server";
+import { readIntelligenceCases } from "@/lib/intelligence-cases.server";
+import {
+  composeScoutRetrieval,
+  scoutRetrievalPacket,
+  SCOUT_RETRIEVAL_LAWS,
+} from "@/lib/scout-retrieval";
+
 
 const DEFAULT_LIMIT = 25;
 
