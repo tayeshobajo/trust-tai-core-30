@@ -77,6 +77,7 @@ export function ScoutWatchlist({
   const [stage, setStage] = useState<SmartImportStage | null>(null);
   /** True when the delimited reader answered because no provider did. */
   const [deterministic, setDeterministic] = useState(false);
+  const [providerAnswered, setProviderAnswered] = useState(true);
   const [staged, setStaged] = useState<StagedCompany[] | null>(null);
   /** Where the staged batch came from, shown on the banner. Never stored. */
   const [stagedFrom, setStagedFrom] = useState<string | null>(null);
@@ -194,6 +195,7 @@ export function ScoutWatchlist({
       setStaged(stageExtracted(outcome.companies, existing, source));
       setStagedFrom(source.kind === "text" ? "the pasted text" : source.label);
       setDeterministic(outcome.deterministic);
+      setProviderAnswered(outcome.providerAnswered);
     } catch (readError) {
       setImportError((readError as Error).message);
     } finally {
@@ -480,7 +482,11 @@ export function ScoutWatchlist({
                 {stagedFrom ? ` from ${stagedFrom}` : " from the pasted list"} · {counts.ready}{" "}
                 ready to save · {counts.duplicate} already on the board · {counts.unreadable} cannot
                 be read
-                {deterministic ? " · read line by line, no intelligence provider answered" : ""}
+                {deterministic
+                  ? providerAnswered
+                    ? " · read line by line, the intelligence provider found nothing in it"
+                    : " · read line by line, no intelligence provider answered"
+                  : ""}
               </span>
             </div>
             <div className="flex gap-2">

@@ -23,7 +23,7 @@ import type { ProspectCandidate } from "@/domain/scout";
 import { getPeopleProvider } from "@/data/people/registry";
 import { supabase } from "@/integrations/trust-tai/supabase";
 
-import { planPersonResolution } from "@/data/scout/person-resolution";
+import { planPersonResolution, type MemberIdentity } from "@/data/scout/person-resolution";
 
 import { supabaseActivity } from "./activities";
 import {
@@ -137,14 +137,53 @@ export interface LinkiLookupResult {
  * observed, with an unverified address, because stating an address is not the
  * same as confirming it. Returns an empty list when nothing was resolved.
  */
+/**
+ * Trust Tai's own people, read as identities rather than as contacts.
+ *
+ * A workspace member is a known human: Scout must resolve them before it says
+ * nobody is known. Read only, and never fatal, an unavailable directory simply
+ * contributes nothing.
+ */
+async function listMemberIdentities(organizationId: ID): Promise<MemberIdentity[]> {
+  const memberships = await supabase
+    .from("organization_memberships")
+    .select("user_id, status")
+    .eq("organization_id", organizationId);
+  if (memberships.error) return [];
+
+  const ids = ((memberships.data ?? []) as { user_id?: string; status?: string }[])
+    .filter((row) => (row.status ?? "active") === "active")
+    .map((row) => String(row.user_id ?? ""))
+    .filter(Boolean);
+  if (ids.length === 0) return [];
+
+  const profiles = await supabase.from("profiles").select("*").in("id", ids);
+  if (profiles.error) return [];
+
+  return ((profiles.data ?? []) as Record<string, unknown>[])
+    .map((row) => {
+      const text = (key: string) => String(row[key] ?? "").trim();
+      const email = text("email");
+      const fullName = text("full_name") || text("display_name");
+      return {
+        userId: text("id"),
+        fullName,
+        email,
+        roleTitle: text("job_title") || null,
+      } satisfies MemberIdentity;
+    })
+    .filter((member) => member.userId && member.email && member.fullName);
+}
+
 async function resolveKnownPeople(
   stored: Person[],
   prospectId: ID,
   context: PeopleContext,
 ): Promise<Person[]> {
-  const [orgPeople, submissions, prospect] = await Promise.all([
+  const [orgPeople, submissions, members, prospect] = await Promise.all([
     listOrganizationContacts(context.organizationId),
     submissionsForProspect(context.organizationId, prospectId),
+    listMemberIdentities(context.organizationId).catch(() => [] as MemberIdentity[]),
     supabase
       .from("prospects")
       .select("website_url")
@@ -157,6 +196,7 @@ async function resolveKnownPeople(
     prospectPeople: stored,
     orgPeople,
     submissions,
+    members,
     websiteUrl: prospect?.website_url ?? null,
   });
   if (plan.link.length === 0 && plan.create.length === 0) return [];
@@ -199,18 +239,22 @@ async function resolveKnownPeople(
       // Their own words: read, not verified. Nobody has checked the address.
       emailStatus: draft.email ? "found" : "unknown",
       confidence: "observed",
-      sourceId: "website_roadmap_intake",
+      sourceId:
+        draft.reason === "workspace_member" ? "trust_tai_workspace" : "website_roadmap_intake",
       note: draft.note,
     });
     await record(
       context,
       "created",
       person,
-      `${person.fullName} was recorded from what they said in the roadmap intake.`,
+      draft.reason === "workspace_member"
+        ? `${person.fullName} is a Trust Tai workspace member on this company's own domain.`
+        : `${person.fullName} was recorded from what they said in the roadmap intake.`,
       {
         resolution: draft.reason,
         resolution_note: draft.note,
-        submission_id: draft.submissionId,
+        ...(draft.submissionId ? { submission_id: draft.submissionId } : {}),
+        ...(draft.memberUserId ? { member_user_id: draft.memberUserId } : {}),
       },
     );
   }
