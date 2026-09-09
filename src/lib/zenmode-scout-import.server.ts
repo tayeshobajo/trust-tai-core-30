@@ -25,6 +25,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  zenModeListAllLeads,
   zenModeListLeads,
   type ZenModeLead,
 } from "@/lib/zenmode-provider.server";
@@ -201,14 +202,16 @@ export async function importZenModeLeadsAsProspects(
     };
   }
 
-  const leads = await zenModeListLeads(
-    {
-      ...(input.status ? { status: input.status } : {}),
-      ...(input.campaignId ? { campaignId: input.campaignId } : {}),
-      ...(input.limit ? { limit: input.limit } : {}),
-    },
-    env as Record<string, string | undefined>,
-  );
+  // Without an explicit limit, page through EVERY lead. A single unbounded
+  // call silently stops at ZenMode's default 100 and then reports "no new
+  // leads to import" — confident and wrong.
+  const filters = {
+    ...(input.status ? { status: input.status } : {}),
+    ...(input.campaignId ? { campaignId: input.campaignId } : {}),
+  };
+  const leads = input.limit
+    ? await zenModeListLeads({ ...filters, limit: input.limit }, env as Record<string, string | undefined>)
+    : await zenModeListAllLeads(filters, env as Record<string, string | undefined>);
 
   // Existing board rows for this org, to dedupe against by LinkedIn route and
   // ZenMode lead_id (both carried in provenance/metadata, since `prospects`

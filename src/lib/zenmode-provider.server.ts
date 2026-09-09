@@ -178,7 +178,7 @@ function itemsOf(payload: unknown, ...keys: string[]): unknown[] {
  * query string. Read-only; returns [] when ZenMode is not configured/enabled.
  */
 export async function zenModeListLeads(
-  input: { status?: string; campaignId?: string; limit?: number } = {},
+  input: { status?: string; campaignId?: string; limit?: number; offset?: number } = {},
   env: Env = process.env,
 ): Promise<ZenModeLead[]> {
   const config = zenModeConfig(env);
@@ -188,6 +188,7 @@ export async function zenModeListLeads(
   if (input.status) query.set("status", input.status);
   if (input.campaignId) query.set("campaign_id", input.campaignId);
   if (input.limit) query.set("limit", String(input.limit));
+  if (input.offset) query.set("offset", String(input.offset));
   const suffix = query.toString() ? `?${query.toString()}` : "";
 
   const payload = await zenModeGet(`/leads${suffix}`, config);
@@ -195,6 +196,35 @@ export async function zenModeListLeads(
     const lead = normalizeZenModeLead(entry);
     return lead ? [lead] : [];
   });
+}
+
+/** ZenMode's `/leads` default page size. Omitting `limit` silently truncates to
+ * this, which reads downstream as "the campaign only found 100 people". */
+export const ZENMODE_LEADS_PAGE_SIZE = 100;
+
+/** Defensive bound so a paging bug cannot loop forever against a live API. */
+const ZENMODE_MAX_PAGES = 100;
+
+/**
+ * Page through `/leads` until ZenMode returns a short page. Callers that want
+ * EVERY lead must use this rather than `zenModeListLeads`, whose unset `limit`
+ * quietly caps at 100 — an under-count that looks exactly like a small
+ * campaign and produces a confident, wrong "no new leads" downstream.
+ */
+export async function zenModeListAllLeads(
+  input: { status?: string; campaignId?: string } = {},
+  env: Env = process.env,
+): Promise<ZenModeLead[]> {
+  const all: ZenModeLead[] = [];
+  for (let page = 0; page < ZENMODE_MAX_PAGES; page += 1) {
+    const batch = await zenModeListLeads(
+      { ...input, limit: ZENMODE_LEADS_PAGE_SIZE, offset: page * ZENMODE_LEADS_PAGE_SIZE },
+      env,
+    );
+    all.push(...batch);
+    if (batch.length < ZENMODE_LEADS_PAGE_SIZE) return all;
+  }
+  return all;
 }
 
 /** GET /leads/{id}/activity — the activity trail for one lead. Verbatim. */

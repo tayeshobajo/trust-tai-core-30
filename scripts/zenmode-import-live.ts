@@ -22,7 +22,7 @@ import {
   importZenModeLeadsAsProspects,
   resolveCompanyName,
 } from "../src/lib/zenmode-scout-import.server";
-import { zenModeListLeads } from "../src/lib/zenmode-provider.server";
+import { zenModeListAllLeads } from "../src/lib/zenmode-provider.server";
 
 const organizationId = process.argv[2];
 const commit = process.argv.includes("--commit");
@@ -54,7 +54,8 @@ const env = {
   ZENMODE_SCOUT_IMPORT_ENABLED: "true",
 };
 
-const leads = await zenModeListLeads({ limit: 200 }, env);
+// Paged, like the import itself — a single call silently stops at 100.
+const leads = await zenModeListAllLeads({}, env);
 console.log(`ZenMode returned ${leads.length} lead(s).`);
 let repaired = 0;
 for (const lead of leads) {

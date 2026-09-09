@@ -7,12 +7,14 @@
  * yet". That silence is the bug, so it gets pinned.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ZENMODE_DEFAULT_BASE_URL,
+  ZENMODE_LEADS_PAGE_SIZE,
   normalizeZenModeLead,
   zenModeConfig,
+  zenModeListAllLeads,
   zenModeStatus,
 } from "@/lib/zenmode-provider.server";
 
@@ -70,6 +72,68 @@ describe("normalizeZenModeLead", () => {
     expect(lead?.linkedinUrl).toBeNull();
     expect(lead?.companyName).toBeNull();
     expect(lead?.campaignId).toBeNull();
+  });
+});
+
+describe("zenModeListAllLeads", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** Serve `total` leads through ZenMode's `{leads, pagination}` envelope,
+   * honouring limit/offset, and record every URL requested. */
+  function stubLeads(total: number): { urls: string[] } {
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      urls.push(url);
+      const params = new URL(url).searchParams;
+      const limit = Number(params.get("limit") ?? ZENMODE_LEADS_PAGE_SIZE);
+      const offset = Number(params.get("offset") ?? 0);
+      const leads = Array.from({ length: Math.max(0, Math.min(limit, total - offset)) }, (_, i) => ({
+        id: offset + i + 1,
+        linkedin_url: `https://www.linkedin.com/in/p${offset + i + 1}`,
+      }));
+      const body = JSON.stringify({ leads, pagination: { limit, offset, returned: leads.length } });
+      return new Response(body, { status: 200, headers: { "content-type": "application/json" } });
+    });
+    return { urls };
+  }
+
+  it("pages past ZenMode's default cap instead of stopping at 100", async () => {
+    const { urls } = stubLeads(114);
+    const leads = await zenModeListAllLeads({}, ENABLED);
+    expect(leads).toHaveLength(114);
+    expect(new Set(leads.map((lead) => lead.leadId)).size).toBe(114);
+    expect(urls).toHaveLength(2);
+    expect(urls[1]).toContain("offset=100");
+  });
+
+  it("stops after one call when the first page is already short", async () => {
+    const { urls } = stubLeads(7);
+    expect(await zenModeListAllLeads({}, ENABLED)).toHaveLength(7);
+    expect(urls).toHaveLength(1);
+  });
+
+  it("stops on an exact page boundary without looping forever", async () => {
+    const { urls } = stubLeads(ZENMODE_LEADS_PAGE_SIZE);
+    expect(await zenModeListAllLeads({}, ENABLED)).toHaveLength(ZENMODE_LEADS_PAGE_SIZE);
+    expect(urls).toHaveLength(2);
+  });
+
+  it("carries filters onto every page", async () => {
+    const { urls } = stubLeads(150);
+    await zenModeListAllLeads({ status: "pending", campaignId: "2347" }, ENABLED);
+    expect(urls).toHaveLength(2);
+    for (const url of urls) {
+      expect(url).toContain("status=pending");
+      expect(url).toContain("campaign_id=2347");
+    }
+  });
+
+  it("stays inert when ZenMode is not configured", async () => {
+    const { urls } = stubLeads(50);
+    expect(await zenModeListAllLeads({}, { ZENMODE_API_KEY: "zm_test_key" })).toEqual([]);
+    expect(urls).toHaveLength(0);
   });
 });
 
