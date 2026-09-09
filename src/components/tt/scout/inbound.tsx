@@ -209,7 +209,9 @@ export function StatedTranscript({ packet }: { packet: FounderSignalPacket }) {
         description="Every question we asked and every answer they gave."
       />
       <ol className="space-y-4">
-        {answered.map((turn, index) => (
+        {turns.map((turn, index) => {
+          const also = seen.get(normalize(turn.answerText)) ?? [];
+          return (
           <li key={index} className="rounded-xl border border-border bg-card px-4 py-3">
             <div className="flex flex-wrap items-center gap-2">
               <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
@@ -219,6 +221,12 @@ export function StatedTranscript({ packet }: { packet: FounderSignalPacket }) {
               <Quote className="mt-1 h-3.5 w-3.5 shrink-0 text-royal" aria-hidden />
               <span>{turn.answerText}</span>
             </p>
+            {also.length > 0 ? (
+              <p className="mt-1.5 text-[12px] text-muted-foreground">
+                They gave this same answer to {also.length}{" "}
+                {also.length === 1 ? "other question" : "other questions"}.
+              </p>
+            ) : null}
             {packet.submissionRowId ? (
               <Link
                 to="/modules/website/submissions/$submissionId"
