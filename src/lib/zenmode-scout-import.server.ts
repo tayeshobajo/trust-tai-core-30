@@ -143,7 +143,11 @@ export function companyFromHeadline(title: string | null | undefined): string | 
     .trim();
 
   for (const pattern of [...HEADLINE_PATTERNS, BARE_ROLE_PREFIX]) {
-    const candidate = head.match(pattern)?.[1]?.replace(/\s+/g, " ").trim().replace(/[.,;:]+$/, "");
+    const candidate = head
+      .match(pattern)?.[1]
+      ?.replace(/\s+/g, " ")
+      .trim()
+      .replace(/[.,;:]+$/, "");
     if (candidate && isUsableCompany(candidate)) return candidate;
   }
   return null;
@@ -211,7 +215,10 @@ export async function importZenModeLeadsAsProspects(
     ...(input.campaignId ? { campaignId: input.campaignId } : {}),
   };
   const leads = input.limit
-    ? await zenModeListLeads({ ...filters, limit: input.limit }, env as Record<string, string | undefined>)
+    ? await zenModeListLeads(
+        { ...filters, limit: input.limit },
+        env as Record<string, string | undefined>,
+      )
     : await zenModeListAllLeads(filters, env as Record<string, string | undefined>);
 
   // Existing board rows for this org, to dedupe against by LinkedIn route and

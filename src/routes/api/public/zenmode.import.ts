@@ -81,7 +81,10 @@ export const Route = createFileRoute("/api/public/zenmode/import")({
 
           if (!outcome.ok) {
             return outcome.refusal === "unauthenticated"
-              ? Response.json({ error: "Your session is not valid. Sign in again." }, { status: 401 })
+              ? Response.json(
+                  { error: "Your session is not valid. Sign in again." },
+                  { status: 401 },
+                )
               : Response.json(
                   { error: "Your account is not a member of a Trust Tai workspace." },
                   { status: 403 },
@@ -98,9 +101,7 @@ export const Route = createFileRoute("/api/public/zenmode/import")({
           return Response.json(
             {
               error:
-                error instanceof Error
-                  ? error.message
-                  : "The ZenMode import stopped unexpectedly.",
+                error instanceof Error ? error.message : "The ZenMode import stopped unexpectedly.",
             },
             { status: 502 },
           );

@@ -83,6 +83,7 @@ import {
   type DiscoverInput,
   type FeedbackInput,
 } from "./scout-discovery";
+import { importZenModeLeads, zenModeImportStatus } from "./zenmode-import";
 import type { ProspectRow } from "./schema";
 
 function previewEvidence(domain: string): Pick<ProspectCandidate, "signals" | "fit"> {
@@ -471,6 +472,20 @@ export const scoutService = {
    */
   async discover(input: DiscoverInput) {
     return runDiscover(input);
+  },
+
+  /** Is the ZenMode lead import available on this deployment? */
+  async zenModeImportStatus() {
+    return zenModeImportStatus();
+  },
+
+  /**
+   * Pull leads the ZenMode LinkedIn campaign has already found onto the board.
+   * Discovery itself is desktop-only, so this sends nothing and starts nothing;
+   * it only imports. Safe to re-run — existing rows are left untouched.
+   */
+  async importZenModeLeads(input: { organizationId: ID; campaignId?: string }) {
+    return importZenModeLeads(input);
   },
 
   /** Every sourcing pass this organization has run. */

@@ -123,6 +123,14 @@ function Scout({
     queryFn: () => scoutService.runs(organizationId),
   });
 
+  /* ZenMode is the LinkedIn transport. The action only appears where it is
+   * actually wired, so a deployment without it shows no dead button. */
+  const zenMode = useQuery({
+    queryKey: ["scout", "zenmode-import-status"],
+    queryFn: () => scoutService.zenModeImportStatus(),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const driver = useQuery({
     queryKey: ["scout", "driver", organizationId],
     queryFn: () => getScoutDriver({ data: { organizationId } }),
@@ -144,6 +152,11 @@ function Scout({
         onStage: (stage) => setStages((current) => [...current, stage]),
       });
     },
+    onSuccess: refresh,
+  });
+
+  const importZenMode = useMutation({
+    mutationFn: () => scoutService.importZenModeLeads({ organizationId }),
     onSuccess: refresh,
   });
 
@@ -252,10 +265,12 @@ function Scout({
 
   const error = (discover.error ??
     research.error ??
+    importZenMode.error ??
     setStatus.error ??
     override.error ??
     saved.error) as Error | null;
-  const busy = discover.isPending || research.isPending || setStatus.isPending;
+  const busy =
+    discover.isPending || research.isPending || importZenMode.isPending || setStatus.isPending;
   const blocked = !configured && !isWebsite;
 
   const driverLine =
@@ -375,6 +390,39 @@ function Scout({
                 project secrets to enable live market sourcing. Pasting a single company website
                 still works, and nothing here is ever filled with demo data.
               </p>
+            </div>
+          ) : null}
+
+          {zenMode.data?.importEnabled && zenMode.data.provider.configured ? (
+            <div className="tt-surface mt-3 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm text-foreground">LinkedIn leads from ZenMode</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Brings across everyone the ZenMode campaign has already found. It sends nothing
+                  and starts no scrape — that happens in the ZenMode app. Safe to run again;
+                  companies already on the board are left exactly as they are.
+                </p>
+                {importZenMode.data ? (
+                  <p role="status" aria-live="polite" className="mt-2 text-xs text-foreground">
+                    {importZenMode.data.disabled
+                      ? "The ZenMode import is switched off on this deployment."
+                      : `${importZenMode.data.imported} added, ${importZenMode.data.duplicates} already here` +
+                        (importZenMode.data.skipped
+                          ? `, ${importZenMode.data.skipped} skipped with no LinkedIn profile to anchor on.`
+                          : ".")}
+                  </p>
+                ) : null}
+              </div>
+              <TTButton
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="shrink-0"
+                disabled={busy}
+                onClick={() => importZenMode.mutate()}
+              >
+                {importZenMode.isPending ? "Importing…" : "Import ZenMode leads"}
+              </TTButton>
             </div>
           ) : null}
 

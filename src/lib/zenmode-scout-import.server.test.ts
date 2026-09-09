@@ -256,14 +256,18 @@ describe("resolveCompanyName", () => {
   it("never lets bare legal residue become the display name", () => {
     for (const residue of ["Inc.", "LLC", "PLLC", "COVID", "Co."]) {
       expect(
-        resolveCompanyName(lead({ title: "Chief Executive Officer", companyName: residue, name: "Jane Doe" })),
+        resolveCompanyName(
+          lead({ title: "Chief Executive Officer", companyName: residue, name: "Jane Doe" }),
+        ),
       ).toBe("Jane Doe");
     }
   });
 
   it("falls back to ZenMode's field when it is a real name and the headline gives nothing", () => {
     expect(
-      resolveCompanyName(lead({ title: "Chief Executive Officer", companyName: "Anquiro", name: "A B" })),
+      resolveCompanyName(
+        lead({ title: "Chief Executive Officer", companyName: "Anquiro", name: "A B" }),
+      ),
     ).toBe("Anquiro");
   });
 
