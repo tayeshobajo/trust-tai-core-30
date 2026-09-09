@@ -100,7 +100,7 @@ export function rankScoutSignals(
     });
   }
 
-  return ranked.sort((a, b) => {
+  const sorted = ranked.sort((a, b) => {
     const byStrength = STRENGTH_RANK[b.strength] - STRENGTH_RANK[a.strength];
     if (byStrength !== 0) return byStrength;
     const ageA = ageDays(a.observedAt, now) ?? Number.MAX_SAFE_INTEGER;
@@ -108,6 +108,16 @@ export function rankScoutSignals(
     if (ageA !== ageB) return ageA - ageB;
     if (a.confidence !== b.confidence) return a.confidence === "observed" ? -1 : 1;
     return a.title.localeCompare(b.title);
+  });
+
+  // The same fact often arrives twice: once as a buying signal, once as a raw
+  // observation. Keep the strongest reading of each statement, drop the echo.
+  const seen = new Set<string>();
+  return sorted.filter((signal) => {
+    const key = signal.explanation.trim().toLowerCase().replace(/\s+/g, " ");
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 }
 

@@ -126,10 +126,32 @@ export function InboundOriginRail({
   );
 }
 
+/** Same sentence, said twice, is still one thing said. */
+function normalize(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 /** What they said, lane by lane, exactly as they said it. */
 export function StatedPanel({ packet }: { packet: FounderSignalPacket }) {
   const lanes = filledLanes(packet, STATED_LANE_ORDER);
   if (lanes.length === 0) return null;
+
+  // A founder repeats themselves across lanes. Show each sentence once, in the
+  // first lane it belongs to.
+  const said = new Set<string>();
+  const deduped = lanes
+    .map(({ lane, statements }) => ({
+      lane,
+      statements: statements.filter((statement) => {
+        const key = normalize(statement);
+        if (!key || said.has(key)) return false;
+        said.add(key);
+        return true;
+      }),
+    }))
+    .filter((entry) => entry.statements.length > 0);
+
+  if (deduped.length === 0) return null;
 
   return (
     <div className="tt-surface p-5">
@@ -139,7 +161,7 @@ export function StatedPanel({ packet }: { packet: FounderSignalPacket }) {
         description="Their own words, unedited. Stated truth is testimony, not evidence: it never changes the fit score."
       />
       <div className="space-y-4">
-        {lanes.map(({ lane, statements }) => (
+        {deduped.map(({ lane, statements }) => (
           <div key={lane}>
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {STATED_LANE_LABEL[lane]}
@@ -164,7 +186,20 @@ export function StatedPanel({ packet }: { packet: FounderSignalPacket }) {
 /** The conversation itself, so any claim can be traced to a sentence. */
 export function StatedTranscript({ packet }: { packet: FounderSignalPacket }) {
   const answered = packet.transcript.filter((turn) => !turn.skipped && turn.answerText.trim());
-  if (answered.length === 0) return null;
+  // One answer often covers several questions. Keep the first time it was
+  // given, and say which other questions it answered.
+  const seen = new Map<string, string[]>();
+  const turns = answered.filter((turn) => {
+    const key = normalize(turn.answerText);
+    const also = seen.get(key);
+    if (also) {
+      also.push(turn.questionText);
+      return false;
+    }
+    seen.set(key, []);
+    return true;
+  });
+  if (turns.length === 0) return null;
 
   return (
     <div className="tt-surface p-5">
@@ -174,29 +209,38 @@ export function StatedTranscript({ packet }: { packet: FounderSignalPacket }) {
         description="Every question we asked and every answer they gave."
       />
       <ol className="space-y-4">
-        {answered.map((turn, index) => (
-          <li key={index} className="rounded-xl border border-border bg-card px-4 py-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
-              <p className="text-[13px] text-muted-foreground">{turn.questionText}</p>
-            </div>
-            <p className="mt-2 flex gap-2 text-[14px] text-foreground">
-              <Quote className="mt-1 h-3.5 w-3.5 shrink-0 text-royal" aria-hidden />
-              <span>{turn.answerText}</span>
-            </p>
-            {packet.submissionRowId ? (
-              <Link
-                to="/modules/website/submissions/$submissionId"
-                params={{ submissionId: packet.submissionRowId }}
-                hash={answerAnchorId(turn.questionId, index)}
-                className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-royal hover:underline"
-              >
-                Open this answer on the website record
-                <ArrowUpRight className="h-3 w-3" aria-hidden />
-              </Link>
-            ) : null}
-          </li>
-        ))}
+        {turns.map((turn, index) => {
+          const also = seen.get(normalize(turn.answerText)) ?? [];
+          return (
+            <li key={index} className="rounded-xl border border-border bg-card px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <MetaPill>{turn.modality === "voice" ? "Spoken" : "Typed"}</MetaPill>
+                <p className="text-[13px] text-muted-foreground">{turn.questionText}</p>
+              </div>
+              <p className="mt-2 flex gap-2 text-[14px] text-foreground">
+                <Quote className="mt-1 h-3.5 w-3.5 shrink-0 text-royal" aria-hidden />
+                <span>{turn.answerText}</span>
+              </p>
+              {also.length > 0 ? (
+                <p className="mt-1.5 text-[12px] text-muted-foreground">
+                  They gave this same answer to {also.length}{" "}
+                  {also.length === 1 ? "other question" : "other questions"}.
+                </p>
+              ) : null}
+              {packet.submissionRowId ? (
+                <Link
+                  to="/modules/website/submissions/$submissionId"
+                  params={{ submissionId: packet.submissionRowId }}
+                  hash={answerAnchorId(turn.questionId, index)}
+                  className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-royal hover:underline"
+                >
+                  Open this answer on the website record
+                  <ArrowUpRight className="h-3 w-3" aria-hidden />
+                </Link>
+              ) : null}
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

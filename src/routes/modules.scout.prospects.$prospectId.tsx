@@ -865,10 +865,11 @@ function CompanyDetail({
                       }
                     />
                     <StatedPanel packet={candidate.stated} />
-                    <StatedTranscript packet={candidate.stated} />
                   </>
                 ) : null}
-                <InboundSourceCard organizationId={organizationId} prospectId={prospectId} />
+                {candidate.stated ? null : (
+                  <InboundSourceCard organizationId={organizationId} prospectId={prospectId} />
+                )}
                 <ScoutSummaryCard
                   summary={derived.summary}
                   onViewRationale={() => void goToTab("icp")}
