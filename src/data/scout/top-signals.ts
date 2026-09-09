@@ -60,6 +60,17 @@ function strengthOf(hasSource: boolean, age: number | null): SignalStrength {
   return "weak";
 }
 
+/**
+ * The sentence a signal is actually making, without its lead-in label. Two
+ * signals that say the same thing under different labels are one fact.
+ */
+function statementKey(text: string): string {
+  const flat = text.trim().replace(/\s+/g, " ");
+  const colon = flat.indexOf(": ");
+  const body = colon > 0 && colon <= 60 ? flat.slice(colon + 2) : flat;
+  return body.toLowerCase().replace(/[.\s]+$/, "");
+}
+
 const STRENGTH_RANK: Record<SignalStrength, number> = { strong: 3, medium: 2, weak: 1 };
 
 /** Every signal Scout holds for this company, strongest first. */
