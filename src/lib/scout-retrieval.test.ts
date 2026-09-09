@@ -84,10 +84,7 @@ describe("composeScoutRetrieval", () => {
         { appId: "icp_profiles", reason: "no_data" },
       ],
     });
-    expect(bundle.withheld.map((row) => row.appId)).toEqual([
-      "intelligence_cases",
-      "icp_profiles",
-    ]);
+    expect(bundle.withheld.map((row) => row.appId)).toEqual(["intelligence_cases", "icp_profiles"]);
   });
 });
 

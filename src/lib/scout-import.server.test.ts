@@ -165,7 +165,9 @@ describe("extracting companies", () => {
       known: [{ name: "Northfield Dental", domain: "northfielddental.com" }],
     });
 
-    const sent = (call.mock.calls as unknown as { instructions: string; input: string }[][])[0]?.[0];
+    const sent = (
+      call.mock.calls as unknown as { instructions: string; input: string }[][]
+    )[0]?.[0];
     const body = JSON.parse(String(sent?.input)) as {
       retrieval: Record<string, unknown>;
       source: string;
@@ -183,7 +185,6 @@ describe("extracting companies", () => {
     expect(String(sent?.instructions)).toContain("retrieval.humanCorrections");
   });
 });
-
 
 describe("the deterministic reader", () => {
   it("reads columns and refuses prose", () => {

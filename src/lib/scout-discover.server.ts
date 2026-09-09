@@ -49,7 +49,6 @@ import {
   SCOUT_RETRIEVAL_LAWS,
 } from "@/lib/scout-retrieval";
 
-
 const DEFAULT_LIMIT = 25;
 
 const MAX_LIMIT = 50;
