@@ -43,6 +43,7 @@ import {
 } from "@/domain/voice";
 import { COMMITMENT_CATEGORY } from "@/domain/comms-interactions";
 import { loadRelationshipContext } from "@/lib/comms-context.server";
+import { commsRetrievalPacket, composeCommsRetrieval } from "@/lib/comms-retrieval";
 import {
   assessDraftGrounding,
   parseCommunicationJudgment,
