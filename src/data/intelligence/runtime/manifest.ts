@@ -323,12 +323,20 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
     ),
   }),
 
+  /*
+   * Studio covers two generating surfaces: the roadmap artifact composer
+   * (src/lib/roadmap-studio.server.ts) and the blog Content Engine
+   * (src/lib/content-engine.server.ts). Both are declared here, and where they
+   * differ the weaker of the two is what this manifest states.
+   */
   manifest("studio", {
     evidence_grounding: r(
-      "composes only approved roadmap packets; generation reasons through the runtime boundary (src/lib/roadmap-studio.server.ts)",
+      "artifacts compose only approved roadmap packets (src/lib/roadmap-studio.server.ts); blog posts compose only the recorded content plan and Voice DNA (src/lib/content-engine.server.ts). Both generate through the runtime boundary",
     ),
-    retrieval: r(
-      "the approved evidence packet is the retrieval boundary; nothing else reaches the model (src/lib/roadmap-studio.server.ts)",
+    retrieval: d(
+      "the approved packet (artifacts) and the recorded content plan (blog) are each the retrieval boundary; nothing else reaches the model",
+      "src/lib/roadmap-studio.server.ts, src/lib/content-engine.server.ts",
+      "neither surface composes a shared retrieval bundle yet: each hands the model a room-built packet, so canon patterns, prior cases and human corrections do not reach the prompt",
     ),
     domain_patterns: d(
       "expression knowledge is Voice DNA and the roadmap's decided strategy",
@@ -341,8 +349,9 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
       "Studio's recovery is refusal with named rejected claims, not autonomous retry",
     ),
     verification: r(
-      "statements the packet cannot back are rejected before save (src/lib/roadmap-studio.server.ts)",
+      "artifacts: statements the packet cannot back are rejected before save (src/lib/roadmap-studio.server.ts); blog: publishing is an append-only attempt ledger with readback verification (src/lib/content-publish.server.ts)",
     ),
+
     approval_boundary: r("artifacts are person-reviewed before use"),
     outcome_learning: d(
       "artifact history records what shipped; outcomes return through roadmap records",
