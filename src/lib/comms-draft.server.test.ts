@@ -23,6 +23,7 @@ import {
   type RuntimeModelCaller,
 } from "./intelligence-runtime.server";
 import { unearnedAskInBody } from "@/domain/comms-judgment";
+import { commsRetrievalPacket, composeCommsRetrieval } from "./comms-retrieval";
 
 /* The Brooke Siler production case at contract level: a known identity and a
    real inbound thread pass the grounding gate (pinned in
@@ -154,6 +155,51 @@ async function failureCode(promise: Promise<unknown>): Promise<string> {
 }
 
 describe("executeDraftPasses", () => {
+  /* The retrieval wiring, at contract level: both passes must actually see
+     the shared bundle, with corrections ahead of inference and unreadable
+     sources still marked withheld rather than emptied. */
+  it("carries the shared retrieval bundle into both model passes", async () => {
+    const retrieval = commsRetrievalPacket(
+      composeCommsRetrieval({
+        organizationId: "org-1",
+        relationshipId: "rel-1",
+        now: "2026-09-09T10:00:00.000Z",
+        observedAndDecided: [
+          { label: "Timing", value: "She asked about starting next month.", tier: "observed" },
+        ],
+        inferred: [{ label: "Mood", value: "She may be under budget pressure." }],
+        contextLines: [],
+        trajectory: [],
+        withheld: [{ appId: "intelligence_cases", reason: "not_connected" }],
+      }),
+    );
+    const seen: string[] = [];
+    const spy: RuntimeModelCaller = async (request) => {
+      seen.push(request.input);
+      return {
+        raw: seen.length === 1 ? VALID_JUDGMENT : VALID_DRAFT,
+        provider: "test",
+        model: "test-model",
+      };
+    };
+    await executeDraftPasses(spy, {
+      ...BROOKE_INPUT,
+      evidencePacket: { ...BROOKE_INPUT.evidencePacket, retrieval },
+    });
+    expect(seen).toHaveLength(2);
+    for (const input of seen) {
+      const packet = JSON.parse(input) as Record<string, unknown>;
+      const bundle = (packet["retrieval"] ??
+        (packet["evidence"] as Record<string, unknown>)?.["retrieval"]) as Record<string, unknown>;
+      expect(bundle).toBeDefined();
+      expect(Object.keys(bundle)[0]).toBe("humanCorrections");
+      expect(bundle["withheld"]).toEqual([
+        { appId: "intelligence_cases", reason: "not_connected" },
+      ]);
+      expect(bundle["capabilities"]).toBeDefined();
+    }
+  });
+
   it("Brooke's case succeeds with a configured provider returning valid judgment and draft", async () => {
     const result = await executeDraftPasses(callerReturning(VALID_JUDGMENT, VALID_DRAFT), {
       ...BROOKE_INPUT,

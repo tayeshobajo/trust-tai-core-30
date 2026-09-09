@@ -42,7 +42,10 @@ import {
   type VoiceRegister,
 } from "@/domain/voice";
 import { COMMITMENT_CATEGORY } from "@/domain/comms-interactions";
+import type { IntelligenceCase } from "@/domain/intelligence-canon";
+import type { WithheldSource } from "@/domain/signals";
 import { loadRelationshipContext } from "@/lib/comms-context.server";
+import { commsRetrievalPacket, composeCommsRetrieval } from "@/lib/comms-retrieval";
 import {
   assessDraftGrounding,
   parseCommunicationJudgment,
@@ -308,6 +311,60 @@ async function loadVoiceExamples(
     .filter((row) => row.excerpt.length > 0);
 }
 
+/**
+ * The case ledger for this workspace, read with the caller's token. It is
+ * where human corrections live, and corrections outrank inference. When the
+ * ledger cannot be read (not migrated, no permission), the caller records a
+ * withheld source: unknown stays unknown, it never becomes an empty fact.
+ */
+async function loadCases(
+  supabase: CallerClient,
+  organizationId: string,
+): Promise<{ cases: IntelligenceCase[]; withheld: WithheldSource[] }> {
+  const { data, error } = await supabase
+    .from("intelligence_cases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) {
+    return {
+      cases: [],
+      withheld: [{ appId: "intelligence_cases", reason: "not_connected" }],
+    };
+  }
+  return {
+    cases: ((data ?? []) as Record<string, unknown>[]).map(toIntelligenceCase),
+    withheld: [],
+  };
+}
+
+/** Row shape to canon case. Only fields the retrieval bundle actually uses. */
+function toIntelligenceCase(row: Record<string, unknown>): IntelligenceCase {
+  const optional = (key: string) =>
+    typeof row[key] === "string" && (row[key] as string).length > 0
+      ? { [key]: row[key] as string }
+      : {};
+  return {
+    id: String(row["id"] ?? ""),
+    organizationId: String(row["organization_id"] ?? ""),
+    patternId: String(row["pattern_id"] ?? ""),
+    patternVersion: Number(row["pattern_version"] ?? 1),
+    entities: [],
+    evidenceRefs: [],
+    hypothesis: String(row["hypothesis"] ?? ""),
+    humanDecision: String(row["human_decision"] ?? ""),
+    decidedBy: String(row["decided_by"] ?? ""),
+    decidedAt: String(row["decided_at"] ?? ""),
+    diagnosisVerdict: (typeof row["diagnosis_verdict"] === "string"
+      ? row["diagnosis_verdict"]
+      : "unknown") as IntelligenceCase["diagnosisVerdict"],
+    ...(optional("correction") as { correction?: string }),
+    ...(optional("lesson") as { lesson?: string }),
+    createdAt: String(row["created_at"] ?? ""),
+  };
+}
+
 const JUDGMENT_INSTRUCTIONS = `You are the communication judgment of Trust Tai. You do NOT write the message.
 You read the conversation the way a perceptive person would, then return the
 judgment a draft will be written from.
@@ -348,6 +405,22 @@ may be referenced as fact. projectContext.trajectory is a reading, not a record:
 it may shape the angle and must never be stated back as fact, and it may never
 be used to assert a direction, a commitment or a decision nobody made. When the
 context is thin, say less rather than inventing continuity.
+
+The retrieval bundle. The packet also carries "retrieval": the shared, governed
+read of what this workspace knows. Read it first and obey its provenance:
+- retrieval.humanCorrections are decisions a person already made about this kind
+  of situation. They outrank every inference, always. Never contradict one.
+- retrieval.priorCases and retrieval.knowledgeProvenance are what the workspace
+  has seen before, cited with their source. Use them as context, not as proof
+  about this relationship.
+- retrieval.evidence is ordered strongest first: tier "decided" then "observed"
+  may be stated as fact; tier "derived" is inference and belongs in factsAvoid.
+- retrieval.decided are statements a person decided. Never overwrite them.
+- retrieval.withheld lists sources that could not be read. They stay UNKNOWN.
+  An unread source is never zero, never absence of a fact, and never evidence
+  that something did not happen.
+- retrieval.capabilities describes what Comms can actually do. Nothing is sent
+  from here under any circumstances.
 
 Return strict JSON only:
 {
@@ -541,7 +614,7 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
   const register = request.register;
 
   // The governed evidence packet both passes reason over.
-  const [thread, voiceExamples, projectContext] = await Promise.all([
+  const [thread, voiceExamples, projectContext, ledger] = await Promise.all([
     loadThread(supabase, request.relationshipId),
     loadVoiceExamples(supabase, organizationId),
     /* The bounded project layer: direction, work in flight, and what has
@@ -551,6 +624,7 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
       clientId: (row["client_id"] as string | null) ?? null,
       relationshipId: request.relationshipId,
     }),
+    loadCases(supabase, organizationId),
   ]);
 
   /* The grounding gate. A real thread plus a known identity grounds a reply;
@@ -581,11 +655,27 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
     hasPurpose: Boolean(request.purpose?.trim()),
   });
 
+  /* The shared Intelligence Runtime retrieval bundle: the same sources, in
+     the suite's one composition point, with provenance on every line, human
+     corrections hoisted ahead of inference, and unreadable sources carried
+     as withheld rather than silently emptied. */
+  const retrieval = composeCommsRetrieval({
+    organizationId,
+    relationshipId: request.relationshipId,
+    observedAndDecided: usedEvidence,
+    inferred,
+    contextLines: projectContext.lines,
+    trajectory: projectContext.trajectory,
+    cases: ledger.cases,
+    withheld: ledger.withheld,
+  });
+
   /* The evidence packet keeps its provenance explicit: the canonical
      relationship voice is the baseline, relationship evidence is what may be
      said, the org Voice DNA is the editable brand expression, and approved
      examples are learned style influence, layered, never merged. */
   const evidencePacket = {
+    retrieval: commsRetrievalPacket(retrieval),
     draftKind: grounding.kind,
     canonicalRelationshipVoice: [...TAI_RELATIONSHIP_VOICE],
     relationshipEvidence: {
