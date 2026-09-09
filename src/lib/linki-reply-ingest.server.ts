@@ -38,10 +38,17 @@ export type LinkiReplyIngestStatus =
   | "resolved"
   | "rejected";
 
-/** The observed-reply contract, as Linki (transport) delivers it. */
+/**
+ * The transport that observed the reply. Linki (name-lookup) and ZenMode
+ * (ICP discovery + outreach) both deliver the SAME landing contract; the
+ * value rides as provenance only, never as identity (TRANSPORT law).
+ */
+export type ReplyTransport = "linki" | "zenmode";
+
+/** The observed-reply contract, as a transport (Linki/ZenMode) delivers it. */
 export interface LinkedInReplyObserved {
   organizationId: string;
-  source: "linki";
+  source: ReplyTransport;
   /** Linki's identifier for the conversation the reply belongs to. */
   externalThreadRef: string;
   /** Linki's identifier for the reply itself. Dedupe key. */
@@ -80,7 +87,16 @@ export interface LinkiReplyIngestEnv {
 
 type Row = Record<string, unknown>;
 
-const INGEST_EVENT_PREFIX = "linki:reply_observed";
+const INGEST_EVENT_SUFFIX = "reply_observed";
+
+/** Human-readable transport label used on provenance actors and event labels. */
+function transportLabel(source: ReplyTransport): string {
+  return source === "zenmode" ? "ZenMode reply observation" : "Linki reply observation";
+}
+
+function ingestActorId(source: ReplyTransport): string {
+  return `${source}-reply-ingest`;
+}
 
 function enabled(env: LinkiReplyIngestEnv): boolean {
   return env["LINKI_REPLY_INGESTION_ENABLED"] === "true";
@@ -120,9 +136,9 @@ export function normalizeLinkedinUrl(url: string | null | undefined): string | n
 function provenanceFor(input: LinkedInReplyObserved, at: string): Row {
   return {
     app_key: "comms",
-    actor: { type: "system", id: "linki-reply-ingest", label: "Linki reply observation" },
+    actor: { type: "system", id: ingestActorId(input.source), label: transportLabel(input.source) },
     logged_at: at,
-    source: "linki",
+    source: input.source,
     channel: "linkedin",
     external_thread_ref: input.externalThreadRef,
     external_message_ref: input.externalMessageRef,
@@ -131,8 +147,8 @@ function provenanceFor(input: LinkedInReplyObserved, at: string): Row {
   };
 }
 
-function eventKey(organizationId: string, externalMessageRef: string): string {
-  return `${INGEST_EVENT_PREFIX}:${organizationId}:${externalMessageRef}`;
+function eventKey(source: ReplyTransport, organizationId: string, externalMessageRef: string): string {
+  return `${source}:${INGEST_EVENT_SUFFIX}:${organizationId}:${externalMessageRef}`;
 }
 
 /* ------------------------------------------------------------ resolution */
@@ -404,7 +420,7 @@ export async function ingestLinkedInReply(
   // 5) The event stream: the SAME judgment hook email replies already feed.
   //    Observation only — Comms reads it; nothing acts on it automatically.
   const definition = SUITE_EVENTS.RELATIONSHIP_MESSAGE_RECEIVED;
-  const key = eventKey(input.organizationId, input.externalMessageRef.trim());
+  const key = eventKey(input.source, input.organizationId, input.externalMessageRef.trim());
   const { error: eventError } = await client.from("activities").insert({
     organization_id: input.organizationId,
     app_key: definition.emittedBy,
@@ -418,7 +434,7 @@ export async function ingestLinkedInReply(
     payload: {
       label: input.senderName?.trim() || "LinkedIn reply",
       event: definition.name,
-      source: "linki",
+      source: input.source,
       channel: "linkedin",
       direction: "inbound",
       external_thread_ref: input.externalThreadRef.trim(),
@@ -426,7 +442,7 @@ export async function ingestLinkedInReply(
       source_event_key: key,
       provenance: {
         appId: definition.emittedBy,
-        actor: { type: "system", id: "linki-reply-ingest", label: "Linki reply observation" },
+        actor: { type: "system", id: ingestActorId(input.source), label: transportLabel(input.source) },
         observedAt: new Date().toISOString(),
         externalRef: key,
         confidence: "observed",
