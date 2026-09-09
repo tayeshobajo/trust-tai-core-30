@@ -239,7 +239,8 @@ export function StatedTranscript({ packet }: { packet: FounderSignalPacket }) {
               </Link>
             ) : null}
           </li>
-        ))}
+          );
+        })}
       </ol>
     </div>
   );
