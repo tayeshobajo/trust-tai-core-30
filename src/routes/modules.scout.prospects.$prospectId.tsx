@@ -967,7 +967,7 @@ function CompanyDetail({
                     lookupLinkedin.error
                       ? lookupLinkedin.error instanceof Error
                         ? lookupLinkedin.error.message
-                        : "LinkedIn route search failed. Retry when you are ready."
+                        : "Contact route search failed. Retry when you are ready."
                       : null
                   }
                 />

@@ -30,12 +30,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  normalizeName,
   rankCandidates,
   type LinkedinCandidate,
   type LinkedinLookupInput,
   type RankedLinkedinCandidate,
 } from "@/lib/linkedin-candidates";
 import { ZENMODE_SCOUT_SOURCE } from "@/lib/zenmode-scout-import.server";
+
+/**
+ * Hard ceiling on rows pulled back for in-memory ranking.
+ *
+ * PostgREST caps rows server-side anyway (commonly 1000). Asking explicitly is
+ * the point: the cap becomes a number we know we hit, instead of a silent page
+ * boundary that turns "this person is in the pool" into "no confident match".
+ */
+const POOL_READ_LIMIT = 1000;
 
 /**
  * Why a search came back with nothing. The distinction matters: "we have no
@@ -49,6 +59,14 @@ export const EMPTY_POOL_REASON =
 export const NO_POOL_MATCH_REASON =
   "No confident match among the leads ZenMode has already found. Try the company website, or add the person by hand.";
 
+/**
+ * The third "no": we hit the read ceiling, so "not found" is not a fact we are
+ * entitled to state. Saying so is the whole difference between a search that is
+ * limited and a search that lies.
+ */
+export const POOL_TRUNCATED_REASON =
+  "No match in the leads we could search, but the ZenMode pool is larger than one search can read, so this is not a definitive no. Narrow by company, or check the lead in ZenMode directly.";
+
 export interface ZenModePoolLookupResult {
   candidates: RankedLinkedinCandidate[];
   /** Non-null when nothing is being offered (fail-closed). */
@@ -56,6 +74,25 @@ export interface ZenModePoolLookupResult {
   /** How many ZenMode leads were searched. Display-only, but it makes an
    * empty answer legible instead of mysterious. */
   poolSize: number;
+  /** True when the read hit POOL_READ_LIMIT, so absence proves nothing. */
+  truncated: boolean;
+}
+
+/**
+ * The surname the ranking gate will insist on.
+ *
+ * `hasStrongHumanNameMatch` requires the first AND last name token to match, so
+ * any row capable of passing the gate must contain this token. That makes it
+ * safe to push into the query: it can only remove rows that were already going
+ * to be rejected. Returns null when the token could alter LIKE semantics, in
+ * which case we read broadly rather than risk excluding a real match.
+ */
+function surnameFilterToken(fullName: string): string | null {
+  const tokens = normalizeName(fullName).split(" ").filter(Boolean);
+  const surname = tokens.length > 1 ? tokens[tokens.length - 1] : null;
+  if (!surname || surname.length < 2) return null;
+  if (/[%_\\]/.test(surname)) return null;
+  return surname;
 }
 
 /** The shape the ZenMode import parks on each prospect. All fields optional —
@@ -103,6 +140,24 @@ function candidateFrom(row: Record<string, unknown>): LinkedinCandidate | null {
 }
 
 /**
+ * Does this organization hold any ZenMode leads at all?
+ *
+ * Only asked when a filtered search missed, to tell "run a campaign first" apart
+ * from "that person is not in the pool". A count with `head` pulls no rows.
+ * A failed count is treated as "not empty", so a hiccup downgrades the message
+ * rather than inventing the more dramatic claim.
+ */
+async function poolIsEmpty(client: SupabaseClient, organizationId: string): Promise<boolean> {
+  const { count, error } = await client
+    .from("prospects")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .eq("source", ZENMODE_SCOUT_SOURCE);
+  if (error) return false;
+  return (count ?? 0) === 0;
+}
+
+/**
  * Search the organization's ZenMode leads for a person.
  *
  * `client` must be the caller's authenticated Supabase client — this function
@@ -113,24 +168,45 @@ export async function zenModePoolFindPerson(
   client: SupabaseClient,
   input: LinkedinLookupInput & { organizationId: string },
 ): Promise<ZenModePoolLookupResult> {
-  const { data, error } = await client
+  let query = client
     .from("prospects")
     .select("company_name, metadata")
     .eq("organization_id", input.organizationId)
     .eq("source", ZENMODE_SCOUT_SOURCE);
 
+  // Push the surname into the query so the read stays small enough that the row
+  // ceiling is never the thing deciding the answer.
+  const surname = surnameFilterToken(input.fullName);
+  if (surname) {
+    query = query.ilike("metadata->zenmode->>name", `%${surname}%`);
+  }
+
+  const { data, error } = await query.limit(POOL_READ_LIMIT);
+
   if (error) {
     throw new Error(`Could not read the ZenMode lead pool: ${error.message}`);
   }
 
+  const rows = (data ?? []) as Record<string, unknown>[];
+  const truncated = rows.length >= POOL_READ_LIMIT;
+
   const pool: LinkedinCandidate[] = [];
-  for (const row of (data ?? []) as Record<string, unknown>[]) {
+  for (const row of rows) {
     const candidate = candidateFrom(row);
     if (candidate) pool.push(candidate);
   }
 
   if (pool.length === 0) {
-    return { candidates: [], noMatchReason: EMPTY_POOL_REASON, poolSize: 0 };
+    // The surname filter means zero rows is ambiguous: it could be "nobody by
+    // that name" OR "no leads at all", and those deserve different answers. One
+    // cheap count settles it rather than guessing. Only runs on a miss.
+    const emptyPool = surname ? await poolIsEmpty(client, input.organizationId) : true;
+    return {
+      candidates: [],
+      noMatchReason: emptyPool ? EMPTY_POOL_REASON : NO_POOL_MATCH_REASON,
+      poolSize: 0,
+      truncated,
+    };
   }
 
   // Same ranking the Linki path used: name is the identity anchor, company /
@@ -138,7 +214,12 @@ export async function zenModePoolFindPerson(
   const { ranked } = rankCandidates(input, pool);
 
   if (ranked.length === 0) {
-    return { candidates: [], noMatchReason: NO_POOL_MATCH_REASON, poolSize: pool.length };
+    return {
+      candidates: [],
+      noMatchReason: truncated ? POOL_TRUNCATED_REASON : NO_POOL_MATCH_REASON,
+      poolSize: pool.length,
+      truncated,
+    };
   }
-  return { candidates: ranked, noMatchReason: null, poolSize: pool.length };
+  return { candidates: ranked, noMatchReason: null, poolSize: pool.length, truncated };
 }

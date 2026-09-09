@@ -85,10 +85,19 @@ export const Route = createFileRoute("/api/public/zenmode/lookup")({
           );
         }
 
-        const { data: memberships } = await supabase
+        const { data: memberships, error: membershipError } = await supabase
           .from("organization_memberships")
           .select("organization_id, status")
           .eq("user_id", user.id);
+        // A failed read is not evidence of non-membership. Reporting it as 403
+        // would state an authorization fact we did not establish, and send the
+        // person off to fix permissions that were never the problem.
+        if (membershipError) {
+          return json(
+            { error: "Could not confirm your workspace access just now. Nothing was changed." },
+            503,
+          );
+        }
         const active = (memberships ?? []).filter((m) => (m["status"] ?? "active") === "active");
         const membership = organizationId
           ? active.find((m) => m["organization_id"] === organizationId)
