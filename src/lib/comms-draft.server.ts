@@ -42,6 +42,8 @@ import {
   type VoiceRegister,
 } from "@/domain/voice";
 import { COMMITMENT_CATEGORY } from "@/domain/comms-interactions";
+import type { IntelligenceCase } from "@/domain/intelligence-canon";
+import type { WithheldSource } from "@/domain/signals";
 import { loadRelationshipContext } from "@/lib/comms-context.server";
 import { commsRetrievalPacket, composeCommsRetrieval } from "@/lib/comms-retrieval";
 import {
