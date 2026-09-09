@@ -208,7 +208,7 @@ function CompanyDetail({
 
   const people = useQuery({
     queryKey: ["scout", "people", organizationId, prospectId],
-    queryFn: () => peopleService.list(organizationId, prospectId),
+    queryFn: () => peopleService.list(organizationId, prospectId, { organizationId, userId }),
   });
 
   const providers = useQuery({

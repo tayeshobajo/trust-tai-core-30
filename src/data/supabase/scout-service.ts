@@ -490,7 +490,7 @@ export const scoutService = {
     const [row, icp, people] = await Promise.all([
       getProspectRow(input.prospectId),
       getCurrentIcp(context.organizationId),
-      peopleService.list(context.organizationId, input.prospectId),
+      peopleService.list(context.organizationId, input.prospectId, context),
     ]);
     if (!row) throw new Error("That company is no longer on your board.");
 
