@@ -330,7 +330,7 @@ async function loadCases(
   if (error) {
     return {
       cases: [],
-      withheld: [{ appId: "intelligence_cases", reason: "no_data" }],
+      withheld: [{ appId: "intelligence_cases", reason: "not_connected" }],
     };
   }
   return { cases: ((data ?? []) as Record<string, unknown>[]).map(toIntelligenceCase), withheld: [] };
