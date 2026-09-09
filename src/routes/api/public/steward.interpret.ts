@@ -26,6 +26,7 @@ import {
 } from "@/data/steward/learning";
 
 import { toMemoryBelief } from "@/data/steward/memory-encoding";
+import { describeKnownPeople, resolveKnownPeople } from "@/data/steward/known-people";
 import { flagMemoryConflicts, selectRelevantMemory } from "@/data/steward/memory-context";
 import {
   interpretConversation,
