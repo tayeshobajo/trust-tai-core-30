@@ -65,6 +65,112 @@ function normalizeLinkedin(url: string | null | undefined): string | null {
   return clean || null;
 }
 
+/**
+ * ZenMode's `company` field is derived by naively splitting the LinkedIn
+ * headline, so it frequently yields a fragment rather than a business: the
+ * headline "Business Owner at Complete Lawn & Yard Care, Inc." arrives as
+ * `"Inc."`, and "Owner at Thee Hubbell House B&B Resort --CLOSED. Victim of
+ * COVID-19" arrives as `"COVID"`. Left alone those become the prospect's
+ * display name on the Scout board. Bare legal suffixes and other one-word
+ * residue are therefore rejected outright.
+ */
+const BARE_COMPANY_RESIDUE = new Set([
+  "inc",
+  "llc",
+  "pllc",
+  "llp",
+  "ltd",
+  "co",
+  "corp",
+  "corporation",
+  "company",
+  "group",
+  "plc",
+  "pc",
+  "covid",
+]);
+
+/** Role words are never a business name. "CEO / Owner" must not yield
+ * "/ Owner", and "Owner | Founder" must not yield "Founder". */
+const ROLE_WORDS =
+  /^(?:owner|founder|co-?founder|president|ceo|coo|cto|principal|partner|director|operator|entrepreneur|executive|officer|chief|and|&|\/|-|,)$/i;
+
+function isUsableCompany(value: string | null): boolean {
+  if (!value) return false;
+  const bare = value.toLowerCase().replace(/[.,]/g, "").trim();
+  if (bare.length <= 1 || BARE_COMPANY_RESIDUE.has(bare)) return false;
+  // A real business name starts with a letter or digit, not punctuation.
+  if (!/^[A-Za-z0-9]/.test(value)) return false;
+  // Reject a string made only of role words ("Owner and Founder").
+  return value.split(/\s+/).some((token) => !ROLE_WORDS.test(token));
+}
+
+/**
+ * Recover the business name from the headline itself, which is the more
+ * reliable source. Handles the connectors LinkedIn owners actually write:
+ * "Owner at X", "Owner of X", "Owner, X", "President/Owner @ X", "CEO at X".
+ * Returns null when the headline names only a role ("CEO / Owner") — there is
+ * no business to name and the caller falls back to the person.
+ */
+const ROLE = String.raw`\b(?:owner|founder|co-founder|president|ceo|principal|partner|director)\b`;
+
+/**
+ * Connectors in priority order. "at"/"@" name the employer directly and win
+ * even when an earlier "of" appears inside the role itself — "Owner & Director
+ * of Funding at Top Funding" is Top Funding, not "Funding at Top Funding". The
+ * `[^,@]*` before "at" is greedy so the LAST "at" wins ("Owner at Bank of
+ * America"), while "of" and "," take the FIRST occurrence after the role.
+ */
+const HEADLINE_PATTERNS: RegExp[] = [
+  new RegExp(`${ROLE}[^,@]*\\s+at\\s+(.+)$`, "i"),
+  new RegExp(`${ROLE}[^,@]*\\s*@\\s*(.+)$`, "i"),
+  new RegExp(`${ROLE}\\s+of\\s+(.+)$`, "i"),
+  new RegExp(`${ROLE}\\s*,\\s*(.+)$`, "i"),
+];
+
+/** Last resort: "Owner Shane McFarland Construction" — no connector at all.
+ * Requires two or more words so "Owner Operator" is not read as a business. */
+const BARE_ROLE_PREFIX = new RegExp(`${ROLE}\\s+(\\S+(?:\\s+\\S+)+)$`, "i");
+
+export function companyFromHeadline(title: string | null | undefined): string | null {
+  if (!title) return null;
+  const head = (title.split("|")[0] ?? title)
+    // "Thee Hubbell House B&B Resort --CLOSED. Victim of COVID-19" — cut the
+    // editorial aside before matching, or "of COVID-19" wins as a connector.
+    .split(/\s+--+/)[0]!
+    .trim();
+
+  for (const pattern of [...HEADLINE_PATTERNS, BARE_ROLE_PREFIX]) {
+    const candidate = head.match(pattern)?.[1]?.replace(/\s+/g, " ").trim().replace(/[.,;:]+$/, "");
+    if (candidate && isUsableCompany(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** Headlines that announce the business is gone. Imported, never silently
+ * dropped, but flagged so a human sees it before any outreach. */
+function reviewFlagsFor(lead: ZenModeLead): string[] {
+  const flags: string[] = [];
+  const title = lead.title ?? "";
+  if (/\bclosed\b|no longer|out of business|retired/i.test(title)) {
+    flags.push("headline_says_business_closed");
+  }
+  if (!lead.title?.trim()) flags.push("no_headline");
+  if (!companyFromHeadline(lead.title) && !isUsableCompany(lead.companyName)) {
+    flags.push("no_identifiable_business");
+  }
+  return flags;
+}
+
+/** The business this lead represents, best-effort, in trust order:
+ * headline extraction → ZenMode's field (if not residue) → the person. */
+export function resolveCompanyName(lead: ZenModeLead): string {
+  const fromHeadline = companyFromHeadline(lead.title);
+  if (fromHeadline) return fromHeadline;
+  if (isUsableCompany(lead.companyName)) return lead.companyName!;
+  return lead.name ?? "ZenMode lead";
+}
+
 function recommendationFor(lead: ZenModeLead): string {
   const who = lead.name ?? "This lead";
   const where = lead.companyName ? ` at ${lead.companyName}` : "";
@@ -146,6 +252,7 @@ export async function importZenModeLeadsAsProspects(
     seenLinkedin.add(linkedin);
     seenLeadIds.add(lead.leadId);
 
+    const reviewFlags = reviewFlagsFor(lead);
     const zenmodeBag = {
       transport: "zenmode",
       lead_id: lead.leadId,
@@ -154,12 +261,17 @@ export async function importZenModeLeadsAsProspects(
       lead_status: lead.status,
       name: lead.name,
       title: lead.title,
+      location: lead.location,
+      /** ZenMode's own company guess, kept verbatim next to ours so a human can
+       * see when the two disagree. */
+      company_reported_by_zenmode: lead.companyName,
+      review_flags: reviewFlags,
       observed_at: now,
     };
 
     const { error: insertError } = await client.from("prospects").insert({
       organization_id: input.organizationId,
-      company_name: lead.companyName ?? lead.name ?? "ZenMode lead",
+      company_name: resolveCompanyName(lead),
       website_url: lead.websiteUrl,
       status: "discovered",
       source: ZENMODE_SCOUT_SOURCE,
@@ -167,8 +279,10 @@ export async function importZenModeLeadsAsProspects(
       inferred: {
         name: lead.name,
         title: lead.title,
+        location: lead.location,
         lead_status: lead.status,
         linkedin_url: lead.linkedinUrl,
+        review_flags: reviewFlags,
       },
       suggested: { recommendation: recommendationFor(lead) },
       provenance: {

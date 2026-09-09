@@ -44,6 +44,9 @@ export interface ZenModeLead {
   companyName: string | null;
   websiteUrl: string | null;
   title: string | null;
+  /** LinkedIn's free-text locality, e.g. "Nashville Metropolitan Area". Real
+   * ICP signal (US / metro fit), so it is carried rather than dropped. */
+  location: string | null;
   status: string | null;
   raw: Record<string, unknown>;
 }
@@ -151,6 +154,7 @@ export function normalizeZenModeLead(entry: unknown): ZenModeLead | null {
     companyName: str(record["company_name"]) ?? str(record["company"]) ?? str(record["companyName"]),
     websiteUrl: str(record["website_url"]) ?? str(record["website"]) ?? str(record["websiteUrl"]),
     title: str(record["title"]) ?? str(record["headline"]) ?? str(record["role"]),
+    location: str(record["location"]) ?? str(record["locality"]),
     status: str(record["status"]),
     raw: record,
   };
