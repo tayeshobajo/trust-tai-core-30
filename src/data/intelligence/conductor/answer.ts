@@ -337,9 +337,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
 
     case "leaks": {
       const leaks = factory.warnings;
-      const stalled = read.recommendations.filter((row) =>
-        ["reply_debt", "unworked_opportunity", "promises_slipping"].includes(row.patternKey),
-      );
+      const stalled = read.recommendations.filter((row) => isLeakPattern(row.patternKey));
       if (leaks.length === 0 && stalled.length === 0) {
         answer =
           "Nothing in the shared record shows work being lost between rooms right now. That is a read of what is recorded, not a guarantee.";
@@ -390,7 +388,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
       shownImprovements = improvements;
       answer =
         improvements.length === 0
-          ? `No friction has repeated often enough to be structural. I only raise a pattern once it has happened ${3} times or more.`
+          ? `No friction has repeated often enough to be structural. I only raise a pattern once it has happened ${FRICTION_THRESHOLD} times or more.`
           : sentence([
               `${improvements.length} recurring friction${improvements.length === 1 ? "" : "s"} worth fixing at the system level.`,
               improvements[0] ? `Most frequent: ${improvements[0].headline.toLowerCase()}.` : "",

@@ -23,6 +23,11 @@ import type { RouteLedgerEntry } from "@/domain/route-ledger";
 import { routeStanding } from "@/domain/route-ledger";
 import { ROUTE_TARGET_LABEL } from "@/domain/project-routing";
 import type { Signal, SignalCategory } from "@/domain/signals";
+import { impactOf, severityOf } from "@/domain/signal-attention";
+
+/* One shared reading of attention; Pulse projects it, it does not re-derive it. */
+export { impactOf, severityOf };
+
 
 const DAY = 86_400_000;
 
@@ -72,43 +77,11 @@ const AREA_OF: Record<SignalCategory, PulseArea> = {
   stewardship: "stewardship",
 };
 
-/** Categories where the work is a person's judgment rather than execution. */
-const JUDGMENT_CATEGORIES: SignalCategory[] = [
-  "pipeline",
-  "client_stewardship",
-  "pattern",
-  "stewardship",
-];
-
 export function daysBetween(at: string, now: string): number {
   const a = new Date(at).getTime();
   const b = new Date(now).getTime();
   if (Number.isNaN(a) || Number.isNaN(b)) return 0;
   return Math.max(0, Math.floor((b - a) / DAY));
-}
-
-/**
- * Attention level. Written rules only:
- *  - growth and anything quiet is information,
- *  - urgent execution or an overdue promise is Act now,
- *  - open judgment is Evaluate,
- *  - everything still moving is watched.
- */
-export function severityOf(signal: Signal): PulseSeverity {
-  if (signal.category === "growth") return "good_to_know";
-  if (signal.urgency >= 85) return "act_now";
-  if (signal.urgency >= 60) {
-    return JUDGMENT_CATEGORIES.includes(signal.category) ? "evaluate" : "act_now";
-  }
-  if (signal.urgency >= 55 && JUDGMENT_CATEGORIES.includes(signal.category)) return "evaluate";
-  if (signal.urgency >= 35) return "watch_closely";
-  return "good_to_know";
-}
-
-export function impactOf(signal: Signal): PulseImpactLevel {
-  if (signal.urgency >= 80) return "high";
-  if (signal.urgency >= 50) return "medium";
-  return "low";
 }
 
 function actionLabelOf(appId: string, severity: PulseSeverity): string {
