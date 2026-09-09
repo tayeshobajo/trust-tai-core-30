@@ -22,8 +22,9 @@
  * Feature-gated OFF behind `ZENMODE_SCOUT_IMPORT_ENABLED` (default false).
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 import {
   zenModeListAllLeads,
   zenModeListLeads,
@@ -319,6 +320,74 @@ export async function importZenModeLeadsAsProspects(
       ? { note: "ZenMode returned no new leads to import for this organization." }
       : {}),
   };
+}
+
+/** Why an authenticated import refused, when it refused. Distinct from a
+ * successful import of zero leads, which is a legitimate outcome. */
+export type ZenModeImportRefusal = "unauthenticated" | "no_membership";
+
+export interface ZenModeImportRequest {
+  /** The caller's Trust Tai Supabase access token. Never a service-role key. */
+  token: string;
+  /** Optional explicit workspace; must be one the caller actually belongs to. */
+  organizationId?: string | undefined;
+  status?: string | undefined;
+  campaignId?: string | undefined;
+  limit?: number | undefined;
+}
+
+/**
+ * The import as a human triggers it: verify the caller's token, resolve their
+ * organization membership SERVER-SIDE (never trusted from the client), then run
+ * the import with the CALLER'S token so Supabase RLS and the organization
+ * boundary still apply. No service-role key is used here — same law as
+ * scout-discover.server.ts.
+ *
+ * Returns a refusal rather than throwing, so the route can map it to a status
+ * code without inspecting error strings.
+ */
+export async function runZenModeImportForCaller(
+  input: ZenModeImportRequest,
+  env: ZenModeImportEnv = process.env,
+): Promise<
+  | { ok: true; organizationId: string; result: ZenModeImportResult }
+  | { ok: false; refusal: ZenModeImportRefusal }
+> {
+  const supabaseKey = trustTaiSupabaseKey();
+  const client = createClient(trustTaiSupabaseUrl(), supabaseKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${input.token}`, apikey: supabaseKey } },
+  });
+
+  const { data: userData, error: userError } = await client.auth.getUser(input.token);
+  const user = userData?.user;
+  if (userError || !user) return { ok: false, refusal: "unauthenticated" };
+
+  const { data: memberships } = await client
+    .from("organization_memberships")
+    .select("organization_id, role, status")
+    .eq("user_id", user.id);
+  const active = (memberships ?? []).filter(
+    (row) => ((row as Record<string, unknown>)["status"] ?? "active") === "active",
+  ) as Record<string, unknown>[];
+  const membership = input.organizationId
+    ? active.find((row) => row["organization_id"] === input.organizationId)
+    : active[0];
+  if (!membership) return { ok: false, refusal: "no_membership" };
+  const organizationId = membership["organization_id"] as string;
+
+  const result = await importZenModeLeadsAsProspects(
+    client,
+    {
+      organizationId,
+      userId: user.id,
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.campaignId ? { campaignId: input.campaignId } : {}),
+      ...(input.limit ? { limit: input.limit } : {}),
+    },
+    env,
+  );
+  return { ok: true, organizationId, result };
 }
 
 /** Read the `{ zenmode: {...} }` bag (or a bare bag) off a provenance/metadata

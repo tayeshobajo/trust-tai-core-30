@@ -41,9 +41,9 @@ import { Route as ModulesCommsDashboardRouteImport } from './routes/modules.comm
 import { Route as ModulesCommsInboxRouteImport } from './routes/modules.comms.inbox'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsPlanRouteImport } from './routes/modules.comms.plan'
+import { Route as ModulesCommsQueueRouteImport } from './routes/modules.comms.queue'
 import { Route as ModulesCommsToScoutRouteImport } from './routes/modules.comms.to-scout'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
-import { Route as ModulesCommsQueueRouteImport } from './routes/modules.comms.queue'
 import { Route as ModulesProjectsIndexRouteImport } from './routes/modules.projects.index'
 import { Route as ModulesProjectsProjectIdRouteImport } from './routes/modules.projects.$projectId'
 import { Route as ModulesRoadmapIndexRouteImport } from './routes/modules.roadmap.index'
@@ -74,6 +74,7 @@ import { Route as ApiPublicStewardInterpretRouteImport } from './routes/api/publ
 import { Route as ApiPublicWebsiteEventsRouteImport } from './routes/api/public/website.events'
 import { Route as ApiPublicWebsiteIntakeRouteImport } from './routes/api/public/website.intake'
 import { Route as ApiPublicWebsiteSyncRouteImport } from './routes/api/public/website.sync'
+import { Route as ApiPublicZenmodeImportRouteImport } from './routes/api/public/zenmode.import'
 import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/modules.scout.prospects.$prospectId'
 import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
 import { Route as ModulesStewardMeetingsConversationIdRouteImport } from './routes/modules.steward.meetings.$conversationId'
@@ -249,14 +250,14 @@ const ModulesCommsPlanRoute = ModulesCommsPlanRouteImport.update({
   path: '/plan',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
-const ModulesCommsToScoutRoute = ModulesCommsToScoutRouteImport.update({
-  id: '/to-scout',
-  path: '/to-scout',
-  getParentRoute: () => ModulesCommsRoute,
-} as any)
 const ModulesCommsQueueRoute = ModulesCommsQueueRouteImport.update({
   id: '/queue',
   path: '/queue',
+  getParentRoute: () => ModulesCommsRoute,
+} as any)
+const ModulesCommsToScoutRoute = ModulesCommsToScoutRouteImport.update({
+  id: '/to-scout',
+  path: '/to-scout',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
 const ModulesCommsVoiceRoute = ModulesCommsVoiceRouteImport.update({
@@ -424,6 +425,11 @@ const ApiPublicWebsiteSyncRoute = ApiPublicWebsiteSyncRouteImport.update({
   path: '/api/public/website/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicZenmodeImportRoute = ApiPublicZenmodeImportRouteImport.update({
+  id: '/api/public/zenmode/import',
+  path: '/api/public/zenmode/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ModulesScoutProspectsProspectIdRoute =
   ModulesScoutProspectsProspectIdRouteImport.update({
     id: '/prospects/$prospectId',
@@ -533,8 +539,8 @@ export interface FileRoutesByFullPath {
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
-  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
@@ -567,6 +573,7 @@ export interface FileRoutesByFullPath {
   '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
+  '/api/public/zenmode/import': typeof ApiPublicZenmodeImportRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
@@ -607,8 +614,8 @@ export interface FileRoutesByTo {
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
-  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
@@ -640,6 +647,7 @@ export interface FileRoutesByTo {
   '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
+  '/api/public/zenmode/import': typeof ApiPublicZenmodeImportRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
@@ -687,8 +695,8 @@ export interface FileRoutesById {
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
-  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
@@ -721,6 +729,7 @@ export interface FileRoutesById {
   '/api/public/website/events': typeof ApiPublicWebsiteEventsRoute
   '/api/public/website/intake': typeof ApiPublicWebsiteIntakeRoute
   '/api/public/website/sync': typeof ApiPublicWebsiteSyncRoute
+  '/api/public/zenmode/import': typeof ApiPublicZenmodeImportRoute
   '/modules/scout/prospects/$prospectId': typeof ModulesScoutProspectsProspectIdRoute
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website_/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
@@ -769,6 +778,7 @@ export interface FileRouteTypes {
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
+    | '/modules/comms/queue'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -802,6 +812,7 @@ export interface FileRouteTypes {
     | '/api/public/website/events'
     | '/api/public/website/intake'
     | '/api/public/website/sync'
+    | '/api/public/zenmode/import'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website/submissions/$submissionId'
@@ -842,6 +853,7 @@ export interface FileRouteTypes {
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
+    | '/modules/comms/queue'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -874,6 +886,7 @@ export interface FileRouteTypes {
     | '/api/public/website/events'
     | '/api/public/website/intake'
     | '/api/public/website/sync'
+    | '/api/public/zenmode/import'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website/submissions/$submissionId'
@@ -920,6 +933,7 @@ export interface FileRouteTypes {
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
+    | '/modules/comms/queue'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -953,6 +967,7 @@ export interface FileRouteTypes {
     | '/api/public/website/events'
     | '/api/public/website/intake'
     | '/api/public/website/sync'
+    | '/api/public/zenmode/import'
     | '/modules/scout/prospects/$prospectId'
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website_/submissions/$submissionId'
@@ -1003,6 +1018,7 @@ export interface RootRouteChildren {
   ApiPublicWebsiteEventsRoute: typeof ApiPublicWebsiteEventsRoute
   ApiPublicWebsiteIntakeRoute: typeof ApiPublicWebsiteIntakeRoute
   ApiPublicWebsiteSyncRoute: typeof ApiPublicWebsiteSyncRoute
+  ApiPublicZenmodeImportRoute: typeof ApiPublicZenmodeImportRoute
   ModulesWebsiteSubmissionsSubmissionIdRoute: typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   ApiInternalExecutionScoutIcpRoute: typeof ApiInternalExecutionScoutIcpRoute
   ApiInternalExecutionScoutPipelineRoute: typeof ApiInternalExecutionScoutPipelineRoute
@@ -1241,6 +1257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesCommsPlanRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
+    '/modules/comms/queue': {
+      id: '/modules/comms/queue'
+      path: '/queue'
+      fullPath: '/modules/comms/queue'
+      preLoaderRoute: typeof ModulesCommsQueueRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
     '/modules/comms/to-scout': {
       id: '/modules/comms/to-scout'
       path: '/to-scout'
@@ -1465,6 +1488,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebsiteSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/zenmode/import': {
+      id: '/api/public/zenmode/import'
+      path: '/api/public/zenmode/import'
+      fullPath: '/api/public/zenmode/import'
+      preLoaderRoute: typeof ApiPublicZenmodeImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/modules/scout/prospects/$prospectId': {
       id: '/modules/scout/prospects/$prospectId'
       path: '/prospects/$prospectId'
@@ -1606,8 +1636,8 @@ interface ModulesCommsRouteChildren {
   ModulesCommsInboxRoute: typeof ModulesCommsInboxRoute
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsPlanRoute: typeof ModulesCommsPlanRoute
-  ModulesCommsToScoutRoute: typeof ModulesCommsToScoutRoute
   ModulesCommsQueueRoute: typeof ModulesCommsQueueRoute
+  ModulesCommsToScoutRoute: typeof ModulesCommsToScoutRoute
   ModulesCommsVoiceRoute: typeof ModulesCommsVoiceRoute
   ModulesCommsIndexRoute: typeof ModulesCommsIndexRoute
 }
@@ -1617,8 +1647,8 @@ const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
   ModulesCommsInboxRoute: ModulesCommsInboxRoute,
   ModulesCommsIntegrationsRoute: ModulesCommsIntegrationsRoute,
   ModulesCommsPlanRoute: ModulesCommsPlanRoute,
-  ModulesCommsToScoutRoute: ModulesCommsToScoutRoute,
   ModulesCommsQueueRoute: ModulesCommsQueueRoute,
+  ModulesCommsToScoutRoute: ModulesCommsToScoutRoute,
   ModulesCommsVoiceRoute: ModulesCommsVoiceRoute,
   ModulesCommsIndexRoute: ModulesCommsIndexRoute,
 }
@@ -1743,6 +1773,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWebsiteEventsRoute: ApiPublicWebsiteEventsRoute,
   ApiPublicWebsiteIntakeRoute: ApiPublicWebsiteIntakeRoute,
   ApiPublicWebsiteSyncRoute: ApiPublicWebsiteSyncRoute,
+  ApiPublicZenmodeImportRoute: ApiPublicZenmodeImportRoute,
   ModulesWebsiteSubmissionsSubmissionIdRoute:
     ModulesWebsiteSubmissionsSubmissionIdRoute,
   ApiInternalExecutionScoutIcpRoute: ApiInternalExecutionScoutIcpRoute,
