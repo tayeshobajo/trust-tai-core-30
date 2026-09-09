@@ -263,15 +263,14 @@ export function composeIntelligenceRead(input: IntelligenceReadInput): Intellige
   const groundedCount = leading.filter((claim) => GROUNDED.includes(claim.tier)).length;
   const confidence = runtimeConfidence(groundedCount);
 
-  const usedModel = input.reasonedByModel === true || leading.some((c) => c.origin === "model");
-  const usedDeterministic = leading.some(
-    (claim) => claim.origin !== "model" || input.reasonedByModel !== true,
-  );
-  const producedBy: IntelligenceRead["producedBy"] = usedModel
-    ? usedDeterministic
+  const modelClaims = leading.some((claim) => claim.origin === "model");
+  const otherClaims = leading.some((claim) => claim.origin !== "model");
+  const usedModel = input.reasonedByModel === true || modelClaims;
+  const producedBy: IntelligenceRead["producedBy"] = !usedModel
+    ? "deterministic"
+    : otherClaims
       ? "mixed"
-      : "model"
-    : "deterministic";
+      : "model";
 
   const sources: ReadSourceRef[] = [];
   const seen = new Set<string>();
