@@ -168,7 +168,10 @@ async function readMemory(
       .filter(Boolean);
     const profilesResult =
       memberIds.length > 0
-        ? await supabase.from("profiles").select("id, full_name, email, job_title").in("id", memberIds)
+        ? await supabase
+            .from("profiles")
+            .select("id, full_name, email, job_title")
+            .in("id", memberIds)
         : { data: [] as Record<string, unknown>[] };
 
     const roleMemory = ((roleResult.data ?? []) as Record<string, unknown>[]).map((row) => {

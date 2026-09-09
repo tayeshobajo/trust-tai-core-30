@@ -47,7 +47,10 @@ export function severityOf(signal: Signal): PulseSeverity {
   if (signal.urgency >= ATTENTION_THRESHOLDS.decide) {
     return JUDGMENT_CATEGORIES.includes(signal.category) ? "evaluate" : "act_now";
   }
-  if (signal.urgency >= ATTENTION_THRESHOLDS.evaluate && JUDGMENT_CATEGORIES.includes(signal.category))
+  if (
+    signal.urgency >= ATTENTION_THRESHOLDS.evaluate &&
+    JUDGMENT_CATEGORIES.includes(signal.category)
+  )
     return "evaluate";
   if (signal.urgency >= ATTENTION_THRESHOLDS.watch) return "watch_closely";
   return "good_to_know";

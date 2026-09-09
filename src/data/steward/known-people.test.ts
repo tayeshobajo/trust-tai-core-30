@@ -62,8 +62,8 @@ describe("resolveKnownPeople", () => {
 
   it("says nothing about people when nobody is known", () => {
     expect(describeKnownPeople([])).toBe("Read from this workspace's open commitments.");
-    expect(
-      describeKnownPeople([{ name: "Tai Founder", source: "workspace_member" }]),
-    ).toContain("workspace members");
+    expect(describeKnownPeople([{ name: "Tai Founder", source: "workspace_member" }])).toContain(
+      "workspace members",
+    );
   });
 });

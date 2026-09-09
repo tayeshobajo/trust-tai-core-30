@@ -55,11 +55,7 @@ describe("shared signal attention", () => {
   });
 
   it("names work leaking between rooms in one place", () => {
-    expect(LEAK_PATTERN_KEYS).toEqual([
-      "reply_debt",
-      "unworked_opportunity",
-      "promises_slipping",
-    ]);
+    expect(LEAK_PATTERN_KEYS).toEqual(["reply_debt", "unworked_opportunity", "promises_slipping"]);
     expect(isLeakPattern("reply_debt")).toBe(true);
     expect(isLeakPattern("something_else")).toBe(false);
   });

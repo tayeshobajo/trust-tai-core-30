@@ -814,3 +814,36 @@ People provide sources. Scout finds the structure. Humans decide what becomes tr
 - Refusal is spoken plainly. Private Google files, workbooks and unreadable formats say they cannot be read and what to do instead.
 - One intelligence boundary. Smart Import reasons through the shared runtime; when no provider answers, the deterministic delimited reader answers for clearly delimited sources and says so.
 - Importing triggers nothing else: no research, no scoring, no outreach.
+
+## Canon 27: One read per subject (locked 2026-09-09)
+
+The Intelligence Layer thinks across truth, but every room still owns its own
+writes. These are the cross-room laws.
+
+- **Resolve before researching.** A room searches every canonical source it can
+  reach before it says something is unknown. Absence is a conclusion, not a
+  starting position.
+- **One read per subject, many projections.** A subject is read once per
+  request and projected into every surface. No surface re-ranks, re-scores or
+  re-words a read it did not compose. Attention over shared signals is one
+  reading (`src/domain/signal-attention.ts`); where attention sits in a roadmap
+  sequence is Roadmap's own reading (`src/domain/roadmap-attention.ts`).
+- **Reason through the shared retrieval bundle.** Rooms compose their reasoning
+  input through `composeRetrieval()`. A hand-built prompt with no retrieval
+  bundle is a bypass, and the readiness manifest must declare it as one.
+- **Corrections outrank inference, permanently.** A human correction enters the
+  next read first and is never overturned by a later inference.
+- **Conflicts are shown, never silently resolved.** Precedence is decided >
+  observed > inferred > recommended > unknown, newer within a tier. The losing
+  claim stays visible as a named conflict.
+- **Deterministic logic identifies itself.** Output produced by a rule in place
+  of a model result says so on the surface.
+- **Governance stays code; interpretation goes to the model.** Access, policy
+  thresholds, idempotency, precedence and verification are code. Meaning,
+  intent and explanation are the model's work.
+- **Unknown is not zero, and absence is not negative evidence.**
+- **Human decisions are durable learning signals** where canon already allows
+  it, through the ledgers the rooms already keep. No second intelligence store
+  is created.
+- **No autonomous write, send or decision** unless existing canon explicitly
+  allows it.

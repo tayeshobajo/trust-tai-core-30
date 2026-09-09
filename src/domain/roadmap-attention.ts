@@ -22,8 +22,6 @@ const DESTINATION_PATTERNS: RegExp[] = [
   /\bobjective\b/i,
 ];
 
-
-
 function looksLikeDestinationWork(milestone: CanonMilestone): boolean {
   const text = `${milestone.title} ${milestone.intent ?? ""}`;
   return DESTINATION_PATTERNS.some((pattern) => pattern.test(text));
@@ -87,4 +85,3 @@ export function milestoneAttentionOf(input: {
     because: `Earliest unfinished milestone in the recorded sequence (position ${first.position}, ${first.state.replace(/_/g, " ")}, ${first.tier}). No dependency is recorded against it.`,
   };
 }
-

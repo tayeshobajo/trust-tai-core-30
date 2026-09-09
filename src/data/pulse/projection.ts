@@ -28,7 +28,6 @@ import { impactOf, severityOf } from "@/domain/signal-attention";
 /* One shared reading of attention; Pulse projects it, it does not re-derive it. */
 export { impactOf, severityOf };
 
-
 const DAY = 86_400_000;
 
 export const PULSE_ROOM_LABEL: Record<string, string> = {
