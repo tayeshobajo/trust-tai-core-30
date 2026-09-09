@@ -64,12 +64,12 @@ function normalizedName(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function normalizedEmail(value: string | undefined): string {
+function normalizedEmail(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
 }
 
 /** Founder-shaped titles read as founder; everything else stays honest. */
-function seniorityFor(role: string | undefined): Seniority {
+function seniorityFor(role: string | null | undefined): Seniority {
   const text = (role ?? "").toLowerCase();
   if (/founder|co-?founder/.test(text)) return "founder";
   if (/owner|principal|proprietor/.test(text)) return "owner";
@@ -85,7 +85,7 @@ function sameHuman(person: Person, name: string, email: string): boolean {
   return Boolean(name) && normalizedName(person.fullName) === name;
 }
 
-function shortDate(value: string | undefined): string {
+function shortDate(value: string | null | undefined): string {
   if (!value) return "the roadmap intake";
   const at = new Date(value);
   if (Number.isNaN(at.getTime())) return "the roadmap intake";
