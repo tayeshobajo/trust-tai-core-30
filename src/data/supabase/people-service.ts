@@ -120,9 +120,28 @@ export interface LinkiLookupResult {
 }
 
 export const peopleService = {
-  /** Everyone on record for a company. */
-  async list(organizationId: ID, prospectId: ID): Promise<Person[]> {
-    return listProspectContacts(organizationId, prospectId);
+  /**
+   * Everyone on record for a company.
+   *
+   * Before Scout is allowed to say nobody is known, it resolves the people
+   * canonical Trust Tai data already holds for this same company: the person
+   * who filled in the roadmap intake, and anyone already on record with a
+   * business address on the company's own domain. Existing records are reused,
+   * never duplicated, and a human-confirmed record is never rewritten.
+   *
+   * Resolution only runs when a signed-in member is on the call, because
+   * linking and recording are provenance-stamped acts.
+   */
+  async list(organizationId: ID, prospectId: ID, context?: PeopleContext): Promise<Person[]> {
+    const stored = await listProspectContacts(organizationId, prospectId);
+    if (!context) return stored;
+    try {
+      const resolved = await resolveKnownPeople(stored, prospectId, context);
+      return resolved.length > 0 ? resolved : stored;
+    } catch {
+      // Resolution is an improvement on the read, never a reason to fail it.
+      return stored;
+    }
   },
 
   /** A person added by hand. Always outranks anything a provider asserts. */
