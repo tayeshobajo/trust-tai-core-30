@@ -23,6 +23,7 @@ import {
   type RuntimeModelCaller,
 } from "./intelligence-runtime.server";
 import { unearnedAskInBody } from "@/domain/comms-judgment";
+import { commsRetrievalPacket, composeCommsRetrieval } from "./comms-retrieval";
 
 /* The Brooke Siler production case at contract level: a known identity and a
    real inbound thread pass the grounding gate (pinned in
