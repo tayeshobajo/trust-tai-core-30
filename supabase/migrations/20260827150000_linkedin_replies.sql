@@ -77,11 +77,13 @@ create index if not exists linkedin_replies_sender_url_idx
 
 -- Ingestion is server-only (service role / governed server routes).
 alter table public.linkedin_replies enable row level security;
+drop policy if exists "service role full access" on public.linkedin_replies;
 create policy "service role full access" on public.linkedin_replies
     for all to service_role using (true) with check (true);
 
 -- Members may READ the human-resolution queue and resolved history for their
 -- organization; writes stay server-only.
+drop policy if exists "members read own org" on public.linkedin_replies;
 create policy "members read own org" on public.linkedin_replies
     for select to authenticated using (
         exists (

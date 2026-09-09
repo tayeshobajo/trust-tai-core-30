@@ -54,7 +54,7 @@ create index if not exists approved_linkedin_actions_contact_idx
 -- publishable key outright, service role owns administration.
 alter table public.approved_linkedin_actions enable row level security;
 drop policy if exists "service role full access" on public.approved_linkedin_actions;
-create policy "" on public.approved_linkedin_actions
+create policy "service role full access" on public.approved_linkedin_actions
     for all to service_role using (true) with check (true);
 
 -- Workspace members may read and update their own organization's actions.

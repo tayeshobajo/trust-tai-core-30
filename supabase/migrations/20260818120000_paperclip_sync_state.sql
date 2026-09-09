@@ -21,6 +21,7 @@ create table if not exists public.paperclip_sync_state (
 
 -- Service role (Trust Tai backend + reconcile sweeps) owns this table.
 alter table public.paperclip_sync_state enable row level security;
+drop policy if exists "service role full access" on public.paperclip_sync_state;
 create policy "service role full access" on public.paperclip_sync_state
     for all to service_role using (true) with check (true);
 
