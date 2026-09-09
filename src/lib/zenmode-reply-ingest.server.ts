@@ -36,16 +36,56 @@ import {
 
 export const ZENMODE_REPLY_SOURCE = "zenmode" as const;
 
-/** The `lead.replied` webhook payload, as ZenMode delivers it. */
+/**
+ * The `lead.replied` webhook payload, as ZenMode delivers it.
+ *
+ * NOTE ON WIRE TYPES: ZenMode sends `lead_id` and `campaign_id` as JSON
+ * NUMBERS (`"lead_id": 37110, "campaign_id": 42`), not strings. Treating them
+ * as strings rejects every real reply, so both are accepted as `string |
+ * number` and normalized through `refOf` before use.
+ */
 export interface ZenModeLeadRepliedPayload {
-  lead_id: string;
-  campaign_id?: string | null;
+  lead_id: string | number;
+  campaign_id?: string | number | null;
   name?: string | null;
   linkedin_url?: string | null;
   replied_at: string;
   /** Both reply fields are nullable on the wire. */
   reply_text?: string | null;
   reply_subject?: string | null;
+}
+
+/**
+ * The ZenMode webhook envelope: the event fields live under `data`, NOT at the
+ * top level. Reading the envelope as the payload silently loses every field.
+ */
+export interface ZenModeWebhookEnvelope<T = unknown> {
+  event?: string;
+  data?: T;
+  timestamp?: string;
+}
+
+/**
+ * Normalize a transport id to its string form. Numeric ids stringify; blank,
+ * null and non-finite values become "" so callers fail closed on a missing id.
+ */
+export function refOf(value: string | number | null | undefined): string {
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
+  if (typeof value === "string") return value.trim();
+  return "";
+}
+
+/**
+ * Unwrap the webhook envelope. Accepts the enveloped form and a bare payload
+ * (older deliveries / hand-made test posts) so neither shape is silently lost.
+ */
+export function unwrapZenModeEnvelope<T>(body: ZenModeWebhookEnvelope<T> | T): T {
+  const envelope = body as ZenModeWebhookEnvelope<T>;
+  if (envelope && typeof envelope === "object" && "data" in envelope) {
+    const inner = envelope.data;
+    if (inner && typeof inner === "object") return inner;
+  }
+  return body as T;
 }
 
 export interface ZenModeReplyIngestEnv {
@@ -76,10 +116,10 @@ export function verifyZenModeSignature(
 
 /** The idempotency key for a reply: `lead_id + replied_at`. */
 export function zenModeReplyDedupeRef(payload: {
-  lead_id: string;
+  lead_id: string | number;
   replied_at: string;
 }): string {
-  return `${payload.lead_id.trim()}:${payload.replied_at.trim()}`;
+  return `${refOf(payload.lead_id)}:${payload.replied_at.trim()}`;
 }
 
 /**
@@ -101,7 +141,7 @@ export function mapLeadReplied(
     organizationId,
     source: ZENMODE_REPLY_SOURCE,
     // ZenMode has no separate thread id; the lead IS the conversation.
-    externalThreadRef: payload.lead_id.trim(),
+    externalThreadRef: refOf(payload.lead_id),
     externalMessageRef: dedupeRef,
     senderLinkedinUrl: payload.linkedin_url?.trim() || undefined,
     senderName: payload.name?.trim() || undefined,
@@ -110,8 +150,8 @@ export function mapLeadReplied(
     observedAt: payload.replied_at,
     payload: {
       transport: "zenmode",
-      lead_id: payload.lead_id,
-      campaign_id: payload.campaign_id ?? null,
+      lead_id: refOf(payload.lead_id),
+      campaign_id: payload.campaign_id == null ? null : refOf(payload.campaign_id),
       replied_at: payload.replied_at,
       reply_text: payload.reply_text ?? null,
       reply_subject: payload.reply_subject ?? null,
@@ -131,7 +171,7 @@ export async function ingestZenModeReply(
   env: ZenModeReplyIngestEnv = process.env,
 ): Promise<LinkiReplyIngestResult> {
   if (env["ZENMODE_REPLY_INGESTION_ENABLED"] !== "true") return { status: "disabled" };
-  if (!payload.lead_id?.trim()) throw new Error("A ZenMode reply needs a lead_id.");
+  if (!refOf(payload.lead_id)) throw new Error("A ZenMode reply needs a lead_id.");
   if (!payload.replied_at?.trim()) throw new Error("A ZenMode reply needs replied_at.");
 
   const observed = mapLeadReplied(payload, organizationId);

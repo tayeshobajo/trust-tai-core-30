@@ -211,11 +211,34 @@ interface LeadRepliedPayload {
   reply_subject?: unknown;
 }
 
+/**
+ * Normalize a transport id. ZenMode sends lead_id/campaign_id as JSON NUMBERS
+ * ("lead_id": 37110), so a string-only read drops every real reply.
+ */
+function refOf(value: unknown): string {
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
+  if (typeof value === "string") return value.trim();
+  return "";
+}
+
+/**
+ * Unwrap the ZenMode envelope `{event, data, timestamp}`. The event fields
+ * live under `data`, never at the top level; a bare body is passed through so
+ * hand-made test posts still work.
+ */
+function unwrapEnvelope(body: Record<string, unknown>): Record<string, unknown> {
+  const inner = body["data"];
+  if (inner && typeof inner === "object" && !Array.isArray(inner)) {
+    return inner as Record<string, unknown>;
+  }
+  return body;
+}
+
 async function handleLeadReplied(payload: LeadRepliedPayload): Promise<Response> {
   if (!ORGANIZATION_ID) {
     return fail("ZENMODE_ORGANIZATION_ID is not configured.", 500);
   }
-  const leadId = typeof payload.lead_id === "string" ? payload.lead_id.trim() : "";
+  const leadId = refOf(payload.lead_id);
   const repliedAt = typeof payload.replied_at === "string" ? payload.replied_at.trim() : "";
   if (!leadId || !repliedAt) {
     return fail("A ZenMode reply needs lead_id and replied_at.", 400);
@@ -229,7 +252,7 @@ async function handleLeadReplied(payload: LeadRepliedPayload): Promise<Response>
   const replyText = typeof payload.reply_text === "string" ? payload.reply_text.trim() : "";
   const replySubject = typeof payload.reply_subject === "string" ? payload.reply_subject.trim() : "";
   const body = replyText || replySubject || "(reply received; ZenMode provided no text)";
-  const campaignId = typeof payload.campaign_id === "string" ? payload.campaign_id : null;
+  const campaignId = refOf(payload.campaign_id) || null;
 
   // 1) Land the observation. Unique (source, external_message_ref) absorbs
   //    redelivery as a no-op BEFORE anything else runs.
@@ -373,7 +396,7 @@ async function handleLeadReplied(payload: LeadRepliedPayload): Promise<Response>
 
 async function handleTaskAudit(event: string, payload: Record<string, unknown>): Promise<Response> {
   if (!ORGANIZATION_ID) return fail("ZENMODE_ORGANIZATION_ID is not configured.", 500);
-  const taskId = typeof payload["task_id"] === "string" ? payload["task_id"].trim() : "";
+  const taskId = refOf(payload["task_id"]);
   if (!taskId) return fail("A ZenMode task event needs task_id.", 400);
 
   // Idempotent on task_id: redelivery collides on source_event_key.
@@ -407,13 +430,21 @@ Deno.serve(async (req: Request) => {
   const ok = await verifySignature(rawBody, req.headers.get("X-ZenMode-Signature"));
   if (!ok) return fail("Invalid ZenMode signature.", 401);
 
-  const event = req.headers.get("X-ZenMode-Event")?.trim() ?? "";
-  let payload: Record<string, unknown>;
+  let body: Record<string, unknown>;
   try {
-    payload = (rawBody ? JSON.parse(rawBody) : {}) as Record<string, unknown>;
+    body = (rawBody ? JSON.parse(rawBody) : {}) as Record<string, unknown>;
   } catch {
     return fail("Malformed JSON body.", 400);
   }
+
+  // The event name is on the header, but the envelope carries it too; trust
+  // the header first and fall back to the body so either delivery shape works.
+  const event =
+    (req.headers.get("X-ZenMode-Event")?.trim() || "") ||
+    (typeof body["event"] === "string" ? body["event"].trim() : "");
+
+  // The event fields live under `data` — never at the top level.
+  const payload = unwrapEnvelope(body);
 
   if (!REPLY_INGESTION_ENABLED) {
     // Verified but disabled: acknowledge without writing (default-off law).
