@@ -23,13 +23,18 @@ import {
   type PastedSource,
 } from "@/components/tt/studio/composer";
 import { StudioOpportunities } from "@/components/tt/studio/opportunities";
+import { StudioBrief } from "@/components/tt/studio/brief";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { submitContentBatchForApproval, submitContentBatchQuietly } from "@/data/content/intake";
 import { deriveOpportunities } from "@/data/content/opportunity-read";
-import { studioOpportunitiesView } from "@/data/content/opportunity-view";
+import {
+  studioOpportunitiesView,
+  type OpportunityRowView,
+} from "@/data/content/opportunity-view";
 import { readContentDemand } from "@/data/website/content-demand";
 import { contentService } from "@/data/supabase/content-service";
 import { contentCommandService } from "@/data/supabase/content-request-service";
+import { studioBriefService } from "@/data/supabase/studio-brief-service";
 import { listSearchMetrics, listWebsitePages } from "@/data/supabase/website-analytics-service";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
