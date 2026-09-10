@@ -8,6 +8,7 @@
  */
 
 import { createFileRoute } from "@tanstack/react-router";
+import { ImageIcon, Paperclip } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
@@ -41,6 +42,14 @@ export const Route = createFileRoute("/mockups/studio-content")({
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
     ],
+    links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap",
+      },
+    ],
   }),
   component: StudioContentMockup,
 });
@@ -55,8 +64,8 @@ const STEPS: { id: Step; label: string }[] = [
 ];
 
 function confidenceTone(confidence: DemoConfidence) {
-  if (confidence === "Observed") return "good" as const;
-  if (confidence === "Supported") return "active" as const;
+  if (confidence === "Observed") return "active" as const;
+  if (confidence === "Supported") return "neutral" as const;
   return "neutral" as const;
 }
 
@@ -76,17 +85,15 @@ function StudioContentMockup() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-5xl px-1 pb-24">
+      <div className="mx-auto max-w-6xl px-1 pb-24">
         <header className="pt-2">
-          <p className="tt-eyebrow flex items-center gap-2">
+          <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
             Prototype · not wired
             <span className="rounded-full border border-warning/30 bg-warning/8 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-warning">
               Example data
             </span>
           </p>
-          <h1 className="tt-title-section mt-3 text-3xl">
-            What the market is already asking us to write
-          </h1>
+          <h1 className="tt-title-section mt-3 text-3xl">What Studio noticed</h1>
           <p className="mt-3 max-w-reading text-sm text-muted-foreground">
             A visual prototype of the proposed Studio experience. Everything on this page is
             illustrative — no real search data, no drafts, nothing saved.
@@ -111,7 +118,7 @@ function StudioContentMockup() {
           ))}
         </nav>
 
-        <div className="mt-10">
+        <div className="mt-10 rounded-2xl bg-studio-paper px-5 py-8 shadow-card sm:px-8 lg:px-10">
           {step === "opportunities" ? (
             <Opportunities
               dismissed={dismissed}
@@ -166,7 +173,7 @@ function Opportunities({
         description="Phrases people used to find Trust Tai, and what they might be worth. Studio noticed these; you decide whether any of them deserve a story."
       />
 
-      <div className="divide-y divide-border rounded-2xl border border-border bg-card">
+      <div className="divide-y divide-border border-y border-border bg-studio-paper">
         {live.map((opportunity) => (
           <OpportunityRow
             key={opportunity.id}
@@ -180,16 +187,67 @@ function Opportunities({
         ) : null}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-dashed border-border px-6 py-5">
-        <p className="tt-eyebrow">How this looks on a quiet week</p>
+      <div className="mt-7 border-l-2 border-border bg-card/45 px-5 py-4">
+        <p className="text-xs font-medium text-muted-foreground">Empty-state preview</p>
+        <p className="mt-1 text-sm font-medium text-foreground">When nothing is strong enough</p>
         <p className="mt-2 text-sm text-muted-foreground">{DEMO_SPARSE_LINE}</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          This replaces the opportunity rows in a quiet week; it never appears alongside them.
+        </p>
       </div>
 
-      <p className="mt-8 max-w-reading text-sm text-muted-foreground">
-        Below this section, Studio stays exactly as it is today: one command in, an editorial
-        package out.
-      </p>
+      <StaticComposer />
     </section>
+  );
+}
+
+function StaticComposer() {
+  return (
+    <div
+      className="mt-14 border-t border-border pt-10"
+      aria-label="Current Studio composer preview"
+    >
+      <div className="mb-5">
+        <p className="text-xs font-medium text-muted-foreground">
+          Studio composer · static preview
+        </p>
+        <h2 className="tt-title-section mt-2 text-xl">Say what you would like written</h2>
+        <p className="mt-1 max-w-reading text-sm text-muted-foreground">
+          One sentence is enough. Studio reads it back as a plan you can correct before anything is
+          written.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-6 shadow-card">
+        <div className="min-h-24 rounded-lg border border-input bg-studio-paper px-4 py-3 text-sm text-muted-foreground">
+          Write 10 posts about fractional operations for founders, practical, around 1200 words
+          each.
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <MetaPill>Six posts on why RevOps projects stall</MetaPill>
+          <MetaPill>Four short posts on a relationship operating system</MetaPill>
+        </div>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <TTButton type="button">Prepare the batch</TTButton>
+          <p className="text-sm text-muted-foreground">
+            Nothing publishes from here. A prepared batch goes to Approvals for one decision.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4">
+        <div>
+          <p className="text-sm font-medium text-foreground">Voice &amp; Sources</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Writing you already own, used for cadence rather than facts.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Paperclip aria-hidden className="size-4" />
+          No sources attached
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -221,9 +279,12 @@ function OpportunityRow({
         </span>
       </div>
 
-      <p className="mt-4 max-w-reading text-[15px] leading-relaxed text-foreground">
-        {opportunity.interpretation}
-      </p>
+      <div className="mt-5 max-w-reading">
+        <p className="text-xs font-medium text-royal">Studio's read</p>
+        <p className="mt-1 text-[15px] leading-relaxed text-foreground">
+          {opportunity.interpretation}
+        </p>
+      </div>
 
       {opportunity.overlap ? (
         <p className="mt-3 max-w-reading border-l-2 border-warning/40 pl-3 text-[13px] text-muted-foreground">
@@ -231,14 +292,17 @@ function OpportunityRow({
         </p>
       ) : null}
 
-      <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 text-[13px]">
-        <Stat
-          label="Appearances"
-          value={opportunity.impressions?.toLocaleString() ?? "Not reported"}
-        />
-        <Stat label="Click rate" value={percent(opportunity.ctr)} />
-        <Stat label="Average position" value={position(opportunity.averagePosition)} />
-      </dl>
+      <div className="mt-5 border-t border-border/70 pt-4">
+        <p className="text-xs font-medium text-muted-foreground">Observed evidence</p>
+        <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-[13px]">
+          <Stat
+            label="Appearances"
+            value={opportunity.impressions?.toLocaleString() ?? "Not reported"}
+          />
+          <Stat label="Click rate" value={percent(opportunity.ctr)} />
+          <Stat label="Average position" value={position(opportunity.averagePosition)} />
+        </dl>
+      </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         {noAction ? (
@@ -249,7 +313,7 @@ function OpportunityRow({
               Build brief
             </TTButton>
             <span className="text-[13px] text-muted-foreground">
-              Suggested: {DEMO_MOVE_LABEL[opportunity.move]}
+              Studio suggests · {DEMO_MOVE_LABEL[opportunity.move]}
             </span>
           </>
         )}
@@ -269,7 +333,7 @@ function OpportunityRow({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{label}</dt>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 font-mono text-sm text-foreground">{value}</dd>
     </div>
   );
@@ -289,8 +353,10 @@ function Brief({
   return (
     <section className="space-y-10">
       <div>
-        <p className="tt-eyebrow">Brief · “transformational advisory”</p>
-        <h2 className="tt-title-section mt-3 max-w-reading text-2xl leading-snug">
+        <p className="text-xs font-medium text-muted-foreground">
+          Brief · “transformational advisory”
+        </p>
+        <h2 className="tt-studio-editorial mt-3 max-w-reading text-3xl leading-snug text-foreground">
           {DEMO_BRIEF.coreIdea}
         </h2>
         <p className="mt-4 max-w-reading text-[15px] leading-relaxed text-muted-foreground">
@@ -304,7 +370,7 @@ function Brief({
       </div>
 
       <div>
-        <p className="tt-eyebrow">Words people actually used</p>
+        <p className="text-xs font-medium text-muted-foreground">Words people actually used</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {DEMO_BRIEF.audienceLanguage.map((phrase) => (
             <MetaPill key={phrase}>{phrase}</MetaPill>
@@ -379,8 +445,8 @@ function Opening({ onNext }: { onNext: () => void }) {
   return (
     <section className="space-y-10">
       <div>
-        <p className="tt-eyebrow">The opening</p>
-        <p className="mt-4 max-w-reading font-serif text-[19px] leading-relaxed text-foreground">
+        <p className="text-xs font-medium text-muted-foreground">The opening</p>
+        <p className="tt-studio-editorial mt-4 max-w-reading text-[24px] leading-relaxed text-foreground">
           {DEMO_OPENING.paragraph}
         </p>
         <p className="mt-4 max-w-reading border-l-2 border-border pl-4 text-[13px] text-muted-foreground">
@@ -396,7 +462,9 @@ function Opening({ onNext }: { onNext: () => void }) {
 
       <div>
         <div className="flex flex-wrap items-baseline gap-3">
-          <p className="tt-eyebrow">Structure chosen · {DEMO_OPENING.structureChosen}</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            Structure chosen · {DEMO_OPENING.structureChosen}
+          </p>
           <p className="text-[13px] text-muted-foreground">{DEMO_OPENING.structureWhy}</p>
         </div>
         <ol className="mt-5 space-y-4 border-l border-border pl-5">
@@ -419,8 +487,8 @@ function Opening({ onNext }: { onNext: () => void }) {
         </p>
       </div>
 
-      <TTCard className="bg-royal-wash/40">
-        <p className="tt-eyebrow">What search tells us</p>
+      <TTCard className="bg-royal-wash/40 shadow-none">
+        <p className="text-xs font-medium text-royal">Search intelligence</p>
         <dl className="mt-4 grid gap-4 text-[14px] sm:grid-cols-2">
           <Line
             label="Audience language"
@@ -444,7 +512,7 @@ function Opening({ onNext }: { onNext: () => void }) {
 function Line({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{label}</dt>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-1 max-w-reading text-foreground">{value}</dd>
     </div>
   );
@@ -460,7 +528,7 @@ function Images({ dropped, onToggle }: { dropped: string[]; onToggle: (id: strin
         title="Images that could strengthen this story"
         description="Each one has a job. If removing it changes nothing about how the story is understood or felt, it does not belong."
       />
-      <div className="space-y-4">
+      <div className="divide-y divide-border border-y border-border bg-card">
         {DEMO_IMAGES.map((image) => (
           <ImageRow
             key={image.id}
@@ -488,35 +556,40 @@ function ImageRow({
 }) {
   return (
     <article
-      className={cn(
-        "rounded-2xl border p-6 transition",
-        kept ? "border-border bg-card" : "border-dashed border-border bg-transparent opacity-60",
-      )}
+      className={cn("grid gap-5 p-6 transition md:grid-cols-[9rem_1fr]", !kept && "opacity-55")}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <TonePill tone={kept ? "active" : "neutral"}>{image.role}</TonePill>
-          <span className="text-[13px] text-muted-foreground">{image.placement}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <TTButton size="sm" variant={kept ? "quiet" : "secondary"} onClick={onToggle}>
-            {kept ? "Drop" : "Keep"}
-          </TTButton>
-          <TTButton size="sm" variant="quiet">
-            Refine
-          </TTButton>
-        </div>
+      <div className="flex aspect-[4/3] items-center justify-center rounded-lg border border-border bg-studio-paper text-muted-foreground">
+        <ImageIcon aria-hidden className="size-6" strokeWidth={1.4} />
       </div>
-
-      <p className="mt-4 max-w-reading text-[15px] leading-relaxed text-foreground">
-        {image.jobInStory}
-      </p>
-      <p className="mt-3 max-w-reading text-[14px] text-muted-foreground">{image.direction}</p>
-      <p className="mt-3 text-[13px] text-muted-foreground">
-        <span className="text-foreground/70">Alt text · </span>
-        {image.alt}
-      </p>
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TonePill tone={kept ? "active" : "neutral"}>{image.role}</TonePill>
+          <div className="flex items-center gap-1">
+            <TTButton size="sm" variant={kept ? "quiet" : "secondary"} onClick={onToggle}>
+              {kept ? "Drop" : "Keep"}
+            </TTButton>
+            <TTButton size="sm" variant="quiet">
+              Refine
+            </TTButton>
+          </div>
+        </div>
+        <dl className="mt-4 grid gap-x-8 gap-y-4 text-[14px] sm:grid-cols-2">
+          <ImageDetail label="Job in story" value={image.jobInStory} />
+          <ImageDetail label="Visual direction" value={image.direction} />
+          <ImageDetail label="Placement" value={image.placement} />
+          <ImageDetail label="Alt text" value={image.alt} />
+        </dl>
+      </div>
     </article>
+  );
+}
+
+function ImageDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 leading-relaxed text-foreground">{value}</dd>
+    </div>
   );
 }
 
@@ -529,7 +602,7 @@ function FinalActions() {
       <TTButton variant="secondary">Save changes</TTButton>
       <TTButton variant="quiet">Discard</TTButton>
       <p className="ml-auto text-[13px] text-muted-foreground">
-        Nothing is written or published until you approve it.
+        Tai is the editor and approver. Nothing moves without that decision.
       </p>
     </div>
   );

@@ -77,6 +77,7 @@
   --color-cloud-strong: var(--cloud-strong);
   --color-cloud-line: var(--cloud-line);
   --color-cloud-ink: var(--cloud-ink);
+  --color-studio-paper: var(--studio-paper);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -124,6 +125,8 @@
   --cloud-strong: oklch(0.955 0.022 250);
   --cloud-line: oklch(0.906 0.016 250);
   --cloud-ink: oklch(0.36 0.11 262);
+  /* Warm editorial paper, currently reserved for the isolated Studio prototype. */
+  --studio-paper: oklch(0.985 0.012 84);
 
   --background: var(--cloud);
   --foreground: var(--ink);
@@ -279,6 +282,13 @@
   line-height: 1.12;
   color: var(--ink);
   text-wrap: balance;
+}
+
+/* Editorial voice for the isolated Studio content-intelligence prototype. */
+@utility tt-studio-editorial {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0;
 }
 
 /* Level B, the primary decision surface on a page. */
