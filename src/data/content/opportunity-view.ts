@@ -23,8 +23,7 @@ import type { ContentDemandReading } from "@/data/website/content-demand";
 /** How many opportunities Studio will put in front of a person at once. */
 export const MAX_VISIBLE_OPPORTUNITIES = 4;
 
-export const QUIET_LINE =
-  "Search data is too thin for a confident content opportunity right now.";
+export const QUIET_LINE = "Search data is too thin for a confident content opportunity right now.";
 export const UNREAD_LINE =
   "Search Console has not reported for this window, so demand is unknown rather than absent.";
 
@@ -112,9 +111,7 @@ function toRow(opportunity: StudioOpportunity): OpportunityRowView {
     confidence: opportunity.confidence,
     confidenceLabel: CONFIDENCE_LABEL[opportunity.confidence],
     interpretation: opportunity.rationale,
-    overlap: conflict
-      ? `${conflict.detail} ${conflict.paths.join(", ")}`.trim()
-      : null,
+    overlap: conflict ? `${conflict.detail} ${conflict.paths.join(", ")}`.trim() : null,
     impressions: formatCount(opportunity.observed.impressions),
     clicks: formatCount(opportunity.observed.clicks),
     ctr: formatRate(opportunity.observed.ctr),

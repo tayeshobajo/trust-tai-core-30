@@ -15,13 +15,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/tt/app-shell";
 import { RoomHero } from "@/components/tt/room-hero";
 import { Markdown } from "@/components/tt/markdown";
-import {
-  EmptyState,
-  MetaPill,
-  SectionHeading,
-  TTButton,
-  TTCard,
-} from "@/components/tt/primitives";
+import { EmptyState, MetaPill, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
 import {
   StudioComposer,
   readFileAsSource,
@@ -36,10 +30,7 @@ import { studioOpportunitiesView } from "@/data/content/opportunity-view";
 import { readContentDemand } from "@/data/website/content-demand";
 import { contentService } from "@/data/supabase/content-service";
 import { contentCommandService } from "@/data/supabase/content-request-service";
-import {
-  listSearchMetrics,
-  listWebsitePages,
-} from "@/data/supabase/website-analytics-service";
+import { listSearchMetrics, listWebsitePages } from "@/data/supabase/website-analytics-service";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
 import {
@@ -53,7 +44,6 @@ import { voiceExcerpts } from "@/domain/content-source";
 import type { ContentRequestSettings } from "@/domain/content-request";
 import type { PreparedItem, PreparedPlan } from "@/lib/content-engine.server";
 import type { WorkspaceIdentity } from "@/lib/workspace";
-
 
 /** The same bounded window the Website room reads over. One policy, not two. */
 const DEMAND_WINDOW_DAYS = 30;
@@ -78,7 +68,9 @@ export const Route = createFileRoute("/modules/studio/")({
 });
 
 function StudioRoute() {
-  return <WorkspaceGate appId="studio">{(identity) => <Studio identity={identity} />}</WorkspaceGate>;
+  return (
+    <WorkspaceGate appId="studio">{(identity) => <Studio identity={identity} />}</WorkspaceGate>
+  );
 }
 
 async function accessToken(): Promise<string> {
@@ -124,7 +116,6 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["studio", "sources"] }),
     onError: (error: Error) => toast.error(error.message),
   });
-
 
   const batches = useQuery({
     queryKey: ["studio", "batches", organizationId],
@@ -277,13 +268,14 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
       }
     },
     onSuccess: (batch) => {
-      toast.success("The batch is prepared and waiting in Approvals. Nothing publishes until you decide.");
+      toast.success(
+        "The batch is prepared and waiting in Approvals. Nothing publishes until you decide.",
+      );
       setOpenBatchId(batch.id);
       void queryClient.invalidateQueries({ queryKey: ["studio", "batches"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
-
 
   const submit = useMutation({
     mutationFn: async (batchId: string) => submitContentBatchForApproval(batchId, context),
@@ -353,7 +345,6 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
           : {})}
       />
 
-
       <div className="mt-8 grid gap-6 lg:grid-cols-[22rem_1fr]">
         <TTCard className="p-5">
           <SectionHeading title="Batches" description="Newest first." />
@@ -371,7 +362,9 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
                 type="button"
                 onClick={() => setOpenBatchId(batch.id)}
                 className={`w-full rounded-lg border p-3 text-left transition ${
-                  openBatchId === batch.id ? "border-primary" : "border-border hover:border-primary/40"
+                  openBatchId === batch.id
+                    ? "border-primary"
+                    : "border-border hover:border-primary/40"
                 }`}
               >
                 <p className="font-medium">{batch.keyword}</p>
@@ -487,11 +480,7 @@ function BatchView({
           ) : null}
 
           <p className="mt-4 text-sm">
-            <Link
-              to="/modules/studio/$itemId"
-              params={{ itemId: item.id }}
-              className="underline"
-            >
+            <Link to="/modules/studio/$itemId" params={{ itemId: item.id }} className="underline">
               Open the article
             </Link>
           </p>

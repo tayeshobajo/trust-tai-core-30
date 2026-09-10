@@ -39,9 +39,7 @@ function page(path: string): WebsitePage {
   };
 }
 
-const eightDays = Array.from({ length: 8 }, (_, index) =>
-  row({ date: `2026-08-0${index + 1}` }),
-);
+const eightDays = Array.from({ length: 8 }, (_, index) => row({ date: `2026-08-0${index + 1}` }));
 
 function view(rows: SearchMetricsDay[], pages: WebsitePage[] | undefined = [page("/services")]) {
   const demand = readContentDemand(

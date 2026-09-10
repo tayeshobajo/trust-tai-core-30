@@ -13,10 +13,7 @@
 import { Link } from "@tanstack/react-router";
 
 import { SectionHeading, TTButton, TonePill, type PillTone } from "@/components/tt/primitives";
-import type {
-  OpportunityRowView,
-  StudioOpportunitiesView,
-} from "@/data/content/opportunity-view";
+import type { OpportunityRowView, StudioOpportunitiesView } from "@/data/content/opportunity-view";
 
 /** Observed is an evidence class, never a success state, so it is never green. */
 function confidenceTone(row: OpportunityRowView): PillTone {
