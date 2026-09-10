@@ -332,6 +332,12 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
         supporting="Studio plans the cluster, writes each article in Trust Tai's voice and says why it should exist. You approve the batch in Approvals, and only then does anything reach trusttai.com."
       />
 
+      <StudioOpportunities
+        view={opportunities}
+        loading={searchMetrics.isPending || pages.isPending}
+        onDismiss={(id) => setSetAside((current) => [...current, id])}
+      />
+
       <StudioComposer
         sources={sources.data ?? []}
         onAddPasted={(input) => addSource.mutate(input)}
