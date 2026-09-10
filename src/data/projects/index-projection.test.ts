@@ -97,11 +97,7 @@ describe("projects index projection", () => {
   });
 
   it("calls in-flight work with no next move waiting", () => {
-    const [waiting] = buildProjectRows(
-      [project("d", "in_flight")],
-      SOURCES,
-      NOW,
-    );
+    const [waiting] = buildProjectRows([project("d", "in_flight")], SOURCES, NOW);
     expect(waiting?.status).toBe("waiting");
     expect(inTab(waiting!, "waiting")).toBe(true);
   });

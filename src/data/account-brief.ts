@@ -10,7 +10,13 @@
  * brief refuses to look complete when the evidence behind it is thin.
  */
 
-import { OPPORTUNITY_AREA_LABEL, type AccountBrief, type BriefSection, type PersonPlan, type ScoutIntel } from "@/domain/scout-intel";
+import {
+  OPPORTUNITY_AREA_LABEL,
+  type AccountBrief,
+  type BriefSection,
+  type PersonPlan,
+  type ScoutIntel,
+} from "@/domain/scout-intel";
 import type { ProspectCandidate } from "@/domain/scout";
 
 function sources(...urls: (string | undefined)[]): string[] {
@@ -72,7 +78,10 @@ export function buildAccountBrief({ candidate, intel, plan }: BriefInput): Accou
       tier: "fact",
       body: intel.buyingSignals
         .slice(0, 4)
-        .map((signal) => `${signal.statement}${signal.observedAt ? ` (${signal.observedAt.slice(0, 10)})` : ""}`)
+        .map(
+          (signal) =>
+            `${signal.statement}${signal.observedAt ? ` (${signal.observedAt.slice(0, 10)})` : ""}`,
+        )
         .join(" "),
       sources: sources(...intel.buyingSignals.map((signal) => signal.sourceUrl)),
     });
@@ -92,7 +101,10 @@ export function buildAccountBrief({ candidate, intel, plan }: BriefInput): Accou
         title: "Also worth knowing",
         tier: "inference",
         body: plan.supporting
-          .map((person) => `${person.fullName}${person.roleTitle ? ` (${person.roleTitle})` : ""} · ${person.routeNote}`)
+          .map(
+            (person) =>
+              `${person.fullName}${person.roleTitle ? ` (${person.roleTitle})` : ""} · ${person.routeNote}`,
+          )
           .join(" "),
         sources: [],
       });

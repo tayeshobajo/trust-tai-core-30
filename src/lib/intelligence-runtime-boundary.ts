@@ -2,21 +2,20 @@
  * The fragmentation guard registry.
  *
  * The law: no business app may become its own isolated AI brain. In code that
- * means exactly one reasoning boundary — src/lib/intelligence-runtime.server.ts —
- * sitting on top of a small set of low-level transport modules, and nothing
+ * means exactly one reasoning boundary, src/lib/intelligence-runtime.server.ts, * sitting on top of a small set of low-level transport modules, and nothing
  * else in the suite importing providers, provider configuration, or AI
  * endpoint URLs.
  *
  * This module is the data the guard test (intelligence-runtime-boundary.test.ts)
  * enforces. It is also the migration map: every documented exception names the
  * bypass it currently holds and the runtime contract it must adopt. Removing
- * an exception is done by migrating the file and deleting its entry — never by
+ * an exception is done by migrating the file and deleting its entry, never by
  * widening the allowlist.
  */
 
 /**
  * Low-level modules that may legitimately touch provider machinery. These are
- * the boundary itself and its transport plumbing — not reasoning entry points.
+ * the boundary itself and its transport plumbing, not reasoning entry points.
  */
 export const CANONICAL_REASONING_MODULES: string[] = [
   /** The one reasoning boundary. Rooms call this. */
@@ -40,7 +39,7 @@ export interface ReasoningException {
 /**
  * Pre-existing reasoning bypasses, pending migration. This list is EMPTY and
  * must stay empty: every business room reasons through the runtime boundary.
- * A future exception is migration debt, never permission — it must name the
+ * A future exception is migration debt, never permission, it must name the
  * bypass and the runtime contract that retires it, and the hardening standard
  * treats any business-room entry here as a regression.
  */

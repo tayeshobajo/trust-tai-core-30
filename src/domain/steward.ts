@@ -265,8 +265,5 @@ export interface TodayMove {
 export function personKeyOf(input: { email?: string | null; name?: string | null }): string {
   const email = (input.email ?? "").trim().toLowerCase();
   if (email) return email;
-  return (input.name ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
+  return (input.name ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }

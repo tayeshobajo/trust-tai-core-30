@@ -3,7 +3,7 @@
  *
  * Sometimes the company arrives through a conversation. A member names the
  * company, the person's title and the role they play, and Scout gets a
- * profile of its own — with provenance saying plainly that a human entered it.
+ * profile of its own, with provenance saying plainly that a human entered it.
  *
  * The conversation stays where it is. One person, one memory.
  */
@@ -85,7 +85,7 @@ function ToScout({ identity }: { identity: WorkspaceIdentity }) {
       void navigate({
         to: "/modules/scout/prospects/$prospectId",
         params: { prospectId: result.prospect.id },
-        search: { section: "scout" as const, fit: "all" as const },
+        search: { section: "all" as const, fit: "all" as const },
       });
     },
   });
@@ -190,7 +190,7 @@ function ToScout({ identity }: { identity: WorkspaceIdentity }) {
             Save to Scout
           </TTButton>
           <p className="text-[13px] text-muted-foreground">
-            Entered by a person. Scout records it as such — no sourcing is implied.
+            Entered by a person. Scout records it as such, no sourcing is implied.
           </p>
         </div>
 

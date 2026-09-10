@@ -1,4 +1,4 @@
--- Trust Tai OS — Website → Scout signal boundary.
+-- Trust Tai OS. Website → Scout signal boundary.
 --
 -- Two bounded tables only. TrustTai.com is a signal source: it owns attention
 -- and intake, and hands completed intakes to Scout. It never writes Roadmap or

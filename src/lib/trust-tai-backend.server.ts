@@ -13,8 +13,7 @@ const FALLBACK_URL = `https://${TRUST_TAI_PROJECT_REF}.supabase.co`;
 const FALLBACK_PUBLISHABLE_KEY = "sb_publishable_uARvNwZli88tfhOHBwFTsQ_JUpQo-UL";
 
 function envUrl(): string | undefined {
-  const candidate =
-    process.env["TRUST_TAI_SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"] || "";
+  const candidate = process.env["TRUST_TAI_SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"] || "";
   return candidate.includes(TRUST_TAI_PROJECT_REF) ? candidate : undefined;
 }
 

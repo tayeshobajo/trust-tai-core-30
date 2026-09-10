@@ -63,19 +63,25 @@ describe("authorizeReconcileRequest", () => {
       status: 401,
       error: "Not allowed.",
     });
-    expect(await authorizeReconcileRequest(client({ data: { secret: "correct-horse" } }), null)).toEqual(
-      { ok: false, status: 401, error: "Not allowed." },
-    );
+    expect(
+      await authorizeReconcileRequest(client({ data: { secret: "correct-horse" } }), null),
+    ).toEqual({ ok: false, status: 401, error: "Not allowed." });
   });
 
   it("allows the valid secret", async () => {
     expect(
-      await authorizeReconcileRequest(client({ data: { secret: "correct-horse" } }), "correct-horse"),
+      await authorizeReconcileRequest(
+        client({ data: { secret: "correct-horse" } }),
+        "correct-horse",
+      ),
     ).toEqual({ ok: true });
   });
 
   it("never returns the secret to the caller", async () => {
-    const result = await authorizeReconcileRequest(client({ data: { secret: "correct-horse" } }), "no");
+    const result = await authorizeReconcileRequest(
+      client({ data: { secret: "correct-horse" } }),
+      "no",
+    );
     expect(JSON.stringify(result)).not.toContain("correct-horse");
   });
 });

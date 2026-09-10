@@ -20,46 +20,49 @@ export const Route = createFileRoute("/settings/notifications")({
  * Only events the suite genuinely produces, grouped by the room that produces
  * them. Delivery is in-app today, so no channel is offered that does not exist.
  */
-const GROUPS: { appId: string; title: string; items: { key: string; label: string; note: string }[] }[] =
-  [
-    {
-      appId: "steward",
-      title: "Steward",
-      items: [
-        { key: "steward.task_assigned", label: "A task is assigned to me", note: "" },
-        { key: "steward.commitment_overdue", label: "A commitment I own is overdue", note: "" },
-        { key: "steward.reassigned", label: "Work is reassigned to or from me", note: "" },
-        { key: "steward.daily_summary", label: "Daily summary of what needs me", note: "Optional" },
-      ],
-    },
-    {
-      appId: "projects",
-      title: "Projects",
-      items: [
-        { key: "projects.blocked", label: "A project I own becomes blocked", note: "" },
-        { key: "projects.assigned", label: "A project is assigned to me", note: "" },
-        { key: "projects.review_requested", label: "A review is requested from me", note: "" },
-      ],
-    },
-    {
-      appId: "comms",
-      title: "Comms",
-      items: [
-        { key: "comms.attention", label: "A relationship needs attention", note: "" },
-        { key: "comms.client_reply", label: "A client replies", note: "" },
-        { key: "comms.draft_review", label: "A draft is waiting for my review", note: "" },
-      ],
-    },
-    {
-      appId: "steward",
-      title: "Agents",
-      items: [
-        { key: "agents.approval_needed", label: "An agent needs my approval", note: "" },
-        { key: "agents.failure", label: "An agent run fails", note: "" },
-        { key: "agents.completed", label: "An agent run completes", note: "Optional" },
-      ],
-    },
-  ];
+const GROUPS: {
+  appId: string;
+  title: string;
+  items: { key: string; label: string; note: string }[];
+}[] = [
+  {
+    appId: "steward",
+    title: "Steward",
+    items: [
+      { key: "steward.task_assigned", label: "A task is assigned to me", note: "" },
+      { key: "steward.commitment_overdue", label: "A commitment I own is overdue", note: "" },
+      { key: "steward.reassigned", label: "Work is reassigned to or from me", note: "" },
+      { key: "steward.daily_summary", label: "Daily summary of what needs me", note: "Optional" },
+    ],
+  },
+  {
+    appId: "projects",
+    title: "Projects",
+    items: [
+      { key: "projects.blocked", label: "A project I own becomes blocked", note: "" },
+      { key: "projects.assigned", label: "A project is assigned to me", note: "" },
+      { key: "projects.review_requested", label: "A review is requested from me", note: "" },
+    ],
+  },
+  {
+    appId: "comms",
+    title: "Comms",
+    items: [
+      { key: "comms.attention", label: "A relationship needs attention", note: "" },
+      { key: "comms.client_reply", label: "A client replies", note: "" },
+      { key: "comms.draft_review", label: "A draft is waiting for my review", note: "" },
+    ],
+  },
+  {
+    appId: "steward",
+    title: "Agents",
+    items: [
+      { key: "agents.approval_needed", label: "An agent needs my approval", note: "" },
+      { key: "agents.failure", label: "An agent run fails", note: "" },
+      { key: "agents.completed", label: "An agent run completes", note: "Optional" },
+    ],
+  },
+];
 
 function NotificationSettings() {
   const identity = useSettingsIdentity();

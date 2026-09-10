@@ -133,9 +133,7 @@ export function CaseLedgerPanel({
                   <div className="flex flex-wrap items-center gap-1.5">
                     <MetaPill>{patternName(entry.patternId)}</MetaPill>
                     <MetaPill>{RESULT_LABEL[outcome.result]}</MetaPill>
-                    <MetaPill>
-                      {OUTCOME_SOURCE_LABEL[outcome.resultSource ?? "human"]}
-                    </MetaPill>
+                    <MetaPill>{OUTCOME_SOURCE_LABEL[outcome.resultSource ?? "human"]}</MetaPill>
                   </div>
                   <p className="mt-1 text-foreground">{entry.humanDecision}</p>
                   <p className="mt-0.5 text-muted-foreground">{outcome.resultBecause}</p>
@@ -211,7 +209,10 @@ export function CaseLedgerPanel({
             <HealthStat label="Cases opened" value={health.casesOpened} />
             <HealthStat label="Cases resolved" value={health.casesResolved} />
             <HealthStat label="Corrections you wrote" value={health.corrections} />
-            <HealthStat label="Patterns with enough results" value={health.patternsWithEnoughOutcomes} />
+            <HealthStat
+              label="Patterns with enough results"
+              value={health.patternsWithEnoughOutcomes}
+            />
             <HealthStat label="Proposals awaiting you" value={health.proposalsAwaitingDecision} />
             <HealthStat label="Checked automatically" value={health.casesCheckedAutomatically} />
             <HealthStat label="Resolved automatically" value={health.casesResolvedAutomatically} />
@@ -230,7 +231,6 @@ export function CaseLedgerPanel({
           </p>
         </TTCard>
       ) : null}
-
     </section>
   );
 }

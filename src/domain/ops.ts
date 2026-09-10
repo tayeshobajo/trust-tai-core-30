@@ -108,7 +108,6 @@ export interface OpsEvent {
   systemName?: string;
 }
 
-
 function text(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
@@ -221,7 +220,6 @@ export function readOpsEvent(event: ActivityEvent): OpsEvent | null {
     ...(companyLabel ? { companyLabel } : {}),
     ...(systemName ? { systemName } : {}),
   };
-
 }
 
 /** Ops rows for this organization, de-duplicated by idempotency key. */

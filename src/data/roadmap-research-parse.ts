@@ -68,7 +68,8 @@ function confidence(value: unknown, sources: SourceRef[]): ConfidenceLevel {
     ? (raw as ConfidenceLevel)
     : "low";
   // Evidence is the ceiling: no source, no confidence above low.
-  const cap: ConfidenceLevel = sources.length >= 2 ? "high" : sources.length === 1 ? "moderate" : "low";
+  const cap: ConfidenceLevel =
+    sources.length >= 2 ? "high" : sources.length === 1 ? "moderate" : "low";
   return LEVELS.indexOf(stated) > LEVELS.indexOf(cap) ? cap : stated;
 }
 
@@ -138,22 +139,19 @@ const SECTION_LABEL: Record<string, string> = {
 };
 
 /** One research pass, cleaned. Gaps are named rather than smoothed over. */
-export function normalizeResearch(raw: unknown, provenance: ResearchProvenance): NormalizedResearch {
+export function normalizeResearch(
+  raw: unknown,
+  provenance: ResearchProvenance,
+): NormalizedResearch {
   const row = (raw && typeof raw === "object" ? raw : {}) as Raw;
 
   const result: NormalizedResearch = {
     companyModel: normalizeClaims(row["company_model"] ?? row["companyModel"], provenance),
     buyers: normalizeClaims(row["buyers"], provenance),
     strengths: normalizeClaims(row["strengths"], provenance),
-    digitalPresence: normalizeClaims(
-      row["digital_presence"] ?? row["digitalPresence"],
-      provenance,
-    ),
+    digitalPresence: normalizeClaims(row["digital_presence"] ?? row["digitalPresence"], provenance),
     competitors: normalizeCompetitors(row["competitors"], provenance),
-    marketDirection: normalizeClaims(
-      row["market_direction"] ?? row["marketDirection"],
-      provenance,
-    ),
+    marketDirection: normalizeClaims(row["market_direction"] ?? row["marketDirection"], provenance),
     sources: normalizeSources(row["sources"], provenance),
     unknowns: Array.isArray(row["unknowns"])
       ? row["unknowns"].map((entry) => str(entry)).filter((entry) => entry.length > 0)
@@ -240,7 +238,10 @@ function items(value: unknown, provenance: ResearchProvenance, prefix: string): 
     .filter((entry): entry is StrategyItem => entry !== null);
 }
 
-export function normalizeStrategy(raw: unknown, provenance: ResearchProvenance): NormalizedStrategy {
+export function normalizeStrategy(
+  raw: unknown,
+  provenance: ResearchProvenance,
+): NormalizedStrategy {
   const row = (raw && typeof raw === "object" ? raw : {}) as Raw;
 
   const bands: HorizonBand[] = Array.isArray(row["horizon"])
@@ -260,7 +261,6 @@ export function normalizeStrategy(raw: unknown, provenance: ResearchProvenance):
             confidence: confidence(entry["confidence"], sources),
             sources,
           };
-
         })
         .filter((band): band is HorizonBand => band !== null)
         .sort((a, b) => a.years - b.years)

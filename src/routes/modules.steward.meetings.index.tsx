@@ -18,7 +18,12 @@ import { ProposalReview } from "@/components/tt/steward/proposal-review";
 import { StewardTabs } from "@/components/tt/steward/steward-tabs";
 import { StewardUnavailable } from "@/components/tt/steward/unavailable";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { readConversation, readRehearsal, readSourceState, type ReadResult } from "@/data/steward/ingest";
+import {
+  readConversation,
+  readRehearsal,
+  readSourceState,
+  type ReadResult,
+} from "@/data/steward/ingest";
 import { REHEARSAL_NOTICE } from "@/data/steward/fixture";
 import { stewardService } from "@/data/supabase/steward-service";
 import type { WorkspaceIdentity } from "@/lib/workspace";
@@ -104,7 +109,9 @@ function Meetings({ identity }: { identity: WorkspaceIdentity }) {
       });
     },
     onError: (error: unknown) =>
-      setMessage(error instanceof Error ? error.message : "Steward could not save that conversation."),
+      setMessage(
+        error instanceof Error ? error.message : "Steward could not save that conversation.",
+      ),
   });
 
   return (
@@ -124,7 +131,9 @@ function Meetings({ identity }: { identity: WorkspaceIdentity }) {
           <p className="mt-3 text-sm text-muted-foreground">Checking what Steward can read…</p>
         ) : source.isError ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            {source.error instanceof Error ? source.error.message : "The source could not be checked."}
+            {source.error instanceof Error
+              ? source.error.message
+              : "The source could not be checked."}
           </p>
         ) : (
           <p className="mt-3 max-w-reading text-sm text-muted-foreground">
@@ -243,7 +252,10 @@ function Meetings({ identity }: { identity: WorkspaceIdentity }) {
         ) : (
           <ul className="mt-4 space-y-2">
             {stored.data?.map((conversation) => (
-              <li key={conversation.id} className="tt-surface flex flex-wrap items-center justify-between gap-3 p-5">
+              <li
+                key={conversation.id}
+                className="tt-surface flex flex-wrap items-center justify-between gap-3 p-5"
+              >
                 <div>
                   <Link
                     to="/modules/steward/meetings/$conversationId"

@@ -56,7 +56,7 @@ const JUDGMENT: CommunicationJudgment = {
   whyNow: "They asked about timing; a straight answer and a next step are owed.",
   latestHumanSignal: "They mentioned almost in passing that their team just shipped phase one.",
   whatThisSaysAboutThem: "They are proud of the team's momentum and want a partner who keeps pace.",
-  whatDeservesAcknowledgment: "The phase one ship — name it before answering the timing question.",
+  whatDeservesAcknowledgment: "The phase one ship, name it before answering the timing question.",
   threadToBuildOn: "Their momentum: what phase two looks like now that phase one is live.",
   intendedEffect: "That they feel heard and unhurried, with a clear way forward.",
   responseObligation: "They asked whether the proposal covers phase two.",
@@ -163,9 +163,7 @@ describe("judgmentSummaryLines", () => {
     expect(lines[1]).toBe(`What I noticed: ${JUDGMENT.latestHumanSignal}`);
     expect(lines[2]).toBe(`What it says about them: ${JUDGMENT.whatThisSaysAboutThem}`);
     expect(lines[3]).toBe(`What to build on: ${JUDGMENT.threadToBuildOn}`);
-    expect(lines[4]).toBe(
-      `Ask: ${JUDGMENT.askDecision.what} (${JUDGMENT.askDecision.whyNatural})`,
-    );
+    expect(lines[4]).toBe(`Ask: ${JUDGMENT.askDecision.what} (${JUDGMENT.askDecision.whyNatural})`);
   });
 
   it("says plainly when there is no ask, with the reason when one was judged", () => {
@@ -193,20 +191,23 @@ describe("the Brooke regression at judgment level", () => {
   /* Brooke thanked Tai for kind words, said it was lovely to meet him,
      enjoyed his perspective in the Mastermind, and offered to be a resource.
      The judgment the model returns for that thread must read as generosity
-     recognized — and no ask, because nothing in her note earns one. This
+     recognized, and no ask, because nothing in her note earns one. This
      pins the contract shape that judgment takes once parsed. */
   const BROOKE_JUDGMENT_RAW = {
-    whyNow: "Brooke replied warmly to Tai's note after the Mastermind; a reply is owed while the thread is warm.",
+    whyNow:
+      "Brooke replied warmly to Tai's note after the Mastermind; a reply is owed while the thread is warm.",
     latestHumanSignal:
-      "She offered to be a resource — meeting someone once and already thinking about how she might be useful to them.",
+      "She offered to be a resource, meeting someone once and already thinking about how she might be useful to them.",
     whatThisSaysAboutThem:
       "A generous, help-first orientation; consistent with her daily work guiding business owners.",
     whatDeservesAcknowledgment:
       "The offer to be a resource itself, and the generosity underneath it.",
     threadToBuildOn:
       "Her instinct to be useful, and the work with business owners it likely comes from.",
-    intendedEffect: "That she feels specifically seen, and glad the Mastermind put them in the same room.",
-    responseObligation: "Her thanks and her kind words about the Mastermind deserve acknowledgment.",
+    intendedEffect:
+      "That she feels specifically seen, and glad the Mastermind put them in the same room.",
+    responseObligation:
+      "Her thanks and her kind words about the Mastermind deserve acknowledgment.",
     askDecision: {
       shouldAsk: false,
       whyNatural:
@@ -290,7 +291,7 @@ describe("assessDraftGrounding", () => {
     expect(decision.missing).toEqual([]);
   });
 
-  it("regression: Brooke's case — known identity plus a real inbound thread passes grounding", () => {
+  it("regression: Brooke's case, known identity plus a real inbound thread passes grounding", () => {
     /* Production: Brooke Siler has a real inbound Gmail thread and a known
        identity (full name and email on the relationship). The gate must
        pass; the failure lived after grounding, at the provider boundary. */
@@ -450,7 +451,11 @@ describe("threadContextForJudgment", () => {
 
   it("bounds the window and trims long bodies without dropping short ones", () => {
     const many = Array.from({ length: 12 }, (_, index) =>
-      message("inbound", `2026-08-${String(index + 1).padStart(2, "0")}T10:00:00Z`, `Note ${index}`),
+      message(
+        "inbound",
+        `2026-08-${String(index + 1).padStart(2, "0")}T10:00:00Z`,
+        `Note ${index}`,
+      ),
     );
     const entries = threadContextForJudgment(many);
     expect(entries).toHaveLength(8);

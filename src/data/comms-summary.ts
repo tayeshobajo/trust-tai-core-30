@@ -54,9 +54,7 @@ function memoryLine(item: MemoryItem): string {
 }
 
 /** The sections an export shows, in the same order the rail reads. */
-export function relationshipSummarySections(
-  input: RelationshipSummaryInput,
-): SummarySection[] {
+export function relationshipSummarySections(input: RelationshipSummaryInput): SummarySection[] {
   const { relationship, health, strength, move } = input;
   const now = input.now ?? new Date();
   const intent = effectiveIntent(relationship);
@@ -119,9 +117,7 @@ export function relationshipSummarySections(
         ...strength.factors.map((factor) => `${factor.label}: ${factor.value}`),
       ],
     },
-    ...(interactions.length > 0
-      ? [{ heading: "Recent interactions", lines: interactions }]
-      : []),
+    ...(interactions.length > 0 ? [{ heading: "Recent interactions", lines: interactions }] : []),
     {
       heading: "About this summary",
       lines: [
@@ -137,7 +133,9 @@ export function relationshipSummaryText(input: RelationshipSummaryInput): string
   const sections = relationshipSummarySections(input);
   const title = `${input.relationship.fullName}${input.relationship.companyName ? ` · ${input.relationship.companyName}` : ""}`;
   const body = sections
-    .map((section) => [section.heading.toUpperCase(), ...section.lines.map((line) => `- ${line}`)].join("\n"))
+    .map((section) =>
+      [section.heading.toUpperCase(), ...section.lines.map((line) => `- ${line}`)].join("\n"),
+    )
     .join("\n\n");
   return `${title}\nRelationship summary · Trust Tai OS\n\n${body}\n`;
 }

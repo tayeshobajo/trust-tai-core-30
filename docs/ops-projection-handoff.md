@@ -58,7 +58,7 @@ Rules Core holds itself to:
 
 - Projection rows are the only membership of the portfolio. Activity rows
   enrich "Recently moved" and never invent a managed project.
-- Unreported counts stay null and render as "—", never as `0`.
+- Unreported counts stay null and render as ", ", never as `0`.
 - Health counts as healthy only when Ops said something that plainly means
   healthy or stable. Unknown never inflates the healthy count.
 - Every way into Ops is `launchOps`, which opens `https://ops.trusttai.com/sso`

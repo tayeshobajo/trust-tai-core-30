@@ -1,4 +1,4 @@
-# Intelligence Engine — how Trust Tai reads its own business
+# Intelligence Engine, how Trust Tai reads its own business
 
 The suite already knows a great deal: who is in the pipeline, what is being built, what
 went quiet, what someone promised. Nobody was reading it all together. The Intelligence
@@ -21,15 +21,14 @@ They are one intelligence, in three positions (see `docs/architecture-canon.md`)
 
 - The **engine** (`src/data/intelligence/engine/`) is the reasoning pipeline: observe →
   … → recommend. Pure and stateless apart from the ledger it reads.
-- **Steward** is the stewardship layer that surface that pipeline in human terms —
-  interpretation of conversations, person-centred memory, judgment about what deserves
+- **Steward** is the stewardship layer that surface that pipeline in human terms, interpretation of conversations, person-centred memory, judgment about what deserves
   attention, and routing. It is not a business domain: it owns no conversation, task,
   decision, project risk or client risk. Those stay with the owning room and the core
   entities. `steward_beliefs` holds interpretation and memory only.
 - **Pulse** is the visibility surface: the full read, its evidence, its gaps, and the
   learning trail. Pulse owns no entity and emits no suite event.
 
-Business rooms — Scout, Comms, Roadmap, Projects, Ops, Studio — own state and execute.
+Business rooms. Scout, Comms, Roadmap, Projects, Ops, Studio, own state and execute.
 
 ## The loop
 
@@ -45,8 +44,7 @@ decide   → a person accepts, edits, defers or rejects
 learn    → the decision is appended to the belief ledger
 ```
 
-Every stage except `reason` is pure and deterministic. If the model stage is unavailable —
-no provider, no session, a refusal — the read still lands and says it is deterministic.
+Every stage except `reason` is pure and deterministic. If the model stage is unavailable, no provider, no session, a refusal, the read still lands and says it is deterministic.
 Nothing goes blank and nothing is invented to fill the space.
 
 ## The laws, and where they are enforced
@@ -54,7 +52,7 @@ Nothing goes blank and nothing is invented to fill the space.
 | Law | Where |
 | --- | --- |
 | Nothing asserted without evidence | `verify.ts` drops any claim whose `observationRefs` are not in the packet |
-| No number nobody counted | `inventsNumber()` — money, percentages and rates are never in the packet, so never in a claim |
+| No number nobody counted | `inventsNumber()`, money, percentages and rates are never in the packet, so never in a claim |
 | No certainty the evidence cannot carry | `CAUSAL_MARKERS` in `verify.ts` |
 | A person's decision outranks inference | `contradicts()`, applied in both `engineRead()` and `verify.ts` |
 | A rejected shape is not raised again | `enginePatternsToSuppress()` from the belief ledger |
@@ -81,7 +79,7 @@ itself: a Trust Tai access token plus an active `organization_memberships` row. 
 ## Learning
 
 Accept, Edit, Not now, Not useful. Each is appended to the existing `steward_beliefs`
-ledger through the reserved memory prefix — append-only, attributed, and reversible by
+ledger through the reserved memory prefix, append-only, attributed, and reversible by
 another human decision. Two rejections of the same pattern suppress it. An edit is a
 precedent: the person's wording is what the engine learned, not its own.
 
@@ -93,9 +91,9 @@ to action, now or later.
 
 ## Surfaces
 
-- **Pulse** — the full read: headline, proposals, what it rests on, what it could not read,
+- **Pulse**, the full read: headline, proposals, what it rests on, what it could not read,
   and which decisions it respected.
-- **Home** — one line and the single proposal that would change the day, with a door into
+- **Home**, one line and the single proposal that would change the day, with a door into
   Pulse. Home stays a doorway.
 
 ## Deliberately not built
@@ -151,9 +149,9 @@ always ask for a read now.
 
 ## Learning audit trail
 
-`engine/audit.ts` derives the trail from the append-only ledger — there is no
+`engine/audit.ts` derives the trail from the append-only ledger, there is no
 second copy of the truth. Each entry shows the decision, who made it, when, and
 the exact consequence: suppressed, one dismissal away from suppression, wording
 adopted, offered earlier, or held for later. Suppression is a count, not a
 verdict: the same reading must be dismissed twice before the engine stops
-raising it. Accepting something changes ordering only — never confidence.
+raising it. Accepting something changes ordering only, never confidence.

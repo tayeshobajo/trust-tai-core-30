@@ -19,14 +19,8 @@ function keyMaterial(): string {
 }
 
 async function aesKey(): Promise<CryptoKey> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(keyMaterial()),
-  );
-  return crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, [
-    "encrypt",
-    "decrypt",
-  ]);
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(keyMaterial()));
+  return crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -65,11 +59,7 @@ export async function openSecret(sealed: string): Promise<string> {
   }
   const iv = fromBase64(parts[1]!);
   const payload = fromBase64(parts[2]!);
-  const opened = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    await aesKey(),
-    payload,
-  );
+  const opened = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, await aesKey(), payload);
   return new TextDecoder().decode(opened);
 }
 
@@ -108,7 +98,10 @@ export async function signState(state: OAuthState): Promise<string> {
 }
 
 /** Verify a returned state. Null when tampered with, malformed, or stale. */
-export async function readState(value: string, maxAgeMs = 15 * 60 * 1000): Promise<OAuthState | null> {
+export async function readState(
+  value: string,
+  maxAgeMs = 15 * 60 * 1000,
+): Promise<OAuthState | null> {
   const [payload, signature] = value.split(".");
   if (!payload || !signature) return null;
   if ((await hmac(payload)) !== signature) return null;

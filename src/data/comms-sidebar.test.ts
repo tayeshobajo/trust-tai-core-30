@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { commsDriver } from "@/components/tt/comms/comms-sidebar";
 import type { InboxView } from "@/data/comms-inbox";
 
-function view(partial: Partial<InboxView["tabCounts"]>, health: Partial<InboxView["healthCounts"]> = {}): InboxView {
+function view(
+  partial: Partial<InboxView["tabCounts"]>,
+  health: Partial<InboxView["healthCounts"]> = {},
+): InboxView {
   return {
     priority: [],
     others: [],
@@ -27,9 +30,7 @@ describe("commsDriver", () => {
   });
 
   it("says nothing is waiting when the inbox is calm", () => {
-    expect(commsDriver(view({ all: 2, clients: 2 })).statement).toBe(
-      "Nothing is waiting on you.",
-    );
+    expect(commsDriver(view({ all: 2, clients: 2 })).statement).toBe("Nothing is waiting on you.");
   });
 
   it("invites a first person when there are none", () => {

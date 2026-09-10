@@ -11,7 +11,7 @@
  * The acceptance tests (runtime/acceptance.test.ts) enforce the floor: every
  * registered room declares all eight dimensions, every delegation names its
  * equivalent, and no room reads as ready while a required dimension is
- * missing. The report is Ready / Delegated-equivalent / Not ready — never
+ * missing. The report is Ready / Delegated-equivalent / Not ready, never
  * manufactured green.
  */
 
@@ -118,7 +118,7 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
       "relationship state + handoff briefs under RLS (src/data/supabase/comms-service.ts)",
     ),
     retrieval: r(
-      "drafts reason through the runtime boundary over governed evidence — memory, thread, commitments — behind a deterministic grounding gate: thread plus identity grounds a reply, identity plus a real prior interaction plus a reason grounds a proactive note (src/lib/comms-draft.server.ts, src/domain/comms-judgment.ts)",
+      "drafts reason through the runtime boundary over governed evidence, memory, thread, commitments, behind a deterministic grounding gate: thread plus identity grounds a reply, identity plus a real prior interaction plus a reason grounds a proactive note (src/lib/comms-draft.server.ts, src/domain/comms-judgment.ts)",
     ),
     domain_patterns: r(
       "Tai's canonical relationship voice is the baseline; the org Voice DNA and approved/sent examples layer on top with separate provenance, never replacing it (src/domain/voice.ts, src/lib/comms-draft.server.ts)",
@@ -159,6 +159,37 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
     approval_boundary: r("decided statements are a person's; generation never overrides them"),
     outcome_learning: r(
       "roadmap intelligence records + canon outcomes (src/data/intelligence/canon)",
+    ),
+  }),
+  manifest("clients", {
+    evidence_grounding: r(
+      "every line on a client card is derived from canonical client state, the roadmap proposal lineage and Projects, with a failed source shown as unknown rather than zero (src/data/clients/book-projection.ts)",
+    ),
+    retrieval: d(
+      "the book reads the owning rooms directly rather than composing its own knowledge",
+      "src/data/clients/book-projection.ts",
+      "Clients holds no knowledge of its own: retrieval belongs to the rooms that own the state it displays",
+    ),
+    domain_patterns: d(
+      "the only judgments here are the commercial law's own rules: tier, recurring value, review and renewal",
+      "src/domain/clients-book.ts",
+      "a book of record needs stated rules, not a pattern library; the rules are code and tested",
+    ),
+    safe_diagnostic_loop: d(
+      "the room takes one consequential action, creating a client, and it validates before it writes",
+      "src/domain/clients-book.ts",
+      "with a single bounded write there is no multi-step attempt to diagnose; a refused input is returned in the person's words",
+    ),
+    verification: r(
+      "creation is idempotent on the company name and every amount is human-entered, so a written client is verified by the row it returns (src/data/supabase/commercial-service.ts)",
+    ),
+    approval_boundary: r(
+      "the room writes only when a person submits the form; no agent path creates a client (src/routes/modules.clients.index.tsx)",
+    ),
+    outcome_learning: d(
+      "commercial outcomes are learned from the dated events this room emits, not from the book itself",
+      "src/domain/events.ts",
+      "client.created and client.tier_changed feed the commercial truth readers; the book stores no second history",
     ),
   }),
   manifest("projects", {
@@ -237,7 +268,9 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
   manifest("pulse", {
     evidence_grounding: r("signals derived from room state (src/data/intelligence/derive.ts)"),
     retrieval: r("suite snapshot + canon experience (src/data/intelligence/service.ts)"),
-    domain_patterns: r("canon matches on engine observations (src/data/intelligence/canon/match.ts)"),
+    domain_patterns: r(
+      "canon matches on engine observations (src/data/intelligence/canon/match.ts)",
+    ),
     safe_diagnostic_loop: d(
       "read-only visibility surface; it routes attention, it does not diagnose",
       "src/data/intelligence/runtime/protocol.ts",
@@ -262,12 +295,48 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
     approval_boundary: r("approval-driven by design (Conductor v2)"),
     outcome_learning: r("conductor learning ledger + canon outcomes (docs/conductor-v3.md)"),
   }),
+  manifest("approvals", {
+    evidence_grounding: r(
+      "every request carries the reasoning and the evidence the source app prepared; the room refuses to render a decision without them (src/domain/approvals.ts)",
+    ),
+    retrieval: d(
+      "the submitted packet is the whole context; Approvals reads no room's store",
+      "src/data/supabase/approvals-service.ts",
+      "the decision room must judge exactly what the owning room proposed, not a re-retrieved version of it",
+    ),
+    domain_patterns: d(
+      "domain knowledge stays in the room that prepared the work",
+      "src/data/intelligence/canon",
+      "Approvals judges authority and boundaries, which are universal; the domain pattern belongs to the owning room",
+    ),
+    safe_diagnostic_loop: r(
+      "request_revision returns work to its owner with a reason instead of retrying autonomously (src/domain/approvals.ts)",
+    ),
+    verification: r(
+      "approved, executed and verified are distinct states; the downstream record says queued, unavailable or failed honestly (docs/approvals-v1.md)",
+    ),
+    approval_boundary: r(
+      "the boundary itself: no request reaches executed without passing through a person's approval, enforced by the state machine (src/domain/approvals.test.ts)",
+    ),
+    outcome_learning: r(
+      "the append-only event trail records every decision, reason and handover outcome (approval_events)",
+    ),
+  }),
+
+  /*
+   * Studio covers two generating surfaces: the roadmap artifact composer
+   * (src/lib/roadmap-studio.server.ts) and the blog Content Engine
+   * (src/lib/content-engine.server.ts). Both are declared here, and where they
+   * differ the weaker of the two is what this manifest states.
+   */
   manifest("studio", {
     evidence_grounding: r(
-      "composes only approved roadmap packets; generation reasons through the runtime boundary (src/lib/roadmap-studio.server.ts)",
+      "artifacts compose only approved roadmap packets (src/lib/roadmap-studio.server.ts); blog posts compose only the recorded content plan and Voice DNA (src/lib/content-engine.server.ts). Both generate through the runtime boundary",
     ),
-    retrieval: r(
-      "the approved evidence packet is the retrieval boundary; nothing else reaches the model (src/lib/roadmap-studio.server.ts)",
+    retrieval: d(
+      "the approved packet (artifacts) and the recorded content plan (blog) are each the retrieval boundary; nothing else reaches the model",
+      "src/lib/roadmap-studio.server.ts, src/lib/content-engine.server.ts",
+      "neither surface composes a shared retrieval bundle yet: each hands the model a room-built packet, so canon patterns, prior cases and human corrections do not reach the prompt",
     ),
     domain_patterns: d(
       "expression knowledge is Voice DNA and the roadmap's decided strategy",
@@ -280,8 +349,9 @@ export const READINESS_MANIFESTS: RoomReadinessManifest[] = [
       "Studio's recovery is refusal with named rejected claims, not autonomous retry",
     ),
     verification: r(
-      "statements the packet cannot back are rejected before save (src/lib/roadmap-studio.server.ts)",
+      "artifacts: statements the packet cannot back are rejected before save (src/lib/roadmap-studio.server.ts); blog: publishing is an append-only attempt ledger with readback verification (src/lib/content-publish.server.ts)",
     ),
+
     approval_boundary: r("artifacts are person-reviewed before use"),
     outcome_learning: d(
       "artifact history records what shipped; outcomes return through roadmap records",
@@ -345,7 +415,7 @@ export function checkRoomReadiness(room: string): RoomReadinessCheck | null {
   return { room, ready: missing.length === 0, missing, delegated, manifest: manifestEntry };
 }
 
-/** Every registered room without a manifest — the acceptance test requires none. */
+/** Every registered room without a manifest, the acceptance test requires none. */
 export function roomsMissingManifests(): string[] {
   return APP_REGISTRY.filter((app) => !manifestFor(app.id)).map((app) => app.id);
 }

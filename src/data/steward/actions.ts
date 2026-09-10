@@ -15,7 +15,12 @@ import type { ActivityEvent } from "@/domain/activity";
 import type { Commitment } from "@/domain/steward";
 import type { StewardAgent, StewardFocus, StewardTask } from "@/domain/steward-accountability";
 
-import { completeAuthority, dueDateAuthority, reassignAuthority, type StewardActor } from "./authority";
+import {
+  completeAuthority,
+  dueDateAuthority,
+  reassignAuthority,
+  type StewardActor,
+} from "./authority";
 
 export interface AssignableTarget {
   key: string;
@@ -42,7 +47,7 @@ export interface StewardWriteDeps {
     agentId: string;
     title: string;
     description: string;
-    /** Trust Tai task key — used as idempotency key base for correlation. */
+    /** Trust Tai task key, used as idempotency key base for correlation. */
     sourceEntityId?: string | null;
     sourceEntityType?: string | null;
     sourceApp?: string | null;
@@ -179,9 +184,7 @@ export async function setTaskDue(
   await audit(writer, {
     name: "task.updated",
     task,
-    summary: dueAt
-      ? `Due date set to ${dueAt.slice(0, 10)}.`
-      : "Due date removed.",
+    summary: dueAt ? `Due date set to ${dueAt.slice(0, 10)}.` : "Due date removed.",
   });
 }
 

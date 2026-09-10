@@ -60,9 +60,7 @@ export function UnansweredRoutes({
                 </summary>
                 <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                   {entry.evidence.map((item, index) => (
-                    <li key={`${entry.key}-evidence-${index}`}>
-                      {item.label}
-                    </li>
+                    <li key={`${entry.key}-evidence-${index}`}>{item.label}</li>
                   ))}
                   {entry.dependencies.map((item, index) => (
                     <li key={`${entry.key}-dependency-${index}`}>Depends on: {item}</li>

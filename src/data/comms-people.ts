@@ -13,19 +13,10 @@
 
 import type { ID } from "@/domain/entities";
 import type { Person } from "@/domain/people";
-import {
-  identityPatches,
-  resolveIdentity,
-  type PersonIdentity,
-} from "@/domain/comms-people";
+import { identityPatches, resolveIdentity, type PersonIdentity } from "@/domain/comms-people";
 import { supabase } from "@/integrations/trust-tai/supabase";
 
-import {
-  findOrCreateContact,
-  toPerson,
-  updateContact,
-  type ContactRow,
-} from "./supabase/contacts";
+import { findOrCreateContact, toPerson, updateContact, type ContactRow } from "./supabase/contacts";
 
 const CONTACT_COLUMNS =
   "id, organization_id, client_id, full_name, title, email, phone, metadata, created_by, created_at, updated_at";
@@ -72,7 +63,8 @@ async function readRelationship(
     .eq("organization_id", organizationId)
     .eq("id", relationshipId)
     .single();
-  if (error || !data) throw new Error(error?.message ?? "That relationship is no longer on record.");
+  if (error || !data)
+    throw new Error(error?.message ?? "That relationship is no longer on record.");
   return data as unknown as RelationshipPersonRow;
 }
 

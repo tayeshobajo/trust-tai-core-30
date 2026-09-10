@@ -11,6 +11,7 @@ import { ArrowRight } from "lucide-react";
 import { TTButton } from "@/components/tt/primitives";
 import { TierChip } from "@/components/tt/roadmap/tier";
 import { DetailSection, KeyLine, MilestonePath, PathStatePill } from "./parts";
+import { PointAEditor, PointBEditor } from "./point-editors";
 import type { AnchorProofLine, PathMilestone } from "@/data/roadmap/detail/projection";
 import type { Roadmap } from "@/domain/roadmap";
 import { UNKNOWN_STATEMENT } from "@/domain/roadmap";
@@ -19,10 +20,19 @@ export function PointSummary({
   roadmap,
   approving,
   onApprove,
+  saving = false,
+  onSavePointA,
+  onSaveDestination,
 }: {
   roadmap: Roadmap;
   approving: boolean;
   onApprove: () => void;
+  /** A human write is in flight. Both editors go quiet while it lands. */
+  saving?: boolean;
+  /** Point A written by a person. Same roadmap store, no second one. */
+  onSavePointA?: ((lines: string[]) => void) | undefined;
+  /** Point B written by a person: decided truth, not a proposal. */
+  onSaveDestination?: ((input: { statement: string; because: string }) => void) | undefined;
 }) {
   const pointA = roadmap.pointA[0];
   return (
@@ -51,10 +61,13 @@ export function PointSummary({
             <ul className="mt-3 space-y-1.5">
               {roadmap.pointA.slice(1, 4).map((note) => (
                 <li key={`${note.label}-${note.at}`} className="text-[13px] text-muted-foreground">
-  · {note.value}
+                  · {note.value}
                 </li>
               ))}
             </ul>
+          ) : null}
+          {onSavePointA ? (
+            <PointAEditor notes={roadmap.pointA} busy={saving} onSave={onSavePointA} />
           ) : null}
         </div>
 
@@ -75,6 +88,15 @@ export function PointSummary({
             <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
               {roadmap.pointB.because}
             </p>
+          ) : null}
+          {onSaveDestination ? (
+            <PointBEditor
+              statement={roadmap.pointB?.statement ?? ""}
+              because={roadmap.pointB?.because ?? ""}
+              present={Boolean(roadmap.pointB)}
+              busy={saving}
+              onSave={onSaveDestination}
+            />
           ) : null}
         </div>
       </div>

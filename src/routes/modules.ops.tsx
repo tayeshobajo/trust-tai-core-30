@@ -39,7 +39,6 @@ import { supabase } from "@/integrations/trust-tai/supabase";
 import { OPS_LAUNCH_MESSAGE, launchOps, type OpsLaunchFailure } from "@/lib/ops-launch";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
-
 const TITLE = "Ops · Technical stewardship · Trust Tai OS";
 const DESCRIPTION =
   "See the systems Ops is maintaining, what needs attention, and where technical work is moving.";
@@ -133,7 +132,6 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
     [systems, page, pageSize],
   );
 
-
   // Any change to what is being listed returns to the first page, so the
   // person is never left staring at an empty page that used to have rows.
   function setFilters(next: OpsFilters) {
@@ -174,7 +172,10 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
   const lastSuccessAt = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
   const openIncidents = sumKnown(portfolio.systems, (system) => system.openIssues);
   const needsAttention = portfolio.systems.filter(
-    (system) => system.needsAttention === true || system.health === "incident" || system.health === "attention",
+    (system) =>
+      system.needsAttention === true ||
+      system.health === "incident" ||
+      system.health === "attention",
   ).length;
   // Only a health word Ops actually said counts as healthy.
   const healthy = portfolio.systems.filter((system) => system.health === "healthy").length;
@@ -190,8 +191,6 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
       ? `Ops last pushed ${pushLabel}`
       : opsFreshness(portfolio.lastEventAt, dataUpdatedAt || Date.now());
 
-
-
   return (
     <div className="space-y-10">
       <RoomHero
@@ -203,26 +202,30 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
             <TTButton disabled={busy} onClick={() => void open()}>
               {busy ? "Opening Ops…" : "Open Ops ↗"}
             </TTButton>
-            <TTButton variant="secondary" disabled={busy} onClick={() => void open("/projects/new")}>
+            <TTButton
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void open("/projects/new")}
+            >
               Create in Ops
             </TTButton>
           </>
         }
         metrics={[
           {
-            value: isLoading ? "…" : unavailable ? "—" : portfolio.systems.length,
+            value: isLoading ? "…" : unavailable ? ", " : portfolio.systems.length,
             label: "Managed systems",
           },
           {
-            value: isLoading ? "…" : unavailable ? "—" : needsAttention,
+            value: isLoading ? "…" : unavailable ? ", " : needsAttention,
             label: "Needs attention",
           },
           {
-            value: isLoading || unavailable ? "—" : (openIncidents ?? "—"),
+            value: isLoading || unavailable ? ", " : (openIncidents ?? ", "),
             label: "Open incidents",
           },
           {
-            value: isLoading || unavailable ? "—" : healthy,
+            value: isLoading || unavailable ? ", " : healthy,
             label: "Healthy",
           },
         ]}
@@ -242,10 +245,7 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
       />
 
       {interrupted ? (
-        <div
-          role="alert"
-          className="rounded-xl border border-destructive/30 bg-destructive/10 p-4"
-        >
+        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4">
           <p className="text-[15px] text-destructive">
             {provisioned ? "Ops sync interrupted" : "Ops projection not provisioned"}
           </p>
@@ -283,7 +283,6 @@ function OpsRoom({ identity }: { identity: WorkspaceIdentity }) {
           </TTButton>
         </div>
       ) : null}
-
 
       <section>
         <SectionHeading

@@ -48,12 +48,10 @@ export function ReplyRecordBar({
   return (
     <div className="border-t border-border bg-card px-4 pb-4 pt-0 sm:px-5">
       <div className="flex items-center gap-5 border-b border-border">
-        {(
-          [
-            { mode: "reply" as const, label: "Reply" },
-            { mode: "record" as const, label: "Record interaction" },
-          ]
-        ).map((entry) => (
+        {[
+          { mode: "reply" as const, label: "Reply" },
+          { mode: "record" as const, label: "Record interaction" },
+        ].map((entry) => (
           <button
             key={entry.mode}
             type="button"
@@ -131,8 +129,8 @@ export function ReplyRecordBar({
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
           <p className="max-w-[38ch] text-[12px] text-muted-foreground">
-            Add a text, a call, a meeting or a note that happened somewhere else. It keeps your
-            name on it.
+            Add a text, a call, a meeting or a note that happened somewhere else. It keeps your name
+            on it.
           </p>
           <TTButton size="sm" type="button" onClick={onRecordInteraction} disabled={busy}>
             + Add interaction

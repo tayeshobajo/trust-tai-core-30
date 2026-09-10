@@ -4,7 +4,7 @@
  * No authenticated browser session was available, so this is the runbook Tai
  * will follow from the signed-in UI, executed here against the real control
  * layer, the real adapters, the real observer and the real learning rules.
- * Only the outermost IO — Supabase and the room services — is replaced.
+ * Only the outermost IO. Supabase and the room services, is replaced.
  *
  * The cycle proved here is the whole point of V3:
  *
@@ -46,13 +46,23 @@ vi.mock("@/data/supabase/scout-service", () => ({
 }));
 
 vi.mock("@/data/supabase/comms-service", () => ({
-  commsService: { listDrafts: async () => [], saveDraft: vi.fn(), list: async () => [], send: vi.fn() },
+  commsService: {
+    listDrafts: async () => [],
+    saveDraft: vi.fn(),
+    list: async () => [],
+    send: vi.fn(),
+  },
 }));
 vi.mock("@/data/supabase/projects-service", () => ({
   projectsService: { get: async () => null, update: vi.fn(), routeWork: vi.fn() },
 }));
 vi.mock("@/data/supabase/roadmap-service", () => ({
-  roadmapService: { create: vi.fn(), addDecision: vi.fn(), detail: vi.fn(), resolveDecision: vi.fn() },
+  roadmapService: {
+    create: vi.fn(),
+    addDecision: vi.fn(),
+    detail: vi.fn(),
+    resolveDecision: vi.fn(),
+  },
 }));
 
 /* ------------------------------------------------------- governance store */
@@ -83,7 +93,7 @@ vi.mock("@/data/events/control-events", () => ({
   },
 }));
 
-/** Append-only ledger, SELECT/INSERT semantics only — never an update. */
+/** Append-only ledger, SELECT/INSERT semantics only, never an update. */
 const observationLedger: ActionObservation[] = [];
 const learningLedger: LearningRecord[] = [];
 
@@ -109,9 +119,8 @@ const { runObservationPass, observableActions } = await import("./outcome-servic
 const { relevantLearning } = await import("./learning");
 const { buildExecutionRead } = await import("@/data/intelligence/conductor/execution-read");
 const { answerQuestion } = await import("@/data/intelligence/conductor");
-const { buildControlledActions, routability } = await import(
-  "@/data/intelligence/conductor/control"
-);
+const { buildControlledActions, routability } =
+  await import("@/data/intelligence/conductor/control");
 const { ROOM_ADAPTERS } = await import("./adapters");
 
 /* ------------------------------------------------------------- fixtures */
@@ -175,7 +184,7 @@ beforeEach(() => {
 
 /* ------------------------------------------------------------ stage one */
 
-describe("stage 1 — a question yields a governed cross-room recommendation", () => {
+describe("stage 1, a question yields a governed cross-room recommendation", () => {
   it("produces governed actions, but none of them can be routed today", async () => {
     const snapshot = {
       ...emptySnapshot(ORG, NOW),
@@ -209,7 +218,7 @@ describe("stage 1 — a question yields a governed cross-room recommendation", (
     /*
      * The honest gap. Every action a question can currently produce is either
      * informational or names an operation no adapter claims, so the cycle
-     * cannot begin from reasoning alone — a person must supply the subject.
+     * cannot begin from reasoning alone, a person must supply the subject.
      */
     const routable = actions.filter(
       (action) =>
@@ -226,7 +235,7 @@ describe("stage 1 — a question yields a governed cross-room recommendation", (
 
 /* -------------------------------------------------- stages two to seven */
 
-describe("stages 2-7 — approve one branch, route it, observe it once, learn modestly", () => {
+describe("stages 2-7, approve one branch, route it, observe it once, learn modestly", () => {
   it("runs the whole loop and records exactly one result", async () => {
     const queue = [discoveryAction(), heldBranch()];
 
@@ -279,9 +288,7 @@ describe("stages 2-7 — approve one branch, route it, observe it once, learn mo
     expect(second.skipped.some((row) => row.because.includes("same result"))).toBe(true);
 
     /* The held branch is never observed. */
-    expect(
-      first.skipped.some((row) => row.actionId === "action:first-cycle:comms"),
-    ).toBe(true);
+    expect(first.skipped.some((row) => row.actionId === "action:first-cycle:comms")).toBe(true);
 
     /* 7. One result. Modest, provenanced, and not a rule. */
     expect(learningLedger).toHaveLength(1);
@@ -312,10 +319,15 @@ describe("stages 2-7 — approve one branch, route it, observe it once, learn mo
     const routed = [outcome.action];
     const receiptsFor = outcome.receipt ? [outcome.receipt] : [];
 
-    await runObservationPass({ organizationId: ORG, actions: routed, receipts: receiptsFor, now: NOW });
+    await runObservationPass({
+      organizationId: ORG,
+      actions: routed,
+      receipts: receiptsFor,
+      now: NOW,
+    });
     expect(observationLedger).toHaveLength(1);
 
-    /* Scout loses the run — a different reading, honestly recorded. */
+    /* Scout loses the run, a different reading, honestly recorded. */
     scoutRunHistory.length = 0;
     const again = await runObservationPass({
       organizationId: ORG,
@@ -346,7 +358,7 @@ describe("stages 2-7 — approve one branch, route it, observe it once, learn mo
 
 /* ----------------------------------------------- stages eight to ten */
 
-describe("stages 8-10 — the next answer knows, without gaining authority", () => {
+describe("stages 8-10, the next answer knows, without gaining authority", () => {
   async function cycle() {
     const approved = { ...discoveryAction(), status: "approved" } as ControlledAction;
     const outcome = await routeAction(approved, [approved], owner, actor, ROOM_ADAPTERS, NOW);
@@ -440,7 +452,11 @@ describe("stages 8-10 — the next answer knows, without gaining authority", () 
   });
 
   it("holds the organization boundary", async () => {
-    const foreign = { ...discoveryAction(), organizationId: "org-other", status: "approved" } as ControlledAction;
+    const foreign = {
+      ...discoveryAction(),
+      organizationId: "org-other",
+      status: "approved",
+    } as ControlledAction;
     const outcome = await routeAction(foreign, [foreign], owner, actor, ROOM_ADAPTERS, NOW);
     expect(outcome.refusedBecause).toContain("another organization");
     expect(scoutDiscover).not.toHaveBeenCalled();

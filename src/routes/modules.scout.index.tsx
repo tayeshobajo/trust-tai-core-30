@@ -13,6 +13,9 @@ import { ScoutPagination } from "@/components/tt/scout/pagination";
 import { ScoutSidebar } from "@/components/tt/scout/sidebar";
 import { ScoutSupportRail } from "@/components/tt/scout/support-rail";
 import { WorthKnowingQueue } from "@/components/tt/scout/worth-knowing";
+import { ScoutWatchlist } from "@/components/tt/scout/watchlist";
+import { ScoutMovement } from "@/components/tt/scout/movement";
+import { NeedsAPerson } from "@/components/tt/scout/needs-person";
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { scoutService } from "@/data/supabase/scout-service";
@@ -33,17 +36,28 @@ import { looksLikeWebsite } from "@/lib/website-url";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 import { formatChecked } from "@/components/tt/fit-light";
 
-
 const TITLE = "Scout · Trust Tai OS";
 const DESCRIPTION =
   "Source real companies from a plain-English target, rank them against the active ICP, and see the evidence behind every read.";
 
-type Tab = "scout" | "worth_knowing" | "qualified" | "research";
+type Tab = "ready" | "movement" | "needs_person" | "all" | "watchlist";
 
+/**
+ * Canonical sections, with the older values older links still carry mapped
+ * onto them so no existing link breaks.
+ */
 function parseSection(value: unknown): Tab {
-  return value === "worth_knowing" || value === "qualified" || value === "research"
-    ? value
-    : "scout";
+  if (
+    value === "ready" ||
+    value === "movement" ||
+    value === "needs_person" ||
+    value === "all" ||
+    value === "watchlist"
+  ) {
+    return value;
+  }
+  if (value === "worth_knowing") return "ready";
+  return "all";
 }
 
 function parseFit(value: unknown): FitFilter {
@@ -79,7 +93,6 @@ function ScoutRoute() {
     </WorkspaceGate>
   );
 }
-
 
 const LIGHT_RANK: Record<FitLight, number> = { green: 3, yellow: 2, neutral: 1, red: 0 };
 
@@ -188,12 +201,9 @@ function Scout({
   const all = useMemo(() => saved.data ?? [], [saved.data]);
 
   const board = useMemo(() => {
-    const active =
-      tab === "qualified"
-        ? all.filter(
-            (c) => c.prospect.status === "qualified" || c.prospect.status === "ready_for_comms",
-          )
-        : all.filter((c) => c.prospect.status !== "passed" && c.prospect.status !== "archived");
+    const active = all.filter(
+      (c) => c.prospect.status !== "passed" && c.prospect.status !== "archived",
+    );
     const filtered =
       filter === "all" ? active : active.filter((c) => c.evaluation.light === filter);
     // Fit still leads the board, but within a colour the priority score decides
@@ -214,7 +224,7 @@ function Scout({
       if (score !== 0) return score;
       return b.lastCheckedAt.localeCompare(a.lastCheckedAt);
     });
-  }, [all, tab, filter]);
+  }, [all, filter]);
 
   /** Scout at a glance, counts read from live board state only. */
   const glance = useMemo(() => {
@@ -227,7 +237,8 @@ function Scout({
         (c) => c.prospect.status === "qualified" || c.prospect.status === "ready_for_comms",
       ).length,
       inIcp: active.filter((c) => c.evaluation.light === "green").length,
-      highPotential: active.filter((c) => c.evaluation.scoreable && c.evaluation.score >= 80).length,
+      highPotential: active.filter((c) => c.evaluation.scoreable && c.evaluation.score >= 80)
+        .length,
       needsReview: active.filter((c) => !c.evaluation.scoreable).length,
     };
   }, [all]);
@@ -284,228 +295,244 @@ function Scout({
     >
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1 space-y-6">
-        {/* 1, Boxed room hero: statement, one real action, live Scout numbers. */}
-        <RoomHero
-          eyebrow="Scout"
-          title="Who deserves our attention next?"
-          supporting="Real companies, ranked against the active ICP, with the evidence behind every read."
-          actions={
-            <TTButton asChild variant="secondary">
-              <Link to="/modules/scout/settings">ICP settings</Link>
-            </TTButton>
-          }
-          metrics={[
-            { value: glance.onBoard, label: "On board" },
-            { value: glance.qualified, label: "Qualified" },
-            { value: glance.inIcp, label: "In ICP" },
-            {
-              value: driver.isPending ? "…" : since(driver.data?.lastRunAt ?? null),
-              label: "Last run",
-            },
-          ]}
-          footer={
-            driver.data?.status === "blocked" ? (
-              <p className="text-[13px] text-destructive">
-                Needs human review before Scout can continue cleanly.
-              </p>
-            ) : null
-          }
-        />
-
-        {/* 3, Sections. */}
-        <ScoutTabs active={tab} />
-
-        {/* Sourcing input, a real capability, kept compact. */}
-        <section>
-          <form
-            className="rounded-xl border border-border bg-card p-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              run(query);
-            }}
-          >
-            <label htmlFor="scout-query" className="sr-only">
-              Describe the market to source, or paste one company website
-            </label>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <input
-                id="scout-query"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="e.g. IT companies in Nashville, or paste one company website"
-                className="h-10 w-full rounded-lg border border-input bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <TTButton
-                type="submit"
-                size="sm"
-                disabled={busy || blocked || !query.trim()}
-                className="shrink-0"
-              >
-                {research.isPending
-                  ? "Researching…"
-                  : discover.isPending
-                    ? "Sourcing…"
-                    : isWebsite
-                      ? "Research website"
-                      : "Run Scout"}
+          {/* 1, Boxed room hero: statement, one real action, live Scout numbers. */}
+          <RoomHero
+            eyebrow="Scout"
+            title="Who deserves our attention next?"
+            supporting="Real companies, ranked against the active ICP, with the evidence behind every read."
+            actions={
+              <TTButton asChild variant="secondary">
+                <Link to="/modules/scout/settings">ICP settings</Link>
               </TTButton>
-            </div>
-            <div className="mt-2.5 flex flex-wrap items-center gap-3">
-              <p className="text-xs text-muted-foreground">
-                {isWebsite
-                  ? "Live public website research. Public pages only, no private data."
-                  : "Live market sourcing from the public web. Every company is saved with its sources."}
-              </p>
-              {icp.data ? (
-                <MetaPill>Using ICP v{icp.data.version}</MetaPill>
-              ) : icp.isPending ? null : (
-                <MetaPill>No ICP saved</MetaPill>
-              )}
-              {status.data?.model ? <MetaPill>{status.data.model}</MetaPill> : null}
-            </div>
-            {tab === "scout" ? (
-              <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
-                {SCOUT_STARTER_PROMPTS.map((prompt) => (
-                  <button
-                    key={prompt}
-                    type="button"
-                    onClick={() => run(prompt)}
-                    className="rounded-full border border-border bg-card px-3 py-1.5 text-left text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {prompt}
-                  </button>
-                ))}
+            }
+            metrics={[
+              { value: glance.onBoard, label: "On board" },
+              { value: glance.qualified, label: "Qualified" },
+              { value: glance.inIcp, label: "In ICP" },
+              {
+                value: driver.isPending ? "…" : since(driver.data?.lastRunAt ?? null),
+                label: "Last run",
+              },
+            ]}
+            footer={
+              driver.data?.status === "blocked" ? (
+                <p className="text-[13px] text-destructive">
+                  Needs human review before Scout can continue cleanly.
+                </p>
+              ) : null
+            }
+          />
+
+          {/* 3, Sections. */}
+          <ScoutTabs active={tab} />
+
+          {/* Sourcing input, a real capability, kept compact. */}
+          <section>
+            <form
+              className="rounded-xl border border-border bg-card p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                run(query);
+              }}
+            >
+              <label htmlFor="scout-query" className="sr-only">
+                Describe the market to source, or paste one company website
+              </label>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <input
+                  id="scout-query"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="e.g. IT companies in Nashville, or paste one company website"
+                  className="h-10 w-full rounded-lg border border-input bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <TTButton
+                  type="submit"
+                  size="sm"
+                  disabled={busy || blocked || !query.trim()}
+                  className="shrink-0"
+                >
+                  {research.isPending
+                    ? "Researching…"
+                    : discover.isPending
+                      ? "Sourcing…"
+                      : isWebsite
+                        ? "Research website"
+                        : "Run Scout"}
+                </TTButton>
+              </div>
+              <div className="mt-2.5 flex flex-wrap items-center gap-3">
+                <p className="text-xs text-muted-foreground">
+                  {isWebsite
+                    ? "Live public website research. Public pages only, no private data."
+                    : "Live market sourcing from the public web. Every company is saved with its sources."}
+                </p>
+                {icp.data ? (
+                  <MetaPill>Using ICP v{icp.data.version}</MetaPill>
+                ) : icp.isPending ? null : (
+                  <MetaPill>No ICP saved</MetaPill>
+                )}
+                {status.data?.model ? <MetaPill>{status.data.model}</MetaPill> : null}
+              </div>
+              {tab === "all" ? (
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+                  {SCOUT_STARTER_PROMPTS.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onClick={() => run(prompt)}
+                      className="rounded-full border border-border bg-card px-3 py-1.5 text-left text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </form>
+
+            {!configured ? (
+              <div role="status" className="tt-surface mt-3 p-4 text-sm text-muted-foreground">
+                <p className="text-foreground">Market sourcing is not connected yet.</p>
+                <p className="mt-1">
+                  Scout uses OpenAI directly when{" "}
+                  <span className="font-mono text-[12px]">OPENAI_API_KEY</span> is set, and falls
+                  back to the Lovable AI Gateway when only{" "}
+                  <span className="font-mono text-[12px]">LOVABLE_API_KEY</span> is present. Add one
+                  in project secrets to enable live market sourcing. Pasting a single company
+                  website still works, and nothing here is ever filled with demo data.
+                </p>
               </div>
             ) : null}
-          </form>
 
-          {!configured ? (
-            <div role="status" className="tt-surface mt-3 p-4 text-sm text-muted-foreground">
-              <p className="text-foreground">Market sourcing is not connected yet.</p>
-              <p className="mt-1">
-                Scout uses OpenAI directly when{" "}
-                <span className="font-mono text-[12px]">OPENAI_API_KEY</span> is set, and falls back
-                to the Lovable AI Gateway when only{" "}
-                <span className="font-mono text-[12px]">LOVABLE_API_KEY</span> is present. Add one in
-                project secrets to enable live market sourcing. Pasting a single company website
-                still works, and nothing here is ever filled with demo data.
-              </p>
-            </div>
-          ) : null}
-
-          {zenMode.data?.importEnabled && zenMode.data.provider.configured ? (
-            <div className="tt-surface mt-3 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-sm text-foreground">LinkedIn leads from ZenMode</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Brings across everyone the ZenMode campaign has already found. It sends nothing
-                  and starts no scrape — that happens in the ZenMode app. Safe to run again;
-                  companies already on the board are left exactly as they are.
-                </p>
-                {importZenMode.data ? (
-                  <p role="status" aria-live="polite" className="mt-2 text-xs text-foreground">
-                    {importZenMode.data.disabled
-                      ? "The ZenMode import is switched off on this deployment."
-                      : `${importZenMode.data.imported} added, ${importZenMode.data.duplicates} already here` +
-                        (importZenMode.data.skipped
-                          ? `, ${importZenMode.data.skipped} skipped with no LinkedIn profile to anchor on.`
-                          : ".")}
+            {zenMode.data?.importEnabled && zenMode.data.provider.configured ? (
+              <div className="tt-surface mt-3 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm text-foreground">LinkedIn leads from ZenMode</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Brings across everyone the ZenMode campaign has already found. It sends nothing
+                    and starts no scrape, that happens in the ZenMode app. Safe to run again;
+                    companies already on the board are left exactly as they are.
                   </p>
-                ) : null}
+                  {importZenMode.data ? (
+                    <p role="status" aria-live="polite" className="mt-2 text-xs text-foreground">
+                      {importZenMode.data.disabled
+                        ? "The ZenMode import is switched off on this deployment."
+                        : `${importZenMode.data.imported} added, ${importZenMode.data.duplicates} already here` +
+                          (importZenMode.data.skipped
+                            ? `, ${importZenMode.data.skipped} skipped with no LinkedIn profile to anchor on.`
+                            : ".")}
+                    </p>
+                  ) : null}
+                </div>
+                <TTButton
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="shrink-0"
+                  disabled={busy}
+                  onClick={() => importZenMode.mutate()}
+                >
+                  {importZenMode.isPending ? "Importing…" : "Import ZenMode leads"}
+                </TTButton>
               </div>
-              <TTButton
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="shrink-0"
-                disabled={busy}
-                onClick={() => importZenMode.mutate()}
+            ) : null}
+
+            {discover.isPending || stages.length > 0 ? (
+              <DiscoveryProgress
+                stages={stages}
+                running={discover.isPending}
+                query={query.trim()}
+              />
+            ) : null}
+
+            {research.isPending ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="tt-surface mt-3 flex items-center gap-3 p-4 text-sm text-muted-foreground"
               >
-                {importZenMode.isPending ? "Importing…" : "Import ZenMode leads"}
-              </TTButton>
-            </div>
-          ) : null}
+                <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-royal" />
+                Reading the public pages on {query.trim()}. This takes a few moments.
+              </div>
+            ) : null}
 
-          {discover.isPending || stages.length > 0 ? (
-            <DiscoveryProgress stages={stages} running={discover.isPending} query={query.trim()} />
-          ) : null}
-
-          {research.isPending ? (
-            <div
-              role="status"
-              aria-live="polite"
-              className="tt-surface mt-3 flex items-center gap-3 p-4 text-sm text-muted-foreground"
-            >
-              <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-royal" />
-              Reading the public pages on {query.trim()}. This takes a few moments.
-            </div>
-          ) : null}
-
-          {error ? (
-            <p role="alert" className="mt-3 text-sm text-destructive">
-              {error.message}
-            </p>
-          ) : null}
-        </section>
-
-        {tab === "research" ? (
-          <>
-            <DiscoveryRuns runs={runs.data ?? []} />
-            <ResearchHistory candidates={all} linkSearch={{ section: tab, fit: filter }} />
-          </>
-        ) : tab === "worth_knowing" ? (
-          <WorthKnowingQueue
-            candidates={all}
-            identity={identity}
-            linkSearch={{ section: tab, fit: filter }}
-          />
-        ) : (
-          <section className="space-y-3">
-            {/* 4, Search + compact filters. */}
-            <ScoutFilterToolbar
-              filters={filters}
-              industries={industries}
-              locations={locations}
-              sizes={sizes}
-              onChange={(next) => {
-                setFilters(next);
-                if (next.fit !== filter) setFilter(next.fit);
-              }}
-            />
-
-            {/* 5, The main paginated company table. */}
-            {board.length === 0 ? (
-              <EmptyState
-                title={tab === "qualified" ? "Nothing qualified yet" : "The board is empty"}
-                belongsHere={
-                  tab === "qualified"
-                    ? "Companies you qualify in Scout appear here with their next move."
-                    : "Describe a market above and Scout sources real companies, each with the sources it read."
-                }
-                whyItMatters="Fit is judged conservatively: thin evidence never reads green, and unknown is never treated as a mismatch."
-              />
-            ) : rows.length === 0 ? (
-              <EmptyState
-                title="No companies match these filters"
-                belongsHere="Clear a filter or widen the search to see the rest of the board."
-                whyItMatters="Filtering never removes a company, it only narrows what you are looking at."
-              />
-            ) : (
-              <ScoutCompanyTable
-                candidates={view.rows}
-                linkSearch={{ section: tab, fit: filter }}
-                footer={
-                  <ScoutPagination
-                    view={view}
-                    pageSize={pageSize}
-                    onPage={setPage}
-                    onPageSize={setPageSize}
-                  />
-                }
-              />
-            )}
+            {error ? (
+              <p role="alert" className="mt-3 text-sm text-destructive">
+                {error.message}
+              </p>
+            ) : null}
           </section>
-        )}
+
+          {tab === "ready" ? (
+            <WorthKnowingQueue
+              candidates={all}
+              identity={identity}
+              linkSearch={{ section: tab, fit: filter }}
+            />
+          ) : tab === "movement" ? (
+            <ScoutMovement candidates={all} linkSearch={{ section: tab, fit: filter }} />
+          ) : tab === "needs_person" ? (
+            <NeedsAPerson candidates={all} linkSearch={{ section: tab, fit: filter }} />
+          ) : tab === "watchlist" ? (
+            <ScoutWatchlist
+              candidates={all}
+              identity={identity}
+              linkSearch={{ section: tab, fit: filter }}
+            />
+          ) : (
+            <section className="space-y-3">
+              {/* 4, Search + compact filters. */}
+              <ScoutFilterToolbar
+                filters={filters}
+                industries={industries}
+                locations={locations}
+                sizes={sizes}
+                onChange={(next) => {
+                  setFilters(next);
+                  if (next.fit !== filter) setFilter(next.fit);
+                }}
+              />
+
+              {/* 5, The main paginated company table. */}
+              {board.length === 0 ? (
+                <EmptyState
+                  title="The board is empty"
+                  belongsHere="Describe a market above and Scout sources real companies, each with the sources it read."
+                  whyItMatters="Fit is judged conservatively: thin evidence never reads green, and unknown is never treated as a mismatch."
+                />
+              ) : rows.length === 0 ? (
+                <EmptyState
+                  title="No companies match these filters"
+                  belongsHere="Clear a filter or widen the search to see the rest of the board."
+                  whyItMatters="Filtering never removes a company. It only narrows what you are looking at."
+                />
+              ) : (
+                <ScoutCompanyTable
+                  candidates={view.rows}
+                  linkSearch={{ section: tab, fit: filter }}
+                  footer={
+                    <ScoutPagination
+                      view={view}
+                      pageSize={pageSize}
+                      onPage={setPage}
+                      onPageSize={setPageSize}
+                    />
+                  }
+                />
+              )}
+
+              {/* Research history stays reachable, quietly, under the board. */}
+              <details className="rounded-xl border border-border bg-card p-4">
+                <summary className="cursor-pointer text-sm font-medium text-foreground">
+                  Research history
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <DiscoveryRuns runs={runs.data ?? []} />
+                  <ResearchHistory candidates={all} linkSearch={{ section: tab, fit: filter }} />
+                </div>
+              </details>
+            </section>
+          )}
         </div>
 
         <ScoutSupportRail glance={glance} />
@@ -513,7 +540,6 @@ function Scout({
     </AppShell>
   );
 }
-
 
 function since(value: string | null): string {
   if (!value) return "No run recorded";
@@ -534,9 +560,7 @@ function ScoutDriverCard({
   driver,
   loading,
 }: {
-  driver:
-    | Awaited<ReturnType<typeof getScoutDriver>>
-    | undefined;
+  driver: Awaited<ReturnType<typeof getScoutDriver>> | undefined;
   loading: boolean;
 }) {
   const blocked = driver?.status === "blocked";
@@ -592,7 +616,8 @@ function ScoutDriverCard({
       </dl>
 
       <p className="mt-4 text-sm text-foreground">
-        Last output: {loading ? "Reading Scout state…" : driver?.lastOutput ?? "No recorded output yet"}
+        Last output:{" "}
+        {loading ? "Reading Scout state…" : (driver?.lastOutput ?? "No recorded output yet")}
       </p>
       {blocked ? (
         <p className="mt-2 text-sm text-destructive">

@@ -57,7 +57,7 @@ export interface ConversationEvent {
   body?: string;
   /** Sanitized email HTML, when the message carried layout worth keeping. */
   htmlBody?: string;
-  /** Remote images refused at ingest — surfaced, never silently dropped. */
+  /** Remote images refused at ingest, surfaced, never silently dropped. */
   blockedRemoteImages?: number;
   /** Where this came from, in plain words. Never a vendor id. */
   source?: string;
@@ -68,7 +68,7 @@ export interface ConversationEvent {
   retracted?: boolean;
   /** Files on the message. Gmail-native ones download on demand. */
   attachments?: AttachmentMeta[];
-  /** The comms_messages row behind a synced email — the download handle. */
+  /** The comms_messages row behind a synced email, the download handle. */
   messageId?: string;
 }
 
@@ -91,8 +91,8 @@ export function kindOfTouch(touch: Touch): ConversationEventKind {
 
 /**
  * Touches, synced mailbox messages, and drafts as one ordered thread, oldest
- * first. A synced message is its own record — it is never copied into a touch
- * — and says so in plain words, so a line an integration observed never reads
+ * first. A synced message is its own record, it is never copied into a touch
+ *, and says so in plain words, so a line an integration observed never reads
  * as something a person typed.
  */
 export function conversationTimeline(
@@ -142,9 +142,7 @@ export function conversationTimeline(
       title,
       ...(body ? { body } : {}),
       ...(message.bodyHtml ? { htmlBody: message.bodyHtml } : {}),
-      ...(message.blockedRemoteImages
-        ? { blockedRemoteImages: message.blockedRemoteImages }
-        : {}),
+      ...(message.blockedRemoteImages ? { blockedRemoteImages: message.blockedRemoteImages } : {}),
       source,
       meta: "email",
       ...(message.attachments?.length ? { attachments: message.attachments } : {}),
@@ -155,7 +153,7 @@ export function conversationTimeline(
   for (const draft of drafts) {
     if (draft.reviewState === "discarded") continue;
     const verification = readDraftVerification(draft.rationale);
-    // Files the person staged, or files a send carried — whichever is true now.
+    // Files the person staged, or files a send carried, whichever is true now.
     const send = readDraftSend(draft.rationale);
     const staged = readOutgoingAttachments(draft.rationale);
     const files = staged.length > 0 ? staged : (send?.attachments ?? []);
@@ -171,9 +169,7 @@ export function conversationTimeline(
     });
   }
 
-  return events.sort(
-    (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime(),
-  );
+  return events.sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
 }
 
 export interface ConversationDay {
@@ -194,10 +190,7 @@ function dayLabel(date: Date, now: Date): string {
 }
 
 /** The same thread, split by day so it reads like a conversation. */
-export function groupByDay(
-  events: ConversationEvent[],
-  now: Date = new Date(),
-): ConversationDay[] {
+export function groupByDay(events: ConversationEvent[], now: Date = new Date()): ConversationDay[] {
   const days = new Map<string, ConversationEvent[]>();
   for (const event of events) {
     const date = new Date(event.occurredAt);

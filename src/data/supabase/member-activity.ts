@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — in-app presence.
+ * Trust Tai OS, in-app presence.
  *
  * Signing in and working are two different truths. Supabase Auth owns the
  * first; this owns the second: the last time a person opened a room. A person

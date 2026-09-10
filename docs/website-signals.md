@@ -74,9 +74,9 @@ Canonical entities are reused, not duplicated:
 
 New, bounded (`docs/website-signals-schema.sql`):
 
-- `public.website_intake_submissions` — raw inbound intake, provenance,
+- `public.website_intake_submissions`, raw inbound intake, provenance,
   idempotency, and the Scout link or the deliberate non-link
-- `public.website_events` — the small attention/funnel vocabulary
+- `public.website_events`, the small attention/funnel vocabulary
 
 Both are org-scoped with RLS: members read, only the service role writes.
 

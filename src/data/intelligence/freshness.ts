@@ -3,7 +3,7 @@
  *
  * One question: for each room, is the intelligence layer reading it now, only
  * partly, or not at all? Pure over a context bundle and the shared activity
- * stream. It never repairs anything and never guesses — a room with no rows
+ * stream. It never repairs anything and never guesses, a room with no rows
  * reads MISSING, which is a truthful answer.
  */
 

@@ -1,7 +1,7 @@
 /**
  * Proof that a human-sent draft actually reached the mailbox.
  *
- * Comms never sends email. A person marks an approved draft as sent — that is
+ * Comms never sends email. A person marks an approved draft as sent, that is
  * a claim. The mailbox, read back later, is the evidence. This module is the
  * deterministic rule that reconciles the two, and it is deliberately strict:
  *
@@ -144,7 +144,7 @@ export function matchSentDraft(
   }
 
   // A recipient match alone only narrows the field; something about the
-  // content itself — subject line or opening words — must agree.
+  // content itself, subject line or opening words, must agree.
   if (!matchedBy.includes("subject") && !matchedBy.includes("body")) return null;
   return matchedBy;
 }
@@ -208,14 +208,14 @@ export function draftProvenanceLabel(
   reviewState: string,
   verification: DraftVerification | null,
 ): string {
-  if (verification) return "Sent — seen in the mailbox";
+  if (verification) return "Sent, seen in the mailbox";
   switch (reviewState) {
     case "sent":
-      return "Sent via Gmail — not yet seen in the mailbox";
+      return "Sent via Gmail, not yet seen in the mailbox";
     case "sending":
       return "Sending via Gmail…";
     case "send_failed":
-      return "Send failed — the draft is kept, retry or open in Gmail";
+      return "Send failed, the draft is kept, retry or open in Gmail";
     case "approved":
       return "Approved, waiting to be sent";
     default:

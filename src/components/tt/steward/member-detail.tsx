@@ -24,13 +24,19 @@ function SaidVsDone({ tasks }: { tasks: StewardTask[] }) {
         <li key={task.key} className="border-b border-border/60 pb-3 last:border-b-0">
           <p className="text-sm text-foreground">Said: {task.title}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Done: {task.state === "complete" ? "Recorded complete" : STEWARD_STATE_LABEL[task.state]}
+            Done:{" "}
+            {task.state === "complete" ? "Recorded complete" : STEWARD_STATE_LABEL[task.state]}
             {task.dueAt ? ` · due ${task.dueAt.slice(0, 10)}` : ""}
           </p>
           {task.evidence[0] ? (
             <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {task.evidence[0].url ? (
-                <a href={task.evidence[0].url} target="_blank" rel="noreferrer" className="hover:underline">
+                <a
+                  href={task.evidence[0].url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:underline"
+                >
                   {task.evidence[0].label}
                 </a>
               ) : (

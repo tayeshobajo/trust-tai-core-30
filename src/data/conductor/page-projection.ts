@@ -1,7 +1,7 @@
 /**
  * What the Conductor room can honestly say about itself, in numbers.
  *
- * Every count here is read from the governed action ledger and its receipts 
+ * Every count here is read from the governed action ledger and its receipts
  * the same records the approval queue works from. Nothing is a second copy of
  * a room's truth, and nothing is inferred: an action that has been handed over
  * is reported as handed over, never as done.

@@ -15,9 +15,7 @@ export interface SchemaStatusProps {
 
 export function SchemaStatus({ health, checking }: SchemaStatusProps) {
   if (checking && !health) {
-    return (
-      <p className="text-xs text-[var(--tt-ink-muted)]">Checking the ledger…</p>
-    );
+    return <p className="text-xs text-[var(--tt-ink-muted)]">Checking the ledger…</p>;
   }
   if (!health) return null;
 

@@ -72,7 +72,11 @@ describe("Scout company → Person card → Comms → Scout inbox", () => {
       prospectId: PROSPECT_ID,
       companyName: "Northline Systems",
       person,
-      identity: { fullName: "Dana Reyes", roleTitle: "Head of Operations", companyName: "Northline Systems" },
+      identity: {
+        fullName: "Dana Reyes",
+        roleTitle: "Head of Operations",
+        companyName: "Northline Systems",
+      },
     });
     expect(again.prepared?.created).toBe(false);
     expect(again.prepared?.relationshipId).toBe(relationshipId);

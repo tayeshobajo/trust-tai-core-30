@@ -8,7 +8,7 @@ function record(error: unknown) {
   lastCapturedError = { error, at: Date.now() };
 }
 
-// h3's HTTPError serializes to {"status":500,"unhandled":true,"message":"HTTPError"} 
+// h3's HTTPError serializes to {"status":500,"unhandled":true,"message":"HTTPError"}
 // no stack, no cause, so a plain console.error(error) reaches the log pipeline with
 // the failure detail stripped. Expand Error-like args into a string that keeps the
 // message, stack, and the full cause chain.

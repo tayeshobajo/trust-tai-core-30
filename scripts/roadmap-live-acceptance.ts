@@ -1,5 +1,5 @@
 /**
- * Roadmap live acceptance run — DEVELOPMENT/QA ONLY.
+ * Roadmap live acceptance run. DEVELOPMENT/QA ONLY.
  *
  * Unlike scripts/roadmap-gold-standard-qa.ts, this one runs against the real
  * Trust Tai Supabase project as a signed-in person, so every read and write
@@ -80,7 +80,7 @@ const detail = await roadmapService.create(
   context,
 );
 const roadmapId = detail.roadmap.id;
-log("roadmap", `${roadmapId} — ${detail.roadmap.title}`);
+log("roadmap", `${roadmapId}, ${detail.roadmap.title}`);
 
 /* ---------------------------------------------------------------- research */
 
@@ -88,12 +88,15 @@ log("RESEARCH (live web, persisted)");
 let result: Awaited<ReturnType<typeof collectResearch>> | null = null;
 async function collectResearch() {
   let out: any = null;
-  for await (const stage of researchSubject({
-    subjectLabel,
-    objective,
-    ...(website ? { website } : {}),
-    known: [],
-  }, offlineCaller)) {
+  for await (const stage of researchSubject(
+    {
+      subjectLabel,
+      objective,
+      ...(website ? { website } : {}),
+      known: [],
+    },
+    offlineCaller,
+  )) {
     console.log(`  [${stage.stage}] ${stage.message}`);
     if (stage.stage === "error") throw new Error(String(stage.message));
     if (stage.stage === "complete") out = stage.data;
@@ -148,7 +151,13 @@ const approvable: string[] = [
 ].filter((k): k is string => Boolean(k));
 
 for (const key of approvable) {
-  strategy = await roadmapIntel.setStrategyApproval(context, strategy, key, "approved", subjectLabel);
+  strategy = await roadmapIntel.setStrategyApproval(
+    context,
+    strategy,
+    key,
+    "approved",
+    subjectLabel,
+  );
 }
 log("approved by a person", approvable);
 log(
@@ -169,24 +178,33 @@ const candidates = normalizeMilestones(result.milestones, {
   model: result.model,
   checkedAt: result.checkedAt,
 });
-let milestones = await roadmapIntel.replaceCandidates(
-  context,
-  roadmapId,
-  subjectLabel,
-  candidates,
-);
+let milestones = await roadmapIntel.replaceCandidates(context, roadmapId, subjectLabel, candidates);
 log("MILESTONES (persisted candidates)");
 for (const m of rankMilestones(candidates)) {
   console.log(`  #${m.recommendedSequence} [${m.priorityScore}] ${m.name} (${m.confidence})`);
 }
 
-const shortlist = [...milestones].sort((a, b) => a.recommendedSequence - b.recommendedSequence).slice(0, 3);
+const shortlist = [...milestones]
+  .sort((a, b) => a.recommendedSequence - b.recommendedSequence)
+  .slice(0, 3);
 for (const m of shortlist) {
-  const updated = await roadmapIntel.setMilestoneStatus(context, m, "approved", subjectLabel, "Live acceptance run");
+  const updated = await roadmapIntel.setMilestoneStatus(
+    context,
+    m,
+    "approved",
+    subjectLabel,
+    "Live acceptance run",
+  );
   milestones = milestones.map((x) => (x.id === updated.id ? updated : x));
 }
-log("approved by a person", shortlist.map((m) => m.name));
-log("build order", buildOrder(milestones).map((m) => `${m.recommendedSequence}. ${m.name} [${m.status}]`));
+log(
+  "approved by a person",
+  shortlist.map((m) => m.name),
+);
+log(
+  "build order",
+  buildOrder(milestones).map((m) => `${m.recommendedSequence}. ${m.name} [${m.status}]`),
+);
 
 /* ------------------------------------------------------------------ studio */
 
@@ -202,13 +220,16 @@ log("STUDIO");
 log("packet (from stored rows)", packetSummary(packet));
 
 let composed: { title?: string; sections: ArtifactSection[]; rejected: any[] } | null = null;
-for await (const stage of composeStudioDocument({
-  kind: "full",
-  subjectLabel,
-  strategy: reloaded.strategy!,
-  milestones: reloaded.milestones,
-  research: reloaded.research,
-}, offlineCaller)) {
+for await (const stage of composeStudioDocument(
+  {
+    kind: "full",
+    subjectLabel,
+    strategy: reloaded.strategy!,
+    milestones: reloaded.milestones,
+    research: reloaded.research,
+  },
+  offlineCaller,
+)) {
   console.log(`  [${stage.stage}] ${stage.message}`);
   if (stage.stage === "error") throw new Error(JSON.stringify(stage.data));
   if (stage.stage === "complete") composed = stage.data as typeof composed;
@@ -230,7 +251,9 @@ log("artifact saved", `${artifact.id} v${artifact.version} humanEdited=${artifac
 /* --------------------------------------- human edit + protection + versions */
 
 const edited: ArtifactSection[] = artifact.sections.map((section, index) =>
-  index === 0 ? { ...section, body: [...section.body, "Reviewed and signed off by Tai."] } : section,
+  index === 0
+    ? { ...section, body: [...section.body, "Reviewed and signed off by Tai."] }
+    : section,
 );
 artifact = await roadmapIntel.editArtifact(context, artifact, edited);
 log("hand edited", `v${artifact.version} humanEdited=${artifact.humanEdited}`);
@@ -270,15 +293,22 @@ for (const question of [
   `What is the central business truth for ${subjectLabel}, and what backs it?`,
   `What was ${subjectLabel}'s exact revenue last quarter?`,
 ]) {
-  const answer = await answerRoadmapQuestion({
-    question,
-    subjectLabel,
-    context: { research: stored.research, strategy: stored.strategy, milestones: stored.milestones },
-    research: false,
-  }, offlineCaller);
+  const answer = await answerRoadmapQuestion(
+    {
+      question,
+      subjectLabel,
+      context: {
+        research: stored.research,
+        strategy: stored.strategy,
+        milestones: stored.milestones,
+      },
+      research: false,
+    },
+    offlineCaller,
+  );
   const saved = await roadmapIntel.saveAnswer(context, roadmapId, { ...answer, question });
   console.log(`\nQ: ${question}`);
   console.log(JSON.stringify({ ...answer, savedId: saved.id }, null, 2));
 }
 
-log("DONE — every step above wrote through RLS as the signed-in person.");
+log("DONE, every step above wrote through RLS as the signed-in person.");

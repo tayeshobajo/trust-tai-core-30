@@ -24,10 +24,7 @@ const DEFAULT_FROM = "Trust Tai OS <invites@trusttai.com>";
 /** Resend's sandbox sender. Only delivers to the Resend account owner. */
 const RESEND_SANDBOX_FROM = "Trust Tai OS <onboarding@resend.dev>";
 
-import {
-  inviteEmailBody,
-  type InviteEmailInput,
-} from "@/lib/invite-email-template";
+import { inviteEmailBody, type InviteEmailInput } from "@/lib/invite-email-template";
 
 export { inviteEmailBody };
 export type { InviteEmailInput };
@@ -37,7 +34,6 @@ export interface InviteEmailResult {
   because: string;
   providerId?: string;
 }
-
 
 interface ResendError {
   statusCode?: number;
@@ -50,10 +46,7 @@ function isDomainUnauthorized(error: ResendError): boolean {
   return message.includes("not authorized to send") || message.includes("domain");
 }
 
-async function sendViaGateway(
-  from: string,
-  input: InviteEmailInput,
-): Promise<InviteEmailResult> {
+async function sendViaGateway(from: string, input: InviteEmailInput): Promise<InviteEmailResult> {
   const lovableKey = process.env["LOVABLE_API_KEY"];
   const resendKey = process.env["RESEND_API_KEY"];
   if (!lovableKey || !resendKey) {

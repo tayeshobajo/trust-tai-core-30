@@ -3,8 +3,8 @@
  *
  * The first proof that the shared runtime supports the flow: before a
  * milestone is executable, Projects asks the runtime "what does an
- * experienced operator need to know?" — over the milestone's context packet,
- * the suite's canon, and the capability registry — and folds the verified
+ * experienced operator need to know?", over the milestone's context packet,
+ * the suite's canon, and the capability registry, and folds the verified
  * RuntimeRead back into the domain contract from
  * src/domain/project-operator-read.ts.
  *
@@ -73,7 +73,7 @@ export function operatorEvidenceFromPacket(packet: ProjectContextPacket): Runtim
   packet.currentWork.forEach((work, index) => {
     evidence.push({
       id: `packet:${packet.project.id}:work:${index}`,
-      statement: `Work in flight: ${work.title} — ${work.status}${work.dueDate ? `, due ${work.dueDate}` : ""}`,
+      statement: `Work in flight: ${work.title}, ${work.status}${work.dueDate ? `, due ${work.dueDate}` : ""}`,
       owningRoom: "projects",
       tier: "derived",
       label: "Current work",
@@ -187,7 +187,7 @@ export function foldOperatorRead(input: {
     fits: capabilities.executable.map((cap) => cap.operation),
     gaps: read.nextSteps
       .filter((step) => step.external)
-      .map((step) => `${step.title} — external; a person carries it`),
+      .map((step) => `${step.title}, external; a person carries it`),
     external: capabilities.externalSurfaces,
   };
 

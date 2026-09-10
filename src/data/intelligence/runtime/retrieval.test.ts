@@ -111,7 +111,7 @@ describe("composeRetrieval", () => {
 });
 
 describe("bundleForModel", () => {
-  it("serializes everything the model may see — and only that", () => {
+  it("serializes everything the model may see, and only that", () => {
     const bundle = composeRetrieval({
       organizationId: "org-1",
       room: "projects",

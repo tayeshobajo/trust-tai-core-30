@@ -9,7 +9,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { useCallback, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { EmptyState } from "@/components/tt/primitives";
@@ -42,6 +43,7 @@ import { projectFromMilestone } from "@/data/projects-handoff";
 import type { PathMilestone } from "@/data/roadmap/detail/projection";
 import type { RoadmapEvidenceInput, RoadmapExport } from "@/domain/roadmap-exports";
 import type { ExecutionState } from "@/domain/projects";
+import type { DeliveryProject } from "@/domain/delivery-projection";
 import { ActivityView } from "@/components/tt/roadmap/detail/activity-view";
 import {
   anchorProof,
@@ -71,11 +73,12 @@ import { WalkthroughView } from "@/components/tt/roadmap/walkthrough-view";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { roadmapService, type RoadmapContext } from "@/data/supabase/roadmap-service";
 import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-service";
-import {
-  normalizeMilestones,
-  normalizeResearch,
-  normalizeStrategy,
-} from "@/data/roadmap-research-parse";
+import { runRoadmapResearch } from "@/data/roadmap/research-run";
+
+import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import { useMilestoneAcceptance } from "@/hooks/use-milestone-acceptance";
+import type { MeasurementInput } from "@/domain/milestone-measurement";
+import type { OutcomeMetricInput } from "@/domain/milestone-metric";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
 import type {
   ApprovalState,
@@ -176,6 +179,47 @@ function RoadmapWorkspace({
     onError: fail,
   });
 
+  /**
+   * Point A and Point B written by hand (P3-03). The same roadmap service the
+   * draft engine writes through, so there is no second store and no model call
+   * behind a person's own sentence.
+   */
+  const pointA = useMutation({
+    mutationFn: async (lines: string[]) => {
+      const detail = detailQuery.data;
+      if (!detail) throw new Error("This roadmap could not be read.");
+      return roadmapService.setPointA(
+        detail.roadmap.id,
+        detail.roadmap.subjectLabel,
+        lines.map((value) => ({ value })),
+        context,
+      );
+    },
+    onSuccess: async () => {
+      toast.success("Point A saved");
+      await refresh();
+    },
+    onError: fail,
+  });
+
+  const destination = useMutation({
+    mutationFn: async (input: { statement: string; because: string }) => {
+      const detail = detailQuery.data;
+      if (!detail) throw new Error("This roadmap could not be read.");
+      return roadmapService.setDestination(
+        detail.roadmap.id,
+        detail.roadmap.subjectLabel,
+        input,
+        context,
+      );
+    },
+    onSuccess: async () => {
+      toast.success("Point B saved");
+      await refresh();
+    },
+    onError: fail,
+  });
+
   const archive = useMutation({
     mutationFn: async () => {
       const detail = detailQuery.data;
@@ -266,76 +310,12 @@ function RoadmapWorkspace({
       const detail = detailQuery.data;
       if (!detail) throw new Error("This roadmap could not be read.");
       setResearchError(null);
-      setResearchStage("Starting");
-
-      const response = await fetch("/api/public/roadmap/research", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await accessToken()}`,
-        },
-        body: JSON.stringify({
-          organization_id: identity.organizationId,
-          subject_label: detail.roadmap.subjectLabel,
-          objective: detail.roadmap.objective,
-          known: detail.roadmap.pointA.map((entry) => `${entry.label}: ${entry.value}`),
-        }),
-      });
-
-      if (!response.ok || !response.body) {
-        const detailText = await response.text();
-        throw new Error(detailText.slice(0, 300) || "The research run could not start.");
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let payload: Record<string, unknown> | null = null;
-
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const stage = JSON.parse(line) as { stage: string; message: string; data?: unknown };
-          setResearchStage(stage.message);
-          if (stage.stage === "error") throw new Error(stage.message);
-          if (stage.stage === "complete") payload = stage.data as Record<string, unknown>;
-        }
-      }
-
-      if (!payload) throw new Error("The research run returned nothing. Nothing was changed.");
-
-      const provenance = {
-        provider: String(payload["provider"] ?? "unknown"),
-        model: String(payload["model"] ?? "unknown"),
-        checkedAt: String(payload["checkedAt"] ?? new Date().toISOString()),
-      };
-      const label = detail.roadmap.subjectLabel;
-
-      await roadmapIntel.saveResearch(
+      await runRoadmapResearch({
+        detail,
         intelContext,
-        roadmapId,
-        label,
-        normalizeResearch(payload["research"], provenance),
-        provenance,
-      );
-
-      const strategy = normalizeStrategy(payload["strategy"], provenance);
-      await roadmapIntel.saveStrategy(intelContext, roadmapId, label, {
-        ...strategy,
-        provider: provenance.provider,
-        model: provenance.model,
-        generatedAt: provenance.checkedAt,
+        accessToken,
+        onStage: setResearchStage,
       });
-
-      const candidates = normalizeMilestones(payload["milestones"], provenance);
-      if (candidates.length > 0) {
-        await roadmapIntel.replaceCandidates(intelContext, roadmapId, label, candidates);
-      }
     },
     onSettled: () => setResearchStage(null),
     onSuccess: refresh,
@@ -383,6 +363,98 @@ function RoadmapWorkspace({
     onSettled: () => setBusyId(null),
     onSuccess: refresh,
     onError: fail,
+  });
+
+  /**
+   * The manual outcome metric path. Roadmap owns this truth, so it is written
+   * here through the canonical service, with the same provenance as any other
+   * milestone decision. Setting the same metric twice records nothing new.
+   */
+  const milestoneMetric = useMutation({
+    mutationFn: async ({
+      milestone,
+      metric,
+    }: {
+      milestone: RoadmapMilestone;
+      metric: OutcomeMetricInput | null;
+    }) => {
+      setBusyId(milestone.id);
+      return roadmapIntel.setMilestoneMetric(
+        intelContext,
+        milestone,
+        metric,
+        detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
+      );
+    },
+    onSettled: () => setBusyId(null),
+    onSuccess: refresh,
+    onError: fail,
+  });
+
+  /**
+   * The manual measurement path (P3-02). Roadmap owns measurement truth, so
+   * every reading, from here or from the Project workroom, lands through this
+   * one service with the person on it.
+   */
+  const [measureError, setMeasureError] = useState<string | null>(null);
+  const milestoneMeasure = useMutation({
+    mutationFn: async ({
+      milestone,
+      input,
+    }: {
+      milestone: RoadmapMilestone;
+      input: MeasurementInput;
+    }) => {
+      setMeasureError(null);
+      setBusyId(milestone.id);
+      return roadmapIntel.recordMeasurement(
+        intelContext,
+        milestone,
+        input,
+        detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
+      );
+    },
+    onSettled: () => setBusyId(null),
+    onSuccess: refresh,
+    onError: (cause) => {
+      setMeasureError(
+        cause instanceof Error ? cause.message : "That measurement could not be recorded.",
+      );
+      fail(cause);
+    },
+  });
+
+  /**
+   * Outcomes and acceptance criteria (the everyday path). Same Roadmap service
+   * the Project workroom calls, through the same hook.
+   */
+  const acceptance = useMilestoneAcceptance({
+    context: intelContext,
+    criteria: intelQuery.data?.criteria ?? [],
+    label: detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
+    refresh,
+    setBusyId,
+  });
+
+  /**
+   * Manual milestone creation. Generation is assistance, not the only doorway:
+   * a person who already knows the milestone types it and it lands Decided.
+   */
+  const [createError, setCreateError] = useState<string | null>(null);
+  const milestoneCreate = useMutation({
+    mutationFn: async (input: ManualMilestoneInput) => {
+      setCreateError(null);
+      return roadmapIntel.createManualMilestone(
+        intelContext,
+        roadmapId,
+        detailQuery.data?.roadmap.subjectLabel ?? "This roadmap",
+        input,
+        intelQuery.data?.milestones ?? [],
+      );
+    },
+    onSuccess: refresh,
+    onError: (error) =>
+      setCreateError(error instanceof Error ? error.message : "The milestone could not be saved."),
   });
 
   /**
@@ -590,14 +662,29 @@ function RoadmapWorkspace({
     enabled: linkedProjectIds.length > 0,
     retry: false,
     queryFn: async () => {
-      const states: Record<string, ExecutionState> = {};
+      const states: Record<string, { name: string; state: ExecutionState }> = {};
       for (const id of linkedProjectIds) {
         const project = await projectsService.get(id, identity.organizationId);
-        if (project) states[id] = project.state;
+        if (project) states[id] = { name: project.name, state: project.state };
       }
       return states;
     },
   });
+
+  /**
+   * One read law for delivery: Projects owns which project carries a milestone
+   * and what state it is in; Roadmap only reads it back through the link.
+   */
+  const deliveryProjectFor = useCallback(
+    (milestoneId: string): DeliveryProject | null => {
+      const link = (linksQuery.data?.items ?? []).find(
+        (item) => item.milestoneId === milestoneId && item.projectId,
+      );
+      const carrier = link?.projectId ? projectStatesQuery.data?.[link.projectId] : undefined;
+      return carrier ?? null;
+    },
+    [linksQuery.data, projectStatesQuery.data],
+  );
 
   const milestones = useMemo(() => intelQuery.data?.milestones ?? [], [intelQuery.data]);
   const decisionList = useMemo(() => detailQuery.data?.decisions ?? [], [detailQuery.data]);
@@ -866,7 +953,11 @@ function RoadmapWorkspace({
                 roadmap={roadmap}
                 approving={approve.isPending}
                 onApprove={() => approve.mutate()}
+                saving={pointA.isPending || destination.isPending}
+                onSavePointA={(lines) => pointA.mutate(lines)}
+                onSaveDestination={(input) => destination.mutate(input)}
               />
+
               <PathSection path={path} activeId={current?.id ?? null} />
               <CurrentMilestoneCard
                 entry={current}
@@ -891,17 +982,46 @@ function RoadmapWorkspace({
                 milestones={milestones}
                 busyId={busyId}
                 generating={research.isPending}
+                creating={milestoneCreate.isPending}
+                createError={createError}
                 onGenerate={() => research.mutate()}
+                onCreate={(input) => milestoneCreate.mutate(input)}
                 onStatus={(milestone, status, note) =>
                   milestoneStatus.mutate({ milestone, status, note })
                 }
+                onMetric={(milestone, metric) => milestoneMetric.mutate({ milestone, metric })}
+                deliveryProjectFor={deliveryProjectFor}
+                criteria={intelQuery.data?.criteria ?? []}
+                criteriaError={acceptance.error ?? intelQuery.data?.criteriaError ?? null}
+                evidence={intelQuery.data?.criterionEvidence ?? []}
+                evidenceError={intelQuery.data?.criterionEvidenceError ?? null}
+                onSuccess={acceptance.onSuccess}
+                onAccept={acceptance.onAccept}
+                onReopen={acceptance.onReopen}
+                onCriterionAdd={acceptance.onCriterionAdd}
+                onCriterionToggle={acceptance.onCriterionToggle}
+                onCriterionEdit={acceptance.onCriterionEdit}
+                onCriterionRemove={acceptance.onCriterionRemove}
+                onCriterionMove={acceptance.onCriterionMove}
+                onEvidenceAdd={acceptance.onEvidenceAdd}
+                onEvidenceRemove={acceptance.onEvidenceRemove}
+                onEvidenceOpen={acceptance.onEvidenceOpen}
+                onEvidenceUrl={acceptance.onEvidenceUrl}
+                measurements={intelQuery.data?.measurements ?? []}
+                measurementsError={measureError ?? intelQuery.data?.measurementsError ?? null}
+                onMeasure={(milestone, input) => milestoneMeasure.mutate({ milestone, input })}
               />
               <ExecutionHandoffCard
                 path={path}
                 links={linksQuery.data?.items ?? []}
                 available={linksQuery.data?.available ?? false}
                 busy={confirmHandoff.isPending}
-                projectStates={projectStatesQuery.data ?? {}}
+                projectStates={Object.fromEntries(
+                  Object.entries(projectStatesQuery.data ?? {}).map(([id, carrier]) => [
+                    id,
+                    carrier.state,
+                  ]),
+                )}
                 onConfirm={(entries) => confirmHandoff.mutate(entries)}
               />
               <BuildOrderView

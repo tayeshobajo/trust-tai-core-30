@@ -50,7 +50,6 @@ export interface OpsSystem {
   destinationUrl: string;
 }
 
-
 export interface OpsAttentionItem {
   key: string;
   systemKey: string;
@@ -110,8 +109,7 @@ export function opsPortfolio(events: OpsEvent[]): OpsPortfolio {
     const chain = [...unsorted].sort((a, b) => (a.at < b.at ? 1 : -1));
     const newest = chain[0]!;
     const open = chain.filter(
-      (event) =>
-        (OPS_RISK_EVENTS as OpsEventName[]).includes(event.name) && !cleared(event, chain),
+      (event) => (OPS_RISK_EVENTS as OpsEventName[]).includes(event.name) && !cleared(event, chain),
     );
     const openIssues = open.filter((event) => INCIDENT.includes(event.name)).length;
     const openApprovals = open.filter((event) => event.name === "ops.approval_required").length;
@@ -166,7 +164,6 @@ export function opsPortfolio(events: OpsEvent[]): OpsPortfolio {
   const rank: Record<OpsHealth, number> = { incident: 0, attention: 1, unknown: 2, healthy: 3 };
   systems.sort((a, b) => rank[a.health] - rank[b.health] || newestFirst(a, b));
   attention.sort((a, b) => (a.at < b.at ? 1 : -1));
-
 
   const recentlyMoved = [...events].sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 8);
   const newest = recentlyMoved[0];
@@ -226,12 +223,7 @@ export function opsFreshness(lastEventAt: string | undefined, now: number): stri
 
 /** How the managed-systems table may be ordered. Every option is deterministic. */
 export type OpsSortKey =
-  | "attention"
-  | "recent"
-  | "name"
-  | "company"
-  | "open_issues"
-  | "open_approvals";
+  "attention" | "recent" | "name" | "company" | "open_issues" | "open_approvals";
 
 export const OPS_SORT_OPTIONS: { value: OpsSortKey; label: string }[] = [
   { value: "attention", label: "Needs attention first" },
@@ -242,7 +234,12 @@ export const OPS_SORT_OPTIONS: { value: OpsSortKey; label: string }[] = [
   { value: "open_approvals", label: "Most open approvals" },
 ];
 
-const HEALTH_RANK: Record<OpsHealth, number> = { incident: 0, attention: 1, unknown: 2, healthy: 3 };
+const HEALTH_RANK: Record<OpsHealth, number> = {
+  incident: 0,
+  attention: 1,
+  unknown: 2,
+  healthy: 3,
+};
 
 /** Newest activity first. A system Ops never dated sorts last, not first. */
 function newestFirst(a: OpsSystem, b: OpsSystem): number {
@@ -261,7 +258,6 @@ export function sumKnown(systems: OpsSystem[], pick: (system: OpsSystem) => numb
   }
   return total;
 }
-
 
 /** Order the portfolio. Ties always fall back to newest activity, then name. */
 export function sortOpsSystems(systems: OpsSystem[], key: OpsSortKey): OpsSystem[] {

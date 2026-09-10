@@ -70,7 +70,8 @@ export function TodayPanel({
             </p>
           )}
           <p className="mt-6 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            Signal <ArrowRight className="size-3" /> Decision <ArrowRight className="size-3" /> Action
+            Signal <ArrowRight className="size-3" /> Decision <ArrowRight className="size-3" />{" "}
+            Action
           </p>
         </div>
       </div>

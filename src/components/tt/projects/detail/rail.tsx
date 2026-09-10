@@ -19,8 +19,17 @@ function RailCard({ title, children }: { title: string; children: React.ReactNod
   );
 }
 
+export interface AssignableMember {
+  userId: string;
+  name: string;
+}
+
 export function DetailRail({
   ownerLabel,
+  owner,
+  members,
+  unassignRefusal,
+  onAssign,
   attention,
   signals,
   people,
@@ -33,6 +42,11 @@ export function DetailRail({
   onComplete,
 }: {
   ownerLabel: string;
+  owner: { userId: string | null; label: string };
+  members: AssignableMember[];
+  /** Set when taking the last person off this work would be refused. */
+  unassignRefusal: string | null;
+  onAssign: (next: { ownerUserId: string; ownerLabel: string }) => void;
   attention: AttentionItem[];
   signals: string[];
   people: PersonOnProject[];
@@ -82,6 +96,35 @@ export function DetailRail({
             </li>
           ))}
         </ul>
+      </RailCard>
+
+      <RailCard title="Who carries this">
+        <select
+          aria-label="Project owner"
+          className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground"
+          value={owner.userId ?? ""}
+          disabled={busy || members.length === 0}
+          onChange={(event) => {
+            const userId = event.target.value;
+            const picked = members.find((member) => member.userId === userId);
+            onAssign({ ownerUserId: userId, ownerLabel: picked?.name ?? "" });
+          }}
+        >
+          <option value="" disabled={unassignRefusal !== null}>
+            No one yet
+          </option>
+          {members.map((member) => (
+            <option key={member.userId} value={member.userId}>
+              {member.name}
+            </option>
+          ))}
+        </select>
+        <p className="mt-2 text-[13px] text-muted-foreground">
+          {members.length === 0
+            ? "No workspace members are readable, so this cannot be handed over here."
+            : (unassignRefusal ??
+              (owner.userId ? `Carried by ${owner.label}.` : "Nobody is carrying this yet."))}
+        </p>
       </RailCard>
 
       <RailCard title="People">

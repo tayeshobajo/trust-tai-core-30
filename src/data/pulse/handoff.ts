@@ -2,7 +2,7 @@
  * Pulse → Conductor handoff.
  *
  * Pulse identifies and routes; the Conductor interprets and governs. When a
- * person asks for the deeper read on one signal, Pulse hands over a pointer 
+ * person asks for the deeper read on one signal, Pulse hands over a pointer
  * the signal's id, the room that owns it, the lineage it belongs to, and a
  * plainly worded question, and nothing else. No business state is copied:
  * the Conductor re-reads the suite for itself.
@@ -66,9 +66,10 @@ export function handoffQuestion(signal: PulseSignal): string {
      * is whether it is still waiting, so that is what the Conductor is asked. */
     return `${signal.title} (${signal.entityPath}). Should this house still be waiting on it, or should the ask be taken back?`;
   }
-  const where = signal.entityPath && signal.entityPath !== signal.sourceAppLabel
-    ? ` (${signal.entityPath}, in ${signal.sourceAppLabel})`
-    : ` (in ${signal.sourceAppLabel})`;
+  const where =
+    signal.entityPath && signal.entityPath !== signal.sourceAppLabel
+      ? ` (${signal.entityPath}, in ${signal.sourceAppLabel})`
+      : ` (in ${signal.sourceAppLabel})`;
   return `${signal.title}${where}. ${SEVERITY_ASK[signal.severity]}`;
 }
 

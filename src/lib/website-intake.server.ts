@@ -17,11 +17,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-import {
-  matchProspect,
-  subjectDomain,
-  type MatchCandidate,
-} from "@/domain/website-matching";
+import { matchProspect, subjectDomain, type MatchCandidate } from "@/domain/website-matching";
 import {
   EMPTY_STRUCTURED,
   WEBSITE_INTAKE_LABEL,
@@ -161,10 +157,7 @@ export const TIMESTAMP_HEADER = "x-trust-tai-timestamp";
 const MAX_SKEW_SECONDS = 300;
 
 export type AuthFailure =
-  | "not_configured"
-  | "missing_signature"
-  | "stale_timestamp"
-  | "bad_signature";
+  "not_configured" | "missing_signature" | "stale_timestamp" | "bad_signature";
 
 /** The exact bytes both sides sign: `${timestamp}.${rawBody}`. */
 export function signingPayload(timestamp: string, rawBody: string): string {
@@ -203,7 +196,9 @@ export function verifyIntakeSignature(input: {
   if (Math.abs(now - seconds) > MAX_SKEW_SECONDS) return { ok: false, reason: "stale_timestamp" };
 
   const expected = signIntake(input.secret, input.timestamp, input.rawBody);
-  return constantTimeEqual(expected, input.signature) ? { ok: true } : { ok: false, reason: "bad_signature" };
+  return constantTimeEqual(expected, input.signature)
+    ? { ok: true }
+    : { ok: false, reason: "bad_signature" };
 }
 
 /* -------------------------------------------------------------- environment */
@@ -527,7 +522,10 @@ async function writeActivity(
    */
   const { error } = await db
     .from("activities")
-    .upsert(row, { onConflict: "organization_id,app_key,source_event_key", ignoreDuplicates: true });
+    .upsert(row, {
+      onConflict: "organization_id,app_key,source_event_key",
+      ignoreDuplicates: true,
+    });
   if (error) console.error("[website] activity not recorded:", error.message);
 }
 
@@ -574,11 +572,7 @@ async function writeStatedPacket(
     submissionRowId,
   );
 
-  const current = await db
-    .from("prospects")
-    .select("metadata")
-    .eq("id", prospectId)
-    .maybeSingle();
+  const current = await db.from("prospects").select("metadata").eq("id", prospectId).maybeSingle();
   if (current.error) {
     console.error("[website] stated packet not stored:", current.error.message);
     return;

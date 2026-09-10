@@ -82,9 +82,7 @@ export function MeetingFromMessage({
 
   return (
     <div className="w-full rounded-lg border border-border bg-secondary/30 p-3">
-      <p className="text-[13px] text-foreground">
-        Plan a meeting with {relationship.fullName}
-      </p>
+      <p className="text-[13px] text-foreground">Plan a meeting with {relationship.fullName}</p>
       <p className="mt-0.5 text-[12px] text-muted-foreground">
         Recorded as a dated promise on this relationship, from this conversation. Nothing is sent.
       </p>

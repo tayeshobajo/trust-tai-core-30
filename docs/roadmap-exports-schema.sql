@@ -1,4 +1,4 @@
--- Trust Tai OS — Roadmap client copies, execution links, and notes.
+-- Trust Tai OS. Roadmap client copies, execution links, and notes.
 --
 -- Apply to the shared backend (project okydosoacqdnursmmenf).
 -- Idempotent: safe to run more than once.

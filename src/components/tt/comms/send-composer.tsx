@@ -1,7 +1,7 @@
 /**
  * The send composer.
  *
- * Where a prepared draft becomes a sent message — but only ever by a
+ * Where a prepared draft becomes a sent message, but only ever by a
  * person's hand. The composer shows exactly what will be sent: the wording,
  * the recipients, the files. Comms never appends a hidden signature or
  * rewrites a word at send time; what is on screen is what leaves.
@@ -10,8 +10,7 @@
  * owns the conversation, and a new conversation shows a From choice only
  * when more than one mailbox can send. The boundary holds here too: Gmail's
  * send permission is requested only when the workspace chooses to grant it.
- * Until then the composer explains, calmly, why the Send button is quiet —
- * and everything else still works.
+ * Until then the composer explains, calmly, why the Send button is quiet, * and everything else still works.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -34,6 +33,12 @@ import {
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
 import { readDraftSend } from "@/domain/comms-send";
+import { LEGACY_APPROVAL_NOTICE, isLegacyApproved } from "@/domain/comms-approval";
+import {
+  EXTERNAL_SEND_LABEL,
+  EXTERNAL_SEND_REFUSAL,
+  readExternalSend,
+} from "@/domain/comms-external-send";
 import {
   judgmentSummaryLines,
   readCommunicationJudgment,
@@ -50,13 +55,7 @@ const GROUNDING_LEVEL_LABEL: Record<GroundingLevel, string> = {
 
 type SendThreadChoice = { mode: "reply"; providerThreadId: string } | { mode: "new" };
 
-function EditorField({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function EditorField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className="tt-eyebrow">{label}</span>
@@ -97,7 +96,7 @@ export function SendComposer({
   const [body, setBody] = useState(draft.body);
   const [ccText, setCcText] = useState(extras.cc.join(", "));
   const [bccText, setBccText] = useState(extras.bcc.join(", "));
-  const [busy, setBusy] = useState<"save" | "send" | "upload" | null>(null);
+  const [busy, setBusy] = useState<"save" | "send" | "upload" | "approve" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -115,7 +114,7 @@ export function SendComposer({
 
   /**
    * The threads this relationship already has, newest first, each with the
-   * mailbox that owns it. Ownership comes from stored provenance — a reply
+   * mailbox that owns it. Ownership comes from stored provenance, a reply
    * always leaves from the mailbox the conversation lives in.
    */
   const threads = useMemo(() => {
@@ -148,6 +147,16 @@ export function SendComposer({
 
   const sending = draft.reviewState === "sending";
   const failed = draft.reviewState === "send_failed";
+
+  // An approval with no name and no time on it is not one Comms will act on.
+  const legacyApproved = useMemo(
+    () => isLegacyApproved(draft.reviewState, draft.rationale),
+    [draft.reviewState, draft.rationale],
+  );
+
+  /* The person answered from Gmail and the mailbox proves it. The draft stays
+     readable, Send does not: the reply already went. */
+  const externalSend = useMemo(() => readExternalSend(draft.rationale), [draft.rationale]);
 
   /** Connected mailboxes that hold the send grant, in connection order. */
   const sendCapable = useMemo(
@@ -223,7 +232,7 @@ export function SendComposer({
     onClose();
   }
 
-  // Escape closes the editor through the same non-destructive path — it can
+  // Escape closes the editor through the same non-destructive path, it can
   // never discard a draft.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -287,7 +296,26 @@ export function SendComposer({
     }
   }
 
-  /** The one irreversible act — a person's click, recorded and idempotent. */
+  /**
+   * Re-approve a draft whose approval predates the approval record. This
+   * writes who decided and when, and sends nothing.
+   */
+  async function handleApproveAgain() {
+    setBusy("approve");
+    setError(null);
+    setNotice(null);
+    try {
+      await commsService.setDraftState(draft, "approved", relationship, context);
+      setNotice("Approved, with your name and the time on it. Nothing has been sent.");
+      onChanged();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "That approval could not be recorded.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** The one irreversible act, a person's click, recorded and idempotent. */
   async function handleSend() {
     setBusy("send");
     setError(null);
@@ -312,11 +340,13 @@ export function SendComposer({
             "Gmail needs send permission before Comms can send for you. Reconnect Google with send access when you're ready.",
         );
       } else if (outcome.state === "failed") {
-        setError(outcome.error ?? "That send failed. The draft is kept — you can try again.");
+        setError(outcome.error ?? "That send failed. The draft is kept. You can try again.");
       } else if (outcome.state === "sending") {
         setNotice("Sending through Gmail…");
       } else {
-        setNotice(outcome.replayed ? "Already sent — nothing was sent twice." : "Sent through Gmail.");
+        setNotice(
+          outcome.replayed ? "Already sent, nothing was sent twice." : "Sent through Gmail.",
+        );
       }
       onChanged();
     } catch (cause) {
@@ -335,7 +365,7 @@ export function SendComposer({
         <p className="tt-eyebrow">This draft</p>
         <div className="flex items-center gap-3">
           <p className="hidden text-[11px] text-muted-foreground sm:block">
-            What you see is exactly what is sent — Comms never adds a hidden signature.
+            What you see is exactly what is sent. Comms never adds a hidden signature.
           </p>
           <button
             type="button"
@@ -528,7 +558,7 @@ export function SendComposer({
             <p className="text-[12px] text-muted-foreground">
               Replies in this conversation send from {replyOwner}.
               {replyOwnerCapability && !replyOwnerCapability.canSend
-                ? " That mailbox has read-only access — reconnect it with send access under Connections to reply here."
+                ? " That mailbox has read-only access, reconnect it with send access under Connections to reply here."
                 : ""}
             </p>
           ) : null}
@@ -557,13 +587,28 @@ export function SendComposer({
       ) : null}
 
       {error ? (
-        <p role="alert" className="rounded-lg border border-ember/30 bg-ember/8 px-3 py-2 text-[12px] text-ember">
+        <p
+          role="alert"
+          className="rounded-lg border border-ember/30 bg-ember/8 px-3 py-2 text-[12px] text-ember"
+        >
           {error}
         </p>
       ) : null}
       {failed && sendRecord?.error ? (
         <p className="rounded-lg border border-ember/30 bg-ember/8 px-3 py-2 text-[12px] text-ember">
           Last attempt failed: {sendRecord.error}
+        </p>
+      ) : null}
+      {legacyApproved ? (
+        <p className="rounded-lg border border-ember/30 bg-ember/8 px-3 py-2 text-[12px] text-foreground">
+          {LEGACY_APPROVAL_NOTICE}
+        </p>
+      ) : null}
+      {externalSend ? (
+        <p className="rounded-lg border border-fern/30 bg-fern/8 px-3 py-2 text-[12px] text-foreground">
+          {EXTERNAL_SEND_LABEL}
+          {externalSend.sentAt ? ` on ${externalSend.sentAt.slice(0, 10)}` : ""}.{" "}
+          {EXTERNAL_SEND_REFUSAL}
         </p>
       ) : null}
       {notice ? (
@@ -578,9 +623,9 @@ export function SendComposer({
             <p>Connect Gmail in Settings to send from here. Drafts work either way.</p>
           ) : capability.data && !capability.data.canSend ? (
             <p>
-              No connected mailbox can send yet. Sending needs Google's send permission —
-              reconnect a mailbox with send access when you're ready. Until then, drafts and
-              history work as always.
+              No connected mailbox can send yet. Sending needs Google's send permission, reconnect a
+              mailbox with send access when you're ready. Until then, drafts and history work as
+              always.
             </p>
           ) : (
             <p>Sending is always your click. Comms never sends on its own.</p>
@@ -596,7 +641,17 @@ export function SendComposer({
           >
             {busy === "save" ? "Saving…" : "Save changes"}
           </TTButton>
-          {capability.data?.canSend ? (
+          {externalSend ? null : legacyApproved ? (
+            <TTButton
+              variant="primary"
+              size="sm"
+              type="button"
+              onClick={() => void handleApproveAgain()}
+              disabled={sending || busy !== null}
+            >
+              {busy === "approve" ? "Recording…" : "Approve this draft"}
+            </TTButton>
+          ) : capability.data?.canSend ? (
             <TTButton
               variant="primary"
               size="sm"

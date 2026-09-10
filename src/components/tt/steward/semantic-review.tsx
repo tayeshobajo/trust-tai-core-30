@@ -36,7 +36,11 @@ import {
   type StateChangeProposal,
 } from "@/domain/steward-memory";
 import { correctionsFromEdit } from "@/data/steward/learning";
-import { reviewableSignals, signalToProposal, withheldSignals } from "@/data/steward/interpretation";
+import {
+  reviewableSignals,
+  signalToProposal,
+  withheldSignals,
+} from "@/data/steward/interpretation";
 import type { ConfirmInput } from "@/components/tt/steward/proposal-review";
 
 function Evidence({ signal }: { signal: InterpretedSignal }) {
@@ -189,7 +193,6 @@ function SignalRow({
     beneficiary.trim() !== (signal.beneficiary ?? "").trim() ||
     dueText.trim() !== (signal.dueText ?? "").trim();
 
-
   return (
     <li className="tt-surface p-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -236,7 +239,6 @@ function SignalRow({
           {...(onResolveConflict ? { onResolve: onResolveConflict } : {})}
         />
       ))}
-
 
       <Evidence signal={signal} />
 
@@ -363,7 +365,6 @@ function SignalRow({
             </p>
           ) : null}
         </div>
-
       ) : null}
     </li>
   );
@@ -446,7 +447,6 @@ export function SemanticReview({
         )}
       </details>
 
-
       {reviewable.length === 0 ? (
         <p className="tt-surface p-6 text-sm text-muted-foreground">
           Steward read this conversation and found nothing it can honestly call a commitment, a
@@ -494,7 +494,9 @@ export function SemanticReview({
                 <p className="text-[13px] text-muted-foreground">
                   {DISPOSITION_LABEL[signal.disposition]} · {signal.at}
                 </p>
-                <p className="text-sm text-foreground">{signal.normalizedMeaning || signal.quote}</p>
+                <p className="text-sm text-foreground">
+                  {signal.normalizedMeaning || signal.quote}
+                </p>
                 <p className="text-[13px] text-muted-foreground">
                   {signal.ambiguity || signal.rationale}
                 </p>

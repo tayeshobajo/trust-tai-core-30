@@ -11,11 +11,7 @@ import { useState } from "react";
 
 import { MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { InboundBadge } from "@/components/tt/scout/inbound";
-import type {
-  DecisionMove,
-  DecisionMoveKey,
-  DecisionStateView,
-} from "@/data/scout/decision-state";
+import type { DecisionMove, DecisionMoveKey, DecisionStateView } from "@/data/scout/decision-state";
 import { cn } from "@/lib/utils";
 
 import { relativeTime } from "./parts";
@@ -77,10 +73,7 @@ export function DecisionStatePanel({
         <p className="border-l-2 border-royal/50 pl-3 text-[14px] text-foreground">
           Told us: {toldUs}
           {submissionHref ? (
-            <a
-              href={submissionHref}
-              className="ml-2 text-royal underline-offset-4 hover:underline"
-            >
+            <a href={submissionHref} className="ml-2 text-royal underline-offset-4 hover:underline">
               Open original conversation
             </a>
           ) : null}

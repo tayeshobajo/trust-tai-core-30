@@ -99,7 +99,8 @@ export async function runObservationPass(input: ObserveRunInput): Promise<Observ
     if (existing) {
       skipped.push({
         actionId: action.id,
-        because: "The owning room says exactly what it said last time; this is the same result, not a new one.",
+        because:
+          "The owning room says exactly what it said last time; this is the same result, not a new one.",
       });
       continue;
     }

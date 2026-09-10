@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
 
+import type { ScoutLinkSearch } from "@/components/tt/scout/company-table";
 import type { ProspectCandidate } from "@/domain/scout";
 import type { FitLight } from "@/domain/scout-fit";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
-
 
 import { FitIndicator, StageTag, formatChecked } from "./fit-light";
 
@@ -57,7 +57,7 @@ export function ProspectBoard({
 }: {
   candidates: ProspectCandidate[];
   /** Board state carried into the prospect route so Back returns here. */
-  linkSearch: { section: "scout" | "qualified" | "research"; fit: FitFilter };
+  linkSearch: ScoutLinkSearch;
   emphasizeNextMove?: boolean;
 }) {
   return (
@@ -75,7 +75,9 @@ export function ProspectBoard({
       <ul>
         {candidates.map((candidate) => {
           const { prospect, evaluation } = candidate;
-          const line = emphasizeNextMove ? candidate.fit.recommendation : evaluation.strongestSignal;
+          const line = emphasizeNextMove
+            ? candidate.fit.recommendation
+            : evaluation.strongestSignal;
           return (
             <li key={prospect.id}>
               <Link
@@ -87,7 +89,6 @@ export function ProspectBoard({
                   "grid w-full grid-cols-[auto_1fr_auto] items-start gap-x-4 gap-y-2 border-b border-border px-5 py-4 text-left transition-colors last:border-b-0 hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:grid-cols-[auto_1.1fr_auto_1.4fr_auto_auto_auto] lg:items-center",
                 )}
               >
-
                 <FitIndicator
                   light={evaluation.light}
                   score={evaluation.score}
@@ -138,7 +139,6 @@ export function ProspectBoard({
                   className="hidden size-4 shrink-0 text-muted-foreground lg:block"
                 />
               </Link>
-
             </li>
           );
         })}

@@ -1,10 +1,10 @@
 /**
- * comms-send — Supabase Edge Function
+ * comms-send. Supabase Edge Function
  *
  * Sends an approved comms draft via Resend. Called by Tai (or Trust Tai OS UI)
  * after human review. Never called by agents.
  *
- * Auth: standard Supabase JWT (Tai's session token — not agent key)
+ * Auth: standard Supabase JWT (Tai's session token, not agent key)
  * Body: { draft_id: string }
  *
  * What it does:
@@ -71,18 +71,18 @@ Deno.serve(async (req: Request) => {
   let draftId: string;
   try {
     const body = await req.json() as Record<string, unknown>;
-    draftId = typeof body.draft_id === "string" ? body.draft_id.trim() : "";
+    draftId = typeof body.draft_id === "string" ? body.draft_id.trim(): "";
   } catch {
     return fail("Invalid JSON body.", 400);
   }
   if (!draftId) return fail("draft_id is required.", 400);
 
-  // Fetch the draft (service role — bypasses RLS for send path)
+  // Fetch the draft (service role, bypasses RLS for send path)
   const { data: draft, error: draftError } = await supabase
-    .from("comms_drafts")
-    .select("id, organization_id, relationship_id, subject, body, review_state")
-    .eq("id", draftId)
-    .maybeSingle();
+.from("comms_drafts")
+.select("id, organization_id, relationship_id, subject, body, review_state")
+.eq("id", draftId)
+.maybeSingle();
   if (draftError) return fail(draftError.message, 500);
   if (!draft) return fail("Draft not found.", 404);
 
@@ -95,10 +95,10 @@ Deno.serve(async (req: Request) => {
 
   // Fetch the relationship for the To: address
   const { data: relationship, error: relError } = await supabase
-    .from("comms_relationships")
-    .select("id, organization_id, full_name, email, stage")
-    .eq("id", d["relationship_id"] as string)
-    .maybeSingle();
+.from("comms_relationships")
+.select("id, organization_id, full_name, email, stage")
+.eq("id", d["relationship_id"] as string)
+.maybeSingle();
   if (relError) return fail(relError.message, 500);
   if (!relationship) return fail("Relationship not found.", 404);
 
@@ -110,14 +110,14 @@ Deno.serve(async (req: Request) => {
 
   // Mark as sending (optimistic lock)
   const { error: lockError } = await supabase
-    .from("comms_drafts")
-    .update({ review_state: "sending", updated_at: new Date().toISOString() })
-    .eq("id", draftId)
-    .eq("review_state", "approved");
+.from("comms_drafts")
+.update({ review_state: "sending", updated_at: new Date().toISOString() })
+.eq("id", draftId)
+.eq("review_state", "approved");
   if (lockError) return fail("Could not lock draft for sending.", 500);
 
   // Send via Resend
-  const subject = typeof d["subject"] === "string" && d["subject"] ? d["subject"] : `A note from Trust Tai`;
+  const subject = typeof d["subject"] === "string" && d["subject"] ? d["subject"]: `A note from Trust Tai`;
   const bodyText = d["body"] as string;
 
   const resendResponse = await fetch("https://api.resend.com/emails", {
@@ -138,9 +138,9 @@ Deno.serve(async (req: Request) => {
     const resendError = await resendResponse.text();
     // Roll back to approved so Tai can retry
     await supabase
-      .from("comms_drafts")
-      .update({ review_state: "approved", updated_at: new Date().toISOString() })
-      .eq("id", draftId);
+.from("comms_drafts")
+.update({ review_state: "approved", updated_at: new Date().toISOString() })
+.eq("id", draftId);
     return fail(`Resend error: ${resendError}`, 502);
   }
 
@@ -151,14 +151,14 @@ Deno.serve(async (req: Request) => {
 
   // Mark draft as sent
   await supabase
-    .from("comms_drafts")
-    .update({ review_state: "sent", updated_at: now })
-    .eq("id", draftId);
+.from("comms_drafts")
+.update({ review_state: "sent", updated_at: now })
+.eq("id", draftId);
 
   // Insert outbound message record
   const { data: messageRow } = await supabase
-    .from("comms_messages")
-    .upsert(
+.from("comms_messages")
+.upsert(
       {
         organization_id: d["organization_id"],
         relationship_id: d["relationship_id"],
@@ -182,20 +182,20 @@ Deno.serve(async (req: Request) => {
       },
       { onConflict: "organization_id,provider,provider_message_id", ignoreDuplicates: true },
     )
-    .select("id")
-    .maybeSingle();
+.select("id")
+.maybeSingle();
 
   // Update relationship stage to introduced (only if still new)
   if (r["stage"] === "new") {
     await supabase
-      .from("comms_relationships")
-      .update({ stage: "introduced", last_touch_at: now, updated_at: now })
-      .eq("id", d["relationship_id"] as string);
+.from("comms_relationships")
+.update({ stage: "introduced", last_touch_at: now, updated_at: now })
+.eq("id", d["relationship_id"] as string);
   } else {
     await supabase
-      .from("comms_relationships")
-      .update({ last_touch_at: now, updated_at: now })
-      .eq("id", d["relationship_id"] as string);
+.from("comms_relationships")
+.update({ last_touch_at: now, updated_at: now })
+.eq("id", d["relationship_id"] as string);
   }
 
   return json({

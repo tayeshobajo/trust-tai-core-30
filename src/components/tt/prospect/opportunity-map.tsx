@@ -15,13 +15,7 @@ const POINT: Record<string, string> = {
   roadmap_depth: "Point C",
 };
 
-export function OpportunityMap({
-  criteria,
-  fit,
-}: {
-  criteria: FitCriterion[];
-  fit: ScoutFit;
-}) {
+export function OpportunityMap({ criteria, fit }: { criteria: FitCriterion[]; fit: ScoutFit }) {
   const ordered = ORDER.map((key) => criteria.find((c) => c.key === key)).filter(
     (c): c is FitCriterion => Boolean(c),
   );
@@ -36,10 +30,7 @@ export function OpportunityMap({
       <div className="space-y-6">
         <ol className="grid gap-4 lg:grid-cols-3">
           {ordered.map((criterion) => (
-            <li
-              key={criterion.key}
-              className="rounded-lg border border-border bg-background p-4"
-            >
+            <li key={criterion.key} className="rounded-lg border border-border bg-background p-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                 {POINT[criterion.key] ?? "Point"}
               </p>

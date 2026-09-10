@@ -183,7 +183,7 @@ export interface ResearchProspectInput {
 }
 
 /**
- * Shallow-merge new metadata over what is already stored so unrelated keys 
+ * Shallow-merge new metadata over what is already stored so unrelated keys
  * `scout_fit`, `scout_fit_override`, `identity` · are never dropped. Only the
  * keys explicitly supplied are replaced.
  */
@@ -263,10 +263,7 @@ export async function saveHandoffRecord(id: ID, record: Row): Promise<ProspectRo
  * Record a person's decision about whether Scout may research this company.
  * Only used when the intake never asked; it never overwrites a stated answer.
  */
-export async function saveResearchConsent(
-  id: ID,
-  record: Row,
-): Promise<ProspectRow> {
+export async function saveResearchConsent(id: ID, record: Row): Promise<ProspectRow> {
   const { data: current, error: readError } = await supabase
     .from("prospects")
     .select("metadata")

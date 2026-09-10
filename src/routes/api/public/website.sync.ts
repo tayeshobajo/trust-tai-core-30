@@ -20,9 +20,8 @@ export const Route = createFileRoute("/api/public/website/sync")({
     handlers: {
       POST: async ({ request }) => {
         const { trustTaiServiceRoleClient } = await import("@/lib/execution-bridge.server");
-        const { authorizeWebsiteSync, recordSyncRun } = await import(
-          "@/lib/website-sync-auth.server"
-        );
+        const { authorizeWebsiteSync, recordSyncRun } =
+          await import("@/lib/website-sync-auth.server");
 
         const core = trustTaiServiceRoleClient();
         const allowed = await authorizeWebsiteSync(

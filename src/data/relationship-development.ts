@@ -9,12 +9,12 @@
  *
  * Laws enforced here:
  *  - Absence is unknown, never a negative.
- *  - 60% ICP fit triggers deeper research, never outreach — and the actionable
+ *  - 60% ICP fit triggers deeper research, never outreach, and the actionable
  *    queue additionally requires a traceable founder or decision maker.
  *  - Text is a protected channel: recommended only on explicit text-route
  *    evidence, never from having met, an introduction, or a found number.
  *  - A brief with nothing real to notice fails closed.
- *  - Roadmap is recognized only from needs THEY revealed — counterparty words
+ *  - Roadmap is recognized only from needs THEY revealed, counterparty words
  *    alone, with quoted history stripped, never from language Trust Tai
  *    introduced.
  */
@@ -81,7 +81,7 @@ export interface OpportunityPerson {
   emailVerified: boolean;
   /**
    * The governed People record behind this person, when one exists. Only
-   * records carry it — discovered intel people are evidence, not records, and
+   * records carry it, discovered intel people are evidence, not records, and
    * governed actions (like confirming an address) act on records only.
    */
   recordId?: string;
@@ -150,8 +150,8 @@ function mergePersonIdentity(
 
 /**
  * The people this read runs on: governed People records reconciled with
- * discovered intel people by identity. Matched identities merge — never into
- * duplicates — and an unmatched discovered founder still counts: a person
+ * discovered intel people by identity. Matched identities merge, never into
+ * duplicates, and an unmatched discovered founder still counts: a person
  * Scout's evidence already identifies is never hidden just because an
  * unrelated People row exists.
  */
@@ -246,11 +246,7 @@ const FACTOR_WEIGHTS: Record<OpportunityFactorKey, number> = {
   local_relevance: 0, // familiarity only; it never creates a reason on its own
 };
 
-function factor(
-  key: OpportunityFactorKey,
-  present: boolean,
-  because: string,
-): OpportunityFactor {
+function factor(key: OpportunityFactorKey, present: boolean, because: string): OpportunityFactor {
   return {
     key,
     label: OPPORTUNITY_FACTOR_LABEL[key],
@@ -312,18 +308,14 @@ export function computeRelationshipOpportunity(input: OpportunityInput): Relatio
     .map((signal) => daysSince(signal.observedAt, now))
     .filter((days): days is number => days !== null)
     .sort((a, b) => a - b)[0];
-  const recentSignal =
-    freshestSignalDays !== undefined && freshestSignalDays <= RECENT_SIGNAL_DAYS;
+  const recentSignal = freshestSignalDays !== undefined && freshestSignalDays <= RECENT_SIGNAL_DAYS;
   const whyNowSignal = recentSignal
-    ? intel.buyingSignals.find(
-        (signal) => daysSince(signal.observedAt, now) === freshestSignalDays,
-      )
+    ? intel.buyingSignals.find((signal) => daysSince(signal.observedAt, now) === freshestSignalDays)
     : undefined;
 
   const specificNotice =
     intel.opportunities.length > 0 || candidate.signals.length > 0 || Boolean(candidate.stated);
-  const noticeSource =
-    intel.opportunities[0]?.statement ?? candidate.signals[0]?.statement ?? null;
+  const noticeSource = intel.opportunities[0]?.statement ?? candidate.signals[0]?.statement ?? null;
 
   const checkedDays = daysSince(candidate.lastCheckedAt, now);
   const fresh = checkedDays !== null && checkedDays <= FRESH_EVIDENCE_DAYS;
@@ -396,7 +388,7 @@ export function computeRelationshipOpportunity(input: OpportunityInput): Relatio
       "local_relevance",
       local,
       local
-        ? `${candidate.profile?.location} — a real local connection, to use only if it genuinely supports the conversation.`
+        ? `${candidate.profile?.location}, a real local connection, to use only if it genuinely supports the conversation.`
         : "No evidenced local connection.",
     ),
   ];
@@ -409,7 +401,13 @@ export function computeRelationshipOpportunity(input: OpportunityInput): Relatio
   let state: RelationshipOpportunityState;
   if (!candidate.evaluation.scoreable || (score < 30 && !specificNotice)) {
     state = "not_enough_signal";
-  } else if (decider && entry && (entry.email || entry.linkedinUrl) && hasReasonToAct && score >= 60) {
+  } else if (
+    decider &&
+    entry &&
+    (entry.email || entry.linkedinUrl) &&
+    hasReasonToAct &&
+    score >= 60
+  ) {
     state = "ready";
   } else if (score >= 30 || specificNotice) {
     state = "watching";
@@ -464,7 +462,7 @@ export interface ChannelInput {
   signalOrigin?: "linkedin" | "web" | "intake" | "unknown";
   /**
    * The only thing that can ever open the text channel: explicit evidence of
-   * a legitimate personal text route — a number they shared for direct
+   * a legitimate personal text route, a number they shared for direct
    * contact, a prior SMS conversation, or an explicit text preference.
    * Meeting in person, being introduced, or a phone number found somewhere is
    * never text evidence, and a phone number is never inferred or scraped.
@@ -473,15 +471,17 @@ export interface ChannelInput {
 }
 
 const TEXT_EVIDENCE_REASON: Record<TextChannelEvidence, string> = {
-  exchanged_direct_number: "They shared a direct number for reaching them, so a short personal text is natural.",
-  prior_sms_conversation: "You have texted before, so continuing on that thread is the natural step.",
+  exchanged_direct_number:
+    "They shared a direct number for reaching them, so a short personal text is natural.",
+  prior_sms_conversation:
+    "You have texted before, so continuing on that thread is the natural step.",
   explicit_text_preference: "They asked to be texted, so text is the channel they chose.",
 };
 
 /**
  * Channels are not interchangeable. Email is the default professional route;
  * LinkedIn when the opening was LinkedIn-native; text is protected and opens
- * only on explicit text-route evidence — never from having met, an
+ * only on explicit text-route evidence, never from having met, an
  * introduction, or a found phone number.
  */
 export function recommendChannel(input: ChannelInput): ChannelRecommendation | null {
@@ -495,7 +495,7 @@ export function recommendChannel(input: ChannelInput): ChannelRecommendation | n
     return {
       channel: "linkedin",
       reason:
-        "The opening came from LinkedIn — a post, announcement, or discussion there — so meeting them in the same place is the natural move.",
+        "The opening came from LinkedIn, a post, announcement, or discussion there, so meeting them in the same place is the natural move.",
     };
   }
 
@@ -524,7 +524,10 @@ export function recommendChannel(input: ChannelInput): ChannelRecommendation | n
  * Bridge ideas grounded in what was actually observed. Each is genuinely
  * useful, proportionate, and valuable even if they never hire Trust Tai.
  */
-export function suggestProofOfCare(candidate: ProspectCandidate, intel?: ScoutIntel): ProofOfCare[] {
+export function suggestProofOfCare(
+  candidate: ProspectCandidate,
+  intel?: ScoutIntel,
+): ProofOfCare[] {
   const resolved = intel ?? candidate.intel ?? EMPTY_INTEL;
   const bridges: ProofOfCare[] = [];
 
@@ -533,7 +536,7 @@ export function suggestProofOfCare(candidate: ProspectCandidate, intel?: ScoutIn
     bridges.push({
       kind: "diagnostic",
       label: "A small diagnostic",
-      idea: `A short, honest read of their ${OPPORTUNITY_AREA_LABEL[opportunity.area].toLowerCase()} — what we saw, and what it might be worth to them.`,
+      idea: `A short, honest read of their ${OPPORTUNITY_AREA_LABEL[opportunity.area].toLowerCase()}, what we saw, and what it might be worth to them.`,
       why: opportunity.evidence,
     });
   }
@@ -582,7 +585,7 @@ export interface BriefInput extends OpportunityInput {
 
 /**
  * Assemble the Relationship Development Brief from stored evidence. Judgment
- * first, prose never — this brief is the structure a later draft must honor.
+ * first, prose never, this brief is the structure a later draft must honor.
  * Fail closed: with nothing real to notice there is no trustworthy first move.
  */
 export function buildRelationshipBrief(input: BriefInput): RelationshipDevelopmentBrief {
@@ -638,7 +641,9 @@ export function buildRelationshipBrief(input: BriefInput): RelationshipDevelopme
         `Step into ${entry!.fullName}'s world: name the specific thing you noticed and why it caught your attention.`,
         "Make them feel interesting, not praised. Reflect something real, then stop.",
         "No call, no pitch, no roadmap. The only goal is to earn the next natural exchange.",
-        bridges[0] ? `If a bridge belongs, offer it freely: ${bridges[0].label.toLowerCase()}.` : null,
+        bridges[0]
+          ? `If a bridge belongs, offer it freely: ${bridges[0].label.toLowerCase()}.`
+          : null,
       ]
         .filter(Boolean)
         .join(" ")
@@ -665,8 +670,8 @@ export function buildRelationshipBrief(input: BriefInput): RelationshipDevelopme
 
 /**
  * Need patterns are deliberately specific: each can only mean a real
- * operational tangle. Generic language — "growth", "next steps", "roadmap",
- * "stay connected", ordinary greetings, or Trust Tai's own vocabulary — never
+ * operational tangle. Generic language, "growth", "next steps", "roadmap",
+ * "stay connected", ordinary greetings, or Trust Tai's own vocabulary, never
  * matches, and detection only ever runs on counterparty-authored evidence
  * (see `counterpartyEvidence`).
  */
@@ -709,8 +714,7 @@ const NEED_PATTERNS: { kind: RoadmapNeedKind; pattern: RegExp }[] = [
  * wall of surrounding email.
  */
 function needExcerpt(text: string, matched: string): string {
-  const clamp = (value: string): string =>
-    value.length > 200 ? `${value.slice(0, 197)}…` : value;
+  const clamp = (value: string): string => (value.length > 200 ? `${value.slice(0, 197)}…` : value);
   const at = text.indexOf(matched);
   if (at === -1) return clamp(text.trim());
   const sentences = text.split(/(?<=[.!?])\s+|\n+/);
@@ -766,7 +770,7 @@ export function detectRoadmapOpportunity(
       .map((need) => need.label.toLowerCase())
       .join(
         ", ",
-      )} in their own words — the kind of tangle a sequenced roadmap genuinely helps with. Tai decides whether to propose one.`,
+      )} in their own words, the kind of tangle a sequenced roadmap genuinely helps with. Tai decides whether to propose one.`,
     confidence: needs.length >= 3 ? "high" : needs.length === 2 ? "moderate" : "low",
   };
 }
@@ -781,7 +785,7 @@ type CounterpartyTouch = Pick<Touch, "direction" | "summary" | "body" | "provena
 
 /**
  * Their words from one inbound email, with quoted history and signatures
- * stripped first — an inbound reply quoting our own earlier email must never
+ * stripped first, an inbound reply quoting our own earlier email must never
  * read our language back as their need. Reuses the one shared quoted-content
  * logic; there is no second parser.
  */
@@ -802,7 +806,7 @@ function counterpartyEmailText(message: CounterpartyMessage): string {
  *    them).
  *  - Interactions a person explicitly marked as their quoted words.
  * Outbound mail, our drafts, our notes, our hypotheses, and anything the
- * system generated are excluded — our own language can never manufacture a
+ * system generated are excluded, our own language can never manufacture a
  * Roadmap signal.
  */
 export function counterpartyEvidence(input: {
@@ -822,8 +826,7 @@ export function counterpartyEvidence(input: {
   }
 
   for (const touch of input.touches ?? []) {
-    const theirWords =
-      touch.direction === "inbound" || touch.provenance?.["their_words"] === true;
+    const theirWords = touch.direction === "inbound" || touch.provenance?.["their_words"] === true;
     if (!theirWords) continue;
     const text = [touch.summary, touch.body ?? ""]
       .map((part) => part.trim())
@@ -833,9 +836,7 @@ export function counterpartyEvidence(input: {
     texts.push({
       text,
       source:
-        touch.direction === "inbound"
-          ? "Their words"
-          : "Their words, recorded by a person here",
+        touch.direction === "inbound" ? "Their words" : "Their words, recorded by a person here",
     });
   }
 
@@ -849,7 +850,7 @@ export function counterpartyEvidence(input: {
  * and a staleness window so an old brief is refreshed rather than trusted
  * forever. Automatic preparation stays bounded: it runs when eligibility is
  * newly reached, when the underlying evidence moved, or when the brief went
- * stale — never on every render.
+ * stale, never on every render.
  */
 export const RELATIONSHIP_BRIEF_VERSION = 1;
 export const RELATIONSHIP_BRIEF_STALE_DAYS = 30;
@@ -868,8 +869,8 @@ export interface RelationshipPreparationPlan {
 
 /**
  * Decide whether deeper relationship-development research should be prepared
- * for this prospect. The gate is the full eligibility read — 60% fit AND a
- * traceable founder/decision maker — and the output is research only. It
+ * for this prospect. The gate is the full eligibility read, 60% fit AND a
+ * traceable founder/decision maker, and the output is research only. It
  * never sends, never creates a Comms relationship, and never approves
  * outreach.
  */
@@ -932,7 +933,7 @@ export type WorthKnowingMembership = "actionable" | "needs_person" | "outside";
  * Where a candidate belongs in Worth Knowing. The actionable queue is people,
  * never anonymous companies: 60%+ fit AND a traceable founder or decision
  * maker. A strong-fit company with no person on record yet is kept quietly as
- * "needs a person" — visible, but never presented as ready for relationship
+ * "needs a person", visible, but never presented as ready for relationship
  * development.
  */
 export function worthKnowingMembership(
@@ -1012,8 +1013,7 @@ export function researchMarkerToRow(marker: RelationshipResearchMarker): Row {
 /**
  * Serialize the whole relationship-development block for a metadata patch,
  * preserving whichever parts (watch, research) are present. The stored
- * metadata merge is shallow, so writers must always write the full block —
- * never one piece of it — or the sibling piece would be silently dropped.
+ * metadata merge is shallow, so writers must always write the full block, * never one piece of it, or the sibling piece would be silently dropped.
  */
 export function relationshipDevelopmentRow(marker: RelationshipDevelopmentMarker): Row {
   return {

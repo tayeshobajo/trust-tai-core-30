@@ -3,8 +3,8 @@
  *
  * Spirit first. Reason first. Write second. Comms does not generate messages:
  * it makes a relationship-specific communication judgment over the governed
- * evidence — who this person is, why Tai is writing now, what they are likely
- * carrying, what the thread actually said, what is owed — under Tai's
+ * evidence, who this person is, why Tai is writing now, what they are likely
+ * carrying, what the thread actually said, what is owed, under Tai's
  * canonical relationship voice, and then writes the one message that judgment
  * requires. The judgment is persisted on the draft's rationale, so every
  * draft carries its provenance: why it exists, what it was allowed to say,
@@ -14,15 +14,14 @@
  * considers any next step: notice the human signal in the latest message,
  * understand what it says about the person, reflect it back so they feel
  * recognized rather than targeted, build on the most interesting thing they
- * offered — and only then decide whether an ask is earned. The operational
+ * offered, and only then decide whether an ask is earned. The operational
  * law: don't look for the fastest way to the next step; look for the most
  * human thing worth responding to. A relationship can be moving even when
  * there is no ask.
  *
  * A judgment is a concise product-level rationale, never hidden
- * chain-of-thought. A person can read it in a few lines — why now, what I
- * noticed, what it says about them, what to build on, and the ask decision —
- * and decide whether the draft deserves to exist.
+ * chain-of-thought. A person can read it in a few lines, why now, what I
+ * noticed, what it says about them, what to build on, and the ask decision, * and decide whether the draft deserves to exist.
  *
  * Pure and I/O-free: the server assembles and writes it, the composer reads
  * and renders it, and tests pin the rules.
@@ -37,11 +36,11 @@
  * discussion, reciprocal exploration or curiosity, it makes their life
  * easier, the conversation arrived there). "Maintain momentum" and "stay
  * connected" fail the gate. When shouldAsk is false, whyNatural says why no
- * ask belongs — and the writing pass must not sneak one in.
+ * ask belongs, and the writing pass must not sneak one in.
  */
 export interface AskDecision {
   shouldAsk: boolean;
-  /** Why the ask feels natural to them right now — or why no ask belongs. */
+  /** Why the ask feels natural to them right now, or why no ask belongs. */
   whyNatural: string;
   /** The proportionate ask. Empty when no ask belongs in this message. */
   what: string;
@@ -51,9 +50,9 @@ export interface CommunicationJudgment {
   /** Why Tai is writing now, in one plain sentence grounded in evidence. */
   whyNow: string;
   /** The human signal in their latest message: generosity, pride, curiosity,
-      care, excitement, vulnerability — what they just revealed. */
+      care, excitement, vulnerability, what they just revealed. */
   latestHumanSignal: string;
-  /** The quality or meaning underneath the signal — what it says about them. */
+  /** The quality or meaning underneath the signal, what it says about them. */
   whatThisSaysAboutThem: string;
   /** The specific thing to reflect back so they feel recognized, not praised. */
   whatDeservesAcknowledgment: string;
@@ -64,7 +63,7 @@ export interface CommunicationJudgment {
   intendedEffect: string;
   /** Any question or point in their latest message that plainly requires an answer. */
   responseObligation: string;
-  /** The ask gate, decided last — after the conversation has been read. */
+  /** The ask gate, decided last, after the conversation has been read. */
   askDecision: AskDecision;
   /** Evidence the draft may reference as fact. */
   factsAllowed: string[];
@@ -114,7 +113,7 @@ function parseAskDecision(value: Record<string, unknown>): AskDecision {
 
 /**
  * Read a model-produced (or stored) judgment into the contract. Anything
- * that cannot be read whole returns null — a partial judgment is not a
+ * that cannot be read whole returns null, a partial judgment is not a
  * judgment, and the caller fails honestly rather than drafting blind.
  *
  * Judgments persisted before the conversation-first rename still read: the
@@ -165,7 +164,7 @@ export function readCommunicationJudgment(
 
 /**
  * The compact "Why this draft" read: a few short lines a person can scan in
- * the composer — why now, what I noticed, what it says about them, what to
+ * the composer, why now, what I noticed, what it says about them, what to
  * build on, and the ask decision (or an honest "No ask" with its reason).
  */
 export function judgmentSummaryLines(judgment: CommunicationJudgment): string[] {
@@ -196,7 +195,7 @@ export function judgmentSummaryLines(judgment: CommunicationJudgment): string[] 
 /* ------------------------------------------------------------ the ask gate */
 
 /**
- * Phrases that constitute an ask for time — a call, a coffee, a meeting,
+ * Phrases that constitute an ask for time, a call, a coffee, a meeting,
  * "finding time". Used to enforce the judgment's ask decision on the written
  * draft: when shouldAsk is false, none of these may appear. A mention of an
  * already-agreed plan ("see you Tuesday") is acknowledgment, not an ask, and
@@ -236,7 +235,7 @@ export type DraftKind = "reply" | "proactive";
 export interface DraftGroundingInput {
   /** A known identity: a name or an email on record. */
   hasIdentity: boolean;
-  /** The thread holds at least one inbound message — a reply is owed. */
+  /** The thread holds at least one inbound message, a reply is owed. */
   threadHasInbound: boolean;
   /** Real prior interactions: thread messages plus observed/decided memory. */
   priorInteractionCount: number;
@@ -259,14 +258,14 @@ export interface DraftGrounding {
  * reason grounds a proactive note. Extra memory, commitments, Scout context,
  * and approved examples improve the draft but are never mandatory. Below the
  * bar, drafting would require inventing the reason, the facts, or the
- * relationship itself — so Comms fails honestly and names what is missing.
+ * relationship itself, so Comms fails honestly and names what is missing.
  */
 export function assessDraftGrounding(input: DraftGroundingInput): DraftGrounding {
   if (!input.hasIdentity) {
     return {
       grounded: false,
       kind: null,
-      missing: ["who this person is — no name or email is on record"],
+      missing: ["who this person is, no name or email is on record"],
     };
   }
   if (input.threadHasInbound) {
@@ -286,8 +285,7 @@ export type GroundingLevel = "strong" | "grounded" | "thin";
 /**
  * The plain-language account of what a draft stands on, persisted with the
  * draft so the composer can show it before anything sends. Basis names the
- * evidence used; wouldStrengthen names what is missing without blocking —
- * the gate already decided the draft may exist, this says how firmly.
+ * evidence used; wouldStrengthen names what is missing without blocking, * the gate already decided the draft may exist, this says how firmly.
  */
 export interface DraftGroundingSummary {
   kind: DraftKind;
@@ -341,7 +339,11 @@ export function summarizeDraftGrounding(facts: DraftGroundingFacts): DraftGround
      wrote is adequate grounding by itself. Proactive notes earn their level
      from supporting signals alone. */
   const level: GroundingLevel =
-    basis.length >= 4 ? "strong" : basis.length >= 3 || facts.kind === "reply" ? "grounded" : "thin";
+    basis.length >= 4
+      ? "strong"
+      : basis.length >= 3 || facts.kind === "reply"
+        ? "grounded"
+        : "thin";
   return { kind: facts.kind, level, basis, wouldStrengthen };
 }
 
@@ -383,12 +385,13 @@ export function readDraftGrounding(
  * is stripped so no salutation can ever carry a trailing comma into prose.
  */
 export function salutationName(fullName: string): string {
-  const clean = fullName.trim().replace(/,+\s*$/, "").trim();
+  const clean = fullName
+    .trim()
+    .replace(/,+\s*$/, "")
+    .trim();
   if (!clean) return "";
   // Surname-first format: everything after the first comma is the given name.
-  const given = clean.includes(",")
-    ? clean.slice(clean.indexOf(",") + 1).trim()
-    : clean;
+  const given = clean.includes(",") ? clean.slice(clean.indexOf(",") + 1).trim() : clean;
   const token = given.split(/\s+/)[0] ?? "";
   return token.replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}'-]+$/gu, "");
 }
@@ -401,7 +404,7 @@ export interface ThreadJudgmentEntry {
   subject?: string;
   text: string;
   occurredAt: string;
-  /** True on the newest message from each side — what most deserves an answer. */
+  /** True on the newest message from each side, what most deserves an answer. */
   latestForSide: boolean;
 }
 
@@ -427,7 +430,7 @@ function trimMessageText(text: string): string {
  * The recent conversation as drafting evidence, newest last. Comms never
  * drafts blind to the thread: the latest message from each side is marked so
  * the judgment can name what is actually owed. Text is trimmed, never
- * dropped — a long message is shortened, a short one is whole.
+ * dropped, a long message is shortened, a short one is whole.
  */
 export function threadContextForJudgment(
   messages: ThreadSourceMessage[],

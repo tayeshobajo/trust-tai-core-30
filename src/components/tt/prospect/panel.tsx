@@ -75,13 +75,7 @@ export function Panel({
 }
 
 /** Compact rail surface. Quieter than a panel, never a widget. */
-export function RailCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+export function RailCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="tt-level-tertiary rounded-xl p-5">
       <p className="tt-eyebrow">{title}</p>

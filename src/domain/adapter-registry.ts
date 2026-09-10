@@ -254,9 +254,7 @@ export const ADAPTER_CAPABILITIES: AdapterCapability[] = [
 ];
 
 export function capabilityFor(room: string, operation: string): AdapterCapability | undefined {
-  return ADAPTER_CAPABILITIES.find(
-    (row) => row.room === room && row.operation === operation,
-  );
+  return ADAPTER_CAPABILITIES.find((row) => row.room === room && row.operation === operation);
 }
 
 export function isSupportedOperation(room: string, operation: string): boolean {

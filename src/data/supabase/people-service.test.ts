@@ -2,7 +2,7 @@
  * Integration tests for the People layer.
  *
  * These run the real service, the real contacts mapper, and the real activity
- * writer against an in-memory Supabase stand-in — so they check the behaviour
+ * writer against an in-memory Supabase stand-in, so they check the behaviour
  * that matters in production: what gets stored, what provenance travels with
  * it, what the activity stream records, and what a provider is not allowed to
  * overwrite.

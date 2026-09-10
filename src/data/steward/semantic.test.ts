@@ -133,7 +133,11 @@ describe("Interpretation laws", () => {
   it("keeps context, doubt and repetition out of what a person reviews", () => {
     const signals = [
       toSignal(raw(), candidate(), []),
-      toSignal(raw({ candidate_id: "c2", disposition: "context_only" }), candidate({ id: "c2" }), []),
+      toSignal(
+        raw({ candidate_id: "c2", disposition: "context_only" }),
+        candidate({ id: "c2" }),
+        [],
+      ),
       toSignal(
         raw({ candidate_id: "c3", disposition: "already_completed" }),
         candidate({ id: "c3" }),

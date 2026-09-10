@@ -11,13 +11,14 @@ import type { Provenance } from "./activity";
 import type { ID, Prospect } from "./entities";
 import type { ScoutFitEvaluation } from "./scout-fit";
 import type { ResearchRun } from "./prospect-modules";
+import type { ObservationLogEntry } from "@/data/scout/movement";
 import type { ScoutIntel } from "./scout-intel";
 import type { RelationshipDevelopmentMarker } from "./relationship-development";
 import type { FounderSignalPacket } from "./stated";
+import type { WatchlistMarker } from "./scout-watchlist";
 
 import type { CompanyIdentity } from "@/lib/company-identity";
 import type { CompanyProfile } from "@/data/scout-profile";
-
 
 /**
  * A person's own decision about researching an inbound company, taken when the
@@ -96,6 +97,8 @@ export interface ProspectCandidate {
 
   /** Append-only log of completed research passes, oldest first. */
   history?: ResearchRun[];
+  /** Observed evidence changes between reads, oldest first. Movement's only source. */
+  movement?: ObservationLogEntry[];
   /** Buying signals, digital opportunities and people, kept apart from fit. */
   intel?: ScoutIntel;
   /** What the founder said about themselves, when they came to us inbound. */
@@ -104,8 +107,9 @@ export interface ProspectCandidate {
   researchConsent?: ResearchConsentRecord;
   /** A person's pacing decision on developing this relationship (watch / not now). */
   development?: RelationshipDevelopmentMarker;
+  /** Curated watchlist membership, when a person put this company there. */
+  watchlist?: WatchlistMarker;
 }
-
 
 export interface ScoutSearchRequest {
   organizationId: ID;

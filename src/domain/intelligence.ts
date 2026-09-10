@@ -13,7 +13,7 @@ import type { EntityRef, ID } from "./entities";
 
 export interface ContextRequest {
   organizationId: ID;
-  /** The user asking — authorization is always evaluated per user. */
+  /** The user asking, authorization is always evaluated per user. */
   userId: ID;
   /** What the context is about. */
   subject?: EntityRef;

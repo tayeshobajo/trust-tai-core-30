@@ -1,4 +1,4 @@
--- Trust Tai OS — Settings: application visibility, invitations, preferences.
+-- Trust Tai OS. Settings: application visibility, invitations, preferences.
 --
 -- Idempotent and additive. It adds only what Settings genuinely owns and
 -- nothing that already exists elsewhere:

@@ -2,19 +2,25 @@ import { Link } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
 
-/** Single source of truth for Scout's local sections. */
-export type ScoutSection = "scout" | "worth_knowing" | "qualified" | "research" | "settings";
+/**
+ * Single source of truth for Scout's local sections.
+ *
+ * The order is canonical and never reorders around the active view:
+ * Ready · Movement · Needs a person · All · Watchlist · Settings.
+ */
+export type ScoutSection = "ready" | "movement" | "needs_person" | "all" | "watchlist" | "settings";
 
 const BOARD_SECTIONS: { key: Exclude<ScoutSection, "settings">; label: string }[] = [
-  { key: "scout", label: "Scout" },
-  { key: "worth_knowing", label: "Worth knowing" },
-  { key: "qualified", label: "Qualified" },
-  { key: "research", label: "Review" },
+  { key: "ready", label: "Ready" },
+  { key: "movement", label: "Movement" },
+  { key: "needs_person", label: "Needs a person" },
+  { key: "all", label: "All" },
+  { key: "watchlist", label: "Watchlist" },
 ];
 
 function tabClass(active: boolean) {
   return cn(
-    "-mb-px border-b-2 px-4 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+    "-mb-px border-b-2 px-4 py-2.5 text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     active
       ? "border-foreground font-medium text-foreground"
       : "border-transparent text-muted-foreground hover:text-foreground",
@@ -47,7 +53,7 @@ export function ScoutTabs({ active }: { active: ScoutSection }) {
         aria-current={active === "settings" ? "page" : undefined}
         className={tabClass(active === "settings")}
       >
-        ICP Settings
+        Settings
       </Link>
     </nav>
   );

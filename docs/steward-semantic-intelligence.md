@@ -1,18 +1,18 @@
-# Steward — Semantic Meeting Intelligence
+# Steward. Semantic Meeting Intelligence
 
 Steward no longer surfaces raw speech. Every card a person reads is a normalized
 operational sentence produced by a server-only interpreter.
 
 ## Pipeline
 
-1. **Normalize** — Fathom transcript becomes a `NormalizedConversation` (`src/lib/steward-fathom.server.ts`).
-2. **Scout candidates** — `src/data/steward/candidates.ts` selects `CandidatePassage`
+1. **Normalize**. Fathom transcript becomes a `NormalizedConversation` (`src/lib/steward-fathom.server.ts`).
+2. **Scout candidates**, `src/data/steward/candidates.ts` selects `CandidatePassage`
    windows (focus turn + 3 before / 2 after) with stable ids, so re-running is idempotent.
-3. **Interpret** — `src/lib/steward-interpret.server.ts` batches 6 passages per model call
+3. **Interpret**, `src/lib/steward-interpret.server.ts` batches 6 passages per model call
    through the Lovable AI gateway and returns strict JSON `InterpretedSignal`s.
-4. **Filter** — `isCleanMeaning` (`src/data/steward/interpretation.ts`) rejects ASR wreckage,
+4. **Filter**, `isCleanMeaning` (`src/data/steward/interpretation.ts`) rejects ASR wreckage,
    filler, and copied speech.
-5. **Review** — `src/components/tt/steward/semantic-review.tsx` leads with the meaning;
+5. **Review**, `src/components/tt/steward/semantic-review.tsx` leads with the meaning;
    transcript and rationale sit behind disclosure.
 
 Entry point: `POST /api/public/steward/interpret` (auth-gated, organization scoped).
@@ -23,7 +23,7 @@ Entry point: `POST /api/public/steward/interpret` (auth-gated, organization scop
 - Recollection, capability, coaching, opinion and hypotheticals are `context_only`.
 - Unresolvable referents return `insufficient_evidence` with what is unclear.
 - No invented owner, date, project, or beneficiary. `due_text` carries spoken words only.
-- `truth_tier` is `observed` or `inferred` — never `decided`; humans decide.
+- `truth_tier` is `observed` or `inferred`, never `decided`; humans decide.
 - `normalized_meaning` is one plain-English actionable sentence.
 
 ## Person-centered reasoning

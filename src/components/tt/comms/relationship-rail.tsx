@@ -105,7 +105,7 @@ function WhyItMatters({
       </p>
       {segment === "nurture" ? (
         <p className="mt-1 text-[12px] text-muted-foreground">
-          In Nurture — a relationship Trust Tai chose to develop.
+          In Nurture, a relationship Trust Tai chose to develop.
         </p>
       ) : null}
     </RailCard>
@@ -238,7 +238,12 @@ function CommitmentRow({
       </p>
       {commitment.status === "open" && onSettle ? (
         <div className="mt-1.5 flex gap-2">
-          <TTButton variant="quiet" size="sm" type="button" onClick={() => onSettle(commitment, "kept")}>
+          <TTButton
+            variant="quiet"
+            size="sm"
+            type="button"
+            onClick={() => onSettle(commitment, "kept")}
+          >
             Kept
           </TTButton>
           <TTButton
@@ -291,7 +296,11 @@ function Promises({
       ) : (
         <ul className="space-y-2">
           {shown.map((commitment) => (
-            <CommitmentRow key={commitment.id} commitment={commitment} {...(onSettle ? { onSettle } : {})} />
+            <CommitmentRow
+              key={commitment.id}
+              commitment={commitment}
+              {...(onSettle ? { onSettle } : {})}
+            />
           ))}
         </ul>
       )}
@@ -331,7 +340,7 @@ export function RelationshipRail({
   /**
    * Clients → Nurture, offered only when the client classification rests on
    * contextual fallback rather than hard evidence (`canMoveToNurture`). Same
-   * record, same history — only the stage becomes an explicit `nurture`.
+   * record, same history, only the stage becomes an explicit `nurture`.
    */
   onMoveToNurture?: () => void;
 }) {
@@ -351,7 +360,10 @@ export function RelationshipRail({
       />
       <ConversationHealthCard health={health} />
       <RelationshipStrength strength={strength} />
-      <Promises relationship={relationship} {...(onSettleCommitment ? { onSettle: onSettleCommitment } : {})} />
+      <Promises
+        relationship={relationship}
+        {...(onSettleCommitment ? { onSettle: onSettleCommitment } : {})}
+      />
     </div>
   );
 }

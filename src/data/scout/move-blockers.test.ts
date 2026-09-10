@@ -31,12 +31,16 @@ const candidate = (over: { scoreable?: boolean } = {}): ProspectCandidate =>
     evaluation: { scoreable: over.scoreable ?? true, score: 86, light: "green" },
   }) as unknown as ProspectCandidate;
 
-const full = { thin: false } as ResearchCoverage;
-const thin = { thin: true } as ResearchCoverage;
+const full = { sparse: false } as unknown as ResearchCoverage;
+const thin = { sparse: true } as unknown as ResearchCoverage;
 
 describe("buildMoveBlockers", () => {
   it("an unverified email gets the inline confirm action, bound to its person", () => {
-    const blockers = buildMoveBlockers({ candidate: candidate(), people: [claire], coverage: full });
+    const blockers = buildMoveBlockers({
+      candidate: candidate(),
+      people: [claire],
+      coverage: full,
+    });
     const email = blockers.find((blocker) => blocker.key.startsWith("email_unverified"));
     expect(email).toBeDefined();
     expect(email!.action.kind).toBe("confirm_email");
@@ -46,7 +50,11 @@ describe("buildMoveBlockers", () => {
   });
 
   it("thin or missing research gets the inline governed research pass", () => {
-    const thinBlockers = buildMoveBlockers({ candidate: candidate(), people: [claire], coverage: thin });
+    const thinBlockers = buildMoveBlockers({
+      candidate: candidate(),
+      people: [claire],
+      coverage: thin,
+    });
     const coverageRow = thinBlockers.find((blocker) => blocker.key === "thin_coverage");
     expect(coverageRow!.action.kind).toBe("run_research");
     expect(coverageRow!.action.label).toBe("Refresh the company read");
@@ -82,14 +90,20 @@ describe("buildMoveBlockers", () => {
   });
 
   it("keys are stable and unique across several blockers", () => {
-    const blockers = buildMoveBlockers({ candidate: candidate(), people: [claire], coverage: thin });
+    const blockers = buildMoveBlockers({
+      candidate: candidate(),
+      people: [claire],
+      coverage: thin,
+    });
     expect(blockers.length).toBeGreaterThan(1);
     expect(new Set(blockers.map((blocker) => blocker.key)).size).toBe(blockers.length);
   });
 
   it("a clear handoff means no flow", () => {
     const verified = { ...claire, emailStatus: "verified" } as unknown as Person;
-    expect(buildMoveBlockers({ candidate: candidate(), people: [verified], coverage: full })).toEqual([]);
+    expect(
+      buildMoveBlockers({ candidate: candidate(), people: [verified], coverage: full }),
+    ).toEqual([]);
   });
 
   it("a confirmed address clears its blocker and progress increments", () => {
@@ -128,16 +142,32 @@ describe("blockerProgress", () => {
 describe("advanceAfterBlockers", () => {
   it("advances only from an open flow into an earned first message", () => {
     expect(
-      advanceAfterBlockers({ flowOpen: true, firstMessageReady: true, primaryKind: "prepare_first_message" }),
+      advanceAfterBlockers({
+        flowOpen: true,
+        firstMessageReady: true,
+        primaryKind: "prepare_first_message",
+      }),
     ).toBe(true);
     expect(
-      advanceAfterBlockers({ flowOpen: true, firstMessageReady: false, primaryKind: "resolve_blockers" }),
+      advanceAfterBlockers({
+        flowOpen: true,
+        firstMessageReady: false,
+        primaryKind: "resolve_blockers",
+      }),
     ).toBe(false);
     expect(
-      advanceAfterBlockers({ flowOpen: false, firstMessageReady: true, primaryKind: "prepare_first_message" }),
+      advanceAfterBlockers({
+        flowOpen: false,
+        firstMessageReady: true,
+        primaryKind: "prepare_first_message",
+      }),
     ).toBe(false);
     expect(
-      advanceAfterBlockers({ flowOpen: true, firstMessageReady: true, primaryKind: "prepare_research" }),
+      advanceAfterBlockers({
+        flowOpen: true,
+        firstMessageReady: true,
+        primaryKind: "prepare_research",
+      }),
     ).toBe(false);
   });
 });

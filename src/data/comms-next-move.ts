@@ -142,7 +142,10 @@ export function nextRelationshipMove(
       goal: `Find out whether the ${INTENT_LABEL[intent].toLowerCase()} conversation is still moving.`,
       urgency: "when_natural",
       evidence: [
-        { label: `Last interaction ${new Date(lastTouch!).toLocaleDateString()}`, kind: "computed" },
+        {
+          label: `Last interaction ${new Date(lastTouch!).toLocaleDateString()}`,
+          kind: "computed",
+        },
         { label: `Usual rhythm: ${INTENT_RHYTHM_LABEL[intent]}`, kind: "computed" },
       ],
     };

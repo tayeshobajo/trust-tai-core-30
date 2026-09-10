@@ -140,7 +140,7 @@ export function IdentityBand({
 
         {needsRescore ? (
           <p className="mt-5 rounded-md border border-warning/30 bg-warning/8 px-4 py-3 text-[13px] text-warning">
-            Needs rescore, this was evaluated against ICP v{evaluation.icpVersion}, and the active
+            Needs rescore. This was evaluated against ICP v{evaluation.icpVersion}, and the active
             ICP is v{activeIcpVersion}.
           </p>
         ) : staleDays !== null && staleDays >= 30 ? (

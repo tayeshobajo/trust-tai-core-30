@@ -46,15 +46,13 @@ export async function readStewardTeam(organizationId: string): Promise<StewardTe
       projectDelivery.listOrgWork(organizationId).catch(() => []),
       stewardTaskState.list(organizationId).catch(() => []),
       stewardTaskState.provisioned(organizationId).catch(() => false),
-      getStewardAgents({ data: { organizationId } }).catch(
-        (error: unknown): StewardAgentRead => ({
-          ...NO_AGENTS,
-          because:
-            error instanceof Error
-              ? `Paperclip could not be read. ${error.message}`
-              : NO_AGENTS.because,
-        }),
-      ),
+      getStewardAgents({ data: { organizationId } }).catch((error: unknown): StewardAgentRead => ({
+        ...NO_AGENTS,
+        because:
+          error instanceof Error
+            ? `Paperclip could not be read. ${error.message}`
+            : NO_AGENTS.because,
+      })),
     ]);
 
   return {

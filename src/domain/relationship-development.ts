@@ -20,10 +20,7 @@ import type { ISODateTime } from "./entities";
 /* -------------------------------------------------- relationship opportunity */
 
 export type RelationshipOpportunityState =
-  | "ready"
-  | "watching"
-  | "not_enough_signal"
-  | "not_appropriate";
+  "ready" | "watching" | "not_enough_signal" | "not_appropriate";
 
 export const RELATIONSHIP_OPPORTUNITY_LABEL: Record<RelationshipOpportunityState, string> = {
   ready: "Ready to consider",
@@ -101,9 +98,7 @@ export type RelationshipChannel = "email" | "linkedin" | "text";
  * phone number is never inferred or scraped.
  */
 export type TextChannelEvidence =
-  | "exchanged_direct_number"
-  | "prior_sms_conversation"
-  | "explicit_text_preference";
+  "exchanged_direct_number" | "prior_sms_conversation" | "explicit_text_preference";
 
 export const TEXT_CHANNEL_EVIDENCE_LABEL: Record<TextChannelEvidence, string> = {
   exchanged_direct_number: "They shared a direct number",
@@ -126,13 +121,7 @@ export interface ChannelRecommendation {
 /* -------------------------------------------------------------- proof of care */
 
 export type BridgeKind =
-  | "observation"
-  | "diagnostic"
-  | "mockup"
-  | "introduction"
-  | "resource"
-  | "pattern"
-  | "idea";
+  "observation" | "diagnostic" | "mockup" | "introduction" | "resource" | "pattern" | "idea";
 
 export const BRIDGE_KIND_LABEL: Record<BridgeKind, string> = {
   observation: "A useful observation",

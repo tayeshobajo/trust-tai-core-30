@@ -43,7 +43,7 @@ interface RuntimeStatusPayload {
 
 /**
  * Reasoning provider readiness, server-derived. One provider serves every
- * room — Comms, Scout, Roadmap, Steward, Studio, Conductor — so this is the
+ * room. Comms, Scout, Roadmap, Steward, Studio, Conductor, so this is the
  * first thing to check when any room's reasoning fails.
  */
 function RuntimeStatusPanel() {
@@ -79,7 +79,7 @@ function RuntimeStatusPanel() {
         </span>
         {status.data?.provider ? (
           <span className="ml-auto font-mono text-[11px] text-muted-foreground">
-            {status.data.provider} · {status.data.model ?? "—"} · checked{" "}
+            {status.data.provider} · {status.data.model ?? ", "} · checked{" "}
             {stamp(status.data.checkedAt)}
           </span>
         ) : null}
@@ -88,7 +88,7 @@ function RuntimeStatusPanel() {
         {status.error
           ? "The status probe itself failed, so provider health cannot be confirmed from here."
           : status.data?.configured
-            ? "One provider serves every room's reasoning — Comms drafts, Scout reads, Roadmap and Studio generation, Steward and Conductor."
+            ? "One provider serves every room's reasoning. Comms drafts, Scout reads, Roadmap and Studio generation, Steward and Conductor."
             : "No reasoning provider is configured, so drafting and reads fail closed. Add OPENAI_API_KEY, or rely on LOVABLE_API_KEY, in the deployment's server environment (Settings → Secrets)."}
       </p>
     </section>
@@ -96,9 +96,9 @@ function RuntimeStatusPanel() {
 }
 
 function stamp(value: string | null): string {
-  if (!value) return "—";
+  if (!value) return ", ";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? ", " : date.toLocaleString();
 }
 
 function Row({ app }: { app: AppFreshness }) {

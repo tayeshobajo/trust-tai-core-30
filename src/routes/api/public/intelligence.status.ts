@@ -4,7 +4,7 @@
  * One shared health probe for the whole suite: Comms, Scout, Roadmap,
  * Steward, Studio, and Conductor all reason through the same runtime, so one
  * endpoint answers "can the suite reason right now, and on which provider."
- * Secret-free by contract — provider name and model only, never a key.
+ * Secret-free by contract, provider name and model only, never a key.
  */
 
 import { createFileRoute } from "@tanstack/react-router";

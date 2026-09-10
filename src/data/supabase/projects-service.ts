@@ -19,10 +19,24 @@ import type { ID } from "@/domain/entities";
 import type {
   ExecutionProject,
   ExecutionState,
+  ProjectDetailEdit,
   ProjectInput,
   ProjectOrigin,
 } from "@/domain/projects";
-import { STATUS_COLUMN_FOR_STATE, checkTransition, stateFromLifecycle } from "@/domain/projects";
+import {
+  STATUS_COLUMN_FOR_STATE,
+  checkDetailEdit,
+  checkOwnerAssignment,
+  checkTransition,
+  stateFromLifecycle,
+} from "@/domain/projects";
+import {
+  checkRoadmapLink,
+  roadmapLinkKey,
+  type LinkableRoadmap,
+} from "@/domain/project-roadmap-link";
+
+
 import { can, type AccessContext } from "@/domain/access";
 import {
   ROUTE_EVENT_KEY,
@@ -197,6 +211,10 @@ function payloadFor(input: ProjectInput, state: ExecutionState, now: string): Ro
   };
 }
 
+/** Delivery items as one comparable string, so "changed" means really changed. */
+function itemsSignature(items: { label: string; done: boolean }[] | undefined): string {
+  return (items ?? []).map((item) => `${item.done ? "1" : "0"}:${item.label}`).join("\n");
+}
 
 export const projectsService = {
   /** Every project this organization can read, newest movement first. */
@@ -267,6 +285,55 @@ export const projectsService = {
     return project;
   },
 
+  /**
+   * Record which roadmap this work executes.
+   *
+   * This writes no roadmap truth at all. It stores one id on the project's own
+   * origin so the Project workroom can read Roadmap through Roadmap's own
+   * services. A person chooses the roadmap; nothing is inferred from a company
+   * name, and a project carried across from a milestone is refused.
+   */
+  async linkRoadmap(
+    project: ExecutionProject,
+    roadmap: LinkableRoadmap,
+    context: ProjectsContext,
+  ): Promise<ExecutionProject> {
+    const check = checkRoadmapLink(project, roadmap);
+    if (!check.ok) throw new Error(check.because);
+
+    const origin: ProjectOrigin = { ...project.origin, roadmapId: roadmap.id };
+    const { data, error } = await supabase
+      .from("projects")
+      .select("metadata")
+      .eq("id", project.id)
+      .eq("organization_id", context.organizationId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error("This project is no longer readable.");
+
+    const metadata = { ...((data as Row)["metadata"] as Row | null), origin };
+    const saved = await supabase
+      .from("projects")
+      .update({ metadata, updated_at: new Date().toISOString() })
+      .eq("id", project.id)
+      .eq("organization_id", context.organizationId)
+      .select("*")
+      .single();
+    if (saved.error || !saved.data) {
+      throw new Error(saved.error?.message ?? "That roadmap could not be linked.");
+    }
+
+    const next = toProject(saved.data as Row);
+    await record(context, "project.updated", next, `${next.name} now reads its roadmap.`, {
+      roadmapId: roadmap.id,
+      roadmapLabel: roadmap.subjectLabel,
+      source_event_key: roadmapLinkKey(project.id, roadmap.id),
+    });
+    return next;
+  },
+
+
+
   async findByMilestone(milestoneId: ID, organizationId: ID): Promise<ExecutionProject | null> {
     const { data, error } = await supabase
       .from("projects")
@@ -296,8 +363,14 @@ export const projectsService = {
       blockedBecause?: string;
       ownerLabel?: string;
       ownerUserId?: ID;
+      /** Human-entered project truth, correctable after creation. */
+      name?: string;
+      pointA?: string;
       pointB?: string;
+      /** Pass "" to say no date is agreed after all. */
       dueDate?: string;
+      /** Manual work only: the company this serves. */
+      subjectLabel?: string;
       currentWork?: string;
       deliveryItems?: { label: string; done: boolean }[];
       /** Pass "" to say the wait is over. */
@@ -315,13 +388,52 @@ export const projectsService = {
       });
       if (!check.ok) throw new Error(check.because);
     }
-    const dueDate = changes.dueDate ?? project.dueDate;
+    // Handing work over, or taking the last person off it, is its own decision
+    // and is refused in the same words the picker uses.
+    if (changes.ownerUserId !== undefined || changes.ownerLabel !== undefined) {
+      const owned = checkOwnerAssignment(
+        { state },
+        {
+          ownerUserId: changes.ownerUserId ?? project.ownerUserId ?? "",
+          ownerLabel: changes.ownerLabel ?? project.ownerLabel ?? "",
+        },
+      );
+      if (!owned.ok) throw new Error(owned.because);
+    }
+
+    // A correction to what a person typed is refused before it is written, in
+    // the same words the panel uses to refuse it.
+    const detailEdit: ProjectDetailEdit = {
+      ...(changes.name !== undefined ? { name: changes.name } : {}),
+      ...(changes.pointA !== undefined ? { pointA: changes.pointA } : {}),
+      ...(changes.pointB !== undefined ? { pointB: changes.pointB } : {}),
+      ...(changes.dueDate !== undefined ? { dueDate: changes.dueDate } : {}),
+      ...(changes.subjectLabel !== undefined ? { subjectLabel: changes.subjectLabel } : {}),
+    };
+    // A delivery-item correction is a correction to what a person typed, not a
+    // change of next move. It is classified with the other detail edits so the
+    // history says what actually happened.
+    const deliveryChanged =
+      changes.deliveryItems !== undefined &&
+      itemsSignature(changes.deliveryItems) !== itemsSignature(project.deliveryItems);
+    const detailKeys = [...Object.keys(detailEdit), ...(deliveryChanged ? ["deliveryItems"] : [])];
+    if (Object.keys(detailEdit).length > 0) {
+      const detailCheck = checkDetailEdit(project, detailEdit);
+      if (!detailCheck.ok) throw new Error(detailCheck.because);
+    }
+
+    const dueDate =
+      changes.dueDate !== undefined ? changes.dueDate.trim() || undefined : project.dueDate;
     const currentWork = changes.currentWork ?? project.currentWork;
     const deliveryItems = changes.deliveryItems ?? project.deliveryItems;
+    const origin: ProjectOrigin =
+      changes.subjectLabel !== undefined
+        ? { ...project.origin, subjectLabel: changes.subjectLabel.trim() }
+        : project.origin;
     const next: ProjectInput = {
-      name: project.name,
-      pointA: project.pointA,
-      pointB: changes.pointB ?? project.pointB,
+      name: changes.name !== undefined ? changes.name.trim() : project.name,
+      pointA: changes.pointA !== undefined ? changes.pointA.trim() : project.pointA,
+      pointB: changes.pointB !== undefined ? changes.pointB.trim() : project.pointB,
       ...((changes.nextMove ?? project.nextMove)
         ? { nextMove: changes.nextMove ?? project.nextMove }
         : {}),
@@ -338,11 +450,18 @@ export const projectsService = {
       ...(dueDate ? { dueDate } : {}),
       ...(currentWork ? { currentWork } : {}),
       ...(deliveryItems ? { deliveryItems } : {}),
-      origin: project.origin,
+      origin,
     };
 
     const body = payloadFor(next, state, now);
+    // Clearing an agreed date has to clear the column too, or the read would
+    // keep showing a date nobody agreed to any more.
+    if (changes.dueDate !== undefined) body["due_date"] = dueDate ?? null;
+
+    if (changes.pointA !== undefined) body["point_a"] = next.pointA;
+    if (changes.pointB !== undefined) body["point_b"] = next.pointB;
     const metadata = body["metadata"] as Row;
+
     metadata["blocked_because"] =
       state === "blocked" ? (changes.blockedBecause ?? project.blockedBecause ?? null) : null;
     // "Blocked for N days" is only honest if the clock starts when it first stopped.
@@ -351,8 +470,11 @@ export const projectsService = {
       changes.waitingOn !== undefined ? changes.waitingOn.trim() : (project.waitingOn ?? "");
     metadata["waiting_on"] = state === "in_flight" && waitingOn ? waitingOn : null;
     metadata["blocked_since"] =
-      state === "blocked" ? (project.state === "blocked" ? (project.blockedSince ?? now) : now) : null;
-
+      state === "blocked"
+        ? project.state === "blocked"
+          ? (project.blockedSince ?? now)
+          : now
+        : null;
 
     const { data, error } = await writeTolerant(
       { ...body, updated_at: now },
@@ -397,9 +519,32 @@ export const projectsService = {
           { from: project.state, to: changes.state },
         );
       }
+    } else if (detailKeys.length > 0) {
+      // A correction is its own kind of history: what was fixed, and what it
+      // used to say, so nobody has to wonder when the record changed.
+      await record(
+        context,
+        "project.updated",
+        saved,
+        `${saved.name} had its recorded detail corrected.`,
+        {
+          fields: detailKeys,
+          before: {
+            ...(changes.name !== undefined ? { name: project.name } : {}),
+            ...(changes.pointA !== undefined ? { pointA: project.pointA } : {}),
+            ...(changes.pointB !== undefined ? { pointB: project.pointB } : {}),
+            ...(changes.dueDate !== undefined ? { dueDate: project.dueDate ?? null } : {}),
+            ...(changes.subjectLabel !== undefined
+              ? { subjectLabel: project.origin.subjectLabel ?? null }
+              : {}),
+            ...(deliveryChanged ? { deliveryItems: (project.deliveryItems ?? []) as unknown } : {}),
+          },
+        },
+      );
     } else {
       await record(context, "project.next_move_changed", saved, `${saved.name} was updated.`);
     }
+
     return saved;
   },
 

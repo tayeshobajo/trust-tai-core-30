@@ -274,7 +274,6 @@ export const OUTCOME_SOURCE_LABEL: Record<OutcomeSource, string> = {
   room_state: "Owning room state confirmed",
 };
 
-
 /** Repeated evidence, never a single result, may change guidance. */
 export const PATTERN_LESSON_THRESHOLD = 3;
 

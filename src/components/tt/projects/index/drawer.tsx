@@ -142,7 +142,9 @@ export function ProjectDrawer({
                   >
                     <Check className="size-3" />
                   </span>
-                  <span className={item.done ? "text-muted-foreground line-through" : "text-foreground"}>
+                  <span
+                    className={item.done ? "text-muted-foreground line-through" : "text-foreground"}
+                  >
                     {item.label}
                   </span>
                 </li>

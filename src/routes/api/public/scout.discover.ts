@@ -22,8 +22,6 @@ import {
   withLovableAiGatewayRunIdHeader,
 } from "@/lib/ai-gateway.server";
 
-
-
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
   return header.startsWith("Bearer ") ? header.slice(7).trim() || null : null;
@@ -42,8 +40,6 @@ export const Route = createFileRoute("/api/public/scout/discover")({
               : {}),
           }),
         }),
-
-
 
       POST: async ({ request }) => {
         const token = bearer(request);
@@ -105,7 +101,6 @@ export const Route = createFileRoute("/api/public/scout/discover")({
 
         return withLovableAiGatewayRunIdHeader(response, gateway);
       },
-
     },
   },
 });

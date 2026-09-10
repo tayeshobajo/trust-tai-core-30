@@ -16,7 +16,7 @@ set of companies, each with the evidence behind it, and one clear action.
 1. Describe who we are looking for in one input.
 2. Scout returns a small set of candidates from the preview demo set.
 3. Each candidate shows observed signals, an inferred fit reason, and a
-   recommendation — labelled separately.
+   recommendation, labelled separately.
 4. Qualify or Pass. Qualifying moves the prospect to **Ready for Comms** and
    writes a local activity event.
 
@@ -24,7 +24,7 @@ Small input. Deep intelligence. Clear output.
 
 ## Shared vs Scout-specific data
 
-- **Shared** (`src/domain/entities.ts`): `Prospect` — id, organization, name,
+- **Shared** (`src/domain/entities.ts`): `Prospect`, id, organization, name,
   domain, status, optional steward and timestamps. `EntityType` gained
   `"prospect"` so activity events and future Comms can reference the same row.
 - **Scout-specific** (`src/domain/scout.ts`): `ScoutSignal`, `ScoutFit`,
@@ -65,7 +65,7 @@ record is duplicated.
 No filters, no CRM dashboard, no settings, no scores, no enrichment, no
 outreach. Ops, Comms, Roadmap, Projects, Studio, and Pulse are untouched.
 
-## Update — Supabase-backed Scout
+## Update. Supabase-backed Scout
 
 Scout no longer keeps state in memory.
 
@@ -114,7 +114,7 @@ with source, page count, website, and ICP version.
 Scout is now a board, not a feed.
 
 - **Local nav:** Scout (working board) · Qualified · Research (history) · ICP Settings.
-- **Default view:** a compact list — fit light, company, ICP match %, strongest
+- **Default view:** a compact list, fit light, company, ICP match %, strongest
   signal, workflow stage, last checked. Sorted by fit light, then score, then
   recency. Filters: All / Green / Yellow / Red.
 - **Detail drawer:** opens on row click with the fit read, score breakdown by
@@ -123,7 +123,7 @@ Scout is now a board, not a feed.
 
 ### Conservative ICP scoring v1 (`trust-tai-icp-v1`)
 
-Deterministic and explainable — no AI scoring. Each criterion is scored from
+Deterministic and explainable, no AI scoring. Each criterion is scored from
 observed evidence only; unknown never counts as positive.
 
 - Green: score ≥ 75 **and** at least 3 independent evidence points.
@@ -137,7 +137,7 @@ Fit is **never** stage. Colour reads ICP fit only; `discovered`, `qualified`,
 ### Qualify and override
 
 Qualify sets `status = qualified` and shows what happens next (decision maker,
-handoff prep, Comms) — nothing is sent automatically. A member can override the
+handoff prep, Comms), nothing is sent automatically. A member can override the
 fit light manually; the override is stored in `metadata.scout_fit_override` and
 the evaluator's original read is kept and displayed alongside it.
 
@@ -166,7 +166,7 @@ clearly met ICP criteria. Evidence count counts met criteria, not raw
 observations.
 
 `pages_researched` is confidence context only. The drawer shows
-`N public pages checked`, or `Research depth is thin` under three pages — fit is
+`N public pages checked`, or `Research depth is thin` under three pages, fit is
 never penalised for depth.
 
 Existing rows keep their stored `metadata.scout_fit` until someone clicks
@@ -179,17 +179,17 @@ provenance. Qualify still sets `qualified` only; nothing becomes
 Scout finds, Comms develops, Roadmap builds. These laws govern the whole loop:
 
 - **60% fit triggers research, not outreach.** Crossing the ICP line makes a
-  company a candidate for deeper relationship-development research — nothing
+  company a candidate for deeper relationship-development research, nothing
   more. It never sends, never creates a Comms relationship, and never approves
   outreach.
 - **The actionable Worth Knowing queue is people, not anonymous companies.**
   60%+ fit AND a traceable founder/decision maker is required. A strong-fit
-  company with no person on record sits quietly as "Needs a person" — visible,
+  company with no person on record sits quietly as "Needs a person", visible,
   never presented as ready.
 - **The goal is to earn the next natural exchange, not a meeting.**
 - **Text is a protected personal channel.** It is recommended only on explicit
   text-route evidence (a number they shared, a prior SMS conversation, an
-  explicit text preference) — never from having met, an introduction, or a
+  explicit text preference), never from having met, an introduction, or a
   found phone number. Phone numbers are never inferred or scraped.
 - **Deeper research is governed and bounded.** When eligibility is newly
   reached, Scout prepares a Relationship Development Brief (why now · what
@@ -198,7 +198,7 @@ Scout finds, Comms develops, Roadmap builds. These laws govern the whole loop:
   evidence moved, the brief is stale (30 days), or a person explicitly
   refreshes. Provenance (prepared at, evidence at, version) travels with the
   brief so the UI can say what was researched and when.
-- **Roadmap is recognized from needs THEY revealed** — counterparty-authored
+- **Roadmap is recognized from needs THEY revealed**, counterparty-authored
   words only, quoted history stripped. Our own copy can never manufacture a
   signal, and nothing is ever auto-created or pitched.
 
@@ -223,20 +223,20 @@ governed brief, and the person's pacing decision. Six states:
 | `in_comms` | Relationship developing in Comms | Open in Comms |
 | `find_person` | Find the person first | Find the person |
 | `research_first` | Understand them first | Prepare research |
-| `no_urgency` | Worth knowing — no urgency | Prepare first message |
+| `no_urgency` | Worth knowing, no urgency | Prepare first message |
 | `act_now` | Worth knowing now | Prepare first message |
 | `not_ready` | Keep learning about this company | Research / none |
 
 Laws:
 
 - **No person, no first message.** Strong fit without a traceable
-  founder/decision maker resolves to "Find the person first" — the drafting
+  founder/decision maker resolves to "Find the person first", the drafting
   action is never offered.
 - **The brief gates drafting.** A traceable person without a current governed
   brief resolves to "Understand them first." Drafting can never skip the
   governed research step.
 - **Urgency is never manufactured.** A ready brief without a dated why-now is
-  "Worth knowing — no urgency"; only real dated evidence produces "now".
+  "Worth knowing, no urgency"; only real dated evidence produces "now".
 - **Once in Comms, Scout stops behaving like outbound.** The move becomes
   "Open in Comms"; no first-message CTA remains in Scout.
 - **Watch is a reversible pacing state, not a dead-end.** Watching companies

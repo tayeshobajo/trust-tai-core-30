@@ -14,9 +14,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import type { IntelligenceCase } from "@/domain/intelligence-canon";
+import type { WithheldSource } from "@/domain/signals";
 import type { Belief, Commitment, NormalizedConversation } from "@/domain/steward";
 import type { MemoryBelief } from "@/domain/steward-memory";
 import type { MemoryContext } from "@/domain/steward-semantic";
+
 import { detectCandidates } from "@/data/steward/candidates";
 import { proposeStateChanges } from "@/data/steward/continuity";
 import {
@@ -26,15 +29,18 @@ import {
 } from "@/data/steward/learning";
 
 import { toMemoryBelief } from "@/data/steward/memory-encoding";
+import { describeKnownPeople, resolveKnownPeople } from "@/data/steward/known-people";
 import { flagMemoryConflicts, selectRelevantMemory } from "@/data/steward/memory-context";
 import {
   interpretConversation,
   InterpretationUnavailableError,
 } from "@/lib/steward-interpret.server";
-import { createLovableAiGatewayRunIdFetch, getLovableAiGatewayRunId } from "@/lib/ai-gateway.server";
+import {
+  createLovableAiGatewayRunIdFetch,
+  getLovableAiGatewayRunId,
+} from "@/lib/ai-gateway.server";
 import { runtimeModelCaller } from "@/lib/intelligence-runtime.server";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
-
 
 function bearer(request: Request): string | null {
   const header = request.headers.get("Authorization") ?? "";
@@ -105,12 +111,62 @@ async function readBeliefs(
   }
 }
 
+/**
+ * The case ledger for this workspace, read as the caller. It is where human
+ * corrections live, and corrections outrank inference. When the ledger cannot
+ * be read (not migrated, no permission), the source is recorded as withheld:
+ * unknown stays unknown, it never becomes an empty fact.
+ */
+async function readCases(
+  supabase: SupabaseClient,
+  organizationId: string,
+): Promise<{ cases: IntelligenceCase[]; withheld: WithheldSource[] }> {
+  try {
+    const { data, error } = await supabase
+      .from("intelligence_cases")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+    return {
+      cases: ((data ?? []) as Record<string, unknown>[]).map((row) => {
+        const optional = (key: string) =>
+          typeof row[key] === "string" && (row[key] as string).length > 0
+            ? { [key]: row[key] as string }
+            : {};
+        return {
+          id: String(row["id"] ?? ""),
+          organizationId: String(row["organization_id"] ?? ""),
+          patternId: String(row["pattern_id"] ?? ""),
+          patternVersion: Number(row["pattern_version"] ?? 1),
+          entities: [],
+          evidenceRefs: [],
+          hypothesis: String(row["hypothesis"] ?? ""),
+          humanDecision: String(row["human_decision"] ?? ""),
+          decidedBy: String(row["decided_by"] ?? ""),
+          decidedAt: String(row["decided_at"] ?? ""),
+          diagnosisVerdict: (typeof row["diagnosis_verdict"] === "string"
+            ? row["diagnosis_verdict"]
+            : "unknown") as IntelligenceCase["diagnosisVerdict"],
+          ...(optional("correction") as { correction?: string }),
+          ...(optional("lesson") as { lesson?: string }),
+          createdAt: String(row["created_at"] ?? ""),
+        } satisfies IntelligenceCase;
+      }),
+      withheld: [],
+    };
+  } catch {
+    return { cases: [], withheld: [{ appId: "intelligence_cases", reason: "not_connected" }] };
+  }
+}
+
 /** Canonical memory, read as the caller. Unavailable is reported, never faked. */
+
 async function readMemory(
   supabase: SupabaseClient,
   organizationId: string,
 ): Promise<{ memory: MemoryContext; commitments: Commitment[] }> {
-
   try {
     const { data, error } = await supabase
       .from("commitments")
@@ -134,28 +190,73 @@ async function readMemory(
       updatedAt: "",
     })) as Commitment[];
 
-    const [peopleResult, projectsResult] = await Promise.all([
+    /*
+     * Canonical people before Steward's own registry only. Role memory is
+     * human-recorded and still outranks a directory row; members and contacts
+     * exist so Steward stops claiming it knows nobody about people the rest of
+     * Trust Tai has already met. Each read is tolerant: an unavailable source
+     * contributes nothing rather than failing the interpretation.
+     */
+    const [roleResult, membershipResult, contactsResult, projectsResult] = await Promise.all([
       supabase
         .from("steward_role_memory")
-        .select("name, title, pod, responsibilities")
+        .select("name, email, title, pod, responsibilities")
         .eq("organization_id", organizationId)
         .limit(100),
+      supabase
+        .from("organization_memberships")
+        .select("user_id, status")
+        .eq("organization_id", organizationId)
+        .limit(200),
+      supabase
+        .from("contacts")
+        .select("full_name, email, role_title")
+        .eq("organization_id", organizationId)
+        .limit(200),
       supabase.from("projects").select("id, name").eq("organization_id", organizationId).limit(100),
     ]);
 
-    const people = (peopleResult.data ?? [])
-      .map((row) => {
-        const title = [row["title"], row["pod"]].filter(Boolean).join(" · ");
-        const responsibilities = Array.isArray(row["responsibilities"])
-          ? (row["responsibilities"] as string[]).slice(0, 4).join(", ")
-          : "";
-        const detail = [title, responsibilities].filter(Boolean).join("-");
-        return detail
-          ? { name: String(row["name"] ?? ""), title: detail }
-          : { name: String(row["name"] ?? "") };
+    const memberIds = ((membershipResult.data ?? []) as Record<string, unknown>[])
+      .filter((row) => String(row["status"] ?? "active") === "active")
+      .map((row) => String(row["user_id"] ?? ""))
+      .filter(Boolean);
+    const profilesResult =
+      memberIds.length > 0
+        ? await supabase
+            .from("profiles")
+            .select("id, full_name, email, job_title")
+            .in("id", memberIds)
+        : { data: [] as Record<string, unknown>[] };
 
-      })
-      .filter((person) => person.name.length > 0);
+    const roleMemory = ((roleResult.data ?? []) as Record<string, unknown>[]).map((row) => {
+      const title = [row["title"], row["pod"]].filter(Boolean).join(" · ");
+      const responsibilities = Array.isArray(row["responsibilities"])
+        ? (row["responsibilities"] as string[]).slice(0, 4).join(", ")
+        : "";
+      return {
+        name: String(row["name"] ?? ""),
+        email: (row["email"] as string | null) ?? null,
+        title: [title, responsibilities].filter(Boolean).join("-"),
+      };
+    });
+
+    const members = ((profilesResult.data ?? []) as Record<string, unknown>[]).map((row) => ({
+      name: String(row["full_name"] ?? ""),
+      email: (row["email"] as string | null) ?? null,
+      title: (row["job_title"] as string | null) ?? null,
+    }));
+
+    const contacts = ((contactsResult.data ?? []) as Record<string, unknown>[]).map((row) => ({
+      name: String(row["full_name"] ?? ""),
+      email: (row["email"] as string | null) ?? null,
+      title: (row["role_title"] as string | null) ?? null,
+    }));
+
+    const known = resolveKnownPeople({ roleMemory, members, contacts });
+    const people = known.map((person) => ({
+      name: person.name,
+      ...(person.title ? { title: person.title } : {}),
+    }));
 
     const projects = (projectsResult.data ?? [])
       .map((row) => ({ id: String(row["id"] ?? ""), label: String(row["name"] ?? "") }))
@@ -165,10 +266,8 @@ async function readMemory(
       commitments,
       memory: {
         available: true,
-        because:
-          people.length > 0
-            ? "Read from this workspace's open commitments and known people."
-            : "Read from this workspace's open commitments.",
+        because: describeKnownPeople(known),
+
         openCommitments: commitments.map((commitment) => ({
           id: commitment.id,
           statement: commitment.what,
@@ -179,7 +278,6 @@ async function readMemory(
         projects,
       },
     };
-
   } catch (error) {
     return {
       commitments: [],
@@ -222,11 +320,16 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
 
         const conversation = body["conversation"] as NormalizedConversation | undefined;
         if (!conversation || !Array.isArray(conversation.segments)) {
-          return Response.json({ error: "No conversation was sent to interpret." }, { status: 400 });
+          return Response.json(
+            { error: "No conversation was sent to interpret." },
+            { status: 400 },
+          );
         }
 
         const { memory, commitments } = await readMemory(supabase, organizationId);
         const beliefs = await readBeliefs(supabase, organizationId);
+        /* Human corrections for the shared retrieval bundle. Unreadable is withheld. */
+        const ledger = await readCases(supabase, organizationId);
         /* Readings people keep calling context stop being raised. Countable, never hidden. */
         const suppressed = suppressedPatterns(outcomeRecordsFromBeliefs(beliefs));
         const relevant = selectRelevantMemory({
@@ -264,9 +367,13 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
               candidates,
               gateway,
               initialRunId,
+              organizationId,
+              cases: ledger.cases,
+              withheld: ledger.withheld,
             },
             callModel,
           );
+
           /* Continuity and conflict are proposals for a person, never writes. */
           const stateChanges = proposeStateChanges({ signals: run.signals, commitments });
           const conflicts = flagMemoryConflicts({ signals: run.signals, beliefs });
@@ -279,9 +386,7 @@ export const Route = createFileRoute("/api/public/steward/interpret")({
             memoryConsidered: relevant.consideredCount,
             suppressedCount: suppressed.length,
           });
-
         } catch (error) {
-
           if (error instanceof InterpretationUnavailableError) {
             return Response.json({ error: error.message }, { status: 503 });
           }

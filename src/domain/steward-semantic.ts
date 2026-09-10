@@ -124,7 +124,6 @@ export interface MemoryContext {
   inferred?: string[];
 }
 
-
 export interface InterpretationRun {
   conversationTitle: string;
   occurredAt: string;

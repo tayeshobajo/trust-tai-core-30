@@ -64,7 +64,10 @@ export function readCommitment(commitment: Commitment, now: string): MoveRead | 
   if (commitment.status === "waiting") {
     return {
       state: "waiting",
-      why: idle > 0 ? `Waiting on someone else for ${idle} day${idle === 1 ? "" : "s"}.` : "Waiting on someone else.",
+      why:
+        idle > 0
+          ? `Waiting on someone else for ${idle} day${idle === 1 ? "" : "s"}.`
+          : "Waiting on someone else.",
       urgency: 40 + Math.min(20, idle),
       evidence: [...evidence, computed("Marked waiting by a person")],
     };

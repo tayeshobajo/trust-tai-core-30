@@ -67,7 +67,7 @@ const IdentityBody = z.object({
  *                   provisioned again from scratch. Their identity is written
  *                   into the append-only activity history first, and no work
  *                   record (contacts, prospects, messages, decisions) is
- *                   deleted — only the credential.
+ *                   deleted, only the credential.
  */
 const RemoveBody = z.object({
   action: z.literal("remove_member"),
@@ -183,10 +183,7 @@ async function serviceWriteTolerant(
  * Read profile rows as the service role, narrowing the projection if the
  * deployment lacks one of the optional display columns.
  */
-async function readProfiles(
-  filter: string,
-  key: string,
-): Promise<Record<string, string | null>[]> {
+async function readProfiles(filter: string, key: string): Promise<Record<string, string | null>[]> {
   for (const columns of [PROFILE_COLUMNS, ["id", "email", "full_name"]]) {
     const response = await fetch(
       `${supabaseUrl()}/rest/v1/profiles?${filter}&select=${columns.join(",")}`,
@@ -214,7 +211,6 @@ function displayNameOf(
   if (candidate) return candidate;
   return (email.split("@")[0] ?? "").trim();
 }
-
 
 export const Route = createFileRoute("/api/public/settings/admin-password")({
   server: {
@@ -279,7 +275,6 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           const rows = await readProfiles(`id=in.${encodeURIComponent(list)}`, secret);
           const byId = new Map(rows.map((row) => [String(row["id"]), row]));
 
-
           /* Supabase Auth is the authority for a person's sign-in identity:
              the address they actually sign in with, when the account was
              created, and when they last signed in. profiles only enriches
@@ -325,7 +320,7 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
 
           /* An invitation is onboarding workflow state, not identity. Once the
              invited address signs in as a real member, the invitation is
-             satisfied — it must not keep counting as a live pending invite.
+             satisfied, it must not keep counting as a live pending invite.
              History in `activities` is untouched: nothing is rewritten. */
           const memberEmails = new Set(
             ids
@@ -381,7 +376,6 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           });
         }
 
-
         /* ---------------------------------------- take someone out, keep the work */
         if (input.action === "remove_member") {
           if (input.userId === caller.id) {
@@ -395,7 +389,10 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           if (!target?.[0]) {
             return refused(403, "That person is not a member of this workspace.");
           }
-          if (normalizeRole(target[0].role) === "owner" && normalizeRole(membership?.role ?? "") !== "owner") {
+          if (
+            normalizeRole(target[0].role) === "owner" &&
+            normalizeRole(membership?.role ?? "") !== "owner"
+          ) {
             return refused(403, "Only an owner can remove another owner.");
           }
 
@@ -503,8 +500,6 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
           return Response.json({ ok: true, userId: input.userId, action: "set_identity" });
         }
 
-
-
         /* ------------------------------------------------- reset an existing */
         if (input.action === "reset_password") {
           const target = await restGet<{ organization_id: string }[]>(
@@ -581,8 +576,8 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
             (createdBody?.error_code ?? "").toLowerCase() === "email_exists" ||
             /already/i.test(createdBody?.msg ?? createdBody?.message ?? "");
 
-          /* Idempotency. A retry — a double click, a lost response, a second
-             attempt after a timeout — must land on the same person, never on a
+          /* Idempotency. A retry, a double click, a lost response, a second
+             attempt after a timeout, must land on the same person, never on a
              second account. If that address already signs in AND is already a
              member of THIS workspace, this is that retry: finish the same
              provisioning against the same user id. If the address exists but
@@ -658,7 +653,6 @@ export const Route = createFileRoute("/api/public/settings/admin-password")({
             body: JSON.stringify({ password: input.password }),
           }).catch(() => null);
         }
-
 
         const memberWrite = await serviceWrite(
           "organization_memberships?on_conflict=organization_id,user_id",

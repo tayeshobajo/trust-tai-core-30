@@ -26,9 +26,9 @@ state a person sets and must explain.
 Health is derived, never typed in, and always explains itself
 (`src/domain/projects.ts`):
 
-- **At risk** — blocked, or nothing has moved for 14 days.
-- **Needs attention** — no owner, no destination, or no next move.
-- **On track** — owned, moving, with a recorded next move.
+- **At risk**, blocked, or nothing has moved for 14 days.
+- **Needs attention**, no owner, no destination, or no next move.
+- **On track**, owned, moving, with a recorded next move.
 
 ## Handoff
 
@@ -55,5 +55,73 @@ or cannot move. Ask Trust Tai answers about delivery from those blocks only.
 
 ## Routes
 
-- `/modules/projects` — the room: asking for you, incomplete, in flight, landed.
-- `/modules/projects/$projectId` — one piece of work, its evidence, and its move.
+- `/modules/projects`, the room: asking for you, incomplete, in flight, landed.
+- `/modules/projects/$projectId`, one piece of work, its evidence, and its move.
+
+## Canon laws that bind this room (2026-09-06)
+
+- Execution state never derives from, or moves, the client's commercial tier
+  (canon 12).
+- Chat is how you talk to the project; Projects remains where project truth
+  lives (canon 13). The Chat tab is session scoped and writes nothing.
+- Anything the page flags is resolvable from the Update project panel: state,
+  block, owner, and the wait itself. Waiting stays derived from `waitingOn`,
+  which the panel can set and clear (canon 15).
+- Owner is picked from active workspace members and written through
+  `projectsService.update`, under RLS with the same provenance as every other
+  project write. In-flight and in-review work cannot be left with nobody
+  (`checkOwnerAssignment`).
+
+## Correcting a project (canon 16, 2026-09-06)
+
+Manage project has two halves, because they are two different decisions.
+
+**Project details** corrects what a person typed. Editable:
+
+| Field | Owned by | Notes |
+| ----- | -------- | ----- |
+| Project name | Projects | Cannot be blanked. |
+| Point A | Projects | Free to correct, may be emptied. |
+| Point B | Projects | Cannot be blanked once the work is Delivered or Closed, because that claim was made against it. |
+| Agreed date | Projects | Canonical (`dueDate`, column with metadata mirror). Clearing it says no date was really agreed. |
+| Delivery items | Projects | Edited as one line each. Labels that survive an edit keep whether they were ticked off. |
+| Company this serves | Projects, unlinked manual work only | `origin.subjectLabel`, editable only when the project has no `clientId` and no roadmap origin. Then it is a description Projects owns, not an attachment. |
+| Owner | Projects | Changed on the rail owner picker, from active members. |
+
+Intentionally immutable, and the panel says so:
+
+- **Roadmap lineage** (`origin.roadmapId`, `origin.milestoneId`). Rewriting it
+  would rewrite where a decision came from.
+- **Client attachment** (`clientId`). Moving delivery between companies is a
+  correction made in Clients, never a dropdown here.
+
+### The company label is not a client reassignment
+
+When a project has a `clientId`, the Client record is the company. The label is
+shown read-only and says so, with a link to that client's page. Editing it is
+refused by `checkDetailEdit` in the same words on the panel and in the service,
+so the visible label can never drift from the real attachment.
+
+**Open operability item.** There is no safe way to move an existing project to a
+different client. Doing it would have to carry commercial truth, roadmap
+lineage and delivery history across with it, and nothing in the system does
+that today. The current safe recovery, stated in the UI: close the project on
+the wrong client and start it under the right one. This is recorded as an open
+item rather than solved with a dropdown that would silently corrupt lineage.
+
+### Dates
+
+The agreed date uses the same calendar-day law as proposal dates: a day from a
+date input becomes noon UTC through `agreedDayToIso`, so the recorded day never
+slides backwards or forwards with the reader's timezone. Both the create form
+and the manage panel go through it.
+
+**Move the work** keeps state, block, waiting and next move exactly as canon 15
+requires. Waiting stays derived from `waitingOn`.
+
+Every correction is refused before it is written by `checkDetailEdit`
+(`src/domain/projects.ts`), written through `projectsService.update`, and
+recorded as `project.updated` with the changed field names and their previous
+values. Delivery-item corrections count as corrections: they are classified with
+the other detail edits, never as a change of next move. A real state transition
+still takes precedence and is recorded as the transition. Saves confirm on screen and refresh the read.

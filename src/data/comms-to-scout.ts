@@ -7,7 +7,7 @@
  * prospect whose provenance says plainly that a human entered it.
  *
  * One person, one memory: the same contact row carries across, and the
- * conversation keeps its history — nothing is duplicated or moved.
+ * conversation keeps its history, nothing is duplicated or moved.
  */
 
 import { supabase } from "@/integrations/trust-tai/supabase";

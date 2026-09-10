@@ -1,7 +1,7 @@
 /**
  * The Comms plan.
  *
- * One honest answer to "what happens next with this person?" — built only
+ * One honest answer to "what happens next with this person?", built only
  * from things a human already recorded: a meeting that is set, a promise that
  * is open, a reply that is owed, a follow-up someone dated.
  *

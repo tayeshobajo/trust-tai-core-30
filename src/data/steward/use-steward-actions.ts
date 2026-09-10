@@ -118,7 +118,9 @@ export function useStewardActions({
       refresh();
     },
     onError: (error: unknown) =>
-      toast.error("Not reassigned", { description: message(error, "That could not be reassigned.") }),
+      toast.error("Not reassigned", {
+        description: message(error, "That could not be reassigned."),
+      }),
   });
 
   const agent = useMutation({

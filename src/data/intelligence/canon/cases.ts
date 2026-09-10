@@ -74,10 +74,7 @@ export interface ResolveCaseInput {
 }
 
 /** Resolving a case never rewrites the decision or the evidence it rested on. */
-export function resolveCase(
-  existing: IntelligenceCase,
-  input: ResolveCaseInput,
-): IntelligenceCase {
+export function resolveCase(existing: IntelligenceCase, input: ResolveCaseInput): IntelligenceCase {
   return {
     ...existing,
     outcome: input.outcome,
@@ -109,9 +106,7 @@ export function recordPatternOutcome(input: RecordOutcomeInput): PatternOutcome 
     input.observedAt !== undefined
       ? Math.max(
           0,
-          Math.round(
-            (Date.parse(input.observedAt) - Date.parse(input.decidedAt)) / 3_600_000,
-          ),
+          Math.round((Date.parse(input.observedAt) - Date.parse(input.decidedAt)) / 3_600_000),
         )
       : undefined;
 
@@ -160,8 +155,7 @@ export function patternStanding(patternId: ID, outcomes: PatternOutcome[]): Patt
     .map((entry) => entry.humanCorrection)
     .filter((entry): entry is string => Boolean(entry));
 
-  const hasLesson =
-    successes >= PATTERN_LESSON_THRESHOLD || failures >= PATTERN_LESSON_THRESHOLD;
+  const hasLesson = successes >= PATTERN_LESSON_THRESHOLD || failures >= PATTERN_LESSON_THRESHOLD;
 
   let guidance: string;
   if (corrections.length > 0) {
@@ -176,7 +170,16 @@ export function patternStanding(patternId: ID, outcomes: PatternOutcome[]): Patt
     guidance = "This reading has held up the last few times it was acted on.";
   }
 
-  return { patternId, outcomes: mine.length, successes, failures, unknown, corrections, hasLesson, guidance };
+  return {
+    patternId,
+    outcomes: mine.length,
+    successes,
+    failures,
+    unknown,
+    corrections,
+    hasLesson,
+    guidance,
+  };
 }
 
 /**

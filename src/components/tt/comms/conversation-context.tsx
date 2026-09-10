@@ -205,9 +205,7 @@ export function ConversationContext({
           </p>
         ) : (
           <>
-            <p className="text-[13px] text-foreground">
-              {REASON_LABEL[reasons[0]!.reasonCode]}
-            </p>
+            <p className="text-[13px] text-foreground">{REASON_LABEL[reasons[0]!.reasonCode]}</p>
             <p className="mt-1 text-[12px] text-muted-foreground">{reasons[0]!.reasonText}</p>
             {reasons.length > 1 ? (
               <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">

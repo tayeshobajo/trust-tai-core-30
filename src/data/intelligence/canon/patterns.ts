@@ -15,8 +15,10 @@ import type { IntelligencePattern } from "@/domain/intelligence-canon";
 
 const CANON = "trust_tai_canon" as const;
 
-function pattern(input: Omit<IntelligencePattern, "source" | "version" | "status"> &
-  Partial<Pick<IntelligencePattern, "source" | "version" | "status">>): IntelligencePattern {
+function pattern(
+  input: Omit<IntelligencePattern, "source" | "version" | "status"> &
+    Partial<Pick<IntelligencePattern, "source" | "version" | "status">>,
+): IntelligencePattern {
   return {
     source: CANON,
     version: 1,
@@ -35,7 +37,12 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     mayMean: "Nobody holds the next step, so the work is discussed rather than moved.",
     triggers: [
       { observationKind: "project_delayed", looksFor: "A project past its expected date" },
-      { observationKind: "activity_volume", looksFor: "Steady conversation this week", minMagnitude: 8, optional: true },
+      {
+        observationKind: "activity_volume",
+        looksFor: "Steady conversation this week",
+        minMagnitude: 8,
+        optional: true,
+      },
       { observationKind: "open_decisions", looksFor: "Decisions still open", optional: true },
     ],
     negativeIndicators: [
@@ -109,7 +116,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "moderate",
     chainId: "chain.project_late",
-    possibleNextMoves: [{ move: "Write down what finished means for this milestone", appId: "projects" }],
+    possibleNextMoves: [
+      { move: "Write down what finished means for this milestone", appId: "projects" },
+    ],
     verifyOutcomeBy: "The milestone closes, or a real blocker is recorded within days.",
   }),
   pattern({
@@ -143,7 +152,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "moderate",
     chainId: "chain.project_late",
-    possibleNextMoves: [{ move: "Escalate the blocker to the person who can clear it", appId: "projects" }],
+    possibleNextMoves: [
+      { move: "Escalate the blocker to the person who can clear it", appId: "projects" },
+    ],
     verifyOutcomeBy: "The blocker is closed, or an owner replies within two days.",
   }),
   pattern({
@@ -153,7 +164,11 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     description: "More than one project is past its date in the same period.",
     mayMean: "This is a system condition rather than a project problem.",
     triggers: [
-      { observationKind: "delivery_delay_count", looksFor: "Two or more late projects", minMagnitude: 2 },
+      {
+        observationKind: "delivery_delay_count",
+        looksFor: "Two or more late projects",
+        minMagnitude: 2,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -177,7 +192,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "moderate",
     chainId: "chain.capacity_or_clarity",
-    possibleNextMoves: [{ move: "Sequence the late work rather than running it in parallel", appId: "projects" }],
+    possibleNextMoves: [
+      { move: "Sequence the late work rather than running it in parallel", appId: "projects" },
+    ],
     verifyOutcomeBy: "The count of late projects falls over the next two weeks.",
   }),
   pattern({
@@ -187,13 +204,14 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     description: "A blocker of the same shape has appeared more than once.",
     mayMean: "A step in the way work is run is missing, not a person failing.",
     triggers: [
-      { observationKind: "recurring_blocker", looksFor: "A blocker seen more than once", minMagnitude: 2 },
+      {
+        observationKind: "recurring_blocker",
+        looksFor: "A blocker seen more than once",
+        minMagnitude: 2,
+      },
     ],
     negativeIndicators: [],
-    hypotheses: [
-      "A handover step is undefined.",
-      "A dependency is discovered too late each time.",
-    ],
+    hypotheses: ["A handover step is undefined.", "A dependency is discovered too late each time."],
     competingExplanations: [
       {
         explanation: "Two unrelated blockers were described in similar words.",
@@ -219,8 +237,17 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     description: "The same remembered work keeps recurring across delivery.",
     mayMean: "There is an internal system worth building, not more effort to spend.",
     triggers: [
-      { observationKind: "memory_recurring_work", looksFor: "Work the workspace has seen repeat", minMagnitude: 3 },
-      { observationKind: "open_projects", looksFor: "More than one project open", minMagnitude: 2, optional: true },
+      {
+        observationKind: "memory_recurring_work",
+        looksFor: "Work the workspace has seen repeat",
+        minMagnitude: 3,
+      },
+      {
+        observationKind: "open_projects",
+        looksFor: "More than one project open",
+        minMagnitude: 2,
+        optional: true,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -242,7 +269,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
       },
     ],
     confidenceCap: "low",
-    possibleNextMoves: [{ move: "Write the repeated step down as a template first", appId: "projects" }],
+    possibleNextMoves: [
+      { move: "Write the repeated step down as a template first", appId: "projects" },
+    ],
     verifyOutcomeBy: "The work stops appearing as remembered work.",
   }),
 
@@ -255,7 +284,11 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     mayMean: "What was delivered and what was expected are not the same thing.",
     triggers: [
       { observationKind: "relationship_silent", looksFor: "A client relationship gone quiet" },
-      { observationKind: "open_projects", looksFor: "Work in flight for that client", optional: true },
+      {
+        observationKind: "open_projects",
+        looksFor: "Work in flight for that client",
+        optional: true,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -279,7 +312,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "moderate",
     chainId: "chain.client_unhappy",
-    possibleNextMoves: [{ move: "Ask the client directly what good looks like now", appId: "comms" }],
+    possibleNextMoves: [
+      { move: "Ask the client directly what good looks like now", appId: "comms" },
+    ],
     verifyOutcomeBy: "The client replies and the next milestone is agreed in writing.",
   }),
   pattern({
@@ -292,10 +327,7 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
       { observationKind: "reply_debt", looksFor: "Threads waiting on a reply", minMagnitude: 1 },
     ],
     negativeIndicators: [],
-    hypotheses: [
-      "The reply needs a decision nobody has made.",
-      "The thread has no owner.",
-    ],
+    hypotheses: ["The reply needs a decision nobody has made.", "The thread has no owner."],
     competingExplanations: [
       {
         explanation: "The reply was sent outside the connected inbox.",
@@ -329,7 +361,12 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
        */
       { observationKind: "reply_debt", looksFor: "Threads waiting on us", minMagnitude: 1 },
       { observationKind: "project_delayed", looksFor: "Work past its date" },
-      { observationKind: "activity_volume", looksFor: "Regular conversation", minMagnitude: 5, optional: true },
+      {
+        observationKind: "activity_volume",
+        looksFor: "Regular conversation",
+        minMagnitude: 5,
+        optional: true,
+      },
     ],
 
     negativeIndicators: [],
@@ -364,7 +401,12 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     mayMean: "Acceptance criteria are weak, or scope is growing without being named.",
     triggers: [
       { observationKind: "project_delayed", looksFor: "Work past its date" },
-      { observationKind: "activity_volume", looksFor: "Heavy conversation this week", minMagnitude: 12, optional: true },
+      {
+        observationKind: "activity_volume",
+        looksFor: "Heavy conversation this week",
+        minMagnitude: 12,
+        optional: true,
+      },
     ],
     negativeIndicators: [
       { observationKind: "memory_decided", looksFor: "A recorded scope decision" },
@@ -389,7 +431,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "moderate",
     chainId: "chain.client_unhappy",
-    possibleNextMoves: [{ move: "Name the change and agree it before the next round", appId: "comms" }],
+    possibleNextMoves: [
+      { move: "Name the change and agree it before the next round", appId: "comms" },
+    ],
     verifyOutcomeBy: "The next round closes without new scope appearing.",
   }),
   pattern({
@@ -399,7 +443,11 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     description: "A client we used to speak with regularly has gone silent.",
     mayMean: "The relationship is cooling before anyone has said so.",
     triggers: [
-      { observationKind: "relationship_silent", looksFor: "No contact for a long stretch", minMagnitude: 1 },
+      {
+        observationKind: "relationship_silent",
+        looksFor: "No contact for a long stretch",
+        minMagnitude: 1,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -421,7 +469,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
       },
     ],
     confidenceCap: "moderate",
-    possibleNextMoves: [{ move: "Reopen the thread with something useful, not a check-in", appId: "comms" }],
+    possibleNextMoves: [
+      { move: "Reopen the thread with something useful, not a check-in", appId: "comms" },
+    ],
     verifyOutcomeBy: "The client replies within a week.",
   }),
 
@@ -433,9 +483,21 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     description: "Decisions and work keep returning to one person while the team has room.",
     mayMean: "Context lives with the founder rather than in the work.",
     triggers: [
-      { observationKind: "open_decisions", looksFor: "Decisions waiting on one person", minMagnitude: 2 },
-      { observationKind: "commitment_overdue", looksFor: "Promises past their date", optional: true },
-      { observationKind: "memory_recurring_work", looksFor: "The same work returning to the same person", optional: true },
+      {
+        observationKind: "open_decisions",
+        looksFor: "Decisions waiting on one person",
+        minMagnitude: 2,
+      },
+      {
+        observationKind: "commitment_overdue",
+        looksFor: "Promises past their date",
+        optional: true,
+      },
+      {
+        observationKind: "memory_recurring_work",
+        looksFor: "The same work returning to the same person",
+        optional: true,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -444,7 +506,8 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     competingExplanations: [
       {
-        explanation: "Acceptance criteria are unclear, so work returns for judgment rather than for context.",
+        explanation:
+          "Acceptance criteria are unclear, so work returns for judgment rather than for context.",
         distinguishedBy: "Whether the returned work shares a definition-of-done gap.",
       },
       {
@@ -468,7 +531,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "moderate",
     chainId: "chain.founder_bottleneck",
-    possibleNextMoves: [{ move: "Write down the context behind one recurring decision", appId: "steward" }],
+    possibleNextMoves: [
+      { move: "Write down the context behind one recurring decision", appId: "steward" },
+    ],
     verifyOutcomeBy: "The same decision is made without the founder next time.",
   }),
   pattern({
@@ -479,7 +544,11 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     mayMean: "Work is waiting on a decision rather than on effort.",
     triggers: [
       { observationKind: "open_decisions", looksFor: "Open decisions", minMagnitude: 3 },
-      { observationKind: "roadmap_direction_undecided", looksFor: "Direction still undecided", optional: true },
+      {
+        observationKind: "roadmap_direction_undecided",
+        looksFor: "Direction still undecided",
+        optional: true,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -502,7 +571,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "moderate",
     chainId: "chain.founder_bottleneck",
-    possibleNextMoves: [{ move: "Decide the oldest open decision, or say what it waits on", appId: "roadmap" }],
+    possibleNextMoves: [
+      { move: "Decide the oldest open decision, or say what it waits on", appId: "roadmap" },
+    ],
     verifyOutcomeBy: "Open decisions fall and the rooms downstream move again.",
   }),
   pattern({
@@ -513,7 +584,11 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     mayMean: "Effort is going somewhere other than the work that matters.",
     triggers: [
       { observationKind: "activity_volume", looksFor: "High activity this week", minMagnitude: 15 },
-      { observationKind: "delivery_delay_count", looksFor: "Late delivery at the same time", minMagnitude: 1 },
+      {
+        observationKind: "delivery_delay_count",
+        looksFor: "Late delivery at the same time",
+        minMagnitude: 1,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -536,7 +611,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "low",
     chainId: "chain.busy_but_slow",
-    possibleNextMoves: [{ move: "Pick the one piece of work that finishes first", appId: "projects" }],
+    possibleNextMoves: [
+      { move: "Pick the one piece of work that finishes first", appId: "projects" },
+    ],
     verifyOutcomeBy: "One late project closes without new work being started.",
   }),
 
@@ -548,7 +625,11 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     description: "Strong-fit companies are waiting and nothing has been decided.",
     mayMean: "The pipeline is being fed faster than it is being worked.",
     triggers: [
-      { observationKind: "strong_fit_unreviewed", looksFor: "Strong fits with no decision", minMagnitude: 1 },
+      {
+        observationKind: "strong_fit_unreviewed",
+        looksFor: "Strong fits with no decision",
+        minMagnitude: 1,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -581,7 +662,11 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     description: "Companies are ready for a conversation and no conversation started.",
     mayMean: "The handover between Scout and Comms is not happening.",
     triggers: [
-      { observationKind: "pipeline_unrouted", looksFor: "Qualified companies not routed", minMagnitude: 1 },
+      {
+        observationKind: "pipeline_unrouted",
+        looksFor: "Qualified companies not routed",
+        minMagnitude: 1,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -639,7 +724,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
       },
     ],
     confidenceCap: "moderate",
-    possibleNextMoves: [{ move: "Run one bounded sourcing pass against the current ICP", appId: "scout" }],
+    possibleNextMoves: [
+      { move: "Run one bounded sourcing pass against the current ICP", appId: "scout" },
+    ],
     verifyOutcomeBy: "New candidates appear and at least one is reviewed.",
   }),
   pattern({
@@ -649,8 +736,16 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     description: "There are plenty of companies and little movement out of the pipeline.",
     mayMean: "Qualification, positioning, pricing or follow-up is where it stops.",
     triggers: [
-      { observationKind: "pipeline_volume", looksFor: "A pipeline with real volume", minMagnitude: 8 },
-      { observationKind: "pipeline_unrouted", looksFor: "Qualified work not handed over", optional: true },
+      {
+        observationKind: "pipeline_volume",
+        looksFor: "A pipeline with real volume",
+        minMagnitude: 8,
+      },
+      {
+        observationKind: "pipeline_unrouted",
+        looksFor: "Qualified work not handed over",
+        optional: true,
+      },
       { observationKind: "reply_debt", looksFor: "Conversations waiting on us", optional: true },
     ],
     negativeIndicators: [],
@@ -726,9 +821,7 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     name: "A roadmap that stopped moving",
     description: "A roadmap has not changed for a long stretch.",
     mayMean: "It stopped being the plan people work from.",
-    triggers: [
-      { observationKind: "roadmap_stale", looksFor: "A roadmap untouched for weeks" },
-    ],
+    triggers: [{ observationKind: "roadmap_stale", looksFor: "A roadmap untouched for weeks" }],
     negativeIndicators: [],
     hypotheses: [
       "The plan was overtaken by client work and never updated.",
@@ -750,7 +843,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "moderate",
     chainId: "chain.roadmap_stalled",
-    possibleNextMoves: [{ move: "Restate the next milestone, or close the roadmap", appId: "roadmap" }],
+    possibleNextMoves: [
+      { move: "Restate the next milestone, or close the roadmap", appId: "roadmap" },
+    ],
     verifyOutcomeBy: "The roadmap moves within a week, or is honestly closed.",
   }),
 
@@ -763,7 +858,11 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     mayMean: "The warmest demand we have is going cold.",
     triggers: [
       { observationKind: "inbound_volume", looksFor: "Intakes received", minMagnitude: 1 },
-      { observationKind: "strong_fit_unreviewed", looksFor: "Companies waiting on a decision", optional: true },
+      {
+        observationKind: "strong_fit_unreviewed",
+        looksFor: "Companies waiting on a decision",
+        optional: true,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -825,7 +924,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "low",
     chainId: "chain.website_no_opportunities",
-    possibleNextMoves: [{ move: "Look at the question people stop at before changing anything", appId: "website" }],
+    possibleNextMoves: [
+      { move: "Look at the question people stop at before changing anything", appId: "website" },
+    ],
     verifyOutcomeBy: "Completed intakes rise without traffic changing.",
   }),
   pattern({
@@ -836,7 +937,11 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     mayMean: "There is something worth publishing about it, in our own words.",
     triggers: [
       { observationKind: "inbound_volume", looksFor: "Several intakes", minMagnitude: 3 },
-      { observationKind: "memory_recurring_work", looksFor: "The same theme recurring", optional: true },
+      {
+        observationKind: "memory_recurring_work",
+        looksFor: "The same theme recurring",
+        optional: true,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -858,7 +963,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
       },
     ],
     confidenceCap: "low",
-    possibleNextMoves: [{ move: "Note the recurring theme for Studio to consider", appId: "studio" }],
+    possibleNextMoves: [
+      { move: "Note the recurring theme for Studio to consider", appId: "studio" },
+    ],
     verifyOutcomeBy: "New intakes reference the published piece, or say the problem differently.",
   }),
 
@@ -902,7 +1009,11 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     description: "A question recurs across conversations without a settled answer.",
     mayMean: "Something is missing from how we write things down, not from the people asking.",
     triggers: [
-      { observationKind: "memory_recurring_work", looksFor: "A recurring theme in memory", minMagnitude: 3 },
+      {
+        observationKind: "memory_recurring_work",
+        looksFor: "A recurring theme in memory",
+        minMagnitude: 3,
+      },
       { observationKind: "reply_debt", looksFor: "Threads waiting on us", optional: true },
     ],
     negativeIndicators: [
@@ -927,7 +1038,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
       },
     ],
     confidenceCap: "moderate",
-    possibleNextMoves: [{ move: "Write the answer down once, where people look", appId: "steward" }],
+    possibleNextMoves: [
+      { move: "Write the answer down once, where people look", appId: "steward" },
+    ],
     verifyOutcomeBy: "The question stops recurring in new conversations.",
   }),
 
@@ -941,11 +1054,13 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     triggers: [
       { observationKind: "no_active_project", looksFor: "No open project" },
       { observationKind: "pipeline_volume", looksFor: "A small pipeline", optional: true },
-      { observationKind: "pipeline_sourcing_stale", looksFor: "No recent sourcing", optional: true },
+      {
+        observationKind: "pipeline_sourcing_stale",
+        looksFor: "No recent sourcing",
+        optional: true,
+      },
     ],
-    negativeIndicators: [
-      { observationKind: "open_projects", looksFor: "Projects already open" },
-    ],
+    negativeIndicators: [{ observationKind: "open_projects", looksFor: "Projects already open" }],
     hypotheses: [
       "Delivery finished and nothing was lined up behind it.",
       "Work is happening outside the rooms that record it.",
@@ -976,7 +1091,12 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     mayMean: "Either the work stopped, or it stopped being recorded.",
     triggers: [
       { observationKind: "room_quiet", looksFor: "A room with no recent activity" },
-      { observationKind: "activity_volume", looksFor: "Activity elsewhere", minMagnitude: 5, optional: true },
+      {
+        observationKind: "activity_volume",
+        looksFor: "Activity elsewhere",
+        minMagnitude: 5,
+        optional: true,
+      },
     ],
     negativeIndicators: [],
     hypotheses: [
@@ -999,7 +1119,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "low",
     chainId: "chain.quietly_worse",
-    possibleNextMoves: [{ move: "Check whether the room's work moved elsewhere", appId: "activity" }],
+    possibleNextMoves: [
+      { move: "Check whether the room's work moved elsewhere", appId: "activity" },
+    ],
     verifyOutcomeBy: "The room records something, or is honestly parked.",
   }),
   pattern({
@@ -1046,10 +1168,7 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
       { observationKind: "delivery_delay_count", looksFor: "Late delivery", minMagnitude: 1 },
     ],
     negativeIndicators: [],
-    hypotheses: [
-      "Too many things are in flight at once.",
-      "There is no agreed order of work.",
-    ],
+    hypotheses: ["Too many things are in flight at once.", "There is no agreed order of work."],
     competingExplanations: [
       {
         explanation: "One underlying blocker is causing all three.",
@@ -1066,7 +1185,9 @@ export const INTELLIGENCE_PATTERNS: IntelligencePattern[] = [
     ],
     confidenceCap: "low",
     chainId: "chain.attention_today",
-    possibleNextMoves: [{ move: "Finish one thing before starting anything else", appId: "conductor" }],
+    possibleNextMoves: [
+      { move: "Finish one thing before starting anything else", appId: "conductor" },
+    ],
     verifyOutcomeBy: "One waiting item closes without a new one opening.",
   }),
 ];

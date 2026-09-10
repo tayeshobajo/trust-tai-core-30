@@ -1,4 +1,4 @@
-# Conductor V3 — Factory execution coverage and learning
+# Conductor V3. Factory execution coverage and learning
 
 V2 proved that a person can approve part of a cross-room plan and have only the
 approved part reach the owning room. V3 does two further things, and nothing
@@ -58,7 +58,7 @@ forward that the owning room cannot prove.
 ## Observation
 
 `outcome-observer.ts` asks the owning room's own service whether the expected
-signal is there — a draft in Comms, a blocker on the project, a discovery run
+signal is there, a draft in Comms, a blocker on the project, a discovery run
 in Scout's history, an open question on the roadmap. Results are classified
 `signal_present`, `signal_absent`, `partial`, or `not_measurable`, with a truth
 class of `observed`, `decided`, `inferred`, `recommended` or `unknown`.

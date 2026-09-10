@@ -1,5 +1,5 @@
 /**
- * Conductor RLS acceptance — run against the real Trust Tai Supabase project.
+ * Conductor RLS acceptance, run against the real Trust Tai Supabase project.
  *
  * Proves four things about business_figures and conductor_corrections:
  *   1. A member can insert and read back their own organization's rows.
@@ -8,7 +8,7 @@
  *   4. An anonymous caller can read and write nothing at all.
  *
  * This has to run with real sessions, so it is a script rather than a unit
- * test — nothing in the sandbox holds workspace credentials.
+ * test, nothing in the sandbox holds workspace credentials.
  *
  * Usage:
  *   TT_SUPABASE_URL=... TT_SUPABASE_PUBLISHABLE_KEY=... \
@@ -31,7 +31,7 @@ const results: { name: string; pass: boolean; detail: string }[] = [];
 
 function record(name: string, pass: boolean, detail: string) {
   results.push({ name, pass, detail });
-  console.log(`${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
+  console.log(`${pass ? "PASS" : "FAIL"}  ${name}${detail ? `, ${detail}` : ""}`);
 }
 
 function client(): SupabaseClient {
@@ -51,7 +51,7 @@ async function main() {
   const orgA = process.env["TT_ORG_A"] ?? "";
   const orgB = process.env["TT_ORG_B"] ?? "";
 
-  /* 4 — anonymous holds nothing. */
+  /* 4, anonymous holds nothing. */
   const anon = client();
   for (const table of ["business_figures", "conductor_corrections"] as const) {
     const { data, error } = await anon.from(table).select("id").limit(1);
@@ -64,7 +64,7 @@ async function main() {
 
   const a = await signIn(process.env["TT_EMAIL_A"]!, process.env["TT_PASSWORD_A"]!);
 
-  /* 1 — a member writes and reads their own organization. */
+  /* 1, a member writes and reads their own organization. */
   const asOf = new Date().toISOString();
   const { data: figure, error: writeError } = await a.sb
     .from("business_figures")
@@ -79,7 +79,11 @@ async function main() {
     })
     .select("id")
     .maybeSingle();
-  record("member can record a figure in own org", !writeError && Boolean(figure), writeError?.message ?? "");
+  record(
+    "member can record a figure in own org",
+    !writeError && Boolean(figure),
+    writeError?.message ?? "",
+  );
 
   const { data: readBack } = await a.sb
     .from("business_figures")
@@ -95,9 +99,13 @@ async function main() {
     note: "rls acceptance probe",
     corrected_by: a.userId,
   });
-  record("member can record a correction in own org", !correctionError, correctionError?.message ?? "");
+  record(
+    "member can record a correction in own org",
+    !correctionError,
+    correctionError?.message ?? "",
+  );
 
-  /* 2 & 3 — the other organization stays closed. */
+  /* 2 & 3, the other organization stays closed. */
   if (orgB) {
     const { data: crossRead } = await a.sb
       .from("business_figures")
@@ -113,7 +121,11 @@ async function main() {
       as_of: asOf,
       recorded_by: a.userId,
     });
-    record("member cannot write into another org", Boolean(crossWrite), crossWrite?.message ?? "insert unexpectedly allowed");
+    record(
+      "member cannot write into another org",
+      Boolean(crossWrite),
+      crossWrite?.message ?? "insert unexpectedly allowed",
+    );
 
     const { error: spoofed } = await a.sb.from("conductor_corrections").insert({
       organization_id: orgA,
@@ -121,7 +133,11 @@ async function main() {
       note: "spoofed author",
       corrected_by: "00000000-0000-0000-0000-000000000000",
     });
-    record("correction author cannot be spoofed", Boolean(spoofed), spoofed?.message ?? "insert unexpectedly allowed");
+    record(
+      "correction author cannot be spoofed",
+      Boolean(spoofed),
+      spoofed?.message ?? "insert unexpectedly allowed",
+    );
   }
 
   /* A non-member account, if one is supplied, must see nothing of org A. */

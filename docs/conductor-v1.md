@@ -1,4 +1,4 @@
-# The Conductor — v1
+# The Conductor, v1
 
 The Conductor is the command layer over Steward and Intelligence. It is not a
 peer business app. It owns no entity, writes no room's truth, and executes
@@ -13,8 +13,7 @@ nothing. It reads the whole factory and answers in plain language.
 - Core owns identity and shared entities. The Conductor introduces none.
 - The event stream owns cross-app history. The Conductor reads it.
 - Steward owns interpretation, memory, judgment and routing. Business intents
-  ride Steward's append-only belief ledger under the `intent` memory kind —
-  there is no second truth store.
+  ride Steward's append-only belief ledger under the `intent` memory kind, there is no second truth store.
 - Pulse owns visibility. The Conductor is a conversational surface over the
   same reads, not a competing dashboard.
 - Owning rooms execute. Every bounded action routes to its room and requires a
@@ -60,7 +59,7 @@ in `CONDUCTOR_CONTROL`.
 **Partial reads say so.** Rooms that could not be read are listed on the answer
 with the reason, and nothing is inferred in their place.
 
-## Recorded figures — the instrument of last resort
+## Recorded figures, the instrument of last resort
 
 Cash, burn, receivables, close rate, average deal size and sales cycle are
 numbers no room in the suite will ever count for itself. Rather than leave the
@@ -70,11 +69,11 @@ typed, and the name of whoever recorded it.
 
 Two rules keep this honest. A figure older than `FIGURE_STALE_DAYS` (45) may
 still be used but never reads healthy. A figure older than `FIGURE_EXPIRY_DAYS`
-(120) stops being a figure and returns to `unknown` — a business is not steered
+(120) stops being a figure and returns to `unknown`, a business is not steered
 on a four-month-old bank balance. Runway is then arithmetic over two decided
 inputs, and is labelled `inferred`, never `observed`.
 
-## Learning — corrections, not retraining
+## Learning, corrections, not retraining
 
 Every answer can be contradicted, four ways: a wrong number, a wrong read, work
 already handled, or a suggestion that is simply not useful. A correction is
@@ -95,14 +94,14 @@ ledger is the memory; `learningState` is the only reading of it.
 Three tables, defined in `docs/conductor-v1-schema.sql` and applied to the
 managed Trust Tai project: `business_intents`, `business_figures` and
 `conductor_corrections`. All three hold only what a person decided or
-corrected — the Conductor still owns no business entity and duplicates no
+corrected, the Conductor still owns no business entity and duplicates no
 room's truth. RLS reuses the existing `private.is_org_member`, `anon` holds no
 privilege, and figures and corrections are append-only.
 
 ## What v1 deliberately does not do
 
 - No automatic finance instrumentation: cash and burn are hand-recorded, and
-  read as `unknown` — surfaced as critical blind spots — until they are.
+  read as `unknown`, surfaced as critical blind spots, until they are.
 - No model in the loop. The answers are deterministic and reproducible. A model
   may later phrase them more warmly; it may not add a fact.
 - No stored conversation. `ConductorTurn` exists as a contract; history is not

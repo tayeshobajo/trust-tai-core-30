@@ -249,7 +249,7 @@ describe("scout handoff", () => {
     // separated memory tiers the draft grounding reads.
     expect(relationship.nextAction).toContain("Open a conversation");
     expect(relationship.nextAction).toContain("Ada Rowe");
-    // The id the handoff returns is in the room Comms opens on — a deep link
+    // The id the handoff returns is in the room Comms opens on, a deep link
     // to it can never land on a record the list cannot show.
     const listed = await commsService.list("org-1");
     expect(listed.map((entry) => entry.id)).toContain(relationship.id);
@@ -424,7 +424,7 @@ describe("drafts never send themselves", () => {
 
   it("blocks fabricated familiarity, invented promises, filler, and em dashes", () => {
     const verdict = checkVoice(
-      "As always, great catching up — I guarantee we will double your bookings and leverage our bandwidth.",
+      "As always, great catching up \u2014 I guarantee we will double your bookings and leverage our bandwidth.",
       { register: "warm_intro" },
     );
     const rules = verdict.violations.map((entry) => entry.ruleId);

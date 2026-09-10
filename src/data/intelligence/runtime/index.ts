@@ -2,7 +2,7 @@
  * The Trust Tai Intelligence Runtime.
  *
  * One reasoning gateway, one retrieval composition, one capability view, one
- * problem-solving protocol, one completion gate — for every room in the
+ * problem-solving protocol, one completion gate, for every room in the
  * suite. Rooms adopt the runtime; they never build their own AI stack.
  *
  * - retrieval.ts: what the runtime knows before it reasons.

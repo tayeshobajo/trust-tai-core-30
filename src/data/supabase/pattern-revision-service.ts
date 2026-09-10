@@ -61,9 +61,7 @@ export const patternRevisionService = {
     entry: PatternRevisionDecision,
   ): Promise<{ entry: PatternRevisionDecision; created: boolean }> {
     const existing = await patternRevisionService.list(entry.organizationId);
-    const match = existing.find(
-      (row) => row.proposalFingerprint === entry.proposalFingerprint,
-    );
+    const match = existing.find((row) => row.proposalFingerprint === entry.proposalFingerprint);
     if (match) return { entry: match, created: false };
 
     const { data, error } = await supabase

@@ -141,9 +141,30 @@ describe("activity paging", () => {
 
 describe("activity search and filters", () => {
   const rows = [
-    { id: "1", label: "Send the pricing note", roomLabel: "Steward", standing: "recorded", kind: activityKind("task.completed", "Tai completed the pricing note."), at: null },
-    { id: "2", label: "Draft intro", roomLabel: "Steward", standing: "recorded", kind: activityKind("task.assigned", "Draft intro now carried by Ana."), at: null },
-    { id: "3", label: "Kickoff", roomLabel: "Steward", standing: "recorded", kind: activityKind("task.updated", "Moved above Kickoff."), at: null },
+    {
+      id: "1",
+      label: "Send the pricing note",
+      roomLabel: "Steward",
+      standing: "recorded",
+      kind: activityKind("task.completed", "Tai completed the pricing note."),
+      at: null,
+    },
+    {
+      id: "2",
+      label: "Draft intro",
+      roomLabel: "Steward",
+      standing: "recorded",
+      kind: activityKind("task.assigned", "Draft intro now carried by Ana."),
+      at: null,
+    },
+    {
+      id: "3",
+      label: "Kickoff",
+      roomLabel: "Steward",
+      standing: "recorded",
+      kind: activityKind("task.updated", "Moved above Kickoff."),
+      at: null,
+    },
   ];
 
   it("names completion, reassignment and reordering from what was recorded", () => {
@@ -168,12 +189,32 @@ describe("activity search and filters", () => {
   });
 });
 
-
 describe("activity date window", () => {
   const rows = [
-    { id: "1", label: "a", roomLabel: "Steward", standing: "recorded", kind: "other" as const, at: "2026-08-10T09:00:00.000Z" },
-    { id: "2", label: "b", roomLabel: "Steward", standing: "recorded", kind: "other" as const, at: "2026-08-14T09:00:00.000Z" },
-    { id: "3", label: "c", roomLabel: "Steward", standing: "recorded", kind: "other" as const, at: null },
+    {
+      id: "1",
+      label: "a",
+      roomLabel: "Steward",
+      standing: "recorded",
+      kind: "other" as const,
+      at: "2026-08-10T09:00:00.000Z",
+    },
+    {
+      id: "2",
+      label: "b",
+      roomLabel: "Steward",
+      standing: "recorded",
+      kind: "other" as const,
+      at: "2026-08-14T09:00:00.000Z",
+    },
+    {
+      id: "3",
+      label: "c",
+      roomLabel: "Steward",
+      standing: "recorded",
+      kind: "other" as const,
+      at: null,
+    },
   ];
 
   it("keeps only what falls inside the window, inclusively", () => {
@@ -181,11 +222,15 @@ describe("activity date window", () => {
     const from = day(rows[0]!.at!);
     const to = day(rows[1]!.at!);
     expect(filterActivity(rows, { range: { from, to } }).map((row) => row.id)).toEqual(["1", "2"]);
-    expect(filterActivity(rows, { range: { from: to, to: "" } }).map((row) => row.id)).toEqual(["2"]);
+    expect(filterActivity(rows, { range: { from: to, to: "" } }).map((row) => row.id)).toEqual([
+      "2",
+    ]);
   });
 
   it("leaves undated rows out of a window, and in when there is none", () => {
-    expect(filterActivity(rows, { range: { from: "2026-01-01", to: "" } }).map((r) => r.id)).not.toContain("3");
+    expect(
+      filterActivity(rows, { range: { from: "2026-01-01", to: "" } }).map((r) => r.id),
+    ).not.toContain("3");
     expect(filterActivity(rows, {})).toHaveLength(3);
   });
 
@@ -209,7 +254,11 @@ describe("activity rows point back at the task", () => {
         subject: { type: "task", id: "t1", label: "Send the pricing note" },
         summary: "Tai completed it.",
         payload: { steward_task_key: "task:t1" },
-        provenance: { appId: "steward", actor: { type: "user", id: "u1" }, observedAt: "2026-08-14T09:00:00.000Z" },
+        provenance: {
+          appId: "steward",
+          actor: { type: "user", id: "u1" },
+          observedAt: "2026-08-14T09:00:00.000Z",
+        },
         occurredAt: "2026-08-14T09:00:00.000Z",
       },
     ]);
@@ -224,7 +273,11 @@ describe("activity rows point back at the task", () => {
         name: "project.updated",
         subject: { type: "project", id: "p1", label: "Northlight" },
         summary: "Moved to in progress.",
-        provenance: { appId: "projects", actor: { type: "user", id: "u1" }, observedAt: "2026-08-14T09:00:00.000Z" },
+        provenance: {
+          appId: "projects",
+          actor: { type: "user", id: "u1" },
+          observedAt: "2026-08-14T09:00:00.000Z",
+        },
         occurredAt: "2026-08-14T09:00:00.000Z",
       },
     ]);

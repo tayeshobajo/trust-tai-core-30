@@ -7,8 +7,8 @@
  * the entire identity row. The name the operator typed was simply lost, and
  * People & access then showed "Unnamed person".
  *
- * These tests exercise the governed route itself — authority check, Auth admin
- * call, profile write, membership write, directory read — so the guarantee is
+ * These tests exercise the governed route itself, authority check, Auth admin
+ * call, profile write, membership write, directory read, so the guarantee is
  * about behaviour and not about one helper in isolation.
  */
 
@@ -51,7 +51,10 @@ function fakeSupabase() {
   const passwordsSet: string[] = [];
 
   const json = (value: unknown, status = 200) =>
-    new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
+    new Response(JSON.stringify(value), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
 
   const handler = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = new URL(typeof input === "string" ? input : String(input));
@@ -69,7 +72,10 @@ function fakeSupabase() {
         (user) => String(user["email"] ?? "").toLowerCase() === email,
       );
       if (existing) {
-        return json({ error_code: "email_exists", msg: "A user with this email already exists" }, 422);
+        return json(
+          { error_code: "email_exists", msg: "A user with this email already exists" },
+          422,
+        );
       }
       const id = created.length === 0 ? NEW_USER : `${NEW_USER}-${created.length}`;
       created.push(id);
@@ -112,7 +118,8 @@ function fakeSupabase() {
             return json(
               {
                 code: "PGRST204",
-                message: "Could not find the 'display_name' column of 'profiles' in the schema cache",
+                message:
+                  "Could not find the 'display_name' column of 'profiles' in the schema cache",
               },
               400,
             );
@@ -124,7 +131,7 @@ function fakeSupabase() {
       }
       const select = (url.searchParams.get("select") ?? "").split(",");
       if (select.includes("display_name")) {
-        return json({ code: "42703", message: 'column profiles.display_name does not exist' }, 400);
+        return json({ code: "42703", message: "column profiles.display_name does not exist" }, 400);
       }
       const idFilter = url.searchParams.get("id") ?? "";
       const emailFilter = url.searchParams.get("email")?.replace("eq.", "");
@@ -137,7 +144,9 @@ function fakeSupabase() {
       }
       if (emailFilter) {
         rows = rows.filter(
-          (row) => String(row["email"] ?? "").toLowerCase() === decodeURIComponent(emailFilter).toLowerCase(),
+          (row) =>
+            String(row["email"] ?? "").toLowerCase() ===
+            decodeURIComponent(emailFilter).toLowerCase(),
         );
       }
       return json(rows);

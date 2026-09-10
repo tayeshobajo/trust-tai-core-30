@@ -4,7 +4,7 @@
  * The production failure these tests guard: every post-grounding failure used
  * to collapse into one generic message, so "no provider configured" looked
  * identical to "the provider refused" and "the reply was unreadable". The
- * boundary now throws typed DraftFailure codes — the person keeps the calm
+ * boundary now throws typed DraftFailure codes, the person keeps the calm
  * sentence, the operator keeps the cause, and no draft is ever fabricated.
  */
 
@@ -23,6 +23,7 @@ import {
   type RuntimeModelCaller,
 } from "./intelligence-runtime.server";
 import { unearnedAskInBody } from "@/domain/comms-judgment";
+import { commsRetrievalPacket, composeCommsRetrieval } from "./comms-retrieval";
 
 /* The Brooke Siler production case at contract level: a known identity and a
    real inbound thread pass the grounding gate (pinned in
@@ -74,16 +75,17 @@ const BROOKE_INPUT: DraftPassInput = {
 /* The conversation-first Brooke case: she replied warmly, thanked Tai for his
    words about the Mastermind, said it was lovely to meet him, and offered to
    be a resource. The right judgment recognizes the generosity and asks for
-   nothing — a call pushed here would be a funnel move, not a reply. */
+   nothing, a call pushed here would be a funnel move, not a reply. */
 const BROOKE_WARM_JUDGMENT = JSON.stringify({
   whyNow: "Brooke replied warmly after the Mastermind; a reply is owed while the thread is warm.",
   latestHumanSignal:
-    "She offered to be a resource — meeting someone once and already thinking about how she might be useful.",
+    "She offered to be a resource, meeting someone once and already thinking about how she might be useful.",
   whatThisSaysAboutThem:
     "A generous, help-first orientation, consistent with her work guiding business owners.",
   whatDeservesAcknowledgment: "The offer to be a resource, and the generosity underneath it.",
   threadToBuildOn: "Her instinct to be useful and the work it comes from.",
-  intendedEffect: "That she feels specifically seen and glad the Mastermind put them in the same room.",
+  intendedEffect:
+    "That she feels specifically seen and glad the Mastermind put them in the same room.",
   responseObligation: "Her thanks and kind words deserve acknowledgment.",
   askDecision: {
     shouldAsk: false,
@@ -153,6 +155,51 @@ async function failureCode(promise: Promise<unknown>): Promise<string> {
 }
 
 describe("executeDraftPasses", () => {
+  /* The retrieval wiring, at contract level: both passes must actually see
+     the shared bundle, with corrections ahead of inference and unreadable
+     sources still marked withheld rather than emptied. */
+  it("carries the shared retrieval bundle into both model passes", async () => {
+    const retrieval = commsRetrievalPacket(
+      composeCommsRetrieval({
+        organizationId: "org-1",
+        relationshipId: "rel-1",
+        now: "2026-09-09T10:00:00.000Z",
+        observedAndDecided: [
+          { label: "Timing", value: "She asked about starting next month.", tier: "observed" },
+        ],
+        inferred: [{ label: "Mood", value: "She may be under budget pressure." }],
+        contextLines: [],
+        trajectory: [],
+        withheld: [{ appId: "intelligence_cases", reason: "not_connected" }],
+      }),
+    );
+    const seen: string[] = [];
+    const spy: RuntimeModelCaller = async (request) => {
+      seen.push(request.input);
+      return {
+        raw: seen.length === 1 ? VALID_JUDGMENT : VALID_DRAFT,
+        provider: "test",
+        model: "test-model",
+      };
+    };
+    await executeDraftPasses(spy, {
+      ...BROOKE_INPUT,
+      evidencePacket: { ...BROOKE_INPUT.evidencePacket, retrieval },
+    });
+    expect(seen).toHaveLength(2);
+    for (const input of seen) {
+      const packet = JSON.parse(input) as Record<string, unknown>;
+      const bundle = (packet["retrieval"] ??
+        (packet["evidence"] as Record<string, unknown>)?.["retrieval"]) as Record<string, unknown>;
+      expect(bundle).toBeDefined();
+      expect(Object.keys(bundle)[0]).toBe("humanCorrections");
+      expect(bundle["withheld"]).toEqual([
+        { appId: "intelligence_cases", reason: "not_connected" },
+      ]);
+      expect(bundle["capabilities"]).toBeDefined();
+    }
+  });
+
   it("Brooke's case succeeds with a configured provider returning valid judgment and draft", async () => {
     const result = await executeDraftPasses(callerReturning(VALID_JUDGMENT, VALID_DRAFT), {
       ...BROOKE_INPUT,

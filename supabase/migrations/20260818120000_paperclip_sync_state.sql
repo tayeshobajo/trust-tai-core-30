@@ -3,7 +3,7 @@
 --
 -- NOTE: this table was referenced by paperclip-reconcile.server.ts,
 -- the edge function, and reconcile-sweep.ts from day one, but the CREATE
--- was never written — smoke #13 passed via a lenient "cache lag" fallback
+-- was never written, smoke #13 passed via a lenient "cache lag" fallback
 -- that checked execution_agents instead. This migration closes that gap.
 
 create table if not exists public.paperclip_sync_state (

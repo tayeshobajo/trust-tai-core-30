@@ -5,6 +5,7 @@ import { AppLink } from "@/components/tt/app-link";
 import { BrandLogo } from "@/components/tt/brand-logo";
 import {
   Activity,
+  Building2,
   Compass,
   HeartHandshake,
   MessagesSquare,
@@ -22,14 +23,14 @@ import { useState, type ReactNode } from "react";
 
 import { usePresence } from "@/hooks/use-presence";
 
-
-import { APP_REGISTRY, type AppRegistration } from "@/domain/registry";
+import { APP_REGISTRY, primaryNavigation, type AppRegistration } from "@/domain/registry";
 import { initialsOf } from "@/domain/steward-accountability";
 import { cn } from "@/lib/utils";
 import { signOut, type WorkspaceIdentity } from "@/lib/workspace";
 import { AmbientDot } from "@/components/tt/ambient";
 
 const ICONS: Record<string, LucideIcon> = {
+  Building2,
   Compass,
   Search,
   MessagesSquare,
@@ -65,8 +66,10 @@ function NavList({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   /* The rail is derived, never a static list: an app the organization has
-     switched off, or one hidden for this person, is simply not here. */
-  const rooms = allowed ? APP_REGISTRY.filter((app) => allowed.includes(app.id)) : APP_REGISTRY;
+     switched off, or one hidden for this person, is simply not here. Rooms
+     registered as deep links (Roadmap, Projects) keep their routes and their
+     ownership and are reached from the client they belong to. */
+  const rooms = primaryNavigation(allowed);
 
   return (
     <nav aria-label="Trust Tai suite" className="space-y-0.5">
@@ -94,7 +97,10 @@ function NavList({
               />
             ) : null}
             <Icon
-              className={cn("size-[18px] shrink-0", active ? "text-royal" : "text-muted-foreground")}
+              className={cn(
+                "size-[18px] shrink-0",
+                active ? "text-royal" : "text-muted-foreground",
+              )}
               aria-hidden
             />
             <span className="min-w-0 flex-1 truncate">{app.name}</span>
@@ -112,7 +118,6 @@ function NavList({
     </nav>
   );
 }
-
 
 export function AppShell({
   children,
@@ -138,7 +143,6 @@ export function AppShell({
     userId: identity?.userId,
     appKey: currentApp?.id ?? (pathname.startsWith("/settings") ? "settings" : null),
   });
-
 
   async function handleSignOut() {
     await signOut(queryClient);
@@ -178,21 +182,35 @@ export function AppShell({
               >
                 <Settings className="size-[18px]" aria-hidden />
               </Link>
-              {identity.avatarUrl ? (
-                <img
-                  src={identity.avatarUrl}
-                  alt={`${identity.name}, profile photo`}
-                  className="size-9 rounded-full object-cover"
-                />
-              ) : (
-              <span
-                className="flex size-9 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
-                aria-label={`Signed in as ${identity.name}`}
-                title={identity.email}
-              >
-                {initialsOf(identity.name)}
-              </span>
-              )}
+              {/* Who is in the room, said once. The name is primary; the email
+                  appears only when it adds clarity beyond the name. */}
+              <div className="flex items-center gap-2.5">
+                <div className="hidden text-right sm:block">
+                  <p className="max-w-[180px] truncate text-[13px] font-medium leading-tight text-foreground">
+                    {identity.name}
+                  </p>
+                  {identity.email !== identity.name ? (
+                    <p className="max-w-[180px] truncate text-[11px] leading-tight text-muted-foreground">
+                      {identity.email}
+                    </p>
+                  ) : null}
+                </div>
+                {identity.avatarUrl ? (
+                  <img
+                    src={identity.avatarUrl}
+                    alt={`${identity.name}, profile photo`}
+                    className="size-9 rounded-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className="flex size-9 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
+                    aria-label={`Signed in as ${identity.name}`}
+                    title={identity.email}
+                  >
+                    {initialsOf(identity.name)}
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => void handleSignOut()}
@@ -231,7 +249,6 @@ export function AppShell({
           <div className="mx-auto w-full max-w-canvas">{children}</div>
         </main>
       </div>
-
     </div>
   );
 }

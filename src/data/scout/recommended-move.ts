@@ -2,8 +2,8 @@
  * Scout, the recommended next move.
  *
  * The company page answers one question at a time: what should happen next?
- * This is the single canonical read behind that answer — one move, one clear
- * reason, one primary action — computed from evidence Scout already holds.
+ * This is the single canonical read behind that answer, one move, one clear
+ * reason, one primary action, computed from evidence Scout already holds.
  * Pure and deterministic, so every state can be proved in a test. Nothing
  * here fetches, sends, drafts, or mutates.
  *
@@ -13,16 +13,16 @@
  *    strong-fit company with nobody on record is "find the founder"; a known
  *    founder with no route is "find a way in"; a known person whose decision
  *    role is unestablished is "confirm who decides". Three different missing
- *    steps, three different human actions — never one collapsed "find the
+ *    steps, three different human actions, never one collapsed "find the
  *    person".
  *  - A traceable person with a missing or stale brief is "understand them
- *    first" — drafting never skips the governed research step.
+ *    first", drafting never skips the governed research step.
  *  - A found-but-unverified address is "verify the way in": the one action
  *    is the governed confirmation itself, never a generic link elsewhere.
- *  - A ready brief with no dated signal is "worth knowing — no urgency".
+ *  - A ready brief with no dated signal is "worth knowing, no urgency".
  *    Urgency is never manufactured.
  *  - A blocked first message never instructs outreach: the headline names
- *    the gate, and the one action is resolving the blockers — never
+ *    the gate, and the one action is resolving the blockers, never
  *    "prepare a message" that cannot honestly be sent.
  *  - Once a company is in Comms, Scout stops behaving like outbound.
  *  - Text is a protected channel: it can never be recommended here, because
@@ -67,7 +67,7 @@ export type RecommendedMoveState =
   | "no_urgency"
   /** Eligible, brief ready, and a real dated signal exists. */
   | "act_now"
-  /** Below the line, unread, or set aside — no relationship move is honest yet. */
+  /** Below the line, unread, or set aside, no relationship move is honest yet. */
   | "not_ready";
 
 export type RecommendedMoveAction =
@@ -93,7 +93,7 @@ export interface MoveStage {
 
 export interface RecommendedNextMove {
   state: RecommendedMoveState;
-  /** The calm state label, e.g. "Worth knowing — no urgency". */
+  /** The calm state label, e.g. "Worth knowing, no urgency". */
   label: string;
   /** The move itself, e.g. "Start with email to Claire Meneely". */
   headline: string;
@@ -111,8 +111,8 @@ export interface RecommendedNextMove {
   primary: { kind: RecommendedMoveAction; label: string };
   /**
    * True when the way in is still gated. The headline then names the gate,
-   * and the primary action resolves it — a confirmation, or the guided
-   * blocker flow — never "prepare a message" that cannot honestly be sent.
+   * and the primary action resolves it, a confirmation, or the guided
+   * blocker flow, never "prepare a message" that cannot honestly be sent.
    */
   blocked: boolean;
   /**
@@ -144,8 +144,8 @@ const CHANNEL_MOVE: Record<string, (name: string) => string> = {
  * route speaks about the person instead.
  */
 function blockedHeadline(channel: ChannelRecommendation | null, name: string): string {
-  if (channel?.channel === "email") return "Email looks like the right way in — verify it first";
-  return `${name.split(/\s+/)[0]} is worth knowing — verify the way in first`;
+  if (channel?.channel === "email") return "Email looks like the right way in, verify it first";
+  return `${name.split(/\s+/)[0]} is worth knowing, verify the way in first`;
 }
 
 function blockerLabel(count: number): string {
@@ -164,8 +164,8 @@ function personRef(
 
 /**
  * The quiet "where am I" strip. Stages are read independently from the same
- * evidence as the move — a verified-way-in gap leaves Person current even
- * when Research already completed — and exactly one stage is current unless
+ * evidence as the move, a verified-way-in gap leaves Person current even
+ * when Research already completed, and exactly one stage is current unless
  * the relationship has been handed to Comms.
  */
 function buildMoveProgress(input: {
@@ -175,7 +175,11 @@ function buildMoveProgress(input: {
   briefReady: boolean;
 }): MoveStage[] {
   const complete = input.inComms;
-  const match: MoveStage["state"] = complete ? "complete" : input.strongFit ? "complete" : "current";
+  const match: MoveStage["state"] = complete
+    ? "complete"
+    : input.strongFit
+      ? "complete"
+      : "current";
   const person: MoveStage["state"] = complete
     ? "complete"
     : !input.strongFit
@@ -205,7 +209,9 @@ function buildMoveProgress(input: {
 
 function base(
   partial: Omit<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence"> &
-    Partial<Pick<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence">>,
+    Partial<
+      Pick<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence">
+    >,
 ): RecommendedNextMove {
   return {
     blocked: false,
@@ -238,7 +244,7 @@ export function buildRecommendedNextMove(input: {
     /**
      * The governed People record behind a lone unverified-address blocker,
      * when that is the only thing in the way. Comes from the canonical
-     * handoff blockers — the move stays the decision read, this only lets it
+     * handoff blockers, the move stays the decision read, this only lets it
      * offer the governed confirmation as the one action.
      */
     confirmEmailPersonId?: string;
@@ -280,7 +286,9 @@ export function buildRecommendedNextMove(input: {
       RecommendedNextMove,
       "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence" | "progress"
     > &
-      Partial<Pick<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence">>,
+      Partial<
+        Pick<RecommendedNextMove, "blocked" | "prepareForce" | "watch" | "whyNow" | "evidence">
+      >,
   ): RecommendedNextMove => base({ ...partial, progress });
 
   // Already handed over: Scout stops behaving like outbound. The relationship
@@ -291,7 +299,7 @@ export function buildRecommendedNextMove(input: {
       label: "Relationship developing in Comms",
       headline: `${prospect.name} is in Comms now`,
       reason:
-        "The brief was carried across with its context intact. The relationship develops there — a person writes and sends every message. Scout keeps the research.",
+        "The brief was carried across with its context intact. The relationship develops there, a person writes and sends every message. Scout keeps the research.",
       person: personRef(bestEntryPerson(people)),
       channel: null,
       primary: { kind: "open_in_comms", label: "Open in Comms" },
@@ -345,7 +353,7 @@ export function buildRecommendedNextMove(input: {
   }
 
   // Strong fit, and the missing step is on the Person stage. The read names
-  // the REAL missing step — never one collapsed "find the person".
+  // the REAL missing step, never one collapsed "find the person".
   if (evaluation.score >= RELATIONSHIP_RESEARCH_FIT_THRESHOLD && !eligibility.eligible) {
     // A founder/decision maker is known, but there is no legitimate way in.
     if (readiness.state === "no_route" && readiness.person) {
@@ -354,7 +362,7 @@ export function buildRecommendedNextMove(input: {
         label: "Find a way in",
         headline: `Find a way to reach ${readiness.person.fullName}`,
         reason:
-          "We know who matters. What is missing is a legitimate professional route — a business email or a profile link, found through an approved source or added by a person.",
+          "We know who matters. What is missing is a legitimate professional route, a business email or a profile link, found through an approved source or added by a person.",
         person: personRef(readiness.person),
         channel: null,
         primary: { kind: "find_contact_route", label: "Find contact route" },
@@ -381,7 +389,7 @@ export function buildRecommendedNextMove(input: {
       state: "find_person",
       label: "Find the founder",
       headline: "Find the founder or decision maker",
-      reason: `Fit is ${evaluation.score}% — a strong company match, but we do not yet know who matters. Scout never writes to a company anonymously.`,
+      reason: `Fit is ${evaluation.score}%, a strong company match, but we do not yet know who matters. Scout never writes to a company anonymously.`,
       person: null,
       channel: null,
       primary: { kind: "find_person", label: "Find the founder" },
@@ -407,8 +415,8 @@ export function buildRecommendedNextMove(input: {
   const firstMessage = input.firstMessage;
 
   // The way in exists but is unverified, and that is the ONLY thing in the
-  // way: the one action is the governed confirmation itself — a person's
-  // click that makes the address safely reachable — never a generic link.
+  // way: the one action is the governed confirmation itself, a person's
+  // click that makes the address safely reachable, never a generic link.
   if (
     readiness.state === "route_unverified" &&
     readiness.person?.recordId &&
@@ -422,7 +430,7 @@ export function buildRecommendedNextMove(input: {
       state: "verify_route",
       label: "The way in is unverified",
       headline: "Verify the way in",
-      reason: `A business email is on record for ${name}, but no person has confirmed it is real yet. That confirmation is what makes it safely reachable — and nothing is ever sent from Scout.`,
+      reason: `A business email is on record for ${name}, but no person has confirmed it is real yet. That confirmation is what makes it safely reachable, and nothing is ever sent from Scout.`,
       person: personRef(readiness.person),
       channel: null,
       primary: { kind: "confirm_email", label: "Confirm this address" },
@@ -440,8 +448,8 @@ export function buildRecommendedNextMove(input: {
   }
 
   // The governed research step is never skipped: a missing or stale brief
-  // means understand them first. An ungrounded brief — nothing real to
-  // notice — fails closed into a forced fresh read.
+  // means understand them first. An ungrounded brief, nothing real to
+  // notice, fails closed into a forced fresh read.
   if (preparation.action === "prepare" || preparation.action === "refresh") {
     return finish({
       state: "research_first",
@@ -451,7 +459,7 @@ export function buildRecommendedNextMove(input: {
         research?.state === "prepared"
           ? "is stale and needs a fresh read"
           : "has not been prepared yet"
-      }. Understand them first — drafting waits for that governed read.`,
+      }. Understand them first, drafting waits for that governed read.`,
       person: personRef(entry),
       channel: null,
       primary: { kind: "prepare_research", label: "Prepare research" },
@@ -485,9 +493,12 @@ export function buildRecommendedNextMove(input: {
   });
   const name = entry!.fullName;
   const notice =
-    brief?.whatTaiCanNotice ?? intel.opportunities[0]?.statement ?? candidate.signals[0]?.statement ?? null;
+    brief?.whatTaiCanNotice ??
+    intel.opportunities[0]?.statement ??
+    candidate.signals[0]?.statement ??
+    null;
 
-  // Concise supporting evidence — facts, not another prose interpretation:
+  // Concise supporting evidence, facts, not another prose interpretation:
   // the fit, the person, what was noticed, the way in, and the urgency read.
   const evidence: EvidenceRef[] = [
     { label: `ICP fit ${evaluation.score}%`, kind: "computed" },
@@ -513,12 +524,11 @@ export function buildRecommendedNextMove(input: {
   }
 
   // Readiness of the handoff behind the first message. A gated way in never
-  // reads as "start outreach" — the move names the gate and the one action
+  // reads as "start outreach", the move names the gate and the one action
   // is resolving what stands in the way.
   const blocked = Boolean(firstMessage && !firstMessage.ready);
   const blockers = firstMessage?.blockers ?? [];
-  const blockerSentence =
-    blockers.length > 0 ? ` Still in the way: ${blockers.join(" ")}` : "";
+  const blockerSentence = blockers.length > 0 ? ` Still in the way: ${blockers.join(" ")}` : "";
   const resolution =
     blockers.length > 0
       ? ` Clear ${blockers.length === 1 ? "it" : blockers.length === 2 ? "both" : `all ${blockers.length}`} and the first message opens up.`
@@ -538,7 +548,7 @@ export function buildRecommendedNextMove(input: {
       state: "act_now",
       label: "Worth knowing now",
       headline,
-      reason: `${opportunity.whyNow} — a real, dated reason to reach out.${
+      reason: `${opportunity.whyNow}, a real, dated reason to reach out.${
         channel ? ` ${channel.reason}` : ""
       }${blocked ? `${blockerSentence}${resolution}` : " Keep it useful; the goal is the next natural exchange, not a meeting."}`,
       person: personRef(entry),
@@ -554,10 +564,10 @@ export function buildRecommendedNextMove(input: {
   // No dated urgency: say so honestly and keep the posture light.
   return finish({
     state: "no_urgency",
-    label: "Worth knowing — no urgency",
+    label: "Worth knowing, no urgency",
     headline,
     reason: `${name} is a credible person with a useful opening${
-      notice ? ` — ${notice}` : ""
+      notice ? `, ${notice}` : ""
     }.${channel ? ` ${channel.reason}` : ""}${
       blocked
         ? `${blockerSentence}${resolution}`

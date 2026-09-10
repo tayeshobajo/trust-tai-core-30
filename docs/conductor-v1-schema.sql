@@ -1,10 +1,10 @@
--- Trust Tai OS — the Conductor's own three tables.
+-- Trust Tai OS, the Conductor's own three tables.
 --
 -- Applied to the managed Trust Tai Supabase project (ref okydosoacqdnursmmenf).
 -- Additive and idempotent: a fresh environment reaches the same end state.
 --
 -- Architecture note. The Conductor owns no business entity. These tables hold
--- only what a person decided or corrected — outcomes, hand-recorded figures,
+-- only what a person decided or corrected, outcomes, hand-recorded figures,
 -- and corrections to the Conductor's own answers. No prospect, relationship,
 -- roadmap, project or Ops record is duplicated here. Every other number the
 -- Conductor says out loud is read live from the room that owns it.

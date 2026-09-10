@@ -145,7 +145,10 @@ function indexByKind(observations: Observation[]): Map<string, Observation[]> {
 }
 
 function stalenessOf(rows: Observation[], now: string): number {
-  const newest = rows.map((row) => new Date(row.at).getTime()).sort().at(-1);
+  const newest = rows
+    .map((row) => new Date(row.at).getTime())
+    .sort()
+    .at(-1);
   if (!newest || Number.isNaN(newest)) return 0;
   return Math.max(0, Math.floor((new Date(now).getTime() - newest) / 86_400_000));
 }
@@ -188,9 +191,7 @@ export function deriveHypotheses(observations: Observation[], now: string): Hypo
       }),
       observationRefs: supporting.map((row) => row.id),
       sourceApps: [...rooms],
-      ...(contradicting.length > 0
-        ? { contradicts: contradicting.map((row) => row.id) }
-        : {}),
+      ...(contradicting.length > 0 ? { contradicts: contradicting.map((row) => row.id) } : {}),
       patternKey: `engine:${connector.id}`,
       origin: "derived" as const,
       at: now,

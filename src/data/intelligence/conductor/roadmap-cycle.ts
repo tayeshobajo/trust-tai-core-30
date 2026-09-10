@@ -35,6 +35,7 @@ import type {
   Tier,
 } from "@/domain/roadmap";
 import { UNKNOWN_STATEMENT, isActiveRoadmap, orderStages } from "@/domain/roadmap";
+import { milestoneAttentionOf } from "@/domain/roadmap-attention";
 
 import type {
   CanonMilestone,
@@ -47,6 +48,12 @@ import type { SuiteSnapshot } from "../derive";
 import type { InputResolution } from "./payload-fill";
 
 export type { CanonMilestone, MilestoneAttention, MilestoneProgression, RoadmapCanonRead };
+
+/*
+ * Which milestone deserves attention is Roadmap's own reading, not Conductor's.
+ * Conductor narrates it; it does not compute a second opinion.
+ */
+export { milestoneAttentionOf };
 
 export const ROADMAP_SHELL_OPERATION = "roadmap.create_shell";
 export const ROADMAP_DECISION_OPERATION = "roadmap.request_decision";
@@ -69,95 +76,7 @@ function anchorProofOf(notes: RoadmapNote[]): RoadmapNote | null {
   return [...proven].sort((a, b) => b.evidence.length - a.evidence.length)[0]!;
 }
 
-/**
- * Which milestone deserves attention next.
- *
- * Decided by rule, before any wording, and only from what Roadmap records:
- *
- *   1. A milestone carrying an unresolved human decision.
- *   2. When Point B is not yet decided, the milestone that agrees the
- *      destination, because everything sequenced after it assumes that
- *      answer. This is sequence logic, not a recorded dependency.
- *   3. Otherwise the earliest unfinished milestone by sequence position,
- *      then by stage state, then by truth tier, then by having a named owner.
- *
- * No dependency is ever invented.
- */
-const STATE_RANK: Record<string, number> = { blocked: 0, in_build: 1, mapped: 2, live: 3 };
-const TIER_RANK: Record<Tier, number> = { decided: 0, observed: 1, inferred: 2 };
-
-const DESTINATION_PATTERNS: RegExp[] = [
-  /\bdestination\b/i,
-  /\bpoint b\b/i,
-  /\bagree(ment|d)?\b/i,
-  /\bobjective\b/i,
-];
-
-function looksLikeDestinationWork(milestone: CanonMilestone): boolean {
-  const text = `${milestone.title} ${milestone.intent ?? ""}`;
-  return DESTINATION_PATTERNS.some((pattern) => pattern.test(text));
-}
-
-function unfinished(milestone: CanonMilestone): boolean {
-  return milestone.state !== "live";
-}
-
-function bySequence(a: CanonMilestone, b: CanonMilestone): number {
-  return (
-    a.position - b.position ||
-    (STATE_RANK[a.state] ?? 9) - (STATE_RANK[b.state] ?? 9) ||
-    TIER_RANK[a.tier] - TIER_RANK[b.tier] ||
-    Number(Boolean(b.ownerLabel ?? b.ownerUserId)) - Number(Boolean(a.ownerLabel ?? a.ownerUserId)) ||
-    a.id.localeCompare(b.id)
-  );
-}
-
-export function milestoneAttentionOf(input: {
-  milestones: CanonMilestone[];
-  openDecisions: RoadmapDecision[];
-  pointB: { tier: "inferred" | "decided" } | null;
-}): MilestoneAttention | null {
-  const open = [...input.milestones].filter(unfinished).sort(bySequence);
-  if (open.length === 0) return null;
-
-  /* 1. An unresolved human decision sitting on a milestone outranks sequence. */
-  for (const milestone of open) {
-    const decision = input.openDecisions.find((row) => row.stageId === milestone.id);
-    if (decision) {
-      return {
-        milestone,
-        rule: "open_decision",
-        because: `An unresolved decision sits on this milestone: "${decision.question}". Only you can answer it.`,
-        decisionId: decision.id,
-      };
-    }
-  }
-
-  /* 2. An undecided destination comes before anything sequenced after it. */
-  if (input.pointB?.tier !== "decided" && input.openDecisions.length > 0) {
-    const destination = open.find(looksLikeDestinationWork);
-    if (destination) {
-      return {
-        milestone: destination,
-        rule: "destination_first",
-        because:
-          "Point B is not decided yet, and the milestones after this one assume the answer. That is sequence logic, not a recorded dependency.",
-        ...(input.openDecisions[0] ? { decisionId: input.openDecisions[0].id } : {}),
-      };
-    }
-  }
-
-  /* 3. Earliest unfinished milestone in the recorded sequence. */
-  const first = open[0]!;
-  return {
-    milestone: first,
-    rule: "sequence_position",
-    because: `Earliest unfinished milestone in the recorded sequence (position ${first.position}, ${first.state.replace(/_/g, " ")}, ${first.tier}). No dependency is recorded against it.`,
-  };
-}
-
 /* --------------------------------------------------------- progression */
-
 
 /**
  * What changed once a person answered a decision (V3.4).
@@ -176,9 +95,7 @@ export function milestoneProgressionOf(input: {
   const open = input.decisions.filter((row) => row.status === "open");
   const resolved = input.decisions
     .filter((row) => row.status !== "open")
-    .sort((a, b) =>
-      (b.resolvedAt ?? b.updatedAt).localeCompare(a.resolvedAt ?? a.updatedAt),
-    );
+    .sort((a, b) => (b.resolvedAt ?? b.updatedAt).localeCompare(a.resolvedAt ?? a.updatedAt));
   const latest = resolved[0];
   if (!latest) return null;
 
@@ -204,7 +121,6 @@ export function milestoneProgressionOf(input: {
         pointB: input.pointB,
       });
   if (!before) return null;
-
 
   const after = milestoneAttentionOf({
     milestones: input.milestones,
@@ -288,9 +204,7 @@ export function readRoadmapCanon(input: {
     milestoneProgression: stages
       ? milestoneProgressionOf({
           milestones,
-          decisions: input.decisions.filter(
-            (decision) => decision.roadmapId === roadmap.id,
-          ),
+          decisions: input.decisions.filter((decision) => decision.roadmapId === roadmap.id),
           pointB,
         })
       : null,
@@ -414,9 +328,49 @@ export function posesDecision(question: string): boolean {
 /* ------------------------------------------------------------- duplication */
 
 const STOP_WORDS = new Set([
-  "the","a","an","is","are","was","were","be","to","of","for","and","or","we","i","our","us",
-  "should","do","does","did","this","that","it","in","on","with","right","now","next","what",
-  "which","how","can","could","would","will","shall","need","needs","really","still","one",
+  "the",
+  "a",
+  "an",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "to",
+  "of",
+  "for",
+  "and",
+  "or",
+  "we",
+  "i",
+  "our",
+  "us",
+  "should",
+  "do",
+  "does",
+  "did",
+  "this",
+  "that",
+  "it",
+  "in",
+  "on",
+  "with",
+  "right",
+  "now",
+  "next",
+  "what",
+  "which",
+  "how",
+  "can",
+  "could",
+  "would",
+  "will",
+  "shall",
+  "need",
+  "needs",
+  "really",
+  "still",
+  "one",
 ]);
 
 function tokens(text: string): Set<string> {
@@ -451,7 +405,8 @@ export function existingEquivalentDecision(
   decisions: RoadmapDecision[],
 ): RoadmapDecision | undefined {
   return decisions.find(
-    (decision) => decision.status === "open" && isMateriallySameQuestion(decision.question, question),
+    (decision) =>
+      decision.status === "open" && isMateriallySameQuestion(decision.question, question),
   );
 }
 
@@ -488,7 +443,11 @@ export function resolveRoadmapSubject(input: {
   const { snapshot, question } = input;
 
   const fromRoadmaps: RoadmapSubjectCandidate[] = snapshot.roadmaps.map((roadmap) => ({
-    kind: (roadmap.clientId ? "client" : roadmap.prospectId ? "prospect" : "relationship") as RoadmapSubjectKind,
+    kind: (roadmap.clientId
+      ? "client"
+      : roadmap.prospectId
+        ? "prospect"
+        : "relationship") as RoadmapSubjectKind,
     id: roadmap.clientId ?? roadmap.prospectId ?? roadmap.relationshipId ?? roadmap.id,
     label: roadmap.subjectLabel,
     roadmap,
@@ -825,7 +784,10 @@ export function planRoadmapCycle(input: {
     proposals: [proposal],
     resolutions,
     evidence: [
-      { label: `${subject.label} exists as a ${subject.kind} in this organisation`, kind: "computed" },
+      {
+        label: `${subject.label} exists as a ${subject.kind} in this organisation`,
+        kind: "computed",
+      },
     ],
   };
 }

@@ -7,7 +7,15 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, CalendarClock, CheckCircle2, Pause, Play, RefreshCw, ShieldAlert } from "lucide-react";
+import {
+  Bot,
+  CalendarClock,
+  CheckCircle2,
+  Pause,
+  Play,
+  RefreshCw,
+  ShieldAlert,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -22,10 +30,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { agentEffectivenessService } from "@/data/supabase/project-intelligence";
 import { fathomStatusLine, readStewardTeam } from "@/data/steward/team-read";
 import { setPaperclipAgentPausedFn, postTaiNoteToIssueFn } from "@/data/steward-agents.functions";
-import type {
-  AgentEffectiveness,
-  AgentEffectivenessInput,
-} from "@/domain/project-intelligence";
+import type { AgentEffectiveness, AgentEffectivenessInput } from "@/domain/project-intelligence";
 import {
   AGENT_LIFECYCLE_LABEL,
   type StewardAgent,
@@ -88,7 +93,8 @@ function RoutineRow({ routine }: { routine: StewardAgentRoutine }) {
 }
 
 function ActivityFeed({ items }: { items: StewardAgentActivityItem[] }) {
-  if (items.length === 0) return <p className="text-sm text-muted-foreground">No recent activity.</p>;
+  if (items.length === 0)
+    return <p className="text-sm text-muted-foreground">No recent activity.</p>;
   return (
     <ul className="space-y-3">
       {items.map((item) => (
@@ -183,9 +189,13 @@ function AgentDetail({
               className="ml-auto gap-1.5"
             >
               {agent.isPaused ? (
-                <><Play className="size-3.5" /> Resume</>  
+                <>
+                  <Play className="size-3.5" /> Resume
+                </>
               ) : (
-                <><Pause className="size-3.5" /> Pause</>
+                <>
+                  <Pause className="size-3.5" /> Pause
+                </>
               )}
             </TTButton>
           </div>
@@ -238,7 +248,10 @@ function AgentDetail({
                     type="button"
                     size="sm"
                     variant="secondary"
-                    onClick={() => { setNote(""); setNoteOpen(false); }}
+                    onClick={() => {
+                      setNote("");
+                      setNoteOpen(false);
+                    }}
                   >
                     Cancel
                   </TTButton>
@@ -288,7 +301,9 @@ function AgentDetail({
             <section className="space-y-2 border-t border-border pt-5">
               <p className="tt-eyebrow">Recurring responsibilities</p>
               <ul className="space-y-2">
-                {agent.routines.map((r) => <RoutineRow key={r.id} routine={r} />)}
+                {agent.routines.map((r) => (
+                  <RoutineRow key={r.id} routine={r} />
+                ))}
               </ul>
             </section>
           ) : null}
@@ -424,8 +439,8 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
         <div>
           <h2 className="font-display text-2xl text-foreground">The agent workforce.</h2>
           <p className="mt-2 max-w-reading text-sm text-muted-foreground">
-            Agents sit in the same accountability model as people, but they are not people. Paperclip
-            owns their execution state.
+            Agents sit in the same accountability model as people, but they are not people.
+            Paperclip owns their execution state.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -495,9 +510,7 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
                   <span
                     className={cn(
                       "flex h-10 w-10 items-center justify-center rounded-full border text-royal",
-                      agent.isPaused
-                        ? "border-border bg-secondary"
-                        : "border-royal/30 bg-royal/10",
+                      agent.isPaused ? "border-border bg-secondary" : "border-royal/30 bg-royal/10",
                     )}
                   >
                     <Bot className="size-4" />
@@ -522,7 +535,9 @@ function Agents({ identity }: { identity: WorkspaceIdentity }) {
                       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                         {agent.dataSource === "live" ? agent.activeTasks.length : "\u2014"} active
                         {" \u00b7 "}
-                        {agent.dataSource === "live" ? agent.awaitingApproval.length : "\u2014"}{" "}
+                        {agent.dataSource === "live"
+                          ? agent.awaitingApproval.length
+                          : "\u2014"}{" "}
                         awaiting approval{" \u00b7 "}
                         {metricText(agent.completedThisWeek)} completed this week
                         {" \u00b7 "}

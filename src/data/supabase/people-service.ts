@@ -23,8 +23,17 @@ import type { ProspectCandidate } from "@/domain/scout";
 import { getPeopleProvider } from "@/data/people/registry";
 import { supabase } from "@/integrations/trust-tai/supabase";
 
+import { planPersonResolution, type MemberIdentity } from "@/data/scout/person-resolution";
+
 import { supabaseActivity } from "./activities";
-import { insertContact, listProspectContacts, updateContact, type ContactPatch } from "./contacts";
+import {
+  insertContact,
+  listOrganizationContacts,
+  listProspectContacts,
+  updateContact,
+  type ContactPatch,
+} from "./contacts";
+import { submissionsForProspect } from "./website-service";
 
 export interface PeopleContext {
   organizationId: ID;
@@ -125,10 +134,163 @@ export interface RouteLookupResult {
   poolSize: number;
 }
 
+/**
+ * Reuse the people canonical Trust Tai data already holds for this company,
+ * then read the company's people again.
+ *
+ * Deterministic and provenance preserving: an existing contact is linked, not
+ * copied; a person named in the intake is recorded in their own words as
+ * observed, with an unverified address, because stating an address is not the
+ * same as confirming it. Returns an empty list when nothing was resolved.
+ */
+/**
+ * Trust Tai's own people, read as identities rather than as contacts.
+ *
+ * A workspace member is a known human: Scout must resolve them before it says
+ * nobody is known. Read only, and never fatal, an unavailable directory simply
+ * contributes nothing.
+ */
+async function listMemberIdentities(organizationId: ID): Promise<MemberIdentity[]> {
+  const memberships = await supabase
+    .from("organization_memberships")
+    .select("user_id, status")
+    .eq("organization_id", organizationId);
+  if (memberships.error) return [];
+
+  const ids = ((memberships.data ?? []) as { user_id?: string; status?: string }[])
+    .filter((row) => (row.status ?? "active") === "active")
+    .map((row) => String(row.user_id ?? ""))
+    .filter(Boolean);
+  if (ids.length === 0) return [];
+
+  const profiles = await supabase.from("profiles").select("*").in("id", ids);
+  if (profiles.error) return [];
+
+  return ((profiles.data ?? []) as Record<string, unknown>[])
+    .map((row) => {
+      const text = (key: string) => String(row[key] ?? "").trim();
+      const email = text("email");
+      const fullName = text("full_name") || text("display_name");
+      return {
+        userId: text("id"),
+        fullName,
+        email,
+        roleTitle: text("job_title") || null,
+      } satisfies MemberIdentity;
+    })
+    .filter((member) => member.userId && member.email && member.fullName);
+}
+
+async function resolveKnownPeople(
+  stored: Person[],
+  prospectId: ID,
+  context: PeopleContext,
+): Promise<Person[]> {
+  const [orgPeople, submissions, members, prospect] = await Promise.all([
+    listOrganizationContacts(context.organizationId),
+    submissionsForProspect(context.organizationId, prospectId),
+    listMemberIdentities(context.organizationId).catch(() => [] as MemberIdentity[]),
+    supabase
+      .from("prospects")
+      .select("website_url")
+      .eq("id", prospectId)
+      .maybeSingle()
+      .then((result) => result.data as { website_url?: string | null } | null),
+  ]);
+
+  const plan = planPersonResolution({
+    prospectPeople: stored,
+    orgPeople,
+    submissions,
+    members,
+    websiteUrl: prospect?.website_url ?? null,
+  });
+  if (plan.link.length === 0 && plan.create.length === 0) return [];
+
+  for (const link of plan.link) {
+    const existing = orgPeople.find((person) => person.id === link.contactId);
+    const person = await updateContact(
+      link.contactId,
+      {
+        prospectId,
+        // Only gaps are filled. A human-confirmed record keeps its own truth.
+        ...(existing && existing.confidence === "human_confirmed"
+          ? {}
+          : { confidence: "observed" as const }),
+      },
+      context.userId,
+    );
+    await record(
+      context,
+      "updated",
+      person,
+      `${person.fullName} was already known to Trust Tai and was matched to this company.`,
+      {
+        resolution: link.reason,
+        resolution_note: link.note,
+        reused_existing_record: true,
+      },
+    );
+  }
+
+  for (const draft of plan.create) {
+    const person = await insertContact({
+      organizationId: context.organizationId,
+      prospectId,
+      userId: context.userId,
+      fullName: draft.fullName,
+      ...(draft.roleTitle ? { roleTitle: draft.roleTitle } : {}),
+      seniority: draft.seniority,
+      ...(draft.email ? { email: draft.email } : {}),
+      // Their own words: read, not verified. Nobody has checked the address.
+      emailStatus: draft.email ? "found" : "unknown",
+      confidence: "observed",
+      sourceId:
+        draft.reason === "workspace_member" ? "trust_tai_workspace" : "website_roadmap_intake",
+      note: draft.note,
+    });
+    await record(
+      context,
+      "created",
+      person,
+      draft.reason === "workspace_member"
+        ? `${person.fullName} is a Trust Tai workspace member on this company's own domain.`
+        : `${person.fullName} was recorded from what they said in the roadmap intake.`,
+      {
+        resolution: draft.reason,
+        resolution_note: draft.note,
+        ...(draft.submissionId ? { submission_id: draft.submissionId } : {}),
+        ...(draft.memberUserId ? { member_user_id: draft.memberUserId } : {}),
+      },
+    );
+  }
+
+  return listProspectContacts(context.organizationId, prospectId);
+}
+
 export const peopleService = {
-  /** Everyone on record for a company. */
-  async list(organizationId: ID, prospectId: ID): Promise<Person[]> {
-    return listProspectContacts(organizationId, prospectId);
+  /**
+   * Everyone on record for a company.
+   *
+   * Before Scout is allowed to say nobody is known, it resolves the people
+   * canonical Trust Tai data already holds for this same company: the person
+   * who filled in the roadmap intake, and anyone already on record with a
+   * business address on the company's own domain. Existing records are reused,
+   * never duplicated, and a human-confirmed record is never rewritten.
+   *
+   * Resolution only runs when a signed-in member is on the call, because
+   * linking and recording are provenance-stamped acts.
+   */
+  async list(organizationId: ID, prospectId: ID, context?: PeopleContext): Promise<Person[]> {
+    const stored = await listProspectContacts(organizationId, prospectId);
+    if (!context) return stored;
+    try {
+      const resolved = await resolveKnownPeople(stored, prospectId, context);
+      return resolved.length > 0 ? resolved : stored;
+    } catch {
+      // Resolution is an improvement on the read, never a reason to fail it.
+      return stored;
+    }
   },
 
   /** A person added by hand. Always outranks anything a provider asserts. */

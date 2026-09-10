@@ -1,0 +1,134 @@
+/**
+ * The one wiring for milestone outcomes and acceptance criteria.
+ *
+ * Roadmap owns this truth (Canon 17), so both the Roadmap room and the Project
+ * workroom use this same hook over the same Roadmap service. There is no second
+ * implementation and no project side store.
+ */
+
+import { useState } from "react";
+
+import { roadmapIntel, type IntelContext } from "@/data/supabase/roadmap-intel-service";
+import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
+import type { CriterionEvidence } from "@/domain/criterion-evidence";
+import type { EvidenceDraft } from "@/components/tt/roadmap/criterion-evidence";
+import type { MilestoneSuccessInput } from "@/domain/milestone-success";
+import type { RoadmapMilestone } from "@/domain/roadmap-intel";
+
+export interface MilestoneAcceptance {
+  error: string | null;
+  onSuccess: (milestone: RoadmapMilestone, input: MilestoneSuccessInput) => void;
+  /** The explicit human acceptance of delivered work. Never automatic. */
+  onAccept: (milestone: RoadmapMilestone, note: string) => void;
+  /** Clears acceptance only. Conditions and evidence are untouched. */
+  onReopen: (milestone: RoadmapMilestone, reason: string) => void;
+  onCriterionAdd: (milestone: RoadmapMilestone, text: string) => void;
+  onCriterionToggle: (
+    milestone: RoadmapMilestone,
+    criterion: AcceptanceCriterion,
+    done: boolean,
+  ) => void;
+  onCriterionEdit: (
+    milestone: RoadmapMilestone,
+    criterion: AcceptanceCriterion,
+    text: string,
+  ) => void;
+  onCriterionRemove: (milestone: RoadmapMilestone, criterion: AcceptanceCriterion) => void;
+  onCriterionMove: (
+    milestone: RoadmapMilestone,
+    criterion: AcceptanceCriterion,
+    direction: "up" | "down",
+  ) => void;
+  /**
+   * Attach proof to one condition. Optional by default: this never checks the
+   * criterion and never completes the milestone.
+   */
+  onEvidenceAdd: (
+    milestone: RoadmapMilestone,
+    criterion: AcceptanceCriterion,
+    draft: EvidenceDraft,
+  ) => void;
+  onEvidenceRemove: (item: CriterionEvidence) => void;
+  /** Open a stored evidence file through a short lived signed url. */
+  onEvidenceOpen: (item: CriterionEvidence) => void;
+  /** A short lived signed url, used to preview a stored image inline. */
+  onEvidenceUrl: (item: CriterionEvidence) => Promise<string>;
+}
+
+export function useMilestoneAcceptance({
+  context,
+  criteria,
+  label,
+  refresh,
+  setBusyId,
+}: {
+  context: IntelContext;
+  /** The checklist already read for this roadmap, used only for ordering. */
+  criteria: AcceptanceCriterion[];
+  label: string;
+  refresh: () => void | Promise<unknown>;
+  setBusyId?: (id: string | null) => void;
+}): MilestoneAcceptance {
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async (milestoneId: string, work: () => Promise<unknown>) => {
+    setError(null);
+    setBusyId?.(milestoneId);
+    try {
+      await work();
+      await refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "That change could not be saved.");
+    } finally {
+      setBusyId?.(null);
+    }
+  };
+
+  return {
+    error,
+    onAccept: (milestone, note) =>
+      void run(milestone.id, () => roadmapIntel.acceptMilestone(context, milestone, note, label)),
+    onReopen: (milestone, reason) =>
+      void run(milestone.id, () => roadmapIntel.reopenMilestone(context, milestone, reason, label)),
+    onSuccess: (milestone, input) =>
+      void run(milestone.id, () =>
+        roadmapIntel.setMilestoneSuccess(context, milestone, input, label),
+      ),
+    onCriterionAdd: (milestone, text) =>
+      void run(milestone.id, () => roadmapIntel.addCriterion(context, milestone, text, label)),
+    onCriterionToggle: (milestone, criterion, done) =>
+      void run(milestone.id, () => roadmapIntel.setCriterionDone(context, criterion, done, label)),
+    onCriterionEdit: (milestone, criterion, text) =>
+      void run(milestone.id, () => roadmapIntel.editCriterion(context, criterion, text, label)),
+    onCriterionRemove: (milestone, criterion) =>
+      void run(milestone.id, () => roadmapIntel.removeCriterion(context, criterion, label)),
+    onCriterionMove: (milestone, criterion, direction) =>
+      void run(milestone.id, () =>
+        roadmapIntel.moveCriterion(
+          context,
+          criteria.filter((row) => row.milestoneId === milestone.id),
+          criterion,
+          direction,
+          label,
+        ),
+      ),
+    onEvidenceAdd: (milestone, criterion, draft) =>
+      void run(milestone.id, () =>
+        roadmapIntel.addCriterionEvidence(context, criterion, draft, label),
+      ),
+    onEvidenceRemove: (item) =>
+      void run(item.milestoneId, () => roadmapIntel.removeCriterionEvidence(context, item, label)),
+    onEvidenceOpen: (item) => {
+      void (async () => {
+        setError(null);
+        try {
+          const url = await roadmapIntel.criterionEvidenceUrl(item);
+          window.open(url, "_blank", "noopener,noreferrer");
+        } catch (cause) {
+          setError(cause instanceof Error ? cause.message : "That file could not be opened.");
+        }
+      })();
+    },
+    onEvidenceUrl: (item) => roadmapIntel.criterionEvidenceUrl(item),
+  };
+}

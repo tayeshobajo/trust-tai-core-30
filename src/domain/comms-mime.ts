@@ -7,7 +7,7 @@
  * finished string, base64url-encoded.
  *
  * Three guarantees hold here:
- *  1. Our own mailbox is never a recipient — reply-all can never echo to us.
+ *  1. Our own mailbox is never a recipient, reply-all can never echo to us.
  *  2. What the person approved is exactly what is sent. Nothing is appended
  *     (no hidden signature), nothing is rewritten.
  *  3. One draft carries one deterministic Message-ID, so a retried send is
@@ -30,10 +30,46 @@ export const MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 /** Extensions Gmail refuses outright; naming one is an actionable error. */
 const BLOCKED_EXTENSIONS = new Set([
-  "ade", "adp", "apk", "app", "appx", "bat", "cab", "cmd", "com", "cpl", "dll",
-  "dmg", "exe", "hta", "ins", "iso", "jar", "js", "jse", "lib", "lnk", "mde",
-  "msc", "msi", "msp", "mst", "nsh", "pif", "ps1", "scr", "sct", "sh", "sys",
-  "vb", "vbe", "vbs", "vxd", "wsc", "wsf", "wsh",
+  "ade",
+  "adp",
+  "apk",
+  "app",
+  "appx",
+  "bat",
+  "cab",
+  "cmd",
+  "com",
+  "cpl",
+  "dll",
+  "dmg",
+  "exe",
+  "hta",
+  "ins",
+  "iso",
+  "jar",
+  "js",
+  "jse",
+  "lib",
+  "lnk",
+  "mde",
+  "msc",
+  "msi",
+  "msp",
+  "mst",
+  "nsh",
+  "pif",
+  "ps1",
+  "scr",
+  "sct",
+  "sh",
+  "sys",
+  "vb",
+  "vbe",
+  "vbs",
+  "vxd",
+  "wsc",
+  "wsf",
+  "wsh",
 ]);
 
 function extensionOf(filename: string): string {
@@ -64,9 +100,7 @@ export function validateAttachments(files: { filename: string; size: number }[])
     }
     const extension = extensionOf(file.filename);
     if (BLOCKED_EXTENSIONS.has(extension)) {
-      errors.push(
-        `“${file.filename}” cannot go through Gmail — .${extension} files are blocked.`,
-      );
+      errors.push(`“${file.filename}” cannot go through Gmail,.${extension} files are blocked.`);
     }
     if (file.size > MAX_ATTACHMENT_BYTES) {
       errors.push(
@@ -102,7 +136,7 @@ export function parseRecipients(raw: string): string[] {
 
 /**
  * Reply-all, computed safely: the person who wrote to us leads To; everyone
- * else on the message rides in Cc — except our own mailbox, which is never a
+ * else on the message rides in Cc, except our own mailbox, which is never a
  * recipient no matter what the headers said.
  */
 export function replyRecipients(input: {
@@ -201,11 +235,8 @@ export interface MimeMessageInput {
  * `multipart/mixed` tree whose first part is always the readable text.
  */
 export function buildMimeMessage(input: MimeMessageInput): string {
-  const headers: string[] = [
-    `From: ${input.from.trim().toLowerCase()}`,
-    `To: input.to.join(", ")`,
-  ];
-  // (header list built below — kept explicit so a review reads top to bottom)
+  const headers: string[] = [`From: ${input.from.trim().toLowerCase()}`, `To: input.to.join(", ")`];
+  // (header list built below, kept explicit so a review reads top to bottom)
   headers.length = 0;
   headers.push(`From: ${input.from.trim().toLowerCase()}`);
   headers.push(`To: ${input.to.map((email) => email.trim().toLowerCase()).join(", ")}`);
@@ -268,11 +299,7 @@ export function encodeRawEmail(rfc2822: string): string {
  * The always-available fallback: the same words, opened in Gmail's own
  * compose window, when Comms may not send itself.
  */
-export function gmailComposeUrl(input: {
-  to?: string[];
-  subject?: string;
-  body?: string;
-}): string {
+export function gmailComposeUrl(input: { to?: string[]; subject?: string; body?: string }): string {
   const params = new URLSearchParams({ view: "cm", fs: "1" });
   if (input.to?.length) params.set("to", input.to.join(","));
   if (input.subject) params.set("su", input.subject);

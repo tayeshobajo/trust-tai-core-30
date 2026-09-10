@@ -17,8 +17,4 @@ export const CONDUCTOR_CAN = [
 export const CONDUCTOR_CANNOT =
   "The Conductor owns no room's truth. It cannot change a project, send a message, move a roadmap or decide on your behalf. Approval is not completion, and routing is not completion: when you authorise a step, the owning room carries it out and reports back.";
 
-export type {
-  ConductorGlance,
-  MovedItem,
-  NeedsTaiItem,
-} from "@/data/conductor/page-projection";
+export type { ConductorGlance, MovedItem, NeedsTaiItem } from "@/data/conductor/page-projection";

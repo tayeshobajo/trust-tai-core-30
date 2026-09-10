@@ -84,7 +84,11 @@ describe("conversationHealth", () => {
 
   it("is at risk when a follow-up is materially overdue", () => {
     const read = conversationHealth(
-      relationship({ nextAction: "Send the proposal", followUpDueAt: days(9), lastTouchAt: days(10) }),
+      relationship({
+        nextAction: "Send the proposal",
+        followUpDueAt: days(9),
+        lastTouchAt: days(10),
+      }),
       [touch({ id: "a", occurredAt: days(10), direction: "outbound" })],
       NOW,
     );
@@ -213,12 +217,7 @@ describe("conversation timeline", () => {
         },
       ],
     );
-    expect(events.map((event) => event.kind)).toEqual([
-      "meeting",
-      "they_emailed",
-      "draft",
-      "note",
-    ]);
+    expect(events.map((event) => event.kind)).toEqual(["meeting", "they_emailed", "draft", "note"]);
     expect(groupByDay(events, NOW)).toHaveLength(4);
   });
 

@@ -74,7 +74,10 @@ export function snapshotFingerprint(snapshot: SuiteSnapshot): string {
       snapshot.steward.commitments.map((c) => c.updatedAt),
     )}`,
     `memory:${snapshot.memory.length}:${newest(snapshot.memory.map((b) => b.recordedAt))}`,
-    `withheld:${snapshot.withheld.map((w) => w.appId).sort().join("+")}`,
+    `withheld:${snapshot.withheld
+      .map((w) => w.appId)
+      .sort()
+      .join("+")}`,
   ];
   return parts.join("|");
 }

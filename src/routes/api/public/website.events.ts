@@ -39,7 +39,10 @@ export const Route = createFileRoute("/api/public/website/events")({
         });
         if (!auth.ok) {
           return json(
-            { accepted: false, error: auth.reason === "not_configured" ? "not_configured" : "unauthorized" },
+            {
+              accepted: false,
+              error: auth.reason === "not_configured" ? "not_configured" : "unauthorized",
+            },
             auth.reason === "not_configured" ? 503 : 401,
           );
         }

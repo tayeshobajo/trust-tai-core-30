@@ -15,6 +15,8 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesActivityRouteImport } from './routes/modules.activity'
+import { Route as ModulesApprovalsRouteImport } from './routes/modules.approvals'
+import { Route as ModulesClientsRouteImport } from './routes/modules.clients'
 import { Route as ModulesCommsRouteImport } from './routes/modules.comms'
 import { Route as ModulesConductorRouteImport } from './routes/modules.conductor'
 import { Route as ModulesOpsRouteImport } from './routes/modules.ops'
@@ -23,6 +25,7 @@ import { Route as ModulesPulseRouteImport } from './routes/modules.pulse'
 import { Route as ModulesRoadmapRouteImport } from './routes/modules.roadmap'
 import { Route as ModulesScoutRouteImport } from './routes/modules.scout'
 import { Route as ModulesStewardRouteImport } from './routes/modules.steward'
+import { Route as ModulesStudioRouteImport } from './routes/modules.studio'
 import { Route as ModulesWebsiteRouteImport } from './routes/modules.website'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsAppsRouteImport } from './routes/settings.apps'
@@ -36,6 +39,8 @@ import { Route as SettingsPeopleRouteImport } from './routes/settings.people'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
 import { Route as ApiLinkiExecuteRouteImport } from './routes/api/linki/execute'
+import { Route as ModulesClientsIndexRouteImport } from './routes/modules.clients.index'
+import { Route as ModulesClientsClientIdRouteImport } from './routes/modules.clients.$clientId'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
 import { Route as ModulesCommsDashboardRouteImport } from './routes/modules.comms.dashboard'
 import { Route as ModulesCommsInboxRouteImport } from './routes/modules.comms.inbox'
@@ -55,18 +60,29 @@ import { Route as ModulesStewardAgentsRouteImport } from './routes/modules.stewa
 import { Route as ModulesStewardMeetingsRouteImport } from './routes/modules.steward.meetings'
 import { Route as ModulesStewardMemoryRouteImport } from './routes/modules.steward.memory'
 import { Route as ModulesStewardTasksRouteImport } from './routes/modules.steward.tasks'
+import { Route as ModulesStudioIndexRouteImport } from './routes/modules.studio.index'
+import { Route as ModulesStudioItemIdRouteImport } from './routes/modules.studio.$itemId'
 import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website_.page'
+import { Route as ApiPublicClientsAskRouteImport } from './routes/api/public/clients.ask'
+import { Route as ApiPublicClientsLogoRouteImport } from './routes/api/public/clients.logo'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
+import { Route as ApiPublicContentGenerateRouteImport } from './routes/api/public/content.generate'
+import { Route as ApiPublicContentImageRouteImport } from './routes/api/public/content.image'
+import { Route as ApiPublicContentPublishRouteImport } from './routes/api/public/content.publish'
 import { Route as ApiPublicIntelligenceReasonRouteImport } from './routes/api/public/intelligence.reason'
 import { Route as ApiPublicIntelligenceReconcileRouteImport } from './routes/api/public/intelligence.reconcile'
 import { Route as ApiPublicIntelligenceStatusRouteImport } from './routes/api/public/intelligence.status'
+import { Route as ApiPublicProjectsAskRouteImport } from './routes/api/public/projects.ask'
 import { Route as ApiPublicProjectsContextPacketRouteImport } from './routes/api/public/projects.context-packet'
 import { Route as ApiPublicRoadmapAskRouteImport } from './routes/api/public/roadmap.ask'
 import { Route as ApiPublicRoadmapResearchRouteImport } from './routes/api/public/roadmap.research'
 import { Route as ApiPublicRoadmapStudioRouteImport } from './routes/api/public/roadmap.studio'
 import { Route as ApiPublicRoutingNotifyRouteImport } from './routes/api/public/routing.notify'
 import { Route as ApiPublicScoutDiscoverRouteImport } from './routes/api/public/scout.discover'
+import { Route as ApiPublicScoutImportRouteImport } from './routes/api/public/scout.import'
+import { Route as ApiPublicScoutSweepRouteImport } from './routes/api/public/scout.sweep'
 import { Route as ApiPublicSettingsAdminPasswordRouteImport } from './routes/api/public/settings.admin-password'
+import { Route as ApiPublicSettingsInviteAcceptRouteImport } from './routes/api/public/settings.invite-accept'
 import { Route as ApiPublicSettingsInviteEmailRouteImport } from './routes/api/public/settings.invite-email'
 import { Route as ApiPublicStewardConversationRouteImport } from './routes/api/public/steward.conversation'
 import { Route as ApiPublicStewardInterpretRouteImport } from './routes/api/public/steward.interpret'
@@ -119,6 +135,16 @@ const ModulesActivityRoute = ModulesActivityRouteImport.update({
   path: '/modules/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ModulesApprovalsRoute = ModulesApprovalsRouteImport.update({
+  id: '/modules/approvals',
+  path: '/modules/approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesClientsRoute = ModulesClientsRouteImport.update({
+  id: '/modules/clients',
+  path: '/modules/clients',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ModulesCommsRoute = ModulesCommsRouteImport.update({
   id: '/modules/comms',
   path: '/modules/comms',
@@ -157,6 +183,11 @@ const ModulesScoutRoute = ModulesScoutRouteImport.update({
 const ModulesStewardRoute = ModulesStewardRouteImport.update({
   id: '/modules/steward',
   path: '/modules/steward',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesStudioRoute = ModulesStudioRouteImport.update({
+  id: '/modules/studio',
+  path: '/modules/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesWebsiteRoute = ModulesWebsiteRouteImport.update({
@@ -223,6 +254,16 @@ const ApiLinkiExecuteRoute = ApiLinkiExecuteRouteImport.update({
   id: '/api/linki/execute',
   path: '/api/linki/execute',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesClientsIndexRoute = ModulesClientsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ModulesClientsRoute,
+} as any)
+const ModulesClientsClientIdRoute = ModulesClientsClientIdRouteImport.update({
+  id: '/$clientId',
+  path: '/$clientId',
+  getParentRoute: () => ModulesClientsRoute,
 } as any)
 const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
   id: '/',
@@ -321,14 +362,50 @@ const ModulesStewardTasksRoute = ModulesStewardTasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => ModulesStewardRoute,
 } as any)
+const ModulesStudioIndexRoute = ModulesStudioIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ModulesStudioRoute,
+} as any)
+const ModulesStudioItemIdRoute = ModulesStudioItemIdRouteImport.update({
+  id: '/$itemId',
+  path: '/$itemId',
+  getParentRoute: () => ModulesStudioRoute,
+} as any)
 const ModulesWebsitePageRoute = ModulesWebsitePageRouteImport.update({
   id: '/modules/website_/page',
   path: '/modules/website/page',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicClientsAskRoute = ApiPublicClientsAskRouteImport.update({
+  id: '/api/public/clients/ask',
+  path: '/api/public/clients/ask',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicClientsLogoRoute = ApiPublicClientsLogoRouteImport.update({
+  id: '/api/public/clients/logo',
+  path: '/api/public/clients/logo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCommsDraftRoute = ApiPublicCommsDraftRouteImport.update({
   id: '/api/public/comms/draft',
   path: '/api/public/comms/draft',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicContentGenerateRoute =
+  ApiPublicContentGenerateRouteImport.update({
+    id: '/api/public/content/generate',
+    path: '/api/public/content/generate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicContentImageRoute = ApiPublicContentImageRouteImport.update({
+  id: '/api/public/content/image',
+  path: '/api/public/content/image',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicContentPublishRoute = ApiPublicContentPublishRouteImport.update({
+  id: '/api/public/content/publish',
+  path: '/api/public/content/publish',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicIntelligenceReasonRoute =
@@ -349,6 +426,11 @@ const ApiPublicIntelligenceStatusRoute =
     path: '/api/public/intelligence/status',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicProjectsAskRoute = ApiPublicProjectsAskRouteImport.update({
+  id: '/api/public/projects/ask',
+  path: '/api/public/projects/ask',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicProjectsContextPacketRoute =
   ApiPublicProjectsContextPacketRouteImport.update({
     id: '/api/public/projects/context-packet',
@@ -381,10 +463,26 @@ const ApiPublicScoutDiscoverRoute = ApiPublicScoutDiscoverRouteImport.update({
   path: '/api/public/scout/discover',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicScoutImportRoute = ApiPublicScoutImportRouteImport.update({
+  id: '/api/public/scout/import',
+  path: '/api/public/scout/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicScoutSweepRoute = ApiPublicScoutSweepRouteImport.update({
+  id: '/api/public/scout/sweep',
+  path: '/api/public/scout/sweep',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicSettingsAdminPasswordRoute =
   ApiPublicSettingsAdminPasswordRouteImport.update({
     id: '/api/public/settings/admin-password',
     path: '/api/public/settings/admin-password',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicSettingsInviteAcceptRoute =
+  ApiPublicSettingsInviteAcceptRouteImport.update({
+    id: '/api/public/settings/invite-accept',
+    path: '/api/public/settings/invite-accept',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicSettingsInviteEmailRoute =
@@ -514,6 +612,8 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
+  '/modules/approvals': typeof ModulesApprovalsRoute
+  '/modules/clients': typeof ModulesClientsRouteWithChildren
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
@@ -522,6 +622,7 @@ export interface FileRoutesByFullPath {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/modules/studio': typeof ModulesStudioRouteWithChildren
   '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
@@ -535,6 +636,7 @@ export interface FileRoutesByFullPath {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -549,23 +651,35 @@ export interface FileRoutesByFullPath {
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
+  '/modules/clients/': typeof ModulesClientsIndexRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/modules/steward/': typeof ModulesStewardIndexRoute
+  '/modules/studio/': typeof ModulesStudioIndexRoute
+  '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
+  '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
+  '/api/public/content/image': typeof ApiPublicContentImageRoute
+  '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
+  '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
+  '/api/public/scout/import': typeof ApiPublicScoutImportRoute
+  '/api/public/scout/sweep': typeof ApiPublicScoutSweepRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
+  '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
@@ -594,6 +708,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
+  '/modules/approvals': typeof ModulesApprovalsRoute
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
   '/modules/pulse': typeof ModulesPulseRoute
@@ -610,6 +725,7 @@ export interface FileRoutesByTo {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -623,23 +739,35 @@ export interface FileRoutesByTo {
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/website/page': typeof ModulesWebsitePageRoute
+  '/modules/clients': typeof ModulesClientsIndexRoute
   '/modules/comms': typeof ModulesCommsIndexRoute
   '/modules/projects': typeof ModulesProjectsIndexRoute
   '/modules/roadmap': typeof ModulesRoadmapIndexRoute
   '/modules/scout': typeof ModulesScoutIndexRoute
   '/modules/steward': typeof ModulesStewardIndexRoute
+  '/modules/studio': typeof ModulesStudioIndexRoute
+  '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
+  '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
+  '/api/public/content/image': typeof ApiPublicContentImageRoute
+  '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
+  '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
+  '/api/public/scout/import': typeof ApiPublicScoutImportRoute
+  '/api/public/scout/sweep': typeof ApiPublicScoutSweepRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
+  '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
@@ -670,6 +798,8 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
+  '/modules/approvals': typeof ModulesApprovalsRoute
+  '/modules/clients': typeof ModulesClientsRouteWithChildren
   '/modules/comms': typeof ModulesCommsRouteWithChildren
   '/modules/conductor': typeof ModulesConductorRoute
   '/modules/ops': typeof ModulesOpsRoute
@@ -678,6 +808,7 @@ export interface FileRoutesById {
   '/modules/roadmap': typeof ModulesRoadmapRouteWithChildren
   '/modules/scout': typeof ModulesScoutRouteWithChildren
   '/modules/steward': typeof ModulesStewardRouteWithChildren
+  '/modules/studio': typeof ModulesStudioRouteWithChildren
   '/modules/website': typeof ModulesWebsiteRoute
   '/settings/apps': typeof SettingsAppsRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
@@ -691,6 +822,7 @@ export interface FileRoutesById {
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
+  '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
@@ -705,23 +837,35 @@ export interface FileRoutesById {
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
   '/modules/steward/tasks': typeof ModulesStewardTasksRoute
+  '/modules/studio/$itemId': typeof ModulesStudioItemIdRoute
   '/modules/website_/page': typeof ModulesWebsitePageRoute
+  '/modules/clients/': typeof ModulesClientsIndexRoute
   '/modules/comms/': typeof ModulesCommsIndexRoute
   '/modules/projects/': typeof ModulesProjectsIndexRoute
   '/modules/roadmap/': typeof ModulesRoadmapIndexRoute
   '/modules/scout/': typeof ModulesScoutIndexRoute
   '/modules/steward/': typeof ModulesStewardIndexRoute
+  '/modules/studio/': typeof ModulesStudioIndexRoute
+  '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
+  '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
+  '/api/public/content/image': typeof ApiPublicContentImageRoute
+  '/api/public/content/publish': typeof ApiPublicContentPublishRoute
   '/api/public/intelligence/reason': typeof ApiPublicIntelligenceReasonRoute
   '/api/public/intelligence/reconcile': typeof ApiPublicIntelligenceReconcileRoute
   '/api/public/intelligence/status': typeof ApiPublicIntelligenceStatusRoute
+  '/api/public/projects/ask': typeof ApiPublicProjectsAskRoute
   '/api/public/projects/context-packet': typeof ApiPublicProjectsContextPacketRoute
   '/api/public/roadmap/ask': typeof ApiPublicRoadmapAskRoute
   '/api/public/roadmap/research': typeof ApiPublicRoadmapResearchRoute
   '/api/public/roadmap/studio': typeof ApiPublicRoadmapStudioRoute
   '/api/public/routing/notify': typeof ApiPublicRoutingNotifyRoute
   '/api/public/scout/discover': typeof ApiPublicScoutDiscoverRoute
+  '/api/public/scout/import': typeof ApiPublicScoutImportRoute
+  '/api/public/scout/sweep': typeof ApiPublicScoutSweepRoute
   '/api/public/settings/admin-password': typeof ApiPublicSettingsAdminPasswordRoute
+  '/api/public/settings/invite-accept': typeof ApiPublicSettingsInviteAcceptRoute
   '/api/public/settings/invite-email': typeof ApiPublicSettingsInviteEmailRoute
   '/api/public/steward/conversation': typeof ApiPublicStewardConversationRoute
   '/api/public/steward/interpret': typeof ApiPublicStewardInterpretRoute
@@ -753,6 +897,8 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/modules/$slug'
     | '/modules/activity'
+    | '/modules/approvals'
+    | '/modules/clients'
     | '/modules/comms'
     | '/modules/conductor'
     | '/modules/ops'
@@ -761,6 +907,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/modules/studio'
     | '/modules/website'
     | '/settings/apps'
     | '/settings/diagnostics'
@@ -774,6 +921,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings/'
     | '/api/linki/execute'
+    | '/modules/clients/$clientId'
     | '/modules/comms/dashboard'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
@@ -788,23 +936,35 @@ export interface FileRouteTypes {
     | '/modules/steward/meetings'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
+    | '/modules/studio/$itemId'
     | '/modules/website/page'
+    | '/modules/clients/'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
     | '/modules/scout/'
     | '/modules/steward/'
+    | '/modules/studio/'
+    | '/api/public/clients/ask'
+    | '/api/public/clients/logo'
     | '/api/public/comms/draft'
+    | '/api/public/content/generate'
+    | '/api/public/content/image'
+    | '/api/public/content/publish'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
+    | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
+    | '/api/public/scout/import'
+    | '/api/public/scout/sweep'
     | '/api/public/settings/admin-password'
+    | '/api/public/settings/invite-accept'
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
@@ -833,6 +993,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/modules/$slug'
     | '/modules/activity'
+    | '/modules/approvals'
     | '/modules/conductor'
     | '/modules/ops'
     | '/modules/pulse'
@@ -849,6 +1010,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings'
     | '/api/linki/execute'
+    | '/modules/clients/$clientId'
     | '/modules/comms/dashboard'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
@@ -862,23 +1024,35 @@ export interface FileRouteTypes {
     | '/modules/steward/agents'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
+    | '/modules/studio/$itemId'
     | '/modules/website/page'
+    | '/modules/clients'
     | '/modules/comms'
     | '/modules/projects'
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/modules/studio'
+    | '/api/public/clients/ask'
+    | '/api/public/clients/logo'
     | '/api/public/comms/draft'
+    | '/api/public/content/generate'
+    | '/api/public/content/image'
+    | '/api/public/content/publish'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
+    | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
+    | '/api/public/scout/import'
+    | '/api/public/scout/sweep'
     | '/api/public/settings/admin-password'
+    | '/api/public/settings/invite-accept'
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
@@ -908,6 +1082,8 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/modules/$slug'
     | '/modules/activity'
+    | '/modules/approvals'
+    | '/modules/clients'
     | '/modules/comms'
     | '/modules/conductor'
     | '/modules/ops'
@@ -916,6 +1092,7 @@ export interface FileRouteTypes {
     | '/modules/roadmap'
     | '/modules/scout'
     | '/modules/steward'
+    | '/modules/studio'
     | '/modules/website'
     | '/settings/apps'
     | '/settings/diagnostics'
@@ -929,6 +1106,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/settings/'
     | '/api/linki/execute'
+    | '/modules/clients/$clientId'
     | '/modules/comms/dashboard'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
@@ -943,23 +1121,35 @@ export interface FileRouteTypes {
     | '/modules/steward/meetings'
     | '/modules/steward/memory'
     | '/modules/steward/tasks'
+    | '/modules/studio/$itemId'
     | '/modules/website_/page'
+    | '/modules/clients/'
     | '/modules/comms/'
     | '/modules/projects/'
     | '/modules/roadmap/'
     | '/modules/scout/'
     | '/modules/steward/'
+    | '/modules/studio/'
+    | '/api/public/clients/ask'
+    | '/api/public/clients/logo'
     | '/api/public/comms/draft'
+    | '/api/public/content/generate'
+    | '/api/public/content/image'
+    | '/api/public/content/publish'
     | '/api/public/intelligence/reason'
     | '/api/public/intelligence/reconcile'
     | '/api/public/intelligence/status'
+    | '/api/public/projects/ask'
     | '/api/public/projects/context-packet'
     | '/api/public/roadmap/ask'
     | '/api/public/roadmap/research'
     | '/api/public/roadmap/studio'
     | '/api/public/routing/notify'
     | '/api/public/scout/discover'
+    | '/api/public/scout/import'
+    | '/api/public/scout/sweep'
     | '/api/public/settings/admin-password'
+    | '/api/public/settings/invite-accept'
     | '/api/public/settings/invite-email'
     | '/api/public/steward/conversation'
     | '/api/public/steward/interpret'
@@ -989,6 +1179,8 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRouteWithChildren
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesActivityRoute: typeof ModulesActivityRoute
+  ModulesApprovalsRoute: typeof ModulesApprovalsRoute
+  ModulesClientsRoute: typeof ModulesClientsRouteWithChildren
   ModulesCommsRoute: typeof ModulesCommsRouteWithChildren
   ModulesConductorRoute: typeof ModulesConductorRoute
   ModulesOpsRoute: typeof ModulesOpsRoute
@@ -997,20 +1189,30 @@ export interface RootRouteChildren {
   ModulesRoadmapRoute: typeof ModulesRoadmapRouteWithChildren
   ModulesScoutRoute: typeof ModulesScoutRouteWithChildren
   ModulesStewardRoute: typeof ModulesStewardRouteWithChildren
+  ModulesStudioRoute: typeof ModulesStudioRouteWithChildren
   ModulesWebsiteRoute: typeof ModulesWebsiteRoute
   ApiLinkiExecuteRoute: typeof ApiLinkiExecuteRoute
   ModulesWebsitePageRoute: typeof ModulesWebsitePageRoute
+  ApiPublicClientsAskRoute: typeof ApiPublicClientsAskRoute
+  ApiPublicClientsLogoRoute: typeof ApiPublicClientsLogoRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
+  ApiPublicContentGenerateRoute: typeof ApiPublicContentGenerateRoute
+  ApiPublicContentImageRoute: typeof ApiPublicContentImageRoute
+  ApiPublicContentPublishRoute: typeof ApiPublicContentPublishRoute
   ApiPublicIntelligenceReasonRoute: typeof ApiPublicIntelligenceReasonRoute
   ApiPublicIntelligenceReconcileRoute: typeof ApiPublicIntelligenceReconcileRoute
   ApiPublicIntelligenceStatusRoute: typeof ApiPublicIntelligenceStatusRoute
+  ApiPublicProjectsAskRoute: typeof ApiPublicProjectsAskRoute
   ApiPublicProjectsContextPacketRoute: typeof ApiPublicProjectsContextPacketRoute
   ApiPublicRoadmapAskRoute: typeof ApiPublicRoadmapAskRoute
   ApiPublicRoadmapResearchRoute: typeof ApiPublicRoadmapResearchRoute
   ApiPublicRoadmapStudioRoute: typeof ApiPublicRoadmapStudioRoute
   ApiPublicRoutingNotifyRoute: typeof ApiPublicRoutingNotifyRoute
   ApiPublicScoutDiscoverRoute: typeof ApiPublicScoutDiscoverRoute
+  ApiPublicScoutImportRoute: typeof ApiPublicScoutImportRoute
+  ApiPublicScoutSweepRoute: typeof ApiPublicScoutSweepRoute
   ApiPublicSettingsAdminPasswordRoute: typeof ApiPublicSettingsAdminPasswordRoute
+  ApiPublicSettingsInviteAcceptRoute: typeof ApiPublicSettingsInviteAcceptRoute
   ApiPublicSettingsInviteEmailRoute: typeof ApiPublicSettingsInviteEmailRoute
   ApiPublicStewardConversationRoute: typeof ApiPublicStewardConversationRoute
   ApiPublicStewardInterpretRoute: typeof ApiPublicStewardInterpretRoute
@@ -1075,6 +1277,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/modules/approvals': {
+      id: '/modules/approvals'
+      path: '/modules/approvals'
+      fullPath: '/modules/approvals'
+      preLoaderRoute: typeof ModulesApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/clients': {
+      id: '/modules/clients'
+      path: '/modules/clients'
+      fullPath: '/modules/clients'
+      preLoaderRoute: typeof ModulesClientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/modules/comms': {
       id: '/modules/comms'
       path: '/modules/comms'
@@ -1129,6 +1345,13 @@ declare module '@tanstack/react-router' {
       path: '/modules/steward'
       fullPath: '/modules/steward'
       preLoaderRoute: typeof ModulesStewardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/studio': {
+      id: '/modules/studio'
+      path: '/modules/studio'
+      fullPath: '/modules/studio'
+      preLoaderRoute: typeof ModulesStudioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules/website': {
@@ -1221,6 +1444,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/linki/execute'
       preLoaderRoute: typeof ApiLinkiExecuteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/modules/clients/': {
+      id: '/modules/clients/'
+      path: '/'
+      fullPath: '/modules/clients/'
+      preLoaderRoute: typeof ModulesClientsIndexRouteImport
+      parentRoute: typeof ModulesClientsRoute
+    }
+    '/modules/clients/$clientId': {
+      id: '/modules/clients/$clientId'
+      path: '/$clientId'
+      fullPath: '/modules/clients/$clientId'
+      preLoaderRoute: typeof ModulesClientsClientIdRouteImport
+      parentRoute: typeof ModulesClientsRoute
     }
     '/modules/comms/': {
       id: '/modules/comms/'
@@ -1355,6 +1592,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesStewardTasksRouteImport
       parentRoute: typeof ModulesStewardRoute
     }
+    '/modules/studio/': {
+      id: '/modules/studio/'
+      path: '/'
+      fullPath: '/modules/studio/'
+      preLoaderRoute: typeof ModulesStudioIndexRouteImport
+      parentRoute: typeof ModulesStudioRoute
+    }
+    '/modules/studio/$itemId': {
+      id: '/modules/studio/$itemId'
+      path: '/$itemId'
+      fullPath: '/modules/studio/$itemId'
+      preLoaderRoute: typeof ModulesStudioItemIdRouteImport
+      parentRoute: typeof ModulesStudioRoute
+    }
     '/modules/website_/page': {
       id: '/modules/website_/page'
       path: '/modules/website/page'
@@ -1362,11 +1613,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesWebsitePageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/clients/ask': {
+      id: '/api/public/clients/ask'
+      path: '/api/public/clients/ask'
+      fullPath: '/api/public/clients/ask'
+      preLoaderRoute: typeof ApiPublicClientsAskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/clients/logo': {
+      id: '/api/public/clients/logo'
+      path: '/api/public/clients/logo'
+      fullPath: '/api/public/clients/logo'
+      preLoaderRoute: typeof ApiPublicClientsLogoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/comms/draft': {
       id: '/api/public/comms/draft'
       path: '/api/public/comms/draft'
       fullPath: '/api/public/comms/draft'
       preLoaderRoute: typeof ApiPublicCommsDraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/content/generate': {
+      id: '/api/public/content/generate'
+      path: '/api/public/content/generate'
+      fullPath: '/api/public/content/generate'
+      preLoaderRoute: typeof ApiPublicContentGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/content/image': {
+      id: '/api/public/content/image'
+      path: '/api/public/content/image'
+      fullPath: '/api/public/content/image'
+      preLoaderRoute: typeof ApiPublicContentImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/content/publish': {
+      id: '/api/public/content/publish'
+      path: '/api/public/content/publish'
+      fullPath: '/api/public/content/publish'
+      preLoaderRoute: typeof ApiPublicContentPublishRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/intelligence/reason': {
@@ -1388,6 +1674,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/intelligence/status'
       fullPath: '/api/public/intelligence/status'
       preLoaderRoute: typeof ApiPublicIntelligenceStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/projects/ask': {
+      id: '/api/public/projects/ask'
+      path: '/api/public/projects/ask'
+      fullPath: '/api/public/projects/ask'
+      preLoaderRoute: typeof ApiPublicProjectsAskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/projects/context-packet': {
@@ -1432,11 +1725,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicScoutDiscoverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/scout/import': {
+      id: '/api/public/scout/import'
+      path: '/api/public/scout/import'
+      fullPath: '/api/public/scout/import'
+      preLoaderRoute: typeof ApiPublicScoutImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/scout/sweep': {
+      id: '/api/public/scout/sweep'
+      path: '/api/public/scout/sweep'
+      fullPath: '/api/public/scout/sweep'
+      preLoaderRoute: typeof ApiPublicScoutSweepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/settings/admin-password': {
       id: '/api/public/settings/admin-password'
       path: '/api/public/settings/admin-password'
       fullPath: '/api/public/settings/admin-password'
       preLoaderRoute: typeof ApiPublicSettingsAdminPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/settings/invite-accept': {
+      id: '/api/public/settings/invite-accept'
+      path: '/api/public/settings/invite-accept'
+      fullPath: '/api/public/settings/invite-accept'
+      preLoaderRoute: typeof ApiPublicSettingsInviteAcceptRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/settings/invite-email': {
@@ -1631,6 +1945,20 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
   SettingsRouteChildren,
 )
 
+interface ModulesClientsRouteChildren {
+  ModulesClientsClientIdRoute: typeof ModulesClientsClientIdRoute
+  ModulesClientsIndexRoute: typeof ModulesClientsIndexRoute
+}
+
+const ModulesClientsRouteChildren: ModulesClientsRouteChildren = {
+  ModulesClientsClientIdRoute: ModulesClientsClientIdRoute,
+  ModulesClientsIndexRoute: ModulesClientsIndexRoute,
+}
+
+const ModulesClientsRouteWithChildren = ModulesClientsRoute._addFileChildren(
+  ModulesClientsRouteChildren,
+)
+
 interface ModulesCommsRouteChildren {
   ModulesCommsDashboardRoute: typeof ModulesCommsDashboardRoute
   ModulesCommsInboxRoute: typeof ModulesCommsInboxRoute
@@ -1738,12 +2066,28 @@ const ModulesStewardRouteWithChildren = ModulesStewardRoute._addFileChildren(
   ModulesStewardRouteChildren,
 )
 
+interface ModulesStudioRouteChildren {
+  ModulesStudioItemIdRoute: typeof ModulesStudioItemIdRoute
+  ModulesStudioIndexRoute: typeof ModulesStudioIndexRoute
+}
+
+const ModulesStudioRouteChildren: ModulesStudioRouteChildren = {
+  ModulesStudioItemIdRoute: ModulesStudioItemIdRoute,
+  ModulesStudioIndexRoute: ModulesStudioIndexRoute,
+}
+
+const ModulesStudioRouteWithChildren = ModulesStudioRoute._addFileChildren(
+  ModulesStudioRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesActivityRoute: ModulesActivityRoute,
+  ModulesApprovalsRoute: ModulesApprovalsRoute,
+  ModulesClientsRoute: ModulesClientsRouteWithChildren,
   ModulesCommsRoute: ModulesCommsRouteWithChildren,
   ModulesConductorRoute: ModulesConductorRoute,
   ModulesOpsRoute: ModulesOpsRoute,
@@ -1752,20 +2096,30 @@ const rootRouteChildren: RootRouteChildren = {
   ModulesRoadmapRoute: ModulesRoadmapRouteWithChildren,
   ModulesScoutRoute: ModulesScoutRouteWithChildren,
   ModulesStewardRoute: ModulesStewardRouteWithChildren,
+  ModulesStudioRoute: ModulesStudioRouteWithChildren,
   ModulesWebsiteRoute: ModulesWebsiteRoute,
   ApiLinkiExecuteRoute: ApiLinkiExecuteRoute,
   ModulesWebsitePageRoute: ModulesWebsitePageRoute,
+  ApiPublicClientsAskRoute: ApiPublicClientsAskRoute,
+  ApiPublicClientsLogoRoute: ApiPublicClientsLogoRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
+  ApiPublicContentGenerateRoute: ApiPublicContentGenerateRoute,
+  ApiPublicContentImageRoute: ApiPublicContentImageRoute,
+  ApiPublicContentPublishRoute: ApiPublicContentPublishRoute,
   ApiPublicIntelligenceReasonRoute: ApiPublicIntelligenceReasonRoute,
   ApiPublicIntelligenceReconcileRoute: ApiPublicIntelligenceReconcileRoute,
   ApiPublicIntelligenceStatusRoute: ApiPublicIntelligenceStatusRoute,
+  ApiPublicProjectsAskRoute: ApiPublicProjectsAskRoute,
   ApiPublicProjectsContextPacketRoute: ApiPublicProjectsContextPacketRoute,
   ApiPublicRoadmapAskRoute: ApiPublicRoadmapAskRoute,
   ApiPublicRoadmapResearchRoute: ApiPublicRoadmapResearchRoute,
   ApiPublicRoadmapStudioRoute: ApiPublicRoadmapStudioRoute,
   ApiPublicRoutingNotifyRoute: ApiPublicRoutingNotifyRoute,
   ApiPublicScoutDiscoverRoute: ApiPublicScoutDiscoverRoute,
+  ApiPublicScoutImportRoute: ApiPublicScoutImportRoute,
+  ApiPublicScoutSweepRoute: ApiPublicScoutSweepRoute,
   ApiPublicSettingsAdminPasswordRoute: ApiPublicSettingsAdminPasswordRoute,
+  ApiPublicSettingsInviteAcceptRoute: ApiPublicSettingsInviteAcceptRoute,
   ApiPublicSettingsInviteEmailRoute: ApiPublicSettingsInviteEmailRoute,
   ApiPublicStewardConversationRoute: ApiPublicStewardConversationRoute,
   ApiPublicStewardInterpretRoute: ApiPublicStewardInterpretRoute,

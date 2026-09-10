@@ -2,7 +2,7 @@
  * The prior-case retrieval seam.
  *
  * "Have we solved something like this before?" answered honestly: the only
- * legitimate linkage is a shared canon pattern — a case attaches to the
+ * legitimate linkage is a shared canon pattern, a case attaches to the
  * pattern it was recorded against, and an outcome attaches to its case. This
  * module never invents similarity and never invents success: a case with no
  * outcome is "we have seen this shape before", and a rejected outcome is
@@ -12,11 +12,7 @@
  * the reasoning stage may cite.
  */
 
-import type {
-  IntelligenceCase,
-  PatternMatch,
-  PatternOutcome,
-} from "@/domain/intelligence-canon";
+import type { IntelligenceCase, PatternMatch, PatternOutcome } from "@/domain/intelligence-canon";
 
 export interface PriorCaseRef {
   caseId: string;

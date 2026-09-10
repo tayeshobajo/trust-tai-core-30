@@ -121,7 +121,11 @@ function observedFacts(research: RoadmapResearch | null | undefined): PacketFact
   for (const [group, claims] of groups) {
     for (const claim of claims) {
       if (claim.tier !== "observed" || claim.sources.length === 0) continue;
-      add(claim.statement, `Observed research, ${group}, ${claim.confidence} confidence.`, claim.sources);
+      add(
+        claim.statement,
+        `Observed research, ${group}, ${claim.confidence} confidence.`,
+        claim.sources,
+      );
     }
   }
 
@@ -259,7 +263,9 @@ export function buildEvidencePacket(input: PacketInput): EvidencePacket {
 }
 
 /** The pages the model is asked to write, in order, for this packet. */
-export function packetOutline(packet: EvidencePacket): { key: string; title: string; brief: string }[] {
+export function packetOutline(
+  packet: EvidencePacket,
+): { key: string; title: string; brief: string }[] {
   const pages = [
     {
       key: "title",
@@ -335,7 +341,10 @@ const NUMERIC = /\b\d[\d,.]*\s?(%|percent|k|m|bn|billion|million|x)?\b|[$£€]\
 
 function normalizeVoice(text: string): string {
   // No em dashes, ever. They are the tell of generated copy.
-  return text.replace(/\s*[—–]\s*/g, ", ").replace(/\s{2,}/g, " ").trim();
+  return text
+    .replace(/\s*[\u2014\u2013]\s*/g, ", ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 function packetCorpus(packet: EvidencePacket): string {
@@ -460,8 +469,7 @@ export function packetFactIndex(packet: EvidencePacket): Map<string, PacketFact>
   return index;
 }
 
-export const NOT_READY_LINE =
-  "Not ready. The approved evidence does not support this page yet.";
+export const NOT_READY_LINE = "Not ready. The approved evidence does not support this page yet.";
 
 /**
  * Validate a composed document against the packet it was written from.

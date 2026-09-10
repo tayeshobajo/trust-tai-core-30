@@ -1,7 +1,7 @@
-# Comms Hit Brief — audit against the Familiar Magic doctrine
+# Comms Hit Brief, audit against the Familiar Magic doctrine
 
 Read-only audit of the current implementation, dated 2026-08-22, judged against
-"Product law — Familiar Magic" in `docs/architecture-canon.md`. Comms is next
+"Product law. Familiar Magic" in `docs/architecture-canon.md`. Comms is next
 in the locked migration order (Core/Foundation → Comms → …), so this brief is
 the baseline its next phase must satisfy.
 
@@ -21,7 +21,7 @@ plus `/modules/comms/voice` and `/modules/comms/integrations`. Components in
 `comms_drafts`, `comms_reminders`, `comms_voice_profiles`
 (`docs/comms-v1-schema.sql`, header marked APPLIED). Integration layer:
 `comms_messages`, `comms_integrations`, `comms_events`, `comms_event_targets`
-and thread columns (`docs/comms-integrations-schema.sql`) — **verified APPLIED
+and thread columns (`docs/comms-integrations-schema.sql`), **verified APPLIED
 in production on 2026-08-22**, including the service-role credential read
 `comms_get_integration_secret_system`. `comms_events` / `comms_event_targets`
 are referenced by no other code anywhere. Access layer:
@@ -33,12 +33,12 @@ are referenced by no other code anywhere. Access layer:
 `src/lib/comms-gmail.server.ts`; refresh-token upkeep in
 `supabase/functions/comms-gmail-refresh`. Consent requests
 `gmail.readonly` plus `gmail.send` (never `gmail.modify`), and the granted
-set persists on the connection row — reading stays label-gated, and sending
+set persists on the connection row, reading stays label-gated, and sending
 runs only through the human-click send path. Refresh tokens are AES-GCM sealed
 (`comms-crypto.server.ts`), readable only by the service role. Sync runs two
 ways over one shared core: person-invoked (member bearer token, RLS holds) and
 **scheduled** (`/api/public/comms/gmail/scheduled-sync`, service role via the
-system credential RPC, cron-secret auth, every 6 hours — cron SQL in
+system credential RPC, cron-secret auth, every 6 hours, cron SQL in
 `docs/comms-integrations-schema.sql`). The production cron is active and verified:
 `comms-gmail-sync` at `17 */6 * * *`, secret sourced from Supabase Vault
 `comms_sync_cron_secret`, endpoint fail-closed (401/200). Drafting endpoint:
@@ -49,7 +49,7 @@ memory. A member may connect more than one Gmail mailbox; every synced
 message and every Comms-sent row stamps `provenance.mailbox`, so one
 relationship may hold conversations from multiple connected Trust Tai
 mailboxes (one person, one memory, many conversations). Replies stay with
-the mailbox that owns the Gmail thread — provenance wins, an explicit From
+the mailbox that owns the Gmail thread, provenance wins, an explicit From
 choice applies only to new conversations, and a missing `gmail.send` grant
 blocks only the owning/selected mailbox, never silently rerouting. The
 production OAuth callback is exactly
@@ -72,10 +72,9 @@ evidence. No autonomous agents; nothing is sent.
    return trigger is the *Needs you* tab (`src/data/comms-inbox.ts`,
    `tabOf`: `waitingOn === "needs_us"`) plus attention state
    (`src/data/comms-attention*.ts`). Real, but the loop only completes when
-   the mailbox is synced — see capability c/d.
+   the mailbox is synced, see capability c/d.
 3. **Familiar reference.** An email client / lightweight CRM: list left,
-   chronological thread centre, context right. Familiar on the surface —
-   the doctrine's surface law is satisfied by the current shape.
+   chronological thread centre, context right. Familiar on the surface, the doctrine's surface law is satisfied by the current shape.
 4. **Magic.** Tiered memory (observed / inferred / decided,
    `src/domain/comms.ts`), a next move that only exists when something true
    supports it (`comms-next-move.ts`), voice-checked drafts, and a response
@@ -86,18 +85,18 @@ evidence. No autonomous agents; nothing is sent.
    research at draft time (capability g).
 6. **Actions.** Capture, log/edit/retract interactions, stage changes,
    compose + approve drafts, mark sent, import a correspondent from the
-   mailbox, sequence in Roadmap. Cannot send — deliberately.
+   mailbox, sequence in Roadmap. Cannot send, deliberately.
 7. **Human gates.** Stage only changes by a person; blocking voice violations
    prevent approval; the sensitive register is always held for review
    (`HUMAN_REVIEW_REGISTERS`); a person marks a draft sent; Scout handoff is
    person-initiated (`scout-service.ts` `routeToComms`).
 8. **Memory.** Memory tiers per relationship, commitments with due dates
    (`comms-interactions.ts`), the Voice DNA profile, the touch history.
-   Draft edits leave no memory — the largest single leak (capability j).
+   Draft edits leave no memory, the largest single leak (capability j).
 9. **Proof.** `last_touch_at` only moves on a logged touch or a synced
    message, so coverage is honest. "Marked as sent" (human claim) and
    "seen in the mailbox" (observed proof) are now distinct states, reconciled
-   only by credible evidence — attempted != executed != verified holds.
+   only by credible evidence, attempted != executed != verified holds.
 10. **Subtraction.** Candidates: the Phase-0 `comms_events` /
     `comms_event_targets` track with its deliberately empty registry, and any
     integration-panel track that cannot connect. Keep hidden until a provider
@@ -108,32 +107,31 @@ evidence. No autonomous agents; nothing is sent.
 | Capability | Verdict | Evidence |
 | --- | --- | --- |
 | Familiar chronological thread, manually updatable with notes/context | **Exists** | `src/data/comms-timeline.ts` folds touches + drafts oldest-first with per-entry provenance; `recordNote` / `editedProvenance` in `src/domain/comms-touch-record.ts`; `add-interaction.tsx`, `edit-interaction.tsx`. |
-| Matching known people to Gmail by email identity | **Exists** | Sync matches From/To/Cc counterparts against `comms_relationships.email`, lowercased (`findTrackedCounterpart` in `comms-gmail.server.ts`) — the identity layer applied after label gating; capture matches the shared `contacts` table by email then exact name (`comms-service.ts`); `listMailboxCandidates` marks `alreadyTracked`. |
-| Pulling incoming Gmail into relationship history | **Exists / Verified** | `comms_messages` upsert idempotent on `(organization_id, provider, provider_message_id)`; only genuinely new messages count as stored. Synced mail folds chronologically into the existing `conversationTimeline` with plain provenance ("Synced from Gmail · read-only") — no `comms_touches` duplication (`src/data/comms-timeline.ts`, `src/data/supabase/comms-messages.ts`). New inbound mail emits one canonical `relationship.message_received` into `activities` with a `source_event_key`, deduped by pre-check + the unique index (`emitInboundEvents` in `comms-gmail.server.ts`), so Pulse/Steward see it. Sync is scheduled (`comms-gmail-sync` cron, `17 */6 * * *` in the production Trust Tai Supabase project). Production verification on 2026-08-22 confirmed a real connected mailbox: tracked-people mail is found, stored, and emitted; a repeat sync produced zero new stores and zero new events. **Ingestion boundary hardened and production-verified 2026-08-22:** sync is now label-gated on the Gmail label `Trust Tai/Comms` — the label id is resolved from Gmail `/labels` and constrains every message listing, so unlabeled mail never enters the candidate set, even when it involves a known address. Labeled mail with people not yet in Comms is counted, left unstored, and surfaced for review through the existing mailbox import. A missing label fails safe with a clear status; there is no whole-mailbox fallback. |
-| Pulling Tai's sent replies into the same history | **Exists** | SENT mail is stored with outbound direction and appears in the same thread. A draft marked sent is reconciled against observed outbound mail by the deterministic matcher (`src/domain/comms-verification.ts`: direction + recipient + send window + subject or opening-words fingerprint; ambiguity never matches). A proven draft's rationale carries `verification` and the thread says "Sent — seen in the mailbox" versus "Sent via Gmail — not yet seen in the mailbox". |
+| Matching known people to Gmail by email identity | **Exists** | Sync matches From/To/Cc counterparts against `comms_relationships.email`, lowercased (`findTrackedCounterpart` in `comms-gmail.server.ts`), the identity layer applied after label gating; capture matches the shared `contacts` table by email then exact name (`comms-service.ts`); `listMailboxCandidates` marks `alreadyTracked`. |
+| Pulling incoming Gmail into relationship history | **Exists / Verified** | `comms_messages` upsert idempotent on `(organization_id, provider, provider_message_id)`; only genuinely new messages count as stored. Synced mail folds chronologically into the existing `conversationTimeline` with plain provenance ("Synced from Gmail · read-only"), no `comms_touches` duplication (`src/data/comms-timeline.ts`, `src/data/supabase/comms-messages.ts`). New inbound mail emits one canonical `relationship.message_received` into `activities` with a `source_event_key`, deduped by pre-check + the unique index (`emitInboundEvents` in `comms-gmail.server.ts`), so Pulse/Steward see it. Sync is scheduled (`comms-gmail-sync` cron, `17 */6 * * *` in the production Trust Tai Supabase project). Production verification on 2026-08-22 confirmed a real connected mailbox: tracked-people mail is found, stored, and emitted; a repeat sync produced zero new stores and zero new events. **Ingestion boundary hardened and production-verified 2026-08-22:** sync is now label-gated on the Gmail label `Trust Tai/Comms`, the label id is resolved from Gmail `/labels` and constrains every message listing, so unlabeled mail never enters the candidate set, even when it involves a known address. Labeled mail with people not yet in Comms is counted, left unstored, and surfaced for review through the existing mailbox import. A missing label fails safe with a clear status; there is no whole-mailbox fallback. |
+| Pulling Tai's sent replies into the same history | **Exists** | SENT mail is stored with outbound direction and appears in the same thread. A draft marked sent is reconciled against observed outbound mail by the deterministic matcher (`src/domain/comms-verification.ts`: direction + recipient + send window + subject or opening-words fingerprint; ambiguity never matches). A proven draft's rationale carries `verification` and the thread says "Sent, seen in the mailbox" versus "Sent via Gmail, not yet seen in the mailbox". |
 | Freshness/momentum monitoring, contextual not crude N-day | **Partial** | Contextual reads exist: `deriveConversationHealth` produces response cadence (`responsive/steady/slowing/unanswered`) and momentum (`warm/stable/cooling/stalled`) from actual rhythm (`src/domain/comms-health.ts`), and the next move uses per-intent rhythm days (`rhythmDaysFor`). But the shared timing read `dueState` still falls back to a flat `DORMANT_AFTER_DAYS = 45` timer (`src/domain/comms.ts`). Both live side by side; the queue tabs lean on `waitingOn`, the doc-described buckets on the timer. |
-| Scout → Comms handoff at an ICP threshold | **Missing (manual by design today)** | Handoff is person-initiated: `routeToComms` in `src/data/supabase/scout-service.ts:548` gates on `buildHandoffDraft.ready` (evidence completeness), never on score. Scoring doctrine (`src/domain/scout-fit.ts`) defines the 0–100 score; `src/data/scout/decision-state.ts` holds narrative gates `STRONG_SCORE = 68` / `WEAK_SCORE = 32` used only to phrase the decision read — no handoff threshold exists, and "60" appears nowhere. Architecture-canon handoff law already says weak evidence must not open the next room, so any threshold trigger must be an org-configurable recommendation, not an automatic room-open. |
+| Scout → Comms handoff at an ICP threshold | **Missing (manual by design today)** | Handoff is person-initiated: `routeToComms` in `src/data/supabase/scout-service.ts:548` gates on `buildHandoffDraft.ready` (evidence completeness), never on score. Scoring doctrine (`src/domain/scout-fit.ts`) defines the 0–100 score; `src/data/scout/decision-state.ts` holds narrative gates `STRONG_SCORE = 68` / `WEAK_SCORE = 32` used only to phrase the decision read, no handoff threshold exists, and "60" appears nowhere. Architecture-canon handoff law already says weak evidence must not open the next room, so any threshold trigger must be an org-configurable recommendation, not an automatic room-open. |
 | Pre-outreach research/enrichment before drafting | **Missing in Comms** | People enrichment lives in Scout (`src/data/people/registry.ts`, `enrichment.ts`) and is unreachable from the drafting path; `integrations-panel.tsx` lists enrichment as needing "an approved enrichment provider account". `draftMessage` composes from relationship memory only. |
-| Drafting in Tai's voice using voice/canon/memory assets | **Exists — not yet production-human-accepted (2026-08-23, pending Tai's live test)** | Spirit first, reason first, write second: `src/lib/comms-draft.server.ts` produces a structured communication judgment (`src/domain/comms-judgment.ts`) over memory, commitments, and thread context — prose is written FROM that judgment, which persists in the draft rationale and renders as concise lines (Why now · What I noticed · What it says about them · What to build on · Ask / "No ask" with its reason). **Conversation before conversion**: the judgment notices the human signal in the latest message, understands what it says about the person, reflects it back so they feel recognized rather than targeted, builds on the most interesting thread — and only then decides whether an ask belongs. The **ask gate** is earned-only (`askDecision.whyNatural` must name the condition: they suggested talking, a question needs discussion, reciprocal exploration or curiosity, it makes their life easier, or the conversation arrived there); "momentum" and "staying connected" fail the gate. Enforcement is deterministic: when `shouldAsk` is false, `unearnedAskInBody` catches a snuck-in call/coffee/meeting ask, the writing pass is corrected once, and a repeat violation fails closed (`ask_gate_violated`). Tai's canonical **relationship voice** (`TAI_RELATIONSHIP_VOICE` in `src/domain/voice.ts`) is the baseline; the org Voice DNA is the editable brand expression and approved/sent examples are learned style influence — layered with separate provenance, never replacing the baseline. Brand/website rules enter ordinary email only when the conversation calls for them. A deterministic **grounding gate** (`assessDraftGrounding`) runs before any model call: real thread + known identity grounds a reply; identity + one real prior interaction + a reason grounds a proactive note; below the bar the refusal names the missing piece, and there is never a mail-merge fallback. Deterministic voice enforcement in `src/data/voice-policy.ts`. Salutations are human-safe (`salutationName`: "Vinyard, Larry" → "Larry"). Drafts never trap the thread: the editor opens by choice, close saves and returns to the conversation, resume is a quiet affordance, discard is explicit and confirmed. |
+| Drafting in Tai's voice using voice/canon/memory assets | **Exists, not yet production-human-accepted (2026-08-23, pending Tai's live test)** | Spirit first, reason first, write second: `src/lib/comms-draft.server.ts` produces a structured communication judgment (`src/domain/comms-judgment.ts`) over memory, commitments, and thread context, prose is written FROM that judgment, which persists in the draft rationale and renders as concise lines (Why now · What I noticed · What it says about them · What to build on · Ask / "No ask" with its reason). **Conversation before conversion**: the judgment notices the human signal in the latest message, understands what it says about the person, reflects it back so they feel recognized rather than targeted, builds on the most interesting thread, and only then decides whether an ask belongs. The **ask gate** is earned-only (`askDecision.whyNatural` must name the condition: they suggested talking, a question needs discussion, reciprocal exploration or curiosity, it makes their life easier, or the conversation arrived there); "momentum" and "staying connected" fail the gate. Enforcement is deterministic: when `shouldAsk` is false, `unearnedAskInBody` catches a snuck-in call/coffee/meeting ask, the writing pass is corrected once, and a repeat violation fails closed (`ask_gate_violated`). Tai's canonical **relationship voice** (`TAI_RELATIONSHIP_VOICE` in `src/domain/voice.ts`) is the baseline; the org Voice DNA is the editable brand expression and approved/sent examples are learned style influence, layered with separate provenance, never replacing the baseline. Brand/website rules enter ordinary email only when the conversation calls for them. A deterministic **grounding gate** (`assessDraftGrounding`) runs before any model call: real thread + known identity grounds a reply; identity + one real prior interaction + a reason grounds a proactive note; below the bar the refusal names the missing piece, and there is never a mail-merge fallback. Deterministic voice enforcement in `src/data/voice-policy.ts`. Salutations are human-safe (`salutationName`: "Vinyard, Larry" → "Larry"). Drafts never trap the thread: the editor opens by choice, close saves and returns to the conversation, resume is a quiet affordance, discard is explicit and confirmed. |
 | Approval before external send | **Exists** | Review states `draft → needs_human_review → approved → sent`; blocking violations prevent approval. The Gmail send path runs only on a human Send click and only when the persisted grant includes `gmail.send`; a blocked outcome names the missing scope and leaves the draft untouched. Ready for re-consent; real sending not yet production-verified. |
 | Learning from Tai's edits to drafts | **Missing** | The only draft mutation is review-state change (`comms-service.ts` "That draft could not be updated"); no diff capture, no voice calibration feedback, no append-only record of what Tai changed. Interaction edits have provenance; draft edits have none. |
-| Provenance — why Comms recommends a follow-up | **Exists** | `reasonsToReconnect` returns `ReasonCode` + `reasonText` + `EvidenceRef[]` per reason; `nextRelationshipMove` carries evidence; handoff memory items keep their evidence lanes. An empty reason list is a valid answer by design. |
+| Provenance, why Comms recommends a follow-up | **Exists** | `reasonsToReconnect` returns `ReasonCode` + `reasonText` + `EvidenceRef[]` per reason; `nextRelationshipMove` carries evidence; handoff memory items keep their evidence lanes. An empty reason list is a valid answer by design. |
 
 ## Architectural gaps to close before any UI redesign
 
 Smallest set, in dependency order:
 
 1. **(Closed 2026-08-22)** ~~The synced-mail seam ends at the database.~~ `comms_messages` and
-   `comms_threads` are written by sync and read by no one. One read path —
-   folding synced messages into `conversationTimeline` with their existing
-   provenance — closes capabilities c and d together. No new tables, no new
+   `comms_threads` are written by sync and read by no one. One read path, folding synced messages into `conversationTimeline` with their existing
+   provenance, closes capabilities c and d together. No new tables, no new
    UI concepts: the thread simply becomes complete. The same seam should emit
    the existing `RELATIONSHIP_MESSAGE_RECEIVED` suite event when inbound mail
    lands, so Pulse and Steward can see what the mailbox already knows.
 2. **(Closed 2026-08-22)** ~~Sent verification.~~ A draft marked sent is a claim; the actual sent
    message arrives via sync but is never linked to the draft. The proof law
    (attempted != executed != verified != human accepted) needs the join by
-   thread/recipient/time so the timeline can say "sent — seen in the mailbox"
+   thread/recipient/time so the timeline can say "sent, seen in the mailbox"
    versus "marked as sent".
 3. **Draft-edit memory.** Capture the final edited text at approve / mark-sent
    time, diff against the generated body, and append the correction to voice
@@ -169,17 +167,16 @@ Smallest set, in dependency order:
     first Gmail-side filter; identity matching against `comms_relationships`
     remains the storage-decision layer after it. Labeled-but-unknown people are
     surfaced through the existing mailbox import as "Labeled in Gmail, not yet
-    in Comms" (Add to Comms or ignore — a human decision), which directly
+    in Comms" (Add to Comms or ignore, a human decision), which directly
     answers the sparse-coverage observation above without any auto-creation.
 
 ## Recommended implementation sequence
 
 Familiar interaction, exceptional reasoning underneath, minimal surface
-complexity — in this order:
+complexity, in this order:
 
 1. **Complete the thread.** Surface synced mail (both directions) inside the
-   existing timeline. The familiar model — "the conversation, in order" —
-   becomes true. This alone makes the hit behavior real: an unanswered inbound
+   existing timeline. The familiar model, "the conversation, in order", becomes true. This alone makes the hit behavior real: an unanswered inbound
    now actually lands in *Needs you*.
 2. **Make proof visible.** Link approved drafts to observed sent messages;
    the response clock then measures reality end to end.
@@ -195,7 +192,7 @@ complexity — in this order:
    gate: anything that does not help Tai reach the outcome faster, more
    confidently, or with less effort does not survive.
 
-## Implementation pass 2026-08-22 — verification record
+## Implementation pass 2026-08-22, verification record
 
 Sequence items 1 and 2 and the "synced-mail seam" event emission are done with
 no UI redesign. The Gmail sync foundation was then fully verified in production
@@ -204,18 +201,17 @@ on 2026-08-22. What was verified, and how:
 - **Backend**: production probes against the Trust Tai Supabase project
   confirmed `comms_integrations`, `comms_messages`, thread columns, grants,
   both credential functions (member and service-role variants), and the system
-  RPC for cron-secret storage (`comms_set_cron_secret_system`) — no data
+  RPC for cron-secret storage (`comms_set_cron_secret_system`), no data
   touched. Schema doc header updated to APPLIED.
-- **Timeline truth**: `src/data/comms-timeline.test.ts` — synced inbound and
+- **Timeline truth**: `src/data/comms-timeline.test.ts`, synced inbound and
   outbound messages fold chronologically beside touches and drafts with
   provenance, dedupe against un-synced touches on the same ref, and no
   `comms_touches` rows are fabricated.
-- **Draft verification**: `src/domain/comms-verification.test.ts` (15 tests) —
-  matches on recipient + window + subject/fingerprint, never fabricates on
+- **Draft verification**: `src/domain/comms-verification.test.ts` (15 tests), matches on recipient + window + subject/fingerprint, never fabricates on
   ambiguity or thin content, 21-day expiry, observed-mail provenance wins.
 - **Idempotency**: message storage upserts on the provider key; the inbound
   event carries a deterministic `source_event_key` guarded by a pre-check and
-  the existing partial unique index on `activities.source_event_key` — a
+  the existing partial unique index on `activities.source_event_key`, a
   resync stores nothing twice and emits nothing twice.
 - **Fail-closed**: the scheduled endpoint returns 401 on a missing or wrong
   key, and 200 with the configured secret. Verified live at
@@ -246,7 +242,7 @@ on 2026-08-22. What was verified, and how:
   autonomous sends, and any major UI redesign. These are product/architecture
   decisions, not unresolved Gmail plumbing.
 
-### Label-gated ingestion (2026-08-22) — implemented, verified in production 2026-08-22
+### Label-gated ingestion (2026-08-22), implemented, verified in production 2026-08-22
 
 After Tai created the Gmail label `Trust Tai/Comms`, the ingestion boundary
 moved from address-scoped queries to label gating:
@@ -257,13 +253,13 @@ moved from address-scoped queries to label gating:
   it splits on the space and slash in `Trust Tai/Comms`.
 - Every message listing carries `labelIds=<id>` plus the existing overlap
   window (`newer_than:2d -in:spam -in:trash` scheduled). Unlabeled mail can
-  no longer enter the candidate set at all — stronger than the previous
+  no longer enter the candidate set at all, stronger than the previous
   known-correspondent-first scoping, which it replaces as the discovery
   filter. `findTrackedCounterpart` remains as the identity layer that decides
   what is stored.
 - Labeled mail with people not yet in Comms is counted
   (`skippedUnknownPeople`), never stored, and surfaced through the existing
-  mailbox import, now labeled "Labeled in Gmail, not yet in Comms" — a human
+  mailbox import, now labeled "Labeled in Gmail, not yet in Comms", a human
   Add-to-Comms or ignore decision. No relationship is ever auto-created.
 - A missing label throws a clear, non-destructive error: the scheduled sweep
   records "Needs attention" with the reason, the member-invoked read shows
@@ -283,7 +279,7 @@ the authorized sweep returned 200 with `mailboxes=1, synced=1, failed=0` and
 skippedUnknownPeople=1, pendingPeople=1, eventsEmitted=0, draftsVerified=0`.
 Before label gating the same mailbox and window read 14 messages; the gated
 pass read exactly the 1 labeled message, and the 1 labeled-but-unknown
-correspondent was counted and left unstored for review — never auto-created.
+correspondent was counted and left unstored for review, never auto-created.
 An immediate second authorized run returned identical counts with zero new
 stores and zero new events, confirming idempotency. The `cursor.last_run`
 write is fail-closed (a failed update throws and marks the mailbox failed);
@@ -292,19 +288,19 @@ both runs reported `ok: true`, so the status persistence path succeeded.
 Test sweep at close: 1,245 passed, 0 skipped, 3 failed (unrelated pre-existing
 Roadmap Studio failures).
 
-### Coverage + status exposure (2026-08-22) — implemented, verified in production 2026-08-22
+### Coverage + status exposure (2026-08-22), implemented, verified in production 2026-08-22
 
 The sparse-coverage observation from the first audit becomes a visible
 health check instead of a hidden state:
 
 - Every sync pass persists a counts-only run summary on the connection
   cursor (`last_run`: read, stored, relationships touched, events emitted,
-  drafts verified, `skipped_unknown_people`, and `pending_people` — distinct
+  drafts verified, `skipped_unknown_people`, and `pending_people`, distinct
   labeled correspondents not yet in Comms). The Connections card reports the
   last pass verbatim, so the status is visible without re-reading the
   mailbox. Counts only; never message content.
-- The mailbox import now answers the coverage question directly — tracked
-  versus pending among labeled correspondents — computed over the full read
+- The mailbox import now answers the coverage question directly, tracked
+  versus pending among labeled correspondents, computed over the full read
   window before its display cap (`summarizeMailboxCoverage`). Adding a
   person remains the explicit preview → confirm → save flow; once added,
   their labeled mail stores from the next read on. No relationship is ever
@@ -322,7 +318,7 @@ fail-closed `cursor.last_run` write succeeded (both runs `ok: true`), so the
 persisted last-pass summary the Connections card reads is live in
 production.
 
-### Onboarding backfill: Add to Comms brings history with it (2026-08-22) — implemented, not yet production-verified
+### Onboarding backfill: Add to Comms brings history with it (2026-08-22), implemented, not yet production-verified
 
 Production QA exposed the gap: a labeled correspondent added through the
 mailbox import stored no history until the next scheduled sweep, because the
@@ -356,16 +352,16 @@ clamp. Typecheck clean; existing `comms-gmail.server` suite (17 tests)
 unaffected. **Production verification pending**: a live Add-to-Comms run
 against the real mailbox is still required before this is marked verified.
 
-### Operating views: Clients / Nurture / Needs you / All (2026-08-22) — implemented, not yet production-verified
+### Operating views: Clients / Nurture / Needs you / All (2026-08-22), implemented, not yet production-verified
 
 The calm-client-room problem is now solved structurally rather than by
 discipline: four operating views inside the existing Relationships
 experience read one derived state, so Scout/outbound volume can never crowd
-established clients. No schema migration was needed — `stage` + `source`
+established clients. No schema migration was needed, `stage` + `source`
 already carry the classification (`relationshipSegment` in
 `src/domain/comms.ts`).
 
-- **Classification (derived, evidence-first — refined 2026-08-22):** the
+- **Classification (derived, evidence-first, refined 2026-08-22):** the
   segment follows current relationship reality, not the door the person
   entered through. Established evidence (linked `client_id`, graduated
   stage, explicit established intent) → Clients; development evidence
@@ -379,8 +375,7 @@ already carry the classification (`relationshipSegment` in
   classification rests on contextual fallback (`canMoveToNurture`).
 - **Views:** Clients is the default; Nurture is prioritized by the existing
   health/next-move ordering; Needs you cross-cuts both segments using
-  `health.waitingOn === "needs_us"` plus `nextRelationshipMove` urgency —
-  no parallel rules engine; All is the complete ledger, everyone exactly
+  `health.waitingOn === "needs_us"` plus `nextRelationshipMove` urgency, no parallel rules engine; All is the complete ledger, everyone exactly
   once, archived included (archived crowds no working room).
 - **Graduation:** "Mark as client" in the rail runs the existing
   person-initiated stage change on the same record and emits the existing
@@ -398,21 +393,21 @@ already carry the classification (`relationshipSegment` in
   merging; never auto-create a duplicate record or relax the label/read-only
   boundary.
 - **Sidebar glance** reads the same view state: Needs you, Needs attention,
-  At risk, Quiet — the Needs-you row switches view rather than filtering.
+  At risk, Quiet, the Needs-you row switches view rather than filtering.
 - **Pagination (2026-08-22):** 25 relationships per page, sliced only after
-  the full view is derived — tab counts, health counts, and search always
+  the full view is derived, tab counts, health counts, and search always
   describe the whole view, never the page. View changes return to page one;
   selection falls back to the page's first row. Priority rows (attention
-  first, then longest waiting) lead every page — Nurture is ordered by
+  first, then longest waiting) lead every page. Nurture is ordered by
   intelligence, never alphabet. Shared primitives live in
   `src/data/pagination.ts` (Scout's table re-exports them unchanged).
 - **Color language (2026-08-22):** classification and condition never share
-  a hue — Clients royal blue, Nurture soft plum (`--plum`), archived muted;
+  a hue. Clients royal blue, Nurture soft plum (`--plum`), archived muted;
   health stays green/amber/red/quiet gray. Row hierarchy answers who, what
   kind, and whether anything is needed, in that order.
 - **Scale boundary:** health reads the most recent 5,000 touches, paged in
   batches of 1,000 (PostgREST silently truncates a single `.limit()` call at
-  1,000 — fixed). Beyond the bound, health falls back to the denormalized
+  1,000, fixed). Beyond the bound, health falls back to the denormalized
   `last_touch_at` on the relationship row rather than inventing activity.
 
 Tests: `src/domain/comms-segment.test.ts` (13) and
@@ -426,22 +421,20 @@ match, read-only reading, no mutation, bounded dedupe preserved.
 **Production verification pending:** open the live workspace and confirm
 existing relationships land in the expected rooms.
 
-### Permission checkpoint: `gmail.send` requested (2026-08-22) — ready for re-consent; real sending not yet production-verified
+### Permission checkpoint: `gmail.send` requested (2026-08-22), ready for re-consent; real sending not yet production-verified
 
 The OAuth consent now asks for `gmail.readonly` plus exactly
-`https://www.googleapis.com/auth/gmail.send` — never `gmail.modify`
+`https://www.googleapis.com/auth/gmail.send`, never `gmail.modify`
 (`authorizeUrl` in `src/lib/comms-gmail.server.ts`; scope constants and the
 `grantedGmailScopes` parser in `src/domain/comms-integrations.ts`).
 Reconnecting an existing read-only connection is clean: `prompt=consent`
 with `include_granted_scopes=true` keeps prior grants while adding send,
 and the "Google returned no refresh token" error is unchanged. The granted
 set Google returns is persisted verbatim (filtered to the scopes Comms
-understands) on `comms_integrations.scopes` via `connectionRowFor` —
-nothing rewrites the row back to read-only. The capability check
+understands) on `comms_integrations.scopes` via `connectionRowFor`, nothing rewrites the row back to read-only. The capability check
 (`sendCapability` / `canSendWithScopes` in
 `src/lib/comms-gmail-send.server.ts`) already reads that persisted grant,
-and the composer enables real Send only when `gmail.send` is present —
-unchanged, now locked by tests. The connection UI tells the truth: labeled
+and the composer enables real Send only when `gmail.send` is present, unchanged, now locked by tests. The connection UI tells the truth: labeled
 reading, send only on an explicit Send click, labels never touched; a
 connected read-only grant shows a "Reconnect with send access" affordance.
 Label-gated reading is unchanged. Tests: 11 new in

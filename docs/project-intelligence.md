@@ -62,3 +62,13 @@ execution. There is no productivity score.
 `src/data/projects/context-packet.test.ts` covers source authority, exclusion of unconfirmed
 knowledge, approved-asset filtering, conflict reporting, agent boundaries, the three health
 levels, and grounded suggestion behaviour.
+
+## Project Chat (2026-09-06)
+
+Chat is how you talk to the project. Projects remains where project truth
+lives. `askProject` verifies access at the shared runtime boundary (room
+`projects`, existing purpose `research`), then answers from the project's own
+context packet plus this turn's pasted text. The answer keeps facts,
+interpretations, unknowns and next steps separate, and malformed model output
+fails without implying a write. The endpoint is read only; nothing said in chat
+is project truth, and this slice keeps no transcript at all.

@@ -10,7 +10,7 @@
  * present. Fail-closed in both directions: no configured secret means no
  * endpoint, a wrong key means 401, and a mailbox that fails keeps its last
  * successful state and reports "Needs attention" through the connections page.
- * Read-only against Google — no send scope exists anywhere in this system.
+ * Read-only against Google, no send scope exists anywhere in this system.
  */
 
 import { createFileRoute } from "@tanstack/react-router";

@@ -1,6 +1,6 @@
-# Conductor V2 — approval and execution orchestration
+# Conductor V2, approval and execution orchestration
 
-V1 could reason. V2 can be *told yes* — and only then hands work to the room
+V1 could reason. V2 can be *told yes*, and only then hands work to the room
 that owns it. Everything in `docs/conductor-v1.md` and
 `docs/architecture-canon.md` still holds, unchanged.
 
@@ -26,7 +26,7 @@ and no path out of `rejected`.
 
 | Class | Meaning | Routable |
 | --- | --- | --- |
-| `informational` | Opens a view | No — there is nothing to route |
+| `informational` | Opens a view | No, there is nothing to route |
 | `internal_preparation` | Prepares a draft nobody has sent | Yes |
 | `internal_change` | Changes internal state in one room | Yes |
 | `external` | Leaves the building | **Never.** A person does it |
@@ -39,10 +39,10 @@ to prevent.
 
 Two governance records, neither of which is business truth:
 
-- **`conductor_actions`** — what was prepared, what a person decided, and where
+- **`conductor_actions`**, what was prepared, what a person decided, and where
   it got to. It stores *references* (`projectId`, `relationshipId`), never a
   copy of a room's record.
-- **`conductor_receipts`** — what actually happened at the boundary: which
+- **`conductor_receipts`**, what actually happened at the boundary: which
   adapter, which room service, whose approval, when, and the result or the
   failure. A receipt is written whether the hand-over succeeded, was refused,
   or failed. Silence is never an outcome.
@@ -55,7 +55,7 @@ Schema: `docs/conductor-v2-schema.sql` (apply after the V1 schema). RLS via the
 existing `private.is_org_member`; `anon` holds nothing; no delete grant, because
 the audit trail is append-and-amend only.
 
-## 3. The adapter layer — the only way out
+## 3. The adapter layer, the only way out
 
 `src/data/conductor/adapters.ts`. A `RoomAdapter` may act for exactly one room
 and only for operations it names. It calls that room's **existing service**, so
@@ -70,7 +70,7 @@ Shipped adapters:
   move a date or reassign anyone.
 
 Rooms with **no adapter yet** (Scout, Roadmap, Ops, Studio) are reported to the
-person as *approved but not routable, and why* — `ADAPTER_GAPS` names the
+person as *approved but not routable, and why*, `ADAPTER_GAPS` names the
 reason. An approved action nobody can carry is stated honestly; it is never
 quietly marked done.
 
@@ -88,12 +88,12 @@ owning room is refused with `blocked_by_dependency` and the prerequisite's name.
 
 Two new permissions in `src/domain/access.ts`:
 
-- `conductor.approve` — may decide the queue.
-- `conductor.execute` — may hand an approved action to a room.
+- `conductor.approve`, may decide the queue.
+- `conductor.execute`, may hand an approved action to a room.
 
 Both are leadership/administrative. Fail closed: no access context, inactive
 membership, or a foreign `organizationId` all mean no. On top of that, the
-owning room re-checks its own permission inside its service — the Conductor's
+owning room re-checks its own permission inside its service, the Conductor's
 approval never substitutes for `comms.write` or `projects.write`.
 
 ## 6. The audit trail
@@ -102,7 +102,7 @@ approval never substitutes for `comms.write` or `projects.write`.
 (`conductor.action_proposed|approved|held|rejected|routed|failed|withdrawn`),
 emitted through `src/data/events/control-events.ts` into the one shared
 activity stream, with provenance and a stable `sourceEventKey`. These are
-governance events about the Conductor's own conduct — they never claim a room's
+governance events about the Conductor's own conduct, they never claim a room's
 domain event on that room's behalf.
 
 ## 7. What the Conductor may say
@@ -117,5 +117,5 @@ work, through `readStatus`.
 - Adapters for Scout, Roadmap, Ops and Studio (no safe service boundary yet).
 - Automatic completion polling; today completion is read on demand.
 - Outcome measurement is modelled (`attachOutcome`, `measured`) but only
-  attaches once a room reports `completed` — nothing infers it.
+  attaches once a room reports `completed`, nothing infers it.
 - Any autonomous execution. There is no code path that routes without a person.

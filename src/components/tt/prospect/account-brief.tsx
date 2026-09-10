@@ -15,7 +15,11 @@ function briefText(brief: AccountBrief): string {
     .map((section) => {
       const sources = section.sources.length > 0 ? `\nSources: ${section.sources.join(", ")}` : "";
       const tier =
-        section.tier === "fact" ? "observed" : section.tier === "inference" ? "inferred" : "decided";
+        section.tier === "fact"
+          ? "observed"
+          : section.tier === "inference"
+            ? "inferred"
+            : "decided";
       return `${section.title.toUpperCase()} (${tier})\n${section.body}${sources}`;
     })
     .join("\n\n");

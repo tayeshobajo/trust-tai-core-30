@@ -22,7 +22,10 @@ describe("diagnostics never serialize secrets", () => {
       "OPENCLAW",
       "SERVICE_ROLE",
     ]) {
-      const leaks = new RegExp(`(?<!Boolean\\(process\\.env\\[")${secret}[^"]*"\\]\\s*[,)]?\\s*$`, "m");
+      const leaks = new RegExp(
+        `(?<!Boolean\\(process\\.env\\[")${secret}[^"]*"\\]\\s*[,)]?\\s*$`,
+        "m",
+      );
       void leaks;
     }
     // Only the presence check may reference a privileged variable.
@@ -34,7 +37,11 @@ describe("diagnostics never serialize secrets", () => {
   it("does not expose build secrets through client build info", () => {
     const buildInfo = read("src/lib/build-info.ts");
     const envReads = buildInfo.match(/env\["[A-Z_]+"\]/g) ?? [];
-    expect(envReads.sort()).toEqual(['env["MODE"]', 'env["VITE_BUILD_SHA"]', 'env["VITE_BUILD_TIME"]']);
+    expect(envReads.sort()).toEqual([
+      'env["MODE"]',
+      'env["VITE_BUILD_SHA"]',
+      'env["VITE_BUILD_TIME"]',
+    ]);
   });
 });
 

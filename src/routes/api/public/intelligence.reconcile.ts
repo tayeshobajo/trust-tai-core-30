@@ -18,9 +18,8 @@ export const Route = createFileRoute("/api/public/intelligence/reconcile")({
     handlers: {
       POST: async ({ request }) => {
         const { trustTaiServiceRoleClient } = await import("@/lib/execution-bridge.server");
-        const { authorizeReconcileRequest } = await import(
-          "@/lib/intelligence-reconcile-auth.server"
-        );
+        const { authorizeReconcileRequest } =
+          await import("@/lib/intelligence-reconcile-auth.server");
 
         const core = trustTaiServiceRoleClient();
 
@@ -32,9 +31,8 @@ export const Route = createFileRoute("/api/public/intelligence/reconcile")({
           return Response.json({ ok: false, error: allowed.error }, { status: allowed.status });
         }
 
-        const { organizationsWithCases, reconcileOrganization } = await import(
-          "@/lib/intelligence-reconcile.server"
-        );
+        const { organizationsWithCases, reconcileOrganization } =
+          await import("@/lib/intelligence-reconcile.server");
 
         const organizations = await organizationsWithCases(core as never);
         const runs = [];

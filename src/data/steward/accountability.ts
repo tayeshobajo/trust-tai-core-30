@@ -135,7 +135,8 @@ function rankOf(task: {
   let rank = STEWARD_FOCUS_ORDER.indexOf(task.focus) * 1000;
   if (task.overdue) rank -= 500;
   if (task.ownerKind === "unowned") rank -= 250;
-  if (task.dueAt) rank += Math.min(400, Math.max(0, Math.floor(Date.parse(task.dueAt) / DAY) % 400));
+  if (task.dueAt)
+    rank += Math.min(400, Math.max(0, Math.floor(Date.parse(task.dueAt) / DAY) % 400));
   return rank;
 }
 
@@ -182,7 +183,9 @@ export function buildStewardTasks(input: AccountabilityInput): StewardTask[] {
     const state = commitmentState(commitment);
     const owner = humanOwner(commitment.ownerName, commitment.ownerEmail, commitment.ownerUserId);
     const overdue = Boolean(
-      commitment.dueAt && state !== "complete" && Date.parse(commitment.dueAt) < Date.parse(input.now),
+      commitment.dueAt &&
+      state !== "complete" &&
+      Date.parse(commitment.dueAt) < Date.parse(input.now),
     );
     const promoted = Boolean(commitment.projectId);
     const path: CompletionPath = promoted ? "projects" : "steward";
@@ -220,7 +223,9 @@ export function buildStewardTasks(input: AccountabilityInput): StewardTask[] {
   /* ---- project work items --------------------------------------------- */
   for (const item of input.workItems) {
     const state = workState(item);
-    const owner = item.ownerLabel ? humanOwner(item.ownerLabel, undefined, item.ownerUserId) : UNOWNED;
+    const owner = item.ownerLabel
+      ? humanOwner(item.ownerLabel, undefined, item.ownerUserId)
+      : UNOWNED;
     const overdue = Boolean(
       item.dueDate && state !== "complete" && Date.parse(item.dueDate) < Date.parse(input.now),
     );
@@ -238,7 +243,8 @@ export function buildStewardTasks(input: AccountabilityInput): StewardTask[] {
       state,
       overdue,
       completionPath: "projects",
-      completionBecause: "Projects owns delivery truth. Completing here opens the Projects work item.",
+      completionBecause:
+        "Projects owns delivery truth. Completing here opens the Projects work item.",
       projectId: item.projectId,
       ...(projectName.get(item.projectId) ? { projectName: projectName.get(item.projectId)! } : {}),
       evidence: [],
@@ -281,13 +287,7 @@ export function buildStewardTasks(input: AccountabilityInput): StewardTask[] {
 /* ---------------------------------------------------------------- filters */
 
 export type TeamFilter =
-  | "all"
-  | "needs_attention"
-  | "overdue"
-  | "blocked"
-  | "no_owner"
-  | "agents"
-  | "team";
+  "all" | "needs_attention" | "overdue" | "blocked" | "no_owner" | "agents" | "team";
 
 export const TEAM_FILTER_LABEL: Record<TeamFilter, string> = {
   all: "All",
@@ -326,15 +326,7 @@ export function applyTeamFilter(tasks: StewardTask[], filter: TeamFilter): Stewa
 }
 
 export type TasksFilter =
-  | "all"
-  | "mine"
-  | "team"
-  | "agents"
-  | "today"
-  | "upcoming"
-  | "overdue"
-  | "completed"
-  | "no_owner";
+  "all" | "mine" | "team" | "agents" | "today" | "upcoming" | "overdue" | "completed" | "no_owner";
 
 export const TASKS_FILTER_LABEL: Record<TasksFilter, string> = {
   all: "All",
@@ -365,7 +357,8 @@ export function applyTasksFilter(
       return tasks.filter((task) => task.dueAt?.slice(0, 10) === today);
     case "upcoming":
       return tasks.filter(
-        (task) => task.dueAt != null && task.dueAt.slice(0, 10) > today && task.state !== "complete",
+        (task) =>
+          task.dueAt != null && task.dueAt.slice(0, 10) > today && task.state !== "complete",
       );
     case "overdue":
       return tasks.filter((task) => task.overdue);
@@ -453,7 +446,9 @@ export function personRead(tasks: StewardTask[], ownerKey: string, now: string):
   };
 }
 
-export function groupByFocus(tasks: StewardTask[]): { focus: StewardFocus; tasks: StewardTask[] }[] {
+export function groupByFocus(
+  tasks: StewardTask[],
+): { focus: StewardFocus; tasks: StewardTask[] }[] {
   return STEWARD_FOCUS_ORDER.map((focus) => ({
     focus,
     tasks: tasks.filter((task) => task.focus === focus),
@@ -474,7 +469,10 @@ export function groupByProject(tasks: StewardTask[]): { label: string; tasks: St
   const map = new Map<string, { label: string; tasks: StewardTask[] }>();
   for (const task of tasks) {
     const key = task.projectId ?? "unlinked";
-    const entry = map.get(key) ?? { label: task.projectName ?? "Not linked to a project", tasks: [] };
+    const entry = map.get(key) ?? {
+      label: task.projectName ?? "Not linked to a project",
+      tasks: [],
+    };
     entry.tasks.push(task);
     map.set(key, entry);
   }

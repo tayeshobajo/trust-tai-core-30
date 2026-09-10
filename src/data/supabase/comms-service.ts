@@ -32,7 +32,14 @@ import {
   writeOutgoingExtras,
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
+import {
+  buildDraftApproval,
+  writeDraftApproval,
+  type DraftApproval,
+} from "@/domain/comms-approval";
+import type { MeetingKind } from "@/domain/commercial";
 import type { EvidenceRef } from "@/domain/confidence";
+
 import type { VoiceRegister } from "@/domain/voice";
 
 import { supabaseActivity } from "./activities";
@@ -137,7 +144,6 @@ export interface RelationshipPatch {
   /** The whole metadata object, already merged by the caller. */
   metadata?: Record<string, unknown>;
 }
-
 
 export const commsService = {
   /** Every relationship in the organization. The queue does its own grouping. */
@@ -262,7 +268,6 @@ export const commsService = {
     if (patch.companyName !== undefined) payload["company_name"] = patch.companyName;
     if (patch.metadata !== undefined) payload["metadata"] = patch.metadata;
     payload["updated_at"] = new Date().toISOString();
-
 
     const { data, error } = await supabase
       .from("comms_relationships")
@@ -430,14 +435,24 @@ export const commsService = {
       /**
        * A person explicitly recorded this capture as the counterparty's own
        * words (a quote from a call, a pasted note from them). Only then may
-       * counterparty-only reads — like Roadmap recognition — treat an
+       * counterparty-only reads, like Roadmap recognition, treat an
        * otherwise-outbound interaction as their evidence.
        */
       theirWords?: boolean;
+      /**
+       * What this meeting was, when the person logging it said so. Optional,
+       * human set only, and never inferred from the summary or the body.
+       */
+      meetingKind?: MeetingKind;
     },
     context: CommsContext,
   ): Promise<Touch> {
     const occurredAt = input.occurredAt ?? new Date().toISOString();
+    // Only something that actually was a meeting can be said to be a kind of
+    // meeting. An email has no kind of meeting to have.
+    if (input.meetingKind && input.channel !== "meeting") {
+      throw new Error("Only a meeting can be given a kind of meeting.");
+    }
     const { data, error } = await supabase
       .from("comms_touches")
       .insert({
@@ -448,12 +463,17 @@ export const commsService = {
         occurred_at: occurredAt,
         summary: input.summary.trim(),
         body: input.body?.trim() || null,
+        ...(input.meetingKind ? { meeting_kind: input.meetingKind } : {}),
         provenance: {
           app_key: "comms",
           actor: context.userId,
           logged_at: occurredAt,
           ...(input.theirWords ? { their_words: true } : {}),
+          ...(input.meetingKind
+            ? { meeting_kind_set_by: context.userId, meeting_kind_set_at: occurredAt }
+            : {}),
         },
+
         logged_by: context.userId,
       })
       .select(TOUCH_COLUMNS)
@@ -622,12 +642,19 @@ export const commsService = {
       .single();
     assertOk(error);
     if (!data) throw new Error("That draft could not be saved.");
-    return toDraft(data as unknown as DraftRow);
+    const saved = toDraft(data as unknown as DraftRow);
+
+    /* Comms owns the draft; Approvals owns the decision. A draft parked at the
+       human boundary submits itself, so nobody has to remember to. */
+    const { submitCommsDraftQuietly } = await import("@/data/approvals/intake");
+    await submitCommsDraftQuietly(saved, input.relationship, context);
+
+    return saved;
   },
 
   /**
    * Edit a draft's wording. The draft stays a draft; its history, evidence,
-   * and send record are untouched. Content edits are quiet on purpose — the
+   * and send record are untouched. Content edits are quiet on purpose, the
    * state changes are what the record narrates.
    */
   async updateDraftContent(
@@ -698,15 +725,36 @@ export const commsService = {
     return toDraft(data as unknown as DraftRow);
   },
 
+  /**
+   * Move a draft to a new review state.
+   *
+   * Approval is the one state that has to carry provenance: who decided and
+   * when. State and provenance go in a single update, so a draft can never
+   * end up saying "approved" with nothing behind it. Nothing is sent here.
+   */
   async setDraftState(
     draft: CommsDraft,
     reviewState: CommsDraft["reviewState"],
     relationship: Relationship,
     context: CommsContext,
+    approval?: { reason?: string | undefined; actorLabel?: string | undefined },
   ): Promise<CommsDraft> {
+    const payload: Row = { review_state: reviewState, updated_at: new Date().toISOString() };
+    let stamp: DraftApproval | null = null;
+    if (reviewState === "approved") {
+      // Throws before any write when there is no signed-in human: the agent
+      // that wrote the draft is never the approver.
+      stamp = buildDraftApproval({
+        actorId: context.userId,
+        ...(approval?.actorLabel ? { actorLabel: approval.actorLabel } : {}),
+        ...(approval?.reason ? { reason: approval.reason } : {}),
+      });
+      payload["rationale"] = writeDraftApproval(draft.rationale, stamp);
+    }
+
     const { data, error } = await supabase
       .from("comms_drafts")
-      .update({ review_state: reviewState, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq("id", draft.id)
       .eq("organization_id", context.organizationId)
       .select(DRAFT_COLUMNS)
@@ -719,9 +767,29 @@ export const commsService = {
       "conversation.decided",
       { id: relationship.id, label: relationship.fullName },
       `A draft for ${relationship.fullName} was marked ${reviewState.replace(/_/g, " ")}.`,
-      { review_state: reviewState, register: draft.register },
+      {
+        draft_id: draft.id,
+        review_state: reviewState,
+        register: draft.register,
+        sent: false,
+        ...(stamp
+          ? {
+              approval: {
+                by: stamp.by,
+                at: stamp.at,
+                ...(stamp.reason ? { reason: stamp.reason } : {}),
+              },
+            }
+          : {}),
+      },
     );
-    return toDraft(data as unknown as DraftRow);
+    const updated = toDraft(data as unknown as DraftRow);
+
+    /* Sending back for review is the same boundary, reached later. */
+    const { submitCommsDraftQuietly } = await import("@/data/approvals/intake");
+    await submitCommsDraftQuietly(updated, relationship, context);
+
+    return updated;
   },
 
   /* ------------------------------------------------------------ reminders */

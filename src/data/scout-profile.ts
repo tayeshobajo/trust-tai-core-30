@@ -30,22 +30,8 @@ function pick(sources: Row[], keys: string[]): string | undefined {
 }
 
 const INDUSTRY_KEYS = ["industry", "sector", "vertical", "company_industry"];
-const SIZE_KEYS = [
-  "company_size",
-  "size",
-  "employees",
-  "employee_count",
-  "headcount",
-  "team_size",
-];
-const LOCATION_KEYS = [
-  "location",
-  "headquarters",
-  "hq",
-  "city",
-  "region",
-  "company_location",
-];
+const SIZE_KEYS = ["company_size", "size", "employees", "employee_count", "headcount", "team_size"];
+const LOCATION_KEYS = ["location", "headquarters", "hq", "city", "region", "company_location"];
 
 /**
  * Read the profile from the inferred payload first (where discovery writes

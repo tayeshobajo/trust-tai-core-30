@@ -48,17 +48,17 @@ workspace's project.
 
 ## What the packet contains
 
-- `project` — name, company, outcome, owner, state, due date
-- `roadmap` — the roadmap and milestone this work came from, when linked
-- `confirmedDecisions`, `constraints`, `requirements` — only knowledge a person
+- `project`, name, company, outcome, owner, state, due date
+- `roadmap`, the roadmap and milestone this work came from, when linked
+- `confirmedDecisions`, `constraints`, `requirements`, only knowledge a person
   has confirmed
-- `openQuestions`, `blockers` — what is unresolved and who is holding it
-- `approvedAssets` — approved mockups, designs, documents; metadata, not files
-- `connections` — Lovable, GitHub, staging, production
-- `thinkingSources` — where the thinking lives, with the primary one marked
-- `movement` — work items and their state
-- `conflicts` — where two sources disagree, so the agent stops instead of guessing
-- `agent` — present only when `agentId` is passed and a person has written that
+- `openQuestions`, `blockers`, what is unresolved and who is holding it
+- `approvedAssets`, approved mockups, designs, documents; metadata, not files
+- `connections`. Lovable, GitHub, staging, production
+- `thinkingSources`, where the thinking lives, with the primary one marked
+- `movement`, work items and their state
+- `conflicts`, where two sources disagree, so the agent stops instead of guessing
+- `agent`, present only when `agentId` is passed and a person has written that
   agent's effectiveness definition: responsibility, required context,
   escalation rules, expected evidence
 

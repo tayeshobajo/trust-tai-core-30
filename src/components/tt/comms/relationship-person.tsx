@@ -1,7 +1,7 @@
 /**
  * The person behind the conversation.
  *
- * Name, title, company — read from the shared people record, editable in
+ * Name, title, company, read from the shared people record, editable in
  * place, and written back to Comms, People and the Scout prospect profile in
  * one move. Nothing here is invented: a blank company stays blank.
  */
@@ -54,7 +54,9 @@ export function RelationshipPersonCard({
     onSuccess: async () => {
       setEditing(false);
       toast.success("Saved to this person's record.");
-      await queryClient.invalidateQueries({ queryKey: ["comms", "person", organizationId, relationshipId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["comms", "person", organizationId, relationshipId],
+      });
       await queryClient.invalidateQueries({ queryKey: ["comms", "relationships"] });
     },
     onError: (error) =>

@@ -69,7 +69,11 @@ function truthOf(value: unknown): boolean | null {
 function valueText(value: unknown): string {
   if (typeof value === "boolean") return value ? "yes" : "no";
   if (typeof value === "number") return String(value);
-  if (Array.isArray(value)) return value.map((v) => valueText(v)).filter(Boolean).join(", ");
+  if (Array.isArray(value))
+    return value
+      .map((v) => valueText(v))
+      .filter(Boolean)
+      .join(", ");
   if (value && typeof value === "object") {
     const obj = value as Row;
     return str(obj["value"]) || str(obj["text"]) || str(obj["label"]);
@@ -168,7 +172,6 @@ class Structured {
   depthAtLeast(pages: number): boolean {
     return this.pages !== null && this.pages >= pages;
   }
-
 
   has(key: string): boolean {
     const observation = this.map.get(key);
@@ -284,7 +287,10 @@ function qualifiedGaps(s: Structured): { confident: string[]; weak: string[] } {
   }
   if (booking === false) {
     const claim = "services are described but there is no booking path";
-    if ((s.checked("offer_page_checked") && offer === true) || (deep && (offer === true || (active ?? 0) >= 1))) {
+    if (
+      (s.checked("offer_page_checked") && offer === true) ||
+      (deep && (offer === true || (active ?? 0) >= 1))
+    ) {
       confident.push(claim);
     } else {
       weak.push("no booking path was seen, but the offer pages were not confirmed");
@@ -301,7 +307,6 @@ function qualifiedGaps(s: Structured): { confident: string[]; weak: string[] } {
 
   return { confident, weak };
 }
-
 
 const SPECS: CriterionSpec[] = [
   {
@@ -364,7 +369,8 @@ const SPECS: CriterionSpec[] = [
         testimonials === true ? "testimonials are published" : "",
         caseStudies === true ? "case studies are published" : "",
       ].filter(Boolean);
-      const support = supporting.length > 0 ? ` Supporting evidence: ${supporting.join(" and ")}.` : "";
+      const support =
+        supporting.length > 0 ? ` Supporting evidence: ${supporting.join(" and ")}.` : "";
       const detail = s.evidence("proof_signals");
       const sourceUrls = s.sources(["proof_signals", "testimonial_signals", "case_study_signals"]);
 
@@ -400,7 +406,8 @@ const SPECS: CriterionSpec[] = [
     ],
     metReason: "Proof of past work is published, testimonials, results, or case studies.",
     partialReason: "Some proof language appears, but it is thin or unattributed.",
-    missingReason: "No published proof of delivered work was found. Treated as unknown, not negative.",
+    missingReason:
+      "No published proof of delivered work was found. Treated as unknown, not negative.",
   },
   {
     key: "decision_maker",
@@ -473,7 +480,10 @@ const SPECS: CriterionSpec[] = [
       if (offer === true) {
         return {
           state: "met",
-          reason: withDetail(`The offer and how it is delivered are stated plainly.${priced}`, detail),
+          reason: withDetail(
+            `The offer and how it is delivered are stated plainly.${priced}`,
+            detail,
+          ),
           sourceUrls,
         };
       }
@@ -583,7 +593,10 @@ const SPECS: CriterionSpec[] = [
       if (supported) {
         return {
           state: "met",
-          reason: withDetail(`A specific first piece of work is supported by evidence: ${milestones[0]}.`, detail),
+          reason: withDetail(
+            `A specific first piece of work is supported by evidence: ${milestones[0]}.`,
+            detail,
+          ),
           sourceUrls,
         };
       }
@@ -652,7 +665,9 @@ const SPECS: CriterionSpec[] = [
           "Public pages do not show revenue, budget, or scale. Left unknown rather than assumed.",
       };
     },
-    patterns: [/\b(pricing|from \$|per month|packages?|retainer|team of|staff|locations?|enterprise)\b/],
+    patterns: [
+      /\b(pricing|from \$|per month|packages?|retainer|team of|staff|locations?|enterprise)\b/,
+    ],
     metReason: "Published pricing, team size, or scale suggests capacity to fund work.",
     partialReason: "There are weak signs of scale, not enough to judge capacity.",
     missingReason:
@@ -858,7 +873,8 @@ export function evaluateScoutFit(input: EvaluateInput): ScoutFitEvaluation {
     explanation = `Only ${evidenceCount} ICP criteria are clearly met. Three are required before a company can read green.`;
   } else {
     light = "yellow";
-    explanation = "The picture is mixed: real signals are present, but the fit is not yet convincing.";
+    explanation =
+      "The picture is mixed: real signals are present, but the fit is not yet convincing.";
   }
 
   const strongestSignal =

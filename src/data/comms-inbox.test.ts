@@ -125,13 +125,30 @@ describe("operating views", () => {
     const after = inboxEntries([graduated], {}, NOW)[0]!;
     expect(after.relationship.id).toBe(before.relationship.id);
     expect(segmentViewOf(after)).toBe("clients");
-    expect(visibleIds(inboxView(inboxEntries([graduated], {}, NOW), { tab: "clients", now: NOW }))).toContain("n1");
+    expect(
+      visibleIds(inboxView(inboxEntries([graduated], {}, NOW), { tab: "clients", now: NOW })),
+    ).toContain("n1");
   });
 
   it("a reply owed makes anyone needs-you, whatever room they live in", () => {
-    expect(needsYou(entries.find((entry) => entry.relationship.id === "c2")!, NOW)).toBe(true);
-    expect(needsYou(entries.find((entry) => entry.relationship.id === "n2")!, NOW)).toBe(true);
-    expect(needsYou(entries.find((entry) => entry.relationship.id === "a1")!, NOW)).toBe(false);
+    expect(
+      needsYou(
+        entries.find((entry) => entry.relationship.id === "c2")!,
+        NOW,
+      ),
+    ).toBe(true);
+    expect(
+      needsYou(
+        entries.find((entry) => entry.relationship.id === "n2")!,
+        NOW,
+      ),
+    ).toBe(true);
+    expect(
+      needsYou(
+        entries.find((entry) => entry.relationship.id === "a1")!,
+        NOW,
+      ),
+    ).toBe(false);
   });
 });
 
@@ -183,9 +200,7 @@ describe("pagination", () => {
     const page = inboxPage(view, 1);
     expect(page.total).toBe(10); // Person 50–59 contain "Person 5"
     expect(page.pageCount).toBe(1);
-    expect(page.rows.every((entry) => entry.relationship.fullName.includes("Person 5"))).toBe(
-      true,
-    );
+    expect(page.rows.every((entry) => entry.relationship.fullName.includes("Person 5"))).toBe(true);
   });
 
   it("keeps priority rows at the front of page one, not alphabet", () => {
@@ -195,10 +210,13 @@ describe("pagination", () => {
       stage: "client",
       responseDueAt: days(6),
     });
-    const view = inboxView(inboxEntries([...many.map((entry) => entry.relationship), owed], {}, NOW), {
-      tab: "all",
-      now: NOW,
-    });
+    const view = inboxView(
+      inboxEntries([...many.map((entry) => entry.relationship), owed], {}, NOW),
+      {
+        tab: "all",
+        now: NOW,
+      },
+    );
     const first = inboxPage(view, 1);
     expect(first.rows[0]!.relationship.id).toBe("zz-owed");
   });

@@ -56,9 +56,12 @@ export function DetailTabs({
     { key: "activity", label: "Activity" },
   ];
 
-
   return (
-    <div role="tablist" aria-label="Company detail sections" className="flex gap-1 overflow-x-auto border-b border-border">
+    <div
+      role="tablist"
+      aria-label="Company detail sections"
+      className="flex gap-1 overflow-x-auto border-b border-border"
+    >
       {items.map((item) => (
         <button
           key={item.key}
@@ -89,10 +92,7 @@ export function SignalsTab({ signals }: { signals: RankedSignal[] }) {
   const [type, setType] = useState<string>("all");
   const [recent, setRecent] = useState(false);
 
-  const types = useMemo(
-    () => Array.from(new Set(signals.map((s) => s.type))).sort(),
-    [signals],
-  );
+  const types = useMemo(() => Array.from(new Set(signals.map((s) => s.type))).sort(), [signals]);
 
   const filtered = signals.filter((signal) => {
     if (strength !== "all" && signal.strength !== strength) return false;

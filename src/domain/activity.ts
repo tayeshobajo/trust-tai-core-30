@@ -25,13 +25,31 @@ export type ActivityAction =
   | "decision_requested"
   | "decision_resolved"
   | "next_move_changed"
+  /** Roadmap: a person wrote or corrected the current-state facts (Point A). */
+  | "point_a_recorded"
+  /** Roadmap: a person wrote or corrected the destination (Point B) by hand.
+   *  Direct decided truth, never a candidate awaiting a second approval. */
+  | "destination_recorded"
   | "flagged"
+  /** Roadmap: a person recorded a reading of a milestone outcome metric.
+   *  Evidence, never an inference (see src/domain/milestone-measurement.ts). */
+  | "measured"
+  /* --- commercial truth (see src/domain/commercial.ts) ---
+   * Human-entered only. Amounts are never derived and never inferred. */
+  | "tier_changed"
+  | "sent"
+  | "signed"
+  | "declined"
   /** Scout: a person drafted a question for review. Nothing was sent. */
   | "question_drafted"
   /** Scout: a person marked a company as worth exploring in Roadmap. */
   | "roadmap_intent"
+  /** Scout (Sentinel): a person curated a company onto the watchlist. */
+  | "watchlisted"
+  /** Scout (Sentinel): a person took a company off the watchlist. */
+  | "watchlist_removed"
   /** Scout: deeper relationship research was prepared for a newly eligible
-   *  prospect. Research only — nothing was sent and no relationship created. */
+   *  prospect. Research only, nothing was sent and no relationship created. */
   | "relationship_brief_prepared"
 
   /* --- Settings: identity, membership and application access --- */
@@ -84,17 +102,22 @@ export type ActivityAction =
   | "intake_held";
 
 /**
- * What an event is *about*. Usually a shared core entity. Two suite rooms 
+ * What an event is *about*. Usually a shared core entity. Two suite rooms
  * Ops and Studio, own work that has no shared entity in Core yet, so they may
  * scope their own lifecycle events to the room. The Conductor scope carries
  * governance history only. This is a naming scope, never a licence to create a
  * parallel entity store.
  */
-export type ActivityScope = EntityType | "ops" | "studio" | "conductor" | "website" | "linki";
+/**
+ * `proposal` is a naming scope for commercial state that already lives on the
+ * prospect -> roadmap lineage. It is not a licence to create a deal entity or
+ * a second pipeline.
+ */
+export type ActivityScope =
+  EntityType | "ops" | "studio" | "conductor" | "website" | "linki" | "proposal";
 
 /** Event name is always `scope.action`, e.g. "project.status_changed". */
 export type ActivityName = `${ActivityScope}.${ActivityAction}`;
-
 
 /** Where an event or fact came from, and how much to trust it. */
 export interface Provenance {

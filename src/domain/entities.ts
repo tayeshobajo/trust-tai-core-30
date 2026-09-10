@@ -35,16 +35,9 @@ export type EntityType =
   | "roadmap"
   | "app";
 
-
 /** Canonical Trust Tai lifecycle states. Never communicated by color alone. */
 export type LifecycleStatus =
-  | "mapped"
-  | "in_build"
-  | "live"
-  | "needs_decision"
-  | "at_risk"
-  | "blocked"
-  | "unknown";
+  "mapped" | "in_build" | "live" | "needs_decision" | "at_risk" | "blocked" | "unknown";
 
 export interface Organization {
   id: ID;

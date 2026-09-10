@@ -2,7 +2,7 @@
  * Admin overview: who is actually using this workspace.
  *
  * Read only. Every number here is derived from membership rows and pending
- * invitations already read through RLS — nothing is estimated or invented.
+ * invitations already read through RLS, nothing is estimated or invented.
  */
 
 import type { Invitation, MemberProfile } from "@/data/supabase/settings-service";
@@ -36,7 +36,6 @@ export function signInStateOf(
   return "dormant";
 }
 
-
 const TONE: Record<SignInState, "good" | "caution" | "risk" | "neutral"> = {
   recent: "good",
   quiet: "caution",
@@ -55,7 +54,6 @@ function whenText(value: string | null): string {
   if (days === 1) return `Yesterday · ${stamp}`;
   return `${days} days ago · ${stamp}`;
 }
-
 
 /** In-app presence, said plainly. Never a sign-in timestamp. */
 function activityText(value: string): string {
@@ -92,9 +90,9 @@ export function AccessOverview({
       <div className="mb-4 flex flex-wrap items-baseline gap-2">
         <h2 className="font-serif text-[19px] text-foreground">Workspace at a glance</h2>
         <InfoTip label="How these numbers are decided">
-          Counted from live membership rows, Supabase Auth sign-in records, and
-          pending invitations. &ldquo;Signed in recently&rdquo; means a sign-in in the last 7
-          days, &ldquo;quiet&rdquo; within 30, and &ldquo;dormant&rdquo; beyond that.
+          Counted from live membership rows, Supabase Auth sign-in records, and pending invitations.
+          &ldquo;Signed in recently&rdquo; means a sign-in in the last 7 days, &ldquo;quiet&rdquo;
+          within 30, and &ldquo;dormant&rdquo; beyond that.
         </InfoTip>
       </div>
 
@@ -116,7 +114,7 @@ export function AccessOverview({
         />
         <SummaryCard
           label="Pending invites"
-          value={invitationsProvisioned ? String(pendingInvitations.length) : "—"}
+          value={invitationsProvisioned ? String(pendingInvitations.length) : ", "}
           supporting={
             invitationsProvisioned ? "Waiting to be accepted" : "Invitations not provisioned"
           }
@@ -164,7 +162,6 @@ export function AccessOverview({
                       avatarUrl={member.avatarUrl}
                       supporting={member.email || "No email on file"}
                     />
-
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{ROLE_LABEL[member.role]}</td>
                   <td className="px-4 py-3">

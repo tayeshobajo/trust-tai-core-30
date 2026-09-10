@@ -73,8 +73,7 @@ const TEMPLATES: Template[] = [
     kind: "campaign",
     effort: "medium",
     headline: "Run one focused outbound push while delivery is empty",
-    move:
-      "Pick the strongest-fit companies already on the Scout board, route them to Comms, and open the conversation this week rather than sourcing more.",
+    move: "Pick the strongest-fit companies already on the Scout board, route them to Comms, and open the conversation this week rather than sourcing more.",
     expectedSignal: "At least one qualified company has a live conversation in Comms.",
     expectedSignalKind: "pipeline_unrouted",
     destination: SCOUT,
@@ -85,8 +84,7 @@ const TEMPLATES: Template[] = [
     kind: "campaign",
     effort: "medium",
     headline: "Refill the pipeline deliberately, not opportunistically",
-    move:
-      "Spend one session in Scout sourcing against the current ICP, and qualify or pass everything found in the same session so the board stays honest.",
+    move: "Spend one session in Scout sourcing against the current ICP, and qualify or pass everything found in the same session so the board stays honest.",
     expectedSignal: "More live companies are on the Scout board than today.",
     expectedSignalKind: "pipeline_volume",
     destination: SCOUT,
@@ -97,8 +95,7 @@ const TEMPLATES: Template[] = [
     kind: "move",
     effort: "small",
     headline: "Unblock the work that stopped moving",
-    move:
-      "Open the stalled project, record what it is actually waiting on, and either answer it or name who must.",
+    move: "Open the stalled project, record what it is actually waiting on, and either answer it or name who must.",
     expectedSignal: "The stalled project records movement.",
     expectedSignalKind: "delivery_delay_count",
     destination: PROJECTS,
@@ -109,8 +106,7 @@ const TEMPLATES: Template[] = [
     kind: "move",
     effort: "small",
     headline: "Close or honestly move the promises that have passed",
-    move:
-      "Go through the overdue promises: do the smallest one now, and move the dates you cannot keep rather than leaving them silent.",
+    move: "Go through the overdue promises: do the smallest one now, and move the dates you cannot keep rather than leaving them silent.",
     expectedSignal: "No promise remains past a date a person set.",
     expectedSignalKind: "commitment_overdue",
     destination: STEWARD,
@@ -132,8 +128,7 @@ const TEMPLATES: Template[] = [
     kind: "move",
     effort: "small",
     headline: "Reopen the relationships that went quiet",
-    move:
-      "Reach out with something useful to the quiet relationships, or archive them deliberately so the list stays true.",
+    move: "Reach out with something useful to the quiet relationships, or archive them deliberately so the list stays true.",
     expectedSignal: "The quiet relationships record a new touch, or are archived on purpose.",
     expectedSignalKind: "relationship_silent",
     destination: COMMS,
@@ -144,8 +139,7 @@ const TEMPLATES: Template[] = [
     kind: "system",
     effort: "medium",
     headline: "Build the missing step instead of absorbing it again",
-    move:
-      "The same obstruction has recurred often enough to be structural. Sequence a small capability in Roadmap that removes it, rather than handling it manually next time.",
+    move: "The same obstruction has recurred often enough to be structural. Sequence a small capability in Roadmap that removes it, rather than handling it manually next time.",
     expectedSignal: "The recurring obstruction stops being recorded.",
     expectedSignalKind: "recurring_blocker",
     destination: ROADMAP,
@@ -168,8 +162,7 @@ const TEMPLATES: Template[] = [
     kind: "experiment",
     effort: "small",
     headline: "Find out what is pulling people in, then do more of it",
-    move:
-      "Ask the inbound relationships how they found you, record the answer in Comms, and repeat whatever they name.",
+    move: "Ask the inbound relationships how they found you, record the answer in Comms, and repeat whatever they name.",
     expectedSignal: "Inbound relationships carry a recorded origin.",
     expectedSignalKind: "inbound_volume",
     destination: COMMS,

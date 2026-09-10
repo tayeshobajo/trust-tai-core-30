@@ -38,10 +38,30 @@ import type { RelationshipResearchMarker } from "@/domain/relationship-developme
 import type { DecisionMoveKey } from "@/data/scout/decision-state";
 
 import { areasCovered, mergeObservedRows, type ResearchRunPlan } from "@/data/scout/research-run";
+import { appendObservationLog, diffObservations } from "@/data/scout/movement";
+import {
+  planSweep,
+  summarizeSweep,
+  sweepCandidate,
+  watchedCandidates,
+  type SweepOutcome,
+  type SweepPlan,
+  type SweepSettings,
+  type SweepSummary,
+} from "@/data/scout/sweep";
+import {
+  readSweepState,
+  recordSweepRun,
+  saveSweepSettings,
+  type SweepState,
+} from "./scout-sweep-state";
 import { evaluateScoutFit } from "@/data/scout-fit-evaluator";
 import { appendResearchRun, runFromEvaluation } from "@/data/prospect-modules";
 import type { HandoffDraft, HandoffRecord } from "@/domain/comms-handoff";
 import { HANDOFF_INTENT_LABEL } from "@/domain/comms-handoff";
+
+import { readWatchlistMarker } from "@/data/scout/watchlist";
+import { addToWatchlist, removeFromWatchlist, type WatchlistAddResult } from "./scout-watchlist";
 
 import { supabaseActivity } from "./activities";
 import { emitSuiteEvent } from "@/data/events/suite-events";
@@ -118,9 +138,11 @@ function toCandidate(row: ProspectRow, icpVersion: number | null): ProspectCandi
   const candidate = origin ? withInboundOrigin(base, origin) : base;
   const consent = readResearchConsent(row.metadata);
   const development = readRelationshipDevelopment(row.metadata);
+  const watchlist = readWatchlistMarker(row.metadata);
   return {
     ...(consent ? { ...candidate, researchConsent: consent } : candidate),
     ...(development.watch || development.research ? { development } : {}),
+    ...(watchlist ? { watchlist } : {}),
   };
 }
 
@@ -134,7 +156,9 @@ function baseCandidate(row: ProspectRow, icpVersion: number | null): ProspectCan
     prospect,
     // An inbound company has told us things but we have observed nothing yet,
     // so it must never borrow the preview demo's evidence.
-    ...(inbound ? { signals: [], fit: { whyItFits: "", recommendation: "" } } : previewEvidence(prospect.domain)),
+    ...(inbound
+      ? { signals: [], fit: { whyItFits: "", recommendation: "" } }
+      : previewEvidence(prospect.domain)),
     source: PREVIEW_SOURCE,
     evaluation: previewEvaluation(icpVersion, lastCheckedAt),
     lastCheckedAt,
@@ -181,6 +205,77 @@ export const scoutService = {
       getCurrentIcp(organizationId),
     ]);
     return rows.map((row) => toCandidate(row, icp?.version ?? null));
+  },
+
+  /**
+   * Curate one company onto the watchlist. Human decision only: it records who
+   * decided and when, researches nothing, and scores nothing. Replaying the
+   * same save never adds a company twice.
+   */
+  async addToWatchlist(
+    input: {
+      name: string;
+      websiteUrl?: string | null;
+      method: "manual" | "import";
+      note?: string | null;
+      userLabel?: string | null;
+    },
+    context: ScoutContext,
+  ): Promise<WatchlistAddResult> {
+    const result = await addToWatchlist({
+      organizationId: context.organizationId,
+      userId: context.userId,
+      userLabel: input.userLabel ?? null,
+      name: input.name,
+      websiteUrl: input.websiteUrl ?? null,
+      method: input.method,
+      note: input.note ?? null,
+    });
+    if (result.alreadyWatched) return result;
+
+    const at = new Date().toISOString();
+    await supabaseActivity.record({
+      organizationId: context.organizationId,
+      name: "prospect.watchlisted",
+      subject: { type: "prospect", id: result.prospectId, label: result.companyName },
+      summary:
+        input.method === "manual"
+          ? `${result.companyName} was added to the Scout watchlist by a person here.`
+          : `${result.companyName} was saved to the Scout watchlist from a reviewed list.`,
+      payload: {
+        method: input.method,
+        created_company: result.created,
+        note: input.note?.trim() || null,
+      },
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: context.userId },
+        observedAt: at,
+        confidence: "observed",
+      },
+      occurredAt: at,
+    });
+    return result;
+  },
+
+  /** Take a company off the watchlist. The company and its history remain. */
+  async removeFromWatchlist(input: { prospectId: ID; companyName: string }, context: ScoutContext) {
+    await removeFromWatchlist(input.prospectId);
+    const at = new Date().toISOString();
+    await supabaseActivity.record({
+      organizationId: context.organizationId,
+      name: "prospect.watchlist_removed",
+      subject: { type: "prospect", id: input.prospectId, label: input.companyName },
+      summary: `${input.companyName} was taken off the Scout watchlist by a person here.`,
+      payload: {},
+      provenance: {
+        appId: "scout",
+        actor: { type: "user", id: context.userId },
+        observedAt: at,
+        confidence: "observed",
+      },
+      occurredAt: at,
+    });
   },
 
   /** Recorded history for one company: research, decisions, overrides. */
@@ -345,7 +440,7 @@ export const scoutService = {
   ) {
     const at = new Date().toISOString();
     // The stored metadata merge is shallow, so the whole block is rewritten
-    // with the research marker preserved — a pacing decision must never
+    // with the research marker preserved, a pacing decision must never
     // silently drop a prepared brief.
     const row = await getProspectRow(input.prospectId);
     await saveProspectMetadataPatch(input.prospectId, {
@@ -385,7 +480,7 @@ export const scoutService = {
    * The gate is the full eligibility read: 60% ICP fit AND a traceable
    * founder or decision maker. The work runs when eligibility is newly
    * reached, when the underlying evidence moved, when the brief went stale,
-   * or when a person explicitly asks — never on every render. This is
+   * or when a person explicitly asks, never on every render. This is
    * research only: it never sends, never creates a Comms relationship, never
    * marks ready-for-comms, and never approves outreach.
    */
@@ -396,7 +491,7 @@ export const scoutService = {
     const [row, icp, people] = await Promise.all([
       getProspectRow(input.prospectId),
       getCurrentIcp(context.organizationId),
-      peopleService.list(context.organizationId, input.prospectId),
+      peopleService.list(context.organizationId, input.prospectId, context),
     ]);
     if (!row) throw new Error("That company is no longer on your board.");
 
@@ -582,6 +677,13 @@ export const scoutService = {
     });
     const observed = merge.merged;
 
+    // What this pass observed differently from what was held. Recorded here
+    // because the prior observations do not survive the merge. Evidence only.
+    const observationLog = appendObservationLog(existing?.metadata, {
+      at: new Date().toISOString(),
+      changes: diffObservations({ previous: priorObserved, incoming: payload.observed ?? [] }),
+    });
+
     const evaluation = evaluateScoutFit({
       observed,
       inferred: payload.inferred ?? {},
@@ -612,6 +714,7 @@ export const scoutService = {
           existing?.metadata,
           runFromEvaluation(evaluation, evaluation.evaluatedAt),
         ),
+        ...(observationLog.length > 0 ? { observation_log: observationLog } : {}),
       },
 
       existing,
@@ -665,7 +768,7 @@ export const scoutService = {
     // traceable founder or decision maker), the deeper brief is prepared from
     // the evidence just gathered. Research only: nothing is sent and no
     // relationship is created. Idempotent against the stored marker, and a
-    // failure here never fails the research run — the explicit Prepare action
+    // failure here never fails the research run, the explicit Prepare action
     // on the company page remains available.
     try {
       await this.prepareRelationshipDevelopment(
@@ -713,6 +816,73 @@ export const scoutService = {
     });
   },
 
+  /** Sweep settings and the last run's counts for this organization. */
+  async sweepState(organizationId: ID): Promise<SweepState> {
+    return readSweepState(organizationId);
+  },
+
+  /** A person turns automatic checking on or off, or changes its cadence. */
+  async saveSweepSettings(organizationId: ID, settings: SweepSettings): Promise<SweepSettings> {
+    return saveSweepSettings(organizationId, settings);
+  },
+
+  /**
+   * Refresh the watchlist in place.
+   *
+   * The same bounded pass the schedule runs, started by a person. It reads
+   * only watched companies, only those missing or stale evidence, and never
+   * more than the per-run cap. It discovers nothing, adds no company, sends
+   * nothing, and decides nothing about movement: it records what was observed
+   * and reports counts.
+   */
+  async sweepWatchlist(
+    input: {
+      candidates: ProspectCandidate[];
+      force?: boolean;
+      onProgress?: (progress: { name: string; index: number; total: number }) => void;
+    },
+    context: ScoutContext,
+  ): Promise<{ plan: SweepPlan; outcomes: SweepOutcome[]; summary: SweepSummary }> {
+    const watched = watchedCandidates(input.candidates);
+    const plan = planSweep({
+      candidates: watched.map(sweepCandidate),
+      ...(input.force === undefined ? {} : { force: input.force }),
+    });
+
+    const outcomes: SweepOutcome[] = [];
+    for (const [index, target] of plan.due.entries()) {
+      input.onProgress?.({ name: target.name, index: index + 1, total: plan.due.length });
+      const before = new Set(
+        (watched.find((c) => c.prospect.id === target.prospectId)?.signals ?? []).map(
+          (signal) => signal.statement,
+        ),
+      );
+      try {
+        const result = await this.research({
+          organizationId: context.organizationId,
+          userId: context.userId,
+          websiteUrl: target.websiteUrl ?? "",
+        });
+        const after = result.candidate.signals.map((signal) => signal.statement);
+        // "Changed" here means the evidence itself is different, nothing more.
+        // Whether that amounts to movement is a separate, later judgement.
+        const changed = after.length !== before.size || after.some((s) => !before.has(s));
+        outcomes.push({ prospectId: target.prospectId, name: target.name, state: "read", changed });
+      } catch (error) {
+        outcomes.push({
+          prospectId: target.prospectId,
+          name: target.name,
+          state: "unreadable",
+          changed: false,
+          because: (error as Error).message,
+        });
+      }
+    }
+
+    const summary = summarizeSweep({ plan, outcomes });
+    await recordSweepRun(context.organizationId, summary, "manual");
+    return { plan, outcomes, summary };
+  },
 
   /**
    * Route a prepared brief to Comms. The brief is stored on the prospect with
@@ -720,8 +890,7 @@ export const scoutService = {
    * sent: Comms opens the conversation, a person still writes it.
    *
    * Returns the relationship the handoff opened (or the one already carried
-   * across) so the caller can land Tai on exactly that person in Comms —
-   * never on whoever happened to sort first.
+   * across) so the caller can land Tai on exactly that person in Comms, * never on whoever happened to sort first.
    */
   async routeToComms(
     draft: HandoffDraft,

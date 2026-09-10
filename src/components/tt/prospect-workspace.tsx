@@ -23,6 +23,7 @@ import type { HandoffDraft } from "@/domain/comms-handoff";
 import type { ActivityEvent } from "@/domain/activity";
 import type { PeopleProviderInfo, Person } from "@/domain/people";
 
+import type { ScoutLinkSearch } from "@/components/tt/scout/company-table";
 import type { ProspectCandidate } from "@/domain/scout";
 import type { FitLight } from "@/domain/scout-fit";
 
@@ -64,7 +65,7 @@ export function ProspectWorkspace({
 }: {
   candidate: ProspectCandidate;
   activeIcpVersion: number | null;
-  backSearch: { section: "scout" | "qualified" | "research"; fit: "all" | FitLight };
+  backSearch: ScoutLinkSearch;
   /** Recorded events for this prospect, newest first. */
   events?: ActivityEvent[];
   /** People on record for this company. */
@@ -86,7 +87,6 @@ export function ProspectWorkspace({
   const { prospect, evaluation } = candidate;
   const contactCount = people.length;
 
-
   const composition = useMemo(
     () =>
       composeProspectPage({
@@ -105,7 +105,10 @@ export function ProspectWorkspace({
     () => computeDecisionMetrics({ candidate, intel, people, coverage: composition.coverage }),
     [candidate, intel, people, composition.coverage],
   );
-  const brief = useMemo(() => buildAccountBrief({ candidate, intel, plan }), [candidate, intel, plan]);
+  const brief = useMemo(
+    () => buildAccountBrief({ candidate, intel, plan }),
+    [candidate, intel, plan],
+  );
   const gapPlan = useMemo(
     () => buildGapPlan({ candidate, intel, plan, coverage: composition.coverage }),
     [candidate, intel, plan, composition.coverage],
@@ -183,7 +186,6 @@ export function ProspectWorkspace({
           />
 
           <AccountBriefPanel brief={brief} />
-
 
           {hasModule(composition, "handoff") ? (
             <HandoffPanel

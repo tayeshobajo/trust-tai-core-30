@@ -5,7 +5,7 @@
  * (member token or the scheduled service pass) and read here under the
  * member's own session, so RLS keeps the organization boundary. A workspace
  * whose integration tables are not applied yet reads as an empty timeline,
- * never an error dressed up as data — and a schema that predates the newer
+ * never an error dressed up as data, and a schema that predates the newer
  * columns degrades one variant at a time (body_html, body_text,
  * attachments), the same tolerance the sync write path keeps.
  *
@@ -79,7 +79,7 @@ export function toMessage(row: MessageRow): StoredMailboxMessage {
       : null;
   // Transport identity is carried in provenance and only in provenance.
   // Synced Gmail mail and Comms-sent rows both stamp it server-side; a row
-  // without it gets no mailbox — we never infer one.
+  // without it gets no mailbox, we never infer one.
   const mailbox = mailboxFromProvenance(row.provenance);
   const blockedRemoteImages =
     typeof provenance?.["blocked_remote_images"] === "number"
@@ -108,7 +108,7 @@ export function toMessage(row: MessageRow): StoredMailboxMessage {
 }
 
 function notProvisioned(message: string): boolean {
-  return /relation .*comms_messages.* does not exist|could not find the table|schema cache/i.test(
+  return /relation.*comms_messages.* does not exist|could not find the table|schema cache/i.test(
     message,
   );
 }

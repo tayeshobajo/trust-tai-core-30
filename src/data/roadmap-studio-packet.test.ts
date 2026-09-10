@@ -238,19 +238,25 @@ describe("validateSections", () => {
 
   it("drops a source the packet never cited", () => {
     const result = validateSections(
-      [section({ sources: [{ label: "Made up", url: "https://elsewhere.com", checkedAt: CHECKED }] })],
+      [
+        section({
+          sources: [{ label: "Made up", url: "https://elsewhere.com", checkedAt: CHECKED }],
+        }),
+      ],
       packet,
     );
     expect(result.sections[0]?.sources).toHaveLength(0);
-    expect(result.rejected.some((entry) => entry.reason.includes("not in the approved"))).toBe(true);
+    expect(result.rejected.some((entry) => entry.reason.includes("not in the approved"))).toBe(
+      true,
+    );
   });
 
   it("strips em dashes rather than shipping them", () => {
     const result = validateSections(
-      [section({ body: ["They serve regional operators — and it shows."] })],
+      [section({ body: ["They serve regional operators \u2014 and it shows."] })],
       packet,
     );
-    expect(result.sections[0]?.body.join(" ")).not.toContain("—");
+    expect(result.sections[0]?.body.join(" ")).not.toContain("\u2014");
   });
 
   it("says a page is not ready instead of writing around the gap", () => {
@@ -453,7 +459,10 @@ describe("support key namespacing and unlocks", () => {
           sources: [source],
           body: ["They already publish crew availability by phone."],
           support: [
-            { line: "They already publish crew availability by phone.", keys: ["strategy:point_a:a"] },
+            {
+              line: "They already publish crew availability by phone.",
+              keys: ["strategy:point_a:a"],
+            },
             { line, keys: [key] },
           ],
           unlocks: [line],

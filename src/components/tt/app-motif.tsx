@@ -71,10 +71,38 @@ function Terrain() {
 function Correspondence() {
   return (
     <g>
-      <rect x="44" y="60" width="180" height="128" rx="6" stroke="currentColor" strokeWidth="0.8" fill="none" />
-      <rect x="72" y="86" width="180" height="128" rx="6" stroke="currentColor" strokeWidth="0.8" fill="none" opacity={0.7} />
+      <rect
+        x="44"
+        y="60"
+        width="180"
+        height="128"
+        rx="6"
+        stroke="currentColor"
+        strokeWidth="0.8"
+        fill="none"
+      />
+      <rect
+        x="72"
+        y="86"
+        width="180"
+        height="128"
+        rx="6"
+        stroke="currentColor"
+        strokeWidth="0.8"
+        fill="none"
+        opacity={0.7}
+      />
       <rect x="100" y="112" width="180" height="128" rx="6" fill="currentColor" opacity={0.05} />
-      <rect x="100" y="112" width="180" height="128" rx="6" stroke="currentColor" strokeWidth="0.9" fill="none" />
+      <rect
+        x="100"
+        y="112"
+        width="180"
+        height="128"
+        rx="6"
+        stroke="currentColor"
+        strokeWidth="0.9"
+        fill="none"
+      />
       {[0, 1, 2, 3, 4].map((i) => (
         <line
           key={i}
@@ -131,14 +159,48 @@ function Blueprint() {
   return (
     <g>
       {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-        <line key={`v${i}`} x1={40 + i * 44} y1="46" x2={40 + i * 44} y2="254" stroke="currentColor" strokeWidth="0.4" opacity={0.3} />
+        <line
+          key={`v${i}`}
+          x1={40 + i * 44}
+          y1="46"
+          x2={40 + i * 44}
+          y2="254"
+          stroke="currentColor"
+          strokeWidth="0.4"
+          opacity={0.3}
+        />
       ))}
       {[0, 1, 2, 3, 4].map((i) => (
-        <line key={`h${i}`} x1="40" y1={46 + i * 52} x2="348" y2={46 + i * 52} stroke="currentColor" strokeWidth="0.4" opacity={0.3} />
+        <line
+          key={`h${i}`}
+          x1="40"
+          y1={46 + i * 52}
+          x2="348"
+          y2={46 + i * 52}
+          stroke="currentColor"
+          strokeWidth="0.4"
+          opacity={0.3}
+        />
       ))}
       <rect x="84" y="98" width="132" height="108" fill="currentColor" opacity={0.06} />
-      <rect x="84" y="98" width="132" height="108" stroke="currentColor" strokeWidth="1" fill="none" />
-      <rect x="216" y="150" width="88" height="56" stroke="currentColor" strokeWidth="1" fill="none" />
+      <rect
+        x="84"
+        y="98"
+        width="132"
+        height="108"
+        stroke="currentColor"
+        strokeWidth="1"
+        fill="none"
+      />
+      <rect
+        x="216"
+        y="150"
+        width="88"
+        height="56"
+        stroke="currentColor"
+        strokeWidth="1"
+        fill="none"
+      />
       <line x1="84" y1="82" x2="216" y2="82" stroke="currentColor" strokeWidth="0.7" />
       <line x1="84" y1="76" x2="84" y2="88" stroke="currentColor" strokeWidth="0.7" />
       <line x1="216" y1="76" x2="216" y2="88" stroke="currentColor" strokeWidth="0.7" />
@@ -151,7 +213,15 @@ function Systems() {
     <g>
       {[100, 150, 200].map((y, row) => (
         <g key={y}>
-          <line x1="60" y1={y} x2="340" y2={y} stroke="currentColor" strokeWidth="0.6" opacity={0.4} />
+          <line
+            x1="60"
+            y1={y}
+            x2="340"
+            y2={y}
+            stroke="currentColor"
+            strokeWidth="0.6"
+            opacity={0.4}
+          />
           {[0, 1, 2, 3, 4].map((i) => (
             <circle
               key={i}
@@ -165,7 +235,17 @@ function Systems() {
         </g>
       ))}
       <circle cx="200" cy="150" r="9" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <rect x="52" y="72" width="296" height="156" rx="10" stroke="currentColor" strokeWidth="0.7" fill="none" opacity={0.6} />
+      <rect
+        x="52"
+        y="72"
+        width="296"
+        height="156"
+        rx="10"
+        stroke="currentColor"
+        strokeWidth="0.7"
+        fill="none"
+        opacity={0.6}
+      />
     </g>
   );
 }
@@ -173,14 +253,39 @@ function Systems() {
 function Composition() {
   return (
     <g>
-      <rect x="52" y="56" width="150" height="188" stroke="currentColor" strokeWidth="0.9" fill="none" />
+      <rect
+        x="52"
+        y="56"
+        width="150"
+        height="188"
+        stroke="currentColor"
+        strokeWidth="0.9"
+        fill="none"
+      />
       <rect x="52" y="56" width="150" height="96" fill="currentColor" opacity={0.07} />
       <text x="66" y="200" fill="currentColor" opacity={0.65} fontFamily="serif" fontSize="54">
         Aa
       </text>
-      <rect x="222" y="86" width="126" height="126" stroke="currentColor" strokeWidth="0.9" fill="none" />
+      <rect
+        x="222"
+        y="86"
+        width="126"
+        height="126"
+        stroke="currentColor"
+        strokeWidth="0.9"
+        fill="none"
+      />
       {[0, 1, 2, 3].map((i) => (
-        <line key={i} x1="238" y1={168 + i * 14} x2={i % 2 ? 300 : 332} y2={168 + i * 14} stroke="currentColor" strokeWidth="0.7" opacity={0.5} />
+        <line
+          key={i}
+          x1="238"
+          y1={168 + i * 14}
+          x2={i % 2 ? 300 : 332}
+          y2={168 + i * 14}
+          stroke="currentColor"
+          strokeWidth="0.7"
+          opacity={0.5}
+        />
       ))}
       <circle cx="284" cy="126" r="18" stroke="currentColor" strokeWidth="0.8" fill="none" />
     </g>
@@ -231,7 +336,15 @@ function Ledger() {
         />
       ))}
       {[0, 2, 5, 7].map((row) => (
-        <circle key={row} cx="52" cy={44 + row * 26} r="3.5" fill="currentColor" opacity="0.3" stroke="none" />
+        <circle
+          key={row}
+          cx="52"
+          cy={44 + row * 26}
+          r="3.5"
+          fill="currentColor"
+          opacity="0.3"
+          stroke="none"
+        />
       ))}
       <line x1="96" y1="24" x2="96" y2="276" opacity="0.18" />
     </g>

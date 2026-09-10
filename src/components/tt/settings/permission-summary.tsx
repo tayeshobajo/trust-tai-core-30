@@ -6,12 +6,7 @@
  * is presentation over the existing permission model.
  */
 
-import {
-  ROLE_LABEL,
-  ROLE_PERMISSIONS,
-  type Permission,
-  type WorkspaceRole,
-} from "@/domain/access";
+import { ROLE_LABEL, ROLE_PERMISSIONS, type Permission, type WorkspaceRole } from "@/domain/access";
 
 import { InfoTip } from "./pieces";
 
@@ -106,7 +101,9 @@ export function PermissionSummary({ role }: { role: WorkspaceRole }) {
                 <td className="px-4 py-3">
                   <span className="inline-flex items-center gap-1.5 text-foreground">
                     {section.label}
-                    <InfoTip label={`Why ${section.label} is restricted`}>{section.because}</InfoTip>
+                    <InfoTip label={`Why ${section.label} is restricted`}>
+                      {section.because}
+                    </InfoTip>
                   </span>
                 </td>
                 {SHOWN_ROLES.map((shown) => {
@@ -118,11 +115,7 @@ export function PermissionSummary({ role }: { role: WorkspaceRole }) {
                           yes ? "text-[13px] text-foreground" : "text-[13px] text-muted-foreground"
                         }
                       >
-                        {yes
-                          ? section.permission === "self"
-                            ? "Edit own"
-                            : "Edit"
-                          : "Read only"}
+                        {yes ? (section.permission === "self" ? "Edit own" : "Edit") : "Read only"}
                       </span>
                     </td>
                   );

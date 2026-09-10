@@ -30,16 +30,32 @@ export interface ResearchRun {
   metKeys: string[];
 }
 
-/** How much of the public website Scout has actually read. */
+/**
+ * How much of the public website Scout has actually read.
+ *
+ * Counts only. No percentage, no composite score, no health label: a company
+ * with no careers page can never be "100% covered", so a ratio would be
+ * presentation rather than fact. Never read is a sentence, never a zero.
+ */
 export interface ResearchCoverage {
+  /** Public pages read. */
   pages: number;
+  /** Distinct observed evidence rows held for this company. */
+  facts: number;
   /** Page kinds the backend confirmed it reached. */
   checked: { key: string; label: string; reached: boolean }[];
-  /** 0–100. Null when the record cannot honestly report coverage. */
-  percent: number | null;
+  /** How many of those kinds were reached. */
+  reached: number;
+  /** When the site was last read. Null when it never was. */
+  lastReadAt: string | null;
+  state: "never_read" | "unreadable" | "read";
   /** Plain-language note, e.g. "Team and contact pages were never reached". */
   note: string;
-  thin: boolean;
+  /**
+   * Internal only: too little was read to lean on the rest. Never rendered as
+   * a label, it only holds other reads one step lower.
+   */
+  sparse: boolean;
 }
 
 /** What changed since the previous research pass. */

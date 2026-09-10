@@ -15,9 +15,7 @@ import type { EvidenceRef } from "@/domain/confidence";
 import type { RoadmapMilestone } from "@/domain/roadmap-intel";
 import type { ProjectInput } from "@/domain/projects";
 
-export type HandoffResult =
-  | { ok: true; input: ProjectInput }
-  | { ok: false; because: string };
+export type HandoffResult = { ok: true; input: ProjectInput } | { ok: false; because: string };
 
 function clean(value: string | undefined): string {
   return (value ?? "").trim();

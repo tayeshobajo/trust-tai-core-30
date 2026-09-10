@@ -37,9 +37,7 @@ function ms(value?: string): number | undefined {
 }
 
 function ordered(touches: Touch[]): Touch[] {
-  return [...touches].sort(
-    (a, b) => (ms(a.occurredAt) ?? 0) - (ms(b.occurredAt) ?? 0),
-  );
+  return [...touches].sort((a, b) => (ms(a.occurredAt) ?? 0) - (ms(b.occurredAt) ?? 0));
 }
 
 /* -------------------------------------------------------------- cadence */
@@ -214,9 +212,7 @@ export function conversationHealth(
     daysBetween(lastOutbound.occurredAt, now) >= UNANSWERED_AFTER_DAYS
   ) {
     status = "at_risk";
-    reasons.push(
-      `We have written ${unanswered} times without a reply coming back on this thread.`,
-    );
+    reasons.push(`We have written ${unanswered} times without a reply coming back on this thread.`);
   }
   if (momentum === "stalled" && meaningful.length >= 2) {
     status = "at_risk";

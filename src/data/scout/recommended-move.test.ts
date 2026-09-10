@@ -1,14 +1,13 @@
 /**
  * The recommended next move, proved state by state:
  *
- *  1. 82% fit with no person is "Find the person first" — never a message.
- *  2. A person with a missing or stale brief is "Understand them first" —
- *     drafting never skips the governed research step.
- *  3. A ready brief with no dated signal is "Worth knowing — no urgency".
+ *  1. 82% fit with no person is "Find the person first", never a message.
+ *  2. A person with a missing or stale brief is "Understand them first", *     drafting never skips the governed research step.
+ *  3. A ready brief with no dated signal is "Worth knowing, no urgency".
  *     Urgency is never manufactured.
  *  4. A ready brief with a real dated signal is "Worth knowing now", and the
  *     signal is cited.
- *  5. A company already in Comms is "Open in Comms" — Scout stops behaving
+ *  5. A company already in Comms is "Open in Comms". Scout stops behaving
  *     like outbound and offers no first-message CTA.
  *  6. Text is protected: no text-route evidence, no text recommendation.
  *  7. Watching is a reversible pacing state that preserves the move.
@@ -164,11 +163,11 @@ describe("understand them first", () => {
 
 /* --------------------------------- 3 · ready, with no dated reason to act */
 
-describe("worth knowing — no urgency", () => {
+describe("worth knowing, no urgency", () => {
   it("fit 86 with a ready brief and no dated signal allows the first message", () => {
     const move = buildRecommendedNextMove({ candidate: readyCandidate(), now: NOW });
     expect(move.state).toBe("no_urgency");
-    expect(move.label).toBe("Worth knowing — no urgency");
+    expect(move.label).toBe("Worth knowing, no urgency");
     expect(move.headline).toBe("Start with email to Claire Meneely");
     expect(move.primary.kind).toBe("prepare_first_message");
     expect(move.primary.label).toBe("Prepare first message");
@@ -301,7 +300,7 @@ describe("the canonical handoff readiness governs the move", () => {
       firstMessage: { ready: false, blockers: BLOCKERS },
     });
     expect(move.blocked).toBe(true);
-    expect(move.headline).toBe("Email looks like the right way in — verify it first");
+    expect(move.headline).toBe("Email looks like the right way in, verify it first");
     expect(move.primary.kind).toBe("resolve_blockers");
     expect(move.primary.label).toBe("Resolve 2 blockers");
     expect(move.primary.kind).not.toBe("prepare_first_message");
@@ -346,7 +345,7 @@ describe("the canonical handoff readiness governs the move", () => {
       firstMessage: { ready: false, blockers: BLOCKERS },
     });
     expect(move.blocked).toBe(true);
-    expect(move.headline).toBe("Claire is worth knowing — verify the way in first");
+    expect(move.headline).toBe("Claire is worth knowing, verify the way in first");
     expect(move.primary.kind).toBe("resolve_blockers");
   });
 });
@@ -578,7 +577,7 @@ describe("the person stage distinguishes the real missing step", () => {
       ] as unknown as Person[];
 
     // Before: the lone unverified address is the only thing in the way, and
-    // the one action is the governed confirmation — never the first message.
+    // the one action is the governed confirmation, never the first message.
     const before = buildRecommendedNextMove({
       candidate: readyCandidate(),
       people: people("found", "observed"),
@@ -593,8 +592,7 @@ describe("the person stage distinguishes the real missing step", () => {
     expect(before.primary.kind).toBe("confirm_email");
     expect(before.blocked).toBe(true);
 
-    // After: the same inputs one confirmation later. Nothing else changed —
-    // the recommendation advances on the recomputed readiness alone, with no
+    // After: the same inputs one confirmation later. Nothing else changed, // the recommendation advances on the recomputed readiness alone, with no
     // manual refresh and no rediscovery.
     const after = buildRecommendedNextMove({
       candidate: readyCandidate(),
@@ -605,7 +603,10 @@ describe("the person stage distinguishes the real missing step", () => {
     expect(after.state).toBe("no_urgency");
     expect(after.blocked).toBeFalsy();
     expect(after.headline).toBe("Start with email to Claire Meneely");
-    expect(after.primary).toEqual({ kind: "prepare_first_message", label: "Prepare first message" });
+    expect(after.primary).toEqual({
+      kind: "prepare_first_message",
+      label: "Prepare first message",
+    });
     expect(after.progress.find((s) => s.key === "first_message")?.state).toBe("current");
   });
 

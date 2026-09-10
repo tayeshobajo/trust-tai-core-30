@@ -10,10 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { SectionHeading } from "@/components/tt/primitives";
-import {
-  readRoleAppAccess,
-  setRoleAppAccess,
-} from "@/data/supabase/settings-service";
+import { readRoleAppAccess, setRoleAppAccess } from "@/data/supabase/settings-service";
 import { ROLE_LABEL, type WorkspaceRole } from "@/domain/access";
 import { APP_ACCESS_DESCRIPTION, APP_ACCESS_LABEL } from "@/domain/app-access";
 import { roleAccessFor, selectableLevels } from "@/domain/role-access";
@@ -132,13 +129,16 @@ export function RoleAccessMatrix({
                                 role,
                                 appId: app.id,
                                 appName: app.name,
-                                level: event.target
-                                  .value as ReturnType<typeof roleAccessFor>,
+                                level: event.target.value as ReturnType<typeof roleAccessFor>,
                               })
                             }
                           >
                             {options.map((option) => (
-                              <option key={option} value={option} title={APP_ACCESS_DESCRIPTION[option]}>
+                              <option
+                                key={option}
+                                value={option}
+                                title={APP_ACCESS_DESCRIPTION[option]}
+                              >
                                 {APP_ACCESS_LABEL[option]}
                               </option>
                             ))}

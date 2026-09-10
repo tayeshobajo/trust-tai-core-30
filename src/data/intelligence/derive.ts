@@ -326,7 +326,8 @@ export function contextBlocks(snapshot: SuiteSnapshot): ContextBlock[] {
         entity: { type: "decision", id: decision.id, label: decision.question },
         fact: `Open decision: ${decision.question}. ${decision.whyItMatters}`,
         tier: "inferred",
-        evidence: decision.evidence.length > 0 ? decision.evidence : [computed("Raised by Roadmap")],
+        evidence:
+          decision.evidence.length > 0 ? decision.evidence : [computed("Raised by Roadmap")],
         at: decision.createdAt,
       }),
     );

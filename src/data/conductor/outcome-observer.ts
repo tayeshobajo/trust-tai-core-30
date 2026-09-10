@@ -42,19 +42,15 @@ const NOT_MEASURABLE = (because: string): Reading => ({
 });
 
 /** Which room reads which signal. Anything absent is not measurable. */
-const READERS: Record<
-  string,
-  (input: ObservationInput) => Promise<Reading>
-> = {
-  /* Comms — the draft either exists in Comms' own record or it does not. */
+const READERS: Record<string, (input: ObservationInput) => Promise<Reading>> = {
+  /* Comms, the draft either exists in Comms' own record or it does not. */
   async "comms.draft_reply"(input) {
     const relationshipId = String(input.action.payload?.["relationshipId"] ?? "");
     const reference = input.receipt?.result?.reference;
-    if (!relationshipId) return NOT_MEASURABLE("No relationship was named, so Comms cannot be read.");
+    if (!relationshipId)
+      return NOT_MEASURABLE("No relationship was named, so Comms cannot be read.");
     const drafts = await commsService.listDrafts(relationshipId);
-    const match = reference
-      ? drafts.find((draft) => draft.id === reference)
-      : undefined;
+    const match = reference ? drafts.find((draft) => draft.id === reference) : undefined;
     if (!match) {
       return {
         result: "signal_absent",
@@ -73,7 +69,7 @@ const READERS: Record<
     };
   },
 
-  /* Projects — the blocker text is on the project record or it is not. */
+  /* Projects, the blocker text is on the project record or it is not. */
   async "projects.record_blocker"(input) {
     const projectId = String(input.action.payload?.["projectId"] ?? "");
     const expected = String(input.action.payload?.["blocker"] ?? "").trim();
@@ -102,7 +98,7 @@ const READERS: Record<
     };
   },
 
-  /* Scout — the discovery run exists in Scout's own run history. */
+  /* Scout, the discovery run exists in Scout's own run history. */
   async "scout.start_discovery_run"(input) {
     const reference = input.receipt?.result?.reference;
     if (!reference) return NOT_MEASURABLE("No discovery run reference was returned by Scout.");
@@ -134,7 +130,7 @@ const READERS: Record<
     };
   },
 
-  /* Roadmap — the decision request is open in Roadmap's own record. */
+  /* Roadmap, the decision request is open in Roadmap's own record. */
   async "roadmap.request_decision"(input) {
     const roadmapId = String(input.action.payload?.["roadmapId"] ?? "");
     const reference = input.receipt?.result?.reference;

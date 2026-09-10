@@ -32,15 +32,7 @@ export interface DerivedInteraction {
 
 const DAY = 86_400_000;
 
-const WEEKDAYS = [
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-];
+const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
 function sentences(text: string): string[] {
   return text
@@ -50,7 +42,10 @@ function sentences(text: string): string[] {
 }
 
 function clean(value: string): string {
-  return value.replace(/\s+/g, " ").trim().replace(/[.,;:]+$/, "");
+  return value
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[.,;:]+$/, "");
 }
 
 function truncate(value: string, max = 140): string {
@@ -93,10 +88,7 @@ const NEXT_MOVE = /\b(next step|next move|follow up|follow-up|circle back|check 
  * Read a natural language capture and propose structure.
  * An empty suggestion list is a perfectly good answer.
  */
-export function deriveInteraction(
-  input: string,
-  now: Date = new Date(),
-): DerivedInteraction {
+export function deriveInteraction(input: string, now: Date = new Date()): DerivedInteraction {
   const body = input.trim();
   if (!body) return { summary: "", suggestions: [] };
 

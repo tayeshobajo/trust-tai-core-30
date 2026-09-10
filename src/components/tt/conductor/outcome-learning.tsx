@@ -5,14 +5,17 @@
  * what did we try, what happened, and what did the system learn?
  *
  * The restraint is the feature. Where a signal cannot be read, it says so.
- * Where there is one result, it says one result. Only a repeated pattern 
+ * Where there is one result, it says one result. Only a repeated pattern
  * or a person's own correction, is shown as something learned.
  */
 
 import { useState } from "react";
 
 import { MetaPill, TTCard } from "@/components/tt/primitives";
-import type { ActionExecutionRead, ExecutionStage } from "@/data/intelligence/conductor/execution-read";
+import type {
+  ActionExecutionRead,
+  ExecutionStage,
+} from "@/data/intelligence/conductor/execution-read";
 import { METRIC_CLASS_LABEL } from "@/domain/outcomes";
 
 const STAGE_LABEL: Record<ExecutionStage, string> = {
@@ -255,7 +258,6 @@ export function OutcomeLearning({
           {notice}
         </p>
       ) : null}
-
 
       {reads.length === 0 ? (
         <p className="mt-4 text-sm text-[var(--tt-ink-muted)]">

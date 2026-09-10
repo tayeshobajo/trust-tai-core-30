@@ -83,7 +83,9 @@ export function ReassignPicker({
                 {review.capabilities.length > 0 ? (
                   review.capabilities.map((item) => <li key={item}>{item}</li>)
                 ) : (
-                  <li className="text-muted-foreground">No capability is published for this agent.</li>
+                  <li className="text-muted-foreground">
+                    No capability is published for this agent.
+                  </li>
                 )}
               </ul>
             </div>
@@ -156,9 +158,13 @@ export function ReassignPicker({
                             <Bot className="size-3.5" />
                           </span>
                           <span className="min-w-0">
-                            <span className="block truncate text-sm text-foreground">{agent.name}</span>
+                            <span className="block truncate text-sm text-foreground">
+                              {agent.name}
+                            </span>
                             <span className="block text-xs text-muted-foreground">
-                              {eligible ? agent.responsibility : "No capability for this kind of work"}
+                              {eligible
+                                ? agent.responsibility
+                                : "No capability for this kind of work"}
                             </span>
                           </span>
                         </button>

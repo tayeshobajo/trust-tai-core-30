@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  metricText,
-  paperclipConnection,
-  PAPERCLIP_MODE_LABEL,
-} from "./paperclip-connection";
+import { metricText, paperclipConnection, PAPERCLIP_MODE_LABEL } from "./paperclip-connection";
 
 const NOW = Date.parse("2026-08-18T20:00:00.000Z");
 const ago = (minutes: number) => new Date(NOW - minutes * 60_000).toISOString();

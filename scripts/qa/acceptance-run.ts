@@ -1,10 +1,10 @@
 #!/usr/bin/env npx tsx
 /**
- * ACCEPTANCE RUN 2026-08-18 — full loop via REAL app code paths, no code changes.
+ * ACCEPTANCE RUN 2026-08-18, full loop via REAL app code paths, no code changes.
  *
  * Steps: assign (assignPaperclipTask) → wake (triggerHeartbeat) → poll run
  * → comments → Tai reply (postTaiNoteToIssue). Reconciliation is deliberately
- * NOT called here — the launchd 5-min sweep owns convergence.
+ * NOT called here, the launchd 5-min sweep owns convergence.
  *
  * Usage:
  *   npx tsx scripts/qa/acceptance-run.ts assign     # step 1+2: assign + wake
@@ -33,7 +33,8 @@ const COMMS_AGENT = "239a7269-6309-4547-bd54-67e4e3798b85";
 const TASK_KEY = "b31ca1fc-9049-4558-b4dc-4083fd2f2721";
 
 type State = { issueId?: string; bindingId?: string; runId?: string };
-const load = (): State => (existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, "utf8")) : {});
+const load = (): State =>
+  existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, "utf8")) : {};
 const save = (s: State) => writeFileSync(STATE_FILE, JSON.stringify(s, null, 1));
 
 const cmd = process.argv[2];
@@ -64,14 +65,38 @@ if (cmd === "assign") {
   const { paperclipClient } = await import("../../src/lib/paperclip-client.server");
   const [comments, runs] = await Promise.all([
     paperclipClient.getIssueComments(s.issueId!),
-    fetch(`${process.env.PAPERCLIP_API_URL}/api/companies/aaa4eceb-44fb-4492-823c-65d3d90c5519/heartbeat-runs?agentId=${COMMS_AGENT}&limit=3`, {
-      headers: { Authorization: `Bearer ${process.env.PAPERCLIP_BOARD_KEY}` },
-    }).then((r) => r.json() as Promise<Array<{ id: string; status: string; startedAt: string | null; finishedAt: string | null }>>),
+    fetch(
+      `${process.env.PAPERCLIP_API_URL}/api/companies/aaa4eceb-44fb-4492-823c-65d3d90c5519/heartbeat-runs?agentId=${COMMS_AGENT}&limit=3`,
+      {
+        headers: { Authorization: `Bearer ${process.env.PAPERCLIP_BOARD_KEY}` },
+      },
+    ).then(
+      (r) =>
+        r.json() as Promise<
+          Array<{ id: string; status: string; startedAt: string | null; finishedAt: string | null }>
+        >,
+    ),
   ]);
-  console.log("RUNS:", JSON.stringify(runs?.map((r) => ({ id: r.id.slice(0, 8), status: r.status, startedAt: r.startedAt, finishedAt: r.finishedAt })), null, 1));
+  console.log(
+    "RUNS:",
+    JSON.stringify(
+      runs?.map((r) => ({
+        id: r.id.slice(0, 8),
+        status: r.status,
+        startedAt: r.startedAt,
+        finishedAt: r.finishedAt,
+      })),
+      null,
+      1,
+    ),
+  );
   console.log("COMMENTS:", comments.length);
   for (const c of comments.slice(-5)) {
-    console.log("---", (c as { id: string; authorType?: string; createdAt?: string }).id.slice(0, 8), (c as { createdAt?: string }).createdAt ?? "");
+    console.log(
+      "---",
+      (c as { id: string; authorType?: string; createdAt?: string }).id.slice(0, 8),
+      (c as { createdAt?: string }).createdAt ?? "",
+    );
     console.log(((c as { body: string }).body ?? "").slice(0, 400));
   }
 } else if (cmd === "reply") {
@@ -79,17 +104,30 @@ if (cmd === "assign") {
   const { postTaiNoteToIssue } = await import("../../src/lib/steward-agents.server");
   const res = await postTaiNoteToIssue({
     issueId: s.issueId!,
-    note: "Acknowledged — carry on and close it out when done.",
+    note: "Acknowledged, carry on and close it out when done.",
     taiName: "Tai",
   });
   console.log("REPLY POSTED:", JSON.stringify(res));
 } else if (cmd === "verify") {
   const s = load();
   const { createClient } = await import("@supabase/supabase-js");
-  const sb = createClient(process.env.TRUST_TAI_SUPABASE_URL!, process.env.TRUST_TAI_SUPABASE_SERVICE_KEY!, { auth: { persistSession: false } });
-  const { data: b } = await sb.from("execution_bindings").select("id,status,result_summary,updated_at").eq("id", s.bindingId!).single();
+  const sb = createClient(
+    process.env.TRUST_TAI_SUPABASE_URL!,
+    process.env.TRUST_TAI_SUPABASE_SERVICE_KEY!,
+    { auth: { persistSession: false } },
+  );
+  const { data: b } = await sb
+    .from("execution_bindings")
+    .select("id,status,result_summary,updated_at")
+    .eq("id", s.bindingId!)
+    .single();
   console.log("BINDING:", JSON.stringify(b, null, 1));
-  const { data: ss } = await sb.from("paperclip_sync_state").select("last_success_at,last_error,consecutive_failures,updated_at").eq("organization_id", ORG).eq("resource_type", "agents").single();
+  const { data: ss } = await sb
+    .from("paperclip_sync_state")
+    .select("last_success_at,last_error,consecutive_failures,updated_at")
+    .eq("organization_id", ORG)
+    .eq("resource_type", "agents")
+    .single();
   console.log("SYNC_STATE:", JSON.stringify(ss, null, 1));
 } else {
   console.error("usage: assign|poll|reply|verify");

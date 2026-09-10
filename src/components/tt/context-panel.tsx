@@ -27,7 +27,8 @@ export function ContextPanel({ result }: { result: ContextResult }) {
 
       {result.withheld.length > 0 ? (
         <p className="mt-5 border-t border-border pt-4 text-xs text-muted-foreground">
-          Withheld: {result.withheld.map((w) => `${w.appId} (${w.reason.replace("_", " ")})`).join(", ")}.
+          Withheld:{" "}
+          {result.withheld.map((w) => `${w.appId} (${w.reason.replace("_", " ")})`).join(", ")}.
           Context is only read from apps you are authorised to see.
         </p>
       ) : null}

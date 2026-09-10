@@ -92,7 +92,10 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
     if (init?.headers) {
       new Headers(init.headers).forEach((value, key) => headers.set(key, value));
     }
-    if (isNewSupabaseApiKey(supabaseKey) && headers.get("Authorization") === `Bearer ${supabaseKey}`) {
+    if (
+      isNewSupabaseApiKey(supabaseKey) &&
+      headers.get("Authorization") === `Bearer ${supabaseKey}`
+    ) {
       headers.delete("Authorization");
     }
     headers.set("apikey", supabaseKey);
@@ -246,11 +249,7 @@ export async function scoutPipelineState(organizationId: string, target = SCOUT_
   const supabase = trustTaiServiceRoleClient();
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [
-    qualifiedResult,
-    readyResult,
-    recentResult,
-  ] = await Promise.all([
+  const [qualifiedResult, readyResult, recentResult] = await Promise.all([
     supabase
       .from("prospects")
       .select("id", { count: "exact", head: true })

@@ -3,7 +3,7 @@
  *
  * One calm list of people: what they last said, how many of their messages
  * you have not opened, and the thread itself beside it. Closing a
- * conversation is a human decision recorded on the relationship — nothing is
+ * conversation is a human decision recorded on the relationship, nothing is
  * archived automatically and nothing is ever sent from here.
  */
 
@@ -108,8 +108,7 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
     });
   }, [rows, filter, query]);
 
-  const selected =
-    visible.find((row) => row.relationship.id === selectedId) ?? visible[0] ?? null;
+  const selected = visible.find((row) => row.relationship.id === selectedId) ?? visible[0] ?? null;
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["comms"] });
@@ -197,9 +196,7 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
 
             <ul className="divide-y divide-border rounded-xl border border-border">
               {visible.length === 0 ? (
-                <li className="p-4 text-sm text-muted-foreground">
-                  Nothing in this view yet.
-                </li>
+                <li className="p-4 text-sm text-muted-foreground">Nothing in this view yet.</li>
               ) : (
                 visible.map((row) => (
                   <li key={row.relationship.id}>
@@ -252,7 +249,6 @@ function Dashboard({ identity }: { identity: WorkspaceIdentity }) {
                       </div>
                     ) : null}
                   </li>
-
                 ))
               )}
             </ul>
@@ -321,11 +317,7 @@ function ThreadView({
               disabled={busy}
               onClick={() => onToggleClosed(!row.closedAt)}
             >
-              {busy
-                ? "Saving…"
-                : row.closedAt
-                  ? "Reopen conversation"
-                  : "Mark conversation closed"}
+              {busy ? "Saving…" : row.closedAt ? "Reopen conversation" : "Mark conversation closed"}
             </TTButton>
           </div>
           <MeetingFromMessage
@@ -338,9 +330,7 @@ function ThreadView({
 
       <div className="max-h-[60vh] space-y-3 overflow-y-auto p-4">
         {ordered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No synced messages for this person yet.
-          </p>
+          <p className="text-sm text-muted-foreground">No synced messages for this person yet.</p>
         ) : (
           ordered.map((message) => (
             <article

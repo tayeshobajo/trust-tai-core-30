@@ -2,7 +2,7 @@
  * Bounded action input resolution (Conductor V3.1).
  *
  * A recommendation can say "source against the current ICP", but Scout's
- * discovery adapter needs a concrete brief before it will route anything 
+ * discovery adapter needs a concrete brief before it will route anything
  * without one it refuses with `missing_input`, and the loop can never start
  * from a question alone.
  *
@@ -62,7 +62,10 @@ interface FieldRule {
  */
 const FIELD_RULES: FieldRule[] = [
   { field: "exclusions", pattern: /\b(exclu(de|sion)|not a fit|avoid|disqualif|out of scope)\b/i },
-  { field: "size", pattern: /\b(size|headcount|employees|team size|revenue|stage|company type)\b/i },
+  {
+    field: "size",
+    pattern: /\b(size|headcount|employees|team size|revenue|stage|company type)\b/i,
+  },
   { field: "geography", pattern: /\b(geograph|location|region|countr|market|territor)\b/i },
   { field: "industries", pattern: /\b(industr|sector|vertical|niche)\b/i },
   { field: "roles", pattern: /\b(role|job title|decision maker|buyer|persona|contact)\b/i },
@@ -79,7 +82,14 @@ const FIELD_LABEL: Record<IcpField, string> = {
 };
 
 /** Composition order of the brief. Fixed, so the same ICP always composes the same brief. */
-const FIELD_ORDER: IcpField[] = ["target", "industries", "size", "geography", "roles", "exclusions"];
+const FIELD_ORDER: IcpField[] = [
+  "target",
+  "industries",
+  "size",
+  "geography",
+  "roles",
+  "exclusions",
+];
 
 function classify(text: string): IcpField | null {
   for (const rule of FIELD_RULES) {

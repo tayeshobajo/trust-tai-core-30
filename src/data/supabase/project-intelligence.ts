@@ -44,7 +44,6 @@ import { listDiff, type IntelligenceAuditAction } from "@/domain/intelligence-au
 import { assertRoomManage, guardRoomWrites } from "@/lib/room-authority";
 import { intelligenceAudit } from "./intelligence-audit";
 
-
 import { supabaseActivity } from "./activities";
 import { projectDelivery, type DeliveryContext } from "./project-delivery";
 import type { Row } from "./schema";
@@ -54,7 +53,9 @@ function str(value: unknown): string | undefined {
 }
 
 function strings(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
 }
 
 function fail(message: string, error: { message: string } | null): never {
@@ -342,7 +343,6 @@ const service = {
     await audit(context, "thinking.removed", source.title, { before: source.url });
   },
 
-
   /* knowledge */
 
   async listKnowledge(context: DeliveryContext): Promise<KnowledgeItem[]> {
@@ -378,10 +378,15 @@ const service = {
       .single();
     if (error || !data) fail("That knowledge could not be saved.", error);
     const saved = toKnowledge(data as Row);
-    await record(context, "project.updated", `Project knowledge recorded: ${saved.body.slice(0, 90)}`, {
-      section: saved.section,
-      reviewState: saved.reviewState,
-    });
+    await record(
+      context,
+      "project.updated",
+      `Project knowledge recorded: ${saved.body.slice(0, 90)}`,
+      {
+        section: saved.section,
+        reviewState: saved.reviewState,
+      },
+    );
     await audit(context, "knowledge.recorded", saved.body, { after: saved.reviewState });
     return saved;
   },
@@ -450,8 +455,7 @@ const service = {
       context,
     );
     const existing = await service.listAssets(context);
-    const version =
-      existing.filter((asset) => asset.assetType === options.assetType).length + 1;
+    const version = existing.filter((asset) => asset.assetType === options.assetType).length + 1;
     const payload = {
       organization_id: context.organizationId,
       project_id: context.projectId,
@@ -536,8 +540,43 @@ const service = {
     return (data ?? []).map((row) => toConnection(row as Row));
   },
 
+  /**
+   * Every linked thinking room across a set of projects, for a client page
+   * that reads across the company's work. Read only, same RLS, no new store.
+   */
+  async listThinkingForProjects(organizationId: ID, projectIds: ID[]): Promise<ThinkingSource[]> {
+    if (projectIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from("project_thinking_sources")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .in("project_id", projectIds)
+      .order("created_at", { ascending: false });
+    if (error) fail("The thinking rooms could not be read.", error);
+    return (data ?? []).map((row) => toThinking(row as Row));
+  },
+
+  /** Every saved connection across a set of projects. Read only. */
+  async listConnectionsForProjects(
+    organizationId: ID,
+    projectIds: ID[],
+  ): Promise<ProjectConnection[]> {
+    if (projectIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from("project_connections")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .in("project_id", projectIds)
+      .order("created_at", { ascending: false });
+    if (error) fail("Connections could not be read.", error);
+    return (data ?? []).map((row) => toConnection(row as Row));
+  },
+
   /** A saved URL is Linked. Only a real reader may ever write Connected. */
-  async addConnection(input: ConnectionInput, context: DeliveryContext): Promise<ProjectConnection> {
+  async addConnection(
+    input: ConnectionInput,
+    context: DeliveryContext,
+  ): Promise<ProjectConnection> {
     const payload = {
       organization_id: context.organizationId,
       project_id: context.projectId,
@@ -664,6 +703,8 @@ export const projectIntelligence = guardRoomWrites("projects", "Projects", servi
   "listKnowledge",
   "listAssets",
   "listConnections",
+  "listThinkingForProjects",
+  "listConnectionsForProjects",
   "listEffectiveness",
 ]);
 
@@ -677,12 +718,8 @@ export const agentEffectivenessService = guardRoomWrites(
   "Steward",
   {
     list: (organizationId: ID) => service.listEffectiveness(organizationId),
-    save: (
-      input: AgentEffectivenessInput,
-      organizationId: ID,
-      userId: ID,
-      userLabel?: string,
-    ) => service.saveEffectiveness(input, organizationId, userId, userLabel),
+    save: (input: AgentEffectivenessInput, organizationId: ID, userId: ID, userLabel?: string) =>
+      service.saveEffectiveness(input, organizationId, userId, userLabel),
     /**
      * Observed evidence is not general reading. It says how an agent is
      * performing against a definition, so it stays with the people who carry
@@ -698,4 +735,3 @@ export const agentEffectivenessService = guardRoomWrites(
   },
   ["list", "history"],
 );
-

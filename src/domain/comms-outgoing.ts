@@ -4,7 +4,7 @@
  * Bytes never live in the database. An upload goes to one bounded, private
  * storage bucket under `{organization}/{draft}/…`; the draft's rationale
  * carries only the metadata and the storage path. The send path reads the
- * bytes at send time, and a successful send deletes them — Gmail becomes the
+ * bytes at send time, and a successful send deletes them. Gmail becomes the
  * source of truth. A failed send keeps them, so a retry never asks for the
  * files again. Unsent uploads on discarded drafts are swept by lifecycle
  * (see docs/comms-send-schema.sql).
@@ -88,11 +88,12 @@ export function writeOutgoingAttachments(
 /**
  * CC/BCC the person added on top of the planned recipients. Kept on the
  * draft so what was approved is on record, and merged into the send plan at
- * send time. Never includes the person's own mailbox — the server drops it.
+ * send time. Never includes the person's own mailbox, the server drops it.
  */
-export function readOutgoingExtras(
-  rationale: Record<string, unknown> | null | undefined,
-): { cc: string[]; bcc: string[] } {
+export function readOutgoingExtras(rationale: Record<string, unknown> | null | undefined): {
+  cc: string[];
+  bcc: string[];
+} {
   const raw = rationale?.["outgoing_extras"];
   if (!raw || typeof raw !== "object") return { cc: [], bcc: [] };
   const value = raw as Record<string, unknown>;

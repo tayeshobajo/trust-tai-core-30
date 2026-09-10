@@ -10,15 +10,9 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 
-import {
-  CanonPanel,
-  type CanonPanelProps,
-} from "@/components/tt/intelligence/canon-panel";
+import { CanonPanel, type CanonPanelProps } from "@/components/tt/intelligence/canon-panel";
 import { MetaPill, TTButton, TTCard } from "@/components/tt/primitives";
-import {
-  CorrectAnswer,
-  type CorrectionDraft,
-} from "@/components/tt/conductor/correct-answer";
+import { CorrectAnswer, type CorrectionDraft } from "@/components/tt/conductor/correct-answer";
 
 import {
   BLIND_SPOT_SEVERITY_LABEL,
@@ -84,7 +78,6 @@ export function ConductorConsole({
   const [question, setQuestion] = useState(initialQuestion ?? "");
   const [showWorking, setShowWorking] = useState(false);
 
-
   async function ask(text: string) {
     const trimmed = text.trim();
     if (trimmed.length === 0) return;
@@ -95,51 +88,48 @@ export function ConductorConsole({
   return (
     <div className="space-y-8">
       {composer ? (
-      <TTCard className="space-y-5 p-6">
-        <form
-          className="space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void ask(question);
-          }}
-        >
-          <label
-            htmlFor="conductor-question"
-            className="text-sm text-[var(--tt-ink-muted)]"
+        <TTCard className="space-y-5 p-6">
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void ask(question);
+            }}
           >
-            Ask the business a question.
-          </label>
-          <textarea
-            id="conductor-question"
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            rows={2}
-            placeholder="How is the business actually doing?"
-            className="w-full resize-none rounded-md border border-[var(--tt-rule)] bg-transparent p-3 text-base leading-relaxed outline-none focus:border-[var(--tt-ink)]"
-          />
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-xs text-[var(--tt-ink-muted)]">
-              Reads every room you are authorised to see. Changes nothing.
-            </p>
-            <TTButton type="submit" disabled={thinking || question.trim().length === 0}>
-              {thinking ? "Reading the suite…" : "Ask"}
-            </TTButton>
-          </div>
-        </form>
+            <label htmlFor="conductor-question" className="text-sm text-[var(--tt-ink-muted)]">
+              Ask the business a question.
+            </label>
+            <textarea
+              id="conductor-question"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              rows={2}
+              placeholder="How is the business actually doing?"
+              className="w-full resize-none rounded-md border border-[var(--tt-rule)] bg-transparent p-3 text-base leading-relaxed outline-none focus:border-[var(--tt-ink)]"
+            />
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs text-[var(--tt-ink-muted)]">
+                Reads every room you are authorised to see. Changes nothing.
+              </p>
+              <TTButton type="submit" disabled={thinking || question.trim().length === 0}>
+                {thinking ? "Reading the suite…" : "Ask"}
+              </TTButton>
+            </div>
+          </form>
 
-        <div className="flex flex-wrap gap-2 border-t border-[var(--tt-rule)] pt-4">
-          {OPENERS.map((opener) => (
-            <button
-              key={opener}
-              type="button"
-              onClick={() => void ask(opener)}
-              className="rounded-full border border-[var(--tt-rule)] px-3 py-1 text-xs text-[var(--tt-ink-muted)] transition hover:border-[var(--tt-ink)] hover:text-[var(--tt-ink)]"
-            >
-              {opener}
-            </button>
-          ))}
-        </div>
-      </TTCard>
+          <div className="flex flex-wrap gap-2 border-t border-[var(--tt-rule)] pt-4">
+            {OPENERS.map((opener) => (
+              <button
+                key={opener}
+                type="button"
+                onClick={() => void ask(opener)}
+                className="rounded-full border border-[var(--tt-rule)] px-3 py-1 text-xs text-[var(--tt-ink-muted)] transition hover:border-[var(--tt-ink)] hover:text-[var(--tt-ink)]"
+              >
+                {opener}
+              </button>
+            ))}
+          </div>
+        </TTCard>
       ) : null}
 
       {answer ? (
@@ -168,9 +158,7 @@ export function ConductorConsole({
             ) : null}
 
             {answer.watch ? (
-              <p className="text-sm text-[var(--tt-ink-muted)]">
-                Watch: {answer.watch.statement}
-              </p>
+              <p className="text-sm text-[var(--tt-ink-muted)]">Watch: {answer.watch.statement}</p>
             ) : null}
 
             {onCorrect ? (
@@ -197,13 +185,10 @@ export function ConductorConsole({
               <div className="flex flex-wrap items-center gap-2">
                 <MetaPill>{answer.roadmapCanon.subjectLabel}</MetaPill>
                 <MetaPill>{answer.roadmapCanon.status.replace(/_/g, " ")}</MetaPill>
-                <MetaPill>
-                  Point B {answer.roadmapCanon.pointB?.tier ?? "not stated"}
-                </MetaPill>
+                <MetaPill>Point B {answer.roadmapCanon.pointB?.tier ?? "not stated"}</MetaPill>
               </div>
               <p className="text-[var(--tt-ink-muted)]">
-                Point A:{" "}
-                {answer.roadmapCanon.pointA[0]?.value ?? "not established"}
+                Point A: {answer.roadmapCanon.pointA[0]?.value ?? "not established"}
               </p>
               {answer.roadmapCanon.anchorProof ? (
                 <p className="text-[var(--tt-ink-muted)]">
@@ -221,7 +206,7 @@ export function ConductorConsole({
                   Next milestone attention: “
                   {answer.roadmapCanon.milestoneAttention.milestone.title}” (
                   {answer.roadmapCanon.milestoneAttention.milestone.state.replace(/_/g, " ")},{" "}
-                  {answer.roadmapCanon.milestoneAttention.milestone.tier}) · {" "}
+                  {answer.roadmapCanon.milestoneAttention.milestone.tier}) ·{" "}
                   {answer.roadmapCanon.milestoneAttention.because}
                 </p>
               ) : null}
@@ -231,12 +216,9 @@ export function ConductorConsole({
                 </p>
               ) : null}
 
-
               {answer.roadmapCanon.openDecisions.length > 0 ? (
                 <div className="space-y-1 border-t border-[var(--tt-rule)] pt-2">
-                  <p>
-                    Already open in Roadmap, waiting on your answer, not raised again here:
-                  </p>
+                  <p>Already open in Roadmap, waiting on your answer, not raised again here:</p>
                   {answer.roadmapCanon.openDecisions.map((decision) => (
                     <p key={decision.id} className="text-[var(--tt-ink-muted)]">
                       “{decision.question}”
@@ -256,7 +238,6 @@ export function ConductorConsole({
               </p>
             </TTCard>
           ) : null}
-
 
           {/* -------------------------------------------------- improvements */}
           {answer.improvements.length > 0 ? (
@@ -426,8 +407,8 @@ export function ConductorConsole({
               </h2>
               <TTCard className="space-y-4 p-5">
                 <p className="text-sm text-[var(--tt-ink-muted)]">
-                  {answer.actionGraph.owningApps.join(", ")} · every step needs your
-                  approval in the room that owns it.
+                  {answer.actionGraph.owningApps.join(", ")} · every step needs your approval in the
+                  room that owns it.
                 </p>
                 <ol className="space-y-3">
                   {answer.actionGraph.steps.map((step, index) => (
@@ -461,7 +442,10 @@ export function ConductorConsole({
               <TTCard className="space-y-2 p-5">
                 <ul className="space-y-2">
                   {answer.evidence.map((ref) => (
-                    <li key={`${ref.kind}-${ref.label}`} className="flex flex-wrap items-baseline gap-2">
+                    <li
+                      key={`${ref.kind}-${ref.label}`}
+                      className="flex flex-wrap items-baseline gap-2"
+                    >
                       <MetaPill>{ref.kind}</MetaPill>
                       {ref.url ? (
                         <a
@@ -584,10 +568,7 @@ function PlanPanel({ plan }: { plan: NonNullable<ConductorAnswer["plan"]> }) {
                     Depends on: {room.dependencies.join(" ")}
                   </p>
                 ) : null}
-                <Link
-                  to={room.route}
-                  className="text-xs underline-offset-4 hover:underline"
-                >
+                <Link to={room.route} className="text-xs underline-offset-4 hover:underline">
                   Open {room.label}
                 </Link>
               </TTCard>

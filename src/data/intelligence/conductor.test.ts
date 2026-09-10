@@ -19,11 +19,7 @@ import {
   readFactory,
   readVitals,
 } from "./conductor";
-import {
-  FACTUAL_BASES,
-  FRICTION_THRESHOLD,
-  type BusinessIntent,
-} from "@/domain/conductor";
+import { FACTUAL_BASES, FRICTION_THRESHOLD, type BusinessIntent } from "@/domain/conductor";
 import type { ActivityEvent } from "@/domain/activity";
 import { vitalReading } from "./conductor";
 
@@ -182,7 +178,10 @@ describe("conversational answers", () => {
   });
 
   it("says it cannot plan, rather than planning, without a decided outcome", () => {
-    const answer = answerQuestion({ snapshot: snapshot(), question: "how do we get more revenue?" });
+    const answer = answerQuestion({
+      snapshot: snapshot(),
+      question: "how do we get more revenue?",
+    });
     expect(answer.topic).toBe("plan");
     expect(answer.plan).toBeUndefined();
     expect(answer.answer).toMatch(/no decided outcome/i);

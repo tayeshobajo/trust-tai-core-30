@@ -31,7 +31,9 @@ describe("composeRoadmapDraft", () => {
     const draft = composeRoadmapDraft(
       context({
         observed: [observedNote],
-        inferred: [{ ...observedNote, label: "Guess", value: "Probably growing", tier: "inferred" }],
+        inferred: [
+          { ...observedNote, label: "Guess", value: "Probably growing", tier: "inferred" },
+        ],
       }),
     );
     expect(draft.pointA).toHaveLength(1);
@@ -76,12 +78,16 @@ describe("composeRoadmapDraft", () => {
 
   it("raises ownership as a decision when no one carries it", () => {
     const draft = composeRoadmapDraft(context({ observed: [observedNote] }));
-    expect(draft.decisions.some((entry) => entry.question === "Who carries this roadmap?")).toBe(true);
+    expect(draft.decisions.some((entry) => entry.question === "Who carries this roadmap?")).toBe(
+      true,
+    );
   });
 
   it("does not raise ownership when an owner is known", () => {
     const draft = composeRoadmapDraft(context({ observed: [observedNote], ownerLabel: "Tai" }));
-    expect(draft.decisions.some((entry) => entry.question === "Who carries this roadmap?")).toBe(false);
+    expect(draft.decisions.some((entry) => entry.question === "Who carries this roadmap?")).toBe(
+      false,
+    );
   });
 
   it("only recommends approval when observed evidence supports it", () => {
@@ -118,7 +124,9 @@ describe("composeRoadmapDraft", () => {
       context({
         observed: [observedNote],
         ownerLabel: "Tai",
-        openQuestions: [{ question: "Do they own their domain?", whyItMatters: "Migration depends on it." }],
+        openQuestions: [
+          { question: "Do they own their domain?", whyItMatters: "Migration depends on it." },
+        ],
       }),
     );
     expect(draft.decisions.at(-1)?.question).toBe("Do they own their domain?");

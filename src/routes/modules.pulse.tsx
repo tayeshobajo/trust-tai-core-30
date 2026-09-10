@@ -66,9 +66,7 @@ export const Route = createFileRoute("/modules/pulse")({
 });
 
 function PulseRoute() {
-  return (
-    <WorkspaceGate appId="pulse">{(identity) => <Pulse identity={identity} />}</WorkspaceGate>
-  );
+  return <WorkspaceGate appId="pulse">{(identity) => <Pulse identity={identity} />}</WorkspaceGate>;
 }
 
 function Pulse({ identity }: { identity: WorkspaceIdentity }) {
@@ -296,7 +294,10 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
             <p className="text-[13px] text-muted-foreground">
               Pulse says what deserves attention and where the work lives. For the read behind a
               signal, what it rests on, what it would take, and any step you can authorise,{" "}
-              <Link to="/modules/conductor" className="text-foreground underline underline-offset-4">
+              <Link
+                to="/modules/conductor"
+                className="text-foreground underline underline-offset-4"
+              >
                 open it in the Conductor
               </Link>
               .

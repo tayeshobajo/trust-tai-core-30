@@ -4,7 +4,7 @@
  * Reads: every relationship in the workspace, and the recent synced messages
  * across all of them, so one screen can honestly say who wrote last.
  *
- * Writes: only two human acts — opening a conversation (which is what "read"
+ * Writes: only two human acts, opening a conversation (which is what "read"
  * means here) and closing or reopening it. Both land on the relationship's
  * metadata, so no new table and no invented state.
  */
@@ -23,7 +23,7 @@ const BASE =
 const VARIANTS = [`${BASE}, body_text`, BASE] as const;
 
 function notProvisioned(message: string): boolean {
-  return /relation .*comms_messages.* does not exist|could not find the table|schema cache/i.test(
+  return /relation.*comms_messages.* does not exist|could not find the table|schema cache/i.test(
     message,
   );
 }

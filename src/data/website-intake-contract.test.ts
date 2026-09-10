@@ -12,7 +12,12 @@ import { auditIntelligenceFreshness } from "./intelligence/freshness";
 import { bundleFor, contextBlocks, deriveSignals, emptySnapshot } from "./intelligence/derive";
 import { canOpenInConductor, conductorHandoff } from "./pulse/handoff";
 import { toPulseSignals } from "./pulse/projection";
-import { inboundOrigin, isInbound, withInboundOrigin, WEBSITE_INTAKE_ROW_SOURCE } from "./scout/inbound";
+import {
+  inboundOrigin,
+  isInbound,
+  withInboundOrigin,
+  WEBSITE_INTAKE_ROW_SOURCE,
+} from "./scout/inbound";
 import { reviewStatedEvidence, taiDecisionState } from "./scout/research-workspace";
 import type { ActivityEvent } from "@/domain/activity";
 import type { ProspectCandidate } from "@/domain/scout";

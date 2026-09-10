@@ -187,7 +187,11 @@ export async function routeAction(
       sourceEventKey: controlEventKey("ACTION_FAILED", action.id),
       metadata: { adapter: adapter.id, status: receipt.status },
     });
-    return { action: failed, receipt, refusedBecause: receipt.failure ?? "Refused by the adapter." };
+    return {
+      action: failed,
+      receipt,
+      refusedBecause: receipt.failure ?? "Refused by the adapter.",
+    };
   }
 
   assertTransition(action.status, "routed");

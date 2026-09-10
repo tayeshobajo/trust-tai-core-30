@@ -14,21 +14,20 @@ import { routeStanding, type RouteLedgerEntry } from "@/domain/route-ledger";
 import { projectsService, type ProjectsContext } from "@/data/supabase/projects-service";
 import type { AccessContext } from "@/domain/access";
 import { can } from "@/domain/access";
-import {
-  ROUTE_TARGETS,
-  ROUTE_TARGET_LABEL,
-  type RouteTarget,
-} from "@/domain/project-routing";
+import { ROUTE_TARGETS, ROUTE_TARGET_LABEL, type RouteTarget } from "@/domain/project-routing";
 import type { ExecutionProject } from "@/domain/projects";
 
 export function RouteWork({
   project,
   context,
   access,
+  showForm = true,
 }: {
   project: ExecutionProject;
   context: ProjectsContext;
   access: AccessContext;
+  /** The routing form only appears when a person asked to hand work across. */
+  showForm?: boolean;
 }) {
   const [target, setTarget] = useState<RouteTarget>("ops");
   const [outcome, setOutcome] = useState("");
@@ -78,61 +77,74 @@ export function RouteWork({
     },
   });
 
+  const entries = ledger.data ?? [];
+  // Nothing is being handed across and nobody asked to hand anything across:
+  // the capability stays reachable through its doorway, not through a form.
+  if (!showForm && entries.length === 0) return null;
+
   return (
     <section aria-label="Route specialized work" className="tt-surface space-y-4 p-6">
       <SectionHeading
         eyebrow="Hand across"
-        title="Route this to a specialist room"
-        description="A route is a request. Ops and Studio own whether they accept it, and own the work once they do. Nothing downstream is created here."
+        title={showForm ? "Route this to a specialist room" : "Handed across"}
+        description={
+          showForm
+            ? "A route is a request. Ops and Studio own whether they accept it, and own the work once they do. Nothing downstream is created here."
+            : "Work this project has asked a specialist room to take."
+        }
       />
-      <div className="flex flex-wrap gap-2">
-        {ROUTE_TARGETS.map((option) => (
+      {showForm ? (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {ROUTE_TARGETS.map((option) => (
+              <TTButton
+                key={option}
+                size="sm"
+                variant={option === target ? "primary" : "secondary"}
+                onClick={() => setTarget(option)}
+              >
+                {ROUTE_TARGET_LABEL[option]}
+              </TTButton>
+            ))}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TTInput
+              value={outcome}
+              onChange={(event) => setOutcome(event.target.value)}
+              placeholder={`What ${ROUTE_TARGET_LABEL[target]} is asked to deliver`}
+              aria-label="Requested outcome"
+            />
+            <TTInput
+              value={because}
+              onChange={(event) => setBecause(event.target.value)}
+              placeholder="Why it is leaving Projects"
+              aria-label="Why this is routed"
+            />
+          </div>
           <TTButton
-            key={option}
             size="sm"
-            variant={option === target ? "primary" : "secondary"}
-            onClick={() => setTarget(option)}
+            disabled={!allowed || route.isPending || !outcome.trim() || !because.trim()}
+            onClick={() => route.mutate()}
           >
-            {ROUTE_TARGET_LABEL[option]}
+            Ask {ROUTE_TARGET_LABEL[target]} to take this
           </TTButton>
-        ))}
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <TTInput
-          value={outcome}
-          onChange={(event) => setOutcome(event.target.value)}
-          placeholder={`What ${ROUTE_TARGET_LABEL[target]} is asked to deliver`}
-          aria-label="Requested outcome"
-        />
-        <TTInput
-          value={because}
-          onChange={(event) => setBecause(event.target.value)}
-          placeholder="Why it is leaving Projects"
-          aria-label="Why this is routed"
-        />
-      </div>
-      <TTButton
-        size="sm"
-        disabled={!allowed || route.isPending || !outcome.trim() || !because.trim()}
-        onClick={() => route.mutate()}
-      >
-        Ask {ROUTE_TARGET_LABEL[target]} to take this
-      </TTButton>
-      {!allowed ? (
-        <p className="text-sm text-muted-foreground">
-          Your role can read Projects but not route work out of it.
-        </p>
+          {!allowed ? (
+            <p className="text-sm text-muted-foreground">
+              Your role can read Projects but not route work out of it.
+            </p>
+          ) : null}
+          {route.isSuccess ? (
+            <p className="text-sm text-muted-foreground">
+              Asked. {ROUTE_TARGET_LABEL[target]} has not accepted it yet, acceptance is theirs to
+              record.
+            </p>
+          ) : null}
+        </>
       ) : null}
-      {route.isSuccess ? (
-        <p className="text-sm text-muted-foreground">
-          Asked. {ROUTE_TARGET_LABEL[target]} has not accepted it yet, acceptance is theirs to
-          record.
-        </p>
-      ) : null}
-      {(ledger.data ?? []).length > 0 ? (
+      {entries.length > 0 ? (
         <div className="space-y-3 border-t border-border/60 pt-4">
           <p className="tt-eyebrow">Already asked</p>
-          {(ledger.data ?? []).map((entry) => (
+          {entries.map((entry) => (
             <RouteRow
               key={entry.key}
               entry={entry}

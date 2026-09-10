@@ -11,11 +11,7 @@
  */
 
 import type { Observation } from "@/domain/intelligence-engine";
-import type {
-  IntelligenceCase,
-  PatternOutcome,
-  PatternResult,
-} from "@/domain/intelligence-canon";
+import type { IntelligenceCase, PatternOutcome, PatternResult } from "@/domain/intelligence-canon";
 
 import { patternById } from "./patterns";
 
@@ -124,7 +120,6 @@ export interface ReconciliationSnapshot {
   unreadable: string[];
 }
 
-
 /** Wrap already derived observations as a snapshot, so one evaluator serves both paths. */
 export function snapshotFromObservations(input: {
   organizationId: string;
@@ -219,7 +214,6 @@ export function evaluateOpenCase(input: {
 
   const still = snapshot.conditions.filter((condition) => kinds.includes(condition.kind));
 
-
   if (still.length === 0) {
     return {
       caseId: entry.id,
@@ -278,7 +272,6 @@ export function reconcileCases(input: {
     .map((entry) => reconcileCase({ entry, observations: input.observations, now: input.now }))
     .filter((row): row is Reconciliation => row !== null);
 }
-
 
 /** The outcome row a reconciliation becomes. Never invents a decision. */
 export function outcomeFromReconciliation(input: {

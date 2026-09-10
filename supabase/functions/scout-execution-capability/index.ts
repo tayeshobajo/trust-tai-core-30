@@ -1,5 +1,5 @@
 /**
- * scout-execution-capability — Supabase Edge Function
+ * scout-execution-capability. Supabase Edge Function
  *
  * Cloud-native deployment of the Trust Tai Execution Bridge scout
  * capability API. This is a faithful port of the TanStack server routes
@@ -39,7 +39,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const EXECUTION_KEY = Deno.env.get("TRUST_TAI_EXECUTION_KEY");
 const PAPERCLIP_API_URL = Deno.env.get("PAPERCLIP_API_URL") ?? "http://127.0.0.1:3100";
 const PAPERCLIP_BOARD_KEY = Deno.env.get("PAPERCLIP_BOARD_KEY");
-// Known Trust Tai Paperclip company id — stable config, not business truth.
+// Known Trust Tai Paperclip company id, stable config, not business truth.
 // execution_bindings.paperclip_company_id is NOT NULL, so this constant is
 // the required fallback when the board API is unreachable from the edge runtime.
 const TRUST_TAI_COMPANY_ID = "aaa4eceb-44fb-4492-823c-65d3d90c5519";
@@ -88,10 +88,10 @@ interface AgentRecord {
 
 async function validateAgent(paperclipAgentId: string, capability: string): Promise<AgentRecord> {
   const { data, error } = await supabase
-    .from("execution_agents")
-    .select("*")
-    .eq("paperclip_agent_id", paperclipAgentId)
-    .maybeSingle();
+.from("execution_agents")
+.select("*")
+.eq("paperclip_agent_id", paperclipAgentId)
+.maybeSingle();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
   if (!data) {
     throw Object.assign(new Error(`Execution agent ${paperclipAgentId} is not registered.`), {
@@ -132,16 +132,16 @@ async function recordBinding(input: {
   businessOutputs?: Record<string, unknown>;
 }): Promise<{ id: string; existing: boolean }> {
   const { data: existing, error: existingError } = await supabase
-    .from("execution_bindings")
-    .select("id")
-    .eq("idempotency_key", input.idempotencyKey)
-    .maybeSingle();
+.from("execution_bindings")
+.select("id")
+.eq("idempotency_key", input.idempotencyKey)
+.maybeSingle();
   if (existingError) throw Object.assign(new Error(existingError.message), { status: 500 });
   if (existing) return { id: existing.id as string, existing: true };
 
   const { data, error } = await supabase
-    .from("execution_bindings")
-    .insert({
+.from("execution_bindings")
+.insert({
       organization_id: input.organizationId,
       source_app: input.sourceApp,
       source_entity_type: "prospect",
@@ -153,8 +153,8 @@ async function recordBinding(input: {
       business_outputs: input.businessOutputs ?? {},
       idempotency_key: input.idempotencyKey,
     })
-    .select("id")
-    .maybeSingle();
+.select("id")
+.maybeSingle();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
   if (!data) throw Object.assign(new Error("Execution binding insert returned no row."), {
     status: 500,
@@ -164,14 +164,14 @@ async function recordBinding(input: {
 
 async function completeBinding(bindingId: string, result: BindingResult): Promise<void> {
   const { error } = await supabase
-    .from("execution_bindings")
-    .update({
+.from("execution_bindings")
+.update({
       status: result.status,
       result_summary: result.resultSummary ?? null,
       business_outputs: result.businessOutputs ?? {},
       updated_at: new Date().toISOString(),
     })
-    .eq("id", bindingId);
+.eq("id", bindingId);
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
 }
 
@@ -181,20 +181,20 @@ async function scoutPipelineState(organizationId: string, target: number) {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const [qualifiedResult, readyResult, recentResult] = await Promise.all([
     supabase
-      .from("prospects")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", organizationId)
-      .eq("status", "qualified"),
+.from("prospects")
+.select("id", { count: "exact", head: true })
+.eq("organization_id", organizationId)
+.eq("status", "qualified"),
     supabase
-      .from("prospects")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", organizationId)
-      .eq("status", "ready_for_comms"),
+.from("prospects")
+.select("id", { count: "exact", head: true })
+.eq("organization_id", organizationId)
+.eq("status", "ready_for_comms"),
     supabase
-      .from("prospects")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", organizationId)
-      .gte("created_at", since),
+.from("prospects")
+.select("id", { count: "exact", head: true })
+.eq("organization_id", organizationId)
+.gte("created_at", since),
   ]);
   if (qualifiedResult.error) throw Object.assign(new Error(qualifiedResult.error.message), { status: 500 });
   if (readyResult.error) throw Object.assign(new Error(readyResult.error.message), { status: 500 });
@@ -223,7 +223,7 @@ async function scoutPipelineState(organizationId: string, target: number) {
 function normalizeWebsiteUrl(input: string): string | null {
   const raw = input.trim();
   if (!raw || /\s/.test(raw)) return null;
-  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  const withScheme = /^https?:\/\//i.test(raw) ? raw: `https://${raw}`;
   let url: URL;
   try {
     url = new URL(withScheme);
@@ -258,12 +258,12 @@ async function handleIcp(req: Request): Promise<Response> {
   assertExecutionKey(req);
   const agent = await validateAgent(executionAgentId(req), "scout.read_icp");
   const { data, error } = await supabase
-    .from("icp_profiles")
-    .select("*")
-    .eq("organization_id", agent.organization_id)
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+.from("icp_profiles")
+.select("*")
+.eq("organization_id", agent.organization_id)
+.order("version", { ascending: false })
+.limit(1)
+.maybeSingle();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
   if (!data) return fail("No ICP found for this organization.", 404);
   return json(data);
@@ -290,17 +290,17 @@ async function handleProspect(req: Request): Promise<Response> {
         paperclipCompanyId = boardAgent.companyId ?? TRUST_TAI_COMPANY_ID;
       }
     } catch {
-      // Board unreachable from edge runtime — fall through to known constant.
+      // Board unreachable from edge runtime, fall through to known constant.
     }
   }
 
   const body = (await req.json()) as Record<string, unknown>;
-  const companyName = typeof body.company_name === "string" ? body.company_name.trim() : "";
-  const whySourced = typeof body.why_sourced === "string" ? body.why_sourced.trim() : "";
+  const companyName = typeof body.company_name === "string" ? body.company_name.trim(): "";
+  const whySourced = typeof body.why_sourced === "string" ? body.why_sourced.trim(): "";
   const idempotencyKey =
-    typeof body.idempotency_key === "string" ? body.idempotency_key.trim() : "";
+    typeof body.idempotency_key === "string" ? body.idempotency_key.trim(): "";
   const websiteUrl =
-    typeof body.website_url === "string" ? normalizeWebsiteUrl(body.website_url) : null;
+    typeof body.website_url === "string" ? normalizeWebsiteUrl(body.website_url): null;
 
   if (!companyName || !websiteUrl || !whySourced || !idempotencyKey) {
     return fail(
@@ -310,11 +310,11 @@ async function handleProspect(req: Request): Promise<Response> {
   }
 
   const { data: existing, error: existingError } = await supabase
-    .from("prospects")
-    .select("id, organization_id")
-    .eq("organization_id", agent.organization_id)
-    .eq("website_url", websiteUrl)
-    .maybeSingle();
+.from("prospects")
+.select("id, organization_id")
+.eq("organization_id", agent.organization_id)
+.eq("website_url", websiteUrl)
+.maybeSingle();
   if (existingError) throw Object.assign(new Error(existingError.message), { status: 500 });
 
   const binding = await recordBinding({
@@ -346,11 +346,11 @@ async function handleProspect(req: Request): Promise<Response> {
   const provenanceInput =
     body.provenance && typeof body.provenance === "object" && !Array.isArray(body.provenance)
       ? (body.provenance as Record<string, unknown>)
-      : {};
+: {};
 
   const { data, error } = await supabase
-    .from("prospects")
-    .insert({
+.from("prospects")
+.insert({
       organization_id: agent.organization_id,
       company_name: companyName,
       website_url: websiteUrl,
@@ -360,16 +360,16 @@ async function handleProspect(req: Request): Promise<Response> {
       inferred: body.inferred ?? {},
       suggested: {},
       provenance: {
-        ...provenanceInput,
+...provenanceInput,
         app: "scout_execution_bridge",
         paperclip_agent_id: agent.paperclip_agent_id,
-        icp_version: typeof body.icp_version === "number" ? body.icp_version : null,
+        icp_version: typeof body.icp_version === "number" ? body.icp_version: null,
         why_sourced: whySourced,
         source_event_key: idempotencyKey,
       },
     })
-    .select("id")
-    .maybeSingle();
+.select("id")
+.maybeSingle();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
   if (!data) throw Object.assign(new Error("Prospect insert returned no row."), { status: 500 });
 
@@ -409,7 +409,7 @@ Deno.serve(async (req: Request) => {
     const status =
       error instanceof Error && "status" in error && typeof (error as { status: unknown }).status === "number"
         ? (error as { status: number }).status
-        : 500;
-    return fail(error instanceof Error ? error.message : "Capability call failed.", status);
+: 500;
+    return fail(error instanceof Error ? error.message: "Capability call failed.", status);
   }
 });

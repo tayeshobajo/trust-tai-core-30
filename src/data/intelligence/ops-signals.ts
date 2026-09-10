@@ -137,7 +137,8 @@ export function deriveOpsSignals(events: OpsEvent[], now: string, organizationId
     const cleared = supersededBy(event, clearing);
     if (cleared) {
       const existing = clearedChains.get(event.chainKey);
-      if (!existing || existing.risk.at < event.at) clearedChains.set(event.chainKey, { risk: event, by: cleared });
+      if (!existing || existing.risk.at < event.at)
+        clearedChains.set(event.chainKey, { risk: event, by: cleared });
       continue;
     }
 
@@ -151,7 +152,11 @@ export function deriveOpsSignals(events: OpsEvent[], now: string, organizationId
       contextRefs: [opsBlockId(event)],
       confidence: "high",
       recommendedNextMove: shape.move,
-      destination: { appId: "ops", label: "Open in Ops", route: event.destinationUrl || OPS_ORIGIN },
+      destination: {
+        appId: "ops",
+        label: "Open in Ops",
+        route: event.destinationUrl || OPS_ORIGIN,
+      },
       status: "new",
       urgency: shape.urgency,
       at: event.at,
@@ -166,7 +171,9 @@ export function deriveOpsSignals(events: OpsEvent[], now: string, organizationId
       why: `${risk.summary} That is now resolved: ${by.summary}`.trim(),
       subject: entityFor(by),
       evidence: [opsEvidence(risk), opsEvidence(by)],
-      contextRefs: [opsBlockId(risk), opsBlockId(by)].filter((id, index, all) => all.indexOf(id) === index),
+      contextRefs: [opsBlockId(risk), opsBlockId(by)].filter(
+        (id, index, all) => all.indexOf(id) === index,
+      ),
       confidence: "high",
       recommendedNextMove: "Nothing is needed here. Read the run in Ops if you want the detail.",
       destination: { appId: "ops", label: "Open in Ops", route: by.destinationUrl || OPS_ORIGIN },

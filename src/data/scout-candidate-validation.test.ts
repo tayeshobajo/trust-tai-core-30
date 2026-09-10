@@ -17,7 +17,13 @@ function candidate(overrides: Partial<RawDiscoveryCandidate> = {}): RawDiscovery
     source_urls: ["https://acme.com"],
     observed_evidence: evidence(3),
     discovery_reason: "Managed IT provider in the target city.",
-    icp_fit: { light: "green", score: 82, confidence: "high", reasoning: "Strong match.", criteria: [] },
+    icp_fit: {
+      light: "green",
+      score: 82,
+      confidence: "high",
+      reasoning: "Strong match.",
+      criteria: [],
+    },
     ...overrides,
   };
 }
@@ -87,7 +93,9 @@ describe("discoveryEvaluation", () => {
 
   it("clamps an out-of-range score", () => {
     const result = discoveryEvaluation(
-      candidate({ icp_fit: { light: "red", score: 512, confidence: "low", reasoning: "", criteria: [] } }),
+      candidate({
+        icp_fit: { light: "red", score: 512, confidence: "low", reasoning: "", criteria: [] },
+      }),
       { icpVersion: null, at },
     );
     expect(result["score"]).toBe(100);
@@ -102,8 +110,24 @@ describe("discoveryEvaluation", () => {
           confidence: "low",
           reasoning: "Mixed.",
           criteria: [
-            { name: "Budget", weight: 20, status: "unknown", score_contribution: 0, evidence: "Not published.", source_urls: [], confidence: "unknown" },
-            { name: "Industry", weight: 20, status: "met", score_contribution: 20, evidence: "Stated on site.", source_urls: ["https://acme.com"], confidence: "high" },
+            {
+              name: "Budget",
+              weight: 20,
+              status: "unknown",
+              score_contribution: 0,
+              evidence: "Not published.",
+              source_urls: [],
+              confidence: "unknown",
+            },
+            {
+              name: "Industry",
+              weight: 20,
+              status: "met",
+              score_contribution: 20,
+              evidence: "Stated on site.",
+              source_urls: ["https://acme.com"],
+              confidence: "high",
+            },
           ],
         },
       }),

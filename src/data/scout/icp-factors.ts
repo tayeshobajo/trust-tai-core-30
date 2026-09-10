@@ -55,7 +55,7 @@ function valueOf(criterion: FitCriterion): string | undefined {
   if (criterion.state === "missing") return undefined;
   const raw = (criterion.reason ?? "").trim();
   if (!raw) return undefined;
-  const clause = raw.split(/[.·—]|\s-\s/)[0]?.trim() ?? "";
+  const clause = raw.split(/[.·, ]|\s-\s/)[0]?.trim() ?? "";
   if (!clause) return undefined;
   return clause.length > 64 ? `${clause.slice(0, 61)}…` : clause;
 }

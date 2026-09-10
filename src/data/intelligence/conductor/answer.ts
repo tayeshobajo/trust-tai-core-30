@@ -14,6 +14,7 @@ import type { EvidenceRef } from "@/domain/confidence";
 import type { ActionProposal } from "@/domain/intelligence-engine";
 import {
   CONDUCTOR_CONTROL,
+  FRICTION_THRESHOLD,
   type BlindSpot,
   type BusinessFigure,
   type BusinessIntent,
@@ -25,12 +26,10 @@ import {
   type SystemImprovement,
   type VitalReading,
 } from "@/domain/conductor";
+import { isLeakPattern } from "@/domain/signal-attention";
 
 import type { LearningRecord } from "@/domain/outcomes";
-import {
-  learningForPacket,
-  relevantLearning,
-} from "@/data/conductor/learning";
+import { learningForPacket, relevantLearning } from "@/data/conductor/learning";
 
 import { engineRead } from "../engine";
 import { observeBusiness } from "../engine/observe";
@@ -69,7 +68,7 @@ interface TopicRule {
 }
 
 /**
- * Small, legible classification. Six real questions and an honest fallback 
+ * Small, legible classification. Six real questions and an honest fallback
  * no model, no hidden taxonomy, and nothing that silently mis-routes a
  * question into an answer about something else.
  */
@@ -179,7 +178,6 @@ const DEMAND_PATTERNS: RegExp[] = [
   /\bnot enough (companies|prospects|leads|pipeline)\b/i,
 ];
 
-
 /* ----------------------------------------------------------------- helpers */
 
 function computed(label: string): EvidenceRef {
@@ -234,11 +232,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
    * contradicting an earlier answer is the strongest input available, and a
    * suggestion they rejected must not be raised again this fortnight.
    */
-  const learning = learningState(
-    snapshot.organizationId,
-    input.corrections ?? [],
-    snapshot.now,
-  );
+  const learning = learningState(snapshot.organizationId, input.corrections ?? [], snapshot.now);
   const figures = figuresWithCorrections(input.figures ?? [], learning);
 
   const vitals = readVitals(snapshot, intents, figures);
@@ -277,7 +271,9 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     case "plan":
     case "growth": {
       const intent =
-        intents.find((row) => row.critical && (row.kind === "revenue" || row.kind === "qualified_pipeline")) ??
+        intents.find(
+          (row) => row.critical && (row.kind === "revenue" || row.kind === "qualified_pipeline"),
+        ) ??
         intents.find((row) => row.kind === "revenue" || row.kind === "qualified_pipeline") ??
         intents[0];
 
@@ -343,9 +339,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
 
     case "leaks": {
       const leaks = factory.warnings;
-      const stalled = read.recommendations.filter((row) =>
-        ["reply_debt", "unworked_opportunity", "promises_slipping"].includes(row.patternKey),
-      );
+      const stalled = read.recommendations.filter((row) => isLeakPattern(row.patternKey));
       if (leaks.length === 0 && stalled.length === 0) {
         answer =
           "Nothing in the shared record shows work being lost between rooms right now. That is a read of what is recorded, not a guarantee.";
@@ -396,7 +390,7 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
       shownImprovements = improvements;
       answer =
         improvements.length === 0
-          ? `No friction has repeated often enough to be structural. I only raise a pattern once it has happened ${3} times or more.`
+          ? `No friction has repeated often enough to be structural. I only raise a pattern once it has happened ${FRICTION_THRESHOLD} times or more.`
           : sentence([
               `${improvements.length} recurring friction${improvements.length === 1 ? "" : "s"} worth fixing at the system level.`,
               improvements[0] ? `Most frequent: ${improvements[0].headline.toLowerCase()}.` : "",
@@ -527,7 +521,8 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
       ]);
       unknowns.push(...blindSpots.filter((spot) => spot.severity === "critical").slice(0, 3));
       const first = troubled[0];
-      const worstReading = atRisk[0] ?? (first ? vitalReading(vitals, first.readings[0]?.key ?? "") : undefined);
+      const worstReading =
+        atRisk[0] ?? (first ? vitalReading(vitals, first.readings[0]?.key ?? "") : undefined);
       const rec = read.recommendations[0];
       if (rec) {
         nextMove = {
@@ -583,7 +578,6 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
     ...roadmapResolutions,
   };
 
-
   /*
    * What we learned last time, brought to bear on this answer.
    *
@@ -622,7 +616,8 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
    * answer. The suggestion still stands; the person simply gets to see what
    * happened the last few times before authorising it again.
    */
-  const standing = lessons.find((record) => record.basis === "decided") ?? lessons.find((record) => record.isRule);
+  const standing =
+    lessons.find((record) => record.basis === "decided") ?? lessons.find((record) => record.isRule);
   if (standing) {
     answer = sentence([
       answer,
@@ -665,9 +660,6 @@ export function answerQuestion(input: ConductorInput): ConductorAnswer {
   if (leadPattern && conciseLabel(leadPattern) !== null) {
     answer = sentence([answer, describeMatch(leadPattern)]);
   }
-
-
-
 
   return {
     id: `conductor:${topic}:${snapshot.now}`,

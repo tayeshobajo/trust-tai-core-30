@@ -41,12 +41,7 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export function signalTypeLabel(type: string): string {
-  return (
-    TYPE_LABEL[type] ??
-    type
-      .replace(/_/g, " ")
-      .replace(/^\w/, (c) => c.toUpperCase())
-  );
+  return TYPE_LABEL[type] ?? type.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -63,6 +58,17 @@ function strengthOf(hasSource: boolean, age: number | null): SignalStrength {
   if (hasSource) return "medium";
   if (age !== null && age <= 90) return "medium";
   return "weak";
+}
+
+/**
+ * The sentence a signal is actually making, without its lead-in label. Two
+ * signals that say the same thing under different labels are one fact.
+ */
+function statementKey(text: string): string {
+  const flat = text.trim().replace(/\s+/g, " ");
+  const colon = flat.indexOf(": ");
+  const body = colon > 0 && colon <= 60 ? flat.slice(colon + 2) : flat;
+  return body.toLowerCase().replace(/[.\s]+$/, "");
 }
 
 const STRENGTH_RANK: Record<SignalStrength, number> = { strong: 3, medium: 2, weak: 1 };
@@ -105,7 +111,7 @@ export function rankScoutSignals(
     });
   }
 
-  return ranked.sort((a, b) => {
+  const sorted = ranked.sort((a, b) => {
     const byStrength = STRENGTH_RANK[b.strength] - STRENGTH_RANK[a.strength];
     if (byStrength !== 0) return byStrength;
     const ageA = ageDays(a.observedAt, now) ?? Number.MAX_SAFE_INTEGER;
@@ -113,6 +119,18 @@ export function rankScoutSignals(
     if (ageA !== ageB) return ageA - ageB;
     if (a.confidence !== b.confidence) return a.confidence === "observed" ? -1 : 1;
     return a.title.localeCompare(b.title);
+  });
+
+  // The same sentence often arrives several times: as a buying signal, as a
+  // raw observation, and again under a different lead-in ("Point A, as they
+  // describe it: ..." / "What is costing them: ..."). Compare the sentence
+  // itself, keep the strongest reading, drop the echoes.
+  const seen = new Set<string>();
+  return sorted.filter((signal) => {
+    const key = statementKey(signal.explanation);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 }
 

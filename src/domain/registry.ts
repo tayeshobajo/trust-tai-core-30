@@ -43,6 +43,16 @@ export type CapabilityTag =
   | "analytics"
   | "intelligence";
 
+/**
+ * How a room is reached.
+ * - `primary` · sits in the ordinary left navigation.
+ * - `deep_link` · a real room with its own route, permissions and event
+ *   ownership, reached from the surfaces that compose it (the Clients shell,
+ *   Home, Approvals) rather than from the rail. Leaving the rail is a
+ *   navigation decision, never a demotion of ownership.
+ */
+export type AppNavigation = "primary" | "deep_link";
+
 export interface AppRegistration {
   id: ID;
   name: string;
@@ -61,8 +71,29 @@ export interface AppRegistration {
   /** Lucide icon name, resolved by the navigation component. */
   icon: string;
   capabilities: CapabilityTag[];
+  /** Absent means `primary`. */
+  navigation?: AppNavigation;
 }
 
+/**
+ * The ordinary top-level navigation, in the order the charter fixes it
+ * (docs/production-plan.md, "Navigation target"). Settings is secondary and
+ * lives in the account menu, not here. Roadmap and Projects are deliberately
+ * absent: they remain registered, routed and deep-linkable.
+ */
+export const PRIMARY_NAVIGATION: readonly ID[] = [
+  "home",
+  "clients",
+  "scout",
+  "comms",
+  "website",
+  "ops",
+  "studio",
+  "pulse",
+  "conductor",
+  "approvals",
+  "steward",
+];
 
 export const APP_REGISTRY: AppRegistration[] = [
   {
@@ -75,6 +106,18 @@ export const APP_REGISTRY: AppRegistration[] = [
     route: "/",
     icon: "Compass",
     capabilities: ["decisions", "intelligence"],
+  },
+  {
+    id: "clients",
+    layer: "business",
+    name: "Clients",
+    slug: "clients",
+    description:
+      "The book of companies Trust Tai is responsible for: tier, value, review and delivery, in one place.",
+    status: "live",
+    route: "/modules/clients",
+    icon: "Building2",
+    capabilities: ["clients", "contacts"],
   },
   {
     id: "scout",
@@ -108,6 +151,9 @@ export const APP_REGISTRY: AppRegistration[] = [
     route: "/modules/roadmap",
     icon: "Route",
     capabilities: ["projects", "decisions"],
+    // Reached through the client it belongs to. Still owns its state, its
+    // permissions, its routes and its events.
+    navigation: "deep_link",
   },
   {
     id: "projects",
@@ -119,6 +165,7 @@ export const APP_REGISTRY: AppRegistration[] = [
     route: "/modules/projects",
     icon: "SquareStack",
     capabilities: ["projects", "tasks"],
+    navigation: "deep_link",
   },
   {
     id: "steward",
@@ -140,8 +187,7 @@ export const APP_REGISTRY: AppRegistration[] = [
     layer: "business",
     name: "Website",
     slug: "website",
-    description:
-      "Attention and intake on TrustTai.com, and what reached Scout because of it.",
+    description: "Attention and intake on TrustTai.com, and what reached Scout because of it.",
     status: "live",
     route: "/modules/website",
     icon: "Globe",
@@ -164,12 +210,14 @@ export const APP_REGISTRY: AppRegistration[] = [
     layer: "business",
     name: "Studio",
     slug: "studio",
-    description: "Brand, content, and asset production.",
-    status: "mapped",
+    description:
+      "The content room. One command becomes an editorial package, and one approval decides whether any of it reaches the website.",
+    status: "live",
     route: "/modules/studio",
     icon: "PenTool",
     capabilities: ["content"],
   },
+
   {
     id: "pulse",
     layer: "intelligence",
@@ -193,6 +241,18 @@ export const APP_REGISTRY: AppRegistration[] = [
     icon: "Compass",
     capabilities: ["intelligence", "analytics"],
   },
+  {
+    id: "approvals",
+    layer: "intelligence",
+    name: "Approvals",
+    slug: "approvals",
+    description:
+      "One place to decide. Agents prepare the work, you approve it, and the owning room executes afterwards.",
+    status: "live",
+    route: "/modules/approvals",
+    icon: "CheckCheck",
+    capabilities: ["decisions", "intelligence"],
+  },
 ];
 
 export function getApp(slug: string): AppRegistration | undefined {
@@ -206,4 +266,25 @@ export function businessApps(): AppRegistration[] {
 
 export function isBusinessApp(appId: string): boolean {
   return APP_REGISTRY.some((app) => app.id === appId && app.layer === "business");
+}
+
+/**
+ * The rooms that belong in the ordinary left navigation, in charter order,
+ * narrowed to the ids this person may actually see. A room that is registered
+ * as `deep_link` never appears here, whatever the person's access.
+ */
+export function primaryNavigation(allowed?: readonly string[]): AppRegistration[] {
+  const rooms: AppRegistration[] = [];
+  for (const id of PRIMARY_NAVIGATION) {
+    const app = APP_REGISTRY.find((candidate) => candidate.id === id);
+    if (!app || app.navigation === "deep_link") continue;
+    if (allowed && !allowed.includes(app.id)) continue;
+    rooms.push(app);
+  }
+  return rooms;
+}
+
+/** Rooms reached only by deep link. Real rooms, just not on the rail. */
+export function deepLinkedApps(): AppRegistration[] {
+  return APP_REGISTRY.filter((app) => app.navigation === "deep_link");
 }

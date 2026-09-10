@@ -4,7 +4,7 @@
  * A list of conversations, not a table of records. Each row answers three
  * questions in two seconds: who this is, what kind of relationship it is,
  * and whether anything is needed. Health marks stay distinct from
- * classification marks — kind is never condition.
+ * classification marks, kind is never condition.
  */
 
 import { HEALTH_LABEL, type ConversationHealthStatus } from "@/domain/comms-health";
@@ -44,8 +44,10 @@ const HEALTH_FILTERS: ConversationHealthStatus[] = [
 
 /** View-aware words for an empty room. */
 const EMPTY_COPY: Record<InboxTab, string> = {
-  clients: "No established relationships here yet. When someone graduates from Nurture, they arrive here.",
-  nurture: "No one is being developed right now. A Scout handoff or an approved outreach lands here.",
+  clients:
+    "No established relationships here yet. When someone graduates from Nurture, they arrive here.",
+  nurture:
+    "No one is being developed right now. A Scout handoff or an approved outreach lands here.",
   needs_you: "Nothing needs your judgment right now.",
   all: "No conversations yet. Add the last person you met and Comms carries it from there.",
 };
@@ -62,13 +64,10 @@ export function ConversationListItem({
   const { relationship, health } = entry;
   const segment = relationshipSegment(relationship);
   // Developing relationships carry their human-facing state. One record, one
-  // memory — this is a read of the same lifecycle, not a second pipeline.
-  const development =
-    segment === "nurture" ? developmentStage(relationship, []) : null;
+  // memory, this is a read of the same lifecycle, not a second pipeline.
+  const development = segment === "nurture" ? developmentStage(relationship, []) : null;
   const snippet =
-    relationship.nextAction?.trim() ||
-    health.reasons[0] ||
-    "No messages on this conversation yet.";
+    relationship.nextAction?.trim() || health.reasons[0] || "No messages on this conversation yet.";
 
   return (
     <li>
@@ -122,7 +121,9 @@ export function ConversationListItem({
             </span>
           </span>
           {/* Why this row matters right now. */}
-          <span className="mt-1 block truncate text-[12px] text-muted-foreground/90">{snippet}</span>
+          <span className="mt-1 block truncate text-[12px] text-muted-foreground/90">
+            {snippet}
+          </span>
         </span>
       </button>
     </li>
@@ -180,7 +181,7 @@ export function CommsInbox({
   empty,
 }: {
   view: InboxView;
-  /** The current page of the view — the only rows rendered below. */
+  /** The current page of the view, the only rows rendered below. */
   page: PageView<InboxEntry>;
   onPage: (page: number) => void;
   tab: InboxTab;
@@ -230,9 +231,7 @@ export function CommsInbox({
               )}
             >
               {TAB_LABEL[entry]}
-              <span className="ml-1 font-mono text-[10px] opacity-70">
-                {view.tabCounts[entry]}
-              </span>
+              <span className="ml-1 font-mono text-[10px] opacity-70">{view.tabCounts[entry]}</span>
             </button>
           ))}
         </nav>
@@ -278,7 +277,11 @@ export function CommsInbox({
       <div className="min-h-0 flex-1 overflow-y-auto">
         {page.rows.length === 0 ? (
           <p className="p-4 text-[13px] text-muted-foreground">
-            {empty ? EMPTY_COPY.all : filtered ? "Nothing matches this search or filter." : EMPTY_COPY[tab]}
+            {empty
+              ? EMPTY_COPY.all
+              : filtered
+                ? "Nothing matches this search or filter."
+                : EMPTY_COPY[tab]}
           </p>
         ) : (
           <>

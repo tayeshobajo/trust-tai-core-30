@@ -33,7 +33,7 @@ export interface HandoffContact {
   /** True only when the human identity gate confirmed this LinkedIn route. */
   linkedinConfirmed?: boolean;
   /**
-   * True for a verified email OR a confirmed LinkedIn route — canonical
+   * True for a verified email OR a confirmed LinkedIn route, canonical
    * reachability per the locked doctrine (brief §3). Never inferred.
    */
   reachable: boolean;

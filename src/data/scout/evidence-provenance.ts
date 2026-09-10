@@ -85,7 +85,9 @@ export function auditForSignal(signal: ScoutSignal): EvidenceAudit {
     kind,
     observedAt: signal.provenance.observedAt || null,
     snippet: clip(signal.statement),
-    confidence: fromIntake ? "unknown" : (signal.provenance.confidence ?? "moderate") as ConfidenceLevel,
+    confidence: fromIntake
+      ? "unknown"
+      : ((signal.provenance.confidence ?? "moderate") as ConfidenceLevel),
     actor: actorOf(signal),
   };
 }

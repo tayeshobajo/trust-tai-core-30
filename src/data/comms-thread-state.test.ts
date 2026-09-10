@@ -13,7 +13,9 @@ import {
 
 const OURS = ["tai@trust-tai.com"];
 
-function message(part: Partial<NormalizedMessage> & { providerMessageId: string }): NormalizedMessage {
+function message(
+  part: Partial<NormalizedMessage> & { providerMessageId: string },
+): NormalizedMessage {
   return {
     providerThreadId: "t1",
     direction: "inbound",

@@ -65,6 +65,15 @@ interface AppPermissions {
 
 const APP_PERMISSIONS: Record<string, AppPermissions> = {
   home: { read: "workspace.read" },
+  /*
+   * Clients has no permission of its own yet. Reading the book is workspace
+   * membership; writing a client record borrows `roadmap.write` because the
+   * client record is the head of the prospect -> roadmap lineage and the same
+   * people carry both. This is a deliberate, temporary reuse, not a rule:
+   * a canonical `clients.write` replaces it once the permission list grows.
+   * Row-level security on `clients` governs the actual write either way.
+   */
+  clients: { read: "workspace.read", write: "roadmap.write" },
   scout: { read: "scout.read", write: "scout.write" },
   comms: { read: "comms.read", write: "comms.write" },
   roadmap: { read: "roadmap.read", write: "roadmap.write" },
@@ -75,6 +84,7 @@ const APP_PERMISSIONS: Record<string, AppPermissions> = {
   studio: { read: "workspace.read" },
   pulse: { read: "intelligence.read" },
   conductor: { read: "intelligence.read", write: "conductor.approve" },
+  approvals: { read: "intelligence.read", write: "conductor.approve" },
 };
 
 export function knownApp(appId: string): boolean {
@@ -155,8 +165,7 @@ export function resolveAppAccess(appId: string, input: AppAccessInput): AppAcces
       : normalizeAccessLevel(input.override);
   if (requested === "hidden") return DENIED(appId, "Hidden for this person.");
 
-  const level: AppAccessLevel =
-    LEVEL_RANK[requested] <= LEVEL_RANK[ceiling] ? requested : ceiling;
+  const level: AppAccessLevel = LEVEL_RANK[requested] <= LEVEL_RANK[ceiling] ? requested : ceiling;
 
   return {
     appId,

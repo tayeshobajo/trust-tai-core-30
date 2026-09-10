@@ -40,7 +40,7 @@ function DiagnosticsSettings() {
 
   const data = runtime.data;
   const pending = runtime.isPending;
-  const unknown = "—";
+  const unknown = ", ";
 
   return (
     <div className="tt-surface p-6">
@@ -68,7 +68,9 @@ function DiagnosticsSettings() {
         <Row label="Build mode" value={build.mode} />
         <Row
           label="Supabase"
-          value={pending ? "…" : data ? (data.supabase.reachable ? "Reachable" : "Unreachable") : unknown}
+          value={
+            pending ? "…" : data ? (data.supabase.reachable ? "Reachable" : "Unreachable") : unknown
+          }
           {...(data?.supabase.detail ? { note: data.supabase.detail } : {})}
         />
         <Row

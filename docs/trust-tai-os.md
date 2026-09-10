@@ -1,4 +1,4 @@
-# Trust Tai OS — architecture contract for the live suite
+# Trust Tai OS, architecture contract for the live suite
 
 Trust Tai OS is the shared shell and shared contract that every internal Trust Tai app
 inherits. It is not a business app. Its job is to make the apps interoperable by default.
@@ -23,13 +23,13 @@ active `organization_memberships` row is verified (`src/components/tt/workspace-
 
 Everything hangs off an `Organization`. Every shared entity carries `organizationId` in its
 envelope (`BaseEntity`). There is no per-app tenancy. `src/domain/access.ts` gives every app
-one typed way to ask "may this person do this here?" — a typed mirror of RLS, never a
+one typed way to ask "may this person do this here?", a typed mirror of RLS, never a
 replacement for it.
 
 ## 3. Shared core entities (`src/domain/entities.ts`)
 
 `Organization`, `User`, `Client`, `Contact`, `Prospect`, `Project`, `Website`,
-`Conversation`, `Task`, `Decision` — plus `EntityRef` for cross-app pointers and
+`Conversation`, `Task`, `Decision`, plus `EntityRef` for cross-app pointers and
 `LifecycleStatus` for the canonical states.
 
 **Rule: apps share data, they do not duplicate entities.** If Comms needs a client, it reads
@@ -42,10 +42,10 @@ Each app is registered once with `id, name, slug, description, status, layer, ro
 capabilities`. Navigation, the suite list on Home, and entitlement checks read this single
 list. `layer` records the architectural position:
 
-- **core** — Home: the shell, identity, shared entities.
-- **business** — Scout, Comms, Roadmap, Projects, Ops, Studio: they own domain state.
-- **stewardship** — Steward: interpretation, memory, judgment, recommendation, routing.
-- **intelligence** — Pulse: the suite-wide visibility and readout surface.
+- **core**. Home: the shell, identity, shared entities.
+- **business**. Scout, Comms, Roadmap, Projects, Ops, Studio: they own domain state.
+- **stewardship**. Steward: interpretation, memory, judgment, recommendation, routing.
+- **intelligence**. Pulse: the suite-wide visibility and readout surface.
 
 Ownership boundaries: Scout owns prospects and fit evidence; Comms owns relationships,
 threads and promises; Roadmap owns strategy, milestones and sequencing; Projects owns
@@ -56,7 +56,7 @@ the shell); Studio owns produced content.
 
 Every app writes the same event: `entity.action` (e.g. `project.blocked`), a subject
 `EntityRef`, optional related refs, a plain-language summary, and `Provenance` (which app,
-which actor — user / system / intelligence — when observed, and whether the value was
+which actor, user / system / intelligence, when observed, and whether the value was
 observed or inferred).
 
 One stream, `public.activities`, written through `emitSuiteEvent`. Only the room that owns
@@ -79,7 +79,7 @@ It owns no business entity and never silently executes. Authorisation is role-bo
 Steward is the stewardship layer of that same intelligence: interpretation of conversations,
 person-centred memory and beliefs, judgment about what deserves attention, and routing. It
 keeps its UI at `/modules/steward`, but it does not own conversations, tasks, decisions,
-project risk or client risk — those stay with their owning modules and core entities.
+project risk or client risk, those stay with their owning modules and core entities.
 
 ## 7. Persistence boundary (`src/data/`)
 

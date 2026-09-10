@@ -60,7 +60,6 @@ export function InboundSourceCard({
               >
                 Open the original conversation
               </Link>
-
             </li>
           );
         })}

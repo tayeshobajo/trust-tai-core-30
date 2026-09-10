@@ -39,7 +39,10 @@ export function AskSurface({
   }
 
   return (
-    <section aria-label="Ask the business" className="tt-rise rounded-2xl border border-border bg-card p-5 sm:p-6">
+    <section
+      aria-label="Ask the business"
+      className="tt-rise rounded-2xl border border-border bg-card p-5 sm:p-6"
+    >
       <form
         className="space-y-4"
         onSubmit={(event) => {

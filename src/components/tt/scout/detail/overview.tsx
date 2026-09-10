@@ -17,14 +17,7 @@ import type { SimilarCompany } from "@/data/scout/similar-companies";
 import type { RankedSignal } from "@/data/scout/top-signals";
 import type { ActivityEvent } from "@/domain/activity";
 
-import {
-  DetailSection,
-  Empty,
-  FactorIcon,
-  SectionLink,
-  StrengthPill,
-  relativeTime,
-} from "./parts";
+import { DetailSection, Empty, FactorIcon, SectionLink, StrengthPill, relativeTime } from "./parts";
 
 function MatchDial({ value }: { value: number | null }) {
   const pct = value ?? 0;
@@ -57,11 +50,7 @@ export function ScoutSummaryCard({
   onViewRationale: () => void;
 }) {
   return (
-    <DetailSection
-      title="Scout summary"
-      emphasis="lead"
-      meta={`Confidence: ${summary.confidence}`}
-    >
+    <DetailSection title="Scout summary" emphasis="lead" meta={`Confidence: ${summary.confidence}`}>
       <div className="grid gap-5 sm:grid-cols-[104px_minmax(0,1fr)] sm:items-start">
         <MatchDial value={summary.icpMatch} />
         <div className="min-w-0">
@@ -70,7 +59,7 @@ export function ScoutSummaryCard({
           <ul className="mt-4 space-y-2">
             {summary.topReasons.length === 0 ? (
               <li className="text-[13px] text-muted-foreground">
-                No reasons yet, this company has not been researched.
+                No reasons yet. This company has not been researched.
               </li>
             ) : (
               summary.topReasons.slice(0, 3).map((reason) => (
@@ -87,7 +76,6 @@ export function ScoutSummaryCard({
           </div>
         </div>
       </div>
-
     </DetailSection>
   );
 }
@@ -105,7 +93,11 @@ export function KeySignalsCard({
     <DetailSection
       title="Key signals"
       meta={total > 0 ? `${total} on record` : undefined}
-      action={total > signals.length ? <SectionLink onClick={onViewAll}>View all signals</SectionLink> : undefined}
+      action={
+        total > signals.length ? (
+          <SectionLink onClick={onViewAll}>View all signals</SectionLink>
+        ) : undefined
+      }
     >
       {signals.length === 0 ? (
         <Empty>Scout has not found strong signals for this company yet.</Empty>
@@ -179,7 +171,11 @@ export function RecentActivityCard({
     <DetailSection
       title="Recent Scout activity"
       emphasis="quiet"
-      action={events.length > 0 ? <SectionLink onClick={onViewAll}>View all activity</SectionLink> : undefined}
+      action={
+        events.length > 0 ? (
+          <SectionLink onClick={onViewAll}>View all activity</SectionLink>
+        ) : undefined
+      }
     >
       {events.length === 0 ? (
         <Empty>No recent Scout activity.</Empty>

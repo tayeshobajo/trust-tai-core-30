@@ -68,13 +68,7 @@ export function initialsOf(name: string): string {
 /* ------------------------------------------------------------------ state */
 
 export type StewardTaskState =
-  | "open"
-  | "in_progress"
-  | "waiting"
-  | "blocked"
-  | "in_review"
-  | "needs_approval"
-  | "complete";
+  "open" | "in_progress" | "waiting" | "blocked" | "in_review" | "needs_approval" | "complete";
 
 export const STEWARD_STATE_LABEL: Record<StewardTaskState, string> = {
   open: "Open",
@@ -157,14 +151,7 @@ export interface StewardTaskStateRecord {
 /* ----------------------------------------------------------------- agents */
 
 export type AgentLifecycle =
-  | "idle"
-  | "assigned"
-  | "queued"
-  | "working"
-  | "waiting"
-  | "needs_approval"
-  | "failed"
-  | "unknown";
+  "idle" | "assigned" | "queued" | "working" | "waiting" | "needs_approval" | "failed" | "unknown";
 
 export const AGENT_LIFECYCLE_LABEL: Record<AgentLifecycle, string> = {
   idle: "Idle",

@@ -8,15 +8,7 @@
 
 import type { ActivityEvent, ActivityQuery, ActivityStream } from "@/domain/activity";
 import { createScoutSource } from "./scout-source";
-import type {
-  Client,
-  Decision,
-  ID,
-  Organization,
-  Project,
-  Task,
-  User,
-} from "@/domain/entities";
+import type { Client, Decision, ID, Organization, Project, Task, User } from "@/domain/entities";
 import type { ContextRequest, ContextResult } from "@/domain/intelligence";
 import type { ReadRepository, TrustTaiDataSource } from "./repositories";
 
@@ -39,8 +31,20 @@ const users: User[] = [
 ];
 
 const clients: Client[] = [
-  { ...base, id: "cli_northbank", name: "Northbank Legal", status: "live", stewardUserId: "usr_steward" },
-  { ...base, id: "cli_harrow", name: "Harrow & Co", status: "in_build", stewardUserId: "usr_steward" },
+  {
+    ...base,
+    id: "cli_northbank",
+    name: "Northbank Legal",
+    status: "live",
+    stewardUserId: "usr_steward",
+  },
+  {
+    ...base,
+    id: "cli_harrow",
+    name: "Harrow & Co",
+    status: "in_build",
+    stewardUserId: "usr_steward",
+  },
 ];
 
 const projects: Project[] = [
@@ -192,7 +196,11 @@ const activityStream: ActivityStream = {
 const scout = createScoutSource(activityStream);
 
 export const memorySource: TrustTaiDataSource = {
-  organizations: { async get(id) { return id === ORG_ID ? organization : null; } },
+  organizations: {
+    async get(id) {
+      return id === ORG_ID ? organization : null;
+    },
+  },
   users: readOnly(users),
   clients: readOnly(clients),
   contacts: readOnly([]),

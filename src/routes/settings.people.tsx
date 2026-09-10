@@ -4,11 +4,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
-import { browserOrigin, signInUrlFor } from "@/lib/auth-origin";
+import { brandLogoUrl, browserOrigin, signInUrlFor } from "@/lib/auth-origin";
 import { inviteEmailBody } from "@/lib/invite-email-template";
 
+import { SectionHeading, TonePill, TTButton, TTField, TTInput } from "@/components/tt/primitives";
+import {
+  INVITE_DELIVERY_ACTION,
+  INVITE_DELIVERY_LABEL,
+  INVITE_DELIVERY_MEANING,
+  INVITE_DELIVERY_TONE,
+  deliveryStateOf,
+  latestDeliveryByInvitation,
+  type InviteDelivery,
+} from "@/domain/invite-delivery";
 
-import { SectionHeading, TTButton, TTField, TTInput } from "@/components/tt/primitives";
 import {
   Health,
   InfoTip,
@@ -58,7 +67,6 @@ const ASSIGNABLE_ROLES = MEMBERSHIP_ROLES as readonly WorkspaceRole[];
 export const Route = createFileRoute("/settings/people")({
   component: PeopleSettings,
 });
-
 
 function whenText(value: string | null): string {
   if (!value) return "Never signed in";
@@ -133,7 +141,6 @@ function PeopleSettings() {
     );
   };
 
-
   const members = useQuery({
     queryKey: ["settings", "members", identity.organizationId],
     queryFn: () => listMembers(identity.organizationId),
@@ -147,18 +154,15 @@ function PeopleSettings() {
     queryFn: () => listInvitations(identity.organizationId),
   });
 
-  const pendingInvitations = useMemo(
-    () => {
-      /* An invited address that is already a real member is not a live invite. */
-      const memberEmails = new Set(
-        (members.data ?? []).map((member) => member.email.toLowerCase()).filter(Boolean),
-      );
-      return (invitations.data?.value ?? []).filter(
-        (row) => row.status === "pending" && !memberEmails.has(row.email.toLowerCase()),
-      );
-    },
-    [invitations.data?.value, members.data],
-  );
+  const pendingInvitations = useMemo(() => {
+    /* An invited address that is already a real member is not a live invite. */
+    const memberEmails = new Set(
+      (members.data ?? []).map((member) => member.email.toLowerCase()).filter(Boolean),
+    );
+    return (invitations.data?.value ?? []).filter(
+      (row) => row.status === "pending" && !memberEmails.has(row.email.toLowerCase()),
+    );
+  }, [invitations.data?.value, members.data]);
 
   const orgEnabled = apps.data?.value ?? {};
   const refresh = () => {
@@ -281,9 +285,7 @@ function PeopleSettings() {
 
   const toggleChecked = (userId: string) =>
     setCheckedIds((previous) =>
-      previous.includes(userId)
-        ? previous.filter((id) => id !== userId)
-        : [...previous, userId],
+      previous.includes(userId) ? previous.filter((id) => id !== userId) : [...previous, userId],
     );
 
   const togglePage = () =>
@@ -294,7 +296,9 @@ function PeopleSettings() {
         : Array.from(new Set([...previous, ...ids]));
     });
 
-  const runBulk = async (action: { kind: "role" } | { kind: "status"; status: "active" | "deactivated" }) => {
+  const runBulk = async (
+    action: { kind: "role" } | { kind: "status"; status: "active" | "deactivated" },
+  ) => {
     if (checkedMembers.length === 0) return;
     setBulkBusy(true);
     setBulkNote(null);
@@ -335,13 +339,56 @@ function PeopleSettings() {
   };
 
   const selected = (members.data ?? []).find((member) => member.userId === selectedId) ?? null;
-  const [deliveryById, setDeliveryById] = useState<Record<string, { delivered: boolean; because: string }>>({});
+  const [deliveryById, setDeliveryById] = useState<
+    Record<string, { delivered: boolean; because: string }>
+  >({});
   const invitationAudit = useQuery({
     queryKey: ["settings", "invitation-audit", identity.organizationId],
     queryFn: () => listInvitationAudit(identity.organizationId),
     enabled: identity.canManage,
   });
 
+  /* What the record says happened to each invitation email, before this visit. */
+  const recordedDelivery = useMemo(
+    () => latestDeliveryByInvitation(invitationAudit.data?.value ?? []),
+    [invitationAudit.data?.value],
+  );
+  const deliveryFor = (invitationId: string): InviteDelivery => {
+    const live = deliveryById[invitationId];
+    if (live) {
+      return { state: deliveryStateOf(live), because: live.because, at: "" };
+    }
+    return recordedDelivery[invitationId] ?? { state: "prepared", because: null, at: "" };
+  };
+
+  /**
+   * Send the email for an invitation that already exists. The same invitation
+   * identity is reused, so no second invitation or membership is created, and
+   * nothing retries on its own: this only runs when a person asks for it.
+   */
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  const retryDelivery = async (invitationId: string, email: string) => {
+    if (retryingId) return;
+    setRetryingId(invitationId);
+    try {
+      await resendInvitation({
+        organizationId: identity.organizationId,
+        invitationId,
+        email,
+        actorUserId: identity.userId,
+      });
+      const result = await deliverInvitationEmail({
+        organizationId: identity.organizationId,
+        invitationId,
+        email,
+        actorUserId: identity.userId,
+      });
+      setDeliveryById((previous) => ({ ...previous, [invitationId]: result }));
+    } finally {
+      setRetryingId(null);
+      refresh();
+    }
+  };
 
   return (
     <>
@@ -353,7 +400,6 @@ function PeopleSettings() {
       />
 
       <div className="tt-surface p-6">
-
         <SectionHeading
           eyebrow="Workspace"
           title="People &amp; access"
@@ -396,9 +442,7 @@ function PeopleSettings() {
 
         {identity.canManage && checkedMembers.length > 0 ? (
           <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-royal/30 bg-royal/5 px-4 py-3">
-            <span className="text-sm text-foreground">
-              {checkedMembers.length} selected
-            </span>
+            <span className="text-sm text-foreground">{checkedMembers.length} selected</span>
             <TTSelect
               aria-label="Role to apply to selected people"
               className="h-9 w-40"
@@ -524,10 +568,7 @@ function PeopleSettings() {
                         name={member.name}
                         email={member.email}
                         avatarUrl={member.avatarUrl}
-                        supporting={[
-                          member.email || "No email on file",
-                          member.jobTitle ?? "",
-                        ]
+                        supporting={[member.email || "No email on file", member.jobTitle ?? ""]
                           .filter(Boolean)
                           .join(" · ")}
                       />
@@ -631,13 +672,9 @@ function PeopleSettings() {
           </div>
         ) : null}
 
-
         {roleChange.error || accessChange.error || statusChange.error ? (
           <p className="mt-4 text-sm text-destructive" role="alert">
-            {
-              ((roleChange.error ?? accessChange.error ?? statusChange.error) as Error)
-                .message
-            }
+            {((roleChange.error ?? accessChange.error ?? statusChange.error) as Error).message}
           </p>
         ) : null}
       </div>
@@ -669,7 +706,6 @@ function PeopleSettings() {
             setDeliveryById((previous) => ({ ...previous, [invitationId]: result }))
           }
         />
-
       ) : null}
 
       <div className="tt-surface p-6">
@@ -720,9 +756,7 @@ function PeopleSettings() {
                 })();
               }}
             >
-              {resendAllBusy
-                ? "Sending…"
-                : `Send all ${pendingInvitations.length} again`}
+              {resendAllBusy ? "Sending…" : `Send all ${pendingInvitations.length} again`}
             </button>
           ) : null}
         </div>
@@ -738,49 +772,70 @@ function PeopleSettings() {
           <p className="text-sm text-muted-foreground">No invitations are waiting.</p>
         ) : (
           <div className="divide-y divide-border rounded-xl border border-border">
-            {pendingInvitations.map((invitation) => (
+            {pendingInvitations.map((invitation) => {
+              const delivery = deliveryFor(invitation.id);
+              const blocked =
+                delivery.state === "sender_unverified" ||
+                delivery.state === "refused" ||
+                delivery.state === "not_configured";
+              const action = INVITE_DELIVERY_ACTION[delivery.state];
+              const busy = retryingId === invitation.id;
+              return (
                 <div
                   key={invitation.id}
-                  className="flex flex-wrap items-center gap-3 px-4 py-3"
+                  className={cn(
+                    "flex flex-wrap items-start gap-3 px-4 py-3 transition-colors",
+                    delivery.state === "sender_unverified" ? "bg-warning/5" : null,
+                  )}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm text-foreground">{invitation.email}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm text-foreground">{invitation.email}</p>
+                      <TonePill tone={INVITE_DELIVERY_TONE[delivery.state]} dot>
+                        {INVITE_DELIVERY_LABEL[delivery.state]}
+                      </TonePill>
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {ROLE_LABEL[invitation.role]} · invited {whenText(invitation.createdAt)}
                     </p>
+                    <p
+                      className={cn(
+                        "mt-1 text-xs",
+                        delivery.state === "refused"
+                          ? "text-destructive"
+                          : blocked
+                            ? "text-warning"
+                            : "text-muted-foreground",
+                      )}
+                      role={blocked ? "status" : undefined}
+                    >
+                      {INVITE_DELIVERY_MEANING[delivery.state]}
+                    </p>
+                    {action ? (
+                      <p className="mt-1 text-xs font-medium text-foreground">{action}</p>
+                    ) : null}
+                    {blocked && delivery.because ? (
+                      <p className="mt-1 text-xs text-muted-foreground">{delivery.because}</p>
+                    ) : null}
                   </div>
                   {identity.canManage ? (
-                    <>
+                    <div className="flex shrink-0 items-center gap-3">
                       <button
                         type="button"
-                        className="text-[13px] text-royal hover:underline"
-                        onClick={() => {
-                          void (async () => {
-                            await resendInvitation({
-                              organizationId: identity.organizationId,
-                              invitationId: invitation.id,
-                              email: invitation.email,
-                              actorUserId: identity.userId,
-                            });
-                            const result = await deliverInvitationEmail({
-                              organizationId: identity.organizationId,
-                              invitationId: invitation.id,
-                              email: invitation.email,
-                              actorUserId: identity.userId,
-                            });
-                            setDeliveryById((previous) => ({
-                              ...previous,
-                              [invitation.id]: result,
-                            }));
-                            refresh();
-                          })();
-                        }}
+                        disabled={busy}
+                        className={cn(
+                          "rounded-lg border px-3 py-2 text-[13px] transition-colors disabled:opacity-60",
+                          blocked
+                            ? "border-warning/40 bg-warning/10 text-warning hover:bg-warning/20"
+                            : "border-border text-royal hover:bg-secondary",
+                        )}
+                        onClick={() => void retryDelivery(invitation.id, invitation.email)}
                       >
-                        Send again
+                        {busy ? "Sending…" : blocked ? "Try sending again" : "Send again"}
                       </button>
                       <button
                         type="button"
-                        className="text-[13px] text-muted-foreground hover:text-destructive hover:underline"
+                        className="text-[13px] text-muted-foreground transition-colors hover:text-destructive hover:underline"
                         onClick={() =>
                           void cancelInvitation({
                             organizationId: identity.organizationId,
@@ -792,30 +847,13 @@ function PeopleSettings() {
                       >
                         Cancel
                       </button>
-                    </>
+                    </div>
                   ) : null}
                 </div>
-              ))}
+              );
+            })}
           </div>
         )}
-        {pendingInvitations.map((invitation) => {
-          const status = deliveryById[invitation.id];
-          if (!status) return null;
-          return (
-            <p
-              key={invitation.id}
-              className={cn(
-                "mt-3 text-xs",
-                status.delivered ? "text-emerald-700" : "text-amber-700",
-              )}
-              role="status"
-            >
-              {status.delivered
-                ? `Emailed ${invitation.email}: ${status.because}`
-                : `Could not email ${invitation.email}: ${status.because}`}
-            </p>
-          );
-        })}
       </div>
 
       {identity.canManage ? (
@@ -920,7 +958,6 @@ function MemberAccessPanel({
   const [resetOpen, setResetOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
   return (
-
     <div className="tt-surface p-6">
       {canManage ? (
         <div className="mb-6">
@@ -937,7 +974,6 @@ function MemberAccessPanel({
         title={`What ${member.name} can reach`}
         description="Visibility and authority are separate. Hidden rooms never appear in their navigation."
       />
-
 
       <div className="space-y-2">
         {APP_REGISTRY.map((app) => {
@@ -1043,7 +1079,6 @@ function MemberAccessPanel({
       ) : null}
     </div>
   );
-
 }
 
 /**
@@ -1051,7 +1086,7 @@ function MemberAccessPanel({
  *
  * Two honest outcomes, said in the words that matter to the person deciding:
  * end their access and keep the account, or delete the sign-in account so the
- * same address can be set up again. Neither deletes their work — contacts,
+ * same address can be set up again. Neither deletes their work, contacts,
  * prospects, conversations, decisions and history all stay, and who they were
  * is written into the workspace history before anything is removed.
  */
@@ -1077,15 +1112,12 @@ function RemoveMemberDialog({
       if (!outcome.ok) throw new Error(outcome.because ?? "That person could not be removed.");
     },
     onSuccess: () => {
-      toast.success(
-        mode === "delete_account" ? "Account deleted" : "Access removed",
-        {
-          description:
-            mode === "delete_account"
-              ? `${address} can be created again from scratch. Their records were kept.`
-              : `${member.name} no longer has access. Their account and records were kept.`,
-        },
-      );
+      toast.success(mode === "delete_account" ? "Account deleted" : "Access removed", {
+        description:
+          mode === "delete_account"
+            ? `${address} can be created again from scratch. Their records were kept.`
+            : `${member.name} no longer has access. Their account and records were kept.`,
+      });
       void queryClient.invalidateQueries({ queryKey: ["settings"] });
       void queryClient.invalidateQueries({ queryKey: ["workspace"] });
       onClose();
@@ -1103,21 +1135,19 @@ function RemoveMemberDialog({
         />
 
         <div className="mt-4 space-y-2">
-          {(
-            [
-              {
-                value: "revoke" as const,
-                title: "Remove their access",
-                detail:
-                  "They lose every room immediately. Their sign-in account and all their records stay, and you can add them back later.",
-              },
-              {
-                value: "delete_account" as const,
-                title: "Remove access and delete the sign-in account",
-                detail: `Deletes the credential for ${address} so you can create that person again from scratch. Contacts, prospects, conversations and history are kept.`,
-              },
-            ]
-          ).map((option) => (
+          {[
+            {
+              value: "revoke" as const,
+              title: "Remove their access",
+              detail:
+                "They lose every room immediately. Their sign-in account and all their records stay, and you can add them back later.",
+            },
+            {
+              value: "delete_account" as const,
+              title: "Remove access and delete the sign-in account",
+              detail: `Deletes the credential for ${address} so you can create that person again from scratch. Contacts, prospects, conversations and history are kept.`,
+            },
+          ].map((option) => (
             <button
               key={option.value}
               type="button"
@@ -1151,10 +1181,7 @@ function RemoveMemberDialog({
         ) : null}
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <TTButton
-            onClick={() => remove.mutate()}
-            disabled={!ready || remove.isPending}
-          >
+          <TTButton onClick={() => remove.mutate()} disabled={!ready || remove.isPending}>
             {remove.isPending
               ? "Removing..."
               : mode === "delete_account"
@@ -1231,19 +1258,13 @@ function MemberIdentityEditor({
         </TTField>
       </div>
       <div className="mt-3">
-        <TTButton
-          variant="secondary"
-          disabled={save.isPending}
-          onClick={() => save.mutate()}
-        >
+        <TTButton variant="secondary" disabled={save.isPending} onClick={() => save.mutate()}>
           {save.isPending ? "Saving…" : "Save name"}
         </TTButton>
       </div>
     </div>
   );
 }
-
-
 
 function InvitePanel({
   organizationId,
@@ -1288,12 +1309,11 @@ function InvitePanel({
         roleLabel: ROLE_LABEL[role],
         invitedByName,
         signInUrl: signInUrlFor(previewTo, browserOrigin()),
+        logoUrl: brandLogoUrl(browserOrigin()),
         expiresAt: null,
       }),
     [previewTo, organizationName, role, invitedByName],
   );
-
-
 
   const invite = useMutation({
     mutationFn: async () =>
@@ -1322,7 +1342,7 @@ function InvitePanel({
       setDelivered(
         failures.length === 0
           ? `${created.length} invitation${created.length === 1 ? "" : "s"} emailed.`
-          : failures[0] ?? null,
+          : (failures[0] ?? null),
       );
       onDone();
     },
@@ -1378,10 +1398,7 @@ function InvitePanel({
       />
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <TTField
-          label="Email addresses"
-          hint="One or several, separated by commas or new lines."
-        >
+        <TTField label="Email addresses" hint="One or several, separated by commas or new lines.">
           <TTInput
             value={emails}
             onChange={(event) => {
@@ -1579,7 +1596,6 @@ function InvitePanel({
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-
         {mode === "password" ? (
           <TTButton
             onClick={() => createUser.mutate()}
@@ -1626,9 +1642,7 @@ function InvitePanel({
               <span className="text-foreground">{created.email}</span> can sign in now.
             </li>
             <li>Role applied: {ROLE_LABEL[created.role]}.</li>
-            <li>
-              Rooms: {created.rooms.length > 0 ? created.rooms.join(", ") : "None yet"}.
-            </li>
+            <li>Rooms: {created.rooms.length > 0 ? created.rooms.join(", ") : "None yet"}.</li>
             <li>A temporary password was set.</li>
           </ul>
           <p className="mt-2 text-xs text-muted-foreground">
@@ -1673,7 +1687,10 @@ function PasswordFields({
           onChange={(event) => onPassword(event.target.value)}
         />
       </TTField>
-      <TTField label="Confirm password" hint="Type it a second time so a typo cannot lock them out.">
+      <TTField
+        label="Confirm password"
+        hint="Type it a second time so a typo cannot lock them out."
+      >
         <TTInput
           id={`${idPrefix}-confirm`}
           type={visible ? "text" : "password"}

@@ -10,7 +10,9 @@
  *  3. Nothing is sent. Comms drafts and holds; a human approves and sends.
  */
 
+import type { MeetingKind } from "./commercial";
 import type { EvidenceRef } from "./confidence";
+
 import type { ID, ISODateTime } from "./entities";
 import { intentOf, type RelationshipIntent } from "./comms-interactions";
 
@@ -87,7 +89,6 @@ export interface MemoryItem {
   addedBy?: string;
 }
 
-
 export const TIER_LABEL: Record<MemoryItem["tier"], string> = {
   observed: "Observed",
   inferred: "Inferred",
@@ -124,14 +125,7 @@ export interface Relationship {
 
 /* --------------------------------------------------------------- threads */
 
-export type ThreadChannel =
-  | "email"
-  | "call"
-  | "meeting"
-  | "message"
-  | "note"
-  | "linkedin"
-  | "text";
+export type ThreadChannel = "email" | "call" | "meeting" | "message" | "note" | "linkedin" | "text";
 
 export const CHANNEL_LABEL: Record<ThreadChannel, string> = {
   email: "Email",
@@ -142,7 +136,6 @@ export const CHANNEL_LABEL: Record<ThreadChannel, string> = {
   linkedin: "LinkedIn",
   text: "Text",
 };
-
 
 export type ThreadState = "open" | "waiting_on_us" | "waiting_on_them" | "scheduled" | "closed";
 
@@ -168,6 +161,12 @@ export interface Touch {
   body?: string;
   loggedBy?: ID;
   /**
+   * What the meeting was, when a person said so. Never inferred from a subject
+   * line, a calendar entry, Fathom or a transcript.
+   */
+  meetingKind?: MeetingKind;
+
+  /**
    * How this entry came to read as it does: who logged it, and any later
    * correction or retraction. Read with `readTouchRecord`.
    */
@@ -180,17 +179,11 @@ export interface Touch {
  * The draft's place in the human loop. `sending` and `send_failed` belong to
  * the Gmail send path: a send attempt claims the draft (`sending`), and a
  * refusal never reads as sent (`send_failed`, retryable). `sent` means Gmail
- * accepted the message or a person marked it sent — the mailbox still has
+ * accepted the message or a person marked it sent, the mailbox still has
  * the last word through verification.
  */
 export type DraftReviewState =
-  | "draft"
-  | "needs_human_review"
-  | "approved"
-  | "sending"
-  | "sent"
-  | "send_failed"
-  | "discarded";
+  "draft" | "needs_human_review" | "approved" | "sending" | "sent" | "send_failed" | "discarded";
 
 export const REVIEW_STATE_LABEL: Record<DraftReviewState, string> = {
   draft: "Draft",
@@ -318,7 +311,7 @@ export function dueState(relationship: Relationship, now: Date = new Date()): Du
 
 /**
  * Operating segment: which room of the relationship workspace a person
- * belongs to. Derived from the same record, never stored — one person, one
+ * belongs to. Derived from the same record, never stored, one person, one
  * relationship memory, many conversations. The segment moves only when a
  * person changes the stage.
  *
@@ -327,9 +320,9 @@ export function dueState(relationship: Relationship, now: Date = new Date()): Du
  *  - A graduated stage (meeting set, opportunity, client) always means the
  *    client room, whatever the origin. Graduation updates this same record.
  *  - An explicit nurture stage means nurture, whatever the origin.
- *  - Scout/outbound origin stays nurture until it graduates — a handoff is a
+ *  - Scout/outbound origin stays nurture until it graduates, a handoff is a
  *    decision to develop someone, not proof of an established relationship.
- *  - Everything else — met in person, added by hand, they reached out — is
+ *  - Everything else, met in person, added by hand, they reached out, is
  *    an established relationship and belongs with clients.
  */
 export type RelationshipSegment = "client" | "nurture";
@@ -349,7 +342,7 @@ export const ESTABLISHED_STAGES: readonly RelationshipStage[] = [
 /**
  * Early lifecycle stages are development evidence, whatever the origin: a
  * person who is new, being researched, or freshly reached out to is someone
- * we are developing, not an established relationship — even when we met them
+ * we are developing, not an established relationship, even when we met them
  * in person or they wrote to us first.
  */
 export const EARLY_STAGES: readonly RelationshipStage[] = [
@@ -375,7 +368,7 @@ const ESTABLISHED_INTENTS: readonly RelationshipIntent[] = [
 ];
 
 /**
- * Which operating room a relationship belongs to, derived — never stored.
+ * Which operating room a relationship belongs to, derived, never stored.
  *
  * Classification follows current relationship reality, not the door the
  * person entered through. Established evidence (a linked client record, a
@@ -408,7 +401,7 @@ export function relationshipSegment(relationship: Relationship): RelationshipSeg
  * Whether "Move to Nurture" is a safe, honest action: the person sits in the
  * client room only by contextual fallback, not by hard evidence (a linked
  * client record, a graduated stage, or an explicit established intent).
- * Moving sets an explicit nurture stage on the same record — nothing is
+ * Moving sets an explicit nurture stage on the same record, nothing is
  * copied or lost, and graduation back stays one click away. A real client is
  * never offered the move, because their stage is evidence, not a label.
  */

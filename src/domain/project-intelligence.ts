@@ -36,11 +36,7 @@ export const THINKING_SOURCE_LABEL: Record<ThinkingSourceType, string> = {
  * only state that means project knowledge came out of it.
  */
 export type SourceSyncState =
-  | "link_saved"
-  | "import_available"
-  | "import_needs_upload"
-  | "imported"
-  | "sync_unavailable";
+  "link_saved" | "import_available" | "import_needs_upload" | "imported" | "sync_unavailable";
 
 export const SOURCE_SYNC_LABEL: Record<SourceSyncState, string> = {
   link_saved: "Link saved",
@@ -123,13 +119,7 @@ export const KNOWLEDGE_REVIEW_LABEL: Record<KnowledgeReviewState, string> = {
 };
 
 /** Where a piece of knowledge came from. Used to resolve conflicts. */
-export type KnowledgeOrigin =
-  | "human"
-  | "roadmap"
-  | "asset"
-  | "meeting"
-  | "thinking_room"
-  | "agent";
+export type KnowledgeOrigin = "human" | "roadmap" | "asset" | "meeting" | "thinking_room" | "agent";
 
 /**
  * The source hierarchy, highest authority first. A human-approved project
@@ -195,12 +185,7 @@ export function initialReviewState(origin: KnowledgeOrigin): KnowledgeReviewStat
 /* ------------------------------------------------------------------ assets */
 
 export type AssetType =
-  | "mockup"
-  | "screenshot"
-  | "design_reference"
-  | "document"
-  | "brand_asset"
-  | "other";
+  "mockup" | "screenshot" | "design_reference" | "document" | "brand_asset" | "other";
 
 export const ASSET_TYPE_LABEL: Record<AssetType, string> = {
   mockup: "Mockup",
@@ -257,13 +242,7 @@ export function isImageAsset(contentType?: string): boolean {
 
 /* ------------------------------------------------------------ connections */
 
-export type ConnectionType =
-  | "lovable"
-  | "github"
-  | "staging"
-  | "production"
-  | "thinking"
-  | "other";
+export type ConnectionType = "lovable" | "github" | "staging" | "production" | "thinking" | "other";
 
 export const CONNECTION_TYPE_LABEL: Record<ConnectionType, string> = {
   lovable: "Lovable",

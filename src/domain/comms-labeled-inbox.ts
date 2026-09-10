@@ -16,7 +16,7 @@ import type { StoredMailboxMessage } from "./comms-integrations";
 import type { ISODateTime } from "./entities";
 
 export interface LabeledThread {
-  /** Gmail's own conversation id — the thing the label was applied to. */
+  /** Gmail's own conversation id, the thing the label was applied to. */
   threadId: string;
   relationship: Relationship;
   /** Every stored message in this conversation, oldest first. */
@@ -60,9 +60,7 @@ export function labeledThreads(
     }
 
     for (const [threadId, messages] of grouped) {
-      const ordered = [...messages].sort(
-        (a, b) => time(a.occurredAt) - time(b.occurredAt),
-      );
+      const ordered = [...messages].sort((a, b) => time(a.occurredAt) - time(b.occurredAt));
       const last = ordered[ordered.length - 1]!;
       threads.push({
         threadId,
@@ -70,8 +68,7 @@ export function labeledThreads(
         messages: ordered,
         lastMessage: last,
         subject:
-          ordered.find((message) => message.subject?.trim())?.subject?.trim() ||
-          "No subject",
+          ordered.find((message) => message.subject?.trim())?.subject?.trim() || "No subject",
         unreadCount: ordered.filter(
           (message) => message.direction === "inbound" && time(message.occurredAt) > readAt,
         ).length,

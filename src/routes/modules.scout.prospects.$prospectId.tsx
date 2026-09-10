@@ -8,7 +8,7 @@
 
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/tt/app-shell";
@@ -88,6 +88,7 @@ import { buildPersonPlan } from "@/data/person-priority";
 import { buildMoveBlockers } from "@/data/scout/move-blockers";
 import { composeProspectPage } from "@/data/prospect-modules";
 import { buildHandoffDraft, developmentFromBrief } from "@/data/comms-handoff";
+import { submitScoutHandoffQuietly } from "@/data/approvals/intake";
 import { buildRelationshipBrief } from "@/data/relationship-development";
 import { buildScoutCompanySummary } from "@/data/scout/company-summary";
 import { readIcpFactors } from "@/data/scout/icp-factors";
@@ -109,13 +110,16 @@ const TITLE = "Company · Scout · Trust Tai OS";
 const DESCRIPTION =
   "Does this company deserve our attention, and why? ICP alignment, dated signals, people, and the bounded next step.";
 
-type Section = "scout" | "qualified" | "research" | "worth_knowing";
+type Section = "ready" | "movement" | "needs_person" | "all" | "watchlist";
 type Fit = "all" | FitLight;
 
 function parseSection(value: unknown): Section {
-  return value === "qualified" || value === "research" || value === "worth_knowing"
+  return value === "ready" ||
+    value === "movement" ||
+    value === "needs_person" ||
+    value === "watchlist"
     ? value
-    : "scout";
+    : "all";
 }
 
 function parseFit(value: unknown): Fit {
@@ -204,7 +208,7 @@ function CompanyDetail({
 
   const people = useQuery({
     queryKey: ["scout", "people", organizationId, prospectId],
-    queryFn: () => peopleService.list(organizationId, prospectId),
+    queryFn: () => peopleService.list(organizationId, prospectId, { organizationId, userId }),
   });
 
   const providers = useQuery({
@@ -311,7 +315,7 @@ function CompanyDetail({
         },
         { organizationId, userId },
       ),
-    // A newly added founder can make the company newly eligible — prepare the
+    // A newly added founder can make the company newly eligible, prepare the
     // brief if so (research only; a current brief is never re-run).
     onSuccess: () => {
       prepareBrief.mutate({ quiet: true });
@@ -435,7 +439,7 @@ function CompanyDetail({
   const peopleRows = people.data ?? [];
 
   // The confirm failure surfaces inline next to its blocker, where the click
-  // happened — not as a detached page-level banner.
+  // happened, not as a detached page-level banner.
   const error = (research.error ??
     setResearchConsent.error ??
     setStatus.error ??
@@ -577,7 +581,7 @@ function CompanyDetail({
 
   // The handoff draft behind "Prepare first message": the stored governed
   // brief travels as provenance, with canonical prospect/person IDs intact.
-  // Built first because it is the canonical readiness read — the recommended
+  // Built first because it is the canonical readiness read, the recommended
   // move below must never recommend outreach this draft would block.
   const storedBrief =
     candidate.development?.research?.state === "prepared"
@@ -593,6 +597,33 @@ function CompanyDetail({
     fitConfidence: composition.confidence,
     ...(firstMessageDevelopment ? { development: firstMessageDevelopment } : {}),
   });
+
+  /* Scout owns the prospect; Approvals owns the decision. When the brief is
+     ready and nothing has been handed over yet, whether this company becomes
+     a relationship is a human judgment, so it joins the queue by itself. */
+  const submittedForApproval = useRef<string | null>(null);
+  useEffect(() => {
+    if (!firstMessageDraft.ready) return;
+    if (prospect.status === "ready_for_comms") return;
+    if (submittedForApproval.current === prospect.id) return;
+    submittedForApproval.current = prospect.id;
+    void submitScoutHandoffQuietly(
+      {
+        handoff: firstMessageDraft,
+        fitScore: candidate.evaluation.score ?? 0,
+        fitReasons: [candidate.fit.whyItFits].filter(Boolean),
+      },
+      { organizationId, userId },
+    );
+  }, [
+    firstMessageDraft,
+    prospect.id,
+    prospect.status,
+    candidate.evaluation.score,
+    candidate.fit.whyItFits,
+    organizationId,
+    userId,
+  ]);
 
   // The guided flow behind "Resolve N blockers": the same structured blockers
   // the handoff draft lists, each carrying its own governed next action.
@@ -624,7 +655,7 @@ function CompanyDetail({
   });
 
   // Moves that route to the canonical People area put keyboard focus on the
-  // exact section that resolves them — never a generic tab switch.
+  // exact section that resolves them, never a generic tab switch.
   const focusPeopleSection = (id: string) => {
     void goToTab("people");
     window.setTimeout(() => {
@@ -664,7 +695,7 @@ function CompanyDetail({
 
   // "Prepare first message" is the explicit Scout → Comms transition: the
   // brief is carried across, and the person reviews the draft there. Comms
-  // opens on exactly the relationship the handoff opened — never on whoever
+  // opens on exactly the relationship the handoff opened, never on whoever
   // happened to sort first.
   const prepareFirstMessage = () => {
     if (!firstMessageDraft.ready) return;
@@ -834,10 +865,11 @@ function CompanyDetail({
                       }
                     />
                     <StatedPanel packet={candidate.stated} />
-                    <StatedTranscript packet={candidate.stated} />
                   </>
                 ) : null}
-                <InboundSourceCard organizationId={organizationId} prospectId={prospectId} />
+                {candidate.stated ? null : (
+                  <InboundSourceCard organizationId={organizationId} prospectId={prospectId} />
+                )}
                 <ScoutSummaryCard
                   summary={derived.summary}
                   onViewRationale={() => void goToTab("icp")}
@@ -922,9 +954,7 @@ function CompanyDetail({
                   companyName={prospect.name}
                   saving={savePerson.isPending}
                   saved={savePerson.data ?? null}
-                  error={
-                    savePerson.error instanceof Error ? savePerson.error.message : null
-                  }
+                  error={savePerson.error instanceof Error ? savePerson.error.message : null}
                   onSave={(person, identity) => savePerson.mutate({ person, identity })}
                 />
                 <PeoplePanel

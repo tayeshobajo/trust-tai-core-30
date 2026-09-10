@@ -18,12 +18,7 @@ import type { ID, ISODateTime, LifecycleStatus } from "./entities";
 
 /** Where a piece of delivery actually stands. */
 export type ExecutionState =
-  | "not_started"
-  | "in_flight"
-  | "in_review"
-  | "blocked"
-  | "delivered"
-  | "closed";
+  "not_started" | "in_flight" | "in_review" | "blocked" | "delivered" | "closed";
 
 export const EXECUTION_STATES: ExecutionState[] = [
   "not_started",
@@ -139,15 +134,18 @@ export function checkTransition(
   if (to === "blocked") {
     const reason = (changes.blockedBecause ?? project.blockedBecause ?? "").trim();
     if (!reason) {
-      return { ok: false, because: "Say what is blocking it. A block nobody named cannot be cleared." };
+      return {
+        ok: false,
+        because: "Say what is blocking it. A block nobody named cannot be cleared.",
+      };
     }
   }
 
   if (to === "in_flight" || to === "in_review") {
     const owned = Boolean(
       changes.ownerUserId ??
-        project.ownerUserId ??
-        (changes.ownerLabel ?? project.ownerLabel ?? "").trim(),
+      project.ownerUserId ??
+      (changes.ownerLabel ?? project.ownerLabel ?? "").trim(),
     );
     if (!owned) {
       return { ok: false, because: "Name who carries this before it moves." };
@@ -161,13 +159,34 @@ export function checkTransition(
   return { ok: true, because: `Moves to ${EXECUTION_STATE_LABEL[to]}.` };
 }
 
+/**
+ * Can this work change hands, and why not. Naming an owner is always allowed;
+ * taking the last owner off work that is already moving is not, because
+ * In flight and In review both require somebody carrying it. Pure, so the
+ * picker and the write refuse for the same reason in the same words.
+ */
+export function checkOwnerAssignment(
+  project: Pick<ExecutionProject, "state">,
+  owner: { ownerUserId?: ID; ownerLabel?: string },
+): TransitionCheck {
+  const named = Boolean((owner.ownerUserId ?? "").trim() || (owner.ownerLabel ?? "").trim());
+  if (named) {
+    return { ok: true, because: `Hands this work to ${owner.ownerLabel ?? "them"}.` };
+  }
+  if (project.state === "in_flight" || project.state === "in_review") {
+    return {
+      ok: false,
+      because: `${EXECUTION_STATE_LABEL[project.state]} work cannot be left with nobody. Name someone else, or move it back to ${EXECUTION_STATE_LABEL.not_started} first.`,
+    };
+  }
+  return { ok: true, because: "Leaves this work with nobody carrying it." };
+}
+
 /** The legal next states for this project, in the order the room offers them. */
+
 export function nextStates(project: ExecutionProject): ExecutionState[] {
   return ALLOWED_TRANSITIONS[project.state];
 }
-
-
-
 
 export type ProjectHealth = "on_track" | "needs_attention" | "at_risk" | "unknown";
 
@@ -233,7 +252,6 @@ export interface ExecutionProject {
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }
-
 
 /** After this long with no recorded movement, silence is itself a signal. */
 export const STALE_AFTER_DAYS = 14;
@@ -350,4 +368,97 @@ export interface ProjectInput {
   deliveryItems?: DeliveryItem[];
   currentWork?: string;
   origin: ProjectOrigin;
+}
+
+/* --------------------------------------------- correcting what a person typed */
+
+/**
+ * The human-entered project truth that can be corrected after creation.
+ *
+ * Operability law: anything a person is asked to type must have a way back.
+ * Everything here was typed by a person, so everything here can be fixed.
+ * Pass an empty string to clear a field that is allowed to be empty.
+ */
+export interface ProjectDetailEdit {
+  name?: string;
+  pointA?: string;
+  pointB?: string;
+  /** ISO date, or "" to say no date is agreed after all. */
+  dueDate?: string;
+  /** The company this serves. Correctable only on manually started work. */
+  subjectLabel?: string;
+}
+
+/**
+ * What stays fixed after creation, and why. Read by the panel so a read-only
+ * field can say it is read-only because of ownership, not because the screen
+ * forgot a control.
+ */
+export const IMMUTABLE_PROJECT_FACTS: { field: string; because: string }[] = [
+  {
+    field: "Roadmap lineage",
+    because:
+      "The roadmap and milestone behind this work are Roadmap truth. Reassigning them here would rewrite where a decision came from.",
+  },
+  {
+    field: "Client",
+    because:
+      "The company a project is attached to is Clients truth. Moving delivery between companies is a correction made in Clients, never a dropdown here.",
+  },
+];
+
+/**
+ * A calendar day from a date input as the instant the system records, using
+ * the same law as proposal dates: noon UTC, so the day never slides by
+ * timezone. Empty in, empty out, which says no date is agreed.
+ */
+export function agreedDayToIso(day: string): string {
+  const trimmed = day.trim();
+  if (!trimmed) return "";
+  return `${trimmed}T12:00:00.000Z`;
+}
+
+/** Is this correction honest, and if not, why not. Pure, so panel and write agree. */
+export function checkDetailEdit(
+  project: Pick<ExecutionProject, "state" | "origin"> & { clientId?: ID },
+  edit: ProjectDetailEdit,
+): TransitionCheck {
+  if (edit.name !== undefined && !edit.name.trim()) {
+    return { ok: false, because: "A project needs a name people can recognise it by." };
+  }
+  if (edit.pointB !== undefined && !edit.pointB.trim()) {
+    if (project.state === "delivered" || project.state === "closed") {
+      return {
+        ok: false,
+        because:
+          "This work was called done against its destination. Removing Point B now would make that claim unreadable.",
+      };
+    }
+  }
+  if (edit.dueDate !== undefined && edit.dueDate.trim()) {
+    const parsed = new Date(edit.dueDate);
+    if (Number.isNaN(parsed.getTime())) {
+      return { ok: false, because: "That date could not be read. Use a real calendar date." };
+    }
+  }
+  if (edit.subjectLabel !== undefined) {
+    if (project.clientId) {
+      return {
+        ok: false,
+        because:
+          "This project is attached to a Client record, so the company it serves is Clients truth. Renaming it here would leave the label and the real attachment saying different things.",
+      };
+    }
+    if (project.origin.kind === "roadmap_milestone") {
+      return {
+        ok: false,
+        because:
+          "This work came from an approved roadmap milestone, so the company it serves is Roadmap truth. Correct it on the roadmap.",
+      };
+    }
+    if (!edit.subjectLabel.trim()) {
+      return { ok: false, because: "Say who this work is for, or leave it as it stands." };
+    }
+  }
+  return { ok: true, because: "Records the correction." };
 }

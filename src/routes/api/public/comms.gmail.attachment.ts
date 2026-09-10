@@ -10,8 +10,7 @@
  * The same path serves inline MIME images: when the stored message metadata
  * marks the resource `inline` (a Content-ID image), the response is served
  * with an inline disposition so the timeline can render it in place. The
- * caller can ask, but only the stored row may declare a resource inline —
- * and no token or raw Gmail URL ever reaches the browser.
+ * caller can ask, but only the stored row may declare a resource inline, * and no token or raw Gmail URL ever reaches the browser.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -48,8 +47,7 @@ export const Route = createFileRoute("/api/public/comms/gmail/attachment")({
         const organizationId =
           typeof body["organizationId"] === "string" ? body["organizationId"] : "";
         const messageId = typeof body["messageId"] === "string" ? body["messageId"] : "";
-        const attachmentId =
-          typeof body["attachmentId"] === "string" ? body["attachmentId"] : "";
+        const attachmentId = typeof body["attachmentId"] === "string" ? body["attachmentId"] : "";
         if (!organizationId || !messageId || !attachmentId) {
           return Response.json(
             { error: "A workspace, a message, and a file are required." },
@@ -67,9 +65,7 @@ export const Route = createFileRoute("/api/public/comms/gmail/attachment")({
           return new Response(new Blob([file.bytes as BlobPart]), {
             headers: {
               "Content-Type": file.mimeType,
-              "Content-Disposition": file.inline
-                ? "inline"
-                : contentDisposition(file.filename),
+              "Content-Disposition": file.inline ? "inline" : contentDisposition(file.filename),
               // Inline images are re-requested as the person scrolls; files
               // are never cached. Either way, nothing leaves this browser.
               "Cache-Control": file.inline ? "private, max-age=3600" : "private, no-store",

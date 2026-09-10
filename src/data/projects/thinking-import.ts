@@ -8,7 +8,11 @@
  * person is the only thing that can confirm it.
  */
 
-import type { KnowledgeInput, KnowledgeSection, ThinkingSource } from "@/domain/project-intelligence";
+import type {
+  KnowledgeInput,
+  KnowledgeSection,
+  ThinkingSource,
+} from "@/domain/project-intelligence";
 
 export interface ImportCandidate {
   section: KnowledgeSection;
@@ -27,13 +31,13 @@ const CUES: Cue[] = [
   {
     section: "decision",
     confidence: 0.7,
-    test: (line) => /^(decision|decided)\b|\bwe (decided|agreed|will go with)\b|\blocked in\b/i.test(line),
+    test: (line) =>
+      /^(decision|decided)\b|\bwe (decided|agreed|will go with)\b|\blocked in\b/i.test(line),
   },
   {
     section: "constraint",
     confidence: 0.7,
-    test: (line) =>
-      /^(constraint|rule)\b|\b(do not|don't|never|must not|cannot) \w+/i.test(line),
+    test: (line) => /^(constraint|rule)\b|\b(do not|don't|never|must not|cannot) \w+/i.test(line),
   },
   {
     section: "requirement",
@@ -49,9 +53,14 @@ const CUES: Cue[] = [
   {
     section: "open_question",
     confidence: 0.6,
-    test: (line) => line.trim().endsWith("?") || /^(open question|question|tbd|unclear)\b/i.test(line),
+    test: (line) =>
+      line.trim().endsWith("?") || /^(open question|question|tbd|unclear)\b/i.test(line),
   },
-  { section: "idea", confidence: 0.4, test: (line) => /^(idea|maybe|consider|what if)\b/i.test(line) },
+  {
+    section: "idea",
+    confidence: 0.4,
+    test: (line) => /^(idea|maybe|consider|what if)\b/i.test(line),
+  },
 ];
 
 function clean(raw: string): string {
@@ -111,6 +120,8 @@ export function importSummary(candidates: ImportCandidate[]): string {
   const counts = new Map<KnowledgeSection, number>();
   for (const candidate of candidates)
     counts.set(candidate.section, (counts.get(candidate.section) ?? 0) + 1);
-  const parts = [...counts.entries()].map(([section, count]) => `${count} ${section.replace(/_/g, " ")}`);
+  const parts = [...counts.entries()].map(
+    ([section, count]) => `${count} ${section.replace(/_/g, " ")}`,
+  );
   return `${candidates.length} candidate${candidates.length === 1 ? "" : "s"} found: ${parts.join(", ")}. Each one waits for you to confirm it.`;
 }

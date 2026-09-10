@@ -1,4 +1,4 @@
--- Trust Tai OS — Steward accountability state.
+-- Trust Tai OS. Steward accountability state.
 --
 -- Idempotent and additive. It creates exactly one table, for the only
 -- accountability concept Steward genuinely owns: how a task is framed and

@@ -28,6 +28,51 @@ import type {
   StrategyItem,
   WalkthroughEntry,
 } from "@/domain/roadmap-intel";
+import type { OutcomeMetric, OutcomeMetricInput } from "@/domain/milestone-metric";
+import {
+  checkOutcomeMetric,
+  metricEventKey,
+  metricSummary,
+  sameMetric,
+} from "@/domain/milestone-metric";
+import type { MeasurementInput, MilestoneMeasurement } from "@/domain/milestone-measurement";
+import { NO_METRIC_FOR_MEASUREMENT } from "@/domain/milestone-measurement";
+import {
+  checkMeasurement,
+  measuredDay,
+  measuredInstant,
+  measurementEventKey,
+  measurementSummary,
+  sortMeasurements,
+} from "@/domain/milestone-measurement";
+import type { MilestoneSuccess, MilestoneSuccessInput } from "@/domain/milestone-success";
+import { checkMilestoneSuccess, sameSuccess, successEventKey } from "@/domain/milestone-success";
+import type { AcceptanceCriterion } from "@/domain/milestone-criteria";
+import {
+  canRemoveCriterion,
+  checkCriterionText,
+  criterionEventKey,
+  findSameCriterion,
+  nextCriterionPosition,
+  reorderCriteria,
+  sortCriteria,
+} from "@/domain/milestone-criteria";
+import type { CriterionEvidence, CriterionEvidenceType } from "@/domain/criterion-evidence";
+import {
+  checkEvidenceInput,
+  criterionEvidencePath,
+  evidenceEventKey,
+} from "@/domain/criterion-evidence";
+import { PROJECT_FILES_BUCKET } from "@/domain/project-delivery";
+import type { ManualMilestoneInput } from "@/domain/milestone-create";
+import {
+  MANUAL_PRIORITY_RATIONALE,
+  checkManualMilestone,
+  findSameName,
+  manualMilestoneKey,
+  nextSequence,
+} from "@/domain/milestone-create";
+import { acceptanceEventKey, reopenEventKey } from "@/domain/milestone-acceptance";
 import { rankMilestones, type MilestoneScoreInput } from "@/data/roadmap-milestones";
 import type { NormalizedResearch } from "@/data/roadmap-research-parse";
 
@@ -145,6 +190,107 @@ export interface RoadmapIntel {
   artifacts: RoadmapArtifact[];
   sessions: RoadmapSession[];
   questions: AskAnswer[];
+  /** Outcome measurements (P3-02), newest first, across this roadmap. */
+  measurements: MilestoneMeasurement[];
+  /**
+   * Why the measurement history could not be read, when it could not be.
+   *
+   * An unreadable table is not the same fact as "no measurement recorded yet",
+   * so the two are kept apart all the way to the screen.
+   */
+  measurementsError: string | null;
+  /** Acceptance criteria for every milestone on this roadmap, in order. */
+  criteria: AcceptanceCriterion[];
+  /** Why the checklist could not be read, when it could not be. */
+  criteriaError: string | null;
+  /** Proof attached to those conditions. Optional by default, never a decision. */
+  criterionEvidence: CriterionEvidence[];
+  /** Why the attached proof could not be read, when it could not be. */
+  criterionEvidenceError: string | null;
+}
+
+const MEASUREMENT_COLUMNS = "*";
+
+/** A missing measurements table reads as absent history, never as a crash. */
+function missingMeasurements(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return /does not exist|schema cache|42P01|PGRST205|roadmap_measurements/i.test(
+    `${error.code ?? ""} ${error.message ?? ""}`,
+  );
+}
+
+const CRITERION_COLUMNS = "*";
+
+/** A missing criteria table reads as an unreadable checklist, never an empty one. */
+function missingCriteria(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return /does not exist|schema cache|42P01|PGRST205|roadmap_milestone_criteria/i.test(
+    `${error.code ?? ""} ${error.message ?? ""}`,
+  );
+}
+
+export const EVIDENCE_NOT_APPLIED =
+  "Acceptance evidence is not available in this environment yet: the roadmap_criterion_evidence table has not been applied.";
+
+/** A missing evidence table reads as unreadable proof, never as no proof. */
+function missingCriterionEvidence(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return /does not exist|schema cache|42P01|PGRST205|roadmap_criterion_evidence/i.test(
+    `${error.code ?? ""} ${error.message ?? ""}`,
+  );
+}
+
+function toCriterionEvidence(row: Row): CriterionEvidence {
+  return {
+    id: String(row["id"]),
+    organizationId: String(row["organization_id"] ?? ""),
+    roadmapId: String(row["roadmap_id"] ?? ""),
+    milestoneId: String(row["milestone_id"] ?? ""),
+    criterionId: String(row["criterion_id"] ?? ""),
+    type: (row["type"] as CriterionEvidenceType) ?? "note",
+    label: String(row["label"] ?? ""),
+    ...(row["url"] ? { url: String(row["url"]) } : {}),
+    ...(row["storage_path"] ? { storagePath: String(row["storage_path"]) } : {}),
+    ...(row["content_type"] ? { contentType: String(row["content_type"]) } : {}),
+    ...(row["size_bytes"] != null ? { sizeBytes: Number(row["size_bytes"]) } : {}),
+    ...(row["note"] ? { note: String(row["note"]) } : {}),
+    createdBy: String(row["created_by"] ?? ""),
+    ...(row["created_by_label"] ? { createdByLabel: String(row["created_by_label"]) } : {}),
+    createdAt: String(row["created_at"] ?? ""),
+  };
+}
+
+function toCriterion(row: Row): AcceptanceCriterion {
+  return {
+    id: String(row["id"]),
+    organizationId: String(row["organization_id"] ?? ""),
+    roadmapId: String(row["roadmap_id"] ?? ""),
+    milestoneId: String(row["milestone_id"] ?? ""),
+    text: String(row["text"] ?? ""),
+    position: Number(row["position"] ?? 1),
+    done: Boolean(row["done"]),
+    createdBy: String(row["created_by"] ?? ""),
+    createdAt: String(row["created_at"] ?? ""),
+    ...(row["completed_by"] ? { completedBy: String(row["completed_by"]) } : {}),
+    ...(row["completed_at"] ? { completedAt: String(row["completed_at"]) } : {}),
+    updatedAt: String(row["updated_at"] ?? row["created_at"] ?? ""),
+  };
+}
+
+function toMeasurement(row: Row): MilestoneMeasurement {
+  return {
+    id: String(row["id"]),
+    organizationId: String(row["organization_id"] ?? ""),
+    roadmapId: String(row["roadmap_id"] ?? ""),
+    milestoneId: String(row["milestone_id"] ?? ""),
+    metricKey: String(row["metric_key"] ?? ""),
+    value: Number(row["value"] ?? 0),
+    measuredAt: measuredDay(row["measured_at"]),
+    source: String(row["source"] ?? ""),
+    recordedBy: String(row["recorded_by"] ?? ""),
+    recordedAt: String(row["recorded_at"] ?? row["created_at"] ?? ""),
+    sourceEventKey: String(row["source_event_key"] ?? ""),
+  };
 }
 
 function toAsk(row: Row): AskAnswer {
@@ -170,7 +316,17 @@ function toAsk(row: Row): AskAnswer {
 
 const roadmapIntelRaw = {
   async load(roadmapId: ID): Promise<RoadmapIntel> {
-    const [research, strategy, milestones, artifacts, sessions, questions] = await Promise.all([
+    const [
+      research,
+      strategy,
+      milestones,
+      artifacts,
+      sessions,
+      questions,
+      measurements,
+      criteria,
+      criterionEvidence,
+    ] = await Promise.all([
       supabase
         .from("roadmap_research")
         .select(RESEARCH_COLUMNS)
@@ -200,6 +356,24 @@ const roadmapIntelRaw = {
         .eq("roadmap_id", roadmapId)
         .order("created_at", { ascending: false })
         .limit(20),
+      supabase
+        .from("roadmap_measurements")
+        .select(MEASUREMENT_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("measured_at", { ascending: false })
+        .limit(200),
+      supabase
+        .from("roadmap_milestone_criteria")
+        .select(CRITERION_COLUMNS)
+        .eq("roadmap_id", roadmapId)
+        .order("position", { ascending: true })
+        .limit(500),
+      supabase
+        .from("roadmap_criterion_evidence")
+        .select("*")
+        .eq("roadmap_id", roadmapId)
+        .order("created_at", { ascending: true })
+        .limit(1000),
     ]);
 
     assertOk(research.error);
@@ -219,6 +393,18 @@ const roadmapIntelRaw = {
       artifacts: ((artifacts.data ?? []) as Row[]).map(toArtifact),
       sessions: ((sessions.data ?? []) as Row[]).map(toSession),
       questions: ((questions.data ?? []) as Row[]).map(toAsk),
+      measurements: sortMeasurements(((measurements.data ?? []) as Row[]).map(toMeasurement)),
+      measurementsError: measurements.error
+        ? "Measurement history could not be read here yet, so nothing is shown rather than an empty history."
+        : null,
+      criteria: sortCriteria(((criteria.data ?? []) as Row[]).map(toCriterion)),
+      criteriaError: criteria.error
+        ? "The acceptance checklist could not be read here yet, so nothing is shown rather than an empty checklist."
+        : null,
+      criterionEvidence: ((criterionEvidence.data ?? []) as Row[]).map(toCriterionEvidence),
+      criterionEvidenceError: criterionEvidence.error
+        ? "Attached evidence could not be read here yet, so nothing is shown rather than an empty list."
+        : null,
     };
   },
 
@@ -439,6 +625,68 @@ const roadmapIntelRaw = {
     return ((data ?? []) as Row[]).map(toMilestone);
   },
 
+  /**
+   * Create a milestone by hand (manual create is first class).
+   *
+   * A person who already knows the milestone does not need a model to state it.
+   * Because typing it is itself the decision, the row lands Approved and
+   * Decided with the actor and the time on it. Nothing is guessed: research
+   * fields a person did not type stay empty, and the priority score stays 0
+   * with a rationale that says why. Saving the same name twice on the same
+   * roadmap returns the existing milestone instead of duplicating truth.
+   */
+  async createManualMilestone(
+    context: IntelContext,
+    roadmapId: ID,
+    label: string,
+    input: Partial<ManualMilestoneInput>,
+    existing: RoadmapMilestone[] = [],
+  ): Promise<RoadmapMilestone> {
+    const checked = checkManualMilestone(input);
+    if (!checked.ok) throw new Error(checked.refusal);
+
+    const duplicate = findSameName(existing, checked.milestone.name);
+    if (duplicate) return duplicate;
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .insert({
+        organization_id: context.organizationId,
+        roadmap_id: roadmapId,
+        name: checked.milestone.name,
+        what_we_build: checked.milestone.whatWeBuild,
+        execution_boundary: checked.milestone.executionBoundary,
+        priority_rationale: MANUAL_PRIORITY_RATIONALE,
+        recommended_sequence: nextSequence(existing),
+        status: "approved",
+        tier: "decided",
+        owner_user_id: context.userId,
+        ...(context.userLabel ? { owner_label: context.userLabel } : {}),
+        decided_by: context.userId,
+        decided_at: at,
+        created_by: context.userId,
+      })
+      .select(MILESTONE_COLUMNS)
+      .single();
+
+    assertOk(error);
+
+    await record(
+      context,
+      "roadmap.approved",
+      roadmapId,
+      label,
+      `${checked.milestone.name} was created by a person as a decided milestone.`,
+      {
+        milestoneId: (data as Row)["id"],
+        origin: "manual",
+        source_event_key: manualMilestoneKey(roadmapId, checked.milestone.name),
+      },
+    );
+    return toMilestone(data as Row);
+  },
+
   /** Only this path can make a milestone Decided, and only a person calls it. */
   async setMilestoneStatus(
     context: IntelContext,
@@ -478,6 +726,117 @@ const roadmapIntelRaw = {
     return toMilestone(data as Row);
   },
 
+  /**
+   * Record delivery acceptance on a milestone (the one definition of
+   * complete). Roadmap owns it, so this is the only write path, and only a
+   * person calls it. Roadmap approval is not touched here: it already meant
+   * "selected into the roadmap" and keeps meaning exactly that.
+   *
+   * Replay safe by construction: an already accepted milestone is returned
+   * unchanged, `accepted_at` is written once, and the receipt carries a stable
+   * key so a retry adds no second event.
+   */
+  async acceptMilestone(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    note: string | undefined,
+    label: string,
+  ): Promise<RoadmapMilestone> {
+    if (milestone.acceptance?.acceptedAt) return milestone;
+
+    const at = new Date().toISOString();
+    const clean = note?.trim() ? note.trim() : null;
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .update({
+        accepted_at: at,
+        accepted_by: context.userId,
+        accepted_by_label: context.userLabel ?? null,
+        acceptance_note: clean,
+        updated_at: at,
+      })
+      .eq("id", milestone.id)
+      // Only an unaccepted milestone can be accepted, so two concurrent
+      // clicks cannot rewrite the moment of acceptance.
+      .is("accepted_at", null)
+      .select(MILESTONE_COLUMNS)
+      .maybeSingle();
+
+    if (error?.message && /accepted_at|accepted_by|acceptance_note/.test(error.message)) {
+      throw new Error(
+        "Milestone acceptance is not available in this environment yet: the roadmap_milestones acceptance columns have not been applied.",
+      );
+    }
+    assertOk(error);
+    if (!data) return milestone;
+
+    await record(
+      context,
+      "roadmap.completed",
+      milestone.roadmapId,
+      label,
+      `${milestone.name} was accepted as delivered by a person.`,
+      {
+        milestoneId: milestone.id,
+        scope: "acceptance",
+        ...(clean ? { note: clean } : {}),
+        source_event_key: acceptanceEventKey(milestone.id),
+      },
+    );
+    return toMilestone(data as Row);
+  },
+
+  /**
+   * Reopen an accepted milestone. Explicit, human, and narrow: it clears the
+   * acceptance fields and nothing else. Conditions and their evidence stay
+   * exactly as they are.
+   */
+  async reopenMilestone(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    reason: string | undefined,
+    label: string,
+  ): Promise<RoadmapMilestone> {
+    const previous = milestone.acceptance?.acceptedAt;
+    if (!previous) return milestone;
+
+    const at = new Date().toISOString();
+    const clean = reason?.trim() ? reason.trim() : null;
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .update({
+        accepted_at: null,
+        accepted_by: null,
+        accepted_by_label: null,
+        acceptance_note: null,
+        updated_at: at,
+      })
+      .eq("id", milestone.id)
+      .not("accepted_at", "is", null)
+      .select(MILESTONE_COLUMNS)
+      .maybeSingle();
+
+    assertOk(error);
+    if (!data) return milestone;
+
+    await record(
+      context,
+      "roadmap.updated",
+      milestone.roadmapId,
+      label,
+      `${milestone.name} was reopened by a person.`,
+      {
+        milestoneId: milestone.id,
+        scope: "acceptance",
+        reopened: true,
+        previousAcceptedAt: previous,
+        ...(clean ? { reason: clean } : {}),
+        source_event_key: reopenEventKey(milestone.id, previous),
+      },
+    );
+    return toMilestone(data as Row);
+  },
+
   async setMilestoneOwner(
     context: IntelContext,
     milestone: RoadmapMilestone,
@@ -495,6 +854,652 @@ const roadmapIntelRaw = {
       .single();
     assertOk(error);
     return toMilestone(data as Row);
+  },
+
+  /**
+   * Record or correct the milestone outcome metric (P3-01).
+   *
+   * Roadmap owns this truth, so this is the only write path. It is manual by
+   * design: a person types the key, label, unit, direction, baseline and
+   * target, and the metric is stored as Decided with who recorded it. Invalid
+   * or partial input is refused outright, nothing is defaulted, and setting the
+   * same metric again changes nothing and records no second event.
+   */
+  async setMilestoneMetric(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    input: Partial<OutcomeMetricInput> | null,
+    label: string,
+  ): Promise<RoadmapMilestone> {
+    const current = milestone.outcomeMetric ?? null;
+    let next: OutcomeMetric | null = null;
+
+    if (input) {
+      const checked = checkOutcomeMetric(input);
+      if (!checked.ok) throw new Error(checked.refusal);
+      if (sameMetric(current, checked.metric)) return milestone;
+      next = {
+        ...checked.metric,
+        tier: "decided",
+        recordedBy: context.userId,
+        recordedAt: new Date().toISOString(),
+      };
+    } else if (!current) {
+      return milestone;
+    }
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .update({
+        // The stored contract always carries a baseline object, so an absent
+        // baseline is written as an empty one rather than a fake zero.
+        outcome_metric: next ? { ...next, baseline: next.baseline ?? {} } : null,
+        updated_at: at,
+      })
+      .eq("id", milestone.id)
+      .select(MILESTONE_COLUMNS)
+      .single();
+
+    if (error?.message && /outcome_metric/.test(error.message)) {
+      throw new Error(
+        "Outcome metrics are not available in this environment yet: the roadmap_milestones.outcome_metric column has not been applied.",
+      );
+    }
+    assertOk(error);
+
+    await record(
+      context,
+      "roadmap.updated",
+      milestone.roadmapId,
+      label,
+      next
+        ? `${milestone.name} now measures ${metricSummary(next)}.`
+        : `The outcome metric on ${milestone.name} was removed by a person.`,
+      {
+        milestoneId: milestone.id,
+        scope: "outcome_metric",
+        ...(next ? { metric: next } : { cleared: true }),
+        source_event_key: metricEventKey(milestone.id, next),
+      },
+    );
+    return toMilestone(data as Row);
+  },
+
+  /**
+   * Record one measurement against a milestone outcome metric (P3-02).
+   *
+   * Roadmap owns measurement truth, so this is the only write path, and the
+   * Project workroom calls this same method rather than keeping its own store.
+   *
+   * The reading is refused before the database is touched when the milestone
+   * has no metric, when the value is not a number, when the measured day is
+   * missing or unreal, or when the source says nothing. The metric contract is
+   * never touched: baseline and target are read here and left exactly as they
+   * were. Submitting the same reading again returns the measurement already on
+   * record and writes no second row and no second event.
+   */
+  async recordMeasurement(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    input: Partial<MeasurementInput>,
+    label: string,
+  ): Promise<MilestoneMeasurement> {
+    const metric = milestone.outcomeMetric ?? null;
+    const checked = checkMeasurement(metric, input);
+    if (!checked.ok) throw new Error(checked.refusal);
+    if (!metric) throw new Error(NO_METRIC_FOR_MEASUREMENT);
+
+    // Lineage is proven from the milestone row itself, never from the caller.
+    if (milestone.organizationId && milestone.organizationId !== context.organizationId) {
+      throw new Error("That milestone belongs to another organization.");
+    }
+    if (!milestone.roadmapId) {
+      throw new Error("That milestone is not attached to a roadmap.");
+    }
+
+    const key = measurementEventKey(milestone.id, metric.key, checked.measurement);
+
+    const existing = await supabase
+      .from("roadmap_measurements")
+      .select(MEASUREMENT_COLUMNS)
+      .eq("milestone_id", milestone.id)
+      .eq("source_event_key", key)
+      .maybeSingle();
+    if (existing.error && !missingMeasurements(existing.error)) assertOk(existing.error);
+    if (existing.data) return toMeasurement(existing.data as Row);
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_measurements")
+      .insert({
+        organization_id: context.organizationId,
+        roadmap_id: milestone.roadmapId,
+        milestone_id: milestone.id,
+        metric_key: metric.key,
+        value: checked.measurement.value,
+        measured_at: measuredInstant(checked.measurement.measuredAt),
+        source: checked.measurement.source,
+        recorded_by: context.userId,
+        recorded_at: at,
+        source_event_key: key,
+        provenance: {
+          appId: "roadmap",
+          actor: {
+            type: "user",
+            id: context.userId,
+            ...(context.userLabel ? { label: context.userLabel } : {}),
+          },
+          observedAt: at,
+          confidence: "observed",
+        },
+      })
+      .select(MEASUREMENT_COLUMNS)
+      .single();
+
+    if (error && missingMeasurements(error)) {
+      throw new Error(
+        "Measurements are not available in this environment yet: the roadmap_measurements table has not been applied.",
+      );
+    }
+    assertOk(error);
+
+    const measurement = toMeasurement(data as Row);
+    await record(
+      context,
+      "roadmap.measured",
+      milestone.roadmapId,
+      label,
+      `${milestone.name} measured ${measurementSummary(measurement, metric)}.`,
+      {
+        milestoneId: milestone.id,
+        measurementId: measurement.id,
+        metricKey: metric.key,
+        value: measurement.value,
+        measuredAt: measurement.measuredAt,
+        source: measurement.source,
+        source_event_key: key,
+      },
+    );
+    return measurement;
+  },
+
+  /** The measurement history for one milestone, newest first. */
+  async listMeasurements(milestoneId: ID): Promise<MilestoneMeasurement[]> {
+    const { data, error } = await supabase
+      .from("roadmap_measurements")
+      .select(MEASUREMENT_COLUMNS)
+      .eq("milestone_id", milestoneId)
+      .order("measured_at", { ascending: false });
+    assertOk(error);
+    return sortMeasurements(((data ?? []) as Row[]).map(toMeasurement));
+  },
+
+  /* ------------------------------------------- success and acceptance */
+
+  /**
+   * Write the plain language success definition on a milestone.
+   *
+   * People describe success. The system structures measurement. This is the
+   * everyday path: an outcome sentence, an optional target date, an optional
+   * success check. Nothing is defaulted, the target date is never today by
+   * accident, and writing the same words again changes nothing.
+   */
+  async setMilestoneSuccess(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    input: Partial<MilestoneSuccessInput> | null,
+    label: string,
+  ): Promise<RoadmapMilestone> {
+    const current = milestone.success ?? null;
+    let next: MilestoneSuccess | null = null;
+
+    if (input) {
+      const checked = checkMilestoneSuccess(input);
+      if (!checked.ok) throw new Error(checked.refusal);
+      if (sameSuccess(current, checked.success)) return milestone;
+      next = {
+        ...checked.success,
+        tier: "decided",
+        recordedBy: context.userId,
+        recordedAt: new Date().toISOString(),
+      };
+    } else if (!current) {
+      return milestone;
+    }
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .update({ success_definition: next, updated_at: at })
+      .eq("id", milestone.id)
+      .select(MILESTONE_COLUMNS)
+      .single();
+
+    if (error?.message && /success_definition/.test(error.message)) {
+      throw new Error(
+        "Milestone outcomes are not available in this environment yet: the roadmap_milestones.success_definition column has not been applied.",
+      );
+    }
+    assertOk(error);
+
+    await record(
+      context,
+      "roadmap.updated",
+      milestone.roadmapId,
+      label,
+      next
+        ? `${milestone.name} now succeeds when: ${next.outcome}`
+        : `The outcome on ${milestone.name} was removed by a person.`,
+      {
+        milestoneId: milestone.id,
+        scope: "success_definition",
+        ...(next ? { success: next } : { cleared: true }),
+        source_event_key: successEventKey(milestone.id, next),
+      },
+    );
+    return toMilestone(data as Row);
+  },
+
+  async listCriteria(milestoneId: ID): Promise<AcceptanceCriterion[]> {
+    const { data, error } = await supabase
+      .from("roadmap_milestone_criteria")
+      .select(CRITERION_COLUMNS)
+      .eq("milestone_id", milestoneId);
+    if (error && missingCriteria(error)) return [];
+    assertOk(error);
+    return sortCriteria(((data ?? []) as Row[]).map(toCriterion));
+  },
+
+  /**
+   * Add one acceptance criterion. Roadmap owns the checklist, so this is the
+   * only write path, and the Project workroom calls this same method.
+   */
+  async addCriterion(
+    context: IntelContext,
+    milestone: RoadmapMilestone,
+    text: string,
+    label: string,
+  ): Promise<AcceptanceCriterion> {
+    const checked = checkCriterionText(text);
+    if (!checked.ok) throw new Error(checked.refusal);
+
+    const existing = await this.listCriteria(milestone.id);
+    const duplicate = findSameCriterion(existing, checked.text);
+    if (duplicate) return duplicate;
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestone_criteria")
+      .insert({
+        organization_id: milestone.organizationId,
+        roadmap_id: milestone.roadmapId,
+        milestone_id: milestone.id,
+        text: checked.text,
+        position: nextCriterionPosition(existing),
+        done: false,
+        created_by: context.userId,
+        created_at: at,
+        updated_at: at,
+        source_event_key: criterionEventKey(milestone.id, checked.text),
+        provenance: {
+          appId: "roadmap",
+          actor: { type: "user", id: context.userId, label: context.userLabel ?? null },
+          observedAt: at,
+          confidence: "observed",
+        },
+      })
+      .select(CRITERION_COLUMNS)
+      .single();
+
+    if (error && missingCriteria(error)) {
+      throw new Error(
+        "Acceptance criteria are not available in this environment yet: the roadmap_milestone_criteria table has not been applied.",
+      );
+    }
+    assertOk(error);
+
+    const criterion = toCriterion(data as Row);
+    await record(
+      context,
+      "roadmap.updated",
+      milestone.roadmapId,
+      label,
+      `An acceptance condition was added to ${milestone.name}: ${criterion.text}`,
+      {
+        milestoneId: milestone.id,
+        scope: "acceptance_criteria",
+        criterionId: criterion.id,
+        action: "added",
+        source_event_key: criterion.id,
+      },
+    );
+    return criterion;
+  },
+
+  /** Correct the wording of a condition. The text is the only thing that moves. */
+  async editCriterion(
+    context: IntelContext,
+    criterion: AcceptanceCriterion,
+    text: string,
+    label: string,
+  ): Promise<AcceptanceCriterion> {
+    const checked = checkCriterionText(text);
+    if (!checked.ok) throw new Error(checked.refusal);
+    if (checked.text === criterion.text) return criterion;
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestone_criteria")
+      .update({ text: checked.text, updated_at: at })
+      .eq("id", criterion.id)
+      .select(CRITERION_COLUMNS)
+      .single();
+    assertOk(error);
+
+    const next = toCriterion(data as Row);
+    await record(
+      context,
+      "roadmap.updated",
+      criterion.roadmapId,
+      label,
+      `An acceptance condition was reworded to: ${next.text}`,
+      {
+        milestoneId: criterion.milestoneId,
+        scope: "acceptance_criteria",
+        criterionId: criterion.id,
+        action: "edited",
+      },
+    );
+    return next;
+  },
+
+  /**
+   * Check or uncheck a condition.
+   *
+   * Checking every box never completes the milestone. It is evidence a person
+   * reads before making that call themselves.
+   */
+  async setCriterionDone(
+    context: IntelContext,
+    criterion: AcceptanceCriterion,
+    done: boolean,
+    label: string,
+  ): Promise<AcceptanceCriterion> {
+    if (criterion.done === done) return criterion;
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_milestone_criteria")
+      .update({
+        done,
+        completed_by: done ? context.userId : null,
+        completed_at: done ? at : null,
+        updated_at: at,
+      })
+      .eq("id", criterion.id)
+      .select(CRITERION_COLUMNS)
+      .single();
+    assertOk(error);
+
+    const next = toCriterion(data as Row);
+    await record(
+      context,
+      "roadmap.updated",
+      criterion.roadmapId,
+      label,
+      done
+        ? `An acceptance condition was met: ${next.text}`
+        : `An acceptance condition was reopened: ${next.text}`,
+      {
+        milestoneId: criterion.milestoneId,
+        scope: "acceptance_criteria",
+        criterionId: criterion.id,
+        action: done ? "checked" : "unchecked",
+      },
+    );
+    return next;
+  },
+
+  /** Remove a condition that should never have been written. */
+  async removeCriterion(
+    context: IntelContext,
+    criterion: AcceptanceCriterion,
+    label: string,
+  ): Promise<void> {
+    const allowed = canRemoveCriterion(criterion);
+    if (!allowed.ok) throw new Error(allowed.refusal);
+
+    const { error } = await supabase
+      .from("roadmap_milestone_criteria")
+      .delete()
+      .eq("id", criterion.id);
+    assertOk(error);
+
+    await record(
+      context,
+      "roadmap.updated",
+      criterion.roadmapId,
+      label,
+      `An acceptance condition was removed: ${criterion.text}`,
+      {
+        milestoneId: criterion.milestoneId,
+        scope: "acceptance_criteria",
+        criterionId: criterion.id,
+        action: "removed",
+      },
+    );
+  },
+
+  /** Move one condition up or down, keeping the checklist order readable. */
+  async moveCriterion(
+    context: IntelContext,
+    rows: AcceptanceCriterion[],
+    criterion: AcceptanceCriterion,
+    direction: "up" | "down",
+    label: string,
+  ): Promise<void> {
+    const moves = reorderCriteria(rows, criterion.id, direction);
+    if (moves.length === 0) return;
+    const at = new Date().toISOString();
+    for (const move of moves) {
+      const { error } = await supabase
+        .from("roadmap_milestone_criteria")
+        .update({ position: move.position, updated_at: at })
+        .eq("id", move.id);
+      assertOk(error);
+    }
+    await record(
+      context,
+      "roadmap.updated",
+      criterion.roadmapId,
+      label,
+      `The acceptance checklist order was changed by a person.`,
+      {
+        milestoneId: criterion.milestoneId,
+        scope: "acceptance_criteria",
+        criterionId: criterion.id,
+        action: "reordered",
+      },
+    );
+  },
+
+  /* ------------------------------------------------ criterion evidence */
+
+  /**
+   * Proof attached to the conditions on one roadmap.
+   *
+   * An unreadable table is a different fact from an empty one, so a missing
+   * relation is reported rather than shown as "nothing attached".
+   */
+  async listCriterionEvidence(roadmapId: ID): Promise<CriterionEvidence[]> {
+    const { data, error } = await supabase
+      .from("roadmap_criterion_evidence")
+      .select("*")
+      .eq("roadmap_id", roadmapId)
+      .order("created_at", { ascending: true })
+      .limit(1000);
+    if (error && missingCriterionEvidence(error)) {
+      throw new Error(EVIDENCE_NOT_APPLIED);
+    }
+    assertOk(error);
+    return ((data ?? []) as Row[]).map(toCriterionEvidence);
+  },
+
+  /**
+   * Attach one piece of proof to one condition.
+   *
+   * A file is uploaded into the existing private project files bucket, under
+   * an organization scoped path, before anything is recorded. If the row
+   * cannot be written, the object is removed rather than left orphaned.
+   *
+   * Nothing here checks the criterion. That stays a person's act.
+   */
+  async addCriterionEvidence(
+    context: IntelContext,
+    criterion: AcceptanceCriterion,
+    raw: { type: CriterionEvidenceType; label?: string; url?: string; note?: string; file?: File },
+    label: string,
+  ): Promise<CriterionEvidence> {
+    const checked = checkEvidenceInput({
+      type: raw.type,
+      label: raw.type === "file" ? (raw.file?.name ?? raw.label) : raw.label,
+      url: raw.url,
+      note: raw.note,
+    });
+    if (!checked.ok) throw new Error(checked.refusal);
+    const input = checked.input;
+
+    let storagePath: string | null = null;
+    let contentType: string | null = null;
+    let sizeBytes: number | null = null;
+
+    if (input.type === "file") {
+      const file = raw.file;
+      if (!file) throw new Error("Choose a file to attach.");
+      const path = criterionEvidencePath(
+        criterion.organizationId,
+        criterion.milestoneId,
+        criterion.id,
+        file.name,
+      );
+      const upload = await supabase.storage.from(PROJECT_FILES_BUCKET).upload(path, file, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
+      if (upload.error) throw new Error("That file could not be uploaded.");
+      storagePath = path;
+      contentType = file.type || null;
+      sizeBytes = file.size;
+    }
+
+    const at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("roadmap_criterion_evidence")
+      .insert({
+        organization_id: criterion.organizationId,
+        roadmap_id: criterion.roadmapId,
+        milestone_id: criterion.milestoneId,
+        criterion_id: criterion.id,
+        type: input.type,
+        label: input.label,
+        url: input.url ?? null,
+        storage_path: storagePath,
+        content_type: contentType,
+        size_bytes: sizeBytes,
+        note: input.note ?? null,
+        created_by: context.userId,
+        created_by_label: context.userLabel ?? null,
+        created_at: at,
+        source_event_key: evidenceEventKey(criterion.id, input),
+        provenance: {
+          appId: "roadmap",
+          actor: { type: "user", id: context.userId, label: context.userLabel ?? null },
+          observedAt: at,
+          confidence: "observed",
+        },
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      if (storagePath) {
+        await supabase.storage.from(PROJECT_FILES_BUCKET).remove([storagePath]);
+      }
+      if (missingCriterionEvidence(error)) throw new Error(EVIDENCE_NOT_APPLIED);
+      // The same proof attached twice is the same fact, not a failure.
+      if (/duplicate key|23505/i.test(`${error.code ?? ""} ${error.message ?? ""}`)) {
+        const existing = await supabase
+          .from("roadmap_criterion_evidence")
+          .select("*")
+          .eq("criterion_id", criterion.id)
+          .eq("source_event_key", evidenceEventKey(criterion.id, input))
+          .maybeSingle();
+        if (existing.data) return toCriterionEvidence(existing.data as Row);
+      }
+      throw new Error("That evidence could not be saved.");
+    }
+
+    const saved = toCriterionEvidence(data as Row);
+    await record(
+      context,
+      "roadmap.updated",
+      criterion.roadmapId,
+      label,
+      `Evidence was attached to an acceptance condition: ${saved.label}`,
+      {
+        milestoneId: criterion.milestoneId,
+        scope: "acceptance_evidence",
+        criterionId: criterion.id,
+        evidenceId: saved.id,
+        evidenceType: saved.type,
+        action: "attached",
+        source_event_key: saved.id,
+      },
+    );
+    return saved;
+  },
+
+  /** Remove one piece of proof, explicitly, with the file it stood on. */
+  async removeCriterionEvidence(
+    context: IntelContext,
+    evidence: CriterionEvidence,
+    label: string,
+  ): Promise<void> {
+    const { error } = await supabase
+      .from("roadmap_criterion_evidence")
+      .delete()
+      .eq("id", evidence.id);
+    if (error && missingCriterionEvidence(error)) throw new Error(EVIDENCE_NOT_APPLIED);
+    assertOk(error);
+
+    if (evidence.storagePath) {
+      await supabase.storage.from(PROJECT_FILES_BUCKET).remove([evidence.storagePath]);
+    }
+
+    await record(
+      context,
+      "roadmap.updated",
+      evidence.roadmapId,
+      label,
+      `Evidence was removed from an acceptance condition: ${evidence.label}`,
+      {
+        milestoneId: evidence.milestoneId,
+        scope: "acceptance_evidence",
+        criterionId: evidence.criterionId,
+        evidenceId: evidence.id,
+        action: "removed",
+      },
+    );
+  },
+
+  /** A short lived signed url. Evidence files are private; nothing is public. */
+  async criterionEvidenceUrl(evidence: CriterionEvidence): Promise<string> {
+    if (!evidence.storagePath) throw new Error("That evidence is not a stored file.");
+    const { data, error } = await supabase.storage
+      .from(PROJECT_FILES_BUCKET)
+      .createSignedUrl(evidence.storagePath, 60);
+    if (error || !data?.signedUrl) throw new Error("That file could not be opened.");
+    return data.signedUrl;
   },
 
   /* ----------------------------------------------------------- studio */

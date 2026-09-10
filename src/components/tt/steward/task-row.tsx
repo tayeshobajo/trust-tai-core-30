@@ -50,7 +50,13 @@ export function OwnerBadge({ task }: { task: StewardTask }) {
               : "border-border bg-secondary text-foreground",
         )}
       >
-        {agent ? <Bot className="size-3.5" /> : unowned ? <User className="size-3.5" /> : task.owner.initials}
+        {agent ? (
+          <Bot className="size-3.5" />
+        ) : unowned ? (
+          <User className="size-3.5" />
+        ) : (
+          task.owner.initials
+        )}
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm text-foreground">{task.owner.name}</span>
@@ -268,9 +274,7 @@ export function TaskRow({
           {canComplete ? (
             <DropdownMenuItem onSelect={() => onComplete()}>Mark complete</DropdownMenuItem>
           ) : (
-            <p className="px-2 py-2 text-xs text-muted-foreground">
-              {canFinish.because}
-            </p>
+            <p className="px-2 py-2 text-xs text-muted-foreground">{canFinish.because}</p>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

@@ -12,7 +12,6 @@ export type CommsSection =
   | "voice"
   | "integrations";
 
-
 /**
  * Underline tabs, mockup geometry: 40px rows, a 2px royal rule under the
  * current section, and a single hairline running the full width beneath.

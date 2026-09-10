@@ -13,12 +13,12 @@
  *  - `sanitizeEmailHtml` is the security boundary. It is an allowlist
  *    sanitizer: known-safe tags and attributes survive; scripts, forms,
  *    iframes, event handlers, styles, unsafe URLs, and remote resources do
- *    not. Remote images are dropped and counted — they never load silently.
+ *    not. Remote images are dropped and counted, they never load silently.
  *  - `parseEmailHtml` turns the sanitized HTML into a small node tree the
- *    timeline renders with ordinary components — no dangerouslySetInnerHTML.
+ *    timeline renders with ordinary components, no dangerouslySetInnerHTML.
  *  - `splitQuotedContent` / `splitQuotedNodes` separate the current reply
  *    from quoted history. Fidelity beats cleverness: detection is
- *    conservative, and nothing is ever deleted — quoted content lives behind
+ *    conservative, and nothing is ever deleted, quoted content lives behind
  *    an explicit Show quoted text affordance.
  *
  * Everything here is pure: no network, no storage, no credentials. The
@@ -66,9 +66,9 @@ export function decodeBase64UrlToText(data: string): string {
 /* ------------------------------------------------------------ extraction */
 
 export interface ExtractedEmailBody {
-  /** The full readable text — plain part preferred, HTML flattened otherwise. */
+  /** The full readable text, plain part preferred, HTML flattened otherwise. */
   bodyText?: string;
-  /** Sanitized HTML — present only when the mail carried an HTML part. */
+  /** Sanitized HTML, present only when the mail carried an HTML part. */
   bodyHtml?: string;
   /** Remote images the sanitizer refused. Surfaced, never silently dropped. */
   blockedRemoteImages: number;
@@ -171,7 +171,7 @@ function walkPart(part: MimePart, state: WalkState): void {
     return;
   }
 
-  // Anything else — an unnamed non-body leaf such as a calendar part — is
+  // Anything else, an unnamed non-body leaf such as a calendar part, is
   // not content we render and not a file the person meant to send.
 }
 
@@ -179,7 +179,7 @@ function walkPart(part: MimePart, state: WalkState): void {
  * Extract the meaningful content of one Gmail `format=full` message:
  * bodies, inline images, and ordinary attachments. The returned HTML is
  * already sanitized; remote images are counted, never loaded. Pure;
- * safe to call on metadata-format payloads too — they simply carry no
+ * safe to call on metadata-format payloads too, they simply carry no
  * body data, and every body field comes back absent.
  */
 export function extractEmailBody(payload: MimePart | undefined): ExtractedEmailBody {
@@ -211,31 +211,78 @@ export function extractEmailBody(payload: MimePart | undefined): ExtractedEmailB
 /* ----------------------------------------------------------- sanitizer */
 
 const ALLOWED_TAGS = new Set([
-  "a", "b", "strong", "i", "em", "u", "s", "strike", "p", "br", "div", "span",
-  "ul", "ol", "li", "blockquote", "h1", "h2", "h3", "h4", "hr", "img",
-  "table", "thead", "tbody", "tfoot", "tr", "td", "th", "pre", "code",
+  "a",
+  "b",
+  "strong",
+  "i",
+  "em",
+  "u",
+  "s",
+  "strike",
+  "p",
+  "br",
+  "div",
+  "span",
+  "ul",
+  "ol",
+  "li",
+  "blockquote",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "hr",
+  "img",
+  "table",
+  "thead",
+  "tbody",
+  "tfoot",
+  "tr",
+  "td",
+  "th",
+  "pre",
+  "code",
 ]);
 const VOID_TAGS = new Set(["br", "hr", "img"]);
 /** Dropped together with everything inside them. */
 const DROP_WITH_CONTENTS = new Set([
-  "script", "style", "iframe", "object", "embed", "form", "svg", "math",
-  "template", "title", "textarea", "select", "option", "button", "input",
-  "link", "meta", "base", "video", "audio", "source", "track", "canvas",
-  "frame", "frameset", "applet",
+  "script",
+  "style",
+  "iframe",
+  "object",
+  "embed",
+  "form",
+  "svg",
+  "math",
+  "template",
+  "title",
+  "textarea",
+  "select",
+  "option",
+  "button",
+  "input",
+  "link",
+  "meta",
+  "base",
+  "video",
+  "audio",
+  "source",
+  "track",
+  "canvas",
+  "frame",
+  "frameset",
+  "applet",
 ]);
 
 function escapeText(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function escapeAttribute(value: string): string {
   return escapeText(value).replace(/"/g, "&quot;");
 }
 
-/** Links may point at the web, mail, or an in-document anchor — nothing else. */
+/** Links may point at the web, mail, or an in-document anchor, nothing else. */
 function safeHref(value: string): string | undefined {
   const trimmed = value.trim();
   if (/^(https?:\/\/|mailto:|#)/i.test(trimmed)) return trimmed;
@@ -298,7 +345,7 @@ export interface SanitizeResult {
  * removed: scripts, styles, forms, iframes, event handlers, javascript: and
  * data: URLs, remote resources. Unknown tags are unwrapped (their text
  * survives); dangerous containers are dropped with their contents. The
- * output is balanced — every opened allowed tag is closed.
+ * output is balanced, every opened allowed tag is closed.
  */
 export function sanitizeEmailHtml(input: string): SanitizeResult {
   let blockedRemoteImages = 0;
@@ -459,7 +506,8 @@ export type EmailNode =
 export function parseEmailHtml(html: string): EmailNode[] {
   const root: EmailNode[] = [];
   const stack: { tag: string; node: Extract<EmailNode, { type: "element" }> }[] = [];
-  const current = (): EmailNode[] => (stack.length > 0 ? stack[stack.length - 1]!.node.children : root);
+  const current = (): EmailNode[] =>
+    stack.length > 0 ? stack[stack.length - 1]!.node.children : root;
 
   let index = 0;
   while (index < html.length) {
@@ -485,14 +533,18 @@ export function parseEmailHtml(html: string): EmailNode[] {
       continue;
     }
 
-    const node: Extract<EmailNode, { type: "element" }> = { type: "element", tag: tag.name, children: [] };
+    const node: Extract<EmailNode, { type: "element" }> = {
+      type: "element",
+      tag: tag.name,
+      children: [],
+    };
     if (tag.name === "a") {
       const href = safeHref(tag.attrs["href"] ?? "");
       if (href) node.href = href;
     }
     if (tag.name === "img") {
       // data-cid arrives from our own sanitizer with the prefix already
-      // stripped — it is safe by construction; src goes through the check.
+      // stripped, it is safe by construction; src goes through the check.
       const dataCid = (tag.attrs["data-cid"] ?? "").trim();
       const cid = dataCid || safeImageSrc(tag.attrs["src"] ?? "");
       if (!cid) continue; // should not happen post-sanitization; refuse anyway
@@ -523,7 +575,7 @@ export interface SplitContent {
 }
 
 const QUOTED_LINE_PATTERNS = [
-  /^On .{0,200}wrote:\s*$/i, // Gmail / Apple Mail
+  /^On.{0,200}wrote:\s*$/i, // Gmail / Apple Mail
   /^-+\s*Original Message\s*-+\s*$/i, // Outlook classic
   /^_{5,}\s*$/, // Outlook separator bar
   /^>/, // classic ">" reply quoting
@@ -533,7 +585,7 @@ const QUOTED_LINE_PATTERNS = [
  * Split a plain-text body into the current message and quoted history.
  * Conservative: the first line that clearly begins quoted history starts
  * the quoted portion, and if nothing meaningful would remain in front of
- * it, the whole body stays primary. Nothing is deleted — quoted content is
+ * it, the whole body stays primary. Nothing is deleted, quoted content is
  * rendered behind an explicit affordance.
  */
 export function splitQuotedContent(body: string): SplitContent {
@@ -544,7 +596,7 @@ export function splitQuotedContent(body: string): SplitContent {
     const main = lines.slice(0, index).join("\n").trim();
     if (main.length < 2) break; // fidelity first: a quote-only mail stays whole
     // A main that is only a reply preamble ("On … wrote:") means the whole
-    // message is quoted history — keep it whole rather than fold everything.
+    // message is quoted history, keep it whole rather than fold everything.
     if (/^on\s.{0,120}?wrote:$/is.test(main)) break;
     return { main, quoted: lines.slice(index).join("\n").trim() };
   }
@@ -577,7 +629,7 @@ export function splitQuotedNodes(nodes: EmailNode[]): { main: EmailNode[]; quote
 
 /**
  * The shared fold threshold: long mail starts folded, never clamped. The
- * measure is meaningful text only — blank structural lines (layout divs,
+ * measure is meaningful text only, blank structural lines (layout divs,
  * empty breaks) do not count as lines; only lines carrying actual words do.
  */
 function textNeedsCollapse(basis: string): boolean {
@@ -592,11 +644,14 @@ function textNeedsCollapse(basis: string): boolean {
  * resources never push an email behind Show more: a short note with a large
  * image renders whole.
  *
- * Prefer `primaryEmailNeedsCollapse` for rendering — this measures the
+ * Prefer `primaryEmailNeedsCollapse` for rendering, this measures the
  * unsplit body and exists for callers that genuinely need the whole-body
  * measure.
  */
-export function emailNeedsCollapse(bodyText: string | undefined, bodyHtml: string | undefined): boolean {
+export function emailNeedsCollapse(
+  bodyText: string | undefined,
+  bodyHtml: string | undefined,
+): boolean {
   const basis = bodyText ?? (bodyHtml ? htmlToPlainText(bodyHtml) : "");
   return textNeedsCollapse(basis);
 }
@@ -621,8 +676,8 @@ const TEXT_LINE_BOUNDARY_TAGS = new Set([
 ]);
 
 /**
- * The readable text of a node tree. Inline images contribute zero — not
- * their alt, not their filename — because an image is not prose, and image
+ * The readable text of a node tree. Inline images contribute zero, not
+ * their alt, not their filename, because an image is not prose, and image
  * metadata must never push an email behind Show more. Block boundaries
  * become line breaks so the meaningful-line rule applies to HTML the same
  * way it applies to plain text.
@@ -650,7 +705,7 @@ export function emailNodesToText(nodes: EmailNode[]): string {
  * The collapse law for rendering: only the primary content currently visible
  * to the reader decides whether Show more exists.
  *
- * Quoted history is split away FIRST and never counts — a short reply atop
+ * Quoted history is split away FIRST and never counts, a short reply atop
  * a long thread shows whole, with quoted history behind its own independent
  * Show quoted text affordance. Inline images contribute zero text, so an
  * image-led note never folds. Genuinely long primary prose still folds with

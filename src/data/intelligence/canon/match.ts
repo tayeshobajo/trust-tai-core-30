@@ -143,7 +143,9 @@ export function matchPattern(
 
   const because =
     `${matched.length} of ${pattern.triggers.length} things this shape usually shows are present` +
-    (missingEvidence.length > 0 ? `, and ${missingEvidence.length} could not be checked here.` : ".");
+    (missingEvidence.length > 0
+      ? `, and ${missingEvidence.length} could not be checked here.`
+      : ".");
 
   return {
     patternId: pattern.id,
@@ -198,7 +200,9 @@ export function describeMatch(match: PatternMatch): string {
     match.missingEvidence.length > 0
       ? `Not checked yet: ${match.missingEvidence.map((entry) => entry.inspect).join("; ")}.`
       : "",
-    competing ? `It could also be that ${lowerFirst(competing.explanation)} ${competing.distinguishedBy}` : "",
+    competing
+      ? `It could also be that ${lowerFirst(competing.explanation)} ${competing.distinguishedBy}`
+      : "",
     move ? `If it holds, the next move sits with ${move.appId}: ${lowerFirst(move.move)}.` : "",
   ];
   return parts.filter(Boolean).join(" ");

@@ -13,7 +13,7 @@
  *
  * Every call goes through the caller-supplied Supabase client, so the
  * member-invoked path stays under RLS and the scheduled path stays
- * service-role — the same governed shape either way.
+ * service-role, the same governed shape either way.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -26,7 +26,7 @@ export interface IntakeInput {
   email: string;
   /** Display name from the labeled mail, when Gmail carried one. */
   name?: string;
-  /** The mailbox that observed the label — transport provenance. */
+  /** The mailbox that observed the label, transport provenance. */
   mailbox: string;
   providerThreadId: string;
   providerMessageId: string;
@@ -146,7 +146,7 @@ async function recordCreation(
 }
 
 /**
- * Resolve — or create once — the Comms relationship for a labeled
+ * Resolve, or create once, the Comms relationship for a labeled
  * correspondent. Throws only when the relationship itself cannot be
  * established; the caller turns that into a visible, retryable exception
  * rather than dropping the person silently.

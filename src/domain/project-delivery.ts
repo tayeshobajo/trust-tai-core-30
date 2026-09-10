@@ -155,7 +155,7 @@ export interface ProjectFile {
 /** The bucket every project file lives in. Private; read through signed urls. */
 export const PROJECT_FILES_BUCKET = "project-files";
 
-/** `<organization>/<project>/<unique>-<name>` — the org id gates the policy. */
+/** `<organization>/<project>/<unique>-<name>`, the org id gates the policy. */
 export function projectFilePath(organizationId: ID, projectId: ID, fileName: string): string {
   const safe = fileName.replace(/[^\w.\-]+/g, "-").slice(-120) || "file";
   const unique =

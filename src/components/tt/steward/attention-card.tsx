@@ -20,13 +20,7 @@ const APP_LABEL: Record<string, string> = {
   ops: "Ops",
 };
 
-export function AttentionCard({
-  item,
-  actions,
-}: {
-  item: AttentionItem;
-  actions?: ReactNode;
-}) {
+export function AttentionCard({ item, actions }: { item: AttentionItem; actions?: ReactNode }) {
   return (
     <li className="tt-surface p-6">
       <div className="flex flex-wrap items-center gap-2">

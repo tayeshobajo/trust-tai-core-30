@@ -12,7 +12,9 @@ export function GuidanceCard() {
       </div>
       <div>
         <TTButton asChild variant="signal">
-          <Link to="/modules/$slug" params={{ slug: "conductor" }}>Open Conductor</Link>
+          <Link to="/modules/$slug" params={{ slug: "conductor" }}>
+            Open Conductor
+          </Link>
         </TTButton>
       </div>
     </aside>

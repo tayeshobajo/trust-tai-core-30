@@ -108,12 +108,11 @@ export function buildPersonPlan(people: Person[]): PersonPlan {
   const primary = ranked[0]!.rec;
   const supporting = ranked.slice(1, 4).map((entry) => entry.rec);
 
-  const decider = ranked.find((entry) =>
-    DECIDING_SENIORITIES.includes(entry.person.seniority),
-  );
+  const decider = ranked.find((entry) => DECIDING_SENIORITIES.includes(entry.person.seniority));
   let gap: string | null = null;
   if (!decider) {
-    gap = "Nobody on record clearly decides on a web engagement. Find a founder, owner, or executive.";
+    gap =
+      "Nobody on record clearly decides on a web engagement. Find a founder, owner, or executive.";
   } else if (primary.route === "none") {
     gap = `No contact route exists for ${primary.fullName}. Find an email or a profile link first.`;
   } else if (primary.route === "unverified_email") {

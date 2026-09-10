@@ -64,7 +64,7 @@ export const GMAIL_READ_SCOPES = ["https://www.googleapis.com/auth/gmail.readonl
  * The narrowest permission that lets a person send a draft they approved.
  * Requested on the same consent screen as reading, so the boundary stays
  * explicit: Comms can send only when a human clicks Send. `gmail.modify`
- * is never requested — Comms cannot alter Gmail labels, by construction.
+ * is never requested. Comms cannot alter Gmail labels, by construction.
  */
 export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
 
@@ -75,7 +75,7 @@ export const GMAIL_CONNECTION_SCOPES = [...GMAIL_READ_SCOPES, GMAIL_SEND_SCOPE];
  * The scopes to persist from a Google token response. Google reports the
  * actually granted set as a space-delimited `scope` field; we keep only the
  * Gmail scopes Comms understands, so a capability check can trust the row.
- * A missing field falls back to read-only — send stays blocked unless the
+ * A missing field falls back to read-only, send stays blocked unless the
  * grant is explicit. Never widened beyond what Google returned.
  */
 export function grantedGmailScopes(scopeField: unknown): string[] {
@@ -93,7 +93,7 @@ export type MessageDirection = "inbound" | "outbound";
 /**
  * What Comms knows about a file on a message: name, kind, size, and the
  * provider handle that fetches the bytes on demand. Content never lives in
- * this shape — Gmail stays the source of truth for Gmail-native files.
+ * this shape. Gmail stays the source of truth for Gmail-native files.
  */
 export interface AttachmentMeta {
   filename: string;
@@ -106,7 +106,7 @@ export interface AttachmentMeta {
    * body's `cid:` references resolve against. Ordinary files never carry it.
    */
   contentId?: string;
-  /** True on inline MIME images — rendered in place, never a chip. */
+  /** True on inline MIME images, rendered in place, never a chip. */
   inline?: boolean;
 }
 
@@ -126,7 +126,7 @@ export function attachmentMetaToJson(meta: AttachmentMeta): Record<string, unkno
   };
 }
 
-/** Tolerant inverse of `attachmentMetaToJson` — accepts camel or snake keys. */
+/** Tolerant inverse of `attachmentMetaToJson`, accepts camel or snake keys. */
 export function attachmentMetaFromJson(raw: unknown): AttachmentMeta | null {
   if (!raw || typeof raw !== "object") return null;
   const entry = raw as Record<string, unknown>;
@@ -161,13 +161,13 @@ export interface NormalizedMessage {
   ccEmails: string[];
   subject?: string;
   snippet?: string;
-  /** The full readable body — never the snippet, never truncated. */
+  /** The full readable body, never the snippet, never truncated. */
   bodyText?: string;
   /** Sanitized HTML, present when the mail carried an HTML part. */
   bodyHtml?: string;
   occurredAt: ISODateTime;
   headers?: Record<string, string>;
-  /** Ordinary files — metadata only; bytes are fetched on demand. */
+  /** Ordinary files, metadata only; bytes are fetched on demand. */
   attachments?: AttachmentMeta[];
   /** Inline MIME images (cid resources), rendered in place, never chips. */
   inlineResources?: AttachmentMeta[];
@@ -182,7 +182,7 @@ export interface NormalizedThread {
 }
 
 /**
- * A mailbox message as Comms stored it — the row the relationship timeline
+ * A mailbox message as Comms stored it, the row the relationship timeline
  * reads. Provider ids ride along so the room can target a reply at the right
  * thread and fetch an attachment's bytes on demand; they are identifiers,
  * never credentials.
@@ -205,7 +205,7 @@ export interface StoredMailboxMessage {
   bodyHtml?: string;
   occurredAt: ISODateTime;
   /**
-   * Ordinary files AND inline MIME resources — inline entries carry
+   * Ordinary files AND inline MIME resources, inline entries carry
    * `inline: true` plus a `contentId`; chips filter them out, the body
    * renderer resolves them.
    */
@@ -216,7 +216,7 @@ export interface StoredMailboxMessage {
   sentViaComms?: boolean;
   /**
    * Which connected mailbox observed or sent this message. Mailboxes own
-   * transport identity; relationships own memory — several mailboxes can
+   * transport identity; relationships own memory, several mailboxes can
    * feed one relationship, and this is how a reply stays with the mailbox
    * the conversation belongs to.
    */
@@ -257,12 +257,12 @@ export interface SendMailboxRef {
  * Which mailbox a human-approved send goes from. The law:
  *  - thread ownership wins for replies: a reply always goes from the mailbox
  *    that owns the conversation (provenance), never a different connected
- *    account — an explicit From choice cannot reroute a reply;
+ *    account, an explicit From choice cannot reroute a reply;
  *  - an explicit From choice applies only to new conversations;
  *  - a brand-new message uses the one send-capable mailbox automatically,
  *    and only asks when more than one could send.
  * Scope is not decided here: a resolved mailbox whose grant lacks
- * `gmail.send` is still resolved, and the caller blocks it — naming that
+ * `gmail.send` is still resolved, and the caller blocks it, naming that
  * mailbox, and only that mailbox. Pure; tested.
  */
 export type SendMailboxResolution<T extends SendMailboxRef> =
@@ -433,7 +433,7 @@ export interface ThreadRead {
 /**
  * The persisted summary of one sync pass, stored on the connection's cursor
  * so the status surface can tell the truth about the last read without
- * touching the mailbox again. Counts only — never message content.
+ * touching the mailbox again. Counts only, never message content.
  */
 export interface GmailRunSummary {
   at: ISODateTime;
@@ -444,16 +444,14 @@ export interface GmailRunSummary {
   skippedUnknownPeople: number;
   /** People the Gmail label itself approved into Comms on this pass. */
   peopleAdded: number;
-  /** Labeled messages awaiting a human decision — ambiguity or a failed create. */
+  /** Labeled messages awaiting a human decision, ambiguity or a failed create. */
   pendingPeople: number;
   eventsEmitted: number;
   draftsVerified: number;
 }
 
 function runCount(value: unknown): number {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0
-    ? Math.floor(value)
-    : 0;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
 }
 
 /** Defensive read of `cursor.last_run`; anything malformed is simply absent. */

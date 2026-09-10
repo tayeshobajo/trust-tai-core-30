@@ -97,7 +97,10 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
 
   const tasks = read.data?.tasks ?? [];
   const visible = useMemo(
-    () => searchTasks(applyTeamFilter(tasks, filter), query).filter((task) => task.state !== "complete"),
+    () =>
+      searchTasks(applyTeamFilter(tasks, filter), query).filter(
+        (task) => task.state !== "complete",
+      ),
     [tasks, filter, query],
   );
   const glance = useMemo(() => glanceOf(tasks), [tasks]);
@@ -119,7 +122,9 @@ function StewardTeam({ identity }: { identity: WorkspaceIdentity }) {
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [tasks]);
 
-  const person = openPerson ? personRead(tasks, openPerson, read.data?.now ?? new Date().toISOString()) : null;
+  const person = openPerson
+    ? personRead(tasks, openPerson, read.data?.now ?? new Date().toISOString())
+    : null;
 
   const reorder = useMutation({
     mutationFn: async ({ source, target }: { source: StewardTask; target: StewardTask }) => {

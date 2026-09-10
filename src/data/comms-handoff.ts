@@ -97,13 +97,14 @@ export function selectTargets(people: Person[]): HandoffTarget[] {
     const role = person.roleTitle ?? SENIORITY_LABEL[person.seniority];
     const emailReachable = person.emailStatus === "verified";
     const linkedinReachable = person.linkedinConfirmed === true && Boolean(person.linkedinUrl);
-    const blocker = !emailReachable && !linkedinReachable
-      ? !person.email
-        ? person.linkedinUrl
-          ? "A LinkedIn URL is stored but unconfirmed. Confirm the route to make this person reachable."
-          : "No business email is on record."
-        : `${EMAIL_STATUS_LABEL[person.emailStatus]} · nobody has confirmed this address.`
-      : undefined;
+    const blocker =
+      !emailReachable && !linkedinReachable
+        ? !person.email
+          ? person.linkedinUrl
+            ? "A LinkedIn URL is stored but unconfirmed. Confirm the route to make this person reachable."
+            : "No business email is on record."
+          : `${EMAIL_STATUS_LABEL[person.emailStatus]} · nobody has confirmed this address.`
+        : undefined;
 
     return {
       ...toHandoffContact(person),
@@ -143,7 +144,7 @@ function chooseIntent(
       because: "This company has already been worked with, so the thread is being picked up.",
     };
   }
-  if (limiting && milestone && evaluation.light === "green" && !coverage.thin) {
+  if (limiting && milestone && evaluation.light === "green" && !coverage.sparse) {
     return {
       intent: "propose",
       because:
@@ -235,7 +236,7 @@ export function buildHandoffBlockers(input: {
     });
   }
   if (person && !person.email) {
-    // A confirmed LinkedIn route satisfies reachability on its own — the email
+    // A confirmed LinkedIn route satisfies reachability on its own, the email
     // blocker only stands when no route of any kind exists (brief §3).
     const linkedinReachable = person.linkedinConfirmed === true && Boolean(person.linkedinUrl);
     if (!linkedinReachable) {
@@ -264,7 +265,7 @@ export function buildHandoffBlockers(input: {
       message: "The company has never been researched against the ICP.",
     });
   }
-  if (coverage.thin) {
+  if (coverage.sparse) {
     blockers.push({
       kind: "thin_coverage",
       message: "Research coverage is thin, so the brief rests on partial reading.",
@@ -330,7 +331,7 @@ export function buildHandoffDraft(input: HandoffInput): HandoffDraft {
   );
 
   const confidence: ConfidenceRead = {
-    level: blockers.length === 0 ? fitConfidence.level : coverage.thin ? "low" : "moderate",
+    level: blockers.length === 0 ? fitConfidence.level : coverage.sparse ? "low" : "moderate",
     because:
       blockers.length === 0
         ? `${fitConfidence.because} A verified contact is on record.`

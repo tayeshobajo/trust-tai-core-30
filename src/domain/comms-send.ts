@@ -5,7 +5,7 @@
  *
  * A draft moves draft → sending → sent, and the mailbox still has the last
  * word through verification (`comms-verification`). A refusal lands in
- * `send_failed` with the reason kept — never as sent. Approving and sending
+ * `send_failed` with the reason kept, never as sent. Approving and sending
  * are one human act: pressing Send on a draft is the approval.
  *
  * The claim is the idempotency mechanism. Only the first attempt can move a
@@ -20,6 +20,8 @@
 import type { AttachmentMeta } from "./comms-integrations";
 import type { DraftReviewState } from "./comms";
 import type { ISODateTime } from "./entities";
+import { LEGACY_APPROVAL_REFUSAL, isLegacyApproved } from "./comms-approval";
+import { EXTERNAL_SEND_REFUSAL, readExternalSend } from "./comms-external-send";
 
 /** Where a message goes: continue the Gmail thread, or open a new one. */
 export type SendThreadTarget = { mode: "reply"; providerThreadId: string } | { mode: "new" };
@@ -93,9 +95,12 @@ function attachmentsFromJson(raw: unknown): AttachmentMeta[] | undefined {
     if (!filename) continue;
     out.push({
       filename,
-      mimeType: typeof value["mime_type"] === "string" ? value["mime_type"] : "application/octet-stream",
+      mimeType:
+        typeof value["mime_type"] === "string" ? value["mime_type"] : "application/octet-stream",
       size: typeof value["size"] === "number" ? value["size"] : 0,
-      ...(typeof value["attachment_id"] === "string" ? { attachmentId: value["attachment_id"] } : {}),
+      ...(typeof value["attachment_id"] === "string"
+        ? { attachmentId: value["attachment_id"] }
+        : {}),
     });
   }
   return out.length > 0 ? out : undefined;
@@ -117,9 +122,7 @@ export function readDraftSend(
     state,
     idempotencyKey: value["idempotency_key"],
     attemptedAt:
-      typeof value["attempted_at"] === "string"
-        ? value["attempted_at"]
-        : new Date().toISOString(),
+      typeof value["attempted_at"] === "string" ? value["attempted_at"] : new Date().toISOString(),
     ...(typeof value["sent_at"] === "string" ? { sentAt: value["sent_at"] } : {}),
     ...(typeof value["provider_message_id"] === "string"
       ? { providerMessageId: value["provider_message_id"] }
@@ -168,7 +171,7 @@ export type SendClaimDecision =
 
 /**
  * What a send attempt should do with this draft. The server still claims with
- * a conditional update — this decides how to read the outcome, and how to
+ * a conditional update, this decides how to read the outcome, and how to
  * answer a retried click without sending twice.
  */
 export function decideSendClaim(
@@ -192,6 +195,19 @@ export function decideSendClaim(
       !Number.isNaN(new Date(draft.updatedAt).getTime()) &&
       now.getTime() - new Date(draft.updatedAt).getTime() > STALE_SENDING_MS;
     return stale ? { kind: "claim" } : { kind: "in_flight" };
+  }
+
+  // The person already answered from Gmail and the mailbox proves it. The
+  // conversation moved on without this draft; sending it now would repeat.
+  if (readExternalSend(draft.rationale)) {
+    return { kind: "not_sendable", reason: EXTERNAL_SEND_REFUSAL };
+  }
+
+  // Approved has to mean a person decided, with a name and a time on it.
+  // An approval we cannot attribute is not one we may act on: the draft
+  // stays exactly as it is and a person approves it again.
+  if (isLegacyApproved(draft.reviewState, draft.rationale)) {
+    return { kind: "not_sendable", reason: LEGACY_APPROVAL_REFUSAL };
   }
 
   if ((SENDABLE_STATES as string[]).includes(draft.reviewState)) return { kind: "claim" };

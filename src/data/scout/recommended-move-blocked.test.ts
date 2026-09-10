@@ -64,10 +64,7 @@ const preparedMarker = (): RelationshipResearchMarker =>
     brief: preparedBrief,
   }) as RelationshipResearchMarker;
 
-const candidate = (over: {
-  intel?: ScoutIntel;
-  status?: string;
-}): ProspectCandidate =>
+const candidate = (over: { intel?: ScoutIntel; status?: string }): ProspectCandidate =>
   ({
     prospect: {
       id: "p1",
@@ -98,7 +95,7 @@ describe("a gated first message names the gate", () => {
     });
     expect(move.state).toBe("no_urgency");
     expect(move.blocked).toBe(true);
-    expect(move.headline).toBe("Email looks like the right way in — verify it first");
+    expect(move.headline).toBe("Email looks like the right way in, verify it first");
     expect(move.headline).not.toMatch(/^Start with email/);
     expect(move.primary.kind).toBe("resolve_blockers");
     expect(move.primary.label).toBe("Resolve 2 blockers");
@@ -123,7 +120,10 @@ describe("a gated first message names the gate", () => {
     const intel: ScoutIntel = {
       ...intelWithPerson,
       buyingSignals: [
-        { statement: "They opened a second location in Franklin", observedAt: "2026-08-20T00:00:00.000Z" },
+        {
+          statement: "They opened a second location in Franklin",
+          observedAt: "2026-08-20T00:00:00.000Z",
+        },
       ],
     } as unknown as ScoutIntel;
     const move = buildRecommendedNextMove({
@@ -134,7 +134,7 @@ describe("a gated first message names the gate", () => {
     expect(move.state).toBe("act_now");
     expect(move.whyNow).toBe("They opened a second location in Franklin");
     expect(move.blocked).toBe(true);
-    expect(move.headline).toBe("Email looks like the right way in — verify it first");
+    expect(move.headline).toBe("Email looks like the right way in, verify it first");
     expect(move.primary.kind).toBe("resolve_blockers");
     expect(move.reason).toContain(UNVERIFIED);
   });
@@ -169,9 +169,7 @@ describe("non-email channels", () => {
   it("a blocked LinkedIn route names the person, not a channel Scout cannot promise", () => {
     const linkedinOnly: ScoutIntel = {
       ...intelWithPerson,
-      people: [
-        { ...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" },
-      ],
+      people: [{ ...claire, email: undefined, linkedinUrl: "https://linkedin.com/in/claire" }],
     } as unknown as ScoutIntel;
     const move = buildRecommendedNextMove({
       candidate: candidate({ intel: linkedinOnly }),
@@ -180,7 +178,7 @@ describe("non-email channels", () => {
     });
     expect(move.channel?.channel).toBe("linkedin");
     expect(move.blocked).toBe(true);
-    expect(move.headline).toBe("Claire is worth knowing — verify the way in first");
+    expect(move.headline).toBe("Claire is worth knowing, verify the way in first");
     expect(move.headline).not.toContain("LinkedIn");
   });
 });
@@ -206,7 +204,10 @@ describe("evidence supports, it does not re-explain", () => {
     const intel: ScoutIntel = {
       ...intelWithPerson,
       buyingSignals: [
-        { statement: "They opened a second location in Franklin", observedAt: "2026-08-20T00:00:00.000Z" },
+        {
+          statement: "They opened a second location in Franklin",
+          observedAt: "2026-08-20T00:00:00.000Z",
+        },
       ],
     } as unknown as ScoutIntel;
     const brief = { ...preparedBrief, bestChannel: "email" as const };

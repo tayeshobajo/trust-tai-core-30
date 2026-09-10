@@ -137,7 +137,9 @@ export async function listWebsiteSubmissions(
 
   const rows = (result.data ?? []) as Row[];
   const prospectIds = [
-    ...new Set(rows.map((row) => text(row["scout_prospect_id"])).filter((id): id is string => !!id)),
+    ...new Set(
+      rows.map((row) => text(row["scout_prospect_id"])).filter((id): id is string => !!id),
+    ),
   ];
 
   const states = new Map<string, string>();
@@ -235,7 +237,12 @@ export async function listWebsiteEvents(
       device: text(row["device"]),
       submissionId: text(row["submission_id"]),
       questionId: text(row["question_id"]),
-      modality: row["modality"] === "voice" ? ("voice" as const) : row["modality"] === "text" ? ("text" as const) : null,
+      modality:
+        row["modality"] === "voice"
+          ? ("voice" as const)
+          : row["modality"] === "text"
+            ? ("text" as const)
+            : null,
       properties: obj(row["properties"]),
     }));
 

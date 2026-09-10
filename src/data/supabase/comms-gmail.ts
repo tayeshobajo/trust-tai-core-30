@@ -83,7 +83,7 @@ export async function gmailDisconnect(
 }
 
 export interface GmailSyncResult {
-  /** The connection row this pass ran against — the mailbox's identity. */
+  /** The connection row this pass ran against, the mailbox's identity. */
   integrationId?: string;
   accountEmail?: string;
   messagesRead: number;
@@ -139,7 +139,7 @@ export interface MailboxCandidatesResult {
  * People ONE mailbox corresponds with, offered as import candidates. Reads
  * only; each mailbox is gated on its own Trust Tai/Comms label. The window
  * is bounded (at most 60 labeled messages, up to 90 days back) but every
- * correspondent discovered inside it is returned — the UI pages, filters,
+ * correspondent discovered inside it is returned, the UI pages, filters,
  * and searches the full discovered set, so counts are always truthful.
  */
 export async function gmailCandidates(
@@ -199,8 +199,7 @@ export interface GmailSendOutcome {
 }
 
 /**
- * Send one draft through Gmail. Human-triggered only; idempotent per draft —
- * a double click or a retry replays the recorded outcome instead of sending
+ * Send one draft through Gmail. Human-triggered only; idempotent per draft, * a double click or a retry replays the recorded outcome instead of sending
  * a second message. Replies always leave from the mailbox that owns the
  * conversation; `integrationId` is the sender choice for a new conversation.
  */
@@ -236,7 +235,7 @@ export async function gmailSendDraft(
 
 /**
  * Fetch one inline MIME image for in-place rendering. Same authenticated
- * proxy as attachment downloads — the server proves the message and the
+ * proxy as attachment downloads, the server proves the message and the
  * resource belong together and to the caller's workspace, and only stored
  * metadata may declare a resource inline. Returns an object URL; the caller
  * revokes it. No Google credential or raw Gmail URL ever reaches the

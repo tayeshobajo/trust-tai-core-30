@@ -1,4 +1,4 @@
--- Paperclip Hunter service — Phase 1 data plumbing.
+-- Paperclip Hunter service. Phase 1 data plumbing.
 -- Victim-notification threat-intel pipeline for the "NTD Polymorphic Injector"
 -- malware family (marker library v1.0: trust-tai/services/paperclip-hunter/marker-library.md).
 --

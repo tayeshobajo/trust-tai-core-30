@@ -117,7 +117,9 @@ export function reasonsToReconnect(
     reasons.push({
       reasonCode: "no_reply_after_days",
       reasonText: `${REASON_LABEL.no_reply_after_days}. It has been ${sinceTouch} days.`,
-      evidence: [{ label: `Last touch ${new Date(lastTouch).toLocaleDateString()}`, kind: "computed" }],
+      evidence: [
+        { label: `Last touch ${new Date(lastTouch).toLocaleDateString()}`, kind: "computed" },
+      ],
     });
   }
 
@@ -128,7 +130,9 @@ export function reasonsToReconnect(
       reasons.push({
         reasonCode: "anniversary_of_meeting",
         reasonText: `${REASON_LABEL.anniversary_of_meeting}. ${years} year${years === 1 ? "" : "s"} since ${relationship.metWhere ?? "you met"}.`,
-        evidence: [{ label: `Met ${new Date(relationship.metAt).toLocaleDateString()}`, kind: "human" }],
+        evidence: [
+          { label: `Met ${new Date(relationship.metAt).toLocaleDateString()}`, kind: "human" },
+        ],
       });
     }
   }

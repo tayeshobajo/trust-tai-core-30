@@ -33,7 +33,7 @@ function b64url(value: string): string {
 describe("decodeBase64UrlToText", () => {
   it("decodes unpadded base64url with url-safe characters", () => {
     // Chosen so the base64 alphabet's +/ become -/_
-    const original = "Line one\nLine two — unicode ✓ and bytes";
+    const original = "Line one\nLine two, unicode ✓ and bytes";
     expect(decodeBase64UrlToText(b64url(original))).toBe(original);
   });
 
@@ -42,7 +42,7 @@ describe("decodeBase64UrlToText", () => {
   });
 });
 
-describe("extractEmailBody — plain text", () => {
+describe("extractEmailBody, plain text", () => {
   it("reads a simple single-part plain-text body", () => {
     const payload: MimePart = {
       mimeType: "text/plain",
@@ -67,7 +67,7 @@ describe("extractEmailBody — plain text", () => {
   });
 });
 
-describe("extractEmailBody — multipart/alternative", () => {
+describe("extractEmailBody, multipart/alternative", () => {
   it("prefers plain text for bodyText and keeps sanitized HTML alongside", () => {
     const payload: MimePart = {
       mimeType: "multipart/alternative",
@@ -100,9 +100,7 @@ describe("extractEmailBody — multipart/alternative", () => {
       parts: [
         {
           mimeType: "multipart/alternative",
-          parts: [
-            { mimeType: "text/plain", body: { data: b64url("Body."), size: 5 } },
-          ],
+          parts: [{ mimeType: "text/plain", body: { data: b64url("Body."), size: 5 } }],
         },
       ],
     };
@@ -112,7 +110,7 @@ describe("extractEmailBody — multipart/alternative", () => {
   });
 });
 
-describe("extractEmailBody — multipart/related inline images", () => {
+describe("extractEmailBody, multipart/related inline images", () => {
   const payload: MimePart = {
     mimeType: "multipart/related",
     parts: [
@@ -198,11 +196,11 @@ describe("extractEmailBody — multipart/related inline images", () => {
   });
 });
 
-describe("sanitizeEmailHtml — the security boundary", () => {
+describe("sanitizeEmailHtml, the security boundary", () => {
   it("strips scripts, iframes, forms, and event handlers", () => {
     const dirty =
       '<p onclick="steal()">Hi</p>' +
-      '<script>alert(1)</script>' +
+      "<script>alert(1)</script>" +
       '<iframe src="https://evil.example"></iframe>' +
       '<form action="https://evil.example"><input name="pw" /></form>' +
       '<a href="#" onmouseover="track()">link</a>';
@@ -286,16 +284,14 @@ describe("parseEmailHtml", () => {
 describe("splitQuotedNodes", () => {
   it("splits at the first top-level quoted block", () => {
     const nodes = parseEmailHtml(
-      sanitizeEmailHtml(
-        "<p>My reply.</p><blockquote><p>What you wrote.</p></blockquote>",
-      ).html,
+      sanitizeEmailHtml("<p>My reply.</p><blockquote><p>What you wrote.</p></blockquote>").html,
     );
     const { main, quoted } = splitQuotedNodes(nodes);
     expect(main).toHaveLength(1);
     expect(quoted).toHaveLength(1);
   });
 
-  it("keeps a quote-only message whole — fidelity over stripping", () => {
+  it("keeps a quote-only message whole, fidelity over stripping", () => {
     const nodes = parseEmailHtml(sanitizeEmailHtml("<blockquote>All of it.</blockquote>").html);
     const { main, quoted } = splitQuotedNodes(nodes);
     expect(quoted).toEqual([]);
@@ -306,9 +302,9 @@ describe("splitQuotedNodes", () => {
 describe("splitQuotedContent", () => {
   it("splits a Gmail-style reply from its quoted history", () => {
     const body =
-      "Sounds good — see you Thursday.\n\nOn Tue, Aug 18, 2026 at 2:14 PM Riley <riley@x.com> wrote:\n> Are we still on for Thursday?";
+      "Sounds good, see you Thursday.\n\nOn Tue, Aug 18, 2026 at 2:14 PM Riley <riley@x.com> wrote:\n> Are we still on for Thursday?";
     const split = splitQuotedContent(body);
-    expect(split.main).toBe("Sounds good — see you Thursday.");
+    expect(split.main).toBe("Sounds good, see you Thursday.");
     expect(split.quoted).toContain("Are we still on for Thursday?");
   });
 
@@ -380,7 +376,7 @@ describe("emailNeedsCollapse", () => {
   });
 });
 
-describe("primaryEmailNeedsCollapse — only visible primary content may fold", () => {
+describe("primaryEmailNeedsCollapse, only visible primary content may fold", () => {
   it("HTML: short note + inline image with a very long gmail_quote does not collapse", () => {
     const img = `<img src="cid:hero@att" alt="" width="1600" height="1200">`;
     const quotedHistory = `<div class="gmail_quote"><p>${"Earlier thread words. ".repeat(
@@ -397,7 +393,7 @@ describe("primaryEmailNeedsCollapse — only visible primary content may fold", 
     const quotedHistory = `On Tue, Aug 18, 2026 at 2:14 PM Riley <riley@x.com> wrote:\n> ${"history ".repeat(
       300,
     )}`;
-    const body = `Sounds good — see you Thursday.\n\n${quotedHistory}`;
+    const body = `Sounds good, see you Thursday.\n\n${quotedHistory}`;
     expect(quotedHistory.length).toBeGreaterThan(2000);
     expect(primaryEmailNeedsCollapse(body, undefined)).toBe(false);
     expect(splitQuotedContent(body).quoted).toContain("history");
@@ -424,16 +420,19 @@ describe("primaryEmailNeedsCollapse — only visible primary content may fold", 
 
   it("image-only and short-note-plus-image primaries never collapse", () => {
     const img = `<img src="cid:hero@att" alt="Mockup v3 final" width="1200" height="900">`;
-    // Alt text is metadata, not prose — it must not count.
+    // Alt text is metadata, not prose, it must not count.
     expect(primaryEmailNeedsCollapse(undefined, `<div>${img}</div>`)).toBe(false);
     expect(
-      primaryEmailNeedsCollapse(undefined, `<p>Here is the mockup we discussed.</p><div>${img}</div>`),
+      primaryEmailNeedsCollapse(
+        undefined,
+        `<p>Here is the mockup we discussed.</p><div>${img}</div>`,
+      ),
     ).toBe(false);
   });
 
   it("a signature that is part of the visible primary counts as visible text", () => {
     // No signature parser: genuinely visible long primary text (e.g. a long
-    // signature block) may fold — acceptable and expected.
+    // signature block) may fold, acceptable and expected.
     const signature = Array.from({ length: 25 }, (_, i) => `Legal disclaimer line ${i}.`).join(
       "\n",
     );
@@ -441,7 +440,7 @@ describe("primaryEmailNeedsCollapse — only visible primary content may fold", 
   });
 });
 
-describe("extractEmailBody — remote image privacy", () => {
+describe("extractEmailBody, remote image privacy", () => {
   it("blocks remote images during extraction and counts them on the message", () => {
     const result = extractEmailBody({
       mimeType: "text/html",

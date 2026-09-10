@@ -62,7 +62,6 @@ function serviceAccount(): { email: string; privateKey: string } | null {
   return { email, privateKey: pem.replace(/\\n/g, "\n") };
 }
 
-
 const base64url = (bytes: Uint8Array): string => {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -156,7 +155,9 @@ export async function syncGa4(
     },
   );
   if (!response.ok) {
-    throw new Error(`GA4 read failed (${response.status}): ${(await response.text()).slice(0, 200)}`);
+    throw new Error(
+      `GA4 read failed (${response.status}): ${(await response.text()).slice(0, 200)}`,
+    );
   }
 
   const rows = ga4PageRows(await response.json(), organizationId);
@@ -193,7 +194,6 @@ async function replaceRange(
     if (error) throw new Error(error.message);
   }
 }
-
 
 /* ---------------------------------------------------------- Search Console */
 

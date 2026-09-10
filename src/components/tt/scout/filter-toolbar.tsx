@@ -109,7 +109,9 @@ export function ScoutFilterToolbar({
           aria-expanded={expanded}
           className={cn(
             "inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-[13px] transition-colors",
-            expanded ? "bg-secondary text-foreground" : "bg-card text-muted-foreground hover:text-foreground",
+            expanded
+              ? "bg-secondary text-foreground"
+              : "bg-card text-muted-foreground hover:text-foreground",
           )}
         >
           <SlidersHorizontal aria-hidden className="size-4" />
@@ -131,9 +133,7 @@ export function ScoutFilterToolbar({
             <select
               aria-label="Score"
               value={filters.score}
-              onChange={(event) =>
-                set({ score: event.target.value as ScoutTableFilters["score"] })
-              }
+              onChange={(event) => set({ score: event.target.value as ScoutTableFilters["score"] })}
               className={selectClass}
             >
               {SCORE_BANDS.map((band) => (

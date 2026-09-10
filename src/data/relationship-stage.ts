@@ -47,7 +47,7 @@ export function developmentStage(
   const lastOutbound = [...ordered].reverse().find((touch) => touch.direction === "outbound");
   const latest = ordered[ordered.length - 1];
 
-  // They replied. The moment a reply exists, this is a conversation — the
+  // They replied. The moment a reply exists, this is a conversation, the
   // relationship has crossed the line where automation ends.
   if (
     stage !== "new" &&
@@ -92,7 +92,8 @@ export function developmentStage(
     // Latest touch is outbound: we spoke last, so we are waiting on them.
     return {
       stage: "conversation_open",
-      because: "The conversation is open and moving. Judgment, not automation, carries it from here.",
+      because:
+        "The conversation is open and moving. Judgment, not automation, carries it from here.",
     };
   }
 

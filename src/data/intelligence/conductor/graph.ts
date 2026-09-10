@@ -12,11 +12,7 @@
 import type { EvidenceRef } from "@/domain/confidence";
 import { actionPermission } from "@/domain/action-authority";
 import type { ActionProposal } from "@/domain/intelligence-engine";
-import type {
-  ConductorActionGraph,
-  ConductorActionStep,
-  OperatingPlan,
-} from "@/domain/conductor";
+import type { ConductorActionGraph, ConductorActionStep, OperatingPlan } from "@/domain/conductor";
 
 /**
  * Operations whose effect leaves the building or changes a client-visible
@@ -84,15 +80,15 @@ export function buildActionGraph(input: ActionGraphInput): ConductorActionGraph 
   };
 
   const ordered = [...proposals].sort(
-    (a, b) => rank(a.appId) - rank(b.appId) || a.appId.localeCompare(b.appId) || a.id.localeCompare(b.id),
+    (a, b) =>
+      rank(a.appId) - rank(b.appId) || a.appId.localeCompare(b.appId) || a.id.localeCompare(b.id),
   );
 
   const steps: ConductorActionStep[] = [];
   for (const [index, proposal] of ordered.entries()) {
     const previous = ordered[index - 1];
     /* A step depends on the previous one only when it sits in a later room. */
-    const dependsOn =
-      previous && rank(previous.appId) < rank(proposal.appId) ? [previous.id] : [];
+    const dependsOn = previous && rank(previous.appId) < rank(proposal.appId) ? [previous.id] : [];
     steps.push(stepFromProposal(proposal, dependsOn));
   }
 

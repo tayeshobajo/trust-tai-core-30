@@ -11,9 +11,7 @@ import { supabaseActivity } from "@/data/supabase/activities";
 import type { ActivityEvent } from "@/domain/activity";
 import { CONTROL_EVENTS, type ControlEventInput } from "@/domain/control-events";
 
-export async function emitControlEvent(
-  input: ControlEventInput,
-): Promise<ActivityEvent | null> {
+export async function emitControlEvent(input: ControlEventInput): Promise<ActivityEvent | null> {
   const definition = CONTROL_EVENTS[input.key];
   const at = input.occurredAt ?? new Date().toISOString();
   try {

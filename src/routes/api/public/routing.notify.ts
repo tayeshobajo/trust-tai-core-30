@@ -59,7 +59,10 @@ export const Route = createFileRoute("/api/public/routing/notify")({
             body: JSON.stringify({ type: "trust-tai-os:route_requested", route }),
           });
           if (!delivery.ok) {
-            return answer(false, "That room's inbox refused the notification. The ask still stands.");
+            return answer(
+              false,
+              "That room's inbox refused the notification. The ask still stands.",
+            );
           }
           return answer(true, "The receiving room was notified and can accept or reject it.");
         } catch {

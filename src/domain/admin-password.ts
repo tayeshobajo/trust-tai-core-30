@@ -1,5 +1,5 @@
 /**
- * Trust Tai OS — admin-managed passwords.
+ * Trust Tai OS, admin-managed passwords.
  *
  * A small, pure contract shared by the People & access screen and the
  * server-only endpoint that performs the Supabase Auth mutation. It decides
@@ -22,7 +22,7 @@ import { MANAGING_ROLES, normalizeRole, type WorkspaceRole } from "./access";
 export const PASSWORD_MIN_LENGTH = 6;
 
 export const PASSWORD_HELP =
-  "At least 6 characters — this workspace's sign-in policy. A longer passphrase is better.";
+  "At least 6 characters, this workspace's sign-in policy. A longer passphrase is better.";
 
 export type Refusal = { ok: false; because: string };
 export type Allowed = { ok: true };
@@ -102,7 +102,7 @@ export function humanAuthError(input: {
     return "Someone already signs in with that email. Add them to this workspace or reset their password instead.";
   }
   if (input.status === 401 || input.status === 403) {
-    return "Sign in again — that session no longer has authority for this action.";
+    return "Sign in again, that session no longer has authority for this action.";
   }
   if (input.status === 422) return "That email or password was refused by sign-in.";
   return "Sign-in could not complete that change. Nothing was altered.";

@@ -138,36 +138,40 @@ export function proposeActions(recommendation: Recommendation): ActionProposal[]
   /* Law 4: a hunch routes a person to look, never to act. */
   if (recommendation.confidence === "low" || recommendation.confidence === "unknown") return [];
 
-  return TEMPLATES.filter((template) => template.recommendationId === recommendation.id)
-    /* Law 3: irreversible work is never offered for authorisation. */
-    .filter((template) => template.reversible)
-    /* Law 2: an action with no stated limits is not an action we propose. */
-    .filter((template) => template.willDo.length > 0 && template.willNotDo.length > 0)
-    .slice(0, MAX_ACTION_PROPOSALS)
-    .map((template) => ({
-      id: `act:${recommendation.id}:${template.operation}`,
-      recommendationId: recommendation.id,
-      appId: recommendation.destination.appId,
-      operation: template.operation,
-      title: template.title,
-      summary: template.summary,
-      willDo: template.willDo,
-      willNotDo: template.willNotDo,
-      payload: {
-        theme: recommendation.theme,
-        patternKey: recommendation.patternKey,
-        expectedSignal: recommendation.expectedSignal,
-        observationRefs: recommendation.observationRefs,
-      },
-      reversible: true,
-      route: template.route,
-      routeLabel: template.routeLabel,
-      requiresApproval: true,
-    }));
+  return (
+    TEMPLATES.filter((template) => template.recommendationId === recommendation.id)
+      /* Law 3: irreversible work is never offered for authorisation. */
+      .filter((template) => template.reversible)
+      /* Law 2: an action with no stated limits is not an action we propose. */
+      .filter((template) => template.willDo.length > 0 && template.willNotDo.length > 0)
+      .slice(0, MAX_ACTION_PROPOSALS)
+      .map((template) => ({
+        id: `act:${recommendation.id}:${template.operation}`,
+        recommendationId: recommendation.id,
+        appId: recommendation.destination.appId,
+        operation: template.operation,
+        title: template.title,
+        summary: template.summary,
+        willDo: template.willDo,
+        willNotDo: template.willNotDo,
+        payload: {
+          theme: recommendation.theme,
+          patternKey: recommendation.patternKey,
+          expectedSignal: recommendation.expectedSignal,
+          observationRefs: recommendation.observationRefs,
+        },
+        reversible: true,
+        route: template.route,
+        routeLabel: template.routeLabel,
+        requiresApproval: true,
+      }))
+  );
 }
 
 /** Every bounded action currently on offer, keyed by recommendation. */
-export function actionsForRead(recommendations: Recommendation[]): Record<string, ActionProposal[]> {
+export function actionsForRead(
+  recommendations: Recommendation[],
+): Record<string, ActionProposal[]> {
   const out: Record<string, ActionProposal[]> = {};
   for (const recommendation of recommendations) {
     const actions = proposeActions(recommendation);

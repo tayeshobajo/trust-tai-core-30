@@ -14,7 +14,11 @@ import type { ActivityStream, ActivityEvent } from "@/domain/activity";
 import type { LinkiActionType, LinkiExecutionReceipt } from "@/domain/linki-actions";
 
 import { createFakeSupabase, type FakeRow } from "./fake-supabase";
-import { createLinkiActionService, receiptHash, type LinkiTransport } from "./linki-actions-service";
+import {
+  createLinkiActionService,
+  receiptHash,
+  type LinkiTransport,
+} from "./linki-actions-service";
 
 const db = createFakeSupabase();
 
@@ -66,13 +70,15 @@ function seedContact(): void {
   ];
 }
 
-function makeInput(over: Partial<Parameters<ReturnType<typeof createLinkiActionService>["create"]>[0]> = {}) {
+function makeInput(
+  over: Partial<Parameters<ReturnType<typeof createLinkiActionService>["create"]>[0]> = {},
+) {
   return {
     prospectId: PROSPECT,
     personId: CONTACT,
     contactId: CONTACT,
     actionType: "message" as LinkiActionType,
-    draftBody: "Mark — your {growth} piece changed how I think about category design.",
+    draftBody: "Mark, your {growth} piece changed how I think about category design.",
     channelContext: { thread: "comms-rel-1", route: LINKEDIN_URL },
     idempotencyKey: `act-${crypto.randomUUID()}`,
     ...over,
@@ -136,7 +142,7 @@ describe("create", () => {
     ).rejects.toMatchObject({ code: "validation" });
   });
 
-  it("rejects an empty draft (Comms owns the body — no message exists without it)", async () => {
+  it("rejects an empty draft (Comms owns the body, no message exists without it)", async () => {
     await expect(service().create(makeInput({ draftBody: "  " }), CONTEXT)).rejects.toMatchObject({
       code: "validation",
     });
@@ -157,9 +163,7 @@ describe("create", () => {
   });
 
   it("blocks creation when the contact has no confirmed LinkedIn route", async () => {
-    db.tables["contacts"] = [
-      { ...db.tables["contacts"]![0]!, metadata: { email: "x@y.com" } },
-    ];
+    db.tables["contacts"] = [{ ...db.tables["contacts"]![0]!, metadata: { email: "x@y.com" } }];
     await expect(service().create(makeInput(), CONTEXT)).rejects.toMatchObject({
       code: "validation",
     });
@@ -174,7 +178,7 @@ describe("create", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* Approve — the human boundary                                        */
+/* Approve, the human boundary                                        */
 /* ------------------------------------------------------------------ */
 
 describe("approve", () => {
@@ -213,7 +217,7 @@ describe("approve", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* Execute — the only send path                                        */
+/* Execute, the only send path                                        */
 /* ------------------------------------------------------------------ */
 
 describe("execute", () => {
@@ -234,7 +238,7 @@ describe("execute", () => {
     });
   });
 
-  it("only the approver may execute — nobody else can trigger the send", async () => {
+  it("only the approver may execute, nobody else can trigger the send", async () => {
     const svc = service({ LINKI_EXECUTION_ENABLED: "true" });
     const created = await svc.create(makeInput(), CONTEXT);
     await svc.approve(created.id, CONTEXT);
@@ -283,7 +287,7 @@ describe("execute", () => {
     await svc.execute(created.id, CONTEXT);
 
     // Simulate a crashed client: force the row back to executing, then call
-    // again — the guard must return it as already-done, not re-send.
+    // again, the guard must return it as already-done, not re-send.
     const row = actions().find((r) => r["id"] === created.id)!;
     row["status"] = "executing";
     const again = await svc.execute(created.id, CONTEXT);
@@ -323,10 +327,7 @@ describe("execute", () => {
   it("re-checks the daily cap at execute time, even after approval", async () => {
     const { transport, sends } = fakeTransport();
     // Two actions created while the cap was 2; one approves for execution.
-    const svc = service(
-      { LINKI_EXECUTION_ENABLED: "true", LINKI_DAILY_MSG_CAP: "2" },
-      transport,
-    );
+    const svc = service({ LINKI_EXECUTION_ENABLED: "true", LINKI_DAILY_MSG_CAP: "2" }, transport);
     const created = await svc.create(makeInput(), CONTEXT);
     await svc.create(makeInput({ idempotencyKey: "queued-earlier" }), CONTEXT); // consumes a slot
     await svc.approve(created.id, CONTEXT);
@@ -429,7 +430,7 @@ describe("daily caps", () => {
     await expect(
       svc.create(makeInput({ actionType: "connection_request" }), CONTEXT),
     ).rejects.toMatchObject({ code: "cap_exceeded" });
-    // Messages still allowed — the caps are per type.
+    // Messages still allowed, the caps are per type.
     await expect(svc.create(makeInput(), CONTEXT)).resolves.toBeTruthy();
   });
 
@@ -537,7 +538,12 @@ describe("audit trail", () => {
 
 describe("receiptHash", () => {
   it("hashes deterministically and never exposes receipt contents", () => {
-    const receipt: LinkiExecutionReceipt = { provider: "linki", runId: "run-9", sentAt: "2026-08-27T10:00:00Z", response: null };
+    const receipt: LinkiExecutionReceipt = {
+      provider: "linki",
+      runId: "run-9",
+      sentAt: "2026-08-27T10:00:00Z",
+      response: null,
+    };
     const hash = receiptHash(receipt);
     expect(hash).toBe(receiptHash(receipt));
     expect(hash).toMatch(/^[0-9a-f]{16}$/);

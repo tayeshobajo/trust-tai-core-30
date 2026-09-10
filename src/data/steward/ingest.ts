@@ -8,14 +8,9 @@
 
 import { supabase } from "@/integrations/trust-tai/supabase";
 import type { NormalizedConversation, Proposal, SourceAdapterStatus } from "@/domain/steward";
-import type {
-  MemoryConflict,
-  MemoryUsage,
-  StateChangeProposal,
-} from "@/domain/steward-memory";
+import type { MemoryConflict, MemoryUsage, StateChangeProposal } from "@/domain/steward-memory";
 
 import type { InterpretationRun } from "@/domain/steward-semantic";
-
 
 import { extractProposals } from "./extract";
 import { rehearsalConversation } from "./fixture";
@@ -117,7 +112,6 @@ export interface InterpretationResult {
   suppressedCount: number;
 }
 
-
 /**
  * Interpret one conversation for meaning.
  *
@@ -154,6 +148,4 @@ export async function interpretConversation(input: {
     memoryConsidered: Number(body["memoryConsidered"] ?? 0),
     suppressedCount: Number(body["suppressedCount"] ?? 0),
   };
-
 }
-

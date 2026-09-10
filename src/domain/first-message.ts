@@ -3,7 +3,7 @@
  *
  * A prepared draft is a starting point a person edits, never an automated
  * outbound. It says only what is on record: this person's name, the title and
- * company someone confirmed, and — when a governed brief exists — why now and
+ * company someone confirmed, and, when a governed brief exists, why now and
  * one genuinely useful bridge. Nothing is invented, nothing is claimed.
  */
 
@@ -69,10 +69,10 @@ export function composeFirstMessage(input: {
 
   lines.push(
     development?.firstMovePosture?.trim() ||
-      "No pitch attached — if it's useful, I'd welcome a short conversation.",
+      "No pitch attached, if it's useful, I'd welcome a short conversation.",
   );
 
-  lines.push("", "—");
+  lines.push("", ", ");
 
   return { subject, body: lines.join("\n") };
 }

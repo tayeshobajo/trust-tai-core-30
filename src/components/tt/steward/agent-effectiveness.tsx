@@ -11,17 +11,11 @@ import { useState } from "react";
 import { ShieldAlert } from "lucide-react";
 
 import { MetaPill, TTButton } from "@/components/tt/primitives";
-import {
-  ACCOUNTABILITY_LABEL,
-  agentAccountability,
-} from "@/data/projects/agent-effectiveness";
+import { ACCOUNTABILITY_LABEL, agentAccountability } from "@/data/projects/agent-effectiveness";
 import { agentEffectivenessService } from "@/data/supabase/project-intelligence";
 import { missingContext } from "@/data/steward/agent-evidence";
 import { EMPTY_AGENT_EVIDENCE } from "@/domain/project-intelligence";
-import type {
-  AgentEffectiveness,
-  AgentEffectivenessInput,
-} from "@/domain/project-intelligence";
+import type { AgentEffectiveness, AgentEffectivenessInput } from "@/domain/project-intelligence";
 import type { StewardAgent } from "@/domain/steward-accountability";
 import { canManageRoom, canWorkInRoom } from "@/lib/room-authority";
 
@@ -175,8 +169,8 @@ export function AgentAccountabilityPanel({
 
       {!maySeeEvidence ? (
         <p className="rounded-lg border border-border bg-muted/40 p-4 text-[13px] text-muted-foreground">
-          Observed evidence for this agent is kept with the people who carry Steward
-          authority. You can see that it is being tracked, not what it says.
+          Observed evidence for this agent is kept with the people who carry Steward authority. You
+          can see that it is being tracked, not what it says.
         </p>
       ) : null}
 

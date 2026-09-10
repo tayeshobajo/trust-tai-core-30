@@ -1,4 +1,4 @@
-# Roadmap v1 — the sequencing room
+# Roadmap v1, the sequencing room
 
 Roadmap's one job: **turn what we already know about a client, prospect or
 relationship into a clear, sequenced path someone can follow.**
@@ -38,14 +38,14 @@ A proposed destination stays **Inferred** until someone presses "Approve this
 destination". That press is the moment it becomes **Decided**, and it is
 recorded with who approved it and when.
 
-Where evidence is too weak, Roadmap writes `Unknown — needs confirmation` and
+Where evidence is too weak, Roadmap writes `Unknown, needs confirmation` and
 lists the gap under "Not established". It never fills a gap with a guess.
 
 ## The Walk
 
 Stages come from the Trust Tai method, not from a claim about the client:
 
-1. Confirm current truth — only when gaps remain
+1. Confirm current truth, only when gaps remain
 2. Agree the destination
 3. Sequence the build order
 4. Build the first move
@@ -58,8 +58,8 @@ Blocked. Ownership is a named person, or visibly no one.
 ## Decisions
 
 Decisions sit above activity everywhere. Each one states the question, why it
-matters, the options, what it rests on, and — only when observed evidence
-supports it — a recommendation clearly marked as suggested. Resolving a
+matters, the options, what it rests on, and, only when observed evidence
+supports it, a recommendation clearly marked as suggested. Resolving a
 decision records who resolved it, when, and their note.
 
 ## Files
@@ -83,7 +83,7 @@ state with the exact backend message. No fixtures, no demo data.
 
 ## Tests
 
-`src/data/roadmap-draft.test.ts` — 15 tests covering tier separation, Unknown
+`src/data/roadmap-draft.test.ts`, 15 tests covering tier separation, Unknown
 handling, destination inference vs decision, recommendation gating, method
 stage composition, determinism, and the assertion that no stage ever mentions a
 timeline or budget.

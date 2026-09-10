@@ -251,8 +251,6 @@ export async function* composeStudioDocument(
     Partial<Pick<StudioComposeInput, "token" | "organizationId">>,
   callModel: RuntimeModelCaller,
 ): AsyncGenerator<StudioStage> {
-
-
   yield {
     stage: "packet",
     message: "Gathering approved strategy, approved milestones and observed research",
@@ -329,7 +327,8 @@ export async function* composeStudioDocument(
     const fabrications = validated.rejected.filter((entry) => entry.severity === "fabrication");
     yield {
       stage: "error",
-      message: `This composition claimed ${fabrications.length === 1 ? "something" : `${fabrications.length} things`} the approved evidence does not support, so nothing was saved. ${fabrications[0]?.reason ?? ""}`.trim(),
+      message:
+        `This composition claimed ${fabrications.length === 1 ? "something" : `${fabrications.length} things`} the approved evidence does not support, so nothing was saved. ${fabrications[0]?.reason ?? ""}`.trim(),
       data: { rejected: fabrications },
     };
     return;

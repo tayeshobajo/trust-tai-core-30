@@ -1,9 +1,44 @@
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { BrandLogo } from "@/components/tt/brand-logo";
 import { PageHeader, MetaPill, TTButton } from "@/components/tt/primitives";
+import { claimInvitation } from "@/lib/invite-claim";
 import { canSeeApp, useWorkspace, type WorkspaceIdentity } from "@/lib/workspace";
+
+/**
+ * A verified identity with no membership may still be holding an invitation
+ * that was never consumed, because the sign-in link that brought them here
+ * carried no invitation context. Rather than telling that person their access
+ * is not provisioned, try the claim once, driven by their own address. It
+ * grants nothing on its own: the endpoint re-verifies the session and decides.
+ */
+function useInvitationClaim(email: string) {
+  const [state, setState] = useState<{ phase: "checking" | "none"; because?: string }>({
+    phase: "checking",
+  });
+  const tried = useRef("");
+
+  useEffect(() => {
+    if (tried.current === email) return;
+    tried.current = email;
+    let active = true;
+    void claimInvitation().then((result) => {
+      if (!active) return;
+      if (result.ok) {
+        /* Membership now exists, so the boundary must read it again. */
+        window.location.reload();
+        return;
+      }
+      setState({ phase: "none", because: result.because });
+    });
+    return () => {
+      active = false;
+    };
+  }, [email]);
+
+  return state;
+}
 
 function Boundary({
   title,
@@ -81,10 +116,7 @@ export function WorkspaceGate({
   if (state.status === "signed_out") {
     const signIn = (
       <TTButton asChild>
-        <Link
-          to="/auth"
-          search={{ redirect: preview?.returnTo ?? "/" }}
-        >
+        <Link to="/auth" search={{ redirect: preview?.returnTo ?? "/" }}>
           Sign in with Trust Tai
         </Link>
       </TTButton>
@@ -140,19 +172,7 @@ export function WorkspaceGate({
   }
 
   if (state.status === "no_membership") {
-    return (
-      <Boundary
-        title="Access not provisioned."
-        supporting={`You are signed in as ${state.email}, but this account is not a member of a Trust Tai organization yet.`}
-        pills={["Identity: verified", "Membership: none"]}
-        note="Membership is granted by a Trust Tai owner. Nothing is created automatically, and there is no demo access."
-        action={
-          <TTButton asChild variant="secondary">
-            <Link to="/auth" search={{ redirect: "/" }}>Use a different account</Link>
-          </TTButton>
-        }
-      />
-    );
+    return <NoMembershipBoundary email={state.email} />;
   }
 
   if (state.status === "error") {
@@ -163,7 +183,9 @@ export function WorkspaceGate({
         pills={["Access: closed"]}
         action={
           <TTButton asChild variant="secondary">
-            <Link to="/auth" search={{ redirect: "/" }}>Back to sign in</Link>
+            <Link to="/auth" search={{ redirect: "/" }}>
+              Back to sign in
+            </Link>
           </TTButton>
         }
       />
@@ -187,4 +209,37 @@ export function WorkspaceGate({
   }
 
   return <>{children(state.identity)}</>;
+}
+
+function NoMembershipBoundary({ email }: { email: string }) {
+  const claim = useInvitationClaim(email);
+
+  if (claim.phase === "checking") {
+    return (
+      <Boundary
+        title="Checking your invitation."
+        supporting={`You are signed in as ${email}. We are looking for an invitation issued to this address.`}
+        pills={["Identity: verified", "Membership: checking"]}
+      />
+    );
+  }
+
+  return (
+    <Boundary
+      title="Access not provisioned."
+      supporting={
+        claim.because ??
+        `You are signed in as ${email}, but this account is not a member of a Trust Tai organization yet.`
+      }
+      pills={["Identity: verified", "Membership: none"]}
+      note="Membership is granted by a Trust Tai owner. Nothing is created automatically, and there is no demo access."
+      action={
+        <TTButton asChild variant="secondary">
+          <Link to="/auth" search={{ redirect: "/" }}>
+            Use a different account
+          </Link>
+        </TTButton>
+      }
+    />
+  );
 }

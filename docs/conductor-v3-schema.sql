@@ -1,4 +1,4 @@
--- Trust Tai OS — Conductor V3: the outcome and learning ledger.
+-- Trust Tai OS. Conductor V3: the outcome and learning ledger.
 --
 -- Applied to the managed Trust Tai Supabase project (ref okydosoacqdnursmmenf).
 -- Additive and idempotent. Requires docs/conductor-v2-schema.sql first.
@@ -7,13 +7,13 @@
 -- `conductor_observations` records what was found in an owning room when an
 -- expected signal was checked. `conductor_learning` records what the Conductor
 -- concluded about its own recommendations. Neither copies a prospect,
--- relationship, roadmap, project or asset — only references and the evidence
+-- relationship, roadmap, project or asset, only references and the evidence
 -- sentences behind a reading.
 --
 -- Laws encoded here:
 --   * Append-only. A changed conclusion is a new row that supersedes the old.
 --   * Observation is not causation: a row says what was seen, never why.
---   * Learning never grants authority — there is no permission column, and
+--   * Learning never grants authority, there is no permission column, and
 --     none may be added.
 --
 -- Security. RLS on both tables, reusing the existing hardened

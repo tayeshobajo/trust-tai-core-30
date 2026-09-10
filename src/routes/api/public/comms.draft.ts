@@ -61,7 +61,8 @@ export const Route = createFileRoute("/api/public/comms/draft")({
           body = {};
         }
 
-        const relationshipId = typeof body["relationshipId"] === "string" ? body["relationshipId"] : "";
+        const relationshipId =
+          typeof body["relationshipId"] === "string" ? body["relationshipId"] : "";
         if (!relationshipId) {
           return Response.json({ error: "A relationship is required." }, { status: 400 });
         }

@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  companyFromEmail,
-  identityPatches,
-  isMailboxNoise,
-  resolveIdentity,
-} from "./comms-people";
+import { companyFromEmail, identityPatches, isMailboxNoise, resolveIdentity } from "./comms-people";
 
 describe("companyFromEmail", () => {
   it("reads a company from a real domain", () => {
@@ -62,7 +57,11 @@ describe("resolveIdentity", () => {
 describe("identityPatches", () => {
   it("writes nothing when both sides already agree", () => {
     const sides = {
-      relationship: { fullName: "Dana Whitfield", companyName: "Northlight Systems", email: "dana@northlightsystems.com" },
+      relationship: {
+        fullName: "Dana Whitfield",
+        companyName: "Northlight Systems",
+        email: "dana@northlightsystems.com",
+      },
       contact: { fullName: "Dana Whitfield", roleTitle: "COO", companyName: "Northlight Systems" },
     };
     const patches = identityPatches(sides, resolveIdentity(sides));
@@ -94,10 +93,7 @@ describe("identityPatches", () => {
   });
 
   it("refuses an empty name", () => {
-    const patches = identityPatches(
-      { relationship: { fullName: "A" } },
-      { fullName: "   " },
-    );
+    const patches = identityPatches({ relationship: { fullName: "A" } }, { fullName: "   " });
     expect(patches.changed).toBe(false);
   });
 });

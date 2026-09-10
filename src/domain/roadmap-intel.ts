@@ -15,6 +15,9 @@
  */
 
 import type { ConfidenceLevel } from "./confidence";
+import type { OutcomeMetric } from "./milestone-metric";
+import type { MilestoneSuccess } from "./milestone-success";
+import type { MilestoneAcceptance } from "./milestone-acceptance";
 import type { ID, ISODateTime } from "./entities";
 import type { Tier } from "./roadmap";
 
@@ -153,12 +156,7 @@ export function isApproved(item: StrategyItem | null | undefined): boolean {
 
 /* --------------------------------------------------------------- milestones */
 
-export type MilestoneStatus =
-  | "candidate"
-  | "shortlisted"
-  | "approved"
-  | "rejected"
-  | "deferred";
+export type MilestoneStatus = "candidate" | "shortlisted" | "approved" | "rejected" | "deferred";
 
 export const MILESTONE_STATUSES: MilestoneStatus[] = [
   "candidate",
@@ -204,6 +202,22 @@ export interface RoadmapMilestone {
   decisionNote?: string;
   decidedBy?: ID;
   decidedAt?: ISODateTime;
+  /**
+   * The outcome this milestone is accountable for (P3-01). Roadmap owns it and
+   * a person sets it by hand; `null` means no metric yet, never zero.
+   */
+  outcomeMetric?: OutcomeMetric | null;
+  /**
+   * The plain language success definition a delivery team actually reads:
+   * outcome, optional target date, optional success check. `null` means nobody
+   * has described success yet, never an empty promise.
+   */
+  success?: MilestoneSuccess | null;
+  /**
+   * Delivery acceptance: the explicit human fact that the work was accepted.
+   * Distinct from roadmap approval, and the only definition of complete.
+   */
+  acceptance?: MilestoneAcceptance | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }
@@ -265,16 +279,10 @@ export interface RoadmapArtifact {
   updatedAt: ISODateTime;
 }
 
-
 /* -------------------------------------------------------------- walkthrough */
 
 export type WalkthroughEntryKind =
-  | "note"
-  | "approval"
-  | "rejection"
-  | "change"
-  | "question"
-  | "next_action";
+  "note" | "approval" | "rejection" | "change" | "question" | "next_action";
 
 export const WALKTHROUGH_KIND_LABEL: Record<WalkthroughEntryKind, string> = {
   note: "Note",

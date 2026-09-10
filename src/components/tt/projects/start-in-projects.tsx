@@ -37,7 +37,11 @@ export function StartInProjects({
   });
 
   if (!handoff.ok) {
-    return <p className="mt-4 text-sm text-muted-foreground">Not ready for Projects. {handoff.because}</p>;
+    return (
+      <p className="mt-4 text-sm text-muted-foreground">
+        Not ready for Projects. {handoff.because}
+      </p>
+    );
   }
 
   return (

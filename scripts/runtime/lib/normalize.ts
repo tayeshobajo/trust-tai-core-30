@@ -1,5 +1,5 @@
 /**
- * §5 Normalized document structure — provider-neutral shape all adapters
+ * §5 Normalized document structure, provider-neutral shape all adapters
  * produce before extraction. No provider-specific types leak past this file.
  */
 import { createHash } from "crypto";
@@ -19,7 +19,7 @@ export interface NormalizedDocument {
   messages: NormalizedMessage[];
   attachments: { name: string; kind?: string }[];
   imported_at: string;
-  /** Fingerprint of the full content — incremental import key. */
+  /** Fingerprint of the full content, incremental import key. */
   content_hash: string;
 }
 
@@ -33,8 +33,7 @@ export function normalizeDocument(input: {
   // Chat export heuristics: message-block formats used by ChatGPT and Claude
   // share/exports ("You:"/"ChatGPT:" / "Human:"/"Assistant:" / markdown
   // speaker turns). Speaker-split first; fall back to whole-text single block.
-  const speakerRe =
-    /^(?:You|User|Human|Me|Tai)\s*:|^ChatGPT\s*:|^Assistant\s*:|^Claude\s*:/im;
+  const speakerRe = /^(?:You|User|Human|Me|Tai)\s*:|^ChatGPT\s*:|^Assistant\s*:|^Claude\s*:/im;
   const lines = input.raw.split(/\r?\n/);
   const messages: NormalizedMessage[] = [];
   let current: { role: NormalizedMessage["role"]; body: string[] } | null = null;

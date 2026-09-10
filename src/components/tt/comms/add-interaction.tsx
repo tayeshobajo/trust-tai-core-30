@@ -14,10 +14,7 @@
 import { useMemo, useState } from "react";
 
 import { TTButton, TTField, TTInput } from "@/components/tt/primitives";
-import {
-  deriveInteraction,
-  type DerivedSuggestion,
-} from "@/data/comms-derive-interaction";
+import { deriveInteraction, type DerivedSuggestion } from "@/data/comms-derive-interaction";
 import {
   INTERACTION_TYPES,
   interactionDefinition,
@@ -88,7 +85,9 @@ export function AddInteraction({
       return;
     }
     const occurredAt = new Date(when).toISOString();
-    const summary = definition.narrative ? derived.summary || text.slice(0, 120) : text.slice(0, 200);
+    const summary = definition.narrative
+      ? derived.summary || text.slice(0, 120)
+      : text.slice(0, 200);
     onSave({
       type,
       summary,
@@ -110,74 +109,73 @@ export function AddInteraction({
       <div className="tt-rise relative flex max-h-[92vh] w-full max-w-[640px] flex-col overflow-hidden rounded-t-xl border border-border bg-card sm:rounded-xl">
         <header className="border-b border-border px-5 py-4">
           <p className="tt-eyebrow">Add interaction</p>
-          <h2 className="mt-1 text-lg text-foreground">
-            Something happened with {personName}
-          </h2>
+          <h2 className="mt-1 text-lg text-foreground">Something happened with {personName}</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Keep it short. Comms records it as added by {userLabel}, never as something a
-            connected account observed.
+            Keep it short. Comms records it as added by {userLabel}, never as something a connected
+            account observed.
           </p>
         </header>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
           {step === "confirm" ? null : (
-          <>
-          <fieldset>
-            <legend className="tt-eyebrow">What kind</legend>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {INTERACTION_TYPES.map((entry) => (
-                <button
-                  key={entry.type}
-                  type="button"
-                  aria-pressed={type === entry.type}
-                  onClick={() => {
-                    setType(entry.type);
+            <>
+              <fieldset>
+                <legend className="tt-eyebrow">What kind</legend>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {INTERACTION_TYPES.map((entry) => (
+                    <button
+                      key={entry.type}
+                      type="button"
+                      aria-pressed={type === entry.type}
+                      onClick={() => {
+                        setType(entry.type);
+                        setStep("capture");
+                        setTicked({});
+                      }}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        type === entry.type
+                          ? "border-royal/40 bg-royal/8 text-royal"
+                          : "border-border bg-card text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {entry.label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <TTField label="What happened">
+                <textarea
+                  value={value}
+                  onChange={(event) => {
+                    setValue(event.target.value);
                     setStep("capture");
-                    setTicked({});
                   }}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    type === entry.type
-                      ? "border-royal/40 bg-royal/8 text-royal"
-                      : "border-border bg-card text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {entry.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
+                  rows={definition.narrative ? 6 : 3}
+                  placeholder={definition.placeholder}
+                  className="w-full rounded-lg border border-input bg-card px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </TTField>
 
-          <TTField label="What happened">
-            <textarea
-              value={value}
-              onChange={(event) => {
-                setValue(event.target.value);
-                setStep("capture");
-              }}
-              rows={definition.narrative ? 6 : 3}
-              placeholder={definition.placeholder}
-              className="w-full rounded-lg border border-input bg-card px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </TTField>
-
-          <TTField label="When" optional>
-            <TTInput
-              type="datetime-local"
-              className="h-10"
-              value={when}
-              onChange={(event) => setWhen(event.target.value)}
-            />
-          </TTField>
-
-          </>
+              <TTField label="When" optional>
+                <TTInput
+                  type="datetime-local"
+                  className="h-10"
+                  value={when}
+                  onChange={(event) => setWhen(event.target.value)}
+                />
+              </TTField>
+            </>
           )}
 
           {step === "confirm" ? (
             <section className="space-y-3.5">
               <div className="rounded-lg border border-border bg-secondary/30 p-3.5">
                 <p className="tt-eyebrow">What will be written down</p>
-                <p className="mt-1.5 text-[13px] text-foreground">{derived.summary || value.trim().slice(0, 120)}</p>
+                <p className="mt-1.5 text-[13px] text-foreground">
+                  {derived.summary || value.trim().slice(0, 120)}
+                </p>
                 <p className="mt-1.5 text-[12px] text-muted-foreground">
                   Recorded as {new Date(when).toLocaleString()} · added by {userLabel}. The full
                   capture is kept with it.
@@ -196,20 +194,19 @@ export function AddInteraction({
                     These are {personName}&rsquo;s own words
                   </span>
                   <span className="mt-0.5 block text-[12px] text-muted-foreground">
-                    Tick this when the capture quotes what they actually said. Reads that only
-                    ever listen to the other person — like recognizing a need they revealed —
-                    will treat it as their voice, not yours.
+                    Tick this when the capture quotes what they actually said. Reads that only ever
+                    listen to the other person, like recognizing a need they revealed, will treat it
+                    as their voice, not yours.
                   </span>
                 </span>
               </label>
-
 
               <div>
                 <p className="tt-eyebrow">What Comms thinks it found</p>
                 {derived.suggestions.length === 0 ? (
                   <p className="mt-2 text-[12px] text-muted-foreground">
-                    Nothing structured stood out. The capture will be saved as written, and no
-                    facts will be added to memory.
+                    Nothing structured stood out. The capture will be saved as written, and no facts
+                    will be added to memory.
                   </p>
                 ) : (
                   <>

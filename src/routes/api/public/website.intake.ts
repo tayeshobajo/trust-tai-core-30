@@ -40,7 +40,10 @@ export const Route = createFileRoute("/api/public/website/intake")({
         if (!auth.ok) {
           console.error(`[website] intake rejected: ${auth.reason}`);
           return json(
-            { accepted: false, error: auth.reason === "not_configured" ? "not_configured" : "unauthorized" },
+            {
+              accepted: false,
+              error: auth.reason === "not_configured" ? "not_configured" : "unauthorized",
+            },
             auth.reason === "not_configured" ? 503 : 401,
           );
         }

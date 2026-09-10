@@ -94,9 +94,9 @@ describe("Steward evidence in Ask Trust Tai", () => {
 
   it("reports Steward as having no data rather than implying silence is safety", () => {
     const read = answer(emptySnapshot(ORG, NOW), "What needs my attention today?");
-    expect(read.withheld.some((source) => source.appId === "steward" && source.reason === "no_data")).toBe(
-      true,
-    );
+    expect(
+      read.withheld.some((source) => source.appId === "steward" && source.reason === "no_data"),
+    ).toBe(true);
   });
 });
 
@@ -117,9 +117,7 @@ describe("Steward risk and follow-up in Pulse", () => {
 
   it("raises an unresolved blocker that is waiting on someone else", () => {
     const signals = deriveSignals(
-      snapshotWith([
-        commitment({ status: "waiting", updatedAt: "2026-03-04T12:00:00.000Z" }),
-      ]),
+      snapshotWith([commitment({ status: "waiting", updatedAt: "2026-03-04T12:00:00.000Z" })]),
     );
     const signal = signals.find((entry) => entry.id === "steward-commit-1");
 

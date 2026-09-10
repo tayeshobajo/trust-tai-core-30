@@ -9,7 +9,7 @@
  * companies: 60%+ ICP fit makes a company a candidate for deeper research,
  * and a traceable founder or decision maker makes a person eligible to be
  * considered here. Strong-fit companies with no person on record yet sit
- * quietly below as "needs a person" — visible, never presented as ready.
+ * quietly below as "needs a person", visible, never presented as ready.
  * Rows a person set aside stay set aside until they say otherwise.
  */
 
@@ -146,7 +146,7 @@ export function WorthKnowingQueue({
     return (
       <EmptyState
         title="No relationship opportunities yet"
-        belongsHere="People at strong-fit companies appear here — 60%+ ICP fit, plus a founder or decision maker with a real way in on record."
+        belongsHere="People at strong-fit companies appear here, 60%+ ICP fit, plus a founder or decision maker with a real way in on record."
         whyItMatters="Fit alone never creates an opportunity, and a company with no person is never treated as ready. A real person, a socially appropriate route, and something real to notice all have to line up first."
       />
     );
@@ -156,8 +156,8 @@ export function WorthKnowingQueue({
     <section aria-label="Worth knowing" className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-[13px] text-muted-foreground">
-          People worth knowing, ordered by whether there is a legitimate, timely reason to act.
-          Fit decides who is considered; a traceable person decides who appears.
+          People worth knowing, ordered by whether there is a legitimate, timely reason to act. Fit
+          decides who is considered; a traceable person decides who appears.
         </p>
       </div>
 
@@ -185,7 +185,7 @@ export function WorthKnowingQueue({
         <div className="rounded-xl border border-border bg-card/60 p-4">
           <p className="text-[13px] font-medium text-foreground">Needs a person</p>
           <p className="mt-1 text-[12px] text-muted-foreground">
-            Strong-fit companies we cannot honestly develop a relationship with yet — no founder or
+            Strong-fit companies we cannot honestly develop a relationship with yet, no founder or
             decision maker with a way in is on record. Find the person first; the opportunity read
             follows.
           </p>
@@ -205,9 +205,7 @@ export function WorthKnowingQueue({
                     {entry.candidate.prospect.name}
                   </Link>
                   <MetaPill>{entry.candidate.evaluation.score}% fit</MetaPill>
-                  <span className="text-[12px] text-muted-foreground">
-                    {entry.eligibleBecause}
-                  </span>
+                  <span className="text-[12px] text-muted-foreground">{entry.eligibleBecause}</span>
                 </span>
                 <TTButton asChild variant="quiet" size="sm">
                   <Link
@@ -251,8 +249,7 @@ function WorthKnowingRow({
   const entryPerson = bestEntryPerson(people);
   const channel = recommendChannel({ person: entryPerson });
   const bridge = suggestProofOfCare(candidate, intel)[0];
-  const noticed =
-    intel.opportunities[0]?.statement ?? candidate.signals[0]?.statement ?? null;
+  const noticed = intel.opportunities[0]?.statement ?? candidate.signals[0]?.statement ?? null;
 
   return (
     <li className="rounded-xl border border-border bg-card p-4">
@@ -288,7 +285,7 @@ function WorthKnowingRow({
           <p className="mt-1 text-[12px] text-muted-foreground/80">
             {research?.state === "prepared" && research.preparedAt
               ? `Brief prepared ${formatDay(research.preparedAt)} from the stored public evidence. Nothing has been sent.`
-              : "Research needed — the deeper brief has not been prepared for this person yet."}
+              : "Research needed, the deeper brief has not been prepared for this person yet."}
           </p>
         </div>
 

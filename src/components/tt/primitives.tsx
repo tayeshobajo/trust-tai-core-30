@@ -10,13 +10,14 @@ import type { LifecycleStatus } from "@/domain/entities";
 /* ---------------------------------- Button --------------------------------- */
 
 export const ttButtonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors duration-200 disabled:pointer-events-none disabled:opacity-60 [&_svg]:size-4 [&_svg]:shrink-0",
+  "tt-pressable inline-flex items-center justify-center gap-2 rounded-full text-sm font-medium disabled:pointer-events-none disabled:opacity-60 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         primary: "bg-royal text-primary-foreground shadow-action hover:bg-royal/90",
-        secondary: "border border-border bg-card text-foreground hover:bg-secondary",
-        quiet: "text-muted-foreground hover:text-foreground",
+        secondary:
+          "border border-border bg-card text-foreground hover:border-royal/35 hover:bg-secondary",
+        quiet: "text-muted-foreground hover:bg-secondary hover:text-foreground",
         signal: "bg-royal text-primary-foreground shadow-action hover:bg-royal/90",
       },
       size: {
@@ -155,6 +156,33 @@ export function MetaPill({ children, className }: { children: ReactNode; classNa
   return <span className={cn(statusPill({ tone: "neutral" }), className)}>{children}</span>;
 }
 
+export type PillTone = NonNullable<VariantProps<typeof statusPill>["tone"]>;
+
+/**
+ * A pill that carries meaning through colour: amber for "look at this",
+ * green for "said yes", red for "closed or broken", royal for "act on this".
+ * Same shape as MetaPill so a row of pills never changes rhythm.
+ */
+export function TonePill({
+  tone,
+  dot = false,
+  children,
+  className,
+}: {
+  tone: PillTone;
+  /** A small filled dot before the text, for states worth spotting at a glance. */
+  dot?: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <span data-tone={tone} className={cn(statusPill({ tone }), className)}>
+      {dot ? <span aria-hidden className="size-1.5 rounded-full bg-current" /> : null}
+      {children}
+    </span>
+  );
+}
+
 /* ---------------------------------- Card ----------------------------------- */
 
 export function TTCard({ className, ...props }: ComponentProps<"div">) {
@@ -176,7 +204,7 @@ export function SectionHeading({
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
         {eyebrow ? <p className="tt-eyebrow mb-2">{eyebrow}</p> : null}
-        <h2 className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
+        <h2 className="tt-title-section text-xl">{title}</h2>
         {description ? (
           <p className="mt-1 max-w-reading text-sm text-muted-foreground">{description}</p>
         ) : null}
@@ -223,9 +251,7 @@ export function PageHeader({
             <AmbientDot appId={appId} contextAccent={contextAccent} />
           </p>
           <div className="mt-4 flex flex-wrap items-end justify-between gap-6">
-            <h1 className="tt-display max-w-[16ch] text-4xl text-foreground sm:text-5xl">
-              {title}
-            </h1>
+            <h1 className="tt-title-page max-w-[16ch] text-4xl sm:text-5xl">{title}</h1>
             {action}
           </div>
           {supporting ? (
@@ -240,9 +266,7 @@ export function PageHeader({
     <header className="tt-rise border-b border-border pb-8">
       <p className="tt-eyebrow">{eyebrow}</p>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-6">
-        <h1 className="tt-display max-w-[16ch] text-4xl text-foreground sm:text-5xl lg:text-6xl">
-          {title}
-        </h1>
+        <h1 className="tt-title-page max-w-[16ch] text-4xl sm:text-5xl lg:text-6xl">{title}</h1>
         {action}
       </div>
       {supporting ? (

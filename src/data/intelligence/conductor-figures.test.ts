@@ -37,7 +37,9 @@ function daysAgo(days: number): string {
   return new Date(Date.parse(NOW) - days * DAY).toISOString();
 }
 
-function figure(overrides: Partial<BusinessFigure> & Pick<BusinessFigure, "key" | "value">): BusinessFigure {
+function figure(
+  overrides: Partial<BusinessFigure> & Pick<BusinessFigure, "key" | "value">,
+): BusinessFigure {
   return {
     id: `figure-${overrides.key}-${overrides.asOf ?? "now"}`,
     organizationId: ORG,

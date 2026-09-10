@@ -9,12 +9,19 @@ import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, ExternalLink, Target } from "lucide-react";
 
 import { AmbientSurface } from "@/components/tt/ambient";
+import { InlineProjectName } from "@/components/tt/projects/detail/inline-name";
 import { MetaPill, TTButton } from "@/components/tt/primitives";
 import {
   SURFACE_STATUS_LABEL,
   SURFACE_STATUS_TONE,
   type ProjectRowModel,
 } from "@/data/projects/index-projection";
+import {
+  PROJECT_SURFACES,
+  sectionAnchor,
+  type ProjectSection,
+  type ProjectSurface,
+} from "@/domain/project-workroom-ia";
 import { cn } from "@/lib/utils";
 
 export interface Neighbour {
@@ -101,11 +108,17 @@ export function ProjectIdentityHeader({
   row,
   brand,
   updatedLabel,
+  busy = false,
+  savedLabel = null,
+  onRename,
   onUpdate,
 }: {
   row: ProjectRowModel;
   brand: { accent?: string; logoUrl?: string } | null;
   updatedLabel: string;
+  busy?: boolean;
+  savedLabel?: string | null;
+  onRename?: (name: string) => void;
   onUpdate: () => void;
 }) {
   const { project, lineage } = row;
@@ -142,9 +155,19 @@ export function ProjectIdentityHeader({
 
           <div className="min-w-0 space-y-3">
             <p className="text-[13px] font-medium text-muted-foreground">{lineage.company}</p>
-            <h1 className="font-display text-[34px] leading-[1.1] text-foreground">
-              {project.name}
-            </h1>
+            {onRename ? (
+              <InlineProjectName
+                project={project}
+                busy={busy}
+                savedLabel={savedLabel}
+                onRename={onRename}
+              />
+            ) : (
+              <h1 className="font-display text-[34px] leading-[1.1] text-foreground">
+                {project.name}
+              </h1>
+            )}
+
             <div className="flex flex-wrap items-center gap-3">
               <span
                 className={cn(
@@ -199,20 +222,39 @@ export function OutcomeStrip({ outcome }: { outcome: string }) {
   );
 }
 
-export const PROJECT_TABS = [
-  { value: "overview", label: "Overview" },
-  { value: "context", label: "Context" },
-  { value: "knowledge", label: "Knowledge" },
-  { value: "assets", label: "Assets" },
-  { value: "work", label: "Work" },
-  { value: "blockers", label: "Blockers" },
-  { value: "decisions", label: "Decisions" },
-  { value: "files", label: "Files" },
-  { value: "activity", label: "Activity" },
-] as const;
+/**
+ * Five surfaces, not eleven subsystems. Work, Blockers and Decisions live in
+ * Overview; Context, Knowledge and Assets live in Files. Nothing was deleted:
+ * see `surfaceForSection` for where each former tab now lives.
+ */
+export const PROJECT_TABS = PROJECT_SURFACES;
 
+export type ProjectTab = ProjectSurface;
 
-export type ProjectTab = (typeof PROJECT_TABS)[number]["value"];
+/** A re-homed section inside a surface: anchored, titled, quietly separated. */
+export function WorkroomSection({
+  section,
+  title,
+  description,
+  children,
+}: {
+  section: ProjectSection;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={sectionAnchor(section)} aria-label={title} className="scroll-mt-24 space-y-3">
+      <div>
+        <h2 className="font-display text-xl text-foreground">{title}</h2>
+        {description ? (
+          <p className="mt-1 max-w-reading text-[13px] text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export function ProjectTabs({
   tab,
@@ -224,7 +266,11 @@ export function ProjectTabs({
   onChange: (tab: ProjectTab) => void;
 }) {
   return (
-    <div role="tablist" aria-label="Project sections" className="flex flex-wrap gap-1 border-b border-border">
+    <div
+      role="tablist"
+      aria-label="Project sections"
+      className="flex flex-wrap gap-1 border-b border-border"
+    >
       {PROJECT_TABS.map((entry) => {
         const active = entry.value === tab;
         const count = counts[entry.value];

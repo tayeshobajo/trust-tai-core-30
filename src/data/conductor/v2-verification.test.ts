@@ -1,5 +1,5 @@
 /**
- * Conductor V2 verification pass — three-branch controlled plan.
+ * Conductor V2 verification pass, three-branch controlled plan.
  *
  * Unlike `orchestrator.test.ts` (pure rules, stub adapters), this exercises the
  * REAL room adapters (`ROOM_ADAPTERS`) and the real governance event vocabulary,
@@ -92,9 +92,8 @@ vi.mock("@/data/supabase/projects-service", () => ({
   },
 }));
 
-const { decide, publishProposedActions, routeApproved, loadControl } = await import(
-  "@/data/conductor/orchestrator"
-);
+const { decide, publishProposedActions, routeApproved, loadControl } =
+  await import("@/data/conductor/orchestrator");
 
 /* ------------------------------------------------------------- the plan */
 
@@ -182,7 +181,7 @@ async function runPass() {
     [
       { actionId: "action:branch-comms", kind: "approve" },
       { actionId: "action:branch-projects", kind: "approve" },
-      { actionId: "action:branch-held", kind: "hold", reason: "Too early — one reply is enough." },
+      { actionId: "action:branch-held", kind: "hold", reason: "Too early, one reply is enough." },
     ],
     owner,
     actor,
@@ -198,7 +197,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("Conductor V2 — three-branch controlled plan", () => {
+describe("Conductor V2, three-branch controlled plan", () => {
   it("1. a cross-room plan produces three governed actions", async () => {
     const proposed = await publishProposedActions(
       buildControlledActions({ organizationId: ORG, graph: graph(), now: NOW }),
@@ -226,7 +225,7 @@ describe("Conductor V2 — three-branch controlled plan", () => {
       "adapter:comms.draft",
       "adapter:projects.blocker",
     ]);
-    // The Projects adapter records a blocker only — nothing else.
+    // The Projects adapter records a blocker only, nothing else.
     const patch = (projectUpdate.mock.calls as unknown as unknown[][])[0]![1] as object;
     expect(Object.keys(patch)).toEqual(["blockedBecause"]);
   });
@@ -236,11 +235,11 @@ describe("Conductor V2 — three-branch controlled plan", () => {
     const held = byId(actions, "action:branch-held");
     expect(held.status).toBe("held");
     expect(held.approval?.kind).toBe("hold");
-    expect(held.approval?.reason).toBe("Too early — one reply is enough.");
+    expect(held.approval?.reason).toBe("Too early, one reply is enough.");
 
     const stored = (await loadControl(ORG)).find((a) => a.id === held.id)!;
     expect(stored.status).toBe("held");
-    expect(stored.approval?.reason).toBe("Too early — one reply is enough.");
+    expect(stored.approval?.reason).toBe("Too early, one reply is enough.");
     // Only the approved Comms branch produced a draft.
     expect(saveDraft).toHaveBeenCalledTimes(1);
     expect(receiptRows.size).toBe(2);
@@ -306,7 +305,7 @@ describe("Conductor V2 — three-branch controlled plan", () => {
 
     const held = byId(await loadControl(ORG), "action:branch-held");
     expect(held.status).toBe("held");
-    expect(held.approval?.reason).toBe("Too early — one reply is enough.");
+    expect(held.approval?.reason).toBe("Too early, one reply is enough.");
     expect(first.outcomes).toHaveLength(2);
   });
 });

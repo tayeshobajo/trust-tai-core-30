@@ -119,7 +119,12 @@ export function TaskDetailPanel({
                 {task.evidence.map((item, index) => (
                   <li key={index} className="text-sm text-muted-foreground">
                     {item.url ? (
-                      <a href={item.url} target="_blank" rel="noreferrer" className="text-royal hover:underline">
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-royal hover:underline"
+                      >
                         {item.label}
                       </a>
                     ) : (

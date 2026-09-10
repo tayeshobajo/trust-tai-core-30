@@ -156,7 +156,7 @@ export function checkVoice(input: string, options: VoiceCheckOptions): VoiceVerd
     });
   };
 
-  if (/\u2014/.test(input)) add("no_em_dash", "—");
+  if (/\u2014/.test(input)) add("no_em_dash", "\u2014");
   const bang = input.match(/[^\n!]{0,30}!/);
   if (bang) add("no_exclamation", bang[0].trim());
 

@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import { capabilityFor, isSupportedOperation } from "@/domain/adapter-registry";
-import { canOpenInConductor, conductorHandoff, readHandoff, routeKeyOf } from "@/data/pulse/handoff";
+import {
+  canOpenInConductor,
+  conductorHandoff,
+  readHandoff,
+  routeKeyOf,
+} from "@/data/pulse/handoff";
 import type { PulseSignal } from "@/domain/pulse";
 import type { RouteLedgerEntry } from "@/domain/route-ledger";
 
-import { ROUTE_WITHDRAW_OPERATION, buildRouteWithdrawalAction, routeStepGap } from "./route-proposal";
+import {
+  ROUTE_WITHDRAW_OPERATION,
+  buildRouteWithdrawalAction,
+  routeStepGap,
+} from "./route-proposal";
 import { ROOM_ADAPTERS, operationGap } from "./adapters";
 
 function entry(overrides: Partial<RouteLedgerEntry> = {}): RouteLedgerEntry {
@@ -75,9 +84,7 @@ describe("ops and routed-work handoff", () => {
 describe("the governed step", () => {
   it("is declared and adapted", () => {
     expect(isSupportedOperation("projects", ROUTE_WITHDRAW_OPERATION)).toBe(true);
-    expect(
-      ROOM_ADAPTERS.some((adapter) => adapter.supports(ROUTE_WITHDRAW_OPERATION)),
-    ).toBe(true);
+    expect(ROOM_ADAPTERS.some((adapter) => adapter.supports(ROUTE_WITHDRAW_OPERATION))).toBe(true);
     expect(capabilityFor("projects", ROUTE_WITHDRAW_OPERATION)?.requiresApproval).toBe(true);
   });
 
@@ -107,12 +114,16 @@ describe("the governed step", () => {
   it("offers nothing once the receiving room has accepted", () => {
     const accepted = entry({ status: "accepted" });
     expect(routeStepGap(accepted)).toContain("accepted");
-    expect(buildRouteWithdrawalAction({ entry: accepted, because: "x", createdAt: "now" })).toBeUndefined();
+    expect(
+      buildRouteWithdrawalAction({ entry: accepted, because: "x", createdAt: "now" }),
+    ).toBeUndefined();
   });
 
   it("offers nothing while the silence is still short", () => {
     const fresh = entry({ ageDays: 1, unanswered: false });
-    expect(buildRouteWithdrawalAction({ entry: fresh, because: "x", createdAt: "now" })).toBeUndefined();
+    expect(
+      buildRouteWithdrawalAction({ entry: fresh, because: "x", createdAt: "now" }),
+    ).toBeUndefined();
   });
 
   it("never lets anything accept work for Ops", () => {

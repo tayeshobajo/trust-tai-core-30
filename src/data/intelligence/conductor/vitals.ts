@@ -62,8 +62,7 @@ function daysOld(at: string | undefined, now: string): number {
 function countEvents(snapshot: SuiteSnapshot, names: string[], windowDays: number): number {
   const cutoff = new Date(snapshot.now).getTime() - windowDays * DAY;
   return snapshot.events.filter(
-    (event) =>
-      names.includes(event.name) && new Date(event.occurredAt).getTime() >= cutoff,
+    (event) => names.includes(event.name) && new Date(event.occurredAt).getTime() >= cutoff,
   ).length;
 }
 
@@ -181,9 +180,7 @@ export function readVitals(
       standing: open === 0 ? "at_risk" : open < 2 ? "watch" : "healthy",
       value: open,
       statement:
-        open === 0
-          ? "No roadmap is open."
-          : `${open} roadmap${open === 1 ? " is" : "s are"} open.`,
+        open === 0 ? "No roadmap is open." : `${open} roadmap${open === 1 ? " is" : "s are"} open.`,
       because: "Counted from Roadmap's own record.",
       evidence: [human("Roadmap record")],
     });
@@ -252,9 +249,7 @@ export function readVitals(
     });
   }
 
-  const opsEvents = snapshot.opsActivities.filter(
-    (event) => daysOld(event.occurredAt, now) <= 14,
-  );
+  const opsEvents = snapshot.opsActivities.filter((event) => daysOld(event.occurredAt, now) <= 14);
   if (opsEvents.length > 0) {
     const incidents = opsEvents.filter((event) => event.name.endsWith(".blocked")).length;
     record({
@@ -288,8 +283,7 @@ export function readVitals(
 
   /* ------------------------------------------------------ assemble */
 
-  const intentFor = (key: string) =>
-    intents.find((intent) => GOAL_VITAL_KEY[intent.kind] === key);
+  const intentFor = (key: string) => intents.find((intent) => GOAL_VITAL_KEY[intent.kind] === key);
 
   const readings: VitalReading[] = VITAL_SIGNS.map((definition) => {
     const draft = drafts.get(definition.key) ?? unknownReading(definition);

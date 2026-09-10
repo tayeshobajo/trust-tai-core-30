@@ -61,7 +61,6 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
       { to: "/settings/intelligence", label: "Intelligence freshness" },
       { to: "/settings/ownership", label: "Execution ownership", managing: true },
       { to: "/settings/diagnostics", label: "Diagnostics" },
-
     ],
   },
 ];

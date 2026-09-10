@@ -151,22 +151,28 @@ describe("completing a task", () => {
   });
 
   it("still completes when Steward's own state table is missing", async () => {
-    const r = writerFor({}, {
-      saveTaskState: async () => {
-        throw new Error("relation steward_task_state does not exist");
+    const r = writerFor(
+      {},
+      {
+        saveTaskState: async () => {
+          throw new Error("relation steward_task_state does not exist");
+        },
       },
-    });
+    );
     await expect(completeTask(r.writer, { task: task(), note: "" })).resolves.toBeUndefined();
     expect(r.calls).toEqual(["status:commitment-1:kept"]);
     expect(r.activity).toHaveLength(1);
   });
 
   it("keeps the action when only the audit write fails", async () => {
-    const r = writerFor({}, {
-      recordActivity: async () => {
-        throw new Error("activities unavailable");
+    const r = writerFor(
+      {},
+      {
+        recordActivity: async () => {
+          throw new Error("activities unavailable");
+        },
       },
-    });
+    );
     await expect(completeTask(r.writer, { task: task(), note: "" })).resolves.toBeUndefined();
     expect(r.calls).toEqual(["status:commitment-1:kept"]);
   });
@@ -225,7 +231,7 @@ describe("reprioritising by drag", () => {
     expect(r.taskState[0]).toMatchObject({ taskKey: "commitment:commitment-1", rank: 4 });
     expect(r.activity[0]?.name).toBe("task.updated");
     expect(r.activity[0]?.summary).toBe(
-      'Tai moved “Send the onboarding pack” above “Draft the pricing note”.',
+      "Tai moved “Send the onboarding pack” above “Draft the pricing note”.",
     );
     expect(r.activity[0]?.payload).toMatchObject({ rank: 4 });
   });

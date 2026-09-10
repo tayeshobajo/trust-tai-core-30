@@ -15,9 +15,30 @@ import { createFakeSupabase } from "./fake-supabase";
 
 const db = createFakeSupabase();
 
+/** When set, the measurements table answers with a Postgrest error instead. */
+let measurementsFail: { code: string; message: string } | null = null;
+
+function failingQuery(error: { code: string; message: string }) {
+  const query = {
+    select: () => query,
+    insert: () => query,
+    eq: () => query,
+    order: () => query,
+    limit: () => query,
+    single: () => Promise.resolve({ data: null, error }),
+    maybeSingle: () => Promise.resolve({ data: null, error }),
+    then: (resolve: (value: unknown) => unknown) =>
+      Promise.resolve({ data: null, error }).then(resolve),
+  };
+  return query;
+}
+
 vi.mock("@/integrations/trust-tai/supabase", () => ({
   supabase: {
-    from: (table: string) => db.from(table),
+    from: (table: string) =>
+      table === "roadmap_measurements" && measurementsFail
+        ? (failingQuery(measurementsFail) as unknown as ReturnType<typeof db.from>)
+        : db.from(table),
   },
 }));
 
@@ -28,7 +49,7 @@ const CONTEXT = { organizationId: "org-1", userId: "user-1", userLabel: "Tai" };
 const ROADMAP = "roadmap-1";
 
 const SOURCE = {
-  label: "Northbeam — About",
+  label: "Northbeam. About",
   url: "https://northbeam.example/about",
   checkedAt: "2026-08-13T00:00:00.000Z",
   provider: "openai",
@@ -75,6 +96,171 @@ function candidate(name: string, overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   for (const key of Object.keys(db.tables)) db.tables[key] = [];
+  measurementsFail = null;
+});
+
+const METRIC = {
+  key: "demo_to_close_rate",
+  label: "Demo to close rate",
+  unit: "%",
+  direction: "increase" as const,
+  baseline: { value: 12, at: "2026-09-01" },
+  target: { value: 25, at: "2026-12-01" },
+};
+
+/** One approved milestone that already carries an outcome metric. */
+async function measured() {
+  const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+    candidate("Method page"),
+  ]);
+  return roadmapIntel.setMilestoneMetric(CONTEXT, written[0]!, METRIC, "Northbeam");
+}
+
+describe("measurements", () => {
+  const READING = { value: 18, measuredAt: "2026-09-15", source: "Stripe dashboard" };
+
+  it("records a reading as human evidence with the actor on it", async () => {
+    const milestone = await measured();
+    const saved = await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
+
+    expect(saved.value).toBe(18);
+    expect(saved.measuredAt).toBe("2026-09-15");
+    expect(saved.source).toBe("Stripe dashboard");
+    expect(saved.recordedBy).toBe("user-1");
+    expect(saved.metricKey).toBe("demo_to_close_rate");
+    expect(saved.milestoneId).toBe(milestone.id);
+    expect(saved.roadmapId).toBe(ROADMAP);
+  });
+
+  it("accepts zero as a real reading", async () => {
+    const milestone = await measured();
+    const saved = await roadmapIntel.recordMeasurement(
+      CONTEXT,
+      milestone,
+      { ...READING, value: 0 },
+      "Northbeam",
+    );
+    expect(saved.value).toBe(0);
+  });
+
+  it("refuses a reading when the milestone has no metric, before any write", async () => {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Method page"),
+    ]);
+    await expect(
+      roadmapIntel.recordMeasurement(CONTEXT, written[0]!, READING, "Northbeam"),
+    ).rejects.toThrow(/outcome metric/i);
+    expect(db.tables["roadmap_measurements"] ?? []).toHaveLength(0);
+  });
+
+  it("refuses a missing value, an unreal date and an empty source", async () => {
+    const milestone = await measured();
+    for (const bad of [
+      { ...READING, value: "" as unknown as number },
+      { ...READING, measuredAt: "" },
+      { ...READING, measuredAt: "2026-02-31" },
+      { ...READING, source: " " },
+      { ...READING, source: "manual" },
+    ]) {
+      await expect(
+        roadmapIntel.recordMeasurement(CONTEXT, milestone, bad, "Northbeam"),
+      ).rejects.toThrow();
+    }
+    expect(db.tables["roadmap_measurements"] ?? []).toHaveLength(0);
+  });
+
+  it("refuses a milestone that belongs to another organization", async () => {
+    const milestone = await measured();
+    await expect(
+      roadmapIntel.recordMeasurement(
+        { ...CONTEXT, organizationId: "org-2" },
+        milestone,
+        READING,
+        "Northbeam",
+      ),
+    ).rejects.toThrow(/another organization/i);
+    expect(db.tables["roadmap_measurements"] ?? []).toHaveLength(0);
+  });
+
+  it("replays as one measurement and one event", async () => {
+    const milestone = await measured();
+    const first = await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
+    const events = (db.tables["activities"] ?? []).filter(
+      (row) => (row as Record<string, unknown>)["event_type"] === "roadmap.measured",
+    ).length;
+
+    const again = await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
+    expect(again.id).toBe(first.id);
+    expect(db.tables["roadmap_measurements"]).toHaveLength(1);
+    expect(
+      (db.tables["activities"] ?? []).filter(
+        (row) => (row as Record<string, unknown>)["event_type"] === "roadmap.measured",
+      ),
+    ).toHaveLength(events);
+  });
+
+  it("records exactly one event, carrying the reading and its replay key", async () => {
+    const milestone = await measured();
+    const saved = await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
+    const events = (db.tables["activities"] ?? []).filter(
+      (row) => (row as Record<string, unknown>)["event_type"] === "roadmap.measured",
+    );
+    expect(events).toHaveLength(1);
+    const payload = (events[0] as Record<string, unknown>)["payload"] as Record<string, unknown>;
+    expect(payload["measurementId"]).toBe(saved.id);
+    expect(payload["milestoneId"]).toBe(milestone.id);
+    expect(payload["metricKey"]).toBe("demo_to_close_rate");
+    expect(payload["value"]).toBe(18);
+    expect(payload["source"]).toBe("Stripe dashboard");
+    expect(String(payload["source_event_key"])).toContain("roadmap.measured:");
+    expect((events[0] as Record<string, unknown>)["actor_user_id"]).toBe("user-1");
+  });
+
+  it("never touches the metric baseline or target", async () => {
+    const milestone = await measured();
+    await roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam");
+    const intel = await roadmapIntel.load(ROADMAP);
+    const metric = intel.milestones[0]!.outcomeMetric;
+    expect(metric?.baseline).toEqual({ value: 12, at: "2026-09-01" });
+    expect(metric?.target).toEqual({ value: 25, at: "2026-12-01" });
+  });
+
+  it("reads history newest first", async () => {
+    const milestone = await measured();
+    await roadmapIntel.recordMeasurement(
+      CONTEXT,
+      milestone,
+      { ...READING, measuredAt: "2026-09-01", value: 12 },
+      "Northbeam",
+    );
+    await roadmapIntel.recordMeasurement(
+      CONTEXT,
+      milestone,
+      { ...READING, measuredAt: "2026-09-20", value: 21 },
+      "Northbeam",
+    );
+    const history = await roadmapIntel.listMeasurements(milestone.id);
+    expect(history.map((entry) => entry.measuredAt)).toEqual(["2026-09-20", "2026-09-01"]);
+
+    const intel = await roadmapIntel.load(ROADMAP);
+    expect(intel.measurements.map((entry) => entry.value)).toEqual([21, 12]);
+    expect(intel.measurementsError).toBeNull();
+  });
+
+  it("an unreadable measurement store is said out loud, not read as an empty history", async () => {
+    measurementsFail = { code: "42P01", message: "relation roadmap_measurements does not exist" };
+    const intel = await roadmapIntel.load(ROADMAP);
+    expect(intel.measurements).toEqual([]);
+    expect(intel.measurementsError).toContain("could not be read");
+  });
+
+  it("says the store is missing rather than pretending the reading saved", async () => {
+    const milestone = await measured();
+    measurementsFail = { code: "42P01", message: "relation roadmap_measurements does not exist" };
+    await expect(
+      roadmapIntel.recordMeasurement(CONTEXT, milestone, READING, "Northbeam"),
+    ).rejects.toThrow(/not available in this environment/i);
+  });
 });
 
 describe("research", () => {
@@ -285,6 +471,140 @@ describe("milestones", () => {
     expect(approved.ownerLabel).toBe("Tai");
   });
 
+  it("records an outcome metric as decided truth with provenance", async () => {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Method page"),
+    ]);
+    const updated = await roadmapIntel.setMilestoneMetric(
+      CONTEXT,
+      written[0]!,
+      {
+        key: "Demo to close rate",
+        label: "Demo to close rate",
+        unit: "%",
+        direction: "increase",
+        baseline: { value: 12, at: "2026-09-01" },
+        target: { value: 25, at: "2026-12-01" },
+      },
+      "Northbeam",
+    );
+
+    expect(updated.outcomeMetric?.key).toBe("demo_to_close_rate");
+    expect(updated.outcomeMetric?.tier).toBe("decided");
+    expect(updated.outcomeMetric?.recordedBy).toBe("user-1");
+    expect(updated.outcomeMetric?.baseline?.value).toBe(12);
+  });
+
+  it("a milestone with no metric reads as absence, not zero", async () => {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Method page"),
+    ]);
+    expect(written[0]!.outcomeMetric).toBeNull();
+  });
+
+  it("refuses an incomplete metric instead of inventing a default", async () => {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Method page"),
+    ]);
+    await expect(
+      roadmapIntel.setMilestoneMetric(
+        CONTEXT,
+        written[0]!,
+        {
+          key: "rate",
+          label: "Rate",
+          unit: "%",
+          direction: "increase",
+          baseline: { value: 12, at: "2026-09-01" },
+          target: { value: 4, at: "2026-12-01" },
+        },
+        "Northbeam",
+      ),
+    ).rejects.toThrow();
+    const intel = await roadmapIntel.load(ROADMAP);
+    expect(intel.milestones[0]!.outcomeMetric).toBeNull();
+  });
+
+  it("creates a manual milestone as decided truth with the person on it", async () => {
+    const created = await roadmapIntel.createManualMilestone(CONTEXT, ROADMAP, "Northbeam", {
+      name: "  Launch the question bank ",
+    });
+    expect(created.name).toBe("Launch the question bank");
+    expect(created.status).toBe("approved");
+    expect(created.tier).toBe("decided");
+    expect(created.ownerLabel).toBe("Tai");
+    expect(created.decidedBy).toBe("user-1");
+    expect(created.outcomeMetric).toBeNull();
+  });
+
+  it("a manual milestone invents nothing a person did not type", async () => {
+    const created = await roadmapIntel.createManualMilestone(CONTEXT, ROADMAP, "Northbeam", {
+      name: "Question bank",
+    });
+    expect(created.whatWeBuild).toBe("");
+    expect(created.executionBoundary).toBe("");
+    expect(created.priorityScore).toBe(0);
+    expect(created.evidence).toEqual([]);
+  });
+
+  it("a manual milestone records one activity with a replay key", async () => {
+    const before = (db.tables["activities"] ?? []).length;
+    await roadmapIntel.createManualMilestone(CONTEXT, ROADMAP, "Northbeam", {
+      name: "Question bank",
+    });
+    const rows = db.tables["activities"] ?? [];
+    expect(rows.length).toBe(before + 1);
+    const payload = (rows[rows.length - 1] as Record<string, unknown>)["payload"] as Record<
+      string,
+      unknown
+    >;
+    expect(payload["origin"]).toBe("manual");
+    expect(String(payload["source_event_key"])).toContain("roadmap.milestone_created");
+  });
+
+  it("refuses a nameless manual milestone instead of naming it", async () => {
+    await expect(
+      roadmapIntel.createManualMilestone(CONTEXT, ROADMAP, "Northbeam", { name: "  " }),
+    ).rejects.toThrow(/name/i);
+    const intel = await roadmapIntel.load(ROADMAP);
+    expect(intel.milestones.length).toBe(0);
+  });
+
+  it("a repeat save of the same name returns the existing milestone", async () => {
+    const first = await roadmapIntel.createManualMilestone(CONTEXT, ROADMAP, "Northbeam", {
+      name: "Question bank",
+    });
+    const before = (db.tables["activities"] ?? []).length;
+    const again = await roadmapIntel.createManualMilestone(
+      CONTEXT,
+      ROADMAP,
+      "Northbeam",
+      { name: "  question   BANK " },
+      [first],
+    );
+    expect(again.id).toBe(first.id);
+    expect((db.tables["activities"] ?? []).length).toBe(before);
+  });
+
+  it("setting the same metric again records no second event", async () => {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Method page"),
+    ]);
+    const input = {
+      key: "demo_to_close_rate",
+      label: "Demo to close rate",
+      unit: "%",
+      direction: "increase" as const,
+      baseline: { value: 12, at: "2026-09-01" },
+      target: { value: 25, at: "2026-12-01" },
+    };
+    const first = await roadmapIntel.setMilestoneMetric(CONTEXT, written[0]!, input, "Northbeam");
+    const before = (db.tables["activities"] ?? []).length;
+    const again = await roadmapIntel.setMilestoneMetric(CONTEXT, first, input, "Northbeam");
+    expect((db.tables["activities"] ?? []).length).toBe(before);
+    expect(again.outcomeMetric?.recordedAt).toBe(first.outcomeMetric?.recordedAt);
+  });
+
   it("an owner can be set explicitly", async () => {
     const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
       candidate("Method page"),
@@ -445,5 +765,127 @@ describe("errors", () => {
       'relation "roadmap_research" does not exist',
     );
     spy.mockRestore();
+  });
+});
+
+/**
+ * Outcomes and acceptance criteria: the everyday milestone path.
+ *
+ * People describe success, the system structures measurement. Nothing here
+ * completes a milestone on its own, and both the Roadmap room and the Project
+ * workroom reach these through this one service.
+ */
+describe("milestone outcome and acceptance criteria", () => {
+  async function milestone() {
+    const written = await roadmapIntel.replaceCandidates(CONTEXT, ROADMAP, "Northbeam", [
+      candidate("Front facing pages"),
+    ]);
+    return written[0]!;
+  }
+
+  it("records a plain outcome with no numbers anywhere", async () => {
+    const updated = await roadmapIntel.setMilestoneSuccess(
+      CONTEXT,
+      await milestone(),
+      { outcome: "Front facing pages redesigned and approved", targetDate: "2026-09-30" },
+      "Northbeam",
+    );
+    expect(updated.success?.outcome).toBe("Front facing pages redesigned and approved");
+    expect(updated.success?.targetDate).toBe("2026-09-30");
+    expect(updated.success?.tier).toBe("decided");
+    expect(updated.success?.recordedBy).toBe("user-1");
+    expect(updated.outcomeMetric).toBeNull();
+  });
+
+  it("refuses an outcome nobody wrote", async () => {
+    await expect(
+      roadmapIntel.setMilestoneSuccess(CONTEXT, await milestone(), { outcome: " " }, "Northbeam"),
+    ).rejects.toThrow(/what success looks like/i);
+  });
+
+  it("adds, rewords, checks, unchecks and removes a condition", async () => {
+    const subject = await milestone();
+    const first = await roadmapIntel.addCriterion(CONTEXT, subject, "Home page approved", "N");
+    expect(first.position).toBe(1);
+    expect(first.done).toBe(false);
+
+    const second = await roadmapIntel.addCriterion(CONTEXT, subject, "About page approved", "N");
+    expect(second.position).toBe(2);
+
+    const reworded = await roadmapIntel.editCriterion(CONTEXT, first, "Home page signed off", "N");
+    expect(reworded.text).toBe("Home page signed off");
+
+    const checked = await roadmapIntel.setCriterionDone(CONTEXT, reworded, true, "N");
+    expect(checked.done).toBe(true);
+    expect(checked.completedBy).toBe("user-1");
+
+    await expect(roadmapIntel.removeCriterion(CONTEXT, checked, "N")).rejects.toThrow(/Uncheck/i);
+
+    const reopened = await roadmapIntel.setCriterionDone(CONTEXT, checked, false, "N");
+    expect(reopened.done).toBe(false);
+    await roadmapIntel.removeCriterion(CONTEXT, reopened, "N");
+
+    const left = await roadmapIntel.listCriteria(subject.id);
+    expect(left.map((row) => row.text)).toEqual(["About page approved"]);
+  });
+
+  it("writes the same condition once", async () => {
+    const subject = await milestone();
+    const first = await roadmapIntel.addCriterion(CONTEXT, subject, "Home page approved", "N");
+    const again = await roadmapIntel.addCriterion(CONTEXT, subject, " home page approved ", "N");
+    expect(again.id).toBe(first.id);
+    expect((await roadmapIntel.listCriteria(subject.id)).length).toBe(1);
+  });
+
+  it("refuses a condition nobody can check", async () => {
+    await expect(
+      roadmapIntel.addCriterion(CONTEXT, await milestone(), "  ", "N"),
+    ).rejects.toThrow(/condition/i);
+  });
+
+  it("never completes a milestone because every box is checked", async () => {
+    const subject = await milestone();
+    const one = await roadmapIntel.addCriterion(CONTEXT, subject, "Home page approved", "N");
+    await roadmapIntel.setCriterionDone(CONTEXT, one, true, "N");
+
+    const read = await roadmapIntel.load(ROADMAP);
+    const after = read.milestones.find((row) => row.id === subject.id)!;
+    expect(after.status).toBe(subject.status);
+    expect(after.status).not.toBe("approved");
+    expect(read.criteria.every((row) => row.done)).toBe(true);
+  });
+
+  it("reads the checklist back in order for the whole roadmap", async () => {
+    const subject = await milestone();
+    await roadmapIntel.addCriterion(CONTEXT, subject, "Home page approved", "N");
+    await roadmapIntel.addCriterion(CONTEXT, subject, "About page approved", "N");
+    const read = await roadmapIntel.load(ROADMAP);
+    expect(read.criteria.map((row) => row.text)).toEqual([
+      "Home page approved",
+      "About page approved",
+    ]);
+    expect(read.criteriaError).toBeNull();
+  });
+});
+
+/**
+ * Canon 17: the Project workroom operates Roadmap truth through Roadmap's own
+ * service and Roadmap's own component. There is no second implementation.
+ */
+describe("one service for both rooms", () => {
+  it("wires the Project workroom and the Roadmap room to the same hook", async () => {
+    const fs = await import("node:fs/promises");
+    const roadmapRoom = await fs.readFile("src/routes/modules.roadmap.$roadmapId.tsx", "utf8");
+    const workroom = await fs.readFile(
+      "src/components/tt/projects/detail/workroom.tsx",
+      "utf8",
+    );
+    for (const source of [roadmapRoom, workroom]) {
+      expect(source).toContain("useMilestoneAcceptance");
+      expect(source).toContain("roadmapIntel");
+    }
+    const tab = await fs.readFile("src/components/tt/projects/detail/roadmap.tsx", "utf8");
+    expect(tab).toContain("MilestonesView");
+    expect(tab).not.toContain("supabase");
   });
 });

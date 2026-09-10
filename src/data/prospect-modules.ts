@@ -75,11 +75,7 @@ export function runFromEvaluation(evaluation: ScoutFitEvaluation, at: string): R
 }
 
 /** Append a run, keeping the log bounded and free of exact duplicates. */
-export function appendResearchRun(
-  metadata: unknown,
-  run: ResearchRun,
-  limit = 12,
-): ResearchRun[] {
+export function appendResearchRun(metadata: unknown, run: ResearchRun, limit = 12): ResearchRun[] {
   const history = readResearchHistory(metadata).filter((entry) => entry.at !== run.at);
   return [...history, run].slice(-limit);
 }
@@ -90,50 +86,73 @@ export function appendResearchRun(
 
 export function computeCoverage(candidate: ProspectCandidate): ResearchCoverage {
   const facts = candidate.facts ?? {};
-  const pages = candidate.evaluation.pagesResearched ?? candidate.source.pagesResearched?.length ?? 0;
+  const pages =
+    candidate.evaluation.pagesResearched ?? candidate.source.pagesResearched?.length ?? 0;
+  const factCount = candidate.signals.length;
   const known = PAGE_KINDS.filter((kind) => kind.key in facts);
   const checked = PAGE_KINDS.map((kind) => ({
     key: kind.key,
     label: kind.label,
     reached: facts[kind.key] === true,
   }));
+  const lastReadAt = candidate.lastCheckedAt ?? null;
 
   if (candidate.source.kind !== "live_website") {
     return {
-      pages,
+      pages: 0,
+      facts: factCount,
       checked: [],
-      percent: null,
-      note: "Preview records are not researched, so there is no coverage to report.",
-      thin: true,
+      reached: 0,
+      lastReadAt: null,
+      state: "never_read",
+      note: "Preview records are not researched, so there is nothing to report.",
+      sparse: true,
+    };
+  }
+
+  if (pages === 0 && factCount === 0) {
+    return {
+      pages: 0,
+      facts: 0,
+      checked: [],
+      reached: 0,
+      lastReadAt: lastReadAt,
+      state: lastReadAt ? "unreadable" : "never_read",
+      note: lastReadAt
+        ? "The website could not be read on the last attempt."
+        : "Not researched yet. Nothing has been read from this website, so there is nothing to report.",
+      sparse: true,
     };
   }
 
   if (known.length === 0) {
     return {
       pages,
+      facts: factCount,
       checked: [],
-      percent: null,
-      note:
-        pages > 0
-          ? `${pages} public ${pages === 1 ? "page" : "pages"} were read. This research pass predates page-level coverage reporting.`
-          : "No public pages have been read yet.",
-      thin: pages < 3,
+      reached: 0,
+      lastReadAt,
+      state: "read",
+      note: `${pages} public ${pages === 1 ? "page" : "pages"} read. Page kinds were not recorded on this pass.`,
+      sparse: pages < 3,
     };
   }
 
   const reached = checked.filter((kind) => kind.reached);
   const missed = checked.filter((kind) => !kind.reached).map((kind) => kind.label);
-  const percent = Math.round((reached.length / checked.length) * 100);
 
   return {
     pages,
+    facts: factCount,
     checked,
-    percent,
+    reached: reached.length,
+    lastReadAt,
+    state: "read",
     note:
       missed.length === 0
         ? `Every page kind was reached across ${pages} public ${pages === 1 ? "page" : "pages"}.`
         : `${missed.join(", ")} ${missed.length === 1 ? "was" : "were"} never reached. Absence there is not treated as a gap.`,
-    thin: percent < 50 || pages < 3,
+    sparse: reached.length * 2 < checked.length || pages < 3,
   };
 }
 
@@ -146,7 +165,11 @@ export function computePulse(history: ResearchRun[]): SignalPulse | null {
   const delta = current.score - previous.score;
 
   const movement =
-    delta > 0 ? `Fit rose ${delta} points` : delta < 0 ? `Fit fell ${Math.abs(delta)} points` : "Fit held steady";
+    delta > 0
+      ? `Fit rose ${delta} points`
+      : delta < 0
+        ? `Fit fell ${Math.abs(delta)} points`
+        : "Fit held steady";
   const evidence =
     gained.length === 0 && lost.length === 0
       ? "no criteria changed state"
@@ -172,7 +195,6 @@ function daysSince(value: string): number | null {
   if (Number.isNaN(date.getTime())) return null;
   return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000));
 }
-
 
 /* ------------------------------------------------------------------ *
  * Confidence, how sure we are, and what that rests on
@@ -201,7 +223,7 @@ function pageLabel(url: string): string {
 
 /**
  * Confidence in one criterion. Evidence quantity sets the ceiling; thin
- * coverage lowers it. A criterion nobody has evidence for is never "low" 
+ * coverage lowers it. A criterion nobody has evidence for is never "low"
  * it is simply not established.
  */
 export function criterionConfidence(
@@ -244,7 +266,7 @@ export function criterionConfidence(
             evidence,
           };
 
-  return coverage.thin
+  return coverage.sparse
     ? {
         ...base,
         level: base.level === "high" ? "moderate" : base.level,
@@ -267,7 +289,13 @@ export function fitConfidence(
       kind: "computed",
     },
     ...(candidate.prospect.websiteUrl
-      ? [{ label: pageLabel(candidate.prospect.websiteUrl), url: candidate.prospect.websiteUrl, kind: "page" as const }]
+      ? [
+          {
+            label: pageLabel(candidate.prospect.websiteUrl),
+            url: candidate.prospect.websiteUrl,
+            kind: "page" as const,
+          },
+        ]
       : []),
   ];
 
@@ -292,7 +320,7 @@ export function fitConfidence(
       evidence,
     };
   }
-  if (coverage.thin) {
+  if (coverage.sparse) {
     return {
       level: "moderate",
       because: coverage.note,
@@ -349,7 +377,7 @@ export function computeNextMove(
     return {
       ...base,
       confidence: {
-        level: coverage.thin ? "moderate" : "high",
+        level: coverage.sparse ? "moderate" : "high",
         because: `Fit, evidence, and ${contacts} named ${contacts === 1 ? "person" : "people"} are on record.`,
         evidence: [
           { label: `${contacts} people on record`, kind: "computed" },
@@ -375,13 +403,15 @@ function nextMoveBase(
   const { prospect, evaluation } = candidate;
   const contacts = input.contactCount ?? 0;
   const hasDecisionMaker =
-    contacts > 0 || evaluation.criteria.some((c) => c.key === "decision_maker" && c.state === "met");
+    contacts > 0 ||
+    evaluation.criteria.some((c) => c.key === "decision_maker" && c.state === "met");
 
   if (prospect.status === "passed") {
     return {
       action: "review",
       headline: "This company was passed",
-      detail: "Nothing is scheduled. Re-research it only if something about the business has changed.",
+      detail:
+        "Nothing is scheduled. Re-research it only if something about the business has changed.",
       because: "A Trust Tai member decided to pass.",
     };
   }
@@ -413,7 +443,7 @@ function nextMoveBase(
     };
   }
 
-  if (coverage.thin && coverage.percent !== null) {
+  if (coverage.sparse && coverage.state === "read") {
     return {
       action: "research",
       headline: "Research is still thin",
@@ -427,7 +457,8 @@ function nextMoveBase(
       return {
         action: "people",
         headline: "Find the decision maker",
-        detail: "Qualified, but no named person with a role is recorded. Comms cannot open without one.",
+        detail:
+          "Qualified, but no named person with a role is recorded. Comms cannot open without one.",
         because: "A company cannot be handed over without someone who carries it.",
       };
     }
@@ -455,7 +486,6 @@ function nextMoveBase(
     because: `The website has been read and scored ${evaluation.score}% against the active ICP.`,
   };
 }
-
 
 /* ------------------------------------------------------------------ *
  * Emphasis, which surface the page leans on, decided by rule
@@ -500,7 +530,7 @@ export function emphasisFor(
   }
 
   // Evidence is not trustworthy enough to lead with a judgement yet.
-  if (input.needsRescore || input.coverage.thin) {
+  if (input.needsRescore || input.coverage.sparse) {
     if (id === "coverage") {
       return { emphasis: "primary", reason: "Coverage decides how far the rest can be trusted." };
     }
@@ -553,11 +583,7 @@ export function composeProspectPage(input: CompositionInput): ProspectCompositio
 
   const nextMove = computeNextMove(input, coverage, needsRescore, staleDays);
   const focus = FOCUS_BY_ACTION[nextMove.action];
-  const push = (
-    id: ProspectModule["id"],
-    zone: ProspectModule["zone"],
-    weight: number,
-  ) => {
+  const push = (id: ProspectModule["id"], zone: ProspectModule["zone"], weight: number) => {
     const { emphasis, reason } = emphasisFor(id, {
       focus,
       status: prospect.status,

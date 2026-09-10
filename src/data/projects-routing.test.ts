@@ -104,9 +104,7 @@ describe("Projects → Ops / Studio routing", () => {
   it("refuses rather than fabricating missing context", () => {
     expect(buildRouteRequest(project(), { ...intent, requestedOutcome: "  " }).ok).toBe(false);
     expect(buildRouteRequest(project(), { ...intent, because: "" }).ok).toBe(false);
-    expect(
-      buildRouteRequest(project(), { ...intent, requestedBy: { userId: "" } }).ok,
-    ).toBe(false);
+    expect(buildRouteRequest(project(), { ...intent, requestedBy: { userId: "" } }).ok).toBe(false);
     expect(buildRouteRequest(project({ pointB: "  " }), intent).ok).toBe(false);
     expect(buildRouteRequest(project({ id: "" }), intent).ok).toBe(false);
   });
