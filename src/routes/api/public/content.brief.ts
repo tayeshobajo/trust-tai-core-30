@@ -90,7 +90,7 @@ export const Route = createFileRoute("/api/public/content/brief")({
             return withLovableAiGatewayRunIdHeader(
               Response.json(
                 { error: result.because },
-                { status: 503, headers: getLovableAiGatewayResponseHeaders() },
+                { status: 503, headers: getLovableAiGatewayResponseHeaders(undefined) },
               ),
               gateway,
             );
@@ -99,7 +99,7 @@ export const Route = createFileRoute("/api/public/content/brief")({
           return withLovableAiGatewayRunIdHeader(
             Response.json(
               { brief: result.brief, provider: result.provider, model: result.model },
-              { headers: getLovableAiGatewayResponseHeaders() },
+              { headers: getLovableAiGatewayResponseHeaders(undefined) },
             ),
             gateway,
           );
