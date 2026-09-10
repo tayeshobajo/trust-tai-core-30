@@ -106,7 +106,10 @@ export const Route = createFileRoute("/api/public/content/brief")({
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           if (message === "forbidden") {
-            return Response.json({ error: "This workspace is not yours to read." }, { status: 403 });
+            return Response.json(
+              { error: "This workspace is not yours to read." },
+              { status: 403 },
+            );
           }
           return Response.json({ error: message }, { status: 500 });
         }

@@ -27,10 +27,7 @@ import { StudioBrief } from "@/components/tt/studio/brief";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { submitContentBatchForApproval, submitContentBatchQuietly } from "@/data/content/intake";
 import { deriveOpportunities } from "@/data/content/opportunity-read";
-import {
-  studioOpportunitiesView,
-  type OpportunityRowView,
-} from "@/data/content/opportunity-view";
+import { studioOpportunitiesView, type OpportunityRowView } from "@/data/content/opportunity-view";
 import { readContentDemand } from "@/data/website/content-demand";
 import { contentService } from "@/data/supabase/content-service";
 import { contentCommandService } from "@/data/supabase/content-request-service";
@@ -105,9 +102,10 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
   const [setAside, setSetAside] = useState<string[]>([]);
   /* The brief a person is reading right now. Nothing is written until they
      keep it, and discarding leaves no trace. */
-  const [openBrief, setOpenBrief] = useState<{ row: OpportunityRowView; brief: ContentBrief } | null>(
-    null,
-  );
+  const [openBrief, setOpenBrief] = useState<{
+    row: OpportunityRowView;
+    brief: ContentBrief;
+  } | null>(null);
 
   const sources = useQuery({
     queryKey: ["studio", "sources", organizationId],
@@ -273,7 +271,6 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
     onError: () =>
       toast.message("Set aside for this visit only. The brief store is not in this database yet."),
   });
-
 
   const publisher = useQuery({
     queryKey: ["studio", "publisher"],
@@ -460,7 +457,6 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
           onDiscard={() => setOpenBrief(null)}
         />
       ) : null}
-
 
       <StudioComposer
         sources={sources.data ?? []}

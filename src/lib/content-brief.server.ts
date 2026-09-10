@@ -21,8 +21,17 @@ import {
   ProviderNotConfiguredError,
   runtimeModelCaller,
 } from "./intelligence-runtime.server";
-import { composeStudioRetrieval, studioRetrievalPacket, STUDIO_RETRIEVAL_LAWS } from "./studio-retrieval";
-import { EMPTY_IMAGE_PLAN, type ContentBrief, type NarrativeSpine, type TitleCandidate } from "@/domain/content-brief";
+import {
+  composeStudioRetrieval,
+  studioRetrievalPacket,
+  STUDIO_RETRIEVAL_LAWS,
+} from "./studio-retrieval";
+import {
+  EMPTY_IMAGE_PLAN,
+  type ContentBrief,
+  type NarrativeSpine,
+  type TitleCandidate,
+} from "@/domain/content-brief";
 
 const BRIEF_INSTRUCTIONS = [
   "You are the editorial brief writer for Trust Tai, a small services business that builds operating systems for founders.",
@@ -157,10 +166,16 @@ export async function composeBrief(request: BriefRequest): Promise<BriefResult> 
     model = answer.model;
   } catch (error) {
     if (error instanceof ProviderNotConfiguredError) {
-      return { ok: false, because: "No intelligence provider is configured, so no brief was written." };
+      return {
+        ok: false,
+        because: "No intelligence provider is configured, so no brief was written.",
+      };
     }
     if (error instanceof ProviderCallFailedError) {
-      return { ok: false, because: "The intelligence provider did not answer, so no brief was written." };
+      return {
+        ok: false,
+        because: "The intelligence provider did not answer, so no brief was written.",
+      };
     }
     throw error;
   }
@@ -194,7 +209,10 @@ export async function composeBrief(request: BriefRequest): Promise<BriefResult> 
   };
 
   if (!brief.coreIdea && brief.titleCandidates.length === 0 && !brief.opening.firstParagraph) {
-    return { ok: false, because: "The brief came back empty, so nothing is being shown as a brief." };
+    return {
+      ok: false,
+      because: "The brief came back empty, so nothing is being shown as a brief.",
+    };
   }
 
   return { ok: true, brief, provider, model };
