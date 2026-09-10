@@ -139,6 +139,36 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => listWebsitePages(organizationId),
   });
 
+  /* What the market already asked for. The Website room owns the observation;
+     Studio only reads it, over the same bounded window Website uses. */
+  const sinceDate = useMemo(
+    () =>
+      new Date(Date.now() - DEMAND_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    [],
+  );
+  const searchMetrics = useQuery({
+    queryKey: ["studio", "search-metrics", organizationId, sinceDate],
+    queryFn: () => listSearchMetrics(organizationId, sinceDate),
+  });
+
+  const opportunities = useMemo(() => {
+    const demand = readContentDemand({
+      searchMetrics: searchMetrics.data?.value ?? [],
+      pages: pages.data?.value ?? [],
+      inventoryRead: pages.data?.provisioned === true,
+      searchRead: searchMetrics.data?.provisioned === true,
+    });
+    return studioOpportunitiesView(
+      demand,
+      deriveOpportunities({
+        organizationId,
+        demand,
+        asOf: new Date().toISOString(),
+      }),
+      setAside,
+    );
+  }, [searchMetrics.data, pages.data, organizationId, setAside]);
+
   const publisher = useQuery({
     queryKey: ["studio", "publisher"],
     queryFn: async () => {
