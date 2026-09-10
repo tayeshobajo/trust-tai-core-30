@@ -125,7 +125,7 @@
   --cloud-strong: oklch(0.955 0.022 250);
   --cloud-line: oklch(0.906 0.016 250);
   --cloud-ink: oklch(0.36 0.11 262);
-  /* Warm editorial paper, currently reserved for the isolated Studio prototype. */
+  /* Warm editorial paper for Studio intelligence surfaces. */
   --studio-paper: oklch(0.985 0.012 84);
 
   --background: var(--cloud);
