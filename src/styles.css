@@ -284,6 +284,13 @@
   text-wrap: balance;
 }
 
+/* Editorial voice for the isolated Studio content-intelligence prototype. */
+@utility tt-studio-editorial {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
 /* Level B, the primary decision surface on a page. */
 @utility tt-level-primary {
   background: linear-gradient(

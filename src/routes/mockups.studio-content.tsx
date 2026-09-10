@@ -42,6 +42,14 @@ export const Route = createFileRoute("/mockups/studio-content")({
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
     ],
+    links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap",
+      },
+    ],
   }),
   component: StudioContentMockup,
 });
@@ -348,7 +356,7 @@ function Brief({
         <p className="text-xs font-medium text-muted-foreground">
           Brief · “transformational advisory”
         </p>
-        <h2 className="mt-3 max-w-reading font-serif text-3xl font-medium leading-snug text-foreground">
+        <h2 className="tt-studio-editorial mt-3 max-w-reading text-3xl leading-snug text-foreground">
           {DEMO_BRIEF.coreIdea}
         </h2>
         <p className="mt-4 max-w-reading text-[15px] leading-relaxed text-muted-foreground">
@@ -438,7 +446,7 @@ function Opening({ onNext }: { onNext: () => void }) {
     <section className="space-y-10">
       <div>
         <p className="text-xs font-medium text-muted-foreground">The opening</p>
-        <p className="mt-4 max-w-reading font-serif text-[22px] leading-relaxed text-foreground">
+        <p className="tt-studio-editorial mt-4 max-w-reading text-[24px] leading-relaxed text-foreground">
           {DEMO_OPENING.paragraph}
         </p>
         <p className="mt-4 max-w-reading border-l-2 border-border pl-4 text-[13px] text-muted-foreground">
