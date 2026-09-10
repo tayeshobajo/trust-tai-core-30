@@ -68,7 +68,8 @@ export type RuntimePurpose =
   | "discovery"
   | "import"
   | "research"
-  | "studio_generation";
+  | "studio_generation"
+  | "studio_brief";
 
 export interface RuntimeModelCall {
   instructions: string;
