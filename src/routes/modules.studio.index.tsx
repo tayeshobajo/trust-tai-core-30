@@ -437,8 +437,30 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
       <StudioOpportunities
         view={opportunities}
         loading={searchMetrics.isPending || pages.isPending}
-        onDismiss={(id) => setSetAside((current) => [...current, id])}
+        keptBriefIds={[...keptBriefs.keys()]}
+        buildingId={buildBrief.isPending ? (buildBrief.variables?.id ?? null) : null}
+        onDismiss={(id) => {
+          setSetAside((current) => [...current, id]);
+          const row = opportunities.rows.find((entry) => entry.id === id);
+          if (row) dismiss.mutate(row);
+        }}
+        onBuildBrief={(row) => buildBrief.mutate(row)}
+        onOpenBrief={(row) => {
+          const kept = keptBriefs.get(row.id);
+          if (kept) setOpenBrief({ row, brief: kept });
+        }}
       />
+
+      {openBrief ? (
+        <StudioBrief
+          phrase={openBrief.row.phrase}
+          brief={openBrief.brief}
+          saving={keepBrief.isPending}
+          onKeep={(edited) => keepBrief.mutate(edited)}
+          onDiscard={() => setOpenBrief(null)}
+        />
+      ) : null}
+
 
       <StudioComposer
         sources={sources.data ?? []}
