@@ -33,6 +33,8 @@ export interface DemoOpportunity {
   move: DemoMove;
   overlap?: string;
   confidence: DemoConfidence;
+  /** Marked when the row exists only to demonstrate the interaction. */
+  exampleOnly?: boolean;
 }
 
 /** Three illustrative opportunities, chosen to show range, not to report truth. */
@@ -51,6 +53,7 @@ export const DEMO_OPPORTUNITIES: DemoOpportunity[] = [
     overlap:
       "Two pages compete for this phrase: /advisory and /what-we-do. Neither one wins outright.",
     confidence: "Supported",
+    exampleOnly: true,
   },
   {
     id: "demo-fractional-cto",

@@ -213,9 +213,12 @@ function OpportunityRow({
             {opportunity.window} · {opportunity.provenance}
           </p>
         </div>
-        <TonePill tone={confidenceTone(opportunity.confidence)} dot>
-          {opportunity.confidence}
-        </TonePill>
+        <span className="flex items-center gap-2">
+          {opportunity.exampleOnly ? <TonePill tone="caution">Example data</TonePill> : null}
+          <TonePill tone={confidenceTone(opportunity.confidence)} dot>
+            {opportunity.confidence}
+          </TonePill>
+        </span>
       </div>
 
       <p className="mt-4 max-w-reading text-[15px] leading-relaxed text-foreground">
