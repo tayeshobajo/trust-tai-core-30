@@ -101,8 +101,13 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
 
   const [progress, setProgress] = useState<string[]>([]);
   const [openBatchId, setOpenBatchId] = useState<string | null>(null);
-  /* Set aside for this visit only. No decision is recorded anywhere yet. */
+  /* Set aside. Recorded when the brief store is there, this visit if not. */
   const [setAside, setSetAside] = useState<string[]>([]);
+  /* The brief a person is reading right now. Nothing is written until they
+     keep it, and discarding leaves no trace. */
+  const [openBrief, setOpenBrief] = useState<{ row: OpportunityRowView; brief: ContentBrief } | null>(
+    null,
+  );
 
   const sources = useQuery({
     queryKey: ["studio", "sources", organizationId],
