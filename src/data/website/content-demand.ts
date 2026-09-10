@@ -128,8 +128,7 @@ function coverageOf(
   const path = row.topPath ? normalizePath(row.topPath) : null;
   if (!path)
     return { path: null, inInventory: null, title: null, pageType: null, read: inventoryRead };
-  if (!inventoryRead)
-    return { path, inInventory: null, title: null, pageType: null, read: false };
+  if (!inventoryRead) return { path, inInventory: null, title: null, pageType: null, read: false };
   const page = inventory.get(path);
   return {
     path,

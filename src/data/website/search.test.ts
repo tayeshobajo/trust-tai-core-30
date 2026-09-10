@@ -10,12 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import type { SearchMetricsDay } from "@/domain/website-analytics";
 
-import {
-  contentOpportunities,
-  highImpressionLowCtr,
-  queryRows,
-  strikingDistance,
-} from "./search";
+import { contentOpportunities, highImpressionLowCtr, queryRows, strikingDistance } from "./search";
 
 const day = (over: Partial<SearchMetricsDay>): SearchMetricsDay => ({
   date: "2026-09-01",
