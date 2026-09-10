@@ -619,6 +619,7 @@ function SearchTab({
   const opportunities = contentOpportunities(
     input.searchMetrics,
     input.pages.map((page) => page.path),
+    { read: isMeasured(stateOf(readiness, "page_inventory")) },
   );
   const competing = competingPages(input.searchMetrics);
 
