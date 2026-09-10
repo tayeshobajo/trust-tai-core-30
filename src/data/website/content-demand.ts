@@ -183,7 +183,8 @@ export function readContentDemand(input: ContentDemandInput): ContentDemandReadi
         `${row.impressions} impression${row.impressions === 1 ? "" : "s"} is below the ${MIN_IMPRESSIONS} the room treats as demand.`,
       );
     }
-    if (shortWindow) thinBecause.push("The window is too short to compare one half with the other.");
+    if (shortWindow)
+      thinBecause.push("The window is too short to compare one half with the other.");
 
     return {
       query: row.query,

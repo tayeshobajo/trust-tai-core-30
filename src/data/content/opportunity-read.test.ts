@@ -30,9 +30,7 @@ function page(path: string): WebsitePage {
   };
 }
 
-const window = Array.from({ length: 8 }, (_, index) =>
-  row({ date: `2026-08-0${index + 1}` }),
-);
+const window = Array.from({ length: 8 }, (_, index) => row({ date: `2026-08-0${index + 1}` }));
 
 function reading(rows: SearchMetricsDay[], pages: WebsitePage[] = [page("/services")]) {
   return readContentDemand({ searchMetrics: rows, pages });
@@ -63,10 +61,7 @@ describe("deriveOpportunities", () => {
   });
 
   it("keeps competing pages as a conflict instead of resolving them", () => {
-    const rows = [
-      ...window,
-      ...window.map((entry) => ({ ...entry, path: "/about" })),
-    ];
+    const rows = [...window, ...window.map((entry) => ({ ...entry, path: "/about" }))];
     const [opportunity] = deriveOpportunities({
       organizationId: "org",
       demand: reading(rows, [page("/services"), page("/about")]),

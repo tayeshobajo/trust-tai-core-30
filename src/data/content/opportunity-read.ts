@@ -65,8 +65,7 @@ function recommend(signal: ContentDemandSignal): {
   if (signal.thin) {
     return {
       action: "no_action",
-      rationale:
-        "There is not enough observed demand behind this phrase to act on it yet.",
+      rationale: "There is not enough observed demand behind this phrase to act on it yet.",
       alternatives: [],
     };
   }
@@ -101,8 +100,7 @@ function recommend(signal: ContentDemandSignal): {
   if (signal.coverage.inInventory === false || signal.coverage.path === null) {
     return {
       action: "new_post",
-      rationale:
-        "People are arriving with this language and nothing in the inventory answers it.",
+      rationale: "People are arriving with this language and nothing in the inventory answers it.",
       alternatives: [
         { action: "faq", because: "A plain answer may serve the reader better than an article." },
       ],

@@ -45,13 +45,7 @@ export interface NarrativeSpine {
 
 /* ---------------------------------------------------------------- images */
 
-export type StoryImageRole =
-  | "hero"
-  | "scene"
-  | "evidence"
-  | "contrast"
-  | "metaphor"
-  | "diagram";
+export type StoryImageRole = "hero" | "scene" | "evidence" | "contrast" | "metaphor" | "diagram";
 
 export type StoryImageState = "planned" | "approved" | "generated" | "unavailable";
 
