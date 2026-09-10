@@ -67,6 +67,7 @@ import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website
 import { Route as ApiPublicClientsAskRouteImport } from './routes/api/public/clients.ask'
 import { Route as ApiPublicClientsLogoRouteImport } from './routes/api/public/clients.logo'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
+import { Route as ApiPublicContentBriefRouteImport } from './routes/api/public/content.brief'
 import { Route as ApiPublicContentGenerateRouteImport } from './routes/api/public/content.generate'
 import { Route as ApiPublicContentImageRouteImport } from './routes/api/public/content.image'
 import { Route as ApiPublicContentPublishRouteImport } from './routes/api/public/content.publish'
@@ -399,6 +400,11 @@ const ApiPublicCommsDraftRoute = ApiPublicCommsDraftRouteImport.update({
   path: '/api/public/comms/draft',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicContentBriefRoute = ApiPublicContentBriefRouteImport.update({
+  id: '/api/public/content/brief',
+  path: '/api/public/content/brief',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicContentGenerateRoute =
   ApiPublicContentGenerateRouteImport.update({
     id: '/api/public/content/generate',
@@ -677,6 +683,7 @@ export interface FileRoutesByFullPath {
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/content/brief': typeof ApiPublicContentBriefRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
@@ -767,6 +774,7 @@ export interface FileRoutesByTo {
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/content/brief': typeof ApiPublicContentBriefRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
@@ -867,6 +875,7 @@ export interface FileRoutesById {
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/content/brief': typeof ApiPublicContentBriefRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
   '/api/public/content/publish': typeof ApiPublicContentPublishRoute
@@ -968,6 +977,7 @@ export interface FileRouteTypes {
     | '/api/public/clients/ask'
     | '/api/public/clients/logo'
     | '/api/public/comms/draft'
+    | '/api/public/content/brief'
     | '/api/public/content/generate'
     | '/api/public/content/image'
     | '/api/public/content/publish'
@@ -1058,6 +1068,7 @@ export interface FileRouteTypes {
     | '/api/public/clients/ask'
     | '/api/public/clients/logo'
     | '/api/public/comms/draft'
+    | '/api/public/content/brief'
     | '/api/public/content/generate'
     | '/api/public/content/image'
     | '/api/public/content/publish'
@@ -1157,6 +1168,7 @@ export interface FileRouteTypes {
     | '/api/public/clients/ask'
     | '/api/public/clients/logo'
     | '/api/public/comms/draft'
+    | '/api/public/content/brief'
     | '/api/public/content/generate'
     | '/api/public/content/image'
     | '/api/public/content/publish'
@@ -1222,6 +1234,7 @@ export interface RootRouteChildren {
   ApiPublicClientsAskRoute: typeof ApiPublicClientsAskRoute
   ApiPublicClientsLogoRoute: typeof ApiPublicClientsLogoRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
+  ApiPublicContentBriefRoute: typeof ApiPublicContentBriefRoute
   ApiPublicContentGenerateRoute: typeof ApiPublicContentGenerateRoute
   ApiPublicContentImageRoute: typeof ApiPublicContentImageRoute
   ApiPublicContentPublishRoute: typeof ApiPublicContentPublishRoute
@@ -1666,6 +1679,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/comms/draft'
       fullPath: '/api/public/comms/draft'
       preLoaderRoute: typeof ApiPublicCommsDraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/content/brief': {
+      id: '/api/public/content/brief'
+      path: '/api/public/content/brief'
+      fullPath: '/api/public/content/brief'
+      preLoaderRoute: typeof ApiPublicContentBriefRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/content/generate': {
@@ -2145,6 +2165,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicClientsAskRoute: ApiPublicClientsAskRoute,
   ApiPublicClientsLogoRoute: ApiPublicClientsLogoRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
+  ApiPublicContentBriefRoute: ApiPublicContentBriefRoute,
   ApiPublicContentGenerateRoute: ApiPublicContentGenerateRoute,
   ApiPublicContentImageRoute: ApiPublicContentImageRoute,
   ApiPublicContentPublishRoute: ApiPublicContentPublishRoute,

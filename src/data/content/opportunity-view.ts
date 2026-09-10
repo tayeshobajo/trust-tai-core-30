@@ -16,6 +16,7 @@ import {
   OPPORTUNITY_ACTION_LABEL,
   type OpportunityAction,
   type OpportunityConfidence,
+  type OpportunityDecisionState,
   type StudioOpportunity,
 } from "@/domain/content-opportunity";
 import type { ContentDemandReading } from "@/data/website/content-demand";
@@ -52,6 +53,8 @@ export interface OpportunityRowView {
   moveLabel: string;
   /** False for `no_action`: there is nothing to build a brief from. */
   actionable: boolean;
+  /** What a person already decided about this row. `open` until they do. */
+  decisionState: OpportunityDecisionState;
   /** The path this demand lands on, when one was observed. */
   path: string | null;
 }
@@ -119,6 +122,7 @@ function toRow(opportunity: StudioOpportunity): OpportunityRowView {
     move: opportunity.action,
     moveLabel: OPPORTUNITY_ACTION_LABEL[opportunity.action],
     actionable: opportunity.action !== "no_action",
+    decisionState: opportunity.decision.state,
     path: opportunity.observed.paths[0]?.path ?? null,
   };
 }

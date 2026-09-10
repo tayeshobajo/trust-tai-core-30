@@ -23,13 +23,15 @@ import {
   type PastedSource,
 } from "@/components/tt/studio/composer";
 import { StudioOpportunities } from "@/components/tt/studio/opportunities";
+import { StudioBrief } from "@/components/tt/studio/brief";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { submitContentBatchForApproval, submitContentBatchQuietly } from "@/data/content/intake";
 import { deriveOpportunities } from "@/data/content/opportunity-read";
-import { studioOpportunitiesView } from "@/data/content/opportunity-view";
+import { studioOpportunitiesView, type OpportunityRowView } from "@/data/content/opportunity-view";
 import { readContentDemand } from "@/data/website/content-demand";
 import { contentService } from "@/data/supabase/content-service";
 import { contentCommandService } from "@/data/supabase/content-request-service";
+import { studioBriefService } from "@/data/supabase/studio-brief-service";
 import { listSearchMetrics, listWebsitePages } from "@/data/supabase/website-analytics-service";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
@@ -42,6 +44,8 @@ import {
 } from "@/domain/content";
 import { voiceExcerpts } from "@/domain/content-source";
 import type { ContentRequestSettings } from "@/domain/content-request";
+import type { ContentBrief } from "@/domain/content-brief";
+import { applyDecisions } from "@/domain/content-opportunity";
 import type { PreparedItem, PreparedPlan } from "@/lib/content-engine.server";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -94,8 +98,14 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
 
   const [progress, setProgress] = useState<string[]>([]);
   const [openBatchId, setOpenBatchId] = useState<string | null>(null);
-  /* Set aside for this visit only. No decision is recorded anywhere yet. */
+  /* Set aside. Recorded when the brief store is there, this visit if not. */
   const [setAside, setSetAside] = useState<string[]>([]);
+  /* The brief a person is reading right now. Nothing is written until they
+     keep it, and discarding leaves no trace. */
+  const [openBrief, setOpenBrief] = useState<{
+    row: OpportunityRowView;
+    brief: ContentBrief;
+  } | null>(null);
 
   const sources = useQuery({
     queryKey: ["studio", "sources", organizationId],
@@ -147,6 +157,18 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => listSearchMetrics(organizationId, sinceDate),
   });
 
+  /* What a person already decided about these rows, and the briefs they kept.
+     Both are optional stores: a missing one reads as nothing decided yet. */
+  const decisions = useQuery({
+    queryKey: ["studio", "opportunity-decisions", organizationId],
+    queryFn: () => studioBriefService.listOpportunityDecisions(organizationId),
+  });
+
+  const briefs = useQuery({
+    queryKey: ["studio", "briefs", organizationId],
+    queryFn: () => studioBriefService.listBriefs(organizationId),
+  });
+
   const opportunities = useMemo(() => {
     const demand = readContentDemand({
       searchMetrics: searchMetrics.data?.value ?? [],
@@ -154,16 +176,101 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
       inventoryRead: pages.data?.provisioned === true,
       searchRead: searchMetrics.data?.provisioned === true,
     });
+    const derived = deriveOpportunities({
+      organizationId,
+      demand,
+      asOf: new Date().toISOString(),
+    });
     return studioOpportunitiesView(
       demand,
-      deriveOpportunities({
-        organizationId,
-        demand,
-        asOf: new Date().toISOString(),
-      }),
+      applyDecisions(derived, decisions.data?.value ?? {}),
       setAside,
     );
-  }, [searchMetrics.data, pages.data, organizationId, setAside]);
+  }, [searchMetrics.data, pages.data, organizationId, setAside, decisions.data]);
+
+  /* Which rows already have a brief a person kept, so the row offers to open
+     it rather than writing a second one. */
+  const keptBriefs = useMemo(() => {
+    const map = new Map<string, ContentBrief>();
+    for (const brief of briefs.data?.value ?? []) {
+      if (brief.sourceOpportunityId && !map.has(brief.sourceOpportunityId)) {
+        map.set(brief.sourceOpportunityId, brief);
+      }
+    }
+    return map;
+  }, [briefs.data]);
+
+  /* One brief, reasoned from one row. It writes nothing on its own. */
+  const buildBrief = useMutation({
+    mutationFn: async (row: OpportunityRowView) => {
+      const token = await accessToken();
+      const response = await fetch("/api/public/content/brief", {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          organization_id: organizationId,
+          opportunity_id: row.id,
+          phrase: row.phrase,
+          audience_language: [row.phrase],
+          observed: [
+            `Appearances: ${row.impressions}`,
+            `Clicks: ${row.clicks}`,
+            `Click rate: ${row.ctr}`,
+            `Average position: ${row.averagePosition}`,
+            `Observed window: ${row.windowLabel}`,
+            ...(row.overlap ? [`Our own pages overlap: ${row.overlap}`] : []),
+          ],
+          studio_read: row.interpretation,
+          suggested_move: row.moveLabel,
+          known_pages: (pages.data?.value ?? []).map((page) => ({
+            path: page.path,
+            title: page.title,
+          })),
+        }),
+      });
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) throw new Error(String(payload["error"] ?? "That did not work."));
+      return { row, brief: payload["brief"] as ContentBrief };
+    },
+    onSuccess: (result) => setOpenBrief(result),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const keepBrief = useMutation({
+    mutationFn: async (brief: ContentBrief) => {
+      const saved = await studioBriefService.saveBrief(context, brief);
+      if (brief.sourceOpportunityId) {
+        await studioBriefService.recordOpportunityDecision(context, {
+          opportunityId: brief.sourceOpportunityId,
+          subjectLabel: openBrief?.row.phrase ?? "",
+          state: "brief_built",
+        });
+      }
+      return saved;
+    },
+    onSuccess: () => {
+      toast.success("Brief kept. Nothing has been written or published from it.");
+      setOpenBrief(null);
+      void queryClient.invalidateQueries({ queryKey: ["studio", "briefs"] });
+      void queryClient.invalidateQueries({ queryKey: ["studio", "opportunity-decisions"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  /* Setting a row aside is a decision, so it is recorded when the store is
+     there. When it is not, it is honestly only for this visit. */
+  const dismiss = useMutation({
+    mutationFn: async (row: OpportunityRowView) =>
+      studioBriefService.recordOpportunityDecision(context, {
+        opportunityId: row.id,
+        subjectLabel: row.phrase,
+        state: "dismissed",
+      }),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: ["studio", "opportunity-decisions"] }),
+    onError: () =>
+      toast.message("Set aside for this visit only. The brief store is not in this database yet."),
+  });
 
   const publisher = useQuery({
     queryKey: ["studio", "publisher"],
@@ -327,8 +434,29 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
       <StudioOpportunities
         view={opportunities}
         loading={searchMetrics.isPending || pages.isPending}
-        onDismiss={(id) => setSetAside((current) => [...current, id])}
+        keptBriefIds={[...keptBriefs.keys()]}
+        buildingId={buildBrief.isPending ? (buildBrief.variables?.id ?? null) : null}
+        onDismiss={(id) => {
+          setSetAside((current) => [...current, id]);
+          const row = opportunities.rows.find((entry) => entry.id === id);
+          if (row) dismiss.mutate(row);
+        }}
+        onBuildBrief={(row) => buildBrief.mutate(row)}
+        onOpenBrief={(row) => {
+          const kept = keptBriefs.get(row.id);
+          if (kept) setOpenBrief({ row, brief: kept });
+        }}
       />
+
+      {openBrief ? (
+        <StudioBrief
+          phrase={openBrief.row.phrase}
+          brief={openBrief.brief}
+          saving={keepBrief.isPending}
+          onKeep={(edited) => keepBrief.mutate(edited)}
+          onDiscard={() => setOpenBrief(null)}
+        />
+      ) : null}
 
       <StudioComposer
         sources={sources.data ?? []}
