@@ -47,6 +47,8 @@ import {
 } from "@/domain/content";
 import { voiceExcerpts } from "@/domain/content-source";
 import type { ContentRequestSettings } from "@/domain/content-request";
+import type { ContentBrief } from "@/domain/content-brief";
+import { applyDecisions } from "@/domain/content-opportunity";
 import type { PreparedItem, PreparedPlan } from "@/lib/content-engine.server";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
