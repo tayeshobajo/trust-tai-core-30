@@ -82,12 +82,14 @@ export function queryRows(rows: SearchMetricsDay[]): QueryRow[] {
   return [...whole.entries()]
     .map(([query, found]) => {
       const topPath = [...found.byPath.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      const measured = found.impressions > 0;
       return {
         query,
         clicks: found.clicks,
         impressions: found.impressions,
-        ctr: found.impressions > 0 ? found.clicks / found.impressions : 0,
-        averagePosition: found.impressions > 0 ? found.positionWeighted / found.impressions : 0,
+        // No impression means the rate was never observable. Unknown, not zero.
+        ctr: measured ? found.clicks / found.impressions : null,
+        averagePosition: measured ? found.positionWeighted / found.impressions : null,
         change: split ? (late.get(query) ?? 0) - (early.get(query) ?? 0) : null,
         topPath,
       } satisfies QueryRow;
@@ -107,10 +109,13 @@ export function decliningQueries(rows: QueryRow[]): QueryRow[] {
     .sort((a, b) => (a.change ?? 0) - (b.change ?? 0));
 }
 
-/** Seen often, clicked rarely. The title and description are the problem. */
+/**
+ * Seen often, clicked rarely. The title and description are the problem.
+ * A query whose rate was never observable is skipped, never read as weak.
+ */
 export function highImpressionLowCtr(rows: QueryRow[]): QueryRow[] {
   return rows
-    .filter((row) => row.impressions >= MIN_IMPRESSIONS && row.ctr < WEAK_CTR)
+    .filter((row) => row.impressions >= MIN_IMPRESSIONS && row.ctr !== null && row.ctr < WEAK_CTR)
     .sort((a, b) => b.impressions - a.impressions);
 }
 
@@ -120,10 +125,11 @@ export function strikingDistance(rows: QueryRow[]): QueryRow[] {
     .filter(
       (row) =>
         row.impressions >= MIN_IMPRESSIONS &&
+        row.averagePosition !== null &&
         row.averagePosition >= STRIKING_MIN &&
         row.averagePosition <= STRIKING_MAX,
     )
-    .sort((a, b) => a.averagePosition - b.averagePosition);
+    .sort((a, b) => (a.averagePosition ?? 0) - (b.averagePosition ?? 0));
 }
 
 /** Two or more of our own pages showing for the same query. */
@@ -168,29 +174,53 @@ export function searchTopics(
     .slice(0, limit);
 }
 
+/** Whether the page inventory was actually read, and can be leaned on. */
+export interface InventoryState {
+  /** False when the inventory provider never reported, or failed. */
+  read: boolean;
+}
+
 /**
  * Repeated demand with weak coverage. An opportunity is never an instruction
  * to write: when a page already ranks for the demand, the honest move is to
  * refresh that page first.
+ *
+ * Coverage is only claimed when the inventory was genuinely read. An unread
+ * inventory leaves coverage "unknown", never "no page covers this".
  */
 export function contentOpportunities(
   rows: SearchMetricsDay[],
   knownPaths: string[],
+  inventoryState: InventoryState = { read: true },
 ): ContentOpportunity[] {
   const inventory = new Set(knownPaths.map(normalizePath));
+  const inventoryRead = inventoryState.read;
   const queries = queryRows(rows);
 
   return queries
     .filter((row) => row.impressions >= MIN_IMPRESSIONS)
     .map((row) => {
-      const covered = row.topPath ? inventory.has(row.topPath) : false;
-      const ranksWell = row.averagePosition > 0 && row.averagePosition < STRIKING_MIN;
+      const covered = inventoryRead && row.topPath ? inventory.has(row.topPath) : false;
+      const ranksWell =
+        row.averagePosition !== null &&
+        row.averagePosition > 0 &&
+        row.averagePosition < STRIKING_MIN;
+      const weakCtr = row.ctr !== null && row.ctr < WEAK_CTR;
+      const goodCtr = row.ctr !== null && row.ctr >= WEAK_CTR;
 
       if (!row.topPath) {
         return opportunity(row, "none", null, "Real demand with no page of ours attached to it.");
       }
-      if (covered && ranksWell && row.ctr >= WEAK_CTR) return null;
-      if (covered && row.ctr < WEAK_CTR) {
+      if (!inventoryRead) {
+        return opportunity(
+          row,
+          "unknown",
+          row.topPath,
+          `Demand is landing on ${row.topPath}, but the page inventory has not been read, so whether it is covered stays unknown.`,
+        );
+      }
+      if (covered && ranksWell && goodCtr) return null;
+      if (covered && weakCtr) {
         return opportunity(
           row,
           "thin",

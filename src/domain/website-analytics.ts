@@ -215,8 +215,10 @@ export interface QueryRow {
   query: string;
   clicks: number;
   impressions: number;
-  ctr: number;
-  averagePosition: number;
+  /** Null when no impression was reported, because unknown is not zero. */
+  ctr: KnownNumber;
+  /** Null when no impression was reported. A rank of zero does not exist. */
+  averagePosition: KnownNumber;
   /** Clicks in the later half minus the earlier half. Null without history. */
   change: KnownNumber;
   topPath: string | null;
@@ -230,10 +232,11 @@ export interface CompetingQuery {
 export interface ContentOpportunity {
   query: string;
   impressions: number;
-  averagePosition: number;
-  ctr: number;
+  averagePosition: KnownNumber;
+  ctr: KnownNumber;
   reason: string;
-  coverage: "none" | "thin" | "existing";
+  /** "unknown" when the page inventory was not read, so no claim is made. */
+  coverage: "none" | "thin" | "existing" | "unknown";
   /** The page to refresh first, when one already covers the demand. */
   refreshPath: string | null;
 }

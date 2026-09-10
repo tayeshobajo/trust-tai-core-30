@@ -54,6 +54,8 @@ export interface DemandCoverage {
   inInventory: boolean | null;
   title: string | null;
   pageType: string | null;
+  /** False when the inventory was never read, so absence proves nothing. */
+  read: boolean;
 }
 
 export interface ContentDemandSignal {
@@ -61,8 +63,10 @@ export interface ContentDemandSignal {
   query: string;
   clicks: number;
   impressions: number;
-  ctr: number;
-  averagePosition: number;
+  /** Null when no impression was reported. Unknown, never zero. */
+  ctr: number | null;
+  /** Null when no impression was reported. Unknown, never zero. */
+  averagePosition: number | null;
   /** Null when the window is too short to compare halves honestly. */
   change: number | null;
   coverage: DemandCoverage;
@@ -122,14 +126,16 @@ function coverageOf(
   inventoryRead: boolean,
 ): DemandCoverage {
   const path = row.topPath ? normalizePath(row.topPath) : null;
-  if (!path) return { path: null, inInventory: null, title: null, pageType: null };
-  if (!inventoryRead) return { path, inInventory: null, title: null, pageType: null };
+  if (!path)
+    return { path: null, inInventory: null, title: null, pageType: null, read: inventoryRead };
+  if (!inventoryRead) return { path, inInventory: null, title: null, pageType: null, read: false };
   const page = inventory.get(path);
   return {
     path,
     inInventory: Boolean(page),
     title: page?.title ?? null,
     pageType: page?.pageType ?? null,
+    read: true,
   };
 }
 
@@ -196,9 +202,10 @@ export function readContentDemand(input: ContentDemandInput): ContentDemandReadi
       coverage: coverageOf(row, inventory, inventoryRead),
       competing: competing.get(row.query) ?? [],
       meetsDemandFloor,
-      weakCtr: meetsDemandFloor && row.ctr < WEAK_CTR,
+      weakCtr: meetsDemandFloor && row.ctr !== null && row.ctr < WEAK_CTR,
       strikingDistance:
         meetsDemandFloor &&
+        row.averagePosition !== null &&
         row.averagePosition >= STRIKING_MIN &&
         row.averagePosition <= STRIKING_MAX,
       thin: thinBecause.length > 0,

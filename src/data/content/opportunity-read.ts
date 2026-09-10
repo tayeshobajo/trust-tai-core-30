@@ -97,7 +97,11 @@ function recommend(signal: ContentDemandSignal): {
       alternatives: [{ action: "internal_link", because: "Supporting links may be enough." }],
     };
   }
-  if (signal.coverage.inInventory === false || signal.coverage.path === null) {
+  // Absence only means something when the inventory was actually read.
+  if (
+    signal.coverage.read &&
+    (signal.coverage.inInventory === false || signal.coverage.path === null)
+  ) {
     return {
       action: "new_post",
       rationale: "People are arriving with this language and nothing in the inventory answers it.",
