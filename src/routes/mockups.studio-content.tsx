@@ -85,9 +85,7 @@ function StudioContentMockup() {
               Example data
             </span>
           </p>
-          <h1 className="tt-title-section mt-3 text-3xl">
-            What Studio noticed
-          </h1>
+          <h1 className="tt-title-section mt-3 text-3xl">What Studio noticed</h1>
           <p className="mt-3 max-w-reading text-sm text-muted-foreground">
             A visual prototype of the proposed Studio experience. Everything on this page is
             illustrative — no real search data, no drafts, nothing saved.
@@ -197,18 +195,25 @@ function Opportunities({
 
 function StaticComposer() {
   return (
-    <div className="mt-14 border-t border-border pt-10" aria-label="Current Studio composer preview">
+    <div
+      className="mt-14 border-t border-border pt-10"
+      aria-label="Current Studio composer preview"
+    >
       <div className="mb-5">
-        <p className="text-xs font-medium text-muted-foreground">Studio composer · static preview</p>
+        <p className="text-xs font-medium text-muted-foreground">
+          Studio composer · static preview
+        </p>
         <h2 className="tt-title-section mt-2 text-xl">Say what you would like written</h2>
         <p className="mt-1 max-w-reading text-sm text-muted-foreground">
-          One sentence is enough. Studio reads it back as a plan you can correct before anything is written.
+          One sentence is enough. Studio reads it back as a plan you can correct before anything is
+          written.
         </p>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 shadow-card">
         <div className="min-h-24 rounded-lg border border-input bg-studio-paper px-4 py-3 text-sm text-muted-foreground">
-          Write 10 posts about fractional operations for founders, practical, around 1200 words each.
+          Write 10 posts about fractional operations for founders, practical, around 1200 words
+          each.
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <MetaPill>Six posts on why RevOps projects stall</MetaPill>
@@ -282,12 +287,12 @@ function OpportunityRow({
       <div className="mt-5 border-t border-border/70 pt-4">
         <p className="text-xs font-medium text-muted-foreground">Observed evidence</p>
         <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-[13px]">
-        <Stat
-          label="Appearances"
-          value={opportunity.impressions?.toLocaleString() ?? "Not reported"}
-        />
-        <Stat label="Click rate" value={percent(opportunity.ctr)} />
-        <Stat label="Average position" value={position(opportunity.averagePosition)} />
+          <Stat
+            label="Appearances"
+            value={opportunity.impressions?.toLocaleString() ?? "Not reported"}
+          />
+          <Stat label="Click rate" value={percent(opportunity.ctr)} />
+          <Stat label="Average position" value={position(opportunity.averagePosition)} />
         </dl>
       </div>
 
@@ -340,7 +345,9 @@ function Brief({
   return (
     <section className="space-y-10">
       <div>
-        <p className="text-xs font-medium text-muted-foreground">Brief · “transformational advisory”</p>
+        <p className="text-xs font-medium text-muted-foreground">
+          Brief · “transformational advisory”
+        </p>
         <h2 className="mt-3 max-w-reading font-serif text-3xl font-medium leading-snug text-foreground">
           {DEMO_BRIEF.coreIdea}
         </h2>
@@ -447,7 +454,9 @@ function Opening({ onNext }: { onNext: () => void }) {
 
       <div>
         <div className="flex flex-wrap items-baseline gap-3">
-          <p className="text-xs font-medium text-muted-foreground">Structure chosen · {DEMO_OPENING.structureChosen}</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            Structure chosen · {DEMO_OPENING.structureChosen}
+          </p>
           <p className="text-[13px] text-muted-foreground">{DEMO_OPENING.structureWhy}</p>
         </div>
         <ol className="mt-5 space-y-4 border-l border-border pl-5">
@@ -511,7 +520,7 @@ function Images({ dropped, onToggle }: { dropped: string[]; onToggle: (id: strin
         title="Images that could strengthen this story"
         description="Each one has a job. If removing it changes nothing about how the story is understood or felt, it does not belong."
       />
-       <div className="divide-y divide-border border-y border-border bg-card">
+      <div className="divide-y divide-border border-y border-border bg-card">
         {DEMO_IMAGES.map((image) => (
           <ImageRow
             key={image.id}
@@ -538,7 +547,9 @@ function ImageRow({
   onToggle: () => void;
 }) {
   return (
-    <article className={cn("grid gap-5 p-6 transition md:grid-cols-[9rem_1fr]", !kept && "opacity-55")}>
+    <article
+      className={cn("grid gap-5 p-6 transition md:grid-cols-[9rem_1fr]", !kept && "opacity-55")}
+    >
       <div className="flex aspect-[4/3] items-center justify-center rounded-lg border border-border bg-studio-paper text-muted-foreground">
         <ImageIcon aria-hidden className="size-6" strokeWidth={1.4} />
       </div>
@@ -549,7 +560,9 @@ function ImageRow({
             <TTButton size="sm" variant={kept ? "quiet" : "secondary"} onClick={onToggle}>
               {kept ? "Drop" : "Keep"}
             </TTButton>
-            <TTButton size="sm" variant="quiet">Refine</TTButton>
+            <TTButton size="sm" variant="quiet">
+              Refine
+            </TTButton>
           </div>
         </div>
         <dl className="mt-4 grid gap-x-8 gap-y-4 text-[14px] sm:grid-cols-2">
