@@ -31,9 +31,11 @@ export function StudioOpportunities({
   onDismiss: (id: string) => void;
 }) {
   return (
-    <section className="mb-10" aria-label="What Studio noticed">
+    <section
+      className="mb-10 rounded-2xl bg-studio-paper p-6 sm:p-8"
+      aria-label="What Studio noticed"
+    >
       <SectionHeading
-        eyebrow="Noticed for you"
         title="What Studio noticed"
         description="Phrases people used to find us, and what they might be worth. Studio noticed these; you decide whether any of them deserve a story."
       />
@@ -41,13 +43,13 @@ export function StudioOpportunities({
       {loading ? (
         <p className="mt-5 text-sm text-muted-foreground">Reading what search reported…</p>
       ) : view.state === "active" ? (
-        <div className="mt-5 divide-y divide-border border-y border-border bg-studio-paper">
+        <div className="mt-5 divide-y divide-border border-y border-border">
           {view.rows.map((row) => (
             <OpportunityRow key={row.id} row={row} onDismiss={() => onDismiss(row.id)} />
           ))}
         </div>
       ) : (
-        <div className="mt-5 border-l-2 border-border bg-card/45 px-5 py-4">
+        <div className="mt-5 border-l-2 border-border pl-5 py-4">
           <p className="text-sm text-foreground">{view.quietLine}</p>
           {view.because.map((line) => (
             <p key={line} className="mt-2 text-[13px] text-muted-foreground">
