@@ -135,6 +135,15 @@ function OpportunityRow({
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <span className="text-[13px] text-muted-foreground">Studio suggests · {row.moveLabel}</span>
         <span className="ml-auto flex items-center gap-1">
+          {kept ? (
+            <TTButton size="sm" onClick={onOpenBrief}>
+              Open brief
+            </TTButton>
+          ) : row.actionable ? (
+            <TTButton size="sm" onClick={onBuildBrief} disabled={building}>
+              {building ? "Writing the brief…" : "Build brief"}
+            </TTButton>
+          ) : null}
           <TTButton size="sm" variant="quiet" onClick={onDismiss}>
             Not now
           </TTButton>
