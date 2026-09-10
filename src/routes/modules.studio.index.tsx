@@ -55,6 +55,9 @@ import type { PreparedItem, PreparedPlan } from "@/lib/content-engine.server";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
 
+/** The same bounded window the Website room reads over. One policy, not two. */
+const DEMAND_WINDOW_DAYS = 30;
+
 const TITLE = "Studio · The content room · Trust Tai OS";
 const DESCRIPTION =
   "One command becomes an editorial package: a topic cluster, per-post briefs, drafts in Trust Tai's voice, and one approval that a person still has to give.";
@@ -99,6 +102,8 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
 
   const [progress, setProgress] = useState<string[]>([]);
   const [openBatchId, setOpenBatchId] = useState<string | null>(null);
+  /* Set aside for this visit only. No decision is recorded anywhere yet. */
+  const [setAside, setSetAside] = useState<string[]>([]);
 
   const sources = useQuery({
     queryKey: ["studio", "sources", organizationId],
