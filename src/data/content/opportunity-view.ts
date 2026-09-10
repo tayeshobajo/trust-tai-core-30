@@ -122,6 +122,7 @@ function toRow(opportunity: StudioOpportunity): OpportunityRowView {
     move: opportunity.action,
     moveLabel: OPPORTUNITY_ACTION_LABEL[opportunity.action],
     actionable: opportunity.action !== "no_action",
+    decisionState: opportunity.decision.state,
     path: opportunity.observed.paths[0]?.path ?? null,
   };
 }
