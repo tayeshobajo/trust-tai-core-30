@@ -30,6 +30,7 @@ import {
   insertContact,
   listOrganizationContacts,
   listProspectContacts,
+  saveProspectContact,
   updateContact,
   type ContactPatch,
 } from "./contacts";
@@ -85,9 +86,52 @@ export interface ManualPersonInput {
   roleTitle?: string | undefined;
   seniority?: Seniority | undefined;
   email?: string | undefined;
-  emailStatus?: EmailStatus | undefined;
+  /**
+   * Capped to "found" | "unknown" on purpose: an address entered by hand is
+   * never more than found. "verified" is earned through confirmEmail or
+   * setRoute with an explicit human confirmation, never handed in here.
+   */
+  emailStatus?: Extract<EmailStatus, "found" | "unknown"> | undefined;
   linkedinUrl?: string | undefined;
   phone?: string | undefined;
+}
+
+export interface ManualPersonResult {
+  person: Person;
+  /**
+   * True when this person was already on record and the entry filled gaps on
+   * that record. The caller says so out loud, otherwise adding somebody twice
+   * looks like a form that did nothing.
+   */
+  matchedExisting: boolean;
+}
+
+/** What a member can put on record as a way to reach somebody. */
+export interface RouteInput {
+  email?: string | undefined;
+  /** The member states they have checked the address is right. */
+  emailConfirmed?: boolean | undefined;
+  linkedinUrl?: string | undefined;
+  /** The member states this profile is the right person. */
+  linkedinConfirmed?: boolean | undefined;
+}
+
+const EMAIL_PATTERN = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+
+/**
+ * A LinkedIn route has to actually be on LinkedIn. The host is matched as a
+ * domain rather than as a suffix, so a lookalike like `my-linkedin.com` is not
+ * accepted as the real thing.
+ */
+function isLinkedinProfileUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+  return url.hostname === "linkedin.com" || url.hostname.endsWith(".linkedin.com");
 }
 
 export interface IngestResult {
@@ -293,12 +337,17 @@ export const peopleService = {
     }
   },
 
-  /** A person added by hand. Always outranks anything a provider asserts. */
-  async addManual(input: ManualPersonInput, context: PeopleContext): Promise<Person> {
+  /**
+   * A person added by hand. Always outranks anything a provider asserts.
+   *
+   * Somebody already on record is matched rather than written again, so the
+   * board never holds the same human twice.
+   */
+  async addManual(input: ManualPersonInput, context: PeopleContext): Promise<ManualPersonResult> {
     const fullName = input.fullName.trim();
     if (!fullName) throw new Error("A person needs a name before they can be saved.");
 
-    const person = await insertContact({
+    const { person, matched } = await saveProspectContact({
       organizationId: context.organizationId,
       prospectId: input.prospectId,
       userId: context.userId,
@@ -306,19 +355,35 @@ export const peopleService = {
       roleTitle: input.roleTitle?.trim() || undefined,
       seniority: input.seniority ?? guessSeniority(input.roleTitle),
       email: input.email?.trim().toLowerCase() || undefined,
-      emailStatus: input.emailStatus ?? (input.email?.trim() ? "found" : "unknown"),
+      // Belt to the type's braces: even a caller that dodges the compiler
+      // cannot write more than "found" from a by-hand entry.
+      emailStatus:
+        input.emailStatus === "found" || input.emailStatus === "unknown"
+          ? input.emailStatus
+          : input.email?.trim()
+            ? "found"
+            : "unknown",
       confidence: "human_confirmed",
       linkedinUrl: input.linkedinUrl?.trim() || undefined,
       phone: input.phone?.trim() || undefined,
       sourceId: "manual",
     });
 
-    await record(context, "created", person, `${person.fullName} was added by hand in Scout.`, {
-      role_title: person.roleTitle ?? null,
-      entered_by: "human",
-    });
+    await record(
+      context,
+      matched ? "updated" : "created",
+      person,
+      matched
+        ? `${person.fullName} was already on record, so what was entered by hand in Scout went onto that record.`
+        : `${person.fullName} was added by hand in Scout.`,
+      {
+        role_title: person.roleTitle ?? null,
+        entered_by: "human",
+        ...(matched ? { matched_existing_record: true } : {}),
+      },
+    );
 
-    return person;
+    return { person, matchedExisting: matched };
   },
 
   /**
@@ -464,6 +529,89 @@ export const peopleService = {
       updated,
       `${updated.fullName}'s business email was confirmed by a Trust Tai member.`,
       { confirmed_by: "human" },
+    );
+    return updated;
+  },
+
+  /**
+   * Put a way of reaching somebody already on record: an address, a LinkedIn
+   * profile, or both.
+   *
+   * Saving and confirming are two different acts. An address saved without a
+   * member confirming it stays unsendable, because reachability asks for
+   * "verified" and nothing here grants that on its own. That is deliberate: a
+   * guessed address that gets emailed anyway is how a sending domain is burned.
+   */
+  async setRoute(person: Person, input: RouteInput, context: PeopleContext): Promise<Person> {
+    const email = input.email?.trim().toLowerCase() || undefined;
+    const linkedinUrl = input.linkedinUrl?.trim() || undefined;
+
+    if (!email && !linkedinUrl) {
+      throw new Error("Add a business email or a LinkedIn profile link before saving.");
+    }
+    if (email && !EMAIL_PATTERN.test(email)) {
+      throw new Error("That does not look like an email address. Check it and try again.");
+    }
+    if (linkedinUrl && !isLinkedinProfileUrl(linkedinUrl)) {
+      throw new Error("A LinkedIn route needs a link to a profile on linkedin.com.");
+    }
+
+    const patch: ContactPatch = {};
+    if (email) {
+      patch.email = email;
+      if (input.emailConfirmed) {
+        patch.emailStatus = "verified";
+        patch.confidence = "human_confirmed";
+        patch.emailCheckedBy = "human";
+      } else if (email === person.email?.toLowerCase() && person.emailStatus === "verified") {
+        // Re-typing your own verified address without the checkbox is not
+        // new doubt; the confirmation already given stands. Only a DIFFERENT
+        // address arriving unconfirmed drops back to "found" below.
+        patch.emailStatus = "verified";
+      } else {
+        // On record, and still nobody's word that it is right.
+        patch.emailStatus = "found";
+      }
+    }
+    if (linkedinUrl) {
+      patch.linkedinUrl = linkedinUrl;
+      if (input.linkedinConfirmed) {
+        patch.linkedinConfirmed = true;
+        patch.linkedinProvider = "manual";
+        patch.linkedinConfidence = "confirmed";
+        patch.confidence = "human_confirmed";
+      }
+    }
+
+    const updated = await updateContact(person.id, patch, context.userId);
+
+    const added: string[] = [];
+    if (email) {
+      added.push(
+        input.emailConfirmed
+          ? "a confirmed business email"
+          : "a business email nobody has checked yet",
+      );
+    }
+    if (linkedinUrl) {
+      added.push(
+        input.linkedinConfirmed
+          ? "a confirmed LinkedIn route"
+          : "a LinkedIn link that is not a confirmed route yet",
+      );
+    }
+    await record(
+      context,
+      "updated",
+      updated,
+      `A Trust Tai member put ${added.join(" and ")} on record for ${updated.fullName}.`,
+      {
+        entered_by: "human",
+        ...(email ? { email_confirmed: Boolean(input.emailConfirmed) } : {}),
+        ...(linkedinUrl
+          ? { linkedin_url: linkedinUrl, linkedin_confirmed: Boolean(input.linkedinConfirmed) }
+          : {}),
+      },
     );
     return updated;
   },

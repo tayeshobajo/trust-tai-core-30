@@ -26,6 +26,8 @@ import { ReplyRecordBar } from "@/components/tt/comms/reply-record";
 import { SendComposer } from "@/components/tt/comms/send-composer";
 import { RelationshipRail } from "@/components/tt/comms/relationship-rail";
 import { RelationshipPersonCard } from "@/components/tt/comms/relationship-person";
+import { RelationshipRoutes } from "@/components/tt/comms/relationship-routes";
+import { LinkedinSendPanel } from "@/components/tt/comms/linkedin-send";
 
 import { AddInteraction, type InteractionSubmission } from "@/components/tt/comms/add-interaction";
 import { SequenceInRoadmap } from "@/components/tt/roadmap/sequence-button";
@@ -755,6 +757,16 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                         .join(" · ") || "Nothing else on record yet."}
                     </p>
 
+                    {/* Routing lives on the relationship row, not on the
+                        person: the People card above edits identity, this
+                        edits where a message to them can go. */}
+                    <RelationshipRoutes
+                      relationship={selected}
+                      busy={update.isPending}
+                      error={update.isError ? (update.error as Error).message : null}
+                      onSave={(patch) => update.mutate(patch)}
+                    />
+
                     <div className="mt-3">
                       <TTButton
                         variant="quiet"
@@ -772,6 +784,18 @@ function CommsRoom({ identity }: { identity: WorkspaceIdentity }) {
                       </TTButton>
                     </div>
                   </div>
+                ) : null}
+
+                {/* A LinkedIn route plus a draft in hand: the member sends
+                    from their own LinkedIn account, and this strip records
+                    it. The panel renders nothing without a stored route. */}
+                {activeDraft ? (
+                  <LinkedinSendPanel
+                    relationship={selected}
+                    draft={activeDraft}
+                    organizationId={context.organizationId}
+                    onRecorded={refresh}
+                  />
                 ) : null}
 
                 {activeDraft && editorOpen ? (

@@ -348,6 +348,79 @@ export async function updateContact(id: ID, patch: ContactPatch, userId: ID): Pr
   return toPerson(data);
 }
 
+/** Spacing and case are not part of who somebody is. */
+function normalisedName(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Save a person entered by hand for one Scout prospect, or fill the gaps on the
+ * person already on record for them.
+ *
+ * A plain insert here meant adding someone already on the board created a second
+ * record for the same human, and the member who typed them in saw nothing happen.
+ *
+ * Same doctrine as `findOrCreateContact`: an existing person is never overwritten
+ * by a new entry, only a missing field is filled in, because that is new
+ * information rather than a correction. The matching rule is deliberately
+ * tighter. An email address identifies a human anywhere in the organization, but
+ * a name only identifies one inside the same company: two different people
+ * called John Smith at two different companies have to stay two records.
+ */
+export async function saveProspectContact(
+  input: ContactWrite,
+): Promise<{ person: Person; matched: boolean }> {
+  const email = input.email?.trim().toLowerCase() || undefined;
+  const name = normalisedName(input.fullName);
+
+  const { data, error } = await supabase
+    .from("contacts")
+    .select(SELECT_COLUMNS)
+    .eq("organization_id", input.organizationId);
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as unknown as ContactRow[];
+  const match =
+    (email ? rows.find((row) => (row.email ?? "").trim().toLowerCase() === email) : undefined) ??
+    rows.find(
+      (row) =>
+        normalisedName(row.full_name) === name &&
+        text(peopleMetaOf((row.metadata ?? {}) as Row)["prospect_id"]) === input.prospectId,
+    );
+
+  if (!match) return { person: await insertContact(input), matched: false };
+
+  const existing = toPerson(match);
+  const patch: ContactPatch = {};
+  if (!existing.roleTitle && input.roleTitle) patch.roleTitle = input.roleTitle;
+  if (!existing.email && email) {
+    patch.email = email;
+    // Only ever written beside an address that was missing, so this can never
+    // lower a status some earlier check already earned.
+    patch.emailStatus = input.emailStatus;
+  }
+  if (!existing.linkedinUrl && input.linkedinUrl) patch.linkedinUrl = input.linkedinUrl;
+  if (!existing.phone && input.phone) patch.phone = input.phone;
+  // An email match can land on somebody carried by another company. They stay
+  // where they are; only a person belonging to nobody is claimed here.
+  if (!existing.prospectId) patch.prospectId = input.prospectId;
+  // Kept in step with a title this record did not have until now, and never
+  // written over a seniority the record already states.
+  if (patch.roleTitle && !text(peopleMetaOf((match.metadata ?? {}) as Row)["seniority"])) {
+    patch.seniority = input.seniority;
+  }
+
+  if (Object.keys(patch).length === 0) return { person: existing, matched: true };
+
+  // Somebody typing in what a provider never knew outranks that provider. A
+  // record a person has already confirmed keeps the standing it has.
+  if (existing.confidence !== "human_confirmed" && input.confidence === "human_confirmed") {
+    patch.confidence = input.confidence;
+  }
+
+  return { person: await updateContact(match.id, patch, input.userId), matched: true };
+}
+
 /**
  * Find the person already on record, or write them once.
  *

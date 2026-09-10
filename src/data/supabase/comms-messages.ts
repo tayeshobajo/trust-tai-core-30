@@ -103,6 +103,9 @@ export function toMessage(row: MessageRow): StoredMailboxMessage {
     ...(files ? { attachments: files } : {}),
     ...(blockedRemoteImages !== undefined ? { blockedRemoteImages } : {}),
     ...(provenance?.["source"] === "gmail-send" ? { sentViaComms: true } : {}),
+    // A member sent this by hand from their own LinkedIn account and recorded
+    // it in Comms. The timeline must say so, never dress it up as email.
+    ...(provenance?.["source"] === "manual-linkedin-send" ? { sentByHandOnLinkedin: true } : {}),
     ...(mailbox ? { mailbox } : {}),
   };
 }

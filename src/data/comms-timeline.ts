@@ -23,6 +23,7 @@ export type ConversationEventKind =
   | "they_emailed"
   | "they_texted"
   | "i_texted"
+  | "linkedin_sent"
   | "phone_call"
   | "meeting"
   | "note"
@@ -34,6 +35,7 @@ export const EVENT_LABEL: Record<ConversationEventKind, string> = {
   they_emailed: "They emailed",
   they_texted: "They texted",
   i_texted: "I texted",
+  linkedin_sent: "Sent on LinkedIn",
   phone_call: "Phone call",
   meeting: "Meeting",
   note: "Note",
@@ -44,7 +46,8 @@ export const EVENT_LABEL: Record<ConversationEventKind, string> = {
 /** Which side of the thread an event sits on. */
 export function eventSide(kind: ConversationEventKind): "them" | "us" | "center" {
   if (kind === "they_emailed" || kind === "they_texted") return "them";
-  if (kind === "we_emailed" || kind === "i_texted" || kind === "draft") return "us";
+  if (kind === "we_emailed" || kind === "i_texted" || kind === "linkedin_sent" || kind === "draft")
+    return "us";
   return "center";
 }
 
@@ -119,17 +122,26 @@ export function conversationTimeline(
   }
 
   for (const message of messages) {
+    // A message a member sent by hand on LinkedIn is transport-honest: it is
+    // never dressed up as email, and its provenance says a person sent it.
+    const byHand = message.sentByHandOnLinkedin === true;
     const title =
       message.subject?.trim() ||
       message.snippet?.trim() ||
-      (message.direction === "inbound" ? "Email from them" : "Email from us");
+      (byHand
+        ? "LinkedIn message from us"
+        : message.direction === "inbound"
+          ? "Email from them"
+          : "Email from us");
     // The timeline shows the actual email: full body first, Gmail's preview
     // snippet only when the body has not been enriched yet (an old row one
     // resync away from fidelity, or a metadata-era schema).
     const body = message.bodyText?.trim() || message.snippet?.trim() || undefined;
-    const provenance = message.sentViaComms
-      ? "Sent from Comms via Gmail"
-      : "Synced from Gmail · read-only";
+    const provenance = byHand
+      ? "Sent by hand on LinkedIn · recorded in Comms"
+      : message.sentViaComms
+        ? "Sent from Comms via Gmail"
+        : "Synced from Gmail · read-only";
     const source = message.blockedRemoteImages
       ? `${provenance} · ${message.blockedRemoteImages} remote ${
           message.blockedRemoteImages === 1 ? "image" : "images"
@@ -137,14 +149,18 @@ export function conversationTimeline(
       : provenance;
     events.push({
       id: `mail:${message.id}`,
-      kind: message.direction === "inbound" ? "they_emailed" : "we_emailed",
+      kind: byHand
+        ? "linkedin_sent"
+        : message.direction === "inbound"
+          ? "they_emailed"
+          : "we_emailed",
       occurredAt: message.occurredAt,
       title,
       ...(body ? { body } : {}),
       ...(message.bodyHtml ? { htmlBody: message.bodyHtml } : {}),
       ...(message.blockedRemoteImages ? { blockedRemoteImages: message.blockedRemoteImages } : {}),
       source,
-      meta: "email",
+      meta: byHand ? "linkedin" : "email",
       ...(message.attachments?.length ? { attachments: message.attachments } : {}),
       messageId: message.id,
     });

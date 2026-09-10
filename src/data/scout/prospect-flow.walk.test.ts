@@ -39,7 +39,7 @@ beforeEach(() => {
 
 describe("Scout company → Person card → Comms → Scout inbox", () => {
   it("carries one person through the whole walk", async () => {
-    const person = await peopleService.addManual(
+    const { person } = await peopleService.addManual(
       { prospectId: PROSPECT_ID, fullName: "Dana Reyes", email: "dana@northline.com" },
       CONTEXT,
     );

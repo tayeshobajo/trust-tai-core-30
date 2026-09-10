@@ -105,6 +105,7 @@ import { Route as ApiPublicCommsGmailConnectRouteImport } from './routes/api/pub
 import { Route as ApiPublicCommsGmailScheduledSyncRouteImport } from './routes/api/public/comms.gmail.scheduled-sync'
 import { Route as ApiPublicCommsGmailSendRouteImport } from './routes/api/public/comms.gmail.send'
 import { Route as ApiPublicCommsGmailSyncRouteImport } from './routes/api/public/comms.gmail.sync'
+import { Route as ApiPublicCommsLinkedinMarkSentRouteImport } from './routes/api/public/comms.linkedin.mark-sent'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -610,6 +611,12 @@ const ApiPublicCommsGmailSyncRoute = ApiPublicCommsGmailSyncRouteImport.update({
   path: '/api/public/comms/gmail/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCommsLinkedinMarkSentRoute =
+  ApiPublicCommsLinkedinMarkSentRouteImport.update({
+    id: '/api/public/comms/linkedin/mark-sent',
+    path: '/api/public/comms/linkedin/mark-sent',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -708,6 +715,7 @@ export interface FileRoutesByFullPath {
   '/api/public/comms/gmail/scheduled-sync': typeof ApiPublicCommsGmailScheduledSyncRoute
   '/api/public/comms/gmail/send': typeof ApiPublicCommsGmailSendRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
+  '/api/public/comms/linkedin/mark-sent': typeof ApiPublicCommsLinkedinMarkSentRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -797,6 +805,7 @@ export interface FileRoutesByTo {
   '/api/public/comms/gmail/scheduled-sync': typeof ApiPublicCommsGmailScheduledSyncRoute
   '/api/public/comms/gmail/send': typeof ApiPublicCommsGmailSendRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
+  '/api/public/comms/linkedin/mark-sent': typeof ApiPublicCommsLinkedinMarkSentRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -896,6 +905,7 @@ export interface FileRoutesById {
   '/api/public/comms/gmail/scheduled-sync': typeof ApiPublicCommsGmailScheduledSyncRoute
   '/api/public/comms/gmail/send': typeof ApiPublicCommsGmailSendRoute
   '/api/public/comms/gmail/sync': typeof ApiPublicCommsGmailSyncRoute
+  '/api/public/comms/linkedin/mark-sent': typeof ApiPublicCommsLinkedinMarkSentRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -996,6 +1006,7 @@ export interface FileRouteTypes {
     | '/api/public/comms/gmail/scheduled-sync'
     | '/api/public/comms/gmail/send'
     | '/api/public/comms/gmail/sync'
+    | '/api/public/comms/linkedin/mark-sent'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1085,6 +1096,7 @@ export interface FileRouteTypes {
     | '/api/public/comms/gmail/scheduled-sync'
     | '/api/public/comms/gmail/send'
     | '/api/public/comms/gmail/sync'
+    | '/api/public/comms/linkedin/mark-sent'
   id:
     | '__root__'
     | '/'
@@ -1183,6 +1195,7 @@ export interface FileRouteTypes {
     | '/api/public/comms/gmail/scheduled-sync'
     | '/api/public/comms/gmail/send'
     | '/api/public/comms/gmail/sync'
+    | '/api/public/comms/linkedin/mark-sent'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1244,6 +1257,7 @@ export interface RootRouteChildren {
   ApiPublicCommsGmailScheduledSyncRoute: typeof ApiPublicCommsGmailScheduledSyncRoute
   ApiPublicCommsGmailSendRoute: typeof ApiPublicCommsGmailSendRoute
   ApiPublicCommsGmailSyncRoute: typeof ApiPublicCommsGmailSyncRoute
+  ApiPublicCommsLinkedinMarkSentRoute: typeof ApiPublicCommsLinkedinMarkSentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1920,6 +1934,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCommsGmailSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/comms/linkedin/mark-sent': {
+      id: '/api/public/comms/linkedin/mark-sent'
+      path: '/api/public/comms/linkedin/mark-sent'
+      fullPath: '/api/public/comms/linkedin/mark-sent'
+      preLoaderRoute: typeof ApiPublicCommsLinkedinMarkSentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2162,6 +2183,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCommsGmailScheduledSyncRoute: ApiPublicCommsGmailScheduledSyncRoute,
   ApiPublicCommsGmailSendRoute: ApiPublicCommsGmailSendRoute,
   ApiPublicCommsGmailSyncRoute: ApiPublicCommsGmailSyncRoute,
+  ApiPublicCommsLinkedinMarkSentRoute: ApiPublicCommsLinkedinMarkSentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

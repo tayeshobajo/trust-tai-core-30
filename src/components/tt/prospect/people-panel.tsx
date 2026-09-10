@@ -20,13 +20,15 @@ import {
   type PeopleProviderInfo,
   type Seniority,
 } from "@/domain/people";
+import type { KnownAddress } from "@/domain/email-pattern";
 import type { FitCriterion } from "@/domain/scout-fit";
 import type { PersonPlan } from "@/domain/scout-intel";
-import type { RouteLookupCandidate } from "@/data/supabase/people-service";
+import type { RouteInput, RouteLookupCandidate } from "@/data/supabase/people-service";
 import { cn } from "@/lib/utils";
 
 import { CriterionRow, Disclosure, Panel, TierTag } from "./panel";
 import { PersonProvenance } from "./person-provenance";
+import { suggestRouteEmail } from "./route-email-suggestion";
 
 export interface ManualPersonForm {
   fullName: string;
@@ -43,6 +45,26 @@ const EMPTY_FORM: ManualPersonForm = {
   email: "",
   linkedinUrl: "",
 };
+
+/** What a member types to put a route on somebody already on record. */
+interface RouteForm {
+  personId: string;
+  email: string;
+  emailConfirmed: boolean;
+  linkedinUrl: string;
+  linkedinConfirmed: boolean;
+}
+
+const EMPTY_ROUTE: RouteForm = {
+  personId: "",
+  email: "",
+  emailConfirmed: false,
+  linkedinUrl: "",
+  linkedinConfirmed: false,
+};
+
+const FIELD_CLASS =
+  "mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function EmailLine({ person }: { person: Person }) {
   if (!person.email) {
@@ -198,6 +220,9 @@ export function PeoplePanel({
   onConfirmEmail,
   onConfirmLinkedin,
   onLookupLinkedin,
+  onSetRoute,
+  routeError,
+  addedNotice,
   busy,
   note,
   plan,
@@ -206,6 +231,8 @@ export function PeoplePanel({
   lookupPending,
   lookupError,
   lookupNoMatchReason,
+  companyDomain,
+  knownAddresses,
 }: {
   criteria: FitCriterion[];
   people: Person[];
@@ -216,6 +243,12 @@ export function PeoplePanel({
   onConfirmEmail: (person: Person) => void;
   onConfirmLinkedin?: ((person: Person, candidate?: RouteLookupCandidate) => void) | undefined;
   onLookupLinkedin?: ((person: Person) => void) | undefined;
+  /** Put an address or a LinkedIn profile on somebody already on record. */
+  onSetRoute?: ((person: Person, input: RouteInput) => void) | undefined;
+  routeError?: string | null | undefined;
+  /** Said after an add lands, so filling gaps on an existing record never
+   * looks like a form that did nothing. */
+  addedNotice?: string | null | undefined;
   busy?: boolean | undefined;
   note?: string | undefined;
   /** Who to approach first, and why. Computed, never provider-ordered. */
@@ -226,15 +259,52 @@ export function PeoplePanel({
   lookupError?: string | null | undefined;
   /** Fail-closed signal: no candidate cleared the confidence bar. */
   lookupNoMatchReason?: string | null | undefined;
+  /** The prospect's own domain, for suggesting an address by naming convention. */
+  companyDomain?: string | undefined;
+  /** Addresses a human has verified, org-wide. Verified only: an inference
+   * built on earlier guesses would launder a guess into corroboration. */
+  knownAddresses?: KnownAddress[] | undefined;
 }) {
   const [form, setForm] = useState<ManualPersonForm>(EMPTY_FORM);
+  const [route, setRoute] = useState<RouteForm>(EMPTY_ROUTE);
   const reachable = people.some((person) => isReachable(person));
+
+  // Only somebody who cannot be reached yet needs a route added by hand.
+  const unreachable = people.filter((person) => !isReachable(person));
+  const routeTarget = unreachable.find((person) => person.id === route.personId) ?? unreachable[0];
+  const routeReady = Boolean(route.email.trim() || route.linkedinUrl.trim());
+
+  // Suggest an address only while the email field is still empty: once a
+  // member starts typing, their entry is the one that matters. Never
+  // auto-filled, never pre-confirmed.
+  const emailSuggestion =
+    routeTarget && !route.email.trim()
+      ? suggestRouteEmail({
+          fullName: routeTarget.fullName,
+          companyDomain,
+          knownAddresses: knownAddresses ?? [],
+        })
+      : { kind: "none" as const };
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.fullName.trim()) return;
     onAddManual(form);
     setForm(EMPTY_FORM);
+  };
+
+  const submitRoute = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!onSetRoute || !routeTarget || !routeReady) return;
+    onSetRoute(routeTarget, {
+      ...(route.email.trim()
+        ? { email: route.email.trim(), emailConfirmed: route.emailConfirmed }
+        : {}),
+      ...(route.linkedinUrl.trim()
+        ? { linkedinUrl: route.linkedinUrl.trim(), linkedinConfirmed: route.linkedinConfirmed }
+        : {}),
+    });
+    setRoute(EMPTY_ROUTE);
   };
 
   return (
@@ -299,6 +369,143 @@ export function PeoplePanel({
               ? "A named decision maker with a legitimate route is on record."
               : "No confirmed email or LinkedIn route is on record yet."}
           </p>
+
+          {onSetRoute && routeTarget ? (
+            <form
+              className="mt-4 space-y-3 rounded-lg border border-border bg-surface-tertiary px-4 py-4"
+              onSubmit={submitRoute}
+            >
+              <div>
+                <p className="tt-eyebrow">Add a route</p>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  An address saved without being confirmed stays on record, and cannot be messaged
+                  until somebody says it is right. Tick a box below only when you have actually
+                  checked.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {unreachable.length > 1 ? (
+                  <label className="block text-[13px] sm:col-span-2">
+                    <span className="tt-eyebrow">Who this is for</span>
+                    <select
+                      value={routeTarget.id}
+                      onChange={(event) => setRoute({ ...route, personId: event.target.value })}
+                      className={FIELD_CLASS}
+                    >
+                      {unreachable.map((person) => (
+                        <option key={person.id} value={person.id}>
+                          {person.fullName}
+                          {person.roleTitle ? `, ${person.roleTitle}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="text-[13px] text-foreground sm:col-span-2">
+                    For {routeTarget.fullName}
+                    {routeTarget.roleTitle ? `, ${routeTarget.roleTitle}` : ""}.
+                  </p>
+                )}
+                <div>
+                  <label className="block text-[13px]">
+                    <span className="tt-eyebrow">Business email</span>
+                    <input
+                      type="email"
+                      value={route.email}
+                      onChange={(event) => setRoute({ ...route, email: event.target.value })}
+                      className={FIELD_CLASS}
+                    />
+                  </label>
+                  {emailSuggestion.kind === "suggestion" ? (
+                    <div className="mt-2 rounded-md border border-border bg-card p-2.5">
+                      <p className="tt-eyebrow">Suggested, not confirmed</p>
+                      <p className="mt-1 text-[13px] text-foreground">
+                        {emailSuggestion.candidate.email}
+                      </p>
+                      <p className="mt-1 text-[12px] text-muted-foreground">
+                        {emailSuggestion.candidate.rationale}
+                      </p>
+                      <TTButton
+                        type="button"
+                        variant="quiet"
+                        size="sm"
+                        className="mt-1 -ml-3"
+                        disabled={busy}
+                        onClick={() =>
+                          setRoute({
+                            ...route,
+                            email: emailSuggestion.candidate.email,
+                            emailConfirmed: false,
+                          })
+                        }
+                      >
+                        Use this guess
+                      </TTButton>
+                    </div>
+                  ) : null}
+                  {emailSuggestion.kind === "conflict" ? (
+                    <p className="mt-2 text-[12px] text-muted-foreground">
+                      No address to suggest: {emailSuggestion.because}
+                    </p>
+                  ) : null}
+                </div>
+                <label className="block text-[13px]">
+                  <span className="tt-eyebrow">LinkedIn profile URL</span>
+                  <input
+                    type="url"
+                    value={route.linkedinUrl}
+                    onChange={(event) => setRoute({ ...route, linkedinUrl: event.target.value })}
+                    className={FIELD_CLASS}
+                  />
+                </label>
+              </div>
+
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border bg-card p-2.5">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={route.emailConfirmed}
+                  onChange={(event) => setRoute({ ...route, emailConfirmed: event.target.checked })}
+                />
+                <span>
+                  <span className="block text-[13px] text-foreground">
+                    I&rsquo;ve checked this address is right
+                  </span>
+                  <span className="mt-0.5 block text-[12px] text-muted-foreground">
+                    Leave this clear and the address is kept, marked unverified, and nothing is sent
+                    to it. Guessing here is what gets a sending domain blocked.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border bg-card p-2.5">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={route.linkedinConfirmed}
+                  onChange={(event) =>
+                    setRoute({ ...route, linkedinConfirmed: event.target.checked })
+                  }
+                />
+                <span>
+                  <span className="block text-[13px] text-foreground">
+                    I&rsquo;ve checked this is the right person
+                  </span>
+                  <span className="mt-0.5 block text-[12px] text-muted-foreground">
+                    Leave this clear and the link is kept as a link, not as a route anyone can be
+                    approached through.
+                  </span>
+                </span>
+              </label>
+
+              <TTButton type="submit" size="sm" disabled={busy || !routeReady}>
+                Save route
+              </TTButton>
+
+              {routeError ? <p className="text-[13px] text-destructive">{routeError}</p> : null}
+            </form>
+          ) : null}
 
           <div className="mt-4 flex flex-wrap gap-2">
             {providers
@@ -492,6 +699,11 @@ export function PeoplePanel({
             <TTButton type="submit" size="sm" disabled={busy}>
               Save person
             </TTButton>
+            {addedNotice ? (
+              <p role="status" aria-live="polite" className="text-[13px] text-foreground">
+                {addedNotice}
+              </p>
+            ) : null}
           </form>
         </Disclosure>
 

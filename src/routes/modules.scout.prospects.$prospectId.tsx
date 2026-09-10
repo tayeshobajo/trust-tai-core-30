@@ -99,8 +99,14 @@ import {
 import { similarCompanies } from "@/data/scout/similar-companies";
 import { rankScoutSignals, topScoutSignals } from "@/data/scout/top-signals";
 import { availablePeopleProviders, peopleProviderInfo } from "@/data/people/registry";
-import { peopleService, type RouteLookupCandidate } from "@/data/supabase/people-service";
+import {
+  peopleService,
+  type RouteInput,
+  type RouteLookupCandidate,
+} from "@/data/supabase/people-service";
+import { listOrganizationContacts } from "@/data/supabase/contacts";
 import { scoutService } from "@/data/supabase/scout-service";
+import type { KnownAddress } from "@/domain/email-pattern";
 import type { HandoffDraft } from "@/domain/comms-handoff";
 import { isDecisionMaker, isReachable, type Person } from "@/domain/people";
 import type { FitLight } from "@/domain/scout-fit";
@@ -210,6 +216,17 @@ function CompanyDetail({
     queryKey: ["scout", "people", organizationId, prospectId],
     queryFn: () => peopleService.list(organizationId, prospectId, { organizationId, userId }),
   });
+
+  // Every contact in the org, for reading a company's email naming convention
+  // off addresses a human has already verified. Verified only: inferring from
+  // an earlier guess would launder that guess into apparent corroboration.
+  const orgContacts = useQuery({
+    queryKey: ["scout", "org-contacts", organizationId],
+    queryFn: () => listOrganizationContacts(organizationId),
+  });
+  const verifiedAddresses: KnownAddress[] = (orgContacts.data ?? [])
+    .filter((person) => person.emailStatus === "verified" && person.email)
+    .map((person) => ({ fullName: person.fullName, email: person.email ?? "" }));
 
   const providers = useQuery({
     queryKey: ["scout", "people-providers"],
@@ -325,6 +342,17 @@ function CompanyDetail({
 
   const confirmEmail = useMutation({
     mutationFn: (person: Person) => peopleService.confirmEmail(person, { organizationId, userId }),
+    onSuccess: () => {
+      prepareBrief.mutate({ quiet: true });
+      refresh();
+    },
+  });
+
+  const setPersonRoute = useMutation({
+    mutationFn: ({ person, input }: { person: Person; input: RouteInput }) =>
+      peopleService.setRoute(person, input, { organizationId, userId }),
+    // A confirmed route can make the company newly ready, same as a confirmed
+    // email does.
     onSuccess: () => {
       prepareBrief.mutate({ quiet: true });
       refresh();
@@ -463,6 +491,7 @@ function CompanyDetail({
     recordDecision.isPending ||
     ingest.isPending ||
     addPerson.isPending ||
+    setPersonRoute.isPending ||
     confirmEmail.isPending ||
     prepareBrief.isPending ||
     routeToComms.isPending ||
@@ -964,6 +993,17 @@ function CompanyDetail({
                   availableProviders={providers.data ?? []}
                   onIngest={(providerId) => ingest.mutate(providerId)}
                   onAddManual={(form) => addPerson.mutate(form)}
+                  onSetRoute={(person, input) => setPersonRoute.mutate({ person, input })}
+                  routeError={
+                    setPersonRoute.error instanceof Error ? setPersonRoute.error.message : null
+                  }
+                  addedNotice={
+                    addPerson.data
+                      ? addPerson.data.matchedExisting
+                        ? `${addPerson.data.person.fullName} was already on record, so this entry filled the gaps on that record instead of adding them twice.`
+                        : `${addPerson.data.person.fullName} is on record.`
+                      : null
+                  }
                   onConfirmEmail={(person) => confirmEmail.mutate(person)}
                   onConfirmLinkedin={(person, candidateMatch) => {
                     if (!candidateMatch) {
@@ -993,6 +1033,8 @@ function CompanyDetail({
                   lookupCandidates={lookupLinkedin.data?.candidates ?? []}
                   lookupPending={lookupLinkedin.isPending}
                   lookupNoMatchReason={lookupLinkedin.data?.noMatchReason ?? null}
+                  companyDomain={candidate?.prospect.domain ?? undefined}
+                  knownAddresses={verifiedAddresses}
                   lookupError={
                     lookupLinkedin.error
                       ? lookupLinkedin.error instanceof Error

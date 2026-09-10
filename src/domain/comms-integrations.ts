@@ -214,6 +214,8 @@ export interface StoredMailboxMessage {
   blockedRemoteImages?: number;
   /** True when Comms itself sent this message through Gmail. */
   sentViaComms?: boolean;
+  /** True when a member sent this by hand on LinkedIn and recorded it. */
+  sentByHandOnLinkedin?: boolean;
   /**
    * Which connected mailbox observed or sent this message. Mailboxes own
    * transport identity; relationships own memory, several mailboxes can

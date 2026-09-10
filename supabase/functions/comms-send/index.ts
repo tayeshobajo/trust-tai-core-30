@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
   // Fetch the relationship for the To: address
   const { data: relationship, error: relError } = await supabase
 .from("comms_relationships")
-.select("id, organization_id, full_name, email, stage")
+.select("id, organization_id, full_name, email, stage, metadata")
 .eq("id", d["relationship_id"] as string)
 .maybeSingle();
   if (relError) return fail(relError.message, 500);
@@ -106,6 +106,17 @@ Deno.serve(async (req: Request) => {
   const toEmail = r["email"] as string | null;
   if (!toEmail) {
     return fail("Relationship has no email address. Add one before sending.", 422);
+  }
+  // Same gate as the Gmail path: an address the route editor saved with the
+  // confirm box clear carries metadata email_confirmed: false and may not be
+  // sent to. Only that explicit false blocks -- an address from before the
+  // editor has no mark and keeps sending as it always has.
+  const meta = r["metadata"] as Record<string, unknown> | null;
+  if (meta && meta["email_confirmed"] === false) {
+    return fail(
+      "This email address has not been confirmed yet. Confirm it in the profile panel before sending.",
+      422,
+    );
   }
 
   // Mark as sending (optimistic lock)

@@ -70,7 +70,7 @@ beforeEach(() => {
 
 describe("contacts metadata round trip", () => {
   it("confirming an address on a root-metadata contact persists and reads verified", async () => {
-    const person = await peopleService.addManual(
+    const { person } = await peopleService.addManual(
       { prospectId: "prospect-1", fullName: "Root Person", email: "root@example.com" },
       CONTEXT,
     );

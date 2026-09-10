@@ -75,6 +75,7 @@ import {
   writeOutgoingAttachments,
   type OutgoingAttachmentRef,
 } from "@/domain/comms-outgoing";
+import { readEmailExplicitlyUnconfirmed } from "@/domain/comms-routes";
 
 /* ------------------------------------------------------------- capability */
 
@@ -403,14 +404,27 @@ export async function sendDraftViaGmail(input: {
 
   const { data: relationshipRow, error: relationshipError } = await client
     .from("comms_relationships")
-    .select("id, email, full_name")
+    .select("id, email, full_name, metadata")
     .eq("id", draft.relationship_id)
     .eq("organization_id", input.organizationId)
     .maybeSingle();
   if (relationshipError) throw new Error(relationshipError.message);
-  const relationship = relationshipRow as { id: string; email: string | null } | null;
+  const relationship = relationshipRow as {
+    id: string;
+    email: string | null;
+    metadata: Record<string, unknown> | null;
+  } | null;
   if (!relationship?.email) {
     throw new Error("This relationship has no email address yet. Add one before sending.");
+  }
+  // The route editor's promise, kept: an address saved with the confirm box
+  // clear is marked `email_confirmed: false` and may not be sent to. Only
+  // that explicit `false` blocks; an address from before the editor carries
+  // no mark and keeps sending as it always has.
+  if (readEmailExplicitlyUnconfirmed(relationship.metadata)) {
+    throw new Error(
+      "This email address has not been confirmed yet. Confirm it in the profile panel before sending.",
+    );
   }
   const recipient = relationship.email.toLowerCase();
 

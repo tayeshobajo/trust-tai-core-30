@@ -42,6 +42,7 @@ const KIND_TONE: Record<EventShape["kind"], string> = {
   they_emailed: "border-border bg-card",
   they_texted: "border-border bg-card",
   i_texted: "border-cloud-line bg-cloud",
+  linkedin_sent: "border-cloud-line bg-cloud",
   phone_call: "border-border bg-secondary/40",
   meeting: "border-border bg-secondary/40",
   note: "border-dashed border-border bg-secondary/30",

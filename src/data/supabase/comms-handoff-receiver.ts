@@ -14,6 +14,8 @@ import { HANDOFF_INTENT_LABEL, type HandoffDraft } from "@/domain/comms-handoff"
 import type { MemoryItem, Relationship } from "@/domain/comms";
 import type { ID } from "@/domain/entities";
 
+import { LINKEDIN_CONFIRMED_KEY, LINKEDIN_URL_KEY } from "@/domain/comms-routes";
+
 import { commsService, type CommsContext } from "./comms-service";
 import { RELATIONSHIP_COLUMNS, toRelationship, type RelationshipRow } from "./comms-schema";
 
@@ -89,6 +91,16 @@ export async function receiveScoutHandoff(
       inferred: memory.inferred,
       decided: memory.decided,
       metadata: {
+        // The LinkedIn route travels with the person. A prospect whose only
+        // confirmed route is LinkedIn must arrive in Comms with that route on
+        // record, under the same keys the Comms route editor writes, so both
+        // the room and the manual-send surface read one source of truth.
+        ...(contact?.linkedinUrl
+          ? {
+              [LINKEDIN_URL_KEY]: contact.linkedinUrl,
+              [LINKEDIN_CONFIRMED_KEY]: contact.linkedinConfirmed === true,
+            }
+          : {}),
         scout_handoff: {
           prospect_id: draft.prospectId,
           website_url: draft.websiteUrl ?? null,

@@ -242,6 +242,46 @@ describe("scout handoff", () => {
     });
   });
 
+  it("carries a confirmed LinkedIn route into relationship metadata", async () => {
+    // A person whose ONLY route is a confirmed LinkedIn URL: no email at all.
+    const { email: _noEmail, ...target } = handoffDraft().targets[0]!;
+    const relationship = await receiveScoutHandoff(
+      handoffDraft({
+        targets: [
+          {
+            ...target,
+            emailStatus: "unknown",
+            linkedinUrl: "https://www.linkedin.com/in/ada-rowe",
+            linkedinConfirmed: true,
+          } as HandoffDraft["targets"][number],
+        ],
+      }),
+      CONTEXT,
+    );
+    // The person's only route survives the handoff, under the same keys the
+    // Comms route editor writes, next to the untouched scout_handoff blob.
+    expect(relationship.metadata["linkedin_url"]).toBe("https://www.linkedin.com/in/ada-rowe");
+    expect(relationship.metadata["linkedin_confirmed"]).toBe(true);
+    expect(relationship.metadata["scout_handoff"]).toBeTruthy();
+  });
+
+  it("keeps an unconfirmed LinkedIn link as explicitly unconfirmed", async () => {
+    const base = handoffDraft();
+    const relationship = await receiveScoutHandoff(
+      handoffDraft({
+        targets: [
+          {
+            ...base.targets[0]!,
+            linkedinUrl: "https://www.linkedin.com/in/ada-rowe",
+          } as HandoffDraft["targets"][number],
+        ],
+      }),
+      CONTEXT,
+    );
+    expect(relationship.metadata["linkedin_url"]).toBe("https://www.linkedin.com/in/ada-rowe");
+    expect(relationship.metadata["linkedin_confirmed"]).toBe(false);
+  });
+
   it("hands over a relationship Comms can open on, with the intent as its next move", async () => {
     const relationship = await receiveScoutHandoff(handoffDraft(), CONTEXT);
     // The first-message composer reasons from this record: the intent and the
