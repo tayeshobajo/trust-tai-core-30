@@ -15,24 +15,22 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/tt/app-shell";
 import { RoomHero } from "@/components/tt/room-hero";
 import { Markdown } from "@/components/tt/markdown";
-import {
-  EmptyState,
-  MetaPill,
-  SectionHeading,
-  TTButton,
-  TTCard,
-} from "@/components/tt/primitives";
+import { EmptyState, MetaPill, SectionHeading, TTButton, TTCard } from "@/components/tt/primitives";
 import {
   StudioComposer,
   readFileAsSource,
   type ComposerSubmission,
   type PastedSource,
 } from "@/components/tt/studio/composer";
+import { StudioOpportunities } from "@/components/tt/studio/opportunities";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { submitContentBatchForApproval, submitContentBatchQuietly } from "@/data/content/intake";
+import { deriveOpportunities } from "@/data/content/opportunity-read";
+import { studioOpportunitiesView } from "@/data/content/opportunity-view";
+import { readContentDemand } from "@/data/website/content-demand";
 import { contentService } from "@/data/supabase/content-service";
 import { contentCommandService } from "@/data/supabase/content-request-service";
-import { listWebsitePages } from "@/data/supabase/website-analytics-service";
+import { listSearchMetrics, listWebsitePages } from "@/data/supabase/website-analytics-service";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { readNdjsonStream } from "@/lib/ndjson-stream";
 import {
@@ -47,6 +45,8 @@ import type { ContentRequestSettings } from "@/domain/content-request";
 import type { PreparedItem, PreparedPlan } from "@/lib/content-engine.server";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
+/** The same bounded window the Website room reads over. One policy, not two. */
+const DEMAND_WINDOW_DAYS = 30;
 
 const TITLE = "Studio · The content room · Trust Tai OS";
 const DESCRIPTION =
@@ -68,7 +68,9 @@ export const Route = createFileRoute("/modules/studio/")({
 });
 
 function StudioRoute() {
-  return <WorkspaceGate appId="studio">{(identity) => <Studio identity={identity} />}</WorkspaceGate>;
+  return (
+    <WorkspaceGate appId="studio">{(identity) => <Studio identity={identity} />}</WorkspaceGate>
+  );
 }
 
 async function accessToken(): Promise<string> {
@@ -92,6 +94,8 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
 
   const [progress, setProgress] = useState<string[]>([]);
   const [openBatchId, setOpenBatchId] = useState<string | null>(null);
+  /* Set aside for this visit only. No decision is recorded anywhere yet. */
+  const [setAside, setSetAside] = useState<string[]>([]);
 
   const sources = useQuery({
     queryKey: ["studio", "sources", organizationId],
@@ -113,7 +117,6 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
     onError: (error: Error) => toast.error(error.message),
   });
 
-
   const batches = useQuery({
     queryKey: ["studio", "batches", organizationId],
     queryFn: () => contentService.listBatches(context, 20),
@@ -131,6 +134,36 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
     queryKey: ["studio", "pages", organizationId],
     queryFn: () => listWebsitePages(organizationId),
   });
+
+  /* What the market already asked for. The Website room owns the observation;
+     Studio only reads it, over the same bounded window Website uses. */
+  const sinceDate = useMemo(
+    () =>
+      new Date(Date.now() - DEMAND_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    [],
+  );
+  const searchMetrics = useQuery({
+    queryKey: ["studio", "search-metrics", organizationId, sinceDate],
+    queryFn: () => listSearchMetrics(organizationId, sinceDate),
+  });
+
+  const opportunities = useMemo(() => {
+    const demand = readContentDemand({
+      searchMetrics: searchMetrics.data?.value ?? [],
+      pages: pages.data?.value ?? [],
+      inventoryRead: pages.data?.provisioned === true,
+      searchRead: searchMetrics.data?.provisioned === true,
+    });
+    return studioOpportunitiesView(
+      demand,
+      deriveOpportunities({
+        organizationId,
+        demand,
+        asOf: new Date().toISOString(),
+      }),
+      setAside,
+    );
+  }, [searchMetrics.data, pages.data, organizationId, setAside]);
 
   const publisher = useQuery({
     queryKey: ["studio", "publisher"],
@@ -235,13 +268,14 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
       }
     },
     onSuccess: (batch) => {
-      toast.success("The batch is prepared and waiting in Approvals. Nothing publishes until you decide.");
+      toast.success(
+        "The batch is prepared and waiting in Approvals. Nothing publishes until you decide.",
+      );
       setOpenBatchId(batch.id);
       void queryClient.invalidateQueries({ queryKey: ["studio", "batches"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
-
 
   const submit = useMutation({
     mutationFn: async (batchId: string) => submitContentBatchForApproval(batchId, context),
@@ -290,6 +324,12 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
         supporting="Studio plans the cluster, writes each article in Trust Tai's voice and says why it should exist. You approve the batch in Approvals, and only then does anything reach trusttai.com."
       />
 
+      <StudioOpportunities
+        view={opportunities}
+        loading={searchMetrics.isPending || pages.isPending}
+        onDismiss={(id) => setSetAside((current) => [...current, id])}
+      />
+
       <StudioComposer
         sources={sources.data ?? []}
         onAddPasted={(input) => addSource.mutate(input)}
@@ -304,7 +344,6 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
           ? { publisherNote: publisher.data.because }
           : {})}
       />
-
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[22rem_1fr]">
         <TTCard className="p-5">
@@ -323,7 +362,9 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
                 type="button"
                 onClick={() => setOpenBatchId(batch.id)}
                 className={`w-full rounded-lg border p-3 text-left transition ${
-                  openBatchId === batch.id ? "border-primary" : "border-border hover:border-primary/40"
+                  openBatchId === batch.id
+                    ? "border-primary"
+                    : "border-border hover:border-primary/40"
                 }`}
               >
                 <p className="font-medium">{batch.keyword}</p>
@@ -439,11 +480,7 @@ function BatchView({
           ) : null}
 
           <p className="mt-4 text-sm">
-            <Link
-              to="/modules/studio/$itemId"
-              params={{ itemId: item.id }}
-              className="underline"
-            >
+            <Link to="/modules/studio/$itemId" params={{ itemId: item.id }} className="underline">
               Open the article
             </Link>
           </p>
