@@ -203,9 +203,10 @@ export function readContentDemand(input: ContentDemandInput): ContentDemandReadi
       coverage: coverageOf(row, inventory, inventoryRead),
       competing: competing.get(row.query) ?? [],
       meetsDemandFloor,
-      weakCtr: meetsDemandFloor && row.ctr < WEAK_CTR,
+      weakCtr: meetsDemandFloor && row.ctr !== null && row.ctr < WEAK_CTR,
       strikingDistance:
         meetsDemandFloor &&
+        row.averagePosition !== null &&
         row.averagePosition >= STRIKING_MIN &&
         row.averagePosition <= STRIKING_MAX,
       thin: thinBecause.length > 0,
