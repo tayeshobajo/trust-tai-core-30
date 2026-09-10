@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as MockupsStudioContentRouteImport } from './routes/mockups.studio-content'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesActivityRouteImport } from './routes/modules.activity'
 import { Route as ModulesApprovalsRouteImport } from './routes/modules.approvals'
@@ -124,6 +125,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
   getParentRoute: () => AuthRoute,
+} as any)
+const MockupsStudioContentRoute = MockupsStudioContentRouteImport.update({
+  id: '/mockups/studio-content',
+  path: '/mockups/studio-content',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesSlugRoute = ModulesSlugRouteImport.update({
   id: '/modules/$slug',
@@ -610,6 +616,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
   '/modules/approvals': typeof ModulesApprovalsRoute
@@ -706,6 +713,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
   '/modules/approvals': typeof ModulesApprovalsRoute
@@ -796,6 +804,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
   '/modules/approvals': typeof ModulesApprovalsRoute
@@ -895,6 +904,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/auth/callback'
+    | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
     | '/modules/approvals'
@@ -991,6 +1001,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/auth/callback'
+    | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
     | '/modules/approvals'
@@ -1080,6 +1091,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/auth/callback'
+    | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
     | '/modules/approvals'
@@ -1177,6 +1189,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
+  MockupsStudioContentRoute: typeof MockupsStudioContentRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesActivityRoute: typeof ModulesActivityRoute
   ModulesApprovalsRoute: typeof ModulesApprovalsRoute
@@ -1262,6 +1275,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/mockups/studio-content': {
+      id: '/mockups/studio-content'
+      path: '/mockups/studio-content'
+      fullPath: '/mockups/studio-content'
+      preLoaderRoute: typeof MockupsStudioContentRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/modules/$slug': {
       id: '/modules/$slug'
@@ -2084,6 +2104,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
+  MockupsStudioContentRoute: MockupsStudioContentRoute,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesActivityRoute: ModulesActivityRoute,
   ModulesApprovalsRoute: ModulesApprovalsRoute,
