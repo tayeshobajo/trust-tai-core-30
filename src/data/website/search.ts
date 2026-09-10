@@ -82,12 +82,14 @@ export function queryRows(rows: SearchMetricsDay[]): QueryRow[] {
   return [...whole.entries()]
     .map(([query, found]) => {
       const topPath = [...found.byPath.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      const measured = found.impressions > 0;
       return {
         query,
         clicks: found.clicks,
         impressions: found.impressions,
-        ctr: found.impressions > 0 ? found.clicks / found.impressions : 0,
-        averagePosition: found.impressions > 0 ? found.positionWeighted / found.impressions : 0,
+        // No impression means the rate was never observable. Unknown, not zero.
+        ctr: measured ? found.clicks / found.impressions : null,
+        averagePosition: measured ? found.positionWeighted / found.impressions : null,
         change: split ? (late.get(query) ?? 0) - (early.get(query) ?? 0) : null,
         topPath,
       } satisfies QueryRow;
@@ -107,10 +109,13 @@ export function decliningQueries(rows: QueryRow[]): QueryRow[] {
     .sort((a, b) => (a.change ?? 0) - (b.change ?? 0));
 }
 
-/** Seen often, clicked rarely. The title and description are the problem. */
+/**
+ * Seen often, clicked rarely. The title and description are the problem.
+ * A query whose rate was never observable is skipped, never read as weak.
+ */
 export function highImpressionLowCtr(rows: QueryRow[]): QueryRow[] {
   return rows
-    .filter((row) => row.impressions >= MIN_IMPRESSIONS && row.ctr < WEAK_CTR)
+    .filter((row) => row.impressions >= MIN_IMPRESSIONS && row.ctr !== null && row.ctr < WEAK_CTR)
     .sort((a, b) => b.impressions - a.impressions);
 }
 
@@ -120,10 +125,11 @@ export function strikingDistance(rows: QueryRow[]): QueryRow[] {
     .filter(
       (row) =>
         row.impressions >= MIN_IMPRESSIONS &&
+        row.averagePosition !== null &&
         row.averagePosition >= STRIKING_MIN &&
         row.averagePosition <= STRIKING_MAX,
     )
-    .sort((a, b) => a.averagePosition - b.averagePosition);
+    .sort((a, b) => (a.averagePosition ?? 0) - (b.averagePosition ?? 0));
 }
 
 /** Two or more of our own pages showing for the same query. */
