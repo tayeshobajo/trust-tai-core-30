@@ -24,11 +24,23 @@ export function StudioOpportunities({
   view,
   loading,
   onDismiss,
+  onBuildBrief,
+  onOpenBrief,
+  keptBriefIds,
+  buildingId,
 }: {
   view: StudioOpportunitiesView;
   loading: boolean;
-  /** Sets a row aside for this visit only. Nothing is recorded. */
+  /** Sets a row aside. Recorded when the store is there, this visit if not. */
   onDismiss: (id: string) => void;
+  /** Asks Studio to reason a brief out of this row. Writes nothing yet. */
+  onBuildBrief: (row: OpportunityRowView) => void;
+  /** Reopens a brief a person already kept. */
+  onOpenBrief: (row: OpportunityRowView) => void;
+  /** Opportunity ids that already have a kept brief. */
+  keptBriefIds: readonly string[];
+  /** The row Studio is reasoning about right now, if any. */
+  buildingId: string | null;
 }) {
   return (
     <section
@@ -45,7 +57,15 @@ export function StudioOpportunities({
       ) : view.state === "active" ? (
         <div className="mt-5 divide-y divide-border border-y border-border">
           {view.rows.map((row) => (
-            <OpportunityRow key={row.id} row={row} onDismiss={() => onDismiss(row.id)} />
+            <OpportunityRow
+              key={row.id}
+              row={row}
+              kept={keptBriefIds.includes(row.id)}
+              building={buildingId === row.id}
+              onDismiss={() => onDismiss(row.id)}
+              onBuildBrief={() => onBuildBrief(row)}
+              onOpenBrief={() => onOpenBrief(row)}
+            />
           ))}
         </div>
       ) : (
@@ -62,7 +82,21 @@ export function StudioOpportunities({
   );
 }
 
-function OpportunityRow({ row, onDismiss }: { row: OpportunityRowView; onDismiss: () => void }) {
+function OpportunityRow({
+  row,
+  kept,
+  building,
+  onDismiss,
+  onBuildBrief,
+  onOpenBrief,
+}: {
+  row: OpportunityRowView;
+  kept: boolean;
+  building: boolean;
+  onDismiss: () => void;
+  onBuildBrief: () => void;
+  onOpenBrief: () => void;
+}) {
   return (
     <article className="p-6 sm:p-7">
       <div className="flex flex-wrap items-start justify-between gap-3">
