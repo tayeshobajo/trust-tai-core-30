@@ -450,7 +450,11 @@ function Studio({ identity }: { identity: WorkspaceIdentity }) {
 
       {openBrief ? (
         <StudioBrief
+          /* A different row is a different brief: never carry one row's edits
+             into another. */
+          key={`${openBrief.row.id}:${openBrief.brief.id}`}
           phrase={openBrief.row.phrase}
+
           brief={openBrief.brief}
           saving={keepBrief.isPending}
           onKeep={(edited) => keepBrief.mutate(edited)}
