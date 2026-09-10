@@ -847,3 +847,25 @@ writes. These are the cross-room laws.
   is created.
 - **No autonomous write, send or decision** unless existing canon explicitly
   allows it.
+
+## Canon 28: Demand becomes a story a person approves (locked 2026-09-10)
+
+Website observes demand. Studio turns demand into a story worth remembering.
+Humans decide what gets published. Performance teaches the next story.
+
+- **Keywords are evidence of audience language, not writing instructions.** A
+  phrase people typed tells us how they think about the problem. It never
+  dictates a title, a structure or a sentence.
+- **People provide intent. Analytics provide evidence. AI reasons. Humans
+  approve.** Each of the four does its own job, and none of them stands in for
+  another.
+- **HIT editorial default.** Familiar and fresh at once. Fluent, concrete,
+  tension without clickbait, repetition with variation. Distribution aware,
+  substance first.
+- **Narrative default: End, Beginning, Middle, Landing.** A reasoning default,
+  not a rigid formula. Another shape is allowed when the reason is written down.
+- **Image law.** If removing an image changes nothing about how the story is
+  understood or felt, it probably does not belong. Detail in
+  `docs/studio-visual-guidelines.md`.
+- **Thin data stays thin.** Sparse or stale measurement is reported as sparse.
+  It is never smoothed into a trend, and unknown is never a zero.
