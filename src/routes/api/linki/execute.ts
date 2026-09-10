@@ -73,10 +73,18 @@ export const Route = createFileRoute("/api/linki/execute")({
         }
 
         // Active workspace membership, same gate as every governed route.
-        const { data: memberships } = await supabase
+        const { data: memberships, error: membershipError } = await supabase
           .from("organization_memberships")
           .select("organization_id, status")
           .eq("user_id", user.id);
+        // A failed read is not evidence of non-membership. Reporting it as 403
+        // would state an authorization fact we did not establish.
+        if (membershipError) {
+          return json(
+            { error: "Could not confirm your workspace access just now. Nothing was sent." },
+            503,
+          );
+        }
         const active = (memberships ?? []).filter((m) => (m["status"] ?? "active") === "active");
         if (active.length === 0) {
           return json({ error: "Your account is not a member of this Trust Tai workspace." }, 403);
