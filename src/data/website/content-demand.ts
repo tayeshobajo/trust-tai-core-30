@@ -54,6 +54,8 @@ export interface DemandCoverage {
   inInventory: boolean | null;
   title: string | null;
   pageType: string | null;
+  /** False when the inventory was never read, so absence proves nothing. */
+  read: boolean;
 }
 
 export interface ContentDemandSignal {
@@ -61,8 +63,10 @@ export interface ContentDemandSignal {
   query: string;
   clicks: number;
   impressions: number;
-  ctr: number;
-  averagePosition: number;
+  /** Null when no impression was reported. Unknown, never zero. */
+  ctr: number | null;
+  /** Null when no impression was reported. Unknown, never zero. */
+  averagePosition: number | null;
   /** Null when the window is too short to compare halves honestly. */
   change: number | null;
   coverage: DemandCoverage;
