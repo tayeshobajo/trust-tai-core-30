@@ -120,7 +120,11 @@ function StudioContentMockup() {
             />
           ) : null}
           {step === "brief" ? (
-            <Brief chosen={chosenTitle} onChoose={setChosenTitle} onNext={() => setStep("opening")} />
+            <Brief
+              chosen={chosenTitle}
+              onChoose={setChosenTitle}
+              onNext={() => setStep("opening")}
+            />
           ) : null}
           {step === "opening" ? <Opening onNext={() => setStep("images")} /> : null}
           {step === "images" ? (
@@ -225,7 +229,10 @@ function OpportunityRow({
       ) : null}
 
       <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 text-[13px]">
-        <Stat label="Appearances" value={opportunity.impressions?.toLocaleString() ?? "Not reported"} />
+        <Stat
+          label="Appearances"
+          value={opportunity.impressions?.toLocaleString() ?? "Not reported"}
+        />
         <Stat label="Click rate" value={percent(opportunity.ctr)} />
         <Stat label="Average position" value={position(opportunity.averagePosition)} />
       </dl>
@@ -412,7 +419,10 @@ function Opening({ onNext }: { onNext: () => void }) {
       <TTCard className="bg-royal-wash/40">
         <p className="tt-eyebrow">What search tells us</p>
         <dl className="mt-4 grid gap-4 text-[14px] sm:grid-cols-2">
-          <Line label="Audience language" value={DEMO_OPENING.searchIntelligence.audienceLanguage} />
+          <Line
+            label="Audience language"
+            value={DEMO_OPENING.searchIntelligence.audienceLanguage}
+          />
           <Line label="What they want" value={DEMO_OPENING.searchIntelligence.intent} />
           <Line label="Where we stand" value={DEMO_OPENING.searchIntelligence.visibility} />
           <Line label="Source" value={DEMO_OPENING.searchIntelligence.source} />

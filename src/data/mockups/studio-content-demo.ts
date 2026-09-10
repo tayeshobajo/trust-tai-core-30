@@ -10,12 +10,7 @@
 export type DemoConfidence = "Observed" | "Supported" | "Thin";
 
 export type DemoMove =
-  | "new_post"
-  | "update_existing"
-  | "internal_link"
-  | "landing_page"
-  | "faq"
-  | "no_action";
+  "new_post" | "update_existing" | "internal_link" | "landing_page" | "faq" | "no_action";
 
 export const DEMO_MOVE_LABEL: Record<DemoMove, string> = {
   new_post: "Write a new story",
@@ -121,7 +116,7 @@ export const DEMO_BRIEF = {
     {
       id: "t2",
       title: "Advice Is Cheap. The Follow-Through Is the Product.",
-      familiarAnchor: "\"Advice is cheap\" is a phrase people already say.",
+      familiarAnchor: '"Advice is cheap" is a phrase people already say.',
       freshTurn: "It reframes the follow-through as the thing being sold.",
       intentFit: "Matches buyers who have been burned by a previous advisor.",
     },
@@ -173,8 +168,7 @@ export const DEMO_OPENING = {
   searchIntelligence: {
     audienceLanguage: "transformational advisory · advisory that actually sticks",
     intent: "Comparing advisors, looking for proof of follow-through.",
-    visibility:
-      "We appear for this phrase, but two pages compete for it and neither one wins.",
+    visibility: "We appear for this phrase, but two pages compete for it and neither one wins.",
     source: "Search Console · last 28 days",
   },
 };
@@ -206,7 +200,7 @@ export const DEMO_IMAGES: DemoImage[] = [
     role: "Scene",
     jobInStory:
       "Turns the abstract 'gap' into something the reader can point at — the ordinary Tuesday where the work either happens or does not.",
-    placement: "After \"Three scenes from the gap\"",
+    placement: 'After "Three scenes from the gap"',
     direction:
       "A founder mid-conversation in a real working office, sleeves up, a whiteboard half-erased behind them. Candid, cinematic restraint, natural light. People shown should reflect Trust Tai's actual audience and leadership, not generic stock casting.",
     alt: "A founder working through a decision at a whiteboard with a colleague.",
@@ -216,7 +210,7 @@ export const DEMO_IMAGES: DemoImage[] = [
     role: "Evidence",
     jobInStory:
       "Carries the one claim readers will argue with — that the drop-off is predictable and dated. Removing it turns a proof into an assertion.",
-    placement: "After \"What the eleven weeks actually contained\"",
+    placement: 'After "What the eleven weeks actually contained"',
     direction:
       "A simple, typographic timeline in Trust Tai's own type and cream palette: decision date, owner, the week it stalled. Editorial diagram, not a dashboard screenshot.",
     alt: "A timeline showing when each decision was made, who owned it, and the week it stalled.",
