@@ -174,29 +174,53 @@ export function searchTopics(
     .slice(0, limit);
 }
 
+/** Whether the page inventory was actually read, and can be leaned on. */
+export interface InventoryState {
+  /** False when the inventory provider never reported, or failed. */
+  read: boolean;
+}
+
 /**
  * Repeated demand with weak coverage. An opportunity is never an instruction
  * to write: when a page already ranks for the demand, the honest move is to
  * refresh that page first.
+ *
+ * Coverage is only claimed when the inventory was genuinely read. An unread
+ * inventory leaves coverage "unknown", never "no page covers this".
  */
 export function contentOpportunities(
   rows: SearchMetricsDay[],
   knownPaths: string[],
+  inventoryState: InventoryState = { read: true },
 ): ContentOpportunity[] {
   const inventory = new Set(knownPaths.map(normalizePath));
+  const inventoryRead = inventoryState.read;
   const queries = queryRows(rows);
 
   return queries
     .filter((row) => row.impressions >= MIN_IMPRESSIONS)
     .map((row) => {
-      const covered = row.topPath ? inventory.has(row.topPath) : false;
-      const ranksWell = row.averagePosition > 0 && row.averagePosition < STRIKING_MIN;
+      const covered = inventoryRead && row.topPath ? inventory.has(row.topPath) : false;
+      const ranksWell =
+        row.averagePosition !== null &&
+        row.averagePosition > 0 &&
+        row.averagePosition < STRIKING_MIN;
+      const weakCtr = row.ctr !== null && row.ctr < WEAK_CTR;
+      const goodCtr = row.ctr !== null && row.ctr >= WEAK_CTR;
 
       if (!row.topPath) {
         return opportunity(row, "none", null, "Real demand with no page of ours attached to it.");
       }
-      if (covered && ranksWell && row.ctr >= WEAK_CTR) return null;
-      if (covered && row.ctr < WEAK_CTR) {
+      if (!inventoryRead) {
+        return opportunity(
+          row,
+          "unknown",
+          row.topPath,
+          `Demand is landing on ${row.topPath}, but the page inventory has not been read, so whether it is covered stays unknown.`,
+        );
+      }
+      if (covered && ranksWell && goodCtr) return null;
+      if (covered && weakCtr) {
         return opportunity(
           row,
           "thin",
