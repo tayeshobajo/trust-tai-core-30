@@ -13,12 +13,18 @@
  *   GET  /comms/voice                 -> comms.read_voice
  *   POST /comms/draft                 -> comms.draft
  *   POST /comms/message               -> comms.inject_message
+ *   POST /comms/confirm-route         -> comms.confirm_route
  *
  * Governance boundary:
  *   - Comms Agent may read threads and write drafts.
  *   - It may NOT send, NOT contact anyone, NOT modify relationship stage.
  *   - comms.send is permanently off the capability list.
  *   - comms.inject_message = manual touch log only (no outbound send).
+ *   - comms.confirm_route asserts that a channel handle belongs to a person.
+ *     It is the seam that lets an inbound reply resolve instead of queueing.
+ *     It refuses ambiguity rather than guessing, requires a stated basis, and
+ *     cannot unconfirm. Granted narrowly: it is the only capability here that
+ *     writes identity.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -450,22 +456,17 @@ async function handleInjectMessage(req: Request): Promise<Response> {
 .maybeSingle();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
 
-  // Duplicate (already synced), idempotent no-op
-  if (message) {
+  // Duplicate (already synced), idempotent no-op. Timing is NOT re-stamped:
+  // `last_touch_at` must only move when something actually happened, and a
+  // re-delivered webhook is not a new touch.
+  if (!message) {
     return json({
-      message,
       thread_id: threadId,
       relationship_name: rel["full_name"],
-      created: true,
-      duplicate: false,
+      created: false,
+      duplicate: true,
     });
   }
-  return json({
-    thread_id: threadId,
-    relationship_name: rel["full_name"],
-    created: false,
-    duplicate: true,
-  });
 
   // Update thread state + relationship timing
   const nowIso = new Date().toISOString();
@@ -510,6 +511,187 @@ async function handleInjectMessage(req: Request): Promise<Response> {
   });
 }
 
+/**
+ * POST /comms/confirm-route
+ * Record a HUMAN-CONFIRMED channel route (currently LinkedIn) onto a contact, so
+ * an inbound reply on that channel can resolve onto a person instead of queueing.
+ * Requires: comms.confirm_route
+ *
+ * Body: {
+ *   channel: "linkedin",          // only linkedin today; the shape generalises
+ *   profile_url: string,          // the exact URL the reply resolver will match on
+ *   full_name: string,
+ *   provider: string,             // transport that observed it, e.g. "zenmode"
+ *   external_id?: string,
+ *   title?: string,
+ *   company_name?: string,
+ *   prospect_id?: string,
+ *   basis: string                 // WHY this is confirmed, in a human's words
+ * }
+ *
+ * Governance — this is the one capability that asserts identity, so it is the
+ * strictest:
+ *   - It never guesses. If profile_url and full_name point at more than one
+ *     contact, it refuses with 409 rather than picking. A false negative is
+ *     acceptable; a false identity is not.
+ *   - It records `basis` verbatim. A confirmed route with no stated basis is
+ *     rejected, because "confirmed" with no reason is indistinguishable from
+ *     a guess six months later.
+ *   - It is idempotent: re-confirming an identical route is a no-op.
+ *   - It cannot unconfirm. Withdrawing a route is a human action in the app.
+ */
+async function handleConfirmRoute(req: Request): Promise<Response> {
+  assertExecutionKey(req);
+  const agent = await validateAgent(executionAgentId(req), "comms.confirm_route");
+
+  const body = (await req.json()) as Record<string, unknown>;
+  const str = (k: string): string =>
+    typeof body[k] === "string" ? (body[k] as string).trim() : "";
+
+  const channel = str("channel") || "linkedin";
+  const profileUrl = str("profile_url");
+  const fullName = str("full_name");
+  const provider = str("provider");
+  const basis = str("basis");
+  const externalId = str("external_id") || null;
+  const title = str("title") || null;
+  const companyName = str("company_name") || null;
+  const prospectId = str("prospect_id") || null;
+
+  if (channel !== "linkedin") {
+    return fail(`Unsupported channel "${channel}". Only linkedin is confirmable today.`, 400);
+  }
+  if (!profileUrl || !fullName || !provider || !basis) {
+    return fail("profile_url, full_name, provider, and basis are all required.", 400);
+  }
+
+  // Candidate set: the resolver reads BOTH metadata locations, so we must too.
+  // `peopleMetaOf` in src/data/supabase/contacts.ts nests people-owned fields
+  // under `metadata.people` for discovery-pipeline rows and keeps them at the
+  // metadata root for app-written rows.
+  const seen = new Map<string, Record<string, unknown>>();
+  for (const column of ["metadata->>linkedin_url", "metadata->people->>linkedin_url"]) {
+    const { data, error } = await supabase
+      .from("contacts")
+      .select("id, full_name, metadata")
+      .eq("organization_id", agent.organization_id)
+      .eq(column, profileUrl)
+      .limit(10);
+    if (error) throw Object.assign(new Error(error.message), { status: 500 });
+    for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+      seen.set(row["id"] as string, row);
+    }
+  }
+
+  // No URL match: fall back to an exact, case-insensitive full-name match.
+  if (seen.size === 0) {
+    const { data, error } = await supabase
+      .from("contacts")
+      .select("id, full_name, metadata")
+      .eq("organization_id", agent.organization_id)
+      .ilike("full_name", fullName)
+      .limit(10);
+    if (error) throw Object.assign(new Error(error.message), { status: 500 });
+    for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+      seen.set(row["id"] as string, row);
+    }
+  }
+
+  if (seen.size > 1) {
+    return fail(
+      `Ambiguous: ${seen.size} contacts match "${fullName}" / ${profileUrl}. ` +
+        "Refusing to guess an identity. Resolve by hand in Comms.",
+      409,
+    );
+  }
+
+  const nowIso = new Date().toISOString();
+  const routePatch: Record<string, unknown> = {
+    linkedin_url: profileUrl,
+    linkedin_confirmed: true,
+    linkedin_checked_at: nowIso,
+    linkedin_route_confidence: "confirmed",
+    linkedin_provider: provider,
+    confidence: "human_confirmed",
+    note: basis,
+    last_edited_at: nowIso,
+  };
+  if (externalId) routePatch["linkedin_external_id"] = externalId;
+  if (companyName) routePatch["company_name"] = companyName;
+  if (prospectId) routePatch["prospect_id"] = prospectId;
+
+  const existing = [...seen.values()][0] ?? null;
+
+  if (existing) {
+    const metadata = (existing["metadata"] ?? {}) as Record<string, unknown>;
+    const nested = metadata["people"];
+    const current = (nested && typeof nested === "object" && !Array.isArray(nested)
+      ? nested
+      : metadata) as Record<string, unknown>;
+
+    // Idempotent: an identical confirmed route is a no-op, not a re-stamp.
+    if (current["linkedin_url"] === profileUrl && current["linkedin_confirmed"] === true) {
+      return json({
+        contact_id: existing["id"],
+        full_name: existing["full_name"],
+        confirmed: true,
+        created: false,
+        unchanged: true,
+      });
+    }
+
+    // Write where the next read will look. Mirrors `mergePeopleMeta`.
+    const merged = (nested && typeof nested === "object" && !Array.isArray(nested))
+      ? { ...metadata, people: { ...(nested as Record<string, unknown>), ...routePatch } }
+      : { ...metadata, ...routePatch };
+
+    const { error } = await supabase
+      .from("contacts")
+      .update({ metadata: merged })
+      .eq("id", existing["id"] as string)
+      .eq("organization_id", agent.organization_id);
+    if (error) throw Object.assign(new Error(error.message), { status: 500 });
+
+    return json({
+      contact_id: existing["id"],
+      full_name: existing["full_name"],
+      confirmed: true,
+      created: false,
+      unchanged: false,
+    });
+  }
+
+  const { data: created, error: createError } = await supabase
+    .from("contacts")
+    .insert({
+      organization_id: agent.organization_id,
+      full_name: fullName,
+      title,
+      metadata: {
+        ...routePatch,
+        provenance: {
+          appId: "comms",
+          actor: { type: "agent", id: agent.paperclip_agent_id },
+          observedAt: nowIso,
+          confidence: "observed",
+          externalRef: profileUrl,
+        },
+      },
+      created_by: null, // agent, not a user
+    })
+    .select("id, full_name")
+    .single();
+  if (createError) throw Object.assign(new Error(createError.message), { status: 500 });
+
+  return json({
+    contact_id: (created as { id: string }).id,
+    full_name: (created as { full_name: string }).full_name,
+    confirmed: true,
+    created: true,
+    unchanged: false,
+  });
+}
+
 // ---------------------------------------------------------------- router
 
 Deno.serve(async (req: Request) => {
@@ -542,8 +724,13 @@ Deno.serve(async (req: Request) => {
     return handleInjectMessage(req).catch(toErrorResponse);
   }
 
+  // Match /comms/confirm-route
+  if (url.pathname.match(/\/comms\/confirm-route\/?$/) && method === "POST") {
+    return handleConfirmRoute(req).catch(toErrorResponse);
+  }
+
   return fail(
-    "Not found. Use /comms/relationships, /comms/threads/:id, /comms/voice, /comms/draft, or /comms/message.",
+    "Not found. Use /comms/relationships, /comms/threads/:id, /comms/voice, /comms/draft, /comms/message, or /comms/confirm-route.",
     404,
   );
 });
