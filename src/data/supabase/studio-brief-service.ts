@@ -26,6 +26,22 @@ export interface StudioContext {
   userId: ID;
 }
 
+export type BriefPersistenceDecision =
+  | { operation: "update" }
+  | { operation: "upsert"; onConflict: "organization_id,source_opportunity_id" }
+  | { operation: "insert" };
+
+/** Keep the persistence choice explicit: saved row, opportunity retry, or manual brief. */
+export function decideBriefPersistence(
+  brief: Pick<ContentBrief, "id" | "sourceOpportunityId">,
+): BriefPersistenceDecision {
+  if (brief.id) return { operation: "update" };
+  if (brief.sourceOpportunityId !== null) {
+    return { operation: "upsert", onConflict: "organization_id,source_opportunity_id" };
+  }
+  return { operation: "insert" };
+}
+
 function fail(error: { code?: string; message?: string } | null): never {
   throw new Error(
     missingRelation(error as never) ? STUDIO_BRIEF_MIGRATION : String(error?.message ?? "unknown"),
@@ -172,15 +188,23 @@ export async function saveBrief(context: StudioContext, brief: ContentBrief): Pr
     updated_at: new Date().toISOString(),
   };
 
-  const result = brief.id
-    ? await supabase
+  const persistence = decideBriefPersistence(brief);
+  const result =
+    persistence.operation === "update"
+      ? await supabase
         .from("studio_content_briefs")
         .update(payload)
         .eq("id", brief.id)
         .eq("organization_id", context.organizationId)
         .select("*")
         .maybeSingle()
-    : await supabase.from("studio_content_briefs").insert(payload).select("*").maybeSingle();
+      : persistence.operation === "upsert"
+        ? await supabase
+            .from("studio_content_briefs")
+            .upsert(payload, { onConflict: persistence.onConflict })
+            .select("*")
+            .maybeSingle()
+        : await supabase.from("studio_content_briefs").insert(payload).select("*").maybeSingle();
 
   if (result.error) fail(result.error);
   if (!result.data) throw new Error(STUDIO_BRIEF_MIGRATION);
