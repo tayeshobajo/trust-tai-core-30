@@ -170,7 +170,10 @@ export async function listBriefs(organizationId: string): Promise<Provisioned<Co
 }
 
 /** Keep a brief. The person's edits are already folded in by the caller. */
-export async function saveBrief(context: StudioContext, brief: ContentBrief): Promise<ContentBrief> {
+export async function saveBrief(
+  context: StudioContext,
+  brief: ContentBrief,
+): Promise<ContentBrief> {
   const payload = {
     organization_id: context.organizationId,
     source_opportunity_id: brief.sourceOpportunityId,
@@ -192,12 +195,12 @@ export async function saveBrief(context: StudioContext, brief: ContentBrief): Pr
   const result =
     persistence.operation === "update"
       ? await supabase
-        .from("studio_content_briefs")
-        .update(payload)
-        .eq("id", brief.id)
-        .eq("organization_id", context.organizationId)
-        .select("*")
-        .maybeSingle()
+          .from("studio_content_briefs")
+          .update(payload)
+          .eq("id", brief.id)
+          .eq("organization_id", context.organizationId)
+          .select("*")
+          .maybeSingle()
       : persistence.operation === "upsert"
         ? await supabase
             .from("studio_content_briefs")

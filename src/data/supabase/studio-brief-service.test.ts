@@ -8,9 +8,11 @@ const { decideBriefPersistence } = await import("./studio-brief-service");
 
 describe("Studio brief persistence choice", () => {
   it("updates an existing brief by its durable id", () => {
-    expect(decideBriefPersistence({ id: "brief-1", sourceOpportunityId: "opportunity-1" })).toEqual({
-      operation: "update",
-    });
+    expect(decideBriefPersistence({ id: "brief-1", sourceOpportunityId: "opportunity-1" })).toEqual(
+      {
+        operation: "update",
+      },
+    );
   });
 
   it("upserts a new opportunity brief on the organization and opportunity pair", () => {
