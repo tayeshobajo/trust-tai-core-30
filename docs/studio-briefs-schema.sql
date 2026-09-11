@@ -56,8 +56,27 @@ create table if not exists public.studio_content_briefs (
     approved_at timestamptz,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
+    constraint studio_content_briefs_org_opportunity_uniq
+        unique (organization_id, source_opportunity_id),
     constraint studio_content_briefs_state_chk check (state in ('draft', 'approved', 'discarded'))
 );
+
+-- Existing Slice B installations predate the opportunity uniqueness guard.
+-- PostgreSQL permits multiple null source ids, so future manual briefs remain
+-- possible while retries cannot create two briefs for the same opportunity.
+do $$
+begin
+    if not exists (
+        select 1
+        from pg_constraint
+        where conrelid = 'public.studio_content_briefs'::regclass
+          and conname = 'studio_content_briefs_org_opportunity_uniq'
+    ) then
+        alter table public.studio_content_briefs
+            add constraint studio_content_briefs_org_opportunity_uniq
+            unique (organization_id, source_opportunity_id);
+    end if;
+end $$;
 
 /* ----------------------------------------------------- corrections ------ */
 

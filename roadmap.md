@@ -289,6 +289,7 @@ production, so it remains Code/Test Verified.
 ## Carried forward, not yet placed in a phase
 
 - [ ] First sign-in lifecycle event in the shared activity stream
+- [x] Harden Studio Slice B to one durable brief per organization opportunity; SQL authored only, not applied.
 
 ## Open operability items (no weight, no percentage effect)
 
