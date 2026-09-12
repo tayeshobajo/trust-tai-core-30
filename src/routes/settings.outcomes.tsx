@@ -284,6 +284,23 @@ async function countBlogPostsToday(organizationId: string): Promise<number | nul
   return count ?? 0;
 }
 
+/**
+ * LinkedIn invitations sent today, mirrored from ZenMode into `activities` as
+ * `zenmode.connection_sent` rows (scripts/tt-confirm-route.py --sync-activities,
+ * run by the daily loop). The event day lives in payload->>sent_at so a
+ * backfilled row counts on the day the send happened, not the day the sync ran.
+ */
+async function countLinkedInSendsToday(organizationId: string): Promise<number | null> {
+  const { count, error } = await supabase
+    .from("activities")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .eq("event_type", "zenmode.connection_sent")
+    .gte("payload->>sent_at", startOfLocalDayISO());
+  if (error) return null;
+  return count ?? 0;
+}
+
 /** Scout intro drafts a human approved and sent this week. */
 export async function countScoutIntrosSentThisWeek(organizationId: string): Promise<number | null> {
   const { count, error } = await supabase
@@ -319,6 +336,7 @@ function ActivityVolumesSection() {
     queryFn: async () => ({
       blogPostsToday: await countBlogPostsToday(identity.organizationId),
       scoutIntrosThisWeek: await countScoutIntrosSentThisWeek(identity.organizationId),
+      linkedInSendsToday: await countLinkedInSendsToday(identity.organizationId),
     }),
   });
 
@@ -370,7 +388,11 @@ function ActivityVolumesSection() {
 
   const actualFor = (stream: ActivityStream): { value: number | null; label: string } => {
     if (stream === "linkedin_connections") {
-      return { value: 0, label: "0 today · reported by ZenMode, no data source connected yet" };
+      const value = actuals.data?.linkedInSendsToday ?? null;
+      return {
+        value,
+        label: value === null ? "Not readable" : `${value} today · reported by ZenMode`,
+      };
     }
     if (stream === "blog_posts") {
       const value = actuals.data?.blogPostsToday ?? null;
