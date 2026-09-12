@@ -231,8 +231,7 @@ function BlockerList({ blockers }: { blockers: RevenueOpsBlocker[] }) {
   const ranked = [...blockers].sort((a, b) => {
     const aRank = leverageOrder.indexOf(a.id);
     const bRank = leverageOrder.indexOf(b.id);
-    return (aRank < 0 ? leverageOrder.length : aRank) -
-      (bRank < 0 ? leverageOrder.length : bRank);
+    return (aRank < 0 ? leverageOrder.length : aRank) - (bRank < 0 ? leverageOrder.length : bRank);
   });
 
   return (
