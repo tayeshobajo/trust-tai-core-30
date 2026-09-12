@@ -373,13 +373,9 @@ function Dashboard({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-        <aside
-          className="order-1 space-y-4 xl:order-none xl:col-start-2 xl:row-span-2 xl:row-start-1"
-          aria-label="Revenue action queues"
-        >
+        <aside className="order-1 space-y-4 xl:order-none xl:col-start-2 xl:row-start-1" aria-label="Revenue action queues">
           <NeedsTai today={today} />
           <BlockerList blockers={today.blockers} />
-          {signalSummary}
         </aside>
 
         <div className="order-2 min-w-0 xl:order-none xl:col-start-1 xl:row-start-1">
@@ -400,6 +396,10 @@ function Dashboard({
         <div className="order-3 min-w-0 xl:order-none xl:col-start-1 xl:row-start-2">
           {signalField}
         </div>
+
+        <aside className="order-4 xl:order-none xl:col-start-2 xl:row-start-2" aria-label="Signal summary">
+          {signalSummary}
+        </aside>
       </div>
     </section>
   );
@@ -422,10 +422,40 @@ export function TodayCommandCenter({
 
   if (today.isLoading) {
     return (
-      <section className="tt-surface p-6">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <RefreshCw className="size-4 animate-spin" />
-          Reading today's revenue ledgers.
+      <div className="space-y-6">
+        <section className="tt-surface p-6">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <RefreshCw className="size-4 animate-spin" />
+            Reading today's revenue ledgers.
+          </div>
+        </section>
+        {signalField}
+        {signalSummary}
+      </div>
+    );
+  }
+
+  if (today.isError || !today.data) {
+    return (
+      <div className="space-y-6">
+        <section className="tt-surface border-destructive/25 bg-destructive/8 p-6">
+          <p className="text-sm font-medium text-destructive">
+            Revenue Ops could not read today's ledgers.
+          </p>
+          <p className="mt-1 text-xs text-destructive/80">
+            {(today.error as Error | undefined)?.message ?? "No detail returned."}
+          </p>
+        </section>
+        {signalField}
+        {signalSummary}
+      </div>
+    );
+  }
+
+  return (
+    <Dashboard today={today.data} signalField={signalField} signalSummary={signalSummary} />
+  );
+}
         </div>
       </section>
     );
