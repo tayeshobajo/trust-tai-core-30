@@ -456,25 +456,3 @@ export function TodayCommandCenter({
     <Dashboard today={today.data} signalField={signalField} signalSummary={signalSummary} />
   );
 }
-        </div>
-      </section>
-    );
-  }
-
-  if (today.isError || !today.data) {
-    return (
-      <section className="tt-surface border-destructive/25 bg-destructive/8 p-6">
-        <p className="text-sm font-medium text-destructive">
-          Revenue Ops could not read today's ledgers.
-        </p>
-        <p className="mt-1 text-xs text-destructive/80">
-          {(today.error as Error | undefined)?.message ?? "No detail returned."}
-        </p>
-      </section>
-    );
-  }
-
-  return (
-    <Dashboard today={today.data} signalField={signalField} signalSummary={signalSummary} />
-  );
-}
