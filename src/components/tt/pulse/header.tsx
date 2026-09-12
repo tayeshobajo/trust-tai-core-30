@@ -44,23 +44,25 @@ export function PulseHeader({
           </ol>
         </nav>
 
-        <div className="relative flex shrink-0 items-center gap-2">
+        <div className="relative flex shrink-0 items-center gap-1 sm:gap-2">
           <button
             type="button"
             onClick={() => void share()}
-            className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-[13px] text-foreground transition-colors hover:bg-secondary"
+            aria-label={copied ? "Pulse link copied" : "Share pulse"}
+            className="flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-secondary sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2 sm:text-[13px]"
           >
             <Share2 className="size-4" />
-            {copied ? "Link copied" : "Share pulse"}
+            <span className="hidden sm:inline">{copied ? "Link copied" : "Share pulse"}</span>
           </button>
           <button
             type="button"
             aria-haspopup="menu"
             aria-expanded={menu}
             onClick={() => setMenu((v) => !v)}
-            className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-[13px] text-foreground transition-colors hover:bg-secondary"
+            aria-label="More Pulse actions"
+            className="flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-secondary sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2 sm:text-[13px]"
           >
-            More actions
+            <span className="hidden sm:inline">More actions</span>
             <MoreHorizontal className="size-4" />
           </button>
           {menu ? (
