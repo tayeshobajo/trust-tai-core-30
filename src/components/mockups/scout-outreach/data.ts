@@ -44,8 +44,7 @@ export const INITIAL_DRAFTS: DraftEmail[] = [
     email: "james@summitfamilydental.com",
     template: "Roadmap opener",
     subject: "A quiet question about Summit's next chapter",
-    body:
-      "Hi James,\n\nI noticed Summit Family Dental has added a second location in the past year. That is the exact moment founder-led practices often feel the gap between growth and the operating system underneath it.\n\nI help founders build a decision and sequencing rhythm so the next stage does not depend on memory and instinct. No pitch. Just a question: when you look at the next 90 days, what is the one decision that keeps moving?\n\nTrust,\nTai",
+    body: "Hi James,\n\nI noticed Summit Family Dental has added a second location in the past year. That is the exact moment founder-led practices often feel the gap between growth and the operating system underneath it.\n\nI help founders build a decision and sequencing rhythm so the next stage does not depend on memory and instinct. No pitch. Just a question: when you look at the next 90 days, what is the one decision that keeps moving?\n\nTrust,\nTai",
   },
   {
     id: "d-2",
@@ -55,8 +54,7 @@ export const INITIAL_DRAFTS: DraftEmail[] = [
     email: "lena@brightsidedental.co",
     template: "Roadmap opener",
     subject: "The operating system behind the next stage",
-    body:
-      "Hi Lena,\n\nBrightside Dental Co. looks like it is in the window where early momentum meets the complexity of coordinating people, patients, and priorities.\n\nI spend my time with founder-led practices that have outgrown the spreadsheet phase and need a calmer way to decide what matters next. I would welcome a short conversation about what is working and where the friction is showing up.\n\nTrust,\nTai",
+    body: "Hi Lena,\n\nBrightside Dental Co. looks like it is in the window where early momentum meets the complexity of coordinating people, patients, and priorities.\n\nI spend my time with founder-led practices that have outgrown the spreadsheet phase and need a calmer way to decide what matters next. I would welcome a short conversation about what is working and where the friction is showing up.\n\nTrust,\nTai",
   },
 ];
 

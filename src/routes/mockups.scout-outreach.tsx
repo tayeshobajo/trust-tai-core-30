@@ -79,9 +79,7 @@ function ScoutOutreachMockup() {
   };
 
   const handleEdit = (updated: DraftEmail) => {
-    setDrafts((current) =>
-      current.map((item) => (item.id === updated.id ? updated : item)),
-    );
+    setDrafts((current) => current.map((item) => (item.id === updated.id ? updated : item)));
   };
 
   return (

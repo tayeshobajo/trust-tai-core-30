@@ -25,8 +25,7 @@ const INITIAL_TEMPLATES: ScoutTemplate[] = [
     lastEdited: "Sep 10",
     active: true,
     subject: "A quiet question about your next chapter",
-    body:
-      "Hi {{name}},\n\nI noticed {{company}} has been growing in a way that often creates a gap between what the founder sees and what the team can execute. I help founder-led companies build an operating system for decisions, sequencing and outcomes.\n\nNo pitch. Just a question: when you look at the next 90 days, what is the one decision that keeps moving?\n\nTrust,\nTai",
+    body: "Hi {{name}},\n\nI noticed {{company}} has been growing in a way that often creates a gap between what the founder sees and what the team can execute. I help founder-led companies build an operating system for decisions, sequencing and outcomes.\n\nNo pitch. Just a question: when you look at the next 90 days, what is the one decision that keeps moving?\n\nTrust,\nTai",
     voiceChecks: ["No em dashes", "No exclamation marks", "No generic check-ins"],
     sendWindow: "Weekdays, 8am–6pm CT",
     weeklyCap: 15,
@@ -38,8 +37,7 @@ const INITIAL_TEMPLATES: ScoutTemplate[] = [
     lastEdited: "Sep 8",
     active: true,
     subject: "Founders in {{city}} are building differently",
-    body:
-      "Hi {{name}},\n\nI spend most of my time with founder-led companies in Middle Tennessee that have reached the point where instinct alone is not enough to coordinate the next stage. {{company}} looks like it may be in that window.\n\nI would welcome a short conversation about what is working and where the friction is showing up.\n\nTrust,\nTai",
+    body: "Hi {{name}},\n\nI spend most of my time with founder-led companies in Middle Tennessee that have reached the point where instinct alone is not enough to coordinate the next stage. {{company}} looks like it may be in that window.\n\nI would welcome a short conversation about what is working and where the friction is showing up.\n\nTrust,\nTai",
     voiceChecks: ["No em dashes", "No exclamation marks", "No generic check-ins"],
     sendWindow: "Weekdays, 8am–6pm CT",
     weeklyCap: 15,
@@ -51,8 +49,7 @@ const INITIAL_TEMPLATES: ScoutTemplate[] = [
     lastEdited: "Aug 29",
     active: false,
     subject: "Congratulations on the milestone",
-    body:
-      "Hi {{name}},\n\nI saw the recent milestone at {{company}}. Wins like that usually mean the operating system is about to be tested by the next wave of decisions.\n\nIf you are starting to feel that tension, I would be glad to share how similar founders are sequencing what comes next.\n\nTrust,\nTai",
+    body: "Hi {{name}},\n\nI saw the recent milestone at {{company}}. Wins like that usually mean the operating system is about to be tested by the next wave of decisions.\n\nIf you are starting to feel that tension, I would be glad to share how similar founders are sequencing what comes next.\n\nTrust,\nTai",
     voiceChecks: ["No em dashes", "No exclamation marks", "No generic check-ins"],
     sendWindow: "Weekdays, 8am–6pm CT",
     weeklyCap: 10,
@@ -148,9 +145,7 @@ export function ScoutMessagingSection() {
             <TTInput
               type="number"
               value={selected.weeklyCap}
-              onChange={(event) =>
-                update(selected.id, { weeklyCap: Number(event.target.value) })
-              }
+              onChange={(event) => update(selected.id, { weeklyCap: Number(event.target.value) })}
               className="text-left"
             />
           </label>

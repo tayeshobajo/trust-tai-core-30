@@ -59,10 +59,7 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
   return (
     <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
       <div
-        className={cn(
-          "h-full rounded-full transition-all",
-          ratio >= 1 ? "bg-success" : "bg-royal",
-        )}
+        className={cn("h-full rounded-full transition-all", ratio >= 1 ? "bg-success" : "bg-royal")}
         style={{ width: `${ratio * 100}%` }}
       />
     </div>

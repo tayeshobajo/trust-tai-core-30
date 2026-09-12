@@ -9,12 +9,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/tt/app-shell";
 import { SectionHeading, TTButton } from "@/components/tt/primitives";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   ActivityVolumesSection,
   CommercialTargetsSection,
