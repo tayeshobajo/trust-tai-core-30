@@ -1,13 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  ArrowUpRight,
-  CheckCircle2,
-  CircleDollarSign,
-  RefreshCw,
-  ShieldAlert,
-} from "lucide-react";
+import { ArrowUpRight, CircleDollarSign, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { TonePill } from "@/components/tt/primitives";
@@ -127,7 +120,9 @@ function NeedsTai({ today }: { today: RevenueOpsToday }) {
   return (
     <section className="overflow-hidden rounded-lg border border-border/80 bg-card" aria-labelledby="revenue-ops-needs-tai">
       <header className="border-b border-border px-4 py-3">
-        <p id="revenue-ops-needs-tai" className="tt-eyebrow">Needs Tai</p>
+        <p id="revenue-ops-needs-tai" className="tt-eyebrow">
+          Needs Tai
+        </p>
       </header>
 
       {unreadable.length > 0 ? (
@@ -145,7 +140,10 @@ function NeedsTai({ today }: { today: RevenueOpsToday }) {
             to="/modules/comms/queue"
             className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 px-4 py-3 transition-colors hover:bg-secondary/60"
           >
-            <TonePill tone={!debt ? "risk" : replyCount > 0 ? "risk" : "neutral"} className="min-w-8 justify-center px-2">
+            <TonePill
+              tone={!debt ? "risk" : replyCount > 0 ? "risk" : "neutral"}
+              className="min-w-8 justify-center px-2"
+            >
               {debt ? replyCount + followUpCount : "?"}
             </TonePill>
             <div className="min-w-0">
@@ -162,7 +160,10 @@ function NeedsTai({ today }: { today: RevenueOpsToday }) {
             to="/modules/scout/outreach"
             className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 px-4 py-3 transition-colors hover:bg-secondary/60"
           >
-            <TonePill tone={!drafts ? "risk" : draftCount > 0 ? "caution" : "neutral"} className="min-w-8 justify-center px-2">
+            <TonePill
+              tone={!drafts ? "risk" : draftCount > 0 ? "caution" : "neutral"}
+              className="min-w-8 justify-center px-2"
+            >
               {drafts ? draftCount : "?"}
             </TonePill>
             <div className="min-w-0">
@@ -179,7 +180,10 @@ function NeedsTai({ today }: { today: RevenueOpsToday }) {
             to="/modules/clients"
             className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 px-4 py-3 transition-colors hover:bg-secondary/60"
           >
-            <TonePill tone={!clients ? "risk" : reviewCount > 0 ? "risk" : "neutral"} className="min-w-8 justify-center px-2">
+            <TonePill
+              tone={!clients ? "risk" : reviewCount > 0 ? "risk" : "neutral"}
+              className="min-w-8 justify-center px-2"
+            >
               {clients ? reviewCount : "?"}
             </TonePill>
             <div className="min-w-0">
@@ -193,7 +197,10 @@ function NeedsTai({ today }: { today: RevenueOpsToday }) {
           </Link>
         </div>
       )}
-      <Link to="/modules/comms/queue" className="block border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground hover:text-foreground">
+      <Link
+        to="/modules/comms/queue"
+        className="block border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground hover:text-foreground"
+      >
         View all queues →
       </Link>
     </section>
@@ -204,7 +211,9 @@ function BlockerList({ blockers }: { blockers: RevenueOpsBlocker[] }) {
   return (
     <section className="overflow-hidden rounded-lg border border-border/80 bg-card" aria-labelledby="revenue-ops-blockers">
       <header className="border-b border-border px-4 py-3">
-        <p id="revenue-ops-blockers" className="tt-eyebrow">Captain watch</p>
+        <p id="revenue-ops-blockers" className="tt-eyebrow">
+          Captain watch
+        </p>
         <p className="mt-1 text-[11px] text-muted-foreground">What is slowing the path to revenue</p>
       </header>
 
@@ -220,22 +229,32 @@ function BlockerList({ blockers }: { blockers: RevenueOpsBlocker[] }) {
               to={blocker.route}
               className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 px-4 py-3 transition-colors hover:bg-secondary/60"
             >
-              <span className="grid size-6 place-items-center rounded-full bg-secondary text-[11px] font-semibold text-foreground">{index + 1}</span>
+              <span className="grid size-6 place-items-center rounded-full bg-secondary text-[11px] font-semibold text-foreground">
+                {index + 1}
+              </span>
               <div className="min-w-0">
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
                   <p className="truncate text-[13px] font-medium text-foreground">{blocker.title}</p>
-                  <TonePill tone={blocker.severity === "risk" ? "risk" : "caution"} className="px-2 py-0.5 text-[9px]">
+                  <TonePill
+                    tone={blocker.severity === "risk" ? "risk" : "caution"}
+                    className="px-2 py-0.5 text-[9px]"
+                  >
                     {blocker.severity}
                   </TonePill>
                 </div>
-                <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{blocker.detail}</p>
+                <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+                  {blocker.detail}
+                </p>
               </div>
             </Link>
           ))}
         </div>
       )}
       {blockers.length > 4 ? (
-        <Link to="/settings/outcomes" className="block border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground hover:text-foreground">
+        <Link
+          to="/settings/outcomes"
+          className="block border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground hover:text-foreground"
+        >
           View all {blockers.length} items →
         </Link>
       ) : null}
@@ -274,7 +293,15 @@ function RecentMovement({ today }: { today: RevenueOpsToday }) {
   );
 }
 
-function Dashboard({ today, signalField, signalSummary }: { today: RevenueOpsToday; signalField: ReactNode; signalSummary: ReactNode }) {
+function Dashboard({
+  today,
+  signalField,
+  signalSummary,
+}: {
+  today: RevenueOpsToday;
+  signalField: ReactNode;
+  signalSummary: ReactNode;
+}) {
   const clients = today.sources.clients.value;
   const activity = today.sources.activityActuals.value;
 
@@ -291,7 +318,9 @@ function Dashboard({ today, signalField, signalSummary }: { today: RevenueOpsTod
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <CircleDollarSign className="size-4 text-royal" />
-              <p className="tt-eyebrow" id="revenue-ops-title">Revenue ops</p>
+              <p className="tt-eyebrow" id="revenue-ops-title">
+                Revenue ops
+              </p>
               {!today.sources.clients.available ? (
                 <TonePill tone="risk">ledger unreadable</TonePill>
               ) : clients && clients.clientsWithoutMrr.length > 0 ? (
@@ -304,7 +333,9 @@ function Dashboard({ today, signalField, signalSummary }: { today: RevenueOpsTod
               <div>
                 <p className="text-3xl font-semibold text-foreground sm:text-4xl">
                   {money(currentMrr)}
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">/ {money(targetMrr)}</span>
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    / {money(targetMrr)}
+                  </span>
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {!today.sources.clients.available
@@ -316,7 +347,11 @@ function Dashboard({ today, signalField, signalSummary }: { today: RevenueOpsTod
               </div>
               <div className="space-y-2">
                 <ProgressBar value={Math.round(mrrRatio * 100)} max={100} />
-                <p className="text-[11px] text-muted-foreground">{today.sources.clients.available ? `${clients?.runClients ?? 0} Run clients recorded` : "Revenue source unavailable"}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {today.sources.clients.available
+                    ? `${clients?.runClients ?? 0} Run clients recorded`
+                    : "Revenue source unavailable"}
+                </p>
               </div>
             </div>
           </div>
@@ -324,19 +359,24 @@ function Dashboard({ today, signalField, signalSummary }: { today: RevenueOpsTod
           <div className="border-t border-border pt-4 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0">
             {activity ? (
               <div className="grid gap-3 sm:grid-cols-3">
-              {activity.streams.map((stream) => (
-                <StreamCell key={stream.stream} stream={stream} />
-              ))}
+                {activity.streams.map((stream) => (
+                  <StreamCell key={stream.stream} stream={stream} />
+                ))}
               </div>
             ) : (
-              <div className="rounded-md bg-destructive/8 p-3 text-xs text-destructive">Activity actuals are not readable.</div>
+              <div className="rounded-md bg-destructive/8 p-3 text-xs text-destructive">
+                Activity actuals are not readable.
+              </div>
             )}
           </div>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-        <aside className="order-1 space-y-4 xl:order-none xl:col-start-2 xl:row-span-2 xl:row-start-1" aria-label="Revenue action queues">
+        <aside
+          className="order-1 space-y-4 xl:order-none xl:col-start-2 xl:row-span-2 xl:row-start-1"
+          aria-label="Revenue action queues"
+        >
           <NeedsTai today={today} />
           <BlockerList blockers={today.blockers} />
           {signalSummary}
@@ -350,7 +390,9 @@ function Dashboard({ today, signalField, signalSummary }: { today: RevenueOpsTod
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 Clear replies first, then approve or reject drafted outreach. Close the day by naming tomorrow&apos;s single best move.
               </p>
-              <p className="mt-3 text-[11px] text-muted-foreground">Read at {timeLabel(today.readAt)} on {dateLabel(today.readAt)}.</p>
+              <p className="mt-3 text-[11px] text-muted-foreground">
+                Read at {timeLabel(today.readAt)} on {dateLabel(today.readAt)}.
+              </p>
             </aside>
           </div>
         </div>
@@ -363,7 +405,15 @@ function Dashboard({ today, signalField, signalSummary }: { today: RevenueOpsTod
   );
 }
 
-export function TodayCommandCenter({ organizationId, signalField, signalSummary }: { organizationId: string; signalField: ReactNode; signalSummary: ReactNode }) {
+export function TodayCommandCenter({
+  organizationId,
+  signalField,
+  signalSummary,
+}: {
+  organizationId: string;
+  signalField: ReactNode;
+  signalSummary: ReactNode;
+}) {
   const today = useQuery({
     queryKey: ["revenue-ops", "today", organizationId],
     queryFn: () => readRevenueOpsToday(organizationId),
@@ -394,5 +444,7 @@ export function TodayCommandCenter({ organizationId, signalField, signalSummary 
     );
   }
 
-  return <Dashboard today={today.data} signalField={signalField} signalSummary={signalSummary} />;
+  return (
+    <Dashboard today={today.data} signalField={signalField} signalSummary={signalSummary} />
+  );
 }

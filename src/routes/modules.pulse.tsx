@@ -13,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/tt/app-shell";
 import { PulseFilters, type PulseFilter } from "@/components/tt/pulse/filters";
 import { PulseHeader } from "@/components/tt/pulse/header";
-import { PulseRightRail } from "@/components/tt/pulse/right-rail";
+import { PulseAtAGlance } from "@/components/tt/pulse/right-rail";
 import { PulseSidebar } from "@/components/tt/pulse/sidebar";
 import { PulseSignalGroup } from "@/components/tt/pulse/signal-group";
 import { TodayCommandCenter } from "@/components/tt/revenue-ops/today-command-center";
@@ -28,11 +28,8 @@ import {
   PULSE_ROOM_LABEL,
   countSignals,
   groupSignals,
-  recentlyUpdated,
   relativeAge,
-  topAreas,
   toPulseSignals,
-  weeklyTrend,
 } from "@/data/pulse/projection";
 import { pulseFeedback } from "@/data/supabase/pulse-feedback";
 import { intelligenceCanonService } from "@/data/supabase/intelligence-canon-service";
@@ -203,20 +200,19 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
 
   return (
     <AppShell identity={identity} sidebar={<PulseSidebar counts={counts} />}>
-      <div className="space-y-8">
-        <TodayCommandCenter organizationId={organizationId} />
-
-        <PulseHeader
-          lastUpdated={lastUpdated}
-          refreshing={suite.isFetching}
-          onRefresh={() => {
-            void queryClient.invalidateQueries({ queryKey: ["pulse", organizationId] });
-            void queryClient.invalidateQueries({ queryKey: ["pulse-routes", organizationId] });
-          }}
-        />
-
-        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="min-w-0 space-y-6">
+      <TodayCommandCenter
+        organizationId={organizationId}
+        signalSummary={<PulseAtAGlance counts={counts} />}
+        signalField={
+          <div className="min-w-0 space-y-6 pt-2">
+            <PulseHeader
+              lastUpdated={lastUpdated}
+              refreshing={suite.isFetching}
+              onRefresh={() => {
+                void queryClient.invalidateQueries({ queryKey: ["pulse", organizationId] });
+                void queryClient.invalidateQueries({ queryKey: ["pulse-routes", organizationId] });
+              }}
+            />
             <section aria-labelledby="signals-heading" className="space-y-5">
               <div>
                 <p className="tt-eyebrow">High-impact signals</p>
@@ -306,15 +302,8 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
               .
             </p>
           </div>
-
-          <PulseRightRail
-            counts={counts}
-            trend={weeklyTrend(signals, now)}
-            areas={topAreas(signals)}
-            recent={recentlyUpdated(signals, now)}
-          />
-        </div>
-      </div>
+        }
+      />
     </AppShell>
   );
 }
