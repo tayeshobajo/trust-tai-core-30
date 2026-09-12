@@ -142,7 +142,8 @@ function NeedsTai({ today }: { today: RevenueOpsToday }) {
           Cannot confirm the whole queue: {unreadable.join(", ")}{" "}
           {unreadable.length === 1 ? "is" : "are"} not readable.
         </div>
-      ) : empty ? (
+      ) : null}
+      {empty ? (
         <div className="m-3 rounded-md bg-success/8 p-3 text-xs text-success">
           Nothing needs your hand right now.
         </div>
@@ -220,6 +221,20 @@ function NeedsTai({ today }: { today: RevenueOpsToday }) {
 }
 
 function BlockerList({ blockers }: { blockers: RevenueOpsBlocker[] }) {
+  const leverageOrder = [
+    "overdue-replies",
+    "linkedin-under-target",
+    "insights-under-target",
+    "draft-review",
+    "missing-client-mrr",
+  ];
+  const ranked = [...blockers].sort((a, b) => {
+    const aRank = leverageOrder.indexOf(a.id);
+    const bRank = leverageOrder.indexOf(b.id);
+    return (aRank < 0 ? leverageOrder.length : aRank) -
+      (bRank < 0 ? leverageOrder.length : bRank);
+  });
+
   return (
     <section
       className="overflow-hidden rounded-lg border border-border/80 bg-card"
@@ -240,7 +255,7 @@ function BlockerList({ blockers }: { blockers: RevenueOpsBlocker[] }) {
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {blockers.slice(0, 4).map((blocker, index) => (
+          {ranked.slice(0, 5).map((blocker, index) => (
             <Link
               key={blocker.id}
               to={blocker.route}
@@ -269,12 +284,12 @@ function BlockerList({ blockers }: { blockers: RevenueOpsBlocker[] }) {
           ))}
         </div>
       )}
-      {blockers.length > 4 ? (
+      {ranked.length > 5 ? (
         <Link
           to="/settings/outcomes"
           className="block border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground hover:text-foreground"
         >
-          View all {blockers.length} items →
+          View all {ranked.length} items →
         </Link>
       ) : null}
     </section>
