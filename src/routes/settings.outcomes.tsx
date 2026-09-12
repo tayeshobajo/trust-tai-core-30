@@ -6,7 +6,7 @@
  * RLS applies as the signed-in person.
  */
 
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -35,8 +35,15 @@ import {
   type ScoutIntroTemplate,
   type SendWindow,
 } from "@/data/supabase/scout-intro-templates";
+import {
+  RELATIONSHIP_COLUMNS,
+  toRelationship,
+  type RelationshipRow,
+} from "@/data/supabase/comms-schema";
 import { checkVoice } from "@/data/voice-policy";
 import { supabase } from "@/integrations/trust-tai/supabase";
+import { dueState, type Relationship } from "@/domain/comms";
+import type { WeekWindow } from "@/domain/revenue";
 import type { WeeklyTargets } from "@/domain/weekly-targets";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +84,24 @@ function OutcomesSettings() {
           description="Daily and weekly output limits for outbound and published work."
         />
         <ActivityVolumesSection />
+      </section>
+
+      <section className="tt-surface p-6">
+        <SectionHeading
+          eyebrow="Debt"
+          title="Response debt"
+          description="Replies owed and follow-ups planned, read live from the relationship book."
+        />
+        <ResponseDebtSection />
+      </section>
+
+      <section className="tt-surface p-6">
+        <SectionHeading
+          eyebrow="Trailing four weeks"
+          title="Funnel"
+          description="Stage counts and conversion between adjacent stages, derived at read time."
+        />
+        <FunnelSection />
       </section>
 
       <section className="tt-surface p-6">
@@ -476,6 +501,338 @@ function ActivityVolumesSection() {
             {save.isPending ? "Saving…" : "Save activity volumes"}
           </TTButton>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------- response debt */
+
+interface ResponseDebt {
+  overdueReplies: number;
+  dueTodayReplies: number;
+  followUpsDue: number;
+}
+
+/**
+ * Replies owed and follow-ups planned, counted from `comms_relationships`
+ * timing fields through the shared `dueState` read. A reply owed outranks a
+ * follow-up planned, so a relationship with `response_due_at` set counts only
+ * in the reply buckets, whatever its follow-up says. A failed read is null,
+ * never a quiet zero.
+ */
+async function readResponseDebt(organizationId: string): Promise<ResponseDebt | null> {
+  const { data, error } = await supabase
+    .from("comms_relationships")
+    .select(RELATIONSHIP_COLUMNS)
+    .eq("organization_id", organizationId)
+    .or("response_due_at.not.is.null,follow_up_due_at.not.is.null");
+  if (error) return null;
+
+  const now = new Date();
+  const debt: ResponseDebt = { overdueReplies: 0, dueTodayReplies: 0, followUpsDue: 0 };
+
+  for (const row of (data ?? []) as unknown as RelationshipRow[]) {
+    const relationship = toRelationship(row);
+    if (relationship.responseDueAt) {
+      // The reply deadline alone decides the bucket: dueState reads the
+      // earliest of both dates, and here the follow-up must not soften or
+      // sharpen a reply that is owed.
+      const { followUpDueAt: _followUp, ...replyOnly } = relationship;
+      const state = dueState(replyOnly as Relationship, now);
+      if (state === "overdue") debt.overdueReplies += 1;
+      else if (state === "today") debt.dueTodayReplies += 1;
+    } else if (relationship.followUpDueAt) {
+      const state = dueState(relationship, now);
+      if (state === "overdue" || state === "today") debt.followUpsDue += 1;
+    }
+  }
+
+  return debt;
+}
+
+function ResponseDebtSection() {
+  const identity = useSettingsIdentity();
+
+  const debt = useQuery({
+    queryKey: ["outcomes", "response-debt", identity.organizationId],
+    queryFn: () => readResponseDebt(identity.organizationId),
+  });
+
+  const cells: { id: string; label: string; value: number | null; destructive: boolean }[] = [
+    {
+      id: "overdue",
+      label: "Overdue replies",
+      value: debt.data?.overdueReplies ?? null,
+      destructive: true,
+    },
+    {
+      id: "due-today",
+      label: "Due today",
+      value: debt.data?.dueTodayReplies ?? null,
+      destructive: false,
+    },
+    {
+      id: "follow-ups",
+      label: "Follow-ups due",
+      value: debt.data?.followUpsDue ?? null,
+      destructive: false,
+    },
+  ];
+
+  return (
+    <div className="mt-5 space-y-3">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {cells.map((cell) => (
+          <Link
+            key={cell.id}
+            to="/modules/comms/queue"
+            className="block rounded-xl border border-border bg-card p-4 transition-colors hover:border-royal/25"
+          >
+            <p className="text-xs text-muted-foreground">{cell.label}</p>
+            {cell.value === null ? (
+              <p className="mt-1 text-sm text-muted-foreground">Not readable</p>
+            ) : (
+              <p
+                className={cn(
+                  "mt-1 text-2xl font-semibold",
+                  cell.destructive && cell.value > 0 ? "text-destructive" : "text-foreground",
+                )}
+              >
+                {cell.value}
+              </p>
+            )}
+          </Link>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        A reply owed outranks everything. Target is zero at end of day.
+      </p>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------- funnel */
+
+const WEEK_MS = 7 * 86_400_000;
+
+interface FunnelWeek {
+  label: string;
+  current: boolean;
+  firstTouches: number | null;
+  discoveryCalls: number | null;
+  proposalsSent: number | null;
+  runClients: number | null;
+}
+
+function funnelWeekLabel(week: WeekWindow): string {
+  const start = new Date(week.start);
+  const lastDay = new Date(new Date(week.end).getTime() - 1);
+  const short = (date: Date) => date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return `${short(start)} – ${short(lastDay)}`;
+}
+
+/**
+ * The trailing four business weeks, each read through the same
+ * `readWeeklyScoreboard` derivation the commercial targets use, anchored a
+ * week apart. Run clients is current tier state, not a dated event, so only
+ * the current week can honestly claim it; past weeks show nothing.
+ */
+async function readFunnelWeeks(organizationId: string): Promise<FunnelWeek[]> {
+  const anchors = [3, 2, 1, 0].map((weeksBack) => new Date(Date.now() - weeksBack * WEEK_MS));
+  const boards = await Promise.all(
+    anchors.map((anchor) => readWeeklyScoreboard(organizationId, anchor)),
+  );
+  return boards.map((board, index) => {
+    const current = index === boards.length - 1;
+    return {
+      label: funnelWeekLabel(board.week),
+      current,
+      firstTouches: board.firstTouches,
+      discoveryCalls: board.discoveryCalls,
+      proposalsSent: board.proposalsSent,
+      runClients: current ? board.runClients : null,
+    };
+  });
+}
+
+interface ProposalTurnaround {
+  /** Null when no sent proposal in the window has a discovery call to pair with. */
+  medianDays: number | null;
+  sample: number;
+}
+
+/**
+ * Days from discovery call to proposal sent, per deal: for each roadmap with a
+ * real `proposal_sent_at` and a linked relationship, the most recent
+ * human-labelled discovery touch (`comms_touches.meeting_kind = 'discovery'`)
+ * on that relationship before the send. Both timestamps are recorded facts;
+ * a proposal with no discovery call on its relationship is left out, never
+ * approximated. A failed read is null, never a quiet zero.
+ */
+async function readProposalTurnaround(
+  organizationId: string,
+  sinceISO: string,
+): Promise<ProposalTurnaround | null> {
+  const proposals = await supabase
+    .from("roadmaps")
+    .select("relationship_id, proposal_sent_at")
+    .eq("organization_id", organizationId)
+    .not("relationship_id", "is", null)
+    .gte("proposal_sent_at", sinceISO);
+  if (proposals.error) return null;
+
+  const sent = ((proposals.data ?? []) as Record<string, unknown>[]).filter(
+    (row) => typeof row["proposal_sent_at"] === "string" && row["relationship_id"],
+  );
+  if (sent.length === 0) return { medianDays: null, sample: 0 };
+
+  const relationshipIds = [...new Set(sent.map((row) => String(row["relationship_id"])))];
+  const touches = await supabase
+    .from("comms_touches")
+    .select("relationship_id, occurred_at")
+    .eq("organization_id", organizationId)
+    .eq("meeting_kind", "discovery")
+    .in("relationship_id", relationshipIds);
+  if (touches.error) return null;
+
+  const callsByRelationship = new Map<string, number[]>();
+  for (const touch of (touches.data ?? []) as Record<string, unknown>[]) {
+    const at = new Date(String(touch["occurred_at"] ?? "")).getTime();
+    if (Number.isNaN(at)) continue;
+    const key = String(touch["relationship_id"]);
+    callsByRelationship.set(key, [...(callsByRelationship.get(key) ?? []), at]);
+  }
+
+  const days: number[] = [];
+  for (const row of sent) {
+    const sentAt = new Date(String(row["proposal_sent_at"])).getTime();
+    if (Number.isNaN(sentAt)) continue;
+    const before = (callsByRelationship.get(String(row["relationship_id"])) ?? []).filter(
+      (at) => at <= sentAt,
+    );
+    if (before.length === 0) continue;
+    days.push((sentAt - Math.max(...before)) / 86_400_000);
+  }
+  if (days.length === 0) return { medianDays: null, sample: 0 };
+
+  days.sort((a, b) => a - b);
+  const mid = Math.floor(days.length / 2);
+  const median = days.length % 2 === 1 ? days[mid]! : (days[mid - 1]! + days[mid]!) / 2;
+  return { medianDays: Math.round(median * 10) / 10, sample: days.length };
+}
+
+/** "—" whenever either side is unknown or the denominator is zero. */
+function conversionRatio(numerator: number | null, denominator: number | null): string {
+  if (numerator === null || denominator === null || denominator === 0) return "—";
+  return `${Math.round((numerator / denominator) * 100)}%`;
+}
+
+/** A total is only a total when every week answered. */
+function funnelTotal(values: (number | null)[]): number | null {
+  let total = 0;
+  for (const value of values) {
+    if (value === null) return null;
+    total += value;
+  }
+  return total;
+}
+
+function FunnelSection() {
+  const identity = useSettingsIdentity();
+
+  const funnel = useQuery({
+    queryKey: ["outcomes", "funnel", identity.organizationId],
+    queryFn: async () => {
+      const weeks = await readFunnelWeeks(identity.organizationId);
+      const since = new Date(Date.now() - 4 * WEEK_MS).toISOString();
+      const turnaround = await readProposalTurnaround(identity.organizationId, since);
+      return { weeks, turnaround };
+    },
+  });
+
+  if (funnel.error) {
+    return (
+      <p role="alert" className="mt-4 text-sm text-destructive">
+        {(funnel.error as Error).message}
+      </p>
+    );
+  }
+  if (funnel.isPending) {
+    return <p className="mt-4 text-sm text-muted-foreground">Loading funnel…</p>;
+  }
+
+  const weeks = funnel.data.weeks;
+  const turnaround = funnel.data.turnaround;
+  const totals = {
+    firstTouches: funnelTotal(weeks.map((week) => week.firstTouches)),
+    discoveryCalls: funnelTotal(weeks.map((week) => week.discoveryCalls)),
+    proposalsSent: funnelTotal(weeks.map((week) => week.proposalsSent)),
+  };
+  const cell = (value: number | null) => (value === null ? "—" : value);
+
+  return (
+    <div className="mt-5 space-y-4">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-muted-foreground">
+              <th className="py-2 pr-4 font-medium">Week</th>
+              <th className="py-2 pr-4 font-medium">First touches</th>
+              <th className="py-2 pr-4 font-medium">Discovery calls</th>
+              <th className="py-2 pr-4 font-medium">Proposals</th>
+              <th className="py-2 font-medium">Run clients</th>
+            </tr>
+          </thead>
+          <tbody>
+            {weeks.map((week) => (
+              <tr key={week.label} className="border-t border-border">
+                <td className="py-2 pr-4 text-foreground">
+                  {week.label}
+                  {week.current ? (
+                    <span className="ml-2 text-xs text-muted-foreground">this week</span>
+                  ) : null}
+                </td>
+                <td className="py-2 pr-4 text-foreground">{cell(week.firstTouches)}</td>
+                <td className="py-2 pr-4 text-foreground">{cell(week.discoveryCalls)}</td>
+                <td className="py-2 pr-4 text-foreground">{cell(week.proposalsSent)}</td>
+                <td className="py-2 text-foreground">{cell(week.runClients)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <MetaPill>
+          First touch → discovery {conversionRatio(totals.discoveryCalls, totals.firstTouches)}
+        </MetaPill>
+        <MetaPill>
+          Discovery → proposal {conversionRatio(totals.proposalsSent, totals.discoveryCalls)}
+        </MetaPill>
+        <MetaPill>Proposal → run —</MetaPill>
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">
+          — means that source could not be read for that week. Run clients is current tier state,
+          not a dated event, so it shows for this week only and proposal → run has no honest
+          per-week conversion yet.
+        </p>
+        {turnaround === null ? (
+          <p className="text-xs text-muted-foreground">Proposal turnaround: not readable.</p>
+        ) : turnaround.medianDays === null ? (
+          <p className="text-xs text-muted-foreground">
+            Turnaround not measurable yet — no proposal in this window has a paired discovery
+            call.
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Proposal turnaround: median {turnaround.medianDays}{" "}
+            {turnaround.medianDays === 1 ? "day" : "days"} from discovery call to proposal sent,
+            across {turnaround.sample} {turnaround.sample === 1 ? "proposal" : "proposals"}.
+          </p>
+        )}
       </div>
     </div>
   );
