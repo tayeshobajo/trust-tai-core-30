@@ -30,7 +30,8 @@ export const DEMO_QUEUE: DemoQueueItem[] = [
     headline: "Six replies are older than your own response promise",
     implication:
       "Two are from clients who already asked twice. Response debt is compounding faster than new outbound can offset.",
-    consequence: "Left another week, these become trust conversations rather than work conversations.",
+    consequence:
+      "Left another week, these become trust conversations rather than work conversations.",
     room: "Comms",
     entity: "Spartan Security, Mental Dental, 4 others",
     action: "Open replies",
@@ -66,7 +67,8 @@ export const DEMO_QUEUE: DemoQueueItem[] = [
     headline: "A strong-fit company has sat unclaimed for two weeks",
     implication:
       "Kestrel Dental matched on every ICP criterion you set, and no person in the business owns the relationship.",
-    consequence: "A qualified company quietly ages out of relevance without anyone deciding to pass.",
+    consequence:
+      "A qualified company quietly ages out of relevance without anyone deciding to pass.",
     room: "Scout",
     entity: "Kestrel Dental, Austin",
     action: "Assign owner",
@@ -221,11 +223,26 @@ export interface DemoMovement {
 }
 
 export const DEMO_MOVEMENT: DemoMovement[] = [
-  { id: "m-1", when: "2h ago", what: "Harbor Ortho replied to your proposal thread.", room: "Comms" },
+  {
+    id: "m-1",
+    when: "2h ago",
+    what: "Harbor Ortho replied to your proposal thread.",
+    room: "Comms",
+  },
   { id: "m-2", when: "Yesterday", what: "Patient intake milestone was approved.", room: "Roadmap" },
   { id: "m-3", when: "Yesterday", what: "Kestrel Dental was qualified by Scout.", room: "Scout" },
-  { id: "m-4", when: "2 days ago", what: "Houston visibility work was marked blocked.", room: "Projects" },
-  { id: "m-5", when: "3 days ago", what: "Weekly review commitments were recorded.", room: "Steward" },
+  {
+    id: "m-4",
+    when: "2 days ago",
+    what: "Houston visibility work was marked blocked.",
+    room: "Projects",
+  },
+  {
+    id: "m-5",
+    when: "3 days ago",
+    what: "Weekly review commitments were recorded.",
+    room: "Steward",
+  },
 ];
 
 export const SEVERITY_LABEL: Record<DemoSeverity, string> = {

@@ -170,7 +170,10 @@ function QueueRow({ item, onClear }: { item: DemoQueueItem; onClear: () => void 
 
 export function BusinessRead() {
   return (
-    <section aria-labelledby="business-read" className="rounded-2xl bg-studio-paper px-5 py-5 sm:px-6">
+    <section
+      aria-labelledby="business-read"
+      className="rounded-2xl bg-studio-paper px-5 py-5 sm:px-6"
+    >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3">
         <h2 id="business-read" className="text-[15px] font-semibold text-foreground">
           Where the business actually stands
