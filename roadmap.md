@@ -305,3 +305,5 @@ production, so it remains Code/Test Verified.
   correction law (supersede with a reason, keeping both rows visible) does not
   exist yet. Current safe recovery: record the true reading as a later
   measurement with its real date and source. Recorded 2026-09-07 during P3-02.
+
+- [x] Pulse Next isolated mockup at /mockups/pulse-next (fixture data only, production Pulse untouched)
