@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as MockupsOutcomesSettingsRouteImport } from './routes/mockups.outcomes-settings'
+import { Route as MockupsScoutOutreachRouteImport } from './routes/mockups.scout-outreach'
 import { Route as MockupsStudioContentRouteImport } from './routes/mockups.studio-content'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesActivityRouteImport } from './routes/modules.activity'
@@ -127,6 +129,16 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
   getParentRoute: () => AuthRoute,
+} as any)
+const MockupsOutcomesSettingsRoute = MockupsOutcomesSettingsRouteImport.update({
+  id: '/mockups/outcomes-settings',
+  path: '/mockups/outcomes-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MockupsScoutOutreachRoute = MockupsScoutOutreachRouteImport.update({
+  id: '/mockups/scout-outreach',
+  path: '/mockups/scout-outreach',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MockupsStudioContentRoute = MockupsStudioContentRouteImport.update({
   id: '/mockups/studio-content',
@@ -629,6 +641,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/outcomes-settings': typeof MockupsOutcomesSettingsRoute
+  '/mockups/scout-outreach': typeof MockupsScoutOutreachRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
@@ -728,6 +742,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/outcomes-settings': typeof MockupsOutcomesSettingsRoute
+  '/mockups/scout-outreach': typeof MockupsScoutOutreachRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
@@ -821,6 +837,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/outcomes-settings': typeof MockupsOutcomesSettingsRoute
+  '/mockups/scout-outreach': typeof MockupsScoutOutreachRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
@@ -923,6 +941,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/auth/callback'
+    | '/mockups/outcomes-settings'
+    | '/mockups/scout-outreach'
     | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
@@ -1022,6 +1042,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/auth/callback'
+    | '/mockups/outcomes-settings'
+    | '/mockups/scout-outreach'
     | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
@@ -1114,6 +1136,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/auth/callback'
+    | '/mockups/outcomes-settings'
+    | '/mockups/scout-outreach'
     | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
@@ -1214,6 +1238,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
+  MockupsOutcomesSettingsRoute: typeof MockupsOutcomesSettingsRoute
+  MockupsScoutOutreachRoute: typeof MockupsScoutOutreachRoute
   MockupsStudioContentRoute: typeof MockupsStudioContentRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesActivityRoute: typeof ModulesActivityRoute
@@ -1302,6 +1328,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/mockups/outcomes-settings': {
+      id: '/mockups/outcomes-settings'
+      path: '/mockups/outcomes-settings'
+      fullPath: '/mockups/outcomes-settings'
+      preLoaderRoute: typeof MockupsOutcomesSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mockups/scout-outreach': {
+      id: '/mockups/scout-outreach'
+      path: '/mockups/scout-outreach'
+      fullPath: '/mockups/scout-outreach'
+      preLoaderRoute: typeof MockupsScoutOutreachRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/mockups/studio-content': {
       id: '/mockups/studio-content'
@@ -2145,6 +2185,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
+  MockupsOutcomesSettingsRoute: MockupsOutcomesSettingsRoute,
+  MockupsScoutOutreachRoute: MockupsScoutOutreachRoute,
   MockupsStudioContentRoute: MockupsStudioContentRoute,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesActivityRoute: ModulesActivityRoute,
