@@ -169,6 +169,34 @@ export const Route = createFileRoute("/api/internal/execution/scout/draft-intro"
             relationshipId = createdRel.id;
           }
 
+          // One live intro per relationship. Without this, a retrying agent
+          // stacks duplicate drafts in the approval column.
+          const { data: liveDraft, error: liveDraftError } = await supabase
+            .from("comms_drafts")
+            .select("id, review_state")
+            .eq("organization_id", agent.organization_id)
+            .eq("relationship_id", relationshipId)
+            .eq("register", "scout_intro")
+            .in("review_state", ["needs_human_review", "approved", "sending", "sent"])
+            .limit(1)
+            .maybeSingle();
+          if (liveDraftError) throw new Error(liveDraftError.message);
+          if (liveDraft) {
+            await completeBinding(binding.id, {
+              status: "completed",
+              resultSummary: `Intro already drafted for ${prospect.company_name} (${liveDraft.review_state}); nothing new created.`,
+              businessOutputs: { draft_id: liveDraft.id, duplicate: true },
+            });
+            return Response.json(
+              {
+                error: "An intro draft already exists for this prospect.",
+                draft_id: liveDraft.id,
+                review_state: liveDraft.review_state,
+              },
+              { status: 409 },
+            );
+          }
+
           const { data: draft, error: draftError } = await supabase
             .from("comms_drafts")
             .insert({

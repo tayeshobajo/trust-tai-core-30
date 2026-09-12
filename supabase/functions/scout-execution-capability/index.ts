@@ -507,6 +507,29 @@ async function handleDraftIntro(req: Request): Promise<Response> {
     relationshipId = (createdRel as { id: string }).id;
   }
 
+  // One live intro per relationship — mirrors the app handler. A retrying
+  // agent must not stack duplicate drafts in the approval column.
+  const { data: liveDraft, error: liveDraftError } = await supabase
+    .from("comms_drafts")
+    .select("id, review_state")
+    .eq("organization_id", agent.organization_id)
+    .eq("relationship_id", relationshipId)
+    .eq("register", "scout_intro")
+    .in("review_state", ["needs_human_review", "approved", "sending", "sent"])
+    .limit(1)
+    .maybeSingle();
+  if (liveDraftError) throw Object.assign(new Error(liveDraftError.message), { status: 500 });
+  if (liveDraft) {
+    return json(
+      {
+        error: "An intro draft already exists for this prospect.",
+        draft_id: (liveDraft as { id: string }).id,
+        review_state: (liveDraft as { review_state: string }).review_state,
+      },
+      409,
+    );
+  }
+
   const { data: draft, error: draftError } = await supabase
     .from("comms_drafts")
     .insert({
