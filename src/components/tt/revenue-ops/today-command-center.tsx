@@ -82,13 +82,22 @@ function StreamCell({ stream }: { stream: ActivityStreamActual }) {
       className="group block min-w-0 border-t border-border pt-3 transition-colors first:border-t-0 first:pt-0 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 sm:first:border-l-0 sm:first:pl-0"
     >
       <div className="flex min-w-0 items-start justify-between gap-2">
-        <p className="truncate text-[12px] font-medium text-foreground">{STREAM_LABEL[stream.stream]}</p>
+        <p className="truncate text-[12px] font-medium text-foreground">
+          {STREAM_LABEL[stream.stream]}
+        </p>
         <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-royal" />
       </div>
       <div className="mt-2 flex items-baseline justify-between gap-2">
-        <p className={cn("text-lg font-semibold", !readable || behind ? "text-destructive" : "text-foreground")}>
+        <p
+          className={cn(
+            "text-lg font-semibold",
+            !readable || behind ? "text-destructive" : "text-foreground",
+          )}
+        >
           {readable ? integer(stream.actual) : "Not readable"}
-          {readable ? <span className="ml-1 text-xs font-normal text-muted-foreground">/{target}</span> : null}
+          {readable ? (
+            <span className="ml-1 text-xs font-normal text-muted-foreground">/{target}</span>
+          ) : null}
         </p>
         <span className="text-[10px] text-muted-foreground">{windowLabel}</span>
       </div>
@@ -118,7 +127,10 @@ function NeedsTai({ today }: { today: RevenueOpsToday }) {
     unreadable.length === 0 && replyCount + followUpCount + draftCount + reviewCount === 0;
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border/80 bg-card" aria-labelledby="revenue-ops-needs-tai">
+    <section
+      className="overflow-hidden rounded-lg border border-border/80 bg-card"
+      aria-labelledby="revenue-ops-needs-tai"
+    >
       <header className="border-b border-border px-4 py-3">
         <p id="revenue-ops-needs-tai" className="tt-eyebrow">
           Needs Tai
@@ -209,12 +221,17 @@ function NeedsTai({ today }: { today: RevenueOpsToday }) {
 
 function BlockerList({ blockers }: { blockers: RevenueOpsBlocker[] }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-border/80 bg-card" aria-labelledby="revenue-ops-blockers">
+    <section
+      className="overflow-hidden rounded-lg border border-border/80 bg-card"
+      aria-labelledby="revenue-ops-blockers"
+    >
       <header className="border-b border-border px-4 py-3">
         <p id="revenue-ops-blockers" className="tt-eyebrow">
           Captain watch
         </p>
-        <p className="mt-1 text-[11px] text-muted-foreground">What is slowing the path to revenue</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          What is slowing the path to revenue
+        </p>
       </header>
 
       {blockers.length === 0 ? (
@@ -234,7 +251,9 @@ function BlockerList({ blockers }: { blockers: RevenueOpsBlocker[] }) {
               </span>
               <div className="min-w-0">
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-                  <p className="truncate text-[13px] font-medium text-foreground">{blocker.title}</p>
+                  <p className="truncate text-[13px] font-medium text-foreground">
+                    {blocker.title}
+                  </p>
                   <TonePill
                     tone={blocker.severity === "risk" ? "risk" : "caution"}
                     className="px-2 py-0.5 text-[9px]"
@@ -373,7 +392,10 @@ function Dashboard({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-        <aside className="order-1 space-y-4 xl:order-none xl:col-start-2 xl:row-start-1" aria-label="Revenue action queues">
+        <aside
+          className="order-1 space-y-4 xl:order-none xl:col-start-2 xl:row-start-1"
+          aria-label="Revenue action queues"
+        >
           <NeedsTai today={today} />
           <BlockerList blockers={today.blockers} />
         </aside>
@@ -384,7 +406,8 @@ function Dashboard({
             <aside className="border-l border-border pl-4">
               <p className="tt-eyebrow">Operating notes</p>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Clear replies first, then approve or reject drafted outreach. Close the day by naming tomorrow&apos;s single best move.
+                Clear replies first, then approve or reject drafted outreach. Close the day by
+                naming tomorrow&apos;s single best move.
               </p>
               <p className="mt-3 text-[11px] text-muted-foreground">
                 Read at {timeLabel(today.readAt)} on {dateLabel(today.readAt)}.
@@ -397,7 +420,10 @@ function Dashboard({
           {signalField}
         </div>
 
-        <aside className="order-4 xl:order-none xl:col-start-2 xl:row-start-2" aria-label="Signal summary">
+        <aside
+          className="order-4 xl:order-none xl:col-start-2 xl:row-start-2"
+          aria-label="Signal summary"
+        >
           {signalSummary}
         </aside>
       </div>
@@ -452,7 +478,5 @@ export function TodayCommandCenter({
     );
   }
 
-  return (
-    <Dashboard today={today.data} signalField={signalField} signalSummary={signalSummary} />
-  );
+  return <Dashboard today={today.data} signalField={signalField} signalSummary={signalSummary} />;
 }
