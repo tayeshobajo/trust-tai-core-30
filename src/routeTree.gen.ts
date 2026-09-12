@@ -13,8 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
-import { Route as MockupsOutcomesSettingsRouteImport } from './routes/mockups.outcomes-settings'
-import { Route as MockupsScoutOutreachRouteImport } from './routes/mockups.scout-outreach'
 import { Route as MockupsStudioContentRouteImport } from './routes/mockups.studio-content'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
 import { Route as ModulesActivityRouteImport } from './routes/modules.activity'
@@ -37,6 +35,7 @@ import { Route as SettingsIntegrationsRouteImport } from './routes/settings.inte
 import { Route as SettingsIntelligenceRouteImport } from './routes/settings.intelligence'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsOrganizationRouteImport } from './routes/settings.organization'
+import { Route as SettingsOutcomesRouteImport } from './routes/settings.outcomes'
 import { Route as SettingsOwnershipRouteImport } from './routes/settings.ownership'
 import { Route as SettingsPeopleRouteImport } from './routes/settings.people'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
@@ -57,6 +56,7 @@ import { Route as ModulesProjectsProjectIdRouteImport } from './routes/modules.p
 import { Route as ModulesRoadmapIndexRouteImport } from './routes/modules.roadmap.index'
 import { Route as ModulesRoadmapRoadmapIdRouteImport } from './routes/modules.roadmap.$roadmapId'
 import { Route as ModulesScoutIndexRouteImport } from './routes/modules.scout.index'
+import { Route as ModulesScoutOutreachRouteImport } from './routes/modules.scout.outreach'
 import { Route as ModulesScoutSettingsRouteImport } from './routes/modules.scout.settings'
 import { Route as ModulesStewardIndexRouteImport } from './routes/modules.steward.index'
 import { Route as ModulesStewardAgentsRouteImport } from './routes/modules.steward.agents'
@@ -130,16 +130,6 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
   getParentRoute: () => AuthRoute,
-} as any)
-const MockupsOutcomesSettingsRoute = MockupsOutcomesSettingsRouteImport.update({
-  id: '/mockups/outcomes-settings',
-  path: '/mockups/outcomes-settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MockupsScoutOutreachRoute = MockupsScoutOutreachRouteImport.update({
-  id: '/mockups/scout-outreach',
-  path: '/mockups/scout-outreach',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const MockupsStudioContentRoute = MockupsStudioContentRouteImport.update({
   id: '/mockups/studio-content',
@@ -251,6 +241,11 @@ const SettingsOrganizationRoute = SettingsOrganizationRouteImport.update({
   path: '/organization',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsOutcomesRoute = SettingsOutcomesRouteImport.update({
+  id: '/outcomes',
+  path: '/outcomes',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsOwnershipRoute = SettingsOwnershipRouteImport.update({
   id: '/ownership',
   path: '/ownership',
@@ -351,6 +346,11 @@ const ModulesRoadmapRoadmapIdRoute = ModulesRoadmapRoadmapIdRouteImport.update({
 const ModulesScoutIndexRoute = ModulesScoutIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => ModulesScoutRoute,
+} as any)
+const ModulesScoutOutreachRoute = ModulesScoutOutreachRouteImport.update({
+  id: '/outreach',
+  path: '/outreach',
   getParentRoute: () => ModulesScoutRoute,
 } as any)
 const ModulesScoutSettingsRoute = ModulesScoutSettingsRouteImport.update({
@@ -648,8 +648,6 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
-  '/mockups/outcomes-settings': typeof MockupsOutcomesSettingsRoute
-  '/mockups/scout-outreach': typeof MockupsScoutOutreachRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
@@ -671,6 +669,7 @@ export interface FileRoutesByFullPath {
   '/settings/intelligence': typeof SettingsIntelligenceRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/organization': typeof SettingsOrganizationRoute
+  '/settings/outcomes': typeof SettingsOutcomesRoute
   '/settings/ownership': typeof SettingsOwnershipRoute
   '/settings/people': typeof SettingsPeopleRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -687,6 +686,7 @@ export interface FileRoutesByFullPath {
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
+  '/modules/scout/outreach': typeof ModulesScoutOutreachRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
@@ -750,8 +750,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
-  '/mockups/outcomes-settings': typeof MockupsOutcomesSettingsRoute
-  '/mockups/scout-outreach': typeof MockupsScoutOutreachRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
@@ -766,6 +764,7 @@ export interface FileRoutesByTo {
   '/settings/intelligence': typeof SettingsIntelligenceRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/organization': typeof SettingsOrganizationRoute
+  '/settings/outcomes': typeof SettingsOutcomesRoute
   '/settings/ownership': typeof SettingsOwnershipRoute
   '/settings/people': typeof SettingsPeopleRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -782,6 +781,7 @@ export interface FileRoutesByTo {
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
+  '/modules/scout/outreach': typeof ModulesScoutOutreachRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
   '/modules/steward/memory': typeof ModulesStewardMemoryRoute
@@ -846,8 +846,6 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
-  '/mockups/outcomes-settings': typeof MockupsOutcomesSettingsRoute
-  '/mockups/scout-outreach': typeof MockupsScoutOutreachRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
   '/modules/activity': typeof ModulesActivityRoute
@@ -869,6 +867,7 @@ export interface FileRoutesById {
   '/settings/intelligence': typeof SettingsIntelligenceRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/organization': typeof SettingsOrganizationRoute
+  '/settings/outcomes': typeof SettingsOutcomesRoute
   '/settings/ownership': typeof SettingsOwnershipRoute
   '/settings/people': typeof SettingsPeopleRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -885,6 +884,7 @@ export interface FileRoutesById {
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
   '/modules/roadmap/$roadmapId': typeof ModulesRoadmapRoadmapIdRoute
+  '/modules/scout/outreach': typeof ModulesScoutOutreachRoute
   '/modules/scout/settings': typeof ModulesScoutSettingsRoute
   '/modules/steward/agents': typeof ModulesStewardAgentsRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsRouteWithChildren
@@ -951,8 +951,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/auth/callback'
-    | '/mockups/outcomes-settings'
-    | '/mockups/scout-outreach'
     | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
@@ -974,6 +972,7 @@ export interface FileRouteTypes {
     | '/settings/intelligence'
     | '/settings/notifications'
     | '/settings/organization'
+    | '/settings/outcomes'
     | '/settings/ownership'
     | '/settings/people'
     | '/settings/profile'
@@ -990,6 +989,7 @@ export interface FileRouteTypes {
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
+    | '/modules/scout/outreach'
     | '/modules/scout/settings'
     | '/modules/steward/agents'
     | '/modules/steward/meetings'
@@ -1053,8 +1053,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/auth/callback'
-    | '/mockups/outcomes-settings'
-    | '/mockups/scout-outreach'
     | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
@@ -1069,6 +1067,7 @@ export interface FileRouteTypes {
     | '/settings/intelligence'
     | '/settings/notifications'
     | '/settings/organization'
+    | '/settings/outcomes'
     | '/settings/ownership'
     | '/settings/people'
     | '/settings/profile'
@@ -1085,6 +1084,7 @@ export interface FileRouteTypes {
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
+    | '/modules/scout/outreach'
     | '/modules/scout/settings'
     | '/modules/steward/agents'
     | '/modules/steward/memory'
@@ -1148,8 +1148,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/auth/callback'
-    | '/mockups/outcomes-settings'
-    | '/mockups/scout-outreach'
     | '/mockups/studio-content'
     | '/modules/$slug'
     | '/modules/activity'
@@ -1171,6 +1169,7 @@ export interface FileRouteTypes {
     | '/settings/intelligence'
     | '/settings/notifications'
     | '/settings/organization'
+    | '/settings/outcomes'
     | '/settings/ownership'
     | '/settings/people'
     | '/settings/profile'
@@ -1187,6 +1186,7 @@ export interface FileRouteTypes {
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
     | '/modules/roadmap/$roadmapId'
+    | '/modules/scout/outreach'
     | '/modules/scout/settings'
     | '/modules/steward/agents'
     | '/modules/steward/meetings'
@@ -1251,8 +1251,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
-  MockupsOutcomesSettingsRoute: typeof MockupsOutcomesSettingsRoute
-  MockupsScoutOutreachRoute: typeof MockupsScoutOutreachRoute
   MockupsStudioContentRoute: typeof MockupsStudioContentRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
   ModulesActivityRoute: typeof ModulesActivityRoute
@@ -1342,20 +1340,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
-    }
-    '/mockups/outcomes-settings': {
-      id: '/mockups/outcomes-settings'
-      path: '/mockups/outcomes-settings'
-      fullPath: '/mockups/outcomes-settings'
-      preLoaderRoute: typeof MockupsOutcomesSettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mockups/scout-outreach': {
-      id: '/mockups/scout-outreach'
-      path: '/mockups/scout-outreach'
-      fullPath: '/mockups/scout-outreach'
-      preLoaderRoute: typeof MockupsScoutOutreachRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/mockups/studio-content': {
       id: '/mockups/studio-content'
@@ -1511,6 +1495,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsOrganizationRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/outcomes': {
+      id: '/settings/outcomes'
+      path: '/outcomes'
+      fullPath: '/settings/outcomes'
+      preLoaderRoute: typeof SettingsOutcomesRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/ownership': {
       id: '/settings/ownership'
       path: '/ownership'
@@ -1649,6 +1640,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/modules/scout/'
       preLoaderRoute: typeof ModulesScoutIndexRouteImport
+      parentRoute: typeof ModulesScoutRoute
+    }
+    '/modules/scout/outreach': {
+      id: '/modules/scout/outreach'
+      path: '/outreach'
+      fullPath: '/modules/scout/outreach'
+      preLoaderRoute: typeof ModulesScoutOutreachRouteImport
       parentRoute: typeof ModulesScoutRoute
     }
     '/modules/scout/settings': {
@@ -2042,6 +2040,7 @@ interface SettingsRouteChildren {
   SettingsIntelligenceRoute: typeof SettingsIntelligenceRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsOrganizationRoute: typeof SettingsOrganizationRoute
+  SettingsOutcomesRoute: typeof SettingsOutcomesRoute
   SettingsOwnershipRoute: typeof SettingsOwnershipRoute
   SettingsPeopleRoute: typeof SettingsPeopleRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
@@ -2056,6 +2055,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsIntelligenceRoute: SettingsIntelligenceRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsOrganizationRoute: SettingsOrganizationRoute,
+  SettingsOutcomesRoute: SettingsOutcomesRoute,
   SettingsOwnershipRoute: SettingsOwnershipRoute,
   SettingsPeopleRoute: SettingsPeopleRoute,
   SettingsProfileRoute: SettingsProfileRoute,
@@ -2136,12 +2136,14 @@ const ModulesRoadmapRouteWithChildren = ModulesRoadmapRoute._addFileChildren(
 )
 
 interface ModulesScoutRouteChildren {
+  ModulesScoutOutreachRoute: typeof ModulesScoutOutreachRoute
   ModulesScoutSettingsRoute: typeof ModulesScoutSettingsRoute
   ModulesScoutIndexRoute: typeof ModulesScoutIndexRoute
   ModulesScoutProspectsProspectIdRoute: typeof ModulesScoutProspectsProspectIdRoute
 }
 
 const ModulesScoutRouteChildren: ModulesScoutRouteChildren = {
+  ModulesScoutOutreachRoute: ModulesScoutOutreachRoute,
   ModulesScoutSettingsRoute: ModulesScoutSettingsRoute,
   ModulesScoutIndexRoute: ModulesScoutIndexRoute,
   ModulesScoutProspectsProspectIdRoute: ModulesScoutProspectsProspectIdRoute,
@@ -2206,8 +2208,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
-  MockupsOutcomesSettingsRoute: MockupsOutcomesSettingsRoute,
-  MockupsScoutOutreachRoute: MockupsScoutOutreachRoute,
   MockupsStudioContentRoute: MockupsStudioContentRoute,
   ModulesSlugRoute: ModulesSlugRoute,
   ModulesActivityRoute: ModulesActivityRoute,

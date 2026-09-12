@@ -6,11 +6,18 @@ import { cn } from "@/lib/utils";
  * Single source of truth for Scout's local sections.
  *
  * The order is canonical and never reorders around the active view:
- * Ready · Movement · Needs a person · All · Watchlist · Settings.
+ * Ready · Movement · Needs a person · All · Watchlist · Outreach · Settings.
  */
-export type ScoutSection = "ready" | "movement" | "needs_person" | "all" | "watchlist" | "settings";
+export type ScoutSection =
+  | "ready"
+  | "movement"
+  | "needs_person"
+  | "all"
+  | "watchlist"
+  | "outreach"
+  | "settings";
 
-const BOARD_SECTIONS: { key: Exclude<ScoutSection, "settings">; label: string }[] = [
+const BOARD_SECTIONS: { key: Exclude<ScoutSection, "settings" | "outreach">; label: string }[] = [
   { key: "ready", label: "Ready" },
   { key: "movement", label: "Movement" },
   { key: "needs_person", label: "Needs a person" },
@@ -48,6 +55,13 @@ export function ScoutTabs({ active }: { active: ScoutSection }) {
           {entry.label}
         </Link>
       ))}
+      <Link
+        to="/modules/scout/outreach"
+        aria-current={active === "outreach" ? "page" : undefined}
+        className={tabClass(active === "outreach")}
+      >
+        Outreach
+      </Link>
       <Link
         to="/modules/scout/settings"
         aria-current={active === "settings" ? "page" : undefined}
