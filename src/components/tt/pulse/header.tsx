@@ -1,43 +1,11 @@
 /**
- * Pulse header: breadcrumb, quiet utilities, and one compact statement band
- * with a radar mark. Signals arrive from across the suite; the mark says that
- * without asking for attention itself.
+ * Pulse header: quiet utilities and a compact statement band. This introduces
+ * the deeper signal field without competing with the revenue cockpit above it.
  */
 
 import { Link } from "@tanstack/react-router";
 import { MoreHorizontal, Share2 } from "lucide-react";
 import { useState } from "react";
-
-import { AmbientRule, AmbientSurface } from "@/components/tt/ambient";
-
-function Radar() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 220 150"
-      className="hidden h-[132px] w-[220px] shrink-0 text-royal sm:block"
-    >
-      {[26, 42, 58].map((r) => (
-        <circle
-          key={r}
-          cx="110"
-          cy="75"
-          r={r}
-          fill="none"
-          stroke="currentColor"
-          strokeOpacity="0.18"
-        />
-      ))}
-      <circle cx="110" cy="75" r="4" fill="currentColor" />
-      <circle cx="152" cy="55" r="3.5" className="fill-royal" />
-      <circle cx="80" cy="47" r="3" className="fill-warning" />
-      <circle cx="66" cy="104" r="3.5" className="fill-destructive" />
-      <circle cx="168" cy="96" r="3" className="fill-success" />
-      <circle cx="128" cy="30" r="2.5" className="fill-success" />
-      <circle cx="96" cy="76" r="2.5" className="fill-muted-foreground" />
-    </svg>
-  );
-}
 
 export function PulseHeader({
   lastUpdated,
@@ -62,7 +30,7 @@ export function PulseHeader({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 border-t border-border pt-6">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
         <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex min-w-0 items-center gap-2 text-[13px] text-muted-foreground">
@@ -76,23 +44,25 @@ export function PulseHeader({
           </ol>
         </nav>
 
-        <div className="relative flex shrink-0 items-center gap-2">
+        <div className="relative flex shrink-0 items-center gap-1 sm:gap-2">
           <button
             type="button"
             onClick={() => void share()}
-            className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-[13px] text-foreground transition-colors hover:bg-secondary"
+            aria-label={copied ? "Pulse link copied" : "Share pulse"}
+            className="flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-secondary sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2 sm:text-[13px]"
           >
             <Share2 className="size-4" />
-            {copied ? "Link copied" : "Share pulse"}
+            <span className="hidden sm:inline">{copied ? "Link copied" : "Share pulse"}</span>
           </button>
           <button
             type="button"
             aria-haspopup="menu"
             aria-expanded={menu}
             onClick={() => setMenu((v) => !v)}
-            className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-[13px] text-foreground transition-colors hover:bg-secondary"
+            aria-label="More Pulse actions"
+            className="flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-secondary sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2 sm:text-[13px]"
           >
-            More actions
+            <span className="hidden sm:inline">More actions</span>
             <MoreHorizontal className="size-4" />
           </button>
           {menu ? (
@@ -124,27 +94,21 @@ export function PulseHeader({
         </div>
       </div>
 
-      <p className="text-right text-xs text-muted-foreground">
-        {refreshing ? "Reading again." : `Last updated ${lastUpdated}`}
-      </p>
-
-      <header className="tt-rise overflow-hidden rounded-2xl border border-border bg-card">
-        <AmbientRule appId="pulse" />
-        <AmbientSurface appId="pulse" className="px-6 py-7 sm:px-8">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-6">
-            <div className="min-w-0">
-              <p className="tt-eyebrow text-royal">What you&rsquo;re seeing</p>
-              <h1 className="tt-display mt-3 max-w-[20ch] text-[30px] text-foreground sm:text-[36px]">
-                What the system noticed.
-              </h1>
-              <p className="mt-3 max-w-reading text-sm text-muted-foreground">
-                Signals worth your attention. Each one comes with context, implications, and where
-                the work happens.
-              </p>
-            </div>
-            <Radar />
+      <header className="border-b border-border pb-5">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
+          <div className="min-w-0">
+            <p className="tt-eyebrow text-royal">What you&rsquo;re seeing</p>
+            <h1 className="tt-display mt-2 text-[26px] text-foreground sm:text-[30px]">
+              What the system noticed.
+            </h1>
+            <p className="mt-2 max-w-reading text-[13px] text-muted-foreground">
+              Signals worth attention, routed to the room where the work belongs.
+            </p>
           </div>
-        </AmbientSurface>
+          <p className="hidden text-right text-xs text-muted-foreground sm:block">
+            {refreshing ? "Reading again." : `Last updated ${lastUpdated}`}
+          </p>
+        </div>
       </header>
     </div>
   );
