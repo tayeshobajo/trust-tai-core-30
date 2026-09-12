@@ -16,6 +16,7 @@ import { PulseHeader } from "@/components/tt/pulse/header";
 import { PulseRightRail } from "@/components/tt/pulse/right-rail";
 import { PulseSidebar } from "@/components/tt/pulse/sidebar";
 import { PulseSignalGroup } from "@/components/tt/pulse/signal-group";
+import { TodayCommandCenter } from "@/components/tt/revenue-ops/today-command-center";
 import { EmptyState } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
 import { deriveSignals } from "@/data/intelligence/derive";
@@ -203,6 +204,8 @@ function Pulse({ identity }: { identity: WorkspaceIdentity }) {
   return (
     <AppShell identity={identity} sidebar={<PulseSidebar counts={counts} />}>
       <div className="space-y-8">
+        <TodayCommandCenter organizationId={organizationId} />
+
         <PulseHeader
           lastUpdated={lastUpdated}
           refreshing={suite.isFetching}
