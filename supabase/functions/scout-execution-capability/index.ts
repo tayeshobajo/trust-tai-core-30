@@ -592,15 +592,118 @@ async function handleDraftIntro(req: Request): Promise<Response> {
   });
 }
 
+/**
+ * GET /scout/prospects?status=discovered&unscored=1&limit=50
+ * Read-only prospect listing so the routine can see its own work queue.
+ * Requires: scout.read. Org-pinned; trimmed fields only.
+ */
+async function handleProspects(req: Request): Promise<Response> {
+  assertExecutionKey(req);
+  const agent = await validateAgent(executionAgentId(req), "scout.read");
+  const url = new URL(req.url);
+  const status = url.searchParams.get("status");
+  const unscored = url.searchParams.get("unscored") === "1";
+  const limit = Math.min(Number(url.searchParams.get("limit")) || 50, 200);
+
+  let query = supabase
+    .from("prospects")
+    .select("id, company_name, website_url, status, fit_score, source, created_at, inferred")
+    .eq("organization_id", agent.organization_id)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+  if (status) query = query.eq("status", status);
+  if (unscored) query = query.is("fit_score", null);
+
+  const { data, error } = await query;
+  if (error) throw Object.assign(new Error(error.message), { status: 500 });
+  return json({ prospects: data ?? [], count: (data ?? []).length });
+}
+
+/**
+ * GET /scout/templates
+ * Active intro templates, so the routine can address /scout/draft-intro.
+ * Requires: scout.read.
+ */
+async function handleTemplates(req: Request): Promise<Response> {
+  assertExecutionKey(req);
+  const agent = await validateAgent(executionAgentId(req), "scout.read");
+  const { data, error } = await supabase
+    .from("scout_intro_templates")
+    .select("id, name, subject, active")
+    .eq("organization_id", agent.organization_id)
+    .eq("active", true)
+    .order("created_at", { ascending: true });
+  if (error) throw Object.assign(new Error(error.message), { status: 500 });
+  return json({ templates: data ?? [], count: (data ?? []).length });
+}
+
+/**
+ * POST /scout/evaluate
+ * Write an ICP evaluation onto an EXISTING prospect: fit_score + rationale.
+ * Requires: scout.evaluate.
+ *
+ * Body: { prospect_id, fit_score (0-100), summary, why_it_fits }
+ *
+ * Governance: never touches status — status changes happen only as a side
+ * effect of /scout/draft-intro or by a human. The rationale is merged into
+ * `inferred` with evaluated_by/evaluated_at provenance.
+ */
+async function handleEvaluate(req: Request): Promise<Response> {
+  assertExecutionKey(req);
+  const agent = await validateAgent(executionAgentId(req), "scout.evaluate");
+  const body = (await req.json()) as Record<string, unknown>;
+  const prospectId = typeof body.prospect_id === "string" ? body.prospect_id.trim() : "";
+  const fitScore = typeof body.fit_score === "number" ? body.fit_score : NaN;
+  const summary = typeof body.summary === "string" ? body.summary.trim() : "";
+  const whyItFits = typeof body.why_it_fits === "string" ? body.why_it_fits.trim() : "";
+
+  if (!prospectId) return fail("prospect_id is required.", 400);
+  if (!Number.isFinite(fitScore) || fitScore < 0 || fitScore > 100) {
+    return fail("fit_score must be a number from 0 to 100.", 400);
+  }
+  if (!whyItFits) {
+    return fail("why_it_fits is required — a score with no rationale is a guess.", 400);
+  }
+
+  const { data: prospect, error: readError } = await supabase
+    .from("prospects")
+    .select("id, inferred, status")
+    .eq("id", prospectId)
+    .eq("organization_id", agent.organization_id)
+    .maybeSingle();
+  if (readError) throw Object.assign(new Error(readError.message), { status: 500 });
+  if (!prospect) return fail("Prospect not found in this organization.", 404);
+
+  const inferred = (prospect.inferred && typeof prospect.inferred === "object"
+    ? prospect.inferred
+    : {}) as Record<string, unknown>;
+  const merged = {
+    ...inferred,
+    ...(summary ? { summary } : {}),
+    why_it_fits: whyItFits,
+    evaluated_by: agent.paperclip_agent_id,
+    evaluated_at: new Date().toISOString(),
+  };
+
+  const { error: updateError } = await supabase
+    .from("prospects")
+    .update({ fit_score: fitScore, inferred: merged, updated_at: new Date().toISOString() })
+    .eq("id", prospectId)
+    .eq("organization_id", agent.organization_id);
+  if (updateError) throw Object.assign(new Error(updateError.message), { status: 500 });
+
+  return json({ prospect_id: prospectId, fit_score: fitScore, status: prospect.status });
+}
+
 // ------------------------------------------------------------- router
 
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   // Accept both /scout-execution-capability/scout/<cap> and /scout/<cap>
-  const match = url.pathname.match(/\/scout\/(pipeline|icp|prospect|draft-intro)\/?$/);
+  const match = url.pathname.match(/\/scout\/(pipeline|icp|prospect|prospects|templates|evaluate|draft-intro)\/?$/);
   if (!match) {
     return fail(
-      "Not found. Use /scout/pipeline, /scout/icp, /scout/prospect, or /scout/draft-intro.",
+      "Not found. Use /scout/pipeline, /scout/icp, /scout/prospect, /scout/prospects, /scout/templates, /scout/evaluate, or /scout/draft-intro.",
       404,
     );
   }
@@ -611,6 +714,9 @@ Deno.serve(async (req: Request) => {
     if (capability === "pipeline" && method === "GET") return await handlePipeline(req);
     if (capability === "icp" && method === "GET") return await handleIcp(req);
     if (capability === "prospect" && method === "POST") return await handleProspect(req);
+    if (capability === "prospects" && method === "GET") return await handleProspects(req);
+    if (capability === "templates" && method === "GET") return await handleTemplates(req);
+    if (capability === "evaluate" && method === "POST") return await handleEvaluate(req);
     if (capability === "draft-intro" && method === "POST") return await handleDraftIntro(req);
     return fail(`Method ${method} not allowed for /scout/${capability}.`, 405);
   } catch (error) {
