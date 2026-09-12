@@ -99,6 +99,7 @@ import { Route as ModulesScoutProspectsProspectIdRouteImport } from './routes/mo
 import { Route as ModulesStewardMeetingsIndexRouteImport } from './routes/modules.steward.meetings.index'
 import { Route as ModulesStewardMeetingsConversationIdRouteImport } from './routes/modules.steward.meetings.$conversationId'
 import { Route as ModulesWebsiteSubmissionsSubmissionIdRouteImport } from './routes/modules.website_.submissions.$submissionId'
+import { Route as ApiInternalExecutionScoutDraftIntroRouteImport } from './routes/api/internal/execution/scout.draft-intro'
 import { Route as ApiInternalExecutionScoutIcpRouteImport } from './routes/api/internal/execution/scout.icp'
 import { Route as ApiInternalExecutionScoutPipelineRouteImport } from './routes/api/internal/execution/scout.pipeline'
 import { Route as ApiInternalExecutionScoutProspectRouteImport } from './routes/api/internal/execution/scout.prospect'
@@ -577,6 +578,12 @@ const ModulesWebsiteSubmissionsSubmissionIdRoute =
     path: '/modules/website/submissions/$submissionId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiInternalExecutionScoutDraftIntroRoute =
+  ApiInternalExecutionScoutDraftIntroRouteImport.update({
+    id: '/api/internal/execution/scout/draft-intro',
+    path: '/api/internal/execution/scout/draft-intro',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiInternalExecutionScoutIcpRoute =
   ApiInternalExecutionScoutIcpRouteImport.update({
     id: '/api/internal/execution/scout/icp',
@@ -727,6 +734,7 @@ export interface FileRoutesByFullPath {
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
+  '/api/internal/execution/scout/draft-intro': typeof ApiInternalExecutionScoutDraftIntroRoute
   '/api/internal/execution/scout/icp': typeof ApiInternalExecutionScoutIcpRoute
   '/api/internal/execution/scout/pipeline': typeof ApiInternalExecutionScoutPipelineRoute
   '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
@@ -820,6 +828,7 @@ export interface FileRoutesByTo {
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings': typeof ModulesStewardMeetingsIndexRoute
+  '/api/internal/execution/scout/draft-intro': typeof ApiInternalExecutionScoutDraftIntroRoute
   '/api/internal/execution/scout/icp': typeof ApiInternalExecutionScoutIcpRoute
   '/api/internal/execution/scout/pipeline': typeof ApiInternalExecutionScoutPipelineRoute
   '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
@@ -923,6 +932,7 @@ export interface FileRoutesById {
   '/modules/steward/meetings/$conversationId': typeof ModulesStewardMeetingsConversationIdRoute
   '/modules/website_/submissions/$submissionId': typeof ModulesWebsiteSubmissionsSubmissionIdRoute
   '/modules/steward/meetings/': typeof ModulesStewardMeetingsIndexRoute
+  '/api/internal/execution/scout/draft-intro': typeof ApiInternalExecutionScoutDraftIntroRoute
   '/api/internal/execution/scout/icp': typeof ApiInternalExecutionScoutIcpRoute
   '/api/internal/execution/scout/pipeline': typeof ApiInternalExecutionScoutPipelineRoute
   '/api/internal/execution/scout/prospect': typeof ApiInternalExecutionScoutProspectRoute
@@ -1027,6 +1037,7 @@ export interface FileRouteTypes {
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website/submissions/$submissionId'
     | '/modules/steward/meetings/'
+    | '/api/internal/execution/scout/draft-intro'
     | '/api/internal/execution/scout/icp'
     | '/api/internal/execution/scout/pipeline'
     | '/api/internal/execution/scout/prospect'
@@ -1120,6 +1131,7 @@ export interface FileRouteTypes {
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website/submissions/$submissionId'
     | '/modules/steward/meetings'
+    | '/api/internal/execution/scout/draft-intro'
     | '/api/internal/execution/scout/icp'
     | '/api/internal/execution/scout/pipeline'
     | '/api/internal/execution/scout/prospect'
@@ -1222,6 +1234,7 @@ export interface FileRouteTypes {
     | '/modules/steward/meetings/$conversationId'
     | '/modules/website_/submissions/$submissionId'
     | '/modules/steward/meetings/'
+    | '/api/internal/execution/scout/draft-intro'
     | '/api/internal/execution/scout/icp'
     | '/api/internal/execution/scout/pipeline'
     | '/api/internal/execution/scout/prospect'
@@ -1287,6 +1300,7 @@ export interface RootRouteChildren {
   ApiPublicZenmodeImportRoute: typeof ApiPublicZenmodeImportRoute
   ApiPublicZenmodeLookupRoute: typeof ApiPublicZenmodeLookupRoute
   ModulesWebsiteSubmissionsSubmissionIdRoute: typeof ModulesWebsiteSubmissionsSubmissionIdRoute
+  ApiInternalExecutionScoutDraftIntroRoute: typeof ApiInternalExecutionScoutDraftIntroRoute
   ApiInternalExecutionScoutIcpRoute: typeof ApiInternalExecutionScoutIcpRoute
   ApiInternalExecutionScoutPipelineRoute: typeof ApiInternalExecutionScoutPipelineRoute
   ApiInternalExecutionScoutProspectRoute: typeof ApiInternalExecutionScoutProspectRoute
@@ -1931,6 +1945,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesWebsiteSubmissionsSubmissionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/internal/execution/scout/draft-intro': {
+      id: '/api/internal/execution/scout/draft-intro'
+      path: '/api/internal/execution/scout/draft-intro'
+      fullPath: '/api/internal/execution/scout/draft-intro'
+      preLoaderRoute: typeof ApiInternalExecutionScoutDraftIntroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/internal/execution/scout/icp': {
       id: '/api/internal/execution/scout/icp'
       path: '/api/internal/execution/scout/icp'
@@ -2235,6 +2256,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicZenmodeLookupRoute: ApiPublicZenmodeLookupRoute,
   ModulesWebsiteSubmissionsSubmissionIdRoute:
     ModulesWebsiteSubmissionsSubmissionIdRoute,
+  ApiInternalExecutionScoutDraftIntroRoute:
+    ApiInternalExecutionScoutDraftIntroRoute,
   ApiInternalExecutionScoutIcpRoute: ApiInternalExecutionScoutIcpRoute,
   ApiInternalExecutionScoutPipelineRoute:
     ApiInternalExecutionScoutPipelineRoute,

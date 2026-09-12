@@ -88,6 +88,54 @@ export type IcpProfileRow = {
   updated_at: string;
 };
 
+export type CommsRelationshipRow = {
+  id: string;
+  organization_id: string;
+  contact_id: string | null;
+  client_id: string | null;
+  prospect_id: string | null;
+  full_name: string;
+  company_name: string | null;
+  email: string | null;
+  stage: string;
+  source: string;
+  next_action: string | null;
+  metadata: ExecutionJson;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CommsDraftRow = {
+  id: string;
+  organization_id: string;
+  relationship_id: string;
+  thread_id: string | null;
+  intent: string;
+  register: string;
+  subject: string | null;
+  body: string;
+  voice_version: number;
+  review_state: string;
+  rationale: ExecutionJson;
+  evidence: unknown;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ScoutIntroTemplateRow = {
+  id: string;
+  organization_id: string;
+  name: string;
+  subject: string | null;
+  body: string;
+  active: boolean;
+  send_window: ExecutionJson;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type TableContract<Row> = {
   Row: Row;
   Insert: Partial<Row>;
@@ -104,6 +152,9 @@ export type ExecutionDatabase = {
       paperclip_sync_state: TableContract<PaperclipSyncStateRow>;
       prospects: TableContract<ProspectRow>;
       icp_profiles: TableContract<IcpProfileRow>;
+      comms_relationships: TableContract<CommsRelationshipRow>;
+      comms_drafts: TableContract<CommsDraftRow>;
+      scout_intro_templates: TableContract<ScoutIntroTemplateRow>;
     };
     Views: Record<never, never>;
     Functions: Record<never, never>;
