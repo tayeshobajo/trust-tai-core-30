@@ -1,31 +1,22 @@
-# Pulse Next isolated mockup
+# Pulse hierarchy and polish pass
 
-Build a standalone `/mockups/pulse-next` prototype that uses illustrative local data and existing Trust Tai visual primitives. Production Pulse, its route, projection logic, data sources, and other rooms remain untouched.
+## Outcome
+Keep the existing production Pulse structure, data reads, and routing behavior while compressing the cockpit so revenue truth and the two action queues are immediately scannable at desktop and correctly ordered on mobile.
 
-## Experience
+## Changes
+- Refactor the existing Revenue Ops presentation into one full-width revenue strip: MRR truth and progress on the left, three compact activity meters on the right, with unreadable/unknown states kept distinct from measured zero.
+- Recompose the existing Revenue Ops read below that strip into the established two-column layout: recent movement and compact operating notes in the main column; `Needs Tai` and `Captain Watch` as one consistent 320px rail.
+- Tighten both queue panels to shared spacing, badges, dividers, and capped item counts. Preserve the existing click-through routes and human-approval wording; add only a quiet view-all route where the underlying destination already exists.
+- Keep the existing Pulse header, signal derivation, filters, signal groups, feedback, decisions, and donut summary. Lower their visual priority and place the signal field beneath the cockpit without changing behavior.
+- At 375px, render revenue strip → Needs Tai → Captain Watch → movement/notes → signal field. At 1440px, retain full-width revenue followed by main column plus 320px rail.
 
-- Use the existing Trust Tai shell so the mockup feels native, but keep it unlinked from production navigation.
-- Open with a compact Pulse header and freshness line, then place **Needs Tai** immediately beneath it as the unmistakable primary surface.
-- Show 3–5 concise decision rows. Each row carries the implication, consequence, owning room/entity, and one mock action without making Pulse appear to execute the work.
-- Compress revenue and activity truth into one horizontal **Business pulse** editorial strip with an explicit unreadable-source warning and honest unknown handling.
-- Follow with **What the system noticed** as a secondary awareness field: a subdued total, severity filters, four compact groups, observed evidence separated from Pulse’s interpretation, and clear owning-room destinations.
-- End with a lightweight recent-movement timeline that supports the read without competing with it.
-
-## Visual treatment
-
-- Pale cloud canvas, warm white editorial surfaces, deep navy type, thin borders, restrained Pulse mulberry and royal accents.
-- Avoid nested cards and dashboard tiles. Use ruled rows, subtle section bands, natural-language headings, and only a few compact chips where status must scan quickly.
-- Keep the queue and operating read within the first laptop viewport; stack rows and supporting metadata cleanly on smaller screens.
-
-## Technical scope
-
-- Add only new files for the route and mockup-local components/fixtures under `src/routes/` and `src/components/mockups/pulse-next/`.
-- Reuse `AppShell`, Trust Tai button primitives, icons, and semantic design tokens; add no backend, schema, production data import, or business logic.
-- All controls are local visual-demo interactions only. Actions will indicate their owning room but will not navigate into or modify production workflows.
-- Add route-specific noindex metadata.
+## Technical boundaries
+- Reuse `TodayCommandCenter`, the current Pulse route, Pulse signal components, and existing semantic tokens.
+- Change presentation/component composition only. No schema, backend, source, severity, projection, approval, or execution changes.
+- Do not hardcode displayed counts; all values continue to come from `RevenueOpsToday` and the existing Pulse projection.
+- Keep inaccessible sources explicit (`not readable`, `not connected`, or equivalent), never represented as zero.
 
 ## Verification
-
-- Check desktop and mobile renderings, including first-viewport hierarchy and stacked row behavior.
-- Confirm no horizontal overflow, overlaps, runtime console errors, or inaccessible controls.
-- Run TypeScript checking, lint for new files, relevant tests if any, and the project build.
+- Add focused rendering/data-state coverage where practical for readable zero versus unreadable source and queue ordering.
+- Run TypeScript checks, changed-file lint, relevant tests, full test suite, and build.
+- Inspect `/modules/pulse` at 1440px and 375px when authentication is available; otherwise report the exact visual limitation honestly.
