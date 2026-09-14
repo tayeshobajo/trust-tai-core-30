@@ -1,3 +1,13 @@
+-- SUPERSEDED — do not apply.
+--
+-- This proposal was reviewed, hardened by Codex and applied to the shared
+-- project as migration `comms_review_delivery_hardened`. The exact applied
+-- text lives in:
+--   docs/migrations/20260914170000_comms_review_delivery_hardened.sql
+--
+-- This file was never applied on its own and is kept only as the record of
+-- what was proposed before review. Nothing here should be run.
+--
 -- PROPOSED — NOT APPLIED. For Codex review.
 --
 -- Slice 3 completion: bind a review to the draft it reviewed, bind an
