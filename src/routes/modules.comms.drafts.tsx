@@ -1,33 +1,44 @@
 /**
  * Drafts & Reviews.
  *
- * One page for writing that has not gone anywhere yet: the drafts held at the
- * human boundary, and the review records that govern them. A new draft of a
- * stated kind starts here too. Nothing on this page sends.
+ * One page for writing that has not gone anywhere yet. Selection lives in the
+ * address, so the same record comes back after a reload. Nothing here sends
+ * without the governed approval.
  */
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/tt/app-shell";
-import { CommsTabs, NEW_DRAFT_LABEL, type NewDraftKind } from "@/components/tt/comms/comms-tabs";
-import { DraftQueue } from "@/components/tt/comms/draft-queue";
-import { ReviewWorkspace } from "@/components/tt/comms/review-workspace";
+import { CommsTabs } from "@/components/tt/comms/comms-tabs";
+import {
+  DraftsWorkspace,
+  DRAFTS_FILTERS,
+  type DraftsFilter,
+  type DraftsSelection,
+} from "@/components/tt/comms/drafts-workspace";
 import { PageHeader } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
+import { DRAFT_KINDS, type DraftKind } from "@/domain/comms-draft-kind";
 
 const TITLE = "Drafts & Reviews · Comms · Trust Tai OS";
 const DESCRIPTION =
-  "Messages, emails and proposals that have not been sent: what is waiting on a review, and the review record that governs each one.";
-
-const KINDS: NewDraftKind[] = ["message", "email", "proposal"];
+  "Messages, emails and proposals that have not been sent: what is waiting on you, and the one review record that governs each of them.";
 
 export const Route = createFileRoute("/modules/comms/drafts")({
-  validateSearch: (search: Record<string, unknown>): { new?: NewDraftKind; session?: string } => {
-    const kind = typeof search["new"] === "string" ? search["new"] : "";
-    const session = typeof search["session"] === "string" ? search["session"].trim() : "";
+  validateSearch: (search: Record<string, unknown>): DraftsSelection => {
+    const text = (key: string) =>
+      typeof search[key] === "string" ? (search[key] as string).trim() : "";
+    const kind = text("new");
+    const filter = text("filter");
+    const draft = text("draft");
+    const session = text("session");
     return {
-      ...(KINDS.includes(kind as NewDraftKind) ? { new: kind as NewDraftKind } : {}),
       ...(session ? { session } : {}),
+      ...(draft ? { draft } : {}),
+      ...(DRAFTS_FILTERS.includes(filter as DraftsFilter)
+        ? { filter: filter as DraftsFilter }
+        : {}),
+      ...(DRAFT_KINDS.includes(kind as DraftKind) ? { new: kind as DraftKind } : {}),
     };
   },
   head: () => ({
@@ -45,28 +56,27 @@ export const Route = createFileRoute("/modules/comms/drafts")({
 });
 
 function DraftsRoute() {
-  const { new: kind, session } = Route.useSearch();
+  const selection = Route.useSearch();
+  const navigate = useNavigate();
   return (
     <WorkspaceGate appId="comms">
       {(identity) => (
         <AppShell identity={identity}>
-          <div className="space-y-8">
+          <div className="space-y-5">
             <PageHeader
               eyebrow="Comms"
               title="Drafts & Reviews"
-              supporting="Writing that has not gone anywhere yet, and the one review record each piece has to clear."
+              supporting="Writing that has not gone anywhere yet, and the one review each piece has to clear."
               appId="comms"
             />
             <CommsTabs active="drafts" />
-            {kind ? (
-              <p className="rounded-xl border border-border px-4 py-3 text-[13px] text-muted-foreground">
-                Starting a new <span className="text-foreground">{NEW_DRAFT_LABEL[kind]}</span>. Use
-                the intake below: paste what you are responding to, then your draft. Structured
-                proposal sections are not built yet — for now a proposal is written as text.
-              </p>
-            ) : null}
-            <DraftQueue identity={identity} />
-            <ReviewWorkspace identity={identity} {...(session ? { openSessionId: session } : {})} />
+            <DraftsWorkspace
+              identity={identity}
+              selection={selection}
+              onSelect={(next) =>
+                void navigate({ to: "/modules/comms/drafts", search: next, replace: false })
+              }
+            />
           </div>
         </AppShell>
       )}
