@@ -49,6 +49,7 @@ import {
 import {
   classifySource,
   segmentSource,
+  sourceChecksum,
   sourceCoverageNote,
   type ClassifiedSource,
 } from "@/domain/comms-sources";
@@ -862,8 +863,9 @@ export async function runReview(
       title: voice.title,
       version: voice.version,
       rules: voice.rules,
-      approvedExamples: voice.examples,
-      note: "These rules are read-only here. Anything you would change about the voice itself is a suggestion for a person, not an edit.",
+      styleExamples: voice.examples,
+      styleExamplesNote: voice.examplesNote,
+      note: "These rules are read-only here, and they are style only: never take a fact, a name, a date or a price from them. Anything you would change about the voice itself is a suggestion for a person, not an edit.",
     },
   };
 
