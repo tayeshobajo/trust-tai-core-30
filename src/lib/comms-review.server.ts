@@ -55,7 +55,13 @@ import {
   ProviderCallFailedError,
   ProviderNotConfiguredError,
   runtimeModelCaller,
+  runtimeProviderStatus,
 } from "@/lib/intelligence-runtime.server";
+import {
+  diagnosticStages,
+  diagnosticsLogLine,
+  providerDiagnostics,
+} from "@/domain/comms-provider-diagnostics";
 
 import {
   classifySource,
