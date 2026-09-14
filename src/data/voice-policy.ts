@@ -154,8 +154,9 @@ export interface VoiceCheckOptions {
  */
 export function checkVoice(input: string, options: VoiceCheckOptions): VoiceVerdict {
   const requireSignoff = options.requireSignoff ?? true;
+  const signoff = options.signoff?.trim() || EMAIL_SIGNOFF;
   let text = repairVoice(input);
-  if (requireSignoff) text = ensureSignoff(text);
+  if (requireSignoff) text = ensureSignoff(text, signoff);
 
   const violations: VoiceViolation[] = [];
   const add = (ruleId: VoiceRuleId, excerpt: string) => {
@@ -188,9 +189,10 @@ export function checkVoice(input: string, options: VoiceCheckOptions): VoiceVerd
   const long = sentences.find((entry) => entry.split(/\s+/).length > LONG_SENTENCE_WORDS);
   if (long) add("short_cadence", `${long.slice(0, 60)}…`);
 
-  if (requireSignoff && !/Trust,\s*\n\s*Tai/.test(input)) {
-    add("signoff", "Missing Trust, Tai");
+  if (requireSignoff && !input.replace(/\s+/g, " ").includes(signoff.replace(/\s+/g, " "))) {
+    add("signoff", `Missing ${signoff.replace(/\s+/g, " ")}`);
   }
+
 
   return {
     text,
