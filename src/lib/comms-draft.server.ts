@@ -969,10 +969,12 @@ on the thread, and close.`,
     }
   }
 
-  /* The closing belongs to whoever is writing. With no known author there is
-     no honest name to sign, so the draft stays unsigned and the voice rule
-     for a signoff is not applied to somebody else's name. */
-  const signoff = signoffFor(input.sender ?? null);
+  /* The closing belongs to whoever is writing. With a known author but no
+     usable name there is no honest signature, so the draft stays unsigned
+     rather than borrowing somebody else's. Callers that name no author at
+     all are drafting as Tai, which is the historical default. */
+  const signoff = input.sender === undefined ? EMAIL_SIGNOFF : signoffFor(input.sender);
+
   const verdict = checkVoice(body, {
     register: input.register,
     requireSignoff: Boolean(signoff),
