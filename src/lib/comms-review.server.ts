@@ -71,6 +71,13 @@ import {
 } from "@/domain/comms-sources";
 import { sha256 } from "@/domain/sha256";
 import { readDraftKind, type DraftKind } from "@/domain/comms-draft-kind";
+import type { ProposalSections } from "@/domain/comms-proposal";
+import {
+  readStructuredSource,
+  structuredProposalSource,
+  validateProposalSections,
+} from "@/domain/comms-proposal-source";
+
 import {
   lexicalHint,
   obligationsFromSource,
@@ -237,6 +244,10 @@ function toVersion(row: Row): ReviewVersion {
     body: str(row["body"]),
     origin: (str(row["origin"]) || "intake") as ReviewVersion["origin"],
     authorUserId: nullableStr(row["author_user_id"]),
+    /* Null means the structure was never recorded for this version — either
+       it was written as free text, or the column does not exist here. It is
+       never inferred back from the words. */
+    structuredSource: readStructuredSource(row["structured_source"]),
     createdAt: str(row["created_at"]),
   };
 }
@@ -356,21 +367,86 @@ export interface CreateReviewInput {
   senderIdentity?: string;
   /** Message, email or proposal. Stored when the column exists. */
   kind?: DraftKind;
+  /**
+   * The validated sections a proposal was written as. When present the words
+   * are rendered from these, server-side; the browser's text is never taken
+   * as the thing reviewed.
+   */
+  sections?: ProposalSections;
 }
 
 /**
- * Postgres says 42703 when a column does not exist. Until the delivery
- * migration is applied the binding columns are absent; a review still opens,
- * and the send gate still refuses, because an unbound review proves nothing.
+ * Whether a write failed because a named column is not in this database.
+ *
+ * Postgres says 42703 and PostgREST says PGRST204 for the same absence, and
+ * both name the column. A caller must say which column it is prepared to do
+ * without: a different missing column is a real fault and must surface, not
+ * be retried away.
  */
-function missingColumn(error: { code?: string; message?: string } | null | undefined): boolean {
+function missingColumn(
+  error: { code?: string; message?: string; details?: string } | null | undefined,
+  column?: string,
+): boolean {
   if (!error) return false;
-  if (error.code === "42703") return true;
-  return /column .* does not exist/i.test(error.message ?? "");
+  const text = `${error.message ?? ""} ${error.details ?? ""}`;
+  const absence =
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    /column .* does not exist/i.test(text) ||
+    /could not find the '.*' column/i.test(text);
+  if (!absence) return false;
+  if (!column) return true;
+  /* Only the column this caller named. Anything else is a real mismatch. */
+  return new RegExp(`\\b${column}\\b`, "i").test(text);
 }
 
 function fail(message: string): never {
   throw new ReviewFailure("write_failed", message);
+}
+
+/**
+ * The words that will actually be reviewed.
+ *
+ * When a draft was written as sections, the text is rendered here from those
+ * sections. The browser's rendering is never stored as the reviewed words: a
+ * mismatch would mean the structure and the text could disagree, and an audit
+ * could no longer rebuild one from the other.
+ */
+function canonicalBody(body: string, sections?: ProposalSections): string {
+  return sections ? structuredProposalSource(sections).renderedText : body;
+}
+
+/**
+ * Insert a version, keeping its structure with it when the database can hold
+ * it. If the structure column is absent the words are still recorded, and the
+ * caller is told the structure was not — never that everything was stored.
+ */
+async function insertVersion(
+  writer: ReturnType<typeof writerClient>,
+  payload: Record<string, unknown>,
+  sections: ProposalSections | undefined,
+): Promise<{ row: Row | null; structurePersisted: boolean }> {
+  const structure = sections ? structuredProposalSource(sections) : null;
+  if (structure) {
+    const withStructure = await writer
+      .from("comms_review_versions")
+      .insert({ ...payload, structured_source: structure } as never)
+      .select("*")
+      .maybeSingle();
+    if (!withStructure.error && withStructure.data) {
+      return { row: withStructure.data as Row, structurePersisted: true };
+    }
+    if (!missingColumn(withStructure.error, "structured_source")) {
+      return { row: null, structurePersisted: false };
+    }
+  }
+  const plain = await writer
+    .from("comms_review_versions")
+    .insert(payload as never)
+    .select("*")
+    .maybeSingle();
+  if (plain.error || !plain.data) return { row: null, structurePersisted: false };
+  return { row: plain.data as Row, structurePersisted: false };
 }
 
 /**
@@ -428,6 +504,12 @@ export async function createReviewSession(
   boundToDraft: boolean;
   /** False when this workspace cannot yet store what kind of draft this is. */
   kindPersisted: boolean;
+  /**
+   * True only when a proposal's sections were actually stored with the
+   * version. False means the words are on record but the structure they came
+   * from is not, so they cannot be rebuilt from it.
+   */
+  structurePersisted: boolean;
 }> {
   const caller = await identify(token, input.organizationId);
   const writer = writerClient();
@@ -463,7 +545,7 @@ export async function createReviewSession(
     .insert({ ...base, ...binding, ...kindColumn } as never)
     .select("*")
     .maybeSingle();
-  if (attempt.error && kindPersisted && missingColumn(attempt.error)) {
+  if (attempt.error && kindPersisted && missingColumn(attempt.error, "kind")) {
     /* The kind column is not applied in this workspace yet. The review still
        opens; the screen says the kind was not stored rather than pretending. */
     kindPersisted = false;
@@ -473,7 +555,7 @@ export async function createReviewSession(
       .select("*")
       .maybeSingle();
   }
-  if (attempt.error && boundToDraft && missingColumn(attempt.error)) {
+  if (attempt.error && boundToDraft && missingColumn(attempt.error, "draft_id")) {
     /* The binding columns are not there yet. The review is still worth
        opening; it simply cannot authorise a send, and says so. */
     boundToDraft = false;
@@ -482,7 +564,7 @@ export async function createReviewSession(
       .insert({ ...base, ...(kindPersisted ? kindColumn : {}) } as never)
       .select("*")
       .maybeSingle();
-    if (attempt.error && kindPersisted && missingColumn(attempt.error)) {
+    if (attempt.error && kindPersisted && missingColumn(attempt.error, "kind")) {
       kindPersisted = false;
       attempt = await writer.from("comms_review_sessions").insert(base).select("*").maybeSingle();
     }
@@ -490,27 +572,28 @@ export async function createReviewSession(
   if (attempt.error || !attempt.data) fail("That review could not be opened. Nothing was saved.");
   const session = toSession(attempt.data as Row);
 
-
-  const { data: versionRow, error: versionError } = await writer
-    .from("comms_review_versions")
-    .insert({
+  const first = await insertVersion(
+    writer,
+    {
       organization_id: input.organizationId,
       session_id: session.id,
       version: 1,
       subject: input.subject?.trim() || null,
-      body: input.body,
+      body: canonicalBody(input.body, input.sections),
       origin: "intake",
       author_user_id: caller.userId,
       created_at: now,
-    })
-    .select("*")
-    .maybeSingle();
-  if (versionError || !versionRow) fail("Your draft could not be saved. Nothing was recorded.");
+    },
+    input.sections,
+  );
+  if (!first.row) fail("Your draft could not be saved. Nothing was recorded.");
+  const structurePersisted = first.structurePersisted;
 
   /* The same material offered twice is one piece of material. Duplicates are
      dropped here, before the insert, so one repeat cannot fail the whole batch
      and leave the review with nothing to read. */
   const seenChecksums = new Set<string>();
+
   const classified = input.sources
     .map((source) => classifySource(source))
     .filter((source) => {
@@ -544,10 +627,11 @@ export async function createReviewSession(
 
   return {
     sessionId: session.id,
-    versionId: toVersion(versionRow as Row).id,
+    versionId: toVersion(first.row).id,
     sources: classified,
     boundToDraft,
     kindPersisted,
+    structurePersisted,
   };
 }
 
@@ -586,7 +670,10 @@ export async function createReviewForDraft(
     });
   } catch (error) {
     if (error instanceof OutboundPayloadUnavailable || error instanceof SenderIdentityUnavailable) {
-      throw new ReviewFailure(error.code === "not_found" ? "not_found" : "not_ready", error.message);
+      throw new ReviewFailure(
+        error.code === "not_found" ? "not_found" : "not_ready",
+        error.message,
+      );
     }
     throw error;
   }
@@ -638,12 +725,25 @@ export async function createReviewForDraft(
   };
 }
 
-
-/** Record an edit as a new immutable version. The previous one is untouched. */
+/**
+ * Record an edit as a new immutable version. The previous one is untouched.
+ *
+ * An edit arrives one of two ways. Either the sections were changed, and the
+ * words are rendered from them again so structure and text stay the same
+ * thing; or the words were edited directly, which converts this version to
+ * free text — the new version carries no structure, and says so, rather than
+ * keeping an older structure that no longer produces these words.
+ */
 export async function reviseDraft(
   token: string,
-  input: { organizationId: string; sessionId: string; subject?: string; body: string },
-): Promise<ReviewVersion> {
+  input: {
+    organizationId: string;
+    sessionId: string;
+    subject?: string;
+    body: string;
+    sections?: ProposalSections;
+  },
+): Promise<{ version: ReviewVersion; structurePersisted: boolean }> {
   const caller = await identify(token, input.organizationId);
   const session = await requireSession(caller, input.organizationId, input.sessionId);
   const writer = writerClient();
@@ -660,22 +760,22 @@ export async function reviseDraft(
     })),
   );
 
-  const { data: row, error } = await writer
-    .from("comms_review_versions")
-    .insert({
+  const saved = await insertVersion(
+    writer,
+    {
       organization_id: input.organizationId,
       session_id: session.id,
       version,
       subject: input.subject?.trim() || null,
-      body: input.body,
+      body: canonicalBody(input.body, input.sections),
       origin: "edit",
       author_user_id: caller.userId,
       created_at: new Date().toISOString(),
-    })
-    .select("*")
-    .maybeSingle();
-  if (error || !row) fail("That edit could not be saved. Your previous version is unchanged.");
-  return toVersion(row as Row);
+    },
+    input.sections,
+  );
+  if (!saved.row) fail("That edit could not be saved. Your previous version is unchanged.");
+  return { version: toVersion(saved.row), structurePersisted: saved.structurePersisted };
 }
 
 /* -------------------------------------------------------------- the read */

@@ -54,7 +54,7 @@ function (still 410).
 | --- | --- | --- |
 | T01 | Dashboard answers "what needs action and why" from real scoped records; each item opens the exact destination; no invented deadlines; silence alone is not risk | Implemented (code-tested); live-verified pending |
 | T02 | Conversations: real threads, goal, draft, review the same draft, person memory, Save to Scout, honest sources | Preserved from existing room; consolidation into one surface not yet done |
-| T03 | Drafts & Reviews: one page, real list, resume after reload, versions, findings, one role-checked approval; standalone intake for Message/Email/Proposal | Partly implemented — queue + review on one page and the kind is carried into intake; structured proposal sections (scope/deliverables/pricing/assumptions/next steps with arithmetic checks) **not built** |
+| T03 | Drafts & Reviews: one page, real list, resume after reload, versions, findings, one role-checked approval; standalone intake for Message/Email/Proposal | Implemented in code — one list with a focused pane, structured proposal sections wired through storage and rehydrated on resume; the two columns they need are proposed, not applied, so kind and structure read as "not recorded" live |
 | T04 | Voice DNA: stored profile, authorized editing, version history, applied version shown in review, saved changes clear readiness | Existing behaviour preserved; history/reconstruction review not yet audited |
 | T05 | Connections: real account/channel/sending identity, separate facts for connection health, AI availability and send readiness; no secrets shown | Existing behaviour preserved; separation of the three facts not yet audited |
 
@@ -120,12 +120,38 @@ Date: 2026-09-14. No publish, no client send, no SQL applied.
   recorded rather than implying it was. Tests:
   `src/domain/comms-draft-kind.test.ts` and the two boundary cases in
   `src/lib/comms-review.server.test.ts`.
-- **Proposals are structured.** `src/domain/comms-proposal.ts` holds scope,
-  deliverables, pricing, assumptions and next steps, with exact minor-unit
-  currency arithmetic, unknown ≠ zero, consistency checks and deterministic
-  rendering; the reviewed text is exactly what the structure renders, and no
-  price or date is invented. Tests: `src/domain/comms-proposal.test.ts`.
-- **Dirty edits are protected** when switching tab, filter or record.
+- **Proposals are structured, and the structure is stored.**
+  `src/domain/comms-proposal.ts` holds scope, deliverables, pricing,
+  assumptions and next steps with exact minor-unit arithmetic, unknown ≠ zero
+  and deterministic rendering. `src/domain/comms-proposal-source.ts` validates
+  the sections (currency, numbers, shape, size), stamps a schema version and
+  carries the canonical rendered text with them; the server renders the text
+  from the validated sections rather than trusting the browser's body, and
+  stores both on the version. On read, sections are only honoured when the
+  schema version matches and the stored text still agrees with them —
+  otherwise the version says the structure was not recorded, never a guess.
+  Resuming a proposal rehydrates the composer; "Edit as plain text" converts
+  explicitly and from then on the words are the record.
+- **A missing column is named, not assumed.** The server retries without
+  `structured_source` (or `kind`) only when Postgres says that exact column is
+  missing (42703 / PGRST204, message and details); any other missing column is
+  a real fault and surfaces. The screen says which of kind and structure was
+  not recorded, and never claims "everything else stored".
+- **Truthful record states.** `rowsFrom` derives state from the record: a
+  closed review is "Closed", not "In review", and a closed review no longer
+  hides a draft still waiting at the boundary. Counts are hidden while a read
+  is loading or failed, and a capped list says so.
+- **One record per selection.** A `?draft=` link whose draft has a live review
+  is corrected to that review in the address; a draft the capped list does not
+  hold is fetched by name within the workspace, with distinct loading,
+  not-found and no-access states.
+- **No quiet re-park after a failed send.** A send failure no longer flips the
+  draft back to "needs human review" — the send record is the authority and an
+  unknown outcome stays reconciliation, with no implicit retry.
+- **Dirty edits are protected** on tab, back, record and new-kind navigation
+  through a router blocker plus the browser unload prompt, covering both the
+  intake and the review editor. An untouched proposal's empty headings do not
+  count as writing.
 
 ### Outcome status
 
@@ -133,9 +159,11 @@ Date: 2026-09-14. No publish, no client send, no SQL applied.
   routes `/modules/comms`, `/modules/comms/drafts`, `/modules/comms/relationships`
   return 200 locally and old links redirect. **Not live-verified** (no signed-in
   session available here).
-- **T03 — draft kind carried end to end.** Implemented in code with a truthful
-  fallback. Live-unverified, and the column does not exist in the applied
-  schema yet, so today it will report "kind not recorded".
+- **T03 — draft kind and proposal structure carried end to end.** Wired through
+  the API, create, new version, read and composer rehydration, with a truthful
+  fallback. Live-unverified, and neither `kind` nor `structured_source` exists
+  in the applied schema yet, so today the screen reports them as not recorded.
+
 
 ### Proposed SQL (not applied)
 

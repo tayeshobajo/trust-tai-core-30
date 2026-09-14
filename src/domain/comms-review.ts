@@ -18,6 +18,8 @@
  */
 
 import { normalizeRole, type WorkspaceRole } from "./access";
+import type { ProposalStructuredSource } from "./comms-proposal-source";
+
 import type { DraftKind } from "./comms-draft-kind";
 import { sourceChecksum } from "./comms-sources";
 import type { ISODateTime } from "./entities";
@@ -72,8 +74,15 @@ export interface ReviewVersion {
   body: string;
   origin: ReviewVersionOrigin;
   authorUserId: string | null;
+  /**
+   * The sections these words were rendered from, when they were written as
+   * sections and this workspace could store them. Null means the structure
+   * was not recorded: the words stand, but they cannot be rebuilt from it.
+   */
+  structuredSource: ProposalStructuredSource | null;
   createdAt: ISODateTime;
 }
+
 
 export interface ReviewFinding {
   id: string;

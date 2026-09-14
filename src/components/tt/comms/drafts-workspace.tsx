@@ -11,15 +11,16 @@
  * these words.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useBlocker } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import {
+  fetchDraftById,
   fetchQueue,
   openReview,
   rejectDraft,
-  reopenDraft,
   sendDraft,
   type QueueItem,
 } from "@/components/tt/comms/draft-queue";
@@ -49,20 +50,38 @@ export interface DraftsSelection {
   new?: DraftKind;
 }
 
+/** What a row actually is. "closed" is its own state, never "in review". */
+type RowState = DraftsFilter | "closed";
+
 interface Row {
   key: string;
   kind: "draft" | "session";
   title: string;
   detail: string;
-  state: DraftsFilter;
+  state: RowState;
   stateLabel: string;
   draftId?: string;
   sessionId?: string;
   at: string;
 }
 
-function rowsFrom(queue: QueueItem[], sessions: ReviewSession[]): Row[] {
-  const boundDrafts = new Set(sessions.map((session) => session.draftId).filter(Boolean));
+/**
+ * What each record's state actually is, read from the record rather than
+ * assumed from its absence. A session is only "approved" when the workspace
+ * recorded an approval on it; a closed session is closed, not in review; and
+ * a closed session never hides a draft that is still waiting at the boundary
+ * — that draft is a live piece of work again.
+ */
+export function rowsFrom(queue: QueueItem[], sessions: ReviewSession[]): Row[] {
+  const live = sessions.filter((session) => session.status !== "closed");
+  const boundDrafts = new Set(live.map((session) => session.draftId).filter(Boolean));
+
+  const stateOf = (session: ReviewSession): { state: RowState; stateLabel: string } => {
+    if (session.status === "approved") return { state: "approved", stateLabel: "Approved" };
+    if (session.status === "closed") return { state: "closed", stateLabel: "Closed" };
+    return { state: "review", stateLabel: "In review" };
+  };
+
   const fromSessions: Row[] = sessions.map((session) => ({
     key: `session:${session.id}`,
     kind: "session",
@@ -71,15 +90,14 @@ function rowsFrom(queue: QueueItem[], sessions: ReviewSession[]): Row[] {
       session.recipientName ??
       session.recipientEmail ??
       (session.kind ? DRAFT_KIND_LABEL[session.kind] : "No recipient named"),
-    state: session.status === "approved" ? "approved" : "review",
-    stateLabel: session.status === "approved" ? "Approved" : "In review",
+    ...stateOf(session),
     ...(session.draftId ? { draftId: session.draftId } : {}),
     sessionId: session.id,
     at: session.updatedAt,
   }));
 
-  /* A draft that already has a review is that review's row. Showing it twice
-     would be two records where there is one. */
+  /* A draft with a live review is that review's row. Showing it twice would
+     be two records where there is one. */
   const fromDrafts: Row[] = queue
     .filter((item) => !boundDrafts.has(item.draft.id))
     .map((item) => ({
@@ -87,7 +105,7 @@ function rowsFrom(queue: QueueItem[], sessions: ReviewSession[]): Row[] {
       kind: "draft",
       title: item.draft.subject ?? "(no subject)",
       detail: item.relationship?.full_name ?? "Unknown contact",
-      state: "waiting",
+      state: "waiting" as RowState,
       stateLabel: "Waiting on you",
       draftId: item.draft.id,
       at: item.draft.created_at,
@@ -109,9 +127,11 @@ export function DraftsWorkspace({
   const queryClient = useQueryClient();
   const filter = selection.filter ?? "all";
   const [intakeDirty, setIntakeDirty] = useState(false);
+  const [detailDirty, setDetailDirty] = useState(false);
+  const dirty = (intakeDirty && Boolean(selection.new)) || detailDirty;
 
   const queue = useQuery({
-    queryKey: ["comms", "queue", identity.organizationId],
+    queryKey: ["comms", "drafts-workspace", "queue", identity.organizationId],
     queryFn: () => fetchQueue(identity.organizationId),
   });
   const reviews = useQuery({
@@ -119,18 +139,37 @@ export function DraftsWorkspace({
     queryFn: () => listReviews(identity.organizationId),
   });
 
-  const rows = rowsFrom(queue.data ?? [], reviews.data ?? []);
+  const loading = queue.isPending || reviews.isPending;
+  const failed = queue.error ?? reviews.error;
+  const rows = failed || loading ? [] : rowsFrom(queue.data ?? [], reviews.data ?? []);
   const shown = filter === "all" ? rows : rows.filter((row) => row.state === filter);
+  /* Both reads are capped, so the list can be a part of the truth. Say so
+     rather than presenting a count as the whole. */
+  const capped = (queue.data?.length ?? 0) >= 50 || (reviews.data?.length ?? 0) >= 50;
 
-  /* Arriving with ?draft=… from the dashboard: if that draft already has a
-     review, go straight to it. The server validates the workspace on the
-     bind; nothing here trusts the address. */
-  const selectedRow =
-    (selection.session
-      ? rows.find((row) => row.sessionId === selection.session)
-      : selection.draft
-        ? rows.find((row) => row.draftId === selection.draft)
-        : undefined) ?? null;
+  /* A link can name a draft the capped list does not hold, so the record is
+     fetched by name rather than found in a page of results. */
+  const wantedDraft = selection.session ? null : (selection.draft ?? null);
+  const draftQuery = useQuery({
+    queryKey: ["comms", "draft", identity.organizationId, wantedDraft],
+    queryFn: () => fetchDraftById(identity.organizationId, wantedDraft ?? ""),
+    enabled: Boolean(wantedDraft),
+  });
+
+  const boundSession = selection.draft
+    ? (rows.find((row) => row.draftId === selection.draft && row.sessionId)?.sessionId ?? null)
+    : null;
+
+  /* One selection, one record: a draft that already has a live review is
+     shown as that review. The address is corrected so a reload agrees. */
+  useEffect(() => {
+    if (!selection.session && boundSession) {
+      onSelect({
+        ...(selection.filter ? { filter: selection.filter } : {}),
+        session: boundSession,
+      });
+    }
+  }, [boundSession, selection.session, selection.filter, onSelect]);
 
   const bind = useMutation({
     mutationFn: (draftId: string) => openReview(draftId, identity.organizationId),
@@ -145,7 +184,7 @@ export function DraftsWorkspace({
     mutationFn: rejectDraft,
     onSuccess: () => {
       toast.success("Draft rejected");
-      void queryClient.invalidateQueries({ queryKey: ["comms", "queue"] });
+      void queryClient.invalidateQueries({ queryKey: ["comms"] });
       move({});
     },
     onError: (error: Error) => toast.error(error.message),
@@ -155,36 +194,49 @@ export function DraftsWorkspace({
     mutationFn: (draftId: string) => sendDraft(draftId, identity.organizationId),
     onSuccess: () => {
       toast.success("Sent");
-      void queryClient.invalidateQueries({ queryKey: ["comms", "queue"] });
+      void queryClient.invalidateQueries({ queryKey: ["comms"] });
     },
-    onError: async (error: Error, draftId: string) => {
+    /* No quiet re-park after a failure: what happened is settled by the send
+       record, and moving the draft here would invite a second attempt at
+       something that may already have gone. */
+    onError: (error: Error) => {
       toast.error(error.message);
-      await reopenDraft(draftId, identity);
+      void queryClient.invalidateQueries({ queryKey: ["comms"] });
     },
   });
 
+  const confirmLeave = useCallback(
+    () => window.confirm("You have unsaved writing here. Leave it behind?"),
+    [],
+  );
+
   /** Moving away from unsaved typing always asks first. */
   function move(next: DraftsSelection) {
-    if (
-      intakeDirty &&
-      selection.new &&
-      !window.confirm("You have unsaved writing here. Leave it behind?")
-    ) {
-      return;
-    }
+    if (dirty && !confirmLeave()) return;
     setIntakeDirty(false);
+    setDetailDirty(false);
     onSelect({ ...(selection.filter ? { filter: selection.filter } : {}), ...next });
   }
 
-  /* Browser-level protection for the same unsaved typing. */
-  useEffect(() => {
-    if (!intakeDirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [intakeDirty]);
+  /* Every other way out of this page — a tab, the back button, any link —
+     asks the same question. */
+  useBlocker({
+    shouldBlockFn: () => dirty && !confirmLeave(),
+    enableBeforeUnload: () => dirty,
+    withResolver: false,
+  });
 
-  const failed = queue.error ?? reviews.error;
+  /* Unsaved typing belongs to one record. Changing record clears the flag
+     only after the guard above has had its say. */
+  const at = useRef("");
+  useEffect(() => {
+    const key = `${selection.session ?? ""}|${selection.draft ?? ""}|${selection.new ?? ""}`;
+    if (at.current !== key) {
+      at.current = key;
+      setIntakeDirty(false);
+      setDetailDirty(false);
+    }
+  }, [selection.session, selection.draft, selection.new]);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -204,9 +256,13 @@ export function DraftsWorkspace({
               )}
             >
               {DRAFTS_FILTER_LABEL[option]}
-              <span className="ml-1 text-muted-foreground">
-                {option === "all" ? rows.length : rows.filter((row) => row.state === option).length}
-              </span>
+              {failed || loading ? null : (
+                <span className="ml-1 text-muted-foreground">
+                  {option === "all"
+                    ? rows.length
+                    : rows.filter((row) => row.state === option).length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -225,7 +281,7 @@ export function DraftsWorkspace({
               Try again
             </TTButton>
           </div>
-        ) : queue.isPending || reviews.isPending ? (
+        ) : loading ? (
           <p className="text-[13px] text-muted-foreground">Reading…</p>
         ) : shown.length === 0 ? (
           <p className="text-[13px] text-muted-foreground">Nothing in this filter.</p>
@@ -246,7 +302,9 @@ export function DraftsWorkspace({
                     }
                     className={cn(
                       "w-full rounded-lg border px-3 py-2 text-left",
-                      active ? "border-[var(--royal)] bg-secondary/50" : "border-transparent hover:bg-secondary/40",
+                      active
+                        ? "border-[var(--royal)] bg-secondary/50"
+                        : "border-transparent hover:bg-secondary/40",
                     )}
                   >
                     <span className="block text-[13px] text-foreground">{row.title}</span>
@@ -259,6 +317,11 @@ export function DraftsWorkspace({
             })}
           </ul>
         )}
+        {!failed && !loading && capped ? (
+          <p className="text-[12px] text-muted-foreground">
+            The most recent records only — there may be older ones not shown here.
+          </p>
+        ) : null}
       </aside>
 
       <section className="min-w-0">
@@ -294,15 +357,18 @@ export function DraftsWorkspace({
           <ReviewDetail
             identity={identity}
             sessionId={selection.session}
+            onDirty={setDetailDirty}
             onBack={() => move({})}
           />
-        ) : selectedRow?.draftId ? (
+        ) : selection.draft ? (
           <DraftPane
-            item={(queue.data ?? []).find((entry) => entry.draft.id === selectedRow.draftId)}
+            item={draftQuery.data ?? undefined}
+            loading={draftQuery.isPending}
+            error={draftQuery.error ? (draftQuery.error as Error).message : null}
             busy={bind.isPending || reject.isPending || send.isPending}
-            onReview={() => bind.mutate(selectedRow.draftId ?? "")}
-            onReject={() => reject.mutate(selectedRow.draftId ?? "")}
-            onSend={() => send.mutate(selectedRow.draftId ?? "")}
+            onReview={() => bind.mutate(selection.draft ?? "")}
+            onReject={() => reject.mutate(selection.draft ?? "")}
+            onSend={() => send.mutate(selection.draft ?? "")}
           />
         ) : (
           <div className="rounded-xl border border-border p-8">
@@ -319,27 +385,48 @@ export function DraftsWorkspace({
 
 function DraftPane({
   item,
+  loading,
+  error,
   busy,
   onReview,
   onReject,
   onSend,
 }: {
   item: QueueItem | undefined;
+  loading: boolean;
+  error: string | null;
   busy: boolean;
   onReview: () => void;
   onReject: () => void;
   onSend: () => void;
 }) {
-  if (!item) {
+  if (loading) {
     return (
       <div className="rounded-xl border border-border p-8">
-        <p className="text-[13px] text-muted-foreground">
-          That draft is not in the waiting list any more. It may have been reviewed, rejected or
-          sent.
+        <p className="text-[13px] text-muted-foreground">Reading this draft…</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="rounded-xl border border-border p-8">
+        <p className="text-[13px] text-destructive">
+          This draft could not be read. It may belong to another workspace, or you may not have
+          access to it.
         </p>
       </div>
     );
   }
+  if (!item) {
+    return (
+      <div className="rounded-xl border border-border p-8">
+        <p className="text-[13px] text-muted-foreground">
+          No draft by that name in this workspace.
+        </p>
+      </div>
+    );
+  }
+
   const email = item.relationship?.email ?? null;
   return (
     <article className="space-y-4 rounded-xl border border-border p-5">
