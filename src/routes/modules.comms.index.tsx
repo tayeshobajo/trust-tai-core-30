@@ -22,6 +22,7 @@ import { listReviews } from "@/data/supabase/comms-review-client";
 import { supabase } from "@/integrations/trust-tai/supabase";
 import { buildPlan, dueLabel, type PlanItem } from "@/domain/comms-plan";
 import { buildWorkBoard, showingNote, type Bucket } from "@/domain/comms-work-board";
+import { draftSearch, readFailureMessage, sectionState } from "@/domain/comms-section-state";
 import type { ReviewSession } from "@/domain/comms-review";
 import type { WorkspaceIdentity } from "@/lib/workspace";
 
@@ -88,14 +89,6 @@ async function waitingDrafts(
   };
 }
 
-/** A sanitized sentence. Provider and database detail never reaches the page. */
-function readFailure(error: unknown): string {
-  const message = error instanceof Error ? error.message : "";
-  return /permission|denied|rls/i.test(message)
-    ? "You do not have access to this part of the workspace."
-    : "This could not be read just now.";
-}
-
 function Section({
   title,
   note,
@@ -113,28 +106,29 @@ function Section({
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
+  const state = sectionState({ isError: query.isError, isPending: query.isPending, count });
   return (
     <section className="rounded-xl border border-border p-4">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[15px] text-foreground">
           {title}
-          {query.isError || count === null ? null : (
+          {state === "error" || count === null ? null : (
             <span className="text-muted-foreground"> · {count}</span>
           )}
         </h2>
         <p className="text-[12px] text-muted-foreground">{note}</p>
       </header>
       <div className="mt-3">
-        {query.isError ? (
+        {state === "error" ? (
           <div className="space-y-2">
-            <p className="text-[13px] text-destructive">{readFailure(query.error)}</p>
+            <p className="text-[13px] text-destructive">{readFailureMessage(query.error)}</p>
             <TTButton size="sm" variant="quiet" onClick={() => void query.refetch()}>
               Try again
             </TTButton>
           </div>
-        ) : query.isPending ? (
+        ) : state === "loading" ? (
           <p className="text-[13px] text-muted-foreground">Reading…</p>
-        ) : count === 0 ? (
+        ) : state === "empty" ? (
           <p className="text-[13px] text-muted-foreground">{empty}</p>
         ) : (
           <>
@@ -272,7 +266,7 @@ function CommsDashboard({ identity }: { identity: WorkspaceIdentity }) {
               <li key={draft.id}>
                 <Link
                   to="/modules/comms/drafts"
-                  search={{ draft: draft.id }}
+                  search={draftSearch(draft.id)}
                   className="block rounded-lg bg-secondary/40 px-3 py-2 text-[13px] text-foreground hover:bg-secondary/70"
                 >
                   {draft.subject ?? "(no subject)"}

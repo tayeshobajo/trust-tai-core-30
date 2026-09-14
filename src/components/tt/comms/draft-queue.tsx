@@ -236,7 +236,7 @@ export function DraftQueue({ identity }: { identity: WorkspaceIdentity }) {
     mutationFn: (id: string) => openReview(id, identity.organizationId),
     onSuccess: (sessionId: string) => {
       void queryClient.invalidateQueries({ queryKey: ["comms", "queue"] });
-      void navigate({ to: "/modules/comms/review", search: { session: sessionId } });
+      void navigate({ to: "/modules/comms/drafts", search: { session: sessionId } });
     },
     onError: (err: Error) => toast.error(err.message),
   });
