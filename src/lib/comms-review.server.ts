@@ -811,8 +811,9 @@ async function loadVoicePacket(caller: Caller, organizationId: string): Promise<
     status: `Held against this workspace's stored voice rules, version ${version}.`,
     /* The version number alone does not identify the text: hashing the exact
        rules that were used means an edit invalidates old evidence even if
-       nobody bumped the version. */
-    stamp: `voice_profile:${profileId}@v${version}#${sourceChecksum(rules)}`,
+       nobody bumped the version. The hash is SHA-256, because this decides
+       whether an old approval still stands. */
+    stamp: `voice_profile:${profileId}@v${version}#${sha256(rules)}`,
   };
 }
 
