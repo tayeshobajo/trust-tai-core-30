@@ -780,7 +780,23 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
         text: entry.text,
         at: entry.occurredAt,
         latestFromThisSide: entry.latestForSide,
+        wholeMessage: entry.complete,
       })),
+      /* Coverage the writing pass must satisfy, and the honest limit of what
+         was read. Neither is a claim the model made. */
+      openAsks: asks.map((ask) => ({
+        id: ask.id,
+        kind: ask.kind,
+        text: ask.text,
+        foundAt: `${ask.source}, character ${ask.offset}`,
+      })),
+      sourceCoverage: {
+        messagesInThread: threadWindow.messagesInThread,
+        messagesRead: threadWindow.messagesRead,
+        complete: threadWindow.complete,
+        because: threadWindow.because,
+      },
+      writtenBy: senderEvidence(sender),
     },
     projectContext: {
       evidence: projectContext.lines
@@ -791,6 +807,7 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
     brandVoiceDna: voiceDocument,
     learnedStyleExamples: voiceExamples,
   };
+
 
   /* From here the provider does the work, through the shared runtime
      boundary. Every post-grounding failure is typed, the person keeps the
