@@ -121,7 +121,9 @@ function ThreadList({
             aria-pressed={mode === entry}
             className={cn(
               "h-8 flex-1 rounded-full capitalize transition-colors",
-              mode === entry ? "bg-royal text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+              mode === entry
+                ? "bg-royal text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {entry}
@@ -165,8 +167,12 @@ function ThreadList({
                   )}
                 >
                   <div className="flex items-baseline justify-between gap-2">
-                    <p className="truncate text-[14px] font-medium text-foreground">{thread.person}</p>
-                    <span className="shrink-0 text-[12px] text-muted-foreground">{thread.activity}</span>
+                    <p className="truncate text-[14px] font-medium text-foreground">
+                      {thread.person}
+                    </p>
+                    <span className="shrink-0 text-[12px] text-muted-foreground">
+                      {thread.activity}
+                    </span>
                   </div>
                   <p className="truncate text-[13px] text-muted-foreground">{thread.company}</p>
                   <p className="mt-1.5 truncate text-[13px] text-foreground">{thread.subject}</p>
@@ -195,7 +201,9 @@ function ThreadList({
               <p className="text-[13px] text-muted-foreground">{person.company}</p>
               <p className="mt-1 text-[13px] text-muted-foreground">{person.note}</p>
               <p className="mt-1.5 text-[12px] text-muted-foreground">
-                {person.threads === 0 ? "No threads. The relationship is still kept." : `${person.threads} threads`}
+                {person.threads === 0
+                  ? "No threads. The relationship is still kept."
+                  : `${person.threads} threads`}
               </p>
             </li>
           ))}
@@ -372,7 +380,8 @@ function SourceRow({
   state: SourceState;
   note: string;
 }) {
-  const tone = state === "ready" ? "good" : state === "failed" || state === "unsupported" ? "risk" : "warn";
+  const tone =
+    state === "ready" ? "good" : state === "failed" || state === "unsupported" ? "risk" : "warn";
   return (
     <li className="flex flex-wrap items-start justify-between gap-2 border-t border-border py-2.5 first:border-t-0 first:pt-0">
       <div className="min-w-0">
@@ -395,12 +404,16 @@ function Finding({ finding }: { finding: DemoFinding }) {
     <li className="rounded-lg border border-border bg-card p-3.5">
       <p className="text-[13px] italic text-muted-foreground">“{finding.excerpt}”</p>
       <p className="mt-1.5 text-[14px] leading-6 text-foreground">{finding.issue}</p>
-      <p className="mt-1 text-[13px] leading-5 text-muted-foreground">Why it matters: {finding.why}</p>
+      <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+        Why it matters: {finding.why}
+      </p>
       {finding.replacement ? (
         <p className="mt-2 rounded-md border border-royal/25 bg-royal-wash px-3 py-2 text-[14px] leading-6 text-foreground">
           {finding.replacement}
           {finding.optional ? (
-            <span className="ml-1 text-[12px] text-muted-foreground">Optional. Remove it freely.</span>
+            <span className="ml-1 text-[12px] text-muted-foreground">
+              Optional. Remove it freely.
+            </span>
           ) : null}
         </p>
       ) : (
@@ -488,7 +501,11 @@ function ReviewIntake({ onRun }: { onRun: () => void }) {
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block text-[13px] text-muted-foreground">
           Who is this for?
-          <TTInput className="mt-1" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
+          <TTInput
+            className="mt-1"
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+          />
         </label>
         <label className="block text-[13px] text-muted-foreground">
           Who is sending it?
@@ -725,7 +742,9 @@ function FollowUps() {
         <p className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
           <Lightbulb aria-hidden className="size-4" /> Possible opportunity, kept private
         </p>
-        <p className="mt-1.5 text-[14px] leading-6 text-foreground">{DEMO_OPPORTUNITY.observation}</p>
+        <p className="mt-1.5 text-[14px] leading-6 text-foreground">
+          {DEMO_OPPORTUNITY.observation}
+        </p>
         <p className="mt-1 text-[13px] text-muted-foreground">
           Timing: {DEMO_OPPORTUNITY.timing} · Smallest useful step: {DEMO_OPPORTUNITY.step}
         </p>
@@ -755,7 +774,8 @@ export function CommsNextWorkspace() {
   const [showDetailOnMobile, setShowDetailOnMobile] = useState(false);
 
   const threads = useMemo(
-    () => (filter === "all" ? DEMO_THREADS : DEMO_THREADS.filter((thread) => thread.state === filter)),
+    () =>
+      filter === "all" ? DEMO_THREADS : DEMO_THREADS.filter((thread) => thread.state === filter),
     [filter],
   );
   const selected = DEMO_THREADS.find((thread) => thread.id === selectedId) ?? DEMO_THREADS[0]!;
@@ -770,13 +790,19 @@ export function CommsNextWorkspace() {
     <div className="pb-20">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[28px] font-semibold leading-9 text-foreground sm:text-[36px]">Comms</h1>
+          <h1 className="text-[28px] font-semibold leading-9 text-foreground sm:text-[36px]">
+            Comms
+          </h1>
           <p className="mt-1 text-[13px] text-muted-foreground">
             Understand the person, protect the promise, move the vision forward.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <TTInput placeholder="Search conversations" aria-label="Search conversations" className="w-48" />
+          <TTInput
+            placeholder="Search conversations"
+            aria-label="Search conversations"
+            className="w-48"
+          />
           <TTButton size="sm">New thread</TTButton>
           <TTButton size="sm" variant="quiet" aria-label="Settings">
             <Settings aria-hidden className="size-4" />
@@ -784,7 +810,10 @@ export function CommsNextWorkspace() {
         </div>
       </header>
 
-      <nav aria-label="Comms sections" className="mt-5 flex items-center gap-5 border-b border-border">
+      <nav
+        aria-label="Comms sections"
+        className="mt-5 flex items-center gap-5 border-b border-border"
+      >
         {TABS.map((tab) => (
           <button
             key={tab.id}

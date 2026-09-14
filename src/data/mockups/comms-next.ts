@@ -55,7 +55,8 @@ export const DEMO_THREADS: DemoThread[] = [
     state: "needs_reply",
     channel: "Email",
     messageCount: 63,
-    priority: "She asked who owns updates after launch. The current draft explains the build and leaves ownership unanswered.",
+    priority:
+      "She asked who owns updates after launch. The current draft explains the build and leaves ownership unanswered.",
     messages: [
       {
         id: "m1",
@@ -107,7 +108,8 @@ export const DEMO_THREADS: DemoThread[] = [
       achieve: "Receive the thanks warmly and leave the relationship lighter than you found it.",
       open: "Nothing outstanding.",
       move: "Send a short, warm acknowledgement. No ask.",
-      because: "There is no request in the message, and a pitch here would cost more than it earns.",
+      because:
+        "There is no request in the message, and a pitch here would cost more than it earns.",
     },
   },
   {
@@ -171,11 +173,41 @@ export const DEMO_THREADS: DemoThread[] = [
 ];
 
 export const DEMO_PEOPLE = [
-  { id: "p1", name: "Adaeze Obi", company: "Northlight Care", threads: 3, note: "Two open threads, one closed." },
-  { id: "p2", name: "Michael Reid", company: "Harbour Studio", threads: 1, note: "Warm. No open request." },
-  { id: "p3", name: "Priya Nair", company: "Ferngrove Dental", threads: 2, note: "Complaint open since Tuesday." },
-  { id: "p4", name: "Kofi Mensah", company: "Lumen Advisory", threads: 1, note: "Awaiting their decision." },
-  { id: "p5", name: "Dele Aina", company: "No email on record", threads: 0, note: "Relationship kept without a thread." },
+  {
+    id: "p1",
+    name: "Adaeze Obi",
+    company: "Northlight Care",
+    threads: 3,
+    note: "Two open threads, one closed.",
+  },
+  {
+    id: "p2",
+    name: "Michael Reid",
+    company: "Harbour Studio",
+    threads: 1,
+    note: "Warm. No open request.",
+  },
+  {
+    id: "p3",
+    name: "Priya Nair",
+    company: "Ferngrove Dental",
+    threads: 2,
+    note: "Complaint open since Tuesday.",
+  },
+  {
+    id: "p4",
+    name: "Kofi Mensah",
+    company: "Lumen Advisory",
+    threads: 1,
+    note: "Awaiting their decision.",
+  },
+  {
+    id: "p5",
+    name: "Dele Aina",
+    company: "No email on record",
+    threads: 0,
+    note: "Relationship kept without a thread.",
+  },
 ];
 
 /* --------------------------------- Review --------------------------------- */
@@ -204,7 +236,8 @@ export const DEMO_FINDINGS: DemoFinding[] = [
     id: "f1",
     group: "must_fix",
     excerpt: "Everything will be ready Friday.",
-    issue: "Two problems in one sentence: everything is undefined, and no Friday date has been confirmed by anyone.",
+    issue:
+      "Two problems in one sentence: everything is undefined, and no Friday date has been confirmed by anyone.",
     why: "She will forward this to finance as a commitment. If the scope behind it moves, the promise is what she remembers.",
     evidence: "No delivery date appears in the thread or in the project record.",
   },
@@ -212,9 +245,11 @@ export const DEMO_FINDINGS: DemoFinding[] = [
     id: "f2",
     group: "must_fix",
     excerpt: "(no sentence covers this)",
-    issue: "Her second question, who owns content updates after go live, has no answer anywhere in the draft.",
+    issue:
+      "Her second question, who owns content updates after go live, has no answer anywhere in the draft.",
     why: "This is the question that decides whether her team needs training or a retainer.",
-    replacement: "After go live your team owns day to day content. We hold the platform, and anything structural comes to us.",
+    replacement:
+      "After go live your team owns day to day content. We hold the platform, and anything structural comes to us.",
     evidence: "Source email, today 09:12, question 2.",
   },
   {
@@ -279,10 +314,30 @@ export const COVERAGE_LABEL: Record<CoverageStatus, string> = {
   pending: "Pending confirmation",
 };
 
-export const DEMO_COVERAGE: { id: string; question: string; status: CoverageStatus; where: string }[] = [
-  { id: "q1", question: "What is included in the launch scope?", status: "answered", where: "Draft, paragraph 2" },
-  { id: "q2", question: "Who owns content updates after go live?", status: "missing", where: "Source email, 09:12" },
-  { id: "q3", question: "Can the booking form take card payments at launch?", status: "partly", where: "Draft, paragraph 2" },
+export const DEMO_COVERAGE: {
+  id: string;
+  question: string;
+  status: CoverageStatus;
+  where: string;
+}[] = [
+  {
+    id: "q1",
+    question: "What is included in the launch scope?",
+    status: "answered",
+    where: "Draft, paragraph 2",
+  },
+  {
+    id: "q2",
+    question: "Who owns content updates after go live?",
+    status: "missing",
+    where: "Source email, 09:12",
+  },
+  {
+    id: "q3",
+    question: "Can the booking form take card payments at launch?",
+    status: "partly",
+    where: "Draft, paragraph 2",
+  },
   {
     id: "q4",
     question: "Does the annual figure include the support retainer?",
@@ -308,10 +363,34 @@ export const DEMO_SOURCES: {
   state: SourceState;
   note: string;
 }[] = [
-  { id: "s1", name: "Thread: Northlight Care, 63 messages", kind: "Context only", state: "ready", note: "Newest 12 loaded, including today 09:12." },
-  { id: "s2", name: "Proposal v2.docx", kind: "File to send", state: "ready", note: "14 of 14 sections read." },
-  { id: "s3", name: "Finance call recording.m4a", kind: "Context only", state: "unsupported", note: "Audio is not read. Nothing was guessed from the filename." },
-  { id: "s4", name: "Scanned signature page.pdf", kind: "Context only", state: "partial", note: "3 of 5 pages read. Pages 4 and 5 are unreadable scans." },
+  {
+    id: "s1",
+    name: "Thread: Northlight Care, 63 messages",
+    kind: "Context only",
+    state: "ready",
+    note: "Newest 12 loaded, including today 09:12.",
+  },
+  {
+    id: "s2",
+    name: "Proposal v2.docx",
+    kind: "File to send",
+    state: "ready",
+    note: "14 of 14 sections read.",
+  },
+  {
+    id: "s3",
+    name: "Finance call recording.m4a",
+    kind: "Context only",
+    state: "unsupported",
+    note: "Audio is not read. Nothing was guessed from the filename.",
+  },
+  {
+    id: "s4",
+    name: "Scanned signature page.pdf",
+    kind: "Context only",
+    state: "partial",
+    note: "3 of 5 pages read. Pages 4 and 5 are unreadable scans.",
+  },
 ];
 
 export const DEMO_FOLLOWUPS: {

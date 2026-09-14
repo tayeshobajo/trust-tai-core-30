@@ -13,7 +13,6 @@ export type CommsSection =
   | "integrations"
   | "preview";
 
-
 /**
  * Underline tabs, mockup geometry: 40px rows, a 2px royal rule under the
  * current section, and a single hairline running the full width beneath.
@@ -39,7 +38,6 @@ const TABS: { to: string; section: CommsSection; label: string }[] = [
   { to: "/modules/comms/integrations", section: "integrations", label: "Connections" },
   { to: "/mockups/comms-next", section: "preview", label: "Preview: new Comms" },
 ];
-
 
 /** Comms' local navigation: the people, how Tai sounds, and what we read from. */
 export function CommsTabs({ active }: { active: CommsSection }) {
