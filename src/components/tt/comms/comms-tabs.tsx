@@ -10,7 +10,9 @@ export type CommsSection =
   | "queue"
   | "to_scout"
   | "voice"
-  | "integrations";
+  | "integrations"
+  | "preview";
+
 
 /**
  * Underline tabs, mockup geometry: 40px rows, a 2px royal rule under the
