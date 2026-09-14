@@ -705,10 +705,20 @@ const STATUS_LABEL: Record<ObligationVerdict["status"], string> = {
   uncertain: "Could not be judged",
 };
 
-function Coverage({ verdicts, note }: { verdicts: ObligationVerdict[]; note: string }) {
+function Coverage({
+  verdicts,
+  note,
+  evaluated,
+}: {
+  verdicts: ObligationVerdict[];
+  note: string;
+  evaluated: boolean;
+}) {
   return (
     <div className="rounded-lg border border-border bg-card/60 p-4">
-      <h4 className="text-sm font-medium text-foreground">What they asked</h4>
+      <h4 className="text-sm font-medium text-foreground">
+        What they asked{evaluated ? "" : " — not evaluated"}
+      </h4>
       <p className="mt-1 text-sm text-muted-foreground">{note}</p>
       <ul className="mt-3 space-y-3">
         {verdicts.map((verdict) => (
