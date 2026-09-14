@@ -163,7 +163,9 @@ async function identify(token: string, organizationId: string): Promise<Caller> 
     .eq("user_id", userId)
     .maybeSingle();
   const row = (data ?? null) as { role?: string; status?: string } | null;
-  if (error || !row || (row.status && row.status !== "active")) {
+  /* Active, stated plainly. A missing or blank status is not an invitation;
+     only a membership that says "active" opens this workspace. */
+  if (error || !row || row.status !== "active") {
     throw new ReviewFailure(
       "access_denied",
       "You don't have access to this workspace. Nothing was changed.",

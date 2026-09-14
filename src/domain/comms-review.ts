@@ -139,16 +139,20 @@ export interface ReviewContext {
   recipientEmail: string | null;
   recipientName: string | null;
   goal: string | null;
+  /** The situation the writer described. Editing it changes the judgement. */
+  situation: string | null;
   /** Checksums of every source, read or not, in a stable order. */
   sourceChecksums: string[];
-  /** The sender the message will go out as. */
+  /** The verified sender the message will go out as. */
   senderName: string | null;
+  /** The exact stored voice rules the review was held against, if any. */
+  voiceVersion: string | null;
 }
 
 /**
  * One stable string standing for "everything an approval was given over". Any
- * change to the words, the recipient, the goal, the sender or the source set
- * changes it, which is exactly what makes an old approval stale.
+ * change to the words, the recipient, the goal, the situation, the sender,
+ * the voice rules or the source set changes it, which is exactly what makes an old approval stale.
  */
 export function contextFingerprint(context: ReviewContext): string {
   const parts = [
@@ -158,7 +162,9 @@ export function contextFingerprint(context: ReviewContext): string {
     (context.recipientEmail ?? "").trim().toLowerCase(),
     (context.recipientName ?? "").trim(),
     (context.goal ?? "").trim(),
+    (context.situation ?? "").trim(),
     (context.senderName ?? "").trim(),
+    (context.voiceVersion ?? "").trim(),
     [...context.sourceChecksums].sort().join(","),
   ];
   return sourceChecksum(parts.join("\u0000"));
