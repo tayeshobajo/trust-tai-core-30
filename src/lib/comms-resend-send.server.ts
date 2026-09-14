@@ -16,7 +16,8 @@
 
 import {
   claimDelivery,
-  requireSendApproval,
+  identifySender,
+  reviewReadinessForSend,
   settleDelivery,
   SendRefused,
 } from "@/lib/comms-send-authority.server";
@@ -48,14 +49,8 @@ export async function sendDraftViaResend(input: {
     );
   }
 
-  /* Proving the caller happens inside the gate; this read then runs as them,
-     under the workspace's own rules. */
-  const identity = await requireSendApproval;
-  void identity;
-
-  const { identifySender, reviewReadinessForSend } = await import(
-    "@/lib/comms-send-authority.server"
-  );
+  /* The caller is proved first; every read below then runs as them, under
+     this workspace's own rules. */
   const caller = await identifySender(input.token, input.organizationId);
 
   const draftRes = await caller.client
