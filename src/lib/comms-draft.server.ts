@@ -839,8 +839,18 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
     register,
     usedEvidence,
     groundingSummary,
+    sender,
+    asks,
+    sourceWindow: {
+      messagesInThread: threadWindow.messagesInThread,
+      messagesLoaded: threadWindow.messagesLoaded,
+      messagesRead: threadWindow.messagesRead,
+      complete: threadWindow.complete,
+      because: threadWindow.because,
+    },
   });
 }
+
 
 export interface DraftPassInput {
   /** The governed evidence packet both passes reason over. */
