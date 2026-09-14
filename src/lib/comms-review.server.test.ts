@@ -73,7 +73,9 @@ function fakeClient(tables: Record<string, TableStub>, attempts: Attempt[], user
   return {
     auth: {
       getUser: async () =>
-        user ? { data: { user: { id: user } }, error: null } : { data: { user: null }, error: null },
+        user
+          ? { data: { user: { id: user } }, error: null }
+          : { data: { user: null }, error: null },
     },
     from(table: string) {
       const stub = tables[table] ?? {};

@@ -232,3 +232,55 @@ Evidence: 2,801 unit tests, typecheck and build pass. Still code evidence only
 — no signed-in session is available here, so no live review run, no live
 approval, and no proof from this sandbox that ordinary members are read-only.
 Shared-suite approval and every send path remain explicitly unmet.
+
+## 14 Sep 2026 — Slice 2 closed out (bounded, before any send work)
+
+Verified by Codex against the real database (not by this agent, and recorded
+here as their evidence): all seven review tables grant `authenticated` SELECT
+only, with no `anon` read; transaction-level tests showed a cross-session
+foreign key rejected, an approval against an unfinished run rejected, a valid
+approval accepted, and a stale-context approval rejected. The fixtures were
+rolled back. There is still no signed-in browser here and no live evidence of
+semantic review quality.
+
+Fixed in `src/lib/comms-review.server.ts` this pass:
+
+- Membership must say `active`. A missing or blank status is no longer read as
+  permission. Covered by tests for invited, suspended, blank, absent and
+  no-membership-at-all.
+- A source list that cannot be read is no longer treated as no sources. The
+  review stops before the run row is written and before the model is called,
+  so a blind reading can never be produced.
+- Reads in `loadReview` check their errors: a failed read refuses rather than
+  rendering as an empty workspace with no sources, no runs and no findings.
+- A failed run only claims to be recorded as failed when that write actually
+  succeeded; otherwise it says the record may still show it as running.
+- The reviewer is now given the verified author, read from that person's own
+  profile, and the workspace's stored Voice DNA with its version, plus up to
+  three already approved or sent messages as illustration. Tai's signature is
+  never substituted. When no rules can be read, the packet says so instead of
+  claiming a calibrated voice, and the run records `voice_profile:none`.
+  Voice suggestions remain proposals: nothing here writes to the voice rules.
+- The context race is closed. The database stamps the run's revision at
+  insertion; if it differs from the revision read a moment earlier, the run is
+  marked failed with `context_changed` and nothing is judged.
+- The fingerprint now covers the situation, the verified sender and the exact
+  voice version as well as the words, recipient, goal and sources, and is
+  built identically in `runReview` and `loadReview`. An edited goal or a new
+  voice version invalidates old evidence.
+
+Evidence: `src/lib/comms-review.server.test.ts` — 14 boundary tests over a
+fake Supabase and a fake model: successful persistence and ordering, failed
+source read, failed evidence insert never completing, unrecordable failure,
+missing service key, each inactive membership shape, wrong workspace, the
+startup context race, the real voice packet, and the honest fallback. Full
+suite, typecheck and build pass. This is code evidence; no live run.
+
+Proposed, NOT applied: `docs/migrations/proposed/comms-review-provenance.sql`
+adds `voice_profile_id`/`voice_version` to runs and `context_revision` to
+approvals. The application works unchanged without it.
+
+Send gates still open, unchanged by this slice: `comms-quick-reply`,
+`supabase/functions/comms-send` (reads `comms_drafts.review_state`, a
+different record), `comms-linkedin-send.server.ts`, any scheduled send, and
+the shared suite approvals surface. No send path reads a review approval.
