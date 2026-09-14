@@ -154,9 +154,32 @@ Review page cannot save anything, and says so.
   review-approval record only. `comms-quick-reply`, `comms-send`, the LinkedIn
   send path and the suite approvals surface neither read nor require it.
 
+## Applied, and what was checked against the real database
+
+Codex applied the base and hardening migrations atomically to
+`okydosoacqdnursmmenf` as `comms_review_runs_hardened` on 14 September 2026.
+
+Checked directly against the live database on the same day: all seven tables
+exist and respond, and every column this application writes is present —
+including `findings.decided_by` / `decided_at`, the renamed
+`obligations.excerpt_start` / `excerpt_end`, `obligations.obligation_key`,
+and `context_revision` on sessions and runs.
+
+One difference from the specification, found by that check and worked around
+in the application rather than by changing SQL: **`comms_review_approvals`
+has no `context_revision` column**. An approval is bound to the run it was
+given against, and that run carries the revision, so approval staleness is
+read back through the run. The guarantee is unchanged; if Codex later adds
+the column, the read can be simplified. Nothing writes the missing column, so
+approvals do not fail.
+
+Not yet checked against the live database: that the `authenticated` role
+really has SELECT only (that needs a real member's token), and any end-to-end
+write. No rows have been written to the workspace from this code.
+
 ## Next backend step
 
-Apply the base migration `docs/migrations/20260914150000_comms_review_runs.sql`
+(Completed — kept for the record.) Apply the base migration `docs/migrations/20260914150000_comms_review_runs.sql`
 together with Codex's follow-up hardening migration, atomically, to the
 existing external Supabase project `okydosoacqdnursmmenf`. The base file is
 unchanged. Both are additive.
