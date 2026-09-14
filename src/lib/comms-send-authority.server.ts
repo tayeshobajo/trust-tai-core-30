@@ -496,5 +496,32 @@ export async function settleDelivery(input: {
         : "more than one attempt matched",
     );
   }
+  if (input.state === "sent") await closeReviewAfterSend(input.organizationId, input.deliveryId);
   return { recorded: true, note: describeDelivery(input.state, input.channel) };
+}
+
+/**
+ * Once a message has actually gone out, the review that authorised it is
+ * finished. Closing it matters for a practical reason: the database reopens
+ * and re-dates any live review of a draft that changes, and a draft changes
+ * when it is marked as sent. Without this, a delivered message would leave
+ * behind a review that looks reopened and unapproved. A failure to close is
+ * not a failure to send, so it is logged and left alone.
+ */
+async function closeReviewAfterSend(organizationId: string, deliveryId: string): Promise<void> {
+  const writer = writerClient();
+  const { data } = await writer
+    .from("comms_review_deliveries")
+    .select("draft_id")
+    .eq("id", deliveryId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  const draftId = data ? str((data as Row)["draft_id"]) : "";
+  if (!draftId) return;
+  await writer
+    .from("comms_review_sessions")
+    .update({ status: "closed", updated_at: new Date().toISOString() })
+    .eq("organization_id", organizationId)
+    .eq("draft_id", draftId)
+    .neq("status", "closed");
 }
