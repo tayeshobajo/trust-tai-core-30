@@ -1076,7 +1076,23 @@ export async function runReview(
           : error instanceof Error && error.message === "forbidden"
             ? "access_denied"
             : "provider_call_failed";
-    const recorded = await markFailed(code, [RUN_STAGES.packet, voice.stamp]);
+    /* A failed run that says only "provider_call_failed" tells an operator
+       nothing they can act on. The configured provider and model are
+       secret-free facts, the status is the provider's own, and the category
+       is derived without keeping any message, prompt or draft text. */
+    const status = runtimeProviderStatus();
+    const diagnostics = providerDiagnostics({
+      error,
+      configured: { provider: status.provider, model: status.model },
+      notConfigured: code === "provider_not_configured",
+    });
+    console.error(diagnosticsLogLine("comms-review", diagnostics));
+    const recorded = await markFailed(
+      code,
+      [RUN_STAGES.packet, voice.stamp, ...diagnosticStages(diagnostics)],
+      diagnostics.provider ?? undefined,
+      diagnostics.model ?? undefined,
+    );
     throw new ReviewFailure(
       code,
       `${
