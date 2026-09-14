@@ -849,7 +849,7 @@ export function CommsNextWorkspace() {
                 }}
               />
             </div>
-            <div className={cn(!showDetailOnMobile && "hidden lg:block")}>
+            <div className={cn("min-w-0", !showDetailOnMobile && "hidden lg:block")}>
               <ThreadWorkspace
                 key={selected.id}
                 thread={selected}
