@@ -390,27 +390,48 @@ export function DraftsWorkspace({
 
 function DraftPane({
   item,
+  loading,
+  error,
   busy,
   onReview,
   onReject,
   onSend,
 }: {
   item: QueueItem | undefined;
+  loading: boolean;
+  error: string | null;
   busy: boolean;
   onReview: () => void;
   onReject: () => void;
   onSend: () => void;
 }) {
-  if (!item) {
+  if (loading) {
     return (
       <div className="rounded-xl border border-border p-8">
-        <p className="text-[13px] text-muted-foreground">
-          That draft is not in the waiting list any more. It may have been reviewed, rejected or
-          sent.
+        <p className="text-[13px] text-muted-foreground">Reading this draft…</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="rounded-xl border border-border p-8">
+        <p className="text-[13px] text-destructive">
+          This draft could not be read. It may belong to another workspace, or you may not have
+          access to it.
         </p>
       </div>
     );
   }
+  if (!item) {
+    return (
+      <div className="rounded-xl border border-border p-8">
+        <p className="text-[13px] text-muted-foreground">
+          No draft by that name in this workspace.
+        </p>
+      </div>
+    );
+  }
+
   const email = item.relationship?.email ?? null;
   return (
     <article className="space-y-4 rounded-xl border border-border p-5">
