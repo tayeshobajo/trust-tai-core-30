@@ -373,7 +373,7 @@ describe("runReview at the server boundary", () => {
     expect(packet["situation"]).toBe("She asked twice for the date.");
 
     const startedRun = attempts[0]?.payload as Record<string, unknown>;
-    expect(startedRun["stages"]).toContain("voice_profile:voice-1@v3");
+    expect(String(startedRun["stages"])).toMatch(/voice_profile:voice-1@v3#/);
   });
 
   it("never carries another client's words in as a style example", async () => {
