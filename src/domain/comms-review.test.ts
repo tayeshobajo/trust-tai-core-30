@@ -196,7 +196,11 @@ const READY = {
     versionId: string;
   }[],
   sources: [{ status: "parsed" }],
-  coverage: { complete: true, outstanding: 0, uncertain: 0 },
+  coverage: {
+    outstanding: 0,
+    uncertain: 0,
+    verdicts: [{ status: "answered", method: "semantic" }],
+  },
 };
 
 describe("what has to be true before a person may approve", () => {
@@ -234,13 +238,24 @@ describe("what has to be true before a person may approve", () => {
   it("is not ready while anything asked is unanswered or unverifiable", () => {
     const outstanding = approvalReadiness({
       ...READY,
-      coverage: { complete: false, outstanding: 2, uncertain: 0 },
+      coverage: {
+        outstanding: 2,
+        uncertain: 0,
+        verdicts: [
+          { status: "answered", method: "semantic" },
+          { status: "missing", method: "semantic" },
+        ],
+      },
     });
     expect(outstanding.blockers.join(" ")).toMatch(/2 unanswered/);
 
     const uncertain = approvalReadiness({
       ...READY,
-      coverage: { complete: false, outstanding: 0, uncertain: 1 },
+      coverage: {
+        outstanding: 0,
+        uncertain: 1,
+        verdicts: [{ status: "uncertain", method: "semantic" }],
+      },
     });
     expect(uncertain.ready).toBe(false);
     expect(uncertain.blockers.join(" ")).toMatch(/not verifiable/);
@@ -268,12 +283,41 @@ describe("what has to be true before a person may approve", () => {
     expect(readiness.ready).toBe(true);
   });
 
+  it("accepts an ask the other side still has to confirm", () => {
+    const readiness = approvalReadiness({
+      ...READY,
+      coverage: {
+        outstanding: 1,
+        uncertain: 0,
+        verdicts: [{ status: "pending_confirmation", method: "semantic" }],
+      },
+    });
+    expect(readiness.ready).toBe(true);
+  });
+
+  it("refuses an ask that was only matched by wording", () => {
+    const readiness = approvalReadiness({
+      ...READY,
+      coverage: {
+        outstanding: 0,
+        uncertain: 0,
+        verdicts: [{ status: "answered", method: "lexical" }],
+      },
+    });
+    expect(readiness.ready).toBe(false);
+    expect(readiness.blockers.join(" ")).toMatch(/only matched by wording/i);
+  });
+
   it("names every blocker at once rather than one at a time", () => {
     const readiness = approvalReadiness({
       ...READY,
       run: null,
       sources: [{ status: "unreadable" }],
-      coverage: { complete: false, outstanding: 1, uncertain: 0 },
+      coverage: {
+        outstanding: 1,
+        uncertain: 0,
+        verdicts: [{ status: "missing", method: "semantic" }],
+      },
       findings: [{ severity: "must_fix", state: "open", versionId: "v1" }],
     });
     expect(readiness.blockers).toHaveLength(4);

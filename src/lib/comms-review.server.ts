@@ -624,7 +624,6 @@ export async function runReview(
       status: "running",
       prompt_version: REVIEW_PROMPT_VERSION,
       context_fingerprint: fingerprint,
-      context_revision: session.contextRevision,
       stages: [RUN_STAGES.packet],
       started_at: new Date().toISOString(),
       created_by: caller.userId,
@@ -1115,7 +1114,14 @@ export async function loadReview(
       currentRevision: session.contextRevision,
       findings,
       sources,
-      coverage,
+      coverage: {
+        outstanding: coverage.outstanding,
+        uncertain: coverage.uncertain,
+        verdicts: coverage.verdicts.map((verdict) => ({
+          status: verdict.status,
+          method: verdict.method,
+        })),
+      },
     }),
     fingerprint,
     runIsCurrent: reviewRunIsCurrent({

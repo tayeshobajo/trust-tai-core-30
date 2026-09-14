@@ -99,9 +99,9 @@ describe("verifying a semantic pass", () => {
     });
     expect(verdict?.status).toBe("answered");
     expect(verdict?.answer?.versionId).toBe("v1");
-    expect(
-      draftAnswered.slice(verdict!.answer!.start, verdict!.answer!.end),
-    ).toBe("The migration finishes on 4 October");
+    expect(draftAnswered.slice(verdict!.answer!.start, verdict!.answer!.end)).toBe(
+      "The migration finishes on 4 October",
+    );
   });
 
   it("refuses an answer the draft does not contain", () => {
@@ -208,11 +208,7 @@ describe("verifying a semantic pass", () => {
       ],
     });
     const summary = summarizeObligations(verdicts);
-    expect(verdicts.map((v) => v.status)).toEqual([
-      "pending_confirmation",
-      "answered",
-      "missing",
-    ]);
+    expect(verdicts.map((v) => v.status)).toEqual(["pending_confirmation", "answered", "missing"]);
     expect(summary.complete).toBe(false);
     expect(summary.settled).toBe(false);
     expect(summary.answered).toBe(1);
@@ -235,8 +231,12 @@ describe("verifying a semantic pass", () => {
 
 describe("restatement detection", () => {
   it("knows an echo from a reply", () => {
-    expect(isRestatement("When will the migration be finished?", "When will the migration be finished?")).toBe(true);
-    expect(isRestatement("When will the migration be finished?", "The migration finishes on 4 October.")).toBe(false);
+    expect(
+      isRestatement("When will the migration be finished?", "When will the migration be finished?"),
+    ).toBe(true);
+    expect(
+      isRestatement("When will the migration be finished?", "The migration finishes on 4 October."),
+    ).toBe(false);
   });
 });
 
