@@ -536,6 +536,9 @@ export async function createReviewSession(
   structurePersisted: boolean;
 }> {
   const caller = await identify(token, input.organizationId);
+  /* Before the first write, not after it: a structure that does not validate,
+     or that contradicts the kind it claims, stops here with nothing saved. */
+  const sections = checkedSections(input.sections, input.kind);
   const writer = writerClient();
   const now = new Date().toISOString();
 
