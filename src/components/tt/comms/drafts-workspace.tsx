@@ -310,6 +310,12 @@ export function DraftsWorkspace({
             })}
           </ul>
         )}
+        {!failed && !loading && capped ? (
+          <p className="text-[12px] text-muted-foreground">
+            The most recent records only — there may be older ones not shown here.
+          </p>
+        ) : null}
+
       </aside>
 
       <section className="min-w-0">
