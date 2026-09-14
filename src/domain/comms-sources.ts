@@ -110,7 +110,10 @@ export function sourceChecksum(input: string): string {
 
 /** Normalise line endings and trailing space without touching the words. */
 export function normalizeSourceText(input: string): string {
-  return input.replace(/\r\n?/g, "\n").replace(/[ \t]+$/gm, "").trim();
+  return input
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+$/gm, "")
+    .trim();
 }
 
 /* ------------------------------------------------------------ classifying */

@@ -30,11 +30,7 @@ import { extractAsks, type SourceAsk } from "./comms-coverage";
 export type ObligationKind = "question" | "request";
 
 export type ObligationStatus =
-  | "answered"
-  | "partly_answered"
-  | "pending_confirmation"
-  | "missing"
-  | "uncertain";
+  "answered" | "partly_answered" | "pending_confirmation" | "missing" | "uncertain";
 
 export type ObligationMethod = "semantic" | "lexical_candidate";
 
@@ -225,9 +221,7 @@ export function isRestatement(obligation: string, answer: string): boolean {
   /* What the "answer" adds that the ask did not already say. Framing words
      like "you asked about" are not new information, so they do not rescue an
      echo. With nothing genuinely new, this is the question again. */
-  const novel = answerWords.filter(
-    (word) => !askSet.has(word) && !ECHO_FRAMING.has(word),
-  );
+  const novel = answerWords.filter((word) => !askSet.has(word) && !ECHO_FRAMING.has(word));
 
   const echo = covered >= 0.7 && novel.length === 0;
   const stillAsking = /\?\s*$/.test(answer.trim()) && covered >= 0.6;
@@ -259,11 +253,7 @@ function readConfidence(value: unknown): ObligationConfidence {
   return value === "high" || value === "medium" ? value : "low";
 }
 
-function uncertain(
-  obligation: Obligation,
-  because: string,
-  rejected?: string,
-): ObligationVerdict {
+function uncertain(obligation: Obligation, because: string, rejected?: string): ObligationVerdict {
   return {
     obligationId: obligation.id,
     kind: obligation.kind,
@@ -300,10 +290,7 @@ export function verifyObligationVerdicts(input: {
   return input.obligations.map((obligation) => {
     const claim = claims.get(obligation.id);
     if (!claim) {
-      return uncertain(
-        obligation,
-        "The review did not report on this one, so it is still open.",
-      );
+      return uncertain(obligation, "The review did not report on this one, so it is still open.");
     }
 
     const status = STATUSES.find((candidate) => candidate === claim.status);

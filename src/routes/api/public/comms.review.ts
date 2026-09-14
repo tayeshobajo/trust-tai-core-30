@@ -188,7 +188,10 @@ export const Route = createFileRoute("/api/public/comms/review")({
 
 function failure(error: unknown): Response {
   if (error instanceof ReviewFailure) {
-    return Response.json({ error: error.message, code: error.code }, { status: STATUS[error.code] });
+    return Response.json(
+      { error: error.message, code: error.code },
+      { status: STATUS[error.code] },
+    );
   }
   const message = error instanceof Error ? error.message : "That could not be completed.";
   return Response.json({ error: message }, { status: 400 });

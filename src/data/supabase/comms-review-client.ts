@@ -58,7 +58,7 @@ async function call<T>(init: RequestInit, url: string = URL): Promise<T> {
   return payload as T;
 }
 
-const post = <T,>(body: Record<string, unknown>) =>
+const post = <T>(body: Record<string, unknown>) =>
   call<T>({ method: "POST", body: JSON.stringify(body) });
 
 export function listReviews(organizationId: string) {
@@ -100,11 +100,7 @@ export function reviseDraft(input: {
   return post<ReviewVersion>({ action: "revise", ...input });
 }
 
-export function runReview(input: {
-  organizationId: string;
-  sessionId: string;
-  versionId: string;
-}) {
+export function runReview(input: { organizationId: string; sessionId: string; versionId: string }) {
   return post<{ runId: string }>({ action: "run", ...input });
 }
 

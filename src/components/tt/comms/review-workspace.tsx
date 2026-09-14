@@ -92,9 +92,7 @@ function NewReview({
         subject,
         body,
         sources: [
-          ...(received.trim()
-            ? [{ label: "What you were sent", text: received }]
-            : []),
+          ...(received.trim() ? [{ label: "What you were sent", text: received }] : []),
           ...files.map((file) => ({
             label: file.filename,
             filename: file.filename,
@@ -361,9 +359,7 @@ function ReviewDetail({
         </TTButton>
         <h3 className="text-lg font-medium text-foreground">{state.session.title}</h3>
         <MetaPill>Version {current.version}</MetaPill>
-        {state.latestRun && !state.runIsCurrent ? (
-          <MetaPill>Review is out of date</MetaPill>
-        ) : null}
+        {state.latestRun && !state.runIsCurrent ? <MetaPill>Review is out of date</MetaPill> : null}
       </div>
 
       {error ? <p className="text-sm text-[var(--danger,#b3261e)]">{error}</p> : null}
@@ -487,7 +483,13 @@ function FindingList({
   onDecide,
 }: {
   heading: string;
-  findings: { id: string; why: string; excerpt: string | null; suggestion: string | null; state: string }[];
+  findings: {
+    id: string;
+    why: string;
+    excerpt: string | null;
+    suggestion: string | null;
+    state: string;
+  }[];
   onDecide: (findingId: string, state: "accepted" | "kept") => void;
 }) {
   return (
