@@ -189,6 +189,7 @@ async function sendDraft(draftId: string, organizationId: string): Promise<void>
 
 function QueueView({ identity }: { identity: WorkspaceIdentity }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<string | null>(null);
 
