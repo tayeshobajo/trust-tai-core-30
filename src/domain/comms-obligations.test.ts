@@ -248,3 +248,20 @@ describe("a source that asked nothing", () => {
     expect(summary.note).toMatch(/No questions or requests were found/i);
   });
 });
+
+describe("a draft nobody has reviewed", () => {
+  it("says not evaluated rather than no asks, and is never complete", () => {
+    const summary = summarizeObligations([], false);
+    expect(summary.evaluated).toBe(false);
+    expect(summary.complete).toBe(false);
+    expect(summary.settled).toBe(false);
+    expect(summary.note).toMatch(/has not been checked/i);
+    expect(summary.note).not.toMatch(/No questions or requests were found/i);
+  });
+
+  it("keeps saying no asks were found once a review really looked", () => {
+    const summary = summarizeObligations([], true);
+    expect(summary.evaluated).toBe(true);
+    expect(summary.note).toMatch(/No questions or requests were found/i);
+  });
+});
