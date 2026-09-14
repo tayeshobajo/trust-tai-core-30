@@ -859,7 +859,14 @@ export interface DraftPassInput {
   register: VoiceRegister;
   usedEvidence: { label: string; value: string; tier: string }[];
   groundingSummary: DraftGroundingSummary;
+  /** The signed-in author. Their name closes the message, nobody else's. */
+  sender?: SenderProfile | null;
+  /** Questions and requests found in the source, for coverage accounting. */
+  asks?: SourceAsk[];
+  /** How much of the conversation was read. */
+  sourceWindow?: Omit<ThreadWindow, "entries">;
 }
+
 
 /**
  * Judgment first, write second, deterministic voice pass last, over the
