@@ -804,12 +804,12 @@ export async function reviseDraft(
       session_id: session.id,
       version,
       subject: input.subject?.trim() || null,
-      body: canonicalBody(input.body, input.sections),
+      body: canonicalBody(input.body, sections),
       origin: "edit",
       author_user_id: caller.userId,
       created_at: new Date().toISOString(),
     },
-    input.sections,
+    sections,
   );
   if (!saved.row) fail("That edit could not be saved. Your previous version is unchanged.");
   return { version: toVersion(saved.row), structurePersisted: saved.structurePersisted };
