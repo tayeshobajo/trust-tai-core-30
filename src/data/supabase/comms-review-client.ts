@@ -8,6 +8,8 @@
 
 import { supabase } from "@/integrations/trust-tai/supabase";
 
+import type { DraftKind } from "@/domain/comms-draft-kind";
+
 import type { ObligationCoverage } from "@/domain/comms-obligations";
 import type {
   ApprovalReading,
@@ -86,11 +88,16 @@ export interface CreateReviewFields {
   recipientEmail: string;
   subject: string;
   body: string;
+  /** Message, email or proposal. Recorded when the workspace can store it. */
+  kind?: DraftKind;
   sources: { label?: string; filename?: string; mediaType?: string; text?: string }[];
 }
 
 export function createReview(fields: CreateReviewFields) {
-  return post<{ sessionId: string; versionId: string }>({ action: "create", ...fields });
+  return post<{ sessionId: string; versionId: string; kindPersisted?: boolean }>({
+    action: "create",
+    ...fields,
+  });
 }
 
 export function reviseDraft(input: {

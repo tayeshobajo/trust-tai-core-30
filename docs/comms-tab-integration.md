@@ -83,3 +83,74 @@ Drafts & Reviews as a single working surface: carry the chosen kind into the
 intake as a real field, structured proposal sections with arithmetic and
 consistency checks (schema change proposed for review, not provisioned), real
 list filters, and resume-after-reload verified against persisted records.
+
+## Slice 2 — one workspace, real records, honest counts (code evidence)
+
+Date: 2026-09-14. No publish, no client send, no SQL applied.
+
+### What changed
+
+- **Exact record selection.** Dashboard draft rows link with `?draft=<id>`
+  (`draftSearch`, `src/domain/comms-section-state.ts`). `/modules/comms/drafts`
+  validates `draft`, `session`, `filter`, `new` and restores the same record on
+  reload. The workspace binds the draft server-side before a review is opened;
+  a draft outside the caller's workspace never binds.
+- **One surface, not a stack.** `DraftQueue` and `ReviewWorkspace` are no longer
+  stacked under a page header. `src/components/tt/comms/drafts-workspace.tsx`
+  is a single list with selection plus one focused pane (draft, review, or new
+  intake). `/modules/comms/review?session=…` now redirects into that pane, so
+  every old deep link lands on the same record.
+- **Overdue follow-ups are actionable.** `src/domain/comms-work-board.ts` puts
+  overdue follow-ups and commitments in the past-due bucket, and keeps past
+  meetings in a separate "needs a record" bucket — a past meeting is never
+  called unfulfilled without completion evidence. `now` is recomputed each
+  minute, so a row crosses the boundary without a reload.
+- **A failed read never looks empty.** `sectionState` returns
+  error/loading/empty/list; a failed section shows a sanitized sentence and a
+  retry, and renders no rows and no count. Tests:
+  `src/domain/comms-section-state.test.ts`.
+- **Counts are the real ones.** Sections show the exact total and, when the
+  list is cut, "showing X of N" (`showingNote`), and the view-all link carries
+  the matching filter.
+- **Separate cache keys.** The dashboard's narrow draft summary uses its own
+  query key, so it can no longer poison the workspace queue cache.
+- **Kind is persisted, or honestly not.** `src/domain/comms-draft-kind.ts`
+  validates `message|email|proposal`; the server writes it and falls back on
+  `42703`, returning `kindPersisted: false` so the screen says the kind was not
+  recorded rather than implying it was. Tests:
+  `src/domain/comms-draft-kind.test.ts` and the two boundary cases in
+  `src/lib/comms-review.server.test.ts`.
+- **Proposals are structured.** `src/domain/comms-proposal.ts` holds scope,
+  deliverables, pricing, assumptions and next steps, with exact minor-unit
+  currency arithmetic, unknown ≠ zero, consistency checks and deterministic
+  rendering; the reviewed text is exactly what the structure renders, and no
+  price or date is invented. Tests: `src/domain/comms-proposal.test.ts`.
+- **Dirty edits are protected** when switching tab, filter or record.
+
+### Outcome status
+
+- **T01 — five destinations, each doing real work.** Implemented in code;
+  routes `/modules/comms`, `/modules/comms/drafts`, `/modules/comms/relationships`
+  return 200 locally and old links redirect. **Not live-verified** (no signed-in
+  session available here).
+- **T03 — draft kind carried end to end.** Implemented in code with a truthful
+  fallback. Live-unverified, and the column does not exist in the applied
+  schema yet, so today it will report "kind not recorded".
+
+### Proposed SQL (not applied)
+
+`docs/migrations/proposed/20260914220000_comms_review_kind.sql` — additive
+only: `comms_review_sessions.kind` with a three-value check, and
+`comms_review_versions.structured_source` for the proposal structure the text
+was rendered from. Existing grants, policies and triggers are untouched. For
+Codex review; the app works without it.
+
+### Blockers (unchanged and honest)
+
+- **AI review is not functional.** The only live run
+  (`b7bee2e2-4b13-476e-9f61-af008d374215`) failed with `provider_call_failed`
+  and persisted no provider, model or status, so the cause is still unknown.
+  Sanitized diagnostics exist in code but are not deployed.
+- **Hosted deployment is behind Git**; nothing in this slice is live.
+- No send path has been exercised; suite approval → send integration remains
+  explicitly unmet.

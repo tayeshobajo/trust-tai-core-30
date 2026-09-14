@@ -16,7 +16,11 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { ProposalComposer } from "@/components/tt/comms/proposal-composer";
+import { DRAFT_KIND_LABEL, type DraftKind } from "@/domain/comms-draft-kind";
+import { EMPTY_PROPOSAL, renderProposal, type ProposalSections } from "@/domain/comms-proposal";
 
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import {
@@ -71,12 +75,18 @@ export function ReviewWorkspace({
 
 /* ---------------------------------------------------------------- intake */
 
-function NewReview({
+export function NewReview({
   identity,
   onOpened,
+  kind = "message",
+  onDirty,
 }: {
   identity: WorkspaceIdentity;
   onOpened: (id: string) => void;
+  /** What is being written. Stored on the review when the column exists. */
+  kind?: DraftKind;
+  /** Told whenever there is unsaved typing, so the page can protect it. */
+  onDirty?: (dirty: boolean) => void;
 }) {
   const [title, setTitle] = useState("");
   const [recipientName, setRecipientName] = useState("");
@@ -86,19 +96,36 @@ function NewReview({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<{ filename: string; mediaType: string; text?: string }[]>([]);
+  const [proposal, setProposal] = useState<ProposalSections>(EMPTY_PROPOSAL);
   const [error, setError] = useState<string | null>(null);
+  const [kindStored, setKindStored] = useState<boolean | null>(null);
+
+  /* A proposal is written as sections; the exact words reviewed are rendered
+     from those same sections, so the structure and the text cannot drift. */
+  const composed = kind === "proposal" ? renderProposal(proposal) : body;
+
+  const dirty =
+    Boolean(
+      title || recipientName || recipientEmail || goal || received || subject || body ||
+        files.length,
+    ) || (kind === "proposal" && composed.trim().length > 0);
+
+  useEffect(() => {
+    onDirty?.(dirty);
+  }, [dirty, onDirty]);
 
   const open = useMutation({
     mutationFn: () =>
       createReview({
         organizationId: identity.organizationId,
-        title: title.trim() || recipientName.trim() || "Message review",
+        title: title.trim() || recipientName.trim() || `${DRAFT_KIND_LABEL[kind]} review`,
         situation: "",
         goal,
         recipientName,
         recipientEmail,
         subject,
-        body,
+        kind,
+        body: composed,
         sources: [
           ...(received.trim() ? [{ label: "What you were sent", text: received }] : []),
           ...files.map((file) => ({
@@ -109,7 +136,11 @@ function NewReview({
           })),
         ],
       }),
-    onSuccess: (result) => onOpened(result.sessionId),
+    onSuccess: (result) => {
+      setKindStored(result.kindPersisted ?? false);
+      onDirty?.(false);
+      onOpened(result.sessionId);
+    },
     onError: (cause: Error) => setError(cause.message),
   });
 
@@ -209,15 +240,21 @@ function NewReview({
         <input className={field} value={subject} onChange={(e) => setSubject(e.target.value)} />
       </label>
 
-      <label className="block space-y-1.5 text-sm">
-        <span className="text-muted-foreground">The reply you mean to send</span>
-        <textarea
-          className={cn(field, "min-h-56 leading-relaxed")}
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          placeholder="Your words. Comms reviews these; it does not write them for you here."
-        />
-      </label>
+      {kind === "proposal" ? (
+        <ProposalComposer sections={proposal} onChange={setProposal} />
+      ) : (
+        <label className="block space-y-1.5 text-sm">
+          <span className="text-muted-foreground">
+            The {kind === "email" ? "email" : "message"} you mean to send
+          </span>
+          <textarea
+            className={cn(field, "min-h-56 leading-relaxed")}
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            placeholder="Your words. Comms reviews these; it does not write them for you here."
+          />
+        </label>
+      )}
 
       <label className="block space-y-1.5 text-sm">
         <span className="text-muted-foreground">Name this review</span>
@@ -225,9 +262,15 @@ function NewReview({
       </label>
 
       {error ? <p className="text-sm text-[var(--danger,#b3261e)]">{error}</p> : null}
+      {kindStored === false ? (
+        <p className="text-xs text-muted-foreground">
+          This workspace cannot record what kind of draft this is yet, so it was saved without
+          that label. Everything else was stored.
+        </p>
+      ) : null}
 
       <TTButton type="submit" pending={open.isPending} pendingLabel="Opening review…">
-        Open review
+        Open {DRAFT_KIND_LABEL[kind].toLowerCase()} review
       </TTButton>
     </form>
   );
@@ -275,7 +318,7 @@ function RecentReviews({
 
 /* ---------------------------------------------------------------- detail */
 
-function ReviewDetail({
+export function ReviewDetail({
   identity,
   sessionId,
   onBack,

@@ -18,6 +18,7 @@
  */
 
 import { normalizeRole, type WorkspaceRole } from "./access";
+import type { DraftKind } from "./comms-draft-kind";
 import { sourceChecksum } from "./comms-sources";
 import type { ISODateTime } from "./entities";
 
@@ -51,6 +52,11 @@ export interface ReviewSession {
   draftId: string | null;
   /** The door this message is meant to leave by, when one is intended. */
   intendedChannel: string | null;
+  /**
+   * Message, email or proposal. Null on rows written before the column
+   * existed, so an old review reads as "not recorded" rather than a guess.
+   */
+  kind: DraftKind | null;
   /** The identity it would go out as. Part of what gets approved. */
   senderIdentity: string | null;
   createdBy: string | null;

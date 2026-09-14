@@ -11,6 +11,8 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
+import { readDraftKind } from "@/domain/comms-draft-kind";
+
 import {
   approveVersion,
   createReviewForDraft,
@@ -137,6 +139,7 @@ export const Route = createFileRoute("/api/public/comms/review")({
                   subject: textOf(body["subject"]),
                   body: draftBody,
                   sources: sourcesOf(body["sources"]),
+                  ...(readDraftKind(body["kind"]) ? { kind: readDraftKind(body["kind"])! } : {}),
                 }),
               );
             }
