@@ -37,10 +37,12 @@ import { createClient } from "@supabase/supabase-js";
 import { checkVoice, requiresHumanReview, type VoiceVerdict } from "@/data/voice-policy";
 import {
   DEFAULT_VOICE_DOCUMENT,
+  EMAIL_SIGNOFF,
   REGISTER_GUIDE,
   TAI_RELATIONSHIP_VOICE,
   type VoiceRegister,
 } from "@/domain/voice";
+
 import { COMMITMENT_CATEGORY } from "@/domain/comms-interactions";
 import type { IntelligenceCase } from "@/domain/intelligence-canon";
 import type { WithheldSource } from "@/domain/signals";
@@ -52,10 +54,19 @@ import {
   salutationName,
   summarizeDraftGrounding,
   threadContextForJudgment,
+  threadWindowForJudgment,
   unearnedAskInBody,
   type CommunicationJudgment,
   type DraftGroundingSummary,
+  type ThreadWindow,
 } from "@/domain/comms-judgment";
+import {
+  coverageForDraft,
+  extractAsks,
+  type CoverageReport,
+  type SourceAsk,
+} from "@/domain/comms-coverage";
+import { senderEvidence, signoffFor, type SenderProfile } from "@/domain/comms-sender";
 import {
   ProviderCallFailedError,
   ProviderNotConfiguredError,
@@ -63,6 +74,13 @@ import {
   runtimeProviderStatus,
   type RuntimeModelCaller,
 } from "@/lib/intelligence-runtime.server";
+
+/**
+ * The prompt contract version. Bumped whenever the instructions or the
+ * evidence packet change shape, so a recorded run can be replayed against the
+ * prompt it actually used.
+ */
+export const DRAFT_PROMPT_VERSION = "comms-draft/2026-09-14";
 
 const REGISTERS: VoiceRegister[] = [
   "warm_intro",
@@ -184,8 +202,16 @@ export interface DraftResult {
   judgment: CommunicationJudgment;
   /** What the draft stands on, and what would sharpen it. Shown before send. */
   grounding: DraftGroundingSummary;
+  /** How much of the conversation was actually read. Never implied. */
+  sourceWindow: Omit<ThreadWindow, "entries">;
+  /** Every question and request in the source, and how the draft answers it. */
+  coverage: CoverageReport;
+  /** Who the draft is written by, and the closing it carries. */
+  sender: { name: string | null; signoff: string | null };
   provider: string;
   model: string;
+  /** The prompt contract this run used, for later regression evaluation. */
+  promptVersion: string;
 }
 
 export function parseRegister(value: unknown): VoiceRegister {
@@ -246,26 +272,30 @@ interface ThreadRow {
 }
 
 /**
- * The recent conversation for this relationship, read with the caller's
- * token. Drafting blind to the thread is the failure this removes. The
- * message-fidelity columns are preferred; an older schema sheds body_text
- * and retries with snippets.
+ * The conversation for this relationship, read newest first.
+ *
+ * Reading the oldest 40 messages of a long thread and calling it context is
+ * how a reviewer misses the request that arrived this morning. The store is
+ * asked for the newest window, the window is re-ordered oldest to newest for
+ * reading, and the total message count travels with it so coverage can be
+ * stated instead of implied. The message-fidelity columns are preferred; an
+ * older schema sheds body_text and retries with snippets.
  */
-async function loadThread(
-  supabase: CallerClient,
-  relationshipId: string,
-): Promise<ReturnType<typeof threadContextForJudgment>> {
+const THREAD_WINDOW = 40;
+
+async function loadThread(supabase: CallerClient, relationshipId: string): Promise<ThreadWindow> {
   const variants = [
     "direction, subject, body_text, snippet, occurred_at",
     "direction, subject, snippet, occurred_at",
   ];
   for (const columns of variants) {
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
       .from("comms_messages")
-      .select(columns)
+      .select(columns, { count: "exact" })
+      // Newest first, so the latest request is always inside the window.
+      .order("occurred_at", { ascending: false })
       .eq("relationship_id", relationshipId)
-      .order("occurred_at", { ascending: true })
-      .limit(40);
+      .limit(THREAD_WINDOW);
     if (error) continue;
     const rows = ((data ?? []) as unknown as ThreadRow[])
       .filter((row) => row.direction === "inbound" || row.direction === "outbound")
@@ -277,9 +307,33 @@ async function loadThread(
         occurredAt: String(row.occurred_at ?? ""),
       }))
       .filter((row) => row.occurredAt);
-    return threadContextForJudgment(rows);
+    return threadWindowForJudgment({
+      // threadContextForJudgment sorts oldest-to-newest itself.
+      entries: threadContextForJudgment(rows),
+      messagesInThread: typeof count === "number" ? count : null,
+      messagesLoaded: rows.length,
+    });
   }
-  return [];
+  return threadWindowForJudgment({ entries: [], messagesInThread: 0, messagesLoaded: 0 });
+}
+
+/** The signed-in author, so a message closes with the right person's name. */
+async function loadSender(
+  supabase: CallerClient,
+  user: { id: string; email?: string | null },
+): Promise<SenderProfile> {
+  const { data } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  const row = (data ?? {}) as Record<string, unknown>;
+  const email = String(row["email"] ?? user.email ?? "").trim();
+  const name =
+    String(row["full_name"] ?? "").trim() ||
+    String(row["display_name"] ?? "").trim() ||
+    (email ? (email.split("@")[0] ?? "") : "");
+  return {
+    id: user.id,
+    name,
+    ...(email ? { email } : {}),
+  };
 }
 
 /**
@@ -614,8 +668,9 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
   const register = request.register;
 
   // The governed evidence packet both passes reason over.
-  const [thread, voiceExamples, projectContext, ledger] = await Promise.all([
+  const [threadWindow, sender, voiceExamples, projectContext, ledger] = await Promise.all([
     loadThread(supabase, request.relationshipId),
+    loadSender(supabase, { id: user.user.id, email: user.user.email ?? null }),
     loadVoiceExamples(supabase, organizationId),
     /* The bounded project layer: direction, work in flight, and what has
        actually gone out. Selected and capped, never a history dump. */
@@ -626,6 +681,17 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
     }),
     loadCases(supabase, organizationId),
   ]);
+  const thread = threadWindow.entries;
+
+  /* Every question and actionable request in what they actually wrote,
+     deterministic and positioned. A question at the bottom of a long email
+     counts exactly as much as one at the top. */
+  const asks: SourceAsk[] = thread
+    .filter((entry) => entry.direction === "inbound")
+    .flatMap((entry, index) =>
+      extractAsks(entry.text, `Their message ${index + 1}, ${entry.occurredAt}`),
+    )
+    .map((ask, index) => ({ ...ask, id: `ask-${index + 1}` }));
 
   /* The grounding gate. A real thread plus a known identity grounds a reply;
      identity plus one real prior interaction plus a reason grounds a
@@ -705,7 +771,23 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
         text: entry.text,
         at: entry.occurredAt,
         latestFromThisSide: entry.latestForSide,
+        wholeMessage: entry.complete,
       })),
+      /* Coverage the writing pass must satisfy, and the honest limit of what
+         was read. Neither is a claim the model made. */
+      openAsks: asks.map((ask) => ({
+        id: ask.id,
+        kind: ask.kind,
+        text: ask.text,
+        foundAt: `${ask.source}, character ${ask.offset}`,
+      })),
+      sourceCoverage: {
+        messagesInThread: threadWindow.messagesInThread,
+        messagesRead: threadWindow.messagesRead,
+        complete: threadWindow.complete,
+        because: threadWindow.because,
+      },
+      writtenBy: senderEvidence(sender),
     },
     projectContext: {
       evidence: projectContext.lines
@@ -747,6 +829,15 @@ export async function draftMessage(token: string, request: DraftRequest): Promis
     register,
     usedEvidence,
     groundingSummary,
+    sender,
+    asks,
+    sourceWindow: {
+      messagesInThread: threadWindow.messagesInThread,
+      messagesLoaded: threadWindow.messagesLoaded,
+      messagesRead: threadWindow.messagesRead,
+      complete: threadWindow.complete,
+      because: threadWindow.because,
+    },
   });
 }
 
@@ -757,6 +848,12 @@ export interface DraftPassInput {
   register: VoiceRegister;
   usedEvidence: { label: string; value: string; tier: string }[];
   groundingSummary: DraftGroundingSummary;
+  /** The signed-in author. Their name closes the message, nobody else's. */
+  sender?: SenderProfile | null;
+  /** Questions and requests found in the source, for coverage accounting. */
+  asks?: SourceAsk[];
+  /** How much of the conversation was read. */
+  sourceWindow?: Omit<ThreadWindow, "entries">;
 }
 
 /**
@@ -860,7 +957,19 @@ on the thread, and close.`,
     }
   }
 
-  const verdict = checkVoice(body, { register: input.register, requireSignoff: true });
+  /* The closing belongs to whoever is writing. With a known author but no
+     usable name there is no honest signature, so the draft stays unsigned
+     rather than borrowing somebody else's. Callers that name no author at
+     all are drafting as Tai, which is the historical default. */
+  const signoff = input.sender === undefined ? EMAIL_SIGNOFF : signoffFor(input.sender);
+
+  const verdict = checkVoice(body, {
+    register: input.register,
+    requireSignoff: Boolean(signoff),
+    ...(signoff ? { signoff } : {}),
+  });
+
+  const coverage = coverageForDraft(input.asks ?? [], verdict.text);
 
   return {
     subject: subject.replace(/[!\u2014]/g, "").trim(),
@@ -871,8 +980,18 @@ on the thread, and close.`,
     usedEvidence: input.usedEvidence,
     judgment,
     grounding: input.groundingSummary,
+    sourceWindow: input.sourceWindow ?? {
+      messagesInThread: null,
+      messagesLoaded: 0,
+      messagesRead: 0,
+      complete: false,
+      because: "No conversation was read for this draft.",
+    },
+    coverage,
+    sender: { name: input.sender?.name?.trim() || null, signoff },
     provider,
     model,
+    promptVersion: DRAFT_PROMPT_VERSION,
   };
 }
 

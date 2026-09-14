@@ -118,19 +118,31 @@ export function repairVoice(input: string): string {
     .trimEnd();
 }
 
-/** Add the exact Trust Tai signoff when an email is missing one. */
-export function ensureSignoff(input: string): string {
-  const { body, signoff } = stripSignoff(input);
-  if (signoff && /^Trust,\s*\n?\s*Tai\.?$/i.test(signoff)) {
-    return `${body}\n\n${EMAIL_SIGNOFF}`;
+/**
+ * Add the closing this sender is entitled to.
+ *
+ * The default is Tai's, because Tai is the default author. Pass the actual
+ * sender's closing for a team member's message: the form stays Trust Tai's,
+ * the name stays theirs.
+ */
+export function ensureSignoff(input: string, signoff: string = EMAIL_SIGNOFF): string {
+  const { body, signoff: existing } = stripSignoff(input);
+  if (existing && existing.replace(/\s+/g, " ").trim() === signoff.replace(/\s+/g, " ").trim()) {
+    return `${body}\n\n${signoff}`;
   }
-  return `${body.trimEnd()}\n\n${EMAIL_SIGNOFF}`;
+  return `${body.trimEnd()}\n\n${signoff}`;
 }
 
 export interface VoiceCheckOptions {
   register: VoiceRegister;
   /** Email drafts must close with the signoff. A LinkedIn note must not. */
   requireSignoff?: boolean;
+  /**
+   * The closing this message is allowed to carry. Defaults to Tai's. A team
+   * member's draft passes their own closing here so Tai's name is never
+   * attached to words Tai did not write.
+   */
+  signoff?: string;
 }
 
 /**
@@ -141,8 +153,9 @@ export interface VoiceCheckOptions {
  */
 export function checkVoice(input: string, options: VoiceCheckOptions): VoiceVerdict {
   const requireSignoff = options.requireSignoff ?? true;
+  const signoff = options.signoff?.trim() || EMAIL_SIGNOFF;
   let text = repairVoice(input);
-  if (requireSignoff) text = ensureSignoff(text);
+  if (requireSignoff) text = ensureSignoff(text, signoff);
 
   const violations: VoiceViolation[] = [];
   const add = (ruleId: VoiceRuleId, excerpt: string) => {
@@ -175,8 +188,8 @@ export function checkVoice(input: string, options: VoiceCheckOptions): VoiceVerd
   const long = sentences.find((entry) => entry.split(/\s+/).length > LONG_SENTENCE_WORDS);
   if (long) add("short_cadence", `${long.slice(0, 60)}…`);
 
-  if (requireSignoff && !/Trust,\s*\n\s*Tai/.test(input)) {
-    add("signoff", "Missing Trust, Tai");
+  if (requireSignoff && !input.replace(/\s+/g, " ").includes(signoff.replace(/\s+/g, " "))) {
+    add("signoff", `Missing ${signoff.replace(/\s+/g, " ")}`);
   }
 
   return {

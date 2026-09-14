@@ -19,6 +19,7 @@ import {
   salutationName,
   summarizeDraftGrounding,
   threadContextForJudgment,
+  threadWindowForJudgment,
   unearnedAskInBody,
   writeCommunicationJudgment,
   writeDraftGrounding,
@@ -449,7 +450,7 @@ describe("threadContextForJudgment", () => {
     expect(threadContextForJudgment([])).toEqual([]);
   });
 
-  it("bounds the window and trims long bodies without dropping short ones", () => {
+  it("bounds the window and keeps long bodies whole", () => {
     const many = Array.from({ length: 12 }, (_, index) =>
       message(
         "inbound",
@@ -461,12 +462,15 @@ describe("threadContextForJudgment", () => {
     expect(entries).toHaveLength(8);
     expect(entries[0]!.text).toBe("Note 4");
 
+    // A real email, long enough that the old 900-character cut would have
+    // dropped the question people bury at the bottom of it.
+    const buried = `${"context. ".repeat(200)}Who owns updates after launch?`;
     const long = threadContextForJudgment([
-      message("inbound", "2026-08-01T10:00:00Z", "x".repeat(2000)),
+      message("inbound", "2026-08-01T10:00:00Z", buried),
       message("inbound", "2026-08-02T10:00:00Z", "short"),
     ]);
-    expect(long[0]!.text.length).toBeLessThanOrEqual(901);
-    expect(long[0]!.text.endsWith("…")).toBe(true);
+    expect(long[0]!.text).toContain("Who owns updates after launch?");
+    expect(long[0]!.complete).toBe(true);
     expect(long[1]!.text).toBe("short");
   });
 
@@ -475,5 +479,55 @@ describe("threadContextForJudgment", () => {
       { direction: "inbound", occurredAt: "2026-08-01T10:00:00Z", snippet: "A snippet." },
     ]);
     expect(entries[0]!.text).toBe("A snippet.");
+  });
+});
+
+describe("threadWindowForJudgment", () => {
+  const entry = (complete = true) => ({
+    direction: "inbound" as const,
+    text: "Their note.",
+    occurredAt: "2026-09-14T09:12:00Z",
+    latestForSide: true,
+    complete,
+  });
+
+  it("never implies coverage it does not have", () => {
+    const window = threadWindowForJudgment({
+      entries: [entry(), entry()],
+      messagesInThread: 63,
+      messagesLoaded: 40,
+    });
+    expect(window.complete).toBe(false);
+    expect(window.because).toContain("newest 2 of 63");
+    expect(window.because).toContain("Earlier messages were not read");
+  });
+
+  it("says the whole conversation is here only when it is", () => {
+    const window = threadWindowForJudgment({
+      entries: [entry(), entry()],
+      messagesInThread: 2,
+      messagesLoaded: 2,
+    });
+    expect(window.complete).toBe(true);
+  });
+
+  it("treats a long message that was cut as incomplete coverage", () => {
+    const window = threadWindowForJudgment({
+      entries: [entry(false)],
+      messagesInThread: 1,
+      messagesLoaded: 1,
+    });
+    expect(window.complete).toBe(false);
+    expect(window.because).toContain("too long to include whole");
+  });
+
+  it("keeps an uncountable store honest rather than calling it complete", () => {
+    const window = threadWindowForJudgment({
+      entries: [entry()],
+      messagesInThread: null,
+      messagesLoaded: 1,
+    });
+    expect(window.complete).toBe(false);
+    expect(window.because).toContain("coverage is unknown");
   });
 });

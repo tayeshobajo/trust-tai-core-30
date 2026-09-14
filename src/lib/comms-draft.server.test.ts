@@ -413,3 +413,77 @@ describe("classifyDraftAccessError", () => {
     expect(classifyDraftAccessError("forbidden")).toBeNull();
   });
 });
+
+/* Slice one of the review build: the draft must close with the person who
+   actually wrote it, and it must say honestly how much of the conversation it
+   read and which of their questions it answered. */
+describe("sender identity and coverage", () => {
+  const caller: RuntimeModelCaller = (() => {
+    let calls = 0;
+    return async () => {
+      calls += 1;
+      return {
+        raw: calls === 1 ? VALID_JUDGMENT : VALID_DRAFT,
+        provider: "test",
+        model: "test-model",
+      };
+    };
+  })();
+
+  it("signs a team member's draft with their own name, never with Tai's", async () => {
+    const result = await executeDraftPasses(caller, {
+      ...BROOKE_INPUT,
+      sender: { id: "u-sam", name: "Sam Okoye" },
+    });
+    expect(result.body).toMatch(/Trust,\s*\n\s*Sam/);
+    expect(result.body).not.toMatch(/Trust,\s*\n\s*Tai/);
+    expect(result.sender).toEqual({ name: "Sam Okoye", signoff: "Trust,\nSam" });
+  });
+
+  it("reports the read window and answers to their questions, plus the prompt version", async () => {
+    const tai: RuntimeModelCaller = (() => {
+      let calls = 0;
+      return async () => {
+        calls += 1;
+        return {
+          raw: calls === 1 ? VALID_JUDGMENT : VALID_DRAFT,
+          provider: "test",
+          model: "test-model",
+        };
+      };
+    })();
+    const result = await executeDraftPasses(tai, {
+      ...BROOKE_INPUT,
+      sender: { id: "u-tai", name: "Tai Shobajo" },
+      asks: [
+        {
+          id: "ask-1",
+          text: "Can we start next month?",
+          offset: 12,
+          kind: "question",
+          source: "Their message 1",
+        },
+        {
+          id: "ask-2",
+          text: "Who owns the hosting invoice?",
+          offset: 1400,
+          kind: "question",
+          source: "Their message 1",
+        },
+      ],
+      sourceWindow: {
+        messagesInThread: 63,
+        messagesLoaded: 40,
+        messagesRead: 8,
+        complete: false,
+        because: "The newest 8 of 63 messages were read. Earlier messages were not read.",
+      },
+    });
+    expect(result.sourceWindow.complete).toBe(false);
+    expect(result.sourceWindow.messagesInThread).toBe(63);
+    expect(result.coverage.method).toBe("deterministic");
+    expect(result.coverage.asks.find((ask) => ask.id === "ask-2")?.status).toBe("missing");
+    expect(result.coverage.complete).toBe(false);
+    expect(result.promptVersion).toMatch(/^comms-draft\//);
+  });
+});
