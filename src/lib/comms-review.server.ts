@@ -1617,7 +1617,10 @@ export async function loadReview(
     statusNote: str(row["status_note"]),
     charCount: num(row["char_count"]) ?? 0,
   }));
-  const coverage = summarizeObligations(verdicts);
+  /* Coverage only counts for something when a completed run stands behind it.
+     No run, or a failed one, means the questions were never judged — which
+     the summary must say instead of reporting a source with no asks in it. */
+  const coverage = summarizeObligations(verdicts, latestRun?.status === "complete");
 
   return {
     session,
