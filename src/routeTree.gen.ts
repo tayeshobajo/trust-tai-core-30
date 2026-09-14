@@ -51,6 +51,7 @@ import { Route as ModulesCommsInboxRouteImport } from './routes/modules.comms.in
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsPlanRouteImport } from './routes/modules.comms.plan'
 import { Route as ModulesCommsQueueRouteImport } from './routes/modules.comms.queue'
+import { Route as ModulesCommsReviewRouteImport } from './routes/modules.comms.review'
 import { Route as ModulesCommsToScoutRouteImport } from './routes/modules.comms.to-scout'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
 import { Route as ModulesProjectsIndexRouteImport } from './routes/modules.projects.index'
@@ -71,6 +72,7 @@ import { Route as ModulesWebsitePageRouteImport } from './routes/modules.website
 import { Route as ApiPublicClientsAskRouteImport } from './routes/api/public/clients.ask'
 import { Route as ApiPublicClientsLogoRouteImport } from './routes/api/public/clients.logo'
 import { Route as ApiPublicCommsDraftRouteImport } from './routes/api/public/comms.draft'
+import { Route as ApiPublicCommsReviewRouteImport } from './routes/api/public/comms.review'
 import { Route as ApiPublicContentBriefRouteImport } from './routes/api/public/content.brief'
 import { Route as ApiPublicContentGenerateRouteImport } from './routes/api/public/content.generate'
 import { Route as ApiPublicContentImageRouteImport } from './routes/api/public/content.image'
@@ -324,6 +326,11 @@ const ModulesCommsQueueRoute = ModulesCommsQueueRouteImport.update({
   path: '/queue',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
+const ModulesCommsReviewRoute = ModulesCommsReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => ModulesCommsRoute,
+} as any)
 const ModulesCommsToScoutRoute = ModulesCommsToScoutRouteImport.update({
   id: '/to-scout',
   path: '/to-scout',
@@ -423,6 +430,11 @@ const ApiPublicClientsLogoRoute = ApiPublicClientsLogoRouteImport.update({
 const ApiPublicCommsDraftRoute = ApiPublicCommsDraftRouteImport.update({
   id: '/api/public/comms/draft',
   path: '/api/public/comms/draft',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCommsReviewRoute = ApiPublicCommsReviewRouteImport.update({
+  id: '/api/public/comms/review',
+  path: '/api/public/comms/review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicContentBriefRoute = ApiPublicContentBriefRouteImport.update({
@@ -696,6 +708,7 @@ export interface FileRoutesByFullPath {
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/review': typeof ModulesCommsReviewRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -718,6 +731,7 @@ export interface FileRoutesByFullPath {
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/comms/review': typeof ApiPublicCommsReviewRoute
   '/api/public/content/brief': typeof ApiPublicContentBriefRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
@@ -793,6 +807,7 @@ export interface FileRoutesByTo {
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/review': typeof ModulesCommsReviewRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -814,6 +829,7 @@ export interface FileRoutesByTo {
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/comms/review': typeof ApiPublicCommsReviewRoute
   '/api/public/content/brief': typeof ApiPublicContentBriefRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
@@ -898,6 +914,7 @@ export interface FileRoutesById {
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/review': typeof ModulesCommsReviewRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -920,6 +937,7 @@ export interface FileRoutesById {
   '/api/public/clients/ask': typeof ApiPublicClientsAskRoute
   '/api/public/clients/logo': typeof ApiPublicClientsLogoRoute
   '/api/public/comms/draft': typeof ApiPublicCommsDraftRoute
+  '/api/public/comms/review': typeof ApiPublicCommsReviewRoute
   '/api/public/content/brief': typeof ApiPublicContentBriefRoute
   '/api/public/content/generate': typeof ApiPublicContentGenerateRoute
   '/api/public/content/image': typeof ApiPublicContentImageRoute
@@ -1005,6 +1023,7 @@ export interface FileRouteTypes {
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/queue'
+    | '/modules/comms/review'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -1027,6 +1046,7 @@ export interface FileRouteTypes {
     | '/api/public/clients/ask'
     | '/api/public/clients/logo'
     | '/api/public/comms/draft'
+    | '/api/public/comms/review'
     | '/api/public/content/brief'
     | '/api/public/content/generate'
     | '/api/public/content/image'
@@ -1102,6 +1122,7 @@ export interface FileRouteTypes {
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/queue'
+    | '/modules/comms/review'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -1123,6 +1144,7 @@ export interface FileRouteTypes {
     | '/api/public/clients/ask'
     | '/api/public/clients/logo'
     | '/api/public/comms/draft'
+    | '/api/public/comms/review'
     | '/api/public/content/brief'
     | '/api/public/content/generate'
     | '/api/public/content/image'
@@ -1206,6 +1228,7 @@ export interface FileRouteTypes {
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/queue'
+    | '/modules/comms/review'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -1228,6 +1251,7 @@ export interface FileRouteTypes {
     | '/api/public/clients/ask'
     | '/api/public/clients/logo'
     | '/api/public/comms/draft'
+    | '/api/public/comms/review'
     | '/api/public/content/brief'
     | '/api/public/content/generate'
     | '/api/public/content/image'
@@ -1297,6 +1321,7 @@ export interface RootRouteChildren {
   ApiPublicClientsAskRoute: typeof ApiPublicClientsAskRoute
   ApiPublicClientsLogoRoute: typeof ApiPublicClientsLogoRoute
   ApiPublicCommsDraftRoute: typeof ApiPublicCommsDraftRoute
+  ApiPublicCommsReviewRoute: typeof ApiPublicCommsReviewRoute
   ApiPublicContentBriefRoute: typeof ApiPublicContentBriefRoute
   ApiPublicContentGenerateRoute: typeof ApiPublicContentGenerateRoute
   ApiPublicContentImageRoute: typeof ApiPublicContentImageRoute
@@ -1633,6 +1658,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesCommsQueueRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
+    '/modules/comms/review': {
+      id: '/modules/comms/review'
+      path: '/review'
+      fullPath: '/modules/comms/review'
+      preLoaderRoute: typeof ModulesCommsReviewRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
     '/modules/comms/to-scout': {
       id: '/modules/comms/to-scout'
       path: '/to-scout'
@@ -1771,6 +1803,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/comms/draft'
       fullPath: '/api/public/comms/draft'
       preLoaderRoute: typeof ApiPublicCommsDraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/comms/review': {
+      id: '/api/public/comms/review'
+      path: '/api/public/comms/review'
+      fullPath: '/api/public/comms/review'
+      preLoaderRoute: typeof ApiPublicCommsReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/content/brief': {
@@ -2127,6 +2166,7 @@ interface ModulesCommsRouteChildren {
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsPlanRoute: typeof ModulesCommsPlanRoute
   ModulesCommsQueueRoute: typeof ModulesCommsQueueRoute
+  ModulesCommsReviewRoute: typeof ModulesCommsReviewRoute
   ModulesCommsToScoutRoute: typeof ModulesCommsToScoutRoute
   ModulesCommsVoiceRoute: typeof ModulesCommsVoiceRoute
   ModulesCommsIndexRoute: typeof ModulesCommsIndexRoute
@@ -2138,6 +2178,7 @@ const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
   ModulesCommsIntegrationsRoute: ModulesCommsIntegrationsRoute,
   ModulesCommsPlanRoute: ModulesCommsPlanRoute,
   ModulesCommsQueueRoute: ModulesCommsQueueRoute,
+  ModulesCommsReviewRoute: ModulesCommsReviewRoute,
   ModulesCommsToScoutRoute: ModulesCommsToScoutRoute,
   ModulesCommsVoiceRoute: ModulesCommsVoiceRoute,
   ModulesCommsIndexRoute: ModulesCommsIndexRoute,
@@ -2270,6 +2311,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicClientsAskRoute: ApiPublicClientsAskRoute,
   ApiPublicClientsLogoRoute: ApiPublicClientsLogoRoute,
   ApiPublicCommsDraftRoute: ApiPublicCommsDraftRoute,
+  ApiPublicCommsReviewRoute: ApiPublicCommsReviewRoute,
   ApiPublicContentBriefRoute: ApiPublicContentBriefRoute,
   ApiPublicContentGenerateRoute: ApiPublicContentGenerateRoute,
   ApiPublicContentImageRoute: ApiPublicContentImageRoute,

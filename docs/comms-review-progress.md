@@ -1,122 +1,116 @@
-# Comms review upgrade: progress and outcome gates
+# Comms review upgrade: progress and criterion evidence
 
-Source brief: `docs/comms-review-brief.md`. Updated 14 September 2026.
+Source brief: `docs/comms-review-brief.md`. Acceptance contract:
+`docs/comms-review-acceptance.md` (canonical C01–C22 definitions).
+Updated 14 September 2026.
 
-Stage: **2 of 4 — functional build has begun. Slice 1 shipped.**
-Prototype route `/mockups/comms-next` remains for reference. Production
-`/modules/comms` keeps its current surfaces; slice 1 changed drafting truth,
-not the interface.
+Stage: **2 of 4 — slice 2 built. Review runs on real records.**
 
-Honesty rules for this file: a gate is only Met when there is evidence a person
-can open. Anything scripted in the prototype is named as simulated, never as
-working behaviour.
+Honesty rules for this file. A criterion is only Verified when there is
+evidence a person can open. Code evidence (unit tests, typecheck, build) is
+never reported as live evaluation (a signed-in person, real records, a real
+model run). Prototype behaviour in `/mockups/comms-next` is scripted and is
+named as such. Rendering inside `AppShell` does not establish authentication;
+`WorkspaceGate` plus a server-verified active membership does.
 
-## Stage gates
+## C01–C22 assessment
+
+States are defined in `docs/comms-review-acceptance.md`.
 
 | Gate | State | Evidence |
 | --- | --- | --- |
-| Brief saved in the repository | Met | `docs/comms-review-brief.md` |
-| Progress tracking exists | Met | this file |
-| Interactive mockup inside authenticated app | Met | `src/routes/mockups.comms-next.tsx`, rendered in `AppShell` |
-| Sample data isolated and labelled | Met | `src/data/mockups/comms-next.ts`, prototype banner and "What is simulated here" footer |
-| Discoverable preview entry | Met | "Preview" tab in `src/components/tt/comms/comms-tabs.tsx` |
-| Production Comms behaviour preserved | Met | only addition to production is the one navigation link; no service, store, route or send path changed |
-| No publish, no external send | Met | prototype has no service call; Approve control is disabled |
-| No Lovable Cloud provisioning | Met | no backend enabled; later persistence targets the existing external Supabase project |
-| Functional implementation on real records | Pending | stage 2, after review of this prototype |
-| Persistence design (review runs, versions, findings, coverage) | Pending | schema to be authored after inspection; no migration in this stage |
-| Approval binding across every send entry point | Pending | stage 3 |
-| Follow-up learning and lesson promotion | Pending | stage 4 |
-
-## Mockup acceptance scenarios
-
-| # | Scenario | State | Where to see it |
-| --- | --- | --- | --- |
-| 1 | Conversations, one priority, readable thread, editable My read | Met | Conversations, Northlight Care thread |
-| 2 | Manual review from pasted communication and one attachment | Partly met | Review, "New review" intake. Form is interactive; attachment upload is simulated |
-| 3 | Four questions asked, three answered, missing one linked to source | Met | Review, question coverage panel |
-| 4 | "Everything will be ready Friday" flagged for ambiguity and unsupported promise, no invented date | Met | Review, Must fix, finding 1 |
-| 5 | Proposal total conflicts with line items; proposed work described as existing | Met | Review, Must fix, findings 3 and 4 |
-| 6 | Question past character 900, thread longer than 40 messages | Met | Northlight thread header and late-question note; coverage row 4 |
-| 7 | Unreadable attachment gives partial review plus visible incomplete coverage | Met | Review, source material panel, plus the coverage-incomplete summary |
-| 8 | Accept one edit, keep another with a reason, correct the goal, rerun | Partly met | Finding controls and My read correction work locally; rerun is scripted |
-| 9 | Warm exchange offers optional light line; complaint gets accountability, no pitch | Met | Harbour Studio and Ferngrove Dental threads; optional line in Suggestions |
-| 10 | Salesperson keeps their identity and signature | Met | Review, Confirm, sender finding |
-| 11 | Ready for approval requires complete coverage; edits make approval stale | Partly met | Stated in the approval panel; staleness is not yet simulated as a state change |
-| 12 | Missing email, save failure, reviewer failure, send failure states | Pending | not yet built into the prototype |
-| 13 | Old tab links resolve; threads stay distinct; duplicate arrival does not duplicate | Pending | requires the navigation consolidation in stage 2 |
-| 14 | Mobile review without horizontal scrolling or lost draft | Partly met | single-surface list and detail with Back at 375px; full review panel stacks |
-
-## What is simulated in this stage
-
-- Every thread, person, draft, finding, coverage row and follow-up is invented sample data.
-- Review runs are scripted. No model is called and no intelligence run is recorded.
-- Approve, send, save, snooze and dismiss change local screen state only.
-- File ingestion states are illustrative. Nothing is uploaded or extracted.
-- No production Comms record is read, written, or sent from the prototype route.
-
-## Next decision for Tai
-
-Review `/mockups/comms-next`, then confirm whether stage 2 proceeds with the
-navigation consolidation first, as the brief sequences it.
-
-
-## C01 to C22 gate assessment
-
-States mean exactly one thing each. **Implemented**: real code on real records.
-**Verified**: implemented and proven by a test or an inspectable run.
-**Mockup only**: exists in `/mockups/comms-next` as scripted prototype
-behaviour, nowhere else. **Unmet**: not built.
-
-| Gate | State | Note |
-| --- | --- | --- |
-| C01 Three surfaces, one Comms | Mockup only | Production still ships eight tabs |
-| C02 Manual review intake | Unmet | No intake path on real records |
-| C03 One readable conversation view | Mockup only | Prototype only |
-| C04 Full context, newest included | Verified | Slice 1: newest-first window, long messages kept whole, read window stated |
-| C05 Explicit question coverage | Implemented | Slice 1: asks extracted with position, coverage computed per draft; not yet shown in the interface |
-| C06 Evidence-backed findings | Partly implemented | Judgment pass exists; findings are not persisted or itemised |
-| C07 Conflict and unsupported-claim detection | Unmet | |
-| C08 Actual sender identity | Verified | Slice 1: the draft closes with the author's own name; Tai's name is no longer attached to other people's words |
-| C09 Attachments as context only | Unmet in Comms | |
-| C10 Shared approval across entry points | Unmet | `comms-quick-reply` still bypasses review |
-| C11 Version-bound, idempotent delivery | Unmet | |
-| C12 Honest incompleteness | Partly implemented | Slice 1 records the read window truthfully; review-level coverage reporting still to come |
-| C13 Warm and complaint registers | Partly implemented | Register guides and ask gate exist |
-| C14 Voice rules enforced deterministically | Partly implemented | Voice pass runs; signature is now per sender |
-| C15 Human correction respected | Partly implemented | Corrections outrank inference in retrieval; no review-level correction store |
-| C16 Follow-ups persist | Partly implemented | |
-| C17 Lessons learned from decisions | Partly implemented | |
-| C18 Accessibility | Partly implemented | |
-| C19 Failure states are honest and specific | Unmet | Typed draft failures exist; review and send failures do not |
-| C20 No autonomous send | Implemented | Approval is required before any send |
+| C01 Three surfaces, one Comms | Partly implemented | Review now exists as a real surface at `/modules/comms/review`; Conversations and Follow-ups consolidation is still mockup only |
+| C02 Identity preserved, old routes resolve | Unmet | No route consolidation attempted yet, so nothing has been put at risk either |
+| C03 One readable conversation view | Mockup only | `/mockups/comms-next` |
+| C04 Full context, newest included | Verified (code) | Slice 1: newest-first window, whole messages, read window stated; `comms-judgment.test.ts`, `comms-draft.server.test.ts` |
+| C05 Explicit question coverage | Implemented | Slice 2: obligations extracted per source with offsets, verified per draft version, shown in Review. Semantic verdicts require live evaluation to be Verified |
+| C06 Evidence-backed findings | Implemented | Slice 2: a finding is discarded unless its quote is literally present in that version's body (`comms-review.server.ts`) |
+| C07 Conflict and unsupported-claim detection | Partly implemented | The reviewer is instructed to find them and the finding kinds exist; detection quality is unevaluated |
+| C08 Actual sender identity | Verified (code) | Slice 1: `comms-sender.ts`, `comms-sender.test.ts` |
+| C09 Attachments as context only | Implemented | Slice 2: `comms-sources.ts` reads text and Markdown, names every other type unread, and nothing becomes an outbound attachment; `comms-sources.test.ts` |
+| C10 Shared approval across entry points | Unmet | `comms-quick-reply` still bypasses review. See "Send gates still open" |
+| C11 Version-bound, idempotent delivery | Partly implemented | Approval is version-bound and context-bound (`comms-review.ts`, `comms-review.test.ts`); no send path reads it yet |
+| C12 Honest incompleteness | Implemented | Source coverage note plus per-source status on the Review screen; unverifiable answers stay uncertain |
+| C13 Warm and complaint registers | Partly implemented | Register guides and ask gate exist in drafting; review does not yet judge register |
+| C14 Voice rules enforced deterministically | Partly implemented | Voice pass runs; signature is per sender |
+| C15 Human correction respected | Partly implemented | Corrections outrank inference in retrieval; finding decisions are recorded but do not yet feed later runs |
+| C16 Follow-ups persist | Partly implemented | Unchanged this slice |
+| C17 Lessons learned from decisions | Unmet | Finding decisions are stored; nothing reads them back yet |
+| C18 Accessibility | Partly implemented | Review is keyboard reachable and single-column at 375px; no audit run |
+| C19 Failure states honest and specific | Partly implemented | Review has typed failures (provider unavailable, unreadable review, stale version, approval refused), each saying what was not changed; send failures do not exist yet |
+| C20 No autonomous send | Verified (code) | No send path exists in `comms-review.server.ts`; approval records a decision only |
 | C21 Follow-ups surface | Mockup only | |
-| C22 Evaluation evidence per run | Partly implemented | Slice 1 records provider, model, prompt version and source window on the draft result; runs are not yet stored |
+| C22 Evaluation evidence per run | Implemented | Slice 2: every run row carries provider, model, prompt version, context fingerprint, stages, latency, coverage and limitations, including failed runs |
 
 ## Slice 1: truthful context and the real sender
 
 Shipped. No new tables, no interface redesign.
 
 - `src/lib/comms-draft.server.ts` reads the conversation newest first with an
-  exact message count, so the request that arrived today is always inside the
-  window, and the window's limits travel with the draft.
-- `src/domain/comms-judgment.ts` keeps a message whole instead of cutting it at
-  900 characters, and `threadWindowForJudgment` states coverage rather than
-  implying it.
-- `src/domain/comms-coverage.ts` extracts every question and actionable request
-  with its character position, and reports how the draft answers each one. It
-  is rule-based and labelled as such.
-- `src/domain/comms-sender.ts` and `src/data/voice-policy.ts` sign a message
-  with its actual author. An unknown author leaves the draft unsigned.
-- Tests: `comms-coverage.test.ts`, `comms-sender.test.ts`, thread window and
-  sender cases in `comms-judgment.test.ts` and `comms-draft.server.test.ts`.
+  exact message count.
+- `src/domain/comms-judgment.ts` keeps a message whole and states coverage.
+- `src/domain/comms-coverage.ts` extracts asks with positions, rule-based and
+  labelled as such.
+- `src/domain/comms-sender.ts` signs a message with its actual author.
 
-## Next slice and its backend dependency
+## Slice 2: review runs on real records
 
-Slice 2 is review runs on real records: an immutable draft version per run,
-findings with evidence, stored coverage, and approval that checks a role rather
-than organisation membership. It cannot ship without SQL applied by Tai to the
-existing external Supabase project: tables for review runs, draft versions,
-findings and coverage, plus a role-checked approval path. Draft RLS currently
-lets any organisation member edit a draft, so approval authority has to be
-enforced separately from edit rights.
+Built. What it adds:
+
+- **Migration** `docs/migrations/20260914150000_comms_review_runs.sql`: seven
+  tables — sessions, immutable versions, sources, runs, findings, obligations,
+  approvals — with composite organization-consistent foreign keys, explicit
+  grants, RLS on every table, and triggers that freeze run identity, restrict
+  findings to their decision fields, and force an approval to name the
+  authenticated approver. No `SECURITY DEFINER`, no change to existing
+  relationships, messages or drafts.
+- **Sources read honestly** (`src/domain/comms-sources.ts`): pasted text and
+  text/Markdown files are parsed; PDFs, images, spreadsheets and email exports
+  are listed with a plain statement that nothing in them was used.
+- **Obligations, verified** (`src/domain/comms-obligations.ts`): the lexical
+  keyword heuristic is retained only as a labelled candidate hint and can
+  never mark anything answered. A semantic verdict survives only when the
+  passage it quotes is genuinely in that exact draft version and is not a
+  restatement of the question. Everything else stays uncertain.
+- **Version and approval law** (`src/domain/comms-review.ts`): a run is bound
+  to one version; an approval names a person, a version and a context
+  fingerprint over the words, recipient, goal, sender and source set. Any
+  movement makes it stale. Approval is owner or admin only, enforced in the
+  database as well as in code.
+- **The room**: `/modules/comms/review`, reached from the Comms tabs.
+
+Tests: `comms-obligations.test.ts` (15, including the adversarial set —
+repeated question, unrelated keyword overlap, paraphrased valid answer,
+multiple asks in one sentence, pending on only one of several asks, no-ask
+source, late question, hallucinated obligation id, unverifiable quote),
+`comms-review.test.ts` (11), `comms-sources.test.ts` (9).
+
+## Send gates still open
+
+Nothing in slice 2 opens a send path, and no send path reads the new
+approvals. These remain to be bound to review before C10 and C11 can be met:
+
+1. `comms-quick-reply` — replies without any review.
+2. `supabase/functions/comms-send` — sends from `comms_drafts.review_state`,
+   which is a different approval record from the one this slice writes.
+3. `comms-linkedin-send.server.ts` — its own approval path.
+4. Any future scheduled send.
+
+## Next backend step
+
+Apply `docs/migrations/20260914150000_comms_review_runs.sql` to the existing
+external Supabase project `okydosoacqdnursmmenf`. It is idempotent and
+additive. Until it is applied, `/modules/comms/review` will report an honest
+failure rather than showing anything invented.
+
+To verify after applying:
+
+1. Open `/modules/comms/review` signed in, paste a message with two questions
+   in it, write a reply that answers one, and run the review. Expect one ask
+   answered with a quote from your own words, and one still open.
+2. Edit the reply and save. The review should say it is out of date, and any
+   approval should say the draft changed since it was approved.
+3. Sign in as a member who is not an owner or admin. Approval should be
+   refused, in the interface and at the database.
+4. Attach a PDF. It should appear in "What Comms read" as not read, and the
+   coverage line should say so.

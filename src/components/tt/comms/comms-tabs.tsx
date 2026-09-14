@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 export type CommsSection =
   | "relationships"
   | "inbox"
+  | "review"
   | "dashboard"
   | "plan"
   | "queue"
@@ -29,6 +30,7 @@ function tabClass(active: boolean) {
 const TABS: { to: string; section: CommsSection; label: string }[] = [
   { to: "/modules/comms", section: "relationships", label: "Relationships" },
   { to: "/modules/comms/inbox", section: "inbox", label: "Inbox" },
+  { to: "/modules/comms/review", section: "review", label: "Review" },
   { to: "/modules/comms/dashboard", section: "dashboard", label: "Dashboard" },
   { to: "/modules/comms/plan", section: "plan", label: "Plan" },
   { to: "/modules/comms/queue", section: "queue", label: "Queue" },

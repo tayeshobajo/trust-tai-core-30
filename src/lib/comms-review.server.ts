@@ -905,10 +905,7 @@ export async function loadReview(
 }
 
 /** The reviews open in this workspace, newest first. */
-export async function listReviews(
-  token: string,
-  organizationId: string,
-): Promise<ReviewSession[]> {
+export async function listReviews(token: string, organizationId: string): Promise<ReviewSession[]> {
   const caller = await identify(token, organizationId);
   const { data } = await caller.client
     .from("comms_review_sessions")
