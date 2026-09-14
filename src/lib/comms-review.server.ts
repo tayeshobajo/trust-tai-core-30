@@ -417,6 +417,30 @@ function canonicalBody(body: string, sections?: ProposalSections): string {
 }
 
 /**
+ * Validate proposal sections HERE, before anything is written, whatever door
+ * the call came in by. The HTTP endpoint validates too, but it is not the only
+ * entrypoint: any server caller reaching these functions gets the same check,
+ * so a malformed or mislabelled structure can never reach a first write.
+ */
+function checkedSections(
+  sections: ProposalSections | undefined,
+  kind: DraftKind | null | undefined,
+): ProposalSections | undefined {
+  if (!sections) return undefined;
+  if (kind && kind !== "proposal") {
+    throw new ReviewFailure(
+      "write_failed",
+      "Only a proposal can carry proposal sections. Nothing was saved.",
+    );
+  }
+  const checked = validateProposalSections(sections);
+  if (!checked.ok) {
+    throw new ReviewFailure("write_failed", `${checked.error} Nothing was saved.`);
+  }
+  return checked.sections;
+}
+
+/**
  * Insert a version, keeping its structure with it when the database can hold
  * it. If the structure column is absent the words are still recorded, and the
  * caller is told the structure was not — never that everything was stored.
