@@ -554,6 +554,103 @@ interface ReviewPacketSource {
   segments?: string[];
 }
 
+/* ------------------------------------------------- sender and stored voice */
+
+interface VerifiedSender {
+  id: string;
+  name: string | null;
+  email: string | null;
+}
+
+/**
+ * Who is actually writing. Read from this person's own profile with their own
+ * token — never assumed, and never replaced by Tai. A review that judged a
+ * salesperson's letter as though Tai had signed it would be judging a message
+ * nobody is going to send.
+ */
+async function verifiedSender(caller: Caller): Promise<VerifiedSender> {
+  const { data, error } = await caller.client
+    .from("profiles")
+    .select("id, full_name, display_name, email")
+    .eq("id", caller.userId)
+    .maybeSingle();
+  const row = (error ? null : ((data ?? null) as Row | null)) ?? {};
+  return {
+    id: caller.userId,
+    name: nullableStr(row["full_name"]) ?? nullableStr(row["display_name"]),
+    email: nullableStr(row["email"]),
+  };
+}
+
+interface VoicePacket {
+  /** The exact stored rules, or null when there are none to hold anyone to. */
+  rules: string | null;
+  title: string | null;
+  profileId: string | null;
+  version: number | null;
+  /** Wording that has already been approved or sent, as illustration only. */
+  examples: { subject: string | null; excerpt: string }[];
+  /** Said plainly to the model and recorded on the run. */
+  status: string;
+  /** The exact thing recorded in provenance. */
+  stamp: string;
+}
+
+const NO_VOICE: VoicePacket = {
+  rules: null,
+  title: null,
+  profileId: null,
+  version: null,
+  examples: [],
+  status:
+    "No stored voice rules were available for this workspace. Judge the writing on clarity and honesty only, and do not claim it was measured against a house voice.",
+  stamp: "voice_profile:none",
+};
+
+/**
+ * The workspace's own stored Voice DNA, read as the caller. If it cannot be
+ * read, the review says so rather than pretending it was calibrated. Nothing
+ * here writes to the voice rules: a suggestion about voice is a proposal for a
+ * person to accept elsewhere, never an edit to the stored rules.
+ */
+async function loadVoicePacket(caller: Caller, organizationId: string): Promise<VoicePacket> {
+  const { data, error } = await caller.client
+    .from("comms_voice_profiles")
+    .select("id, title, content_markdown, version")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (error || !data) return NO_VOICE;
+  const row = data as Row;
+  const rules = nullableStr(row["content_markdown"]);
+  if (!rules) return NO_VOICE;
+  const profileId = str(row["id"]);
+  const version = num(row["version"]) ?? 1;
+
+  /* Illustration, not instruction: wording this workspace has already
+     approved or sent. Examples never override the written rules. */
+  const { data: exampleData } = await caller.client
+    .from("comms_drafts")
+    .select("subject, body, created_at")
+    .eq("organization_id", organizationId)
+    .in("review_state", ["approved", "sent"])
+    .order("created_at", { ascending: false })
+    .limit(3);
+  const examples = ((exampleData ?? []) as Row[]).map((example) => ({
+    subject: nullableStr(example["subject"]),
+    excerpt: str(example["body"]).replace(/\s+/g, " ").trim().slice(0, 400),
+  }));
+
+  return {
+    rules,
+    title: nullableStr(row["title"]) ?? "Voice DNA",
+    profileId,
+    version,
+    examples,
+    status: `Held against this workspace's stored voice rules, version ${version}.`,
+    stamp: `voice_profile:${profileId}@v${version}`,
+  };
+}
+
 export interface ReviewRunResult {
   runId: string;
   summary: string;
@@ -625,6 +722,9 @@ export async function runReview(
     }
   }
 
+  const sender = await verifiedSender(caller);
+  const voice = await loadVoicePacket(caller, input.organizationId);
+
   const fingerprint = contextFingerprint({
     versionId: version.id,
     subject: version.subject,
@@ -632,8 +732,10 @@ export async function runReview(
     recipientEmail: session.recipientEmail,
     recipientName: session.recipientName,
     goal: session.goal,
+    situation: session.situation,
     sourceChecksums: sourceRows.map((row) => str(row["checksum"])),
-    senderName: null,
+    senderName: sender.name,
+    voiceVersion: voice.stamp,
   });
 
   const { data: runRow, error: runError } = await writer
@@ -645,14 +747,42 @@ export async function runReview(
       status: "running",
       prompt_version: REVIEW_PROMPT_VERSION,
       context_fingerprint: fingerprint,
-      stages: [RUN_STAGES.packet],
+      stages: [RUN_STAGES.packet, voice.stamp],
       started_at: new Date().toISOString(),
       created_by: caller.userId,
     })
     .select("*")
     .maybeSingle();
   if (runError || !runRow) fail("That review could not be started. Nothing was recorded.");
-  const runId = toRun(runRow as Row).id;
+  const startedRun = toRun(runRow as Row);
+  const runId = startedRun.id;
+
+  /* The database stamps the run with the session's revision at the moment of
+     insertion. If somebody edited the goal, the situation or the material
+     between the read above and that stamp, this run would carry the new
+     revision while reading the old words. That is exactly the evidence an
+     approval later trusts, so it is refused rather than quietly kept. */
+  if (
+    startedRun.contextRevision !== null &&
+    startedRun.contextRevision !== session.contextRevision
+  ) {
+    const recorded = await writer
+      .from("comms_review_runs")
+      .update({
+        status: "failed",
+        error_code: "context_changed",
+        completed_at: new Date().toISOString(),
+        latency_ms: Date.now() - started,
+      })
+      .eq("id", runId)
+      .eq("organization_id", input.organizationId);
+    throw new ReviewFailure(
+      "stale_version",
+      recorded.error
+        ? "This review changed while it was starting, so it was abandoned. Nothing was judged. Reopen it and run the review again."
+        : "This review changed while it was starting, so nothing was judged. Reopen it and run the review again.",
+    );
+  }
 
   /** Close a run honestly when it could not finish. */
   const markFailed = async (code: string, stages: string[], provider?: string, model?: string) => {
@@ -694,6 +824,21 @@ export async function runReview(
       text: obligation.excerpt,
     })),
     draft: { subject: version.subject, body: version.body, version: version.version },
+    writtenBy: {
+      name: sender.name,
+      email: sender.email,
+      note: sender.name
+        ? `This message goes out from ${sender.name}. Judge it as their words, and never treat another name or signature as the author.`
+        : "The sender's name is not recorded. Do not invent one, and do not assume the message is from Tai.",
+    },
+    voice: {
+      status: voice.status,
+      title: voice.title,
+      version: voice.version,
+      rules: voice.rules,
+      approvedExamples: voice.examples,
+      note: "These rules are read-only here. Anything you would change about the voice itself is a suggestion for a person, not an edit.",
+    },
   };
 
   let raw = "";
@@ -723,12 +868,14 @@ export async function runReview(
           : error instanceof Error && error.message === "forbidden"
             ? "access_denied"
             : "provider_call_failed";
-    await markFailed(code, [RUN_STAGES.packet]);
+    const recorded = await markFailed(code, [RUN_STAGES.packet, voice.stamp]);
     throw new ReviewFailure(
       code,
-      code === "provider_not_configured"
-        ? "Reviewing isn't available right now. Nothing was judged and your draft is untouched."
-        : "The review couldn't be completed. Nothing was judged and your draft is untouched.",
+      `${
+        code === "provider_not_configured"
+          ? "Reviewing isn't available right now. Nothing was judged and your draft is untouched."
+          : "The review couldn't be completed. Nothing was judged and your draft is untouched."
+      } ${recordNote(recorded)}`,
     );
   }
 
@@ -736,10 +883,15 @@ export async function runReview(
   try {
     parsed = extractJsonObject(raw);
   } catch {
-    await markFailed("review_unreadable", [RUN_STAGES.packet, RUN_STAGES.call], provider, model);
+    const recorded = await markFailed(
+      "review_unreadable",
+      [RUN_STAGES.packet, voice.stamp, RUN_STAGES.call],
+      provider,
+      model,
+    );
     throw new ReviewFailure(
       "review_unreadable",
-      "The review came back in a form Comms couldn't read. Nothing was judged.",
+      `The review came back in a form Comms couldn't read. Nothing was judged. ${recordNote(recorded)}`,
     );
   }
 
@@ -820,30 +972,30 @@ export async function runReview(
   if (findingRows.length > 0) {
     const { error } = await writer.from("comms_review_findings").insert(findingRows);
     if (error) {
-      await markFailed(
+      const recorded = await markFailed(
         "write_failed",
-        [RUN_STAGES.packet, RUN_STAGES.call, RUN_STAGES.verify],
+        [RUN_STAGES.packet, voice.stamp, RUN_STAGES.call, RUN_STAGES.verify],
         provider,
         model,
       );
       throw new ReviewFailure(
         "write_failed",
-        "The review ran but its findings could not be saved, so it is recorded as failed. Nothing was approved and your draft is untouched.",
+        `The review ran but its findings could not be saved, so it did not finish. Nothing was approved and your draft is untouched. ${recordNote(recorded)}`,
       );
     }
   }
   if (obligationRows.length > 0) {
     const { error } = await writer.from("comms_review_obligations").insert(obligationRows);
     if (error) {
-      await markFailed(
+      const recorded = await markFailed(
         "write_failed",
-        [RUN_STAGES.packet, RUN_STAGES.call, RUN_STAGES.verify],
+        [RUN_STAGES.packet, voice.stamp, RUN_STAGES.call, RUN_STAGES.verify],
         provider,
         model,
       );
       throw new ReviewFailure(
         "write_failed",
-        "The review ran but its question coverage could not be saved, so it is recorded as failed. Nothing was approved and your draft is untouched.",
+        `The review ran but its question coverage could not be saved, so it did not finish. Nothing was approved and your draft is untouched. ${recordNote(recorded)}`,
       );
     }
   }
@@ -854,7 +1006,13 @@ export async function runReview(
       status: "complete",
       provider,
       model,
-      stages: [RUN_STAGES.packet, RUN_STAGES.call, RUN_STAGES.verify, RUN_STAGES.persist],
+      stages: [
+        RUN_STAGES.packet,
+        voice.stamp,
+        RUN_STAGES.call,
+        RUN_STAGES.verify,
+        RUN_STAGES.persist,
+      ],
       summary: str(parsed["summary"]) || null,
       goal_read: str(parsed["goalRead"]) || null,
       coverage: {
