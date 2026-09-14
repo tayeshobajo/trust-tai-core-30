@@ -292,7 +292,17 @@ function ReviewDetail({
   });
   const [edited, setEdited] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const refresh = () => queryClient.invalidateQueries({ queryKey: key });
+  /* Anything that changes the words, the context or the decision changes the
+     answer to "could this be sent?". Both readings are thrown away together,
+     so the panel can never keep showing a readiness that belonged to an
+     earlier version. */
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: key }),
+      queryClient.invalidateQueries({ queryKey: ["comms", "send-readiness"] }),
+      queryClient.invalidateQueries({ queryKey: ["comms", "reviews", identity.organizationId] }),
+    ]);
+  };
 
   const state = query.data;
   const current = state?.currentVersion ?? null;
