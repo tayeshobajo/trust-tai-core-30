@@ -265,8 +265,11 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
   /* One record, one place: the review this message must clear. */
   const reviewOne = useMutation({
     mutationFn: (id: string) => openReview(id, identity.organizationId),
-    onSuccess: (sessionId) => {
-      void navigate({ to: "/modules/comms/review", search: { session: sessionId } });
+    onSuccess: () => {
+      toast.success("A review is open for this message", {
+        description: "Open Review to read it, clear what it raises, then approve it there.",
+      });
+      void queryClient.invalidateQueries({ queryKey: ["comms", "queue"] });
     },
     onError: (err: Error) => toast.error(err.message),
   });
