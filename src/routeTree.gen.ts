@@ -50,11 +50,14 @@ import { Route as ApiLinkiExecuteRouteImport } from './routes/api/linki/execute'
 import { Route as ModulesClientsIndexRouteImport } from './routes/modules.clients.index'
 import { Route as ModulesClientsClientIdRouteImport } from './routes/modules.clients.$clientId'
 import { Route as ModulesCommsIndexRouteImport } from './routes/modules.comms.index'
+import { Route as ModulesCommsConversationsRouteImport } from './routes/modules.comms.conversations'
 import { Route as ModulesCommsDashboardRouteImport } from './routes/modules.comms.dashboard'
+import { Route as ModulesCommsDraftsRouteImport } from './routes/modules.comms.drafts'
 import { Route as ModulesCommsInboxRouteImport } from './routes/modules.comms.inbox'
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsPlanRouteImport } from './routes/modules.comms.plan'
 import { Route as ModulesCommsQueueRouteImport } from './routes/modules.comms.queue'
+import { Route as ModulesCommsRelationshipsRouteImport } from './routes/modules.comms.relationships'
 import { Route as ModulesCommsReviewRouteImport } from './routes/modules.comms.review'
 import { Route as ModulesCommsToScoutRouteImport } from './routes/modules.comms.to-scout'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
@@ -325,9 +328,20 @@ const ModulesCommsIndexRoute = ModulesCommsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
+const ModulesCommsConversationsRoute =
+  ModulesCommsConversationsRouteImport.update({
+    id: '/conversations',
+    path: '/conversations',
+    getParentRoute: () => ModulesCommsRoute,
+  } as any)
 const ModulesCommsDashboardRoute = ModulesCommsDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => ModulesCommsRoute,
+} as any)
+const ModulesCommsDraftsRoute = ModulesCommsDraftsRouteImport.update({
+  id: '/drafts',
+  path: '/drafts',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
 const ModulesCommsInboxRoute = ModulesCommsInboxRouteImport.update({
@@ -351,6 +365,12 @@ const ModulesCommsQueueRoute = ModulesCommsQueueRouteImport.update({
   path: '/queue',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
+const ModulesCommsRelationshipsRoute =
+  ModulesCommsRelationshipsRouteImport.update({
+    id: '/relationships',
+    path: '/relationships',
+    getParentRoute: () => ModulesCommsRoute,
+  } as any)
 const ModulesCommsReviewRoute = ModulesCommsReviewRouteImport.update({
   id: '/review',
   path: '/review',
@@ -737,11 +757,14 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
   '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
+  '/modules/comms/conversations': typeof ModulesCommsConversationsRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
+  '/modules/comms/drafts': typeof ModulesCommsDraftsRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/relationships': typeof ModulesCommsRelationshipsRoute
   '/modules/comms/review': typeof ModulesCommsReviewRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -841,11 +864,14 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
   '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
+  '/modules/comms/conversations': typeof ModulesCommsConversationsRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
+  '/modules/comms/drafts': typeof ModulesCommsDraftsRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/relationships': typeof ModulesCommsRelationshipsRoute
   '/modules/comms/review': typeof ModulesCommsReviewRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -953,11 +979,14 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/api/linki/execute': typeof ApiLinkiExecuteRoute
   '/modules/clients/$clientId': typeof ModulesClientsClientIdRoute
+  '/modules/comms/conversations': typeof ModulesCommsConversationsRoute
   '/modules/comms/dashboard': typeof ModulesCommsDashboardRoute
+  '/modules/comms/drafts': typeof ModulesCommsDraftsRoute
   '/modules/comms/inbox': typeof ModulesCommsInboxRoute
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/relationships': typeof ModulesCommsRelationshipsRoute
   '/modules/comms/review': typeof ModulesCommsReviewRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
@@ -1067,11 +1096,14 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/api/linki/execute'
     | '/modules/clients/$clientId'
+    | '/modules/comms/conversations'
     | '/modules/comms/dashboard'
+    | '/modules/comms/drafts'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/queue'
+    | '/modules/comms/relationships'
     | '/modules/comms/review'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
@@ -1171,11 +1203,14 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/linki/execute'
     | '/modules/clients/$clientId'
+    | '/modules/comms/conversations'
     | '/modules/comms/dashboard'
+    | '/modules/comms/drafts'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/queue'
+    | '/modules/comms/relationships'
     | '/modules/comms/review'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
@@ -1282,11 +1317,14 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/api/linki/execute'
     | '/modules/clients/$clientId'
+    | '/modules/comms/conversations'
     | '/modules/comms/dashboard'
+    | '/modules/comms/drafts'
     | '/modules/comms/inbox'
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/queue'
+    | '/modules/comms/relationships'
     | '/modules/comms/review'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
@@ -1716,11 +1754,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesCommsIndexRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
+    '/modules/comms/conversations': {
+      id: '/modules/comms/conversations'
+      path: '/conversations'
+      fullPath: '/modules/comms/conversations'
+      preLoaderRoute: typeof ModulesCommsConversationsRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
     '/modules/comms/dashboard': {
       id: '/modules/comms/dashboard'
       path: '/dashboard'
       fullPath: '/modules/comms/dashboard'
       preLoaderRoute: typeof ModulesCommsDashboardRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
+    '/modules/comms/drafts': {
+      id: '/modules/comms/drafts'
+      path: '/drafts'
+      fullPath: '/modules/comms/drafts'
+      preLoaderRoute: typeof ModulesCommsDraftsRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
     '/modules/comms/inbox': {
@@ -1749,6 +1801,13 @@ declare module '@tanstack/react-router' {
       path: '/queue'
       fullPath: '/modules/comms/queue'
       preLoaderRoute: typeof ModulesCommsQueueRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
+    '/modules/comms/relationships': {
+      id: '/modules/comms/relationships'
+      path: '/relationships'
+      fullPath: '/modules/comms/relationships'
+      preLoaderRoute: typeof ModulesCommsRelationshipsRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
     '/modules/comms/review': {
@@ -2261,11 +2320,14 @@ const ModulesClientsRouteWithChildren = ModulesClientsRoute._addFileChildren(
 )
 
 interface ModulesCommsRouteChildren {
+  ModulesCommsConversationsRoute: typeof ModulesCommsConversationsRoute
   ModulesCommsDashboardRoute: typeof ModulesCommsDashboardRoute
+  ModulesCommsDraftsRoute: typeof ModulesCommsDraftsRoute
   ModulesCommsInboxRoute: typeof ModulesCommsInboxRoute
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsPlanRoute: typeof ModulesCommsPlanRoute
   ModulesCommsQueueRoute: typeof ModulesCommsQueueRoute
+  ModulesCommsRelationshipsRoute: typeof ModulesCommsRelationshipsRoute
   ModulesCommsReviewRoute: typeof ModulesCommsReviewRoute
   ModulesCommsToScoutRoute: typeof ModulesCommsToScoutRoute
   ModulesCommsVoiceRoute: typeof ModulesCommsVoiceRoute
@@ -2273,11 +2335,14 @@ interface ModulesCommsRouteChildren {
 }
 
 const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
+  ModulesCommsConversationsRoute: ModulesCommsConversationsRoute,
   ModulesCommsDashboardRoute: ModulesCommsDashboardRoute,
+  ModulesCommsDraftsRoute: ModulesCommsDraftsRoute,
   ModulesCommsInboxRoute: ModulesCommsInboxRoute,
   ModulesCommsIntegrationsRoute: ModulesCommsIntegrationsRoute,
   ModulesCommsPlanRoute: ModulesCommsPlanRoute,
   ModulesCommsQueueRoute: ModulesCommsQueueRoute,
+  ModulesCommsRelationshipsRoute: ModulesCommsRelationshipsRoute,
   ModulesCommsReviewRoute: ModulesCommsReviewRoute,
   ModulesCommsToScoutRoute: ModulesCommsToScoutRoute,
   ModulesCommsVoiceRoute: ModulesCommsVoiceRoute,
