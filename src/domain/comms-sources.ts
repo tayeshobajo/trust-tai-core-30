@@ -153,8 +153,11 @@ export function classifySource(input: ReviewSourceInput): ClassifiedSource {
   };
 
   if (kind === "other_file") {
-    const probe = `${name} ${media}`;
-    const matched = UNSUPPORTED_NOTES.find((entry) => entry.match.test(probe));
+    // Tested separately: the patterns anchor on the end of a filename, which
+    // a joined probe string would never reach.
+    const matched = UNSUPPORTED_NOTES.find(
+      (entry) => entry.match.test(name) || entry.match.test(media),
+    );
     return {
       ...base,
       status: "unsupported",
