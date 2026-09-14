@@ -114,6 +114,12 @@ export function IntegrationsPanel({
           );
         })}
       </div>
+
+      <SectionHeading
+        title="Review and sending"
+        description="Kept separate from the accounts above: being connected, being able to review, and being allowed to send are three different things."
+      />
+      <RuntimeReadiness organizationId={organizationId} />
     </section>
   );
 }
