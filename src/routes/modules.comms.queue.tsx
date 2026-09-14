@@ -212,13 +212,13 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
   const selectAll = () => setSelected(new Set(items.slice(0, 20).map((i) => i.draft.id)));
   const clearSelection = () => setSelected(new Set());
 
-  // Approve then send each selected draft sequentially
+  // Send each selected draft. Every one goes through the shared gate, which
+  // refuses anything without a current, approved review of those exact words.
   const batchSend = useMutation({
     mutationFn: async (ids: string[]) => {
       const results: { id: string; ok: boolean; error?: string }[] = [];
       for (const id of ids.slice(0, 20)) {
         try {
-          await approveDraft(id);
           await sendDraft(id, identity.organizationId);
           results.push({ id, ok: true });
         } catch (err) {
@@ -250,7 +250,6 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
 
   const approveAndSendOne = useMutation({
     mutationFn: async (id: string) => {
-      await approveDraft(id);
       await sendDraft(id, identity.organizationId);
     },
     onSuccess: () => {
