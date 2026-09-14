@@ -22,6 +22,7 @@ const DRAFT_ROW = {
   subject: "Re: dates",
   body: "Wednesday works.",
   relationship_id: "rel-1",
+  rationale: null,
 };
 const REL_ROW = { id: "rel-1", email: "megan@northlight.example" };
 
@@ -32,11 +33,18 @@ const FINGERPRINT = outboundFingerprint({
   recipient: REL_ROW.email,
   senderIdentity: "tai@trusttai.example",
   attachments: [],
+  cc: [],
+  bcc: [],
 });
 
 interface World {
   membership: { role: string; status: string } | null;
   session: Record<string, unknown> | null;
+  /** A second open review of the same draft: nobody can say which one counts. */
+  extraSession: Record<string, unknown> | null;
+  /** The context as it stands now, recomputed rather than taken from the run. */
+  current: { fingerprint: string; revision: number; currentVersionId: string | null };
+  currentThrows: boolean;
   approval: Record<string, unknown> | null;
   run: Record<string, unknown> | null;
   findings: Record<string, unknown>[];
@@ -51,16 +59,35 @@ let world: World;
 function freshWorld(): World {
   return {
     membership: { role: "owner", status: "active" },
-    session: { id: "session-1", context_revision: 3, status: "open" },
+    session: {
+      id: "session-1",
+      context_revision: 3,
+      status: "open",
+      draft_id: DRAFT,
+      intended_channel: "email_resend",
+      sender_identity: "tai@trusttai.example",
+    },
+    extraSession: null,
+    current: { fingerprint: "ctx-1", revision: 3, currentVersionId: "version-1" },
+    currentThrows: false,
     approval: {
       id: "approval-1",
+      session_id: "session-1",
       run_id: "run-1",
       version_id: "version-1",
+      payload_channel: "email_resend",
       payload_fingerprint: FINGERPRINT,
       context_fingerprint: "ctx-1",
       context_revision: 3,
     },
-    run: { id: "run-1", status: "complete", context_revision: 3, context_fingerprint: "ctx-1" },
+    run: {
+      id: "run-1",
+      session_id: "session-1",
+      version_id: "version-1",
+      status: "complete",
+      context_revision: 3,
+      context_fingerprint: "ctx-1",
+    },
     findings: [],
     claimFails: null,
     inserted: [],
@@ -80,7 +107,10 @@ function table(name: string) {
       case "comms_relationships":
         return { data: REL_ROW, error: null };
       case "comms_review_sessions":
-        return { data: world.session, error: null };
+        return {
+          data: [world.session, world.extraSession].filter(Boolean),
+          error: null,
+        };
       case "comms_review_approvals":
         return { data: world.approval ? [world.approval] : [], error: null };
       case "comms_review_runs":
@@ -94,7 +124,7 @@ function table(name: string) {
 
   const chain: Record<string, unknown> = {};
   const self = () => chain;
-  for (const method of ["select", "eq", "order", "limit", "update"]) {
+  for (const method of ["select", "eq", "neq", "order", "limit", "update"]) {
     chain[method] = self;
   }
   chain["insert"] = (row: Record<string, unknown>) => {
@@ -124,11 +154,12 @@ function table(name: string) {
   chain["update"] = (row: Record<string, unknown>) => {
     if (name === "comms_review_deliveries") world.settled.push(row);
     const done = async () => ({
-      data: null,
+      data: world.settleFails ? null : [{ id: "delivery-1", status: row["status"] }],
       error: world.settleFails ? { code: "XX000", message: "write failed" } : null,
     });
     const updateChain: Record<string, unknown> = {};
     updateChain["eq"] = () => updateChain;
+    updateChain["select"] = () => updateChain;
     updateChain["then"] = (resolve: (value: unknown) => unknown) => done().then(resolve);
     return updateChain;
   };
@@ -140,7 +171,14 @@ function table(name: string) {
   // Deliveries lookups after a unique violation.
   if (name === "comms_review_deliveries") {
     chain["maybeSingle"] = async () => ({
-      data: { id: "delivery-1", status: "attempting" },
+      data: {
+        id: "delivery-1",
+        status: "attempting",
+        draft_id: DRAFT,
+        approval_id: "approval-1",
+        payload_fingerprint: FINGERPRINT,
+        channel: "email_resend",
+      },
       error: null,
     });
   }
@@ -152,6 +190,15 @@ const { createClient } = vi.hoisted(() => ({
 }));
 
 vi.mock("@supabase/supabase-js", () => ({ createClient }));
+/* The context as it stands now is recomputed through the shared review
+   loader. Here that loader is a double, so a test can move the voice rules or
+   the situation underneath an approval. */
+vi.mock("@/lib/comms-review.server", () => ({
+  currentReviewContext: async () => {
+    if (world.currentThrows) throw new Error("unreadable");
+    return world.current;
+  },
+}));
 vi.mock("@/lib/trust-tai-backend.server", () => ({
   trustTaiSupabaseUrl: () => "https://example.supabase.co",
   trustTaiSupabaseKey: () => "anon-key",
@@ -237,21 +284,45 @@ describe("refusals reach no provider at all", () => {
       },
     ],
     [
-      "the situation moved since the review",
+      "the voice rules or the material moved after the review",
       () => {
-        world.run = { ...world.run, context_fingerprint: "ctx-2" };
+        world.current = { ...world.current, fingerprint: "ctx-2" };
       },
     ],
     [
       "the conversation was revised",
       () => {
-        world.session = { ...world.session, context_revision: 9 };
+        world.current = { ...world.current, revision: 9 };
+      },
+    ],
+    [
+      "the draft has been edited into a newer version since approval",
+      () => {
+        world.current = { ...world.current, currentVersionId: "version-2" };
+      },
+    ],
+    [
+      "two open reviews both claim this draft",
+      () => {
+        world.extraSession = { ...world.session, id: "session-2" };
+      },
+    ],
+    [
+      "the approval belongs to another review",
+      () => {
+        world.approval = { ...world.approval, session_id: "session-9" };
+      },
+    ],
+    [
+      "the run behind the approval read a different version",
+      () => {
+        world.run = { ...world.run, version_id: "version-9" };
       },
     ],
     [
       "the review still holds a must-fix",
       () => {
-        world.findings = [{ severity: "must_fix", summary: "The price is wrong." }];
+        world.findings = [{ severity: "must_fix", why: "The price is wrong." }];
       },
     ],
     [

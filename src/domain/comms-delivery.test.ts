@@ -16,8 +16,8 @@ const payload: OutboundPayload = {
   recipient: "Megan@Northlight.example",
   senderIdentity: "sam@trusttai.example",
   attachments: [
-    { name: "plan.pdf", bytes: 1200 },
-    { name: "terms.pdf", bytes: 900 },
+    { name: "plan.pdf", mimeType: "application/pdf", bytes: 1200, digest: "sha256:aaa" },
+    { name: "terms.pdf", mimeType: "application/pdf", bytes: 900, digest: "sha256:bbb" },
   ],
 };
 
@@ -38,6 +38,7 @@ function input(over: Partial<SendDecisionInput> = {}): SendDecisionInput {
     blockers: [],
     currentContextRevision: 4,
     currentContextFingerprint: "ctx-1",
+    currentVersionId: "version-1",
     payloadFingerprint: FP,
     callerMaySend: true,
     ...over,
@@ -61,7 +62,24 @@ describe("outboundFingerprint", () => {
     ["the recipient", { recipient: "someone@else.example" }],
     ["the sending identity", { senderIdentity: "tai@trusttai.example" }],
     ["the channel", { channel: "email_resend" as const }],
-    ["an attachment", { attachments: [{ name: "plan.pdf", bytes: 1201 }] }],
+    [
+      "an attachment",
+      {
+        attachments: [
+          { name: "plan.pdf", mimeType: "application/pdf", bytes: 1201, digest: "sha256:aaa" },
+        ],
+      },
+    ],
+    [
+      "a file is replaced by one of exactly the same size",
+      {
+        attachments: [
+          { name: "plan.pdf", mimeType: "application/pdf", bytes: 1200, digest: "sha256:ccc" },
+          { name: "terms.pdf", mimeType: "application/pdf", bytes: 900, digest: "sha256:bbb" },
+        ],
+      },
+    ],
+    ["somebody is copied in", { cc: ["watcher@northlight.example"] }],
   ])("is a different message when %s changes", (_label, over) => {
     expect(outboundFingerprint({ ...payload, ...over })).not.toBe(FP);
   });

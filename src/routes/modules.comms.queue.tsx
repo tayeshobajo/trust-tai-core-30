@@ -276,7 +276,9 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
 
   const loading = queue.isLoading;
   const isBusy =
-    batchSend.isPending || rejectOne.isPending || approveAndSendOne.isPending ||
+    batchSend.isPending ||
+    rejectOne.isPending ||
+    approveAndSendOne.isPending ||
     reviewOne.isPending;
 
   return (

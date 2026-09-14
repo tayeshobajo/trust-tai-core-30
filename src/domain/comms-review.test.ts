@@ -38,6 +38,8 @@ function approval(over: Partial<ReviewApproval> = {}): ReviewApproval {
     runId: "r-1",
     contextFingerprint: contextFingerprint(base),
     contextRevision: 3,
+    payloadFingerprint: null,
+    payloadChannel: null,
     approvedBy: "user-owner",
     approvedAt: "2026-09-14T10:00:00.000Z",
     approverRole: "owner",
