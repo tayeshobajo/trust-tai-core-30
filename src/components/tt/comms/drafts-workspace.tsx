@@ -147,6 +147,16 @@ export function DraftsWorkspace({
      rather than presenting a count as the whole. */
   const capped = (queue.data?.length ?? 0) >= 50 || (reviews.data?.length ?? 0) >= 50;
 
+  /* A link can name a draft the capped list does not hold, so the record is
+     fetched by name rather than found in a page of results. */
+  const wantedDraft = selection.session ? null : (selection.draft ?? null);
+  const draftQuery = useQuery({
+    queryKey: ["comms", "draft", identity.organizationId, wantedDraft],
+    queryFn: () => fetchDraftById(identity.organizationId, wantedDraft ?? ""),
+    enabled: Boolean(wantedDraft),
+  });
+
+
   const boundSession = selection.draft
     ? (rows.find((row) => row.draftId === selection.draft && row.sessionId)?.sessionId ?? null)
     : null;
