@@ -190,7 +190,11 @@ const READY = {
   currentVersionId: "v1",
   currentFingerprint: "fp-1",
   currentRevision: 3,
-  findings: [] as { severity: "must_fix" | "consider" | "note"; state: "open" | "accepted" | "kept" | "edited"; versionId: string }[],
+  findings: [] as {
+    severity: "must_fix" | "consider" | "note";
+    state: "open" | "accepted" | "kept" | "edited";
+    versionId: string;
+  }[],
   sources: [{ status: "parsed" }],
   coverage: { complete: true, outstanding: 0, uncertain: 0 },
 };

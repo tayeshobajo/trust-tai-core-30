@@ -462,9 +462,7 @@ function ReviewDetail({
               <TTButton
                 className="mt-3"
                 onClick={() => approve.mutate()}
-                disabled={
-                  dirty || !state.readiness.ready || state.approval.freshness === "fresh"
-                }
+                disabled={dirty || !state.readiness.ready || state.approval.freshness === "fresh"}
                 pending={approve.isPending}
                 pendingLabel="Recording approval…"
               >

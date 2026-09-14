@@ -195,7 +195,8 @@ function toSession(row: Row): ReviewSession {
     recipientName: nullableStr(row["recipient_name"]),
     recipientEmail: nullableStr(row["recipient_email"]),
     status: (str(row["status"]) || "open") as ReviewSession["status"],
-    contextRevision: typeof row["context_revision"] === "number" ? (row["context_revision"] as number) : 1,
+    contextRevision:
+      typeof row["context_revision"] === "number" ? (row["context_revision"] as number) : 1,
     createdBy: nullableStr(row["created_by"]),
     createdAt: str(row["created_at"]),
     updatedAt: str(row["updated_at"]),
