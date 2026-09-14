@@ -456,3 +456,79 @@ columns have not yet been populated by a live model run.
    material was not read, and approval refuses on incomplete sources.
 7. **Retired legacy path** — a signed-in member calls the deployed `comms-send`
    function and receives 410.
+
+## Live verification, 14 Sep 2026 — first real review run failed at the provider
+
+A signed-in member on `cmd.trusttai.com` created the synthetic review
+*"QA ONLY - two questions - do not send"* (recipient `qa-comms@example.invalid`).
+Creation persisted. Clicking review produced run
+`b7bee2e2-4b13-476e-9f61-af008d374215`, `status = failed`,
+`error_code = provider_call_failed`, `provider` and `model` null. No send and
+no approval were attempted. **The QA record is preserved; nothing about it was
+overwritten and no completed evidence was manufactured.**
+
+### Evidence gathered (facts, not inference)
+
+- **Worker log, 2026-09-14T21:01:31Z** — `POST /api/public/comms/review → 502`
+  with body `{"error":"The review couldn't be completed. Nothing was judged and
+  your draft is untouched. It is recorded as failed.","code":"provider_call_failed"}`.
+  This is the only line the failure produced: **no provider, model, status or
+  category was logged anywhere**, which is the diagnostics gap itself.
+- **Lovable AI Gateway request log, last 7 days — zero requests.** The failing
+  call therefore did not reach the gateway.
+- **Configured secrets include `OPENAI_API_KEY`.** `selectScoutProvider` prefers
+  a direct OpenAI key over the gateway, which is consistent with the gateway
+  seeing no traffic. The gateway fallback inside `callRoadmapProvider` fires
+  only for messages matching quota/credit/key/401/429; the gateway log shows it
+  did not fire, so the OpenAI-side failure did not match that pattern.
+- **Cause is still not proven.** Without a provider status or message recorded,
+  the exact OpenAI-side reason for run b7bee2e2 cannot be stated. It is not
+  asserted here. No shared provider or model configuration was changed.
+
+### Release state of the hosted deployment
+
+The failed run stored a voice checksum of `e69ea084ee545ebf` — 16 hex
+characters, the old non-cryptographic format. The current tree computes the
+voice stamp as SHA-256 (`5f4b8502`, 2026-09-14 19:15 UTC) and writes
+`voice_snapshot_checksum` as SHA-256 (`872f8b51`, 18:58 UTC). A run executed at
+21:01 UTC that still wrote the old format therefore came from a build **older
+than those commits**. Local `HEAD` is `a4782145` (21:09 UTC).
+**Conclusion: the hosted deployment is behind Git.** Retesting any of the
+provenance or diagnostics work on `cmd.trusttai.com` requires publishing the
+current reviewed code; publishing has not been requested and has not been done.
+
+### Fixed in this pass (code only, untested live)
+
+1. **Sanitized operator diagnostics.** `src/domain/comms-provider-diagnostics.ts`
+   turns a provider failure into `{provider, model, status, category, errorName}`
+   — categories `not_configured | auth | quota | rate_limited | bad_request |
+   upstream_error | timeout | network | refused | unknown`. It keeps **no**
+   credential, header, provider message, prompt or draft text. The review's
+   catch block now logs one line through it and records the same facts on the
+   **preserved failed run**: `provider`, `model`, and stages
+   `provider:… model:… provider_status:… provider_error:…`.
+2. **"Not evaluated" is no longer "no asks".** `summarizeObligations` takes an
+   `evaluated` flag and returns it. With no run, or a failed run,
+   `loadReview` passes false: the note reads "This draft has not been checked
+   against the source questions yet…", the sidebar heading reads
+   "What they asked — not evaluated", and `complete`/`settled` are false, so an
+   unjudged draft can never present as vacuously covered.
+3. **Regression cover, fake transport only.**
+   `src/domain/comms-provider-diagnostics.test.ts` reproduces the live shape —
+   a `ProviderCallFailedError` with no HTTP status whose message is "The
+   reasoning run failed before returning anything." — and asserts it classifies
+   as `refused`, records as `provider_status:none / provider_error:refused`, and
+   never carries a key into the log line. `comms-obligations.test.ts` covers
+   not-evaluated versus nothing-asked. 2,873 tests, types and build pass.
+
+### Still open after this pass
+
+- The footer statement that no send path reads the approval is **stale UI copy**
+  relative to the current tree (the send authority reads it), but it is
+  **accurate for the deployed build**, which predates that work. It should be
+  corrected together with a publish, not before.
+- No live run has yet populated the voice provenance columns.
+- The deployed refusal `comms-send` 410 has not been exercised by a signed-in
+  member.
+- The real cause of run b7bee2e2 remains unknown by design: the diagnostics that
+  would name it only exist in code that is not deployed.
