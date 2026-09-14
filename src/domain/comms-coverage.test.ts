@@ -18,7 +18,7 @@ describe("extractAsks", () => {
     expect(texts.some((text) => text.includes("included in the launch scope"))).toBe(true);
     expect(texts.some((text) => text.includes("who owns content updates"))).toBe(true);
     expect(texts.some((text) => text.includes("send the updated pricing table"))).toBe(true);
-    expect(asks.filter((ask) => ask.kind === "request")).toHaveLength(1);
+    expect(asks.filter((ask) => ask.kind === "request")).toHaveLength(2);
   });
 
   it("counts a question buried past character 900", () => {
