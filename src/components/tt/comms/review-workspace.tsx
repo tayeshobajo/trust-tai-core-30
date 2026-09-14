@@ -503,6 +503,10 @@ function ReviewDetail({
               channel={state.session.intendedChannel}
               sender={state.session.senderIdentity}
               approvedAt={state.approval.approval?.approvedAt ?? null}
+              versionId={current.id}
+              contextRevision={state.session.contextRevision}
+              contextFingerprint={state.fingerprint}
+              dirty={dirty}
             />
           ) : null}
         </aside>
