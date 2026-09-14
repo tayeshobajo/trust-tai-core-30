@@ -55,8 +55,8 @@ function (still 410).
 | T01 | Dashboard answers "what needs action and why" from real scoped records; each item opens the exact destination; no invented deadlines; silence alone is not risk | Implemented (code-tested); live-verified pending |
 | T02 | Conversations: real threads, goal, draft, review the same draft, person memory, Save to Scout, honest sources | Preserved from existing room; consolidation into one surface not yet done |
 | T03 | Drafts & Reviews: one page, real list, resume after reload, versions, findings, one role-checked approval; standalone intake for Message/Email/Proposal | Implemented in code — one list with a focused pane, structured proposal sections wired through storage and rehydrated on resume; the two columns they need are proposed, not applied, so kind and structure read as "not recorded" live |
-| T04 | Voice DNA: stored profile, authorized editing, version history, applied version shown in review, saved changes clear readiness | Existing behaviour preserved; history/reconstruction review not yet audited |
-| T05 | Connections: real account/channel/sending identity, separate facts for connection health, AI availability and send readiness; no secrets shown | Existing behaviour preserved; separation of the three facts not yet audited |
+| T04 | Voice DNA: stored profile, authorized editing, version history, applied version shown in review, saved changes clear readiness | Implemented (code-tested); live-verified pending |
+| T05 | Connections: real account/channel/sending identity, separate facts for connection health, AI availability and send readiness; no secrets shown | Implemented (code-tested); live-verified pending |
 
 ## Acceptance evidence, slice 1 (navigation + Dashboard)
 
@@ -182,3 +182,74 @@ Codex review; the app works without it.
 - **Hosted deployment is behind Git**; nothing in this slice is live.
 - No send path has been exercised; suite approval → send integration remains
   explicitly unmet.
+
+
+## Migration `comms_review_kind` — applied
+
+Date: 2026-09-14. Applied by Codex to the shared project `okydosoacqdnursmmenf`
+as migration `comms_review_kind`. **Do not reapply.**
+
+- Applied text, verbatim: `docs/migrations/20260914220000_comms_review_kind.sql`.
+- The proposal it came from is kept, marked superseded, at
+  `docs/migrations/proposed/20260914220000_comms_review_kind.sql`.
+- Additive only: `comms_review_sessions.kind` (check `message|email|proposal`)
+  and `comms_review_versions.structured_source jsonb`. No user record altered;
+  existing rows keep nulls and read as "not recorded".
+- The app still tolerates both columns being absent, because an older hosted
+  build may run against a database without them.
+- Not yet observed live: no signed-in save has been performed against the
+  applied columns from this environment, so "kind and structure are stored in
+  practice" is not claimed.
+
+## Slice 3 — Voice DNA and Connections (code evidence)
+
+Date: 2026-09-14. No publish, no client send, no schema applied.
+
+### T04 Voice DNA
+
+- Loads the authorized workspace's own profile (`getVoiceProfile`, org-scoped,
+  RLS). A failed read is reported as itself.
+- Editing is role-gated (`identity.canManage`); everyone else sees "View only".
+  Saving writes through the existing service and bumps `version`.
+- **History is honest.** There is no edit-history table, and one was not
+  invented. `listVoiceSnapshots` reads the immutable provenance the review runs
+  already froze (`voice_version`, `voice_snapshot_checksum`,
+  `style_context_snapshot.rulesText`) and groups it by exact text. A version no
+  review was ever held against has no snapshot and is shown as absent, not as
+  history.
+- **No cross-client borrowing.** `loadVoicePacket` still draws zero examples
+  from past messages, and the screen states this where a reader can see it.
+- **A save invalidates readiness.** Saving invalidates
+  `["comms","send-readiness"]`, `["comms","review"]` and the review list, so no
+  screen keeps showing readiness that was true under the old rules. The voice
+  stamp already includes the SHA-256 of the exact rules, so an approval made
+  under old rules goes stale server-side as well.
+
+### T05 Connections
+
+Three facts, deliberately separated on the page:
+
+1. **Accounts and sync** — the existing Gmail rows and the unconnected tracks,
+   with real connect / sync / disconnect actions and each failure shown as
+   itself. Nothing is fetched from a vendor for display.
+2. **Reviewing model** — `aiRuntimeAvailability` asks the server whether a model
+   is configured (boolean, provider, model name — never a key), and
+   `reviewRunHealth` reports what actually happened in this workspace: total
+   runs, whether any ever completed, the last status and error code. Zero runs
+   reads as "nothing here has been proven to work", which is the current truth.
+3. **Whether a message may be sent** — explicitly not a workspace-wide state.
+   The card says it is decided per draft at approval and links to Drafts &
+   Reviews rather than summarising it.
+
+Loading, failure and empty are distinct in every card, and each failed read
+offers a retry.
+
+### Gaps after this slice
+
+- Nothing above is live-verified: this environment has no signed-in session for
+  the external workspace.
+- The reviewing-model card will currently read "no review has ever completed"
+  for the QA workspace. That is accurate and is the open blocker, not a defect
+  of this slice.
+- T02 Conversations remains unaudited; the relationship room is preserved as it
+  was. Four of five destinations are addressed, not five.
