@@ -37,10 +37,12 @@ import { createClient } from "@supabase/supabase-js";
 import { checkVoice, requiresHumanReview, type VoiceVerdict } from "@/data/voice-policy";
 import {
   DEFAULT_VOICE_DOCUMENT,
+  EMAIL_SIGNOFF,
   REGISTER_GUIDE,
   TAI_RELATIONSHIP_VOICE,
   type VoiceRegister,
 } from "@/domain/voice";
+
 import { COMMITMENT_CATEGORY } from "@/domain/comms-interactions";
 import type { IntelligenceCase } from "@/domain/intelligence-canon";
 import type { WithheldSource } from "@/domain/signals";
