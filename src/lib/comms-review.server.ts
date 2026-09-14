@@ -780,6 +780,9 @@ export async function reviseDraft(
 ): Promise<{ version: ReviewVersion; structurePersisted: boolean }> {
   const caller = await identify(token, input.organizationId);
   const session = await requireSession(caller, input.organizationId, input.sessionId);
+  /* Same check as intake, on the session's own recorded kind: an edit cannot
+     turn a message into a structured proposal by sending sections. */
+  const sections = checkedSections(input.sections, session.kind);
   const writer = writerClient();
 
   const { data } = await caller.client
