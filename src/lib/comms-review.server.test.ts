@@ -28,7 +28,7 @@ vi.mock("@/lib/intelligence-runtime.server", async (importOriginal) => {
   return { ...actual, runtimeModelCaller };
 });
 
-import { ReviewFailure, runReview } from "@/lib/comms-review.server";
+import { createReviewSession, ReviewFailure, runReview } from "@/lib/comms-review.server";
 
 /* --------------------------------------------------------------- fixtures */
 
@@ -430,5 +430,83 @@ describe("runReview at the server boundary", () => {
     expect((attempts[0]?.payload as Record<string, unknown>)["stages"]).toContain(
       "voice_profile:none",
     );
+  });
+});
+
+/* ------------------------------------------------ what kind of draft it is */
+
+describe("opening a review records what kind of draft it is", () => {
+  beforeEach(() => {
+    process.env["TRUST_TAI_SUPABASE_SERVICE_KEY"] = "service_key";
+  });
+  afterEach(() => {
+    delete process.env["TRUST_TAI_SUPABASE_SERVICE_KEY"];
+    createClient.mockReset();
+  });
+
+  function stand(sessionInsert: (payload: unknown) => Result) {
+    const attempts: Attempt[] = [];
+    const tables = baseTables();
+    createClient.mockImplementation(() => {
+      const client = fakeClient(tables, attempts, USER) as unknown as {
+        from: (table: string) => Record<string, unknown>;
+      };
+      const original = client.from.bind(client);
+      return {
+        ...client,
+        from(table: string) {
+          const node = original(table);
+          if (table === "comms_review_sessions") {
+            node["insert"] = (payload: unknown) => {
+              attempts.push({ table, op: "insert", payload });
+              return chain(sessionInsert(payload));
+            };
+          }
+          if (table === "comms_review_versions") {
+            node["insert"] = (payload: unknown) => {
+              attempts.push({ table, op: "insert", payload });
+              return chain(ok({ id: VERSION, session_id: SESSION, version: 1, body: "x" }));
+            };
+          }
+          return node;
+        },
+      };
+    });
+    return { attempts };
+  }
+
+  const input = {
+    organizationId: ORG,
+    title: "Depot proposal",
+    body: "Scope\nRebuild.",
+    sources: [],
+    kind: "proposal" as const,
+  };
+
+  it("writes the kind and reports that it was stored", async () => {
+    const { attempts } = stand(() => ok({ id: SESSION, organization_id: ORG, status: "open" }));
+    const result = await createReviewSession("token", input);
+
+    expect(result.kindPersisted).toBe(true);
+    const insert = attempts.find((attempt) => attempt.table === "comms_review_sessions");
+    expect((insert?.payload as Record<string, unknown>)["kind"]).toBe("proposal");
+  });
+
+  it("still opens the review, and says the kind was not stored, when the column is absent", async () => {
+    let first = true;
+    const { attempts } = stand((payload) => {
+      if (first && (payload as Record<string, unknown>)["kind"]) {
+        first = false;
+        return { data: null, error: { code: "42703", message: "column kind does not exist" } };
+      }
+      return ok({ id: SESSION, organization_id: ORG, status: "open" });
+    });
+    const result = await createReviewSession("token", input);
+
+    expect(result.kindPersisted).toBe(false);
+    expect(result.sessionId).toBe(SESSION);
+    expect(
+      attempts.filter((attempt) => attempt.table === "comms_review_sessions").length,
+    ).toBeGreaterThan(1);
   });
 });
