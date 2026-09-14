@@ -51,6 +51,7 @@ import { Route as ModulesCommsInboxRouteImport } from './routes/modules.comms.in
 import { Route as ModulesCommsIntegrationsRouteImport } from './routes/modules.comms.integrations'
 import { Route as ModulesCommsPlanRouteImport } from './routes/modules.comms.plan'
 import { Route as ModulesCommsQueueRouteImport } from './routes/modules.comms.queue'
+import { Route as ModulesCommsReviewRouteImport } from './routes/modules.comms.review'
 import { Route as ModulesCommsToScoutRouteImport } from './routes/modules.comms.to-scout'
 import { Route as ModulesCommsVoiceRouteImport } from './routes/modules.comms.voice'
 import { Route as ModulesProjectsIndexRouteImport } from './routes/modules.projects.index'
@@ -323,6 +324,11 @@ const ModulesCommsPlanRoute = ModulesCommsPlanRouteImport.update({
 const ModulesCommsQueueRoute = ModulesCommsQueueRouteImport.update({
   id: '/queue',
   path: '/queue',
+  getParentRoute: () => ModulesCommsRoute,
+} as any)
+const ModulesCommsReviewRoute = ModulesCommsReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
   getParentRoute: () => ModulesCommsRoute,
 } as any)
 const ModulesCommsToScoutRoute = ModulesCommsToScoutRouteImport.update({
@@ -702,6 +708,7 @@ export interface FileRoutesByFullPath {
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/review': typeof ModulesCommsReviewRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -800,6 +807,7 @@ export interface FileRoutesByTo {
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/review': typeof ModulesCommsReviewRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -906,6 +914,7 @@ export interface FileRoutesById {
   '/modules/comms/integrations': typeof ModulesCommsIntegrationsRoute
   '/modules/comms/plan': typeof ModulesCommsPlanRoute
   '/modules/comms/queue': typeof ModulesCommsQueueRoute
+  '/modules/comms/review': typeof ModulesCommsReviewRoute
   '/modules/comms/to-scout': typeof ModulesCommsToScoutRoute
   '/modules/comms/voice': typeof ModulesCommsVoiceRoute
   '/modules/projects/$projectId': typeof ModulesProjectsProjectIdRoute
@@ -1014,6 +1023,7 @@ export interface FileRouteTypes {
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/queue'
+    | '/modules/comms/review'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -1112,6 +1122,7 @@ export interface FileRouteTypes {
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/queue'
+    | '/modules/comms/review'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -1217,6 +1228,7 @@ export interface FileRouteTypes {
     | '/modules/comms/integrations'
     | '/modules/comms/plan'
     | '/modules/comms/queue'
+    | '/modules/comms/review'
     | '/modules/comms/to-scout'
     | '/modules/comms/voice'
     | '/modules/projects/$projectId'
@@ -1644,6 +1656,13 @@ declare module '@tanstack/react-router' {
       path: '/queue'
       fullPath: '/modules/comms/queue'
       preLoaderRoute: typeof ModulesCommsQueueRouteImport
+      parentRoute: typeof ModulesCommsRoute
+    }
+    '/modules/comms/review': {
+      id: '/modules/comms/review'
+      path: '/review'
+      fullPath: '/modules/comms/review'
+      preLoaderRoute: typeof ModulesCommsReviewRouteImport
       parentRoute: typeof ModulesCommsRoute
     }
     '/modules/comms/to-scout': {
@@ -2147,6 +2166,7 @@ interface ModulesCommsRouteChildren {
   ModulesCommsIntegrationsRoute: typeof ModulesCommsIntegrationsRoute
   ModulesCommsPlanRoute: typeof ModulesCommsPlanRoute
   ModulesCommsQueueRoute: typeof ModulesCommsQueueRoute
+  ModulesCommsReviewRoute: typeof ModulesCommsReviewRoute
   ModulesCommsToScoutRoute: typeof ModulesCommsToScoutRoute
   ModulesCommsVoiceRoute: typeof ModulesCommsVoiceRoute
   ModulesCommsIndexRoute: typeof ModulesCommsIndexRoute
@@ -2158,6 +2178,7 @@ const ModulesCommsRouteChildren: ModulesCommsRouteChildren = {
   ModulesCommsIntegrationsRoute: ModulesCommsIntegrationsRoute,
   ModulesCommsPlanRoute: ModulesCommsPlanRoute,
   ModulesCommsQueueRoute: ModulesCommsQueueRoute,
+  ModulesCommsReviewRoute: ModulesCommsReviewRoute,
   ModulesCommsToScoutRoute: ModulesCommsToScoutRoute,
   ModulesCommsVoiceRoute: ModulesCommsVoiceRoute,
   ModulesCommsIndexRoute: ModulesCommsIndexRoute,
