@@ -160,8 +160,10 @@ function FindingCard({
     <li
       id={`finding-${finding.id}`}
       className={cn(
-        "border-b border-border px-4 py-3.5 transition-colors duration-150 motion-reduce:transition-none",
-        selected ? "bg-[var(--royal-wash)]" : "",
+        "border-b border-l-2 border-border px-4 py-3.5 transition-colors duration-150 motion-reduce:transition-none",
+        selected
+          ? "border-l-[var(--royal)] bg-[var(--royal-wash-strong)]"
+          : "border-l-transparent",
       )}
     >
       <button
