@@ -54,7 +54,7 @@ function (still 410).
 | --- | --- | --- |
 | T01 | Dashboard answers "what needs action and why" from real scoped records; each item opens the exact destination; no invented deadlines; silence alone is not risk | Implemented (code-tested); live-verified pending |
 | T02 | Conversations: real threads, goal, draft, review the same draft, person memory, Save to Scout, honest sources | Preserved from existing room; consolidation into one surface not yet done |
-| T03 | Drafts & Reviews: one page, real list, resume after reload, versions, findings, one role-checked approval; standalone intake for Message/Email/Proposal | Partly implemented — queue + review on one page and the kind is carried into intake; structured proposal sections (scope/deliverables/pricing/assumptions/next steps with arithmetic checks) **not built** |
+| T03 | Drafts & Reviews: one page, real list, resume after reload, versions, findings, one role-checked approval; standalone intake for Message/Email/Proposal | Implemented in code — one list with a focused pane, structured proposal sections wired through storage and rehydrated on resume; the two columns they need are proposed, not applied, so kind and structure read as "not recorded" live |
 | T04 | Voice DNA: stored profile, authorized editing, version history, applied version shown in review, saved changes clear readiness | Existing behaviour preserved; history/reconstruction review not yet audited |
 | T05 | Connections: real account/channel/sending identity, separate facts for connection health, AI availability and send readiness; no secrets shown | Existing behaviour preserved; separation of the three facts not yet audited |
 
