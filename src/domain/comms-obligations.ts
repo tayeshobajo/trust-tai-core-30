@@ -191,6 +191,7 @@ function words(value: string): string[] {
 
 /** Words that only frame a question rather than answer it. */
 const ECHO_FRAMING = new Set([
+  "you",
   "asked",
   "asking",
   "about",
@@ -225,7 +226,7 @@ export function isRestatement(obligation: string, answer: string): boolean {
      like "you asked about" are not new information, so they do not rescue an
      echo. With nothing genuinely new, this is the question again. */
   const novel = answerWords.filter(
-    (word) => !askSet.has(word) && word.length > 3 && !ECHO_FRAMING.has(word),
+    (word) => !askSet.has(word) && !ECHO_FRAMING.has(word),
   );
 
   const echo = covered >= 0.7 && novel.length === 0;
