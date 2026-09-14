@@ -956,7 +956,6 @@ export async function approveVersion(
       version_id: input.versionId,
       run_id: run.id,
       context_fingerprint: state.fingerprint,
-      context_revision: state.session.contextRevision,
       approved_by: caller.userId,
       approved_at: new Date().toISOString(),
       approver_role: caller.role,
@@ -1029,7 +1028,7 @@ export async function loadReview(
       .eq("organization_id", input.organizationId)
       .eq("session_id", input.sessionId)
       .order("started_at", { ascending: false })
-      .limit(1),
+      .limit(25),
     caller.client
       .from("comms_review_approvals")
       .select("*")
@@ -1040,7 +1039,12 @@ export async function loadReview(
   const versions = ((versionRes.data ?? []) as Row[]).map(toVersion);
   const currentVersion = versions.at(-1) ?? null;
   const sourceRows = (sourceRes.data ?? []) as Row[];
-  const latestRun = ((runRes.data ?? []) as Row[]).map(toRun)[0] ?? null;
+  const runs = ((runRes.data ?? []) as Row[]).map(toRun);
+  const latestRun = runs[0] ?? null;
+  /* The approvals table does not carry the revision itself; an approval is
+     bound to the run it was given against, and that run does. Reading it
+     back through the run keeps the staleness check honest either way. */
+  const revisionByRun = new Map(runs.map((run) => [run.id, run.contextRevision]));
 
   const fingerprint = currentVersion
     ? contextFingerprint({
@@ -1093,7 +1097,13 @@ export async function loadReview(
     findings,
     obligations: coverage,
     approval: readApproval({
-      approvals: ((approvalRes.data ?? []) as Row[]).map(toApproval),
+      approvals: ((approvalRes.data ?? []) as Row[]).map((row) => {
+        const approval = toApproval(row);
+        return {
+          ...approval,
+          contextRevision: approval.runId ? (revisionByRun.get(approval.runId) ?? null) : null,
+        };
+      }),
       currentVersionId: currentVersion?.id ?? "",
       currentFingerprint: fingerprint,
       currentRevision: session.contextRevision,
