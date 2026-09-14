@@ -356,7 +356,7 @@ function ReviewDetail({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <TTButton variant="ghost" onClick={onBack}>
+        <TTButton variant="quiet" onClick={onBack}>
           Back
         </TTButton>
         <h3 className="text-lg font-medium text-foreground">{state.session.title}</h3>
@@ -388,7 +388,7 @@ function ReviewDetail({
               Save as new version
             </TTButton>
             <TTButton
-              variant="outline"
+              variant="secondary"
               onClick={() => review.mutate()}
               disabled={dirty}
               pending={review.isPending}
@@ -505,7 +505,7 @@ function FindingList({
           <div className="mt-3 flex flex-wrap gap-2">
             <TTButton
               size="sm"
-              variant="outline"
+              variant="secondary"
               onClick={() => onDecide(finding.id, "accepted")}
               disabled={finding.state !== "open"}
             >
@@ -513,7 +513,7 @@ function FindingList({
             </TTButton>
             <TTButton
               size="sm"
-              variant="ghost"
+              variant="quiet"
               onClick={() => onDecide(finding.id, "kept")}
               disabled={finding.state !== "open"}
             >
