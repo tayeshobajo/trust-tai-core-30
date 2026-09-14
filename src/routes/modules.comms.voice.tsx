@@ -67,6 +67,11 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
     queryFn: () => getVoiceProfile(identity.organizationId),
   });
 
+  const snapshotsQuery = useQuery({
+    queryKey: ["comms", "voice-snapshots", identity.organizationId],
+    queryFn: () => listVoiceSnapshots(identity.organizationId),
+  });
+
   const save = useMutation({
     mutationFn: (current: VoiceProfile | null) =>
       saveVoiceProfile({
@@ -77,6 +82,17 @@ function VoiceSettings({ identity }: { identity: WorkspaceIdentity }) {
       }),
     onSuccess: async (next) => {
       queryClient.setQueryData(["comms", "voice", identity.organizationId], next);
+      /* Changing how Tai sounds changes what every open review was measured
+         against. Anything that reports readiness has to ask again rather than
+         keep showing an answer that was true under the old rules. */
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["comms", "send-readiness"] }),
+        queryClient.invalidateQueries({ queryKey: ["comms", "review"] }),
+        queryClient.invalidateQueries({ queryKey: ["comms", "reviews", identity.organizationId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["comms", "voice-snapshots", identity.organizationId],
+        }),
+      ]);
       setMode("preview");
     },
   });
