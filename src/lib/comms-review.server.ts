@@ -586,11 +586,20 @@ export async function runReview(
     input.sessionId,
     input.versionId,
   );
-  const { data: sourceData } = await caller.client
+  const { data: sourceData, error: sourceError } = await caller.client
     .from("comms_review_sources")
     .select("*")
     .eq("organization_id", input.organizationId)
     .eq("session_id", input.sessionId);
+  /* A source list that could not be read is not an empty source list. Stop
+     here, before anything is started or any model is called: reviewing a
+     message while blind to the material it answers would be a false reading. */
+  if (sourceError) {
+    throw new ReviewFailure(
+      "review_unreadable",
+      "The material for this review could not be read, so no review was run. Nothing was judged and your draft is untouched.",
+    );
+  }
   const sourceRows = (sourceData ?? []) as Row[];
 
   /* Obligations come from the sources we genuinely read. A source we could
@@ -647,7 +656,7 @@ export async function runReview(
 
   /** Close a run honestly when it could not finish. */
   const markFailed = async (code: string, stages: string[], provider?: string, model?: string) => {
-    await writer
+    const { error } = await writer
       .from("comms_review_runs")
       .update({
         status: "failed",
@@ -660,7 +669,14 @@ export async function runReview(
       })
       .eq("id", runId)
       .eq("organization_id", input.organizationId);
+    return !error;
   };
+
+  /** The tail of a failure message: only claim a record when one was made. */
+  const recordNote = (recorded: boolean) =>
+    recorded
+      ? "It is recorded as failed."
+      : "It could not even be recorded as failed, so the record may still show it as running.";
 
   const packet = {
     situation: session.situation,
