@@ -52,10 +52,19 @@ import {
   salutationName,
   summarizeDraftGrounding,
   threadContextForJudgment,
+  threadWindowForJudgment,
   unearnedAskInBody,
   type CommunicationJudgment,
   type DraftGroundingSummary,
+  type ThreadWindow,
 } from "@/domain/comms-judgment";
+import {
+  coverageForDraft,
+  extractAsks,
+  type CoverageReport,
+  type SourceAsk,
+} from "@/domain/comms-coverage";
+import { senderEvidence, signoffFor, type SenderProfile } from "@/domain/comms-sender";
 import {
   ProviderCallFailedError,
   ProviderNotConfiguredError,
@@ -63,6 +72,14 @@ import {
   runtimeProviderStatus,
   type RuntimeModelCaller,
 } from "@/lib/intelligence-runtime.server";
+
+/**
+ * The prompt contract version. Bumped whenever the instructions or the
+ * evidence packet change shape, so a recorded run can be replayed against the
+ * prompt it actually used.
+ */
+export const DRAFT_PROMPT_VERSION = "comms-draft/2026-09-14";
+
 
 const REGISTERS: VoiceRegister[] = [
   "warm_intro",
