@@ -166,6 +166,7 @@ export function contextFingerprint(context: ReviewContext): string {
     (context.goal ?? "").trim(),
     (context.situation ?? "").trim(),
     (context.senderName ?? "").trim(),
+    (context.senderUserId ?? "").trim(),
     (context.voiceVersion ?? "").trim(),
     [...context.sourceChecksums].sort().join(","),
   ];
