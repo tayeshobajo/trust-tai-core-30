@@ -19,28 +19,28 @@ States are defined in `docs/comms-review-acceptance.md`.
 
 | Gate | State | Evidence |
 | --- | --- | --- |
-| C01 Three surfaces, one Comms | Partly implemented | Review now exists as a real surface at `/modules/comms/review`; Conversations and Follow-ups consolidation is still mockup only |
-| C02 Identity preserved, old routes resolve | Unmet | No route consolidation attempted yet, so nothing has been put at risk either |
-| C03 One readable conversation view | Mockup only | `/mockups/comms-next` |
+| C01 Three surfaces, one Comms | Partly implemented | Review is a real surface at `/modules/comms/review`; Conversations and Follow-ups consolidation is still mockup only |
+| C02 Identity preserved, old routes resolve | Unmet | No route consolidation attempted, so nothing has been put at risk either |
+| C03 Editable my read and goal | Mockup only | Editable in `/mockups/comms-next`; the real Review screen does not let a person edit the goal yet |
 | C04 Full context, newest included | Verified (code) | Slice 1: newest-first window, whole messages, read window stated; `comms-judgment.test.ts`, `comms-draft.server.test.ts` |
-| C05 Explicit question coverage | Implemented | Slice 2: obligations extracted per source with offsets, verified per draft version, shown in Review. Semantic verdicts require live evaluation to be Verified |
-| C06 Evidence-backed findings | Implemented | Slice 2: a finding is discarded unless its quote is literally present in that version's body (`comms-review.server.ts`) |
-| C07 Conflict and unsupported-claim detection | Partly implemented | The reviewer is instructed to find them and the finding kinds exist; detection quality is unevaluated |
-| C08 Actual sender identity | Verified (code) | Slice 1: `comms-sender.ts`, `comms-sender.test.ts` |
-| C09 Attachments as context only | Implemented | Slice 2: `comms-sources.ts` reads text and Markdown, names every other type unread, and nothing becomes an outbound attachment; `comms-sources.test.ts` |
-| C10 Shared approval across entry points | Unmet | `comms-quick-reply` still bypasses review. See "Send gates still open" |
-| C11 Version-bound, idempotent delivery | Partly implemented | Approval is version-bound and context-bound (`comms-review.ts`, `comms-review.test.ts`); no send path reads it yet |
-| C12 Honest incompleteness | Implemented | Source coverage note plus per-source status on the Review screen; unverifiable answers stay uncertain |
-| C13 Warm and complaint registers | Partly implemented | Register guides and ask gate exist in drafting; review does not yet judge register |
-| C14 Voice rules enforced deterministically | Partly implemented | Voice pass runs; signature is per sender |
-| C15 Human correction respected | Partly implemented | Corrections outrank inference in retrieval; finding decisions are recorded but do not yet feed later runs |
-| C16 Follow-ups persist | Partly implemented | Unchanged this slice |
-| C17 Lessons learned from decisions | Unmet | Finding decisions are stored; nothing reads them back yet |
-| C18 Accessibility | Partly implemented | Review is keyboard reachable and single-column at 375px; no audit run |
-| C19 Failure states honest and specific | Partly implemented | Review has typed failures (provider unavailable, unreadable review, stale version, approval refused), each saying what was not changed; send failures do not exist yet |
-| C20 No autonomous send | Verified (code) | No send path exists in `comms-review.server.ts`; approval records a decision only |
-| C21 Follow-ups surface | Mockup only | |
-| C22 Evaluation evidence per run | Implemented | Slice 2: every run row carries provider, model, prompt version, context fingerprint, stages, latency, coverage and limitations, including failed runs |
+| C05 Honest source coverage | Implemented | Slice 2: per-source status; text and Markdown parsed, every other type named unread; a source list that fails to read stops the review before the model is called |
+| C06 Evidence-backed judgment | Implemented | Slice 2: a finding is discarded unless its quote is literally present in that version's body (`comms-review.server.ts`) |
+| C07 Exact-version edits and re-runs | Implemented | Versions are immutable; a run, its findings and its approval are bound to one version, fingerprint and context revision (`comms-review.server.test.ts`) |
+| C08 Actual sender identity | Verified (code) | Slice 1 plus slice 3: the author is resolved from the immutable version, separately from the reviewer, so an admin reviewing a teammate's draft no longer replaces the author |
+| C09 Private opportunities stay private | Mockup only | Shown in `/mockups/comms-next`; the real review does not separate internal observations yet |
+| C10 Humour and warmth handled distinctly | Partly implemented | Register guides and the ask gate exist in drafting; the review does not judge register, and quality is unevaluated |
+| C11 Proposal consistency | Partly implemented | The reviewer is instructed to find contradictions and unsupported claims and the finding kinds exist; detection quality is unevaluated |
+| C12 Explicit findings and question coverage | Implemented | Obligations extracted per source with offsets and verified against the exact draft text; semantic verdicts need live evaluation to be Verified |
+| C13 Attachments as context only | Implemented | `comms-sources.ts`; nothing read becomes an outbound attachment |
+| C14 Approval bound to what was reviewed | Implemented | Approval requires a completed current run, matching fingerprint and context revision, complete coverage and zero must-fix findings in any state; Codex verified the database rejects unfinished and stale approvals |
+| C15 Shared approval and send enforcement | Partly implemented | Slice 3: one authority (`src/domain/comms-delivery.ts` with `comms-send-authority.server.ts`) gates Gmail, the in-app email path used by the queue and Scout outreach, and the LinkedIn mark-sent record. `comms-quick-reply` is still outside it, and the gate refuses everything until the proposed migration is applied |
+| C16 Truthful delivery | Partly implemented | The attempt is claimed before the provider is called, keyed to draft plus approved payload; a lost provider answer is recorded as unknown and never retried; LinkedIn is labelled a person's attestation. Unproved against the real database until the delivery table exists |
+| C17 Isolation between clients | Implemented | The voice packet no longer pulls other clients' messages as examples; style sources are separated from factual context and the absence of curated examples is stated. Regression test in `comms-review.server.test.ts` |
+| C18 Follow-ups persist | Partly implemented | Unchanged |
+| C19 Lessons learned from decisions | Unmet | Finding decisions are stored with a verified decider; nothing reads them back yet |
+| C20 Failure states honest and specific | Partly implemented | Review and send failures each say what happened and what was not changed; a failure that cannot itself be recorded says so |
+| C21 Accessibility | Partly implemented | Review is keyboard reachable and single-column at 375px; no audit run |
+| C22 Evaluation evidence per run | Implemented | Provider, model, prompt version, context fingerprint, stages, latency, coverage, limitations and the exact voice profile and version, including on failed runs |
 
 ## Slice 1: truthful context and the real sender
 
@@ -85,16 +85,27 @@ multiple asks in one sentence, pending on only one of several asks, no-ask
 source, late question, hallucinated obligation id, unverifiable quote),
 `comms-review.test.ts` (11), `comms-sources.test.ts` (9).
 
-## Send gates still open
+## Send gates: where they stand after slice 3
 
-Nothing in slice 2 opens a send path, and no send path reads the new
-approvals. These remain to be bound to review before C10 and C11 can be met:
+One authority decides every send it covers: `src/domain/comms-delivery.ts`
+holds the rule, `src/lib/comms-send-authority.server.ts` gathers the facts and
+owns the attempt. There is no second approval queue - suite approval and review
+approval refer to the same decision record.
 
-1. `comms-quick-reply` — replies without any review.
-2. `supabase/functions/comms-send` — sends from `comms_drafts.review_state`,
-   which is a different approval record from the one this slice writes.
-3. `comms-linkedin-send.server.ts` — its own approval path.
-4. Any future scheduled send.
+| Entry point | State |
+| --- | --- |
+| Gmail (`comms-gmail-send.server.ts`) | Gated. The approval is required after the message is fully built and before the claim; a refusal means Gmail is never called |
+| Queue and Scout outreach email | Gated, and moved in-app to `/api/public/comms/send`. The old supabase/functions/comms-send edge function is no longer called by this app; undeploying it is a separate action Codex owns |
+| LinkedIn mark-sent | Gated. Recording it requires a current approval, and the record is labelled a person's attestation, not a delivery by LinkedIn |
+| `comms-quick-reply` | **Still open.** It replies without any review |
+| Scheduled sends | None exist |
+
+**The gate refuses everything today, deliberately.** The database cannot yet
+tie a draft to the review that approved it, or an approval to the exact payload
+it approved. Until
+`docs/migrations/proposed/20260914170000_comms_review_delivery.sql` is reviewed
+and applied by Codex, every gated path returns `capability_missing` and names
+that file. Nothing is sent on an unprovable approval.
 
 ## Hardening after independent review (14 September, later)
 
