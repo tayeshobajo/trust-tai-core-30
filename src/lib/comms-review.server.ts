@@ -1230,6 +1230,18 @@ export async function loadReview(
       .eq("session_id", input.sessionId),
   ]);
 
+  /* A read that failed is not an empty workspace. Showing "no sources" or
+     "no reviews" because a query errored would be the most dangerous lie
+     this page could tell, so it refuses to render instead. */
+  const readError =
+    versionRes.error ?? sourceRes.error ?? runRes.error ?? approvalRes.error ?? null;
+  if (readError) {
+    throw new ReviewFailure(
+      "review_unreadable",
+      "This review could not be read just now, so nothing is shown rather than showing it as empty. Try again in a moment.",
+    );
+  }
+
   const versions = ((versionRes.data ?? []) as Row[]).map(toVersion);
   const currentVersion = versions.at(-1) ?? null;
   const sourceRows = (sourceRes.data ?? []) as Row[];
@@ -1240,6 +1252,14 @@ export async function loadReview(
      back through the run keeps the staleness check honest either way. */
   const revisionByRun = new Map(runs.map((run) => [run.id, run.contextRevision]));
 
+  /* The same ingredients the run used, in the same order: words, recipient,
+     goal, situation, the verified sender and the exact stored voice rules.
+     An approval must go stale for a changed goal or a changed voice, not
+     only for changed words. */
+  const [sender, voice] = await Promise.all([
+    verifiedSender(caller),
+    loadVoicePacket(caller, input.organizationId),
+  ]);
   const fingerprint = currentVersion
     ? contextFingerprint({
         versionId: currentVersion.id,
@@ -1248,8 +1268,10 @@ export async function loadReview(
         recipientEmail: session.recipientEmail,
         recipientName: session.recipientName,
         goal: session.goal,
+        situation: session.situation,
         sourceChecksums: sourceRows.map((row) => str(row["checksum"])),
-        senderName: null,
+        senderName: sender.name,
+        voiceVersion: voice.stamp,
       })
     : "";
 
@@ -1269,6 +1291,12 @@ export async function loadReview(
         .eq("organization_id", input.organizationId)
         .eq("run_id", latestRun.id),
     ]);
+    if (findingRes.error || obligationRes.error) {
+      throw new ReviewFailure(
+        "review_unreadable",
+        "The review's findings could not be read just now, so they are not shown rather than shown as none. Try again in a moment.",
+      );
+    }
     findings = ((findingRes.data ?? []) as Row[]).map(toFinding);
     verdicts = ((obligationRes.data ?? []) as Row[]).map(toObligation);
   }
