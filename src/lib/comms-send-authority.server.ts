@@ -29,6 +29,7 @@ import {
   type OutboundPayload,
   type SendDecision,
 } from "@/domain/comms-delivery";
+import { currentReviewContext } from "@/lib/comms-review.server";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 
 type Row = Record<string, unknown>;
@@ -56,6 +57,8 @@ function nullableNum(value: unknown): number | null {
 /** The caller, proved: a live session and an active membership of this workspace. */
 export interface SendCaller {
   client: SupabaseClient;
+  /** The caller's own token, so shared review reads run as them too. */
+  token: string;
   userId: string;
   role: string;
   maySend: boolean;
@@ -84,7 +87,7 @@ export async function identifySender(token: string, organizationId: string): Pro
     );
   }
   const role = str(row["role"]);
-  return { client, userId: data.user.id, role, maySend: SENDING_ROLES.has(role) };
+  return { client, token, userId: data.user.id, role, maySend: SENDING_ROLES.has(role) };
 }
 
 /** Server credentials, for the attempt record only. Never a browser fallback. */
@@ -131,35 +134,47 @@ export interface SendReadiness {
 export async function reviewReadinessForSend(
   caller: SendCaller,
   input: { organizationId: string; draftId: string; payload: OutboundPayload },
+  deps: {
+    /** Recomputes the context as it stands now. Injected so tests can drive it. */
+    currentContext?: typeof currentReviewContext;
+  } = {},
 ): Promise<SendReadiness> {
+  const currentContextFor = deps.currentContext ?? currentReviewContext;
   const fingerprint = outboundFingerprint(input.payload);
-  const refuse = (missing: string[]): SendReadiness => ({
+  const decide = (
+    extra: Partial<Parameters<typeof decideSend>[0]> & { missingCapability?: string[] },
+  ): SendReadiness => ({
     decision: decideSend({
-      missingCapability: missing,
+      missingCapability: [],
       approval: null,
       run: null,
       blockers: [],
       currentContextRevision: null,
       currentContextFingerprint: "",
+      currentVersionId: null,
       payloadFingerprint: fingerprint,
       callerMaySend: caller.maySend,
+      ...extra,
     }),
     payload: input.payload,
     fingerprint,
   });
 
-  /* Which review covers this draft? Until the binding column exists there is
-     no honest answer, and no answer means no send. */
+  /* Which review covers this draft? Closed reviews are not answers, and two
+     open ones are not an answer either. Until the binding column exists
+     there is no honest answer at all, and no answer means no send. */
   const sessionRes = await caller.client
     .from("comms_review_sessions")
-    .select("id, context_revision, status")
+    .select("id, context_revision, status, draft_id, intended_channel, sender_identity")
     .eq("organization_id", input.organizationId)
     .eq("draft_id", input.draftId)
-    .maybeSingle();
+    .neq("status", "closed");
   if (missingSchema(sessionRes.error)) {
-    return refuse([
-      "comms_review_sessions has no draft_id, so no review can be tied to this draft.",
-    ]);
+    return decide({
+      missingCapability: [
+        "comms_review_sessions has no draft_id, so no review can be tied to this draft.",
+      ],
+    });
   }
   if (sessionRes.error) {
     throw new SendRefused(
@@ -167,35 +182,27 @@ export async function reviewReadinessForSend(
       "The review behind this message could not be read, so nothing was sent.",
     );
   }
-  const session = (sessionRes.data ?? null) as Row | null;
+  const sessions = (sessionRes.data ?? []) as Row[];
+  if (sessions.length > 1) return decide({ ambiguousReview: true });
+  const session = sessions[0] ?? null;
+  if (!session) return decide({});
+  const sessionId = str(session["id"]);
 
   const approvalRes = await caller.client
     .from("comms_review_approvals")
-    .select("id, run_id, version_id, payload_fingerprint, context_fingerprint, context_revision")
+    .select(
+      "id, session_id, run_id, version_id, payload_fingerprint, payload_channel, context_fingerprint, context_revision",
+    )
     .eq("organization_id", input.organizationId)
-    .eq("session_id", session ? str(session["id"]) : "")
+    .eq("session_id", sessionId)
     .order("approved_at", { ascending: false })
     .limit(1);
   if (missingSchema(approvalRes.error)) {
-    return refuse([
-      "comms_review_approvals does not record the exact payload it approved, so an edited message cannot be told apart from the approved one.",
-    ]);
-  }
-  if (!session) {
-    return {
-      decision: decideSend({
-        missingCapability: [],
-        approval: null,
-        run: null,
-        blockers: [],
-        currentContextRevision: null,
-        currentContextFingerprint: "",
-        payloadFingerprint: fingerprint,
-        callerMaySend: caller.maySend,
-      }),
-      payload: input.payload,
-      fingerprint,
-    };
+    return decide({
+      missingCapability: [
+        "comms_review_approvals does not record the exact payload it approved, so an edited message cannot be told apart from the approved one.",
+      ],
+    });
   }
   if (approvalRes.error) {
     throw new SendRefused(
@@ -214,18 +221,16 @@ export async function reviewReadinessForSend(
         contextRevision: nullableNum(approvalRow["context_revision"]),
       }
     : null;
+  /* An approval that names another review is not this message's approval. */
+  if (approvalRow && str(approvalRow["session_id"]) !== sessionId) {
+    return decide({});
+  }
 
   let run: { id: string; status: string; contextRevision: number | null } | null = null;
-  /* The context the review actually judged, as the review itself recorded it.
-     Comparing the approval against this is real evidence; comparing it against
-     itself would prove nothing. Whether that context is still current is a
-     separate question, answered by the revision the database maintains on the
-     session whenever a version, a source or the goal changes. */
-  let runContextFingerprint = "";
   if (approval) {
     const runRes = await caller.client
       .from("comms_review_runs")
-      .select("id, status, context_revision, context_fingerprint")
+      .select("id, session_id, version_id, status, context_revision, context_fingerprint")
       .eq("organization_id", input.organizationId)
       .eq("id", approval.runId)
       .maybeSingle();
@@ -236,8 +241,13 @@ export async function reviewReadinessForSend(
       );
     }
     const runRow = (runRes.data ?? null) as Row | null;
-    if (runRow) {
-      runContextFingerprint = str(runRow["context_fingerprint"]);
+    /* The run must be this review's run, of this approval's version. A run
+       borrowed from another session or another version proves nothing. */
+    if (
+      runRow &&
+      str(runRow["session_id"]) === sessionId &&
+      str(runRow["version_id"]) === approval.versionId
+    ) {
       run = {
         id: str(runRow["id"]),
         status: str(runRow["status"]),
@@ -252,7 +262,7 @@ export async function reviewReadinessForSend(
   if (approval && run) {
     const findingRes = await caller.client
       .from("comms_review_findings")
-      .select("severity, summary")
+      .select("severity, why")
       .eq("organization_id", input.organizationId)
       .eq("run_id", run.id)
       .eq("severity", "must_fix");
@@ -263,24 +273,39 @@ export async function reviewReadinessForSend(
       );
     }
     for (const row of (findingRes.data ?? []) as Row[]) {
-      blockers.push(str(row["summary"]) || "Something the review said must be fixed.");
+      blockers.push(str(row["why"]) || "Something the review said must be fixed.");
     }
   }
 
-  return {
-    decision: decideSend({
-      missingCapability: [],
-      approval,
-      run,
-      blockers,
-      currentContextRevision: nullableNum(session["context_revision"]),
-      currentContextFingerprint: runContextFingerprint,
-      payloadFingerprint: fingerprint,
-      callerMaySend: caller.maySend,
-    }),
-    payload: input.payload,
-    fingerprint,
+  /* The context as it stands NOW — recomputed from the current version, the
+     current sources, the situation, the verified author and the stored voice
+     rules. Comparing an approval against a fingerprint the run stored about
+     itself would never notice a voice rule edited afterwards. */
+  let current: {
+    fingerprint: string;
+    revision: number;
+    currentVersionId: string | null;
   };
+  try {
+    current = await currentContextFor(caller.token, {
+      organizationId: input.organizationId,
+      sessionId,
+    });
+  } catch {
+    throw new SendRefused(
+      "review_unreadable",
+      "The review behind this message could not be read as it stands now, so nothing was sent.",
+    );
+  }
+
+  return decide({
+    approval,
+    run,
+    blockers,
+    currentContextRevision: current.revision,
+    currentContextFingerprint: current.fingerprint,
+    currentVersionId: current.currentVersionId,
+  });
 }
 
 /**
@@ -313,9 +338,15 @@ export async function requireSendApproval(
 export interface DeliveryClaim {
   /** False when this exact attempt is already on record: do not call the provider. */
   fresh: boolean;
-  id: string | null;
+  id: string;
   state: DeliveryState;
   note: string;
+}
+
+/** Postgres's unique violation. The only insert failure that means "already claimed". */
+function uniqueViolation(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === "23505" || /duplicate key value/i.test(error.message ?? "");
 }
 
 /**
@@ -323,6 +354,10 @@ export interface DeliveryClaim {
  * draft plus the approved payload, and the database holds it unique, so a
  * double click, a retry and a scheduled run racing each other all land on the
  * same row and only one of them gets to send.
+ *
+ * Only a unique violation whose existing row really is this same attempt
+ * counts as a replay. Every other failure to record the claim stops the send:
+ * a send that cannot be written down can be sent twice.
  */
 export async function claimDelivery(input: {
   organizationId: string;
@@ -358,18 +393,41 @@ export async function claimDelivery(input: {
         ["The comms_review_deliveries table does not exist yet."],
       );
     }
-    /* Unique violation: somebody already claimed this exact payload. */
+    if (!uniqueViolation(error)) {
+      throw new SendRefused(
+        "delivery_unrecorded",
+        "This send could not be written down before it was attempted, so it was not attempted. Nothing was sent.",
+        [error.message ?? "The attempt could not be recorded."],
+      );
+    }
+    /* A unique violation only means "already claimed" if the row that is
+       there really is this same attempt — same draft, same approval, same
+       payload, same door. Anything else is a key collision we must not treat
+       as a send that already happened. */
     const existing = await writer
       .from("comms_review_deliveries")
-      .select("id, status")
+      .select("id, status, draft_id, approval_id, payload_fingerprint, channel")
       .eq("organization_id", input.organizationId)
       .eq("idempotency_key", key)
       .maybeSingle();
     const row = (existing.data ?? null) as Row | null;
-    const state = (str(row?.["status"]) || "attempting") as DeliveryState;
+    const matches =
+      row !== null &&
+      str(row["draft_id"]) === input.draftId &&
+      str(row["approval_id"]) === input.approvalId &&
+      str(row["payload_fingerprint"]) === input.fingerprint &&
+      str(row["channel"]) === input.channel;
+    if (existing.error || !matches) {
+      throw new SendRefused(
+        "delivery_unrecorded",
+        "This send could not be claimed, and the attempt already on record is not this one. Nothing was sent. Someone needs to look at the delivery record before trying again.",
+        [existing.error?.message ?? "The existing attempt does not match this message."],
+      );
+    }
+    const state = (str(row["status"]) || "attempting") as DeliveryState;
     return {
       fresh: false,
-      id: row ? str(row["id"]) : null,
+      id: str(row["id"]),
       state,
       note:
         state === "sent"
@@ -380,29 +438,43 @@ export async function claimDelivery(input: {
     };
   }
   const row = (data ?? null) as Row | null;
-  return {
-    fresh: true,
-    id: row ? str(row["id"]) : null,
-    state: "attempting",
-    note: "Attempt recorded.",
-  };
+  const id = row ? str(row["id"]) : "";
+  if (!id) {
+    /* No row came back, so there is nothing to settle against later. Refuse
+       rather than send something we cannot account for. */
+    throw new SendRefused(
+      "delivery_unrecorded",
+      "This send could not be written down before it was attempted, so it was not attempted. Nothing was sent.",
+      ["The delivery record was accepted but returned no identifier."],
+    );
+  }
+  return { fresh: true, id, state: "attempting", note: "Attempt recorded." };
 }
 
 /**
- * Write down what actually happened. If the receipt itself cannot be stored
- * after the provider accepted the message, the attempt is left as unknown and
- * says so — losing the receipt is not permission to send again.
+ * Write down what actually happened, and only over an attempt that is still
+ * in flight: a settled attempt is never rewritten. If the receipt cannot be
+ * stored after the provider accepted the message, that is said plainly and
+ * the attempt needs a person, not a retry.
  */
 export async function settleDelivery(input: {
   organizationId: string;
   deliveryId: string;
-  state: DeliveryState;
+  state: Exclude<DeliveryState, "attempting">;
   channel: DeliveryChannel;
   providerMessageId?: string | null;
   error?: string | null;
 }): Promise<{ recorded: boolean; note: string }> {
   const writer = writerClient();
-  const { error } = await writer
+  const unstored = (detail: string) => ({
+    recorded: false,
+    note:
+      input.state === "sent"
+        ? `The message went out, but the outcome could not be recorded (${detail}). Treat it as sent, check the recipient's thread, and do not send it again until the record is reconciled.`
+        : `The outcome could not be recorded (${detail}). This attempt needs reconciling by hand before anything is sent again.`,
+  });
+
+  const { data, error } = await writer
     .from("comms_review_deliveries")
     .update({
       status: input.state,
@@ -411,15 +483,18 @@ export async function settleDelivery(input: {
       error_detail: input.error ?? null,
     })
     .eq("id", input.deliveryId)
-    .eq("organization_id", input.organizationId);
-  if (error) {
-    return {
-      recorded: false,
-      note:
-        input.state === "sent"
-          ? "The message went out, but the record of it could not be saved. Treat this as sent and check before sending anything else."
-          : "The outcome could not be recorded.",
-    };
+    .eq("organization_id", input.organizationId)
+    // Only a claim still in flight may be settled; never a settled one again.
+    .eq("status", "attempting")
+    .select("id, status");
+  if (error) return unstored(error.message);
+  const rows = (data ?? []) as Row[];
+  if (rows.length !== 1) {
+    return unstored(
+      rows.length === 0
+        ? "the attempt was no longer open, or no longer belongs to this workspace"
+        : "more than one attempt matched",
+    );
   }
   return { recorded: true, note: describeDelivery(input.state, input.channel) };
 }

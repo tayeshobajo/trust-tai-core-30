@@ -107,12 +107,32 @@ async function fetchQueue(organizationId: string): Promise<QueueItem[]> {
   }));
 }
 
-async function approveDraft(draftId: string): Promise<void> {
-  const { error } = await supabase
-    .from("comms_drafts")
-    .update({ review_state: "approved", updated_at: new Date().toISOString() })
-    .eq("id", draftId);
-  if (error) throw new Error(error.message);
+/**
+ * Opening the one review this message has to clear.
+ *
+ * This queue used to write `review_state = 'approved'` straight onto the
+ * draft from the browser and then send it. That was a second approval, made
+ * by whoever had the page open, over a value any member can write. There is
+ * one approval record now, and it lives with the review.
+ */
+async function openReview(draftId: string, organizationId: string): Promise<string> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated.");
+  const res = await fetch("/api/public/comms/review", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ action: "bind", organizationId, draftId, channel: "email_resend" }),
+  });
+  const body = (await res.json().catch(() => ({}))) as { sessionId?: string; error?: string };
+  if (!res.ok || !body.sessionId) {
+    throw new Error(body.error ?? "A review could not be opened for this message.");
+  }
+  return body.sessionId;
 }
 
 async function rejectDraft(draftId: string): Promise<void> {
@@ -192,13 +212,13 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
   const selectAll = () => setSelected(new Set(items.slice(0, 20).map((i) => i.draft.id)));
   const clearSelection = () => setSelected(new Set());
 
-  // Approve then send each selected draft sequentially
+  // Send each selected draft. Every one goes through the shared gate, which
+  // refuses anything without a current, approved review of those exact words.
   const batchSend = useMutation({
     mutationFn: async (ids: string[]) => {
       const results: { id: string; ok: boolean; error?: string }[] = [];
       for (const id of ids.slice(0, 20)) {
         try {
-          await approveDraft(id);
           await sendDraft(id, identity.organizationId);
           results.push({ id, ok: true });
         } catch (err) {
@@ -230,7 +250,6 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
 
   const approveAndSendOne = useMutation({
     mutationFn: async (id: string) => {
-      await approveDraft(id);
       await sendDraft(id, identity.organizationId);
     },
     onSuccess: () => {
@@ -243,8 +262,22 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
+  /* One record, one place: the review this message must clear. */
+  const reviewOne = useMutation({
+    mutationFn: (id: string) => openReview(id, identity.organizationId),
+    onSuccess: () => {
+      toast.success("A review is open for this message", {
+        description: "Open Review to read it, clear what it raises, then approve it there.",
+      });
+      void queryClient.invalidateQueries({ queryKey: ["comms", "queue"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const loading = queue.isLoading;
-  const isBusy = batchSend.isPending || rejectOne.isPending || approveAndSendOne.isPending;
+  const isBusy =
+    batchSend.isPending || rejectOne.isPending || approveAndSendOne.isPending ||
+    reviewOne.isPending;
 
   return (
     <div className="space-y-8">
@@ -364,6 +397,14 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
                         onClick={() => rejectOne.mutate(draft.id)}
                       >
                         Reject
+                      </TTButton>
+                      <TTButton
+                        variant="quiet"
+                        size="sm"
+                        disabled={isBusy}
+                        onClick={() => reviewOne.mutate(draft.id)}
+                      >
+                        Review
                       </TTButton>
                       <TTButton
                         variant="primary"

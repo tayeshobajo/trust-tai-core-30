@@ -19,11 +19,27 @@
  * and it explains itself in words the person pressing Send can act on.
  */
 
-import { sourceChecksum } from "@/domain/comms-sources";
+import { sha256 } from "@/domain/sha256";
 
 /* ------------------------------------------------------------- the payload */
 
 export type DeliveryChannel = "email_gmail" | "email_resend" | "linkedin_manual";
+
+/**
+ * One attached file, identified by what is actually in it.
+ *
+ * A name and a byte count are not an identity: swap a file for a different
+ * one of the same length and the message would inherit the old approval. The
+ * digest is a SHA-256 of the bytes where they are in hand, and otherwise the
+ * immutable storage path the bytes live at — never nothing.
+ */
+export interface OutboundAttachment {
+  name: string;
+  mimeType: string;
+  bytes: number;
+  /** Content digest, or `path:<immutable storage path>`. Never empty. */
+  digest: string;
+}
 
 /**
  * Exactly what would leave. Every field is part of the approval: changing the
@@ -37,26 +53,71 @@ export interface OutboundPayload {
   recipient: string;
   /** The identity it goes out as — a mailbox, a profile, never an assumption. */
   senderIdentity: string | null;
-  /** Names and sizes of anything attached, order-independent. */
-  attachments: { name: string; bytes: number }[];
+  attachments: OutboundAttachment[];
+  /** Anyone else on the message. Part of what was approved. */
+  cc?: string[];
+  bcc?: string[];
 }
 
-/** A stable stand-in for "this exact message, out of this exact door". */
-export function outboundFingerprint(payload: OutboundPayload): string {
+/** One address, written the one way every path writes it. */
+function address(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+/**
+ * The subject a provider is actually handed. Preview, approval and dispatch
+ * all read it here, so none of them can quietly normalise differently.
+ */
+export function providerSubject(payload: OutboundPayload): string {
+  const subject = (payload.subject ?? "").trim();
+  if (subject) return subject;
+  return payload.channel === "linkedin_manual" ? "" : "(no subject)";
+}
+
+/**
+ * The body a provider is actually handed. Line endings are normalised because
+ * every transport does that anyway; not one character of the words is
+ * touched, and trailing content is never trimmed away.
+ */
+export function providerBody(payload: OutboundPayload): string {
+  return payload.body.replace(/\r\n?/g, "\n");
+}
+
+/**
+ * The exact outbound message, written once, unambiguously: every field is
+ * length-prefixed so no combination of contents can be rearranged into
+ * another valid message.
+ */
+export function canonicalOutbound(payload: OutboundPayload): string {
+  const field = (name: string, value: string) => `${name}:${value.length}:${value}`;
   const attachments = payload.attachments
-    .map((file) => `${file.name.trim()}:${file.bytes}`)
-    .sort()
-    .join("|");
-  return sourceChecksum(
-    [
-      payload.channel,
-      (payload.subject ?? "").trim(),
-      payload.body.trim(),
-      payload.recipient.trim().toLowerCase(),
-      (payload.senderIdentity ?? "").trim().toLowerCase(),
-      attachments,
-    ].join("\u0000"),
-  );
+    .map((file) =>
+      [
+        field("name", file.name.trim()),
+        field("mime", file.mimeType.trim().toLowerCase()),
+        field("bytes", String(file.bytes)),
+        field("digest", file.digest.trim()),
+      ].join(","),
+    )
+    .sort();
+  const recipients = (list: string[] | undefined) =>
+    [...new Set((list ?? []).map(address).filter(Boolean))].sort().join(",");
+  return [
+    "comms-outbound/1",
+    field("channel", payload.channel),
+    field("subject", providerSubject(payload)),
+    field("body", providerBody(payload)),
+    field("to", address(payload.recipient)),
+    field("cc", recipients(payload.cc)),
+    field("bcc", recipients(payload.bcc)),
+    field("from", address(payload.senderIdentity ?? "")),
+    field("attachments", attachments.join(";")),
+  ].join("\n");
+}
+
+/** A collision-resistant stand-in for "this exact message, out of this exact door". */
+export function outboundFingerprint(payload: OutboundPayload): string {
+  return `sha256:${sha256(canonicalOutbound(payload))}`;
 }
 
 /* ------------------------------------------------------------ the decision */
@@ -69,7 +130,8 @@ export type SendRefusal =
   | "payload_changed"
   | "stale_context"
   | "blocked"
-  | "not_authorised";
+  | "not_authorised"
+  | "ambiguous_review";
 
 export type SendDecision =
   | { allowed: true; approvalId: string; runId: string; versionId: string; fingerprint: string }
@@ -91,9 +153,13 @@ export interface SendDecisionInput {
   run: { id: string; status: string; contextRevision: number | null } | null;
   /** What the review says is still outstanding, in the reviewer's words. */
   blockers: string[];
-  /** The situation as it stands right now. */
+  /** The situation as it stands right now, recomputed — never copied from the run. */
   currentContextRevision: number | null;
   currentContextFingerprint: string;
+  /** The version of the draft that is current in the review right now. */
+  currentVersionId: string | null;
+  /** True when more than one open review claims this draft. */
+  ambiguousReview?: boolean;
   /** The payload the caller is actually about to hand the provider. */
   payloadFingerprint: string;
   /** Whether the person pressing Send may send in this workspace. */
@@ -127,6 +193,15 @@ export function decideSend(input: SendDecisionInput): SendDecision {
       blockers: ["The person sending must be an owner or an admin here."],
     };
   }
+  if (input.ambiguousReview) {
+    return {
+      allowed: false,
+      code: "ambiguous_review",
+      message:
+        "More than one open review claims this message, so it is not clear which one approved it. Nothing was sent. Close the reviews you are not using and leave one.",
+      blockers: ["Two or more open reviews are bound to this draft."],
+    };
+  }
   if (!input.approval) {
     return {
       allowed: false,
@@ -152,6 +227,28 @@ export function decideSend(input: SendDecisionInput): SendDecision {
       message:
         "The review behind this approval never finished, so nothing was sent. Run it again and approve the result.",
       blockers: [`The review is recorded as ${input.run.status}, not complete.`],
+    };
+  }
+  if (
+    input.currentVersionId !== null &&
+    input.currentVersionId !== "" &&
+    input.approval.versionId !== input.currentVersionId
+  ) {
+    return {
+      allowed: false,
+      code: "stale_context",
+      message:
+        "The draft has been edited since it was approved, so nothing was sent. Review the version that is on screen now and approve that one.",
+      blockers: ["The approval covers an earlier version of the draft."],
+    };
+  }
+  if (!input.approval.approvedPayloadFingerprint) {
+    return {
+      allowed: false,
+      code: "not_approved",
+      message:
+        "The approval on record does not say which exact message it approved, so nothing was sent. Review and approve this message again.",
+      blockers: ["The approval carries no payload fingerprint."],
     };
   }
   if (input.approval.approvedPayloadFingerprint !== input.payloadFingerprint) {

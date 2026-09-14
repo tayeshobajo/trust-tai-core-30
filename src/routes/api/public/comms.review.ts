@@ -13,10 +13,12 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import {
   approveVersion,
+  createReviewForDraft,
   createReviewSession,
   decideFinding,
   listReviews,
   loadReview,
+  reviewForDraft,
   reviseDraft,
   ReviewFailure,
   runReview,
@@ -82,7 +84,12 @@ export const Route = createFileRoute("/api/public/comms/review")({
         const token = bearer(request);
         if (!token) return Response.json({ error: "Sign in to open a review." }, { status: 401 });
 
+        const draftId = url.searchParams.get("draftId") ?? "";
+
         try {
+          if (draftId) {
+            return Response.json(await reviewForDraft(token, { organizationId, draftId }));
+          }
           if (sessionId) {
             return Response.json(await loadReview(token, { organizationId, sessionId }));
           }
@@ -129,6 +136,30 @@ export const Route = createFileRoute("/api/public/comms/review")({
                   recipientEmail: textOf(body["recipientEmail"]),
                   subject: textOf(body["subject"]),
                   body: draftBody,
+                  sources: sourcesOf(body["sources"]),
+                }),
+              );
+            }
+            case "bind": {
+              const channel = textOf(body["channel"]);
+              const allowed = ["email_gmail", "email_resend", "linkedin_manual"] as const;
+              const chosen = allowed.find((candidate) => candidate === channel);
+              if (!chosen) {
+                return Response.json(
+                  { error: "Name the way this message would be sent." },
+                  { status: 400 },
+                );
+              }
+              return Response.json(
+                await createReviewForDraft(token, {
+                  organizationId,
+                  draftId: textOf(body["draftId"]),
+                  channel: chosen,
+                  ...(textOf(body["integrationId"])
+                    ? { integrationId: textOf(body["integrationId"]) }
+                    : {}),
+                  ...(textOf(body["situation"]) ? { situation: textOf(body["situation"]) } : {}),
+                  ...(textOf(body["goal"]) ? { goal: textOf(body["goal"]) } : {}),
                   sources: sourcesOf(body["sources"]),
                 }),
               );

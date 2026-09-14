@@ -47,6 +47,12 @@ export interface ReviewSession {
    * against.
    */
   contextRevision: number;
+  /** The Comms draft this review governs, when it was opened from one. */
+  draftId: string | null;
+  /** The door this message is meant to leave by, when one is intended. */
+  intendedChannel: string | null;
+  /** The identity it would go out as. Part of what gets approved. */
+  senderIdentity: string | null;
   createdBy: string | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
@@ -108,6 +114,10 @@ export interface ReviewApproval {
   contextFingerprint: string;
   /** The session context revision this approval was given against. */
   contextRevision: number | null;
+  /** The exact outbound message this approval covers, if it was recorded. */
+  payloadFingerprint: string | null;
+  /** The door that payload was approved for. */
+  payloadChannel: string | null;
   approvedBy: string;
   approvedAt: ISODateTime;
   approverRole: string | null;
