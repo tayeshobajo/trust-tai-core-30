@@ -15,7 +15,6 @@ import { readDraftKind } from "@/domain/comms-draft-kind";
 import type { ProposalSections } from "@/domain/comms-proposal";
 import { validateProposalSections } from "@/domain/comms-proposal-source";
 
-
 import {
   approveVersion,
   createReviewForDraft,
@@ -74,14 +73,11 @@ function sourcesOf(value: unknown): SourceInput[] {
  * browser's own rendering is not trusted to stand for the structure, so a
  * mismatch cannot survive into the record.
  */
-function sectionsOf(
-  value: unknown,
-): { sections: ProposalSections | null } | { error: string } {
+function sectionsOf(value: unknown): { sections: ProposalSections | null } | { error: string } {
   if (value === undefined || value === null) return { sections: null };
   const checked = validateProposalSections(value);
   return checked.ok ? { sections: checked.sections } : { error: checked.error };
 }
-
 
 export const Route = createFileRoute("/api/public/comms/review")({
   server: {

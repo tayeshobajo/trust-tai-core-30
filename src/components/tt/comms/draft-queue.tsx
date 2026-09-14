@@ -103,7 +103,6 @@ export async function fetchDraftById(
   return { draft: row, relationship: (relationship as RelationshipRow | null) ?? null };
 }
 
-
 /**
  * Opening the one review this message has to clear.
  *
@@ -226,7 +225,6 @@ export function DraftQueue({ identity }: { identity: WorkspaceIdentity }) {
              would invite a second attempt at something that may have gone. */
           results.push({ id, ok: false, error: err instanceof Error ? err.message : "Failed." });
         }
-
       }
       return results;
     },
@@ -266,7 +264,6 @@ export function DraftQueue({ identity }: { identity: WorkspaceIdentity }) {
     },
   });
 
-
   /* One record, one place: the review this message must clear. Opening it
      takes the person straight to that review rather than leaving them to find
      it — there is no second approval anywhere else. */
@@ -296,8 +293,6 @@ export function DraftQueue({ identity }: { identity: WorkspaceIdentity }) {
           without an approval of those exact words.
         </p>
       </div>
-
-
 
       {queue.error ? (
         <p className="text-sm text-destructive">

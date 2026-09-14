@@ -161,7 +161,9 @@ export function ProposalComposer({
           type="button"
           variant="quiet"
           size="sm"
-          onClick={() => set({ lines: [...sections.lines, { label: "", quantity: "", unitPrice: "" }] })}
+          onClick={() =>
+            set({ lines: [...sections.lines, { label: "", quantity: "", unitPrice: "" }] })
+          }
         >
           Add priced line
         </TTButton>
@@ -209,9 +211,7 @@ export function ProposalComposer({
       ) : null}
 
       <div className="space-y-1.5">
-        <span className="text-sm text-muted-foreground">
-          What will be reviewed, word for word
-        </span>
+        <span className="text-sm text-muted-foreground">What will be reviewed, word for word</span>
         <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-3 text-[13px] leading-relaxed text-foreground">
           {text || "Nothing yet."}
         </pre>

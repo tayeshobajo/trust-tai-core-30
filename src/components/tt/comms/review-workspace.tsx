@@ -23,7 +23,6 @@ import { DRAFT_KIND_LABEL, type DraftKind } from "@/domain/comms-draft-kind";
 import { renderProposal, type ProposalSections } from "@/domain/comms-proposal";
 import { emptyProposal, proposalHasContent } from "@/domain/comms-proposal-source";
 
-
 import { EmptyState, MetaPill, SectionHeading, TTButton } from "@/components/tt/primitives";
 import {
   approveReview,
@@ -110,9 +109,16 @@ export function NewReview({
      as unsaved work, so an untouched proposal never blocks navigation. */
   const dirty =
     Boolean(
-      title || recipientName || recipientEmail || goal || received || subject || body ||
-        files.length,
-    ) || (kind === "proposal" && proposalHasContent(proposal));
+      title ||
+      recipientName ||
+      recipientEmail ||
+      goal ||
+      received ||
+      subject ||
+      body ||
+      files.length,
+    ) ||
+    (kind === "proposal" && proposalHasContent(proposal));
 
   useEffect(() => {
     onDirty?.(dirty);
@@ -149,7 +155,6 @@ export function NewReview({
     },
     onError: (cause: Error) => setError(cause.message),
   });
-
 
   async function attach(list: FileList | null) {
     if (!list) return;
@@ -269,7 +274,6 @@ export function NewReview({
       </label>
 
       {error ? <p className="text-sm text-[var(--danger,#b3261e)]">{error}</p> : null}
-
 
       <TTButton type="submit" pending={open.isPending} pendingLabel="Opening review…">
         Open {DRAFT_KIND_LABEL[kind].toLowerCase()} review
@@ -403,7 +407,6 @@ export function ReviewDetail({
     onError: (cause: Error) => setError(cause.message),
   });
 
-
   const review = useMutation({
     mutationFn: () =>
       runReview({
@@ -461,7 +464,6 @@ export function ReviewDetail({
           {state.session.kind ? DRAFT_KIND_LABEL[state.session.kind] : "Kind not recorded"}
         </MetaPill>
         {state.latestRun && !state.runIsCurrent ? <MetaPill>Review is out of date</MetaPill> : null}
-
       </div>
 
       {error ? <p className="text-sm text-[var(--danger,#b3261e)]">{error}</p> : null}
@@ -485,11 +487,7 @@ export function ReviewDetail({
                   Edit as plain text
                 </TTButton>
               </div>
-              <ProposalComposer
-                key={current.id}
-                sections={sections}
-                onChange={setEditedSections}
-              />
+              <ProposalComposer key={current.id} sections={sections} onChange={setEditedSections} />
             </div>
           ) : (
             <label className="block space-y-1.5 text-sm">
@@ -503,8 +501,8 @@ export function ReviewDetail({
           )}
           {asPlainText ? (
             <p className="text-xs text-muted-foreground">
-              Saving now records these words as plain text. The sections are not carried forward,
-              so this version will not be rebuildable from them.
+              Saving now records these words as plain text. The sections are not carried forward, so
+              this version will not be rebuildable from them.
             </p>
           ) : null}
           {!structured && !asPlainText && state.session.kind === "proposal" ? (
@@ -543,7 +541,6 @@ export function ReviewDetail({
               Save your edit first. A review always judges one exact version, never a moving one.
             </p>
           ) : null}
-
 
           <div className="rounded-lg border border-border bg-card/60 p-4">
             <h4 className="text-sm font-medium text-foreground">What Comms read</h4>
@@ -697,7 +694,6 @@ export function SendReadiness({
   });
   const state = dirty ? null : query.data;
   const checkedAt = query.dataUpdatedAt ? new Date(query.dataUpdatedAt) : null;
-
 
   return (
     <div className="rounded-lg border border-border bg-card/60 p-4">

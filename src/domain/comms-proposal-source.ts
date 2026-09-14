@@ -46,8 +46,7 @@ const LIMIT = {
 } as const;
 
 export type ProposalValidation =
-  | { ok: true; sections: ProposalSections }
-  | { ok: false; error: string };
+  { ok: true; sections: ProposalSections } | { ok: false; error: string };
 
 function textAt(value: unknown, max: number, what: string): string | { error: string } {
   if (value === undefined || value === null) return "";
@@ -202,7 +201,9 @@ export function proposalHasContent(sections: ProposalSections): boolean {
     sections.assumptions.some((item) => item.trim()) ||
     sections.nextSteps.some((item) => item.trim()) ||
     sections.discount.trim().length > 0 ||
-    sections.lines.some((line) => line.label.trim() || line.quantity.trim() || line.unitPrice.trim())
+    sections.lines.some(
+      (line) => line.label.trim() || line.quantity.trim() || line.unitPrice.trim(),
+    )
   );
 }
 

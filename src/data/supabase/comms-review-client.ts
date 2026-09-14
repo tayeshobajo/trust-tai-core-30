@@ -11,7 +11,6 @@ import { supabase } from "@/integrations/trust-tai/supabase";
 import type { DraftKind } from "@/domain/comms-draft-kind";
 import type { ProposalSections } from "@/domain/comms-proposal";
 
-
 import type { ObligationCoverage } from "@/domain/comms-obligations";
 import type {
   ApprovalReading,
@@ -124,7 +123,6 @@ export function reviseDraft(input: {
     ...input,
   });
 }
-
 
 export function runReview(input: { organizationId: string; sessionId: string; versionId: string }) {
   return post<{ runId: string }>({ action: "run", ...input });

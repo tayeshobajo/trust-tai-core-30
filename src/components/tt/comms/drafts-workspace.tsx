@@ -156,7 +156,6 @@ export function DraftsWorkspace({
     enabled: Boolean(wantedDraft),
   });
 
-
   const boundSession = selection.draft
     ? (rows.find((row) => row.draftId === selection.draft && row.sessionId)?.sessionId ?? null)
     : null;
@@ -239,8 +238,6 @@ export function DraftsWorkspace({
     }
   }, [selection.session, selection.draft, selection.new]);
 
-
-
   return (
     <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="max-h-[78vh] space-y-3 overflow-auto rounded-xl border border-border p-3 lg:sticky lg:top-20">
@@ -266,7 +263,6 @@ export function DraftsWorkspace({
                     : rows.filter((row) => row.state === option).length}
                 </span>
               )}
-
             </button>
           ))}
         </div>
@@ -289,7 +285,6 @@ export function DraftsWorkspace({
           <p className="text-[13px] text-muted-foreground">Reading…</p>
         ) : shown.length === 0 ? (
           <p className="text-[13px] text-muted-foreground">Nothing in this filter.</p>
-
         ) : (
           <ul className="space-y-1.5">
             {shown.map((row) => {
@@ -307,7 +302,9 @@ export function DraftsWorkspace({
                     }
                     className={cn(
                       "w-full rounded-lg border px-3 py-2 text-left",
-                      active ? "border-[var(--royal)] bg-secondary/50" : "border-transparent hover:bg-secondary/40",
+                      active
+                        ? "border-[var(--royal)] bg-secondary/50"
+                        : "border-transparent hover:bg-secondary/40",
                     )}
                   >
                     <span className="block text-[13px] text-foreground">{row.title}</span>
@@ -325,7 +322,6 @@ export function DraftsWorkspace({
             The most recent records only — there may be older ones not shown here.
           </p>
         ) : null}
-
       </aside>
 
       <section className="min-w-0">
@@ -374,7 +370,6 @@ export function DraftsWorkspace({
             onReject={() => reject.mutate(selection.draft ?? "")}
             onSend={() => send.mutate(selection.draft ?? "")}
           />
-
         ) : (
           <div className="rounded-xl border border-border p-8">
             <p className="text-[13px] text-muted-foreground">

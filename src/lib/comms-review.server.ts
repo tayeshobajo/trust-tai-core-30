@@ -252,7 +252,6 @@ function toVersion(row: Row): ReviewVersion {
   };
 }
 
-
 function toRun(row: Row): ReviewRun {
   return {
     id: str(row["id"]),
@@ -401,7 +400,6 @@ function missingColumn(
   return new RegExp(`\\b${column}\\b`, "i").test(text);
 }
 
-
 function fail(message: string): never {
   throw new ReviewFailure("write_failed", message);
 }
@@ -450,7 +448,6 @@ async function insertVersion(
   if (plain.error || !plain.data) return { row: null, structurePersisted: false };
   return { row: plain.data as Row, structurePersisted: false };
 }
-
 
 /**
  * Load a session as the caller, inside the organization they named. The
@@ -514,7 +511,6 @@ export async function createReviewSession(
    */
   structurePersisted: boolean;
 }> {
-
   const caller = await identify(token, input.organizationId);
   const writer = writerClient();
   const now = new Date().toISOString();
@@ -576,16 +572,20 @@ export async function createReviewSession(
   if (attempt.error || !attempt.data) fail("That review could not be opened. Nothing was saved.");
   const session = toSession(attempt.data as Row);
 
-  const first = await insertVersion(writer, {
-    organization_id: input.organizationId,
-    session_id: session.id,
-    version: 1,
-    subject: input.subject?.trim() || null,
-    body: canonicalBody(input.body, input.sections),
-    origin: "intake",
-    author_user_id: caller.userId,
-    created_at: now,
-  }, input.sections);
+  const first = await insertVersion(
+    writer,
+    {
+      organization_id: input.organizationId,
+      session_id: session.id,
+      version: 1,
+      subject: input.subject?.trim() || null,
+      body: canonicalBody(input.body, input.sections),
+      origin: "intake",
+      author_user_id: caller.userId,
+      created_at: now,
+    },
+    input.sections,
+  );
   if (!first.row) fail("Your draft could not be saved. Nothing was recorded.");
   const structurePersisted = first.structurePersisted;
 
@@ -633,7 +633,6 @@ export async function createReviewSession(
     kindPersisted,
     structurePersisted,
   };
-
 }
 
 /**
@@ -671,7 +670,10 @@ export async function createReviewForDraft(
     });
   } catch (error) {
     if (error instanceof OutboundPayloadUnavailable || error instanceof SenderIdentityUnavailable) {
-      throw new ReviewFailure(error.code === "not_found" ? "not_found" : "not_ready", error.message);
+      throw new ReviewFailure(
+        error.code === "not_found" ? "not_found" : "not_ready",
+        error.message,
+      );
     }
     throw error;
   }
@@ -722,7 +724,6 @@ export async function createReviewForDraft(
     boundToDraft: created.boundToDraft,
   };
 }
-
 
 /**
  * Record an edit as a new immutable version. The previous one is untouched.
@@ -776,7 +777,6 @@ export async function reviseDraft(
   if (!saved.row) fail("That edit could not be saved. Your previous version is unchanged.");
   return { version: toVersion(saved.row), structurePersisted: saved.structurePersisted };
 }
-
 
 /* -------------------------------------------------------------- the read */
 

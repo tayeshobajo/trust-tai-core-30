@@ -105,7 +105,9 @@ describe("what each row actually is", () => {
       [session({ status: "closed", draftId: "d-1" }) as never],
     );
     expect(rows.find((row) => row.sessionId === "s-1")?.stateLabel).toBe("Closed");
-    expect(rows.find((row) => row.draftId === "d-1" && row.kind === "draft")?.state).toBe("waiting");
+    expect(rows.find((row) => row.draftId === "d-1" && row.kind === "draft")?.state).toBe(
+      "waiting",
+    );
   });
 
   it("hides a draft behind its live review, and calls approval approval", () => {
@@ -123,9 +125,7 @@ describe("a list that could not be read", () => {
     listReviews.mockResolvedValue([]);
     view({});
 
-    await waitFor(() =>
-      expect(screen.getByText(/could not be read just now/i)).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(/could not be read just now/i)).toBeTruthy());
     expect(screen.getByRole("button", { name: /try again/i })).toBeTruthy();
     expect(screen.queryByText(/nothing in this filter/i)).toBeNull();
     expect(screen.getByRole("button", { name: "All" }).textContent).toBe("All");
