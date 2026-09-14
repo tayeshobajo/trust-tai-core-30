@@ -65,6 +65,8 @@ export type RuntimePurpose =
   | "engine_hypotheses"
   | "meeting_interpretation"
   | "draft"
+  /** Comms review: judging a person's own words before they send them. */
+  | "comms_review"
   | "discovery"
   | "import"
   | "research"
