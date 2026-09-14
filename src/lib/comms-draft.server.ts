@@ -969,7 +969,17 @@ on the thread, and close.`,
     }
   }
 
-  const verdict = checkVoice(body, { register: input.register, requireSignoff: true });
+  /* The closing belongs to whoever is writing. With no known author there is
+     no honest name to sign, so the draft stays unsigned and the voice rule
+     for a signoff is not applied to somebody else's name. */
+  const signoff = signoffFor(input.sender ?? null);
+  const verdict = checkVoice(body, {
+    register: input.register,
+    requireSignoff: Boolean(signoff),
+    ...(signoff ? { signoff } : {}),
+  });
+
+  const coverage = coverageForDraft(input.asks ?? [], verdict.text);
 
   return {
     subject: subject.replace(/[!\u2014]/g, "").trim(),
@@ -980,10 +990,21 @@ on the thread, and close.`,
     usedEvidence: input.usedEvidence,
     judgment,
     grounding: input.groundingSummary,
+    sourceWindow: input.sourceWindow ?? {
+      messagesInThread: null,
+      messagesLoaded: 0,
+      messagesRead: 0,
+      complete: false,
+      because: "No conversation was read for this draft.",
+    },
+    coverage,
+    sender: { name: input.sender?.name?.trim() || null, signoff },
     provider,
     model,
+    promptVersion: DRAFT_PROMPT_VERSION,
   };
 }
+
 
 function safeJson(raw: string): Record<string, unknown> | null {
   const match = raw.match(/\{[\s\S]*\}/);
