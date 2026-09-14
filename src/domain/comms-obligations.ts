@@ -370,21 +370,34 @@ export function verifyObligationVerdicts(input: {
 
 /* ---------------------------------------------------------------- summary */
 
-/** Count the verdicts and say, in one sentence, where the reply stands. */
-export function summarizeObligations(verdicts: ObligationVerdict[]): ObligationCoverage {
+/**
+ * Count the verdicts and say, in one sentence, where the reply stands.
+ *
+ * `evaluated` is the difference between "nothing was asked" and "nobody has
+ * looked yet". An empty list from a review that never ran, or one that
+ * failed, must never be reported as a clean source with no questions in it.
+ */
+export function summarizeObligations(
+  verdicts: ObligationVerdict[],
+  evaluated = true,
+): ObligationCoverage {
   const answered = verdicts.filter((verdict) => verdict.status === "answered").length;
   const uncertainCount = verdicts.filter((verdict) => verdict.status === "uncertain").length;
   const outstanding = verdicts.length - answered;
   /* Vacuously complete when the source asked nothing: a note that needs no
      answer is covered by definition. The note still says plainly that no ask
-     was found, so "nothing asked" is never read as "everything answered". */
-  const complete = answered === verdicts.length;
-  const settled = verdicts.every(
-    (verdict) => verdict.status === "answered" || verdict.status === "pending_confirmation",
-  );
+     was found, so "nothing asked" is never read as "everything answered".
+     Nothing is complete or settled while no review stands behind it. */
+  const complete = evaluated && answered === verdicts.length;
+  const settled =
+    evaluated &&
+    verdicts.every(
+      (verdict) => verdict.status === "answered" || verdict.status === "pending_confirmation",
+    );
 
-  const note =
-    verdicts.length === 0
+  const note = !evaluated
+    ? "This draft has not been checked against the source questions yet, so nothing here says whether they were answered."
+    : verdicts.length === 0
       ? "No questions or requests were found in the source material."
       : complete
         ? `All ${verdicts.length} asks are answered.`
@@ -394,7 +407,16 @@ export function summarizeObligations(verdicts: ObligationVerdict[]): ObligationC
               : ""
           }`;
 
-  return { verdicts, answered, outstanding, uncertain: uncertainCount, complete, settled, note };
+  return {
+    verdicts,
+    answered,
+    outstanding,
+    uncertain: uncertainCount,
+    complete,
+    settled,
+    evaluated,
+    note,
+  };
 }
 
 /**
