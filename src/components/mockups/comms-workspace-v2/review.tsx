@@ -316,7 +316,7 @@ export function DraftReviewWorkspace({
             onClick={() => setTab(entry)}
             aria-pressed={tab === entry}
             className={cn(
-              "-mb-px h-11 border-b-2 text-[13px] capitalize transition-colors duration-150 motion-reduce:transition-none",
+              "-mb-px h-11 border-b-2 text-[13px] transition-colors duration-150 motion-reduce:transition-none",
               tab === entry
                 ? "border-[var(--royal)] font-medium text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",
