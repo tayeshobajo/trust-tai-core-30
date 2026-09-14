@@ -15,7 +15,12 @@ import { CommsTabs } from "@/components/tt/comms/comms-tabs";
 import { Markdown } from "@/components/tt/markdown";
 import { MetaPill, PageHeader, SectionHeading, TTButton } from "@/components/tt/primitives";
 import { WorkspaceGate } from "@/components/tt/workspace-gate";
-import { getVoiceProfile, saveVoiceProfile, type VoiceProfile } from "@/data/supabase/comms-voice";
+import {
+  getVoiceProfile,
+  listVoiceSnapshots,
+  saveVoiceProfile,
+  type VoiceProfile,
+} from "@/data/supabase/comms-voice";
 import { checkVoice } from "@/data/voice-policy";
 import { DEFAULT_VOICE_DOCUMENT, VOICE_RULES } from "@/domain/voice";
 import type { WorkspaceIdentity } from "@/lib/workspace";
