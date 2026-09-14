@@ -25,6 +25,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { requireSendApproval, SendRefused } from "@/lib/comms-send-authority.server";
+
 import { supabaseFor } from "@/lib/comms-gmail.server";
 import {
   decideSendClaim,
@@ -305,6 +307,37 @@ export async function markDraftSentOnLinkedin(input: {
       status: 403,
       error: "Your account is not a member of this Trust Tai workspace.",
     };
+  }
+
+  /* The same gate as every other send path. Marking a LinkedIn message as
+     sent is a person's attestation, not a delivery by LinkedIn — but it still
+     writes an outgoing message into the record, so it needs the same current,
+     approved review of exactly these words. */
+  const { data: draftRow } = await client
+    .from("comms_drafts")
+    .select("subject, body, relationship_id")
+    .eq("id", input.draftId)
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
+  const draft = (draftRow ?? {}) as { subject?: string | null; body?: string | null };
+  try {
+    await requireSendApproval(input.token, {
+      organizationId: input.organizationId,
+      draftId: input.draftId,
+      payload: {
+        channel: "linkedin_manual",
+        subject: draft.subject ?? null,
+        body: draft.body ?? "",
+        recipient: "linkedin",
+        senderIdentity: user.id,
+        attachments: [],
+      },
+    });
+  } catch (error) {
+    if (error instanceof SendRefused) {
+      return { kind: "auth", status: 403, error: error.message };
+    }
+    throw error;
   }
 
   const outcome = await recordLinkedinSend(client, {

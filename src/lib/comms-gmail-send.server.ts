@@ -28,6 +28,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { claimDelivery, requireSendApproval } from "@/lib/comms-send-authority.server";
+
 import { openSecret } from "@/lib/comms-crypto.server";
 import {
   GMAIL_API,
@@ -615,6 +617,36 @@ export async function sendDraftViaGmail(input: {
       ...(attachments.length > 0 ? { attachments } : {}),
     }),
   );
+
+  /* The one gate. Everything that will actually go out is now known — the
+     words, the recipient, the mailbox it leaves from, the files attached —
+     so it is put to the single authority that governs every send path. A
+     refusal here means Gmail is never called at all, and the draft is left
+     exactly as it was. The draft's own `review_state` is deliberately not
+     trusted: any member can write it from a browser. */
+  const sendApproval = await requireSendApproval(input.token, {
+    organizationId: input.organizationId,
+    draftId: draft.id,
+    payload: {
+      channel: "email_gmail",
+      subject,
+      body: draft.body,
+      recipient,
+      senderIdentity: mailbox,
+      attachments: staged.map((file) => ({ name: file.filename, bytes: file.size })),
+    },
+  });
+  const attempt = await claimDelivery({
+    organizationId: input.organizationId,
+    draftId: draft.id,
+    approvalId: sendApproval.approvalId,
+    fingerprint: sendApproval.fingerprint,
+    channel: "email_gmail",
+    userId: sendApproval.caller.userId,
+  });
+  if (!attempt.fresh) {
+    return { draftId: draft.id, state: attempt.state === "sent" ? "sent" : "sending" };
+  }
 
   // The claim: only the first attempt may move a sendable draft to sending.
   // A claim that died mid-flight is reclaimable after the stale window.
