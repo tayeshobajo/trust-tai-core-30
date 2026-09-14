@@ -11,7 +11,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { sendDraftViaResend } from "@/lib/comms-resend-send.server";
+import { resendSendReadiness, sendDraftViaResend } from "@/lib/comms-resend-send.server";
 import { SendRefused } from "@/lib/comms-send-authority.server";
 
 function bearer(request: Request): string | null {
@@ -22,6 +22,40 @@ function bearer(request: Request): string | null {
 export const Route = createFileRoute("/api/public/comms/send")({
   server: {
     handlers: {
+      /** Whether this message could be sent right now, without sending it. */
+      GET: async ({ request }) => {
+        const token = bearer(request);
+        if (!token) {
+          return Response.json({ error: "Sign in again to check this." }, { status: 401 });
+        }
+        const url = new URL(request.url);
+        const organizationId = url.searchParams.get("organizationId") ?? "";
+        const draftId = url.searchParams.get("draftId") ?? "";
+        if (!organizationId || !draftId) {
+          return Response.json(
+            { error: "A workspace and a draft are both required." },
+            { status: 400 },
+          );
+        }
+        try {
+          return Response.json(await resendSendReadiness({ token, organizationId, draftId }));
+        } catch (error) {
+          if (error instanceof SendRefused) {
+            return Response.json(
+              {
+                ready: false,
+                configured: true,
+                code: error.code,
+                message: error.message,
+                blockers: error.blockers,
+              },
+              { status: 200 },
+            );
+          }
+          return Response.json({ error: "That could not be checked." }, { status: 500 });
+        }
+      },
+
       POST: async ({ request }) => {
         const token = bearer(request);
         if (!token) {
