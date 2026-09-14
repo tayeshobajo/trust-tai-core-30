@@ -574,7 +574,7 @@ async function verifiedSender(caller: Caller): Promise<VerifiedSender> {
     .select("id, full_name, display_name, email")
     .eq("id", caller.userId)
     .maybeSingle();
-  const row = (error ? null : ((data ?? null) as Row | null)) ?? {};
+  const row: Row = error || !data ? {} : (data as Row);
   return {
     id: caller.userId,
     name: nullableStr(row["full_name"]) ?? nullableStr(row["display_name"]),

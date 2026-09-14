@@ -24,8 +24,10 @@ const base: ReviewContext = {
   recipientEmail: "Megan@Northlight.example",
   recipientName: "Megan Walls",
   goal: "Give her the date she asked for.",
+  situation: "She asked twice for the migration date.",
   sourceChecksums: ["aaa", "bbb"],
   senderName: "Sam Ellis",
+  voiceVersion: "voice_profile:vp1@v3",
 };
 
 function approval(over: Partial<ReviewApproval> = {}): ReviewApproval {
@@ -69,6 +71,11 @@ describe("context fingerprint", () => {
     expect(contextFingerprint({ ...base, recipientEmail: "other@example.com" })).not.toBe(original);
     expect(contextFingerprint({ ...base, goal: "Sell something." })).not.toBe(original);
     expect(contextFingerprint({ ...base, senderName: "Tai" })).not.toBe(original);
+    expect(contextFingerprint({ ...base, situation: "She asked once." })).not.toBe(original);
+    expect(contextFingerprint({ ...base, voiceVersion: "voice_profile:vp1@v4" })).not.toBe(
+      original,
+    );
+    expect(contextFingerprint({ ...base, voiceVersion: "voice_profile:none" })).not.toBe(original);
     expect(contextFingerprint({ ...base, sourceChecksums: ["aaa"] })).not.toBe(original);
   });
 
