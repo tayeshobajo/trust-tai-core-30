@@ -385,6 +385,14 @@ function QueueView({ identity }: { identity: WorkspaceIdentity }) {
                         Reject
                       </TTButton>
                       <TTButton
+                        variant="quiet"
+                        size="sm"
+                        disabled={isBusy}
+                        onClick={() => reviewOne.mutate(draft.id)}
+                      >
+                        Review
+                      </TTButton>
+                      <TTButton
                         variant="primary"
                         size="sm"
                         disabled={isBusy || !toEmail}
