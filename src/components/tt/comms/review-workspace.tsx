@@ -492,7 +492,7 @@ function ReviewDetail({
               draftId={state.session.draftId}
               channel={state.session.intendedChannel}
               sender={state.session.senderIdentity}
-              approvedAt={state.approval.approvedAt ?? null}
+              approvedAt={state.approval.approval?.approvedAt ?? null}
             />
           ) : null}
         </aside>
