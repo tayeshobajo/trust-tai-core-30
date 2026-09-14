@@ -71,12 +71,18 @@ export function ReviewWorkspace({
 
 /* ---------------------------------------------------------------- intake */
 
-function NewReview({
+export function NewReview({
   identity,
   onOpened,
+  kind = "message",
+  onDirty,
 }: {
   identity: WorkspaceIdentity;
   onOpened: (id: string) => void;
+  /** What is being written. Stored on the review when the column exists. */
+  kind?: DraftKind;
+  /** Told whenever there is unsaved typing, so the page can protect it. */
+  onDirty?: (dirty: boolean) => void;
 }) {
   const [title, setTitle] = useState("");
   const [recipientName, setRecipientName] = useState("");
@@ -275,7 +281,7 @@ function RecentReviews({
 
 /* ---------------------------------------------------------------- detail */
 
-function ReviewDetail({
+export function ReviewDetail({
   identity,
   sessionId,
   onBack,

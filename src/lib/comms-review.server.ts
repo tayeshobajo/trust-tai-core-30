@@ -70,6 +70,7 @@ import {
   type ClassifiedSource,
 } from "@/domain/comms-sources";
 import { sha256 } from "@/domain/sha256";
+import { readDraftKind, type DraftKind } from "@/domain/comms-draft-kind";
 import {
   lexicalHint,
   obligationsFromSource,
@@ -219,6 +220,7 @@ function toSession(row: Row): ReviewSession {
       typeof row["context_revision"] === "number" ? (row["context_revision"] as number) : 1,
     draftId: nullableStr(row["draft_id"]),
     intendedChannel: nullableStr(row["intended_channel"]),
+    kind: readDraftKind(row["kind"]),
     senderIdentity: nullableStr(row["sender_identity"]),
     createdBy: nullableStr(row["created_by"]),
     createdAt: str(row["created_at"]),
@@ -352,6 +354,8 @@ export interface CreateReviewInput {
   intendedChannel?: DeliveryChannel;
   /** The identity it would go out as, already resolved. */
   senderIdentity?: string;
+  /** Message, email or proposal. Stored when the column exists. */
+  kind?: DraftKind;
 }
 
 /**
@@ -422,6 +426,8 @@ export async function createReviewSession(
   sources: ClassifiedSource[];
   /** False when the database cannot yet tie this review to its draft. */
   boundToDraft: boolean;
+  /** False when this workspace cannot yet store what kind of draft this is. */
+  kindPersisted: boolean;
 }> {
   const caller = await identify(token, input.organizationId);
   const writer = writerClient();
@@ -441,6 +447,7 @@ export async function createReviewSession(
     created_at: now,
     updated_at: now,
   };
+  const kindColumn = input.kind ? { kind: input.kind } : {};
   const binding = input.draftId
     ? {
         draft_id: input.draftId,
@@ -450,16 +457,35 @@ export async function createReviewSession(
     : {};
 
   let boundToDraft = Boolean(input.draftId);
+  let kindPersisted = Boolean(input.kind);
   let attempt = await writer
     .from("comms_review_sessions")
-    .insert({ ...base, ...binding } as never)
+    .insert({ ...base, ...binding, ...kindColumn } as never)
     .select("*")
     .maybeSingle();
+  if (attempt.error && kindPersisted && missingColumn(attempt.error)) {
+    /* The kind column is not applied in this workspace yet. The review still
+       opens; the screen says the kind was not stored rather than pretending. */
+    kindPersisted = false;
+    attempt = await writer
+      .from("comms_review_sessions")
+      .insert({ ...base, ...binding } as never)
+      .select("*")
+      .maybeSingle();
+  }
   if (attempt.error && boundToDraft && missingColumn(attempt.error)) {
     /* The binding columns are not there yet. The review is still worth
        opening; it simply cannot authorise a send, and says so. */
     boundToDraft = false;
-    attempt = await writer.from("comms_review_sessions").insert(base).select("*").maybeSingle();
+    attempt = await writer
+      .from("comms_review_sessions")
+      .insert({ ...base, ...(kindPersisted ? kindColumn : {}) } as never)
+      .select("*")
+      .maybeSingle();
+    if (attempt.error && kindPersisted && missingColumn(attempt.error)) {
+      kindPersisted = false;
+      attempt = await writer.from("comms_review_sessions").insert(base).select("*").maybeSingle();
+    }
   }
   if (attempt.error || !attempt.data) fail("That review could not be opened. Nothing was saved.");
   const session = toSession(attempt.data as Row);
@@ -521,6 +547,7 @@ export async function createReviewSession(
     versionId: toVersion(versionRow as Row).id,
     sources: classified,
     boundToDraft,
+    kindPersisted,
   };
 }
 
