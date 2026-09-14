@@ -37,7 +37,9 @@ const TABS: { to: string; section: CommsSection; label: string }[] = [
 
   { to: "/modules/comms/voice", section: "voice", label: "Voice DNA" },
   { to: "/modules/comms/integrations", section: "integrations", label: "Connections" },
+  { to: "/mockups/comms-next", section: "preview", label: "Preview: new Comms" },
 ];
+
 
 /** Comms' local navigation: the people, how Tai sounds, and what we read from. */
 export function CommsTabs({ active }: { active: CommsSection }) {
