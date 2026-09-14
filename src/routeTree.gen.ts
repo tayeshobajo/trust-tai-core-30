@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as MockupsCommsNextRouteImport } from './routes/mockups.comms-next'
 import { Route as MockupsPulseNextRouteImport } from './routes/mockups.pulse-next'
 import { Route as MockupsStudioContentRouteImport } from './routes/mockups.studio-content'
 import { Route as ModulesSlugRouteImport } from './routes/modules.$slug'
@@ -131,6 +132,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
   getParentRoute: () => AuthRoute,
+} as any)
+const MockupsCommsNextRoute = MockupsCommsNextRouteImport.update({
+  id: '/mockups/comms-next',
+  path: '/mockups/comms-next',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MockupsPulseNextRoute = MockupsPulseNextRouteImport.update({
   id: '/mockups/pulse-next',
@@ -654,6 +660,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/comms-next': typeof MockupsCommsNextRoute
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
@@ -757,6 +764,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/comms-next': typeof MockupsCommsNextRoute
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
@@ -854,6 +862,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/mockups/comms-next': typeof MockupsCommsNextRoute
   '/mockups/pulse-next': typeof MockupsPulseNextRoute
   '/mockups/studio-content': typeof MockupsStudioContentRoute
   '/modules/$slug': typeof ModulesSlugRoute
@@ -960,6 +969,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/auth/callback'
+    | '/mockups/comms-next'
     | '/mockups/pulse-next'
     | '/mockups/studio-content'
     | '/modules/$slug'
@@ -1063,6 +1073,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/auth/callback'
+    | '/mockups/comms-next'
     | '/mockups/pulse-next'
     | '/mockups/studio-content'
     | '/modules/$slug'
@@ -1159,6 +1170,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/auth/callback'
+    | '/mockups/comms-next'
     | '/mockups/pulse-next'
     | '/mockups/studio-content'
     | '/modules/$slug'
@@ -1263,6 +1275,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
+  MockupsCommsNextRoute: typeof MockupsCommsNextRoute
   MockupsPulseNextRoute: typeof MockupsPulseNextRoute
   MockupsStudioContentRoute: typeof MockupsStudioContentRoute
   ModulesSlugRoute: typeof ModulesSlugRoute
@@ -1353,6 +1366,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/mockups/comms-next': {
+      id: '/mockups/comms-next'
+      path: '/mockups/comms-next'
+      fullPath: '/mockups/comms-next'
+      preLoaderRoute: typeof MockupsCommsNextRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/mockups/pulse-next': {
       id: '/mockups/pulse-next'
@@ -2228,6 +2248,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
+  MockupsCommsNextRoute: MockupsCommsNextRoute,
   MockupsPulseNextRoute: MockupsPulseNextRoute,
   MockupsStudioContentRoute: MockupsStudioContentRoute,
   ModulesSlugRoute: ModulesSlugRoute,
