@@ -411,12 +411,11 @@ export async function settleDelivery(input: {
   if (error) {
     return {
       recorded: false,
-      state: input.state,
       note:
         input.state === "sent"
           ? "The message went out, but the record of it could not be saved. Treat this as sent and check before sending anything else."
           : "The outcome could not be recorded.",
-    } as { recorded: boolean; note: string };
+    };
   }
   return { recorded: true, note: describeDelivery(input.state, input.channel) };
 }
