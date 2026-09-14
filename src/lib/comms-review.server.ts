@@ -606,14 +606,21 @@ export async function createReviewSession(
       session_id: session.id,
       version: 1,
       subject: input.subject?.trim() || null,
-      body: canonicalBody(input.body, input.sections),
+      body: canonicalBody(input.body, sections),
       origin: "intake",
       author_user_id: caller.userId,
       created_at: now,
     },
-    input.sections,
+    sections,
   );
-  if (!first.row) fail("Your draft could not be saved. Nothing was recorded.");
+  /* The session row exists by now. Saying "nothing was recorded" would be
+     false: an empty review is on record, with no words in it. Say exactly
+     that, and name it, so a person can find it rather than hunt a ghost. */
+  if (!first.row) {
+    fail(
+      `Your words could not be saved. An empty review was left open (${session.id}) and holds no draft; open it and write the draft again, or leave it.`,
+    );
+  }
   const structurePersisted = first.structurePersisted;
 
   /* The same material offered twice is one piece of material. Duplicates are
