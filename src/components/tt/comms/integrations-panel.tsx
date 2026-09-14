@@ -63,9 +63,9 @@ export function IntegrationsPanel({
   provisioned: boolean;
 }) {
   return (
-    <section className="space-y-6">
+    <section className="space-y-10">
       <SectionHeading
-        title="Connections"
+        title="Accounts and sync"
         description="Comms reads the outside world only through approved sources, and only under your own access. Nothing is sent from here."
       />
 
