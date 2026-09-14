@@ -581,7 +581,11 @@ function SendReadiness({
               : ""}
         {sender ? ` as ${sender}` : ""}.
       </p>
-      {query.isLoading ? (
+      {dirty ? (
+        <p className="mt-2 text-sm text-foreground" data-testid="send-readiness-state">
+          You have unsaved changes. Save them and run the review again before this can be sent.
+        </p>
+      ) : query.isLoading || query.isFetching ? (
         <p className="mt-2 text-sm text-muted-foreground">Checking…</p>
       ) : query.isError ? (
         <p className="mt-2 text-sm text-muted-foreground">
