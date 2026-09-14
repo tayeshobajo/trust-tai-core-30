@@ -369,12 +369,13 @@ export function summarizeObligations(verdicts: ObligationVerdict[]): ObligationC
   const answered = verdicts.filter((verdict) => verdict.status === "answered").length;
   const uncertainCount = verdicts.filter((verdict) => verdict.status === "uncertain").length;
   const outstanding = verdicts.length - answered;
-  const complete = verdicts.length > 0 && answered === verdicts.length;
-  const settled =
-    verdicts.length > 0 &&
-    verdicts.every(
-      (verdict) => verdict.status === "answered" || verdict.status === "pending_confirmation",
-    );
+  /* Vacuously complete when the source asked nothing: a note that needs no
+     answer is covered by definition. The note still says plainly that no ask
+     was found, so "nothing asked" is never read as "everything answered". */
+  const complete = answered === verdicts.length;
+  const settled = verdicts.every(
+    (verdict) => verdict.status === "answered" || verdict.status === "pending_confirmation",
+  );
 
   const note =
     verdicts.length === 0
