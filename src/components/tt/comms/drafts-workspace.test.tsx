@@ -124,10 +124,10 @@ describe("a list that could not be read", () => {
     view({});
 
     await waitFor(() =>
-      expect(screen.getByText(/could not be read just now/i)).toBeInTheDocument(),
+      expect(screen.getByText(/could not be read just now/i)).toBeTruthy(),
     );
-    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
-    expect(screen.queryByText(/nothing in this filter/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeTruthy();
+    expect(screen.queryByText(/nothing in this filter/i)).toBeNull();
     expect(screen.getByRole("button", { name: "All" }).textContent).toBe("All");
   });
 });
@@ -140,7 +140,7 @@ describe("a link that names one record", () => {
 
     view({ draft: "d-99" });
 
-    await waitFor(() => expect(screen.getByText("Draft d-99")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Draft d-99")).toBeTruthy());
     expect(fetchDraftById).toHaveBeenCalledWith("org-1", "d-99");
   });
 
