@@ -189,6 +189,24 @@ function words(value: string): string[] {
     .filter(Boolean);
 }
 
+/** Words that only frame a question rather than answer it. */
+const ECHO_FRAMING = new Set([
+  "asked",
+  "asking",
+  "about",
+  "regarding",
+  "mentioned",
+  "question",
+  "questions",
+  "wanted",
+  "know",
+  "your",
+  "just",
+  "also",
+  "that",
+  "this",
+]);
+
 /**
  * True when the claimed answer is really just the question again. This is what
  * catches the failure the lexical heuristic could not: near-identical wording,
@@ -201,12 +219,16 @@ export function isRestatement(obligation: string, answer: string): boolean {
 
   const askSet = new Set(askWords);
   const shared = answerWords.filter((word) => askSet.has(word)).length;
-  const overlap = shared / answerWords.length;
   const covered = shared / askSet.size;
 
-  // Almost every word of the "answer" also appears in the ask, and the answer
-  // adds nothing of its own: that is an echo, not a reply.
-  const echo = overlap >= 0.85 && covered >= 0.7;
+  /* What the "answer" adds that the ask did not already say. Framing words
+     like "you asked about" are not new information, so they do not rescue an
+     echo. With nothing genuinely new, this is the question again. */
+  const novel = answerWords.filter(
+    (word) => !askSet.has(word) && word.length > 3 && !ECHO_FRAMING.has(word),
+  );
+
+  const echo = covered >= 0.7 && novel.length === 0;
   const stillAsking = /\?\s*$/.test(answer.trim()) && covered >= 0.6;
   return echo || stillAsking;
 }
