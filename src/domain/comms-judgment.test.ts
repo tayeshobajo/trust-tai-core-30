@@ -481,3 +481,53 @@ describe("threadContextForJudgment", () => {
     expect(entries[0]!.text).toBe("A snippet.");
   });
 });
+
+describe("threadWindowForJudgment", () => {
+  const entry = (complete = true) => ({
+    direction: "inbound" as const,
+    text: "Their note.",
+    occurredAt: "2026-09-14T09:12:00Z",
+    latestForSide: true,
+    complete,
+  });
+
+  it("never implies coverage it does not have", () => {
+    const window = threadWindowForJudgment({
+      entries: [entry(), entry()],
+      messagesInThread: 63,
+      messagesLoaded: 40,
+    });
+    expect(window.complete).toBe(false);
+    expect(window.because).toContain("newest 2 of 63");
+    expect(window.because).toContain("Earlier messages were not read");
+  });
+
+  it("says the whole conversation is here only when it is", () => {
+    const window = threadWindowForJudgment({
+      entries: [entry(), entry()],
+      messagesInThread: 2,
+      messagesLoaded: 2,
+    });
+    expect(window.complete).toBe(true);
+  });
+
+  it("treats a long message that was cut as incomplete coverage", () => {
+    const window = threadWindowForJudgment({
+      entries: [entry(false)],
+      messagesInThread: 1,
+      messagesLoaded: 1,
+    });
+    expect(window.complete).toBe(false);
+    expect(window.because).toContain("too long to include whole");
+  });
+
+  it("keeps an uncountable store honest rather than calling it complete", () => {
+    const window = threadWindowForJudgment({
+      entries: [entry()],
+      messagesInThread: null,
+      messagesLoaded: 1,
+    });
+    expect(window.complete).toBe(false);
+    expect(window.because).toContain("coverage is unknown");
+  });
+});
