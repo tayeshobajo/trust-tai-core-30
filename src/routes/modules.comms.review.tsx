@@ -52,7 +52,7 @@ function ReviewRoute() {
               supporting="Your words, judged against theirs, before anything is sent."
               appId="comms"
             />
-            <CommsTabs active="review" />
+            <CommsTabs active="drafts" />
             <ReviewWorkspace identity={identity} {...(session ? { openSessionId: session } : {})} />
           </div>
         </AppShell>

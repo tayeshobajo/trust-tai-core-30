@@ -123,7 +123,7 @@ function Inbox({ identity }: { identity: WorkspaceIdentity }) {
         supporting="Only the threads you labeled Trust Tai/Comms in Gmail. Read them here, reply here, and plan the meeting from the message itself."
         appId="comms"
       />
-      <CommsTabs active="inbox" />
+      <CommsTabs active="conversations" />
 
       {failure ? (
         <p className="text-sm text-destructive">

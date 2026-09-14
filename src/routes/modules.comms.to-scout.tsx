@@ -97,7 +97,7 @@ function ToScout({ identity }: { identity: WorkspaceIdentity }) {
         title="Save a conversation as a company"
         supporting="Scout holds the company. Comms keeps the conversation. Nothing is duplicated."
       />
-      <CommsTabs active="to_scout" />
+      <CommsTabs active="conversations" />
 
       <div className="max-w-2xl space-y-5 rounded-xl border border-border bg-background p-5">
         <div>

@@ -126,7 +126,7 @@ function PlanView({ identity }: { identity: WorkspaceIdentity }) {
         supporting="Each person's next steps and the dates behind them. Nothing here is invented, every line comes from something you or they recorded."
         appId="comms"
       />
-      <CommsTabs active="plan" />
+      <CommsTabs active="dashboard" />
 
       {relationships.error ? (
         <p className="text-sm text-destructive">
