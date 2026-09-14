@@ -14,6 +14,12 @@
  * retried.
  */
 
+import { providerBody, providerSubject } from "@/domain/comms-delivery";
+import {
+  loadDraftForSend,
+  outboundPayloadForDraft,
+  OutboundPayloadUnavailable,
+} from "@/lib/comms-outbound-payload.server";
 import {
   claimDelivery,
   identifySender,
@@ -26,13 +32,6 @@ export interface ResendSendResult {
   state: "sent" | "failed" | "unknown" | "duplicate";
   note: string;
   providerMessageId?: string;
-}
-
-interface DraftRow {
-  id: string;
-  subject: string | null;
-  body: string;
-  relationship_id: string;
 }
 
 export async function sendDraftViaResend(input: {
@@ -53,42 +52,28 @@ export async function sendDraftViaResend(input: {
      this workspace's own rules. */
   const caller = await identifySender(input.token, input.organizationId);
 
-  const draftRes = await caller.client
-    .from("comms_drafts")
-    .select("id, subject, body, relationship_id")
-    .eq("id", input.draftId)
-    .eq("organization_id", input.organizationId)
-    .maybeSingle();
-  if (draftRes.error) throw new SendRefused("unreadable", "That draft could not be read.");
-  const draft = (draftRes.data ?? null) as DraftRow | null;
-  if (!draft) throw new SendRefused("not_found", "That draft is not on record.");
-
-  const relationshipRes = await caller.client
-    .from("comms_relationships")
-    .select("id, email")
-    .eq("id", draft.relationship_id)
-    .eq("organization_id", input.organizationId)
-    .maybeSingle();
-  const relationship = (relationshipRes.data ?? null) as { email: string | null } | null;
-  if (!relationship?.email) {
-    throw new SendRefused(
-      "no_recipient",
-      "This person has no email address on record, so nothing was sent.",
-    );
+  let payload;
+  let draftId: string;
+  try {
+    const draft = await loadDraftForSend(caller.client, input.organizationId, input.draftId);
+    draftId = draft.id;
+    payload = await outboundPayloadForDraft(caller.client, {
+      organizationId: input.organizationId,
+      draft,
+      channel: "email_resend",
+      senderIdentity: from,
+    });
+  } catch (error) {
+    if (error instanceof OutboundPayloadUnavailable) {
+      throw new SendRefused(error.code, error.message);
+    }
+    throw error;
   }
-  const recipient = relationship.email.toLowerCase();
 
   const readiness = await reviewReadinessForSend(caller, {
     organizationId: input.organizationId,
-    draftId: draft.id,
-    payload: {
-      channel: "email_resend",
-      subject: draft.subject,
-      body: draft.body,
-      recipient,
-      senderIdentity: from,
-      attachments: [],
-    },
+    draftId,
+    payload,
   });
   if (!readiness.decision.allowed) {
     throw new SendRefused(
@@ -100,18 +85,19 @@ export async function sendDraftViaResend(input: {
 
   const attempt = await claimDelivery({
     organizationId: input.organizationId,
-    draftId: draft.id,
+    draftId,
     approvalId: readiness.decision.approvalId,
     fingerprint: readiness.fingerprint,
     channel: "email_resend",
     userId: caller.userId,
   });
-  if (!attempt.fresh || !attempt.id) {
+  if (!attempt.fresh) {
     return { state: "duplicate", note: attempt.note };
   }
 
   /* From here a real message may exist in the world. Every branch below has
-     to be honest about whether it does. */
+     to be honest about whether it does. The provider is handed exactly the
+     normalisation the approval was computed over. */
   let providerMessageId: string | null = null;
   let state: "sent" | "failed" | "unknown" = "unknown";
   let detail: string | null = null;
@@ -121,9 +107,11 @@ export async function sendDraftViaResend(input: {
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         from,
-        to: [recipient],
-        subject: draft.subject ?? "(no subject)",
-        text: draft.body,
+        to: [payload.recipient],
+        ...(payload.cc && payload.cc.length > 0 ? { cc: payload.cc } : {}),
+        ...(payload.bcc && payload.bcc.length > 0 ? { bcc: payload.bcc } : {}),
+        subject: providerSubject(payload),
+        text: providerBody(payload),
       }),
     });
     if (response.ok) {
@@ -153,7 +141,7 @@ export async function sendDraftViaResend(input: {
 
   return {
     state,
-    note: settled.recorded ? settled.note : settled.note,
+    note: settled.note,
     ...(providerMessageId ? { providerMessageId } : {}),
   };
 }

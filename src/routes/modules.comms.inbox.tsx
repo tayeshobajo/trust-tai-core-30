@@ -304,20 +304,26 @@ function MessageCard({
         context: { organizationId: identity.organizationId, userId: identity.userId },
       }),
     onSuccess: (outcome) => {
-      if (outcome.state === "sent") {
+      void queryClient.invalidateQueries({ queryKey: ["comms"] });
+      if (outcome.sent?.state === "sent") {
         toast.success("Reply sent", { description: thread.relationship.fullName });
         setOpen(false);
         setBody("");
-        void queryClient.invalidateQueries({ queryKey: ["comms"] });
         return;
       }
-      if (outcome.state === "blocked") {
+      if (outcome.sent?.state === "blocked") {
         toast.error("Gmail has not granted Comms permission to send yet.", {
           description: "Connect the mailbox with send permission in Connections.",
         });
         return;
       }
-      toast.error(outcome.error ?? "That reply did not leave.");
+      /* Held, not lost: the words are saved as a draft with a review open on
+         them, and the gate's own words say what is missing. */
+      toast.message("Saved as a draft for review. Nothing was sent.", {
+        description: outcome.held ?? outcome.sent?.error ?? "This reply needs review first.",
+      });
+      setOpen(false);
+      setBody("");
     },
     onError: (error: Error) => toast.error(error.message),
   });

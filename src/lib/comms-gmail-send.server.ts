@@ -28,6 +28,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { attachmentIdentity } from "@/lib/comms-outbound-payload.server";
 import { claimDelivery, requireSendApproval } from "@/lib/comms-send-authority.server";
 
 import { openSecret } from "@/lib/comms-crypto.server";
@@ -633,7 +634,12 @@ export async function sendDraftViaGmail(input: {
       body: draft.body,
       recipient,
       senderIdentity: mailbox,
-      attachments: staged.map((file) => ({ name: file.filename, bytes: file.size })),
+      // Identified the way approval identifies them: by the immutable
+      // storage path of the bytes, so a replacement file of the same length
+      // is a different attachment and the old approval no longer covers it.
+      attachments: staged.map(attachmentIdentity),
+      cc,
+      bcc,
     },
   });
   const attempt = await claimDelivery({

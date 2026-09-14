@@ -329,7 +329,7 @@ export async function markDraftSentOnLinkedin(input: {
         subject: draft.subject ?? null,
         body: draft.body ?? "",
         recipient: "linkedin",
-        senderIdentity: user.id,
+        senderIdentity: `user:${user.id}`,
         attachments: [],
       },
     });

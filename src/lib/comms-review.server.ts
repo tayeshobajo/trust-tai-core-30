@@ -38,6 +38,17 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+import { outboundFingerprint, type DeliveryChannel } from "@/domain/comms-delivery";
+import {
+  loadDraftForSend,
+  outboundPayloadForDraft,
+  recipientForDraft,
+  OutboundPayloadUnavailable,
+} from "@/lib/comms-outbound-payload.server";
+import {
+  resolveSenderIdentity,
+  SenderIdentityUnavailable,
+} from "@/lib/comms-sender-identity.server";
 import { trustTaiSupabaseKey, trustTaiSupabaseUrl } from "@/lib/trust-tai-backend.server";
 import {
   extractJsonObject,
@@ -200,6 +211,9 @@ function toSession(row: Row): ReviewSession {
     status: (str(row["status"]) || "open") as ReviewSession["status"],
     contextRevision:
       typeof row["context_revision"] === "number" ? (row["context_revision"] as number) : 1,
+    draftId: nullableStr(row["draft_id"]),
+    intendedChannel: nullableStr(row["intended_channel"]),
+    senderIdentity: nullableStr(row["sender_identity"]),
     createdBy: nullableStr(row["created_by"]),
     createdAt: str(row["created_at"]),
     updatedAt: str(row["updated_at"]),
@@ -267,6 +281,8 @@ function toApproval(row: Row): ReviewApproval {
     runId: nullableStr(row["run_id"]),
     contextFingerprint: str(row["context_fingerprint"]),
     contextRevision: num(row["context_revision"]),
+    payloadFingerprint: nullableStr(row["payload_fingerprint"]),
+    payloadChannel: nullableStr(row["payload_channel"]),
     approvedBy: str(row["approved_by"]),
     approvedAt: str(row["approved_at"]),
     approverRole: nullableStr(row["approver_role"]),
@@ -324,6 +340,23 @@ export interface CreateReviewInput {
   subject?: string;
   body: string;
   sources: SourceInput[];
+  /** The Comms draft this review governs, when opened from one. */
+  draftId?: string;
+  /** The door the approved message is meant to leave by. */
+  intendedChannel?: DeliveryChannel;
+  /** The identity it would go out as, already resolved. */
+  senderIdentity?: string;
+}
+
+/**
+ * Postgres says 42703 when a column does not exist. Until the delivery
+ * migration is applied the binding columns are absent; a review still opens,
+ * and the send gate still refuses, because an unbound review proves nothing.
+ */
+function missingColumn(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  if (error.code === "42703") return true;
+  return /column .* does not exist/i.test(error.message ?? "");
 }
 
 function fail(message: string): never {
@@ -377,31 +410,54 @@ async function requireVersion(
 export async function createReviewSession(
   token: string,
   input: CreateReviewInput,
-): Promise<{ sessionId: string; versionId: string; sources: ClassifiedSource[] }> {
+): Promise<{
+  sessionId: string;
+  versionId: string;
+  sources: ClassifiedSource[];
+  /** False when the database cannot yet tie this review to its draft. */
+  boundToDraft: boolean;
+}> {
   const caller = await identify(token, input.organizationId);
   const writer = writerClient();
   const now = new Date().toISOString();
 
-  const { data: sessionRow, error: sessionError } = await writer
+  const base = {
+    organization_id: input.organizationId,
+    relationship_id: input.relationshipId ?? null,
+    thread_id: input.threadId ?? null,
+    title: input.title.trim() || "Message review",
+    situation: input.situation?.trim() || null,
+    goal: input.goal?.trim() || null,
+    recipient_name: input.recipientName?.trim() || null,
+    recipient_email: input.recipientEmail?.trim().toLowerCase() || null,
+    status: "open",
+    created_by: caller.userId,
+    created_at: now,
+    updated_at: now,
+  };
+  const binding = input.draftId
+    ? {
+        draft_id: input.draftId,
+        intended_channel: input.intendedChannel ?? null,
+        sender_identity: input.senderIdentity?.toLowerCase() ?? null,
+      }
+    : {};
+
+  let boundToDraft = Boolean(input.draftId);
+  let attempt = await writer
     .from("comms_review_sessions")
-    .insert({
-      organization_id: input.organizationId,
-      relationship_id: input.relationshipId ?? null,
-      thread_id: input.threadId ?? null,
-      title: input.title.trim() || "Message review",
-      situation: input.situation?.trim() || null,
-      goal: input.goal?.trim() || null,
-      recipient_name: input.recipientName?.trim() || null,
-      recipient_email: input.recipientEmail?.trim().toLowerCase() || null,
-      status: "open",
-      created_by: caller.userId,
-      created_at: now,
-      updated_at: now,
-    })
+    .insert({ ...base, ...binding } as never)
     .select("*")
     .maybeSingle();
-  if (sessionError || !sessionRow) fail("That review could not be opened. Nothing was saved.");
-  const session = toSession(sessionRow as Row);
+  if (attempt.error && boundToDraft && missingColumn(attempt.error)) {
+    /* The binding columns are not there yet. The review is still worth
+       opening; it simply cannot authorise a send, and says so. */
+    boundToDraft = false;
+    attempt = await writer.from("comms_review_sessions").insert(base).select("*").maybeSingle();
+  }
+  if (attempt.error || !attempt.data) fail("That review could not be opened. Nothing was saved.");
+  const session = toSession(attempt.data as Row);
+
 
   const { data: versionRow, error: versionError } = await writer
     .from("comms_review_versions")
@@ -458,8 +514,97 @@ export async function createReviewSession(
     sessionId: session.id,
     versionId: toVersion(versionRow as Row).id,
     sources: classified,
+    boundToDraft,
   };
 }
+
+/**
+ * Open a review for a Comms draft that already exists, bound to it.
+ *
+ * This is the intake that makes sending possible at all: the review is tied
+ * to the draft, to the door it would leave by, and to the identity it would
+ * go out as, so an approval can later be shown to cover exactly the message
+ * that is about to be handed to a provider.
+ */
+export async function createReviewForDraft(
+  token: string,
+  input: {
+    organizationId: string;
+    draftId: string;
+    channel: DeliveryChannel;
+    integrationId?: string;
+    situation?: string;
+    goal?: string;
+    sources?: SourceInput[];
+  },
+): Promise<{ sessionId: string; versionId: string; boundToDraft: boolean }> {
+  const caller = await identify(token, input.organizationId);
+
+  let draft;
+  let recipient: string;
+  let senderIdentity: string;
+  try {
+    draft = await loadDraftForSend(caller.client, input.organizationId, input.draftId);
+    recipient = await recipientForDraft(caller.client, input.organizationId, draft.relationshipId);
+    senderIdentity = await resolveSenderIdentity(caller.client, {
+      organizationId: input.organizationId,
+      channel: input.channel,
+      ...(input.integrationId ? { integrationId: input.integrationId } : {}),
+    });
+  } catch (error) {
+    if (error instanceof OutboundPayloadUnavailable || error instanceof SenderIdentityUnavailable) {
+      throw new ReviewFailure(error.code === "not_found" ? "not_found" : "not_ready", error.message);
+    }
+    throw error;
+  }
+
+  const existing = await caller.client
+    .from("comms_review_sessions")
+    .select("id")
+    .eq("organization_id", input.organizationId)
+    .eq("draft_id", input.draftId)
+    .neq("status", "closed");
+  if (!missingColumn(existing.error) && !existing.error) {
+    const rows = (existing.data ?? []) as Row[];
+    const first = rows[0];
+    if (first) {
+      const versions = await caller.client
+        .from("comms_review_versions")
+        .select("id, version")
+        .eq("organization_id", input.organizationId)
+        .eq("session_id", str(first["id"]))
+        .order("version", { ascending: false })
+        .limit(1);
+      const version = ((versions.data ?? []) as Row[])[0];
+      return {
+        sessionId: str(first["id"]),
+        versionId: version ? str(version["id"]) : "",
+        boundToDraft: true,
+      };
+    }
+  }
+
+  const created = await createReviewSession(token, {
+    organizationId: input.organizationId,
+    title: draft.subject?.trim() || "Reply review",
+    ...(input.situation ? { situation: input.situation } : {}),
+    ...(input.goal ? { goal: input.goal } : {}),
+    recipientEmail: recipient,
+    relationshipId: draft.relationshipId,
+    ...(draft.subject ? { subject: draft.subject } : {}),
+    body: draft.body,
+    sources: input.sources ?? [],
+    draftId: input.draftId,
+    intendedChannel: input.channel,
+    senderIdentity,
+  });
+  return {
+    sessionId: created.sessionId,
+    versionId: created.versionId,
+    boundToDraft: created.boundToDraft,
+  };
+}
+
 
 /** Record an edit as a new immutable version. The previous one is untouched. */
 export async function reviseDraft(
@@ -1170,33 +1315,111 @@ export async function approveVersion(
     );
   }
 
-  const { data, error } = await writerClient()
+  /* What exactly is being approved, derived here on the server from the
+     draft on record — never from anything the browser sent. If the review is
+     bound to a draft, the words in the review and the words in the draft must
+     be the same words, or an approval of one would be used to send the
+     other. */
+  let payloadFingerprint: string | null = null;
+  let payloadChannel: string | null = null;
+  const session = state.session;
+  if (session.draftId && session.intendedChannel) {
+    let draft;
+    try {
+      draft = await loadDraftForSend(caller.client, input.organizationId, session.draftId);
+    } catch (error) {
+      if (error instanceof OutboundPayloadUnavailable) {
+        throw new ReviewFailure("not_ready", error.message);
+      }
+      throw error;
+    }
+    const version = state.currentVersion;
+    const sameWords =
+      version !== null &&
+      draft.body === version.body &&
+      (draft.subject ?? "") === (version.subject ?? "");
+    if (!sameWords) {
+      throw new ReviewFailure(
+        "stale_version",
+        "The message on the draft is not the message this review read, so it was not approved. Bring the reviewed wording onto the draft, run the review again, then approve it.",
+      );
+    }
+    const payload = await outboundPayloadForDraft(caller.client, {
+      organizationId: input.organizationId,
+      draft,
+      channel: session.intendedChannel as DeliveryChannel,
+      senderIdentity: session.senderIdentity,
+    });
+    payloadFingerprint = outboundFingerprint(payload);
+    payloadChannel = session.intendedChannel;
+  }
+
+  const base = {
+    organization_id: input.organizationId,
+    session_id: input.sessionId,
+    version_id: input.versionId,
+    run_id: run.id,
+    context_fingerprint: state.fingerprint,
+    approved_by: caller.userId,
+    approved_at: new Date().toISOString(),
+    approver_role: caller.role,
+    reason: input.reason?.trim() || null,
+  };
+  const writer = writerClient();
+  let attempt = await writer
     .from("comms_review_approvals")
-    .insert({
-      organization_id: input.organizationId,
-      session_id: input.sessionId,
-      version_id: input.versionId,
-      run_id: run.id,
-      context_fingerprint: state.fingerprint,
-      approved_by: caller.userId,
-      approved_at: new Date().toISOString(),
-      approver_role: caller.role,
-      reason: input.reason?.trim() || null,
-    })
+    .insert(
+      (payloadFingerprint
+        ? { ...base, payload_fingerprint: payloadFingerprint, payload_channel: payloadChannel }
+        : base) as never,
+    )
     .select("*")
     .maybeSingle();
-  if (error || !data) {
+  if (attempt.error && payloadFingerprint && missingColumn(attempt.error)) {
+    /* The column is not there yet. The decision is still recorded; the send
+       gate will refuse, because an approval that cannot name what it approved
+       is not proof of anything. */
+    attempt = await writer.from("comms_review_approvals").insert(base).select("*").maybeSingle();
+  }
+  if (attempt.error || !attempt.data) {
     throw new ReviewFailure(
       "approval_forbidden",
       "That approval was refused, so nothing was recorded. Either the draft moved while you were reading it, or approving is not yours to do here.",
     );
   }
-  await writerClient()
+  await writer
     .from("comms_review_sessions")
     .update({ status: "approved", updated_at: new Date().toISOString() })
     .eq("id", input.sessionId)
     .eq("organization_id", input.organizationId);
-  return toApproval(data as Row);
+  return toApproval(attempt.data as Row);
+}
+
+/**
+ * The context as it stands right now, recomputed from the current version,
+ * the current sources, the current situation, the verified author and the
+ * stored voice rules. The send gate compares an approval against this, never
+ * against a fingerprint the run stored about itself — otherwise an edit to
+ * the voice rules after approval would be invisible.
+ */
+export async function currentReviewContext(
+  token: string,
+  input: { organizationId: string; sessionId: string },
+): Promise<{
+  fingerprint: string;
+  revision: number;
+  currentVersionId: string | null;
+  runIsCurrent: boolean;
+  draftId: string | null;
+}> {
+  const state = await loadReview(token, input);
+  return {
+    fingerprint: state.fingerprint,
+    revision: state.session.contextRevision,
+    currentVersionId: state.currentVersion?.id ?? null,
+    runIsCurrent: state.runIsCurrent,
+    draftId: state.session.draftId,
+  };
 }
 
 /* ----------------------------------------------------------------- reads */
@@ -1401,4 +1624,101 @@ export async function listReviews(token: string, organizationId: string): Promis
     .order("updated_at", { ascending: false })
     .limit(50);
   return ((data ?? []) as Row[]).map(toSession);
+}
+
+/* ------------------------------------------------- one record, one answer */
+
+/**
+ * Where one Comms draft stands with review — the single record the queue,
+ * the inbox and the suite approvals surface all read.
+ *
+ * There is no second approval queue anywhere in the suite: whatever asks
+ * "may this go out?" asks here, and gets the same answer the send gate will
+ * give, in the same words.
+ */
+export interface DraftReviewStanding {
+  draftId: string;
+  sessionId: string | null;
+  status: string | null;
+  /** True when two or more open reviews claim this draft: nothing may send. */
+  ambiguous: boolean;
+  /** True when the binding columns are not in the database yet. */
+  bindingUnavailable: boolean;
+  approved: boolean;
+  /** True when the approval names the exact message it approved. */
+  approvalNamesPayload: boolean;
+  runIsCurrent: boolean;
+  mustFix: number;
+  note: string;
+}
+
+export async function reviewForDraft(
+  token: string,
+  input: { organizationId: string; draftId: string },
+): Promise<DraftReviewStanding> {
+  const caller = await identify(token, input.organizationId);
+  const empty = (over: Partial<DraftReviewStanding>): DraftReviewStanding => ({
+    draftId: input.draftId,
+    sessionId: null,
+    status: null,
+    ambiguous: false,
+    bindingUnavailable: false,
+    approved: false,
+    approvalNamesPayload: false,
+    runIsCurrent: false,
+    mustFix: 0,
+    note: "This message has not been reviewed yet.",
+    ...over,
+  });
+
+  const sessionRes = await caller.client
+    .from("comms_review_sessions")
+    .select("id, status")
+    .eq("organization_id", input.organizationId)
+    .eq("draft_id", input.draftId)
+    .neq("status", "closed");
+  if (missingColumn(sessionRes.error)) {
+    return empty({
+      bindingUnavailable: true,
+      note: "This workspace cannot yet tie a review to a message, so nothing can be approved for sending.",
+    });
+  }
+  if (sessionRes.error) {
+    throw new ReviewFailure(
+      "review_unreadable",
+      "Where this message stands with review could not be read just now.",
+    );
+  }
+  const rows = (sessionRes.data ?? []) as Row[];
+  if (rows.length > 1) {
+    return empty({
+      ambiguous: true,
+      note: "More than one open review claims this message. Close the ones you are not using.",
+    });
+  }
+  const row = rows[0];
+  if (!row) return empty({});
+
+  const sessionId = str(row["id"]);
+  const state = await loadReview(token, { organizationId: input.organizationId, sessionId });
+  const approval = state.approval.sendable ? state.approval.approval : null;
+  const mustFix = state.findings.filter((finding) => finding.severity === "must_fix").length;
+  return {
+    draftId: input.draftId,
+    sessionId,
+    status: state.session.status,
+    ambiguous: false,
+    bindingUnavailable: false,
+    approved: Boolean(approval),
+    approvalNamesPayload: Boolean(approval?.payloadFingerprint),
+    runIsCurrent: state.runIsCurrent,
+    mustFix,
+    note: approval
+      ? approval.payloadFingerprint
+        ? "Approved, for exactly this message."
+        : "Approved, but the record does not name the exact message it approved, so sending stays held."
+      : state.readiness.ready
+        ? "Reviewed and ready for an owner or admin to approve."
+        : state.readiness.blockers.join(" ") || "This review is not finished yet.",
+  };
 }
