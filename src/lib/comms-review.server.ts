@@ -60,7 +60,7 @@ import {
 import {
   classifySource,
   segmentSource,
-  sourceChecksum,
+  
   sourceCoverageNote,
   type ClassifiedSource,
 } from "@/domain/comms-sources";
