@@ -593,7 +593,9 @@ function SendReadiness({
         </p>
       ) : state ? (
         <>
-          <p className="mt-2 text-sm text-foreground">{state.message}</p>
+          <p className="mt-2 text-sm text-foreground" data-testid="send-readiness-state">
+            {state.message}
+          </p>
           {state.blockers.length > 0 ? (
             <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
               {state.blockers.map((blocker) => (
@@ -608,6 +610,26 @@ function SendReadiness({
           ) : null}
         </>
       ) : null}
+      {/* This answer was true when it was asked. Somebody else may have edited
+          the message or the voice rules since; this screen is not listening
+          for that, so it says when it last asked and lets you ask again. */}
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          className="text-xs font-medium text-foreground underline underline-offset-4"
+          onClick={() => void query.refetch()}
+          disabled={dirty}
+        >
+          Check again
+        </button>
+        <span className="text-xs text-muted-foreground">
+          {dirty
+            ? "Not checked while there are unsaved changes."
+            : checkedAt
+              ? `Last checked ${checkedAt.toLocaleTimeString()}.`
+              : "Not checked yet."}
+        </span>
+      </div>
     </div>
   );
 }
