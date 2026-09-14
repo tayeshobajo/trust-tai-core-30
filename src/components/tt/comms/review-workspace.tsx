@@ -451,11 +451,18 @@ function ReviewDetail({
           <div className="rounded-lg border border-border bg-card/60 p-4">
             <h4 className="text-sm font-medium text-foreground">Approval</h4>
             <p className="mt-1 text-sm text-muted-foreground">{state.approval.note}</p>
+            {state.readiness.blockers.length > 0 ? (
+              <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">
+                {state.readiness.blockers.map((blocker) => (
+                  <li key={blocker}>{blocker}</li>
+                ))}
+              </ul>
+            ) : null}
             {canApprove ? (
               <TTButton
                 className="mt-3"
                 onClick={() => approve.mutate()}
-                disabled={dirty || state.approval.freshness === "fresh"}
+                disabled={dirty || !state.readiness.ready || state.approval.freshness === "fresh"}
                 pending={approve.isPending}
                 pendingLabel="Recording approval…"
               >
@@ -467,9 +474,7 @@ function ReviewDetail({
                 them.
               </p>
             )}
-            <p className="mt-3 text-xs text-muted-foreground">
-              Approving records the decision against these exact words. It does not send anything.
-            </p>
+            <p className="mt-3 text-xs text-muted-foreground">{state.approvalScopeNote}</p>
           </div>
         </aside>
       </div>

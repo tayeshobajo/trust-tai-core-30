@@ -96,11 +96,70 @@ approvals. These remain to be bound to review before C10 and C11 can be met:
 3. `comms-linkedin-send.server.ts` — its own approval path.
 4. Any future scheduled send.
 
+## Hardening after independent review (14 September, later)
+
+An independent review of the base migration and server found that ordinary
+members could have written review runs, findings, obligations and approvals
+directly, which would have made every "the AI found this" record forgeable.
+The corrections, all in application code (the base migration file was left
+untouched while Codex reviewed it):
+
+- **Writes moved behind the server.** Reads still run as the caller under RLS;
+  writes now use the server's service credentials, and only after this code
+  has proved a real session, an active membership of that exact organization,
+  and the session, version and role the request claims. Missing service
+  credentials fail loudly; there is no fallback to the browser key, and the
+  key is never returned or logged.
+- **Every read carries the organization.** A person can belong to several
+  workspaces, so a session id alone never reaches across one.
+- **No swallowed writes.** A run whose findings or coverage could not be
+  stored is recorded as failed, not complete, and says so.
+- **Approval has a real gate.** Approving now requires a completed review of
+  exactly this version, fingerprint and context revision; every source read;
+  every obligation answered; and no must-fix finding left standing. Keeping
+  your own wording answers a suggestion but does not clear a must fix. A
+  missing review is never treated as optional.
+- **Context revision.** Approval staleness no longer rests on the version id
+  alone: the session carries a revision that the database bumps when a
+  version, a source, or the goal, recipient or situation changes, and both the
+  run and the approval record it.
+- **Truthful stages.** One model call is recorded as one model call. The
+  stages either side of it are named as code, not as AI passes.
+
+Dependency: the follow-up hardening migration Codex is authoring must revoke
+all `authenticated` writes on the seven review tables (keeping
+organization-scoped SELECT), add `session_id` to findings, add `session_id`,
+`version_id`, `obligation_key` and `excerpt_start`/`excerpt_end` to
+obligations, and add `context_revision` to sessions, runs and approvals with
+the triggers that maintain and enforce it. The application code above is
+written against exactly those names. Until both migrations are applied the
+Review page cannot save anything, and says so.
+
+## Not yet proved
+
+- No live model run has been made from this code. Everything above is code
+  and unit-test evidence.
+- The lexical keyword heuristic produced a reproducible false positive in
+  independent testing. It is retained only as a labelled candidate hint and
+  is never consulted for coverage or readiness.
+- Quoted-answer verification proves that a claimed answer is really in the
+  draft. It does not prove that every implicit request in a message was
+  found. That limitation stays stated in the interface and here.
+- Suite-wide approval integration is not done: this is a review-approval
+  record, and no send path reads it.
+
 ## Next backend step
 
-Apply `docs/migrations/20260914150000_comms_review_runs.sql` to the existing
-external Supabase project `okydosoacqdnursmmenf`. It is idempotent and
-additive. Until it is applied, `/modules/comms/review` will report an honest
+Apply the base migration `docs/migrations/20260914150000_comms_review_runs.sql`
+together with Codex's follow-up hardening migration, atomically, to the
+existing external Supabase project `okydosoacqdnursmmenf`. The base file is
+unchanged. Both are additive.
+
+Server configuration: the Review page writes with
+`TRUST_TAI_SUPABASE_SERVICE_KEY`, falling back to `SUPABASE_SERVICE_ROLE_KEY`,
+against the existing project URL. If neither is present on the server, review
+intake, runs and approvals fail with an honest "not configured" message rather
+than writing anything. Until it is applied, `/modules/comms/review` will report an honest
 failure rather than showing anything invented.
 
 To verify after applying:

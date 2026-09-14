@@ -19,8 +19,21 @@
  *    context fingerprint, and it goes stale the moment anything moves,
  *  - nothing here sends anything. There is no send path in this file.
  *
- * Every read and write runs with the CALLER'S token, so RLS applies. No
- * service-role key is used.
+ * Authority in this file, exactly:
+ *
+ *   - every READ runs with the caller's own token, under RLS, and always
+ *     carries the requested organization as an explicit filter, because a
+ *     person may belong to more than one workspace,
+ *   - every WRITE runs with the server's service credentials, and only after
+ *     this module has itself proved the caller: a real session, an ACTIVE
+ *     membership of that exact organization, and, for approval, an approving
+ *     role. Members cannot write these tables directly; the database grants
+ *     them SELECT only, so a review run, a finding or an approval can never
+ *     be forged from the browser,
+ *   - if the service credentials are absent, writes fail honestly and loudly.
+ *     There is no fallback to the browser key.
+ *
+ * Nothing here sends anything. There is no send path in this file.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -50,11 +63,15 @@ import {
   type RawObligationVerdict,
 } from "@/domain/comms-obligations";
 import {
+  approvalReadiness,
+  APPROVAL_SCOPE_NOTE,
   canApproveReview,
   contextFingerprint,
+  reviewRunIsCurrent,
   nextVersionNumber,
   readApproval,
   APPROVAL_ROLE_REFUSAL,
+  type ApprovalReadiness,
   type ApprovalReading,
   type FindingSeverity,
   type ReviewApproval,
@@ -77,6 +94,8 @@ export type ReviewFailureCode =
   | "review_unreadable"
   | "stale_version"
   | "approval_forbidden"
+  | "not_ready"
+  | "server_not_configured"
   | "write_failed";
 
 export class ReviewFailure extends Error {
@@ -99,6 +118,26 @@ function callerClient(token: string) {
 }
 
 type CallerClient = ReturnType<typeof callerClient>;
+
+/**
+ * The writer. Service credentials, server side only, never returned, never
+ * logged, never handed to the browser. Absent credentials are an honest
+ * failure, not a quiet downgrade to the caller's key: a review record that
+ * ordinary members could write would not be worth keeping.
+ */
+function writerClient() {
+  const key =
+    process.env["TRUST_TAI_SUPABASE_SERVICE_KEY"] || process.env["SUPABASE_SERVICE_ROLE_KEY"];
+  if (!key) {
+    throw new ReviewFailure(
+      "server_not_configured",
+      "Comms review is not configured on this server, so nothing was saved. Ask an administrator to finish the setup.",
+    );
+  }
+  return createClient(trustTaiSupabaseUrl(), key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
 
 interface Caller {
   client: CallerClient;
@@ -156,6 +195,8 @@ function toSession(row: Row): ReviewSession {
     recipientName: nullableStr(row["recipient_name"]),
     recipientEmail: nullableStr(row["recipient_email"]),
     status: (str(row["status"]) || "open") as ReviewSession["status"],
+    contextRevision:
+      typeof row["context_revision"] === "number" ? (row["context_revision"] as number) : 1,
     createdBy: nullableStr(row["created_by"]),
     createdAt: str(row["created_at"]),
     updatedAt: str(row["updated_at"]),
@@ -185,6 +226,7 @@ function toRun(row: Row): ReviewRun {
     model: nullableStr(row["model"]),
     promptVersion: nullableStr(row["prompt_version"]),
     contextFingerprint: nullableStr(row["context_fingerprint"]),
+    contextRevision: num(row["context_revision"]),
     stages: list(row["stages"]),
     latencyMs: num(row["latency_ms"]),
     errorCode: nullableStr(row["error_code"]),
@@ -221,6 +263,7 @@ function toApproval(row: Row): ReviewApproval {
     versionId: str(row["version_id"]),
     runId: nullableStr(row["run_id"]),
     contextFingerprint: str(row["context_fingerprint"]),
+    contextRevision: num(row["context_revision"]),
     approvedBy: str(row["approved_by"]),
     approvedAt: str(row["approved_at"]),
     approverRole: nullableStr(row["approver_role"]),
@@ -285,6 +328,46 @@ function fail(message: string): never {
 }
 
 /**
+ * Load a session as the caller, inside the organization they named. The
+ * organization filter is not decoration: a person can belong to several
+ * workspaces, and a session id alone must never be enough to reach across.
+ */
+async function requireSession(
+  caller: Caller,
+  organizationId: string,
+  sessionId: string,
+): Promise<ReviewSession> {
+  const { data } = await caller.client
+    .from("comms_review_sessions")
+    .select("*")
+    .eq("id", sessionId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!data) throw new ReviewFailure("not_found", "That review could not be found.");
+  return toSession(data as Row);
+}
+
+/** Load a version and prove it belongs to that session and organization. */
+async function requireVersion(
+  caller: Caller,
+  organizationId: string,
+  sessionId: string,
+  versionId: string,
+): Promise<ReviewVersion> {
+  const { data } = await caller.client
+    .from("comms_review_versions")
+    .select("*")
+    .eq("id", versionId)
+    .eq("organization_id", organizationId)
+    .eq("session_id", sessionId)
+    .maybeSingle();
+  if (!data) {
+    throw new ReviewFailure("not_found", "That version of the draft could not be found.");
+  }
+  return toVersion(data as Row);
+}
+
+/**
  * Open a review: the session, the first immutable version, and the source
  * material classified honestly. No model runs here.
  */
@@ -293,9 +376,10 @@ export async function createReviewSession(
   input: CreateReviewInput,
 ): Promise<{ sessionId: string; versionId: string; sources: ClassifiedSource[] }> {
   const caller = await identify(token, input.organizationId);
+  const writer = writerClient();
   const now = new Date().toISOString();
 
-  const { data: sessionRow, error: sessionError } = await caller.client
+  const { data: sessionRow, error: sessionError } = await writer
     .from("comms_review_sessions")
     .insert({
       organization_id: input.organizationId,
@@ -316,7 +400,7 @@ export async function createReviewSession(
   if (sessionError || !sessionRow) fail("That review could not be opened. Nothing was saved.");
   const session = toSession(sessionRow as Row);
 
-  const { data: versionRow, error: versionError } = await caller.client
+  const { data: versionRow, error: versionError } = await writer
     .from("comms_review_versions")
     .insert({
       organization_id: input.organizationId,
@@ -334,7 +418,7 @@ export async function createReviewSession(
 
   const classified = input.sources.map((source) => classifySource(source));
   if (classified.length > 0) {
-    const { error } = await caller.client.from("comms_review_sources").insert(
+    const { error } = await writer.from("comms_review_sources").insert(
       classified.map((source) => ({
         organization_id: input.organizationId,
         session_id: session.id,
@@ -353,7 +437,7 @@ export async function createReviewSession(
     );
     // A duplicate checksum is the same material offered twice; that is fine.
     if (error && !/duplicate key/i.test(error.message)) {
-      fail("The source material could not be saved. Nothing was recorded.");
+      fail("The source material could not be saved, so this review has no material to read.");
     }
   }
 
@@ -370,18 +454,26 @@ export async function reviseDraft(
   input: { organizationId: string; sessionId: string; subject?: string; body: string },
 ): Promise<ReviewVersion> {
   const caller = await identify(token, input.organizationId);
+  const session = await requireSession(caller, input.organizationId, input.sessionId);
+  const writer = writerClient();
+
   const { data } = await caller.client
     .from("comms_review_versions")
     .select("version")
-    .eq("session_id", input.sessionId)
+    .eq("organization_id", input.organizationId)
+    .eq("session_id", session.id)
     .order("version", { ascending: false });
-  const version = nextVersionNumber(((data ?? []) as Row[]).map((row) => toVersion(row)));
+  const version = nextVersionNumber(
+    ((data ?? []) as Row[]).map((row) => ({
+      version: typeof row["version"] === "number" ? (row["version"] as number) : 0,
+    })),
+  );
 
-  const { data: row, error } = await caller.client
+  const { data: row, error } = await writer
     .from("comms_review_versions")
     .insert({
       organization_id: input.organizationId,
-      session_id: input.sessionId,
+      session_id: session.id,
       version,
       subject: input.subject?.trim() || null,
       body: input.body,
@@ -430,6 +522,19 @@ Return strict JSON only:
  "limitations": ["..."]
 }`;
 
+/**
+ * What actually happens in a run, named truthfully. There is ONE model call.
+ * The stages either side of it are ordinary code: building the packet, and
+ * checking the model's claims against the real text. Nothing here is three
+ * AI passes, and the record must never imply that it is.
+ */
+const RUN_STAGES = {
+  packet: "packet_built (code)",
+  call: "single_model_call",
+  verify: "verification (code)",
+  persist: "findings_and_coverage_saved (code)",
+} as const;
+
 interface ReviewPacketSource {
   label: string;
   status: string;
@@ -449,27 +554,32 @@ export interface ReviewRunResult {
 }
 
 /**
- * Run one review over one exact version. The run is recorded before the model
- * is called, so a failure leaves an honest record rather than silence.
+ * Run one review over one exact version. The run row is written before the
+ * model is called, so a failure leaves an honest record rather than silence,
+ * and a run only reaches "complete" when everything it produced is actually
+ * stored. A partial save is a failed run, not a quiet success.
  */
 export async function runReview(
   token: string,
   input: { organizationId: string; sessionId: string; versionId: string },
 ): Promise<ReviewRunResult> {
   const caller = await identify(token, input.organizationId);
+  const writer = writerClient();
   const started = Date.now();
 
-  const [sessionRes, versionRes, sourceRes] = await Promise.all([
-    caller.client.from("comms_review_sessions").select("*").eq("id", input.sessionId).maybeSingle(),
-    caller.client.from("comms_review_versions").select("*").eq("id", input.versionId).maybeSingle(),
-    caller.client.from("comms_review_sources").select("*").eq("session_id", input.sessionId),
-  ]);
-  if (!sessionRes.data || !versionRes.data) {
-    throw new ReviewFailure("not_found", "That review could not be found.");
-  }
-  const session = toSession(sessionRes.data as Row);
-  const version = toVersion(versionRes.data as Row);
-  const sourceRows = (sourceRes.data ?? []) as Row[];
+  const session = await requireSession(caller, input.organizationId, input.sessionId);
+  const version = await requireVersion(
+    caller,
+    input.organizationId,
+    input.sessionId,
+    input.versionId,
+  );
+  const { data: sourceData } = await caller.client
+    .from("comms_review_sources")
+    .select("*")
+    .eq("organization_id", input.organizationId)
+    .eq("session_id", input.sessionId);
+  const sourceRows = (sourceData ?? []) as Row[];
 
   /* Obligations come from the sources we genuinely read. A source we could
      not read contributes no obligations, and says so in limitations. */
@@ -505,7 +615,7 @@ export async function runReview(
     senderName: null,
   });
 
-  const { data: runRow, error: runError } = await caller.client
+  const { data: runRow, error: runError } = await writer
     .from("comms_review_runs")
     .insert({
       organization_id: input.organizationId,
@@ -514,7 +624,8 @@ export async function runReview(
       status: "running",
       prompt_version: REVIEW_PROMPT_VERSION,
       context_fingerprint: fingerprint,
-      stages: ["packet"],
+      context_revision: session.contextRevision,
+      stages: [RUN_STAGES.packet],
       started_at: new Date().toISOString(),
       created_by: caller.userId,
     })
@@ -522,6 +633,23 @@ export async function runReview(
     .maybeSingle();
   if (runError || !runRow) fail("That review could not be started. Nothing was recorded.");
   const runId = toRun(runRow as Row).id;
+
+  /** Close a run honestly when it could not finish. */
+  const markFailed = async (code: string, stages: string[], provider?: string, model?: string) => {
+    await writer
+      .from("comms_review_runs")
+      .update({
+        status: "failed",
+        error_code: code,
+        stages,
+        ...(provider ? { provider } : {}),
+        ...(model ? { model } : {}),
+        completed_at: new Date().toISOString(),
+        latency_ms: Date.now() - started,
+      })
+      .eq("id", runId)
+      .eq("organization_id", input.organizationId);
+  };
 
   const packet = {
     situation: session.situation,
@@ -568,15 +696,7 @@ export async function runReview(
           : error instanceof Error && error.message === "forbidden"
             ? "access_denied"
             : "provider_call_failed";
-    await caller.client
-      .from("comms_review_runs")
-      .update({
-        status: "failed",
-        error_code: code,
-        completed_at: new Date().toISOString(),
-        latency_ms: Date.now() - started,
-      })
-      .eq("id", runId);
+    await markFailed(code, [RUN_STAGES.packet]);
     throw new ReviewFailure(
       code,
       code === "provider_not_configured"
@@ -589,17 +709,7 @@ export async function runReview(
   try {
     parsed = extractJsonObject(raw);
   } catch {
-    await caller.client
-      .from("comms_review_runs")
-      .update({
-        status: "failed",
-        error_code: "review_unreadable",
-        provider,
-        model,
-        completed_at: new Date().toISOString(),
-        latency_ms: Date.now() - started,
-      })
-      .eq("id", runId);
+    await markFailed("review_unreadable", [RUN_STAGES.packet, RUN_STAGES.call], provider, model);
     throw new ReviewFailure(
       "review_unreadable",
       "The review came back in a form Comms couldn't read. Nothing was judged.",
@@ -668,18 +778,47 @@ export async function runReview(
   }));
 
   const limitations = list(parsed["limitations"]);
-  if (findingRows.length > 0) await caller.client.from("comms_review_findings").insert(findingRows);
+
+  /* A review that could not store its findings or its coverage has not been
+     done. It is recorded as failed, and the person is told plainly. */
+  if (findingRows.length > 0) {
+    const { error } = await writer.from("comms_review_findings").insert(findingRows);
+    if (error) {
+      await markFailed(
+        "write_failed",
+        [RUN_STAGES.packet, RUN_STAGES.call, RUN_STAGES.verify],
+        provider,
+        model,
+      );
+      throw new ReviewFailure(
+        "write_failed",
+        "The review ran but its findings could not be saved, so it is recorded as failed. Nothing was approved and your draft is untouched.",
+      );
+    }
+  }
   if (obligationRows.length > 0) {
-    await caller.client.from("comms_review_obligations").insert(obligationRows);
+    const { error } = await writer.from("comms_review_obligations").insert(obligationRows);
+    if (error) {
+      await markFailed(
+        "write_failed",
+        [RUN_STAGES.packet, RUN_STAGES.call, RUN_STAGES.verify],
+        provider,
+        model,
+      );
+      throw new ReviewFailure(
+        "write_failed",
+        "The review ran but its question coverage could not be saved, so it is recorded as failed. Nothing was approved and your draft is untouched.",
+      );
+    }
   }
 
-  await caller.client
+  const { error: completeError } = await writer
     .from("comms_review_runs")
     .update({
       status: "complete",
       provider,
       model,
-      stages: ["packet", "judgment", "verification"],
+      stages: [RUN_STAGES.packet, RUN_STAGES.call, RUN_STAGES.verify, RUN_STAGES.persist],
       summary: str(parsed["summary"]) || null,
       goal_read: str(parsed["goalRead"]) || null,
       coverage: {
@@ -694,11 +833,19 @@ export async function runReview(
       completed_at: new Date().toISOString(),
       latency_ms: Date.now() - started,
     })
-    .eq("id", runId);
+    .eq("id", runId)
+    .eq("organization_id", input.organizationId);
+  if (completeError) {
+    throw new ReviewFailure(
+      "write_failed",
+      "The review ran but could not be closed off in the record, so it is not shown as complete. Run it again.",
+    );
+  }
 
   const { data: savedFindings } = await caller.client
     .from("comms_review_findings")
     .select("*")
+    .eq("organization_id", input.organizationId)
     .eq("run_id", runId)
     .order("position", { ascending: true });
 
@@ -726,7 +873,16 @@ export async function decideFinding(
   },
 ): Promise<void> {
   const caller = await identify(token, input.organizationId);
-  const { error } = await caller.client
+  // Prove the finding is this workspace's before the writer touches it.
+  const { data: existing } = await caller.client
+    .from("comms_review_findings")
+    .select("id")
+    .eq("id", input.findingId)
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
+  if (!existing) throw new ReviewFailure("not_found", "That finding could not be found.");
+
+  const { error } = await writerClient()
     .from("comms_review_findings")
     .update({ state: input.state })
     .eq("id", input.findingId)
@@ -737,9 +893,11 @@ export async function decideFinding(
 /* -------------------------------------------------------------- approval */
 
 /**
- * Approve one exact version. An owner or admin act, bound to the words and
- * the context in front of them. This records a decision; it sends nothing,
- * and no send path reads it yet.
+ * Approve one exact version. An owner or admin act, bound to the words, the
+ * context and the review in front of them.
+ *
+ * This records a review decision. It is NOT permission to send: no Comms send
+ * path reads this approval yet, and this slice adds none.
  */
 export async function approveVersion(
   token: string,
@@ -766,15 +924,32 @@ export async function approveVersion(
       "The draft changed while you were reading it. Review the current version before approving.",
     );
   }
+  if (!state.readiness.ready) {
+    throw new ReviewFailure("not_ready", state.readiness.blockers.join(" "));
+  }
+  const run = state.latestRun;
+  if (!run) {
+    throw new ReviewFailure(
+      "not_ready",
+      "This draft has not been reviewed yet. Run a review before approving it.",
+    );
+  }
+  if (input.runId && input.runId !== run.id) {
+    throw new ReviewFailure(
+      "stale_version",
+      "A newer review has finished since you opened this. Read it before approving.",
+    );
+  }
 
-  const { data, error } = await caller.client
+  const { data, error } = await writerClient()
     .from("comms_review_approvals")
     .insert({
       organization_id: input.organizationId,
       session_id: input.sessionId,
       version_id: input.versionId,
-      run_id: input.runId ?? null,
+      run_id: run.id,
       context_fingerprint: state.fingerprint,
+      context_revision: state.session.contextRevision,
       approved_by: caller.userId,
       approved_at: new Date().toISOString(),
       approver_role: caller.role,
@@ -785,13 +960,14 @@ export async function approveVersion(
   if (error || !data) {
     throw new ReviewFailure(
       "approval_forbidden",
-      "That approval was refused. Approving is an owner or admin decision.",
+      "That approval was refused, so nothing was recorded. Either the draft moved while you were reading it, or approving is not yours to do here.",
     );
   }
-  await caller.client
+  await writerClient()
     .from("comms_review_sessions")
     .update({ status: "approved", updated_at: new Date().toISOString() })
-    .eq("id", input.sessionId);
+    .eq("id", input.sessionId)
+    .eq("organization_id", input.organizationId);
   return toApproval(data as Row);
 }
 
@@ -812,10 +988,13 @@ export interface ReviewState {
   findings: ReviewFinding[];
   obligations: ObligationCoverage;
   approval: ApprovalReading;
+  readiness: ApprovalReadiness;
   fingerprint: string;
-  /** True when the latest run judged the words on screen. */
+  /** True when the latest run judged exactly the words and context on screen. */
   runIsCurrent: boolean;
   coverageNote: string;
+  /** What approving here does, and does not, mean. */
+  approvalScopeNote: string;
 }
 
 export async function loadReview(
@@ -823,25 +1002,34 @@ export async function loadReview(
   input: { organizationId: string; sessionId: string },
 ): Promise<ReviewState> {
   const caller = await identify(token, input.organizationId);
-  const [sessionRes, versionRes, sourceRes, runRes, approvalRes] = await Promise.all([
-    caller.client.from("comms_review_sessions").select("*").eq("id", input.sessionId).maybeSingle(),
+  const session = await requireSession(caller, input.organizationId, input.sessionId);
+
+  const [versionRes, sourceRes, runRes, approvalRes] = await Promise.all([
     caller.client
       .from("comms_review_versions")
       .select("*")
+      .eq("organization_id", input.organizationId)
       .eq("session_id", input.sessionId)
       .order("version", { ascending: true }),
-    caller.client.from("comms_review_sources").select("*").eq("session_id", input.sessionId),
+    caller.client
+      .from("comms_review_sources")
+      .select("*")
+      .eq("organization_id", input.organizationId)
+      .eq("session_id", input.sessionId),
     caller.client
       .from("comms_review_runs")
       .select("*")
+      .eq("organization_id", input.organizationId)
       .eq("session_id", input.sessionId)
       .order("started_at", { ascending: false })
       .limit(1),
-    caller.client.from("comms_review_approvals").select("*").eq("session_id", input.sessionId),
+    caller.client
+      .from("comms_review_approvals")
+      .select("*")
+      .eq("organization_id", input.organizationId)
+      .eq("session_id", input.sessionId),
   ]);
-  if (!sessionRes.data) throw new ReviewFailure("not_found", "That review could not be found.");
 
-  const session = toSession(sessionRes.data as Row);
   const versions = ((versionRes.data ?? []) as Row[]).map(toVersion);
   const currentVersion = versions.at(-1) ?? null;
   const sourceRows = (sourceRes.data ?? []) as Row[];
@@ -867,40 +1055,64 @@ export async function loadReview(
       caller.client
         .from("comms_review_findings")
         .select("*")
+        .eq("organization_id", input.organizationId)
         .eq("run_id", latestRun.id)
         .order("position", { ascending: true }),
-      caller.client.from("comms_review_obligations").select("*").eq("run_id", latestRun.id),
+      caller.client
+        .from("comms_review_obligations")
+        .select("*")
+        .eq("organization_id", input.organizationId)
+        .eq("run_id", latestRun.id),
     ]);
     findings = ((findingRes.data ?? []) as Row[]).map(toFinding);
     verdicts = ((obligationRes.data ?? []) as Row[]).map(toObligation);
   }
 
+  const sources = sourceRows.map((row) => ({
+    id: str(row["id"]),
+    label: str(row["label"]),
+    status: str(row["status"]),
+    statusNote: str(row["status_note"]),
+    charCount: num(row["char_count"]) ?? 0,
+  }));
+  const coverage = summarizeObligations(verdicts);
+
   return {
     session,
     versions,
     currentVersion,
-    sources: sourceRows.map((row) => ({
-      id: str(row["id"]),
-      label: str(row["label"]),
-      status: str(row["status"]),
-      statusNote: str(row["status_note"]),
-      charCount: num(row["char_count"]) ?? 0,
-    })),
+    sources,
     latestRun,
     findings,
-    obligations: summarizeObligations(verdicts),
+    obligations: coverage,
     approval: readApproval({
       approvals: ((approvalRes.data ?? []) as Row[]).map(toApproval),
       currentVersionId: currentVersion?.id ?? "",
       currentFingerprint: fingerprint,
+      currentRevision: session.contextRevision,
+    }),
+    readiness: approvalReadiness({
+      run: latestRun,
+      currentVersionId: currentVersion?.id ?? "",
+      currentFingerprint: fingerprint,
+      currentRevision: session.contextRevision,
+      findings,
+      sources,
+      coverage,
     }),
     fingerprint,
-    runIsCurrent: Boolean(latestRun && currentVersion && latestRun.versionId === currentVersion.id),
+    runIsCurrent: reviewRunIsCurrent({
+      run: latestRun,
+      currentVersionId: currentVersion?.id ?? "",
+      currentFingerprint: fingerprint,
+      currentRevision: session.contextRevision,
+    }),
     coverageNote: sourceCoverageNote(
       sourceRows.map((row) => ({
         status: str(row["status"]) as ClassifiedSource["status"],
       })) as ClassifiedSource[],
     ),
+    approvalScopeNote: APPROVAL_SCOPE_NOTE,
   };
 }
 

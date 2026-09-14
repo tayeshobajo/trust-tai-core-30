@@ -28,6 +28,8 @@ export interface ReviewStateView {
   findings: ReviewFinding[];
   obligations: ObligationCoverage;
   approval: ApprovalReading;
+  readiness: { ready: boolean; blockers: string[] };
+  approvalScopeNote: string;
   fingerprint: string;
   runIsCurrent: boolean;
   coverageNote: string;
